@@ -9,9 +9,11 @@ vi.mock("../../services/crypto", () => ({
 
 // Mock dns/promises
 const mockResolve4 = vi.fn();
+const mockResolve6 = vi.fn();
 vi.mock("node:dns/promises", () => ({
-  default: { resolve4: mockResolve4 },
+  default: { resolve4: mockResolve4, resolve6: mockResolve6 },
   resolve4: mockResolve4,
+  resolve6: mockResolve6,
 }));
 
 // Mock Redis
@@ -129,6 +131,7 @@ describe("SSRF Prevention - validateWebhookUrl", () => {
 
   beforeEach(async () => {
     vi.clearAllMocks();
+    mockResolve6.mockRejectedValue(new Error("ENODATA")); // No AAAA records by default
     const mod = await import("../notificationWebhookService");
     validateWebhookUrl = mod.validateWebhookUrl;
   });
@@ -442,12 +445,15 @@ describe("Webhook Delivery - deliverWebhook", () => {
     ]);
 
     mockResolve4.mockResolvedValue(["93.184.216.34"]);
+    mockResolve6.mockRejectedValue(new Error("ENODATA")); // No AAAA records by default
 
     // Mock update chain
     mockUpdate.mockReturnValue({ set: mockSet });
     mockSet.mockReturnValue({ where: mockWhere });
-    // For update, where should resolve
-    mockWhere.mockResolvedValue(undefined);
+    // For update, where should return a returning() chain
+    mockWhere.mockReturnValue({
+      returning: () => Promise.resolve([{ failureCount: 0 }]),
+    });
   });
 
   it("sends POST with correct payload format", async () => {
@@ -477,9 +483,11 @@ describe("Webhook Delivery - deliverWebhook", () => {
             ]),
         };
       }
-      // Subsequent calls: update operations
+      // Subsequent calls: update operations (success path has no .returning())
       return Promise.resolve(undefined);
     });
+    // For success path, the update.set.where chain resolves directly
+    mockSet.mockReturnValue({ where: mockWhere });
 
     const payload = {
       event: "notification.created" as const,
@@ -590,6 +598,7 @@ describe("Webhook Delivery - deliverWebhook", () => {
             Promise.resolve([
               {
                 id: 1,
+                tenantId: "1",
                 url: "https://example.com/hook",
                 secretEncrypted: "encrypted:my-secret-key-1234",
                 isEnabled: true,
@@ -598,7 +607,10 @@ describe("Webhook Delivery - deliverWebhook", () => {
             ]),
         };
       }
-      return Promise.resolve(undefined);
+      // For atomic update with .returning()
+      return {
+        returning: () => Promise.resolve([{ failureCount: 1 }]),
+      };
     });
 
     await expect(

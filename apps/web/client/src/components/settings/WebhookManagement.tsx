@@ -156,7 +156,7 @@ export function WebhookManagement({
   function handleCreate() {
     createMutation.mutate({
       ...form,
-      categories: form.categories?.length ? form.categories : null,
+      categories: form.categories?.length ? form.categories as any : null,
       minSeverity: form.minSeverity as any,
       scope,
     });

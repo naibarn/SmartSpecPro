@@ -9,9 +9,7 @@ import { getSmtpConfig, createTransporter } from "./emailService";
 import { renderNotification } from "./notificationTemplateService";
 
 const PUBLIC_URL =
-  process.env.PUBLIC_URL ||
-  process.env.VITE_PUBLIC_URL ||
-  "https://smartaihub.app";
+  process.env.PUBLIC_URL || "https://smartaihub.app";
 
 // ─── HTML Escaping ────────────────────────────────────────────────────────────
 

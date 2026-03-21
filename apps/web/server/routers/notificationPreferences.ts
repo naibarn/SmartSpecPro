@@ -8,6 +8,7 @@ import {
   NOTIFICATION_CATEGORIES,
 } from "../../drizzle/schema";
 import { getRedisClient } from "../services/redis";
+import { getTenantFeatureFlags } from "../services/tenantFeatureFlagService";
 
 const categorySchema = z.enum(NOTIFICATION_CATEGORIES);
 
@@ -27,8 +28,20 @@ const snoozeCategoryInput = z.object({
   mutedUntil: z.string().datetime().nullable(),
 });
 
+async function requirePreferencesEnabled(tenantId: string | null): Promise<void> {
+  if (!tenantId) return;
+  const flags = await getTenantFeatureFlags(tenantId);
+  if (!flags.notificationPreferencesEnabled) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Notification preferences feature is not enabled for this tenant",
+    });
+  }
+}
+
 export const notificationPreferencesRouter = router({
   getPreferences: protectedProcedure.query(async ({ ctx }) => {
+    await requirePreferencesEnabled(ctx.tenantId);
     const db = getDb();
     return db
       .select()
@@ -39,6 +52,7 @@ export const notificationPreferencesRouter = router({
   upsertPreference: protectedProcedure
     .input(upsertPreferenceInput)
     .mutation(async ({ ctx, input }) => {
+      await requirePreferencesEnabled(ctx.tenantId);
       const db = getDb();
       const values: Record<string, unknown> = {
         userId: ctx.user.id,
@@ -85,6 +99,7 @@ export const notificationPreferencesRouter = router({
   snoozeCategory: protectedProcedure
     .input(snoozeCategoryInput)
     .mutation(async ({ ctx, input }) => {
+      await requirePreferencesEnabled(ctx.tenantId);
       if (input.mutedUntil && new Date(input.mutedUntil) <= new Date()) {
         throw new TRPCError({
           code: "BAD_REQUEST",

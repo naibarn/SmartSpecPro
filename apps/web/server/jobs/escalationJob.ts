@@ -16,26 +16,18 @@ import {
   users,
 } from "../../drizzle/schema";
 import { createNotification } from "../services/notificationService";
+import { getTenantFeatureFlags } from "../services/tenantFeatureFlagService";
 
 const QUEUE_NAME = "notification-escalation";
 
 let escalationQueue: Queue | null = null;
 let escalationWorker: Worker | null = null;
 
-function isEscalationEnabled(): boolean {
-  return process.env.NOTIFICATION_ESCALATION_ENABLED === "true";
-}
-
 /**
  * Core escalation check logic — exported separately for direct testing.
+ * Checks feature flag per-tenant for each enabled policy.
  */
 export async function executeEscalationCheck(): Promise<void> {
-  if (!isEscalationEnabled()) {
-    console.log("[escalationJob] escalation_job_skipped", {
-      reason: "feature_flag_disabled",
-    });
-    return;
-  }
 
   const db = getDb();
   const startMs = Date.now();
@@ -56,8 +48,16 @@ export async function executeEscalationCheck(): Promise<void> {
     return;
   }
 
-  // 2. For each policy, find unacknowledged notifications past trigger window
+  // 2. For each policy, check tenant feature flag and find unacknowledged notifications
   for (const policy of policies) {
+    // Skip if escalation is not enabled for this tenant
+    try {
+      const flags = await getTenantFeatureFlags(policy.tenantId);
+      if (!flags.notificationEscalationEnabled) continue;
+    } catch {
+      continue; // Skip policy if tenant lookup fails
+    }
+
     const cutoff = new Date(Date.now() - policy.triggerMinutes * 60_000);
 
     // Tenant-scoped query: join through users to match the policy's tenant
@@ -93,7 +93,26 @@ export async function executeEscalationCheck(): Promise<void> {
       let targetUserIds: number[] = [];
 
       if (policy.escalateToUserId) {
-        targetUserIds = [policy.escalateToUserId];
+        // Verify target user belongs to the same tenant as the policy
+        const [targetUser] = await db
+          .select({ id: users.id })
+          .from(users)
+          .where(
+            and(
+              eq(users.id, policy.escalateToUserId),
+              sql`${users.currentTenantId}::text = ${policy.tenantId}`
+            )
+          )
+          .limit(1);
+        if (targetUser) {
+          targetUserIds = [targetUser.id];
+        } else {
+          console.warn("[escalationJob] escalation_target_wrong_tenant", {
+            policyId: policy.id,
+            escalateToUserId: policy.escalateToUserId,
+            policyTenantId: policy.tenantId,
+          });
+        }
       } else if (policy.escalateToRole) {
         // Tenant-scoped: only target users in the same tenant as the policy
         const roleUsers = await db
@@ -101,7 +120,14 @@ export async function executeEscalationCheck(): Promise<void> {
           .from(users)
           .where(
             and(
-              eq(users.role, policy.escalateToRole),
+              eq(
+                users.role,
+                policy.escalateToRole as
+                  | "user"
+                  | "admin"
+                  | "domain_admin"
+                  | "system_agent",
+              ),
               sql`${users.currentTenantId}::text = ${policy.tenantId}`
             )
           );
@@ -120,7 +146,7 @@ export async function executeEscalationCheck(): Promise<void> {
             userId: targetId,
             type: "alert",
             title: escalationTitle,
-            content: notif.content,
+            content: notif.content ?? "",
             priority: "critical",
             relatedResourceType: notif.relatedResourceType as any,
             actionUrl: notif.actionUrl ?? undefined,

@@ -11,6 +11,11 @@ vi.mock("../../services/notificationService", () => ({
   createNotification: vi.fn().mockResolvedValue({ notificationId: 100, deduplicated: false }),
   mapToCategory: vi.fn().mockReturnValue("business"),
 }));
+vi.mock("../../services/tenantFeatureFlagService", () => ({
+  getTenantFeatureFlags: vi.fn().mockResolvedValue({
+    notificationEscalationEnabled: true,
+  }),
+}));
 vi.mock("bullmq", () => ({
   Queue: vi.fn().mockImplementation(() => ({
     upsertJobScheduler: vi.fn().mockResolvedValue({}),
@@ -29,19 +34,30 @@ function mockDb(opts: {
   policies?: Record<string, unknown>[];
   notifications?: Record<string, unknown>[];
   roleUsers?: Record<string, unknown>[];
+  targetUser?: Record<string, unknown>[];
 } = {}) {
-  const { policies = [], notifications = [], roleUsers = [] } = opts;
+  const { policies = [], notifications = [], roleUsers = [], targetUser } = opts;
 
   // Track select calls to return appropriate data:
-  // 1st = policies, 2nd = notifications (via innerJoin), 3rd = role users
+  // 1st = policies, 2nd = notifications (via innerJoin),
+  // 3rd = target user verification (if escalateToUserId), or role users (if escalateToRole)
+  // 4th = role users (if escalateToRole and target user verification was 3rd)
   let selectCallCount = 0;
 
-  const makeWhereResult = () => ({
+  const makeWhereChain = () => ({
     where: vi.fn().mockImplementation(() => {
       selectCallCount++;
       if (selectCallCount === 1) return Promise.resolve(policies);
       if (selectCallCount === 2) return Promise.resolve(notifications);
-      if (selectCallCount === 3) return Promise.resolve(roleUsers);
+      // 3rd call: target user verification (limit 1) or role users
+      if (selectCallCount === 3) {
+        if (targetUser !== undefined) {
+          // Target user verification query (uses .limit())
+          return { limit: vi.fn().mockResolvedValue(targetUser) };
+        }
+        return Promise.resolve(roleUsers);
+      }
+      if (selectCallCount === 4) return Promise.resolve(roleUsers);
       return Promise.resolve([]);
     }),
   });
@@ -49,16 +65,22 @@ function mockDb(opts: {
   const db = {
     select: vi.fn().mockImplementation(() => ({
       from: vi.fn().mockImplementation(() => ({
-        // Support direct .where() (policies, role users)
+        // Support direct .where() (policies, target user, role users)
         where: vi.fn().mockImplementation(() => {
           selectCallCount++;
           if (selectCallCount === 1) return Promise.resolve(policies);
           if (selectCallCount === 2) return Promise.resolve(notifications);
-          if (selectCallCount === 3) return Promise.resolve(roleUsers);
+          if (selectCallCount === 3) {
+            if (targetUser !== undefined) {
+              return { limit: vi.fn().mockResolvedValue(targetUser) };
+            }
+            return Promise.resolve(roleUsers);
+          }
+          if (selectCallCount === 4) return Promise.resolve(roleUsers);
           return Promise.resolve([]);
         }),
         // Support .innerJoin().where() (notifications with tenant join)
-        innerJoin: vi.fn().mockReturnValue(makeWhereResult()),
+        innerJoin: vi.fn().mockReturnValue(makeWhereChain()),
       })),
     })),
     update: vi.fn().mockReturnValue({
@@ -73,21 +95,36 @@ function mockDb(opts: {
 }
 
 describe("executeEscalationCheck", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
-    process.env.NOTIFICATION_ESCALATION_ENABLED = "true";
-  });
-  afterEach(() => {
-    delete process.env.NOTIFICATION_ESCALATION_ENABLED;
+    // Re-set feature flag mock (vi.clearAllMocks clears the mock implementation)
+    const { getTenantFeatureFlags } = await import("../../services/tenantFeatureFlagService");
+    (getTenantFeatureFlags as any).mockResolvedValue({
+      notificationEscalationEnabled: true,
+    });
   });
 
-  it("returns early when NOTIFICATION_ESCALATION_ENABLED=false — no DB queries", async () => {
-    process.env.NOTIFICATION_ESCALATION_ENABLED = "false";
-    const db = mockDb();
+  it("skips policies from tenants where escalation flag is disabled", async () => {
+    const { getTenantFeatureFlags } = await import("../../services/tenantFeatureFlagService");
+    (getTenantFeatureFlags as any).mockResolvedValue({
+      notificationEscalationEnabled: false,
+    });
+
+    mockDb({
+      policies: [{
+        id: 1,
+        tenantId: "t1",
+        triggerSeverity: "critical",
+        triggerMinutes: 15,
+        escalateToUserId: 99,
+        isEnabled: true,
+      }],
+    });
 
     await executeEscalationCheck();
 
-    expect(db.select).not.toHaveBeenCalled();
+    // No notifications created because the flag is disabled
+    expect(createNotification).not.toHaveBeenCalled();
   });
 
   it("creates notification for target when critical alert unacknowledged past triggerMinutes", async () => {
@@ -116,6 +153,7 @@ describe("executeEscalationCheck", () => {
         metadata: null,
         createdAt: new Date(oldDate),
       }],
+      targetUser: [{ id: 99 }], // Target user verified in same tenant
     });
 
     await executeEscalationCheck();
@@ -178,6 +216,7 @@ describe("executeEscalationCheck", () => {
         priority: "critical", relatedResourceType: null,
         actionUrl: null, metadata: null, createdAt: new Date(oldDate),
       }],
+      targetUser: [{ id: 99 }],
     });
 
     await executeEscalationCheck();
@@ -199,6 +238,7 @@ describe("executeEscalationCheck", () => {
         priority: "critical", relatedResourceType: null,
         actionUrl: null, metadata: null, createdAt: new Date(oldDate),
       }],
+      targetUser: [{ id: 99 }],
     });
 
     await executeEscalationCheck();
@@ -240,6 +280,7 @@ describe("executeEscalationCheck", () => {
         priority: "critical", relatedResourceType: null,
         actionUrl: null, metadata: null, createdAt: new Date(oldDate),
       }],
+      targetUser: [{ id: 99 }],
     });
 
     await executeEscalationCheck();

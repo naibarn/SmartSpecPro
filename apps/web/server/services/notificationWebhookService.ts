@@ -47,6 +47,26 @@ const PRIORITY_ORDER: Record<string, number> = {
  * Check if an IP address belongs to a private/reserved range.
  */
 export function isPrivateIp(ip: string): boolean {
+  // IPv6 checks
+  if (ip.includes(":")) {
+    const normalized = ip.toLowerCase();
+    // ::1 (loopback)
+    if (normalized === "::1" || normalized === "0:0:0:0:0:0:0:1") return true;
+    // fe80::/10 (link-local)
+    if (normalized.startsWith("fe80:")) return true;
+    // fc00::/7 (unique-local: fc00:: and fd00::)
+    if (normalized.startsWith("fc") || normalized.startsWith("fd")) return true;
+    // ::ffff:0:0/96 (IPv4-mapped IPv6)
+    if (normalized.startsWith("::ffff:")) {
+      const ipv4Part = normalized.slice(7);
+      if (ipv4Part.includes(".")) return isPrivateIp(ipv4Part);
+    }
+    // :: (unspecified)
+    if (normalized === "::" || normalized === "0:0:0:0:0:0:0:0") return true;
+    return false;
+  }
+
+  // IPv4 checks
   const parts = ip.split(".").map(Number);
   if (parts.length !== 4 || parts.some((p) => isNaN(p))) return true;
 
@@ -89,21 +109,29 @@ export async function validateWebhookUrl(url: string): Promise<void> {
     throw new Error("URL must have a hostname");
   }
 
-  let ips: string[];
+  // Resolve both IPv4 and IPv6 addresses to prevent SSRF bypass via AAAA records
+  let ipv4: string[] = [];
+  let ipv6: string[] = [];
   try {
-    ips = await dns.resolve4(hostname);
+    ipv4 = await dns.resolve4(hostname);
   } catch {
+    // No A records — may still have AAAA
+  }
+  try {
+    ipv6 = await dns.resolve6(hostname);
+  } catch {
+    // No AAAA records
+  }
+
+  const allIps = [...ipv4, ...ipv6];
+  if (allIps.length === 0) {
     throw new Error(`DNS resolution failed for ${hostname}`);
   }
 
-  if (ips.length === 0) {
-    throw new Error(`DNS resolution returned no addresses for ${hostname}`);
-  }
-
-  for (const ip of ips) {
+  for (const ip of allIps) {
     if (isPrivateIp(ip)) {
       throw new Error(
-        `URL resolves to private/reserved IP address (${ip}). Webhook URLs must resolve to public IP addresses.`
+        `URL resolves to private/reserved IP address. Webhook URLs must resolve to public IP addresses.`
       );
     }
   }
@@ -114,8 +142,17 @@ export async function validateWebhookUrl(url: string): Promise<void> {
 /**
  * Compute HMAC-SHA256 signature over a JSON body string.
  */
-export function computeSignature(body: string, secret: string): string {
-  return crypto.createHmac("sha256", secret).update(body).digest("hex");
+/**
+ * Compute HMAC-SHA256 signature over timestamp + body for replay protection.
+ * Receivers should reject requests where X-Delivery-Timestamp is older than 5 minutes.
+ */
+export function computeSignature(
+  body: string,
+  secret: string,
+  timestamp?: string,
+): string {
+  const material = timestamp ? `${timestamp}.${body}` : body;
+  return crypto.createHmac("sha256", secret).update(material).digest("hex");
 }
 
 // ─── BullMQ Queue ───
@@ -199,9 +236,10 @@ export async function deliverWebhook(
     throw new Error(`Failed to decrypt secret for webhook ${webhookId}`);
   }
 
-  // 4. Serialize and sign
+  // 4. Serialize and sign (with timestamp for replay protection)
   const body = JSON.stringify(payload);
-  const signature = computeSignature(body, secret);
+  const deliveryTimestamp = new Date().toISOString();
+  const signature = computeSignature(body, secret, deliveryTimestamp);
 
   // 5. POST with timeout
   const controller = new AbortController();
@@ -213,6 +251,7 @@ export async function deliverWebhook(
       headers: {
         "Content-Type": "application/json",
         "X-Signature-256": `sha256=${signature}`,
+        "X-Delivery-Timestamp": deliveryTimestamp,
         "User-Agent": "SmartSpecPro-Webhook/1.0",
       },
       body,
@@ -231,7 +270,12 @@ export async function deliverWebhook(
           lastDeliveredAt: new Date(),
           updatedAt: new Date(),
         })
-        .where(eq(notificationWebhooks.id, webhookId));
+        .where(
+          and(
+            eq(notificationWebhooks.id, webhookId),
+            eq(notificationWebhooks.tenantId, webhook.tenantId)
+          )
+        );
 
       console.log("[WebhookService] webhook_delivered", {
         webhookId,
@@ -240,21 +284,34 @@ export async function deliverWebhook(
         durationMs,
       });
     } else {
-      // Failure: increment failure count
-      const newFailureCount = (webhook.failureCount ?? 0) + 1;
-      const updates: Record<string, any> = {
-        failureCount: newFailureCount,
-        updatedAt: new Date(),
-      };
+      // Failure: atomic increment failure count to avoid stale-read races
+      const [updatedRow] = await db
+        .update(notificationWebhooks)
+        .set({
+          failureCount: sql`COALESCE(${notificationWebhooks.failureCount}, 0) + 1`,
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(notificationWebhooks.id, webhookId),
+            eq(notificationWebhooks.tenantId, webhook.tenantId)
+          )
+        )
+        .returning({ failureCount: notificationWebhooks.failureCount });
+
+      const newFailureCount = updatedRow?.failureCount ?? 1;
 
       if (newFailureCount >= 3) {
-        updates.isEnabled = false;
+        await db
+          .update(notificationWebhooks)
+          .set({ isEnabled: false })
+          .where(
+            and(
+              eq(notificationWebhooks.id, webhookId),
+              eq(notificationWebhooks.tenantId, webhook.tenantId)
+            )
+          );
       }
-
-      await db
-        .update(notificationWebhooks)
-        .set(updates)
-        .where(eq(notificationWebhooks.id, webhookId));
 
       console.warn("[WebhookService] webhook_delivery_failed", {
         webhookId,
@@ -284,7 +341,7 @@ export async function deliverWebhook(
             .from(users)
             .where(
               and(
-                eq(users.tenantId, webhook.tenantId),
+                eq(users.currentTenantId, parseInt(webhook.tenantId, 10)),
                 eq(users.role, "admin")
               )
             )
@@ -320,16 +377,32 @@ export async function deliverWebhook(
   } catch (err) {
     clearTimeout(timeout);
     if ((err as Error).name === "AbortError") {
-      // Timeout: increment failure count
-      const newFailureCount = (webhook.failureCount ?? 0) + 1;
-      await db
+      // Timeout: atomic increment failure count
+      const [updatedRow] = await db
         .update(notificationWebhooks)
         .set({
-          failureCount: newFailureCount,
+          failureCount: sql`COALESCE(${notificationWebhooks.failureCount}, 0) + 1`,
           updatedAt: new Date(),
-          ...(newFailureCount >= 3 ? { isEnabled: false } : {}),
         })
-        .where(eq(notificationWebhooks.id, webhookId));
+        .where(
+          and(
+            eq(notificationWebhooks.id, webhookId),
+            eq(notificationWebhooks.tenantId, webhook.tenantId)
+          )
+        )
+        .returning({ failureCount: notificationWebhooks.failureCount });
+
+      if ((updatedRow?.failureCount ?? 1) >= 3) {
+        await db
+          .update(notificationWebhooks)
+          .set({ isEnabled: false })
+          .where(
+            and(
+              eq(notificationWebhooks.id, webhookId),
+              eq(notificationWebhooks.tenantId, webhook.tenantId)
+            )
+          );
+      }
 
       throw new Error("Webhook delivery timed out (10s)");
     }

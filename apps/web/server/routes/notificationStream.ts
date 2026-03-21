@@ -52,6 +52,7 @@ notificationStreamRouter.get("/api/notifications/stream", async (req: Request, r
   if (userSubs.size >= MAX_SSE_PER_USER) {
     const oldest = userSubs.values().next().value;
     if (oldest) {
+      console.log("[NotificationStream] evicting_oldest_sse_connection", { userId });
       try { oldest.disconnect(); } catch { /* already closed */ }
       userSubs.delete(oldest);
     }

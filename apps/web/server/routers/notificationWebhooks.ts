@@ -17,12 +17,41 @@ import {
   computeSignature,
   deliverWebhook,
 } from "../services/notificationWebhookService";
+import { getTenantFeatureFlags } from "../services/tenantFeatureFlagService";
+
+async function requireWebhookDeliveryEnabled(tenantId: string | null): Promise<void> {
+  if (!tenantId) return;
+  const flags = await getTenantFeatureFlags(tenantId);
+  if (!flags.notificationWebhookDelivery) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Notification webhook delivery feature is not enabled for this tenant",
+    });
+  }
+}
 
 const createWebhookInput = z.object({
   name: z.string().min(1).max(100),
   url: z.string().url().max(2000),
   secret: z.string().min(16).max(256),
-  categories: z.array(z.string()).nullable().optional(),
+  categories: z
+    .array(
+      z.enum([
+        "system_health",
+        "media_jobs",
+        "workflow",
+        "skill",
+        "feedback",
+        "agency",
+        "follow",
+        "scheduled",
+        "security",
+        "business",
+      ])
+    )
+    .max(10)
+    .nullable()
+    .optional(),
   minSeverity: z
     .enum(["low", "normal", "high", "critical"])
     .nullable()
@@ -35,7 +64,24 @@ const updateWebhookInput = z.object({
   name: z.string().min(1).max(100).optional(),
   url: z.string().url().max(2000).optional(),
   secret: z.string().min(16).max(256).optional(),
-  categories: z.array(z.string()).nullable().optional(),
+  categories: z
+    .array(
+      z.enum([
+        "system_health",
+        "media_jobs",
+        "workflow",
+        "skill",
+        "feedback",
+        "agency",
+        "follow",
+        "scheduled",
+        "security",
+        "business",
+      ])
+    )
+    .max(10)
+    .nullable()
+    .optional(),
   minSeverity: z
     .enum(["low", "normal", "high", "critical"])
     .nullable()
@@ -52,6 +98,7 @@ export const notificationWebhooksRouter = router({
   listWebhooks: protectedProcedure
     .input(z.object({ scope: z.enum(["user", "tenant"]) }))
     .query(async ({ ctx, input }) => {
+      await requireWebhookDeliveryEnabled(ctx.tenantId);
       const db = getDb();
 
       if (input.scope === "tenant") {
@@ -90,6 +137,7 @@ export const notificationWebhooksRouter = router({
   createWebhook: protectedProcedure
     .input(createWebhookInput)
     .mutation(async ({ ctx, input }) => {
+      await requireWebhookDeliveryEnabled(ctx.tenantId);
       const db = getDb();
 
       if (input.scope === "tenant") {
@@ -133,6 +181,7 @@ export const notificationWebhooksRouter = router({
   updateWebhook: protectedProcedure
     .input(updateWebhookInput)
     .mutation(async ({ ctx, input }) => {
+      await requireWebhookDeliveryEnabled(ctx.tenantId);
       const db = getDb();
 
       // Load existing webhook
@@ -192,7 +241,12 @@ export const notificationWebhooksRouter = router({
       const [updated] = await db
         .update(notificationWebhooks)
         .set(updates)
-        .where(eq(notificationWebhooks.id, input.id))
+        .where(
+          and(
+            eq(notificationWebhooks.id, input.id),
+            eq(notificationWebhooks.tenantId, ctx.tenantId!)
+          )
+        )
         .returning();
 
       return stripSecret(updated);
@@ -201,6 +255,7 @@ export const notificationWebhooksRouter = router({
   deleteWebhook: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
+      await requireWebhookDeliveryEnabled(ctx.tenantId);
       const db = getDb();
 
       const rows = await db
@@ -237,7 +292,12 @@ export const notificationWebhooksRouter = router({
 
       await db
         .delete(notificationWebhooks)
-        .where(eq(notificationWebhooks.id, input.id));
+        .where(
+          and(
+            eq(notificationWebhooks.id, input.id),
+            eq(notificationWebhooks.tenantId, ctx.tenantId!)
+          )
+        );
 
       return { success: true };
     }),
@@ -245,6 +305,7 @@ export const notificationWebhooksRouter = router({
   testWebhook: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
+      await requireWebhookDeliveryEnabled(ctx.tenantId);
       const db = getDb();
 
       const rows = await db

@@ -789,13 +789,28 @@ app.post("/api/internal/notifications/admin-broadcast", async (req, res) => {
       relatedItems: z.record(z.string().max(200)).optional(),
     }).strict().optional();
 
-    const { type, title, content, priority, relatedResourceType, actionUrl, actionLabel, groupKey } = req.body;
-    const metadataParsed = metadataSchema.safeParse(req.body.metadata);
-    const metadata = metadataParsed.success ? metadataParsed.data : undefined;
+    const broadcastBodySchema = z.object({
+      type: z.enum(["scheduled_message", "follow_request", "alert", "system", "direct_message", "urgent_message"]).default("alert"),
+      title: z.string().min(1).max(255),
+      content: z.string().max(2000).default(""),
+      priority: z.enum(["low", "normal", "high", "critical"]).default("normal"),
+      relatedResourceType: z.enum(["media_job", "workflow", "skill", "feedback", "agency", "approval", "team_run", "room", "user", "conversation", "scheduled_message", "system_health", "security", "incident"]).optional(),
+      actionUrl: z.string().max(2000).optional(),
+      actionLabel: z.string().max(100).optional(),
+      groupKey: z.string().max(200).optional(),
+      metadata: metadataSchema,
+    });
 
-    if (typeof title !== "string" || !title) {
-      return res.status(400).json({ success: false, error: "title is required" });
+    const bodyResult = broadcastBodySchema.safeParse(req.body);
+    if (!bodyResult.success) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid request body",
+        details: bodyResult.error.issues.map((i) => i.message),
+      });
     }
+
+    const { type, title, content, priority, relatedResourceType, actionUrl, actionLabel, groupKey, metadata } = bodyResult.data;
 
     const db = await getDb();
     if (!db) {
@@ -846,7 +861,7 @@ app.post("/api/internal/notifications/admin-broadcast", async (req, res) => {
     debugError("AdminBroadcast", "Internal broadcast failed", err);
     const { recordBroadcastRequest } = await import("../services/notificationHealthChecks");
     recordBroadcastRequest(false);
-    return res.status(500).json({ success: false, error: err.message });
+    return res.status(500).json({ success: false, error: "Internal broadcast failed" });
   }
 });
 

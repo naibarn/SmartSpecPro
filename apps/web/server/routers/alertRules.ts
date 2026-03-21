@@ -4,6 +4,18 @@ import { TRPCError } from "@trpc/server";
 import { router, adminProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { alertRules, escalationPolicies } from "../../drizzle/schema";
+import { getTenantFeatureFlags } from "../services/tenantFeatureFlagService";
+
+async function requirePreferencesEnabled(tenantId: string | null): Promise<void> {
+  if (!tenantId) return;
+  const flags = await getTenantFeatureFlags(tenantId);
+  if (!flags.notificationPreferencesEnabled) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Notification preferences feature is not enabled for this tenant",
+    });
+  }
+}
 
 const operatorSchema = z.enum(["gt", "lt", "gte", "lte", "eq"]);
 
@@ -71,6 +83,7 @@ const updateEscalationPolicyInput = z
 export const alertRulesRouter = router({
   // ---- Alert Rules ----
   listRules: adminProcedure.input(paginationInput).query(async ({ ctx, input }) => {
+    await requirePreferencesEnabled(ctx.tenantId);
     const db = getDb();
     const tenantId = ctx.tenantId;
     if (!tenantId) throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant required" });
@@ -92,6 +105,7 @@ export const alertRulesRouter = router({
   }),
 
   createRule: adminProcedure.input(createRuleInput).mutation(async ({ ctx, input }) => {
+    await requirePreferencesEnabled(ctx.tenantId);
     const db = getDb();
     const tenantId = ctx.tenantId;
     if (!tenantId) throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant required" });
@@ -104,6 +118,7 @@ export const alertRulesRouter = router({
   }),
 
   updateRule: adminProcedure.input(updateRuleInput).mutation(async ({ ctx, input }) => {
+    await requirePreferencesEnabled(ctx.tenantId);
     const db = getDb();
     const tenantId = ctx.tenantId;
     if (!tenantId) throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant required" });
@@ -124,6 +139,7 @@ export const alertRulesRouter = router({
   deleteRule: adminProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
+      await requirePreferencesEnabled(ctx.tenantId);
       const db = getDb();
       const tenantId = ctx.tenantId;
       if (!tenantId) throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant required" });
@@ -143,6 +159,7 @@ export const alertRulesRouter = router({
   listEscalationPolicies: adminProcedure
     .input(paginationInput)
     .query(async ({ ctx, input }) => {
+      await requirePreferencesEnabled(ctx.tenantId);
       const db = getDb();
       const tenantId = ctx.tenantId;
       if (!tenantId) throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant required" });
@@ -166,6 +183,7 @@ export const alertRulesRouter = router({
   createEscalationPolicy: adminProcedure
     .input(createEscalationPolicyInput)
     .mutation(async ({ ctx, input }) => {
+      await requirePreferencesEnabled(ctx.tenantId);
       const db = getDb();
       const tenantId = ctx.tenantId;
       if (!tenantId) throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant required" });
@@ -180,6 +198,7 @@ export const alertRulesRouter = router({
   updateEscalationPolicy: adminProcedure
     .input(updateEscalationPolicyInput)
     .mutation(async ({ ctx, input }) => {
+      await requirePreferencesEnabled(ctx.tenantId);
       const db = getDb();
       const tenantId = ctx.tenantId;
       if (!tenantId) throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant required" });
@@ -202,6 +221,7 @@ export const alertRulesRouter = router({
   deleteEscalationPolicy: adminProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
+      await requirePreferencesEnabled(ctx.tenantId);
       const db = getDb();
       const tenantId = ctx.tenantId;
       if (!tenantId) throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant required" });
