@@ -66,12 +66,51 @@ Instead of receiving individual emails for every notification, configure a diges
 
 High and critical notifications are always sent immediately regardless of digest settings.
 
+## Webhook Management
+
+When the `notificationWebhookDelivery` feature flag is enabled, a **Webhook Management** section appears below the category preferences grid. Webhooks let you push notifications to external HTTP endpoints in real time.
+
+### Creating a Webhook
+
+- **Name** — a label for your reference (e.g., "Slack Alerts").
+- **URL** — HTTPS endpoint that receives POST requests. Only public URLs are allowed (private/internal IPs are blocked for security).
+- **Signing Secret** — auto-generated or custom (minimum 16 characters). Used to create an HMAC-SHA256 signature so your server can verify requests are genuine.
+- **Categories** — optionally filter which notification categories trigger this webhook (e.g., only System Health and Security).
+- **Minimum Severity** — optionally filter by minimum severity level.
+
+### Webhook Payload
+
+Each delivery sends a JSON POST with headers:
+
+- `X-Signature-256: sha256=<hmac>` — HMAC-SHA256 over the body, using your signing secret.
+- `X-Delivery-Timestamp` — ISO timestamp included in the signature to prevent replay attacks. Receivers should reject requests older than 5 minutes.
+- `Content-Type: application/json`
+
+### Auto-Disable
+
+If a webhook endpoint fails 3 consecutive deliveries, it is automatically disabled. You will receive an in-app notification about the auto-disable. Re-enable it from the webhook settings after fixing the endpoint.
+
+### Testing
+
+Use the **Test** button to send a test payload to your webhook endpoint. The response status code is shown immediately so you can verify your integration works.
+
+## Rate Limiting
+
+To prevent notification flood, the system enforces a per-user rate limit:
+
+- **200 notifications per 5 minutes** per user.
+- If exceeded, new notifications are silently dropped for 1 minute.
+- **Escalated notifications** (from escalation policies) are never rate limited — they always get through.
+
+This protects against runaway automation or misconfigured alert rules generating excessive notifications.
+
 ## How Preferences Interact with Other Features
 
-- **Escalation bypass** — escalated notifications (`isEscalated: true`) always bypass your preferences and are delivered through all channels.
+- **Escalation bypass** — escalated notifications (`isEscalated: true`) always bypass your preferences and rate limits, and are delivered through all channels.
 - **Admin broadcasts** — system-wide admin broadcasts are always delivered regardless of category preferences.
 - **Deduplication** — deduplicated notifications respect your preferences; you only see the grouped result.
 - **Webhooks** — webhook delivery is separate from user preferences; webhooks fire based on their own category and severity filters.
+- **Rate limiting** — applies before preference checks. If you are rate limited, the notification is dropped entirely.
 
 ## Tips
 
@@ -79,3 +118,5 @@ High and critical notifications are always sent immediately regardless of digest
 - Set "High" minimum severity for noisy categories like Media Jobs to focus on failures only.
 - Use the hourly email digest to stay informed without inbox overload.
 - Escalation policies will still reach you even if you've muted a category — this is by design for critical alerts.
+- Test your webhooks after creation to verify the endpoint receives payloads correctly.
+- If a webhook gets auto-disabled, check the endpoint health before re-enabling.
