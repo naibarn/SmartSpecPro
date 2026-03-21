@@ -40,7 +40,7 @@ Pre-built templates let you skip manual setup:
 | **Content Creation** | Content Strategist (Lead), Writer, Editor | Blog posts, marketing copy, social media content |
 | **Code Review** | Lead Architect, Security Reviewer, Quality Reviewer | Pull request reviews, architecture audits, technical debt analysis |
 
-Click **Clone from Template** and customize member settings as needed.
+In the **New Team** dialog, quick-start template buttons appear at the top. Click one to create the team instantly, then customize member settings as needed.
 
 ## Team Rooms
 
@@ -68,9 +68,8 @@ Control how much detail you see in the conversation:
 
 ### Messaging
 
-- Send messages to **all agents** (default) or target a **specific agent**.
-- **Mute** an agent to temporarily exclude it from the conversation.
-- System messages (budget warnings, errors) appear with a distinct yellow style.
+- Send messages to **all agents** by typing in the input and pressing **Enter** or clicking **Send**.
+- System messages (budget warnings, errors) appear with a distinct style.
 
 ## Runs — Orchestrated Execution
 
@@ -120,6 +119,18 @@ When a run ends (via stop policy or manual stop):
 2. If **Require Final Summary** is enabled, a structured report is produced with key decisions, findings, artifacts, and next steps. This calls the Python backend to generate an LLM-powered summary.
 3. An **orchestrator notification** is sent to you.
 4. Events are published via SSE for any connected clients to update in real time.
+
+## Unified Skill Execution in Team Rooms
+
+When the `unifiedSkillExecution` flag is enabled, all skill calls within a team run are processed through the **unified orchestrator** — the same pipeline used by Chat. This provides:
+
+- **Cross-channel consistency** — the same skill produces identical results whether triggered by a human in Chat or an agent in a Team Room.
+- **Automatic capability routing** — text, image, video, and audio skills are routed to specialized executors.
+- **Dynamic model selection** — models are chosen based on skill requirements (vision for images, thinking mode for complex analysis, web search for research).
+- **Per-user rate limiting** — prevents runaway agents from consuming excessive credits.
+- **Full audit trail** — every execution is logged with `unified_route`, `unified_credit`, and `unified_error` events for tracing.
+
+If the orchestrator encounters an error, the system **re-throws** to prevent double execution (the team room will not fall back to the legacy path after the orchestrator has already committed credit or audit events).
 
 ## Inter-Agent Communication
 

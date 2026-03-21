@@ -78,6 +78,43 @@ skills/
 
 ดูช่อง Frontmatter ของ `skill.md` ในคู่มือ [Skills](./skills.md) สำหรับเอกสารฉบับสมบูรณ์
 
+## Unified Skill Execution
+
+Skills ทำงานผ่าน **ระบบ Unified Execution** ที่รับประกันพฤติกรรมสม่ำเสมอในทุกช่องทาง (Chat, Team Room, Agency) ควบคุมผ่าน feature flag `unifiedSkillExecution`
+
+### วิธีการทำงาน
+
+เมื่อเปิดใช้ unified execution สำหรับ tenant:
+
+1. **จำแนกประเภท** — แต่ละ skill ถูกจำแนกตามประเภท: สร้างข้อความ, รูปภาพ, วิดีโอ หรือเสียง
+2. **เลือก Executor** — ระบบส่งคำขอไปยัง executor ที่เหมาะสม (Text, Image, Video หรือ Audio)
+3. **เพิ่มบริบท** — Persona memory, scoped memory และบริบทบทสนทนาถูกเพิ่มโดยอัตโนมัติ
+4. **เลือกโมเดล** — เลือกโมเดลที่ดีที่สุดตาม skill requirement (vision, web search, thinking mode)
+5. **Rate Limiting** — จำกัดการรันที่ 15 ครั้งต่อนาทีต่อผู้ใช้
+6. **ติดตามเครดิต** — ทุกการรันบันทึกด้วย idempotency key เพื่อป้องกันการเรียกเก็บซ้ำ
+7. **บันทึกตรวจสอบ** — บันทึก execution trace ทั้งหมดสำหรับ debug
+
+### Feature Flag
+
+- **ชื่อ Flag:** `unifiedSkillExecution`
+- **ค่าเริ่มต้น:** ปิด (disabled)
+- **เปิดต่อ tenant** ใน Admin Settings เพื่อค่อยๆ เปิดใช้งาน
+- เมื่อปิด execution path เดิมทำงานตามปกติ
+- เมื่อเปิด คำขอจะถูกส่งผ่าน unified orchestrator หากล้มเหลว ระบบจะ fallback ไปใช้ path เดิมอัตโนมัติ
+
+### โหมดการรัน (อัปเดต)
+
+| โหมด | Unified Executor | คำอธิบาย |
+|------|------------------|----------|
+| `llm-only` | TextSkillExecutor | สร้างข้อความผ่าน LLM พร้อม model fallback |
+| `media-generate` (รูปภาพ) | ImageGenerationExecutor | ส่งไปยัง pipeline สร้างรูปภาพ |
+| `media-generate` (วิดีโอ) | VideoGenerationExecutor | ส่งไปยัง pipeline สร้างวิดีโอ |
+| `media-generate` (เสียง) | AudioGenerationExecutor | ส่งไปยัง pipeline สร้างเสียง |
+
+### เพิ่ม Executor ใหม่
+
+นักพัฒนาสามารถลงทะเบียน executor ใหม่สำหรับ capability family ใหม่ด้วย `registerExecutor()` โดยแต่ละ executor ต้อง implement interface `CapabilityExecutor` พร้อมเมธอด `canHandle()` และ `execute()`
+
 ## Marketplace
 
 แท็บ **Marketplace** (เมื่อเปิดใช้งาน) แสดง Skill จากชุมชนที่พร้อมติดตั้ง:

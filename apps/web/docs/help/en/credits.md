@@ -52,10 +52,15 @@ Navigate to **Usage** in the sidebar to see:
 - Top cost drivers
 - Budget alerts if configured
 
+## Rate limiting
+
+Skill executions (including media generation) are rate-limited to **15 executions per minute** per user. This applies equally across Chat, Team Rooms, and Agency workflows. If the limit is reached, the system returns an error — wait a moment and retry.
+
 ## Cost-saving tips
 
 - Use lighter models (e.g., smaller parameter models) for simple tasks like summarization and classification.
 - Reserve high-capability models for complex reasoning, code generation, or creative tasks.
-- Enable **Brainstorm Mode** only when you need two models to collaborate — it uses twice the credits per exchange.
+- **AI Team runs** use credits from all participating agents — set budget caps in the run stop policy to control costs.
 - Use skills to structure prompts efficiently rather than re-typing long instructions manually.
 - Check the model picker tooltip to compare costs before switching models.
+- The unified execution system deduplicates credit tracking with **idempotency keys** — even if a request is retried, you will not be charged twice for the same execution.

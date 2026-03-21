@@ -78,6 +78,43 @@ skills/
 
 See `skill.md` frontmatter fields in the [Skills guide](./skills.md) for full documentation.
 
+## Unified Skill Execution
+
+Skills now run through a **unified execution system** that ensures consistent behavior across all channels (Chat, Team Rooms, Agencies). This system is controlled by the `unifiedSkillExecution` feature flag.
+
+### How it works
+
+When unified execution is enabled for a tenant:
+
+1. **Capability classification** — Each skill is classified by type: text generation, image, video, or audio.
+2. **Executor routing** — The system routes the request to the appropriate executor (Text, Image, Video, or Audio).
+3. **Context enrichment** — Persona memory, scoped memory, and conversation context are injected automatically.
+4. **Model selection** — The best available model is selected based on skill requirements (vision support, web search, thinking mode).
+5. **Rate limiting** — Executions are limited to 15 per minute per user.
+6. **Credit tracking** — Every execution is logged with an idempotency key to prevent duplicate charges.
+7. **Audit logging** — Full execution trace recorded for debugging.
+
+### Feature flag
+
+- **Flag name:** `unifiedSkillExecution`
+- **Default:** Off (disabled)
+- **Enable per tenant** in Admin Settings to gradually roll out.
+- When off, the existing execution paths run unchanged.
+- When on, requests are routed through the unified orchestrator. If the orchestrator fails, the system automatically falls back to the previous execution path.
+
+### Execution modes (updated)
+
+| Mode | Unified Executor | Description |
+|------|------------------|-------------|
+| `llm-only` | TextSkillExecutor | Text generation via LLM with model fallback |
+| `media-generate` (image) | ImageGenerationExecutor | Routes to image generation pipeline |
+| `media-generate` (video) | VideoGenerationExecutor | Routes to video generation pipeline |
+| `media-generate` (audio) | AudioGenerationExecutor | Routes to audio generation pipeline |
+
+### Adding custom executors
+
+Developers can register custom executors for new capability families using `registerExecutor()`. Each executor implements the `CapabilityExecutor` interface with `canHandle()` and `execute()` methods.
+
 ## Marketplace
 
 The **Marketplace** tab (when enabled) lists community-contributed skills available for installation:
