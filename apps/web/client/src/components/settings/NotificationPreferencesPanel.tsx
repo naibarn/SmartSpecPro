@@ -7,6 +7,8 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { trpc } from "@/lib/trpc";
+import { useTenantFeatureFlag } from "@/hooks/useTenantFeatureFlag";
+import { WebhookManagement } from "./WebhookManagement";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
@@ -99,12 +101,18 @@ const SNOOZE_DURATIONS = [
 ] as const;
 
 interface PreferenceRow {
-  category: Category;
+  category: string;
   inApp: boolean;
   email: boolean;
   telegram: boolean;
-  minSeverity: string | null;
-  mutedUntil: string | Date | null;
+  minSeverity: "low" | "normal" | "high" | "critical" | null;
+  mutedUntil: Date | null;
+  emailDigestFrequency: string | null;
+  emailDigestHour: number | null;
+  createdAt: Date;
+  updatedAt: Date;
+  id: number;
+  userId: number;
 }
 
 function isMuted(mutedUntil: string | Date | null | undefined): boolean {
@@ -140,6 +148,7 @@ function useNotificationPreferencesEnabled(): boolean {
 }
 
 export function NotificationPreferencesPanel() {
+  const webhookEnabled = useTenantFeatureFlag("notificationWebhookDelivery");
   const isEnabled = useNotificationPreferencesEnabled();
   const utils = trpc.useUtils();
   const [mutatingCategories, setMutatingCategories] = useState<Set<string>>(
@@ -164,29 +173,47 @@ export function NotificationPreferencesPanel() {
           (old) => {
             if (!old) return old;
             const existing = old.find((p) => p.category === input.category);
+            const nextMutedUntil =
+              input.mutedUntil === undefined
+                ? existing?.mutedUntil ?? null
+                : input.mutedUntil
+                  ? new Date(input.mutedUntil)
+                  : null;
+            const nextPreference: PreferenceRow = existing
+              ? {
+                  ...existing,
+                  inApp: input.inApp ?? existing.inApp,
+                  email: input.email ?? existing.email,
+                  telegram: input.telegram ?? existing.telegram,
+                  minSeverity: input.minSeverity ?? existing.minSeverity,
+                  mutedUntil: nextMutedUntil,
+                  emailDigestFrequency:
+                    input.emailDigestFrequency ??
+                    existing.emailDigestFrequency,
+                  emailDigestHour:
+                    input.emailDigestHour ?? existing.emailDigestHour,
+                  updatedAt: new Date(),
+                }
+              : {
+                  id: -1,
+                  userId: -1,
+                  category: input.category,
+                  inApp: input.inApp ?? true,
+                  email: input.email ?? false,
+                  telegram: input.telegram ?? false,
+                  minSeverity: input.minSeverity ?? null,
+                  mutedUntil: nextMutedUntil,
+                  emailDigestFrequency: input.emailDigestFrequency ?? null,
+                  emailDigestHour: input.emailDigestHour ?? null,
+                  createdAt: new Date(),
+                  updatedAt: new Date(),
+                };
             if (existing) {
               return old.map((p) =>
-                p.category === input.category ? { ...p, ...input } : p,
+                p.category === input.category ? nextPreference : p,
               );
             }
-            return [
-              ...old,
-              {
-                id: -1,
-                userId: -1,
-                category: input.category,
-                inApp: true,
-                email: false,
-                telegram: false,
-                minSeverity: null,
-                mutedUntil: null,
-                emailDigestFrequency: null,
-                emailDigestHour: null,
-                createdAt: new Date(),
-                updatedAt: new Date(),
-                ...input,
-              },
-            ];
+            return [...old, nextPreference];
           },
         );
         return { previous };
@@ -224,12 +251,18 @@ export function NotificationPreferencesPanel() {
   function getPreference(category: Category): PreferenceRow {
     const pref = prefsQuery.data?.find((p) => p.category === category);
     return {
+      id: pref?.id ?? -1,
+      userId: pref?.userId ?? -1,
       category,
       inApp: pref?.inApp ?? true,
       email: pref?.email ?? false,
       telegram: pref?.telegram ?? false,
       minSeverity: pref?.minSeverity ?? null,
       mutedUntil: pref?.mutedUntil ?? null,
+      emailDigestFrequency: pref?.emailDigestFrequency ?? null,
+      emailDigestHour: pref?.emailDigestHour ?? null,
+      createdAt: pref?.createdAt ?? new Date(),
+      updatedAt: pref?.updatedAt ?? new Date(),
     };
   }
 
@@ -244,7 +277,10 @@ export function NotificationPreferencesPanel() {
   function handleSeverityChange(category: Category, value: string) {
     upsertMutation.mutate({
       category,
-      minSeverity: value === "all" ? null : (value as any),
+      minSeverity:
+        value === "all"
+          ? null
+          : (value as "low" | "normal" | "high" | "critical"),
     });
   }
 
@@ -463,6 +499,13 @@ export function NotificationPreferencesPanel() {
           );
         })}
       </div>
+
+      {/* Webhook Management Section */}
+      {webhookEnabled && (
+        <div className="mt-8 border-t pt-6">
+          <WebhookManagement scope="user" />
+        </div>
+      )}
     </div>
   );
 }

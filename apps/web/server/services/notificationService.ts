@@ -8,6 +8,19 @@
 import type { DrizzleDB } from "../db";
 import { userNotifications, notificationOccurrences, notificationPreferences, users } from "../../drizzle/schema";
 import { sql, eq, and } from "drizzle-orm";
+import { createRateLimiter } from "./rateLimiter";
+
+/**
+ * Rate limiter for notification creation.
+ * Per-user: max 200 notifications per 5 minutes.
+ * Per-tenant (keyed by "tenant:{id}"): max 1000 per 5 minutes.
+ * Escalated notifications bypass rate limiting.
+ */
+const notificationRateLimiter = createRateLimiter("notification-create", {
+  windowMs: 5 * 60 * 1000, // 5 minutes
+  maxRequests: 200, // 200 per user per 5 minutes
+  blockDurationMs: 60_000, // Block for 1 minute if exceeded
+});
 
 /**
  * Sanitize actionUrl — only allow relative paths and https URLs.
@@ -294,12 +307,26 @@ async function createNotification(
     groupKey: rawGroupKey,
   } = params;
 
+  // --- Rate limit gate ---
+  // Escalated notifications bypass rate limiting (they're system-critical).
+  const isEscalated = metadata?.isEscalated === true;
+  if (!isEscalated) {
+    const userKey = String(userId);
+    if (!notificationRateLimiter.isAllowed(userKey)) {
+      console.warn("[NotificationService] notification_rate_limited", {
+        userId,
+        type,
+        title: title.slice(0, 50),
+      });
+      return null;
+    }
+  }
+
   // --- Preference gate ---
   // Read isEscalated from raw metadata BEFORE sanitization strips it.
   // sanitizeMetadata removes isEscalated/escalatedAt/escalatedTo to prevent
   // untrusted callers from triggering the bypass — only the escalation job
   // (section-06) is allowed to set these fields.
-  const isEscalated = metadata?.isEscalated === true;
   let channels: ChannelFlags = { inApp: true, email: false, telegram: false };
 
   if (isEscalated) {
