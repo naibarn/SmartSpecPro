@@ -100,6 +100,8 @@ export type AuditEventType =
   | "user_reactivated"
   | "user_llm_key_set"
   | "user_llm_key_deleted"
+  | "unified_route"
+  | "unified_credit"
   | "error";
 
 export interface AuditLogEntry {
