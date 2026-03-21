@@ -4,6 +4,11 @@ import { executeSkillLlmWithFallback } from "./skillModelFallback";
 import { runPlanner, recordStepAttempt } from "./taskPlannerMiddleware";
 import { composePrompt } from "./promptComposer";
 import { calculateCreditsForLLMDynamic } from "./creditService";
+import { detectProviderFamily, buildWebSearchParams } from "./webSearchToolInjector";
+import { getProviderForModel } from "./llmRouter";
+import { getTenantFeatureFlags } from "./tenantFeatureFlagService";
+import { executeUnified } from "./unifiedOrchestrator";
+import type { UnifiedExecutionRequest } from "./executors/types";
 import type { TeamRun } from "../../drizzle/schema";
 import type { SkillDefinition } from "@smartspec/skills";
 
@@ -68,6 +73,68 @@ async function resolveTeamRunSkill(selectedSkillId?: string): Promise<SkillDefin
 }
 
 export async function executeTeamRunSkillTurn(input: TeamRunSkillExecutionInput): Promise<TeamRunSkillExecutionResult> {
+  // ── Unified Orchestrator Path (feature-flagged) ─────────────────
+  let handledByUnified = false;
+  try {
+    const flags = await getTenantFeatureFlags(input.tenantId);
+    if (flags.unifiedSkillExecution) {
+      const request: UnifiedExecutionRequest = {
+        channel: "team_room",
+        userId: input.userId,
+        tenantId: input.tenantId,
+        userMessage: input.objective,
+        teamContext: {
+          assistantId: input.assistantId,
+          roomId: input.roomId,
+          teamId: input.teamId,
+          runId: input.run.id,
+          objective: input.objective,
+        },
+        routeHint: {
+          selectedSkillId: input.route.selectedSkillId,
+          route: input.route.route,
+          reason: input.route.reason,
+        },
+        creditMode: "calculate_only",
+      };
+
+      const result = await executeUnified(request);
+      handledByUnified = true;
+
+      // Check for orchestrator-level error result
+      if (result.route.reason === "orchestrator_error") {
+        throw new Error(`Orchestrator error: ${result.metadata?.error || "unknown"}`);
+      }
+
+      return {
+        content: result.result.type === "text" ? result.result.content : "",
+        inputTokens: result.tokens.input,
+        outputTokens: result.tokens.output,
+        costCredits: result.costCredits,
+        metadata: {
+          unifiedPath: true,
+          route: result.route.capability,
+          routeReason: result.route.reason,
+          selectedSkillId: result.skillId,
+          nextSpeakerHint: result.nextSpeakerHint ?? null,
+          attempts: result.telemetry.attempts,
+          llmModelId: result.modelUsed,
+        },
+        skillId: result.skillId,
+        nextSpeakerHint: result.nextSpeakerHint,
+      };
+    }
+  } catch (err) {
+    if (handledByUnified) {
+      // Orchestrator committed but returned error result — fall through
+      console.error("[teamRunSkillExecutor] Unified orchestrator error result, falling back:", err);
+    } else {
+      console.error("[teamRunSkillExecutor] Unified orchestrator failed, falling back:", err);
+    }
+    handledByUnified = false; // Reset so existing path runs
+  }
+  // ── END Unified Orchestrator Path ───────────────────────────────
+
   const skill = await resolveTeamRunSkill(input.route.selectedSkillId);
 
   const conversationModel = input.assistantContext.profile.preferredModelId ?? input.assistantContext.agentModel ?? undefined;
@@ -105,12 +172,46 @@ export async function executeTeamRunSkillTurn(input: TeamRunSkillExecutionInput)
     messages.push({ role, content: msg.content });
   }
 
+  // Determine if web search should be enabled for this turn
+  const requiresWebSearch =
+    skill.executionPolicy?.requires_web_search === true ||
+    skill.executionPolicy?.requirements?.supportsWebSearch === true ||
+    input.route.reason?.includes("web_search") ||
+    false;
+
+  let extraBodyParams: Record<string, unknown> | undefined;
+  if (requiresWebSearch && executionPolicy.modelId) {
+    try {
+      // Resolve actual provider to inject correct web search tool format
+      const provider = await getProviderForModel(executionPolicy.modelId, {
+        preferredProviderId: executionPolicy.preferredProviderId ?? undefined,
+        strictProviderPin: executionPolicy.strictProviderPin ?? undefined,
+      });
+      if (provider) {
+        const family = detectProviderFamily(provider.providerName);
+        const webParams = buildWebSearchParams(family);
+        extraBodyParams = webParams.bodyParams;
+
+        // Append web search instruction if provider doesn't support native tools
+        if (webParams.systemPromptSuffix && messages.length > 0 && messages[0].role === "system") {
+          messages[0] = {
+            ...messages[0],
+            content: messages[0].content + webParams.systemPromptSuffix,
+          };
+        }
+      }
+    } catch {
+      // Provider resolution failed — proceed without web search (non-blocking)
+    }
+  }
+
   const fallback = await executeSkillLlmWithFallback({
     messages,
     skillSlug: skill.id,
     userId: input.userId,
     executionPolicy,
     enableThinking: skill.executionPolicy?.thinking_level_hint === "high" || skill.executionPolicy?.thinking_level_hint === "medium" || undefined,
+    extraBodyParams,
   });
 
   if (!fallback.success) {
