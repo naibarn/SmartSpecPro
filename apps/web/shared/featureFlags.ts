@@ -27,8 +27,12 @@ export interface TenantFeatureFlags {
   multimodalMemory: boolean; // F20 — Multimodal chat memory (image analysis, embedding, retrieval)
   skillOrchestrator: boolean; // F21 — Hybrid Skill Orchestrator (multi-skill routing)
   orchestratorEnabled: boolean; // F22 — Virtual AI Office Orchestrator (team rooms, runs, scoped memory)
-  notificationUnifiedCenter: boolean; // F23 — Unified notification center admin dashboard
-  notificationEmailDelivery: boolean; // F24 — Email delivery channel for notifications
+  notificationDedupEnabled: boolean; // F23 — Notification deduplication with grouping
+  notificationPreferencesEnabled: boolean; // F24 — Per-category notification preferences
+  notificationEscalationEnabled: boolean; // F25 — Escalation policies for critical notifications
+  notificationUnifiedCenter: boolean; // F26 — Unified notification center admin dashboard
+  notificationEmailDelivery: boolean; // F27 — Email delivery channel for notifications
+  notificationWebhookDelivery: boolean; // F28 — Webhook delivery channel for notifications
 }
 
 export type TenantFeatureFlagKey = keyof TenantFeatureFlags;
@@ -60,8 +64,12 @@ export const ALLOWED_FEATURE_FLAGS: ReadonlySet<string> = new Set<TenantFeatureF
   "multimodalMemory",
   "skillOrchestrator",
   "orchestratorEnabled",
+  "notificationDedupEnabled",
+  "notificationPreferencesEnabled",
+  "notificationEscalationEnabled",
   "notificationUnifiedCenter",
   "notificationEmailDelivery",
+  "notificationWebhookDelivery",
 ]);
 
 /**
@@ -92,6 +100,10 @@ export const FEATURE_FLAG_DEFAULTS: Readonly<TenantFeatureFlags> = {
   multimodalMemory: false,
   skillOrchestrator: false,
   orchestratorEnabled: true,
+  notificationDedupEnabled: false,
+  notificationPreferencesEnabled: false,
+  notificationEscalationEnabled: false,
   notificationUnifiedCenter: false,
   notificationEmailDelivery: false,
+  notificationWebhookDelivery: false,
 };

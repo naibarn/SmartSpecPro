@@ -839,9 +839,13 @@ app.post("/api/internal/notifications/admin-broadcast", async (req, res) => {
       }
     }
 
+    const { recordBroadcastRequest } = await import("../services/notificationHealthChecks");
+    recordBroadcastRequest(true);
     return res.json({ success: true, notified });
   } catch (err: any) {
     debugError("AdminBroadcast", "Internal broadcast failed", err);
+    const { recordBroadcastRequest } = await import("../services/notificationHealthChecks");
+    recordBroadcastRequest(false);
     return res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -935,13 +939,17 @@ app.post("/api/internal/agency/create", async (req, res) => {
     // Prefer explicit tenantId from request body (passed by Celery task from the user's tRPC context),
     // then fall back to tenant middleware, then user's currentTenantId
     const tenantId: string = validatedBody.tenantId || tenantReq.tenant?.id || String(user.currentTenantId ?? "");
+    const tenantIdNum = Number(tenantId);
+    if (!Number.isFinite(tenantIdNum)) {
+      return res.status(400).json({ error: "Invalid tenant ID" });
+    }
 
     // Verify user belongs to the specified tenant (prevents cross-tenant agency creation via internal token)
     if (tenantId && (user as any).__internalAuth) {
       const { users: usersTable } = await import("../../drizzle/schema");
       const { eq, and } = await import("drizzle-orm");
       const userRow = await drizzleDb.select({ id: usersTable.id }).from(usersTable)
-        .where(and(eq(usersTable.id, user.id), eq(usersTable.currentTenantId, tenantId)))
+        .where(and(eq(usersTable.id, user.id), eq(usersTable.currentTenantId, tenantIdNum)))
         .limit(1);
       if (userRow.length === 0) {
         return res.status(403).json({ error: "User does not belong to the specified tenant" });

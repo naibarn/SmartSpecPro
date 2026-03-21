@@ -9,6 +9,7 @@ import { resolveTenantIdVarchar } from "../services/tenantContext";
 import * as monitoringService from "../services/monitoringService";
 import * as notificationService from "../services/orchestratorNotificationService";
 import * as unifiedNotificationService from "../services/unifiedNotificationService";
+import { checkNotificationHealth } from "../services/notificationHealthChecks";
 
 function requireTenantId(ctx: { tenantId: string | null; user?: { currentTenantId?: number | null } | null }): string {
   const tid = resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId);
@@ -97,5 +98,9 @@ export const monitoringRouter = router({
   getUnifiedStats: adminProcedure.query(async ({ ctx }) => {
     const tenantId = requireTenantId(ctx);
     return unifiedNotificationService.getUnifiedStats(tenantId);
+  }),
+
+  notificationHealth: adminProcedure.query(async () => {
+    return checkNotificationHealth();
   }),
 });
