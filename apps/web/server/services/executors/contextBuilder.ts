@@ -87,7 +87,10 @@ export async function buildChatContext(
           personaId,
         );
         if (entityMemories.length > 0) {
-          const entityContent = entityMemories
+          // Cap entity memory to budget (~10 chars per token estimate)
+          const maxEntries = Math.ceil(CHAT_ENTITY_MEMORY_BUDGET / 150);
+          const capped = entityMemories.slice(0, maxEntries);
+          const entityContent = capped
             .map((m) => m.content)
             .join("\n");
           parts.push(`[ENTITY MEMORY]\n${entityContent}`);
@@ -122,7 +125,10 @@ export async function buildTeamContext(
   request: UnifiedExecutionRequest,
   tenantId: string,
 ): Promise<PromptMessage[]> {
-  const tc = request.teamContext!;
+  if (!request.teamContext) {
+    throw new Error("[contextBuilder] buildTeamContext called without teamContext");
+  }
+  const tc = request.teamContext;
   const input: ComposePromptInput = {
     assistantId: tc.assistantId,
     runId: tc.runId,
@@ -163,10 +169,12 @@ export function buildDynamicModelRequirements(
 
   const baseReqs = parsedPolicy?.requirements || {};
   const dynamicReqs: Record<string, unknown> = { ...baseReqs };
+  let hasOverrides = false;
 
   // Vision requirement for image attachments
   if (hasImages) {
     dynamicReqs.supportsVision = true;
+    hasOverrides = true;
   }
 
   // Web search requirement
@@ -175,6 +183,7 @@ export function buildDynamicModelRequirements(
     parsedPolicy?.requires_citations
   ) {
     dynamicReqs.supportsWebSearch = true;
+    hasOverrides = true;
   }
 
   // Thinking requirement
@@ -184,6 +193,7 @@ export function buildDynamicModelRequirements(
     parsedPolicy?.thinking_level_hint === "medium"
   ) {
     dynamicReqs.supportsThinking = true;
+    hasOverrides = true;
   }
 
   // Review / complex skill requirements
@@ -201,15 +211,14 @@ export function buildDynamicModelRequirements(
     ) {
       dynamicReqs.contextLength = 500_000;
     }
+    hasOverrides = true;
   }
 
   // Route reason web search trigger
   if (routeReason?.includes("web_search")) {
     dynamicReqs.supportsWebSearch = true;
+    hasOverrides = true;
   }
-
-  const hasOverrides =
-    JSON.stringify(dynamicReqs) !== JSON.stringify(baseReqs);
 
   return { requirements: dynamicReqs, hasOverrides };
 }
