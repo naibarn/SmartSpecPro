@@ -184,11 +184,16 @@ export const notificationWebhooksRouter = router({
       await requireWebhookDeliveryEnabled(ctx.tenantId);
       const db = getDb();
 
-      // Load existing webhook
+      // Load existing webhook (scoped to tenant to prevent ID enumeration)
       const rows = await db
         .select()
         .from(notificationWebhooks)
-        .where(eq(notificationWebhooks.id, input.id))
+        .where(
+          and(
+            eq(notificationWebhooks.id, input.id),
+            eq(notificationWebhooks.tenantId, ctx.tenantId!)
+          )
+        )
         .limit(1);
 
       if (rows.length === 0) {
@@ -261,7 +266,12 @@ export const notificationWebhooksRouter = router({
       const rows = await db
         .select()
         .from(notificationWebhooks)
-        .where(eq(notificationWebhooks.id, input.id))
+        .where(
+          and(
+            eq(notificationWebhooks.id, input.id),
+            eq(notificationWebhooks.tenantId, ctx.tenantId!)
+          )
+        )
         .limit(1);
 
       if (rows.length === 0) {
@@ -311,7 +321,12 @@ export const notificationWebhooksRouter = router({
       const rows = await db
         .select()
         .from(notificationWebhooks)
-        .where(eq(notificationWebhooks.id, input.id))
+        .where(
+          and(
+            eq(notificationWebhooks.id, input.id),
+            eq(notificationWebhooks.tenantId, ctx.tenantId!)
+          )
+        )
         .limit(1);
 
       if (rows.length === 0) {
@@ -372,7 +387,8 @@ export const notificationWebhooksRouter = router({
       };
 
       const body = JSON.stringify(testPayload);
-      const signature = computeSignature(body, secret);
+      const deliveryTimestamp = new Date().toISOString();
+      const signature = computeSignature(body, secret, deliveryTimestamp);
 
       try {
         const controller = new AbortController();
@@ -383,6 +399,7 @@ export const notificationWebhooksRouter = router({
           headers: {
             "Content-Type": "application/json",
             "X-Signature-256": `sha256=${signature}`,
+            "X-Delivery-Timestamp": deliveryTimestamp,
             "User-Agent": "SmartSpecPro-Webhook/1.0",
           },
           body,
