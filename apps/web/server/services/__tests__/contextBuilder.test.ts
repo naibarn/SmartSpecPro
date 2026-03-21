@@ -103,10 +103,10 @@ describe("buildChatContext", () => {
       restrictionsBulletPoints: null,
     });
     mockRetrieveForPrompt.mockResolvedValue([
-      { content: "User prefers short answers", score: 0.9 } as any,
+      { memory: { content: "User prefers short answers" }, score: 0.9, matchType: "keyword" } as any,
     ]);
     mockGetEntityMemories.mockResolvedValue([
-      { content: "User works in marketing", entityType: "user" } as any,
+      { entityName: "User", facts: ["Works in marketing"], entityType: "user" } as any,
     ]);
 
     const req = makeRequest({

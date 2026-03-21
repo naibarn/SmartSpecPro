@@ -75,7 +75,7 @@ export async function buildChatContext(
         );
         if (scopedMemories.length > 0) {
           const memContent = scopedMemories
-            .map((m) => m.content)
+            .map((m) => m.memory.content)
             .join("\n");
           parts.push(`[SCOPED MEMORY]\n${memContent}`);
         }
@@ -91,7 +91,7 @@ export async function buildChatContext(
           const maxEntries = Math.ceil(CHAT_ENTITY_MEMORY_BUDGET / 150);
           const capped = entityMemories.slice(0, maxEntries);
           const entityContent = capped
-            .map((m) => m.content)
+            .map((m) => `${m.entityName}: ${(m.facts || []).join(", ")}`)
             .join("\n");
           parts.push(`[ENTITY MEMORY]\n${entityContent}`);
         }
@@ -261,7 +261,7 @@ export async function injectWebSearchIfNeeded(options: {
   skillPolicy: Record<string, any> | null;
   routeReason: string | undefined;
   modelId: string | null;
-  preferredProviderId?: string;
+  preferredProviderId?: number;
   strictProviderPin?: boolean;
 }): Promise<{
   extraBodyParams: Record<string, unknown>;

@@ -79,7 +79,7 @@ export function classifyCapability(
   }
 
   // 4. Review pattern detection
-  const slug = skill.slug || skill.id || "";
+  const slug = (skill as any).slug || skill.id || "";
   const tags = (skill as any).tags || [];
   const isReview =
     category.includes("review") ||
@@ -176,7 +176,7 @@ export async function executeUnified(
 
     // Check prompt enhancement first
     const enhancement = await buildPromptEnhancementContext(
-      skill.slug || skill.id,
+      (skill as any).slug || skill.id,
       request.dynamicParams || {},
       request.userMessage,
     );
@@ -250,7 +250,7 @@ export async function executeUnified(
       tenantId: request.tenantId,
       conversationModel:
         request.conversationContext?.conversationModel ?? undefined,
-      skillSlug: skill.slug || skill.id,
+      skillSlug: (skill as any).slug || skill.id,
       executionPolicy: mergedPolicy as any,
     });
 
@@ -263,9 +263,7 @@ export async function executeUnified(
       skillPolicy: skill.executionPolicy as any,
       routeReason: request.routeHint?.reason,
       modelId: dynamicModelOverride || policyResult.modelId,
-      preferredProviderId: policyResult.preferredProviderId
-        ? String(policyResult.preferredProviderId)
-        : undefined,
+      preferredProviderId: policyResult.preferredProviderId ?? undefined,
       strictProviderPin: policyResult.strictProviderPin,
     });
 
@@ -285,16 +283,16 @@ export async function executeUnified(
     ) {
       try {
         const artifactIntent = classifyArtifactIntent({
-          skillSlug: skill.slug || skill.id,
+          skillSlug: (skill as any).slug || skill.id,
           sourceType: request.channel,
         });
-        if (artifactIntent.intent !== "chat_reply") {
+        if (artifactIntent !== "chat_reply") {
           const artifactRoute = selectExecutionRoute({
-            intent: artifactIntent,
-            channel: request.channel,
+            artifactIntent,
+            complexity: "moderate",
           });
           artifactMetadata = {
-            artifactIntent: artifactIntent.intent,
+            artifactIntent,
             artifactRoute: artifactRoute.route,
           };
         }
@@ -314,7 +312,7 @@ export async function executeUnified(
       dynamicModelOverride,
       dynamicParams: request.dynamicParams,
       skill,
-      skillSlug: skill.slug || skill.id,
+      skillSlug: (skill as any).slug || skill.id,
       userId: request.userId,
       channel: request.channel,
       traceId,
@@ -334,7 +332,7 @@ export async function executeUnified(
           model: executorResult.modelUsed,
           inputTokens: executorResult.inputTokens,
           outputTokens: executorResult.outputTokens,
-          skillSlug: skill.slug || skill.id,
+          skillSlug: (skill as any).slug || skill.id,
           tenantId: request.tenantId,
           idempotencyKey: traceId,
         });
