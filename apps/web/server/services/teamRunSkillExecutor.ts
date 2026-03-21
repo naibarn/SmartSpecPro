@@ -101,9 +101,15 @@ export async function executeTeamRunSkillTurn(input: TeamRunSkillExecutionInput)
       const result = await executeUnified(request);
       handledByUnified = true;
 
-      // Check for orchestrator-level error result
-      if (result.route.reason === "orchestrator_error") {
-        throw new Error(`Orchestrator error: ${result.metadata?.error || "unknown"}`);
+      // Check for orchestrator-level error results (all terminal failure reasons)
+      const errorReasons = [
+        "orchestrator_error",
+        "skill_resolution_failed",
+        "executor_not_found",
+        "capability_not_allowed",
+      ];
+      if (errorReasons.includes(result.route.reason)) {
+        throw new Error(`Orchestrator error: ${result.route.reason}`);
       }
 
       return {
@@ -126,12 +132,12 @@ export async function executeTeamRunSkillTurn(input: TeamRunSkillExecutionInput)
     }
   } catch (err) {
     if (handledByUnified) {
-      // Orchestrator committed but returned error result — fall through
-      console.error("[teamRunSkillExecutor] Unified orchestrator error result, falling back:", err);
-    } else {
-      console.error("[teamRunSkillExecutor] Unified orchestrator failed, falling back:", err);
+      // Orchestrator already committed (credits logged, audit emitted) — do NOT fall through
+      // to legacy path, which would double-execute. Re-throw to surface the error.
+      throw err;
     }
-    handledByUnified = false; // Reset so existing path runs
+    // Orchestrator failed before committing — safe to fall through to legacy path
+    console.error("[teamRunSkillExecutor] Unified orchestrator failed, falling back:", err);
   }
   // ── END Unified Orchestrator Path ───────────────────────────────
 

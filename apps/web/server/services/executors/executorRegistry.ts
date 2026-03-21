@@ -50,5 +50,8 @@ export function hasExecutor(capability: CapabilityFamily): boolean {
 
 /** For tests only — removes all registered executors. */
 export function clearRegistry(): void {
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("clearRegistry is not allowed in production");
+  }
   executorMap.clear();
 }

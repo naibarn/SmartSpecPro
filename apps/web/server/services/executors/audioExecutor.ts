@@ -6,27 +6,12 @@ import type {
   RouteDecision,
 } from "./types";
 import { registerExecutor } from "./executorRegistry";
+import { extractUserPrompt } from "./mediaExecutorHelpers";
 import {
   mediaGenerationService,
   DEFAULT_MODELS,
   type AudioGenerationRequest,
 } from "../mediaGenerationService";
-
-function extractUserPrompt(messages: ExecutorInput["messages"]): string {
-  for (let i = messages.length - 1; i >= 0; i--) {
-    if (messages[i].role === "user") {
-      const content = messages[i].content;
-      if (typeof content === "string") return content;
-      if (Array.isArray(content)) {
-        const textPart = content.find(
-          (p: any) => p.type === "text" && typeof p.text === "string",
-        );
-        return (textPart as any)?.text || "";
-      }
-    }
-  }
-  return "";
-}
 
 export class AudioGenerationExecutor implements CapabilityExecutor {
   readonly id = "audio-generation";
@@ -60,7 +45,10 @@ export class AudioGenerationExecutor implements CapabilityExecutor {
           : undefined,
       };
 
-      const userToken = (dp.userToken as string) || "";
+      const userToken = (dp.__serverUserToken as string) || "";
+      if (!userToken) {
+        console.warn("[audioExecutor] No server token available — media API call may fail");
+      }
       const task = await mediaGenerationService.generateAudioAsync(
         request,
         userToken,

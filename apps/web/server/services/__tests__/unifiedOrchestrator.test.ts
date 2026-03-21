@@ -53,6 +53,16 @@ vi.mock("../executors/textSkillExecutor", () => ({
   textSkillExecutor: {},
 }));
 
+// Mock JWT token generation (requires JWT_SECRET env var)
+vi.mock("../../_core/tokens", () => ({
+  signBearerToken: vi.fn().mockReturnValue("mock-server-token"),
+}));
+
+// Mock executor side-effect imports
+vi.mock("../executors/imageExecutor", () => ({}));
+vi.mock("../executors/videoExecutor", () => ({}));
+vi.mock("../executors/audioExecutor", () => ({}));
+
 // --- Imports ---
 
 import {
@@ -640,7 +650,8 @@ describe("unifiedOrchestrator", () => {
 
         expect(result.route.reason).toBe("orchestrator_error");
         expect(result.telemetry.executorId).toBe("unknown");
-        expect(result.metadata.error).toContain("unexpected DB error");
+        // U02: Error is sanitized — raw message not exposed
+        expect(result.metadata.error).toBe("orchestrator_error");
       });
 
       it("result shape matches expected format for chat caller", async () => {

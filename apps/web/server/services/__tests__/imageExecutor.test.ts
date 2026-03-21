@@ -173,13 +173,15 @@ describe("ImageGenerationExecutor", () => {
       );
     });
 
-    it("passes userToken from dynamicParams", async () => {
-      const input = makeInput({ dynamicParams: { userToken: "tok-abc" } });
+    it("passes server-generated token from __serverUserToken", async () => {
+      const input = makeInput({
+        dynamicParams: { __serverUserToken: "server-tok-123" },
+      });
       await executor.execute(input);
 
       expect(mockGenerateImage).toHaveBeenCalledWith(
         expect.any(Object),
-        "tok-abc",
+        "server-tok-123",
       );
     });
   });

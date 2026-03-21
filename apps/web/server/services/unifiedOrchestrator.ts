@@ -20,6 +20,7 @@ import {
 } from "./creditService";
 import { auditLogger } from "./auditLogger";
 import { getTraceId } from "./traceContext";
+import { signBearerToken } from "../_core/tokens";
 import type {
   CapabilityFamily,
   UnifiedExecutionRequest,
@@ -31,6 +32,7 @@ import type {
   TextResult,
   ExecutionTelemetry,
 } from "./executors/types";
+import { CAPABILITY_FAMILIES } from "./executors/types";
 
 // ─── Executor Self-Registration (side-effect imports) ────────
 // Importing these modules triggers their self-registration with the executor registry
@@ -56,6 +58,9 @@ export function registerPersistenceHook(hook: PersistenceHook): void {
 
 /** For tests only — removes all registered persistence hooks. */
 export function clearPersistenceHooks(): void {
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("clearPersistenceHooks is not allowed in production");
+  }
   persistenceHooks.clear();
 }
 
@@ -76,18 +81,27 @@ export function classifyCapability(
       ? tryParseJson(skill.executionPolicy)
       : (skill.executionPolicy as Record<string, unknown> | null);
 
-  if (policy?.capability_family) {
+  if (
+    policy?.capability_family &&
+    (CAPABILITY_FAMILIES as readonly string[]).includes(
+      policy.capability_family as string,
+    )
+  ) {
     return policy.capability_family as CapabilityFamily;
   }
 
-  // 2. Category-based mapping
-  const category = (skill as any).category || "";
+  // 2. Category-based mapping (normalize hyphens to underscores)
+  const rawCategory = (skill as any).category || "";
+  const category = rawCategory.toLowerCase().replace(/-/g, "_");
   if (CATEGORY_TO_CAPABILITY[category]) {
     return CATEGORY_TO_CAPABILITY[category];
   }
 
-  // 3. Swarm mode
+  // 3. Swarm mode (warn: no executor registered for this)
   if ((skill as any).executionMode === "swarm") {
+    console.warn(
+      "[unifiedOrchestrator] swarm capability requested but no dedicated executor — will fallback to text",
+    );
     return "orchestration.swarm";
   }
 
@@ -106,6 +120,27 @@ export function classifyCapability(
   return "writing.article";
 }
 
+// ─── Security: Allowed route reasons ────────────────────────
+
+const ALLOWED_ROUTE_REASONS = new Set([
+  "user_selected",
+  "auto_detected",
+  "skill_chained",
+  "default",
+  "web_search_detected",
+  "auto_web_search",
+  "fallback",
+]);
+
+// ─── Security: Sensitive dynamicParams keys to strip ────────
+
+const STRIPPED_DYNAMIC_PARAM_KEYS = new Set([
+  "userToken",
+  "apiConfig",
+]);
+
+const SYSTEM_PROMPT_MAX_CHARS = 12_000;
+
 // ─── Main Orchestrator ──────────────────────────────────────
 
 export async function executeUnified(
@@ -115,6 +150,34 @@ export async function executeUnified(
   const traceId = request.traceId || getTraceId() || crypto.randomUUID();
 
   try {
+    // ─── Step 0: Input Sanitization ──────────────────────────
+
+    // U06: Validate routeHint.reason
+    if (
+      request.routeHint?.reason &&
+      !ALLOWED_ROUTE_REASONS.has(request.routeHint.reason)
+    ) {
+      request = {
+        ...request,
+        routeHint: { ...request.routeHint, reason: "default" },
+      };
+    }
+
+    // U01: Strip sensitive keys from dynamicParams (userToken, apiConfig)
+    // Media executors get server-generated tokens instead
+    if (request.dynamicParams) {
+      const sanitized = { ...request.dynamicParams };
+      for (const key of STRIPPED_DYNAMIC_PARAM_KEYS) {
+        delete sanitized[key];
+      }
+      // U01: Inject server-generated bearer token for media executors
+      sanitized.__serverUserToken = signBearerToken(
+        { sub: String(request.userId), tenantId: request.tenantId },
+        "5m",
+      );
+      request = { ...request, dynamicParams: sanitized };
+    }
+
     // ─── Step 1: Resolve Skill ──────────────────────────────
     const skillId = request.routeHint?.selectedSkillId;
     let skill: SkillDefinition | undefined;
@@ -125,10 +188,12 @@ export async function executeUnified(
         console.warn(
           `[unifiedOrchestrator] skill ${skillId} not found, falling back to ${FALLBACK_SKILL_SLUG}`,
         );
-        skill = getSkillById(FALLBACK_SKILL_SLUG);
+        skill = await getSkillByIdAsync(FALLBACK_SKILL_SLUG);
+        if (!skill) skill = getSkillById(FALLBACK_SKILL_SLUG);
       }
     } else {
-      skill = getSkillById(FALLBACK_SKILL_SLUG);
+      skill = await getSkillByIdAsync(FALLBACK_SKILL_SLUG);
+      if (!skill) skill = getSkillById(FALLBACK_SKILL_SLUG);
     }
 
     if (!skill) {
@@ -142,6 +207,20 @@ export async function executeUnified(
 
     // ─── Step 2: Classify Capability ────────────────────────
     const capability = classifyCapability(skill);
+
+    // Enforce capabilitiesAllowed if specified
+    if (
+      request.capabilitiesAllowed &&
+      request.capabilitiesAllowed.length > 0 &&
+      !request.capabilitiesAllowed.includes(capability)
+    ) {
+      return makeErrorResult(
+        request,
+        "capability_not_allowed",
+        `Capability ${capability} not in allowed list`,
+        startMs,
+      );
+    }
 
     // ─── Step 3: Select Executor ────────────────────────────
     const route: RouteDecision = {
@@ -200,16 +279,28 @@ export async function executeUnified(
         { role: "user", content: enhancement.userPrompt },
       ];
     } else if (request.channel === "chat") {
+      // System prompt length cap to match legacy path
+      const rawSysPrompt =
+        (skill as any).systemPrompt || `Use ${skill.name}`;
+      const cappedSysPrompt = rawSysPrompt.substring(
+        0,
+        SYSTEM_PROMPT_MAX_CHARS,
+      );
       messages = await buildChatContext(
         request,
-        (skill as any).systemPrompt || `Use ${skill.name}`,
+        cappedSysPrompt,
         (skill as any).knowledgebase || null,
       );
     } else {
       // team_room
       const teamMessages = await buildTeamContext(request, request.tenantId);
-      // Prepend skill system prompt
-      const skillPrompt = (skill as any).systemPrompt;
+      // Prepend skill system prompt (capped)
+      const skillPrompt = (skill as any).systemPrompt
+        ? ((skill as any).systemPrompt as string).substring(
+            0,
+            SYSTEM_PROMPT_MAX_CHARS,
+          )
+        : null;
       messages = skillPrompt
         ? [
             { role: "system", content: skillPrompt },
@@ -317,12 +408,15 @@ export async function executeUnified(
     // ─── Step 10: Delegate to Executor ──────────────────────
     const enableThinking = !!(dynamicReqs as any)?.supportsThinking;
 
-    // Extract max_tokens_hint from skill execution policy
+    // Parse execution policy once (reuse from step 5 via skill.executionPolicy)
     const parsedEP =
       typeof skill.executionPolicy === "string"
-        ? (() => { try { return JSON.parse(skill.executionPolicy); } catch { return null; } })()
-        : skill.executionPolicy;
-    const maxTokensHint: number | undefined = (parsedEP as any)?.max_tokens_hint ?? undefined;
+        ? tryParseJson(skill.executionPolicy)
+        : (skill.executionPolicy as Record<string, unknown> | null);
+    const maxTokensHint: number | undefined =
+      (parsedEP as any)?.max_tokens_hint ?? undefined;
+    const temperatureHint: number | undefined =
+      (parsedEP as any)?.temperature ?? undefined;
 
     const executorInput: ExecutorInput = {
       messages,
@@ -337,6 +431,7 @@ export async function executeUnified(
       channel: request.channel,
       traceId,
       maxTokens: maxTokensHint,
+      temperature: temperatureHint,
     };
 
     const executorResult = await executor.execute(executorInput);
@@ -471,21 +566,23 @@ export async function executeUnified(
 
     return result;
   } catch (err) {
-    // Unrecoverable error
+    // Unrecoverable error — log full details server-side only
+    const errorDetail = String(err);
     auditLogger.log({
-      eventType: "unified_route" as any,
+      eventType: "unified_error" as any,
       userId: request.userId,
       requestPayload: {
-        error: String(err),
+        error: errorDetail,
         channel: request.channel,
         traceId,
       },
     });
 
+    // U02: Sanitize error — do not expose internal details to caller
     return makeErrorResult(
       request,
       "orchestrator_error",
-      String(err),
+      "An internal error occurred during execution",
       startMs,
     );
   }
@@ -493,12 +590,24 @@ export async function executeUnified(
 
 // ─── Helpers ────────────────────────────────────────────────
 
+/** Error reasons that indicate terminal failures (not normal execution). */
+export const ERROR_REASONS = new Set([
+  "skill_resolution_failed",
+  "executor_not_found",
+  "capability_not_allowed",
+  "orchestrator_error",
+]);
+
 function makeErrorResult(
   request: UnifiedExecutionRequest,
   reason: string,
   error: string,
   startMs: number,
 ): UnifiedExecutionResult {
+  // U02: Never expose raw error strings — log server-side, return sanitized
+  const sanitizedError = ERROR_REASONS.has(reason)
+    ? reason // safe — these are our own constant strings
+    : "internal_error";
   return {
     route: {
       capability: "writing.article",
@@ -510,7 +619,7 @@ function makeErrorResult(
     costCredits: 0,
     modelUsed: null,
     skillId: request.routeHint?.selectedSkillId ?? "unknown",
-    metadata: { error },
+    metadata: { error: sanitizedError },
     telemetry: {
       routerVersion: ROUTER_VERSION,
       policyVersion: POLICY_VERSION,

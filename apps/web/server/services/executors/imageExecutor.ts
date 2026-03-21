@@ -6,26 +6,11 @@ import type {
   RouteDecision,
 } from "./types";
 import { registerExecutor } from "./executorRegistry";
+import { extractUserPrompt } from "./mediaExecutorHelpers";
 import {
   mediaGenerationService,
   type ImageGenerationRequest,
 } from "../mediaGenerationService";
-
-function extractUserPrompt(messages: ExecutorInput["messages"]): string {
-  for (let i = messages.length - 1; i >= 0; i--) {
-    if (messages[i].role === "user") {
-      const content = messages[i].content;
-      if (typeof content === "string") return content;
-      if (Array.isArray(content)) {
-        const textPart = content.find(
-          (p: any) => p.type === "text" && typeof p.text === "string",
-        );
-        return (textPart as any)?.text || "";
-      }
-    }
-  }
-  return "";
-}
 
 export class ImageGenerationExecutor implements CapabilityExecutor {
   readonly id = "image-generation";
@@ -60,7 +45,11 @@ export class ImageGenerationExecutor implements CapabilityExecutor {
           : undefined,
       };
 
-      const userToken = (dp.userToken as string) || "";
+      // U01: Use server-generated token, never client-supplied
+      const userToken = (dp.__serverUserToken as string) || "";
+      if (!userToken) {
+        console.warn("[imageExecutor] No server token available — media API call may fail");
+      }
       const response = await mediaGenerationService.generateImage(request, userToken);
 
       return {

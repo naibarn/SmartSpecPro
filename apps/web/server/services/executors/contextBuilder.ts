@@ -63,10 +63,10 @@ export async function buildChatContext(
           parts.push(segments.restrictionsBulletPoints);
         }
 
-        // Scoped memory
+        // Scoped memory — personaId is the assistantId in chat context
         const scopedMemories = await retrieveForPrompt(
           request.tenantId,
-          personaId,
+          personaId, // assistantId = personaId in chat channel
           null,
           null,
           null,
@@ -308,17 +308,30 @@ export async function injectWebSearchIfNeeded(options: {
 
 // ─── Internal Helpers ──────────────────────────────────────
 
+/** Keys from dynamicParams that should not be included in LLM prompts. */
+const EXCLUDED_PARAM_KEYS = new Set([
+  "reference_images",
+  "userToken",
+  "__serverUserToken",
+  "apiConfig",
+  "extraParams",
+  "publicUrl",
+]);
+
 function buildUserMessage(
   request: UnifiedExecutionRequest,
 ): string | unknown[] {
   let userText = request.userMessage;
 
-  // Append dynamic params as bullet points (excluding reference_images)
+  // U05: Append dynamic params inside an XML fence to prevent prompt injection
   if (request.dynamicParams) {
     const paramSummary = Object.entries(request.dynamicParams)
       .filter(
         ([k, v]) =>
-          v !== undefined && v !== null && v !== "" && k !== "reference_images",
+          v !== undefined &&
+          v !== null &&
+          v !== "" &&
+          !EXCLUDED_PARAM_KEYS.has(k),
       )
       .map(
         ([k, v]) =>
@@ -326,7 +339,7 @@ function buildUserMessage(
       )
       .join("\n");
     if (paramSummary) {
-      userText += `\n\nForm inputs:\n${paramSummary}`;
+      userText += `\n\n<form_inputs>\n${paramSummary}\n</form_inputs>`;
     }
   }
 

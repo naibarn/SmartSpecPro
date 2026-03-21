@@ -75,6 +75,10 @@ vi.mock("../webSearchToolInjector", () => ({
 vi.mock("../llmRouter", () => ({
   getProviderForModel: vi.fn(),
 }));
+vi.mock("../../_core/tokens", () => ({
+  signBearerToken: vi.fn().mockReturnValue("mock-server-token"),
+}));
+
 vi.mock("../promptEnhancementService", () => ({
   buildSystemPrompt: vi.fn(),
   buildUserPrompt: vi.fn(),

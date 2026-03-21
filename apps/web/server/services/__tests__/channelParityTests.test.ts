@@ -52,6 +52,14 @@ vi.mock("../executors/textSkillExecutor", () => ({
   textSkillExecutor: {},
 }));
 
+vi.mock("../../_core/tokens", () => ({
+  signBearerToken: vi.fn().mockReturnValue("mock-server-token"),
+}));
+
+vi.mock("../executors/imageExecutor", () => ({}));
+vi.mock("../executors/videoExecutor", () => ({}));
+vi.mock("../executors/audioExecutor", () => ({}));
+
 // --- Imports ---
 
 import { executeUnified } from "../unifiedOrchestrator";
