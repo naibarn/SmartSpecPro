@@ -46,6 +46,11 @@ export function registerPersistenceHook(hook: PersistenceHook): void {
   persistenceHooks.set(hook.channel, hook);
 }
 
+/** For tests only — removes all registered persistence hooks. */
+export function clearPersistenceHooks(): void {
+  persistenceHooks.clear();
+}
+
 // ─── Capability Classification ──────────────────────────────
 
 const CATEGORY_TO_CAPABILITY: Record<string, CapabilityFamily> = {
@@ -304,6 +309,13 @@ export async function executeUnified(
     // ─── Step 10: Delegate to Executor ──────────────────────
     const enableThinking = !!(dynamicReqs as any)?.supportsThinking;
 
+    // Extract max_tokens_hint from skill execution policy
+    const parsedEP =
+      typeof skill.executionPolicy === "string"
+        ? (() => { try { return JSON.parse(skill.executionPolicy); } catch { return null; } })()
+        : skill.executionPolicy;
+    const maxTokensHint: number | undefined = (parsedEP as any)?.max_tokens_hint ?? undefined;
+
     const executorInput: ExecutorInput = {
       messages,
       executionPolicy: mergedPolicy as any,
@@ -316,6 +328,7 @@ export async function executeUnified(
       userId: request.userId,
       channel: request.channel,
       traceId,
+      maxTokens: maxTokensHint,
     };
 
     const executorResult = await executor.execute(executorInput);
