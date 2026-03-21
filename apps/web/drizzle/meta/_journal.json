@@ -743,6 +743,13 @@
       "when": 1774256850000,
       "tag": "0105_stop_legacy_team_runs",
       "breakpoints": true
+    },
+    {
+      "idx": 106,
+      "version": "7",
+      "when": 1774053355303,
+      "tag": "0106_marvelous_puck",
+      "breakpoints": true
     }
   ]
 }

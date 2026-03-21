@@ -3223,6 +3223,33 @@ export type AlertRule = typeof alertRules.$inferSelect;
 export type InsertAlertRule = typeof alertRules.$inferInsert;
 
 /**
+ * Notification Webhooks — configurable HTTP endpoints for notification delivery
+ */
+export const notificationWebhooks = pgTable("notification_webhooks", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 })
+    .references(() => tenants.id, { onDelete: "cascade" })
+    .notNull(),
+  userId: integer("userId").references(() => users.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 100 }).notNull(),
+  url: text("url").notNull(),
+  secretEncrypted: text("secretEncrypted").notNull(),
+  categories: jsonb("categories").$type<string[] | null>(),
+  minSeverity: reminderPriorityEnum("minSeverity"),
+  isEnabled: boolean("isEnabled").default(true).notNull(),
+  lastDeliveredAt: timestamp("lastDeliveredAt", { withTimezone: true }),
+  failureCount: integer("failureCount").default(0).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("notification_webhooks_tenant_idx").on(t.tenantId),
+  index("notification_webhooks_user_idx").on(t.userId),
+]);
+
+export type NotificationWebhook = typeof notificationWebhooks.$inferSelect;
+export type InsertNotificationWebhook = typeof notificationWebhooks.$inferInsert;
+
+/**
  * Escalation Policies — define escalation paths for unresolved notifications
  */
 export const escalationPolicies = pgTable("escalation_policies", {
@@ -5792,8 +5819,8 @@ const vector = customType<{ data: number[]; driverParam: string }>({
   toDriver(value: number[]): string {
     return `[${value.join(",")}]`;
   },
-  fromDriver(value: string): number[] {
-    return JSON.parse(value);
+  fromDriver(value: unknown): number[] {
+    return typeof value === "string" ? JSON.parse(value) : (value as number[]);
   },
 });
 
@@ -6619,8 +6646,8 @@ const vector1536 = customType<{ data: number[]; driverParam: string }>({
   toDriver(value: number[]): string {
     return `[${value.join(",")}]`;
   },
-  fromDriver(value: string): number[] {
-    return JSON.parse(value);
+  fromDriver(value: unknown): number[] {
+    return typeof value === "string" ? JSON.parse(value) : (value as number[]);
   },
 });
 

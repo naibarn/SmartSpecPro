@@ -536,6 +536,62 @@ async function createNotification(
   }
   // Low/normal priority with email=true: handled by digest job (notificationDigestJob.ts)
 
+  // 5. Webhook delivery (fire-and-forget)
+  // Tenant-level NOTIFICATION_WEBHOOK_DELIVERY flag gate is added by section-13.
+  {
+    try {
+      const { findMatchingWebhooks, enqueueWebhookDelivery } = await import(
+        "./notificationWebhookService"
+      );
+
+      // Resolve tenantId from user's currentTenantId
+      const userRow = await db
+        .select({ currentTenantId: users.currentTenantId })
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+
+      const tenantId = userRow[0]?.currentTenantId
+        ? String(userRow[0].currentTenantId)
+        : null;
+      if (tenantId) {
+        const category = mapToCategory(relatedResourceType, type);
+        const webhooks = await findMatchingWebhooks(
+          tenantId,
+          userId,
+          category,
+          priority
+        );
+
+        const webhookPayload = {
+          event: "notification.created" as const,
+          timestamp: new Date().toISOString(),
+          notification: {
+            id: notificationId,
+            type,
+            title,
+            content,
+            priority,
+            relatedResourceType: relatedResourceType ?? null,
+            relatedResourceId: relatedResourceId ?? null,
+            actionUrl: safeActionUrl ?? null,
+            metadata: (metadata as Record<string, unknown>) ?? null,
+            createdAt: new Date().toISOString(),
+          },
+        };
+
+        for (const hook of webhooks) {
+          await enqueueWebhookDelivery(hook.id, webhookPayload);
+        }
+      }
+    } catch (err) {
+      console.error(
+        "[NotificationService] Webhook enqueue failed (non-fatal):",
+        err
+      );
+    }
+  }
+
   return { notificationId, deduplicated, channels };
 }
 

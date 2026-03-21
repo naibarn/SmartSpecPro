@@ -91,6 +91,7 @@ import { inviteCodeRouter } from "./routers/inviteCode";
 import { userApiKeysRouter } from "./routers/userApiKeys";
 import { notificationPreferencesRouter } from "./routers/notificationPreferences";
 import { alertRulesRouter } from "./routers/alertRules";
+import { notificationWebhooksRouter } from "./routers/notificationWebhooks";
 
 // Zod schemas for validation
 const strongPasswordSchema = z.string().min(8).refine(
@@ -1478,6 +1479,7 @@ export const appRouter = router({
   // Notification Preferences & Alert Rules
   notificationPreferences: notificationPreferencesRouter,
   alertRules: alertRulesRouter,
+  notificationWebhooks: notificationWebhooksRouter,
 
   // User Follows
   follows: followsRouter,

@@ -13,6 +13,10 @@ import {
   initializeDigestJob,
   shutdownDigestJob,
 } from "./notificationDigestJob";
+import {
+  initWebhookDeliveryWorker,
+  shutdownWebhookDeliveryWorker,
+} from "../services/notificationWebhookService";
 
 export async function initializeNotificationJobs(): Promise<void> {
   try {
@@ -28,6 +32,14 @@ export async function initializeNotificationJobs(): Promise<void> {
   } catch (e) {
     console.error(
       "[notificationJobs] digest init failed:",
+      e instanceof Error ? e.message : e
+    );
+  }
+  try {
+    await initWebhookDeliveryWorker();
+  } catch (e) {
+    console.error(
+      "[notificationJobs] webhook worker init failed:",
       e instanceof Error ? e.message : e
     );
   }
@@ -48,6 +60,14 @@ export async function shutdownNotificationJobs(): Promise<void> {
   } catch (e) {
     console.error(
       "[notificationJobs] digest shutdown failed:",
+      e instanceof Error ? e.message : e
+    );
+  }
+  try {
+    await shutdownWebhookDeliveryWorker();
+  } catch (e) {
+    console.error(
+      "[notificationJobs] webhook worker shutdown failed:",
       e instanceof Error ? e.message : e
     );
   }
