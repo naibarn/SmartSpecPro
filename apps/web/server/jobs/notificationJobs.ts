@@ -17,6 +17,10 @@ import {
   initWebhookDeliveryWorker,
   shutdownWebhookDeliveryWorker,
 } from "../services/notificationWebhookService";
+import {
+  initializeRetentionJob,
+  shutdownRetentionJob,
+} from "./notificationRetentionJob";
 
 export async function initializeNotificationJobs(): Promise<void> {
   try {
@@ -43,7 +47,14 @@ export async function initializeNotificationJobs(): Promise<void> {
       e instanceof Error ? e.message : e
     );
   }
-  // Section-12 adds: try { await initializeRetentionJob(); } catch (e) { ... }
+  try {
+    await initializeRetentionJob();
+  } catch (e) {
+    console.error(
+      "[notificationJobs] retention init failed:",
+      e instanceof Error ? e.message : e
+    );
+  }
 }
 
 export async function shutdownNotificationJobs(): Promise<void> {
@@ -71,5 +82,12 @@ export async function shutdownNotificationJobs(): Promise<void> {
       e instanceof Error ? e.message : e
     );
   }
-  // Section-12 adds: try { await shutdownRetentionJob(); } catch (e) { ... }
+  try {
+    await shutdownRetentionJob();
+  } catch (e) {
+    console.error(
+      "[notificationJobs] retention shutdown failed:",
+      e instanceof Error ? e.message : e
+    );
+  }
 }
