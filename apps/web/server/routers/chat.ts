@@ -53,6 +53,7 @@ import { resolveSkillExecutionPolicy } from "../services/skillExecutionPolicy";
 import { runPlanner, recordStepAttempt } from "../services/taskPlannerMiddleware";
 import { classifyArtifactIntent, selectExecutionRoute } from "../services/artifactRouter";
 import { updateTaskRunArtifact } from "../services/taskRunStore";
+import type { UnifiedExecutionRequest } from "../services/executors/types";
 
 // ── Security: forbidden patterns in LLM-generated skillContent ───────────────
 const ISC_FORBIDDEN_PATTERNS = [
@@ -356,6 +357,7 @@ export const chatRouter = router({
         model: z.string().max(100).optional(),
         systemPrompt: z.string().optional(),
         projectId: z.string().max(100).optional(),
+        personaId: z.string().uuid().nullable().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -365,6 +367,8 @@ export const chatRouter = router({
         model: input.model,
         systemPrompt: input.systemPrompt,
         projectId: input.projectId,
+        tenantId: ctx.tenantId || null,
+        personaId: input.personaId ?? null,
       });
 
       // Track first conversation milestone (non-blocking, behind feature flag)
@@ -458,6 +462,7 @@ export const chatRouter = router({
         totalCreditsUsed: conversation.totalCreditsUsed,
         projectId: (conversation as any).projectId || null,
         memoryMode: (conversation as any).memoryMode || "full",
+        personaId: (conversation as any).personaId || null,
         createdAt: conversation.createdAt,
         updatedAt: conversation.updatedAt,
       };
@@ -479,6 +484,7 @@ export const chatRouter = router({
         isArchived: z.boolean().optional(),
         projectId: z.string().max(100).nullable().optional(),
         memoryMode: z.enum(["full", "no_long", "off"]).optional(),
+        personaId: z.string().uuid().nullable().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -938,7 +944,8 @@ export const chatRouter = router({
       const context = await buildChatContext(
         input.conversationId,
         ctx.user.id,
-        conversation.systemPrompt || undefined
+        conversation.systemPrompt || undefined,
+        ctx.tenantId || undefined,
       );
 
       return context;
@@ -1483,6 +1490,111 @@ export const chatRouter = router({
 
       // ── LLM-based skills: call LLM with skill system prompt + user form data ──
       if (isLLMSkill) {
+        // ── Unified Orchestrator Path (feature-flagged) ─────────────────
+        // When unifiedSkillExecution is enabled, delegate to the unified
+        // orchestrator instead of the inline code below. On orchestrator
+        // error, fall through to the existing path as a safety net.
+        let handledByUnified = false;
+        try {
+          const { getTenantFeatureFlags } = await import("../services/tenantFeatureFlagService");
+          const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+          const flags = await getTenantFeatureFlags(tenantId);
+
+          if (flags.unifiedSkillExecution) {
+            const { executeUnified } = await import("../services/unifiedOrchestrator");
+
+            // Load conversation context (shared with legacy path below)
+            let conversationModel: string | undefined;
+            let activePersonaId: string | null = null;
+            if (input.conversationId) {
+              const conversation = await getConversationById(input.conversationId, ctx.user.id);
+              conversationModel = conversation?.model ?? undefined;
+              activePersonaId = (conversation as any)?.activePersonaId ?? null;
+            }
+
+            // Build attachments from reference images
+            const refImages = (input.referenceImageUrls && input.referenceImageUrls.length > 0)
+              ? input.referenceImageUrls
+              : (Array.isArray(mergedExtraParams.reference_images)
+                ? (mergedExtraParams.reference_images as unknown[]).filter(
+                    (u): u is string => typeof u === "string" && u.length > 0,
+                  )
+                : []);
+            const attachments = refImages.map((url: string) => ({
+              type: "image" as const,
+              url,
+            }));
+
+            const request: UnifiedExecutionRequest = {
+              channel: "chat",
+              userId: ctx.user.id,
+              tenantId,
+              userMessage: input.prompt || "",
+              attachments: attachments.length > 0 ? attachments : undefined,
+              dynamicParams: mergedExtraParams as Record<string, unknown>,
+              conversationContext: {
+                conversationId: input.conversationId,
+                conversationModel,
+                activePersonaId,
+                publicUrl: ctx.publicUrl ?? undefined,
+              },
+              routeHint: {
+                selectedSkillId: input.skillId,
+                route: "skill",
+                reason: "chat_execute_skill",
+              },
+              creditMode: "deduct",
+            };
+
+            const result = await executeUnified(request);
+            handledByUnified = true;
+
+            // Persist as assistant message (chat owns persistence during rollout)
+            if (input.conversationId && result.result.type === "text") {
+              try {
+                await createMessage({
+                  conversationId: input.conversationId,
+                  role: "assistant",
+                  content: result.result.content,
+                  inputTokens: result.tokens.input,
+                  outputTokens: result.tokens.output,
+                  creditsUsed: String(result.creditsDeducted ?? 0),
+                  modelUsed: result.modelUsed ?? undefined,
+                  skillUsed: input.skillId,
+                });
+              } catch (err) {
+                console.error("[executeSkill] Failed to save unified skill message:", err);
+              }
+            }
+
+            return {
+              success: true,
+              skillId: input.skillId,
+              type: "text" as const,
+              message: result.result.type === "text" ? result.result.content : undefined,
+              creditsUsed: result.creditsDeducted ?? 0,
+              resultUrl: undefined as string | undefined,
+              resultUrls: undefined as string[] | undefined,
+              error: undefined as string | undefined,
+            };
+          }
+        } catch (err) {
+          if (handledByUnified) {
+            throw err; // Re-throw if we already committed to unified path
+          }
+          debugError("Chat", "[executeSkill] Unified orchestrator failed, falling back:", err);
+          auditLogger.log({
+            eventType: "unified_fallback" as any,
+            userId: ctx.user.id,
+            requestPayload: {
+              channel: "chat",
+              skillId: input.skillId,
+              error: String(err),
+            },
+          });
+        }
+        // ── END Unified Orchestrator Path ───────────────────────────────
+
         const { getProviderForModel } = await import("../services/llmRouter");
         const { deductCreditsForModel } = await import("../services/creditService");
         const { executeSkillLlmWithFallback } = await import("../services/skillModelFallback");
@@ -1650,8 +1762,14 @@ export const chatRouter = router({
           conversationModel,
           skillSlug: input.skillId,
           executionPolicy: {
-            modelId: executionPolicy.modelId ?? undefined,
-            mode: executionPolicy.modelSource,
+            fixedModel: executionPolicy.modelId ?? undefined,
+            mode:
+              executionPolicy.modelSource === "requirements_match"
+                ? "requirements"
+                : executionPolicy.modelSource === "conversation" ||
+                    executionPolicy.modelSource === "system_default"
+                  ? "hybrid"
+                  : "fixed",
           },
         });
 
@@ -1712,6 +1830,7 @@ export const chatRouter = router({
           userId: ctx.user.id,
           executionPolicy,
           enableThinking: skillRequiresThinking || undefined,
+          maxTokens: parsedPolicy?.max_tokens_hint ?? undefined,
         });
 
         if (!fallbackResult.success) {
@@ -1750,13 +1869,14 @@ export const chatRouter = router({
         }
 
         // Deduct credits for the successful model
+        const usageCost = (fallbackResult.rawData?.usage as { cost?: number } | undefined)?.cost;
         const { creditsUsed } = await deductCreditsForModel({
           userId: ctx.user.id,
           model: usedModel,
           provider: provider.providerName,
           inputTokens,
           outputTokens,
-          costUsd: fallbackResult.rawData?.usage?.cost as number | undefined,
+          costUsd: usageCost,
           conversationId: input.conversationId,
           skillSlug: input.skillId,
           sourceType: "skill",
@@ -1771,7 +1891,7 @@ export const chatRouter = router({
             provider: provider.providerName,
             inputTokens,
             outputTokens,
-            costUsd: (fallbackResult.rawData?.usage?.cost as number | undefined)?.toString(),
+            costUsd: usageCost?.toString(),
             snapshot: plannerResult.snapshot,
             creditsUsed,
           }).catch(() => {});
