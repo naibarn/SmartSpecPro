@@ -86,6 +86,7 @@ export function ToolPicker({
       riskLevel?: string;
       requiresApproval?: boolean;
       isEnabled?: boolean;
+      isOwned?: boolean;
       configSchema?: { fields: unknown[] } | null;
     }> = toolsData?.tools ?? [];
 
@@ -246,11 +247,12 @@ export function ToolPicker({
                                 </p>
                               )}
                             </button>
-                            {CUSTOM_TOOL_TYPES.has(tool.toolType ?? "") && (
-                              <div className="flex shrink-0 gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                            {/* Edit/Delete buttons — only for owned custom tools (not builtin/public) */}
+                            {(tool as any).isOwned && CUSTOM_TOOL_TYPES.has(tool.toolType ?? "") && (
+                              <div className="flex shrink-0 gap-1">
                                 <button
                                   type="button"
-                                  className="rounded p-1 hover:bg-muted"
+                                  className="rounded p-1 hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setEditToolId(tool.id);
@@ -260,21 +262,21 @@ export function ToolPicker({
                                   title="Edit tool"
                                   data-testid={`edit-tool-${tool.id}`}
                                 >
-                                  <Pencil className="h-3 w-3 text-muted-foreground" />
+                                  <Pencil className="h-3.5 w-3.5" />
                                 </button>
                                 <button
                                   type="button"
-                                  className="rounded p-1 hover:bg-muted"
+                                  className="rounded p-1 hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    if (confirm(`Delete tool "${tool.name}"?`)) {
+                                    if (confirm(`Delete tool "${tool.name}"? This cannot be undone.`)) {
                                       deleteMutation.mutate({ toolId: tool.id });
                                     }
                                   }}
                                   title="Delete tool"
                                   data-testid={`delete-tool-${tool.id}`}
                                 >
-                                  <Trash2 className="h-3 w-3 text-muted-foreground hover:text-destructive" />
+                                  <Trash2 className="h-3.5 w-3.5" />
                                 </button>
                               </div>
                             )}

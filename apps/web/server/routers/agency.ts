@@ -735,8 +735,10 @@ export const agencyRouter = router({
         name: t.name,
         description: t.description ?? undefined,
         toolType: t.toolType ?? "custom",
-        riskLevel: "low", // Custom tools default to low unless specified otherwise
-        requiresApproval: false,
+        riskLevel: t.riskLevel ?? "low",
+        requiresApproval: t.requiresApproval ?? false,
+        isEnabled: t.isEnabled,
+        isOwned: true,  // Custom tools belong to this tenant — can be edited/deleted
       }));
 
       // Combine and filter if searching or paginating (simple combined array)
