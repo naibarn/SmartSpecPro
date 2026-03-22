@@ -22,7 +22,10 @@ from typing import Any
 
 import httpx
 import structlog
+from pydantic import BaseModel
 
+from app.services.agentic_limits import MAX_REFLECTION_CYCLES, clamp_to_limit
+from app.services.agentic_strategies import get_planning_prompt
 from app.services.agency_browser_session_executor import AgencyBrowserSessionExecutor
 from app.services.agency_communication_flows import FlowConfig, RoundTripTracker
 from app.services.agency_event_emitter import AgencyEventEmitter, check_cancelled
@@ -61,6 +64,44 @@ NodeRow = dict[str, Any]
 EdgeRow = dict[str, Any]
 
 
+# ── Completion Signal ─────────────────────────────────────────────────────────
+
+class CompletionSignal(BaseModel):
+    """Structured JSON block emitted by agents to signal task completion."""
+    complete: bool
+    answer: str = ""
+
+
+# Regex patterns for extracting JSON completion blocks
+_FENCED_JSON_RE = re.compile(r"```json\s*(\{.*?\})\s*```\s*$", re.DOTALL)
+_RAW_JSON_RE = re.compile(r'(\{[^{}]*"complete"[^{}]*\})\s*$')
+
+
+def _parse_completion(text: str) -> CompletionSignal | None:
+    """Extract a CompletionSignal from the end of agent response text.
+
+    Supports fenced (```json ... ```) and raw JSON formats.
+    Returns None if no valid signal found.
+    """
+    if not text:
+        return None
+
+    # Try fenced JSON first
+    match = _FENCED_JSON_RE.search(text)
+    if not match:
+        # Try raw JSON at end
+        match = _RAW_JSON_RE.search(text)
+
+    if not match:
+        return None
+
+    try:
+        data = json.loads(match.group(1))
+        return CompletionSignal(**data)
+    except (json.JSONDecodeError, TypeError, ValueError):
+        return None
+
+
 # ── Context ───────────────────────────────────────────────────────────────────
 
 class ExecutionContext:
@@ -91,6 +132,8 @@ class ExecutionContext:
         # Shared run context (populated by orchestrator)
         self.shared_context: AgencyRunContext | None = None
         self.context_snapshot: dict[str, Any] | None = None
+        # Delegation depth for autonomous cross-agent calls (section-10)
+        self.delegation_depth: int = 0
 
     def clone(self) -> ExecutionContext:
         """Deep-copy mutable state for branch isolation; share read-only refs."""
@@ -109,6 +152,7 @@ class ExecutionContext:
         ctx.active_browser_session_id = self.active_browser_session_id
         ctx.shared_context = self.shared_context  # Shared across branches
         ctx.context_snapshot = self.context_snapshot
+        ctx.delegation_depth = self.delegation_depth
         return ctx
 
     def get_context_text(self) -> str:
@@ -456,8 +500,165 @@ class AgencyOrchestrator:
 
     # ── Node executors ────────────────────────────────────────────────────────
 
+    async def _execute_agent_node_agentic(
+        self, node: NodeRow, ctx: ExecutionContext, augmented_message: str
+    ) -> str:
+        """Execute an agent node with reflection loop (agentic mode).
+
+        Input guardrails should be applied to augmented_message before calling this.
+        Output guardrails are applied by the caller on the returned answer.
+        """
+        from app.services.agency_swarm_adapter import AgentConfig, AgencyConfig as SwarmAgencyConfig
+
+        if self.adapter is None:
+            return f"[Agent '{node.get('name')}': adapter not available]"
+
+        node_config = node.get("node_config") or {}
+        strategy = node_config.get("planningStrategy", "basic")
+        # showReasoning: reserved for Level 2 (section-05/08)
+        max_cycles = clamp_to_limit(
+            node_config.get("maxReflectionCycles", 3), MAX_REFLECTION_CYCLES
+        )
+
+        if max_cycles == 0:
+            return ""
+
+        # Fall back to "basic" for unknown strategies
+        if strategy not in ("basic", "cot", "react"):
+            logger.warning("unknown_planning_strategy", strategy=strategy, fallback="basic")
+            strategy = "basic"
+
+        planning_prompt = get_planning_prompt(strategy, max_cycles)
+        agent_instructions = node.get("instructions", "") + "\n\n" + planning_prompt
+        last_response = ""
+
+        # Max chars for prior response injection (rough 4:1 char-to-token ratio)
+        _MAX_PRIOR_RESPONSE_CHARS = 32000
+
+        for cycle in range(1, max_cycles + 1):
+            try:
+                agent = self.adapter.create_agent(
+                    config=AgentConfig(
+                        name=node.get("name", "Agent"),
+                        instructions=agent_instructions,
+                        model=node.get("model", "gpt-4o"),
+                        model_settings=node.get("model_settings"),
+                        tools=[],
+                        is_entry_point=node.get("is_entry_point", False),
+                    ),
+                    user_token=ctx.user_token,
+                )
+
+                sub_config = SwarmAgencyConfig(
+                    agency_id=f"agentic-{node['id']}-c{cycle}",
+                    name=node.get("name", "Agent"),
+                    system_prompt=getattr(self.agency_config, "system_prompt", ""),
+                    communication_flows=[],
+                    tenant_id=ctx.tenant_id,
+                    user_id=getattr(self.agency_config, "user_id", ctx.user_id),
+                    conversation_id=getattr(self.agency_config, "conversation_id", f"agentic-{node['id']}"),
+                    max_run_time_seconds=getattr(self.agency_config, "max_run_time_seconds", 600),
+                    credit_multiplier=getattr(self.agency_config, "credit_multiplier", 1.0),
+                    creator_fee_credits=getattr(self.agency_config, "creator_fee_credits", 0),
+                    platform_share_pct=getattr(self.agency_config, "platform_share_pct", 20),
+                    creator_id=getattr(self.agency_config, "creator_id", None),
+                )
+                agency_obj = self.adapter.create_agency(
+                    config=sub_config,
+                    agents=[agent],
+                    persistence_hooks=(None, None),
+                )
+
+                if cycle == 1:
+                    message = augmented_message
+                else:
+                    truncated = last_response[:_MAX_PRIOR_RESPONSE_CHARS]
+                    if len(last_response) > _MAX_PRIOR_RESPONSE_CHARS:
+                        truncated += "\n[truncated]"
+                    message = f"{augmented_message}\n\nPrevious attempt (cycle {cycle - 1}):\n{truncated}"
+
+                run_result = await self.adapter.run(
+                    agency=agency_obj,
+                    message=message,
+                    timeout_seconds=sub_config.max_run_time_seconds,
+                    agency_id=sub_config.agency_id,
+                    tenant_id=ctx.tenant_id,
+                )
+                last_response = run_result.response
+                ctx.results[node["id"]] = last_response
+
+                signal = _parse_completion(last_response)
+
+                if self.event_emitter:
+                    await self.event_emitter.emit("agentic_cycle", {
+                        "cycleNumber": cycle,
+                        "status": "complete" if signal and signal.complete else "continue",
+                        "agentName": node.get("name", "Agent"),
+                    })
+
+                if signal and signal.complete:
+                    return signal.answer
+
+            except Exception as exc:
+                logger.error(
+                    "agentic_cycle_failed",
+                    node_id=node["id"],
+                    cycle=cycle,
+                    error=str(exc)[:200],
+                )
+                return f"[Agent '{node.get('name')}' agentic error: {scrub_error_payload(str(exc))}]"
+
+        return last_response
+
     async def _execute_agent_node(self, node: NodeRow, ctx: ExecutionContext) -> str:
         """Execute an agent/supervisor node via AgencySwarmAdapter."""
+        node_config = node.get("node_config") or {}
+        execution_mode = node_config.get("executionMode", "single_shot")
+
+        if execution_mode == "agentic":
+            if self.adapter is None:
+                return f"[Agent '{node.get('name')}': adapter not available]"
+
+            augmented_message = ctx.get_context_text()
+
+            # ── Input Guardrails (run once before agentic loop) ──────────
+            agent_guardrails = self.guardrails_by_agent.get(node["id"], [])
+            if agent_guardrails:
+                from app.services.agency_guardrails import execute_guardrails
+                input_result = await execute_guardrails(
+                    agent_guardrails, augmented_message, "input",
+                )
+                guardrail_name = getattr(input_result, "guardrail_name", None) or (
+                    getattr(agent_guardrails[0], "name", "unknown") if agent_guardrails else "unknown"
+                )
+                if input_result.action == "block":
+                    if self.event_emitter:
+                        await self.event_emitter.emit("guardrail_trigger", {
+                            "type": "input", "guardrailName": guardrail_name, "action": "block",
+                        })
+                    return f"[Guardrail blocked]: {input_result.message}"
+                if input_result.redacted_message:
+                    augmented_message = input_result.redacted_message
+                if input_result.action == "guidance":
+                    if self.event_emitter:
+                        await self.event_emitter.emit("guardrail_trigger", {
+                            "type": "input", "guardrailName": guardrail_name, "action": "guidance",
+                        })
+                    augmented_message = f"[Guardrail guidance: {input_result.message}]\n\n{augmented_message}"
+
+            answer = await self._execute_agent_node_agentic(node, ctx, augmented_message)
+
+            # ── Output Guardrails (run on final answer) ──────────────────
+            if agent_guardrails and answer:
+                from app.services.agency_guardrails import execute_guardrails as exec_gr
+                output_guardrails = [g for g in agent_guardrails if g.type == "output"]
+                for g in output_guardrails:
+                    out_result = await exec_gr([g], answer, "output")
+                    if not out_result.passed and g.mode == "strict":
+                        return f"[Output guardrail failed]: {out_result.message}"
+
+            return answer
+
         if self.adapter is None:
             return f"[Agent '{node.get('name')}': adapter not available]"
 
