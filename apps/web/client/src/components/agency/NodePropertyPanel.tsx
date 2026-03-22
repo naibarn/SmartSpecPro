@@ -796,9 +796,9 @@ function AgentSupervisorForm({
             <div className="mt-2">
               <McpServersPanel
                 agentId={nodeId ?? ""}
-                mcpServers={node.mcpServers as any}
-                onChange={(servers, tokens) => {
-                  onChange({ ...node, mcpServers: servers } as any);
+                mcpServers={node.mcpServers}
+                onChange={(servers) => {
+                  onChange({ mcpServers: servers });
                 }}
               />
             </div>

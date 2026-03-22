@@ -616,7 +616,7 @@ async function dispatchToolCall(
     // Feature flag check
     const { getTenantFeatureFlag } = await import("../services/featureFlags");
     const mcpEnabled = await getTenantFeatureFlag("agencyMcpBridge", session.tenantId);
-    if (!mcpEnabled && process.env.NODE_ENV === "production") {
+    if (!mcpEnabled) {
       throw { code: -32603, message: "MCP integration is not enabled for this tenant" };
     }
     // Tenant isolation: verify agency belongs to tenant
@@ -677,7 +677,7 @@ async function dispatchToolCall(
     // Feature flag check
     const { getTenantFeatureFlag: getFlag } = await import("../services/featureFlags");
     const mcpOn = await getFlag("agencyMcpBridge", session.tenantId);
-    if (!mcpOn && process.env.NODE_ENV === "production") {
+    if (!mcpOn) {
       throw { code: -32603, message: "MCP integration is not enabled for this tenant" };
     }
     // Proxy to Python backend tool execution
@@ -695,8 +695,10 @@ async function dispatchToolCall(
     if (!response.ok) {
       throw { code: -32603, message: `Tool execution failed: ${response.status}` };
     }
-    const result = await response.json();
-    return result;
+    const result = await response.json() as Record<string, unknown>;
+    // Wrap in MCP content format per spec
+    const text = String(result.output ?? result.text ?? JSON.stringify(result));
+    return { content: [{ type: "text", text }] };
   }
 
   // Agencies

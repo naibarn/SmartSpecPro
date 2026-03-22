@@ -179,13 +179,30 @@ describe("Agency MCP Service", () => {
   });
 
   describe("saveMcpServers validation", () => {
-    it("enforces max 5 MCP servers per agent", () => {
-      // This is validated at the Zod schema level in the tRPC procedure
-      // Testing the constraint conceptually here
-      const servers = Array.from({ length: 6 }, (_, i) => ({
+    it("enforces max 5 MCP servers via Zod schema", () => {
+      const { z } = require("zod");
+      const schema = z.object({
+        agentId: z.string().uuid(),
+        mcpServers: z.array(z.object({
+          url: z.string().url(),
+          name: z.string().max(50).optional(),
+          transport: z.enum(["http", "sse"]).default("http"),
+        })).max(5, "Maximum 5 MCP servers per agent"),
+        tokens: z.record(z.string(), z.string()).optional(),
+      });
+
+      const sixServers = Array.from({ length: 6 }, (_, i) => ({
         url: `https://mcp${i}.example.com`,
       }));
-      expect(servers.length).toBeGreaterThan(5);
+
+      const result = schema.safeParse({
+        agentId: "00000000-0000-0000-0000-000000000001",
+        mcpServers: sixServers,
+      });
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.message).toContain("Maximum 5");
+      }
     });
   });
 });

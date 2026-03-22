@@ -3723,6 +3723,7 @@ export const agencyRouter = router({
   // ── MCP Integration (section-14) ──────────────────────────────────────
 
   saveMcpServers: protectedProcedure
+    .use(createRateLimitMiddleware({ windowMs: 60_000, maxRequests: 20, keyPrefix: "mcp-save" }))
     .input(
       z.object({
         agentId: z.string().uuid(),
@@ -3740,7 +3741,7 @@ export const agencyRouter = router({
 
       // Feature flag guard
       const mcpEnabled = await getTenantFeatureFlag("agencyMcpBridge", tenantId);
-      if (!mcpEnabled && process.env.NODE_ENV === "production") {
+      if (!mcpEnabled) {
         throw new TRPCError({ code: "FORBIDDEN", message: "MCP integration is not enabled" });
       }
 
@@ -3758,43 +3759,44 @@ export const agencyRouter = router({
         }
       }
 
-      // Verify agent belongs to caller's tenant
-      const [agent] = await db
-        .select({ id: agencyAgents.id, agencyId: agencyAgents.agencyId })
-        .from(agencyAgents)
-        .innerJoin(agencies, eq(agencies.id, agencyAgents.agencyId))
-        .where(
-          and(
-            eq(agencyAgents.id, input.agentId),
-            eq(agencies.tenantId, tenantId),
-          ),
-        )
-        .limit(1);
-
-      if (!agent) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Agent not found" });
-      }
-
       // Encrypt tokens if provided
       let encryptedTokens: string | null = null;
       if (input.tokens && Object.keys(input.tokens).length > 0) {
         encryptedTokens = encryptMcpTokens(input.tokens);
       }
 
-      // Update agent
-      await db
-        .update(agencyAgents)
-        .set({
-          mcpServers: input.mcpServers.map((s) => ({
-            url: s.url,
-            name: s.name,
-            transport: s.transport,
-          })),
-          mcpServerTokensEncrypted: encryptedTokens,
-        })
-        .where(eq(agencyAgents.id, input.agentId));
+      // Transaction: verify ownership + update atomically (prevents TOCTOU race)
+      return await db.transaction(async (tx) => {
+        const [agent] = await tx
+          .select({ id: agencyAgents.id })
+          .from(agencyAgents)
+          .innerJoin(agencies, eq(agencies.id, agencyAgents.agencyId))
+          .where(
+            and(
+              eq(agencyAgents.id, input.agentId),
+              eq(agencies.tenantId, tenantId),
+            ),
+          )
+          .limit(1);
 
-      return { success: true };
+        if (!agent) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Agent not found" });
+        }
+
+        await tx
+          .update(agencyAgents)
+          .set({
+            mcpServers: input.mcpServers.map((s) => ({
+              url: s.url,
+              name: s.name,
+              transport: s.transport,
+            })),
+            mcpServerTokensEncrypted: encryptedTokens,
+          })
+          .where(eq(agencyAgents.id, input.agentId));
+
+        return { success: true };
+      });
     }),
 
   discoverMcpTools: protectedProcedure
@@ -3811,7 +3813,7 @@ export const agencyRouter = router({
 
       // Feature flag guard
       const mcpEnabled = await getTenantFeatureFlag("agencyMcpBridge", tenantId);
-      if (!mcpEnabled && process.env.NODE_ENV === "production") {
+      if (!mcpEnabled) {
         throw new TRPCError({ code: "FORBIDDEN", message: "MCP integration is not enabled" });
       }
 

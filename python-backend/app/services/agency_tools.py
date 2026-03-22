@@ -555,6 +555,22 @@ async def resolve_tools_for_agent(
         tool_cls = create_tool_bridge(config, agency_whitelist, adapter=adapter, run_context=run_context)
         tool_classes.append(tool_cls)
 
+    # MCP tools integration (section-14)
+    mcp_query = text("""
+        SELECT "mcpServers", "mcpServerTokensEncrypted"
+        FROM agency_agents
+        WHERE id = :agent_id
+    """)
+    mcp_result = await db.execute(mcp_query, {"agent_id": agent_id})
+    mcp_row = mcp_result.first()
+    if mcp_row and mcp_row.mcpServers:
+        agent_config = {
+            "mcpServers": mcp_row.mcpServers,
+            "mcpServerTokensEncrypted": mcp_row.mcpServerTokensEncrypted,
+        }
+        mcp_tools = await resolve_mcp_tools_for_agent(agent_config, adapter=adapter)
+        tool_classes.extend(mcp_tools)
+
     logger.info(
         "agency_tools_resolved",
         agent_id=agent_id,
@@ -699,13 +715,13 @@ async def resolve_mcp_tools_for_agent(
                 def run_sync(**kwargs: str) -> str:
                     import asyncio
                     try:
-                        loop = asyncio.get_event_loop()
-                        if loop.is_running():
-                            import concurrent.futures
-                            with concurrent.futures.ThreadPoolExecutor() as pool:
-                                return pool.submit(asyncio.run, _run(**kwargs)).result()
-                        return loop.run_until_complete(_run(**kwargs))
+                        asyncio.get_running_loop()
+                        # Already in an event loop — run in a thread
+                        import concurrent.futures
+                        with concurrent.futures.ThreadPoolExecutor() as pool:
+                            return pool.submit(asyncio.run, _run(**kwargs)).result()
                     except RuntimeError:
+                        # No running loop — safe to use asyncio.run
                         return asyncio.run(_run(**kwargs))
                 return run_sync
             run_func = _make_run_func(server_url, tool_info.name, token)
