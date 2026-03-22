@@ -1117,6 +1117,6 @@ export function buildPresentationComponentRecipeSlotBindings(
       return [{ slotId: "fullpage", type: "image", src: input.mediaUrl ?? "", alt: input.title || "Full-page image" }];
     case "fullpage-video":
     case "fullpage-video-landscape":
-      return [{ slotId: "fullpage", type: "video", src: input.mediaUrl ?? "", alt: input.title || "Full-page video" }];
+      return [{ slotId: "fullpage", type: "video", src: input.mediaUrl ?? "", title: input.title || "Full-page video" }];
   }
 }

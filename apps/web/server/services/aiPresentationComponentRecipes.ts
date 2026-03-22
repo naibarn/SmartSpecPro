@@ -14,6 +14,7 @@ import {
   PRESENTATION_COMPONENT_SLOT_TARGETS,
   presentationMediaSlotSupportsType,
 } from "@shared/presentation/componentRecipes";
+import type { PresentationComponentMediaSlotType } from "@shared/presentation/componentRecipes";
 import { buildPresentationComponentRecipeSlotBindings } from "@shared/presentation/componentRecipeSlotBindings";
 import type {
   AIPresentationComponentRecipeId,
@@ -3964,7 +3965,7 @@ function buildInfographicGridFallback(
     { x: 140, y: 306, color: stylePreset.colors.primary, titleSlot: "item1-title", bodySlot: "item1-body" },
     { x: 498, y: 306, color: stylePreset.colors.secondary, titleSlot: "item2-title", bodySlot: "item2-body" },
     { x: 140, y: 474, color: stylePreset.colors.cardBg[2], titleSlot: "item3-title", bodySlot: "item3-body" },
-    { x: 498, y: 474, color: stylePreset.colors.cardBg[3] ?? stylePreset.colors.cardBg[0] ?? stylePreset.colors.primary, titleSlot: "item4-title", bodySlot: "item4-body" },
+    { x: 498, y: 474, color: stylePreset.colors.cardBg[2] ?? stylePreset.colors.cardBg[0] ?? stylePreset.colors.primary, titleSlot: "item4-title", bodySlot: "item4-body" },
   ] as const;
 
   return [
@@ -5087,7 +5088,6 @@ function buildPhotoCollageFallback(
         height: layout.primary.height,
         src: primaryPhoto.src,
         alt: primaryPhoto.alt,
-        imageFit: "cover",
         mediaShape: primaryFrameStyle?.mediaShape,
         mediaCornerRadius: primaryFrameStyle?.mediaCornerRadius,
       }),
@@ -5128,7 +5128,6 @@ function buildPhotoCollageFallback(
         height: layout.secondary.height,
         src: secondaryPhoto.src,
         alt: secondaryPhoto.alt,
-        imageFit: "cover",
         mediaShape: secondaryFrameStyle?.mediaShape,
         mediaCornerRadius: secondaryFrameStyle?.mediaCornerRadius,
       }),
@@ -5263,7 +5262,7 @@ function buildA4PhotoGridFallback(
     { slotId: "detail-photo-4", suffix: "detail-4", x: 354, y: 948, width: 280, height: 230, label: "Detail Photo 4" },
   ] as const;
 
-  const photoElements = photoSlots.flatMap((photoConfig) => {
+  const photoElements: PresentationSlideElement[] = photoSlots.flatMap((photoConfig): PresentationSlideElement[] => {
     const photo = componentImageSlot(slotBindings, photoConfig.slotId, { src: "", alt: photoConfig.label });
     const frameStyle = PRESENTATION_COMPONENT_MEDIA_FRAME_STYLES["a4-photo-grid"]?.[photoConfig.slotId];
     if (photo.src.trim()) {
@@ -5412,7 +5411,7 @@ function buildLandscapePhotoStoryFallback(
     { slotId: "detail-photo-2", suffix: "detail-2", x: 740, y: 276, width: 444, height: 156, label: "Supporting Photo 2" },
     { slotId: "detail-photo-3", suffix: "detail-3", x: 740, y: 456, width: 444, height: 156, label: "Supporting Photo 3" },
   ] as const;
-  const photoElements = photoSlots.flatMap((photoConfig) => {
+  const photoElements: PresentationSlideElement[] = photoSlots.flatMap((photoConfig): PresentationSlideElement[] => {
     const photo = componentImageSlot(slotBindings, photoConfig.slotId, { src: "", alt: photoConfig.label });
     const frameStyle = PRESENTATION_COMPONENT_MEDIA_FRAME_STYLES["landscape-photo-story"]?.[photoConfig.slotId];
     if (photo.src.trim()) {
@@ -5739,7 +5738,7 @@ function mapElementsWithMediaMetadata(
   },
 ): PresentationSlideElement[] {
   return elements.map((element) => {
-    if (!element.src?.trim()) {
+    if (!("src" in element) || !(element as { src?: string }).src?.trim()) {
       return element;
     }
 
@@ -5819,15 +5818,17 @@ export function findAIRecipePendingMediaTarget(
   height: number;
 } | null {
   for (const component of slideContent.components ?? []) {
-    const mediaSlots = PRESENTATION_COMPONENT_MEDIA_SLOTS[component.componentId];
+    const componentId = component.componentId as keyof typeof PRESENTATION_COMPONENT_MEDIA_SLOTS;
+    const mediaSlots = PRESENTATION_COMPONENT_MEDIA_SLOTS[componentId];
     if (!mediaSlots?.length) {
       continue;
     }
     for (const slotId of mediaSlots) {
-      const candidateSuffixes = PRESENTATION_COMPONENT_SLOT_TARGETS[component.componentId]?.[slotId] ?? [];
+      const candidateSuffixes =
+        (PRESENTATION_COMPONENT_SLOT_TARGETS[componentId] as Record<string, readonly string[]> | undefined)?.[slotId] ?? [];
       const target = findComponentTargetBySuffix(
         component,
-        candidateSuffixes.filter((suffix) => suffix.endsWith("-image") || suffix.endsWith("-frame") || suffix.endsWith("-video")),
+        candidateSuffixes.filter((suffix: string) => suffix.endsWith("-image") || suffix.endsWith("-frame") || suffix.endsWith("-video")),
       );
       if (!target) {
         continue;
@@ -5865,15 +5866,17 @@ export function findAIRecipePendingMediaTargets(
   }> = [];
 
   for (const component of slideContent.components ?? []) {
-    const mediaSlots = PRESENTATION_COMPONENT_MEDIA_SLOTS[component.componentId];
+    const componentId = component.componentId as keyof typeof PRESENTATION_COMPONENT_MEDIA_SLOTS;
+    const mediaSlots = PRESENTATION_COMPONENT_MEDIA_SLOTS[componentId];
     if (!mediaSlots?.length) {
       continue;
     }
     for (const slotId of mediaSlots) {
-      const candidateSuffixes = PRESENTATION_COMPONENT_SLOT_TARGETS[component.componentId]?.[slotId] ?? [];
+      const candidateSuffixes =
+        (PRESENTATION_COMPONENT_SLOT_TARGETS[componentId] as Record<string, readonly string[]> | undefined)?.[slotId] ?? [];
       const target = findComponentTargetBySuffix(
         component,
-        candidateSuffixes.filter((suffix) => suffix.endsWith("-image") || suffix.endsWith("-frame") || suffix.endsWith("-video")),
+        candidateSuffixes.filter((suffix: string) => suffix.endsWith("-image") || suffix.endsWith("-frame") || suffix.endsWith("-video")),
       );
       if (!target) {
         continue;
@@ -5923,7 +5926,10 @@ function resolveComponentMediaSlotId(
   targetElementId: string,
 ): string | null {
   const targetSuffix = getComponentElementSuffix(targetElementId);
-  const mediaSlotTypes = PRESENTATION_COMPONENT_MEDIA_SLOT_TYPES[component.componentId];
+  const componentId = component.componentId as keyof typeof PRESENTATION_COMPONENT_MEDIA_SLOT_TYPES;
+  const mediaSlotTypes = PRESENTATION_COMPONENT_MEDIA_SLOT_TYPES[componentId] as
+    | Record<string, PresentationComponentMediaSlotType>
+    | undefined;
   if (!mediaSlotTypes) {
     return null;
   }
@@ -5932,7 +5938,8 @@ function resolveComponentMediaSlotId(
     if (!presentationMediaSlotSupportsType(slotMediaType, mediaType)) {
       continue;
     }
-    const suffixes = PRESENTATION_COMPONENT_SLOT_TARGETS[component.componentId]?.[slotId] ?? [];
+    const suffixes =
+      (PRESENTATION_COMPONENT_SLOT_TARGETS[componentId] as Record<string, readonly string[]> | undefined)?.[slotId] ?? [];
     if (suffixes.includes(targetSuffix)) {
       return slotId;
     }
@@ -5962,8 +5969,11 @@ export function applyResolvedMediaToAIRecipeSlideContent(
     const target = component.fallbackElements[targetIndex]!;
     const resolvedSlotId = job.targetSlotId
       || resolveComponentMediaSlotId(component, job.mediaType, target.id);
+    const componentId = component.componentId as keyof typeof PRESENTATION_COMPONENT_SLOT_TARGETS;
     const slotTargetSuffixes = resolvedSlotId
-      ? new Set(PRESENTATION_COMPONENT_SLOT_TARGETS[component.componentId]?.[resolvedSlotId] ?? [])
+      ? new Set(
+          (PRESENTATION_COMPONENT_SLOT_TARGETS[componentId] as Record<string, readonly string[]> | undefined)?.[resolvedSlotId] ?? [],
+        )
       : null;
     const nextFallbackElements = component.fallbackElements.filter((element) => {
       if (!slotTargetSuffixes?.size) {

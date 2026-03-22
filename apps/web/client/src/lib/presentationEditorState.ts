@@ -160,7 +160,7 @@ function refreshBuiltInComponents(
       instanceId: component.id,
       slotBindings: component.slotBindings,
     });
-    const fitted = definition.category === "A4"
+    const fitted = String(definition.category) === "A4"
       ? fitComponentFallbackElementsToCanvas(
         {
           elements: [],
@@ -935,7 +935,7 @@ export function fitComponentFallbackElementsToCanvas(
 
   const canvas = getCanvasSize(content);
   const definition = getBuiltInPresentationComponentDefinition(component.componentId);
-  const shouldStretchToCanvas = mode === "canvas" && definition?.category === "A4";
+  const shouldStretchToCanvas = mode === "canvas" && String(definition?.category ?? "") === "A4";
   const scale = shouldStretchToCanvas
     ? 1
     : mode === "canvas"

@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactElement } from "react";
 import DOMPurify from "dompurify";
 
 import { normalizeMediaSourceUrl } from "@/lib/mediaUrl";
@@ -36,7 +36,7 @@ function renderPreviewElement(
   canvasWidth: number,
   canvasHeight: number,
   renderScale: number,
-): JSX.Element {
+): ReactElement {
   const commonStyle = {
     left: `${(element.x / canvasWidth) * 100}%`,
     top: `${(element.y / canvasHeight) * 100}%`,

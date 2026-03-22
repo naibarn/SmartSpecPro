@@ -1,8 +1,13 @@
 import type {
-  PresentationCanvasSize,
   PresentationSlideBackground,
   PresentationSlideElement,
 } from "./contracts";
+
+interface PresentationCanvasSize {
+  width: number;
+  height: number;
+  preset?: string;
+}
 
 interface PresentationBlockPreviewSvgOptions {
   resolveImageUrl?: (url: string) => string;
@@ -72,7 +77,7 @@ function buildMediaShapeMarkup(
       ? toSvgDataUri(rewriteSvgContentAssetUrls(element.svgContent, options))
       : resolveMediaUrl(element.src, options))
     : "";
-  const videoPosterHref = kind === "video" && typeof element.poster === "string" && element.poster.trim().length > 0
+  const videoPosterHref = kind === "video" && element.type === "video" && typeof element.poster === "string" && element.poster.trim().length > 0
     ? resolveMediaUrl(element.poster, options)
     : "";
 

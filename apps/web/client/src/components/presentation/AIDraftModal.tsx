@@ -440,9 +440,8 @@ export function AIDraftModal({
     return items;
   }, [llmModelsQuery.data?.models]);
 
-  const watermarkLibraryQuery = trpc.library.listDocuments.useQuery(
+  const watermarkLibraryListQuery = trpc.library.listDocuments.useQuery(
     {
-      query: debouncedWatermarkSearchQuery || undefined,
       scope: "all",
       sort: "updated_desc",
       limit: 50,
@@ -452,12 +451,25 @@ export function AIDraftModal({
       },
     },
     {
-      enabled: isOpen,
+      enabled: isOpen && debouncedWatermarkSearchQuery.length === 0,
     },
   );
-  const referenceLibraryQuery = trpc.library.listDocuments.useQuery(
+  const watermarkLibrarySearchQuery = trpc.library.search.useQuery(
     {
-      query: debouncedReferenceLibrarySearchQuery || undefined,
+      query: debouncedWatermarkSearchQuery || undefined,
+      scope: "all",
+      limit: 50,
+      offset: 0,
+      filters: {
+        itemType: "image",
+      },
+    },
+    {
+      enabled: isOpen && debouncedWatermarkSearchQuery.length > 0,
+    },
+  );
+  const referenceLibraryListQuery = trpc.library.listDocuments.useQuery(
+    {
       scope: "all",
       sort: "updated_desc",
       limit: 30,
@@ -467,7 +479,21 @@ export function AIDraftModal({
       },
     },
     {
-      enabled: isOpen,
+      enabled: isOpen && debouncedReferenceLibrarySearchQuery.length === 0,
+    },
+  );
+  const referenceLibrarySemanticQuery = trpc.library.search.useQuery(
+    {
+      query: debouncedReferenceLibrarySearchQuery || undefined,
+      scope: "all",
+      limit: 30,
+      offset: 0,
+      filters: {
+        itemType: "image",
+      },
+    },
+    {
+      enabled: isOpen && debouncedReferenceLibrarySearchQuery.length > 0,
     },
   );
 
@@ -730,9 +756,21 @@ export function AIDraftModal({
     [referenceImages],
   );
   const watermarkOptions = useMemo(
-    () => normalizeWatermarkLibraryOptions(watermarkLibraryQuery.data?.results),
-    [watermarkLibraryQuery.data?.results],
+    () => normalizeWatermarkLibraryOptions(
+      debouncedWatermarkSearchQuery.length > 0
+        ? (watermarkLibrarySearchQuery.data?.results ?? []).map((item: any) => ({
+            ...item,
+            id: item.id ?? item.item_id,
+          }))
+        : watermarkLibraryListQuery.data?.results,
+    ),
+    [
+      debouncedWatermarkSearchQuery.length,
+      watermarkLibraryListQuery.data?.results,
+      watermarkLibrarySearchQuery.data?.results,
+    ],
   );
+  const watermarkLibraryLoading = watermarkLibraryListQuery.isLoading || watermarkLibrarySearchQuery.isLoading;
   const selectedWatermarkOption = useMemo(
     () => {
       const sourceUrl = watermarkSourceUrl.trim();
@@ -769,7 +807,11 @@ export function AIDraftModal({
     [watermarkOptions],
   );
   const referenceLibraryItems = useMemo(() => {
-    const results = (referenceLibraryQuery.data?.results ?? []) as Array<{
+    const results = (
+      debouncedReferenceLibrarySearchQuery.length > 0
+        ? (referenceLibrarySemanticQuery.data?.results ?? [])
+        : (referenceLibraryListQuery.data?.results ?? [])
+    ) as Array<{
       source_url?: string | null;
       title?: string | null;
       metadata?: { mimeType?: string | null; extension?: string | null } | null;
@@ -787,7 +829,12 @@ export function AIDraftModal({
       });
       return acc;
     }, []);
-  }, [referenceLibraryQuery.data?.results]);
+  }, [
+    debouncedReferenceLibrarySearchQuery.length,
+    referenceLibraryListQuery.data?.results,
+    referenceLibrarySemanticQuery.data?.results,
+  ]);
+  const referenceLibraryLoading = referenceLibraryListQuery.isLoading || referenceLibrarySemanticQuery.isLoading;
 
   const handleWatermarkSourceChange = useCallback((sourceUrl: string) => {
     setWatermarkSourceUrl(sourceUrl);
@@ -1763,15 +1810,19 @@ export function AIDraftModal({
                   className="mb-2 h-8 text-xs"
                 />
                 <div className="grid max-h-[200px] grid-cols-4 gap-1.5 overflow-y-auto sm:grid-cols-5">
-                  {referenceLibraryQuery.isLoading ? (
+                  {referenceLibraryLoading ? (
                     <div className="col-span-full flex items-center justify-center py-4 text-xs text-muted-foreground">
                       <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
                       Loading...
                     </div>
-                  ) : (referenceLibraryQuery.data?.results ?? []).length === 0 ? (
+                  ) : referenceLibraryItems.length === 0 ? (
                     <p className="col-span-full py-4 text-center text-xs text-muted-foreground">No images found.</p>
                   ) : (
-                    ((referenceLibraryQuery.data?.results ?? []) as Array<{
+                    ((
+                      debouncedReferenceLibrarySearchQuery.length > 0
+                        ? (referenceLibrarySemanticQuery.data?.results ?? [])
+                        : (referenceLibraryListQuery.data?.results ?? [])
+                    ) as Array<{
                       source_url?: string | null;
                       title?: string | null;
                     }>).map((item) => {
@@ -2518,12 +2569,12 @@ export function AIDraftModal({
                       items={watermarkComboboxItems}
                       value={watermarkSourceUrl}
                       onValueChange={handleWatermarkSourceChange}
-                      disabled={watermarkOptions.length === 0 || watermarkLibraryQuery.isLoading}
+                      disabled={watermarkOptions.length === 0 || watermarkLibraryLoading}
                       placeholder={watermarkOptions.length === 0
                         ? "No PNG/JPG image found in library"
                         : "Select watermark image"}
                       searchPlaceholder="Search watermark from Library..."
-                      emptyMessage={watermarkLibraryQuery.isLoading
+                      emptyMessage={watermarkLibraryLoading
                         ? "Loading watermark images..."
                         : "No matching PNG/JPG watermark found."}
                       searchValue={watermarkSearchQuery}

@@ -316,6 +316,12 @@ export const users = pgTable("users", {
   userPreferences: json("userPreferences").$type<{
     translationLanguage?: string;
     translationModel?: string;
+    privateVault?: {
+      enabled?: boolean;
+      pinHash?: string;
+      pinVersion?: number;
+      pinUpdatedAt?: string;
+    };
     telegramNotifyLevel?: "all" | "high_critical" | "critical_only" | "off";
     telegramDeliveryFailing?: boolean;
     automationPolicy?: {
@@ -4603,6 +4609,11 @@ export const agencies = pgTable("agencies", {
   approvedAt: timestamp("approvedAt", { withTimezone: true }),
   /** Reason for rejection (shown to creator) */
   rejectionReason: text("rejectionReason"),
+  sharedInstructions: text("sharedInstructions"),
+  userContext: jsonb("userContext").$type<Record<string, unknown>>(),
+  conversationStarters: jsonb("conversationStarters").$type<string[]>(),
+  topology: varchar("topology", { length: 30 }).default("custom"),
+  cacheConversationStarters: boolean("cacheConversationStarters").default(false),
   createdBy: integer("createdBy").references(() => users.id, { onDelete: "set null" }),
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
@@ -4649,9 +4660,10 @@ export const agencyAgents = pgTable("agency_agents", {
   instructions: text("instructions"),
   model: varchar("model", { length: 100 }),
   modelSettings: json("modelSettings").$type<{
-    max_tokens?: number;
+    maxTokens?: number;
     temperature?: number;
-    top_p?: number;
+    topP?: number;
+    reasoningEffort?: "minimal" | "low" | "medium" | "high";
   }>(),
   isEntryPoint: boolean("isEntryPoint").default(false).notNull(),
   isOptional: boolean("isOptional").default(false).notNull(),
@@ -4694,7 +4706,56 @@ export const agencyAgents = pgTable("agency_agents", {
     timeoutHours?: number;
     onTimeout?: "auto_approve" | "auto_reject" | "escalate";
     requireAllApprovers?: boolean;
+    // conditional_branch (section-17)
+    evaluationMode?: "rule_based" | "llm_classify" | "context_check";
+    branches?: Array<{
+      condition: string;
+      operator?: string;
+      value?: string;
+      targetNodeId: string;
+      label?: string;
+    }>;
+    llmClassifyPrompt?: string;
+    contextKey?: string;
+    // parallel_fan_out (section-18)
+    parallelBranches?: Array<{ targetNodeId: string; label?: string }>;
+    mergeStrategy?: "wait_all" | "first_complete" | "majority" | "custom_prompt";
+    mergePrompt?: string;
+    maxConcurrent?: number;
+    branchTimeout?: number;
+    continueOnError?: boolean;
+    // loop_retry (section-19)
+    loopTargetNodeId?: string;
+    maxIterations?: number;
+    exitCondition?: "max_iterations" | "rule_based" | "llm_evaluate" | "context_check";
+    exitRule?: { contextKey: string; operator: string; value: string };
+    feedbackTemplate?: string;
+    loopTimeout?: number;
+    creditCap?: number;
+    // skill_discovery (section-20)
+    confidenceThreshold?: number;
+    maxResults?: number;
+    skillCategory?: string;
+    // error_handler (section-21)
+    errorStrategy?: "retry" | "fallback" | "skip" | "terminate";
+    watchedNodeIds?: string[];
+    maxRetries?: number;
+    fallbackNodeId?: string;
+    skipMessage?: string;
+    retryBackoffMs?: number;
+    // data_transform (section-21)
+    transformMode?: "jsonpath" | "template" | "filter";
+    jsonpathExpression?: string;
+    templateString?: string;
+    filterCondition?: string;
+    outputContextKey?: string;
   }>(),
+  outputSchema: jsonb("outputSchema").$type<Record<string, unknown>>(),
+  examples: jsonb("examples").$type<Array<{ role: string; content: string }[]>>(),
+  mcpServers: jsonb("mcpServers").$type<Array<{ url: string; name?: string }>>(),
+  mcpServerTokensEncrypted: text("mcpServerTokensEncrypted"),
+  parallelToolCalls: boolean("parallelToolCalls").default(true),
+  maxTurns: integer("maxTurns").default(25),
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
@@ -4764,7 +4825,20 @@ export const agencyTools = pgTable("agency_tools", {
   config: json("config").$type<Record<string, unknown>>(),
   riskLevel: varchar("riskLevel", { length: 10 }).default("low").notNull(),
   requiresApproval: boolean("requiresApproval").default(false).notNull(),
+  inputSchema: jsonb("inputSchema").$type<Record<string, unknown>>(),
+  outputSchema: jsonb("outputSchema").$type<Record<string, unknown>>(),
+  httpMethod: varchar("httpMethod", { length: 10 }),
+  headersEncrypted: text("headersEncrypted"),
+  retryPolicy: jsonb("retryPolicy").$type<{ maxRetries?: number; backoffMs?: number }>(),
+  icon: varchar("icon", { length: 50 }),
+  category: varchar("category", { length: 50 }),
+  version: integer("version").default(1),
+  isExposedAsApi: boolean("isExposedAsApi").default(false),
+  strictSchema: boolean("strictSchema").default(false),
+  oneCallAtATime: boolean("oneCallAtATime").default(false),
+  isEnabled: boolean("isEnabled").default(true),
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow(),
 }, (t) => [
   index("agency_tools_tenant_idx").on(t.tenantId),
   uniqueIndex("agency_tools_tenant_name_idx").on(t.tenantId, t.name),
@@ -4819,6 +4893,12 @@ export const agencyCommunicationFlows = pgTable("agency_communication_flows", {
   fromAgentId: varchar("fromAgentId", { length: 36 }).notNull().references(() => agencyAgents.id, { onDelete: "cascade" }),
   toAgentId: varchar("toAgentId", { length: 36 }).notNull().references(() => agencyAgents.id, { onDelete: "cascade" }),
   flowType: varchar("flowType", { length: 20 }).default("delegation").notNull(),
+  flowConfig: jsonb("flowConfig").$type<{
+    contextFields?: string[];
+    requireSummary?: boolean;
+    maxRoundTrips?: number;
+    timeout?: number;
+  }>(),
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
   index("agency_comm_flows_agency_idx").on(t.agencyId),
@@ -4916,6 +4996,94 @@ export const agencyVersions = pgTable("agency_versions", {
 
 export type AgencyVersion = typeof agencyVersions.$inferSelect;
 export type InsertAgencyVersion = typeof agencyVersions.$inferInsert;
+
+/**
+ * Agency Guardrails — input/output validation rules for agency agents.
+ */
+export const agencyGuardrails = pgTable("agency_guardrails", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull()
+    .references(() => tenants.id, { onDelete: "cascade" }),
+  agencyId: varchar("agencyId", { length: 36 }).notNull()
+    .references(() => agencies.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 100 }).notNull(),
+  type: varchar("type", { length: 10 }).notNull(),
+  mode: varchar("mode", { length: 10 }).notNull(),
+  strategy: varchar("strategy", { length: 30 }).notNull(),
+  config: jsonb("config"),
+  validationAttempts: integer("validationAttempts").default(1),
+  isEnabled: boolean("isEnabled").default(true),
+  sortOrder: integer("sortOrder").default(0),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("agency_guardrails_tenant_idx").on(t.tenantId),
+  index("agency_guardrails_agency_idx").on(t.agencyId),
+  index("agency_guardrails_agency_enabled_idx").on(t.agencyId, t.isEnabled),
+]);
+
+export type AgencyGuardrail = typeof agencyGuardrails.$inferSelect;
+export type InsertAgencyGuardrail = typeof agencyGuardrails.$inferInsert;
+
+/**
+ * Agency Agent Guardrails — junction table linking agents to guardrails.
+ */
+export const agencyAgentGuardrails = pgTable("agency_agent_guardrails", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  agentId: varchar("agentId", { length: 36 }).notNull()
+    .references(() => agencyAgents.id, { onDelete: "cascade" }),
+  guardrailId: varchar("guardrailId", { length: 36 }).notNull()
+    .references(() => agencyGuardrails.id, { onDelete: "cascade" }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("agency_agent_guardrails_unique").on(t.agentId, t.guardrailId),
+]);
+
+export type AgencyAgentGuardrail = typeof agencyAgentGuardrails.$inferSelect;
+export type InsertAgencyAgentGuardrail = typeof agencyAgentGuardrails.$inferInsert;
+
+/**
+ * Agency Shared Tools — tools shared across all agents in an agency.
+ * toolId is varchar(100) with no FK to allow both builtin string IDs and UUIDs.
+ */
+export const agencySharedTools = pgTable("agency_shared_tools", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  agencyId: varchar("agencyId", { length: 36 }).notNull()
+    .references(() => agencies.id, { onDelete: "cascade" }),
+  toolId: varchar("toolId", { length: 100 }).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("agency_shared_tools_unique").on(t.agencyId, t.toolId),
+]);
+
+export type AgencySharedTool = typeof agencySharedTools.$inferSelect;
+export type InsertAgencySharedTool = typeof agencySharedTools.$inferInsert;
+
+/**
+ * Agency Run Traces — structured execution traces for observability.
+ * runId and agencyId are intentionally NOT foreign keys (Python-owned, audit persistence).
+ */
+export const agencyRunTraces = pgTable("agency_run_traces", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull(),
+  runId: varchar("runId", { length: 36 }).notNull(),
+  agencyId: varchar("agencyId", { length: 36 }).notNull(),
+  createdBy: integer("createdBy").references(() => users.id, { onDelete: "set null" }),
+  trace: jsonb("trace").notNull(),
+  durationMs: integer("durationMs"),
+  totalTokens: integer("totalTokens"),
+  totalCost: numeric("totalCost", { precision: 10, scale: 6 }),
+  status: varchar("status", { length: 20 }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("agency_run_traces_tenant_idx").on(t.tenantId),
+  index("agency_run_traces_run_idx").on(t.runId),
+  index("agency_run_traces_agency_idx").on(t.agencyId),
+  index("agency_run_traces_created_idx").on(t.createdAt),
+]);
+
+export type AgencyRunTrace = typeof agencyRunTraces.$inferSelect;
+export type InsertAgencyRunTrace = typeof agencyRunTraces.$inferInsert;
 
 // ─── Chat Bridge Tables ─────────────────────────────────────────────────────
 

@@ -368,7 +368,7 @@ async function persistPresentationCustomBlockGovernanceAuditEntries(
       lastVerifiedAt: new Date(),
       nextRefreshAt: null,
       refreshCadenceDays: 365,
-    })));
+    })) as any);
 }
 
 async function createCanonicalPreviewArtifact(
@@ -858,7 +858,7 @@ export async function updatePresentationCustomBlock(
       nextRecord = appendGovernanceEvent(nextRecord, {
         eventType: "visibility_changed",
         actorUserId: actor.userId,
-        actorRole: actor.role,
+        actorRole: String(actor.role ?? "unknown"),
         recordedAt,
         detail: `Visibility changed to ${parsedInput.visibility}`,
       });
@@ -869,7 +869,7 @@ export async function updatePresentationCustomBlock(
         visibility: nextRecord.visibility,
         eventType: "visibility_changed",
         actorUserId: actor.userId,
-        actorRole: actor.role,
+        actorRole: String(actor.role ?? "unknown"),
         recordedAt,
         detail: `Visibility changed to ${parsedInput.visibility}`,
       });
@@ -880,7 +880,7 @@ export async function updatePresentationCustomBlock(
       nextRecord = appendGovernanceEvent(nextRecord, {
         eventType: "pinned_changed",
         actorUserId: actor.userId,
-        actorRole: actor.role,
+        actorRole: String(actor.role ?? "unknown"),
         recordedAt,
         detail,
       });
@@ -891,7 +891,7 @@ export async function updatePresentationCustomBlock(
         visibility: nextRecord.visibility,
         eventType: "pinned_changed",
         actorUserId: actor.userId,
-        actorRole: actor.role,
+        actorRole: String(actor.role ?? "unknown"),
         recordedAt,
         detail,
       });
@@ -918,7 +918,7 @@ export async function updatePresentationCustomBlock(
       nextRecord = appendGovernanceEvent(nextRecord, {
         eventType: "featured_changed",
         actorUserId: actor.userId,
-        actorRole: actor.role,
+        actorRole: String(actor.role ?? "unknown"),
         recordedAt,
         detail,
       });
@@ -929,7 +929,7 @@ export async function updatePresentationCustomBlock(
         visibility: nextRecord.visibility,
         eventType: "featured_changed",
         actorUserId: actor.userId,
-        actorRole: actor.role,
+        actorRole: String(actor.role ?? "unknown"),
         recordedAt,
         detail,
       });
@@ -950,7 +950,7 @@ export async function updatePresentationCustomBlock(
       nextRecord = appendGovernanceEvent(nextRecord, {
         eventType: "ownership_transferred",
         actorUserId: actor.userId,
-        actorRole: actor.role,
+        actorRole: String(actor.role ?? "unknown"),
         recordedAt,
         detail,
       });
@@ -961,7 +961,7 @@ export async function updatePresentationCustomBlock(
         visibility: nextRecord.visibility,
         eventType: "ownership_transferred",
         actorUserId: actor.userId,
-        actorRole: actor.role,
+        actorRole: String(actor.role ?? "unknown"),
         recordedAt,
         detail,
       });

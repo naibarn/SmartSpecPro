@@ -221,7 +221,9 @@ function mediaBinding(
   slotBindings: PresentationComponentSlotBinding[],
   slotId: string,
 ): PresentationRenderableMediaBinding | null {
-  const binding = slotBindings.find((slot) => slot.slotId === slotId && (slot.type === "image" || slot.type === "video"));
+  const binding = slotBindings.find((slot): slot is PresentationComponentImageSlotBinding | PresentationComponentVideoSlotBinding => (
+    slot.slotId === slotId && (slot.type === "image" || slot.type === "video")
+  ));
   if (!binding) {
     return null;
   }
@@ -5042,16 +5044,18 @@ function buildFullpageImageComponent(
     slotBindings,
     {
       slotId: "fullpage",
-      suffix: "fullpage",
+      suffixBase: "fullpage",
       x: 0,
       y: 0,
       width: options.canvas.width,
       height: options.canvas.height,
-      defaultSrc: image.src,
-      defaultAlt: image.alt,
-      mediaType: "image",
+      fallbackAlt: image.alt,
+      placeholderText: image.alt,
+      placeholderColor: "#475569",
+      placeholderFontSize: 24,
+      placeholderFill: "#e2e8f0",
+      placeholderStroke: "#94a3b8",
     },
-    undefined,
   );
 }
 
@@ -5066,16 +5070,20 @@ function buildFullpageVideoComponent(
     slotBindings,
     {
       slotId: "fullpage",
-      suffix: "fullpage",
+      suffixBase: "fullpage",
       x: 0,
       y: 0,
       width: options.canvas.width,
       height: options.canvas.height,
-      defaultSrc: video.src,
-      defaultAlt: video.title,
-      mediaType: "video",
+      fallbackAlt: video.title,
+      placeholderText: video.title,
+      placeholderColor: "#e0f2fe",
+      placeholderFontSize: 24,
+      placeholderFill: "rgba(15,23,42,0.92)",
+      placeholderStroke: "#7dd3fc",
+      placeholderStrokeWidth: 3,
+      placeholderKind: "video",
     },
-    undefined,
   );
 }
 

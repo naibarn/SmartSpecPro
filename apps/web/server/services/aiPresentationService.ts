@@ -95,6 +95,7 @@ import {
   getPresentationDeckDetail,
   updatePresentationDeckMetadata,
   updateSlideInDeck,
+  PresentationServiceError,
   type PresentationActor,
 } from "./presentationService";
 import { addMediaTaskToLibrary } from "./mediaLibraryService";
@@ -893,7 +894,7 @@ function normalizeNarrativeSection(
   return { heading, details };
 }
 
-function resolveTextWeightScore(weight?: "normal" | "500" | "600" | "700"): number {
+function resolveTextWeightScore(weight?: "normal" | "300" | "400" | "500" | "600" | "700"): number {
   switch (weight) {
     case "700":
       return 700;
@@ -901,6 +902,8 @@ function resolveTextWeightScore(weight?: "normal" | "500" | "600" | "700"): numb
       return 600;
     case "500":
       return 500;
+    case "300":
+      return 300;
     default:
       return 400;
   }
@@ -1264,7 +1267,7 @@ function isWatermarkElement(element: SlideElement): boolean {
   return element.id.startsWith(WATERMARK_ID_PREFIX) || alt.startsWith(WATERMARK_ALT_PREFIX);
 }
 
-function isInlineSvgGraphicElement(element: SlideElement): element is SlideImageElement {
+function isInlineSvgGraphicElement(element: SlideElement): boolean {
   return element.type === "image"
     && (!element.src || !String(element.src).trim())
     && typeof element.svgContent === "string"
@@ -2044,7 +2047,7 @@ function collectRenderedMediaSourceUrls(elements: SlideElement[]): string[] {
 
 function getRelayoutPreferredMediaTypes(
   componentRecipeId: AIPresentationComponentRecipeId | undefined,
-): Set<"image" | "video"> {
+): Set<"image" | "video" | "media"> {
   if (!componentRecipeId) {
     return new Set();
   }
@@ -3155,25 +3158,9 @@ function scoreAIComponentRecipes(options: {
       .filter((line) => normalizeSlideText(line).length >= 100),
   ].length;
 
-  const scores: Record<AIPresentationComponentRecipeId, number> = {
-    "process-steps": 0,
-    "timeline-flow": 0,
-    "timeline-report": 0,
-    "feature-highlights": 0,
-    "infographic-grid": 0,
-    "stat-cards": 0,
-    "sectioned-explainer": 0,
-    "article-focus": 0,
-    "two-column-article": 0,
-    "faq-stack": 0,
-    "profile-board": 0,
-    "profile-summary": 0,
-    "quote-callout": 0,
-    "video-spotlight": 0,
-    "poster-spotlight": 0,
-    "framed-image-story": 0,
-    "photo-collage": 0,
-  };
+  const scores = Object.fromEntries(
+    AI_COMPONENT_RECIPE_IDS.map((recipeId) => [recipeId, 0] as const),
+  ) as Record<AIPresentationComponentRecipeId, number>;
 
   if (options.preferVideoRecipes && options.slide.templateId !== "feature_boxes_right") {
     if (bodyCount <= 4) scores["video-spotlight"] += 5;
@@ -3396,8 +3383,8 @@ interface ResolvedAIComponentRecipeSelection {
   mode: PresentationAILayoutMode;
   recommendedMode: PresentationAILayoutMode;
   componentRecipeId?: AIPresentationComponentRecipeId;
-  selectionMode: "llm" | "heuristic" | "none";
-  selectionReason?: string;
+  selectionMode: "llm" | "heuristic" | "manual-override" | "none";
+  selectionReason: string;
   candidateRecipes: Array<{ recipeId: AIPresentationComponentRecipeId; score: number }>;
   candidateModes: PresentationAILayoutModeCandidate[];
 }
@@ -6603,6 +6590,8 @@ async function invokeSkillTextLLM(params: {
   taskRunId?: number;
   plannerPlan?: import("./taskExecutionPlanner").TaskExecutionPlan;
   plannerSnapshot?: import("./modelResolver").ModelResolutionSnapshot | null;
+  /** Max output tokens forwarded to the provider. */
+  maxTokens?: number;
 }): Promise<string> {
   if (params.strictProviderPin && params.preferredProviderId) {
     const candidates = await resolveProviders(params.model).catch(() => []);
@@ -6635,6 +6624,7 @@ async function invokeSkillTextLLM(params: {
       preferredProvider: params.strictProviderPin
         ? params.preferredProviderId
         : undefined,
+      maxTokens: params.maxTokens,
     });
 
     if (result.type === "error" || result.type === "fallback_required") {
@@ -7294,12 +7284,13 @@ function buildAdvancedRelayoutNarrative(
   const existingNarrative = existingAIDesign?.narrative;
   if (existingNarrative) {
     return normalizeSlideHierarchy({
-      templateId: existingNarrative.templateId ?? input.templateId ?? "split_right_image",
+      templateId: (existingNarrative.templateId ?? input.templateId ?? "split_right_image") as (typeof AI_LAYOUT_TEMPLATE_IDS)[number],
       title: existingNarrative.title,
       body: existingNarrative.body,
       ...(existingNarrative.notes ? { notes: existingNarrative.notes } : {}),
       ...(existingNarrative.sections?.length ? { sections: existingNarrative.sections } : {}),
-      ...(existingNarrative.graphicCategory ? { graphicCategory: existingNarrative.graphicCategory } : {}),
+      graphicCategory: (existingNarrative.graphicCategory
+        ?? inferGraphicCategoryFromText(`${existingNarrative.title}\n${existingNarrative.body.join("\n")}`)) as (typeof AI_SVG_CATEGORIES)[number],
       imagePromptKeywords: `${existingNarrative.title}\n${existingNarrative.body.join("\n")}`.slice(0, 500),
     });
   }

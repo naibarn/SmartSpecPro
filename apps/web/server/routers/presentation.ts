@@ -1062,7 +1062,10 @@ export const presentationRouter = router({
     .query(async ({ input, ctx }) => {
       try {
         ensureFeatureEnabled();
-        return await listPresentationCustomBlocks(input ?? {}, toPresentationActor(ctx));
+        return await listPresentationCustomBlocks(
+          input ?? { scope: "all", sort: "featured", limit: 100 },
+          toPresentationActor(ctx),
+        );
       } catch (error) {
         if (error instanceof PresentationServiceError) {
           throw mapPresentationServiceError(error);
@@ -1076,7 +1079,10 @@ export const presentationRouter = router({
     .query(async ({ input, ctx }) => {
       try {
         ensureFeatureEnabled();
-        return await listPresentationCustomBlockGovernanceAudit(input ?? {}, toPresentationActor(ctx));
+        return await listPresentationCustomBlockGovernanceAudit(
+          input ?? { eventType: "all", limit: 100 },
+          toPresentationActor(ctx),
+        );
       } catch (error) {
         if (error instanceof PresentationServiceError) {
           throw mapPresentationServiceError(error);

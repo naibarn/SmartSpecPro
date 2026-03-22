@@ -17,6 +17,10 @@ import {
   PRESENTATION_BLOCK_PRESETS,
   type PresentationBlockPresetId,
 } from "@/lib/presentationBlockPresets";
+import type {
+  PresentationSlideBackground,
+  PresentationSlideElement,
+} from "@shared/presentation/contracts";
 
 interface BlocksPanelProps {
   onInsertPreset: (presetId: PresentationBlockPresetId) => void;
@@ -37,6 +41,57 @@ interface BlocksPanelProps {
 }
 
 export type { PresentationBlockPresetId } from "@/lib/presentationBlockPresets";
+
+type BlockGovernanceEvent = {
+  eventType: string;
+  detail?: string;
+  recordedAt: string;
+  actorRole?: string;
+  actorUserId?: number;
+};
+
+interface BaseBlockCard {
+  id: string;
+  label: string;
+  category: string;
+  description: string;
+  accentColor: string;
+  componentId: BuiltInPresentationComponentId;
+  isCustom: boolean;
+  canvasIntent: "adaptive" | "portrait-document" | "landscape-16:9";
+  mediaSlotCount: number;
+  mediaSupportLabel: string | null;
+  previewMediaZones: readonly { label: string; slotType: "image" | "video" | "media"; x: number; y: number; width: number; height: number }[];
+}
+
+interface CustomBlockCard extends BaseBlockCard {
+  isCustom: true;
+  previewUrl?: string;
+  visibility: "private" | "team";
+  canDelete: boolean;
+  canFeature: boolean;
+  canTransferOwnership: boolean;
+  ownerUserId: number;
+  isPinned: boolean;
+  isTeamFeatured: boolean;
+  isFavorite: boolean;
+  usageCount: number;
+  lastUsedAt?: string;
+  savedAt: string;
+  previewElements: readonly PresentationSlideElement[];
+  previewBackground?: PresentationSlideBackground;
+  governanceEvents: BlockGovernanceEvent[];
+}
+
+interface PresetBlockCard extends BaseBlockCard {
+  id: PresentationBlockPresetId;
+  isCustom: false;
+  presetIndex: number;
+  previewBackground: undefined;
+  governanceEvents: [];
+}
+
+type BlocksPanelCard = CustomBlockCard | PresetBlockCard;
 
 export function BlocksPanel({
   onInsertPreset,
@@ -105,7 +160,7 @@ export function BlocksPanel({
     return "border-emerald-300/90 bg-emerald-400/10 shadow-[inset_0_0_0_1px_rgba(16,185,129,0.28)]";
   }
 
-  const customCards = useMemo(() => customBlocks.map((block) => {
+  const customCards = useMemo<CustomBlockCard[]>(() => customBlocks.map((block) => {
     const definition = getBuiltInPresentationComponentDefinition(block.componentId);
     const mediaProfile = definition ? getBuiltInPresentationComponentMediaProfile(block.componentId) : null;
     const previewComponent = buildBuiltInPresentationComponentInstanceFromSlotBindings(block.componentId, {
@@ -140,9 +195,9 @@ export function BlocksPanel({
       previewElements: previewComponent.fallbackElements,
       previewBackground: block.previewSource?.background,
       governanceEvents: block.governanceEvents ?? [],
-    };
+    } as CustomBlockCard;
   }), [customBlocks]);
-  const presetCards = useMemo(() => PRESENTATION_BLOCK_PRESETS.map((preset, index) => {
+  const presetCards = useMemo<PresetBlockCard[]>(() => PRESENTATION_BLOCK_PRESETS.map((preset, index) => {
     const definition = getBuiltInPresentationComponentDefinition(preset.id);
     const mediaProfile = definition ? getBuiltInPresentationComponentMediaProfile(preset.id) : null;
     return {
@@ -156,10 +211,10 @@ export function BlocksPanel({
       mediaSlotCount: mediaProfile?.slotCount ?? 0,
       mediaSupportLabel: mediaProfile ? formatMediaSupportLabel(mediaProfile) : null,
       previewMediaZones: definition?.previewMediaZones ?? [],
-    };
+    } as PresetBlockCard;
   }), []);
   const allCards = useMemo(
-    () => [...customCards, ...presetCards],
+    () => [...customCards, ...presetCards] as BlocksPanelCard[],
     [customCards, presetCards],
   );
 
@@ -173,8 +228,8 @@ export function BlocksPanel({
   }, [activityFilter, onLibraryStateChange, scope, search, sortOrder]);
 
   function getSortedGovernanceEvents(card: {
-    governanceEvents?: Array<{ eventType: string; detail?: string; recordedAt: string; actorRole?: string; actorUserId?: number }>;
-  }): Array<{ eventType: string; detail?: string; recordedAt: string; actorRole?: string; actorUserId?: number }> {
+    governanceEvents?: Array<{ eventType?: string; detail?: string; recordedAt: string; actorRole?: string; actorUserId?: number }>;
+  }): Array<{ eventType?: string; detail?: string; recordedAt: string; actorRole?: string; actorUserId?: number }> {
     return [...(card.governanceEvents ?? [])].sort((left, right) => {
       const leftTs = Date.parse(left.recordedAt) || 0;
       const rightTs = Date.parse(right.recordedAt) || 0;
@@ -274,7 +329,7 @@ export function BlocksPanel({
       if (rightTime !== leftTime) {
         return rightTime - leftTime;
       }
-      return (left.presetIndex ?? Number.MAX_SAFE_INTEGER) - (right.presetIndex ?? Number.MAX_SAFE_INTEGER);
+      return (left.isCustom ? Number.MAX_SAFE_INTEGER : left.presetIndex) - (right.isCustom ? Number.MAX_SAFE_INTEGER : right.presetIndex);
     });
   }, [activityFilter, allCards, canvasIntentFilter, category, scope, search, sortOrder]);
 
@@ -285,7 +340,7 @@ export function BlocksPanel({
   }
 
   function formatGovernanceEventLabel(card: {
-    governanceEvents?: Array<{ eventType: string; detail?: string; recordedAt: string; actorRole?: string; actorUserId?: number }>;
+    governanceEvents?: Array<{ eventType?: string; detail?: string; recordedAt: string; actorRole?: string; actorUserId?: number }>;
   }): string | null {
     const latestEvent = getSortedGovernanceEvents(card)[0];
     if (!latestEvent) {
@@ -578,7 +633,7 @@ export function BlocksPanel({
                   ) : getBuiltInPresentationComponentDefinition(preset.id)?.previewSvg ? (
                     preset.isCustom ? (
                       <SlideElementPreview
-                        elements={preset.previewElements}
+                        elements={Array.from(preset.previewElements)}
                         canvasSize={DEFAULT_PRESENTATION_CANVAS_SIZE}
                         background={preset.previewBackground}
                         testId={`block-preview-${preset.id}`}
@@ -621,7 +676,7 @@ export function BlocksPanel({
                     )
                   ) : preset.isCustom ? (
                     <SlideElementPreview
-                      elements={preset.previewElements}
+                      elements={Array.from(preset.previewElements)}
                       canvasSize={DEFAULT_PRESENTATION_CANVAS_SIZE}
                       testId={`block-preview-${preset.id}`}
                       className="border-slate-700 bg-slate-950/80"
@@ -814,7 +869,7 @@ export function BlocksPanel({
                             onInsertCustomBlock?.(preset.id);
                             return;
                           }
-                          onInsertComponent?.(preset.id);
+                          onInsertComponent?.(preset.id as BuiltInPresentationComponentId);
                         }}
                       >
                         <Sparkles className="h-3.5 w-3.5" />

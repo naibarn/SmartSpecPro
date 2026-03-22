@@ -62,6 +62,9 @@ export function loadLegacyPresentationCustomBlocks(): PresentationCustomBlockDef
         id: `legacy-${index + 1}`,
         ownerUserId: 0,
         canDelete: true,
+        canFeature: false,
+        canTransferOwnership: false,
+        isFavorite: false,
         ...result.data,
       }];
     }).map(clonePresentationCustomBlock);

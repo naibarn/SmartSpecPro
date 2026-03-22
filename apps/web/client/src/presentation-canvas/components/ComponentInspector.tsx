@@ -264,7 +264,7 @@ export function ComponentInspector({
             {selectedDefinition.slotDefinitions.map((slot) => {
               if (slot.type === "text") {
                 const value = getTextSlotValue(selectedComponent, slot.id);
-                const capacityHint = formatTextSlotCapacityHint(selectedComponent.componentId, slot.id, value);
+                const capacityHint = formatTextSlotCapacityHint(selectedComponent.componentId as BuiltInPresentationComponentId, slot.id, value);
                 return (
                   <label key={slot.id} className="block space-y-1">
                     <div className="space-y-0.5">
@@ -447,7 +447,7 @@ export function ComponentInspector({
               }
 
               const value = getListSlotValue(selectedComponent, slot.id);
-              const capacityHint = formatListSlotCapacityHint(selectedComponent.componentId, slot.id, value);
+              const capacityHint = formatListSlotCapacityHint(selectedComponent.componentId as BuiltInPresentationComponentId, slot.id, value);
               return (
                 <label key={slot.id} className="block space-y-1">
                   <div className="space-y-0.5">

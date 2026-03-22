@@ -28,6 +28,7 @@ vi.mock("@/lib/trpc", () => ({
     },
     library: {
       listDocuments: { useQuery: vi.fn() },
+      search: { useQuery: vi.fn() },
       getItem: { useQuery: vi.fn() },
     },
   },
@@ -180,6 +181,9 @@ describe("SlideAudioPanel", () => {
       makeMutationMock(undefined, vi.fn().mockResolvedValue({ itemId: 777 })) as any,
     );
     vi.mocked(trpc.library.listDocuments.useQuery).mockReturnValue(
+      makeLibraryDocumentsQueryMock() as any,
+    );
+    vi.mocked(trpc.library.search.useQuery).mockReturnValue(
       makeLibraryDocumentsQueryMock() as any,
     );
     vi.mocked(trpc.library.getItem.useQuery).mockReturnValue(

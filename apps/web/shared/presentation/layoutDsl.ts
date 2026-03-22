@@ -128,10 +128,10 @@ export const presentationLayoutDslPrimitiveSchema = z.discriminatedUnion("type",
   presentationLayoutDslImageSchema,
 ]);
 
-export const presentationLayoutDslGroupSchema: z.ZodType<PresentationLayoutDslGroup> = presentationLayoutDslBaseSchema.extend({
+export const presentationLayoutDslGroupSchema = presentationLayoutDslBaseSchema.extend({
   type: z.literal("group"),
   children: z.array(presentationLayoutDslPrimitiveSchema).min(1).max(8),
-}) as z.ZodType<PresentationLayoutDslGroup>;
+});
 
 export const presentationLayoutDslElementSchema = z.discriminatedUnion("type", [
   presentationLayoutDslTextSchema,
@@ -141,6 +141,18 @@ export const presentationLayoutDslElementSchema = z.discriminatedUnion("type", [
   presentationLayoutDslImageSchema,
   presentationLayoutDslGroupSchema,
 ]);
+
+export type PresentationLayoutDslElement = z.infer<typeof presentationLayoutDslElementSchema>;
+
+export interface PresentationLayoutDslResponse {
+  status: "ok" | "needs_fallback";
+  elements: PresentationLayoutDslElement[];
+  explanation?: string;
+  fallbackSuggestion?: {
+    action: "switch_mode" | "switch_recipe" | "split_slide";
+    reason: string;
+  } | null;
+}
 
 export const presentationLayoutDslResponseSchema = z.object({
   status: z.enum(["ok", "needs_fallback"]),
@@ -267,10 +279,9 @@ export const presentationLayoutDslResponseSchema = z.object({
     action: z.enum(["switch_mode", "switch_recipe", "split_slide"]),
     reason: z.string().min(1).max(512),
   }).strict().nullable().optional(),
-}).strict();
+}).strict() as z.ZodType<PresentationLayoutDslResponse>;
 
 export type PresentationLayoutDslRequest = z.infer<typeof presentationLayoutDslRequestSchema>;
-export type PresentationLayoutDslResponse = z.infer<typeof presentationLayoutDslResponseSchema>;
 
 function clampNumber(value: number, min: number, max: number): number {
   if (!Number.isFinite(value)) {

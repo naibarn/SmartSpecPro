@@ -269,8 +269,21 @@ vi.mock("@/lib/trpc", () => ({
         })),
       },
     },
+    llmProviders: {
+      availableModels: {
+        useQuery: vi.fn(() => ({
+          data: { models: [] },
+        })),
+      },
+    },
     library: {
       listDocuments: {
+        useQuery: vi.fn(() => ({
+          data: mockLibraryImagesData.current,
+          isLoading: false,
+        })),
+      },
+      search: {
         useQuery: vi.fn(() => ({
           data: mockLibraryImagesData.current,
           isLoading: false,

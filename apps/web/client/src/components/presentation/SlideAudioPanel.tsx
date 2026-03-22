@@ -328,17 +328,34 @@ function AudioPickerDialog({ open, onClose, onSelect, target }: AudioPickerDialo
 
   const listQuery = trpc.library.listDocuments.useQuery(
     {
-      query: debouncedQuery || undefined,
       scope: "all",
       sort: "updated_desc",
       limit: 40,
       offset: 0,
       filters: { itemType: "audio" },
     },
-    { enabled: open },
+    { enabled: open && debouncedQuery.length === 0 },
+  );
+  const searchQuery = trpc.library.search.useQuery(
+    {
+      query: debouncedQuery || undefined,
+      scope: "all",
+      limit: 40,
+      offset: 0,
+      filters: { itemType: "audio" },
+    },
+    { enabled: open && debouncedQuery.length > 0 },
   );
 
-  const results = (listQuery.data?.results ?? []) as AudioLibraryResultItemLike[];
+  const results = (
+    debouncedQuery.length > 0
+      ? (searchQuery.data?.results ?? []).map((item: any) => ({
+          ...item,
+          id: item.id ?? item.item_id,
+        }))
+      : (listQuery.data?.results ?? [])
+  ) as AudioLibraryResultItemLike[];
+  const isLoading = listQuery.isLoading || searchQuery.isLoading;
 
   function handleTogglePlay(itemId: number, url: string) {
     if (playingId === itemId) {
@@ -397,14 +414,14 @@ function AudioPickerDialog({ open, onClose, onSelect, target }: AudioPickerDialo
 
         {/* Results list */}
         <div className="overflow-y-auto flex-1 space-y-1.5 pr-0.5 min-h-0">
-          {listQuery.isLoading && (
+          {isLoading && (
             <div className="flex items-center justify-center py-10 gap-2 text-muted-foreground">
               <RefreshCw className="h-4 w-4 animate-spin" />
               <span className="text-sm">Loading...</span>
             </div>
           )}
 
-          {!listQuery.isLoading && results.length === 0 && (
+          {!isLoading && results.length === 0 && (
             <div className="flex flex-col items-center justify-center py-10 gap-2">
               <Music className="h-8 w-8 text-muted-foreground/40" />
               <p className="text-sm text-muted-foreground">
@@ -500,7 +517,7 @@ function AudioPickerDialog({ open, onClose, onSelect, target }: AudioPickerDialo
         </div>
 
         {/* Footer — result count + hint */}
-        {!listQuery.isLoading && results.length > 0 && (
+        {!isLoading && results.length > 0 && (
           <p className="text-xs text-muted-foreground shrink-0">
             {results.length} result{results.length !== 1 ? "s" : ""}
             {" · "}Click <Play className="inline h-3 w-3" /> to preview, then{" "}
