@@ -94,6 +94,8 @@ class AgentConfig(BaseModel):
     # v1.8: Runtime settings
     parallel_tool_calls: bool | None = None
     max_turns: int | None = None
+    # v1.9: Few-shot examples (list of conversation pairs)
+    examples: list[list[dict[str, str]]] | None = None
 
 
 class AgencyConfig(BaseModel):
@@ -117,6 +119,11 @@ class AgencyConfig(BaseModel):
     shared_mcp_servers: list[Any] | None = None
     # v1.8: User-provided context seed data for the run
     user_context: dict[str, Any] | None = None
+    # v1.9: Shared instructions prepended to all agents
+    shared_instructions: str | None = None
+    # v1.9: Conversation starters with optional caching
+    conversation_starters: list[str] | None = None
+    cache_conversation_starters: bool = False
 
 
 class UsageBreakdown(BaseModel):
@@ -204,7 +211,14 @@ class AgencySwarmAdapter:
         """
         model = self._create_model(config.model, user_token)
 
+        # v1.9: Prepend shared instructions from agency level
+        from app.services.agency_few_shot import prepend_shared_instructions
+
         instructions = config.instructions
+        if run_config and run_config.get("shared_instructions"):
+            instructions = prepend_shared_instructions(
+                instructions, run_config["shared_instructions"]
+            )
         if run_config and run_config.get("persona_prefix"):
             # Sanitize: strip control chars, limit length, wrap in delimiter
             persona = str(run_config["persona_prefix"]).strip()[:2000]

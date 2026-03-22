@@ -123,6 +123,7 @@ class AgencyOrchestrator:
         self.browser_session_executor = AgencyBrowserSessionExecutor()
         self._round_trip_tracker = RoundTripTracker()
         self._flow_configs: dict[tuple[str, str], FlowConfig] = {}
+        self._shared_tools_cache: list[type] | None = None  # resolved once per run
 
         # Find entry node
         entry_candidates = [n for n in nodes if n.get("is_entry_point")]
@@ -378,7 +379,11 @@ class AgencyOrchestrator:
 
             tools = []
             if self.db:
-                from app.services.agency_tools import resolve_tools_for_agent
+                from app.services.agency_tools import (
+                    resolve_tools_for_agent,
+                    resolve_shared_tools_for_agency,
+                    merge_tools_deduped,
+                )
                 tools = await resolve_tools_for_agent(
                     db=self.db,
                     agent_id=node["id"],
@@ -387,6 +392,21 @@ class AgencyOrchestrator:
                     retrieval_scope_mode=self.retrieval_scope_mode,
                     run_context=ctx.shared_context,
                 )
+                # Merge shared tools from agency level (cached per run)
+                if self._shared_tools_cache is None:
+                    agency_id = getattr(self.agency_config, "agency_id", None)
+                    if agency_id:
+                        self._shared_tools_cache = await resolve_shared_tools_for_agency(
+                            db=self.db,
+                            agency_id=agency_id,
+                            agency_whitelist=self.agency_whitelist,
+                            adapter=self.adapter,
+                            run_context=ctx.shared_context,
+                        )
+                    else:
+                        self._shared_tools_cache = []
+                if self._shared_tools_cache:
+                    tools = merge_tools_deduped(tools, self._shared_tools_cache)
 
             # ── Dynamic instruction resolution (after tools resolved) ──────
             tool_name_list = [getattr(t, "name", str(t)) for t in tools] if tools else []
@@ -398,6 +418,22 @@ class AgencyOrchestrator:
                 user_context=self.user_context,
             )
 
+            # v1.9: Prepend shared instructions from agency config
+            shared_instr = getattr(self.agency_config, "shared_instructions", None)
+            run_config = {"shared_instructions": shared_instr} if shared_instr else None
+
+            # v1.9: Inject few-shot examples into instructions as prompt context
+            examples = node.get("examples")
+            if examples:
+                from app.services.agency_few_shot import FRAMING_START, FRAMING_END
+                lines = [FRAMING_START, ""]
+                for pair in examples:
+                    for msg in pair:
+                        lines.append(f"{msg.get('role', 'user')}: {msg.get('content', '')}")
+                    lines.append("")
+                lines.append(FRAMING_END)
+                agent_instructions = "\n".join(lines) + "\n\n" + agent_instructions
+
             agent = self.adapter.create_agent(
                 config=AgentConfig(
                     name=node.get("name", "Agent"),
@@ -408,8 +444,10 @@ class AgencyOrchestrator:
                     is_entry_point=node.get("is_entry_point", False),
                     parallel_tool_calls=node.get("parallel_tool_calls"),
                     max_turns=node.get("max_turns"),
+                    examples=examples,
                 ),
                 user_token=ctx.user_token,
+                run_config=run_config,
             )
 
             # Single-agent agency for this subtask

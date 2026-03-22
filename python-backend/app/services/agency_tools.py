@@ -563,3 +563,108 @@ async def resolve_tools_for_agent(
     )
 
     return tool_classes
+
+
+async def resolve_shared_tools_for_agency(
+    db: "AsyncSession",
+    agency_id: str,
+    agency_whitelist: set[str],
+    adapter=None,
+    run_context: "AgencyRunContext | None" = None,
+) -> list[type]:
+    """Resolve shared tools assigned to an agency via agency_shared_tools.
+
+    Queries agency_shared_tools LEFT JOIN agency_tools to get tool configs.
+    Same pattern as resolve_tools_for_agent but at agency level.
+
+    Returns:
+        List of tool bridge classes (not instances).
+    """
+    query = text("""
+        SELECT
+            ast."toolId" as tool_id,
+            COALESCE(t."toolType", 'builtin') as tool_type,
+            COALESCE(t."riskLevel", 'low') as risk_level,
+            COALESCE(t."requiresApproval", false) as requires_approval,
+            t.config as base_config
+        FROM agency_shared_tools ast
+        LEFT JOIN agency_tools t ON t.id = ast."toolId"
+        WHERE ast."agencyId" = :agency_id
+    """)
+
+    result = await db.execute(query, {"agency_id": agency_id})
+    rows = result.all()
+
+    tool_classes: list[type] = []
+    _native_tool_map: dict[str, type | None] = {}
+
+    for row in rows:
+        tool_id: str = row.tool_id
+
+        base_config: dict[str, Any] = row.base_config if isinstance(row.base_config, dict) else {}
+        endpoint_url: str | None = base_config.pop("endpoint_url", None)
+        if endpoint_url is None and tool_id in _BUILTIN_ENDPOINTS:
+            endpoint_url = _INTERNAL_SERVICE_URL + _BUILTIN_ENDPOINTS[tool_id]
+
+        risk_level: str = row.risk_level or _BUILTIN_RISK_LEVELS.get(tool_id, "low")
+
+        if tool_id in _NATIVE_SWARM_TOOL_IDS:
+            if tool_id not in _native_tool_map:
+                if tool_id == "builtin-present-files" and adapter is not None:
+                    _native_tool_map[tool_id] = adapter.get_present_files_tool()
+                else:
+                    _native_tool_map[tool_id] = None
+            native_cls = _native_tool_map.get(tool_id)
+            if native_cls is not None:
+                tool_classes.append(native_cls)
+                continue
+
+        config = ToolConfig(
+            tool_id=tool_id,
+            tool_type=row.tool_type or "builtin",
+            risk_level=risk_level,
+            requires_approval=bool(row.requires_approval),
+            endpoint_url=endpoint_url,
+            config=base_config,
+        )
+        tool_cls = create_tool_bridge(config, agency_whitelist, adapter=adapter, run_context=run_context)
+        tool_classes.append(tool_cls)
+
+    logger.info(
+        "agency_shared_tools_resolved",
+        agency_id=agency_id,
+        tool_count=len(tool_classes),
+    )
+
+    return tool_classes
+
+
+def merge_tools_deduped(
+    agent_tools: list[type],
+    shared_tools: list[type],
+) -> list[type]:
+    """Merge shared tools with agent-specific tools, deduplicating by tool_id.
+
+    Agent-specific tools take priority over shared tools.
+
+    Returns:
+        List of unique tool classes.
+    """
+    seen_ids: set[str] = set()
+    merged: list[type] = []
+
+    # Agent tools first (higher priority)
+    for tool_cls in agent_tools:
+        tool_id = getattr(tool_cls, "_tool_id", None) or getattr(tool_cls, "__name__", "")
+        if tool_id not in seen_ids:
+            seen_ids.add(tool_id)
+            merged.append(tool_cls)
+
+    # Then shared tools (lower priority)
+    for tool_cls in shared_tools:
+        tool_id = getattr(tool_cls, "_tool_id", None) or getattr(tool_cls, "__name__", "")
+        if tool_id not in seen_ids:
+            seen_ids.add(tool_id)
+            merged.append(tool_cls)
+
+    return merged

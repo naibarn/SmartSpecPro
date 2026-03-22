@@ -300,6 +300,10 @@ function AgencyCanvas() {
             tools: (agencyData.agentToolAssignments ?? [])
               .filter((t: any) => t.agentId === agent.id)
               .map((t: any) => ({ toolId: t.toolId, toolName: t.toolName ?? t.toolId, toolConfig: t.toolConfig ?? {} })),
+            examples: agent.examples ?? undefined,
+            outputSchema: agent.outputSchema ?? undefined,
+            parallelToolCalls: agent.parallelToolCalls,
+            maxTurns: agent.maxTurns,
           },
         };
       },
@@ -588,6 +592,10 @@ function AgencyCanvas() {
         },
         {} as Record<string, Record<string, unknown>>,
       ),
+      examples: n.data.examples?.length ? n.data.examples : undefined,
+      outputSchema: n.data.outputSchema ?? undefined,
+      parallelToolCalls: n.data.parallelToolCalls,
+      maxTurns: n.data.maxTurns,
     }));
 
     const communicationFlows = edges.map((e) => ({

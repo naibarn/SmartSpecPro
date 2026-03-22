@@ -24,4 +24,6 @@ export interface AgencyNodeData {
   nodeConfig?: Record<string, unknown>;
   guardrailIds?: string[];
   validationErrors?: string[];
+  examples?: Array<Array<{ role: "user" | "assistant"; content: string }>>;
+  outputSchema?: Record<string, unknown> | null;
 }

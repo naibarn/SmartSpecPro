@@ -23,6 +23,7 @@ import {
   agencyPermissions,
   agencyGuardrails,
   agencyAgentGuardrails,
+  agencySharedTools,
   userGroups,
   users,
   systemSettings,
@@ -50,6 +51,8 @@ import {
 } from "../services/agencyPreviewLifecycleService";
 import { buildAgencyPreview } from "../services/agencyPreviewService";
 import crypto from "crypto";
+import { sanitizeExamples } from "../services/fewShotSanitizer";
+import { invalidateStarterCache } from "../services/conversationStarterCache";
 import { generateAgencySvg } from "../lib/agencySvgGenerator";
 import { createNotification } from "../services/notificationService";
 
@@ -701,7 +704,20 @@ export const agencyRouter = router({
           .where(inArray(agencyAgentTools.agentId, agentIds))
         : [];
 
-      return { ...agency, canEdit, agents, communicationFlows: flows, agentToolAssignments: toolAssignments };
+      // Fetch shared tools
+      const sharedTools = await db
+        .select()
+        .from(agencySharedTools)
+        .where(eq(agencySharedTools.agencyId, input.id));
+
+      return {
+        ...agency,
+        canEdit,
+        agents,
+        communicationFlows: flows,
+        agentToolAssignments: toolAssignments,
+        sharedToolAssignments: sharedTools,
+      };
     }),
 
   createFromTemplate: agencyCreateProcedure
@@ -1066,6 +1082,14 @@ export const agencyRouter = router({
             toolConfigs: z.record(z.string(), z.record(z.unknown())).optional(),
             nodeConfig: z.record(z.unknown()).optional(),
             outputSchema: z.record(z.unknown()).nullable().optional(),
+            examples: z.array(
+              z.array(
+                z.object({
+                  role: z.enum(["user", "assistant"]),
+                  content: z.string().max(2000),
+                }).strict(),
+              ).min(1).max(2),
+            ).max(10).optional(),
           }).superRefine((data, ctx) => {
             if (["agent", "supervisor"].includes(data.nodeType)) {
               if (!data.model) ctx.addIssue({ code: "custom", path: ["model"], message: "model is required for agent/supervisor" });
@@ -1110,6 +1134,10 @@ export const agencyRouter = router({
           }),
         ).min(1).max(20),
         userContext: z.record(z.string(), z.unknown()).optional(),
+        sharedInstructions: z.string().max(50000).optional(),
+        conversationStarters: z.array(z.string().min(1).max(500)).max(10).optional(),
+        cacheConversationStarters: z.boolean().optional(),
+        sharedToolIds: z.array(z.string().min(1).max(100)).max(50).optional(),
         communicationFlows: z
           .array(
             z.object({
@@ -1194,8 +1222,29 @@ export const agencyRouter = router({
         if (input.defaultModel !== undefined) setValues.defaultModel = input.defaultModel;
         if (input.userContext !== undefined) setValues.userContext = input.userContext;
         if (input.topology !== undefined) setValues.topology = input.topology;
+        if (input.sharedInstructions !== undefined) setValues.sharedInstructions = input.sharedInstructions;
+        if (input.conversationStarters !== undefined) setValues.conversationStarters = input.conversationStarters;
+        if (input.cacheConversationStarters !== undefined) setValues.cacheConversationStarters = input.cacheConversationStarters;
         if (Object.keys(setValues).length > 0) {
           await tx.update(agencies).set(setValues).where(eq(agencies.id, input.id));
+        }
+
+        // Handle shared tools (delete-insert pattern)
+        if (input.sharedToolIds !== undefined) {
+          await tx.delete(agencySharedTools).where(eq(agencySharedTools.agencyId, input.id));
+          const uniqueToolIds = [...new Set(input.sharedToolIds)];
+          for (const toolId of uniqueToolIds) {
+            await tx.insert(agencySharedTools).values({
+              id: crypto.randomUUID(),
+              agencyId: input.id,
+              toolId,
+            });
+          }
+        }
+
+        // Invalidate conversation starter cache if relevant fields changed
+        if (input.sharedInstructions !== undefined || input.sharedToolIds !== undefined || input.systemPrompt !== undefined) {
+          invalidateStarterCache(input.id).catch(() => {});
         }
 
         // Delete existing agents, tools, and flows
@@ -1233,6 +1282,10 @@ export const agencyRouter = router({
             isOptional: agent.isOptional,
             position: agent.position ?? null,
             outputSchema: (agent.outputSchema ?? null) as any,
+            examples: agent.examples ? (() => {
+              try { return sanitizeExamples(agent.examples!) as any; }
+              catch (e: any) { throw new TRPCError({ code: "BAD_REQUEST", message: e.message ?? "Invalid examples" }); }
+            })() : null,
           });
 
           if (agent.toolIds?.length) {

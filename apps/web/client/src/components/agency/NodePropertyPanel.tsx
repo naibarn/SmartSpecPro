@@ -45,6 +45,7 @@ import {
 import { ToolPicker } from "./ToolPicker";
 import { ModelPicker } from "./ModelPicker";
 import { GuardrailsPanel } from "./guardrails/GuardrailsPanel";
+import { FewShotExamplesEditor, type ExamplePair } from "./FewShotExamplesEditor";
 import type { AgencyNodeData } from "./nodes/types";
 import { BROWSER_SESSION_COPY } from "@shared/browserSession";
 import {
@@ -1012,6 +1013,13 @@ function AgentSupervisorForm({
           </div>
         )}
       </div>
+
+      {/* Few-Shot Examples */}
+      <Separator className="my-3" />
+      <FewShotExamplesEditor
+        examples={node.examples ?? []}
+        onChange={(examples) => onChange({ examples })}
+      />
 
       <ToolPicker
         open={toolPickerOpen}
