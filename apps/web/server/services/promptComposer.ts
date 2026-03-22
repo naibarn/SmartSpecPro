@@ -42,12 +42,102 @@ export interface ComposePromptResult {
   estimatedTokens: number;
 }
 
-// ─── Constants ──────────────────────────────────────────────────────────────
+// ─── Budget Constants ───────────────────────────────────────────────────────
+//
+// Adaptive allocation: budgets shift based on turn context.
+// Total default ≈ 16,000 tokens (fits comfortably in 32K–128K context models).
+//
+// Profile       | Persona | Scoped Mem | Entity Mem | History | Total
+// ──────────────|---------|------------|------------|---------|──────
+// balanced      |   1,200 |      3,000 |      1,500 |   5,000 | ~16K
+// follow_up     |     800 |      2,000 |      1,000 |   6,500 | ~16K
+// personalized  |   1,200 |      4,000 |      2,000 |   3,500 | ~16K
+// retrieval     |     800 |      5,000 |      1,000 |   3,500 | ~16K
 
-const DEFAULT_TOKEN_BUDGET = 8000;
-const PERSONA_BUDGET = 2000;
-const MEMORY_BUDGET = 1500;
-const HISTORY_BUDGET_FRACTION = 0.6; // 60% of remaining for history
+const DEFAULT_TOKEN_BUDGET = 16000;
+
+/** Minimum floor for entity memory — always get at least this much */
+const ENTITY_MEMORY_FLOOR = 500;
+
+/** Number of most-recent messages always included as raw (not summarized) */
+const RAW_TAIL_TURNS = 6;
+
+type BudgetProfile = "balanced" | "follow_up" | "personalized" | "retrieval";
+
+interface BudgetAllocation {
+  persona: number;
+  scopedMemory: number;
+  entityMemory: number;
+  history: number;
+}
+
+const BUDGET_PROFILES: Record<BudgetProfile, BudgetAllocation> = {
+  balanced:     { persona: 1200, scopedMemory: 3000, entityMemory: 1500, history: 5000 },
+  follow_up:    { persona:  800, scopedMemory: 2000, entityMemory: 1000, history: 6500 },
+  personalized: { persona: 1200, scopedMemory: 4000, entityMemory: 2000, history: 3500 },
+  retrieval:    { persona:  800, scopedMemory: 5000, entityMemory: 1000, history: 3500 },
+};
+
+/**
+ * Detect the budget profile from objective + conversation state.
+ *
+ * Heuristics (evaluated in order):
+ *  1. follow_up   — short objective or conversational continuation signals
+ *  2. retrieval   — explicit retrieval / search / reference keywords
+ *  3. personalized — user-preference / style / memory keywords
+ *  4. balanced    — default
+ */
+export function detectBudgetProfile(
+  objective: string,
+  historyLength: number,
+): BudgetProfile {
+  const lower = objective.toLowerCase();
+  const len = objective.length;
+
+  // Follow-up: short message or continuation phrasing
+  // Thai words use bare match (no \b); English uses \b
+  const followUpRe = /(ต่อจาก|เพิ่มเติม|อธิบาย|ขยาย|\bcontinue\b|\bfollow[- ]?up\b|\bnext\b|\bexpand\b|\belaborate\b)/i;
+  if ((len < 60 && historyLength >= 3) || followUpRe.test(lower)) {
+    return "follow_up";
+  }
+
+  // Retrieval-heavy: document/data lookup, research, reference
+  const retrievalRe = /(ค้นหา|หาข้อมูล|ดึงข้อมูล|วิเคราะห์ข้อมูล|สรุปเอกสาร|\bsearch\b|\blookup\b|\breference\b|\bretrieve\b|\bresearch\b|\banalyze data\b|\bsummarize doc)/i;
+  if (retrievalRe.test(lower)) {
+    return "retrieval";
+  }
+
+  // Personalized: user preferences, style adaptation, project continuity
+  // Thai words don't have \b boundaries — use lookahead/lookbehind-free matching
+  const personalizedRe = /(ตามสไตล์|ตามแบบ|เหมือนเดิม|ปรับให้เข้ากับ|ตามที่เคย|จำได้ไหม|\bmy style\b|\blike before\b|\bpreference\b|\bcustomize\b|\bremember\b)/i;
+  if (personalizedRe.test(lower)) {
+    return "personalized";
+  }
+
+  return "balanced";
+}
+
+/**
+ * Scale a profile's allocation to fit the actual total budget.
+ * Preserves proportions while ensuring entity memory floor.
+ */
+export function scaleBudget(
+  profile: BudgetProfile,
+  totalBudget: number,
+): BudgetAllocation {
+  const base = BUDGET_PROFILES[profile];
+  const baseTotal = base.persona + base.scopedMemory + base.entityMemory + base.history;
+  const ratio = totalBudget / baseTotal;
+
+  const scaled: BudgetAllocation = {
+    persona: Math.round(base.persona * ratio),
+    scopedMemory: Math.round(base.scopedMemory * ratio),
+    entityMemory: Math.max(ENTITY_MEMORY_FLOOR, Math.round(base.entityMemory * ratio)),
+    history: Math.round(base.history * ratio),
+  };
+
+  return scaled;
+}
 /**
  * Token estimation constants.
  *
@@ -143,6 +233,81 @@ export function compressHistory(
   );
 }
 
+/**
+ * Split history into a condensed summary of older turns + raw recent turns.
+ *
+ * Strategy: keep the last `rawTailCount` messages as-is (full content),
+ * and summarize everything before them into a single compact block.
+ * This gives the LLM full context for recent conversation while
+ * preserving awareness of older discussion.
+ */
+export function buildAdaptiveHistory(
+  messages: TeamRoomMessage[],
+  historyBudget: number,
+  assistantNameMap: Map<string, string>,
+  rawTailCount: number = RAW_TAIL_TURNS,
+): PromptMessage[] {
+  if (messages.length === 0) return [];
+
+  const result: PromptMessage[] = [];
+  let usedTokens = 0;
+
+  // Split: older messages → summarize, recent messages → raw
+  const splitIdx = Math.max(0, messages.length - rawTailCount);
+  const olderMessages = messages.slice(0, splitIdx);
+  const recentMessages = messages.slice(splitIdx);
+
+  // 1. Summarize older messages into a compact block
+  if (olderMessages.length > 0) {
+    const summaryBudget = Math.floor(historyBudget * 0.3); // 30% for summary
+    const summaryLines: string[] = [];
+
+    for (const msg of olderMessages) {
+      const speaker = msg.senderAssistantId
+        ? assistantNameMap.get(msg.senderAssistantId) ?? "Agent"
+        : "User";
+      // Extract first meaningful sentence (up to 120 chars)
+      const firstLine = sanitizeHistoryContent(msg.content)
+        .split(/[.\n]/)[0]
+        ?.substring(0, 120)
+        .trim();
+      if (firstLine) {
+        summaryLines.push(`${speaker}: ${firstLine}`);
+      }
+    }
+
+    if (summaryLines.length > 0) {
+      const summaryContent = truncateToTokenBudget(
+        summaryLines.join("\n"),
+        summaryBudget,
+      );
+      const summaryTokens = estimateTokens(summaryContent);
+      result.push({
+        role: "system",
+        content: `[Earlier conversation — ${olderMessages.length} turns]\n${summaryContent}`,
+      });
+      usedTokens += summaryTokens;
+    }
+  }
+
+  // 2. Include recent messages as raw (full content)
+  const rawBudget = historyBudget - usedTokens;
+  const compressed = compressHistory(recentMessages, rawBudget);
+
+  for (const msg of compressed) {
+    const role: "user" | "assistant" = msg.senderType === "user" ? "user" : "assistant";
+    const speakerName = msg.senderAssistantId
+      ? assistantNameMap.get(msg.senderAssistantId) ?? msg.senderAssistantId
+      : "";
+    const prefix = msg.senderType === "assistant" && speakerName ? `[${speakerName}] ` : "";
+    const sanitized = sanitizeHistoryContent(msg.content);
+    result.push({ role, content: `${prefix}${sanitized}` });
+    usedTokens += estimateTokens(sanitized);
+  }
+
+  return result;
+}
+
 // ─── Main Composer ──────────────────────────────────────────────────────────
 
 export async function composePrompt(
@@ -163,6 +328,24 @@ export async function composePrompt(
     .limit(1);
   if (!room) throw new Error("Room not found or tenant mismatch");
 
+  // Pre-fetch history count for adaptive budget detection
+  const historyWhere = input.runId
+    ? and(eq(teamRoomMessages.roomId, input.roomId), eq(teamRoomMessages.runId, input.runId))
+    : eq(teamRoomMessages.roomId, input.roomId);
+
+  const recentMessages = await db
+    .select()
+    .from(teamRoomMessages)
+    .where(historyWhere)
+    .orderBy(desc(teamRoomMessages.createdAt))
+    .limit(100);
+
+  const historyMessages = recentMessages.reverse();
+
+  // Adaptive budget: detect profile from objective + conversation state
+  const profile_type = detectBudgetProfile(input.objective, historyMessages.length);
+  const budget = scaleBudget(profile_type, totalBudget);
+
   // 1. Load assistant profile + persona (scoped to tenant)
   const [profile] = await db
     .select()
@@ -179,7 +362,6 @@ export async function composePrompt(
       .limit(1);
 
     if (persona?.systemPromptPrefix) {
-      // Use buildPersonaPromptSegments for full persona resolution
       const segments: PersonaPromptSegments = buildPersonaPromptSegments(persona);
 
       const identityLines = [
@@ -190,7 +372,6 @@ export async function composePrompt(
           : "",
       ].filter(Boolean).join("\n");
 
-      // segments.restrictionsBulletPoints already includes "Restrictions:\n" prefix
       const parts = [
         identityLines,
         segments.prefix,
@@ -202,7 +383,7 @@ export async function composePrompt(
     }
   }
 
-  personaSection = truncateToTokenBudget(personaSection, PERSONA_BUDGET);
+  personaSection = truncateToTokenBudget(personaSection, budget.persona);
   if (personaSection) {
     messages.push({ role: "system", content: personaSection });
     usedTokens += estimateTokens(personaSection);
@@ -224,9 +405,8 @@ export async function composePrompt(
     usedTokens += estimateTokens(teamInfo);
   }
 
-  // 3. Retrieve scoped memories
+  // 3. Retrieve scoped memories (dedicated budget — not shared with entity)
   let memoryResults: MemorySearchResult[] = [];
-  let scopedMemoryTokensUsed = 0;
   try {
     memoryResults = await retrieveForPrompt(
       input.tenantId,
@@ -235,10 +415,9 @@ export async function composePrompt(
       input.roomId,
       input.teamId,
       input.objective,
-      MEMORY_BUDGET,
+      budget.scopedMemory,
     );
   } catch (err) {
-    // Memory service may not be fully available yet
     console.warn("Memory retrieval failed:", err);
   }
 
@@ -247,15 +426,13 @@ export async function composePrompt(
       .map((r) => `- [${r.memory.memoryKind}] ${r.memory.title}: ${r.memory.content}`)
       .join("\n");
 
-    const truncatedMemory = truncateToTokenBudget(memoryContent, MEMORY_BUDGET);
+    const truncatedMemory = truncateToTokenBudget(memoryContent, budget.scopedMemory);
     messages.push({ role: "system", content: `Relevant memories:\n${truncatedMemory}` });
-    scopedMemoryTokensUsed = estimateTokens(truncatedMemory);
-    usedTokens += scopedMemoryTokensUsed;
+    usedTokens += estimateTokens(truncatedMemory);
   }
 
-  // 3b. Entity memory injection
-  const entityBudget = MEMORY_BUDGET - scopedMemoryTokensUsed;
-  if (input.initiatedByUserId && profile && entityBudget > 50) {
+  // 3b. Entity memory injection (dedicated budget with floor guarantee)
+  if (input.initiatedByUserId && profile && budget.entityMemory >= ENTITY_MEMORY_FLOOR) {
     try {
       const entityMems = await getEntityMemories(
         input.initiatedByUserId,
@@ -266,7 +443,7 @@ export async function composePrompt(
         const entityContent = entityMems
           .map((em) => `- [${em.entityType}] ${em.entityName}: ${em.facts.join("; ")}`)
           .join("\n");
-        const truncatedEntity = truncateToTokenBudget(entityContent, entityBudget);
+        const truncatedEntity = truncateToTokenBudget(entityContent, budget.entityMemory);
         messages.push({ role: "system", content: `Known facts about the user:\n${truncatedEntity}` });
         usedTokens += estimateTokens(truncatedEntity);
       }
@@ -275,15 +452,12 @@ export async function composePrompt(
     }
   }
 
-  // 4. Objective (user role with delimiters — placed after all system messages)
+  // 4. Objective (user role with delimiters)
   const objectiveSection = `[OBJECTIVE]\n${input.objective}\n[/OBJECTIVE]`;
   messages.push({ role: "user", content: objectiveSection });
   usedTokens += estimateTokens(objectiveSection);
 
-  // 5. Conversation history (scoped to current run when available)
-  const historyBudget = Math.floor((totalBudget - usedTokens) * HISTORY_BUDGET_FRACTION);
-
-  // Build assistant ID → display name lookup from participants
+  // 5. Conversation history — adaptive: rolling summary + raw tail
   const assistantNameMap = new Map<string, string>();
   for (const p of activeAssistants) {
     if (p.participantAssistantId && p.participantLabel) {
@@ -291,28 +465,17 @@ export async function composePrompt(
     }
   }
 
-  const historyWhere = input.runId
-    ? and(eq(teamRoomMessages.roomId, input.roomId), eq(teamRoomMessages.runId, input.runId))
-    : eq(teamRoomMessages.roomId, input.roomId);
+  // Use remaining budget or profile history allocation — whichever is larger
+  const historyBudget = Math.max(budget.history, totalBudget - usedTokens);
+  const historyPrompts = buildAdaptiveHistory(
+    historyMessages,
+    historyBudget,
+    assistantNameMap,
+  );
 
-  const recentMessages = await db
-    .select()
-    .from(teamRoomMessages)
-    .where(historyWhere)
-    .orderBy(desc(teamRoomMessages.createdAt))
-    .limit(100);
-
-  const compressed = compressHistory(recentMessages.reverse(), historyBudget);
-
-  for (const msg of compressed) {
-    const role: "user" | "assistant" = msg.senderType === "user" ? "user" : "assistant";
-    const speakerName = msg.senderAssistantId
-      ? assistantNameMap.get(msg.senderAssistantId) ?? msg.senderAssistantId
-      : "";
-    const prefix = msg.senderType === "assistant" && speakerName ? `[${speakerName}] ` : "";
-    const sanitized = sanitizeHistoryContent(msg.content);
-    messages.push({ role, content: `${prefix}${sanitized}` });
-    usedTokens += estimateTokens(sanitized);
+  for (const hp of historyPrompts) {
+    messages.push(hp);
+    usedTokens += estimateTokens(hp.content);
   }
 
   return { messages, estimatedTokens: usedTokens };

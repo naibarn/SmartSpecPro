@@ -39,6 +39,7 @@ export interface RunSummary {
 
 export interface GenerateSummaryInput {
   runId: string;
+  tenantId: string;
   method?: SummaryMethod;
 }
 
@@ -95,7 +96,7 @@ export async function generateSummary(
 
   const method = input.method ?? "extractive";
 
-  // Load run
+  // Load run with tenant isolation
   const [run] = await db
     .select()
     .from(teamRuns)
@@ -103,6 +104,15 @@ export async function generateSummary(
     .limit(1);
 
   if (!run) throw new Error(`Run ${input.runId} not found`);
+
+  // Verify tenant via room
+  const { teamRooms } = await import("../../drizzle/schema");
+  const [room] = await db
+    .select({ id: teamRooms.id })
+    .from(teamRooms)
+    .where(and(eq(teamRooms.id, run.roomId), eq(teamRooms.tenantId, input.tenantId)))
+    .limit(1);
+  if (!room) throw new Error("Access denied: tenant mismatch");
 
   // Load participants
   const participants = await db
@@ -112,7 +122,7 @@ export async function generateSummary(
       roleTitle: assistantProfiles.roleTitle,
     })
     .from(assistantProfiles)
-    .where(eq(assistantProfiles.teamId, run.teamId));
+    .where(and(eq(assistantProfiles.teamId, run.teamId), eq(assistantProfiles.memberKind, "assistant")));
 
   // Load run messages
   const messages = await db

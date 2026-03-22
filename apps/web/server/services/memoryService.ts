@@ -9,18 +9,30 @@
 import { eq, desc, asc, and, or, sql, lt, gte, inArray, isNull } from "drizzle-orm";
 import { getDb } from "../db";
 import {
+  assistantProfiles,
+  agencyRunArtifacts,
   conversations,
+  conversationArtifacts,
   messages,
   conversationSummaries,
   entityMemories,
+  libraryChunks,
+  libraryItems,
+  libraryLinks,
   modelProviderMap,
+  teamRoomMessages,
+  teamWorkItems,
+  users,
+  tenants,
   Message,
   ConversationSummary,
   EntityMemory,
+  type PersonaTemplate,
 } from "../../drizzle/schema";
 import { sanitizeEntityForStorage, filterEntityFacts } from "./piiFilter";
 import { resolveEnabledLlmModelId } from "./enabledLlmModels";
 import { buildModelProviderMapLookupCondition } from "./modelLookup";
+import { auditLogger } from "./auditLogger";
 
 // ==================== Multimodal Types ====================
 
@@ -50,6 +62,634 @@ const DEFAULT_CONTEXT_LENGTH = 8000; // Default context length in tokens if not 
 const CHARS_PER_TOKEN = 4; // Approximate chars per token
 const MAX_SUMMARIES_IN_CONTEXT = 5; // Maximum summaries to include in context
 const MAX_ENTITIES_IN_CONTEXT = 10; // Maximum entity memories to include
+const OPEN_WORK_ITEM_STATUSES = [
+  "planned",
+  "in_progress",
+  "in_review",
+  "needs_revision",
+  "awaiting_approval",
+  "blocked",
+] as const;
+
+type PersonaWorkIntent =
+  | "approval"
+  | "revision"
+  | "cancel"
+  | "artifact"
+  | "workflow"
+  | "status";
+
+function shouldIncludePersonaWorkContext(message?: string | null): boolean {
+  const normalized = message?.toLocaleLowerCase().trim();
+  if (!normalized) return false;
+
+  return [
+    "สถานะ",
+    "งาน",
+    "ค้าง",
+    "อัปเดต",
+    "อัพเดต",
+    "ข่าว",
+    "เตรียม",
+    "พร้อม",
+    "โพสต์",
+    "โพส",
+    "workflow",
+    "board",
+    "บอร์ด",
+    "draft",
+    "artifact",
+    "approve",
+    "approval",
+    "review",
+    "reject",
+    "cancel",
+    "อนุมัติ",
+    "อนุมัติไหม",
+    "ปฏิเสธ",
+    "ยกเลิก",
+    "ภาพ",
+    "รูป",
+    "ข้อความ",
+    "คอนเทนต์",
+    "คอนเทนท์",
+    "status",
+    "update",
+    "pending",
+    "backlog",
+    "ready",
+    "post",
+    "news",
+    "prepared",
+  ].some((keyword) => normalized.includes(keyword));
+}
+
+function detectPersonaWorkIntent(message?: string | null): PersonaWorkIntent | null {
+  const normalized = message?.toLocaleLowerCase().trim();
+  if (!normalized) return null;
+
+  if (
+    ["workflow", "board", "บอร์ด"].some((keyword) => normalized.includes(keyword))
+  ) {
+    return "workflow";
+  }
+
+  if (
+    ["approve", "approval", "อนุมัติ", "อนุมัติไหม"].some((keyword) => normalized.includes(keyword))
+  ) {
+    return "approval";
+  }
+
+  if (
+    ["reject", "revise", "revision", "reply", "review", "ส่งกลับ", "แก้", "ปฏิเสธ"].some((keyword) =>
+      normalized.includes(keyword),
+    )
+  ) {
+    return "revision";
+  }
+
+  if (
+    ["cancel", "ยกเลิก"].some((keyword) => normalized.includes(keyword))
+  ) {
+    return "cancel";
+  }
+
+  if (
+    ["draft", "artifact", "ภาพ", "รูป", "ข้อความ", "คอนเทนต์", "คอนเทนท์", "prepared"].some((keyword) =>
+      normalized.includes(keyword),
+    )
+  ) {
+    return "artifact";
+  }
+
+  if (
+    ["status", "update", "pending", "backlog", "ready", "สถานะ", "งาน", "ค้าง", "อัปเดต", "อัพเดต", "ข่าว", "พร้อม"].some((keyword) =>
+      normalized.includes(keyword),
+    )
+  ) {
+    return "status";
+  }
+
+  return null;
+}
+
+function buildPersonaWorkResponseDirective(message?: string | null): string | null {
+  const intent = detectPersonaWorkIntent(message);
+  if (!intent) return null;
+
+  if (intent === "approval") {
+    return [
+      "Response directive for this turn:",
+      "- Keep the answer short and action-first.",
+      "- Start with the current work-item status in one sentence.",
+      "- Say clearly whether the item is awaiting approval or not.",
+      "- Include the most relevant Markdown action link exactly as written in the work context.",
+      "- Do not imply that approval happened inside chat.",
+    ].join("\n");
+  }
+
+  if (intent === "revision") {
+    return [
+      "Response directive for this turn:",
+      "- Keep the answer short and action-first.",
+      "- Start with what needs revision or review right now.",
+      "- Mention the latest feedback or latest update if available.",
+      "- Include the most relevant Markdown action link exactly as written in the work context.",
+      "- Do not imply that reject, revise, or send-back actions already happened inside chat.",
+    ].join("\n");
+  }
+
+  if (intent === "cancel") {
+    return [
+      "Response directive for this turn:",
+      "- Keep the answer short and action-first.",
+      "- State whether a cancel action is directly available from the known workflow context.",
+      "- If no direct cancel action is available, say that clearly and send the user to Team Room using the most relevant Markdown action link.",
+      "- Do not claim cancellation already happened inside chat.",
+    ].join("\n");
+  }
+
+  if (intent === "artifact") {
+    return [
+      "Response directive for this turn:",
+      "- Answer read-only and concise.",
+      "- Lead with what is already prepared: draft, artifact, image, text, or latest content.",
+      "- Quote the most relevant artifact details from the work context before giving navigation help.",
+      "- If further action is needed, include the most relevant Markdown action link exactly as written in the work context.",
+    ].join("\n");
+  }
+
+  if (intent === "workflow") {
+    return [
+      "Response directive for this turn:",
+      "- Keep the answer short and navigation-first.",
+      "- Explain in one sentence that the workflow board is inside the selected room on the Teams page.",
+      "- Include the Markdown workflow link exactly as written in the work context.",
+      "- If useful, mention that the workflow board shows open items, review state, approval state, and lets the user jump back into the related thread.",
+    ].join("\n");
+  }
+
+  return [
+    "Response directive for this turn:",
+    "- Keep the answer concise and operational.",
+    "- Lead with the most relevant current status or backlog update for this persona.",
+    "- If a next step or human action is needed, include the most relevant Markdown action link exactly as written in the work context.",
+  ].join("\n");
+}
+
+function toStoredPersonaId(persona: PersonaTemplate | null): string | null {
+  if (!persona) return null;
+  if (persona.id === "00000000-0000-0000-0000-000000000001") {
+    return null;
+  }
+  return persona.id;
+}
+
+function summarizeArtifactRefs(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .slice(0, 3)
+    .map((entry) => {
+      if (!entry || typeof entry !== "object") return null;
+      const ref = entry as Record<string, unknown>;
+      const label =
+        typeof ref.label === "string" && ref.label.trim().length > 0
+          ? ref.label.trim()
+          : typeof ref.kind === "string" && ref.kind.trim().length > 0
+            ? ref.kind.trim()
+            : typeof ref.artifactId === "string" && ref.artifactId.trim().length > 0
+              ? ref.artifactId.trim()
+              : null;
+      if (!label) return null;
+      const status =
+        typeof ref.status === "string" && ref.status.trim().length > 0
+          ? ref.status.trim()
+          : null;
+      return status ? `${label} (${status})` : label;
+    })
+    .filter((entry): entry is string => !!entry);
+}
+
+interface PersonaArtifactRef {
+  key: string;
+  artifactId: string | null;
+  label: string | null;
+  kind: string | null;
+  status: string | null;
+  url: string | null;
+}
+
+interface PersonaArtifactLookup {
+  agencyById: Map<string, {
+    id: string;
+    artifactType: string;
+    intent: string;
+    summary: string | null;
+    payloadJson: Record<string, unknown> | null;
+  }>;
+  conversationById: Map<string, {
+    id: string;
+    artifactType: string;
+    title: string | null;
+    content: string;
+    language: string | null;
+  }>;
+  directLibraryById: Map<string, {
+    id: number;
+    title: string;
+    description: string | null;
+    status: string;
+    sourceUrl: string | null;
+    metadata: Record<string, unknown> | null;
+  }>;
+  linkedLibraryByAgencyArtifactId: Map<string, {
+    id: number;
+    title: string;
+    description: string | null;
+    status: string;
+    sourceUrl: string | null;
+    metadata: Record<string, unknown> | null;
+  }>;
+  libraryMarkdownByItemId: Map<number, string>;
+}
+
+function sanitizeArtifactSnippet(value: string, maxLength = 220): string {
+  const compact = sanitizeForPrompt(
+    value
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim(),
+  );
+  if (compact.length <= maxLength) return compact;
+  return `${compact.slice(0, maxLength - 3).trimEnd()}...`;
+}
+
+function summarizeStructuredArtifactPayload(payload: Record<string, unknown> | null): string | null {
+  if (!payload) return null;
+
+  if (typeof payload.content === "string" && payload.content.trim().length > 0) {
+    return sanitizeArtifactSnippet(payload.content);
+  }
+
+  if (typeof payload.executive_summary === "string" && payload.executive_summary.trim().length > 0) {
+    return sanitizeArtifactSnippet(payload.executive_summary);
+  }
+
+  if (typeof payload.prompt === "string" && payload.prompt.trim().length > 0) {
+    return `Prompt: ${sanitizeArtifactSnippet(payload.prompt)}`;
+  }
+
+  if (Array.isArray(payload.slides)) {
+    const firstSlide = payload.slides.find(
+      (slide): slide is Record<string, unknown> => !!slide && typeof slide === "object",
+    );
+    const firstSlideTitle =
+      firstSlide && typeof firstSlide.title === "string" && firstSlide.title.trim().length > 0
+        ? firstSlide.title.trim()
+        : null;
+    return [
+      `Deck with ${payload.slides.length} slide${payload.slides.length === 1 ? "" : "s"}`,
+      firstSlideTitle ? `first slide: ${firstSlideTitle}` : null,
+    ].filter((entry): entry is string => !!entry).join("; ");
+  }
+
+  if (Array.isArray(payload.sections)) {
+    const headings = payload.sections
+      .slice(0, 3)
+      .map((section) => {
+        if (!section || typeof section !== "object") return null;
+        const record = section as Record<string, unknown>;
+        return typeof record.heading === "string" && record.heading.trim().length > 0
+          ? record.heading.trim()
+          : null;
+      })
+      .filter((heading): heading is string => !!heading);
+    return headings.length > 0
+      ? `Sections: ${headings.join(", ")}`
+      : `Structured artifact with ${payload.sections.length} section${payload.sections.length === 1 ? "" : "s"}`;
+  }
+
+  if (Array.isArray(payload.scenes)) {
+    const firstScene = payload.scenes.find(
+      (scene): scene is Record<string, unknown> => !!scene && typeof scene === "object",
+    );
+    const description =
+      firstScene && typeof firstScene.description === "string" && firstScene.description.trim().length > 0
+        ? sanitizeArtifactSnippet(firstScene.description)
+        : null;
+    return [
+      `Storyboard with ${payload.scenes.length} scene${payload.scenes.length === 1 ? "" : "s"}`,
+      description,
+    ].filter((entry): entry is string => !!entry).join("; ");
+  }
+
+  if (Array.isArray(payload.options)) {
+    return `Comparison with ${payload.options.length} option${payload.options.length === 1 ? "" : "s"}`;
+  }
+
+  return null;
+}
+
+function buildArtifactRefKey(ref: PersonaArtifactRef): string {
+  return [
+    ref.artifactId ?? "",
+    ref.label ?? "",
+    ref.kind ?? "",
+    ref.status ?? "",
+    ref.url ?? "",
+  ].join("|");
+}
+
+function normalizePersonaArtifactRefs(value: unknown): PersonaArtifactRef[] {
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .map((entry) => {
+      if (!entry || typeof entry !== "object") return null;
+      const ref = entry as Record<string, unknown>;
+      const normalized: PersonaArtifactRef = {
+        key: "",
+        artifactId:
+          typeof ref.artifactId === "string" && ref.artifactId.trim().length > 0
+            ? ref.artifactId.trim()
+            : null,
+        label:
+          typeof ref.label === "string" && ref.label.trim().length > 0
+            ? ref.label.trim()
+            : null,
+        kind:
+          typeof ref.kind === "string" && ref.kind.trim().length > 0
+            ? ref.kind.trim()
+            : null,
+        status:
+          typeof ref.status === "string" && ref.status.trim().length > 0
+            ? ref.status.trim()
+            : null,
+        url:
+          typeof ref.url === "string" && ref.url.trim().length > 0
+            ? ref.url.trim()
+            : null,
+      };
+
+      if (!normalized.artifactId && !normalized.label && !normalized.kind && !normalized.url) {
+        return null;
+      }
+
+      normalized.key = buildArtifactRefKey(normalized);
+      return normalized;
+    })
+    .filter((entry): entry is PersonaArtifactRef => !!entry);
+}
+
+function buildLibraryArtifactSummary(input: {
+  title: string;
+  description: string | null;
+  markdownSource?: string | null;
+  metadata?: Record<string, unknown> | null;
+}): string | null {
+  if (input.markdownSource?.trim()) {
+    return sanitizeArtifactSnippet(input.markdownSource);
+  }
+
+  if (input.description?.trim()) {
+    return sanitizeArtifactSnippet(input.description);
+  }
+
+  const metadataSummary = typeof input.metadata?.summary === "string" ? input.metadata.summary : null;
+  if (metadataSummary?.trim()) {
+    return sanitizeArtifactSnippet(metadataSummary);
+  }
+
+  return null;
+}
+
+async function loadPersonaArtifactLookup(params: {
+  tenantId: string;
+  refs: PersonaArtifactRef[];
+}): Promise<PersonaArtifactLookup> {
+  const db = await getDb();
+  const emptyLookup: PersonaArtifactLookup = {
+    agencyById: new Map(),
+    conversationById: new Map(),
+    directLibraryById: new Map(),
+    linkedLibraryByAgencyArtifactId: new Map(),
+    libraryMarkdownByItemId: new Map(),
+  };
+  if (!db || params.refs.length === 0) return emptyLookup;
+
+  const artifactIds = [...new Set(
+    params.refs
+      .map((ref) => ref.artifactId)
+      .filter((artifactId): artifactId is string => !!artifactId),
+  )];
+  if (artifactIds.length === 0) return emptyLookup;
+
+  const uuidLikeIds = artifactIds.filter((value) => /^[0-9a-f-]{16,}$/i.test(value));
+  const numericIds = artifactIds
+    .filter((value) => /^\d+$/.test(value))
+    .map((value) => Number(value));
+
+  const agencyRows = uuidLikeIds.length > 0
+    ? await db
+        .select({
+          id: agencyRunArtifacts.id,
+          artifactType: agencyRunArtifacts.artifactType,
+          intent: agencyRunArtifacts.intent,
+          summary: agencyRunArtifacts.summary,
+          payloadJson: agencyRunArtifacts.payloadJson,
+        })
+        .from(agencyRunArtifacts)
+        .where(
+          and(
+            eq(agencyRunArtifacts.tenantId, params.tenantId),
+            inArray(agencyRunArtifacts.id, uuidLikeIds),
+          ),
+        )
+        .limit(Math.max(uuidLikeIds.length, 1))
+    : [];
+
+  const conversationRows = uuidLikeIds.length > 0
+    ? await db
+        .select({
+          id: conversationArtifacts.id,
+          artifactType: conversationArtifacts.artifactType,
+          title: conversationArtifacts.title,
+          content: conversationArtifacts.content,
+          language: conversationArtifacts.language,
+        })
+        .from(conversationArtifacts)
+        .innerJoin(conversations, eq(conversationArtifacts.conversationId, conversations.id))
+        .where(
+          and(
+            eq(conversations.tenantId, params.tenantId),
+            inArray(conversationArtifacts.id, uuidLikeIds),
+          ),
+        )
+        .limit(Math.max(uuidLikeIds.length, 1))
+    : [];
+
+  const linkedLibraryRows = uuidLikeIds.length > 0
+    ? await db
+        .select({
+          linkId: libraryLinks.linkId,
+          id: libraryItems.id,
+          title: libraryItems.title,
+          description: libraryItems.description,
+          status: libraryItems.status,
+          sourceUrl: libraryItems.sourceUrl,
+          metadata: libraryItems.metadata,
+        })
+        .from(libraryLinks)
+        .innerJoin(libraryItems, eq(libraryLinks.libraryItemId, libraryItems.id))
+        .where(
+          and(
+            eq(libraryLinks.tenantId, params.tenantId),
+            eq(libraryLinks.linkType, "agency_run_artifact"),
+            inArray(libraryLinks.linkId, uuidLikeIds),
+          ),
+        )
+        .limit(Math.max(uuidLikeIds.length, 1))
+    : [];
+
+  const directLibraryRows = numericIds.length > 0
+    ? await db
+        .select({
+          id: libraryItems.id,
+          title: libraryItems.title,
+          description: libraryItems.description,
+          status: libraryItems.status,
+          sourceUrl: libraryItems.sourceUrl,
+          metadata: libraryItems.metadata,
+        })
+        .from(libraryItems)
+        .where(
+          and(
+            eq(libraryItems.tenantId, params.tenantId),
+            inArray(libraryItems.id, numericIds),
+          ),
+        )
+        .limit(Math.max(numericIds.length, 1))
+    : [];
+
+  const libraryItemIds = [...new Set([
+    ...linkedLibraryRows.map((row) => row.id),
+    ...directLibraryRows.map((row) => row.id),
+  ])];
+
+  const libraryMarkdownRows = libraryItemIds.length > 0
+    ? await db
+        .select({
+          libraryItemId: libraryChunks.libraryItemId,
+          content: libraryChunks.content,
+        })
+        .from(libraryChunks)
+        .where(
+          and(
+            eq(libraryChunks.tenantId, params.tenantId),
+            eq(libraryChunks.contentType, "markdown_source"),
+            eq(libraryChunks.chunkIndex, 0),
+            inArray(libraryChunks.libraryItemId, libraryItemIds),
+          ),
+        )
+        .limit(Math.max(libraryItemIds.length, 1))
+    : [];
+
+  return {
+    agencyById: new Map(agencyRows.map((row) => [
+      row.id,
+      {
+        ...row,
+        payloadJson:
+          row.payloadJson && typeof row.payloadJson === "object"
+            ? row.payloadJson as Record<string, unknown>
+            : null,
+      },
+    ])),
+    conversationById: new Map(conversationRows.map((row) => [row.id, row])),
+    directLibraryById: new Map(directLibraryRows.map((row) => [String(row.id), row])),
+    linkedLibraryByAgencyArtifactId: new Map(linkedLibraryRows.map((row) => [row.linkId, row])),
+    libraryMarkdownByItemId: new Map(libraryMarkdownRows.map((row) => [row.libraryItemId, row.content])),
+  };
+}
+
+function formatPersonaArtifactDetail(
+  ref: PersonaArtifactRef,
+  lookup: PersonaArtifactLookup,
+): string | null {
+  const linkedLibrary = ref.artifactId ? lookup.linkedLibraryByAgencyArtifactId.get(ref.artifactId) : null;
+  if (linkedLibrary) {
+    const summary = buildLibraryArtifactSummary({
+      title: linkedLibrary.title,
+      description: linkedLibrary.description,
+      markdownSource: lookup.libraryMarkdownByItemId.get(linkedLibrary.id) ?? null,
+      metadata: linkedLibrary.metadata,
+    });
+    const label = ref.label ?? linkedLibrary.title;
+    const url = ref.url ?? linkedLibrary.sourceUrl;
+    return [
+      `${label} [library:${linkedLibrary.status}]`,
+      summary,
+      url ? `url: ${url}` : null,
+    ].filter((entry): entry is string => !!entry).join(" | ");
+  }
+
+  const directLibrary = ref.artifactId ? lookup.directLibraryById.get(ref.artifactId) : null;
+  if (directLibrary) {
+    const summary = buildLibraryArtifactSummary({
+      title: directLibrary.title,
+      description: directLibrary.description,
+      markdownSource: lookup.libraryMarkdownByItemId.get(directLibrary.id) ?? null,
+      metadata: directLibrary.metadata,
+    });
+    const label = ref.label ?? directLibrary.title;
+    const url = ref.url ?? directLibrary.sourceUrl;
+    return [
+      `${label} [library:${directLibrary.status}]`,
+      summary,
+      url ? `url: ${url}` : null,
+    ].filter((entry): entry is string => !!entry).join(" | ");
+  }
+
+  const agencyArtifact = ref.artifactId ? lookup.agencyById.get(ref.artifactId) : null;
+  if (agencyArtifact) {
+    const title =
+      typeof agencyArtifact.payloadJson?.title === "string" && agencyArtifact.payloadJson.title.trim().length > 0
+        ? agencyArtifact.payloadJson.title.trim()
+        : ref.label ?? agencyArtifact.summary ?? agencyArtifact.artifactType;
+    const summary = agencyArtifact.summary?.trim()
+      ? sanitizeArtifactSnippet(agencyArtifact.summary)
+      : null;
+    const payloadDetail = summarizeStructuredArtifactPayload(agencyArtifact.payloadJson);
+    return [
+      `${title} [preview:${agencyArtifact.intent}]`,
+      summary,
+      payloadDetail && payloadDetail !== summary ? payloadDetail : null,
+      ref.url ? `url: ${ref.url}` : null,
+    ].filter((entry): entry is string => !!entry).join(" | ");
+  }
+
+  const conversationArtifact = ref.artifactId ? lookup.conversationById.get(ref.artifactId) : null;
+  if (conversationArtifact) {
+    const title = ref.label ?? conversationArtifact.title ?? conversationArtifact.artifactType;
+    const summary = sanitizeArtifactSnippet(conversationArtifact.content);
+    return [
+      `${title} [canvas:${conversationArtifact.artifactType}]`,
+      summary,
+      ref.url ? `url: ${ref.url}` : null,
+    ].filter((entry): entry is string => !!entry).join(" | ");
+  }
+
+  if (ref.label || ref.kind || ref.url) {
+    return [
+      ref.label ?? ref.kind ?? "Artifact reference",
+      ref.status ? `status: ${ref.status}` : null,
+      ref.url ? `url: ${ref.url}` : null,
+    ].filter((entry): entry is string => !!entry).join(" | ");
+  }
+
+  return null;
+}
 
 /**
  * Get the context length for a model from the database
@@ -537,7 +1177,8 @@ export async function upsertEntityMemory(
   sourceConversationId?: number,
   importance?: number,
   source?: string,
-  projectId?: string | null
+  projectId?: string | null,
+  personaId?: string | null
 ): Promise<EntityMemory> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -559,15 +1200,31 @@ export async function upsertEntityMemory(
 
   // Resolve projectId from conversation if not provided
   let resolvedProjectId = projectId ?? null;
+  let resolvedPersonaId = personaId;
   if (!resolvedProjectId && sourceConversationId) {
     try {
       const [conv] = await db
-        .select({ projectId: conversations.projectId })
+        .select({ projectId: conversations.projectId, tenantId: conversations.tenantId })
         .from(conversations)
         .where(eq(conversations.id, sourceConversationId))
         .limit(1);
       resolvedProjectId = conv?.projectId ?? null;
+
+      if (resolvedPersonaId === undefined) {
+        const personaContext = await resolveActivePersonaContext({
+          db,
+          conversationId: sourceConversationId,
+          userId,
+          tenantId: conv?.tenantId ?? null,
+          persistNicknameSelection: false,
+        });
+        resolvedPersonaId = personaContext.storedPersonaId;
+      }
     } catch {}
+  }
+
+  if (resolvedPersonaId === undefined) {
+    resolvedPersonaId = null;
   }
 
   // Check if entity exists
@@ -578,7 +1235,10 @@ export async function upsertEntityMemory(
       and(
         eq(entityMemories.userId, userId),
         eq(entityMemories.entityType, entityType),
-        eq(entityMemories.entityName, entityName)
+        eq(entityMemories.entityName, entityName),
+        resolvedPersonaId === null
+          ? isNull(entityMemories.personaId)
+          : eq(entityMemories.personaId, resolvedPersonaId)
       )
     )
     .limit(1);
@@ -597,10 +1257,11 @@ export async function upsertEntityMemory(
         updatedAt: new Date(),
         // Set projectId if existing memory has none and we now know the project
         ...(resolvedProjectId && !existing.projectId ? { projectId: resolvedProjectId } : {}),
+        ...(existing.personaId !== resolvedPersonaId ? { personaId: resolvedPersonaId } : {}),
       })
       .where(eq(entityMemories.id, existing.id));
 
-    return { ...existing, facts: newFacts };
+    return { ...existing, facts: newFacts, personaId: resolvedPersonaId };
   }
 
   // Create new entity memory
@@ -608,6 +1269,7 @@ export async function upsertEntityMemory(
     .insert(entityMemories)
     .values({
       userId,
+      personaId: resolvedPersonaId ?? null,
       entityType,
       entityName,
       facts: filteredFacts,
@@ -629,12 +1291,21 @@ export async function upsertEntityMemory(
 export async function getEntityMemoriesForContext(
   userId: number,
   limit: number = MAX_ENTITIES_IN_CONTEXT,
-  projectId?: string | null
+  projectId?: string | null,
+  personaId?: string | null
 ): Promise<EntityMemory[]> {
   const db = await getDb();
   if (!db) return [];
 
   const conditions = [eq(entityMemories.userId, userId)];
+
+  if (personaId !== undefined) {
+    conditions.push(
+      personaId === null
+        ? isNull(entityMemories.personaId)
+        : eq(entityMemories.personaId, personaId),
+    );
+  }
 
   if (projectId) {
     // Include project-specific + global memories
@@ -672,6 +1343,313 @@ export async function touchEntityMemories(entityIds: number[]): Promise<void> {
     .update(entityMemories)
     .set({ lastAccessedAt: new Date() })
     .where(inArray(entityMemories.id, entityIds));
+}
+
+async function resolveActivePersonaContext(params: {
+  db: Awaited<ReturnType<typeof getDb>>;
+  conversationId: number;
+  userId: number;
+  tenantId?: string | null;
+  currentUserMessage?: string | null;
+  persistNicknameSelection?: boolean;
+}): Promise<{
+  tenantId: string | null;
+  conversationPersonaId: string | null;
+  persona: PersonaTemplate | null;
+  storedPersonaId: string | null;
+}> {
+  const { db, conversationId, userId } = params;
+  if (!db) {
+    return {
+      tenantId: params.tenantId || null,
+      conversationPersonaId: null,
+      persona: null,
+      storedPersonaId: null,
+    };
+  }
+
+  const personaService = await import("./personaService");
+  const convResult = await db
+    .select({ personaId: conversations.personaId, tenantId: conversations.tenantId })
+    .from(conversations)
+    .where(eq(conversations.id, conversationId))
+    .limit(1);
+
+  const conv = convResult[0];
+  const convTenantId = conv?.tenantId || params.tenantId || null;
+  let resolvedConversationPersonaId = conv?.personaId || null;
+
+  const [userPersona] = await db
+    .select({ defaultPersonaId: users.defaultPersonaId })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+
+  const [tenantPersona] = convTenantId
+    ? await db
+        .select({ defaultPersonaId: tenants.defaultPersonaId })
+        .from(tenants)
+        .where(eq(tenants.id, convTenantId))
+        .limit(1)
+    : [{ defaultPersonaId: null }];
+
+  if (
+    params.currentUserMessage &&
+    typeof personaService.listPersonas === "function" &&
+    typeof personaService.matchPersonaByNickname === "function"
+  ) {
+    const availablePersonas = await personaService.listPersonas(userId, convTenantId);
+    const nicknamePersona = personaService.matchPersonaByNickname(
+      availablePersonas,
+      params.currentUserMessage,
+    );
+
+    if (nicknamePersona && nicknamePersona.id !== resolvedConversationPersonaId) {
+      resolvedConversationPersonaId = nicknamePersona.id;
+      if (params.persistNicknameSelection !== false) {
+        await db
+          .update(conversations)
+          .set({ personaId: nicknamePersona.id, updatedAt: new Date() })
+          .where(eq(conversations.id, conversationId));
+      }
+    }
+  }
+
+  const persona = await personaService.resolvePersona(
+    { personaId: resolvedConversationPersonaId, tenantId: convTenantId },
+    { id: userId, defaultPersonaId: userPersona?.defaultPersonaId || null },
+    { id: convTenantId || "", defaultPersonaId: tenantPersona?.defaultPersonaId || null },
+  );
+
+  return {
+    tenantId: convTenantId,
+    conversationPersonaId: resolvedConversationPersonaId,
+    persona,
+    storedPersonaId: toStoredPersonaId(persona),
+  };
+}
+
+async function buildPersonaWorkContext(params: {
+  tenantId: string;
+  personaId: string;
+}): Promise<string | null> {
+  const db = await getDb();
+  if (!db) return null;
+
+  const profiles = await db
+    .select({ id: assistantProfiles.id, displayName: assistantProfiles.displayName })
+    .from(assistantProfiles)
+    .where(
+      and(
+        eq(assistantProfiles.tenantId, params.tenantId),
+        eq(assistantProfiles.personaId, params.personaId),
+        eq(assistantProfiles.isActive, true),
+      ),
+    )
+    .limit(25);
+
+  const memberIds = profiles.map((profile) => profile.id).filter(Boolean);
+  if (memberIds.length === 0) return null;
+
+  const items = await db
+    .select({
+      id: teamWorkItems.id,
+      teamId: teamWorkItems.teamId,
+      title: teamWorkItems.title,
+      objective: teamWorkItems.objective,
+      roomId: teamWorkItems.roomId,
+      status: teamWorkItems.status,
+      threadRootMessageId: teamWorkItems.threadRootMessageId,
+      activeDraftArtifactId: teamWorkItems.activeDraftArtifactId,
+      artifactRefsJson: teamWorkItems.artifactRefsJson,
+      assignedMemberId: teamWorkItems.assignedMemberId,
+      reviewerMemberId: teamWorkItems.reviewerMemberId,
+      approverMemberId: teamWorkItems.approverMemberId,
+      updatedAt: teamWorkItems.updatedAt,
+    })
+    .from(teamWorkItems)
+    .where(
+      and(
+        eq(teamWorkItems.tenantId, params.tenantId),
+        inArray(teamWorkItems.status, [...OPEN_WORK_ITEM_STATUSES]),
+        or(
+          inArray(teamWorkItems.assignedMemberId, memberIds),
+          inArray(teamWorkItems.reviewerMemberId, memberIds),
+          inArray(teamWorkItems.approverMemberId, memberIds),
+        ),
+      ),
+    )
+    .orderBy(desc(teamWorkItems.updatedAt))
+    .limit(5);
+
+  if (items.length === 0) return null;
+
+  const memberNameById = new Map(
+    profiles.map((profile) => [profile.id, profile.displayName || profile.id] as const),
+  );
+  const roomIds = [...new Set(items.map((item) => item.roomId))];
+  const recentThreadMessages = roomIds.length > 0
+    ? await db
+        .select({
+          id: teamRoomMessages.id,
+          roomId: teamRoomMessages.roomId,
+          summaryContent: teamRoomMessages.summaryContent,
+          content: teamRoomMessages.content,
+          artifactRefsJson: teamRoomMessages.artifactRefsJson,
+          metadataJson: teamRoomMessages.metadataJson,
+          createdAt: teamRoomMessages.createdAt,
+        })
+        .from(teamRoomMessages)
+        .where(inArray(teamRoomMessages.roomId, roomIds))
+        .orderBy(desc(teamRoomMessages.createdAt))
+        .limit(50)
+    : [];
+
+  const artifactLookup = await loadPersonaArtifactLookup({
+    tenantId: params.tenantId,
+    refs: items.flatMap((item) => {
+      const threadMessages = recentThreadMessages.filter((message) => {
+        if (message.roomId !== item.roomId) return false;
+        const metadata = (message.metadataJson ?? {}) as Record<string, unknown>;
+        return (
+          message.id === item.threadRootMessageId ||
+          metadata.workItemId === item.id ||
+          metadata.threadRootMessageId === item.threadRootMessageId
+        );
+      });
+
+      const refs = [
+        ...normalizePersonaArtifactRefs(item.artifactRefsJson),
+        ...normalizePersonaArtifactRefs(threadMessages.flatMap((message) =>
+          Array.isArray(message.artifactRefsJson) ? message.artifactRefsJson : [],
+        )),
+      ];
+
+      if (item.activeDraftArtifactId) {
+        refs.unshift({
+          key: "",
+          artifactId: item.activeDraftArtifactId,
+          label: "Active draft",
+          kind: "draft",
+          status: item.status,
+          url: null,
+        });
+      }
+
+      const deduped = new Map<string, PersonaArtifactRef>();
+      for (const ref of refs) {
+        const normalized = ref.key
+          ? ref
+          : { ...ref, key: buildArtifactRefKey(ref) };
+        if (!deduped.has(normalized.key)) {
+          deduped.set(normalized.key, normalized);
+        }
+      }
+      return [...deduped.values()];
+    }),
+  });
+
+  const lines = items.map((item) => {
+    const roles: string[] = [];
+    if (item.assignedMemberId && memberNameById.has(item.assignedMemberId)) roles.push("research");
+    if (item.reviewerMemberId && memberNameById.has(item.reviewerMemberId)) roles.push("review");
+    if (item.approverMemberId && memberNameById.has(item.approverMemberId)) roles.push("approval");
+
+    const threadMessages = recentThreadMessages.filter((message) => {
+      if (message.roomId !== item.roomId) return false;
+      const metadata = (message.metadataJson ?? {}) as Record<string, unknown>;
+      return (
+        message.id === item.threadRootMessageId ||
+        metadata.workItemId === item.id ||
+        metadata.threadRootMessageId === item.threadRootMessageId
+      );
+    });
+    const latestThreadMessage = threadMessages[0];
+
+    const artifactRefs = [
+      ...normalizePersonaArtifactRefs(item.artifactRefsJson),
+      ...normalizePersonaArtifactRefs(threadMessages.flatMap((message) =>
+        Array.isArray(message.artifactRefsJson) ? message.artifactRefsJson : [],
+      )),
+    ];
+    if (item.activeDraftArtifactId) {
+      artifactRefs.unshift({
+        key: buildArtifactRefKey({
+          artifactId: item.activeDraftArtifactId,
+          label: "Active draft",
+          kind: "draft",
+          status: item.status,
+          url: null,
+          key: "",
+        }),
+        artifactId: item.activeDraftArtifactId,
+        label: "Active draft",
+        kind: "draft",
+        status: item.status,
+        url: null,
+      });
+    }
+    const uniqueArtifactRefs = artifactRefs.filter((ref, index, refs) =>
+      refs.findIndex((candidate) => candidate.key === ref.key) === index,
+    );
+
+    const preparedRefs = [
+      ...summarizeArtifactRefs(item.artifactRefsJson),
+      ...(item.activeDraftArtifactId ? [`draft:${item.activeDraftArtifactId}`] : []),
+      ...summarizeArtifactRefs(latestThreadMessage?.artifactRefsJson),
+    ].filter((value, index, values) => values.indexOf(value) === index);
+
+    const artifactDetails = uniqueArtifactRefs
+      .map((ref) => formatPersonaArtifactDetail(ref, artifactLookup))
+      .filter((entry): entry is string => !!entry)
+      .filter((entry, index, entries) => entries.indexOf(entry) === index)
+      .slice(0, 2);
+
+    const targetMessageId = latestThreadMessage?.id || item.threadRootMessageId || "";
+    const shouldComposeReply = item.status === "needs_revision" || item.status === "blocked";
+    const teamRoomUrl = `/teams/${item.teamId}?roomId=${encodeURIComponent(item.roomId)}&workItemId=${encodeURIComponent(item.id)}${targetMessageId ? `&messageId=${encodeURIComponent(targetMessageId)}` : ""}${shouldComposeReply ? "&composeReply=1" : ""}`;
+    const workflowBoardUrl = `${teamRoomUrl}${teamRoomUrl.includes("?") ? "&" : "?"}panel=workflow`;
+    const markdownActionLink =
+      item.status === "awaiting_approval"
+        ? `[Review approval in Team Room](${teamRoomUrl})`
+        : shouldComposeReply
+          ? `[Reply in Team Room](${teamRoomUrl})`
+          : `[Open Team Room](${teamRoomUrl})`;
+    const markdownWorkflowLink = `[Open Workflow Board](${workflowBoardUrl})`;
+    const humanAction =
+      item.status === "awaiting_approval"
+        ? "Approve or reject this item in Team Room."
+        : item.status === "needs_revision"
+          ? "Review the latest feedback in Team Room and send the work back for another revision if needed."
+          : item.status === "blocked"
+            ? "Open the Team Room thread to decide how to unblock this item."
+            : null;
+
+    const segments = [
+      `- [${item.status}] ${item.title}${roles.length > 0 ? ` (${roles.join(", ")})` : ""}`,
+      item.objective ? `  Objective: ${item.objective}` : null,
+      preparedRefs.length > 0 ? `  Prepared: ${preparedRefs.join(", ")}` : null,
+      artifactDetails.length > 0 ? `  Artifact details:\n${artifactDetails.map((detail) => `    - ${detail}`).join("\n")}` : null,
+      latestThreadMessage
+        ? `  Latest update: ${(latestThreadMessage.summaryContent || latestThreadMessage.content || "").replace(/\s+/g, " ").trim().slice(0, 220)}`
+        : null,
+      humanAction ? `  Human action: ${humanAction}` : null,
+      `  Markdown action link: ${markdownActionLink}`,
+      `  Markdown workflow link: ${markdownWorkflowLink}`,
+      `  Open Team Room: ${teamRoomUrl}`,
+    ].filter((segment): segment is string => !!segment);
+
+    return segments.join("\n");
+  });
+
+  return [
+    "Active work items for this persona:",
+    lines.join("\n"),
+    "Operational note: use the artifact details above to answer read-only questions about drafts, prepared content, assets, or latest work state for this persona.",
+    "Operational note: if the user asks about approval, rejection, revision, cancellation, or next action, include the most relevant Markdown action link exactly as written above so the chat UI can render it as a clickable link.",
+    "Operational note: if the user asks how to access the workflow board, backlog board, or task board, include the Markdown workflow link exactly as written above.",
+    "Operational note: do not claim that approval, rejection, or cancellation already happened inside this chat. Those workflow actions must continue in Team Room.",
+  ].join("\n");
 }
 
 // ==================== Context Building ====================
@@ -713,36 +1691,61 @@ export async function buildChatContext(
   const estimateTokens = (text: string) => Math.ceil(text.length / 4);
   const budget = options?.contextBudget || 8000;
   const memoryMode = options?.memoryMode || "full";
+  const startTime = Date.now();
+  const stageTimings: Record<string, number> = {
+    personaMs: 0,
+    visualStateMs: 0,
+    entityMemoryMs: 0,
+    summaryMs: 0,
+    bufferMs: 0,
+    featureFlagMs: 0,
+    visualRetrievalMs: 0,
+  };
 
   let used = 0;
+  let includedEntityCount = 0;
+  let rulesCount = 0;
+  let includedSummaryCount = 0;
 
   // 0. Resolve persona and prepend to system prompt
   let effectiveSystemPrompt = systemPrompt;
+  let activePersonaId: string | null = null;
+  let activeTenantId: string | null = options?.tenantId || null;
+  const personaStart = Date.now();
   try {
-    const { resolvePersona, buildPersonaPromptSegments } = await import("./personaService");
     const db = await getDb();
     if (db) {
-      const convResult = await db
-        .select({ personaId: conversations.personaId, tenantId: conversations.tenantId })
-        .from(conversations)
-        .where(eq(conversations.id, conversationId))
-        .limit(1);
-
-      const conv = convResult[0];
-      const convTenantId = conv?.tenantId || options?.tenantId || null;
-
-      const persona = await resolvePersona(
-        { personaId: conv?.personaId || null, tenantId: convTenantId },
-        { id: userId, defaultPersonaId: null },
-        { id: convTenantId || "", defaultPersonaId: null },
-      );
+      const personaService = await import("./personaService");
+      const personaContext = await resolveActivePersonaContext({
+        db,
+        conversationId,
+        userId,
+        tenantId: options?.tenantId,
+        currentUserMessage: options?.currentUserMessage,
+      });
+      activeTenantId = personaContext.tenantId;
+      activePersonaId = personaContext.storedPersonaId;
+      const persona = personaContext.persona;
 
       if (persona) {
-        const segments = buildPersonaPromptSegments(persona);
+        const segments = personaService.buildPersonaPromptSegments(persona);
         const parts: string[] = [segments.prefix];
         if (segments.styleInstructions) parts.push(segments.styleInstructions);
         if (segments.restrictionsBulletPoints) parts.push(segments.restrictionsBulletPoints);
         if (effectiveSystemPrompt) parts.push(effectiveSystemPrompt);
+        if (
+          activeTenantId &&
+          activePersonaId &&
+          shouldIncludePersonaWorkContext(options?.currentUserMessage)
+        ) {
+          const workContext = await buildPersonaWorkContext({
+            tenantId: activeTenantId,
+            personaId: activePersonaId,
+          });
+          if (workContext) parts.push(workContext);
+          const responseDirective = buildPersonaWorkResponseDirective(options?.currentUserMessage);
+          if (responseDirective) parts.push(responseDirective);
+        }
         effectiveSystemPrompt = parts.join("\n\n");
       }
     }
@@ -751,6 +1754,8 @@ export async function buildChatContext(
     if (err instanceof Error && !err.message.includes("not enabled")) {
       console.warn("[memoryService] Persona resolution failed:", err.message);
     }
+  } finally {
+    stageTimings.personaMs = Date.now() - personaStart;
   }
 
   // System prompt (never trimmed)
@@ -759,12 +1764,15 @@ export async function buildChatContext(
   // --- Visual state early check (section 07) ---
   // Single DB/Redis read to determine whether adaptive budgets apply.
   let hasVisualContext = false;
+  const visualStateStart = Date.now();
   try {
     const { getOrCreateState } = await import("./visualStateService");
     const visualState = await getOrCreateState(conversationId);
     hasVisualContext = visualState.recentAssetIds.length > 0;
   } catch {
     // Non-fatal — treat as no visual context
+  } finally {
+    stageTimings.visualStateMs = Date.now() - visualStateStart;
   }
 
   // Adaptive budget percentages based on visual context presence
@@ -774,14 +1782,21 @@ export async function buildChatContext(
   let entityContext: string | null = null;
 
   // Memory off → skip all memory tiers
+  const entityStart = Date.now();
   if (memoryMode !== "off") {
     // 1. Get entity memories (only in "full" mode)
     if (memoryMode === "full") {
-      const allEntities = await getEntityMemoriesForContext(userId, 50, options?.projectId || null);
+      const allEntities = await getEntityMemoriesForContext(
+        userId,
+        50,
+        options?.projectId || null,
+        activePersonaId,
+      );
 
       // Separate rules from other entities
       const rules = allEntities.filter((e) => e.entityType === "rule");
       const nonRuleEntities = allEntities.filter((e) => e.entityType !== "rule");
+      rulesCount = rules.length;
 
       // Rules section (never trimmed — always included)
       const ruleLines = rules.map((r) => `[RULE] ${r.facts.join("; ")}`);
@@ -807,6 +1822,7 @@ export async function buildChatContext(
         includedEntities.push(entity);
         used += cost;
       }
+      includedEntityCount = includedEntities.length;
 
       // Build entity context string
       const sections: string[] = [];
@@ -827,10 +1843,12 @@ export async function buildChatContext(
       if (touchIds.length > 0) await touchEntityMemories(touchIds);
     }
   }
+  stageTimings.entityMemoryMs = Date.now() - entityStart;
 
   // 3. Get summaries (cap at 60% of budget cumulative) — available in full & no_long modes
   // Also fetch project summaries if projectId is set
   let allSummaries: ConversationSummary[] = [];
+  const summaryStart = Date.now();
   if (memoryMode !== "off") {
     allSummaries = await getSummaries(conversationId, 10);
     // Add project summaries from other conversations
@@ -852,11 +1870,14 @@ export async function buildChatContext(
     includedSummaries.push(s.summary);
     used += cost;
   }
+  includedSummaryCount = includedSummaries.length;
   if (includedSummaries.length > 0) {
     summaryContext = `Previous conversation context:\n${includedSummaries.join("\n\n")}`;
   }
+  stageTimings.summaryMs = Date.now() - summaryStart;
 
   // 4. Get buffer messages (fill remaining budget)
+  const bufferStart = Date.now();
   const allBuffer = await getBufferMessages(conversationId, 50);
   const filtered = allBuffer
     .filter((m) => m.role !== "system")
@@ -872,6 +1893,7 @@ export async function buildChatContext(
     bufferMessages.unshift(filtered[i]);
     used += cost;
   }
+  stageTimings.bufferMs = Date.now() - bufferStart;
 
   // 4.5. Visual Memory Assembly (section 07 / 09)
   // Only runs when: images exist in conversation, user provided a message,
@@ -882,6 +1904,7 @@ export async function buildChatContext(
   // Gate 2 (section 09): check multimodalMemory flag before visual assembly.
   // When no tenantId is available, allow visual assembly (backwards compatible).
   let multimodalEnabled = !options?.tenantId; // default true when no tenantId
+  const featureFlagStart = Date.now();
   if (hasVisualContext && options?.tenantId) {
     try {
       const { getTenantFeatureFlags } = await import("./tenantFeatureFlagService");
@@ -892,7 +1915,9 @@ export async function buildChatContext(
       multimodalEnabled = false;
     }
   }
+  stageTimings.featureFlagMs = Date.now() - featureFlagStart;
 
+  const visualRetrievalStart = Date.now();
   if (multimodalEnabled && hasVisualContext && options?.currentUserMessage) {
     try {
       const {
@@ -908,7 +1933,7 @@ export async function buildChatContext(
           userMsg,
           conversationId,
           userId,
-          options?.tenantId
+          options?.tenantId ?? ""
         );
 
         const resolvedAssets = explicitRefs.length > 0
@@ -937,6 +1962,7 @@ export async function buildChatContext(
       // Non-fatal — continue with text-only context
     }
   }
+  stageTimings.visualRetrievalMs = Date.now() - visualRetrievalStart;
 
   // Append image-aware system instructions when visual context is present
   if (visualMemoryContext || imageAssets.length > 0) {
@@ -951,6 +1977,33 @@ export async function buildChatContext(
       ? `${effectiveSystemPrompt}\n\n${imageInstructions}`
       : imageInstructions;
   }
+
+  auditLogger.log({
+    eventType: "chat_context_timing",
+    userId,
+    requestType: "chat_context",
+    timing: {
+      totalMs: Date.now() - startTime,
+    },
+    metadata: {
+      conversationId,
+      budget,
+      memoryMode,
+      projectId: options?.projectId || null,
+      tenantId: activeTenantId,
+      currentUserMessageLength: options?.currentUserMessage?.length ?? 0,
+      hasSystemPrompt: Boolean(systemPrompt),
+      hasVisualContext,
+      multimodalEnabled,
+      rulesCount,
+      includedEntityCount,
+      includedSummaryCount,
+      bufferMessageCount: bufferMessages.length,
+      imageAssetCount: imageAssets.length,
+      totalTokenEstimate: used,
+      ...stageTimings,
+    },
+  });
 
   return {
     systemPrompt: effectiveSystemPrompt,
@@ -1171,17 +2224,29 @@ export async function processConversationMemory(
     }
   }
 
-  // Look up conversation's projectId for scoping entity memories
+  // Look up conversation scope for persona-aware long memory
   let conversationProjectId: string | null = null;
+  let conversationTenantId: string | null = null;
+  let activePersonaId: string | null = null;
   try {
     const db = await getDb();
     if (db) {
       const [conv] = await db
-        .select({ projectId: conversations.projectId })
+        .select({ projectId: conversations.projectId, tenantId: conversations.tenantId })
         .from(conversations)
         .where(eq(conversations.id, conversationId))
         .limit(1);
       conversationProjectId = conv?.projectId ?? null;
+      conversationTenantId = conv?.tenantId ?? null;
+
+      const personaContext = await resolveActivePersonaContext({
+        db,
+        conversationId,
+        userId,
+        tenantId: conversationTenantId,
+        persistNicknameSelection: false,
+      });
+      activePersonaId = personaContext.storedPersonaId;
     }
   } catch {}
 
@@ -1201,7 +2266,8 @@ export async function processConversationMemory(
             conversationId,
             entity.importance,
             "auto",
-            conversationProjectId
+            conversationProjectId,
+            activePersonaId
           );
           entitiesExtracted++;
         } else {

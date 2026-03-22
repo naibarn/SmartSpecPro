@@ -85,17 +85,37 @@ export function ImageSourcePicker({
   // Library query
   const libraryQuery = trpc.library.listDocuments.useQuery(
     {
-      query: librarySearch || undefined,
       scope: libraryScope,
       sort: "updated_desc",
       limit: 30,
       offset: 0,
       filters: { itemType: "image" },
     },
-    { enabled: popoverOpen },
+    { enabled: popoverOpen && librarySearch.trim().length === 0 },
+  );
+  const librarySearchQuery = trpc.library.search.useQuery(
+    {
+      query: librarySearch || undefined,
+      scope: libraryScope,
+      limit: 30,
+      offset: 0,
+      filters: { itemType: "image" },
+    },
+    { enabled: popoverOpen && librarySearch.trim().length > 0 },
   );
 
   const canAddMore = value.length < maxImages;
+  const libraryResults = (
+    librarySearch.trim().length > 0
+      ? (librarySearchQuery.data?.results ?? [])
+      : (libraryQuery.data?.results ?? [])
+  ) as Array<{
+    id?: number;
+    item_id?: number;
+    source_url?: string | null;
+    title?: string | null;
+  }>;
+  const libraryLoading = libraryQuery.isLoading || librarySearchQuery.isLoading;
 
   // Handle file upload
   const handleFileUpload = useCallback(
@@ -302,27 +322,19 @@ export function ImageSourcePicker({
 
                   {/* Image grid */}
                   <div className="grid max-h-[200px] grid-cols-4 gap-1.5 overflow-y-auto">
-                    {libraryQuery.isLoading ? (
+                    {libraryLoading ? (
                       <div className="col-span-full flex items-center justify-center py-4 text-xs text-muted-foreground">
                         <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
                         {isTh ? "กำลังโหลด..." : "Loading..."}
                       </div>
-                    ) : ((libraryQuery.data?.results ?? []) as Array<{
-                        source_url?: string | null;
-                        title?: string | null;
-                      }>).length === 0 ? (
+                    ) : libraryResults.length === 0 ? (
                       <p className="col-span-full py-4 text-center text-xs text-muted-foreground">
                         {isTh
                           ? "ไม่พบรูปภาพ"
                           : "No images found."}
                       </p>
                     ) : (
-                      (
-                        (libraryQuery.data?.results ?? []) as Array<{
-                          source_url?: string | null;
-                          title?: string | null;
-                        }>
-                      ).map((item) => {
+                      libraryResults.map((item) => {
                         const url = String(item.source_url || "").trim();
                         if (!url) return null;
                         const alreadyAdded = value.includes(url);

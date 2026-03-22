@@ -56,12 +56,14 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
-import { Brain, Lightbulb, Languages, Mic } from "lucide-react";
+import { Brain, Languages, Mic } from "lucide-react";
 import { usePushToTalk } from "@/hooks/usePushToTalk";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import { useChatSkillForm, SkillCommandButton, SkillFormErrorBoundary } from "@/components/chat/skill";
 import { TelegramBindingButton } from "./TelegramBindingButton";
 import { ScheduleConfirmCard } from "./ScheduleConfirmCard";
+import { MediaPromptPreview } from "./MediaPromptPreview";
+import { AgencyEscalationCard } from "./AgencyEscalationCard";
 import { toast } from "sonner";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { FallbackConsent } from "./FallbackConsent";
@@ -71,6 +73,7 @@ import { BrowserSessionSummaryCard } from "@/components/browser-session/BrowserS
 import { BrowserSessionLaunchSuggestionCard } from "@/components/browser-session/BrowserSessionLaunchSuggestionCard";
 import { HelpButton } from "@/components/help";
 import { ComparisonPreviewCard } from "@/components/comparison/ComparisonPreviewCard";
+import { PersonaSelector } from "./PersonaSelector";
 import type { BrowserSessionLaunchSuggestion } from "@/lib/browserSessionInvocation";
 import {
   appendLibraryContextToMessage,
@@ -90,6 +93,10 @@ import {
   extractBrowserSessionArtifacts,
   extractComparisonPreviews,
 } from "@/lib/chatArtifactPresentation";
+import {
+  extractTeamRoomActionLinks,
+  stripStandaloneTeamRoomActionLinks,
+} from "@/lib/teamRoomActionLinks";
 
 // Debounce hook for skill detection
 function useDebounce<T>(value: T, delay: number): T {
@@ -106,6 +113,26 @@ function useDebounce<T>(value: T, delay: number): T {
   }, [value, delay]);
 
   return debouncedValue;
+}
+
+function getTeamRoomActionIcon(kind: "approval" | "reply" | "workflow" | "open") {
+  if (kind === "approval") return Check;
+  if (kind === "reply") return RefreshCw;
+  if (kind === "workflow") return Bot;
+  return ChevronDown;
+}
+
+function getTeamRoomActionClasses(kind: "approval" | "reply" | "workflow" | "open"): string {
+  if (kind === "approval") {
+    return "border-emerald-200 bg-emerald-50 text-emerald-800";
+  }
+  if (kind === "reply") {
+    return "border-amber-200 bg-amber-50 text-amber-800";
+  }
+  if (kind === "workflow") {
+    return "border-violet-200 bg-violet-50 text-violet-800";
+  }
+  return "border-sky-200 bg-sky-50 text-sky-800";
 }
 
 /**
@@ -453,6 +480,7 @@ export function ChatView({
   const saveAssistantMessageMutation = trpc.chat.saveAssistantMessage.useMutation();
   const processMemoryMutation = trpc.memory.processMemory.useMutation();
   const detectSkillMutation = trpc.chat.detectSkill.useMutation();
+  const analyzeIntentMutation = trpc.chat.analyzeIntent.useMutation();
   const executeSkillMutation = trpc.chat.executeSkill.useMutation();
   const addSkillCreditsMutation = trpc.chat.addSkillCreditsToConversation.useMutation();
   const enhancePromptMutation = trpc.skills.enhancePrompt.useMutation();
@@ -535,14 +563,6 @@ export function ChatView({
     return () => window.removeEventListener('open-skill-selector', handleOpenSkillSelector);
   }, [isSkillFormEnabled, skillForm.setShowSkillSelector]);
 
-  // Brainstorm mode state
-  const [brainstormMode, setBrainstormMode] = useState(false);
-  const [brainstormPartnerModel, setBrainstormPartnerModel] = useState("");
-  const [brainstormModelDialogOpen, setBrainstormModelDialogOpen] = useState(false);
-  const [brainstormStreamingRole, setBrainstormStreamingRole] = useState<string | null>(null);
-  const [brainstormStreamingRound, setBrainstormStreamingRound] = useState(0);
-
-
   // Handle model change
   const handleModelChange = async (modelId: string, providerId?: number) => {
     if (!conversationId || isStreaming) return;
@@ -577,6 +597,22 @@ export function ChatView({
       if (conversation?.model) {
         setSelectedModel(conversation.model);
       }
+    }
+  };
+
+  const handlePersonaChange = async (personaId: string | null) => {
+    if (!conversationId || isStreaming) return;
+
+    try {
+      await updateConversationMutation.mutateAsync({
+        id: conversationId,
+        personaId,
+      });
+      await utils.chat.getConversation.invalidate({ id: conversationId });
+      toast.success(personaId ? "Persona updated for this chat" : "Using default persona");
+    } catch (error) {
+      console.error("Failed to update persona:", error);
+      toast.error("Failed to update persona");
     }
   };
 
@@ -659,6 +695,24 @@ export function ChatView({
 
   // Schedule confirm card state
   const [pendingSchedule, setPendingSchedule] = useState<any>(null);
+
+  // ── Intent-driven media prompt preview state ──────────────────
+  const [pendingMediaPrompt, setPendingMediaPrompt] = useState<{
+    prompt: string;
+    skillId: string;
+    skillName: string;
+    skillCategory: string;
+    mediaParams: Record<string, unknown>;
+    conversationId: number;
+  } | null>(null);
+
+  // ── Intent-driven agency escalation state ─────────────────────
+  const [pendingAgencyEscalation, setPendingAgencyEscalation] = useState<{
+    message: string;
+    reason: string;
+    modalities: string[];
+    complexity: string;
+  } | null>(null);
 
   const parseIntentMutation = trpc.scheduledMessages.parseIntent.useMutation();
   const autoGeneratePresentationMutation = trpc.presentation.ai.autoGenerateDraft.useMutation();
@@ -1087,12 +1141,35 @@ export function ChatView({
   const streamResponse = async (userMessage: Message, skillUsed?: string): Promise<string> => {
     if (!conversationId) return "";
 
+    const streamStartedAt = performance.now();
+    const timingSummary: Record<string, number | null> = {
+      contextFetchMs: null,
+      streamOpenMs: null,
+      firstChunkMs: null,
+      messageSavedMs: null,
+      totalMs: null,
+    };
+    const logTiming = (stage: string, extra: Record<string, unknown> = {}) => {
+      console.info("[ChatTiming]", {
+        stage,
+        conversationId,
+        selectedModel,
+        selectedProviderId,
+        skillUsed: skillUsed || null,
+        elapsedMs: Math.round(performance.now() - streamStartedAt),
+        ...timingSummary,
+        ...extra,
+      });
+    };
+
     setIsStreaming(true);
     setStreamingContent("");
+    logTiming("start");
 
     // Get memory-aware context from server
     let apiMessages: Array<{ role: string; content: string | any[] }>;
     const userContent = parseContentForApi(userMessage.content);
+    const contextFetchStartedAt = performance.now();
     try {
       const selectedModelData = modelsData?.models?.find(m => m.id === selectedModel);
       const memoryMode = (conversation as any)?.memoryMode || "full";
@@ -1102,13 +1179,19 @@ export function ChatView({
         currentMessage: typeof userContent === "string" ? userContent : extractTextContent(userMessage.content),
         memoryMode,
       });
+      void utils.chat.getConversation.invalidate({ id: conversationId });
       apiMessages = [
-        ...contextData.messages.map((m: { role: string; content: string }) => ({
+        ...contextData.messages.map((m) => ({
           role: m.role,
-          content: parseContentForHistory(m.content),
+          content: typeof m.content === "string" ? parseContentForHistory(m.content) : m.content,
         })),
         { role: "user", content: userContent },
       ];
+      timingSummary.contextFetchMs = Math.round(performance.now() - contextFetchStartedAt);
+      logTiming("context_ready", {
+        memoryMode,
+        messageCount: apiMessages.length,
+      });
     } catch (error) {
       // Fallback to simple context if memory fetch fails
       apiMessages = [
@@ -1118,6 +1201,11 @@ export function ChatView({
         ...messages.map((m) => ({ role: m.role, content: parseContentForHistory(m.content) })),
         { role: "user" as const, content: userContent },
       ];
+      timingSummary.contextFetchMs = Math.round(performance.now() - contextFetchStartedAt);
+      logTiming("context_fallback", {
+        error: error instanceof Error ? error.message : String(error),
+        messageCount: apiMessages.length,
+      });
     }
 
     // Include conversationId so server can save the message at end of streaming
@@ -1136,19 +1224,35 @@ export function ChatView({
     }
 
     try {
+      const streamOpenStartedAt = performance.now();
+      logTiming("stream_request_sent", {
+        bodyModel: effectiveModel || null,
+        messageCount: apiMessages.length,
+      });
       const resp = await fetch("/api/llm/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
+      timingSummary.streamOpenMs = Math.round(performance.now() - streamOpenStartedAt);
 
       if (!resp.ok || !resp.body) {
         const txt = await resp.text().catch(() => "Stream failed");
         const friendlyError = parseErrorResponse(txt);
+        timingSummary.totalMs = Math.round(performance.now() - streamStartedAt);
+        logTiming("stream_open_failed", {
+          httpOk: resp.ok,
+          status: resp.status,
+          friendlyError,
+        });
         setStreamingContent(`[Error] ${friendlyError}`);
         setIsStreaming(false);
         return "";
       }
+
+      logTiming("stream_opened", {
+        status: resp.status,
+      });
 
       const reader = resp.body.getReader();
       const decoder = new TextDecoder("utf-8");
@@ -1156,6 +1260,8 @@ export function ChatView({
       let fullContent = "";
       let savedMessageId: number | null = null;
       let creditsUsed = 0;
+      let sawFirstChunk = false;
+      let lastStreamingUiFlushAt = 0;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -1183,12 +1289,19 @@ export function ChatView({
                   if (eventName === "message_saved") {
                     savedMessageId = parsed.id;
                     creditsUsed = parsed.creditsUsed || 0;
+                    timingSummary.messageSavedMs = Math.round(performance.now() - streamStartedAt);
                     console.log("[Chat Client] Server saved message:", { savedMessageId, creditsUsed });
+                    logTiming("message_saved", { savedMessageId, creditsUsed });
                   } else if (eventName === "save_error") {
                     console.error("[Chat Client] Server save error:", parsed.error);
+                    logTiming("save_error", {
+                      error: parsed.error,
+                    });
                   } else if (eventName === "fallback_required") {
                     // Free provider failed, paid fallback available
                     console.log("[Chat Client] Fallback required:", parsed);
+                    timingSummary.totalMs = Math.round(performance.now() - streamStartedAt);
+                    logTiming("fallback_required", parsed);
                     setFallbackRequest({
                       from: parsed.from,
                       to: parsed.to,
@@ -1215,8 +1328,19 @@ export function ChatView({
               const j = JSON.parse(data);
               const delta = j?.choices?.[0]?.delta?.content;
               if (typeof delta === "string") {
+                if (!sawFirstChunk) {
+                  sawFirstChunk = true;
+                  timingSummary.firstChunkMs = Math.round(performance.now() - streamStartedAt);
+                  logTiming("first_chunk", {
+                    chunkLength: delta.length,
+                  });
+                }
                 fullContent += delta;
-                setStreamingContent(fullContent);
+                const now = performance.now();
+                if (now - lastStreamingUiFlushAt >= 50) {
+                  lastStreamingUiFlushAt = now;
+                  setStreamingContent(fullContent);
+                }
               }
             } catch {
               // Non-JSON data line, ignore
@@ -1262,6 +1386,12 @@ export function ChatView({
         console.log("[ChatView] Clearing streamingContent");
         setStreamingContent("");
         setIsStreaming(false);
+        timingSummary.totalMs = Math.round(performance.now() - streamStartedAt);
+        logTiming("stream_complete", {
+          savedMessageId,
+          creditsUsed,
+          contentLength: fullContent.length,
+        });
 
         // Invalidate conversation list (for title/timestamp) and credits
         utils.chat.listConversations.invalidate();
@@ -1296,162 +1426,27 @@ export function ChatView({
 
         if (!savedMessageId) {
           console.warn("[ChatView] Message displayed but may not be saved - no message_saved event received");
+          logTiming("message_save_missing", {
+            contentLength: fullContent.length,
+          });
         }
         return fullContent;
       } else {
         setStreamingContent("");
         setIsStreaming(false);
+        timingSummary.totalMs = Math.round(performance.now() - streamStartedAt);
+        logTiming("stream_complete_empty");
         return "";
       }
     } catch (error) {
       console.error("Stream error:", error);
+      timingSummary.totalMs = Math.round(performance.now() - streamStartedAt);
+      logTiming("stream_exception", {
+        error: error instanceof Error ? error.message : String(error),
+      });
       setStreamingContent(`[Error] Failed to stream response`);
       setIsStreaming(false);
       return "";
-    }
-  };
-
-  // Send message
-  // ─── Brainstorm streaming ─────────────────────────────────────────
-  const streamBrainstorm = async (userMessage: Message) => {
-    if (!conversationId) return;
-    setIsStreaming(true);
-    setStreamingContent("");
-
-    try {
-      // Build memory context
-      const contextData = await utils.memory.getChatContext.fetch({ conversationId });
-      const apiMessages = [
-        ...(contextData?.messages || []),
-        { role: "user", content: userMessage.content },
-      ];
-
-      const resp = await fetch("/api/llm/brainstorm", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          messages: apiMessages,
-          ...(selectedModel || conversation?.model
-            ? { modelA: selectedModel || conversation?.model }
-            : {}),
-          modelB: brainstormPartnerModel,
-          conversationId,
-          maxRounds: 3,
-          userMessage: userMessage.content,
-        }),
-      });
-
-      if (!resp.ok) {
-        const errText = await resp.text().catch(() => '{"error":{"message":"Brainstorm request failed"}}');
-        const friendlyError = parseErrorResponse(errText);
-        throw new Error(friendlyError);
-      }
-
-      const reader = resp.body!.getReader();
-      const decoder = new TextDecoder("utf-8");
-      let buf = "";
-      let currentContent = "";
-      let currentRole = "";
-      let currentRound = 0;
-      let currentModel = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buf += decoder.decode(value, { stream: true });
-
-        while (true) {
-          const nlIdx = buf.indexOf("\n");
-          if (nlIdx < 0) break;
-
-          const line = buf.slice(0, nlIdx).replace(/\r$/, "");
-          buf = buf.slice(nlIdx + 1);
-
-          if (line.startsWith("event:")) {
-            const eventName = line.slice("event:".length).trim();
-
-            // Read data line
-            const dataIdx = buf.indexOf("\n");
-            if (dataIdx < 0) continue;
-            const dataLine = buf.slice(0, dataIdx).replace(/\r$/, "");
-            buf = buf.slice(dataIdx + 1);
-
-            if (!dataLine.startsWith("data:")) continue;
-            const dataStr = dataLine.slice("data:".length).trim();
-
-            try {
-              const data = JSON.parse(dataStr);
-
-              if (eventName === "brainstorm_skill") {
-                toast.info(`Using ${data.skillName} expertise`);
-              } else if (eventName === "brainstorm_turn") {
-                if (data.status === "start") {
-                  currentContent = "";
-                  currentRole = data.role;
-                  currentRound = data.round;
-                  currentModel = data.model;
-                  setBrainstormStreamingRole(data.role);
-                  setBrainstormStreamingRound(data.round);
-                  setStreamingContent("");
-                } else if (data.status === "end" && currentContent) {
-                  // Finalize this turn as a message
-                  lastLocalAddTime.current = Date.now();
-                  setMessages((prev) => [
-                    ...prev,
-                    {
-                      id: Date.now() + Math.random(),
-                      role: "assistant" as const,
-                      content: currentContent,
-                      modelUsed: currentModel,
-                      skillUsed: "brainstorm",
-                      creditsUsed: undefined,
-                      createdAt: new Date(),
-                      // Store brainstorm metadata in a way that's accessible
-                      skillArgs: { brainstormRound: currentRound, brainstormRole: currentRole } as any,
-                    } as any,
-                  ]);
-                  setStreamingContent("");
-                  setBrainstormStreamingRole(null);
-                }
-              } else if (eventName === "brainstorm_credits") {
-                // Update the last message with credits info
-                setMessages((prev) => {
-                  const updated = [...prev];
-                  // Find last message matching this role/round
-                  for (let i = updated.length - 1; i >= 0; i--) {
-                    const m = updated[i] as any;
-                    if (m.skillUsed === "brainstorm" && m.skillArgs?.brainstormRole === data.role) {
-                      updated[i] = { ...m, creditsUsed: String(data.credits) };
-                      break;
-                    }
-                  }
-                  return updated;
-                });
-              } else if (eventName === "brainstorm_chunk") {
-                currentContent += data.content;
-                setStreamingContent(currentContent);
-              } else if (eventName === "brainstorm_done") {
-                // Refresh messages from server to get proper IDs
-                utils.chat.getMessages.invalidate({ conversationId });
-                utils.credits.balance.invalidate();
-                toast.success(`Brainstorm complete — ${data.totalCredits} credits used`);
-              } else if (eventName === "brainstorm_error") {
-                const friendlyError = parseErrorResponse(JSON.stringify({ error: { message: data.error } }));
-                toast.error(friendlyError || "Brainstorm failed");
-              }
-            } catch { }
-          }
-        }
-      }
-    } catch (err: any) {
-      toast.error(err.message || "Brainstorm failed");
-    } finally {
-      setIsStreaming(false);
-      setStreamingContent("");
-      setBrainstormStreamingRole(null);
-      setBrainstormStreamingRound(0);
     }
   };
 
@@ -1533,6 +1528,58 @@ export function ChatView({
       }
     }
 
+    // ── Intent-based routing (shared logic with Teams via routeRoomIntent) ────
+    // Use analyzeIntent for routing decisions UNLESS we already have an explicit
+    // slash command. This ensures Chat and Teams use the same routing pipeline.
+    if (!resolvedSkill && !text.startsWith("/")) {
+      try {
+        const intent = await analyzeIntentMutation.mutateAsync({
+          message: text,
+          conversationId,
+          hasImages: attachments.some((a) => a.fileType.startsWith("image/")),
+        });
+
+        // Agency escalation — complex multi-step request (e.g., "สร้างภาพ และ ข้อความ")
+        if (intent.route === "agency" && intent.agencyEscalation) {
+          const assistantContent = "This request requires multiple coordinated steps. Let me check if an AI Agency can handle this.";
+          const saved = await saveAssistantMessageMutation.mutateAsync({
+            conversationId: conversationId!,
+            content: assistantContent,
+          }).catch(() => null);
+          lastLocalAddTime.current = Date.now();
+          setMessages((prev) => [...prev, {
+            id: saved?.id ?? Date.now(),
+            role: "assistant" as const,
+            content: assistantContent,
+            createdAt: new Date(),
+          }]);
+          setPendingAgencyEscalation({
+            message: text,
+            reason: intent.reason,
+            modalities: intent.taskProfile?.modalities ?? [],
+            complexity: intent.taskProfile?.complexity ?? "single",
+          });
+          return; // Exit — wait for user action on the escalation card
+        }
+
+        // Skill detected by intent router — enrich resolvedSkill from server decision
+        if (intent.route === "skill" && intent.selectedSkillId && intent.skillMeta) {
+          resolvedSkill = {
+            id: intent.selectedSkillId,
+            name: intent.skillMeta.name,
+            type: intent.skillMeta.type,
+            confidence: intent.confidence,
+            suggestedPrompt: null,
+            executionMode: intent.skillMeta.executionMode || "llm-only",
+            chainTo: intent.skillMeta.chainTo || null,
+            patternChainTo: null,
+          };
+        }
+      } catch {
+        // Intent analysis failed — fall through to existing detection/flow
+      }
+    }
+
     const currentSkillId = resolvedSkill?.id;
     const currentSkillType = resolvedSkill?.type;
     const skillPrompt = resolvedSkill?.suggestedPrompt || text;
@@ -1541,20 +1588,16 @@ export function ChatView({
     const currentPatternChainTo = resolvedSkill?.patternChainTo;
 
     // Detect image reference patterns — image edit OR video-from-image requests
-    // Thai: แก้ไขภาพ, ด้วยรูปนี้, จากภาพนี้, ตามภาพ, รูปอ้างอิง, ภาพอ้างอิง, ภาพ reference
-    // English: edit/modify/change image, with/from/using this image, image ref, image reference, ref image
     const imageReferencePattern = /(?:แก้ไขภาพนี้|ช่วยแก้ไขภาพ|แก้ไขภาพ|ด้วยรูปนี้|ด้วยภาพนี้|จากรูปนี้|จากภาพนี้|ตามรูปนี้|ตามภาพนี้|ด้วยรูป|ด้วยภาพ|ตามรูป|ตามภาพ|รูปอ้างอิง|ภาพอ้างอิง|ภาพ\s*ref(?:erence)?|รูป\s*ref(?:erence)?|edit\s*(?:this\s*)?image|modify\s*(?:this\s*)?image|change\s*(?:this\s*)?image|with\s+this\s+image|from\s+this\s+image|using\s+this\s+image|based\s+on\s+this\s+image|image\s+ref(?:erence)?|ref(?:erence)?\s+image|img\s+ref(?:erence)?|use\s+(?:the\s+)?(?:above|previous|last)\s+image)/i;
     const isImageEditRequest = imageReferencePattern.test(text);
 
     // Find reference image for image-to-image or image-to-video generation
     let referenceImageUrl: string | null = null;
     if (isImageEditRequest) {
-      // Check user's current attachments first
       const userImageAttachment = attachments.find(a => a.fileType.startsWith("image/"));
       if (userImageAttachment) {
         referenceImageUrl = userImageAttachment.url;
       } else {
-        // Find image from previous messages (prefer most recent)
         const messagesReversed = [...messages].reverse();
         for (const msg of messagesReversed) {
           const imageAttachment = msg.attachments?.find(a =>
@@ -1576,7 +1619,7 @@ export function ChatView({
     const isImageRequestWithoutDetails = /^(?:สร้างภาพ|generate\s+image|create\s+image)\s*(?:ด้วย|with|ใช้|from|ตาม)?/i.test(text) && text.length < 50;
 
     if ((isUseThisPromptRequest || isImageRequestWithoutDetails) &&
-      (currentSkillId === "image-creator" || currentSkillType === "image-generation" || !currentSkillId)) {
+      (currentSkillType === "image-generation" || !currentSkillId)) {
       // Find the last assistant message to extract prompt
       const lastAssistantMessage = [...messages].reverse().find(m => m.role === "assistant");
 
@@ -1980,84 +2023,22 @@ export function ChatView({
           // LLM didn't return valid JSON — use raw text as prompt
         }
 
-        // Small delay so user can see the prompt/response first
-        await new Promise(r => setTimeout(r, 500));
-
-        setIsStreaming(true);
-        setStreamingContent("Generating media from prompt...");
-
-        try {
-          const result = await executeSkillMutation.mutateAsync({
-            skillId: currentSkillId,
-            prompt: mediaPrompt,
-            conversationId,
+        // Show prompt preview for user confirmation instead of auto-executing.
+        // The user can edit the prompt, then confirm to trigger media generation.
+        setPendingMediaPrompt({
+          prompt: mediaPrompt,
+          skillId: currentSkillId,
+          skillName: resolvedSkill?.name || currentSkillId,
+          skillCategory: resolvedSkill?.type || "",
+          mediaParams: {
             ...mediaParams,
-            // User-selected model overrides any model in mediaParams
             ...(selectedMediaModel ? { model: selectedMediaModel } : {}),
-            // Pass reference image if this is an image edit request
             ...(referenceImageUrl ? { referenceImageUrls: [referenceImageUrl] } : {}),
-          });
-
-          let responseContent = "";
-          let imageAttachments: Array<{ type: "image"; url: string; name: string }> = [];
-
-          if (result.success) {
-            if (result.type === "image" && result.resultUrls && result.resultUrls.length > 0) {
-              responseContent = `Generated image${result.resultUrls.length > 1 ? 's' : ''}:\n\n${result.resultUrls.map(url => `![Generated Image](${url})`).join('\n\n')}`;
-              imageAttachments = result.resultUrls.map((url, i) => ({
-                type: "image" as const, url, name: `generated-image-${i + 1}.png`,
-              }));
-            } else if (result.type === "video" && result.isAsync) {
-              responseContent = `Video generation started. ${result.message}\n\nYou can check the progress in the Media History page.`;
-            } else if (result.resultUrl) {
-              responseContent = `Generated ${result.type}:\n\n${result.type === "image" ? `![Generated Image](${result.resultUrl})` : `[View ${result.type}](${result.resultUrl})`}`;
-              if (result.type === "image") {
-                imageAttachments = [{ type: "image" as const, url: result.resultUrl, name: "generated-image.png" }];
-              }
-            } else {
-              responseContent = result.message || "Media generated successfully!";
-            }
-            if (result.creditsUsed) {
-              responseContent += `\n\n*Credits used: ${result.creditsUsed}*`;
-            }
-            if (result.creditsUsed && result.creditsUsed > 0) {
-              addSkillCreditsMutation.mutate({ conversationId, creditsUsed: result.creditsUsed, skillUsed: currentSkillId });
-            }
-          } else {
-            responseContent = `Failed to generate media: ${result.error || "Unknown error"}`;
-          }
-
-          lastLocalAddTime.current = Date.now();
-          setMessages((prev) => [...prev, {
-            id: Date.now(), role: "assistant" as const, content: responseContent,
-            attachments: imageAttachments.length > 0 ? imageAttachments : undefined,
-            creditsUsed: result.creditsUsed?.toString(), skillUsed: currentSkillId, createdAt: new Date(),
-          }]);
-          setStreamingContent("");
-          setIsStreaming(false);
-          utils.chat.getMessages.invalidate({ conversationId });
-          utils.chat.getConversation.invalidate({ id: conversationId });
-          utils.credits.balance.invalidate();
-        } catch (error) {
-          console.error("Media generation error:", error);
-          lastLocalAddTime.current = Date.now();
-          setMessages((prev) => [...prev, {
-            id: Date.now(), role: "assistant" as const,
-            content: `Prompt generated above. Media generation failed: ${error instanceof Error ? error.message : "Unknown error"}`,
-            skillUsed: currentSkillId, createdAt: new Date(),
-          }]);
-          setStreamingContent("");
-          setIsStreaming(false);
-        }
+          },
+          conversationId: conversationId!,
+        });
+        // Exit — wait for user confirmation via MediaPromptPreview
       }
-    } else if (brainstormMode && brainstormPartnerModel) {
-      // Brainstorm mode: multi-model debate
-      await streamBrainstorm({
-        id: userMessage.id,
-        role: "user",
-        content: typeof content === "string" ? content : text,
-        createdAt: new Date(userMessage.createdAt),
-      });
     } else {
       // Stream response for regular chat (non-media skills)
       const generatedContent = await streamResponse({
@@ -2179,6 +2160,92 @@ export function ChatView({
         }
       }
     }
+  };
+
+  // ── Handler: user confirms generated prompt → execute media skill ─────────
+  const handleMediaPromptConfirm = async (editedPrompt: string, params: Record<string, unknown>) => {
+    if (!pendingMediaPrompt) return;
+    const { skillId, conversationId: convId } = pendingMediaPrompt;
+
+    setIsStreaming(true);
+    setStreamingContent("Generating media from confirmed prompt...");
+    setPendingMediaPrompt(null);
+
+    try {
+      const result = await executeSkillMutation.mutateAsync({
+        skillId,
+        prompt: editedPrompt,
+        conversationId: convId,
+        ...params,
+      });
+
+      let responseContent = "";
+      let imageAttachments: Array<{ type: "image"; url: string; name: string }> = [];
+
+      if (result.success) {
+        if (result.type === "image" && result.resultUrls && result.resultUrls.length > 0) {
+          responseContent = `Generated image${result.resultUrls.length > 1 ? "s" : ""}:\n\n${result.resultUrls.map((url) => `![Generated Image](${url})`).join("\n\n")}`;
+          imageAttachments = result.resultUrls.map((url, i) => ({
+            type: "image" as const, url, name: `generated-image-${i + 1}.png`,
+          }));
+        } else if (result.type === "video" && result.isAsync) {
+          responseContent = `Video generation started. ${result.message}\n\nYou can check the progress in the Media History page.`;
+        } else if (result.resultUrl) {
+          responseContent = `Generated ${result.type}:\n\n${result.type === "image" ? `![Generated Image](${result.resultUrl})` : `[View ${result.type}](${result.resultUrl})`}`;
+          if (result.type === "image") {
+            imageAttachments = [{ type: "image" as const, url: result.resultUrl, name: "generated-image.png" }];
+          }
+        } else {
+          responseContent = result.message || "Media generated successfully!";
+        }
+        if (result.creditsUsed) {
+          responseContent += `\n\n*Credits used: ${result.creditsUsed}*`;
+        }
+        if (result.creditsUsed && result.creditsUsed > 0) {
+          addSkillCreditsMutation.mutate({ conversationId: convId, creditsUsed: result.creditsUsed, skillUsed: skillId });
+        }
+      } else {
+        responseContent = `Failed to generate media: ${result.error || "Unknown error"}`;
+      }
+
+      lastLocalAddTime.current = Date.now();
+      setMessages((prev) => [...prev, {
+        id: Date.now(), role: "assistant" as const, content: responseContent,
+        attachments: imageAttachments.length > 0 ? imageAttachments : undefined,
+        creditsUsed: result.creditsUsed?.toString(), skillUsed: skillId, createdAt: new Date(),
+      }]);
+      utils.chat.getMessages.invalidate({ conversationId: convId });
+      utils.credits.balance.invalidate();
+    } catch (error) {
+      console.error("Media generation from confirmed prompt error:", error);
+      lastLocalAddTime.current = Date.now();
+      setMessages((prev) => [...prev, {
+        id: Date.now(), role: "assistant" as const,
+        content: `Media generation failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+        skillUsed: skillId, createdAt: new Date(),
+      }]);
+    } finally {
+      setStreamingContent("");
+      setIsStreaming(false);
+    }
+  };
+
+  // ── Handler: user cancels media prompt preview ──────────────────────────
+  const handleMediaPromptCancel = () => {
+    setPendingMediaPrompt(null);
+  };
+
+  // ── Handler: user delegates to agency ───────────────────────────────────
+  const handleAgencyDelegation = (agencyId: string) => {
+    setPendingAgencyEscalation(null);
+    // Navigate to agency chat with the original message
+    window.location.href = `/agency/${agencyId}`;
+  };
+
+  // ── Handler: user keeps complex request in chat ─────────────────────────
+  const handleKeepInChat = () => {
+    setPendingAgencyEscalation(null);
+    // The message was already sent — LLM will respond via normal stream
   };
 
   // Render user content (including images)
@@ -2372,26 +2439,13 @@ export function ChatView({
             </Badge>
           )}
 
-          {/* Brainstorm Toggle */}
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant={brainstormMode ? "default" : "ghost"}
-                  size="sm"
-                  className={cn("h-8 gap-1", brainstormMode && "bg-yellow-500 hover:bg-yellow-600 text-white")}
-                  onClick={() => setBrainstormMode(!brainstormMode)}
-                  disabled={isStreaming}
-                >
-                  <Lightbulb className="h-3.5 w-3.5" />
-                  {brainstormMode && <span className="text-xs">Brainstorm</span>}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Toggle Brainstorm Mode (two models collaborate)</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          {conversationId ? (
+            <PersonaSelector
+              conversationId={conversationId}
+              currentPersonaId={(conversation as any)?.personaId || null}
+              onSelect={handlePersonaChange}
+            />
+          ) : null}
 
           {/* Telegram Bridge Toggle */}
           {conversationId && (
@@ -2402,61 +2456,6 @@ export function ChatView({
             />
           )}
 
-          {/* Model B selector (when brainstorm is ON) */}
-          {brainstormMode && modelsData?.models && (
-            <>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 max-w-[220px] justify-start gap-2 text-xs font-normal border-purple-300"
-                onClick={() => setBrainstormModelDialogOpen(true)}
-                disabled={isStreaming}
-              >
-                <Brain className="h-3 w-3 shrink-0 text-purple-500" />
-                <span className="truncate text-purple-700">
-                  {(() => {
-                    const modelData = modelsData.models.find(m => m.id === brainstormPartnerModel);
-                    if (!modelData) return "Select Model B";
-                    return formatModelDisplayName(modelData.name, modelData.provider);
-                  })()}
-                </span>
-              </Button>
-              <CommandDialog
-                open={brainstormModelDialogOpen}
-                onOpenChange={setBrainstormModelDialogOpen}
-                title="Select Brainstorm Partner (Model B)"
-                description="Choose a second model for collaborative brainstorming"
-              >
-                <CommandInput placeholder="Search models..." />
-                <CommandList className="max-h-[60vh]">
-                  <CommandEmpty>No models found.</CommandEmpty>
-                  {Object.entries(modelsByProvider).map(([provider, models]) => (
-                    <CommandGroup key={provider} heading={provider}>
-                      {models.map((model) => (
-                        <CommandItem
-                          key={model.id}
-                          value={`${model.name} ${model.id} ${provider}`}
-                          onSelect={() => {
-                            setBrainstormPartnerModel(model.id);
-                            setBrainstormModelDialogOpen(false);
-                          }}
-                          className="flex items-center gap-2"
-                        >
-                          <Check className={cn("h-3.5 w-3.5 shrink-0", brainstormPartnerModel === model.id ? "opacity-100" : "opacity-0")} />
-                          <span className="flex-1 truncate">{formatModelDisplayName(model.name, model.provider)}</span>
-                          {model.id === selectedModel && (
-                            <Badge variant="secondary" className="h-4 px-1 text-[10px] shrink-0">
-                              Model A
-                            </Badge>
-                          )}
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  ))}
-                </CommandList>
-              </CommandDialog>
-            </>
-          )}
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
           {/* Session credits (total used in this conversation) */}
@@ -2541,6 +2540,12 @@ export function ChatView({
               {messages.map((m) => {
                 const browserSessionArtifacts = extractBrowserSessionArtifacts(m.artifacts);
                 const comparisonPreviews = extractComparisonPreviews(m.artifacts);
+                const teamRoomActions = m.role === "assistant"
+                  ? extractTeamRoomActionLinks(m.content)
+                  : [];
+                const cleanedAssistantContent = m.role === "assistant"
+                  ? stripStandaloneTeamRoomActionLinks(stripArtifactTags(m.content))
+                  : m.content;
                 const messageBubble = (
                   <div
                     className={cn(
@@ -2573,11 +2578,38 @@ export function ChatView({
                     )}
                     {m.role === "assistant" ? (
                       <>
-                        <SafeMarkdown
-                          onImageClick={(images, index) => openImageLightbox(images, index)}
-                        >
-                          {stripArtifactTags(m.content)}
-                        </SafeMarkdown>
+                        {teamRoomActions.length > 0 ? (
+                          <div className="mb-3 grid gap-2">
+                            {teamRoomActions.map((action) => {
+                              const ActionIcon = getTeamRoomActionIcon(action.kind);
+                              return (
+                                <a
+                                  key={`${action.label}-${action.href}`}
+                                  href={action.href}
+                                  className={cn(
+                                    "flex items-center justify-between gap-3 rounded-lg border px-3 py-2 text-sm transition-colors hover:brightness-[0.98]",
+                                    getTeamRoomActionClasses(action.kind),
+                                  )}
+                                >
+                                  <div className="flex min-w-0 items-center gap-2">
+                                    <ActionIcon className="h-4 w-4 shrink-0" />
+                                    <span className="truncate font-medium">{action.label}</span>
+                                  </div>
+                                  <span className="shrink-0 rounded-md bg-white/80 px-2.5 py-1 text-xs font-medium text-foreground shadow-sm">
+                                    Open
+                                  </span>
+                                </a>
+                              );
+                            })}
+                          </div>
+                        ) : null}
+                        {cleanedAssistantContent ? (
+                          <SafeMarkdown
+                            onImageClick={(images, index) => openImageLightbox(images, index)}
+                          >
+                            {cleanedAssistantContent}
+                          </SafeMarkdown>
+                        ) : null}
                         {/* Inline artifact cards */}
                         {(() => {
                           const inlineArtifacts = parseArtifacts(m.content);
@@ -2736,6 +2768,35 @@ export function ChatView({
                 </div>
               )}
 
+              {/* Media prompt preview — confirm before generating */}
+              {pendingMediaPrompt && (
+                <div className="mr-auto max-w-[85%]">
+                  <MediaPromptPreview
+                    prompt={pendingMediaPrompt.prompt}
+                    skillName={pendingMediaPrompt.skillName}
+                    skillCategory={pendingMediaPrompt.skillCategory}
+                    mediaParams={pendingMediaPrompt.mediaParams}
+                    isExecuting={isStreaming}
+                    onConfirm={handleMediaPromptConfirm}
+                    onCancel={handleMediaPromptCancel}
+                  />
+                </div>
+              )}
+
+              {/* Agency escalation — complex multi-step request */}
+              {pendingAgencyEscalation && (
+                <div className="mr-auto max-w-[85%]">
+                  <AgencyEscalationCard
+                    message={pendingAgencyEscalation.message}
+                    reason={pendingAgencyEscalation.reason}
+                    modalities={pendingAgencyEscalation.modalities}
+                    complexity={pendingAgencyEscalation.complexity}
+                    onDelegateToAgency={handleAgencyDelegation}
+                    onKeepInChat={handleKeepInChat}
+                  />
+                </div>
+              )}
+
               {browserSessionSuggestion ? (
                 <div className="mr-auto max-w-[85%]">
                   <BrowserSessionLaunchSuggestionCard
@@ -2748,27 +2809,8 @@ export function ChatView({
 
               {/* Streaming message */}
               {streamingContent && (
-                <div className={cn(
-                  "mr-auto max-w-[85%] rounded-lg px-4 py-3",
-                  brainstormStreamingRole === "model_a" ? "bg-blue-50 border-l-4 border-blue-400" :
-                    brainstormStreamingRole === "model_b" ? "bg-purple-50 border-l-4 border-purple-400" :
-                      brainstormStreamingRole === "summary" ? "bg-green-50 border-l-4 border-green-400" :
-                        "bg-muted",
-                )}>
-                  {brainstormStreamingRole && (
-                    <div className="mb-2 flex items-center gap-2">
-                      <Badge variant="outline" className={cn(
-                        "text-[10px]",
-                        brainstormStreamingRole === "model_a" && "border-blue-400 text-blue-600",
-                        brainstormStreamingRole === "model_b" && "border-purple-400 text-purple-600",
-                        brainstormStreamingRole === "summary" && "border-green-400 text-green-600",
-                      )}>
-                        {brainstormStreamingRole === "summary" ? "Summary" :
-                          `${brainstormStreamingRole === "model_a" ? "Model A" : "Model B"} · Round ${brainstormStreamingRound}`}
-                      </Badge>
-                      <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
-                    </div>
-                  )}
+                <div className="mr-auto max-w-[85%] rounded-lg px-4 py-3 bg-muted">
+
                   <SafeMarkdown
                     onImageClick={(images, index) => openImageLightbox(images, index)}
                   >

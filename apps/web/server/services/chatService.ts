@@ -9,6 +9,7 @@ import {
   conversationSummaries,
   entityMemories,
   skillPreferences,
+  users,
   Conversation,
   InsertConversation,
   Message,
@@ -68,6 +69,8 @@ export async function createConversation(data: {
   model?: string;
   systemPrompt?: string;
   projectId?: string;
+  tenantId?: string | null;
+  personaId?: string | null;
 }): Promise<Conversation> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -81,6 +84,8 @@ export async function createConversation(data: {
       model: resolvedModel || null,
       systemPrompt: data.systemPrompt,
       projectId: data.projectId,
+      tenantId: data.tenantId || null,
+      personaId: data.personaId || null,
     })
     .returning();
 
@@ -479,21 +484,30 @@ export async function upsertEntityMemory(data: {
   facts: string[];
   sourceConversationId?: number;
   projectId?: string | null;
+  personaId?: string | null;
 }): Promise<EntityMemory> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
   // If projectId not provided but sourceConversationId exists, look it up
   let projectId = data.projectId ?? null;
+  let personaId = data.personaId;
   if (!projectId && data.sourceConversationId) {
     try {
       const [conv] = await db
-        .select({ projectId: conversations.projectId })
+        .select({ projectId: conversations.projectId, personaId: conversations.personaId })
         .from(conversations)
         .where(eq(conversations.id, data.sourceConversationId))
         .limit(1);
       projectId = conv?.projectId ?? null;
+      if (personaId === undefined) {
+        personaId = conv?.personaId ?? null;
+      }
     } catch {}
+  }
+
+  if (personaId === undefined) {
+    personaId = null;
   }
 
   // Try to find existing memory
@@ -504,7 +518,10 @@ export async function upsertEntityMemory(data: {
       and(
         eq(entityMemories.userId, data.userId),
         eq(entityMemories.entityType, data.entityType),
-        eq(entityMemories.entityName, data.entityName)
+        eq(entityMemories.entityName, data.entityName),
+        personaId === null
+          ? isNull(entityMemories.personaId)
+          : eq(entityMemories.personaId, personaId)
       )
     )
     .limit(1);
@@ -521,10 +538,11 @@ export async function upsertEntityMemory(data: {
         lastAccessedAt: new Date(),
         updatedAt: new Date(),
         ...(projectId && !existing.projectId ? { projectId } : {}),
+        ...(existing.personaId !== personaId ? { personaId } : {}),
       })
       .where(eq(entityMemories.id, existing.id));
 
-    return { ...existing, facts: mergedFacts };
+    return { ...existing, facts: mergedFacts, personaId };
   }
 
   // Create new memory
@@ -532,6 +550,7 @@ export async function upsertEntityMemory(data: {
     .insert(entityMemories)
     .values({
       userId: data.userId,
+      personaId: personaId ?? null,
       entityType: data.entityType,
       entityName: data.entityName,
       facts: data.facts,
@@ -548,7 +567,8 @@ export async function upsertEntityMemory(data: {
  */
 export async function getEntityMemories(
   userId: number,
-  entityType?: "user" | "project" | "preference" | "technical"
+  entityType?: "user" | "project" | "preference" | "technical",
+  personaId?: string | null
 ): Promise<EntityMemory[]> {
   const db = await getDb();
   if (!db) return [];
@@ -557,6 +577,14 @@ export async function getEntityMemories(
 
   if (entityType) {
     conditions.push(eq(entityMemories.entityType, entityType));
+  }
+
+  if (personaId !== undefined) {
+    conditions.push(
+      personaId === null
+        ? isNull(entityMemories.personaId)
+        : eq(entityMemories.personaId, personaId),
+    );
   }
 
   return await db
@@ -661,6 +689,7 @@ export async function buildChatContext(
 
   // 0. Resolve persona and prepend to system prompt
   let effectiveSystemPrompt = systemPrompt;
+  let activePersonaId: string | null = null;
   try {
     const { resolvePersona, buildPersonaPromptSegments } = await import("./personaService");
     const db = await getDb();
@@ -674,14 +703,28 @@ export async function buildChatContext(
 
       const conv = convResult[0];
       const convTenantId = conv?.tenantId || tenantId || null;
+      const [userPersona] = await db
+        .select({ defaultPersonaId: users.defaultPersonaId })
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+      const [tenantPersona] = convTenantId
+        ? await db
+            .select({ defaultPersonaId: tenants.defaultPersonaId })
+            .from(tenants)
+            .where(eq(tenants.id, convTenantId))
+            .limit(1)
+        : [{ defaultPersonaId: null }];
 
       const persona = await resolvePersona(
         { personaId: conv?.personaId || null, tenantId: convTenantId },
-        { id: userId, defaultPersonaId: null },
-        { id: convTenantId || "", defaultPersonaId: null },
+        { id: userId, defaultPersonaId: userPersona?.defaultPersonaId || null },
+        { id: convTenantId || "", defaultPersonaId: tenantPersona?.defaultPersonaId || null },
       );
 
       if (persona) {
+        activePersonaId =
+          persona.id === "00000000-0000-0000-0000-000000000001" ? null : persona.id;
         const segments = buildPersonaPromptSegments(persona);
         const parts: string[] = [segments.prefix];
         if (segments.styleInstructions) parts.push(segments.styleInstructions);
@@ -703,7 +746,7 @@ export async function buildChatContext(
   }
 
   // 2. Add entity memories
-  const memories = await getEntityMemories(userId);
+  const memories = await getEntityMemories(userId, undefined, activePersonaId);
   if (memories.length > 0) {
     const memoryContext = memories
       .slice(0, 10) // Limit to top 10 most relevant

@@ -8,6 +8,12 @@ import { router, protectedProcedure } from "../_core/trpc";
 import { resolveTenantIdVarchar } from "../services/tenantContext";
 import * as memoryService from "../services/scopedMemoryService";
 
+function requireTenantId(ctx: { tenantId: string | null; user?: { currentTenantId?: number | null } | null }): string {
+  const tid = resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId);
+  if (!tid) throw new TRPCError({ code: "FORBIDDEN", message: "Tenant context required" });
+  return tid;
+}
+
 export const scopedMemoryRouter = router({
   create: protectedProcedure
     .input(z.object({
@@ -21,12 +27,12 @@ export const scopedMemoryRouter = router({
       importance: z.number().int().min(1).max(10).optional(),
     }))
     .mutation(async ({ input, ctx }) => {
-      const tenantId = resolveTenantIdVarchar(ctx);
+      const tenantId = requireTenantId(ctx);
       return memoryService.createMemory({
         tenantId,
         ...input,
         sourceType: "manual",
-        sourceUserId: ctx.userId,
+        sourceUserId: ctx.user!.id,
       });
     }),
 
@@ -40,7 +46,7 @@ export const scopedMemoryRouter = router({
       topK: z.number().int().min(1).max(100).optional(),
     }))
     .query(async ({ input, ctx }) => {
-      const tenantId = resolveTenantIdVarchar(ctx);
+      const tenantId = requireTenantId(ctx);
       return memoryService.searchMemories({
         tenantId,
         scopes: input.scopes,
@@ -52,7 +58,7 @@ export const scopedMemoryRouter = router({
   get: protectedProcedure
     .input(z.object({ memoryId: z.string().min(1) }))
     .query(async ({ input, ctx }) => {
-      const tenantId = resolveTenantIdVarchar(ctx);
+      const tenantId = requireTenantId(ctx);
       const memory = await memoryService.getMemory(input.memoryId, tenantId);
       if (!memory) throw new TRPCError({ code: "NOT_FOUND", message: "Memory not found" });
       return memory;
@@ -67,7 +73,7 @@ export const scopedMemoryRouter = router({
       importance: z.number().int().min(1).max(10).optional(),
     }))
     .mutation(async ({ input, ctx }) => {
-      const tenantId = resolveTenantIdVarchar(ctx);
+      const tenantId = requireTenantId(ctx);
       const { memoryId, ...updates } = input;
       const memory = await memoryService.updateMemory(memoryId, tenantId, updates);
       if (!memory) throw new TRPCError({ code: "NOT_FOUND", message: "Memory not found" });
@@ -77,7 +83,7 @@ export const scopedMemoryRouter = router({
   delete: protectedProcedure
     .input(z.object({ memoryId: z.string().min(1) }))
     .mutation(async ({ input, ctx }) => {
-      const tenantId = resolveTenantIdVarchar(ctx);
+      const tenantId = requireTenantId(ctx);
       const deleted = await memoryService.deleteMemory(input.memoryId, tenantId);
       if (!deleted) throw new TRPCError({ code: "NOT_FOUND", message: "Memory not found" });
       return { success: true };
@@ -91,14 +97,14 @@ export const scopedMemoryRouter = router({
       reason: z.string().max(500).optional(),
     }))
     .mutation(async ({ input, ctx }) => {
-      const tenantId = resolveTenantIdVarchar(ctx);
+      const tenantId = requireTenantId(ctx);
       await memoryService.promoteMemory(
         input.memoryId,
         tenantId,
         input.toOwnerType,
         input.toOwnerId,
         input.reason,
-        { userId: ctx.userId },
+        { userId: ctx.user!.id },
       );
       return { success: true };
     }),

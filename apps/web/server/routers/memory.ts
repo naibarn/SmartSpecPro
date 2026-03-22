@@ -185,6 +185,7 @@ export const memoryRouter = router({
           currentUserMessage: input.currentMessage,
           memoryMode,
           projectId: (conversation as any).projectId || undefined,
+          tenantId: (conversation as any).tenantId || ctx.tenantId || undefined,
         }
       );
 

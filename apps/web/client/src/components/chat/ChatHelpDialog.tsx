@@ -592,9 +592,29 @@ export function ChatHelpDialog({
               <TBulletList t={t} prefix="help.orchestrator.monitoring" count={4} />
             </MemorySubSection>
 
+            {/* Auto-Stop Policy */}
+            <MemorySubSection title={t("help.orchestrator.autoStop.title")} icon={Settings}>
+              <TBulletList t={t} prefix="help.orchestrator.autoStop" count={3} />
+            </MemorySubSection>
+
+            {/* Inter-Agent Communication */}
+            <MemorySubSection title={t("help.orchestrator.interAgent.title")} icon={Zap}>
+              <TBulletList t={t} prefix="help.orchestrator.interAgent" count={3} />
+            </MemorySubSection>
+
+            {/* Live Streaming */}
+            <MemorySubSection title={t("help.orchestrator.streaming.title")} icon={Settings}>
+              <TBulletList t={t} prefix="help.orchestrator.streaming" count={4} />
+            </MemorySubSection>
+
+            {/* Teams Page */}
+            <MemorySubSection title={t("help.orchestrator.teamsPage.title")} icon={Users}>
+              <TBulletList t={t} prefix="help.orchestrator.teamsPage" count={5} />
+            </MemorySubSection>
+
             {/* Tips */}
             <MemorySubSection title={t("help.orchestrator.tips.title")} icon={Lightbulb}>
-              <TBulletList t={t} prefix="help.orchestrator.tips" count={5} />
+              <TBulletList t={t} prefix="help.orchestrator.tips" count={7} />
             </MemorySubSection>
           </CollapsibleSection>
 

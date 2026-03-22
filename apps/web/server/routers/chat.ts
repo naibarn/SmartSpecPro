@@ -1226,6 +1226,68 @@ export const chatRouter = router({
     }),
 
   /**
+   * Analyze user intent using the same routing pipeline as Teams (routeRoomIntent).
+   * Returns routing decision: chat / skill / agency, plus skill metadata.
+   * Both Chat and Teams share this intent analysis logic for consistency.
+   */
+  analyzeIntent: protectedProcedure
+    .input(
+      z.object({
+        message: z.string().min(1).max(10000),
+        conversationId: z.number().optional(),
+        hasImages: z.boolean().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { routeRoomIntent } = await import("../services/roomIntentRouter");
+
+      const decision = await routeRoomIntent({
+        message: input.message,
+        origin: "human_user",
+        context: "room_message",
+        userId: ctx.user.id,
+        tenantId: ctx.tenantId || "default",
+        conversationId: input.conversationId,
+        hasImages: input.hasImages,
+      });
+
+      // Enrich with skill metadata when a skill is selected
+      let skillMeta: {
+        executionMode: string;
+        category: string;
+        name: string;
+        type: string;
+        chainTo: string | null;
+      } | null = null;
+
+      if (decision.selectedSkillId) {
+        const skill = getSkillById(decision.selectedSkillId);
+        if (skill) {
+          skillMeta = {
+            executionMode: skill.executionMode || "llm-only",
+            category: skill.category || "",
+            name: skill.name,
+            type: skill.type,
+            chainTo: skill.chainTo || null,
+          };
+        }
+      }
+
+      return {
+        route: decision.route,
+        reason: decision.reason,
+        selectedSkillId: decision.selectedSkillId ?? null,
+        confidence: decision.confidence,
+        source: decision.source,
+        agencyEscalation: decision.agencyEscalation ?? false,
+        routingStrategy: decision.routingStrategy ?? null,
+        taskProfile: decision.taskProfile ?? null,
+        candidateSkills: decision.candidateSkills ?? null,
+        skillMeta,
+      };
+    }),
+
+  /**
    * Get skill detection summary for a conversation
    */
   getSkillSummary: protectedProcedure

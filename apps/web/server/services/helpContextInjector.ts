@@ -10,6 +10,30 @@
 
 import { getHelpSearchIndex, getHelpTopic } from "./helpContentService";
 
+export const HELP_CONTEXT_MARKER = "=== HELP DOCUMENTATION REFERENCE ===";
+
+const HELP_INTENT_PATTERNS = [
+  /(?:how\s+(?:do|to)\s+(?:i\s+)?)|(?:what\s+is)|(?:where\s+is)|(?:how\s+does)|(?:can\s+you\s+explain)/i,
+  /(?:ใช้อย่างไร|ใช้งานอย่างไร|คืออะไร|อยู่ตรงไหน|เปิดยังไง|เปิดอย่างไร|ตั้งค่ายังไง|ทำยังไง|อธิบาย|สอนใช้|วิธีใช้)/i,
+];
+
+const PRODUCT_FEATURE_PATTERNS = [
+  /\bteam\s*rooms?\b/i,
+  /\bworkflow\s*board\b/i,
+  /\bbrowser\s*session\b/i,
+  /\bopen\s*browser\s*session\b/i,
+  /\bartifacts?\b/i,
+  /\balerts?\b/i,
+  /\bpersonas?\b/i,
+  /\bmemory\b/i,
+  /\bcredits?\b/i,
+  /\bskill(?:s| browser)?\b/i,
+  /\bagenc(?:y|ies)\b/i,
+  /\bteams?\b/i,
+  /\badmin\b/i,
+  /ทีม\s*รูม|ห้องทีม|ทีม ai|เวิร์กโฟลว์|บอร์ดงาน|บราวเซอร์\s*เซสชัน|อาร์ติแฟกต์|อเลิร์ต|เครดิต|สกิล|เพอร์โซนา|เมมโมรี/i,
+];
+
 /** Common stop words to exclude from keyword matching */
 const STOP_WORDS = new Set([
   // English
@@ -88,6 +112,20 @@ function extractKeywords(message: string): string[] {
   return [...new Set([...englishWords, ...thaiTerms])];
 }
 
+export function detectHelpLocale(message: string): "en" | "th" {
+  return /[\u0E00-\u0E7F]/.test(message) ? "th" : "en";
+}
+
+export function shouldInjectHelpContext(message: string): boolean {
+  const trimmed = message.trim();
+  if (!trimmed) return false;
+
+  const hasExplicitFeatureCue = PRODUCT_FEATURE_PATTERNS.some((pattern) => pattern.test(trimmed));
+  const hasHelpIntent = HELP_INTENT_PATTERNS.some((pattern) => pattern.test(trimmed));
+
+  return hasExplicitFeatureCue || hasHelpIntent;
+}
+
 /**
  * Score a help topic against extracted keywords.
  * Returns number of keyword matches across title, description, and tags.
@@ -146,7 +184,7 @@ export async function buildHelpContext(
 
   // Load full content for top matches
   const parts: string[] = [
-    "=== HELP DOCUMENTATION REFERENCE ===",
+    HELP_CONTEXT_MARKER,
     "Use the following documentation to answer the user's question accurately.",
     "",
   ];
@@ -170,4 +208,52 @@ export async function buildHelpContext(
   parts.push("=== END HELP REFERENCE ===");
 
   return parts.join("\n");
+}
+
+export async function injectHelpContextMessage(
+  messages: Array<{ role: string; content: unknown }>,
+  options?: { force?: boolean },
+): Promise<{ injected: boolean; locale: "en" | "th" | null; reason: string | null }> {
+  if (!Array.isArray(messages) || messages.length === 0) {
+    return { injected: false, locale: null, reason: "no_messages" };
+  }
+
+  const alreadyInjected = messages.some(
+    (message) =>
+      message.role === "system"
+      && typeof message.content === "string"
+      && message.content.includes(HELP_CONTEXT_MARKER),
+  );
+  if (alreadyInjected) {
+    return { injected: false, locale: null, reason: "already_injected" };
+  }
+
+  const lastUserMsg = [...messages].reverse().find((message) => message.role === "user");
+  if (!lastUserMsg?.content) {
+    return { injected: false, locale: null, reason: "no_user_message" };
+  }
+
+  const messageText = typeof lastUserMsg.content === "string"
+    ? lastUserMsg.content
+    : JSON.stringify(lastUserMsg.content);
+
+  if (!options?.force && !shouldInjectHelpContext(messageText)) {
+    return { injected: false, locale: null, reason: "not_help_query" };
+  }
+
+  const locale = detectHelpLocale(messageText);
+  const helpContext = await buildHelpContext(messageText, locale);
+  if (!helpContext) {
+    return { injected: false, locale, reason: "no_matching_docs" };
+  }
+
+  const helpMsg = { role: "system", content: helpContext };
+  const firstNonSystem = messages.findIndex((message) => message.role !== "system");
+  if (firstNonSystem > 0) {
+    messages.splice(firstNonSystem, 0, helpMsg);
+  } else {
+    messages.unshift(helpMsg);
+  }
+
+  return { injected: true, locale, reason: options?.force ? "forced" : "auto" };
 }
