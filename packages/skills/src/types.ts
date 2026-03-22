@@ -53,6 +53,7 @@ export interface SkillDefinition {
   icon: string;
   type: SkillType;
   category?: string;
+  tags?: string[];
   /** True when the skill is only intended for server-owned execution paths. */
   internalOnly?: boolean;
   /** Surfaces where this skill may be used. */

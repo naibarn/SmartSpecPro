@@ -13,6 +13,8 @@ export interface MenuItem {
   platforms: Platform[];
   roles?: UserRole[];
   group?: MenuGroup;
+  section?: 'documents' | 'private';
+  parentId?: string;
   external?: boolean;
   requiresFeature?: string;
   children?: MenuItem[];
@@ -31,7 +33,8 @@ export const defaultMenuItems: MenuItem[] = [
   { id: 'teams',         label: 'Teams',          labelTh: 'ทีม AI',         icon: 'UsersRound',      path: '/teams',          platforms: ['web', 'desktop'], group: 'main', sortOrder: 3.75, requiresFeature: 'orchestratorEnabled' },
   { id: 'automation',    label: 'Automation Copilot', labelTh: 'ระบบอัตโนมัติ', icon: 'Bot', path: '/automation', platforms: ['web', 'desktop'], group: 'main', sortOrder: 3.8, requiresFeature: 'automationCopilot' },
   { id: 'media-history', label: 'Media History',  labelTh: 'ประวัติมีเดีย',  icon: 'Clock',           path: '/media-history',  platforms: ['web', 'desktop'], group: 'main', sortOrder: 4 },
-  { id: 'document-management', label: 'Library', labelTh: 'คลังเอกสาร', icon: 'FileText', path: '/document-management', platforms: ['web', 'desktop'], group: 'main', sortOrder: 4.2 },
+  { id: 'document-management', label: 'Library', labelTh: 'คลังเอกสาร', icon: 'FileText', path: '/document-management', platforms: ['web', 'desktop'], group: 'main', section: 'documents', sortOrder: 4.2 },
+  { id: 'private-files', label: 'Private Files', labelTh: 'ไฟล์ส่วนตัว', icon: 'Lock', path: '/document-management?scope=private_vault&sort=updated_desc', platforms: ['web', 'desktop'], group: 'main', parentId: 'document-management', sortOrder: 4.21 },
   { id: 'presentations', label: 'Presentations', labelTh: 'พรีเซนเทชัน', icon: 'GalleryHorizontal', path: '/presentations', platforms: ['web', 'desktop'], group: 'main', sortOrder: 4.25 },
   { id: 'groups',              label: 'Groups',              labelTh: 'กลุ่ม',          icon: 'Users',    path: '/groups',              platforms: ['web', 'desktop'], group: 'main', sortOrder: 4.3 },
   { id: 'factory',       label: 'SaaS Factory',   labelTh: 'โรงงาน',        icon: 'Factory',         path: '/factory',        platforms: ['web', 'desktop'], group: 'main', sortOrder: 5 },
