@@ -18,7 +18,7 @@ import {
 import { deductCredits, hasEnoughCredits, refundCredits } from "../services/creditService";
 import { calculateCreditCost, type UserSelections } from "../services/pricingCalculator";
 import { signBearerToken } from "../_core/tokens";
-import { mediaGenerationLimiter } from "../services/rateLimiter";
+import { mediaGenerationLimiter, isLuxTtsModel, checkLuxTtsRateLimit } from "../services/rateLimiter";
 import { auditLogger } from "../services/auditLogger";
 import { addMediaTaskToLibrary } from "../services/mediaLibraryService";
 import { isLibraryEnabledForTenant } from "../services/libraryFeatureFlags";
@@ -1319,6 +1319,17 @@ export const mediaRouter = router({
         });
       }
 
+      // Lux TTS rate limit (5 requests per 10 minutes)
+      if (isLuxTtsModel(input.model)) {
+        const luxLimit = await checkLuxTtsRateLimit(ctx.user.id);
+        if (!luxLimit.allowed) {
+          throw new TRPCError({
+            code: "TOO_MANY_REQUESTS",
+            message: `Lux TTS rate limit exceeded (5 requests per 10 minutes). Try again in ${luxLimit.retryAfter} seconds.`,
+          });
+        }
+      }
+
       // Abuse guard: detect duplicate/burst/loop patterns
       const abuseResult = await checkAbuseGuard({
         userId: ctx.user.id,
@@ -1429,6 +1440,17 @@ export const mediaRouter = router({
           code: "TOO_MANY_REQUESTS",
           message: `Rate limit exceeded for media generation. Try again in ${Math.ceil(mediaGenerationLimiter.getResetTime(rateLimitKey) / 1000)} seconds.`,
         });
+      }
+
+      // Lux TTS rate limit (5 requests per 10 minutes)
+      if (isLuxTtsModel(input.model)) {
+        const luxLimit = await checkLuxTtsRateLimit(ctx.user.id);
+        if (!luxLimit.allowed) {
+          throw new TRPCError({
+            code: "TOO_MANY_REQUESTS",
+            message: `Lux TTS rate limit exceeded (5 requests per 10 minutes). Try again in ${luxLimit.retryAfter} seconds.`,
+          });
+        }
       }
 
       const abuseResult = await checkAbuseGuard({

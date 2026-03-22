@@ -154,6 +154,32 @@ export const shareOperationLimiter = createRateLimiter("share-operation", {
   blockDurationMs: 30000, // Block for 30 seconds if exceeded
 });
 
+// ---------------------------------------------------------------------------
+// Lux TTS Redis-based rate limiter (5 requests per 10 minutes per user)
+// ---------------------------------------------------------------------------
+
+export const LUX_TTS_MODEL_ID = "fal-ai/lux-tts";
+const LUX_TTS_LIMIT = 5;
+const LUX_TTS_WINDOW_SECONDS = 600; // 10 minutes
+
+export function isLuxTtsModel(model: string | undefined): boolean {
+  return model === LUX_TTS_MODEL_ID;
+}
+
+export async function checkLuxTtsRateLimit(
+  userId: number,
+): Promise<{ allowed: boolean; retryAfter: number | null }> {
+  const { checkRateLimit } = await import(
+    "../middleware/distributedRateLimit"
+  );
+  const result = await checkRateLimit(
+    `ratelimit:lux-tts:${userId}`,
+    LUX_TTS_LIMIT,
+    LUX_TTS_WINDOW_SECONDS,
+  );
+  return { allowed: result.allowed, retryAfter: result.retryAfter };
+}
+
 // Cleanup old entries periodically (run every 5 minutes)
 const CLEANUP_INTERVAL = 5 * 60 * 1000;
 setInterval(() => {
