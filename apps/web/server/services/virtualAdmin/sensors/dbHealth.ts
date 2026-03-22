@@ -37,7 +37,7 @@ const dbHealthSensor: Sensor = {
         const stats = await db.execute(
           sql`SELECT count(*) as cnt FROM pg_stat_activity WHERE datname = current_database()`,
         );
-        activeConnections = Number((stats.rows[0] as any)?.cnt ?? 0);
+        activeConnections = Number((stats as any[])[0]?.cnt ?? 0);
       } catch {
         // Non-critical
       }

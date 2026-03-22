@@ -286,7 +286,7 @@ async function isAutoFixEnabled(tenantId?: string): Promise<boolean> {
     const result = await db.execute(
       sql`SELECT value FROM system_settings WHERE key = 'VIRTUAL_ADMIN_AUTO_FIX' AND "tenantId" = ${tenantId} LIMIT 1`,
     );
-    return (result.rows[0] as any)?.value === "true";
+    return (result as any[])[0]?.value === "true";
   } catch {
     return false;
   }

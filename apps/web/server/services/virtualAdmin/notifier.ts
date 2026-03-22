@@ -47,7 +47,7 @@ export async function dispatchNotification(
       const exists = await redis.exists(cooldownKey);
       if (exists) {
         // Still publish to SSE for dashboard updates
-        await publishSSEEvent("incident.created", notification);
+        await publishSSEEvent("incident.created", notification as unknown as Record<string, unknown>);
         return;
       }
       // Set cooldown (5 min default)
@@ -83,7 +83,7 @@ export async function dispatchNotification(
   }
 
   // Publish to SSE
-  await publishSSEEvent("incident.created", notification);
+  await publishSSEEvent("incident.created", notification as unknown as Record<string, unknown>);
 }
 
 async function sendInApp(n: GuardianNotification): Promise<void> {
@@ -192,7 +192,7 @@ async function sendTelegram(n: GuardianNotification): Promise<void> {
     const { inArray, isNotNull } = await import("drizzle-orm");
 
     const admins = await db
-      .select({ telegramChatId: users.telegramChatId })
+      .select({ id: users.id, telegramChatId: users.telegramChatId })
       .from(users)
       .where(inArray(users.role, ["admin", "domain_admin"]));
 
@@ -201,10 +201,13 @@ async function sendTelegram(n: GuardianNotification): Promise<void> {
         // Use existing telegram service if available
         try {
           const { enqueueTelegramNotification } = await import("../telegramService");
-          await enqueueTelegramNotification(
-            admin.telegramChatId,
-            `🚨 *${n.severity.toUpperCase()}*\n${n.title}\n${n.message}`,
-          );
+          await enqueueTelegramNotification(db, admin.id, {
+            notificationId: 0,
+            title: n.title,
+            content: n.message,
+            priority: n.severity,
+            createdAt: new Date(),
+          });
         } catch {
           // Telegram service not available
         }

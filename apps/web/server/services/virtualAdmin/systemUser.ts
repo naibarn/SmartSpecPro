@@ -7,7 +7,7 @@ import { ENV } from "../../_core/env";
 export const SYSTEM_USER_ID = -1;
 const SYSTEM_USER_OPENID = "system-guardian-internal";
 const SYSTEM_USER_EMAIL = "system-agent@internal";
-const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
+const EIGHT_HOURS_MS = 8 * 60 * 60 * 1000;
 
 let cachedToken: string | null = null;
 let tokenExpiresAt: number = 0;
@@ -60,7 +60,7 @@ export async function getSystemUserToken(): Promise<string> {
   }
 
   const secret = new TextEncoder().encode(ENV.cookieSecret);
-  const expiresAt = Math.floor((Date.now() + ONE_YEAR_MS) / 1000);
+  const expiresAt = Math.floor((Date.now() + EIGHT_HOURS_MS) / 1000);
 
   cachedToken = await new SignJWT({
     userId: SYSTEM_USER_ID,

@@ -244,7 +244,7 @@ export const virtualAdminRouter = router({
       .from(virtualAdminApprovals)
       .where(eq(virtualAdminApprovals.status, "pending"));
 
-    const row = stats.rows[0] as any;
+    const [row] = stats as any[];
     return {
       openIncidents: Number(row?.open_count ?? 0),
       criticalCount: Number(row?.critical_count ?? 0),

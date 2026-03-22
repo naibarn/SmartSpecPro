@@ -23,7 +23,7 @@ const llmProviderSensor: Sensor = {
       }
 
       const providers = await db
-        .select({ id: llmProviders.id, name: llmProviders.name })
+        .select({ id: llmProviders.id, name: llmProviders.displayName })
         .from(llmProviders)
         .where(sql`${llmProviders.isEnabled} = true`);
 
@@ -50,7 +50,7 @@ const llmProviderSensor: Sensor = {
       `);
 
       const failingProviders: string[] = [];
-      for (const row of errorStats.rows as any[]) {
+      for (const row of errorStats as any[]) {
         const errorRate = row.total > 0 ? row.errors / row.total : 0;
         if (errorRate > 0.5) {
           const prov = providers.find((p) => p.id === row.providerId);

@@ -95,7 +95,7 @@ const failoverProvider: ActuatorFn = async (params) => {
 
     // Find a healthy fallback
     const fallbacks = await db
-      .select({ id: llmProviders.id, name: llmProviders.name })
+      .select({ id: llmProviders.id, name: llmProviders.displayName })
       .from(llmProviders)
       .where(sql`${llmProviders.isEnabled} = true AND ${llmProviders.id} != ${providerId}`)
       .limit(1);

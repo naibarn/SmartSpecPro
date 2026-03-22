@@ -156,7 +156,7 @@ export async function processTicket(ticketId: number): Promise<ProcessedTicket> 
           source: "guardian.feedbackProcessor",
           eventId: String(ticketId),
           relatedItems: {
-            ruleId: result.relatedIncidentId != null ? String(result.relatedIncidentId) : undefined,
+            ruleId: result.relatedIncidentId != null ? String(result.relatedIncidentId) : "",
             sensorId: "feedbackProcessor",
             actionTaken: result.duplicateOf ? "duplicate_detected" : "triaged",
           },
