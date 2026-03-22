@@ -52,7 +52,8 @@ class TestInit:
 
     def test_httpx_timeout(self):
         provider = FalAIProvider(api_key="test-key")
-        assert provider.client.timeout == httpx.Timeout(300.0)
+        assert provider.client.timeout.read == 300.0
+        assert provider.client.timeout.connect == 10.0
 
     def test_custom_base_url(self):
         provider = FalAIProvider(api_key="test-key", base_url="https://custom.fal.run")
@@ -238,20 +239,16 @@ class TestQueueOperations:
 
 class TestResolutionDerivation:
     def test_4k_resolution(self):
-        provider = FalAIProvider(api_key="test-key")
-        assert provider._derive_resolution(3840, 2160) == "2160p"
+        assert FalAIProvider._derive_resolution(3840) == "2160p"
 
     def test_1440p_resolution(self):
-        provider = FalAIProvider(api_key="test-key")
-        assert provider._derive_resolution(2560, 1440) == "1440p"
+        assert FalAIProvider._derive_resolution(2560) == "1440p"
 
     def test_1080p_resolution(self):
-        provider = FalAIProvider(api_key="test-key")
-        assert provider._derive_resolution(1920, 1080) == "1080p"
+        assert FalAIProvider._derive_resolution(1920) == "1080p"
 
     def test_below_1440p_defaults_to_1080p(self):
-        provider = FalAIProvider(api_key="test-key")
-        assert provider._derive_resolution(1280, 720) == "1080p"
+        assert FalAIProvider._derive_resolution(1280) == "1080p"
 
 
 # --- Error Handling ---
@@ -342,3 +339,61 @@ class TestResourceCleanup:
         with patch.object(provider.client, "aclose", new_callable=AsyncMock) as mock_close:
             await provider.aclose()
             mock_close.assert_called_once()
+
+    async def test_async_context_manager(self):
+        async with FalAIProvider(api_key="test-key") as provider:
+            assert provider is not None
+
+
+# --- Security: Input Validation ---
+
+
+class TestModelIdValidation:
+    def test_valid_video_model(self):
+        FalAIProvider._validate_model_id("fal-ai/ltx-2.3/text-to-video", FalAIProvider.VIDEO_MODELS)
+
+    def test_invalid_model_raises(self):
+        with pytest.raises(ValueError, match="Unknown fal.ai model"):
+            FalAIProvider._validate_model_id("fal-ai/ltx/../../../admin", FalAIProvider.VIDEO_MODELS)
+
+    def test_audio_model_rejected_for_video(self):
+        with pytest.raises(ValueError, match="Unknown fal.ai model"):
+            FalAIProvider._validate_model_id("fal-ai/lux-tts", FalAIProvider.VIDEO_MODELS)
+
+    def test_valid_audio_model(self):
+        FalAIProvider._validate_model_id("fal-ai/lux-tts", FalAIProvider.AUDIO_MODELS)
+
+    def test_all_models_combined(self):
+        assert len(FalAIProvider.ALL_MODELS) == 12  # 7 + 1 + 4
+
+
+class TestRequestIdValidation:
+    def test_valid_request_id(self):
+        FalAIProvider._validate_request_id("abc-123-def-456")
+
+    def test_rejects_path_traversal(self):
+        with pytest.raises(ValueError, match="Invalid fal.ai request_id"):
+            FalAIProvider._validate_request_id("../../admin")
+
+    def test_rejects_query_injection(self):
+        with pytest.raises(ValueError, match="Invalid fal.ai request_id"):
+            FalAIProvider._validate_request_id("id?key=val")
+
+    def test_rejects_empty(self):
+        with pytest.raises(ValueError, match="Invalid fal.ai request_id"):
+            FalAIProvider._validate_request_id("")
+
+    def test_rejects_too_short(self):
+        with pytest.raises(ValueError, match="Invalid fal.ai request_id"):
+            FalAIProvider._validate_request_id("ab")
+
+
+class TestDeriveResolutionSafety:
+    def test_string_width_returns_default(self):
+        assert FalAIProvider._derive_resolution("big") == "1080p"
+
+    def test_none_width_returns_default(self):
+        assert FalAIProvider._derive_resolution(None) == "1080p"
+
+    def test_float_width(self):
+        assert FalAIProvider._derive_resolution(3840.5) == "2160p"
