@@ -5,6 +5,7 @@ import { useAgencyStream } from "@/hooks/useAgencyStream";
 import { useAgencyById } from "@/hooks/useAgencyQuery";
 import { ModelPicker } from "@/components/agency/ModelPicker";
 import AgencyActivityPanel from "@/components/agency/AgencyActivityPanel";
+import { AgencyChatStream } from "@/components/agency/AgencyChatStream";
 import { BrowserSessionSummaryCard } from "@/components/browser-session/BrowserSessionSummaryCard";
 import { BrowserSessionLaunchSuggestionCard } from "@/components/browser-session/BrowserSessionLaunchSuggestionCard";
 import { AgencyPreviewCard, type AgencyPreviewProps } from "@/components/agency/preview";
@@ -794,50 +795,24 @@ export default function AgencyChat() {
                 </div>
               )}
 
-              {stream.messages.map((msg) => (
-                <div
-                  key={msg.id}
-                  className={cn(
-                    "flex",
-                    msg.role === "user"
-                      ? "justify-end"
-                      : "justify-start",
-                  )}
-                >
-                  <div
-                    className={cn(
-                      "max-w-[80%] rounded-lg px-4 py-2.5",
-                      msg.role === "user"
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted",
-                    )}
-                  >
-                    {msg.role === "assistant" && msg.agentName && (
-                      <Badge
-                        variant="secondary"
-                        className={cn(
-                          "mb-1.5 text-[10px] px-1.5 py-0",
-                          getAgentColor(msg.agentName),
-                        )}
-                      >
-                        {msg.agentName}
-                      </Badge>
-                    )}
-                    {msg.role === "user" ? (
-                      <p className="whitespace-pre-wrap text-sm leading-relaxed">
-                        {msg.content}
-                      </p>
-                    ) : (
-                      <div className="text-sm leading-relaxed prose prose-sm dark:prose-invert max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
-                        <SafeMarkdown>{msg.content}</SafeMarkdown>
-                        {msg.isStreaming && (
-                          <span className="ml-1 inline-block h-3 w-1 animate-pulse bg-current" />
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
+              {/* Streaming chat messages with rich indicators */}
+              <AgencyChatStream
+                messages={stream.messages}
+                activeAgent={stream.activeAgent}
+                isStreaming={stream.isStreaming}
+                error={stream.error}
+                creditsUsed={stream.creditsUsed}
+                activityEvents={stream.activityEvents}
+                toolCalls={stream.toolCalls}
+                guardrailEvents={stream.guardrailEvents}
+                pendingApproval={stream.pendingApproval}
+                isPollingFallback={stream.isPollingFallback}
+                onCancel={stream.cancel}
+                onApprovalSubmit={(_approvalKey, _approved, _feedback) => {
+                  // TODO: Wire to trpc.agency.submitApproval when section 12 is implemented
+                }}
+                getAgentColor={getAgentColor}
+              />
 
               {browserSessionSuggestion ? (
                 <div className="mr-auto max-w-[80%]">

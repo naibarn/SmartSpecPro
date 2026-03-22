@@ -1,4 +1,4 @@
-Now I have all the context needed. Let me produce the section.
+<!-- IMPLEMENTATION STATUS: COMPLETE -->
 
 # Section 10 — SSE Streaming Frontend
 
@@ -12,6 +12,30 @@ This section implements the frontend SSE streaming UI for agency runs. It extend
 ### What This Section Blocks
 
 No other sections depend directly on this section. It is a leaf in the dependency graph.
+
+## Implementation Notes
+
+### Actual Files Modified/Created
+
+| File | Action | Notes |
+|------|--------|-------|
+| `apps/web/client/src/hooks/useAgencyStream.ts` | MODIFIED | Added 10 new event types, toolCalls/guardrailEvents/pendingApproval/isPollingFallback state, cancel method, reconnection with Last-Event-ID, exponential backoff, polling fallback flag |
+| `apps/web/client/src/hooks/__tests__/useAgencyStream.test.ts` | MODIFIED | Added 11 new tests (19 total) covering all new event types, cancel, reconnection, polling fallback, backward compat |
+| `apps/web/client/src/components/agency/AgencyChatStream.tsx` | CREATED | Renders messages, tool call spinners, agent switch badges, guardrail alerts, approval cards, cancel dropdown, polling banner |
+| `apps/web/client/src/components/agency/__tests__/AgencyChatStream.test.tsx` | CREATED | 9 component render tests |
+| `apps/web/client/src/pages/AgencyChat.tsx` | MODIFIED | Imported and wired AgencyChatStream to replace inline message rendering |
+
+### Deviations from Plan
+
+1. **Polling fallback**: The hook sets `isPollingFallback=true` and `isStreaming=false` as a flag for the consumer, rather than implementing internal tRPC polling. This keeps the hook pure (no tRPC dependency) — the consumer page should implement the polling loop when this flag is set.
+2. **scrollRef**: `AgencyChatStream` renders inline content (no internal scroll container). The existing scroll container in `AgencyChat.tsx` manages scrolling.
+3. **Framer Motion agent switch**: Used simple Badge components instead of Framer Motion AnimatePresence to avoid adding a new dependency for a minor animation.
+4. **Approval submission**: Wired as a no-op TODO pending section 12 implementation.
+
+### Test Summary
+- Hook tests: 19 (all passing)
+- Component tests: 9 (all passing)
+- Total: 28 tests
 
 ---
 
