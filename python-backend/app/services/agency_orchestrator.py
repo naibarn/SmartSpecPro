@@ -339,6 +339,8 @@ class AgencyOrchestrator:
                     model_settings=node.get("model_settings"),
                     tools=tools,
                     is_entry_point=node.get("is_entry_point", False),
+                    parallel_tool_calls=node.get("parallel_tool_calls"),
+                    max_turns=node.get("max_turns"),
                 ),
                 user_token=ctx.user_token,
             )

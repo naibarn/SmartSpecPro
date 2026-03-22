@@ -460,7 +460,9 @@ class AgencyService:
                        "modelSettings" as model_settings,
                        "isEntryPoint" as is_entry_point,
                        "nodeType" as node_type,
-                       "nodeConfig" as node_config
+                       "nodeConfig" as node_config,
+                       "parallelToolCalls" as parallel_tool_calls,
+                       "maxTurns" as max_turns
                 FROM agency_agents
                 WHERE "agencyId" = :agency_id
                 ORDER BY "createdAt" ASC
@@ -477,6 +479,8 @@ class AgencyService:
                 "is_entry_point": row.is_entry_point,
                 "node_type": row.node_type or "agent",
                 "node_config": row.node_config or {},
+                "parallel_tool_calls": row.parallel_tool_calls,
+                "max_turns": row.max_turns,
             }
             for row in result.all()
         ]

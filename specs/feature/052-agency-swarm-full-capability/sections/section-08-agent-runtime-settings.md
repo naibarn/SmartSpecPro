@@ -1,6 +1,31 @@
-I now have sufficient context. Let me produce the section content.
-
 # Section 08 -- Agent Runtime Settings
+
+**Status: IMPLEMENTED**
+
+## Implementation Notes
+
+- Zod schemas updated in both `create` and `saveBuilder` procedures (camelCase modelSettings + parallelToolCalls/maxTurns/reasoningEffort)
+- All 4 DB insert sites persist new columns (create, saveBuilder, restoreVersion, clone)
+- Python adapter maps reasoningEffort → Reasoning dict, parallelToolCalls → ModelSettings, maxTurns → Agent constructor
+- Frontend: NodePropertyPanel + AgentPropertyPanel both render all new fields
+- Legacy snake_case modelSettings normalized in restoreVersion path
+- 5 Python tests verifying adapter behavior
+- Frontend component tests deferred (Zod validation covered by existing patterns)
+
+### Files Modified
+- `apps/web/server/routers/agency.ts` — Zod schemas + all insert sites + restoreVersion normalizer
+- `apps/web/client/src/components/agency/NodePropertyPanel.tsx` — camelCase + new fields
+- `apps/web/client/src/components/agency/AgentPropertyPanel.tsx` — camelCase + new fields
+- `apps/web/client/src/components/agency/AgentNode.tsx` — updated type
+- `apps/web/client/src/components/agency/nodes/types.ts` — new fields + camelCase
+- `python-backend/app/services/agency_swarm_adapter.py` — AgentConfig fields + create_agent
+- `python-backend/app/services/agency_service.py` — _load_agents SELECT
+- `python-backend/app/services/agency_orchestrator.py` — pass to AgentConfig
+
+### Files Created
+- `python-backend/tests/unit/test_agent_runtime_settings.py`
+
+---
 
 ## Section ID
 `section-08-agent-runtime-settings`

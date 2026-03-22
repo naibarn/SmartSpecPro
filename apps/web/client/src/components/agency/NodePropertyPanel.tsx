@@ -633,12 +633,12 @@ function AgentSupervisorForm({
               <Label>Max Tokens</Label>
               <Input
                 type="number"
-                value={node.modelSettings?.max_tokens ?? ""}
+                value={node.modelSettings?.maxTokens ?? ""}
                 onChange={(e) =>
                   onChange({
                     modelSettings: {
                       ...node.modelSettings,
-                      max_tokens: e.target.value ? Number(e.target.value) : undefined,
+                      maxTokens: e.target.value ? Number(e.target.value) : undefined,
                     },
                   })
                 }
@@ -665,23 +665,77 @@ function AgentSupervisorForm({
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Top P ({node.modelSettings?.top_p ?? 1})</Label>
+              <Label>Top P ({node.modelSettings?.topP ?? 1})</Label>
               <input
                 type="range"
                 min="0"
                 max="1"
                 step="0.05"
-                value={node.modelSettings?.top_p ?? 1}
+                value={node.modelSettings?.topP ?? 1}
                 onChange={(e) =>
                   onChange({
                     modelSettings: {
                       ...node.modelSettings,
-                      top_p: Number(e.target.value),
+                      topP: Number(e.target.value),
                     },
                   })
                 }
                 className="w-full"
               />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Reasoning Effort</Label>
+              <select
+                className="w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+                value={node.modelSettings?.reasoningEffort ?? ""}
+                onChange={(e) =>
+                  onChange({
+                    modelSettings: {
+                      ...node.modelSettings,
+                      reasoningEffort: e.target.value || undefined,
+                    },
+                  })
+                }
+              >
+                <option value="">Default</option>
+                <option value="minimal">Minimal</option>
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label>Parallel Tool Calls</Label>
+                <input
+                  type="checkbox"
+                  checked={node.parallelToolCalls ?? true}
+                  onChange={(e) => onChange({ parallelToolCalls: e.target.checked })}
+                  className="rounded"
+                />
+              </div>
+              <p className="text-xs text-slate-500">Allow multiple tools to execute simultaneously</p>
+              {(node.parallelToolCalls === false) && (node.toolIds?.length ?? 0) > 5 && (
+                <p className="text-xs text-amber-600">Sequential execution with many tools may be slow</p>
+              )}
+            </div>
+            <div className="space-y-1.5">
+              <Label>Max Turns</Label>
+              <Input
+                type="number"
+                min={1}
+                max={100}
+                value={node.maxTurns ?? 25}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value, 10);
+                  if (!isNaN(val)) onChange({ maxTurns: Math.min(100, Math.max(1, val)) });
+                }}
+                placeholder="25"
+              />
+              <p className="text-xs text-slate-500">Maximum number of LLM turns per run</p>
+              {(node.maxTurns ?? 25) < 5 && (
+                <p className="text-xs text-amber-600">Low turn limit may prevent complex tasks from completing</p>
+              )}
             </div>
           </div>
         )}

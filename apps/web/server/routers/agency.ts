@@ -797,11 +797,14 @@ export const agencyRouter = router({
               model: z.string().max(100).regex(/^[a-zA-Z0-9._\/-]+$/, "Invalid model identifier").optional(),
               modelSettings: z
                 .object({
-                  max_tokens: z.number().optional(),
+                  maxTokens: z.number().optional(),
                   temperature: z.number().min(0).max(2).optional(),
-                  top_p: z.number().min(0).max(1).optional(),
+                  topP: z.number().min(0).max(1).optional(),
+                  reasoningEffort: z.enum(["minimal", "low", "medium", "high"]).optional(),
                 })
                 .optional(),
+              parallelToolCalls: z.boolean().default(true),
+              maxTurns: z.number().int().min(1).max(100).default(25),
               isEntryPoint: z.boolean().default(false),
               isOptional: z.boolean().default(false),
               position: z.object({ x: z.number(), y: z.number() }).optional(),
@@ -906,6 +909,8 @@ export const agencyRouter = router({
             instructions: agent.instructions ?? null,
             model: agent.model ?? null,
             modelSettings: agent.modelSettings ?? null,
+            parallelToolCalls: agent.parallelToolCalls,
+            maxTurns: agent.maxTurns,
             isEntryPoint: agent.isEntryPoint,
             isOptional: agent.isOptional,
             position: agent.position ?? null,
@@ -1036,11 +1041,14 @@ export const agencyRouter = router({
             model: z.string().max(100).regex(/^[a-zA-Z0-9._\/-]+$/, "Invalid model identifier").optional(),
             modelSettings: z
               .object({
-                max_tokens: z.number().optional(),
+                maxTokens: z.number().optional(),
                 temperature: z.number().min(0).max(2).optional(),
-                top_p: z.number().min(0).max(1).optional(),
+                topP: z.number().min(0).max(1).optional(),
+                reasoningEffort: z.enum(["minimal", "low", "medium", "high"]).optional(),
               })
               .optional(),
+            parallelToolCalls: z.boolean().default(true),
+            maxTurns: z.number().int().min(1).max(100).default(25),
             isEntryPoint: z.boolean().default(false),
             isOptional: z.boolean().default(false),
             position: z.object({ x: z.number(), y: z.number() }).optional(),
@@ -1201,6 +1209,8 @@ export const agencyRouter = router({
             instructions: agent.instructions ?? null,
             model: agent.model ?? null,
             modelSettings: agent.modelSettings ?? null,
+            parallelToolCalls: agent.parallelToolCalls,
+            maxTurns: agent.maxTurns,
             isEntryPoint: agent.isEntryPoint,
             isOptional: agent.isOptional,
             position: agent.position ?? null,
@@ -2004,6 +2014,16 @@ export const agencyRouter = router({
         for (const node of (snapshot.nodes ?? [])) {
           const agentId = crypto.randomUUID();
           nameToId[node.name] = agentId;
+          // Normalise legacy snake_case modelSettings keys from old snapshots
+          let ms = node.modelSettings ?? null;
+          if (ms && ("max_tokens" in ms || "top_p" in ms)) {
+            ms = {
+              maxTokens: ms.max_tokens ?? ms.maxTokens,
+              temperature: ms.temperature,
+              topP: ms.top_p ?? ms.topP,
+              reasoningEffort: ms.reasoningEffort,
+            };
+          }
           await tx.insert(agencyAgents).values({
             id: agentId,
             agencyId: version.agencyId,
@@ -2013,7 +2033,9 @@ export const agencyRouter = router({
             nodeConfig: node.nodeConfig ?? null,
             instructions: node.instructions ?? null,
             model: node.model ?? null,
-            modelSettings: node.modelSettings ?? null,
+            modelSettings: ms,
+            parallelToolCalls: node.parallelToolCalls ?? true,
+            maxTurns: node.maxTurns ?? 25,
             isEntryPoint: node.isEntryPoint ?? false,
             isOptional: node.isOptional ?? false,
             position: node.position ?? null,
@@ -2572,6 +2594,8 @@ export const agencyRouter = router({
             instructions: agent.instructions,
             model: agent.model,
             modelSettings: agent.modelSettings as any,
+            parallelToolCalls: agent.parallelToolCalls,
+            maxTurns: agent.maxTurns,
             isEntryPoint: agent.isEntryPoint,
             isOptional: agent.isOptional,
             position: agent.position as any,

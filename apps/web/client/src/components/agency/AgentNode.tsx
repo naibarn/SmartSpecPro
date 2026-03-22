@@ -10,7 +10,7 @@ export interface AgentNodeData {
   description: string;
   instructions: string;
   model: string;
-  modelSettings: { max_tokens?: number; temperature?: number; top_p?: number };
+  modelSettings: { maxTokens?: number; temperature?: number; topP?: number; reasoningEffort?: "minimal" | "low" | "medium" | "high" };
   isEntryPoint: boolean;
   isOptional: boolean;
   tools: Array<{ toolId: string; toolName: string }>;

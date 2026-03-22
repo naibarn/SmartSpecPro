@@ -91,6 +91,9 @@ class AgentConfig(BaseModel):
     mcp_config: Any | None = None
     # Agent hooks for lifecycle callbacks
     hooks: Any | None = None
+    # v1.8: Runtime settings
+    parallel_tool_calls: bool | None = None
+    max_turns: int | None = None
 
 
 class AgencyConfig(BaseModel):
@@ -221,9 +224,22 @@ class AgencySwarmAdapter:
             agent_kwargs["description"] = config.description
 
         if config.model_settings:
+            ms_kwargs = dict(config.model_settings)
+            # Map reasoningEffort to reasoning dict for ModelSettings
+            reasoning_effort = ms_kwargs.pop("reasoningEffort", None)
+            if reasoning_effort:
+                ms_kwargs["reasoning"] = {"effort": reasoning_effort}
+            # Map parallel_tool_calls from AgentConfig into ModelSettings
+            if config.parallel_tool_calls is not None:
+                ms_kwargs["parallel_tool_calls"] = config.parallel_tool_calls
+            agent_kwargs["model_settings"] = ModelSettings(**ms_kwargs)
+        elif config.parallel_tool_calls is not None:
             agent_kwargs["model_settings"] = ModelSettings(
-                **config.model_settings
+                parallel_tool_calls=config.parallel_tool_calls,
             )
+
+        if config.max_turns is not None:
+            agent_kwargs["max_turns"] = config.max_turns
 
         # v1.7-1.8: Conversation starters and quick replies
         if config.conversation_starters:

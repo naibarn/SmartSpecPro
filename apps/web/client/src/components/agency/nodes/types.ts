@@ -14,10 +14,13 @@ export interface AgencyNodeData {
   description?: string;
   instructions?: string;
   model?: string;
-  modelSettings?: { max_tokens?: number; temperature?: number; top_p?: number };
+  modelSettings?: { maxTokens?: number; temperature?: number; topP?: number; reasoningEffort?: "minimal" | "low" | "medium" | "high" };
+  parallelToolCalls?: boolean;
+  maxTurns?: number;
   isEntryPoint?: boolean;
   isOptional?: boolean;
   tools?: Array<{ toolId: string; toolName: string; toolConfig?: Record<string, unknown> }>;
+  toolIds?: string[];
   nodeConfig?: Record<string, unknown>;
   guardrailIds?: string[];
   validationErrors?: string[];
