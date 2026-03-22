@@ -13,6 +13,7 @@ import {
   History,
   Sparkles,
   Brain,
+  Activity,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ModelPicker } from "./ModelPicker";
@@ -36,6 +37,7 @@ interface AgencyToolbarProps {
   onUndo?: () => void;
   onRedo?: () => void;
   onHistory?: () => void;
+  onRunHistory?: () => void;
   onAutoCreate?: () => void;
   readOnly?: boolean;
 }
@@ -65,6 +67,7 @@ export function AgencyToolbar({
   onUndo,
   onRedo,
   onHistory,
+  onRunHistory,
   onAutoCreate,
   readOnly = false,
 }: AgencyToolbarProps) {
@@ -163,6 +166,11 @@ export function AgencyToolbar({
           <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-purple-600 hover:text-purple-700 hover:bg-purple-50" onClick={onAutoCreate} title="AI Agency Creator">
             <Sparkles className="h-3.5 w-3.5" />
             AI Creator
+          </Button>
+        )}
+        {onRunHistory && (
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onRunHistory} title="Run history">
+            <Activity className="h-4 w-4" />
           </Button>
         )}
         {onHistory && (

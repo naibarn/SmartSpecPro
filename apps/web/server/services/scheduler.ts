@@ -19,6 +19,7 @@ import {
   conversations,
   messages,
   autoDraftSchedules,
+  systemSettings,
 } from "../../drizzle/schema";
 import { eq, and, lte, isNull, sql } from "drizzle-orm";
 import { deductCredits, hasEnoughCredits, calculateCreditsForLLM } from "./creditService";
@@ -877,4 +878,55 @@ export async function sweepDueAutoDraftSchedules(): Promise<number> {
   }
 
   return dispatched;
+}
+
+/**
+ * Sweep expired agency run traces. Default retention: 30 days.
+ * Configurable via system_settings category="agency", key="trace_retention_days".
+ */
+export async function sweepExpiredRunTraces(): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+
+  const { sweepExpiredTraces } = await import("./agencyTraceService");
+
+  // Check global retention override
+  const DEFAULT_RETENTION_DAYS = 30;
+  let retentionDays = DEFAULT_RETENTION_DAYS;
+  const [override] = await db
+    .select({ value: systemSettings.value })
+    .from(systemSettings)
+    .where(
+      and(
+        eq(systemSettings.category, "agency"),
+        eq(systemSettings.key, "trace_retention_days"),
+      ),
+    )
+    .limit(1);
+  if (override?.value) {
+    const parsed = parseInt(String(override.value), 10);
+    if (!isNaN(parsed) && parsed > 0) {
+      retentionDays = parsed;
+    }
+  }
+
+  // Get distinct tenants that have traces
+  const tenants = await db.execute(
+    sql`SELECT DISTINCT "tenantId" FROM agency_run_traces`,
+  );
+  const tenantRows = (tenants as any).rows ?? tenants ?? [];
+
+  let totalDeleted = 0;
+  for (const row of tenantRows) {
+    const tenantId = row.tenantId;
+    if (!tenantId) continue;
+
+    const deleted = await sweepExpiredTraces(tenantId, retentionDays);
+    if (deleted > 0) {
+      console.log(`[Scheduler] Deleted ${deleted} expired traces for tenant ${tenantId} (retention: ${retentionDays}d)`);
+    }
+    totalDeleted += deleted;
+  }
+
+  return totalDeleted;
 }

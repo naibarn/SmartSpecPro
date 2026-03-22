@@ -33,7 +33,7 @@ export const PROVIDER_TEMPLATES = [
   {
     providerName: "fal_ai",
     displayName: "fal.ai",
-    description: "Fast inference platform for generative AI - supports real-time image and video generation with optimized latency",
+    description: "Fast inference platform for generative AI - LTX-2.3 video generation, Lux TTS voice synthesis, and Flux image generation",
     providerType: "multimodal" as const,
     baseUrl: "https://fal.run",
     defaultModel: "fal-ai/flux/schnell",
@@ -43,9 +43,19 @@ export const PROVIDER_TEMPLATES = [
       { id: "fal-ai/flux/dev", name: "Flux Dev", type: "image" as const, description: "High quality image generation" },
       { id: "fal-ai/flux-pro", name: "Flux Pro", type: "image" as const, description: "Professional image generation" },
       { id: "fal-ai/stable-diffusion-v3-medium", name: "Stable Diffusion 3 Medium", type: "image" as const, description: "SD3 image generation" },
-      // Video models
+      // Video models (existing)
       { id: "fal-ai/minimax-video-01", name: "MiniMax Video", type: "video" as const, description: "Video generation" },
       { id: "fal-ai/kling-video/v1/standard/image-to-video", name: "Kling Image to Video", type: "video" as const, description: "Image to video conversion" },
+      // Video models (LTX-2.3)
+      { id: "fal-ai/ltx-2.3/text-to-video", name: "LTX-2.3 Text to Video", type: "video" as const, description: "Text-to-video generation (standard quality)" },
+      { id: "fal-ai/ltx-2.3/text-to-video/fast", name: "LTX-2.3 Text to Video (Fast)", type: "video" as const, description: "Fast text-to-video generation" },
+      { id: "fal-ai/ltx-2.3/image-to-video", name: "LTX-2.3 Image to Video", type: "video" as const, description: "Image-to-video generation (standard quality)" },
+      { id: "fal-ai/ltx-2.3/image-to-video/fast", name: "LTX-2.3 Image to Video (Fast)", type: "video" as const, description: "Fast image-to-video generation" },
+      { id: "fal-ai/ltx-2.3/audio-to-video", name: "LTX-2.3 Audio to Video", type: "video" as const, description: "Audio-driven video generation" },
+      { id: "fal-ai/ltx-2.3/extend-video", name: "LTX-2.3 Extend Video", type: "video" as const, description: "Extend existing video clips" },
+      { id: "fal-ai/ltx-2.3/retake-video", name: "LTX-2.3 Retake Video", type: "video" as const, description: "Re-generate video with modified parameters" },
+      // Audio models
+      { id: "fal-ai/lux-tts", name: "Lux TTS", type: "audio" as const, description: "Text-to-speech with voice cloning" },
     ],
   },
   {
@@ -475,22 +485,39 @@ export async function testKieAI(apiKey: string, baseUrl: string): Promise<{ succ
   return { success: false, message: `API error: ${response.status} - ${text}` };
 }
 
-async function testFalAI(apiKey: string): Promise<{ success: boolean; message: string }> {
-  // fal.ai authentication test
-  const response = await fetch("https://fal.run/fal-ai/flux/schnell", {
-    method: "OPTIONS",
-    headers: {
-      "Authorization": `Key ${apiKey}`,
-    },
-  });
+export async function testFalAI(apiKey: string): Promise<{ success: boolean; message: string }> {
+  // Send an authenticated POST to the queue endpoint with minimal payload.
+  // A valid key returns 422 (validation error for missing required fields).
+  // An invalid key returns 401.
+  try {
+    const response = await fetch("https://queue.fal.run/fal-ai/flux/schnell", {
+      method: "POST",
+      headers: {
+        "Authorization": `Key ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({}),
+    });
 
-  // OPTIONS should return 200 or 204 if the key format is correct
-  // For a real test, we'd need to make an actual inference call
-  if (response.ok || response.status === 204) {
-    return { success: true, message: "API key format validated" };
+    if (response.status === 422) {
+      return { success: true, message: "API key validated (inference endpoint reachable)" };
+    }
+    if (response.status === 401) {
+      return { success: false, message: "Invalid API key" };
+    }
+    if (response.status === 403) {
+      return { success: false, message: "API key forbidden" };
+    }
+    if (response.status === 429) {
+      return { success: true, message: "API key valid (rate limited)" };
+    }
+    if (response.ok) {
+      return { success: true, message: "Connection successful" };
+    }
+    return { success: false, message: `fal.ai error (HTTP ${response.status})` };
+  } catch (error: any) {
+    return { success: false, message: `Connection failed: ${error.message}` };
   }
-
-  return { success: false, message: `API error: ${response.status}` };
 }
 
 async function testReplicate(apiKey: string): Promise<{ success: boolean; message: string }> {

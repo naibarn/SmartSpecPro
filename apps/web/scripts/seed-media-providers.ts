@@ -51,16 +51,29 @@ const DEFAULT_PROVIDERS = [
   {
     providerName: "fal_ai",
     displayName: "fal.ai",
-    description: "Fast inference platform for generative AI - supports real-time image and video generation with optimized latency",
+    description: "Fast inference platform for generative AI - LTX-2.3 video generation, Lux TTS voice synthesis, and Flux image generation",
     providerType: "multimodal",
     baseUrl: "https://fal.run",
     defaultModel: "fal-ai/flux/schnell",
     availableModels: [
+      // Image models
       { id: "fal-ai/flux/schnell", name: "Flux Schnell", type: "image", description: "Ultra-fast image generation" },
       { id: "fal-ai/flux/dev", name: "Flux Dev", type: "image", description: "High quality image generation" },
       { id: "fal-ai/flux-pro", name: "Flux Pro", type: "image", description: "Professional image generation" },
-      { id: "fal-ai/stable-diffusion-v3-medium", name: "SD3 Medium", type: "image", description: "Stable Diffusion 3" },
+      { id: "fal-ai/stable-diffusion-v3-medium", name: "Stable Diffusion 3 Medium", type: "image", description: "SD3 image generation" },
+      // Video models (pre-LTX)
       { id: "fal-ai/minimax-video-01", name: "MiniMax Video", type: "video", description: "Video generation" },
+      { id: "fal-ai/kling-video/v1/standard/image-to-video", name: "Kling Image to Video", type: "video", description: "Image to video conversion" },
+      // Video models (LTX-2.3)
+      { id: "fal-ai/ltx-2.3/text-to-video", name: "LTX-2.3 Text to Video", type: "video", description: "Text-to-video generation (standard quality)" },
+      { id: "fal-ai/ltx-2.3/text-to-video/fast", name: "LTX-2.3 Text to Video (Fast)", type: "video", description: "Fast text-to-video generation" },
+      { id: "fal-ai/ltx-2.3/image-to-video", name: "LTX-2.3 Image to Video", type: "video", description: "Image-to-video generation (standard quality)" },
+      { id: "fal-ai/ltx-2.3/image-to-video/fast", name: "LTX-2.3 Image to Video (Fast)", type: "video", description: "Fast image-to-video generation" },
+      { id: "fal-ai/ltx-2.3/audio-to-video", name: "LTX-2.3 Audio to Video", type: "video", description: "Audio-driven video generation" },
+      { id: "fal-ai/ltx-2.3/extend-video", name: "LTX-2.3 Extend Video", type: "video", description: "Extend existing video clips" },
+      { id: "fal-ai/ltx-2.3/retake-video", name: "LTX-2.3 Retake Video", type: "video", description: "Re-generate video with modified parameters" },
+      // Audio models
+      { id: "fal-ai/lux-tts", name: "Lux TTS", type: "audio", description: "Text-to-speech with voice cloning" },
     ],
     isEnabled: false,
     isPrimary: false,

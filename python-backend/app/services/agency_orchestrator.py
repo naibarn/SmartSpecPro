@@ -27,6 +27,7 @@ from app.services.agency_event_emitter import AgencyEventEmitter, check_cancelle
 from app.services.agency_instruction_resolver import resolve_instructions
 from app.services.agency_output_validator import AgencyOutputValidator
 from app.services.agency_run_context import AgencyRunContext
+from app.services.agency_trace_collector import TraceCollector
 
 logger = structlog.get_logger(__name__)
 
@@ -107,6 +108,7 @@ class AgencyOrchestrator:
         user_context: dict[str, Any] | None = None,
         event_emitter: AgencyEventEmitter | None = None,
         redis_client: Any | None = None,
+        trace_collector: TraceCollector | None = None,
     ):
         self.nodes: dict[str, NodeRow] = {n["id"]: n for n in nodes}
         self.edges: list[EdgeRow] = edges
@@ -120,6 +122,7 @@ class AgencyOrchestrator:
         self.user_context = user_context
         self.event_emitter = event_emitter
         self.redis_client = redis_client
+        self.trace_collector = trace_collector
         self.browser_session_executor = AgencyBrowserSessionExecutor()
         self._round_trip_tracker = RoundTripTracker()
         self._flow_configs: dict[tuple[str, str], FlowConfig] = {}
@@ -188,11 +191,16 @@ class AgencyOrchestrator:
         try:
             result = await self._execute_node(self.entry_node, ctx)
         except Exception as exc:
+            if self.trace_collector:
+                self.trace_collector.set_status("failed")
             if self.event_emitter:
                 await self.event_emitter.emit_error("orchestrator_error", str(exc)[:500])
             raise
 
-        # Capture context snapshot for observability (section-15 will persist it)
+        if self.trace_collector:
+            self.trace_collector.set_status("completed")
+
+        # Capture context snapshot for observability
         ctx.context_snapshot = ctx.shared_context.snapshot()
 
         return result or "", ctx
@@ -201,6 +209,7 @@ class AgencyOrchestrator:
         """Execute a single node and follow its outgoing edges."""
         node_type = node.get("node_type", "agent")
         node_id = node["id"]
+        node_name = node.get("name", node_id)
 
         # Check for cancellation between node executions
         if self.event_emitter and self.redis_client:
@@ -210,6 +219,19 @@ class AgencyOrchestrator:
                 return "[Run cancelled]"
 
         logger.info("agency_orchestrator_execute_node", node_id=node_id, node_type=node_type)
+
+        # Start trace span for this node.
+        # Span type mapping: agent/supervisor → agent_turn; all other orchestrator
+        # node types (router, aggregator, knowledge_base, skill_call, human_approval,
+        # browser_session) → tool_call.  This is acceptable because the spec defines
+        # only agent_turn, tool_call, and guardrail as valid span types.
+        span_id: str | None = None
+        if self.trace_collector:
+            span_id = self.trace_collector.start_span(
+                name=f"{node_type}:{node_name}",
+                type="agent_turn" if node_type in AGENT_NODE_TYPES else "tool_call",
+                input_data=ctx.get_context_text()[:500],
+            )
 
         result: str
         match node_type:
@@ -258,6 +280,13 @@ class AgencyOrchestrator:
 
         if result:
             ctx.results[node_id] = result
+
+        # End trace span for this node
+        if self.trace_collector and span_id:
+            self.trace_collector.end_span(
+                span_id,
+                output=result[:500] if result else None,
+            )
 
         # Follow outgoing edges (unless router which already handled routing)
         if node_type not in ("router",):

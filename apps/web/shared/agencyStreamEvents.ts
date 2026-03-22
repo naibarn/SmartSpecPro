@@ -79,6 +79,23 @@ export interface AgencyRunCompleteEvent {
   data: { runId: string; usage: { tokens: number; cost: number } };
 }
 
+export interface AgencyTraceCompleteEvent {
+  event: "trace_complete";
+  id: string;
+  ts: string;
+  data: {
+    runId: string;
+    agencyId: string;
+    tenantId: string;
+    createdBy: number | null;
+    trace: { version: number; spans: Array<Record<string, unknown>> };
+    durationMs: number;
+    totalTokens: number;
+    totalCost: number;
+    status: string;
+  };
+}
+
 export interface AgencyErrorEvent {
   event: "error";
   id: string;
@@ -98,6 +115,7 @@ export type AgencyStreamEvent =
   | AgencyGuardrailTriggerEvent
   | AgencyApprovalRequiredEvent
   | AgencyRunCompleteEvent
+  | AgencyTraceCompleteEvent
   | AgencyErrorEvent;
 
 export type AgencyStreamEventType = AgencyStreamEvent["event"];
@@ -114,6 +132,7 @@ export const AGENCY_STREAM_EVENT_TYPES: ReadonlySet<AgencyStreamEventType> =
     "guardrail_trigger",
     "approval_required",
     "run_complete",
+    "trace_complete",
     "error",
   ]);
 

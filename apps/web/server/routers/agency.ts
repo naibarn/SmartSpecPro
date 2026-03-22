@@ -24,6 +24,7 @@ import {
   agencyGuardrails,
   agencyAgentGuardrails,
   agencySharedTools,
+  agencyRunTraces,
   userGroups,
   users,
   systemSettings,
@@ -3842,5 +3843,62 @@ export const agencyRouter = router({
           message: `Failed to discover tools: ${err.message}`,
         });
       }
+    }),
+
+  // ── Run Trace Procedures (section-15) ────────────────────────────────────
+
+  listRunTraces: protectedProcedure
+    .input(
+      z.object({
+        agencyId: z.string().min(1),
+        startDate: z.date().optional(),
+        endDate: z.date().optional(),
+        status: z.string().optional(),
+        limit: z.number().min(1).max(100).default(20),
+        offset: z.number().min(0).default(0),
+      }),
+    )
+    .query(async ({ input, ctx }) => {
+      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      await assertAgencyEnabled(tenantId);
+
+      // Verify agency ownership
+      const [agency] = await db
+        .select({ id: agencies.id })
+        .from(agencies)
+        .where(and(eq(agencies.id, input.agencyId), eq(agencies.tenantId, tenantId)))
+        .limit(1);
+      if (!agency) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Agency not found" });
+      }
+
+      const { listRunTraces } = await import("../services/agencyTraceService");
+      return listRunTraces({
+        agencyId: input.agencyId,
+        tenantId,
+        startDate: input.startDate,
+        endDate: input.endDate,
+        status: input.status,
+        limit: input.limit,
+        offset: input.offset,
+      });
+    }),
+
+  getRunTrace: protectedProcedure
+    .input(
+      z.object({
+        traceId: z.string().min(1),
+      }),
+    )
+    .query(async ({ input, ctx }) => {
+      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      await assertAgencyEnabled(tenantId);
+
+      const { getRunTrace } = await import("../services/agencyTraceService");
+      const trace = await getRunTrace(input.traceId, tenantId);
+      if (!trace) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Trace not found" });
+      }
+      return trace;
     }),
 });

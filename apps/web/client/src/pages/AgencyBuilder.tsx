@@ -29,6 +29,7 @@ import { NodePropertyPanel } from "@/components/agency/NodePropertyPanel";
 import { AgencyToolbar } from "@/components/agency/AgencyToolbar";
 import { AgencySidebar } from "@/components/agency/AgencySidebar";
 import { AgencyVersionHistory } from "@/components/agency/AgencyVersionHistory";
+import { RunHistoryPanel } from "@/components/agency/RunHistoryPanel";
 import { AutoCreateAgencyModal } from "@/components/agency/AutoCreateAgencyModal";
 import { useAgencyValidation } from "@/hooks/useAgencyValidation";
 import { useAgencyHistory } from "@/hooks/useAgencyHistory";
@@ -203,6 +204,7 @@ function AgencyCanvas() {
   // useReactFlow() is more reliable than onInit — always returns the live instance from context
   const rfInstance = useReactFlow();
   const [versionHistoryOpen, setVersionHistoryOpen] = useState(false);
+  const [runHistoryOpen, setRunHistoryOpen] = useState(false);
   const [autoCreateOpen, setAutoCreateOpen] = useState(false);
   const canvasInitRef = useRef(false);
   const nodeCounterRef = useRef(0);
@@ -801,6 +803,7 @@ function AgencyCanvas() {
         onUndo={() => undo(setNodes, setEdges)}
         onRedo={() => redo(setNodes, setEdges)}
         onHistory={() => setVersionHistoryOpen(true)}
+        onRunHistory={() => setRunHistoryOpen(true)}
         onAutoCreate={() => setAutoCreateOpen(true)}
         readOnly={!canEdit}
       />
@@ -811,6 +814,15 @@ function AgencyCanvas() {
           agencyId={agencyId}
           open={versionHistoryOpen}
           onOpenChange={setVersionHistoryOpen}
+        />
+      )}
+
+      {/* Run history drawer */}
+      {!isNew && agencyId && (
+        <RunHistoryPanel
+          agencyId={agencyId}
+          open={runHistoryOpen}
+          onClose={() => setRunHistoryOpen(false)}
         />
       )}
 

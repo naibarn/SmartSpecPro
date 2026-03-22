@@ -21,6 +21,7 @@ import { sdk } from "../_core/sdk";
 import { getFeatureFlag } from "../services/featureFlags";
 import { resolveTenantIdVarchar } from "../services/tenantContext";
 import type { TenantRequest } from "../_core/tenant";
+import { persistRunTrace } from "../services/agencyTraceService";
 
 const agencyStreamRouter = Router();
 
@@ -261,6 +262,18 @@ agencyStreamRouter.post(
           res.write(`id: ${ev.id}\n`);
           res.write(`event: ${ev.event}\n`);
           res.write(`data: ${message}\n\n`);
+
+          // Persist run trace when trace_complete arrives
+          if (ev.event === "trace_complete" && ev.data) {
+            const d = ev.data;
+            if (d.runId && d.agencyId && d.tenantId && d.trace) {
+              persistRunTrace(d).catch((err: unknown) => {
+                console.error("[AgencyStream] Failed to persist trace:", err);
+              });
+            } else {
+              console.error("[AgencyStream] Malformed trace_complete event, missing required fields");
+            }
+          }
 
           // Auto-close on terminal events
           if (ev.event === "run_complete" || ev.event === "error") {

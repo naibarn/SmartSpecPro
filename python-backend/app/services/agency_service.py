@@ -33,6 +33,7 @@ from app.services.agency_result_envelope import parse_agency_result_envelope
 from app.services.agency_tools import resolve_tools_for_agent
 from app.services.agency_audit import log_agency_event, reconcile_credits
 from app.services.agency_orchestrator import AgencyOrchestrator, should_use_orchestrator
+from app.services.agency_trace_collector import TraceCollector
 
 logger = structlog.get_logger(__name__)
 
@@ -909,6 +910,14 @@ class AgencyService:
                 except Exception:
                     logger.warning("agency_event_emitter_init_failed", agency_id=agency_id)
 
+                # Create trace collector for observability
+                trace_collector = TraceCollector(
+                    run_id=run_id,
+                    agency_id=agency_id,
+                    tenant_id=context.tenant_id,
+                    user_id=context.user_id,
+                )
+
                 orchestrator = AgencyOrchestrator(
                     nodes=agents_data,
                     edges=edges_data,
@@ -921,6 +930,7 @@ class AgencyService:
                     user_context=agency_config.user_context,
                     event_emitter=event_emitter,
                     redis_client=redis_client,
+                    trace_collector=trace_collector,
                 )
                 response_text, execution_context = await orchestrator.run_with_context(
                     message=message,
@@ -931,9 +941,12 @@ class AgencyService:
                 for browser_session in execution_context.browser_sessions:
                     yield {"event": "browser_session", "data": browser_session}
                 yield {"event": "token", "data": {"token": response_text}}
-                # Emit run_complete via event emitter for SSE subscribers
+
+                # Persist trace via SSE event emitter (Node.js side persists to agency_run_traces)
+                trace_summary = trace_collector.get_trace_summary()
                 if event_emitter:
-                    await event_emitter.emit_complete({"tokens": 0, "cost": 0})
+                    await event_emitter.emit("trace_complete", trace_summary)
+                    await event_emitter.emit_complete({"tokens": trace_summary.get("totalTokens", 0), "cost": trace_summary.get("totalCost", 0)})
                 yield {"event": "run_finished", "data": {"run_id": run_id, "response": response_text}}
                 return
 
