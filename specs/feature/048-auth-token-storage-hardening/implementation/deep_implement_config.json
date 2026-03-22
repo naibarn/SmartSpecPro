@@ -1,0 +1,62 @@
+{
+  "plugin_root": "/home/dev/.claude/plugins/cache/piercelamb-plugins/deep-implement/0.2.1",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/048-auth-token-storage-hardening/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/048-auth-token-storage-hardening/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-auth-service-browser-hardening",
+    "section-02-startup-cleanup-and-trpc-verify",
+    "section-03-phase1-tests",
+    "section-04-db-schema-and-migration",
+    "section-05-api-key-service",
+    "section-06-api-key-trpc-router",
+    "section-07-frontend-api-key-panel",
+    "section-08-phase2-tests"
+  ],
+  "sections_state": {
+    "section-01-auth-service-browser-hardening": {
+      "status": "complete",
+      "commit_hash": "f52ccc9f"
+    },
+    "section-02-startup-cleanup-and-trpc-verify": {
+      "status": "complete",
+      "commit_hash": "b9ddb81e"
+    },
+    "section-03-phase1-tests": {
+      "status": "complete",
+      "commit_hash": "b9ddb81e"
+    },
+    "section-04-db-schema-and-migration": {
+      "status": "complete",
+      "commit_hash": "847995ff"
+    },
+    "section-05-api-key-service": {
+      "status": "complete",
+      "commit_hash": "def420d8"
+    },
+    "section-06-api-key-trpc-router": {
+      "status": "complete",
+      "commit_hash": "89a44cc4"
+    },
+    "section-07-frontend-api-key-panel": {
+      "status": "complete",
+      "commit_hash": "315ed9d3"
+    },
+    "section-08-phase2-tests": {
+      "status": "complete",
+      "commit_hash": "83f8378c"
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-03-18T21:42:47.728967+00:00"
+}
