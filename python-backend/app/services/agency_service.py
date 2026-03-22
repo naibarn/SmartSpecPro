@@ -408,6 +408,7 @@ class AgencyService:
                        "creatorFeeCredits" as creator_fee_credits,
                        "platformSharePct" as platform_share_pct,
                        "createdBy" as creator_id,
+                       "userContext" as user_context,
                        status
                 FROM agencies
                 WHERE id = :agency_id
@@ -448,6 +449,7 @@ class AgencyService:
             creator_fee_credits=int(row.creator_fee_credits or 0),
             platform_share_pct=int(row.platform_share_pct or 20),
             creator_id=int(row.creator_id) if row.creator_id else None,
+            user_context=row.user_context,
         )
 
     async def _load_agents(self, agency_id: str) -> list[dict]:
@@ -613,6 +615,7 @@ class AgencyService:
                 agency_whitelist=agency_whitelist,
                 retrieval_scope_mode=retrieval_scope_mode,
                 guardrails_by_agent=guardrails_map,
+                user_context=agency_config.user_context,
             )
             response_text = await orchestrator.run(
                 message=message,
@@ -892,6 +895,7 @@ class AgencyService:
                     agency_whitelist=agency_whitelist,
                     retrieval_scope_mode=retrieval_scope_mode,
                     guardrails_by_agent=guardrails_map,
+                    user_context=agency_config.user_context,
                 )
                 response_text, execution_context = await orchestrator.run_with_context(
                     message=message,

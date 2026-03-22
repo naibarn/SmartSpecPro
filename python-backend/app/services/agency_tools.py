@@ -260,12 +260,16 @@ def _execute_custom_tool_sync(custom_config: CustomToolConfig, tool_input: dict[
             lock.release()
 
 
-def _make_run_func(tool_config: ToolConfig, whitelist: set[str]):
+def _make_run_func(tool_config: ToolConfig, whitelist: set[str], run_context=None):
     """Create a run function closure for a tool bridge."""
     captured_config = tool_config
     captured_whitelist = whitelist
+    captured_run_context = run_context
 
     def run_func(tool_instance) -> str:
+        # Attach run context to tool instance for tools that need shared state
+        if captured_run_context is not None:
+            tool_instance.context = captured_run_context
         config = captured_config
 
         # Whitelist check for medium and high risk
@@ -415,6 +419,7 @@ def create_tool_bridge(
     tool_config: ToolConfig,
     whitelist: set[str],
     adapter=None,
+    run_context=None,
 ) -> type:
     """Create a tool bridge class for agency-swarm.
 
@@ -430,7 +435,7 @@ def create_tool_bridge(
     Returns:
         A tool class for agency-swarm.
     """
-    run_func = _make_run_func(tool_config, whitelist)
+    run_func = _make_run_func(tool_config, whitelist, run_context=run_context)
     safe_name = tool_config.tool_id.replace("-", "_").replace(".", "_")
 
     if adapter is not None:
@@ -462,6 +467,7 @@ async def resolve_tools_for_agent(
     agency_whitelist: set[str],
     adapter=None,
     retrieval_scope_mode: str | None = None,
+    run_context: "AgencyRunContext | None" = None,
 ) -> list[type]:
     """Resolve and construct tool bridges for a specific agent.
 
@@ -546,7 +552,7 @@ async def resolve_tools_for_agent(
             endpoint_url=endpoint_url,
             config=merged_config,
         )
-        tool_cls = create_tool_bridge(config, agency_whitelist, adapter=adapter)
+        tool_cls = create_tool_bridge(config, agency_whitelist, adapter=adapter, run_context=run_context)
         tool_classes.append(tool_cls)
 
     logger.info(

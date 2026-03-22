@@ -1090,6 +1090,7 @@ export const agencyRouter = router({
             }
           }),
         ).min(1).max(20),
+        userContext: z.record(z.string(), z.unknown()).optional(),
         communicationFlows: z
           .array(
             z.object({
@@ -1166,6 +1167,7 @@ export const agencyRouter = router({
         if (input.description !== undefined) setValues.description = input.description;
         if (input.systemPrompt !== undefined) setValues.systemPrompt = input.systemPrompt;
         if (input.defaultModel !== undefined) setValues.defaultModel = input.defaultModel;
+        if (input.userContext !== undefined) setValues.userContext = input.userContext;
         if (Object.keys(setValues).length > 0) {
           await tx.update(agencies).set(setValues).where(eq(agencies.id, input.id));
         }

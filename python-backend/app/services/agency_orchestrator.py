@@ -22,6 +22,7 @@ import httpx
 import structlog
 
 from app.services.agency_browser_session_executor import AgencyBrowserSessionExecutor
+from app.services.agency_run_context import AgencyRunContext
 
 logger = structlog.get_logger(__name__)
 
@@ -63,6 +64,9 @@ class ExecutionContext:
         # Browser Sessions opened or resumed during the run.
         self.browser_sessions: list[dict[str, Any]] = []
         self.active_browser_session_id: str | None = None
+        # Shared run context (populated by orchestrator)
+        self.shared_context: AgencyRunContext | None = None
+        self.context_snapshot: dict[str, Any] | None = None
 
     def get_context_text(self) -> str:
         """Build a context string from accumulated knowledge and results."""
@@ -96,6 +100,7 @@ class AgencyOrchestrator:
         agency_whitelist: set[str] | None = None,
         retrieval_scope_mode: str | None = None,
         guardrails_by_agent: dict[str, list] | None = None,
+        user_context: dict[str, Any] | None = None,
     ):
         self.nodes: dict[str, NodeRow] = {n["id"]: n for n in nodes}
         self.edges: list[EdgeRow] = edges
@@ -106,6 +111,7 @@ class AgencyOrchestrator:
         self.retrieval_scope_mode = retrieval_scope_mode
         # Guardrail definitions keyed by agent ID for quick lookup
         self.guardrails_by_agent: dict[str, list] = guardrails_by_agent or {}
+        self.user_context = user_context
         self.browser_session_executor = AgencyBrowserSessionExecutor()
 
         # Find entry node
@@ -153,6 +159,9 @@ class AgencyOrchestrator:
             user_id=user_id, task_metadata=task_metadata,
         )
 
+        # Initialize shared run context with optional seed data
+        ctx.shared_context = AgencyRunContext(initial_data=self.user_context)
+
         if task_metadata:
             logger.info(
                 "agency_orchestrator_with_planner_context",
@@ -162,6 +171,10 @@ class AgencyOrchestrator:
             )
 
         result = await self._execute_node(self.entry_node, ctx)
+
+        # Capture context snapshot for observability (section-15 will persist it)
+        ctx.context_snapshot = ctx.shared_context.snapshot()
+
         return result or "", ctx
 
     async def _execute_node(self, node: NodeRow, ctx: ExecutionContext) -> str:
@@ -315,6 +328,7 @@ class AgencyOrchestrator:
                     agency_whitelist=self.agency_whitelist,
                     adapter=self.adapter,
                     retrieval_scope_mode=self.retrieval_scope_mode,
+                    run_context=ctx.shared_context,
                 )
 
             agent = self.adapter.create_agent(

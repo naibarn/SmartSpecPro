@@ -112,6 +112,8 @@ class AgencyConfig(BaseModel):
     shared_tools: list[Any] | None = None
     shared_files_folder: str | None = None
     shared_mcp_servers: list[Any] | None = None
+    # v1.8: User-provided context seed data for the run
+    user_context: dict[str, Any] | None = None
 
 
 class UsageBreakdown(BaseModel):

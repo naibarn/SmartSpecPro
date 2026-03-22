@@ -1,6 +1,26 @@
-No existing sections yet -- this is one of the first to be written. I have all the context needed.
-
 # Section 07 -- Agency Context (Shared Run State)
+
+**Status: IMPLEMENTED**
+
+## Implementation Notes
+
+- All files created/modified as planned. No deviations from spec.
+- Code review applied 4 fixes: sync helper documentation (lock-bypass warning), Test 8 rewrite (ToolBridge wiring), snapshot docstring, hasattr simplification.
+- 10 unit tests passing. Existing orchestrator + tools tests unaffected.
+- `get_sync`/`set_sync` documented as unsafe for concurrent use (section-18 parallel fan-out must use async methods).
+
+### Files Created
+- `python-backend/app/services/agency_run_context.py`
+- `python-backend/tests/unit/test_agency_run_context.py`
+
+### Files Modified
+- `python-backend/app/services/agency_orchestrator.py` — ExecutionContext gains `shared_context` + `context_snapshot`; orchestrator accepts `user_context`
+- `python-backend/app/services/agency_tools.py` — `run_context` param threaded through tool resolution chain
+- `python-backend/app/services/agency_service.py` — Loads `userContext` from DB, passes to orchestrator
+- `python-backend/app/services/agency_swarm_adapter.py` — `user_context` field on `AgencyConfig`
+- `apps/web/server/routers/agency.ts` — `userContext` Zod field in `saveBuilder`, persisted to DB
+
+---
 
 ## Overview
 
