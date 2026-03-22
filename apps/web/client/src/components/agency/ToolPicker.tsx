@@ -8,11 +8,13 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Search, Wrench, AlertTriangle, ArrowLeft, Check } from "lucide-react";
+import { Search, Wrench, AlertTriangle, ArrowLeft, Check, Plus, Pencil, Trash2 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
+import { toast } from "sonner";
 import { ToolConfigPanel } from "./ToolConfigPanel";
+import { CustomToolCreator } from "./CustomToolCreator";
 
 interface ToolPickerProps {
   open: boolean;
@@ -32,7 +34,12 @@ const TYPE_LABELS: Record<string, string> = {
   skill: "Skill",
   sandbox: "Sandbox",
   custom: "Custom",
+  http_api: "Custom API",
+  openapi_import: "OpenAPI",
+  mcp_bridge: "MCP",
 };
+
+const CUSTOM_TOOL_TYPES = new Set(["custom", "http_api", "openapi_import", "mcp_bridge"]);
 
 export function ToolPicker({
   open,
@@ -47,6 +54,21 @@ export function ToolPicker({
     configSchema?: { fields: unknown[] } | null;
   } | null>(null);
   const [toolConfig, setToolConfig] = useState<Record<string, unknown>>({});
+  const [creatorOpen, setCreatorOpen] = useState(false);
+  const [editToolId, setEditToolId] = useState<string | undefined>();
+  const [editToolData, setEditToolData] = useState<Record<string, unknown> | undefined>();
+
+  const utils = (trpc as any).useUtils?.() ?? (trpc as any).useContext?.();
+
+  const deleteMutation = (trpc as any).agency?.deleteCustomTool?.useMutation?.({
+    onSuccess: () => {
+      toast.success("Tool deleted");
+      utils?.agency?.listTools?.invalidate?.();
+    },
+    onError: (err: any) => {
+      toast.error(err?.message ?? "Failed to delete tool");
+    },
+  }) ?? { mutate: () => {} };
 
   const { data: toolsData } = (trpc as any).agency?.listTools?.useQuery?.(
     undefined,
@@ -61,11 +83,13 @@ export function ToolPicker({
       toolType?: string;
       riskLevel?: string;
       requiresApproval?: boolean;
+      isEnabled?: boolean;
       configSchema?: { fields: unknown[] } | null;
     }> = toolsData?.tools ?? [];
 
     return allTools.filter(
       (t) =>
+        t.isEnabled !== false &&
         !excludeToolIds.includes(t.id) &&
         (!search ||
           t.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -87,7 +111,17 @@ export function ToolPicker({
     setSelectedTool(null);
     setToolConfig({});
     setSearch("");
+    setCreatorOpen(false);
+    setEditToolId(undefined);
+    setEditToolData(undefined);
     onClose();
+  };
+
+  const handleCreatorSuccess = () => {
+    utils?.agency?.listTools?.invalidate?.();
+    setCreatorOpen(false);
+    setEditToolId(undefined);
+    setEditToolData(undefined);
   };
 
   const handleSelectTool = (tool: typeof tools[number]) => {
@@ -173,15 +207,22 @@ export function ToolPicker({
                       </h4>
                       <div className="space-y-1">
                         {typeTools.map((tool) => (
-                          <button
+                          <div
                             key={tool.id}
-                            type="button"
-                            className="flex w-full items-start gap-2 rounded border px-3 py-2 text-left transition-colors hover:bg-accent"
-                            onClick={() => handleSelectTool(tool)}
+                            className="group flex w-full items-start gap-2 rounded border px-3 py-2 text-left transition-colors hover:bg-accent"
                           >
-                            <div className="min-w-0 flex-1">
+                            <button
+                              type="button"
+                              className="min-w-0 flex-1 text-left"
+                              onClick={() => handleSelectTool(tool)}
+                            >
                               <div className="flex items-center gap-1.5">
                                 <span className="text-sm font-medium">{tool.name}</span>
+                                {CUSTOM_TOOL_TYPES.has(tool.toolType ?? "") && (
+                                  <Badge variant="outline" className="px-1 py-0 text-[10px]">
+                                    Custom
+                                  </Badge>
+                                )}
                                 {tool.riskLevel && (
                                   <Badge
                                     variant="secondary"
@@ -202,8 +243,40 @@ export function ToolPicker({
                                   {tool.description}
                                 </p>
                               )}
-                            </div>
-                          </button>
+                            </button>
+                            {CUSTOM_TOOL_TYPES.has(tool.toolType ?? "") && (
+                              <div className="flex shrink-0 gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button
+                                  type="button"
+                                  className="rounded p-1 hover:bg-muted"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setEditToolId(tool.id);
+                                    setEditToolData(tool as any);
+                                    setCreatorOpen(true);
+                                  }}
+                                  title="Edit tool"
+                                  data-testid={`edit-tool-${tool.id}`}
+                                >
+                                  <Pencil className="h-3 w-3 text-muted-foreground" />
+                                </button>
+                                <button
+                                  type="button"
+                                  className="rounded p-1 hover:bg-muted"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (confirm(`Delete tool "${tool.name}"?`)) {
+                                      deleteMutation.mutate({ toolId: tool.id });
+                                    }
+                                  }}
+                                  title="Delete tool"
+                                  data-testid={`delete-tool-${tool.id}`}
+                                >
+                                  <Trash2 className="h-3 w-3 text-muted-foreground hover:text-destructive" />
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         ))}
                       </div>
                     </div>
@@ -211,8 +284,36 @@ export function ToolPicker({
                 </div>
               )}
             </ScrollArea>
+
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="w-full mt-2"
+              onClick={() => {
+                setEditToolId(undefined);
+                setEditToolData(undefined);
+                setCreatorOpen(true);
+              }}
+              data-testid="create-custom-tool-btn"
+            >
+              <Plus className="mr-1.5 h-3.5 w-3.5" />
+              Create Custom Tool
+            </Button>
           </>
         )}
+
+        <CustomToolCreator
+          open={creatorOpen}
+          onClose={() => {
+            setCreatorOpen(false);
+            setEditToolId(undefined);
+            setEditToolData(undefined);
+          }}
+          editToolId={editToolId}
+          editToolData={editToolData}
+          onSuccess={handleCreatorSuccess}
+        />
       </DialogContent>
     </Dialog>
   );

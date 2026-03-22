@@ -19,6 +19,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -900,7 +901,14 @@ function AgentSupervisorForm({
                 key={tool.toolId}
                 className="flex items-center justify-between rounded border px-2 py-1"
               >
-                <span className="truncate text-xs">{tool.toolName}</span>
+                <span className="truncate text-xs flex items-center gap-1">
+                  {tool.toolName}
+                  {!tool.toolId.startsWith("builtin-") && !tool.toolId.startsWith("sandbox-") && (
+                    <Badge variant="outline" className="px-1 py-0 text-[9px] leading-tight">
+                      Custom
+                    </Badge>
+                  )}
+                </span>
                 <Button
                   variant="ghost"
                   size="icon"

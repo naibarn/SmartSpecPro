@@ -5,8 +5,9 @@ import {
   Bot, Crown, GitBranch, Merge, Database, Zap, UserCheck,
   MonitorPlay,
   Briefcase, FileText, Code, BarChart, Calendar, Search, PenTool,
-  ChevronDown, Info,
+  ChevronDown, Info, Wrench,
 } from "lucide-react";
+import { CustomToolCreator } from "./CustomToolCreator";
 import {
   Tooltip,
   TooltipContent,
@@ -136,6 +137,7 @@ export function AgencySidebar({ onNodeAdd }: AgencySidebarProps) {
   const [openSections, setOpenSections] = useState<Set<string>>(
     new Set(NODE_TYPE_SECTIONS.map((s) => s.label)),
   );
+  const [customToolCreatorOpen, setCustomToolCreatorOpen] = useState(false);
   const { data, isLoading } = trpc.agency.listAgentTemplates.useQuery();
 
   const toggleSection = (label: string) => {
@@ -291,6 +293,24 @@ export function AgencySidebar({ onNodeAdd }: AgencySidebarProps) {
           </div>
         )}
       </div>
+
+      {/* Custom Tools shortcut */}
+      <div className="border-t border-slate-200 p-3">
+        <button
+          type="button"
+          className="flex w-full items-center gap-2 rounded-lg bg-white border border-slate-200 p-2.5 text-xs font-medium text-slate-700 hover:border-indigo-300 hover:shadow-sm transition-all"
+          onClick={() => setCustomToolCreatorOpen(true)}
+          data-testid="manage-custom-tools-btn"
+        >
+          <Wrench className="h-3.5 w-3.5 text-slate-500" />
+          Create Custom Tool
+        </button>
+      </div>
+
+      <CustomToolCreator
+        open={customToolCreatorOpen}
+        onClose={() => setCustomToolCreatorOpen(false)}
+      />
     </div>
   );
 }
