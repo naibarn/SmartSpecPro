@@ -15,6 +15,8 @@ import {
   Home,
   ImagePlus,
   Info,
+  Lock,
+  Music2,
   PanelLeftClose,
   PanelLeftOpen,
   Plus,
@@ -25,6 +27,7 @@ import {
   Upload,
   Video,
   X,
+  Loader2,
 } from "lucide-react";
 
 import DocumentGridList from "@/components/library/DocumentGridList";
@@ -74,9 +77,12 @@ import {
   type DocumentLibraryItem,
   type DocumentQueryState,
 } from "@/lib/documentManagementUi";
+import { getPrivateVaultAccessToken, setPrivateVaultAccessToken } from "@/lib/privateVault";
+import { getAcceptString } from "@/components/editor/uploadMedia";
 import { getEditorOpenRouteForItem } from "@/lib/presentationRouting";
 import {
   closeDocumentEditorTab,
+  syncDocumentEditorTabsFromDocuments,
   upsertDocumentEditorTab,
   type DocumentEditorTab,
 } from "@/lib/documentManagementTabs";
@@ -110,6 +116,7 @@ export default function DocumentManagement() {
   const trpcUtils = trpc.useUtils();
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const videoInputRef = useRef<HTMLInputElement | null>(null);
+  const audioInputRef = useRef<HTMLInputElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [realWorldOcrMode, setRealWorldOcrMode] = useState(false);
   const previewSectionRef = useRef<HTMLDivElement | null>(null);
@@ -161,6 +168,8 @@ export default function DocumentManagement() {
   const [isReindexing, setIsReindexing] = useState(false);
   const [mobileTab, setMobileTab] = useState<"library" | "editor">("library");
   const [isLibraryHeaderCollapsed, setIsLibraryHeaderCollapsed] = useState(false);
+  const [privateVaultUnlockPin, setPrivateVaultUnlockPin] = useState("");
+  const [privateVaultToken, setPrivateVaultTokenState] = useState<string | null>(() => getPrivateVaultAccessToken());
   const [openEditorTabs, setOpenEditorTabs] = useState<DocumentEditorTab[]>(() => {
     if (typeof window === "undefined") {
       return [];
@@ -252,7 +261,12 @@ export default function DocumentManagement() {
     });
   }, [selectedId, queryState.viewMode]);
 
-  const shouldListDocuments = queryState.scope !== "trash" && queryState.scope !== "my_drive" && queryState.scope !== "my_onedrive";
+  const { data: privateVaultPrefs, isLoading: privateVaultPrefsLoading } = trpc.users.getPreferences.useQuery(undefined, {
+    enabled: isAuthenticated,
+  });
+  const privateVaultConfigured = Boolean(privateVaultPrefs?.privateVault?.enabled);
+  const privateVaultQueryBlocked = queryState.scope === "private_vault" && (!privateVaultConfigured || !privateVaultToken);
+  const shouldListDocuments = queryState.scope !== "trash" && queryState.scope !== "my_drive" && queryState.scope !== "my_onedrive" && !privateVaultQueryBlocked;
   const listScope = queryState.scope === "trash" || queryState.scope === "my_drive" || queryState.scope === "my_onedrive"
     ? "my_library"
     : queryState.scope;
@@ -288,8 +302,33 @@ export default function DocumentManagement() {
       enabled: shouldListDocuments && debouncedQuery.length > 0,
     },
   );
+  // uploadStatusById must be declared BEFORE rawDocuments and selectedItem, which both use it.
+  // Declaring it after (as it was originally at line ~366) caused a Temporal Dead Zone error
+  // in the production Vite bundle: the minifier hoists the `let Tt` declaration but the
+  // assignment (useMemo) came after the first usage at rawDocuments.map().
+  const uploadStatusIds = useMemo(() => Array.from(new Set(trackedUploadIds)).slice(0, 25), [trackedUploadIds]);
+  const uploadStatusQuery = trpc.library.getUploadStatus.useQuery(
+    { ids: uploadStatusIds.length > 0 ? uploadStatusIds : [1] },
+    {
+      enabled: uploadStatusIds.length > 0,
+      refetchInterval: 1500,
+    },
+  );
+  const uploadStatusById = useMemo(
+    () => new Map((uploadStatusQuery.data || []).map((entry) => [entry.itemId, entry])),
+    [uploadStatusQuery.data],
+  );
   const activeDocumentLoading = debouncedQuery.length > 0 ? semanticListLoading : listLoading;
   const activeDocumentError = semanticListError ?? listError;
+  const privateVaultAccessError = queryState.scope === "private_vault"
+    ? (semanticListError ?? listError)
+    : null;
+  const privateVaultNeedsSetup = queryState.scope === "private_vault" && !privateVaultConfigured;
+  const privateVaultActionLocked = queryState.scope === "private_vault" && (
+    !privateVaultConfigured
+    || !privateVaultToken
+    || Boolean(privateVaultAccessError)
+  );
   const rawDocuments = shouldListDocuments
     ? (
         debouncedQuery.length > 0
@@ -305,7 +344,7 @@ export default function DocumentManagement() {
   const selectedNeedsDirectFetch = Boolean(selectedId && !selectedFromList && !provisionalSelectedItem);
   const selectedItemQuery = trpc.library.getItem.useQuery(
     { id: selectedId || 0 },
-    { enabled: selectedNeedsDirectFetch },
+    { enabled: selectedNeedsDirectFetch && !privateVaultQueryBlocked },
   );
   const selectedFromQuery = selectedItemQuery.data
     ? toProvisionalDocumentItem(selectedItemQuery.data as any)
@@ -327,11 +366,34 @@ export default function DocumentManagement() {
       refetchOnWindowFocus: false,
     },
   );
+  const selectedMarkdownDraftIsDirty = Boolean(
+    selectedMarkdownDraft
+    && selectedMarkdownDraft.value !== selectedMarkdownDraft.savedValue,
+  );
+  const selectedMarkdownValue =
+    selectedMarkdownDraft && (selectedMarkdownDraftIsDirty || selectedMarkdownDraft.value.trim().length > 0)
+      ? selectedMarkdownDraft.value
+      : (markdownContentQuery.data?.content || "");
+  const selectedMarkdownUpdatedAt =
+    selectedMarkdownDraft?.updatedAt
+    || markdownContentQuery.data?.updated_at
+    || selectedItem?.updated_at;
 
   const saveMarkdownMutation = trpc.library.saveMarkdown.useMutation();
   const uploadFileMutation = trpc.library.uploadFile.useMutation();
   const replaceFileMutation = trpc.library.replaceFile.useMutation();
   const createItemMutation = trpc.library.createItem.useMutation();
+  const unlockPrivateVaultMutation = trpc.users.unlockPrivateVault.useMutation({
+    onSuccess: (result) => {
+      setPrivateVaultAccessToken(String(result.token));
+      setPrivateVaultTokenState(String(result.token));
+      setPrivateVaultUnlockPin("");
+      toast.success("Private Files unlocked");
+      void trpcUtils.library.listDocuments.invalidate();
+      void trpcUtils.library.search.invalidate();
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
   const createPresentationDeckMutation = trpc.presentation.createDeck.useMutation();
   const updateItemMutation = trpc.library.updateItem.useMutation();
   const deleteItemMutation = trpc.library.deleteItem.useMutation();
@@ -355,18 +417,6 @@ export default function DocumentManagement() {
       refetchInterval: isReindexing ? 5000 : false,
     },
   );
-  const uploadStatusIds = useMemo(() => Array.from(new Set(trackedUploadIds)).slice(0, 25), [trackedUploadIds]);
-  const uploadStatusQuery = trpc.library.getUploadStatus.useQuery(
-    { ids: uploadStatusIds.length > 0 ? uploadStatusIds : [1] },
-    {
-      enabled: uploadStatusIds.length > 0,
-      refetchInterval: 1500,
-    },
-  );
-  const uploadStatusById = useMemo(
-    () => new Map((uploadStatusQuery.data || []).map((entry) => [entry.itemId, entry])),
-    [uploadStatusQuery.data],
-  );
   const reindexResult = reindexStatus?.result as Record<string, any> | null | undefined;
   const reindexExpectedJobs = Number(
     reindexResult?.expected_enqueued_jobs
@@ -375,6 +425,7 @@ export default function DocumentManagement() {
     ?? 0,
   );
   const reindexCompletedJobs = Number(reindexResult?.completed_jobs ?? 0);
+  const selectedPreviewPanelKey = `${selectedItem?.id ?? selectedId ?? "empty"}:${previewType}:${queryState.scope}`;
 
   // Folder path / breadcrumb (only when inside a folder)
   const currentFolderId = queryState.folderId ?? null;
@@ -421,6 +472,16 @@ export default function DocumentManagement() {
     }
   }, [isReindexing, reindexStatus, trpcUtils.library.listDocuments]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const syncVaultToken = () => setPrivateVaultTokenState(getPrivateVaultAccessToken());
+    syncVaultToken();
+    window.addEventListener("storage", syncVaultToken);
+    return () => window.removeEventListener("storage", syncVaultToken);
+  }, []);
+
   async function handleConfirmReindex() {
     setIsReindexConfirmOpen(false);
     await triggerReindexMutation.mutateAsync();
@@ -460,7 +521,13 @@ export default function DocumentManagement() {
         .map((entry) => entry.itemId),
     );
 
-    setTrackedUploadIds((prev) => prev.filter((id) => activeIds.has(id)));
+    setTrackedUploadIds((prev) => {
+      const next = prev.filter((id) => activeIds.has(id));
+      if (next.length === prev.length && next.every((id, index) => id === prev[index])) {
+        return prev;
+      }
+      return next;
+    });
   }, [uploadStatusQuery.data]);
 
   function toProvisionalDocumentItem(item: any): DocumentLibraryItem {
@@ -555,72 +622,66 @@ export default function DocumentManagement() {
   useEffect(() => {
     if (!documents.length) {
       if (!pendingAutoSelectId && !isEditorMode) {
-        setSelectedId(null);
+        setSelectedId((prev) => (prev === null ? prev : null));
       }
       return;
     }
 
     if (pendingAutoSelectId) {
       if (documents.some((item) => item.id === pendingAutoSelectId)) {
-        setSelectedId(pendingAutoSelectId);
+        setSelectedId((prev) =>
+          prev === pendingAutoSelectId ? prev : pendingAutoSelectId,
+        );
         setPendingAutoSelectId(null);
         setProvisionalSelectedItem(null);
         return;
       }
     }
 
-    if (!selectedId && !isEditorMode) {
-      setSelectedId(documents[0].id);
-      return;
-    }
-
-    if (!isEditorMode && !documents.some((item) => item.id === selectedId)) {
-      setSelectedId(documents[0].id);
-    }
-  }, [documents, selectedId, pendingAutoSelectId, isEditorMode]);
+    setSelectedId((prev) => {
+      if (prev && documents.some((item) => item.id === prev)) return prev;
+      if (isEditorMode) return prev;
+      return documents[0].id;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [documents, pendingAutoSelectId, isEditorMode]);
 
   useEffect(() => {
     if (!isEditorMode || !selectedId) {
       return;
     }
     if (selectedItem) {
-      upsertEditorTab(selectedItem);
+      upsertEditorTab(
+        selectedItem,
+        isPrivateVaultDocument(selectedItem) ? { openedFromScope: "private_vault" } : undefined,
+      );
       return;
     }
     upsertEditorTab({
       id: selectedId,
       title: `Document ${selectedId}`,
       item_type: "document",
-    });
-  }, [isEditorMode, selectedId, selectedItem]);
+    }, queryState.scope === "private_vault" ? { openedFromScope: "private_vault" } : undefined);
+  }, [
+    isEditorMode,
+    selectedId,
+    selectedItem?.id,
+    selectedItem?.title,
+    selectedItem?.item_type,
+    selectedItem?.access_source,
+    selectedItem?.metadata,
+    queryState.scope,
+  ]);
 
   useEffect(() => {
     if (!documents.length) {
       return;
     }
-    const byId = new Map(documents.map((item) => [item.id, item]));
-      setOpenEditorTabs((prev) => prev.map((tab) => {
-        const matched = byId.get(tab.id);
-        if (!matched) {
-          return tab;
-        }
-      if (
-        tab.title === matched.title &&
-        tab.itemType === matched.item_type &&
-        tab.accessSource === matched.access_source
-      ) {
-        return tab;
-      }
-      return {
-        ...tab,
-        title: matched.title,
-        itemType: matched.item_type,
-        accessSource: matched.access_source,
-      };
-    }));
+    setOpenEditorTabs((prev) => syncDocumentEditorTabsFromDocuments(prev, documents));
   }, [documents]);
 
   function getEditorTabScopeLabel(tab: DocumentEditorTab): string {
+    if (tab.openedFromScope === "private_vault") return "Private Files";
     if (tab.accessSource === "owner") return "My Library";
     if (tab.accessSource === "shared_direct") return "Shared With Me";
     if (tab.accessSource === "shared_group") return "My Group";
@@ -632,6 +693,7 @@ export default function DocumentManagement() {
   }
 
   function getCurrentScopeLabel(scope: DocumentQueryState["scope"]): string {
+    if (scope === "private_vault") return "Private Files";
     if (scope === "my_drive") return "My Drive";
     if (scope === "my_onedrive") return "OneDrive";
     if (scope === "shared_with_me") return "Shared With Me";
@@ -640,12 +702,133 @@ export default function DocumentManagement() {
     return "My Library";
   }
 
+  function isPrivateVaultDocument(item: Pick<DocumentLibraryItem, "metadata"> | null | undefined): boolean {
+    return Boolean(
+      item?.metadata?.private_vault === true
+      || item?.metadata?.privateVault === true
+      || item?.metadata?.vault === true,
+    );
+  }
+
+  function handleScopeChange(scope: DocumentQueryState["scope"]) {
+    setQueryState((prev) => ({
+      ...prev,
+      scope,
+      folderId: scope === "my_library" ? prev.folderId : null,
+    }));
+  }
+
+  function renderPrivateVaultGate() {
+    if (privateVaultPrefsLoading) {
+      return (
+        <div className="flex h-full min-h-[320px] items-center justify-center rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex items-center gap-3 text-sm text-slate-600">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Loading private vault settings...
+          </div>
+        </div>
+      );
+    }
+
+    if (!privateVaultConfigured) {
+      return (
+        <div className="flex h-full min-h-[320px] items-center justify-center rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 via-white to-slate-50 p-5 shadow-sm">
+          <div className="max-w-xl rounded-2xl border border-amber-200 bg-white/90 p-5 text-center shadow-sm">
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 text-amber-700">
+              <Lock className="h-6 w-6" />
+            </div>
+            <h3 className="text-lg font-semibold text-slate-900">Private Files is not set up yet</h3>
+            <p className="mt-2 text-sm text-slate-600">
+              Create a PIN in Settings to activate your private vault. After that, files uploaded here will stay separate from work documents and still flow through the same RAG pipeline.
+            </p>
+            <div className="mt-4 flex flex-wrap justify-center gap-2">
+              <Button onClick={() => setLocation('/settings?tab=privateVault')}>
+                Go to Settings
+              </Button>
+              <Button variant="outline" onClick={() => handleScopeChange("my_library")}>
+                Back to Library
+              </Button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex h-full min-h-[320px] items-center justify-center rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 via-white to-slate-50 p-5 shadow-sm">
+        <div className="max-w-xl rounded-2xl border border-amber-200 bg-white/90 p-5 shadow-sm">
+          <div className="flex items-start gap-3">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700">
+              <Lock className="h-6 w-6" />
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-lg font-semibold text-slate-900">Private Files are locked</h3>
+              <p className="mt-1 text-sm text-slate-600">
+                Enter your PIN to unlock personal files in this browser session.
+              </p>
+              {privateVaultAccessError ? (
+                <p className="mt-2 text-sm font-medium text-red-700">
+                  {privateVaultAccessError.message || "Your unlock token is no longer valid. Please enter your PIN again."}
+                </p>
+              ) : null}
+            </div>
+          </div>
+          <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+            <Input
+              type="password"
+              inputMode="numeric"
+              placeholder="PIN code"
+              value={privateVaultUnlockPin}
+              onChange={(event) => setPrivateVaultUnlockPin(event.target.value.replace(/\s+/g, ""))}
+              className="flex-1"
+            />
+            <Button
+              onClick={() => {
+                const pin = privateVaultUnlockPin.trim();
+                if (!pin) {
+                  toast.error("Enter your vault PIN");
+                  return;
+                }
+                unlockPrivateVaultMutation.mutate({ pin });
+              }}
+              disabled={unlockPrivateVaultMutation.isPending || !privateVaultUnlockPin.trim()}
+              className="bg-amber-600 hover:bg-amber-700 text-white"
+            >
+              {unlockPrivateVaultMutation.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Lock className="mr-2 h-4 w-4" />
+              )}
+              Unlock
+            </Button>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" onClick={() => setLocation('/settings?tab=privateVault')}>
+              Manage PIN
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => handleScopeChange("my_library")}>
+              Back to Library
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   useEffect(() => {
     if (previewType !== "markdown") {
       setMarkdownError(undefined);
       return;
     }
     if (!selectedItem || !markdownContentQuery.data) {
+      return;
+    }
+
+    // While a markdown save is in flight, keep the local draft as the source
+    // of truth.  The item will often flip to `indexing` immediately after save,
+    // which triggers refetches.  Without this guard, a transient stale/empty
+    // payload can overwrite the editor before the save has fully settled.
+    if (saveMarkdownMutation.isPending) {
       return;
     }
 
@@ -692,7 +875,7 @@ export default function DocumentManagement() {
         },
       };
     });
-  }, [previewType, selectedItem, markdownContentQuery.data]);
+  }, [previewType, selectedItem?.id, selectedItem?.updated_at, markdownContentQuery.data]);
 
   useEffect(() => {
     if (!selectedItem) {
@@ -720,13 +903,13 @@ export default function DocumentManagement() {
     return () => {
       cancelled = true;
     };
-  }, [previewType, selectedItem]);
+  }, [previewType, selectedItem?.id, selectedItem?.source_url]);
 
-  async function handleSaveMarkdown() {
+  async function handleSaveMarkdown(contentOverride?: string) {
     if (!selectedItem || previewType !== "markdown") return;
     const selectedItemId = selectedItem.id;
     const draft = markdownDraftByDocId[selectedItemId];
-    const contentToSave = draft?.value ?? "";
+    const contentToSave = (contentOverride ?? draft?.value ?? "").replace(/\r\n/g, "\n");
 
     // Safety guard: refuse to persist an empty document.  This prevents data
     // loss if an external hotkey (e.g. screen-capture) clears the editor state
@@ -740,7 +923,10 @@ export default function DocumentManagement() {
     async function applySuccessResult(result: Awaited<ReturnType<typeof saveMarkdownMutation.mutateAsync>>) {
       const updatedItem = toProvisionalDocumentItem(result.item);
       setProvisionalSelectedItem(updatedItem);
-      upsertEditorTab(updatedItem);
+      upsertEditorTab(
+        updatedItem,
+        isPrivateVaultDocument(updatedItem) ? { openedFromScope: "private_vault" } : undefined,
+      );
       setMarkdownDraftByDocId((prev) => ({
         ...prev,
         [updatedItem.id]: {
@@ -750,7 +936,7 @@ export default function DocumentManagement() {
         },
       }));
       setSelectedId(updatedItem.id);
-      await Promise.all([
+      void Promise.allSettled([
         trpcUtils.library.listDocuments.invalidate(),
         trpcUtils.library.getMarkdownContent.invalidate({ id: selectedItemId }),
       ]);
@@ -945,7 +1131,15 @@ export default function DocumentManagement() {
 
   async function handleUploadFiles(files: File[], metadata?: Record<string, unknown>) {
     if (files.length === 0) return;
+    if (queryState.scope === "private_vault" && privateVaultActionLocked) {
+      toast.error("Unlock Private Files before uploading");
+      return;
+    }
     setUploadingCount((n) => n + files.length);
+    const effectiveMetadata = {
+      ...(metadata ?? {}),
+      ...(queryState.scope === "private_vault" ? { private_vault: true } : {}),
+    };
 
     const results = await Promise.allSettled(
       files.map(async (file) => {
@@ -957,7 +1151,8 @@ export default function DocumentManagement() {
             fileBase64,
             title: file.name,
             parentId: currentFolderId,
-            metadata,
+            visibility: queryState.scope === "private_vault" ? "private" : undefined,
+            metadata: effectiveMetadata,
           });
         } finally {
           setUploadingCount((n) => Math.max(0, n - 1));
@@ -985,7 +1180,10 @@ export default function DocumentManagement() {
         ...prev,
         ...succeeded.map((entry) => entry.value.item.id),
       ])));
-      setQueryState((prev) => ({ ...prev, scope: "my_library" }));
+      setQueryState((prev) => ({
+        ...prev,
+        scope: queryState.scope === "private_vault" ? "private_vault" : "my_library",
+      }));
       if (files.length === 1) {
         const result = succeeded[0].value;
         setPendingAutoSelectId(result.item.id);
@@ -1000,6 +1198,10 @@ export default function DocumentManagement() {
   }
 
   async function handleCreateNewDocument() {
+    if (queryState.scope === "private_vault" && privateVaultActionLocked) {
+      toast.error("Unlock Private Files before creating documents");
+      return;
+    }
     try {
       const now = new Date();
       const title = `New Document ${now.toLocaleString()}`;
@@ -1014,6 +1216,7 @@ export default function DocumentManagement() {
           extension: "md",
           file_type: "text/markdown",
           source_type: "markdown_document",
+          ...(queryState.scope === "private_vault" ? { private_vault: true } : {}),
         },
       });
 
@@ -1027,7 +1230,7 @@ export default function DocumentManagement() {
       setDebouncedQuery("");
       setQueryState((prev) => ({
         ...prev,
-        scope: "my_library",
+        scope: queryState.scope === "private_vault" ? "private_vault" : "my_library",
       }));
       setPendingAutoSelectId(createResult.item.id);
       const provisionalItem = toProvisionalDocumentItem(saveResult.item ?? createResult.item);
@@ -1055,6 +1258,10 @@ export default function DocumentManagement() {
   }
 
   async function handleCreateNewPresentation() {
+    if (queryState.scope === "private_vault" && privateVaultActionLocked) {
+      toast.error("Unlock Private Files before creating presentations");
+      return;
+    }
     try {
       const now = new Date();
       const title = `New Presentation ${now.toLocaleString()}`;
@@ -1068,6 +1275,7 @@ export default function DocumentManagement() {
         metadata: {
           extension: "presentation",
           source_type: "presentation_document",
+          ...(queryState.scope === "private_vault" ? { private_vault: true } : {}),
         },
       });
 
@@ -1084,7 +1292,7 @@ export default function DocumentManagement() {
       setDebouncedQuery("");
       setQueryState((prev) => ({
         ...prev,
-        scope: "my_library",
+        scope: queryState.scope === "private_vault" ? "private_vault" : "my_library",
       }));
       setPendingAutoSelectId(createResult.item.id);
       const provisionalItem = toProvisionalDocumentItem(createResult.item);
@@ -1119,7 +1327,10 @@ export default function DocumentManagement() {
       });
       const provisionalUpdated = toProvisionalDocumentItem(updated);
       setProvisionalSelectedItem(provisionalUpdated);
-      upsertEditorTab(provisionalUpdated);
+      upsertEditorTab(
+        provisionalUpdated,
+        isPrivateVaultDocument(provisionalUpdated) ? { openedFromScope: "private_vault" } : undefined,
+      );
       await Promise.all([
         trpcUtils.library.listDocuments.invalidate(),
         trpcUtils.library.getItem.invalidate({ id: selectedItem.id }),
@@ -1244,22 +1455,25 @@ export default function DocumentManagement() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => imageInputRef.current?.click()} disabled={uploadingCount > 0}>
+                  <DropdownMenuItem onClick={() => imageInputRef.current?.click()} disabled={uploadingCount > 0 || privateVaultActionLocked}>
                     <ImagePlus className="mr-2 h-4 w-4" /> Upload Image
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setRealWorldOcrMode((prev) => !prev)}>
                     <Info className="mr-2 h-4 w-4" /> OCR Mode: {realWorldOcrMode ? "On" : "Off"}
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => videoInputRef.current?.click()} disabled={uploadingCount > 0}>
+                  <DropdownMenuItem onClick={() => videoInputRef.current?.click()} disabled={uploadingCount > 0 || privateVaultActionLocked}>
                     <Video className="mr-2 h-4 w-4" /> Upload Video
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => fileInputRef.current?.click()} disabled={uploadingCount > 0}>
+                  <DropdownMenuItem onClick={() => audioInputRef.current?.click()} disabled={uploadingCount > 0 || privateVaultActionLocked}>
+                    <Music2 className="mr-2 h-4 w-4" /> Upload Audio
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => fileInputRef.current?.click()} disabled={uploadingCount > 0 || privateVaultActionLocked}>
                     <Upload className="mr-2 h-4 w-4" /> Upload File
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleCreateNewDocument} disabled={createItemMutation.isPending || saveMarkdownMutation.isPending}>
+                  <DropdownMenuItem onClick={handleCreateNewDocument} disabled={createItemMutation.isPending || saveMarkdownMutation.isPending || privateVaultActionLocked}>
                     <FilePlus2 className="mr-2 h-4 w-4" /> New Document
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleCreateNewPresentation} disabled={createItemMutation.isPending || createPresentationDeckMutation.isPending}>
+                  <DropdownMenuItem onClick={handleCreateNewPresentation} disabled={createItemMutation.isPending || createPresentationDeckMutation.isPending || privateVaultActionLocked}>
                     <FilePlus2 className="mr-2 h-4 w-4" /> New Presentation
                   </DropdownMenuItem>
                   {isAdmin ? (
@@ -1285,7 +1499,7 @@ export default function DocumentManagement() {
                 variant="outline"
                 size="sm"
                 onClick={() => imageInputRef.current?.click()}
-                disabled={uploadingCount > 0}
+                disabled={uploadingCount > 0 || privateVaultActionLocked}
               >
                 <ImagePlus className="mr-1 h-4 w-4" />
                 Upload Image
@@ -1302,7 +1516,7 @@ export default function DocumentManagement() {
                 variant="outline"
                 size="sm"
                 onClick={() => videoInputRef.current?.click()}
-                disabled={uploadingCount > 0}
+                disabled={uploadingCount > 0 || privateVaultActionLocked}
               >
                 <Video className="mr-1 h-4 w-4" />
                 Upload Video
@@ -1310,8 +1524,17 @@ export default function DocumentManagement() {
               <Button
                 variant="outline"
                 size="sm"
+                onClick={() => audioInputRef.current?.click()}
+                disabled={uploadingCount > 0 || privateVaultActionLocked}
+              >
+                <Music2 className="mr-1 h-4 w-4" />
+                Upload Audio
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => fileInputRef.current?.click()}
-                disabled={uploadingCount > 0}
+                disabled={uploadingCount > 0 || privateVaultActionLocked}
               >
                 <Upload className="mr-1 h-4 w-4" />
                 Upload File
@@ -1319,7 +1542,7 @@ export default function DocumentManagement() {
               <Button
                 size="sm"
                 onClick={handleCreateNewDocument}
-                disabled={createItemMutation.isPending || saveMarkdownMutation.isPending}
+                disabled={createItemMutation.isPending || saveMarkdownMutation.isPending || privateVaultActionLocked}
               >
                 <FilePlus2 className="mr-1 h-4 w-4" />
                 New Document
@@ -1328,7 +1551,7 @@ export default function DocumentManagement() {
                 size="sm"
                 variant="secondary"
                 onClick={handleCreateNewPresentation}
-                disabled={createItemMutation.isPending || createPresentationDeckMutation.isPending}
+                disabled={createItemMutation.isPending || createPresentationDeckMutation.isPending || privateVaultActionLocked}
               >
                 <FilePlus2 className="mr-1 h-4 w-4" />
                 New Presentation
@@ -1426,9 +1649,21 @@ export default function DocumentManagement() {
         }}
       />
       <input
+        ref={audioInputRef}
+        type="file"
+        accept="audio/*"
+        multiple
+        className="hidden"
+        onChange={async (event) => {
+          const files = Array.from(event.target.files ?? []);
+          event.target.value = "";
+          await handleUploadFiles(files);
+        }}
+      />
+      <input
         ref={fileInputRef}
         type="file"
-        accept=".pdf,.md,.markdown,.txt,.csv,.json,.html,.htm,.xml,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.mp3,.wav,.m4a,.ogg"
+        accept={getAcceptString("file")}
         multiple
         className="hidden"
         onChange={async (event) => {
@@ -1531,11 +1766,13 @@ export default function DocumentManagement() {
                   <div className="shrink-0 border-b px-3 pb-2 pt-2">
                     <DocumentLibraryTabs
                       value={queryState.scope}
-                      onChange={(scope) => setQueryState((prev) => ({ ...prev, scope }))}
+                      onChange={handleScopeChange}
                     />
                   </div>
                 )}
-                {queryState.scope === "trash" ? (
+                {queryState.scope === "private_vault" ? (
+                  renderPrivateVaultGate()
+                ) : queryState.scope === "trash" ? (
                   <div className="flex-1 overflow-y-auto p-3">
                     <TrashPanel />
                   </div>
@@ -1801,13 +2038,15 @@ export default function DocumentManagement() {
                     </div>
                   )}
                 </div>
-                <div className="flex-1 min-h-0 overflow-y-auto p-2">
+                <div className="flex-1 min-h-0 overflow-hidden p-2">
                   <DocumentPreviewPanel
+                    key={selectedPreviewPanelKey}
                     item={selectedItem}
                     previewType={previewType}
                     previewText={previewText}
-                    markdownValue={selectedMarkdownDraft?.value ?? ""}
-                    markdownUpdatedAt={selectedMarkdownDraft?.updatedAt || markdownContentQuery.data?.updated_at || selectedItem?.updated_at}
+                    initialEditorTemplate="page"
+                    markdownValue={selectedMarkdownValue}
+                    markdownUpdatedAt={selectedMarkdownUpdatedAt}
                     markdownError={markdownError}
                     isMarkdownSaving={saveMarkdownMutation.isPending}
                     isRenamingTitle={updateItemMutation.isPending}
@@ -1899,14 +2138,16 @@ export default function DocumentManagement() {
 
               {!isLibraryHeaderCollapsed && (
                 <div className="mb-4">
-                  <DocumentLibraryTabs
-                    value={queryState.scope}
-                    onChange={(scope) => setQueryState((prev) => ({ ...prev, scope }))}
-                  />
+                <DocumentLibraryTabs
+                  value={queryState.scope}
+                  onChange={handleScopeChange}
+                />
                 </div>
               )}
 
-              {queryState.scope === "trash" ? (
+              {queryState.scope === "private_vault" ? (
+                renderPrivateVaultGate()
+              ) : queryState.scope === "trash" ? (
                 <div className="min-h-[200px] max-h-[50vh] overflow-y-auto xl:max-h-none xl:min-h-0 xl:flex-1">
                   <TrashPanel />
                 </div>
@@ -2227,13 +2468,15 @@ export default function DocumentManagement() {
               )}
             </div>
 
-            <div className="rounded-2xl border border-slate-200 bg-slate-50/50 p-2 xl:min-h-0 xl:flex-1 xl:overflow-y-auto">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50/50 p-2 xl:min-h-0 xl:flex-1 xl:overflow-hidden">
               <DocumentPreviewPanel
+                key={selectedPreviewPanelKey}
                 item={selectedItem}
                 previewType={previewType}
                 previewText={previewText}
-                markdownValue={selectedMarkdownDraft?.value ?? ""}
-                markdownUpdatedAt={selectedMarkdownDraft?.updatedAt || markdownContentQuery.data?.updated_at || selectedItem?.updated_at}
+                initialEditorTemplate="page"
+                markdownValue={selectedMarkdownValue}
+                markdownUpdatedAt={selectedMarkdownUpdatedAt}
                 markdownError={markdownError}
                 isMarkdownSaving={saveMarkdownMutation.isPending}
                 isRenamingTitle={updateItemMutation.isPending}

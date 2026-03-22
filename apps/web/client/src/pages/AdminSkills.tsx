@@ -694,6 +694,7 @@ export default function AdminSkills() {
         // Feature 041 fields
         mode: (editingSkill as any)._execMode === "auto" ? undefined : (editingSkill as any)._execMode,
         allowConversationOverride: (editingSkill as any)._allowConvOverride ?? true,
+        allowFreeModels: (editingSkill as any)._allowFreeModels ?? false,
         requirements: (() => {
           const r: Record<string, boolean | number | undefined> = {
             supportsVision: (editingSkill as any)._reqVision || undefined,
@@ -1046,6 +1047,7 @@ export default function AdminSkills() {
                                         // Feature 041 fields
                                         _execMode: ep.mode ?? "auto",
                                         _allowConvOverride: ep.allowConversationOverride ?? true,
+                                        _allowFreeModels: ep.allowFreeModels ?? false,
                                         _reqVision: ep.requirements?.supportsVision ?? false,
                                         _reqThinking: ep.requirements?.supportsThinking ?? false,
                                         _reqFunctionTools: ep.requirements?.supportsFunctionTools ?? false,
@@ -2359,7 +2361,7 @@ export default function AdminSkills() {
                   </div>
                 </div>
 
-                {/* Context Length + Allow Override */}
+                {/* Context Length + Policy Toggles */}
                 <div className="grid gap-3 md:grid-cols-2 pt-1">
                   <div className="space-y-1">
                     <Label className="text-xs font-medium">Min Context Length (tokens)</Label>
@@ -2394,6 +2396,21 @@ export default function AdminSkills() {
                       <Label className="text-xs font-medium">Allow Conversation Override</Label>
                       <p className="text-[10px] text-muted-foreground">
                         Let users override with their conversation model when requirements fallback.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 pt-1">
+                    <Switch
+                      checked={(editingSkill as any)._allowFreeModels ?? false}
+                      onCheckedChange={(checked) =>
+                        setEditingSkill({ ...editingSkill, _allowFreeModels: checked } as any)
+                      }
+                    />
+                    <div>
+                      <Label className="text-xs font-medium">Allow Free Models</Label>
+                      <p className="text-[10px] text-muted-foreground">
+                        Disabled by default so this skill avoids free-tier models in both primary selection and fallback.
                       </p>
                     </div>
                   </div>

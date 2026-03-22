@@ -65,8 +65,9 @@ import { BudgetPanel } from '@/components/settings/BudgetPanel';
 import { PersonasPanel } from '@/components/settings/PersonasPanel';
 import { UserAutomationPreferencesPanel } from '@/components/settings/UserAutomationPreferencesPanel';
 import { NotificationPreferencesPanel } from '@/components/settings/NotificationPreferencesPanel';
+import { clearPrivateVaultAccessToken, getPrivateVaultAccessToken, setPrivateVaultAccessToken } from '@/lib/privateVault';
 
-type SettingsTab = 'profile' | 'account' | 'security' | 'preferences' | 'notifications' | 'automation' | 'api' | 'billing' | 'integrations' | 'personas';
+type SettingsTab = 'profile' | 'account' | 'security' | 'privateVault' | 'preferences' | 'notifications' | 'automation' | 'api' | 'billing' | 'integrations' | 'personas';
 
 type TwoFAStep = 'idle' | 'setup' | 'verify' | 'done' | 'disable' | 'regen';
 
@@ -446,10 +447,17 @@ export default function Settings() {
   const [translationModel, setTranslationModel] = useState('');
   const [modelSearch, setModelSearch] = useState('');
   const [showModelPicker, setShowModelPicker] = useState(false);
+  const [privateVaultCurrentPin, setPrivateVaultCurrentPin] = useState('');
+  const [privateVaultNewPin, setPrivateVaultNewPin] = useState('');
+  const [privateVaultConfirmPin, setPrivateVaultConfirmPin] = useState('');
+  const [privateVaultUnlockPin, setPrivateVaultUnlockPin] = useState('');
+  const [privateVaultDisablePin, setPrivateVaultDisablePin] = useState('');
+  const [privateVaultToken, setPrivateVaultTokenState] = useState<string | null>(() => getPrivateVaultAccessToken());
 
-  const { data: prefsData, isLoading: prefsLoading } = trpc.users.getPreferences.useQuery(undefined, {
+  const prefsQuery = trpc.users.getPreferences.useQuery(undefined, {
     enabled: isAuthenticated,
   });
+  const { data: prefsData, isLoading: prefsLoading, refetch: refetchPrefs } = prefsQuery;
   const { data: modelsData } = trpc.llmProviders.availableModels.useQuery(undefined, {
     enabled: isAuthenticated,
   });
@@ -459,6 +467,42 @@ export default function Settings() {
   );
   const updatePrefsMutation = trpc.users.updatePreferences.useMutation({
     onSuccess: () => toast.success('Translation preferences saved'),
+    onError: (err: any) => toast.error(err.message),
+  });
+  const setPrivateVaultPinMutation = trpc.users.setPrivateVaultPin.useMutation({
+    onSuccess: () => {
+      toast.success('Private Files PIN saved');
+      clearPrivateVaultAccessToken();
+      setPrivateVaultTokenState(null);
+      setPrivateVaultCurrentPin('');
+      setPrivateVaultNewPin('');
+      setPrivateVaultConfirmPin('');
+      setPrivateVaultDisablePin('');
+      void refetchPrefs();
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+  const disablePrivateVaultMutation = trpc.users.disablePrivateVault.useMutation({
+    onSuccess: () => {
+      toast.success('Private Files vault disabled');
+      clearPrivateVaultAccessToken();
+      setPrivateVaultTokenState(null);
+      setPrivateVaultCurrentPin('');
+      setPrivateVaultNewPin('');
+      setPrivateVaultConfirmPin('');
+      setPrivateVaultDisablePin('');
+      void refetchPrefs();
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+  const unlockPrivateVaultMutation = trpc.users.unlockPrivateVault.useMutation({
+    onSuccess: (result) => {
+      setPrivateVaultAccessToken(String(result.token));
+      setPrivateVaultTokenState(String(result.token));
+      setPrivateVaultUnlockPin('');
+      toast.success('Private Files unlocked');
+      void refetchPrefs();
+    },
     onError: (err: any) => toast.error(err.message),
   });
 
@@ -546,11 +590,27 @@ export default function Settings() {
   }, [isLoading, isAuthenticated, setLocation]);
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const syncVaultToken = () => setPrivateVaultTokenState(getPrivateVaultAccessToken());
+    syncVaultToken();
+    window.addEventListener('storage', syncVaultToken);
+    return () => window.removeEventListener('storage', syncVaultToken);
+  }, []);
+
+  useEffect(() => {
     if (user) {
       setName(user.name || '');
       setEmail(user.email || '');
     }
   }, [user]);
+
+  const privateVaultPrefs = prefsData?.privateVault as {
+    enabled?: boolean;
+    pinVersion?: number;
+    pinUpdatedAt?: string;
+  } | undefined;
+  const privateVaultConfigured = Boolean(privateVaultPrefs?.enabled);
+  const privateVaultUnlocked = Boolean(privateVaultToken);
 
   if (isLoading) {
     return (
@@ -568,6 +628,7 @@ export default function Settings() {
     { id: 'profile', label: 'Profile', icon: User },
     { id: 'account', label: 'Account', icon: Mail },
     { id: 'security', label: 'Security', icon: Shield },
+    { id: 'privateVault', label: 'Private Files', icon: Lock },
     { id: 'preferences', label: 'Preferences', icon: Palette },
     { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'automation', label: 'Automation', icon: Bot },
@@ -1010,6 +1071,209 @@ export default function Settings() {
                   </div>
 
                   <TwoFactorSection />
+                </div>
+              )}
+
+              {/* Private Vault Tab */}
+              {activeTab === 'privateVault' && (
+                <div className="space-y-6">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900 mb-2">Private Files Vault</h2>
+                    <p className="text-gray-600">
+                      Keep personal files separate from work documents. Uploads in this area still go through the same RAG pipeline and can later power OCR, bill tracking, and personal records.
+                    </p>
+                  </div>
+
+                  {prefsLoading ? (
+                    <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
+                      Loading vault settings...
+                    </div>
+                  ) : null}
+
+                  <div className="grid gap-4 xl:grid-cols-2">
+                    <div className="rounded-2xl border border-gray-200 bg-gray-50/80 p-5">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900">Vault status</h3>
+                          <p className="text-sm text-gray-600">
+                            {privateVaultConfigured
+                              ? "The vault is configured for this account."
+                              : "No private vault PIN has been set yet."}
+                          </p>
+                        </div>
+                        <Badge
+                          variant="outline"
+                          className={privateVaultConfigured
+                            ? privateVaultUnlocked
+                              ? "border-green-200 bg-green-50 text-green-700"
+                              : "border-amber-200 bg-amber-50 text-amber-700"
+                            : "border-slate-200 bg-slate-100 text-slate-600"}
+                        >
+                          {privateVaultConfigured
+                            ? privateVaultUnlocked
+                              ? "Unlocked"
+                              : "Locked"
+                            : "Not configured"}
+                        </Badge>
+                      </div>
+
+                      <div className="mt-4 space-y-2 text-sm text-gray-600">
+                        <p>• Files stay inside the same library/RAG pipeline, but are hidden behind a PIN.</p>
+                        <p>• Use this space for receipts, bills, scans, and private personal documents.</p>
+                        <p>• Supported file types follow the same broad upload support as the rest of Document Management.</p>
+                        {privateVaultPrefs?.pinUpdatedAt ? (
+                          <p>• Last updated: {new Date(privateVaultPrefs.pinUpdatedAt).toLocaleString()}</p>
+                        ) : null}
+                      </div>
+
+                      {privateVaultUnlocked ? (
+                        <div className="mt-4 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+                          This browser is currently unlocked for Private Files.
+                        </div>
+                      ) : (
+                        <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                          Unlock this vault in the section on the right, or create a PIN below if this is your first time setting it up.
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-1">Unlock vault</h3>
+                      <p className="text-sm text-gray-600 mb-4">
+                        Enter your vault PIN to unlock the Private Files area in this browser session.
+                      </p>
+                      <div className="flex gap-2">
+                        <Input
+                          type="password"
+                          inputMode="numeric"
+                          placeholder="PIN code"
+                          value={privateVaultUnlockPin}
+                          onChange={(event) => setPrivateVaultUnlockPin(event.target.value.replace(/\s+/g, ""))}
+                          className="flex-1"
+                        />
+                        <Button
+                          onClick={() => {
+                            const pin = privateVaultUnlockPin.trim();
+                            if (!pin) {
+                              toast.error('Enter your vault PIN');
+                              return;
+                            }
+                            unlockPrivateVaultMutation.mutate({ pin });
+                          }}
+                          disabled={unlockPrivateVaultMutation.isPending || !privateVaultUnlockPin.trim()}
+                          className="bg-amber-600 hover:bg-amber-700 text-white"
+                        >
+                          {unlockPrivateVaultMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4 mr-2" />}
+                          Unlock
+                        </Button>
+                      </div>
+                      {!privateVaultConfigured ? (
+                        <div className="mt-3 text-xs text-gray-500">
+                          Set a PIN in the section below to activate Private Files for your account.
+                        </div>
+                      ) : null}
+                    </div>
+
+                    <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm xl:col-span-2">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-1">Set or change PIN</h3>
+                      <p className="text-sm text-gray-600 mb-4">
+                        Use a 4-12 digit PIN. If a PIN already exists, the current PIN is required to change it.
+                      </p>
+                      <div className="grid gap-3 md:grid-cols-3">
+                        <Input
+                          type="password"
+                          inputMode="numeric"
+                          placeholder={privateVaultConfigured ? "Current PIN" : "Current PIN (optional)"}
+                          value={privateVaultCurrentPin}
+                          onChange={(event) => setPrivateVaultCurrentPin(event.target.value.replace(/\s+/g, ""))}
+                        />
+                        <Input
+                          type="password"
+                          inputMode="numeric"
+                          placeholder="New PIN"
+                          value={privateVaultNewPin}
+                          onChange={(event) => setPrivateVaultNewPin(event.target.value.replace(/\s+/g, ""))}
+                        />
+                        <Input
+                          type="password"
+                          inputMode="numeric"
+                          placeholder="Confirm PIN"
+                          value={privateVaultConfirmPin}
+                          onChange={(event) => setPrivateVaultConfirmPin(event.target.value.replace(/\s+/g, ""))}
+                        />
+                      </div>
+                      <div className="mt-4 flex flex-wrap items-center gap-2">
+                        <Button
+                          onClick={() => {
+                            const newPin = privateVaultNewPin.trim();
+                            const confirmPin = privateVaultConfirmPin.trim();
+                            const currentPin = privateVaultCurrentPin.trim();
+                            if (!newPin || !confirmPin) {
+                              toast.error('Enter and confirm your new PIN');
+                              return;
+                            }
+                            if (newPin !== confirmPin) {
+                              toast.error('PIN codes do not match');
+                              return;
+                            }
+                            setPrivateVaultPinMutation.mutate({
+                              currentPin: currentPin || undefined,
+                              newPin,
+                              confirmPin,
+                            });
+                          }}
+                          disabled={setPrivateVaultPinMutation.isPending || !privateVaultNewPin.trim() || !privateVaultConfirmPin.trim()}
+                          className="bg-purple-600 hover:bg-purple-700 text-white"
+                        >
+                          {setPrivateVaultPinMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4 mr-2" />}
+                          Save PIN
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setPrivateVaultCurrentPin('');
+                            setPrivateVaultNewPin('');
+                            setPrivateVaultConfirmPin('');
+                          }}
+                        >
+                          Clear
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-red-200 bg-red-50/70 p-5 xl:col-span-2">
+                      <h3 className="text-lg font-semibold text-red-900 mb-1">Disable vault</h3>
+                      <p className="text-sm text-red-700 mb-4">
+                        Turning this off hides Private Files until the vault is set up again. This does not delete your files.
+                      </p>
+                      <div className="flex gap-2">
+                        <Input
+                          type="password"
+                          inputMode="numeric"
+                          placeholder="Current PIN"
+                          value={privateVaultDisablePin}
+                          onChange={(event) => setPrivateVaultDisablePin(event.target.value.replace(/\s+/g, ""))}
+                          className="flex-1"
+                        />
+                        <Button
+                          variant="destructive"
+                          onClick={() => {
+                            const currentPin = privateVaultDisablePin.trim();
+                            if (!currentPin) {
+                              toast.error('Enter your current PIN');
+                              return;
+                            }
+                            disablePrivateVaultMutation.mutate({ currentPin });
+                          }}
+                          disabled={disablePrivateVaultMutation.isPending || !privateVaultDisablePin.trim()}
+                        >
+                          {disablePrivateVaultMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4 mr-2" />}
+                          Disable
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
 

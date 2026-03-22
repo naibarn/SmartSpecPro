@@ -178,7 +178,7 @@ export default function AdminAPIKeys() {
                           )}
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
-                          {key.lastUsedAt ? new Date(key.lastUsedAt as string).toLocaleDateString() : "Never"}
+                          {key.lastUsedAt ? new Date(key.lastUsedAt).toLocaleDateString() : "Never"}
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-1">
@@ -330,9 +330,14 @@ export default function AdminAPIKeys() {
                           <code className="text-xs">{row.path}</code>
                         </TableCell>
                         <TableCell>
-                          <span className={row.statusCode >= 400 ? "text-destructive font-medium" : "text-green-600"}>
-                            {row.statusCode}
-                          </span>
+                          {(() => {
+                            const statusCode = row.statusCode ?? 0;
+                            return (
+                              <span className={statusCode >= 400 ? "text-destructive font-medium" : "text-green-600"}>
+                                {statusCode}
+                              </span>
+                            );
+                          })()}
                         </TableCell>
                         <TableCell className="text-sm">{row.creditsUsed ?? 0}</TableCell>
                         <TableCell className="text-sm text-muted-foreground">

@@ -10,6 +10,7 @@
  *   if (canvasEnabled) { ... }
  */
 
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   FEATURE_FLAG_DEFAULTS,
@@ -64,15 +65,18 @@ export function useTenantFeatureFlags(): Record<TenantFeatureFlagKey, boolean> {
     gcTime: 5 * 60_000,
   });
 
-  const storedFlags = data?.tenant?.featureFlags ?? {};
-  const result = { ...FEATURE_FLAG_DEFAULTS };
+  const storedFlags = data?.tenant?.featureFlags;
 
-  for (const key of Object.keys(FEATURE_FLAG_DEFAULTS) as TenantFeatureFlagKey[]) {
-    const stored = storedFlags[key];
-    if (typeof stored === "boolean") {
-      result[key] = stored;
+  return useMemo(() => {
+    const result = { ...FEATURE_FLAG_DEFAULTS };
+    if (storedFlags) {
+      for (const key of Object.keys(FEATURE_FLAG_DEFAULTS) as TenantFeatureFlagKey[]) {
+        const stored = storedFlags[key];
+        if (typeof stored === "boolean") {
+          result[key] = stored;
+        }
+      }
     }
-  }
-
-  return result;
+    return result;
+  }, [storedFlags]);
 }

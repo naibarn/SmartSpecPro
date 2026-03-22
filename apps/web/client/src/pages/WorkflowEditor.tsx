@@ -110,6 +110,7 @@ import {
 } from '@/lib/workflow/outputPresentation';
 import type { BrowserSessionArtifact } from '@shared/browserSession';
 import { parseBrowserSessionArtifact } from '@shared/browserSession';
+import { liveBrowserSessionSchema } from "@shared/liveBrowser";
 import {
   BROWSER_SKILL_PRESETS,
   buildBrowserInstruction,
@@ -394,10 +395,10 @@ function FlowEditor() {
       return null;
     }
 
-    const session = await utils.liveBrowser.getSession.fetch({
+    const session = liveBrowserSessionSchema.parse(await utils.liveBrowser.getSession.fetch({
       sessionId,
       actor: { actorType: 'user', actorId: String(user.id) },
-    });
+    }));
 
     return storeWorkflowBrowserSessionArtifact(
       buildWorkflowBrowserSessionArtifact(session, workflowId),

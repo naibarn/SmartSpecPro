@@ -62,6 +62,7 @@ import {
   type BrowserSessionArtifact,
   type BrowserSessionLaunchContext,
 } from "@shared/browserSession";
+import { liveBrowserSessionSchema } from "@shared/liveBrowser";
 import {
   BROWSER_SKILL_PRESETS,
   buildBrowserInstruction,
@@ -308,10 +309,10 @@ export default function AgencyChat() {
       return null;
     }
 
-    const session = await utils.liveBrowser.getSession.fetch({
+    const session = liveBrowserSessionSchema.parse(await utils.liveBrowser.getSession.fetch({
       sessionId,
       actor: { actorType: "user", actorId: String(user.id) },
-    });
+    }));
     const launchContext = buildAgencyLaunchContext(sessionId);
     const artifact = {
       sessionId,
@@ -543,7 +544,7 @@ export default function AgencyChat() {
               variant="ghost"
               size="sm"
               className="h-8 gap-1.5 text-xs text-muted-foreground hover:text-foreground"
-              onClick={handleOpenBrowserSession}
+              onClick={() => { void handleOpenBrowserSession(); }}
               disabled={createLiveBrowserSessionMutation.isPending}
               title="Open Browser Session"
             >

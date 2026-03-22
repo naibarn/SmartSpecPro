@@ -1,5 +1,7 @@
 import * as Sentry from "@sentry/react";
 import { trpc } from "@/lib/trpc";
+import { getPrivateVaultAccessToken } from "@/lib/privateVault";
+import { parseSampleRate, shouldEnableBrowserSentry } from "@/lib/sentryConfig";
 import { UNAUTHED_ERR_MSG } from '@shared/const';
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { httpBatchLink, httpLink, TRPCClientError } from "@trpc/client";
@@ -20,14 +22,6 @@ const CHUNK_ERROR_PATTERNS = [
   /Loading chunk [\w-]+ failed/i,
   /ChunkLoadError/i,
 ];
-
-function parseSampleRate(raw: unknown, fallback: number): number {
-  const parsed = Number(raw);
-  if (!Number.isFinite(parsed)) {
-    return fallback;
-  }
-  return Math.min(1, Math.max(0, parsed));
-}
 
 function shouldDropDuplicateSentryEvent(event: Sentry.Event): boolean {
   const exceptionValue = event.exception?.values?.[0]?.value || "";
@@ -111,12 +105,18 @@ if (typeof window !== "undefined") {
 }
 
 // Initialize Sentry for frontend error tracking (only when enabled + DSN configured)
-const isSentryEnabled = import.meta.env.VITE_SENTRY_ENABLED !== "false";
 const sentryDsn = import.meta.env.VITE_SENTRY_DSN;
 const sentrySampleRate = parseSampleRate(import.meta.env.VITE_SENTRY_SAMPLE_RATE, 0.2);
 const sentryTraceSampleRate = parseSampleRate(import.meta.env.VITE_SENTRY_TRACES_SAMPLE_RATE, 0.02);
 const sentryReplaySessionSampleRate = parseSampleRate(import.meta.env.VITE_SENTRY_REPLAY_SESSION_SAMPLE_RATE, 0);
 const sentryReplayOnErrorSampleRate = parseSampleRate(import.meta.env.VITE_SENTRY_REPLAY_ON_ERROR_SAMPLE_RATE, 0.1);
+const isSentryEnabled = shouldEnableBrowserSentry({
+  enabledFlag: import.meta.env.VITE_SENTRY_ENABLED,
+  dsn: sentryDsn,
+  mode: import.meta.env.MODE,
+  hostname: typeof window !== "undefined" ? window.location.hostname : undefined,
+  allowDevFlag: import.meta.env.VITE_SENTRY_ALLOW_DEV,
+});
 
 if (isSentryEnabled && sentryDsn) {
   const integrations: any[] = [Sentry.browserTracingIntegration()];
@@ -274,11 +274,17 @@ const trpcClient = trpc.createClient({
               ? input.href
               : input.url;
         console.log("[tRPC Fetch]", requestUrl, init?.method);
-        try {
-          const response = await globalThis.fetch(input, {
-            ...(init ?? {}),
-            credentials: "include",
-          });
+      try {
+        const headers = new Headers(init?.headers || {});
+        const privateVaultToken = getPrivateVaultAccessToken();
+        if (privateVaultToken) {
+          headers.set("x-private-vault-token", privateVaultToken);
+        }
+        const response = await globalThis.fetch(input, {
+          ...(init ?? {}),
+          headers,
+          credentials: "include",
+        });
           console.log("[tRPC Response]", response.status, response.statusText);
           return response;
         } catch (err) {

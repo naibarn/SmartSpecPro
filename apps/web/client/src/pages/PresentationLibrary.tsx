@@ -412,36 +412,132 @@ export default function PresentationLibrary() {
       enabled: isAuthenticated,
     },
   );
+  const trimmedProjectQuery = projectQuery.trim();
+  const trimmedTemplateQuery = templateQuery.trim();
+  const trimmedGlobalQuery = globalQuery.trim();
+  const hasSplitSemanticSearch = searchMode === "split" && (trimmedProjectQuery.length > 0 || trimmedTemplateQuery.length > 0);
+  const hasGlobalSemanticSearch = searchMode === "global" && trimmedGlobalQuery.length > 0;
+  const hasSemanticSearch = hasSplitSemanticSearch || hasGlobalSemanticSearch;
+  const globalSearchQuery = trpc.library.search.useQuery(
+    {
+      query: trimmedGlobalQuery || undefined,
+      scope: "my_library",
+      limit,
+      offset: 0,
+      filters: { itemType: "presentation" },
+    },
+    {
+      enabled: Boolean(isAuthenticated && hasGlobalSemanticSearch),
+    },
+  );
+  const projectSearchQuery = trpc.library.search.useQuery(
+    {
+      query: trimmedProjectQuery || undefined,
+      scope: "my_library",
+      limit,
+      offset: 0,
+      filters: { itemType: "presentation" },
+    },
+    {
+      enabled: Boolean(isAuthenticated && searchMode === "split" && trimmedProjectQuery.length > 0),
+    },
+  );
+  const templateSearchQuery = trpc.library.search.useQuery(
+    {
+      query: trimmedTemplateQuery || undefined,
+      scope: "my_library",
+      limit,
+      offset: 0,
+      filters: { itemType: "presentation" },
+    },
+    {
+      enabled: Boolean(isAuthenticated && searchMode === "split" && trimmedTemplateQuery.length > 0),
+    },
+  );
   const useTemplateMutation = trpc.presentation.useTemplate.useMutation();
   const deleteItemMutation = trpc.library.deleteItem.useMutation();
   const createItemMutation = trpc.library.createItem.useMutation();
   const createDeckMutation = trpc.presentation.createDeck.useMutation();
 
-  const presentationItems = useMemo(() => {
+  const browsePresentationItems = useMemo(() => {
     const rows = Array.isArray(listQuery.data?.results) ? listQuery.data.results : [];
     return rows
       .map(toPresentationItem)
       .filter((item): item is LibraryPresentationItem => Boolean(item));
   }, [listQuery.data?.results]);
+  const globalSearchItems = useMemo(() => {
+    const rows = Array.isArray(globalSearchQuery.data?.results)
+      ? globalSearchQuery.data.results.map((row: any) => ({ ...row, id: row.id ?? row.item_id }))
+      : [];
+    return rows
+      .map(toPresentationItem)
+      .filter((item): item is LibraryPresentationItem => Boolean(item));
+  }, [globalSearchQuery.data?.results]);
+  const projectSearchItems = useMemo(() => {
+    const rows = Array.isArray(projectSearchQuery.data?.results)
+      ? projectSearchQuery.data.results.map((row: any) => ({ ...row, id: row.id ?? row.item_id }))
+      : [];
+    return rows
+      .map(toPresentationItem)
+      .filter((item): item is LibraryPresentationItem => Boolean(item));
+  }, [projectSearchQuery.data?.results]);
+  const templateSearchItems = useMemo(() => {
+    const rows = Array.isArray(templateSearchQuery.data?.results)
+      ? templateSearchQuery.data.results.map((row: any) => ({ ...row, id: row.id ?? row.item_id }))
+      : [];
+    return rows
+      .map(toPresentationItem)
+      .filter((item): item is LibraryPresentationItem => Boolean(item));
+  }, [templateSearchQuery.data?.results]);
 
   const grouped = useMemo(() => {
-    const templates = presentationItems.filter((item) => item.isTemplate);
-    const projects = presentationItems.filter((item) => !item.isTemplate);
+    const templates = browsePresentationItems.filter((item) => item.isTemplate);
+    const projects = browsePresentationItems.filter((item) => !item.isTemplate);
     return { projects, templates };
-  }, [presentationItems]);
+  }, [browsePresentationItems]);
   const filteredGrouped = useMemo(() => {
-    const globalNeedle = globalQuery.trim().toLowerCase();
-    const projectNeedle = searchMode === "global"
-      ? globalNeedle
-      : projectQuery.trim().toLowerCase();
-    const templateNeedle = searchMode === "global"
-      ? globalNeedle
-      : templateQuery.trim().toLowerCase();
+    if (searchMode === "global") {
+      return {
+        projects: globalSearchItems.filter((item) => !item.isTemplate),
+        templates: globalSearchItems.filter((item) => item.isTemplate),
+      };
+    }
+
+    const projectNeedle = trimmedProjectQuery.toLowerCase();
+    const templateNeedle = trimmedTemplateQuery.toLowerCase();
     return {
-      projects: grouped.projects.filter((item) => !projectNeedle || item.searchText.includes(projectNeedle)),
-      templates: grouped.templates.filter((item) => !templateNeedle || item.searchText.includes(templateNeedle)),
+      projects: projectNeedle
+        ? projectSearchItems.filter((item) => !item.isTemplate)
+        : grouped.projects,
+      templates: templateNeedle
+        ? templateSearchItems.filter((item) => item.isTemplate)
+        : grouped.templates,
     };
-  }, [grouped.projects, grouped.templates, globalQuery, projectQuery, searchMode, templateQuery]);
+  }, [
+    globalSearchItems,
+    grouped.projects,
+    grouped.templates,
+    projectSearchItems,
+    searchMode,
+    templateSearchItems,
+    trimmedProjectQuery,
+    trimmedTemplateQuery,
+  ]);
+  const activeError = hasGlobalSemanticSearch
+    ? globalSearchQuery.error
+    : searchMode === "split" && hasSplitSemanticSearch
+      ? (projectSearchQuery.error ?? templateSearchQuery.error)
+      : listQuery.error;
+  const activeLoading = hasGlobalSemanticSearch
+    ? globalSearchQuery.isLoading
+    : searchMode === "split" && hasSplitSemanticSearch
+      ? (projectSearchQuery.isLoading || templateSearchQuery.isLoading)
+      : listQuery.isLoading;
+  const activeTotal = hasGlobalSemanticSearch
+    ? (globalSearchQuery.data?.total ?? 0)
+    : searchMode === "split" && hasSplitSemanticSearch
+      ? filteredGrouped.projects.length + filteredGrouped.templates.length
+      : (listQuery.data?.total ?? 0);
 
   const currentUserId = Number(user?.id || 0);
   const isAdmin = user?.role === "admin";
@@ -464,6 +560,7 @@ export default function PresentationLibrary() {
         title,
       });
       await trpcUtils.library.listDocuments.invalidate();
+      await trpcUtils.library.search.invalidate();
       const nextId = Number((result as any)?.item?.id);
       if (Number.isFinite(nextId) && nextId > 0) {
         setLocation(`/presentation-editor/${nextId}`);
@@ -491,6 +588,7 @@ export default function PresentationLibrary() {
     try {
       await deleteItemMutation.mutateAsync({ id: item.id });
       await trpcUtils.library.listDocuments.invalidate();
+      await trpcUtils.library.search.invalidate();
       toast.success(item.isTemplate ? "Template deleted." : "Presentation deleted.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to delete item.");
@@ -528,6 +626,7 @@ export default function PresentationLibrary() {
       }
 
       await trpcUtils.library.listDocuments.invalidate();
+      await trpcUtils.library.search.invalidate();
       toast.success("New presentation created.");
       setLocation(`/presentation-editor/${createResult.item.id}`);
     } catch (error) {
@@ -580,7 +679,7 @@ export default function PresentationLibrary() {
       <main className="w-full space-y-4 px-4 py-6 sm:px-6 lg:px-8">
         <div className="rounded-2xl border border-slate-200 bg-white/70 p-4 text-sm text-slate-600 backdrop-blur-sm">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div>Showing {presentationItems.length} of {listQuery.data?.total ?? 0}</div>
+            <div>Showing {filteredGrouped.projects.length + filteredGrouped.templates.length} of {activeTotal}</div>
             <div className="flex items-center gap-2">
               <Button
                 size="sm"
@@ -614,9 +713,17 @@ export default function PresentationLibrary() {
           ) : null}
         </div>
 
-        {listQuery.error ? (
+        {activeError ? (
           <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-            Failed to load presentations: {listQuery.error.message}
+            Failed to load presentations: {activeError.message}
+          </div>
+        ) : null}
+        {activeLoading ? (
+          <div className="rounded-xl border border-slate-200 bg-white/70 p-4 text-sm text-slate-600">
+            <div className="flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading presentations...
+            </div>
           </div>
         ) : null}
 
@@ -662,14 +769,14 @@ export default function PresentationLibrary() {
           <Button
             variant="outline"
             size="sm"
-            disabled={offset === 0 || listQuery.isFetching}
+            disabled={hasSemanticSearch || offset === 0 || listQuery.isFetching}
             onClick={() => setOffset((previous) => Math.max(0, previous - limit))}
           >
             Previous
           </Button>
           <Button
             size="sm"
-            disabled={!listQuery.data?.has_more || listQuery.isFetching}
+            disabled={hasSemanticSearch || !listQuery.data?.has_more || listQuery.isFetching}
             onClick={() => setOffset((previous) => previous + limit)}
           >
             Next

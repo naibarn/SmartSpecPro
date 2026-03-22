@@ -218,6 +218,7 @@ import {
   AI_GEOMETRIC_ACCENT_SHAPES,
   AI_GEOMETRIC_CROP_SHAPES,
   AI_LAYOUT_TEMPLATE_IDS,
+  AI_SVG_CATEGORIES,
   AI_STYLE_PRESET_IDS,
 } from "@shared/presentation/aiTypes";
 import { BUILT_IN_PRESETS } from "@shared/presentation/aiStylePresets";
@@ -959,16 +960,19 @@ function inferAIOverrideBackground(
   if (content.background) {
     return content.background;
   }
-  const backgroundImage = content.elements.find((element) => (
-    element.type === "image"
-    && element.x === 0
-    && element.y === 0
-    && element.width === canvas.width
-    && element.height === canvas.height
-    && element.src?.trim()
-  ));
-  if (backgroundImage?.type === "image" && backgroundImage.src?.trim()) {
-    return { type: "image", url: backgroundImage.src.trim() };
+  for (const element of content.elements) {
+    if (element.type !== "image") {
+      continue;
+    }
+    if (
+      element.x === 0
+      && element.y === 0
+      && element.width === canvas.width
+      && element.height === canvas.height
+      && element.src?.trim()
+    ) {
+      return { type: "image", url: element.src.trim() };
+    }
   }
   const backgroundRect = content.elements.find((element) => (
     element.type === "rect"
@@ -1018,15 +1022,23 @@ function inferAIOverrideMediaUrl(
   const prefersImage = preferredMediaTypes.some((slotType) => presentationMediaSlotSupportsType(slotType, "image"));
   const prefersVideo = preferredMediaTypes.some((slotType) => presentationMediaSlotSupportsType(slotType, "video"));
   if (prefersImage) {
-    const image = renderableElements.find((element) => element.type === "image" && !element.svgContent);
-    if (image?.src?.trim()) {
-      return image.src.trim();
+    for (const element of renderableElements) {
+      if (element.type !== "image" || element.svgContent) {
+        continue;
+      }
+      if (element.src?.trim()) {
+        return element.src.trim();
+      }
     }
   }
   if (prefersVideo) {
-    const video = renderableElements.find((element) => element.type === "video");
-    if (video?.src?.trim()) {
-      return video.src.trim();
+    for (const element of renderableElements) {
+      if (element.type !== "video") {
+        continue;
+      }
+      if (element.src?.trim()) {
+        return element.src.trim();
+      }
     }
   }
   return undefined;
@@ -1495,7 +1507,10 @@ export function mergeResolvedPendingMediaIntoCachedDraft(
 
     if (targetIndex >= 0) {
       // Just update src — keep position, size, opacity, everything else
-      nextElements[targetIndex] = { ...nextElements[targetIndex]!, src: resolvedSrc };
+      const targetElement = nextElements[targetIndex];
+      if (targetElement.type === "image" || targetElement.type === "video") {
+        nextElements[targetIndex] = { ...targetElement, src: resolvedSrc };
+      }
     }
   }
 
@@ -2974,8 +2989,11 @@ export default function PresentationEditor() {
     const firstComponentId = draftComponents[0]?.componentId;
     return isBuiltInPresentationComponentId(firstComponentId) ? firstComponentId : undefined;
   }, [draftComponents]);
+  const isRenderableMediaElement = (element: PresentationElement): element is Extract<PresentationElement, { type: "image" | "video" }> => (
+    element.type === "image" || element.type === "video"
+  );
   const renderableDraftMedia = useMemo(
-    () => getRenderableSlideElements(draftContent).filter((element) => element.type === "image" || element.type === "video"),
+    () => getRenderableSlideElements(draftContent).filter(isRenderableMediaElement),
     [draftContent],
   );
   const draftHasImage = renderableDraftMedia.some((element) => element.type === "image" && !element.svgContent);
@@ -3410,7 +3428,7 @@ export default function PresentationEditor() {
   const aiRecipeCanonicalPreviewQuery = trpc.presentation.renderCustomBlockPreview.useQuery(
     aiRecipePreviewSource
       ? { previewSource: aiRecipePreviewSource }
-      : undefined,
+      : (undefined as never),
     {
       enabled: Boolean(aiRecipePreviewSource),
       staleTime: 30_000,
@@ -4958,6 +4976,18 @@ export default function PresentationEditor() {
     const preLayoutState = commandBusRef.current.getState();
     const inferredBackground = inferAIOverrideBackground(draftContent, activeCanvasSize);
     const overlayElements = getOverlayLayerElements(draftContent, activeCanvasSize, inferredBackground);
+    const nextOverrideHistory: PresentationSlideAIDesign["overrideHistory"] = [
+      ...((slideAIDesign?.overrideHistory ?? []).map((entry) => ({
+        ...entry,
+        source: "editor" as const,
+      }))),
+      {
+        recipeId,
+        ...(previousRecipeId ? { previousRecipeId } : {}),
+        appliedAt,
+        source: "editor" as const,
+      },
+    ].slice(-16);
     const nextContent: PresentationSlideContent = {
       ...draftContent,
       background: inferredBackground,
@@ -4997,17 +5027,9 @@ export default function PresentationEditor() {
               })),
             }
             : {}),
-          ...(narrative.graphicCategory ? { graphicCategory: narrative.graphicCategory } : {}),
+          graphicCategory: (narrative.graphicCategory ?? "Media") as (typeof AI_SVG_CATEGORIES)[number],
         },
-        overrideHistory: [
-          ...(slideAIDesign?.overrideHistory ?? []),
-          {
-            recipeId,
-            ...(previousRecipeId ? { previousRecipeId } : {}),
-            appliedAt,
-            source: "editor",
-          },
-        ].slice(-16),
+        overrideHistory: nextOverrideHistory,
         generatedAt: slideAIDesign?.generatedAt ?? new Date().toISOString(),
       },
     };
@@ -10614,7 +10636,7 @@ export default function PresentationEditor() {
                         }`}
                         aria-pressed={deckLayoutGenPresetId === preset.id}
                         aria-label={`เลือกธีม ${preset.nameLocalized?.th ?? preset.name}`}
-                        onClick={() => setDeckLayoutGenPresetId(preset.id)}
+                        onClick={() => setDeckLayoutGenPresetId(preset.id as (typeof AI_STYLE_PRESET_IDS)[number])}
                       >
                         <div className="flex gap-0.5">
                           <div className="h-3 w-3 rounded-sm" style={{ background: preset.colors.background, border: "1px solid #ddd" }} />
@@ -10852,7 +10874,7 @@ export default function PresentationEditor() {
                         }`}
                         aria-pressed={layoutGenPresetId === preset.id}
                         aria-label={`เลือกธีม ${preset.nameLocalized?.th ?? preset.name}`}
-                        onClick={() => setLayoutGenPresetId(preset.id)}
+                        onClick={() => setLayoutGenPresetId(preset.id as (typeof AI_STYLE_PRESET_IDS)[number])}
                       >
                         <div className="flex gap-0.5">
                           <div className="h-3 w-3 rounded-sm" style={{ background: preset.colors.background, border: "1px solid #ddd" }} />

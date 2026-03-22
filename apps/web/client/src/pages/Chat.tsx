@@ -34,6 +34,7 @@ import {
   type BrowserSessionArtifact,
   type BrowserSessionLaunchContext,
 } from "@shared/browserSession";
+import { liveBrowserSessionSchema } from "@shared/liveBrowser";
 import {
   BROWSER_SKILL_PRESETS,
   buildBrowserInstruction,
@@ -178,10 +179,10 @@ export default function Chat() {
       actorType: "user" as const,
       actorId: String(user.id),
     };
-    const session = await utils.liveBrowser.getSession.fetch({
+    const session = liveBrowserSessionSchema.parse(await utils.liveBrowser.getSession.fetch({
       sessionId,
       actor,
-    });
+    }));
     return {
       sessionId: session.sessionId,
       summary: buildBrowserSessionSummary(session, { launchContext }),

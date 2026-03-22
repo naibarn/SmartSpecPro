@@ -37,6 +37,7 @@ import {
   Bug,
   ShieldCheck,
   Workflow,
+  Lock,
 } from 'lucide-react';
 import {
   getMenuItemsByGroup,
@@ -84,6 +85,7 @@ const iconMap: Record<string, LucideIcon> = {
   Bug,
   ShieldCheck,
   Workflow,
+  Lock,
 };
 
 export interface ResolvedMenuItem extends MenuItem {

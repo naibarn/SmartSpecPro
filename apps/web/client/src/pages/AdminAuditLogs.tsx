@@ -26,6 +26,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -51,7 +52,7 @@ import {
 } from "lucide-react";
 import { formatCurrency, formatLatency } from "@/lib/formatters";
 
-type AuditSource = "llm" | "media";
+type AuditSource = "llm" | "media" | "system";
 
 interface AuditRow {
   id: string;
@@ -61,6 +62,8 @@ interface AuditRow {
   userId: number | null;
   provider: string | null;
   model: string | null;
+  subject: string | null;
+  contextLabel: string | null;
   eventType: string | null;
   requestType: string | null;
   statusCode: number | null;
@@ -201,8 +204,10 @@ export default function AdminAuditLogs() {
       ...(errorOnly ? { errorOnly: true } : {}),
       limit: Number.isFinite(maybeLimit) && maybeLimit > 0 ? Math.min(maybeLimit, 500) : 200,
       offset: 0,
+      timelineLimit: pageSize,
+      timelineOffset: page * pageSize,
     };
-  }, [dateFrom, dateTo, traceId, userIdText, provider, model, eventType, requestType, errorOnly, fetchLimit]);
+  }, [dateFrom, dateTo, traceId, userIdText, provider, model, eventType, requestType, errorOnly, fetchLimit, page, pageSize]);
 
   const searchQuery = trpc.audit.search.useQuery(queryInput, {
     staleTime: 10_000,
@@ -217,7 +222,7 @@ export default function AdminAuditLogs() {
     refetchOnWindowFocus: false,
   });
 
-  const normalizedRows = useMemo<AuditRow[]>(() => {
+  const exportRows = useMemo<AuditRow[]>(() => {
     const usageRows = (searchQuery.data?.usageLogs ?? []).map((row: any): AuditRow => ({
       id: `llm-${row.id}`,
       source: "llm",
@@ -226,6 +231,8 @@ export default function AdminAuditLogs() {
       userId: numberOrNull(row.userId),
       provider: textOrNull(row.providerName) ?? (row.providerId != null ? String(row.providerId) : null),
       model: textOrNull(row.modelUsed),
+      subject: null,
+      contextLabel: null,
       eventType: "llm",
       requestType: textOrNull(row.requestType),
       statusCode: numberOrNull(row.statusCode),
@@ -247,6 +254,8 @@ export default function AdminAuditLogs() {
       userId: numberOrNull(row.userId),
       provider: textOrNull(row.provider),
       model: textOrNull(row.model),
+      subject: null,
+      contextLabel: null,
       eventType: textOrNull(row.eventType),
       requestType: textOrNull(row.mediaType) ?? textOrNull(row.eventType),
       statusCode: numberOrNull(row.statusCode),
@@ -260,7 +269,33 @@ export default function AdminAuditLogs() {
       raw: row,
     }));
 
-    return [...usageRows, ...eventRows].sort((a, b) => {
+    const systemRows = (searchQuery.data?.systemEvents ?? []).map((row: any, idx: number): AuditRow => {
+      const metadata = asRecord(row.metadata);
+      return {
+        id: `system-${row.timestamp ?? idx}-${row.eventType ?? "event"}-${idx}`,
+        source: "system",
+        timestamp: textOrNull(row.timestamp),
+        traceId: textOrNull(row.traceId),
+        userId: numberOrNull(row.userId),
+        provider: null,
+        model: null,
+        subject: textOrNull(metadata?.blueprintId) ?? textOrNull(metadata?.templateId) ?? textOrNull(metadata?.teamId),
+        contextLabel: textOrNull(metadata?.category) ?? textOrNull(metadata?.tenantId),
+        eventType: textOrNull(row.eventType),
+        requestType: textOrNull(row.requestType),
+        statusCode: numberOrNull(row.statusCode),
+        errorType: textOrNull(row.errorType),
+        errorMessage: textOrNull(row.errorMessage),
+        creditsCharged: numberOrNull(row.creditsCharged),
+        costUsd: numberOrNull(row.costUsd),
+        responseTimeMs: numberOrNull(row.timing?.totalMs),
+        endpoint: textOrNull(row.endpoint),
+        mediaTaskId: null,
+        raw: row,
+      };
+    });
+
+    return [...usageRows, ...eventRows, ...systemRows].sort((a, b) => {
       const ta = a.timestamp ? new Date(a.timestamp).getTime() : 0;
       const tb = b.timestamp ? new Date(b.timestamp).getTime() : 0;
       return tb - ta;
@@ -269,10 +304,40 @@ export default function AdminAuditLogs() {
 
   useEffect(() => {
     setPage(0);
-  }, [queryInput]);
+  }, [dateFrom, dateTo, traceId, userIdText, provider, model, eventType, requestType, errorOnly, fetchLimit]);
 
-  const totalPages = Math.max(1, Math.ceil(normalizedRows.length / pageSize));
-  const visibleRows = normalizedRows.slice(page * pageSize, (page + 1) * pageSize);
+  const timelineRows = useMemo<AuditRow[]>(() => {
+    const rows = searchQuery.data?.timelineRows;
+    if (!Array.isArray(rows)) {
+      return exportRows.slice(page * pageSize, (page + 1) * pageSize);
+    }
+    return rows.map((row: any): AuditRow => ({
+      id: String(row.id),
+      source: row.source,
+      timestamp: textOrNull(row.timestamp),
+      traceId: textOrNull(row.traceId),
+      userId: numberOrNull(row.userId),
+      provider: textOrNull(row.provider),
+      model: textOrNull(row.model),
+      subject: textOrNull(row.subject),
+      contextLabel: textOrNull(row.contextLabel),
+      eventType: textOrNull(row.eventType),
+      requestType: textOrNull(row.requestType),
+      statusCode: numberOrNull(row.statusCode),
+      errorType: textOrNull(row.errorType),
+      errorMessage: textOrNull(row.errorMessage),
+      creditsCharged: numberOrNull(row.creditsCharged),
+      costUsd: numberOrNull(row.costUsd),
+      responseTimeMs: numberOrNull(row.responseTimeMs),
+      endpoint: textOrNull(row.endpoint),
+      mediaTaskId: textOrNull(row.mediaTaskId),
+      raw: row.raw,
+    }));
+  }, [exportRows, page, pageSize, searchQuery.data?.timelineRows]);
+
+  const totalRows = numberOrNull(searchQuery.data?.timelineTotal) ?? exportRows.length;
+  const totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
+  const visibleRows = timelineRows;
 
   const selectedDate = selectedRow?.timestamp
     ? new Date(selectedRow.timestamp).toISOString().slice(0, 10)
@@ -291,9 +356,9 @@ export default function AdminAuditLogs() {
   );
 
   const entries = payloadQuery.data?.entries ?? [];
-  const errorCount = normalizedRows.filter((row) => row.errorMessage || (row.statusCode != null && row.statusCode >= 400)).length;
-  const uniqueUsers = new Set(normalizedRows.map((row) => row.userId).filter((id): id is number => id != null)).size;
-  const uniqueTraces = new Set(normalizedRows.map((row) => row.traceId).filter((id): id is string => Boolean(id))).size;
+  const errorCount = exportRows.filter((row) => row.errorMessage || (row.statusCode != null && row.statusCode >= 400)).length;
+  const uniqueUsers = new Set(exportRows.map((row) => row.userId).filter((id): id is number => id != null)).size;
+  const uniqueTraces = new Set(exportRows.map((row) => row.traceId).filter((id): id is string => Boolean(id))).size;
   const rolloutSummary = useMemo<RolloutTelemetrySummary>(() => {
     const modeCounts = new Map<string, number>();
     const fallbackCounts = new Map<string, number>();
@@ -365,6 +430,8 @@ export default function AdminAuditLogs() {
       "request_type",
       "provider",
       "model",
+      "subject",
+      "context_label",
       "status_code",
       "error_type",
       "error_message",
@@ -376,7 +443,7 @@ export default function AdminAuditLogs() {
     ];
     const lines = [
       headers.join(","),
-      ...normalizedRows.map((row) => [
+      ...exportRows.map((row) => [
         csvEscape(row.timestamp),
         csvEscape(row.source),
         csvEscape(row.traceId),
@@ -385,6 +452,8 @@ export default function AdminAuditLogs() {
         csvEscape(row.requestType),
         csvEscape(row.provider),
         csvEscape(row.model),
+        csvEscape(row.subject),
+        csvEscape(row.contextLabel),
         csvEscape(row.statusCode),
         csvEscape(row.errorType),
         csvEscape(row.errorMessage),
@@ -463,7 +532,7 @@ export default function AdminAuditLogs() {
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
-          <Button variant="outline" size="sm" onClick={exportCsv} disabled={normalizedRows.length === 0}>
+          <Button variant="outline" size="sm" onClick={exportCsv} disabled={exportRows.length === 0}>
             <Download className="h-4 w-4 mr-2" />
             Export CSV
           </Button>
@@ -475,7 +544,7 @@ export default function AdminAuditLogs() {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Total Rows</CardTitle>
           </CardHeader>
-          <CardContent className="text-2xl font-bold">{normalizedRows.length}</CardContent>
+          <CardContent className="text-2xl font-bold">{totalRows}</CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
@@ -674,6 +743,9 @@ export default function AdminAuditLogs() {
                   <SelectItem value="media_response">media_response</SelectItem>
                   <SelectItem value="rollout_gate">rollout_gate</SelectItem>
                   <SelectItem value="skill_execute">skill_execute</SelectItem>
+                  <SelectItem value="team_created">team_created</SelectItem>
+                  <SelectItem value="team_blueprint_created">team_blueprint_created</SelectItem>
+                  <SelectItem value="team_template_cloned">team_template_cloned</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -720,6 +792,12 @@ export default function AdminAuditLogs() {
               Query via `trpc.audit.search`
             </div>
           </div>
+
+          {searchQuery.data?.systemEventsMeta?.defaultWindowApplied && !dateFrom && !dateTo && (
+            <div className="rounded-md border border-dashed px-3 py-2 text-xs text-muted-foreground">
+              System audit events default to the last {searchQuery.data.systemEventsMeta.searchedDayCount} days when no explicit date range is selected.
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -727,8 +805,8 @@ export default function AdminAuditLogs() {
         <CardHeader>
           <CardTitle>Timeline</CardTitle>
           <CardDescription>
-            {normalizedRows.length > 0
-              ? `Showing ${page * pageSize + 1}-${Math.min((page + 1) * pageSize, normalizedRows.length)} of ${normalizedRows.length}`
+            {totalRows > 0
+              ? `Showing ${page * pageSize + 1}-${Math.min(page * pageSize + visibleRows.length, totalRows)} of ${totalRows}`
               : "No records found"}
           </CardDescription>
         </CardHeader>
@@ -768,7 +846,16 @@ export default function AdminAuditLogs() {
                         <TableRow key={row.id}>
                           <TableCell className="text-xs whitespace-nowrap">{toDisplayTime(row.timestamp)}</TableCell>
                           <TableCell>
-                            <Badge variant="outline" className={row.source === "llm" ? "text-blue-700" : "text-purple-700"}>
+                            <Badge
+                              variant="outline"
+                              className={
+                                row.source === "llm"
+                                  ? "text-blue-700"
+                                  : row.source === "media"
+                                    ? "text-purple-700"
+                                    : "text-emerald-700"
+                              }
+                            >
                               {row.source}
                             </Badge>
                           </TableCell>
@@ -780,8 +867,17 @@ export default function AdminAuditLogs() {
                           </TableCell>
                           <TableCell className="text-xs">
                             <div className="space-y-0.5 max-w-[220px]">
-                              <div className="truncate">{row.provider || "-"}</div>
-                              <div className="font-mono text-muted-foreground truncate">{row.model || "-"}</div>
+                              {row.source === "system" ? (
+                                <>
+                                  <div className="truncate">{row.subject || "-"}</div>
+                                  <div className="font-mono text-muted-foreground truncate">{row.contextLabel || "-"}</div>
+                                </>
+                              ) : (
+                                <>
+                                  <div className="truncate">{row.provider || "-"}</div>
+                                  <div className="font-mono text-muted-foreground truncate">{row.model || "-"}</div>
+                                </>
+                              )}
                             </div>
                           </TableCell>
                           <TableCell className="text-xs">
@@ -817,7 +913,6 @@ export default function AdminAuditLogs() {
                               size="sm"
                               variant="outline"
                               onClick={() => openDetail(row)}
-                              disabled={!row.traceId}
                             >
                               View
                             </Button>
@@ -943,6 +1038,9 @@ export default function AdminAuditLogs() {
                 <Badge variant="outline" className="font-mono text-xs">{selectedRow.traceId}</Badge>
               )}
             </DialogTitle>
+            <DialogDescription>
+              Inspect audit metadata, payload snapshots, and trace details for the selected event.
+            </DialogDescription>
           </DialogHeader>
 
           {!selectedRow ? (

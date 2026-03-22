@@ -197,7 +197,7 @@ export default function AdminSettings() {
     registrationMode: "open" as "open" | "invite_only",
     userInviteEnabled: false,
     userReferralBonusCredits: 50,
-    allowedAuthMethods: ["email", "google", "github"] as string[],
+    allowedAuthMethods: ["email", "google", "github"] as Array<"email" | "google" | "github">,
     inviteInactiveDaysLimit: 0,
     maxRegistrationsPerDevice: 2,
   });
@@ -314,7 +314,7 @@ export default function AdminSettings() {
         registrationMode: regSettings.registrationMode ?? "open",
         userInviteEnabled: regSettings.userInviteEnabled ?? false,
         userReferralBonusCredits: regSettings.userReferralBonusCredits ?? 50,
-        allowedAuthMethods: regSettings.allowedAuthMethods ?? ["email", "google", "github"],
+        allowedAuthMethods: (regSettings.allowedAuthMethods ?? ["email", "google", "github"]) as Array<"email" | "google" | "github">,
         inviteInactiveDaysLimit: regSettings.inviteInactiveDaysLimit ?? 0,
         maxRegistrationsPerDevice: regSettings.maxRegistrationsPerDevice ?? 2,
       });
@@ -2923,7 +2923,7 @@ export default function AdminSettings() {
                           </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-2">
-                          {normalizedVectorDbHealth.recent_failures.slice(0, 3).map((failure) => (
+                          {normalizedVectorDbHealth.recent_failures.slice(0, 3).map((failure: (typeof DEFAULT_VECTOR_DB_HEALTH.recent_failures)[number]) => (
                             <div
                               key={failure.job_id}
                               className="rounded-md border border-amber-200 bg-white/70 p-3 text-xs dark:border-amber-900 dark:bg-slate-900/50"

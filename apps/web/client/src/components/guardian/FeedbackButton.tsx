@@ -61,10 +61,16 @@ export function FeedbackButton() {
       for (const file of files) {
         formData.append("files", file);
       }
+      // Include CSRF token header to prevent cross-origin form submission
+      const csrfToken = document.cookie
+        .split("; ")
+        .find((c) => c.startsWith("csrf_token="))
+        ?.split("=")[1] ?? "";
       const res = await fetch("/api/feedback/upload", {
         method: "POST",
         body: formData,
         credentials: "include",
+        headers: { "x-csrf-token": csrfToken },
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: "Upload failed" }));

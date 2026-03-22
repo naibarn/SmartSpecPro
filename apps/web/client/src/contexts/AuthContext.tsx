@@ -6,6 +6,7 @@
  */
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { clearPrivateVaultAccessToken } from '@/lib/privateVault';
 
 export interface User {
   id: string;
@@ -191,6 +192,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
+      clearPrivateVaultAccessToken();
       setUser(null);
     }
   };

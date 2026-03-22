@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 import AdminAuditLogs from "./AdminAuditLogs";
 
@@ -55,6 +56,53 @@ vi.mock("@/lib/trpc", () => ({
                 },
               },
             ],
+            systemEvents: [
+              {
+                timestamp: "2026-03-14T10:03:00.000Z",
+                eventType: "team_blueprint_created",
+                userId: 1,
+                metadata: {
+                  teamId: "team-creative-1",
+                  blueprintId: "creative-content-studio",
+                  tenantId: "tenant-1",
+                },
+              },
+            ],
+            timelineRows: [
+              {
+                id: "system-row-1",
+                source: "system",
+                timestamp: "2026-03-14T10:03:00.000Z",
+                traceId: null,
+                userId: 1,
+                provider: null,
+                model: null,
+                subject: "creative-content-studio",
+                contextLabel: "tenant-1",
+                eventType: "team_blueprint_created",
+                requestType: null,
+                statusCode: null,
+                errorType: null,
+                errorMessage: null,
+                creditsCharged: null,
+                costUsd: null,
+                responseTimeMs: null,
+                endpoint: null,
+                mediaTaskId: null,
+                raw: {
+                  metadata: {
+                    teamId: "team-creative-1",
+                    blueprintId: "creative-content-studio",
+                    tenantId: "tenant-1",
+                  },
+                },
+              },
+            ],
+            timelineTotal: 1,
+            systemEventsMeta: {
+              defaultWindowApplied: true,
+              searchedDayCount: 14,
+            },
           },
           isLoading: false,
           refetch: vi.fn(),
@@ -104,5 +152,20 @@ describe("AdminAuditLogs", () => {
     expect(screen.getByText("Team Promo Block")).toBeInTheDocument();
     expect(screen.getByText("featured_changed")).toBeInTheDocument();
     expect(screen.getByText("Block featured for team")).toBeInTheDocument();
+    expect(screen.getByText("team_blueprint_created")).toBeInTheDocument();
+    expect(screen.getByText("creative-content-studio")).toBeInTheDocument();
+    expect(screen.getByText("system")).toBeInTheDocument();
+    expect(screen.getByText(/default to the last 14 days/i)).toBeInTheDocument();
+  });
+
+  it("opens detail for a system audit event even when traceId is absent", async () => {
+    const user = userEvent.setup();
+    render(<AdminAuditLogs />);
+
+    await user.click(screen.getAllByRole("button", { name: /^view$/i })[0]);
+
+    expect(await screen.findByText("Trace Detail")).toBeInTheDocument();
+    expect(screen.getByText("DB Row Snapshot")).toBeInTheDocument();
+    expect(screen.getAllByText("creative-content-studio").length).toBeGreaterThan(0);
   });
 });

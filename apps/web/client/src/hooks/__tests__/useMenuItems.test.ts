@@ -1,0 +1,23 @@
+import { describe, it, expect, vi } from "vitest";
+import { Sparkles } from "lucide-react";
+
+vi.mock("@smartspec/shared", async () => {
+  const actual = await vi.importActual<typeof import("@smartspec/shared")>("@smartspec/shared");
+  return {
+    ...actual,
+    detectPlatform: vi.fn(() => "web"),
+  };
+});
+
+import { getResolvedMenuItems } from "../useMenuItems";
+
+describe("useMenuItems", () => {
+  it("resolves Private Files with the Lock icon instead of the fallback icon", () => {
+    const items = getResolvedMenuItems("user", "main");
+    const privateFiles = items.find((item) => item.id === "private-files");
+
+    expect(privateFiles).toBeDefined();
+    expect(privateFiles?.path).toBe("/document-management?scope=private_vault&sort=updated_desc");
+    expect(privateFiles?.IconComponent).not.toBe(Sparkles);
+  });
+});

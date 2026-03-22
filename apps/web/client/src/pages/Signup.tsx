@@ -142,7 +142,8 @@ export default function Signup() {
     onSuccess: (result) => {
       const ph = getPostHog();
       const anonId = ph?.get_distinct_id();
-      const userId = result.userId || result.id || formData.email;
+      const registrationResult = result as { userId?: string | number; id?: string | number };
+      const userId = registrationResult.userId || registrationResult.id || formData.email;
       if (anonId) ph?.alias(anonId, String(userId));
       ph?.identify(String(userId), { email: formData.email, plan: selectedPlan });
       ph?.capture("signup_completed", { plan: selectedPlan, auth_method: "email" });
