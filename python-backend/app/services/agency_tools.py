@@ -260,11 +260,42 @@ def _execute_custom_tool_sync(custom_config: CustomToolConfig, tool_input: dict[
             lock.release()
 
 
-def _make_run_func(tool_config: ToolConfig, whitelist: set[str], run_context=None):
+def _make_run_func(
+    tool_config: ToolConfig,
+    whitelist: set[str],
+    run_context=None,
+    emitter=None,
+    run_id: str | None = None,
+):
     """Create a run function closure for a tool bridge."""
     captured_config = tool_config
     captured_whitelist = whitelist
     captured_run_context = run_context
+    captured_emitter = emitter
+    captured_run_id = run_id
+
+    async def _emit_progress(message: str, percent: int | None = None) -> None:
+        """Emit a tool_progress SSE event. No-op if emitter is None."""
+        if captured_emitter is None:
+            return
+        data: dict[str, Any] = {
+            "toolCallId": captured_config.tool_id,
+            "message": message,
+        }
+        if percent is not None:
+            data["percent"] = percent
+        await captured_emitter.emit("tool_progress", data)
+
+    def _emit_progress_sync(message: str, percent: int | None = None) -> None:
+        """Synchronous wrapper for _emit_progress (used inside sync run_func)."""
+        if captured_emitter is None:
+            return
+        import asyncio as _aio
+        try:
+            loop = _aio.get_running_loop()
+            loop.create_task(_emit_progress(message, percent))
+        except RuntimeError:
+            _aio.run(_emit_progress(message, percent))
 
     def run_func(tool_instance) -> str:
         # Attach run context to tool instance for tools that need shared state
@@ -299,6 +330,16 @@ def _make_run_func(tool_config: ToolConfig, whitelist: set[str], run_context=Non
         )
 
         query = getattr(tool_instance, "query", "")
+
+        # Emit tool-specific progress before execution
+        _tool_progress_before = {
+            "builtin-web-search": "Searching...",
+            "builtin-browser": f"Navigating to {query[:100]}..." if query else "Navigating...",
+            "builtin-rag-knowledge": "Querying knowledge base...",
+            "builtin-skill-executor": f"Executing skill {config.config.get('skillSlug', '')}...".strip(".") + "...",
+        }
+        if config.tool_id in _tool_progress_before:
+            _emit_progress_sync(_tool_progress_before[config.tool_id])
 
         # Route based on risk level
         if config.tool_id == "builtin-agency-call":
@@ -339,6 +380,16 @@ def _make_run_func(tool_config: ToolConfig, whitelist: set[str], run_context=Non
         else:
             result = _execute_http(config, query)
 
+        # Emit tool-specific progress after execution
+        _tool_progress_after = {
+            "builtin-web-search": "Processing results...",
+            "builtin-browser": "Taking screenshot...",
+            "builtin-rag-knowledge": "Found documents...",
+            "builtin-skill-executor": "Generating output...",
+        }
+        if config.tool_id in _tool_progress_after:
+            _emit_progress_sync(_tool_progress_after[config.tool_id], percent=100)
+
         # Audit: log tool failure if result indicates error
         if result.startswith("Tool execution failed") or result.startswith("Sandbox execution failed"):
             log_agency_event(
@@ -349,6 +400,9 @@ def _make_run_func(tool_config: ToolConfig, whitelist: set[str], run_context=Non
             )
 
         return result
+
+    # Attach emit_progress as a public async method on the run_func for external use
+    run_func.emit_progress = _emit_progress  # type: ignore[attr-defined]
 
     return run_func
 
@@ -420,6 +474,8 @@ def create_tool_bridge(
     whitelist: set[str],
     adapter=None,
     run_context=None,
+    emitter=None,
+    run_id: str | None = None,
 ) -> type:
     """Create a tool bridge class for agency-swarm.
 
@@ -435,7 +491,7 @@ def create_tool_bridge(
     Returns:
         A tool class for agency-swarm.
     """
-    run_func = _make_run_func(tool_config, whitelist, run_context=run_context)
+    run_func = _make_run_func(tool_config, whitelist, run_context=run_context, emitter=emitter, run_id=run_id)
     safe_name = tool_config.tool_id.replace("-", "_").replace(".", "_")
 
     if adapter is not None:
@@ -468,6 +524,8 @@ async def resolve_tools_for_agent(
     adapter=None,
     retrieval_scope_mode: str | None = None,
     run_context: "AgencyRunContext | None" = None,
+    emitter=None,
+    run_id: str | None = None,
 ) -> list[type]:
     """Resolve and construct tool bridges for a specific agent.
 
@@ -552,7 +610,7 @@ async def resolve_tools_for_agent(
             endpoint_url=endpoint_url,
             config=merged_config,
         )
-        tool_cls = create_tool_bridge(config, agency_whitelist, adapter=adapter, run_context=run_context)
+        tool_cls = create_tool_bridge(config, agency_whitelist, adapter=adapter, run_context=run_context, emitter=emitter, run_id=run_id)
         tool_classes.append(tool_cls)
 
     # MCP tools integration (section-14)

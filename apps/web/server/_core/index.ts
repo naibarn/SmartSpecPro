@@ -101,6 +101,7 @@ import { createPublicWebhooksRouter } from "../routes/publicWebhooksApi";
 import { createPublicEventsRouter } from "../routes/publicEventsApi";
 import { initWebhookApiDeliveryQueue, closeWebhookApiDeliveryQueue } from "../services/webhookDeliveryService";
 import { registerPublicDocsRoutes } from "../routes/publicDocsApi";
+import { createAgencyToolsApiRouter } from "../routes/agencyToolsApi";
 import { apiKeyAuthMiddleware } from "../middleware/apiKeyAuth";
 import { assertHmacSecretConfigured } from "../services/apiKeyService";
 import { publicApiAuditMiddleware } from "../middleware/publicApiAudit";
@@ -467,6 +468,7 @@ app.use("/v1/media", createPublicMediaRouter());
 app.use("/v1/jobs", createPublicJobsRouter());
 app.use("/v1/webhooks", createPublicWebhooksRouter());
 app.use("/v1/events", createPublicEventsRouter());
+app.use("/v1/agency-tools", createAgencyToolsApiRouter());
 
 // Public API documentation (unauthenticated)
 registerPublicDocsRoutes(app);

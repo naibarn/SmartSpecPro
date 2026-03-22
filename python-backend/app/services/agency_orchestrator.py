@@ -420,6 +420,8 @@ class AgencyOrchestrator:
                     adapter=self.adapter,
                     retrieval_scope_mode=self.retrieval_scope_mode,
                     run_context=ctx.shared_context,
+                    emitter=self.event_emitter,
+                    run_id=self.event_emitter.run_id if self.event_emitter else None,
                 )
                 # Merge shared tools from agency level (cached per run)
                 if self._shared_tools_cache is None:

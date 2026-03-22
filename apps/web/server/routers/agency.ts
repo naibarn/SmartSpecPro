@@ -2484,6 +2484,48 @@ export const agencyRouter = router({
       return { ok: true };
     }),
 
+  toggleToolExposure: adminProcedure
+    .input(
+      z.object({
+        toolId: z.string().uuid(),
+        exposed: z.boolean(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      // Feature flag guard
+      const { getFeatureFlag } = await import("../services/featureFlags");
+      const flagEnabled = await getFeatureFlag("AGENCY_TOOL_API_ENABLED");
+      if (!flagEnabled) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Agency Tool API feature is not enabled",
+        });
+      }
+
+      const drizzle = db.instance;
+
+      // Atomic update with tenant isolation in WHERE clause
+      const result = await drizzle
+        .update(agencyTools)
+        .set({
+          isExposedAsApi: input.exposed,
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(agencyTools.id, input.toolId),
+            eq(agencyTools.tenantId, ctx.tenantId),
+          ),
+        )
+        .returning({ id: agencyTools.id });
+
+      if (result.length === 0) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Tool not found or not accessible" });
+      }
+
+      return { success: true };
+    }),
+
   adminGetRevenueStats: adminProcedure
     .input(
       z.object({
