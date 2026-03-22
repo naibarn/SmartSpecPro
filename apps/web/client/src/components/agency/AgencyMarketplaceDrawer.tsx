@@ -19,6 +19,11 @@ import {
   Sparkles,
   UserCheck,
   MonitorPlay,
+  GitFork,
+  RefreshCw,
+  Search,
+  Braces,
+  ShieldAlert,
 } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
@@ -49,6 +54,12 @@ const NODE_TYPE_META: Record<string, { icon: typeof Bot; label: string; color: s
   skill_call: { icon: Sparkles, label: "Skill", color: "#F59E0B" },
   human_approval: { icon: UserCheck, label: "Approval", color: "#EF4444" },
   browser_session: { icon: MonitorPlay, label: "Browser Session", color: "#0891B2" },
+  conditional_branch: { icon: GitFork, label: "Branch", color: "#D97706" },
+  parallel_fan_out: { icon: Layers, label: "Parallel", color: "#7C3AED" },
+  loop_retry: { icon: RefreshCw, label: "Loop", color: "#059669" },
+  skill_discovery: { icon: Search, label: "Discovery", color: "#EC4899" },
+  data_transform: { icon: Braces, label: "Transform", color: "#64748B" },
+  error_handler: { icon: ShieldAlert, label: "Error Handler", color: "#DC2626" },
 };
 
 function svgToDataUrl(svg: string): string {
