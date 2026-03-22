@@ -27,6 +27,8 @@ import {
 } from "../../drizzle/schema";
 import { eq, and, or, desc, asc, inArray, sql, getTableColumns, count } from "drizzle-orm";
 import { agencyBridge } from "../services/agencyBridge";
+import { validateSsrfUrl } from "../services/ssrfValidator";
+import { encrypt, decrypt } from "../services/crypto";
 import type { RunResult } from "../services/agencyBridge";
 import { runPlanner, recordStepAttempt } from "../services/taskPlannerMiddleware";
 import { buildAgencyTaskMetadata } from "../services/agencyEscalation";
@@ -62,6 +64,26 @@ async function assertAgencyEnabled(tenantId: string): Promise<void> {
     throw new TRPCError({ code: "NOT_FOUND", message: "Not found" });
   }
 }
+
+// Exported Zod schema for custom tool input (reused by section-04 OpenAPI import)
+export const customToolInputSchema = z.object({
+  name: z.string().min(1).max(100),
+  description: z.string().max(2000).optional(),
+  endpoint: z.string().url(),
+  httpMethod: z.enum(["GET", "POST", "PUT", "DELETE"]),
+  headers: z.record(z.string()).optional(),
+  inputSchema: z.record(z.unknown()).optional(),
+  outputSchema: z.record(z.unknown()).optional(),
+  riskLevel: z.enum(["low", "medium", "high"]).default("low"),
+  strictSchema: z.boolean().default(false),
+  oneCallAtATime: z.boolean().default(false),
+  icon: z.string().max(50).optional(),
+  category: z.string().max(50).optional(),
+  retryPolicy: z.object({
+    maxRetries: z.number().int().min(0).max(5),
+    backoffMs: z.number().int().min(100).max(30000),
+  }).optional(),
+});
 
 // Q-1: Detect cycles in communication flows using DFS
 function detectFlowCycle(
@@ -2812,5 +2834,305 @@ export const agencyRouter = router({
         agencyRunId: input.agencyRunId,
         userId: ctx.user!.id,
       });
+    }),
+
+  // ─── Custom Tool CRUD ────────────────────────────────────────────────
+
+  createCustomTool: protectedProcedure
+    .use(createRateLimitMiddleware({ namespace: "agency-tool-create", limit: 10, windowMs: 60_000 }))
+    .input(customToolInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = ctx.tenantId!;
+      await assertAgencyEnabled(tenantId);
+
+      // Enforce per-tenant tool limit
+      const [toolCount] = await db
+        .select({ count: count() })
+        .from(agencyTools)
+        .where(and(eq(agencyTools.tenantId, tenantId), eq(agencyTools.isEnabled, true)));
+      if (toolCount.count >= 50) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Custom tool limit reached (50 per tenant)",
+        });
+      }
+
+      // Check name uniqueness
+      const existing = await db
+        .select({ id: agencyTools.id })
+        .from(agencyTools)
+        .where(and(eq(agencyTools.tenantId, tenantId), eq(agencyTools.name, input.name)))
+        .limit(1);
+      if (existing.length > 0) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: `A tool named '${input.name}' already exists`,
+        });
+      }
+
+      // SSRF validation
+      try {
+        validateSsrfUrl(input.endpoint);
+      } catch (e: any) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: `SSRF: ${e.message}` });
+      }
+
+      // Encrypt headers if provided
+      const headersEncrypted = input.headers
+        ? encrypt(JSON.stringify(input.headers))
+        : null;
+
+      const id = crypto.randomUUID();
+      const [tool] = await db.insert(agencyTools).values({
+        id,
+        tenantId,
+        name: input.name,
+        description: input.description ?? null,
+        toolType: "http_api",
+        config: { endpoint: input.endpoint },
+        riskLevel: input.riskLevel,
+        requiresApproval: input.riskLevel === "high",
+        inputSchema: input.inputSchema ?? null,
+        outputSchema: input.outputSchema ?? null,
+        httpMethod: input.httpMethod,
+        headersEncrypted,
+        retryPolicy: input.retryPolicy ?? null,
+        icon: input.icon ?? null,
+        category: input.category ?? null,
+        version: 1,
+        isExposedAsApi: false,
+        strictSchema: input.strictSchema,
+        oneCallAtATime: input.oneCallAtATime,
+        isEnabled: true,
+      }).returning();
+
+      return { ...tool, headersEncrypted: undefined, hasHeaders: !!headersEncrypted };
+    }),
+
+  updateCustomTool: protectedProcedure
+    .input(z.object({ toolId: z.string().uuid() }).merge(customToolInputSchema.partial()))
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = ctx.tenantId!;
+      await assertAgencyEnabled(tenantId);
+
+      const [existing] = await db
+        .select()
+        .from(agencyTools)
+        .where(and(eq(agencyTools.id, input.toolId), eq(agencyTools.tenantId, tenantId)))
+        .limit(1);
+      if (!existing) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Tool not found" });
+      }
+
+      // SSRF re-validation if endpoint changed
+      if (input.endpoint) {
+        try {
+          validateSsrfUrl(input.endpoint);
+        } catch (e: any) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: `SSRF: ${e.message}` });
+        }
+      }
+
+      const updates: Record<string, unknown> = { updatedAt: new Date(), version: existing.version + 1 };
+      if (input.name !== undefined) updates.name = input.name;
+      if (input.description !== undefined) updates.description = input.description;
+      if (input.endpoint !== undefined) updates.config = { endpoint: input.endpoint };
+      if (input.httpMethod !== undefined) updates.httpMethod = input.httpMethod;
+      if (input.headers !== undefined) {
+        updates.headersEncrypted = encrypt(JSON.stringify(input.headers));
+      }
+      if (input.inputSchema !== undefined) updates.inputSchema = input.inputSchema;
+      if (input.outputSchema !== undefined) updates.outputSchema = input.outputSchema;
+      if (input.riskLevel !== undefined) {
+        updates.riskLevel = input.riskLevel;
+        updates.requiresApproval = input.riskLevel === "high";
+      }
+      if (input.strictSchema !== undefined) updates.strictSchema = input.strictSchema;
+      if (input.oneCallAtATime !== undefined) updates.oneCallAtATime = input.oneCallAtATime;
+      if (input.icon !== undefined) updates.icon = input.icon;
+      if (input.category !== undefined) updates.category = input.category;
+      if (input.retryPolicy !== undefined) updates.retryPolicy = input.retryPolicy;
+
+      const [updated] = await db
+        .update(agencyTools)
+        .set(updates)
+        .where(and(eq(agencyTools.id, input.toolId), eq(agencyTools.tenantId, tenantId)))
+        .returning();
+      return { ...updated, headersEncrypted: undefined, hasHeaders: !!updated.headersEncrypted };
+    }),
+
+  deleteCustomTool: protectedProcedure
+    .input(z.object({ toolId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = ctx.tenantId!;
+      await assertAgencyEnabled(tenantId);
+
+      const [tool] = await db
+        .select({ id: agencyTools.id, tenantId: agencyTools.tenantId })
+        .from(agencyTools)
+        .where(and(eq(agencyTools.id, input.toolId), eq(agencyTools.tenantId, tenantId)));
+      if (!tool) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Tool not found" });
+      }
+
+      // Check if any agents reference this tool
+      const refs = await db
+        .select({ id: agencyAgentTools.id })
+        .from(agencyAgentTools)
+        .where(eq(agencyAgentTools.toolId, input.toolId))
+        .limit(1);
+      if (refs.length > 0) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Tool is in use by agents. Remove it from agents first.",
+        });
+      }
+
+      // Soft-delete
+      await db
+        .update(agencyTools)
+        .set({ isEnabled: false, updatedAt: new Date() })
+        .where(eq(agencyTools.id, input.toolId));
+      return { success: true };
+    }),
+
+  listCustomTools: protectedProcedure
+    .input(z.object({
+      search: z.string().optional(),
+      page: z.number().int().min(1).default(1),
+      limit: z.number().int().min(1).max(50).default(20),
+    }))
+    .query(async ({ ctx, input }) => {
+      const tenantId = ctx.tenantId!;
+      await assertAgencyEnabled(tenantId);
+
+      const conditions = [
+        eq(agencyTools.tenantId, tenantId),
+        eq(agencyTools.isEnabled, true),
+        inArray(agencyTools.toolType, ["http_api", "openapi_import", "mcp_bridge"]),
+      ];
+
+      if (input.search) {
+        conditions.push(
+          or(
+            sql`${agencyTools.name} ILIKE ${"%" + input.search + "%"}`,
+            sql`${agencyTools.description} ILIKE ${"%" + input.search + "%"}`,
+          )!,
+        );
+      }
+
+      const offset = (input.page - 1) * input.limit;
+      const tools = await db
+        .select({
+          id: agencyTools.id,
+          name: agencyTools.name,
+          description: agencyTools.description,
+          toolType: agencyTools.toolType,
+          httpMethod: agencyTools.httpMethod,
+          riskLevel: agencyTools.riskLevel,
+          icon: agencyTools.icon,
+          category: agencyTools.category,
+          version: agencyTools.version,
+          strictSchema: agencyTools.strictSchema,
+          oneCallAtATime: agencyTools.oneCallAtATime,
+          hasHeaders: sql<boolean>`${agencyTools.headersEncrypted} IS NOT NULL`.as("hasHeaders"),
+          createdAt: agencyTools.createdAt,
+          updatedAt: agencyTools.updatedAt,
+        })
+        .from(agencyTools)
+        .where(and(...conditions))
+        .orderBy(desc(agencyTools.createdAt))
+        .limit(input.limit)
+        .offset(offset);
+
+      const [{ total }] = await db
+        .select({ total: count() })
+        .from(agencyTools)
+        .where(and(...conditions));
+
+      return { tools, total, page: input.page, limit: input.limit };
+    }),
+
+  testCustomTool: protectedProcedure
+    .use(createRateLimitMiddleware({ namespace: "agency-tool-test", limit: 20, windowMs: 60_000 }))
+    .input(z.object({
+      toolId: z.string().uuid(),
+      sampleInput: z.record(z.unknown()),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = ctx.tenantId!;
+      await assertAgencyEnabled(tenantId);
+
+      const [tool] = await db
+        .select()
+        .from(agencyTools)
+        .where(and(eq(agencyTools.id, input.toolId), eq(agencyTools.tenantId, tenantId)));
+      if (!tool) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Tool not found" });
+      }
+
+      // Validate input against schema if present
+      if (tool.inputSchema) {
+        const { default: Ajv } = await import("ajv");
+        const ajv = new Ajv({ allErrors: true });
+        const validate = ajv.compile(tool.inputSchema as Record<string, unknown>);
+        if (!validate(input.sampleInput)) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `Input schema validation failed: ${ajv.errorsText(validate.errors)}`,
+          });
+        }
+      }
+
+      // SSRF re-validation (defense in depth)
+      const endpoint = (tool.config as any)?.endpoint;
+      if (!endpoint) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Tool has no endpoint configured" });
+      }
+      try {
+        validateSsrfUrl(endpoint);
+      } catch (e: any) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: `SSRF: ${e.message}` });
+      }
+
+      // Decrypt headers
+      let headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (tool.headersEncrypted) {
+        const parsed = JSON.parse(decrypt(tool.headersEncrypted));
+        headers = { ...headers, ...parsed };
+      }
+
+      const startMs = Date.now();
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10_000);
+
+      try {
+        const method = tool.httpMethod || "POST";
+        const fetchOpts: RequestInit = {
+          method,
+          headers,
+          signal: controller.signal,
+        };
+        if (method !== "GET") {
+          fetchOpts.body = JSON.stringify(input.sampleInput);
+        }
+
+        const resp = await fetch(endpoint, fetchOpts);
+        const bodyText = await resp.text();
+        const durationMs = Date.now() - startMs;
+
+        return {
+          status: resp.status,
+          body: bodyText.slice(0, 10_240), // truncate to 10KB
+          durationMs,
+        };
+      } catch (e: any) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `Tool test failed: ${e.message}`,
+        });
+      } finally {
+        clearTimeout(timeout);
+      }
     }),
 });

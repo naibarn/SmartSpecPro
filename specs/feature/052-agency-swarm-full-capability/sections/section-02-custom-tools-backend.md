@@ -309,3 +309,30 @@ export const customToolInputSchema = z.object({
 - Section-03 (frontend) will consume `listCustomTools` and `createCustomTool` from this section.
 - Section-04 (OpenAPI import) will reuse the `customToolInputSchema` Zod type and the `createCustomTool` insertion logic (refactored into a shared helper if needed).
 - The feature flag `AGENCY_CUSTOM_TOOLS_ENABLED` (section-23) will guard these procedures once integrated. For now, they use the existing `assertAgencyEnabled()` gate.
+
+## Implementation Notes
+
+### Actual Files Created/Modified
+
+| File | Action |
+|------|--------|
+| `apps/web/server/services/ssrfValidator.ts` | **CREATED** — SSRF URL validator with IP range checks |
+| `apps/web/server/services/__tests__/ssrfValidator.test.ts` | **CREATED** — 9 tests covering all SSRF scenarios |
+| `apps/web/server/routers/agency.ts` | **MODIFIED** — Added 5 custom tool CRUD procedures + exported `customToolInputSchema` |
+| `apps/web/server/routers/__tests__/agencyCustomTools.test.ts` | **CREATED** — 7 tests for SSRF, encryption, schema validation |
+| `python-backend/app/services/agency_tools.py` | **MODIFIED** — Added `CustomToolConfig`, `_validate_custom_tool_input`, `_execute_custom_tool_sync` with lock support |
+| `python-backend/tests/unit/services/test_agency_tool_bridge.py` | **CREATED** — 13 tests for input validation, SSRF, execution, oneCallAtATime |
+
+### Code Review Fixes Applied
+
+1. Added `tenantId` guard to `updateCustomTool` UPDATE WHERE clause (TOCTOU prevention)
+2. Changed `decrypt` from dynamic import to static import
+3. Wired `threading.Lock` for `oneCallAtATime` tools in Python with proper try/finally
+4. Added `requiresApproval` sync when `riskLevel` changes in `updateCustomTool`
+5. Fixed SSRF internal URL bypass — parse-then-compare origins instead of raw string prefix
+6. Added `oneCallAtATime` lock acquisition test in Python
+
+### Test Coverage
+
+- Node.js: 16 tests (9 SSRF + 7 custom tools) — all passing
+- Python: 13 tests (4 input validation + 5 SSRF + 4 execution) — all passing

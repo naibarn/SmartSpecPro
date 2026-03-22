@@ -153,6 +153,113 @@ class ToolConfig(BaseModel):
     config: dict[str, Any] = {}
 
 
+class CustomToolConfig(BaseModel):
+    """Extended config for custom (non-builtin) tools."""
+
+    tool_id: str
+    tool_type: str
+    risk_level: str
+    requires_approval: bool
+    endpoint_url: str
+    http_method: str = "POST"
+    input_schema: dict | None = None
+    output_schema: dict | None = None
+    strict_schema: bool = False
+    one_call_at_a_time: bool = False
+    retry_policy: dict | None = None
+    headers: dict[str, str] | None = None
+    config: dict[str, Any] = {}
+
+
+# Module-level locks for oneCallAtATime tools
+import threading
+_TOOL_LOCKS: dict[str, threading.Lock] = {}
+
+
+def _validate_custom_tool_input(
+    tool_input: dict[str, Any],
+    input_schema: dict,
+    strict_schema: bool,
+) -> str | None:
+    """Validate tool input against JSON Schema. Returns error string or None."""
+    try:
+        import jsonschema
+
+        schema = dict(input_schema)
+        if strict_schema and "additionalProperties" not in schema:
+            schema["additionalProperties"] = False
+
+        jsonschema.validate(instance=tool_input, schema=schema)
+        return None
+    except Exception as exc:
+        return f"Tool input validation failed: {exc}"
+
+
+def _execute_custom_tool_sync(custom_config: CustomToolConfig, tool_input: dict[str, Any]) -> str:
+    """Execute a custom tool via HTTP (synchronous)."""
+    # SSRF re-validation at execution time
+    try:
+        _validate_tool_url(custom_config.endpoint_url)
+    except ValueError as exc:
+        return f"Tool '{custom_config.tool_id}' has a blocked endpoint: {exc}"
+
+    # oneCallAtATime: serialize calls per tool_id
+    lock: threading.Lock | None = None
+    if custom_config.one_call_at_a_time:
+        if custom_config.tool_id not in _TOOL_LOCKS:
+            _TOOL_LOCKS[custom_config.tool_id] = threading.Lock()
+        lock = _TOOL_LOCKS[custom_config.tool_id]
+        lock.acquire()
+
+    # Input validation
+    if custom_config.input_schema:
+        err = _validate_custom_tool_input(
+            tool_input, custom_config.input_schema, custom_config.strict_schema
+        )
+        if err:
+            return err
+
+    # Prepare headers
+    headers = {"Content-Type": "application/json"}
+    if custom_config.headers:
+        headers.update(custom_config.headers)
+
+    # Retry policy
+    max_retries = 0
+    backoff_ms = 1000
+    if custom_config.retry_policy:
+        max_retries = custom_config.retry_policy.get("maxRetries", 0)
+        backoff_ms = custom_config.retry_policy.get("backoffMs", 1000)
+
+    timeout = 30.0
+    method = custom_config.http_method.upper()
+    last_error = ""
+
+    try:
+        for attempt in range(max_retries + 1):
+            try:
+                with httpx.Client(timeout=timeout) as client:
+                    kwargs: dict[str, Any] = {"headers": headers}
+                    if method != "GET":
+                        kwargs["json"] = tool_input
+
+                    resp = client.request(method, custom_config.endpoint_url, **kwargs)
+                    if resp.status_code < 400:
+                        return resp.text[:51200]  # truncate to 50KB
+                    last_error = f"HTTP {resp.status_code}: {resp.text[:200]}"
+            except Exception as exc:
+                last_error = str(exc)[:200]
+
+            if attempt < max_retries:
+                import time
+                time.sleep(backoff_ms / 1000.0 * (2 ** attempt))
+
+        return f"Tool execution failed after {max_retries + 1} attempts: {last_error}"
+    finally:
+        if lock is not None:
+            lock.release()
+
+
 def _make_run_func(tool_config: ToolConfig, whitelist: set[str]):
     """Create a run function closure for a tool bridge."""
     captured_config = tool_config
