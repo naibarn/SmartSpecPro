@@ -1035,6 +1035,7 @@ export const agencyRouter = router({
         description: z.string().optional(),
         systemPrompt: z.string().optional(),
         defaultModel: z.string().max(100).nullish(),
+        topology: z.enum(["handoff_chain", "orchestrator_worker", "hybrid", "custom"]).optional(),
         changeDescription: z.string().max(500).optional(),
         agents: z.array(
           z.object({
@@ -1189,6 +1190,7 @@ export const agencyRouter = router({
         if (input.systemPrompt !== undefined) setValues.systemPrompt = input.systemPrompt;
         if (input.defaultModel !== undefined) setValues.defaultModel = input.defaultModel;
         if (input.userContext !== undefined) setValues.userContext = input.userContext;
+        if (input.topology !== undefined) setValues.topology = input.topology;
         if (Object.keys(setValues).length > 0) {
           await tx.update(agencies).set(setValues).where(eq(agencies.id, input.id));
         }
@@ -3610,5 +3612,54 @@ export const agencyRouter = router({
         ));
 
       return { deleted: true };
+    }),
+
+  // ── Human Approval ──────────────────────────────────────────────────
+  submitApproval: protectedProcedure
+    .input(
+      z.object({
+        runId: z.string().uuid(),
+        approvalKey: z.string().uuid(),
+        decision: z.enum(["approved", "rejected"]),
+        feedback: z.string().max(2000).optional(),
+      }),
+    )
+    .use(createRateLimitMiddleware({ namespace: "agency-approval", limit: 10, windowMs: 60_000 }))
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.user!.id;
+      const userRole = ctx.user!.role;
+
+      // 1. Look up the conversation/run (ownership verified via userId)
+      const [conv] = await db
+        .select()
+        .from(agencyConversations)
+        .where(eq(agencyConversations.id, input.runId));
+      if (!conv) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Run not found" });
+      }
+
+      // 2. Ownership check
+      const isOwner = conv.userId === userId;
+      const isAdmin = userRole === "admin" || userRole === "domain_admin";
+      if (!isOwner && !isAdmin) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only the run creator or an admin can submit approvals",
+        });
+      }
+
+      // 3. Publish decision to Redis for Python orchestrator
+      const { getRedisClient } = await import("../services/redis");
+      const redis = getRedisClient();
+      await redis.publish(
+        `agency:approval:${input.runId}`,
+        JSON.stringify({
+          approvalKey: input.approvalKey,
+          decision: input.decision,
+          feedback: input.feedback ?? "",
+        }),
+      );
+
+      return { success: true };
     }),
 });

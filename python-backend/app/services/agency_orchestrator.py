@@ -797,7 +797,12 @@ class AgencyOrchestrator:
             return f"[Skill '{skill_slug}' failed: {str(exc)[:100]}]"
 
     async def _await_approval(self, approval_node: NodeRow, ctx: ExecutionContext) -> str:
-        """Create an approval request and wait for decision (with timeout)."""
+        """Create an approval request and wait for decision via SSE + context polling."""
+        from app.services.agency_approval_tool import (
+            RequestApprovalTool,
+            await_approval_decision,
+        )
+
         cfg: dict = approval_node.get("node_config") or {}
         approval_message: str = cfg.get("approvalMessage", "Approval required to proceed.")
         timeout_hours: int = int(cfg.get("timeoutHours", 24))
@@ -809,6 +814,34 @@ class AgencyOrchestrator:
             timeout_hours=timeout_hours,
         )
 
+        # Use SSE-based approval flow if context and emitter are available
+        if ctx.shared_context and self.event_emitter:
+            tool = RequestApprovalTool(
+                agent_name=approval_node.get("name", "Approval"),
+                run_context=ctx.shared_context,
+                event_emitter=self.event_emitter,
+            )
+            await tool.execute(step=approval_message, summary=ctx.input[:500])
+
+            # Extract the approval key from the emitted event
+            all_data = ctx.shared_context.snapshot()
+            approval_key = None
+            for key in all_data:
+                if key.startswith("approval:") and all_data[key].get("status") == "pending":
+                    approval_key = key.replace("approval:", "")
+                    break
+
+            if approval_key:
+                timeout_seconds = timeout_hours * 3600
+                result = await await_approval_decision(
+                    ctx.shared_context,
+                    approval_key,
+                    approval_message,
+                    timeout_seconds=min(timeout_seconds, 1800),  # Cap at 30 min for SSE
+                )
+                return result
+
+        # Fallback: HTTP-based approval for non-SSE flows
         python_backend = os.getenv("PYTHON_BACKEND_INTERNAL_URL", "http://127.0.0.1:8000")
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
@@ -830,7 +863,6 @@ class AgencyOrchestrator:
                         return "[Human approval: APPROVED — proceeding]"
                     elif decision == "rejected":
                         return "[Human approval: REJECTED — stopping]"
-                    # Pending — for async flows, return placeholder
                     return f"[Human approval requested (id={approval_id}) — awaiting decision]"
         except Exception as exc:
             logger.warning("agency_human_approval_failed", error=str(exc)[:100])
