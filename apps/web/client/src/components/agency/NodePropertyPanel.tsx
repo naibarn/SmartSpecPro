@@ -44,12 +44,13 @@ import {
 } from "@/components/ui/command";
 import { ToolPicker } from "./ToolPicker";
 import { ModelPicker } from "./ModelPicker";
+import { GuardrailsPanel } from "./guardrails/GuardrailsPanel";
 import type { AgencyNodeData } from "./nodes/types";
 import { BROWSER_SESSION_COPY } from "@shared/browserSession";
 import {
   X, Wrench, ChevronDown, ChevronRight, Trash2, Plus,
   Search, Loader2, Zap, GripVertical, Check, ChevronsUpDown,
-  BookOpen,
+  BookOpen, Shield,
 } from "lucide-react";
 
 const PANEL_MIN_W = 340;
@@ -70,6 +71,8 @@ interface NodePropertyPanelProps {
   nodeId?: string;
   /** All other nodes in the canvas (for target dropdowns) */
   siblingNodes?: SiblingNode[];
+  /** Agency ID for guardrails panel */
+  agencyId?: string;
   onChange: (updates: Partial<AgencyNodeData>) => void;
   onClose: () => void;
   onDelete: () => void;
@@ -106,7 +109,7 @@ function normalizeLibraryPickerDocs(rows: unknown): Array<{ id: number; title: s
 
 // ── Root dispatcher ──────────────────────────────────────────────────────────
 
-export function NodePropertyPanel({ node, nodeId, siblingNodes = [], onChange, onClose, onDelete }: NodePropertyPanelProps) {
+export function NodePropertyPanel({ node, nodeId, siblingNodes = [], agencyId, onChange, onClose, onDelete }: NodePropertyPanelProps) {
   const nodeType = node.nodeType ?? "agent";
 
   // ── Resizable width ──────────────────────────────────────────────────────
@@ -185,7 +188,7 @@ export function NodePropertyPanel({ node, nodeId, siblingNodes = [], onChange, o
       <ScrollArea className="flex-1 min-h-0">
         <div className="space-y-4 p-4">
           {(nodeType === "agent" || nodeType === "supervisor") && (
-            <AgentSupervisorForm node={node} onChange={onChange} />
+            <AgentSupervisorForm node={node} onChange={onChange} agencyId={agencyId} nodeId={nodeId} />
           )}
           {nodeType === "router" && <RouterForm node={node} onChange={onChange} siblingNodes={siblingNodes} />}
           {nodeType === "aggregator" && <AggregatorForm node={node} onChange={onChange} />}
@@ -216,14 +219,19 @@ export function NodePropertyPanel({ node, nodeId, siblingNodes = [], onChange, o
 function AgentSupervisorForm({
   node,
   onChange,
+  agencyId,
+  nodeId,
 }: {
   node: AgencyNodeData;
   onChange: (updates: Partial<AgencyNodeData>) => void;
+  agencyId?: string;
+  nodeId?: string;
 }) {
   const [toolPickerOpen, setToolPickerOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [v18FeaturesOpen, setV18FeaturesOpen] = useState(false);
   const [kbOpen, setKbOpen] = useState(false);
+  const [guardrailsOpen, setGuardrailsOpen] = useState(false);
   const [kbDocPickerOpen, setKbDocPickerOpen] = useState(false);
   const [kbSettingsOpen, setKbSettingsOpen] = useState(false);
   const [kbDocTypeFilter, setKbDocTypeFilter] = useState<string>("all");
@@ -678,6 +686,34 @@ function AgentSupervisorForm({
           </div>
         )}
       </div>
+
+      <Separator />
+
+      {/* Guardrails */}
+      {agencyId && (
+        <div>
+          <button
+            type="button"
+            onClick={() => setGuardrailsOpen(!guardrailsOpen)}
+            className="flex w-full items-center justify-between text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors"
+          >
+            <span className="flex items-center gap-1.5">
+              <Shield className="h-3.5 w-3.5" />
+              Guardrails
+            </span>
+            {guardrailsOpen ? (
+              <ChevronDown className="h-4 w-4" />
+            ) : (
+              <ChevronRight className="h-4 w-4" />
+            )}
+          </button>
+          {guardrailsOpen && (
+            <div className="mt-2">
+              <GuardrailsPanel agencyId={agencyId} agentId={nodeId} />
+            </div>
+          )}
+        </div>
+      )}
 
       <Separator />
 

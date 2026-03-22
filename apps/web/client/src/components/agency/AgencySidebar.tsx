@@ -8,6 +8,7 @@ import {
   ChevronDown, Info, Wrench,
 } from "lucide-react";
 import { CustomToolCreator } from "./CustomToolCreator";
+import { GuardrailsPanel } from "./guardrails/GuardrailsPanel";
 import {
   Tooltip,
   TooltipContent,
@@ -130,10 +131,11 @@ export interface NodeTemplateData {
 
 interface AgencySidebarProps {
   onNodeAdd?: (templateData: NodeTemplateData) => void;
+  agencyId?: string;
 }
 
-export function AgencySidebar({ onNodeAdd }: AgencySidebarProps) {
-  const [activeTab, setActiveTab] = useState<"nodes" | "templates">("nodes");
+export function AgencySidebar({ onNodeAdd, agencyId }: AgencySidebarProps) {
+  const [activeTab, setActiveTab] = useState<"nodes" | "templates" | "guardrails">("nodes");
   const [openSections, setOpenSections] = useState<Set<string>>(
     new Set(NODE_TYPE_SECTIONS.map((s) => s.label)),
   );
@@ -159,7 +161,7 @@ export function AgencySidebar({ onNodeAdd }: AgencySidebarProps) {
     <div className="w-60 bg-slate-50 border-r border-slate-200 h-full flex flex-col z-10 shrink-0">
       {/* Tab bar */}
       <div className="flex border-b border-slate-200 bg-white">
-        {(["nodes", "templates"] as const).map((tab) => (
+        {(["nodes", "templates", "guardrails"] as const).map((tab) => (
           <button
             key={tab}
             type="button"
@@ -290,6 +292,16 @@ export function AgencySidebar({ onNodeAdd }: AgencySidebarProps) {
                 </div>
               ))
             )}
+          </div>
+        )}
+
+        {/* ── Guardrails Tab ── */}
+        {activeTab === "guardrails" && agencyId && (
+          <GuardrailsPanel agencyId={agencyId} />
+        )}
+        {activeTab === "guardrails" && !agencyId && (
+          <div className="p-6 text-center text-sm text-slate-400">
+            Save the agency first to manage guardrails.
           </div>
         )}
       </div>

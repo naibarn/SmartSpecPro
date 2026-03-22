@@ -19,5 +19,6 @@ export interface AgencyNodeData {
   isOptional?: boolean;
   tools?: Array<{ toolId: string; toolName: string; toolConfig?: Record<string, unknown> }>;
   nodeConfig?: Record<string, unknown>;
+  guardrailIds?: string[];
   validationErrors?: string[];
 }
