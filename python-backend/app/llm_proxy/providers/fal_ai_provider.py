@@ -1,7 +1,7 @@
 """fal.ai media provider — video (queue), audio (sync TTS), image (sync Flux)."""
 
 import re
-from typing import Any
+from typing import Any, NoReturn
 from urllib.parse import urlparse
 
 import httpx
@@ -50,7 +50,7 @@ class FalAIProvider:
     # Validation helpers
     # ------------------------------------------------------------------
 
-    def _validate_urls(self, params: dict[str, Any]) -> None:
+    async def _validate_urls(self, params: dict[str, Any]) -> None:
         """SSRF: validate URL fields + reject host.docker.internal + HEAD size check for video_url."""
         for key in _URL_FIELDS:
             url = params.get(key)
@@ -68,23 +68,21 @@ class FalAIProvider:
             # Run the shared SSRF validator
             validate_uri_no_ssrf(url)
 
-        # Video file size check (synchronous HEAD is not practical here, so
-        # callers needing async HEAD must do it separately — see _check_video_size)
+        # Async video file size check
         video_url = params.get("video_url")
         if video_url is not None:
-            self._check_video_size_sync(video_url)
+            await self._check_video_size(video_url)
 
-    def _check_video_size_sync(self, url: str) -> None:
-        """Synchronous HEAD check for video file size (best-effort)."""
+    async def _check_video_size(self, url: str) -> None:
+        """Async HEAD check for video file size (best-effort)."""
         try:
-            with httpx.Client(timeout=10.0) as sync_client:
-                resp = sync_client.head(url)
-                resp.raise_for_status()
-                cl = resp.headers.get("Content-Length")
-                if cl and int(cl) > self.MAX_VIDEO_FILE_SIZE:
-                    raise ValueError(
-                        f"Video file exceeds 500MB limit ({int(cl)} bytes)"
-                    )
+            resp = await self.client.head(url, follow_redirects=False)
+            resp.raise_for_status()
+            cl = resp.headers.get("Content-Length")
+            if cl and int(cl) > self.MAX_VIDEO_FILE_SIZE:
+                raise ValueError(
+                    f"Video file exceeds 500MB limit ({int(cl)} bytes)"
+                )
         except (httpx.RequestError, httpx.HTTPStatusError):
             # Best effort — if HEAD fails, allow through
             pass
@@ -99,7 +97,7 @@ class FalAIProvider:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _handle_http_error(exc: httpx.HTTPStatusError) -> None:
+    def _handle_http_error(exc: httpx.HTTPStatusError) -> NoReturn:
         """Convert HTTP errors to sanitized ValueErrors. Never leak response body."""
         status = exc.response.status_code
         if status == 401:
@@ -116,7 +114,7 @@ class FalAIProvider:
 
     async def generate_video(self, model_id: str, params: dict[str, Any]) -> dict:
         """Queue-based video generation. Returns {id, status: PROCESSING}."""
-        self._validate_urls(params)
+        await self._validate_urls(params)
 
         if "prompt" in params:
             params = {**params, "prompt": self._sanitize_prompt(params["prompt"])}
@@ -127,7 +125,7 @@ class FalAIProvider:
 
     async def generate_audio(self, model_id: str, params: dict[str, Any]) -> dict:
         """Synchronous TTS generation. Returns {data: [{url}], status: COMPLETED}."""
-        self._validate_urls(params)
+        await self._validate_urls(params)
 
         if "prompt" in params:
             params = {**params, "prompt": self._sanitize_prompt(params["prompt"])}
@@ -150,7 +148,7 @@ class FalAIProvider:
 
     async def generate_image(self, model_id: str, params: dict[str, Any]) -> dict:
         """Synchronous image generation. Returns {data: [{url}], status: COMPLETED}."""
-        self._validate_urls(params)
+        await self._validate_urls(params)
 
         if "prompt" in params:
             params = {**params, "prompt": self._sanitize_prompt(params["prompt"])}

@@ -52,7 +52,7 @@ class TestInit:
 
     def test_httpx_timeout(self):
         provider = FalAIProvider(api_key="test-key")
-        assert provider.client.timeout.read == 300.0
+        assert provider.client.timeout == httpx.Timeout(300.0)
 
     def test_custom_base_url(self):
         provider = FalAIProvider(api_key="test-key", base_url="https://custom.fal.run")
@@ -89,7 +89,7 @@ class TestGenerateVideo:
         assert result["status"] == "PROCESSING"
 
     async def test_validates_urls_before_request(self, provider):
-        with patch.object(provider, "_validate_urls") as mock_validate:
+        with patch.object(provider, "_validate_urls", new_callable=AsyncMock) as mock_validate:
             mock_response = MagicMock()
             mock_response.status_code = 200
             mock_response.json.return_value = {"request_id": "req-123", "status": "IN_QUEUE"}
@@ -144,7 +144,7 @@ class TestGenerateAudio:
         assert result["data"][0]["url"] == "https://v3b.fal.media/audio.mp3"
 
     async def test_validates_audio_url(self, provider):
-        with patch.object(provider, "_validate_urls") as mock_validate:
+        with patch.object(provider, "_validate_urls", new_callable=AsyncMock) as mock_validate:
             mock_response = MagicMock()
             mock_response.status_code = 200
             mock_response.json.return_value = {"audio": {"url": "https://v3b.fal.media/audio.mp3"}}

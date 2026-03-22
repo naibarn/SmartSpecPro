@@ -161,3 +161,20 @@ Add `"FalAIProvider"` to `__all__`.
 
 Section-04 (gateway) instantiates: `FalAIProvider(api_key=...) -> generate_video/audio/image -> aclose()`
 Section-05 (polling) uses: `FalAIProvider(api_key=...) -> get_queue_status/get_queue_result -> aclose()`
+
+## Implementation Notes (Post-Build)
+
+### Files Created/Modified
+- **CREATED**: `python-backend/app/llm_proxy/providers/fal_ai_provider.py` (246 lines)
+- **MODIFIED**: `python-backend/app/llm_proxy/providers/__init__.py` — added import + `__all__` entry
+- **CREATED**: `python-backend/tests/unit/services/test_fal_ai_provider.py` (320 lines, 26 tests)
+- **CREATED**: `python-backend/tests/unit/services/test_fal_ai_ssrf.py` (118 lines, 20 tests)
+
+### Deviations from Plan
+1. **`_validate_urls` made async** — Originally spec'd as sync, but code review correctly identified that the sync `httpx.Client` HEAD check inside `_check_video_size_sync` blocked the event loop. Converted to async `_check_video_size` using `self.client.head()` with `follow_redirects=False`.
+2. **`_handle_http_error` return type `NoReturn`** — Changed from `None` to `NoReturn` so the type checker can prove `response` is always bound after the try/except block.
+3. **`_sanitize_prompt` is `@staticmethod`** — Spec showed it as instance method, but it doesn't use `self`.
+
+### Test Results
+- 46 tests pass (26 in test_fal_ai_provider + 20 in test_fal_ai_ssrf)
+- All contract checks from code review: PASS
