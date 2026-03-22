@@ -146,6 +146,111 @@ function resolveConfiguredMaxPromptLength(configJson: Record<string, any> | null
   return Math.floor(parsed);
 }
 
+/**
+ * Post-completion credit reconciliation for async media tasks.
+ * Compares actual output (duration/resolution) against pre-reserved credits.
+ */
+export async function reconcileTaskCredits(params: {
+  task: { id: string; status: string; model: string; resultData?: Record<string, unknown>; parameters?: Record<string, unknown> };
+  userId: number;
+}): Promise<{ adjusted: boolean; difference: number; action: "refund" | "charge" | "none" }> {
+  const noOp = { adjusted: false, difference: 0, action: "none" as const };
+  const { task, userId } = params;
+
+  // Guard: only completed tasks
+  if (task.status !== "completed") return noOp;
+
+  // Guard: must have actual_duration
+  const resultData = task.resultData;
+  if (!resultData || typeof resultData.actual_duration !== "number" || resultData.actual_duration <= 0) return noOp;
+
+  // Guard: idempotency via Redis
+  try {
+    const { getCacheClient } = await import("../services/redisClients");
+    const redis = getCacheClient();
+    const reconcileKey = `credit:reconciled:${task.id}`;
+    const alreadyReconciled = await redis.get(reconcileKey);
+    if (alreadyReconciled) return noOp;
+
+    // Get reserved credits from task parameters (stored during submission)
+    const taskParams = task.parameters ?? {};
+    const extraParams = (taskParams as Record<string, unknown>).extraParams as Record<string, unknown> | undefined
+      ?? taskParams;
+    const reservedCredits = Number(extraParams.__reserved_credits);
+    if (!reservedCredits || reservedCredits <= 0) return noOp;
+
+    // Get model pricing
+    let dbModel: { creditCost: number; configJson: Record<string, any> | null };
+    try {
+      dbModel = await getModelWithPricing(task.model);
+    } catch {
+      console.warn("[CreditReconciliation] Model not found:", task.model);
+      return noOp;
+    }
+
+    // Skip non-duration-based pricing
+    const formula = dbModel.configJson?.pricingFormula;
+    if (formula === "per_unit" || formula === "flat") return noOp;
+
+    // Compute actual cost
+    const actualDuration = resultData.actual_duration as number;
+    const actualResolution = (resultData.actual_resolution as string) ?? (extraParams.__reserved_resolution as string);
+    const actualCost = calculateCreditCost(dbModel, {
+      duration: actualDuration,
+      resolution: actualResolution,
+    });
+
+    const difference = actualCost - reservedCredits;
+
+    if (difference === 0) {
+      await redis.set(reconcileKey, JSON.stringify({ action: "none", difference: 0 }), "EX", 86400);
+      return noOp;
+    }
+
+    let action: "refund" | "charge" = difference < 0 ? "refund" : "charge";
+
+    if (action === "refund") {
+      await refundCredits({
+        userId,
+        amount: Math.abs(difference),
+        description: `Credit reconciliation refund: ${task.model} (actual ${actualDuration}s)`,
+        sourceType: "media_video",
+        metadata: {
+          model: task.model,
+          taskId: task.id,
+          type: "reconciliation_refund",
+          actualCost,
+          reservedCost: reservedCredits,
+          actualDuration,
+          actualResolution,
+        },
+      });
+    } else {
+      await deductCredits({
+        userId,
+        amount: difference,
+        description: `Credit reconciliation charge: ${task.model} (actual ${actualDuration}s)`,
+        sourceType: "media_video",
+        metadata: {
+          model: task.model,
+          taskId: task.id,
+          type: "reconciliation_charge",
+          actualCost,
+          reservedCost: reservedCredits,
+          actualDuration,
+          actualResolution,
+        },
+      });
+    }
+
+    await redis.set(reconcileKey, JSON.stringify({ action, difference, timestamp: Date.now() }), "EX", 86400);
+    return { adjusted: true, difference, action };
+  } catch (error) {
+    console.warn("[CreditReconciliation] Failed:", error instanceof Error ? error.message : error);
+    return noOp;
+  }
+}
+
 function toMediaModelResponse(model: {
   id: string;
   type: MediaType;
@@ -1788,7 +1893,12 @@ export const mediaRouter = router({
             referenceImageUrls: input.referenceImageUrls,
             referenceVideoUrl: input.referenceVideoUrl,
             apiConfig: apiConfigWithProvider,
-            extraParams: input.extraParams,
+            extraParams: {
+              ...input.extraParams,
+              __reserved_credits: creditCost,
+              __reserved_resolution: input.resolution,
+              __reserved_duration: duration,
+            },
             publicUrl: ctx.publicUrl ?? undefined,
             auditContext: {
               userId: ctx.user.id,
@@ -1843,6 +1953,12 @@ export const mediaRouter = router({
             stage: "poll",
           },
         );
+
+        // Credit reconciliation for completed async tasks (non-blocking)
+        if (task?.status === "completed" && task.resultData?.actual_duration) {
+          reconcileTaskCredits({ task: task as any, userId: ctx.user.id }).catch(() => {});
+        }
+
         return task;
       } catch (error) {
         throw new TRPCError({
