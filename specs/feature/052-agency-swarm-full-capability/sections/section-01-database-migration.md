@@ -355,18 +355,36 @@ These are added to the existing union type. Since `nodeConfig` is `json` (not va
 
 After implementation, verify:
 
-- [ ] All 4 new tables exist in the database: `agency_guardrails`, `agency_agent_guardrails`, `agency_shared_tools`, `agency_run_traces`
-- [ ] All 27 new columns exist on the 4 altered tables
-- [ ] `agencies.topology` defaults to `'custom'`
-- [ ] `agencyAgents.parallelToolCalls` defaults to `true`
-- [ ] `agencyAgents.maxTurns` defaults to `25`
-- [ ] `agencyTools.version` defaults to `1`
-- [ ] `agencyTools.isEnabled` defaults to `true`
-- [ ] UNIQUE constraint on `agency_agent_guardrails(agentId, guardrailId)` is enforced
-- [ ] UNIQUE constraint on `agency_shared_tools(agencyId, toolId)` is enforced
-- [ ] CASCADE deletes work: deleting an agency removes its guardrails, shared tools
-- [ ] `modelSettings` data migration: existing rows with `top_p`/`max_tokens` now have `topP`/`maxTokens`
-- [ ] Row counts on all affected tables match pre-migration counts
-- [ ] Existing agency builder UI continues to work (no breaking changes)
-- [ ] All tests in `agencySwarmMigration.test.ts` pass
-- [ ] `pnpm check` passes (TypeScript compilation with updated types)
+- [x] All 4 new tables exist in the database: `agency_guardrails`, `agency_agent_guardrails`, `agency_shared_tools`, `agency_run_traces`
+- [x] All 27 new columns exist on the 4 altered tables
+- [x] `agencies.topology` defaults to `'custom'`
+- [x] `agencyAgents.parallelToolCalls` defaults to `true`
+- [x] `agencyAgents.maxTurns` defaults to `25`
+- [x] `agencyTools.version` defaults to `1`
+- [x] `agencyTools.isEnabled` defaults to `true`
+- [x] UNIQUE constraint on `agency_agent_guardrails(agentId, guardrailId)` is enforced
+- [x] UNIQUE constraint on `agency_shared_tools(agencyId, toolId)` is enforced
+- [x] CASCADE deletes work: deleting an agency removes its guardrails, shared tools
+- [x] `modelSettings` data migration: ran with 0 affected rows (no existing snake_case data)
+- [x] Row counts on all affected tables match pre-migration counts (7, 19, 0, 5)
+- [ ] Existing agency builder UI continues to work (no breaking changes) — manual verification
+- [x] All tests in `agencySwarmMigration.test.ts` pass (10/10)
+- [ ] `pnpm check` passes — deferred to end of implementation
+
+## Implementation Notes
+
+### Actual Files Modified/Created
+
+| File | Action |
+|------|--------|
+| `apps/web/drizzle/schema.ts` | Added 4 new tables, 27 new columns, extended nodeConfig type |
+| `apps/web/drizzle/0107_nosy_gwen_stacy.sql` | Primary migration (tables, columns, FKs, indexes) |
+| `apps/web/drizzle/0108_foamy_bill_hollister.sql` | Follow-up: SET NOT NULL on 13 columns with defaults |
+| `apps/web/server/services/__tests__/agencySwarmMigration.test.ts` | 10 tests covering schema shape, defaults, indexes, unique constraints |
+
+### Deviations from Plan
+
+1. **Two migration files instead of one**: `.notNull()` was initially omitted on columns with defaults (convention alignment caught in code review), requiring a second migration `0108`.
+2. **Migration file naming**: Drizzle auto-generated `0107_nosy_gwen_stacy.sql` instead of `0107_agency_swarm_full_capability.sql` — Drizzle does not support custom names.
+3. **Migration needed manual application**: `drizzle-kit migrate` reported success but didn't actually apply the SQL. The migration was applied directly via `psql -f`.
+4. **modelSettings data migration**: Applied as post-migration step per spec §3. Updated 0 rows — no existing data had old `top_p`/`max_tokens` keys.
