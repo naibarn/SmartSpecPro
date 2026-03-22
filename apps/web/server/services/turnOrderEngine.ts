@@ -83,6 +83,16 @@ export function getNextRoundRobin(
   return active[nextIdx].id;
 }
 
+export function getCoordinatorProfile<
+  T extends { id: string; isLead?: boolean | null; memberRole?: string | null }
+>(profiles: T[]): T | undefined {
+  return (
+    profiles.find((profile) => profile.memberRole === "orchestrator") ??
+    profiles.find((profile) => profile.isLead) ??
+    profiles[0]
+  );
+}
+
 // ─── Main Engine ────────────────────────────────────────────────────────────
 
 export async function getNextSpeaker(
@@ -100,6 +110,7 @@ export async function getNextSpeaker(
     .where(
       and(
         eq(assistantProfiles.teamId, input.teamId),
+        eq(assistantProfiles.memberKind, "assistant"),
         eq(assistantProfiles.isActive, true),
       ),
     )
@@ -157,11 +168,11 @@ export async function getNextSpeaker(
     }
 
     case "lead_directed": {
-      const lead = profiles.find((p) => p.isLead);
-      if (lead && lead.id !== input.currentAssistantId) {
-        return { nextAssistantId: lead.id, reason: "lead_directed" };
+      const coordinator = getCoordinatorProfile(profiles);
+      if (coordinator && coordinator.id !== input.currentAssistantId) {
+        return { nextAssistantId: coordinator.id, reason: "lead_directed" };
       }
-      // If lead just spoke, use round-robin
+      // If the coordinator just spoke, use round-robin
       const nextId = getNextRoundRobin(profiles, input.currentAssistantId);
       return { nextAssistantId: nextId, reason: "lead_directed_alternate" };
     }

@@ -60,6 +60,7 @@ describe("Room & Message Schema (section 02)", () => {
       expect(cols).toContain("participantAssistantId");
       expect(cols).toContain("isMuted");
       expect(cols).toContain("canWriteSharedMemory");
+      expect(cols).toContain("lastViewedAt");
     });
 
     it("participantType enum contains all expected values", () => {

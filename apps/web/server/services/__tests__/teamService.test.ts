@@ -72,6 +72,141 @@ describe("teamService", () => {
       };
       expect(() => teamService.validateTeamInput(noPersna)).toThrow("personaId");
     });
+
+    it("allows mixed members when exactly one assistant lead exists", () => {
+      const mixed = {
+        ...baseInput,
+        members: [
+          ...baseInput.members,
+          {
+            memberKind: "human" as const,
+            humanUserId: 99,
+            displayName: "Human Reviewer",
+            isLead: false,
+          },
+          {
+            memberKind: "external_connector" as const,
+            externalRef: "openclaw://desk-1",
+            displayName: "OpenClaw Desk",
+            isLead: false,
+          },
+        ],
+      };
+
+      expect(() => teamService.validateTeamInput(mixed)).not.toThrow();
+    });
+
+    it("throws when more than one assistant orchestrator exists", () => {
+      const invalid = {
+        ...baseInput,
+        members: baseInput.members.map((member) => ({
+          ...member,
+          memberRole: "orchestrator" as const,
+          isLead: member.personaId === "persona-1",
+        })),
+      };
+
+      expect(() => teamService.validateTeamInput(invalid)).toThrow("orchestrator");
+    });
+
+    it("throws when a human member is marked as lead", () => {
+      const invalid = {
+        ...baseInput,
+        members: [
+          {
+            memberKind: "human" as const,
+            humanUserId: 99,
+            displayName: "Human Lead",
+            isLead: true,
+          },
+          { ...baseInput.members[1], isLead: false },
+        ],
+      };
+
+      expect(() => teamService.validateTeamInput(invalid as any)).toThrow("lead");
+    });
+
+    it("allows assistant blueprint references before persona provisioning", () => {
+      const blueprintBacked = {
+        ...baseInput,
+        members: [
+          {
+            blueprintId: "creative-content-studio",
+            blueprintMemberId: "content-director",
+            displayName: "Content Director",
+            isLead: true,
+            instructions: "Lead the team",
+          },
+          {
+            blueprintId: "creative-content-studio",
+            blueprintMemberId: "copywriter",
+            displayName: "Creative Copywriter",
+            isLead: false,
+            instructions: "Write content",
+          },
+        ],
+      };
+
+      expect(() => teamService.validateTeamInput(blueprintBacked as any)).not.toThrow();
+    });
+
+    it("throws when the same assistant persona is included twice", () => {
+      const duplicateAssistants = {
+        ...baseInput,
+        members: [
+          { ...baseInput.members[0], personaId: "persona-1" },
+          { ...baseInput.members[1], personaId: "persona-1" },
+        ],
+      };
+
+      expect(() => teamService.validateTeamInput(duplicateAssistants)).toThrow("duplicate members");
+    });
+
+    it("throws when the same human user is included twice", () => {
+      const duplicateHumans = {
+        ...baseInput,
+        members: [
+          { ...baseInput.members[0] },
+          {
+            memberKind: "human" as const,
+            humanUserId: 99,
+            displayName: "Human A",
+            isLead: false,
+          },
+          {
+            memberKind: "human" as const,
+            humanUserId: 99,
+            displayName: "Human B",
+            isLead: false,
+          },
+        ],
+      };
+
+      expect(() => teamService.validateTeamInput(duplicateHumans as any)).toThrow("duplicate members");
+    });
+
+    it("throws when the same external connector is included twice", () => {
+      const duplicateExternal = {
+        ...baseInput,
+        members: [
+          { ...baseInput.members[0] },
+          {
+            memberKind: "external_connector" as const,
+            externalRef: "OpenClaw://desk-1",
+            displayName: "Desk A",
+            isLead: false,
+          },
+          {
+            memberKind: "external_connector" as const,
+            externalRef: "openclaw://desk-1",
+            displayName: "Desk B",
+            isLead: false,
+          },
+        ],
+      };
+
+      expect(() => teamService.validateTeamInput(duplicateExternal as any)).toThrow("duplicate members");
+    });
   });
 
   describe("generateTeamSlug", () => {
@@ -106,12 +241,24 @@ describe("teamService", () => {
 
     it("exports CreateTeamMemberInput interface", () => {
       const m: teamService.CreateTeamMemberInput = {
+        memberKind: "assistant",
         personaId: "p",
         displayName: "d",
         isLead: false,
         instructions: "i",
       };
       expect(m.personaId).toBe("p");
+    });
+
+    it("exports mixed-member fields on CreateTeamMemberInput", () => {
+      const m: teamService.CreateTeamMemberInput = {
+        memberKind: "external_connector",
+        memberRole: "publisher",
+        externalRef: "manus://worker-1",
+        displayName: "Manus Worker",
+        isLead: false,
+      };
+      expect(m.externalRef).toBe("manus://worker-1");
     });
 
     it("exports CreateTeamResult interface", () => {

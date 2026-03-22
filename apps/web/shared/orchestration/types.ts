@@ -123,6 +123,8 @@ export interface SkillCatalogEntry {
   outputTypes: string[];
   hasInputSchema: boolean;
   requiredFields: string[];
+  /** Whether this skill requires/supports web search grounding */
+  webSearchCapable?: boolean;
 }
 
 /** Parsed metadata from a skill's input.schema.json */

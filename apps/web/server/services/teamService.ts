@@ -5,7 +5,7 @@
  * and integrates with template instantiation.
  */
 
-import { eq, and, sql, count } from "drizzle-orm";
+import { eq, and, or, isNull, sql, count, getTableColumns } from "drizzle-orm";
 import { getDb } from "../db";
 import {
   agencies,
@@ -17,13 +17,37 @@ import {
   teamRooms,
   type AssistantTeam,
   type AssistantProfile,
+  type PersonaTemplate,
 } from "../../drizzle/schema";
 import crypto from "crypto";
+import { sanitizePersonaInput } from "./personaService";
+import {
+  buildBlueprintPersonaInput,
+  findReusablePersonaForBlueprint,
+  findTeamBlueprint,
+  findTeamBlueprintMember,
+  resolveLegacyTemplateBlueprintId,
+} from "@shared/teamBlueprints";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
+export type TeamMemberKind = "assistant" | "human" | "external_connector";
+export type TeamMemberRole =
+  | "orchestrator"
+  | "researcher"
+  | "reviewer"
+  | "publisher"
+  | "specialist";
+
 export interface CreateTeamMemberInput {
-  personaId: string;
+  memberKind?: TeamMemberKind;
+  memberRole?: TeamMemberRole;
+  personaId?: string;
+  blueprintId?: string;
+  blueprintMemberId?: string;
+  humanUserId?: number;
+  externalRef?: string;
+  externalConfigJson?: Record<string, unknown>;
   displayName: string;
   nickname?: string;
   roleTitle?: string;
@@ -31,7 +55,7 @@ export interface CreateTeamMemberInput {
   specialtyTags?: string[];
   preferredModelId?: string;
   modelSelectionPolicy?: "fixed" | "cost_optimized" | "quality_optimized" | "auto";
-  instructions: string;
+  instructions?: string;
   isLead: boolean;
   isActive?: boolean;
   sortOrder?: number;
@@ -62,8 +86,12 @@ export interface UpdateTeamMemberInput {
   displayName?: string;
   nickname?: string;
   roleTitle?: string;
+  memberRole?: TeamMemberRole;
   genderStyle?: string;
   specialtyTags?: string[];
+  humanUserId?: number;
+  externalRef?: string;
+  externalConfigJson?: Record<string, unknown>;
   preferredModelId?: string;
   modelSelectionPolicy?: "fixed" | "cost_optimized" | "quality_optimized" | "auto";
   instructions?: string;
@@ -83,13 +111,22 @@ export interface CreateTeamResult {
   agencyId: string;
   members: Array<{
     profileId: string;
-    agencyAgentId: string;
+    memberKind: TeamMemberKind;
+    memberRole: TeamMemberRole;
+    agencyAgentId: string | null;
+    humanUserId: number | null;
+    externalRef: string | null;
     displayName: string;
   }>;
 }
 
+export type TeamMemberRecord = AssistantProfile & {
+  instructions: string | null;
+  model: string | null;
+};
+
 export interface TeamWithMembers extends AssistantTeam {
-  members: AssistantProfile[];
+  members: TeamMemberRecord[];
 }
 
 export interface TeamSummary {
@@ -102,6 +139,83 @@ export interface TeamSummary {
   createdAt: Date;
 }
 
+function normalizeExternalRef(externalRef: string): string {
+  return externalRef.trim().toLowerCase();
+}
+
+function resolveMemberIdentityKey(member: CreateTeamMemberInput): string | null {
+  const kind = resolveMemberKind(member);
+  if (kind === "assistant") {
+    if (member.personaId?.trim()) return `assistant:${member.personaId.trim()}`;
+    if (member.blueprintId?.trim() && member.blueprintMemberId?.trim()) {
+      return `assistant-blueprint:${member.blueprintId.trim()}:${member.blueprintMemberId.trim()}`;
+    }
+    return null;
+  }
+  if (kind === "human") {
+    return member.humanUserId ? `human:${member.humanUserId}` : null;
+  }
+  return member.externalRef?.trim() ? `external:${normalizeExternalRef(member.externalRef)}` : null;
+}
+
+export function assertDistinctMembers(members: CreateTeamMemberInput[]): void {
+  const seen = new Set<string>();
+  for (const member of members) {
+    const identityKey = resolveMemberIdentityKey(member);
+    if (!identityKey) continue;
+    if (seen.has(identityKey)) {
+      throw new Error("Team contains duplicate members");
+    }
+    seen.add(identityKey);
+  }
+}
+
+function resolveMemberKind(member: Pick<CreateTeamMemberInput, "memberKind">): TeamMemberKind {
+  return member.memberKind ?? "assistant";
+}
+
+function resolveMemberRole(member: Pick<CreateTeamMemberInput, "memberKind" | "memberRole" | "isLead">): TeamMemberRole {
+  if (member.memberRole) return member.memberRole;
+  if (resolveMemberKind(member) === "assistant" && member.isLead) {
+    return "orchestrator";
+  }
+  return "specialist";
+}
+
+function validateTeamMember(member: CreateTeamMemberInput): void {
+  const kind = resolveMemberKind(member);
+  const role = resolveMemberRole(member);
+  if (member.isLead && kind !== "assistant") {
+    throw new Error("Only assistant members can be team lead");
+  }
+  if (role === "orchestrator" && kind !== "assistant") {
+    throw new Error("Only assistant members can be orchestrator");
+  }
+  if (kind === "assistant") {
+    const hasPersonaId = Boolean(member.personaId?.trim());
+    const hasBlueprintRef = Boolean(member.blueprintId?.trim() && member.blueprintMemberId?.trim());
+    if (!hasPersonaId && !hasBlueprintRef) {
+      throw new Error("Every assistant member must have a personaId or blueprint reference");
+    }
+    if (!member.instructions?.trim()) {
+      throw new Error("Every assistant member must have instructions");
+    }
+    if (hasBlueprintRef && !findTeamBlueprintMember(member.blueprintId!.trim(), member.blueprintMemberId!.trim())) {
+      throw new Error("Assistant member references an unknown team blueprint member");
+    }
+    return;
+  }
+  if (kind === "human") {
+    if (!member.humanUserId) {
+      throw new Error("Every human member must have a humanUserId");
+    }
+    return;
+  }
+  if (!member.externalRef?.trim()) {
+    throw new Error("Every external connector member must have an externalRef");
+  }
+}
+
 // ─── Validation ─────────────────────────────────────────────────────────────
 
 export function validateTeamInput(input: CreateTeamInput): void {
@@ -112,15 +226,22 @@ export function validateTeamInput(input: CreateTeamInput): void {
     throw new Error("Team members must not exceed 10");
   }
 
-  const leads = input.members.filter((m) => m.isLead);
-  if (leads.length !== 1) {
-    throw new Error("Team must have exactly one lead member");
+  const assistantLeads = input.members.filter((m) => resolveMemberKind(m) === "assistant" && m.isLead);
+  if (assistantLeads.length !== 1) {
+    throw new Error("Team must have exactly one lead assistant member");
   }
 
+  const assistantOrchestrators = input.members.filter(
+    (m) => resolveMemberKind(m) === "assistant" && resolveMemberRole(m) === "orchestrator",
+  );
+  if (assistantOrchestrators.length > 1) {
+    throw new Error("Team must not have more than one orchestrator assistant member");
+  }
+
+  assertDistinctMembers(input.members);
+
   for (const member of input.members) {
-    if (!member.personaId?.trim()) {
-      throw new Error("Every member must have a personaId");
-    }
+    validateTeamMember(member);
   }
 }
 
@@ -136,6 +257,281 @@ export function generateTeamSlug(name: string): string {
   return `${base}-${suffix}`;
 }
 
+type DbTransaction = any;
+
+async function listReusablePersonasForOwner(
+  tx: DbTransaction,
+  ownerUserId: number,
+  tenantId: string,
+): Promise<Array<Pick<PersonaTemplate, "id" | "name" | "sourceTemplateIds" | "tone">>> {
+  return tx
+    .select({
+      id: personaTemplates.id,
+      name: personaTemplates.name,
+      sourceTemplateIds: personaTemplates.sourceTemplateIds,
+      tone: personaTemplates.tone,
+    })
+    .from(personaTemplates)
+    .where(
+      or(
+        and(eq(personaTemplates.scope, "platform"), isNull(personaTemplates.tenantId)),
+        and(eq(personaTemplates.scope, "tenant"), eq(personaTemplates.tenantId, tenantId)),
+        and(eq(personaTemplates.scope, "user"), eq(personaTemplates.userId, ownerUserId)),
+      ),
+    );
+}
+
+async function resolveAssistantBlueprintMembers(
+  tx: DbTransaction,
+  input: CreateTeamInput,
+  members: CreateTeamMemberInput[],
+): Promise<CreateTeamMemberInput[]> {
+  if (!members.some((member) => resolveMemberKind(member) === "assistant" && !member.personaId?.trim())) {
+    return members;
+  }
+
+  const reusablePersonas = await listReusablePersonasForOwner(tx, input.ownerUserId, input.tenantId);
+
+  const resolvedMembers: CreateTeamMemberInput[] = [];
+  for (const member of members) {
+    if (resolveMemberKind(member) !== "assistant" || member.personaId?.trim()) {
+      resolvedMembers.push(member);
+      continue;
+    }
+
+    const blueprintId = member.blueprintId?.trim();
+    const blueprintMemberId = member.blueprintMemberId?.trim();
+    if (!blueprintId || !blueprintMemberId) {
+      throw new Error(`Assistant member ${member.displayName} is missing a persona blueprint reference`);
+    }
+
+    const blueprintMember = findTeamBlueprintMember(blueprintId, blueprintMemberId);
+    if (!blueprintMember) {
+      throw new Error(`Unknown blueprint member ${blueprintId}/${blueprintMemberId}`);
+    }
+
+    const reusablePersona = findReusablePersonaForBlueprint(reusablePersonas, blueprintMember.persona);
+    if (reusablePersona) {
+      resolvedMembers.push({
+        ...member,
+        personaId: reusablePersona.id,
+      });
+      continue;
+    }
+
+    const sanitizedPersona = sanitizePersonaInput({
+      ...buildBlueprintPersonaInput(blueprintMember.persona),
+      userId: input.ownerUserId,
+      tenantId: input.tenantId,
+      provisionedByBlueprintId: blueprintId,
+      provisionedByBlueprintMemberId: blueprintMemberId,
+    });
+
+    const [createdPersona] = await tx
+      .insert(personaTemplates)
+      .values({
+        name: sanitizedPersona.name,
+        description: sanitizedPersona.description,
+        assistantNickname: sanitizedPersona.assistantNickname || null,
+        assistantGender: sanitizedPersona.assistantGender || "neutral",
+        workingHours: sanitizedPersona.workingHours || null,
+        sourceTemplateIds: sanitizedPersona.sourceTemplateIds || [],
+        sourceTemplateLabels: sanitizedPersona.sourceTemplateLabels || [],
+        sourceTemplateCategories: sanitizedPersona.sourceTemplateCategories || [],
+        systemPromptPrefix: sanitizedPersona.systemPromptPrefix,
+        tone: sanitizedPersona.tone,
+        language: sanitizedPersona.language || "auto",
+        responseStyle: sanitizedPersona.responseStyle || {},
+        restrictions: sanitizedPersona.restrictions || [],
+        scope: sanitizedPersona.scope,
+        tenantId: sanitizedPersona.tenantId || null,
+        userId: sanitizedPersona.userId || null,
+        isDefault: sanitizedPersona.isDefault || false,
+        provisionedByBlueprintId: sanitizedPersona.provisionedByBlueprintId || null,
+        provisionedByBlueprintMemberId: sanitizedPersona.provisionedByBlueprintMemberId || null,
+      })
+      .returning();
+
+    reusablePersonas.push({
+      id: createdPersona.id,
+      name: createdPersona.name,
+      sourceTemplateIds: createdPersona.sourceTemplateIds,
+      tone: createdPersona.tone,
+    });
+
+    resolvedMembers.push({
+      ...member,
+      personaId: createdPersona.id,
+    });
+  }
+
+  return resolvedMembers;
+}
+
+async function assertNoDuplicateMemberInTeam(
+  tx: DbTransaction,
+  teamId: string,
+  member: CreateTeamMemberInput,
+  excludeProfileId?: string,
+): Promise<void> {
+  const kind = resolveMemberKind(member);
+  let rows: Array<{ id: string }> = [];
+
+  if (kind === "assistant" && member.personaId?.trim()) {
+    rows = await tx
+      .select({ id: assistantProfiles.id })
+      .from(assistantProfiles)
+      .where(
+        and(
+          eq(assistantProfiles.teamId, teamId),
+          eq(assistantProfiles.memberKind, "assistant"),
+          eq(assistantProfiles.personaId, member.personaId.trim()),
+          excludeProfileId ? sql`${assistantProfiles.id} != ${excludeProfileId}` : sql`true`,
+        ),
+      )
+      .limit(1);
+  } else if (kind === "human" && member.humanUserId) {
+    rows = await tx
+      .select({ id: assistantProfiles.id })
+      .from(assistantProfiles)
+      .where(
+        and(
+          eq(assistantProfiles.teamId, teamId),
+          eq(assistantProfiles.memberKind, "human"),
+          eq(assistantProfiles.humanUserId, member.humanUserId),
+          excludeProfileId ? sql`${assistantProfiles.id} != ${excludeProfileId}` : sql`true`,
+        ),
+      )
+      .limit(1);
+  } else if (kind === "external_connector" && member.externalRef?.trim()) {
+    const normalizedExternalRef = normalizeExternalRef(member.externalRef);
+    rows = await tx
+      .select({ id: assistantProfiles.id })
+      .from(assistantProfiles)
+      .where(
+        and(
+          eq(assistantProfiles.teamId, teamId),
+          eq(assistantProfiles.memberKind, "external_connector"),
+          sql`lower(${assistantProfiles.externalRef}) = ${normalizedExternalRef}`,
+          excludeProfileId ? sql`${assistantProfiles.id} != ${excludeProfileId}` : sql`true`,
+        ),
+      )
+      .limit(1);
+  }
+
+  if (rows.length > 0) {
+    throw new Error("This member is already in the team");
+  }
+}
+
+async function createTeamRecords(
+  tx: DbTransaction,
+  input: CreateTeamInput,
+): Promise<CreateTeamResult> {
+  const agencyId = crypto.randomUUID();
+  const teamId = crypto.randomUUID();
+  const slug = generateTeamSlug(input.name);
+  const memberResults: CreateTeamResult["members"] = [];
+
+  const resolvedMembers = await resolveAssistantBlueprintMembers(tx, input, input.members);
+  assertDistinctMembers(resolvedMembers);
+
+  await tx.insert(agencies).values({
+    id: agencyId,
+    tenantId: input.tenantId,
+    slug,
+    name: input.name,
+    description: input.description ?? null,
+    status: "active",
+    createdBy: input.ownerUserId,
+  });
+
+  await tx.insert(assistantTeams).values({
+    id: teamId,
+    tenantId: input.tenantId,
+    ownerUserId: input.ownerUserId,
+    agencyId,
+    name: input.name,
+    description: input.description ?? null,
+    category: input.category ?? null,
+    defaultViewMode: input.defaultViewMode ?? "transparent",
+    defaultSummaryMode: input.defaultSummaryMode ?? null,
+    defaultAutonomyLevel: input.defaultAutonomyLevel ?? "guided",
+    defaultModelId: input.defaultModelId ?? null,
+    memoryPolicyJson: input.memoryPolicyJson ?? null,
+    artifactPolicyJson: input.artifactPolicyJson ?? null,
+    modelBudgetPolicy: input.modelBudgetPolicy ?? null,
+    status: "draft",
+  });
+
+  for (let i = 0; i < resolvedMembers.length; i++) {
+    const member = resolvedMembers[i];
+    const memberKind = resolveMemberKind(member);
+    const memberRole = resolveMemberRole(member);
+    const agentId = memberKind === "assistant" ? crypto.randomUUID() : null;
+    const profileId = crypto.randomUUID();
+
+    if (memberKind === "assistant") {
+      await tx.insert(agencyAgents).values({
+        id: agentId!,
+        agencyId,
+        name: member.displayName,
+        description: member.roleTitle ?? null,
+        instructions: member.instructions!,
+        model: member.preferredModelId ?? null,
+        isEntryPoint: member.isLead,
+        nodeType: "agent",
+      });
+    }
+
+    await tx.insert(assistantProfiles).values({
+      id: profileId,
+      tenantId: input.tenantId,
+      teamId,
+      memberKind,
+      agencyAgentId: agentId,
+      personaId: memberKind === "assistant" ? member.personaId ?? null : null,
+      humanUserId: memberKind === "human" ? member.humanUserId ?? null : null,
+      externalRef:
+        memberKind === "external_connector" && member.externalRef
+          ? normalizeExternalRef(member.externalRef)
+          : null,
+      externalConfigJson: memberKind === "external_connector" ? member.externalConfigJson ?? null : null,
+      displayName: member.displayName,
+      nickname: member.nickname ?? null,
+      roleTitle: member.roleTitle ?? null,
+      memberRole,
+      genderStyle: member.genderStyle ?? null,
+      specialtyTags: member.specialtyTags ?? null,
+      preferredModelId: member.preferredModelId ?? null,
+      modelSelectionPolicy: member.modelSelectionPolicy ?? "auto",
+      toolPolicyJson: member.toolPolicyJson ?? null,
+      approvalPolicyJson: member.approvalPolicyJson ?? null,
+      memoryPolicyJson: member.memoryPolicyJson ?? null,
+      visibilityPolicyJson: member.visibilityPolicyJson ?? null,
+      preferredLanguage: member.preferredLanguage ?? null,
+      sortOrder: member.sortOrder ?? i,
+      isLead: member.isLead,
+      isActive: member.isActive ?? true,
+    });
+
+    memberResults.push({
+      profileId,
+      memberKind,
+      memberRole,
+      agencyAgentId: agentId,
+      humanUserId: memberKind === "human" ? member.humanUserId ?? null : null,
+      externalRef:
+        memberKind === "external_connector" && member.externalRef
+          ? normalizeExternalRef(member.externalRef)
+          : null,
+      displayName: member.displayName,
+    });
+  }
+
+  return { teamId, agencyId, members: memberResults };
+}
+
 // ─── CRUD ───────────────────────────────────────────────────────────────────
 
 export async function createTeam(
@@ -145,93 +541,40 @@ export async function createTeam(
 
   const db = await getDb();
   if (!db) throw new Error("Database not available");
+  return db.transaction((tx) => createTeamRecords(tx as DbTransaction, input));
+}
 
-  const agencyId = crypto.randomUUID();
-  const teamId = crypto.randomUUID();
-  const slug = generateTeamSlug(input.name);
+export async function createTeamFromBlueprint(
+  blueprintId: string,
+  tenantId: string,
+  ownerUserId: number,
+  overrides?: Partial<CreateTeamInput>,
+): Promise<CreateTeamResult> {
+  const blueprint = findTeamBlueprint(blueprintId);
+  if (!blueprint) {
+    throw new Error(`Blueprint ${blueprintId} not found`);
+  }
 
-  const memberResults: CreateTeamResult["members"] = [];
+  const input: CreateTeamInput = {
+    tenantId,
+    ownerUserId,
+    name: overrides?.name ?? blueprint.defaultTeamName,
+    description: overrides?.description ?? blueprint.defaultTeamDescription,
+    category: overrides?.category ?? blueprint.category,
+    members: overrides?.members ?? blueprint.members.map((member) => ({
+      memberKind: "assistant" as const,
+      memberRole: member.memberRole,
+      blueprintId: blueprint.id,
+      blueprintMemberId: member.id,
+      displayName: member.displayName,
+      roleTitle: member.roleTitle,
+      specialtyTags: member.specialtyTags,
+      instructions: member.instructions,
+      isLead: Boolean(member.isLead),
+    })),
+  };
 
-  await db.transaction(async (tx) => {
-    // 1. Create backing agency
-    await tx.insert(agencies).values({
-      id: agencyId,
-      tenantId: input.tenantId,
-      slug,
-      name: input.name,
-      description: input.description ?? null,
-      status: "active",
-      createdBy: input.ownerUserId,
-    });
-
-    // 2. Create assistant team
-    await tx.insert(assistantTeams).values({
-      id: teamId,
-      tenantId: input.tenantId,
-      ownerUserId: input.ownerUserId,
-      agencyId,
-      name: input.name,
-      description: input.description ?? null,
-      category: input.category ?? null,
-      defaultViewMode: input.defaultViewMode ?? "transparent",
-      defaultSummaryMode: input.defaultSummaryMode ?? null,
-      defaultAutonomyLevel: input.defaultAutonomyLevel ?? "guided",
-      defaultModelId: input.defaultModelId ?? null,
-      memoryPolicyJson: input.memoryPolicyJson ?? null,
-      artifactPolicyJson: input.artifactPolicyJson ?? null,
-      modelBudgetPolicy: input.modelBudgetPolicy ?? null,
-      status: "draft",
-    });
-
-    // 3. Create agents and profiles for each member
-    for (let i = 0; i < input.members.length; i++) {
-      const member = input.members[i];
-      const agentId = crypto.randomUUID();
-      const profileId = crypto.randomUUID();
-
-      await tx.insert(agencyAgents).values({
-        id: agentId,
-        agencyId,
-        name: member.displayName,
-        description: member.roleTitle ?? null,
-        instructions: member.instructions,
-        model: member.preferredModelId ?? null,
-        isEntryPoint: member.isLead,
-        nodeType: "agent",
-      });
-
-      await tx.insert(assistantProfiles).values({
-        id: profileId,
-        tenantId: input.tenantId,
-        teamId,
-        agencyAgentId: agentId,
-        personaId: member.personaId,
-        displayName: member.displayName,
-        nickname: member.nickname ?? null,
-        roleTitle: member.roleTitle ?? null,
-        genderStyle: member.genderStyle ?? null,
-        specialtyTags: member.specialtyTags ?? null,
-        preferredModelId: member.preferredModelId ?? null,
-        modelSelectionPolicy: member.modelSelectionPolicy ?? "auto",
-        toolPolicyJson: member.toolPolicyJson ?? null,
-        approvalPolicyJson: member.approvalPolicyJson ?? null,
-        memoryPolicyJson: member.memoryPolicyJson ?? null,
-        visibilityPolicyJson: member.visibilityPolicyJson ?? null,
-        preferredLanguage: member.preferredLanguage ?? null,
-        sortOrder: member.sortOrder ?? i,
-        isLead: member.isLead,
-        isActive: member.isActive ?? true,
-      });
-
-      memberResults.push({
-        profileId,
-        agencyAgentId: agentId,
-        displayName: member.displayName,
-      });
-    }
-  });
-
-  return { teamId, agencyId, members: memberResults };
+  return createTeam(input);
 }
 
 export async function createFromTemplate(
@@ -258,11 +601,29 @@ export async function createFromTemplate(
     throw new Error("Template not accessible for this tenant");
   }
 
+  const mappedBlueprintId = resolveLegacyTemplateBlueprintId(template.id);
+  if (mappedBlueprintId) {
+    return createTeamFromBlueprint(mappedBlueprintId, tenantId, ownerUserId, {
+      name: overrides?.name ?? template.name,
+      description: overrides?.description ?? template.description ?? undefined,
+      category: overrides?.category ?? template.category ?? undefined,
+      defaultViewMode: overrides?.defaultViewMode,
+      defaultAutonomyLevel: overrides?.defaultAutonomyLevel,
+      defaultModelId: overrides?.defaultModelId,
+    });
+  }
+
   const teamConfig = (template.teamConfigJson as Record<string, unknown>) ?? {};
   const memberTemplates = (template.memberTemplateJson as Array<Record<string, unknown>>) ?? [];
 
+  if (memberTemplates.some((memberTemplate) => !(memberTemplate.personaId as string | undefined)?.trim())) {
+    throw new Error(`Template ${template.id} must be migrated to a team blueprint before it can be cloned`);
+  }
+
   const members: CreateTeamMemberInput[] = memberTemplates.map(
     (mt, i) => ({
+      memberKind: "assistant",
+      memberRole: (mt.memberRole as TeamMemberRole) ?? ((mt.isLead as boolean) ? "orchestrator" : "specialist"),
       personaId: (mt.personaId as string) ?? "",
       displayName: (mt.role as string) ?? `Agent ${i + 1}`,
       roleTitle: (mt.role as string) ?? undefined,
@@ -310,14 +671,37 @@ export async function updateTeamMember(
     throw new Error(`Profile ${profileId} not found`);
   }
 
+  if (updates.memberRole === "orchestrator" && profile.memberKind !== "assistant") {
+    throw new Error("Only assistant members can be orchestrator");
+  }
+
   await db.transaction(async (tx) => {
+    await assertNoDuplicateMemberInTeam(
+      tx as DbTransaction,
+      profile.teamId,
+      {
+        memberKind: profile.memberKind as TeamMemberKind,
+        personaId: profile.personaId ?? undefined,
+        humanUserId: updates.humanUserId ?? profile.humanUserId ?? undefined,
+        externalRef: updates.externalRef ?? profile.externalRef ?? undefined,
+        displayName: updates.displayName ?? profile.displayName ?? "Member",
+        isLead: updates.isLead ?? profile.isLead,
+        instructions: updates.instructions ?? "Follow team objectives",
+      },
+      profileId,
+    );
+
     // Update profile fields
     const profileUpdates: Record<string, unknown> = { updatedAt: new Date() };
     if (updates.displayName !== undefined) profileUpdates.displayName = updates.displayName;
     if (updates.nickname !== undefined) profileUpdates.nickname = updates.nickname;
     if (updates.roleTitle !== undefined) profileUpdates.roleTitle = updates.roleTitle;
+    if (updates.memberRole !== undefined) profileUpdates.memberRole = updates.memberRole;
     if (updates.genderStyle !== undefined) profileUpdates.genderStyle = updates.genderStyle;
     if (updates.specialtyTags !== undefined) profileUpdates.specialtyTags = updates.specialtyTags;
+    if (updates.humanUserId !== undefined) profileUpdates.humanUserId = updates.humanUserId;
+    if (updates.externalRef !== undefined) profileUpdates.externalRef = normalizeExternalRef(updates.externalRef);
+    if (updates.externalConfigJson !== undefined) profileUpdates.externalConfigJson = updates.externalConfigJson;
     if (updates.preferredModelId !== undefined) profileUpdates.preferredModelId = updates.preferredModelId;
     if (updates.modelSelectionPolicy !== undefined) profileUpdates.modelSelectionPolicy = updates.modelSelectionPolicy;
     if (updates.sortOrder !== undefined) profileUpdates.sortOrder = updates.sortOrder;
@@ -334,7 +718,7 @@ export async function updateTeamMember(
       .where(and(eq(assistantProfiles.id, profileId), eq(assistantProfiles.tenantId, tenantId)));
 
     // Update agent-level fields if present
-    if (updates.instructions !== undefined || updates.model !== undefined) {
+    if (profile.memberKind === "assistant" && profile.agencyAgentId && (updates.instructions !== undefined || updates.model !== undefined)) {
       const agentUpdates: Record<string, unknown> = {};
       if (updates.instructions !== undefined) agentUpdates.instructions = updates.instructions;
       if (updates.model !== undefined) agentUpdates.model = updates.model;
@@ -347,6 +731,9 @@ export async function updateTeamMember(
 
     // Handle lead transfer
     if (updates.isLead === true) {
+      if (profile.memberKind !== "assistant") {
+        throw new Error("Only assistant members can be team lead");
+      }
       await tx
         .update(assistantProfiles)
         .set({ isLead: false, updatedAt: new Date() })
@@ -358,8 +745,25 @@ export async function updateTeamMember(
         );
       await tx
         .update(assistantProfiles)
-        .set({ isLead: true })
+        .set({
+          isLead: true,
+          memberRole: updates.memberRole ?? "orchestrator",
+        })
         .where(and(eq(assistantProfiles.id, profileId), eq(assistantProfiles.tenantId, tenantId)));
+    }
+
+    if (profile.memberKind === "assistant" && updates.memberRole === "orchestrator") {
+      await tx
+        .update(assistantProfiles)
+        .set({ memberRole: "specialist", updatedAt: new Date() })
+        .where(
+          and(
+            eq(assistantProfiles.teamId, profile.teamId),
+            eq(assistantProfiles.memberKind, "assistant"),
+            sql`${assistantProfiles.id} != ${profileId}`,
+            eq(assistantProfiles.memberRole, "orchestrator"),
+          ),
+        );
     }
   });
 }
@@ -400,6 +804,136 @@ export async function archiveTeam(
   });
 }
 
+export async function addTeamMember(
+  teamId: string,
+  tenantId: string,
+  member: CreateTeamMemberInput,
+): Promise<{
+  profileId: string;
+  memberKind: TeamMemberKind;
+  memberRole: TeamMemberRole;
+  agencyAgentId: string | null;
+  humanUserId: number | null;
+  externalRef: string | null;
+}> {
+  validateTeamMember(member);
+
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const [team] = await db
+    .select()
+    .from(assistantTeams)
+    .where(and(eq(assistantTeams.id, teamId), eq(assistantTeams.tenantId, tenantId)))
+    .limit(1);
+
+  if (!team) throw new Error(`Team ${teamId} not found`);
+
+  // Count existing members for sort order
+  const [{ cnt }] = await db
+    .select({ cnt: count() })
+    .from(assistantProfiles)
+    .where(eq(assistantProfiles.teamId, teamId));
+
+  return db.transaction(async (tx) => {
+    const [resolvedMember] = await resolveAssistantBlueprintMembers(
+      tx as DbTransaction,
+      {
+        tenantId,
+        ownerUserId: team.ownerUserId,
+        name: team.name,
+        description: team.description ?? undefined,
+        members: [member],
+      },
+      [member],
+    );
+    await assertNoDuplicateMemberInTeam(tx as DbTransaction, teamId, resolvedMember);
+
+    const resolvedMemberKind = resolveMemberKind(resolvedMember);
+    const resolvedMemberRole = resolveMemberRole(resolvedMember);
+    const agentId = resolvedMemberKind === "assistant" ? crypto.randomUUID() : null;
+    const profileId = crypto.randomUUID();
+
+    if (resolvedMemberKind === "assistant") {
+      await tx.insert(agencyAgents).values({
+        id: agentId!,
+        agencyId: team.agencyId,
+        name: resolvedMember.displayName,
+        description: resolvedMember.roleTitle ?? null,
+        instructions: resolvedMember.instructions!,
+        model: resolvedMember.preferredModelId ?? null,
+        isEntryPoint: resolvedMember.isLead,
+        nodeType: "agent",
+      });
+    }
+
+    await tx.insert(assistantProfiles).values({
+      id: profileId,
+      tenantId,
+      teamId,
+      memberKind: resolvedMemberKind,
+      agencyAgentId: agentId,
+      personaId: resolvedMemberKind === "assistant" ? resolvedMember.personaId ?? null : null,
+      humanUserId: resolvedMemberKind === "human" ? resolvedMember.humanUserId ?? null : null,
+      externalRef:
+        resolvedMemberKind === "external_connector" && resolvedMember.externalRef
+          ? normalizeExternalRef(resolvedMember.externalRef)
+          : null,
+      externalConfigJson: resolvedMemberKind === "external_connector" ? resolvedMember.externalConfigJson ?? null : null,
+      displayName: resolvedMember.displayName,
+      nickname: resolvedMember.nickname ?? null,
+      roleTitle: resolvedMember.roleTitle ?? null,
+      memberRole: resolvedMemberRole,
+      genderStyle: resolvedMember.genderStyle ?? null,
+      specialtyTags: resolvedMember.specialtyTags ?? null,
+      preferredModelId: resolvedMember.preferredModelId ?? null,
+      modelSelectionPolicy: resolvedMember.modelSelectionPolicy ?? "auto",
+      preferredLanguage: resolvedMember.preferredLanguage ?? null,
+      sortOrder: resolvedMember.sortOrder ?? Number(cnt),
+      isLead: resolvedMember.isLead,
+      isActive: resolvedMember.isActive ?? true,
+    });
+
+    // Handle lead transfer if new member is lead
+    if (resolvedMember.isLead) {
+      await tx
+        .update(assistantProfiles)
+        .set({ isLead: false, updatedAt: new Date() })
+        .where(
+          and(
+            eq(assistantProfiles.teamId, teamId),
+            sql`${assistantProfiles.id} != ${profileId}`,
+          ),
+        );
+    }
+
+    if (resolvedMemberKind === "assistant" && resolvedMemberRole === "orchestrator") {
+      await tx
+        .update(assistantProfiles)
+        .set({ memberRole: "specialist", updatedAt: new Date() })
+        .where(
+          and(
+            eq(assistantProfiles.teamId, teamId),
+            eq(assistantProfiles.memberKind, "assistant"),
+            sql`${assistantProfiles.id} != ${profileId}`,
+            eq(assistantProfiles.memberRole, "orchestrator"),
+          ),
+        );
+    }
+    return {
+      profileId,
+      memberKind: resolvedMemberKind,
+      memberRole: resolvedMemberRole,
+      agencyAgentId: agentId,
+      humanUserId: resolvedMemberKind === "human" ? resolvedMember.humanUserId ?? null : null,
+      externalRef:
+        resolvedMemberKind === "external_connector" && resolvedMember.externalRef
+          ? normalizeExternalRef(resolvedMember.externalRef)
+          : null,
+    };
+  });
+}
+
 export async function getTeam(
   teamId: string,
   tenantId: string,
@@ -421,8 +955,13 @@ export async function getTeam(
   if (!team) return null;
 
   const members = await db
-    .select()
+    .select({
+      ...getTableColumns(assistantProfiles),
+      instructions: agencyAgents.instructions,
+      model: agencyAgents.model,
+    })
     .from(assistantProfiles)
+    .leftJoin(agencyAgents, eq(assistantProfiles.agencyAgentId, agencyAgents.id))
     .where(eq(assistantProfiles.teamId, teamId))
     .orderBy(assistantProfiles.sortOrder);
 
@@ -497,4 +1036,26 @@ export async function listTeams(
     memberCount: countMap.get(t.id) ?? 0,
     roomCount: roomCountMap.get(t.id) ?? 0,
   }));
+}
+
+export async function listTeamTemplates(tenantId: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  return db
+    .select({
+      id: assistantTeamTemplates.id,
+      name: assistantTeamTemplates.name,
+      description: assistantTeamTemplates.description,
+      category: assistantTeamTemplates.category,
+      isSystem: assistantTeamTemplates.isSystem,
+    })
+    .from(assistantTeamTemplates)
+    .where(
+      or(
+        isNull(assistantTeamTemplates.tenantId),
+        eq(assistantTeamTemplates.tenantId, tenantId),
+      ),
+    )
+    .orderBy(assistantTeamTemplates.name);
 }

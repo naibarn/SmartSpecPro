@@ -10,8 +10,11 @@
  */
 
 import { Router, type Request, type Response } from "express";
+import { z } from "zod";
 import { sdk } from "../_core/sdk";
 import { runChannel, teamChannel, userChannel } from "../services/orchestratorEventBus";
+import { resolveTenantIdVarchar } from "../services/tenantContext";
+import type { TenantRequest } from "../_core/tenant";
 
 const orchestratorStreamRouter = Router();
 
@@ -37,6 +40,7 @@ async function replayMissedEvents(
   res: Response,
   runId: string,
   lastEventId: string,
+  tenantId: string,
 ): Promise<void> {
   try {
     const { getDb } = await import("../db");
@@ -45,6 +49,10 @@ async function replayMissedEvents(
 
     const db = await getDb();
     if (!db) return;
+
+    // Validate lastEventId is a valid UUID format
+    const uuidResult = z.string().uuid().safeParse(lastEventId);
+    if (!uuidResult.success) return;
 
     // Find the timestamp of the last received event
     const [lastEvent] = await db
@@ -55,13 +63,14 @@ async function replayMissedEvents(
 
     if (!lastEvent) return;
 
-    // Fetch all events after that timestamp
+    // Fetch all events after that timestamp — with tenant isolation
     const missedEvents = await db
       .select()
       .from(agentActivityEvents)
       .where(
         and(
           eq(agentActivityEvents.runId, runId),
+          eq(agentActivityEvents.tenantId, tenantId),
           gt(agentActivityEvents.createdAt, lastEvent.createdAt),
         ),
       )
@@ -90,7 +99,7 @@ async function replayMissedEvents(
 function setupSSE(
   res: Response,
   channelName: string,
-  options?: { lastEventId?: string; runId?: string },
+  options?: { lastEventId?: string; runId?: string; tenantId?: string },
 ): { cleanup: () => void } {
   res.writeHead(200, {
     "Content-Type": "text/event-stream",
@@ -100,8 +109,8 @@ function setupSSE(
   });
 
   // Replay missed events if lastEventId provided (gap recovery)
-  if (options?.lastEventId && options?.runId) {
-    replayMissedEvents(res, options.runId, options.lastEventId);
+  if (options?.lastEventId && options?.runId && options?.tenantId) {
+    replayMissedEvents(res, options.runId, options.lastEventId, options.tenantId);
   }
 
   // Heartbeat
@@ -161,16 +170,64 @@ orchestratorStreamRouter.get("/api/orchestrator/stream/run/:runId", async (req: 
   const user = await authenticateSSE(req, res);
   if (!user) return;
 
+  const tenantReq = req as TenantRequest;
+  const tenantId = resolveTenantIdVarchar(
+    tenantReq.tenant?.id ?? null,
+    user.currentTenantId,
+  );
+  if (!tenantId) {
+    res.status(403).json({ error: "Tenant context required" });
+    return;
+  }
+
+  // Verify run belongs to this tenant
   const { runId } = req.params;
+  try {
+    const { getDb } = await import("../db");
+    const { teamRuns, teamRooms } = await import("../../drizzle/schema");
+    const { eq, and } = await import("drizzle-orm");
+    const db = await getDb();
+    if (db) {
+      const [run] = await db.select({ roomId: teamRuns.roomId }).from(teamRuns).where(eq(teamRuns.id, runId)).limit(1);
+      if (!run) { res.status(404).json({ error: "Run not found" }); return; }
+      const [room] = await db.select({ id: teamRooms.id }).from(teamRooms)
+        .where(and(eq(teamRooms.id, run.roomId), eq(teamRooms.tenantId, tenantId))).limit(1);
+      if (!room) { res.status(403).json({ error: "Access denied" }); return; }
+    }
+  } catch { /* continue — best effort */ }
+
   const lastEventId = (req.query.lastEventId as string) || (req.headers["last-event-id"] as string | undefined);
-  setupSSE(res, runChannel(runId), { lastEventId, runId });
+  setupSSE(res, runChannel(runId), { lastEventId, runId, tenantId });
 });
 
 orchestratorStreamRouter.get("/api/orchestrator/stream/team/:teamId", async (req: Request, res: Response) => {
   const user = await authenticateSSE(req, res);
   if (!user) return;
 
+  const tenantReq = req as TenantRequest;
+  const tenantId = resolveTenantIdVarchar(
+    tenantReq.tenant?.id ?? null,
+    user.currentTenantId,
+  );
+  if (!tenantId) {
+    res.status(403).json({ error: "Tenant context required" });
+    return;
+  }
+
+  // Verify team belongs to this tenant
   const { teamId } = req.params;
+  try {
+    const { getDb } = await import("../db");
+    const { assistantTeams } = await import("../../drizzle/schema");
+    const { eq, and } = await import("drizzle-orm");
+    const db = await getDb();
+    if (db) {
+      const [team] = await db.select({ id: assistantTeams.id }).from(assistantTeams)
+        .where(and(eq(assistantTeams.id, teamId), eq(assistantTeams.tenantId, tenantId))).limit(1);
+      if (!team) { res.status(403).json({ error: "Access denied" }); return; }
+    }
+  } catch { /* continue — best effort */ }
+
   const lastEventId = (req.query.lastEventId as string) || (req.headers["last-event-id"] as string | undefined);
   setupSSE(res, teamChannel(teamId), { lastEventId });
 });

@@ -3,6 +3,7 @@ import {
   countConsecutiveTurns,
   detectLoop,
   getNextRoundRobin,
+  getCoordinatorProfile,
   DEFAULT_MAX_CONSECUTIVE_TURNS,
 } from "../turnOrderEngine";
 
@@ -68,6 +69,24 @@ describe("turnOrderEngine", () => {
 
     it("throws when no active agents", () => {
       expect(() => getNextRoundRobin([], "a")).toThrow("No active agents");
+    });
+  });
+
+  describe("getCoordinatorProfile", () => {
+    it("prefers orchestrator over lead", () => {
+      const result = getCoordinatorProfile([
+        { id: "lead", isLead: true, memberRole: "specialist" },
+        { id: "orch", isLead: false, memberRole: "orchestrator" },
+      ]);
+      expect(result?.id).toBe("orch");
+    });
+
+    it("falls back to lead when no orchestrator exists", () => {
+      const result = getCoordinatorProfile([
+        { id: "lead", isLead: true, memberRole: "specialist" },
+        { id: "helper", isLead: false, memberRole: "researcher" },
+      ]);
+      expect(result?.id).toBe("lead");
     });
   });
 

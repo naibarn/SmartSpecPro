@@ -5,11 +5,21 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "../_core/trpc";
+import { createRateLimitMiddleware } from "../_core/rateLimitedProcedure";
 import { resolveTenantIdVarchar } from "../services/tenantContext";
 import * as teamService from "../services/teamService";
+import { TEAM_BLUEPRINTS } from "@shared/teamBlueprints";
+import { auditLogger } from "../services/auditLogger";
 
 const memberInputSchema = z.object({
-  personaId: z.string().min(1),
+  memberKind: z.enum(["assistant", "human", "external_connector"]).default("assistant"),
+  memberRole: z.enum(["orchestrator", "researcher", "reviewer", "publisher", "specialist"]).optional(),
+  personaId: z.string().min(1).optional(),
+  blueprintId: z.string().min(1).optional(),
+  blueprintMemberId: z.string().min(1).optional(),
+  humanUserId: z.number().int().positive().optional(),
+  externalRef: z.string().min(1).max(255).optional(),
+  externalConfigJson: z.record(z.string(), z.unknown()).optional(),
   displayName: z.string().min(1).max(255),
   nickname: z.string().max(100).optional(),
   roleTitle: z.string().max(100).optional(),
@@ -17,15 +27,50 @@ const memberInputSchema = z.object({
   specialtyTags: z.array(z.string()).optional(),
   preferredModelId: z.string().max(100).optional(),
   modelSelectionPolicy: z.enum(["fixed", "cost_optimized", "quality_optimized", "auto"]).optional(),
-  instructions: z.string().min(1),
+  instructions: z.string().min(1).optional(),
   isLead: z.boolean(),
   isActive: z.boolean().optional(),
   sortOrder: z.number().int().optional(),
   preferredLanguage: z.string().max(10).optional(),
+}).superRefine((member, ctx) => {
+  if (member.memberKind === "assistant") {
+    if (!member.personaId && !(member.blueprintId && member.blueprintMemberId)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["personaId"], message: "Assistant members require personaId or blueprint reference" });
+    }
+    if (!member.instructions) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["instructions"], message: "Assistant members require instructions" });
+    }
+  }
+  if (member.memberKind === "human" && !member.humanUserId) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["humanUserId"], message: "Human members require humanUserId" });
+  }
+  if (member.memberKind === "external_connector" && !member.externalRef) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["externalRef"], message: "External connector members require externalRef" });
+  }
+  if (member.isLead && member.memberKind !== "assistant") {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["isLead"], message: "Only assistant members can be lead" });
+  }
+  if (member.memberRole === "orchestrator" && member.memberKind !== "assistant") {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["memberRole"], message: "Only assistant members can be orchestrator" });
+  }
 });
 
+function requireTenantId(ctx: { tenantId: string | null; user?: { currentTenantId?: number | null } | null }): string {
+  const tid = resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId);
+  if (!tid) throw new TRPCError({ code: "FORBIDDEN", message: "Tenant context required" });
+  return tid;
+}
+
+const rateLimitedTeamCreate = protectedProcedure.use(
+  createRateLimitMiddleware({
+    namespace: "team-create",
+    limit: 20,
+    windowMs: 3_600_000,
+  }),
+);
+
 export const teamRouter = router({
-  create: protectedProcedure
+  create: rateLimitedTeamCreate
     .input(z.object({
       name: z.string().min(1).max(255),
       description: z.string().optional(),
@@ -36,34 +81,86 @@ export const teamRouter = router({
       members: z.array(memberInputSchema).min(1).max(10),
     }))
     .mutation(async ({ input, ctx }) => {
-      const tenantId = resolveTenantIdVarchar(ctx);
-      return teamService.createTeam({
+      const tenantId = requireTenantId(ctx);
+      const result = await teamService.createTeam({
         tenantId,
-        ownerUserId: ctx.userId,
+        ownerUserId: ctx.user!.id,
         ...input,
       });
+      auditLogger.log({
+        eventType: "team_created",
+        userId: ctx.user!.id,
+        metadata: {
+          teamId: result.teamId,
+          tenantId,
+          memberCount: input.members.length,
+          category: input.category ?? null,
+        },
+      });
+      return result;
     }),
 
-  cloneFromTemplate: protectedProcedure
+  cloneFromTemplate: rateLimitedTeamCreate
     .input(z.object({
       templateId: z.string().min(1),
       name: z.string().min(1).max(255).optional(),
       description: z.string().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
-      const tenantId = resolveTenantIdVarchar(ctx);
-      return teamService.createFromTemplate(
+      const tenantId = requireTenantId(ctx);
+      const result = await teamService.createFromTemplate(
         input.templateId,
         tenantId,
-        ctx.userId,
+        ctx.user!.id,
         { name: input.name, description: input.description },
       );
+      auditLogger.log({
+        eventType: "team_template_cloned",
+        userId: ctx.user!.id,
+        metadata: {
+          teamId: result.teamId,
+          templateId: input.templateId,
+          tenantId,
+        },
+      });
+      return result;
+    }),
+
+  createFromBlueprint: rateLimitedTeamCreate
+    .input(z.object({
+      blueprintId: z.string().min(1),
+      name: z.string().min(1).max(255).optional(),
+      description: z.string().optional(),
+      category: z.string().max(100).optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const tenantId = requireTenantId(ctx);
+      const result = await teamService.createTeamFromBlueprint(
+        input.blueprintId,
+        tenantId,
+        ctx.user!.id,
+        {
+          name: input.name,
+          description: input.description,
+          category: input.category,
+        },
+      );
+      auditLogger.log({
+        eventType: "team_blueprint_created",
+        userId: ctx.user!.id,
+        metadata: {
+          teamId: result.teamId,
+          blueprintId: input.blueprintId,
+          tenantId,
+        },
+      });
+      return result;
     }),
 
   get: protectedProcedure
     .input(z.object({ teamId: z.string().min(1) }))
     .query(async ({ input, ctx }) => {
-      const tenantId = resolveTenantIdVarchar(ctx);
+      const tenantId = requireTenantId(ctx);
       const team = await teamService.getTeam(input.teamId, tenantId);
       if (!team) throw new TRPCError({ code: "NOT_FOUND", message: "Team not found" });
       return team;
@@ -75,18 +172,37 @@ export const teamRouter = router({
       ownerOnly: z.boolean().optional(),
     }).optional())
     .query(async ({ input, ctx }) => {
-      const tenantId = resolveTenantIdVarchar(ctx);
+      const tenantId = requireTenantId(ctx);
       return teamService.listTeams(
         tenantId,
-        input?.ownerOnly ? ctx.userId : undefined,
+        input?.ownerOnly ? ctx.user!.id : undefined,
         input?.status,
       );
+    }),
+
+  listTemplates: protectedProcedure
+    .query(async ({ ctx }) => {
+      const tenantId = requireTenantId(ctx);
+      return teamService.listTeamTemplates(tenantId);
+    }),
+
+  listBlueprints: protectedProcedure
+    .query(() => TEAM_BLUEPRINTS),
+
+  addMember: protectedProcedure
+    .input(z.object({
+      teamId: z.string().min(1),
+      member: memberInputSchema,
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const tenantId = requireTenantId(ctx);
+      return teamService.addTeamMember(input.teamId, tenantId, input.member);
     }),
 
   archive: protectedProcedure
     .input(z.object({ teamId: z.string().min(1) }))
     .mutation(async ({ input, ctx }) => {
-      const tenantId = resolveTenantIdVarchar(ctx);
+      const tenantId = requireTenantId(ctx);
       await teamService.archiveTeam(input.teamId, tenantId);
       return { success: true };
     }),
@@ -97,6 +213,10 @@ export const teamRouter = router({
       displayName: z.string().max(255).optional(),
       nickname: z.string().max(100).optional(),
       roleTitle: z.string().max(100).optional(),
+      memberRole: z.enum(["orchestrator", "researcher", "reviewer", "publisher", "specialist"]).optional(),
+      humanUserId: z.number().int().positive().optional(),
+      externalRef: z.string().max(255).optional(),
+      externalConfigJson: z.record(z.string(), z.unknown()).optional(),
       instructions: z.string().optional(),
       model: z.string().max(100).optional(),
       isLead: z.boolean().optional(),
@@ -105,7 +225,7 @@ export const teamRouter = router({
       preferredLanguage: z.string().max(10).optional(),
     }))
     .mutation(async ({ input, ctx }) => {
-      const tenantId = resolveTenantIdVarchar(ctx);
+      const tenantId = requireTenantId(ctx);
       const { profileId, ...updates } = input;
       await teamService.updateTeamMember(profileId, tenantId, updates);
       return { success: true };

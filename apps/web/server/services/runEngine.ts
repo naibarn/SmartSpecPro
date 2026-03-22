@@ -1186,7 +1186,7 @@ export async function stopRun(
   if (stopPolicy?.requireFinalSummary) {
     try {
       const { generateSummary } = await import("./summaryService");
-      generateSummary({ runId, tenantId: tenantId ?? run.tenantId }).catch(() => {});
+      generateSummary({ runId, tenantId: tenantId ?? (run as any).tenantId ?? "" }).catch(() => {});
     } catch {
       // Summary generation is best-effort
     }

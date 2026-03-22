@@ -18,6 +18,39 @@ import crypto from "crypto";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
+const ROOM_SECRET_PATTERNS = [
+  /\bsk-[A-Za-z0-9_-]{8,}\b/g,
+  /\bghp_[A-Za-z0-9]{8,}\b/g,
+  /\bgho_[A-Za-z0-9]{8,}\b/g,
+  /\bglpat-[A-Za-z0-9_-]{8,}\b/g,
+  /\bBearer\s+[A-Za-z0-9._~+/=-]{8,}\b/gi,
+];
+const ROOM_SUMMARY_LIMIT = 280;
+
+export type WorkUpdateMessageType =
+  | "work_update"
+  | "critique"
+  | "suggestion"
+  | "revision"
+  | "approval"
+  | "decision"
+  | "summary";
+
+export interface WorkCitationRef {
+  id?: string;
+  title?: string;
+  url?: string;
+  note?: string;
+}
+
+export interface WorkArtifactRef {
+  artifactId?: string;
+  label?: string;
+  kind?: string;
+  status?: string;
+  url?: string;
+}
+
 export interface CreateRoomInput {
   teamId: string;
   tenantId: string;
@@ -41,9 +74,38 @@ export interface SendMessageInput {
   turnType?: string;
   visibility?: string;
   content: string;
+  summaryContent?: string;
+  artifactRefsJson?: unknown;
+  memoryRefsJson?: unknown;
   metadataJson?: Record<string, unknown>;
   tokenUsageJson?: { inputTokens?: number; outputTokens?: number; model?: string };
   runId?: string;
+}
+
+export interface PostWorkUpdateInput {
+  roomId: string;
+  tenantId: string;
+  senderAssistantId: string;
+  content: string;
+  runId?: string;
+  workItemId?: string;
+  messageType?: WorkUpdateMessageType;
+  visibility?: SendMessageInput["visibility"];
+  replyToMessageId?: string;
+  threadRootMessageId?: string;
+  citationRefs?: WorkCitationRef[];
+  artifactRefs?: WorkArtifactRef[];
+  memoryRefs?: unknown;
+  metadataJson?: Record<string, unknown>;
+  tokenUsageJson?: SendMessageInput["tokenUsageJson"];
+  sensitivity?: "low" | "medium" | "high";
+}
+
+export interface RoomRedactionDecision {
+  applied: boolean;
+  reason: "secret_pattern" | "sensitive_payload" | null;
+  originalContentLength: number;
+  sanitizedContentLength: number;
 }
 
 export interface MessageFilters {
@@ -51,6 +113,184 @@ export interface MessageFilters {
   callerType: "user" | "system";
   cursor?: string;
   limit?: number;
+}
+
+export interface RoomViewerState {
+  roomId: string;
+  userId: number;
+  lastViewedAt: Date | null;
+}
+
+export type TeamRoomType = CreateRoomInput["roomType"];
+export type TeamRunExecutionMode = "team_chat" | "auto_team" | "review";
+
+export function getDefaultExecutionModeForRoomType(roomType: TeamRoomType): Exclude<TeamRunExecutionMode, "review"> {
+  switch (roomType) {
+    case "auto_team":
+      return "auto_team";
+    case "direct":
+    case "job_review":
+    case "team":
+    default:
+      return "team_chat";
+  }
+}
+
+export function mapRoomTypeToExecutionMode(
+  roomType: TeamRoomType,
+  requestedExecutionMode?: TeamRunExecutionMode | null,
+): Exclude<TeamRunExecutionMode, "review"> {
+  if (requestedExecutionMode === "auto_team") {
+    return "auto_team";
+  }
+
+  if (requestedExecutionMode === "team_chat") {
+    return "team_chat";
+  }
+
+  return getDefaultExecutionModeForRoomType(roomType);
+}
+
+function sanitizeRoomString(value: string): { value: string; changed: boolean } {
+  let sanitized = value;
+  for (const pattern of ROOM_SECRET_PATTERNS) {
+    sanitized = sanitized.replace(pattern, "[REDACTED]");
+  }
+  return { value: sanitized, changed: sanitized !== value };
+}
+
+function sanitizeRoomJsonValue(value: unknown): { value: unknown; changed: boolean } {
+  if (typeof value === "string") {
+    return sanitizeRoomString(value);
+  }
+  if (Array.isArray(value)) {
+    let changed = false;
+    const sanitized = value.map((item) => {
+      const result = sanitizeRoomJsonValue(item);
+      if (result.changed) changed = true;
+      return result.value;
+    });
+    return { value: sanitized, changed };
+  }
+  if (value !== null && typeof value === "object") {
+    let changed = false;
+    const sanitized: Record<string, unknown> = {};
+    for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
+      const result = sanitizeRoomJsonValue(item);
+      if (result.changed) changed = true;
+      sanitized[key] = result.value;
+    }
+    return { value: sanitized, changed };
+  }
+  return { value, changed: false };
+}
+
+function buildSummaryContent(content: string): string {
+  const normalized = content.replace(/\s+/g, " ").trim();
+  if (normalized.length <= ROOM_SUMMARY_LIMIT) return normalized;
+  return `${normalized.slice(0, ROOM_SUMMARY_LIMIT - 3).trimEnd()}...`;
+}
+
+function mapMessageTypeToTurnType(messageType: WorkUpdateMessageType): NonNullable<SendMessageInput["turnType"]> {
+  switch (messageType) {
+    case "critique":
+    case "suggestion":
+      return "review";
+    case "approval":
+    case "decision":
+      return "decision";
+    case "summary":
+      return "summary";
+    case "revision":
+    case "work_update":
+    default:
+      return "execution_update";
+  }
+}
+
+function defaultVisibilityForMessageType(messageType: WorkUpdateMessageType): NonNullable<SendMessageInput["visibility"]> {
+  switch (messageType) {
+    case "approval":
+    case "decision":
+      return "milestone";
+    case "summary":
+      return "summary_only";
+    case "critique":
+    case "suggestion":
+    case "revision":
+    case "work_update":
+    default:
+      return "transparent";
+  }
+}
+
+export function prepareWorkUpdate(input: PostWorkUpdateInput): {
+  content: string;
+  summaryContent: string;
+  turnType: NonNullable<SendMessageInput["turnType"]>;
+  visibility: NonNullable<SendMessageInput["visibility"]>;
+  artifactRefsJson: unknown;
+  memoryRefsJson: unknown;
+  metadataJson: Record<string, unknown>;
+} {
+  const messageType = input.messageType ?? "work_update";
+  const sanitizedContent = sanitizeRoomString(input.content);
+  const sanitizedMetadata = sanitizeRoomJsonValue(input.metadataJson ?? {});
+  const summaryContent = buildSummaryContent(sanitizedContent.value);
+  const replyToMessageId = input.replyToMessageId ?? null;
+  const threadRootMessageId = input.threadRootMessageId ?? input.replyToMessageId ?? null;
+  const redactToSummary = input.sensitivity === "high";
+  const redactionApplied = redactToSummary || sanitizedContent.changed || sanitizedMetadata.changed;
+
+  const redactionDecision: RoomRedactionDecision = {
+    applied: redactionApplied,
+    reason: redactToSummary
+      ? "sensitive_payload"
+      : sanitizedContent.changed || sanitizedMetadata.changed
+        ? "secret_pattern"
+        : null,
+    originalContentLength: input.content.length,
+    sanitizedContentLength: sanitizedContent.value.length,
+  };
+
+  return {
+    content: redactToSummary ? summaryContent : sanitizedContent.value,
+    summaryContent,
+    turnType: mapMessageTypeToTurnType(messageType),
+    visibility: input.visibility ?? defaultVisibilityForMessageType(messageType),
+    artifactRefsJson: input.artifactRefs ?? null,
+    memoryRefsJson: input.memoryRefs ?? null,
+    metadataJson: {
+      messageType,
+      workItemId: input.workItemId ?? null,
+      replyToMessageId,
+      threadRootMessageId,
+      citationRefs: input.citationRefs ?? [],
+      roomRedaction: redactionDecision,
+      details: sanitizedMetadata.value,
+    },
+  };
+}
+
+export function projectMessageForView(
+  message: TeamRoomMessage,
+  viewMode: string,
+  callerType: "user" | "system",
+): TeamRoomMessage {
+  if (callerType !== "user") return message;
+
+  const metadata = (message.metadataJson ?? {}) as Record<string, any>;
+  const roomRedaction = metadata.roomRedaction as RoomRedactionDecision | undefined;
+  const shouldUseSummary = Boolean(message.summaryContent) && (
+    viewMode === "summary" ||
+    roomRedaction?.applied === true
+  );
+
+  if (!shouldUseSummary) return message;
+  return {
+    ...message,
+    content: message.summaryContent ?? message.content,
+  };
 }
 
 // ─── View Mode Filtering (pure function, exported for testing) ──────────────
@@ -151,13 +391,26 @@ export async function createRoom(input: CreateRoomInput): Promise<TeamRoom> {
 
     // Add all active team members as participants
     for (const member of members) {
-      await tx.insert(teamRoomParticipants).values({
-        roomId,
-        participantType: "assistant",
-        participantAssistantId: member.id,
-        participantLabel: member.displayName ?? member.nickname ?? "Agent",
-        roleInRoom: member.isLead ? "lead" : "member",
-      });
+      if (member.memberKind === "assistant") {
+        await tx.insert(teamRoomParticipants).values({
+          roomId,
+          participantType: "assistant",
+          participantAssistantId: member.id,
+          participantLabel: member.displayName ?? member.nickname ?? "Agent",
+          roleInRoom: member.isLead ? "lead" : "member",
+        });
+        continue;
+      }
+
+      if (member.memberKind === "human" && member.humanUserId) {
+        await tx.insert(teamRoomParticipants).values({
+          roomId,
+          participantType: "observer",
+          participantUserId: member.humanUserId,
+          participantLabel: member.displayName ?? member.nickname ?? "Human Member",
+          roleInRoom: member.isLead ? "lead_observer" : "observer",
+        });
+      }
     }
   });
 
@@ -232,6 +485,9 @@ export async function sendMessage(input: SendMessageInput): Promise<TeamRoomMess
       turnType: (input.turnType as any) ?? "discussion",
       visibility: (input.visibility as any) ?? "transparent",
       content: input.content,
+      summaryContent: input.summaryContent ?? null,
+      artifactRefsJson: input.artifactRefsJson ?? null,
+      memoryRefsJson: input.memoryRefsJson ?? null,
       metadataJson: input.metadataJson ?? null,
       tokenUsageJson: input.tokenUsageJson ?? null,
     })
@@ -256,7 +512,14 @@ export async function sendMessage(input: SendMessageInput): Promise<TeamRoomMess
         actorType: input.senderType,
         actorId: input.senderAssistantId ?? String(input.senderUserId ?? "system"),
         visibility: (input.visibility as any) ?? "transparent",
-        data: { messageId: message.id, content: input.content.slice(0, 200) },
+        data: {
+          messageId: message.id,
+          content: input.content.slice(0, 200),
+          turnType: (input.turnType as any) ?? "discussion",
+          metadata: input.metadataJson ?? null,
+          artifactRefsJson: input.artifactRefsJson ?? null,
+          summaryContent: input.summaryContent ?? null,
+        },
         userId: input.senderUserId ?? undefined,
       }));
     }
@@ -265,6 +528,126 @@ export async function sendMessage(input: SendMessageInput): Promise<TeamRoomMess
   }
 
   return message;
+}
+
+export async function postWorkUpdate(input: PostWorkUpdateInput): Promise<TeamRoomMessage> {
+  const prepared = prepareWorkUpdate(input);
+  return sendMessage({
+    roomId: input.roomId,
+    tenantId: input.tenantId,
+    senderType: "assistant",
+    senderAssistantId: input.senderAssistantId,
+    recipientType: "all",
+    runId: input.runId,
+    turnType: prepared.turnType,
+    visibility: prepared.visibility,
+    content: prepared.content,
+    summaryContent: prepared.summaryContent,
+    artifactRefsJson: prepared.artifactRefsJson,
+    memoryRefsJson: prepared.memoryRefsJson,
+    metadataJson: prepared.metadataJson,
+    tokenUsageJson: input.tokenUsageJson,
+  });
+}
+
+export async function getViewerState(
+  roomId: string,
+  tenantId: string,
+  userId: number,
+): Promise<RoomViewerState> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const [room] = await db
+    .select({ id: teamRooms.id })
+    .from(teamRooms)
+    .where(and(eq(teamRooms.id, roomId), eq(teamRooms.tenantId, tenantId)))
+    .limit(1);
+
+  if (!room) {
+    throw new Error("Room not found");
+  }
+
+  const [participant] = await db
+    .select({ lastViewedAt: teamRoomParticipants.lastViewedAt })
+    .from(teamRoomParticipants)
+    .where(
+      and(
+        eq(teamRoomParticipants.roomId, roomId),
+        eq(teamRoomParticipants.participantUserId, userId),
+      ),
+    )
+    .limit(1);
+
+  return {
+    roomId,
+    userId,
+    lastViewedAt: participant?.lastViewedAt ?? null,
+  };
+}
+
+export async function markRoomViewed(
+  roomId: string,
+  tenantId: string,
+  userId: number,
+): Promise<RoomViewerState> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const [room] = await db
+    .select({ id: teamRooms.id })
+    .from(teamRooms)
+    .where(and(eq(teamRooms.id, roomId), eq(teamRooms.tenantId, tenantId)))
+    .limit(1);
+
+  if (!room) {
+    throw new Error("Room not found");
+  }
+
+  const now = new Date();
+  const [participant] = await db
+    .select({ id: teamRoomParticipants.id })
+    .from(teamRoomParticipants)
+    .where(
+      and(
+        eq(teamRoomParticipants.roomId, roomId),
+        eq(teamRoomParticipants.participantUserId, userId),
+      ),
+    )
+    .limit(1);
+
+  if (participant) {
+    const [updated] = await db
+      .update(teamRoomParticipants)
+      .set({ lastViewedAt: now })
+      .where(eq(teamRoomParticipants.id, participant.id))
+      .returning({ lastViewedAt: teamRoomParticipants.lastViewedAt });
+
+    return {
+      roomId,
+      userId,
+      lastViewedAt: updated?.lastViewedAt ?? now,
+    };
+  }
+
+  const [inserted] = await db
+    .insert(teamRoomParticipants)
+    .values({
+      roomId,
+      participantType: "observer",
+      participantUserId: userId,
+      participantLabel: "Viewer",
+      roleInRoom: "viewer",
+      canWriteSharedMemory: false,
+      lastViewedAt: now,
+    })
+    .returning({ lastViewedAt: teamRoomParticipants.lastViewedAt });
+
+  return {
+    roomId,
+    userId,
+    lastViewedAt: inserted?.lastViewedAt ?? now,
+  };
 }
 
 export async function getMessages(
@@ -304,7 +687,11 @@ export async function getMessages(
     messages,
     filters.viewMode ?? "transparent",
     filters.callerType,
-  );
+  ).map((message) => projectMessageForView(
+    message,
+    filters.viewMode ?? "transparent",
+    filters.callerType,
+  ));
 }
 
 export async function listRoomsByTeam(
