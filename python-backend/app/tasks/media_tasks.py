@@ -1288,6 +1288,23 @@ def reindex_all_library_task(tenant_id: int | None = None):
         return {"status": "failed", "error": str(e)}
 
 
+def _derive_fal_resolution(result: dict) -> str:
+    """Derive resolution from video width. Default: '1080p'."""
+    width = result.get("video", {}).get("width") or result.get("width")
+    if isinstance(width, (int, float)):
+        if width >= 3840:
+            return "2160p"
+        if width >= 2560:
+            return "1440p"
+    return "1080p"
+
+
+def _extract_fal_duration(result: dict) -> float | None:
+    """Extract actual duration from fal.ai result."""
+    duration = result.get("video", {}).get("duration") or result.get("duration")
+    return float(duration) if duration is not None else None
+
+
 async def _recover_stuck_tasks_async():
     """
     Find and recover tasks stuck in 'processing' status
@@ -1330,6 +1347,8 @@ async def _recover_stuck_tasks_async():
                     )
 
                     from app.llm_proxy.providers.byteplus_modelark_provider import BytePlusModelArkProvider
+                    from app.llm_proxy.providers.fal_ai_provider import FalAIProvider
+                    import httpx
 
                     if task.model in BytePlusModelArkProvider.VIDEO_MODELS:
                         # --- BytePlus polling branch ---
@@ -1411,6 +1430,74 @@ async def _recover_stuck_tasks_async():
                         finally:
                             if byteplus_client is not None:
                                 await byteplus_client.aclose()
+
+                    elif task.model in FalAIProvider.VIDEO_MODELS or task.model in FalAIProvider.AUDIO_MODELS:
+                        # --- fal.ai polling branch ---
+                        from app.services.media_provider_service import get_media_provider_key as get_fal_key
+                        provider_config = await get_fal_key("fal_ai")
+                        if not provider_config or not provider_config.get("apiKey"):
+                            logger.warning("recover_stuck_task_fal_ai_not_configured", task_id=task.id)
+                            continue
+
+                        fal_client = None
+                        try:
+                            fal_client = FalAIProvider(api_key=provider_config["apiKey"])
+
+                            # Check timeout first (avoid unnecessary API calls)
+                            FAL_QUEUE_TIMEOUT_MINUTES = 30
+                            age = (datetime.now(timezone.utc) - task.created_at).total_seconds() / 60
+                            if age > FAL_QUEUE_TIMEOUT_MINUTES:
+                                task.status = TaskStatus.FAILED
+                                task.error_message = "fal.ai queue timeout (>30 min)"
+                                task.completed_at = datetime.now(timezone.utc)
+                                failed_count += 1
+                                continue
+
+                            status_response = await fal_client.get_queue_status(task.model, task.task_id)
+
+                            if status_response.get("status") == "COMPLETED":
+                                result = await fal_client.get_queue_result(task.model, task.task_id)
+                                task.status = TaskStatus.COMPLETED
+                                task.result_url = result["data"][0]["url"]
+                                task.result_data = {
+                                    **result,
+                                    "actual_duration": _extract_fal_duration(result),
+                                    "actual_resolution": _derive_fal_resolution(result),
+                                }
+                                task.completed_at = datetime.now(timezone.utc)
+                                recovered_count += 1
+                                logger.info(
+                                    "recover_stuck_task_fal_completed",
+                                    task_id=task.id,
+                                    result_url=task.result_url,
+                                )
+
+                            elif status_response.get("status") == "FAILED":
+                                error_msg = status_response.get("error", "Unknown error")
+                                task.status = TaskStatus.FAILED
+                                task.error_message = f"fal.ai failed: {str(error_msg)[:200]}"
+                                task.completed_at = datetime.now(timezone.utc)
+                                failed_count += 1
+                                logger.warning(
+                                    "recover_stuck_task_fal_failed",
+                                    task_id=task.id,
+                                    error=str(error_msg)[:200],
+                                )
+
+                            # IN_QUEUE / IN_PROGRESS: skip, re-check next cycle
+
+                        except httpx.HTTPStatusError as http_err:
+                            if http_err.response.status_code == 429:
+                                logger.warning(
+                                    "recover_stuck_task_fal_rate_limited",
+                                    task_id=task.id,
+                                    external_task_id=task.task_id,
+                                )
+                                continue
+                            raise
+                        finally:
+                            if fal_client is not None:
+                                await fal_client.aclose()
 
                     else:
                         # --- Kie.ai polling branch ---
