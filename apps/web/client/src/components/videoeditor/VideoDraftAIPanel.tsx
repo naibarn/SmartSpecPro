@@ -127,9 +127,8 @@ export const VideoDraftAIPanel: React.FC<VideoDraftAIPanelProps> = ({
     [selectedMediaModelConfig],
   );
 
-  const referenceLibraryQuery = trpc.library.listDocuments.useQuery(
+  const referenceLibraryListQuery = trpc.library.listDocuments.useQuery(
     {
-      query: debouncedReferenceLibrarySearchQuery || undefined,
       scope: "all",
       sort: "updated_desc",
       limit: 30,
@@ -139,7 +138,21 @@ export const VideoDraftAIPanel: React.FC<VideoDraftAIPanelProps> = ({
       },
     },
     {
-      enabled: referenceSource === "library",
+      enabled: referenceSource === "library" && debouncedReferenceLibrarySearchQuery.length === 0,
+    },
+  );
+  const referenceLibrarySearchResultQuery = trpc.library.search.useQuery(
+    {
+      query: debouncedReferenceLibrarySearchQuery || undefined,
+      scope: "all",
+      limit: 30,
+      offset: 0,
+      filters: {
+        itemType: "image",
+      },
+    },
+    {
+      enabled: referenceSource === "library" && debouncedReferenceLibrarySearchQuery.length > 0,
     },
   );
   const mediaHistoryQuery = trpc.media.listTasks.useQuery(
@@ -185,7 +198,11 @@ export const VideoDraftAIPanel: React.FC<VideoDraftAIPanelProps> = ({
   }, [selectedMediaModelConfig?.id]);
 
   const referenceLibraryItems = useMemo(() => {
-    const results = (referenceLibraryQuery.data?.results ?? []) as Array<{
+    const results = (
+      debouncedReferenceLibrarySearchQuery.length > 0
+        ? (referenceLibrarySearchResultQuery.data?.results ?? [])
+        : (referenceLibraryListQuery.data?.results ?? [])
+    ) as Array<{
       source_url?: string | null;
       thumbnail_url?: string | null;
       title?: string | null;
@@ -224,7 +241,12 @@ export const VideoDraftAIPanel: React.FC<VideoDraftAIPanelProps> = ({
       });
       return acc;
     }, []);
-  }, [referenceLibraryQuery.data?.results]);
+  }, [
+    debouncedReferenceLibrarySearchQuery.length,
+    referenceLibraryListQuery.data?.results,
+    referenceLibrarySearchResultQuery.data?.results,
+  ]);
+  const referenceLibraryLoading = referenceLibraryListQuery.isLoading || referenceLibrarySearchResultQuery.isLoading;
 
   const mediaHistoryItems = useMemo(() => {
     const tasks = (mediaHistoryQuery.data?.tasks ?? []) as Array<{
@@ -775,7 +797,7 @@ export const VideoDraftAIPanel: React.FC<VideoDraftAIPanelProps> = ({
           emptyMessage={
             referenceSource === "generated"
               ? (mediaHistoryQuery.isLoading ? "Loading generated images..." : "No generated images found.")
-              : (referenceLibraryQuery.isLoading ? "Loading library..." : "No images found.")
+              : (referenceLibraryLoading ? "Loading library..." : "No images found.")
           }
           disabled={referenceImages.length >= MAX_REFERENCE_IMAGES || isGenerating}
           searchValue={referenceLibrarySearchQuery}

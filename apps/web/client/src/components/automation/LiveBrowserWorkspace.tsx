@@ -22,6 +22,7 @@ import {
 } from "@shared/browserSession";
 import {
   BROWSER_SKILL_PRESETS,
+  inferBrowserSkillId,
   type BrowserSkillId,
 } from "@shared/browserSkills";
 import { trackBrowserSessionMobileObserveOnlySeen } from "@/lib/analytics/browserSessionEvents";

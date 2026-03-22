@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import DOMPurify from "dompurify";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Copy } from "lucide-react";
@@ -64,7 +65,18 @@ export function TextContentPreviewContent({
 
   const renderedHtml = useMemo(() => {
     if (data.format === "markdown") return renderMarkdown(data.content);
-    if (data.format === "html") return data.content;
+    if (data.format === "html") return DOMPurify.sanitize(data.content, {
+      ALLOWED_TAGS: [
+        "h1", "h2", "h3", "h4", "h5", "h6",
+        "p", "a", "ul", "ol", "li",
+        "strong", "em", "code", "pre",
+        "table", "thead", "tbody", "tr", "th", "td",
+        "blockquote", "hr", "br", "img",
+        "div", "span",
+      ],
+      ALLOWED_ATTR: ["href", "target", "rel", "src", "alt", "class"],
+      ALLOWED_URI_REGEXP: /^(https?:|mailto:|#)/i,
+    });
     return null;
   }, [data.content, data.format]);
 

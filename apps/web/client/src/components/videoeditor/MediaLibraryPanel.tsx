@@ -124,6 +124,19 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
   const libraryQuery = trpc.library.listDocuments.useQuery(
     {
       scope: libraryScope,
+      limit: 50,
+      offset: 0,
+      filters: {
+        itemType: libraryTypeFilter !== 'all' ? libraryTypeFilter : undefined,
+        status: 'ready' as const,
+        ...(libraryRecentDays === 'all' ? {} : { recentDays: libraryRecentDays }),
+      },
+    },
+    { enabled: isLibraryMode && debouncedSearch.trim().length === 0 }
+  );
+  const librarySemanticQuery = trpc.library.search.useQuery(
+    {
+      scope: libraryScope,
       query: debouncedSearch || undefined,
       limit: 50,
       offset: 0,
@@ -133,14 +146,21 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
         ...(libraryRecentDays === 'all' ? {} : { recentDays: libraryRecentDays }),
       },
     },
-    { enabled: isLibraryMode }
+    { enabled: isLibraryMode && debouncedSearch.trim().length > 0 }
   );
+  const activeLibraryQuery = debouncedSearch.trim().length > 0 ? librarySemanticQuery : libraryQuery;
 
   // Map library items to MediaLibraryAsset format
   const MEDIA_TYPES = new Set(['video', 'audio', 'image']);
   const libraryMediaAssets = useMemo<MediaLibraryAsset[]>(() => {
-    if (!libraryQuery.data?.results) return [];
-    return libraryQuery.data.results
+    const results = (
+      activeLibraryQuery.data?.results ?? []
+    ).map((item: any) => ({
+      ...item,
+      id: item.id ?? item.item_id,
+    }));
+    if (!results.length) return [];
+    return results
       .filter(item =>
         MEDIA_TYPES.has(item.item_type) && item.source_url
       )
@@ -161,7 +181,7 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
           format: ext,
         };
       });
-  }, [libraryQuery.data?.results]);
+  }, [activeLibraryQuery.data?.results]);
 
   // Convert project assets to MediaLibraryAsset format for display
   const projectMediaAssets = useMemo<MediaLibraryAsset[]>(() => {
@@ -272,7 +292,7 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
           },
         });
         // Invalidate library query so new item appears
-        libraryQuery.refetch();
+        activeLibraryQuery.refetch();
       } catch (libErr) {
         // Non-fatal: file is uploaded, just not indexed in library
         console.warn('Failed to register in library (non-fatal):', libErr);
@@ -1277,14 +1297,14 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
         ) : (
           /* Library Search Results */
           <>
-            {libraryQuery.isLoading ? (
+            {activeLibraryQuery.isLoading ? (
               <div className="loading-state">
                 <div>Searching library...</div>
               </div>
-            ) : libraryQuery.error ? (
+            ) : activeLibraryQuery.error ? (
               <div className="error-state">
-                <div>❌ {libraryQuery.error.message}</div>
-                <button className="retry-button" onClick={() => libraryQuery.refetch()}>
+                <div>❌ {activeLibraryQuery.error.message}</div>
+                <button className="retry-button" onClick={() => activeLibraryQuery.refetch()}>
                   Retry
                 </button>
               </div>
@@ -1303,11 +1323,11 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
             ) : (
               <>
                 <div className="library-result-count">
-                  {Math.min(libraryQuery.data?.total ?? 0, 50)} / {libraryQuery.data?.total ?? 0} results
+                  {Math.min(activeLibraryQuery.data?.total ?? 0, 50)} / {activeLibraryQuery.data?.total ?? 0} results
                   {debouncedSearch && ` for "${debouncedSearch}"`}
                   {!debouncedSearch && sourceMode === 'shared_group' && ' from Shared Group'}
                 </div>
-                {libraryQuery.data?.has_more && (
+                {activeLibraryQuery.data?.has_more && (
                   <div
                     style={{
                       marginBottom: '8px',

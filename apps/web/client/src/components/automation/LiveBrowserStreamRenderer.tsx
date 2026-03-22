@@ -75,7 +75,8 @@ export function LiveBrowserStreamRenderer({
         title="Live Browser Viewport"
         src={target.url}
         className="h-[360px] w-full bg-white"
-        allow="clipboard-read; clipboard-write"
+        sandbox="allow-scripts allow-same-origin"
+        allow={target.interactive ? "clipboard-read; clipboard-write" : ""}
         onLoad={() => setFrameState("ready")}
         onError={() => setFrameState("failed")}
       />

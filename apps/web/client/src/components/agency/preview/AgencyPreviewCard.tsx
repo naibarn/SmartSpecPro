@@ -264,7 +264,7 @@ export function AgencyPreviewCard({
                   .filter((p) => p.title || p.url)
                   .map((p, i) => (
                     <Badge key={i} variant="outline" className="gap-1 text-xs">
-                      {p.url ? (
+                      {p.url && /^https?:\/\//i.test(p.url) ? (
                         <a
                           href={p.url}
                           target="_blank"

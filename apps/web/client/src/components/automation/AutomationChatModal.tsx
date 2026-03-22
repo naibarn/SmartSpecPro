@@ -41,7 +41,11 @@ import type {
   LiveBrowserSession,
   LiveBrowserStreamTokenResponse,
 } from "@shared/liveBrowser";
-import { getLiveBrowserEventSessionSnapshot } from "@shared/liveBrowser";
+import {
+  getLiveBrowserEventSessionSnapshot,
+  liveBrowserListEventsResponseSchema,
+  liveBrowserSessionSchema,
+} from "@shared/liveBrowser";
 import {
   getLiveBrowserStreamRefreshDelayMs,
   getPreferredLiveBrowserStreamScope,
@@ -281,10 +285,10 @@ export function AutomationChatModal({
     stream?: LiveBrowserCreateSessionResponse["stream"],
   ) => {
     const actor = buildLiveActor();
-    const sessionResult = await trpcUtils.liveBrowser.getSession.fetch({
+    const sessionResult = liveBrowserSessionSchema.parse(await trpcUtils.liveBrowser.getSession.fetch({
       sessionId,
       actor,
-    });
+    }));
     applyLiveSessionSnapshot(sessionResult, stream);
     return sessionResult;
   }, [applyLiveSessionSnapshot, buildLiveActor, trpcUtils]);
@@ -305,10 +309,11 @@ export function AutomationChatModal({
         limit: 50,
       }),
     ]);
-
-    applyLiveSessionSnapshot(sessionResult, stream);
-    setLiveEvents(eventsResult.events);
-    return sessionResult;
+    const parsedSession = liveBrowserSessionSchema.parse(sessionResult);
+    const parsedEvents = liveBrowserListEventsResponseSchema.parse(eventsResult);
+    applyLiveSessionSnapshot(parsedSession, stream);
+    setLiveEvents(parsedEvents.events);
+    return parsedSession;
   }, [applyLiveSessionSnapshot, buildLiveActor, trpcUtils]);
 
   const appendLiveEvent = useCallback((event: LiveBrowserEventEnvelope) => {
@@ -355,10 +360,10 @@ export function AutomationChatModal({
   ]);
 
   const hydrateExistingLiveSession = useCallback(async (sessionId: string) => {
-    const sessionResult = await trpcUtils.liveBrowser.getSession.fetch({
+    const sessionResult = liveBrowserSessionSchema.parse(await trpcUtils.liveBrowser.getSession.fetch({
       sessionId,
       actor: buildLiveActor(),
-    });
+    }));
     const nextScope = getPreferredLiveBrowserStreamScope(sessionResult, compactLiveViewport);
     const resumedStream = await issueLiveStreamTokenMutation.mutateAsync({
       sessionId,
@@ -654,7 +659,9 @@ export function AutomationChatModal({
     if (!liveSession) {
       return;
     }
-    await runLiveMutation("refresh", () => syncLiveSession(liveSession.sessionId));
+    await runLiveMutation("refresh", async () => {
+      await syncLiveSession(liveSession.sessionId);
+    });
   }, [liveSession, runLiveMutation, syncLiveSession]);
 
   const handleSendLiveCommand = useCallback(async () => {
@@ -757,7 +764,8 @@ export function AutomationChatModal({
   ]);
 
   const handleResolveApproval = useCallback(async (decision: "approved" | "rejected") => {
-    if (!liveSession?.pendingApprovalRequestId) {
+    const approvalRequestId = liveSession?.pendingApprovalRequestId;
+    if (!approvalRequestId) {
       return;
     }
     await runLiveMutation(`approval-${decision}`, async () => {
@@ -766,7 +774,7 @@ export function AutomationChatModal({
         sessionVersion: liveSession.sessionVersion,
         idempotencyKey: `live-approval-${crypto.randomUUID()}`,
         actor: buildLiveActor(),
-        approvalRequestId: liveSession.pendingApprovalRequestId,
+        approvalRequestId,
         decision,
       });
       applyLiveSessionPatch({
@@ -780,7 +788,8 @@ export function AutomationChatModal({
   }, [applyLiveSessionPatch, buildLiveActor, liveSession, resolveLiveApprovalMutation, runLiveMutation]);
 
   const handleResolveAssist = useCallback(async () => {
-    if (!liveSession?.pendingAssistRequestId) {
+    const assistRequestId = liveSession?.pendingAssistRequestId;
+    if (!assistRequestId) {
       return;
     }
     await runLiveMutation("assist", async () => {
@@ -789,7 +798,7 @@ export function AutomationChatModal({
         sessionVersion: liveSession.sessionVersion,
         idempotencyKey: `live-assist-${crypto.randomUUID()}`,
         actor: buildLiveActor(),
-        assistRequestId: liveSession.pendingAssistRequestId,
+        assistRequestId,
         response: {
           type: "review_page",
           notes: "Reviewed in live workspace.",

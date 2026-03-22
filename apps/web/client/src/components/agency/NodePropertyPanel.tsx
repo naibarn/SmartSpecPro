@@ -11,7 +11,7 @@
  *   human_approval       → HumanApprovalForm
  */
 
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
 import { Input } from "@/components/ui/input";
@@ -82,6 +82,25 @@ function ncGet<T>(node: AgencyNodeData, key: string, fallback: T): T {
 
 function ncSet(node: AgencyNodeData, key: string, value: unknown): Partial<AgencyNodeData> {
   return { nodeConfig: { ...(node.nodeConfig ?? {}), [key]: value } };
+}
+
+function normalizeLibraryPickerDocs(rows: unknown): Array<{ id: number; title: string; item_type?: string }> {
+  if (!Array.isArray(rows)) {
+    return [];
+  }
+
+  return rows.reduce<Array<{ id: number; title: string; item_type?: string }>>((acc, row: any) => {
+    const id = Number(row?.id ?? row?.item_id);
+    if (!Number.isFinite(id) || id <= 0) {
+      return acc;
+    }
+    acc.push({
+      id,
+      title: String(row?.title ?? `Document ${id}`),
+      item_type: typeof row?.item_type === "string" ? row.item_type : undefined,
+    });
+    return acc;
+  }, []);
 }
 
 // ── Root dispatcher ──────────────────────────────────────────────────────────
@@ -207,6 +226,7 @@ function AgentSupervisorForm({
   const [kbDocPickerOpen, setKbDocPickerOpen] = useState(false);
   const [kbSettingsOpen, setKbSettingsOpen] = useState(false);
   const [kbDocTypeFilter, setKbDocTypeFilter] = useState<string>("all");
+  const [kbDocSearchQuery, setKbDocSearchQuery] = useState("");
   const isSupervisor = node.nodeType === "supervisor";
 
   // Knowledge Base config from nodeConfig
@@ -223,11 +243,21 @@ function AgentSupervisorForm({
   const kbScoreThreshold = kbConfig.scoreThreshold ?? 0.7;
   const kbMaxContextTokens = kbConfig.maxContextTokens ?? 4000;
 
-  const { data: kbDocsData, isLoading: kbDocsLoading } = trpc.library.listDocuments.useQuery(
+  const { data: kbDocsData, isLoading: kbDocsListLoading } = trpc.library.listDocuments.useQuery(
     { limit: 50, filters: {} },
-    { enabled: kbOpen },
+    { enabled: kbOpen && kbDocSearchQuery.trim().length === 0 },
   );
-  const kbDocs = (kbDocsData?.results ?? []) as Array<{ id: number; title: string; item_type?: string }>;
+  const { data: kbDocsSearchData, isLoading: kbDocsSearchLoading } = trpc.library.search.useQuery(
+    { query: kbDocSearchQuery.trim() || undefined, limit: 50, filters: {} },
+    { enabled: kbOpen && kbDocSearchQuery.trim().length > 0 },
+  );
+  const kbDocs = useMemo(
+    () => normalizeLibraryPickerDocs(
+      kbDocSearchQuery.trim().length > 0 ? kbDocsSearchData?.results : kbDocsData?.results,
+    ),
+    [kbDocSearchQuery, kbDocsData?.results, kbDocsSearchData?.results],
+  );
+  const kbDocsLoading = kbDocsListLoading || kbDocsSearchLoading;
 
   const kbDocTypes = Array.from(new Set(kbDocs.map((d) => (d.item_type ?? "doc").toLowerCase()))).sort();
   const filteredKbDocs = kbDocTypeFilter === "all" ? kbDocs : kbDocs.filter((d) => (d.item_type ?? "doc").toLowerCase() === kbDocTypeFilter);
@@ -350,7 +380,11 @@ function AgentSupervisorForm({
                   </PopoverTrigger>
                   <PopoverContent className="w-[320px] p-0" align="start">
                     <Command>
-                      <CommandInput placeholder="Search documents..." />
+                      <CommandInput
+                        placeholder="Search documents..."
+                        value={kbDocSearchQuery}
+                        onValueChange={setKbDocSearchQuery}
+                      />
                       {kbDocTypes.length > 1 && (
                         <div className="flex flex-wrap gap-1 px-2 py-1.5 border-b">
                           <button
@@ -1147,15 +1181,26 @@ function KnowledgeBaseForm({
   const topK = ncGet(node, "topK", 5);
   const searchMode = ncGet(node, "searchMode", "hybrid");
   const scoreThreshold = ncGet(node, "scoreThreshold", 0.7);
-
-  // Fetch library documents for "specific" mode
-  const { data: docsData, isLoading: docsLoading } = trpc.library.listDocuments.useQuery(
-    { limit: 50, filters: {} },
-    { enabled: searchScope === "specific" },
-  );
-  const docs = docsData?.results ?? [];
   const [docPickerOpen, setDocPickerOpen] = useState(false);
   const [docTypeFilter, setDocTypeFilter] = useState<string>("all");
+  const [docSearchQuery, setDocSearchQuery] = useState("");
+
+  // Fetch library documents for "specific" mode
+  const { data: docsData, isLoading: docsListLoading } = trpc.library.listDocuments.useQuery(
+    { limit: 50, filters: {} },
+    { enabled: searchScope === "specific" && docSearchQuery.trim().length === 0 },
+  );
+  const { data: docsSearchData, isLoading: docsSearchLoading } = trpc.library.search.useQuery(
+    { query: docSearchQuery.trim() || undefined, limit: 50, filters: {} },
+    { enabled: searchScope === "specific" && docSearchQuery.trim().length > 0 },
+  );
+  const docs = useMemo(
+    () => normalizeLibraryPickerDocs(
+      docSearchQuery.trim().length > 0 ? docsSearchData?.results : docsData?.results,
+    ),
+    [docSearchQuery, docsData?.results, docsSearchData?.results],
+  );
+  const docsLoading = docsListLoading || docsSearchLoading;
 
   // Derive unique file types from docs
   const docTypes = Array.from(new Set(docs.map((d: any) => (d.item_type ?? "doc").toLowerCase()))).sort();
@@ -1239,7 +1284,11 @@ function KnowledgeBaseForm({
               </PopoverTrigger>
               <PopoverContent className="w-[320px] p-0" align="start">
                 <Command>
-                  <CommandInput placeholder="Search documents..." />
+                  <CommandInput
+                    placeholder="Search documents..."
+                    value={docSearchQuery}
+                    onValueChange={setDocSearchQuery}
+                  />
                   {/* File type filter chips */}
                   {docTypes.length > 1 && (
                     <div className="flex flex-wrap gap-1 px-2 py-1.5 border-b">
@@ -1840,7 +1889,7 @@ function BrowserSessionForm({
 }) {
   const goal = ncGet(node, "goal", "");
   const startUrl = ncGet(node, "startUrl", "");
-  const handoffMode = ncGet(node, "handoffMode", "continue_running");
+  const handoffMode = ncGet<string>(node, "handoffMode", "continue_running");
   const handoffSummary = ncGet(node, "handoffSummary", "");
 
   const handoffHelp =
