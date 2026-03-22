@@ -5,7 +5,7 @@ description: Real-time monitoring, scoped memory, and notifications for AI teams
 icon: Activity
 section: advanced
 order: 76
-pages: ["/chat", "/team"]
+pages: ["/chat", "/teams", "/teams/:teamId"]
 tags: [monitoring, memory, scoped, notification, events, run, agent, status, live]
 ---
 
@@ -134,7 +134,26 @@ The system automatically monitors for stuck agents:
 Team rooms use Server-Sent Events (SSE) for real-time updates:
 
 - Events stream automatically when a run is active.
+- All SSE endpoints require **JWT authentication** — only logged-in users can subscribe.
 - If disconnected, the client **auto-reconnects** with exponential backoff.
-- **Last-Event-ID** ensures no events are missed during brief disconnections.
 - A heartbeat keeps the connection alive (every 15 seconds).
 - Maximum connection duration is 30 minutes (auto-reconnects after).
+
+### Event Replay (Gap Recovery)
+
+If your connection drops briefly, the system replays missed events:
+
+1. The client sends the **Last-Event-ID** (the ID of the last event it received) on reconnect.
+2. The server queries the **database** for all events that occurred after that ID.
+3. Missed events are replayed **before** the live stream starts.
+4. Up to 200 events can be replayed per reconnection.
+
+This ensures you never miss important events like run completions, decisions, or budget warnings — even if your network is unstable.
+
+### Event Channels
+
+| Channel | URL | What it delivers |
+|---------|-----|-----------------|
+| **Run** | `/api/orchestrator/stream/run/:runId` | All events for a specific run |
+| **Team** | `/api/orchestrator/stream/team/:teamId` | All events across all runs in a team |
+| **User** | `/api/orchestrator/stream/user` | Notifications and alerts for the logged-in user |

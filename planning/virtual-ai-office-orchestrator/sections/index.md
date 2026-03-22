@@ -21,6 +21,9 @@ section-14-frontend-room-monitor
 section-15-python-orchestrator-memory
 section-16-automation-external-intake
 section-17-brainstorm-cutover-migration
+section-19-team-blueprints-and-member-kinds
+section-20-routine-work-and-quality-loop
+section-21-external-connector-members
 section-18-testing-integration
 END_MANIFEST -->
 
@@ -47,6 +50,9 @@ END_MANIFEST -->
 | section-15-python-orchestrator-memory | 03, 06 | - | Yes |
 | section-16-automation-external-intake | 09 | - | Yes |
 | section-17-brainstorm-cutover-migration | 05 | - | Yes |
+| section-19-team-blueprints-and-member-kinds | 01, 04, 13 | - | Yes |
+| section-20-routine-work-and-quality-loop | 04, 05, 08, 16 | - | No |
+| section-21-external-connector-members | 16, 19 | - | Yes |
 | section-18-testing-integration | all | - | No (final) |
 
 ## Execution Order
@@ -82,7 +88,12 @@ END_MANIFEST -->
    - section-16-automation-external-intake
    - section-17-brainstorm-cutover-migration
 
-8. **Batch 8** (final, after all):
+8. **Batch 8** (after blueprint/runtime extensions):
+   - section-19-team-blueprints-and-member-kinds
+   - section-20-routine-work-and-quality-loop
+   - section-21-external-connector-members
+
+9. **Batch 9** (final, after all):
    - section-18-testing-integration
 
 ## Section Summaries
@@ -137,6 +148,15 @@ automation_handoffs schema + service, external_task_sources/inbox/bindings schem
 
 ### section-17-brainstorm-cutover-migration
 Remove brainstorm fields, discussion preset templates, entity_memories → scoped_memories migration, localization fields, rate limiting config.
+
+### section-19-team-blueprints-and-member-kinds
+Preset team blueprints, mixed roster member kinds (`persona`, `human`, `external_connector`), blueprint instantiation rules, and UX expectations for mixed teams.
+
+### section-20-routine-work-and-quality-loop
+Routine catalog, work item state machine, morning supervisor loop, revision/review/approval flow, and carry-over semantics for daily office operations.
+
+### section-21-external-connector-members
+Connector registry, connector-backed team members, capability routing, authenticated callbacks, connector health, and audit rules for OpenClaw/Manus/ComfyUI/n8n-style integrations.
 
 ### section-18-testing-integration
 Integration tests: full run lifecycle, memory scope isolation, inter-agent communication, load test configs, final quality verification.

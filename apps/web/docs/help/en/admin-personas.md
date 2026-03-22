@@ -6,7 +6,7 @@ icon: UserCircle
 section: admin
 order: 95
 pages: ["/admin/personas"]
-tags: [admin, personas, ai-assistant, tone, personality, system-prompt, customization]
+tags: [admin, personas, ai-assistant, tone, personality, system-prompt, customization, nickname]
 ---
 
 # Admin Personas
@@ -21,10 +21,17 @@ Admin Personas lets platform administrators create and manage AI assistant perso
 2. Fill in the persona details:
    - **Name** — display name (e.g., "Creative Writer", "Code Mentor").
    - **Description** — brief summary of the persona's specialty.
+   - **Nickname** — a short call-name for switching to the persona from Chat, such as `@writer`.
    - **Gender** — affects pronoun usage in some languages.
    - **Tone** — formal, casual, playful, professional, etc.
    - **System prompt** — the core instruction that shapes the AI's behavior.
 3. Click **Save**.
+
+## Calling platform personas by nickname
+
+- If a platform persona has a nickname, users who can access that persona can switch to it from Chat more quickly with `@nickname`.
+- This works well for shared personas that are used often, such as a newsroom assistant, writing assistant, or review assistant.
+- Keep nicknames reasonably distinct to avoid ambiguous matches.
 
 ## Editing personas
 

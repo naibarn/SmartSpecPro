@@ -6,7 +6,7 @@ icon: Brain
 section: features
 order: 60
 pages: ["/chat", "/settings"]
-tags: [memory, preferences, context, project, remember]
+tags: [memory, preferences, context, project, remember, persona, long memory, summary]
 ---
 
 # Memory System
@@ -54,6 +54,14 @@ When auto mode is on, the AI monitors conversations for:
 
 Long conversations are automatically summarized and stored as memory when they end. This keeps context fresh without filling the context window with old messages.
 
+## Persona-scoped memory
+
+- When you use Chat with personas, the system stores and retrieves **long-term memory for the active persona**.
+- This means each persona can maintain its own facts, preferences, operating rules, and reusable context.
+- If you switch to another persona, the retrieved long-term memory changes with that persona.
+- However, **conversation summaries and the current chat-session context** still stay with the same conversation as normal.
+- The best pattern is to keep ongoing role-based work under the same persona so that persona's long-term memory stays coherent.
+
 ## Projects
 
 You can associate memories with a specific **project**. Project-scoped memories are only loaded when you are working in that project context, keeping your workspace clean.
@@ -69,11 +77,13 @@ To create a project:
 - Click any memory to edit or delete it.
 - Use the search bar to find specific memories by keyword.
 - Group memories by type or project using the filter options.
+- If you work with several personas, remember that the long-term memory you save is most useful when it is created under the persona that should own it.
 
 ## Tips for effective memory use
 
 - **Be explicit** — Statements like "I always want formal English output" are easier for the AI to detect and save.
 - **Correct mistakes** — If the AI does something wrong, say so explicitly ("Don't do X in the future") so it can save that as a calibration.
 - **Use projects** — Separate memories for different clients or domains to avoid context bleed.
+- **Use the right persona before saving** — If you want each assistant persona to keep its own long-term context, switch to that persona first.
 - **Review periodically** — Old memories can become outdated. Review and clean them up in Settings.
 - **Save manually** — Click **Save to Memory** on any message that contains something important to preserve.

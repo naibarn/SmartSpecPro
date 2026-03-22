@@ -6,7 +6,7 @@ icon: UserCircle
 section: admin
 order: 95
 pages: ["/admin/personas"]
-tags: [admin, personas, ai-assistant, tone, personality, system-prompt, customization]
+tags: [admin, personas, ai-assistant, tone, personality, system-prompt, customization, nickname]
 ---
 
 # จัดการ Persona แอดมิน
@@ -21,10 +21,17 @@ tags: [admin, personas, ai-assistant, tone, personality, system-prompt, customiz
 2. กรอกรายละเอียด persona:
    - **ชื่อ** — ชื่อแสดง (เช่น "นักเขียนสร้างสรรค์", "ที่ปรึกษาโค้ด")
    - **คำอธิบาย** — สรุปสั้นๆ เกี่ยวกับความเชี่ยวชาญของ persona
+   - **Nickname** — ชื่อเรียกสั้นๆ สำหรับใช้เรียก persona จากหน้า Chat เช่น `@writer`
    - **เพศ** — มีผลต่อการใช้สรรพนามในบางภาษา
    - **โทน** — ทางการ, สบายๆ, สนุกสนาน, มืออาชีพ ฯลฯ
    - **System prompt** — คำสั่งหลักที่กำหนดพฤติกรรม AI
 3. กด **Save**
+
+## การเรียกใช้ด้วย Nickname
+
+- หากตั้ง nickname ให้ persona ระดับแพลตฟอร์ม ผู้ใช้ที่เข้าถึง persona นี้สามารถเรียกจาก Chat ได้เร็วขึ้นด้วย `@nickname`
+- เหมาะกับ persona กลางที่มีการใช้งานบ่อย เช่น ผู้ช่วยข่าว ผู้ช่วยเขียน หรือผู้ช่วยตรวจงาน
+- ควรตั้ง nickname ให้ไม่ซ้ำกันมากเกินไป เพื่อหลีกเลี่ยงการจับคู่ผิด
 
 ## การแก้ไข persona
 

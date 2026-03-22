@@ -129,6 +129,14 @@ Vector provider support:
 - pgvector
 - Cloudflare Vectorize
 
+pgvector quick setup:
+
+- Apply `python-backend/migrations/006_pgvector_tenant_rls.py upgrade` to create the `vector` extension, `library_chunk_vectors`, indexes, and RLS policies.
+- Set shared envs on the web and Python services: `SMARTSPEC_PROXY_TOKEN`, `PGVECTOR_HOST`, `PGVECTOR_PORT`, `PGVECTOR_DATABASE`, `PGVECTOR_USER`, `PGVECTOR_PASSWORD`.
+- Set provider envs: web uses `VECTORDB_PROVIDER`, `VECTORDB_CURRENT_READ_PROVIDER`, `VECTORDB_TARGET_PROVIDER`; Python accepts `LIBRARY_VECTOR_PROVIDER`, `VECTOR_DB_PROVIDER`, or `VECTORDB_PROVIDER`.
+- Optional hardening envs: `PGVECTOR_CONNECT_TIMEOUT`, `LIBRARY_PGVECTOR_SEARCH_TIMEOUT_MS`, `LIBRARY_PGVECTOR_CANDIDATE_LIMIT`.
+- Reindex existing library items after switching the read/write provider so `library_chunk_vectors` is populated.
+
 Key modules:
 
 - `apps/web/client/src/pages/DocumentManagement.tsx`
@@ -312,6 +320,10 @@ Minimum required variables for a usable setup:
 | AI providers | `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `OPENROUTER_API_KEY`, etc. |
 | Billing (optional) | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` |
 | Observability (optional) | `VITE_SENTRY_DSN`, `POSTHOG_API_KEY` |
+
+Browser Sentry is disabled by default on `localhost` and in `development`
+mode even if `VITE_SENTRY_DSN` is present. Set `VITE_SENTRY_ALLOW_DEV=true`
+only when you intentionally want to test frontend Sentry locally.
 
 Reference files:
 

@@ -286,6 +286,113 @@ Fields:
 - cost and token usage
 - stop reason
 
+### 5.6 Team Member Binding
+
+The team roster should support more than one member kind while still presenting a unified team view in the UI.
+
+Supported member kinds:
+
+- `persona`
+- `human`
+- `external_connector`
+
+Required rule:
+
+- all three kinds may appear in the same team roster
+- only `persona` members resolve to persona identity/tone/prompt configuration
+- `human` members participate in approval, intervention, and review workflows
+- `external_connector` members represent external execution systems such as OpenClaw, Manus, ComfyUI, n8n, or future MCP-backed services
+- the room UI should present all roster members uniformly while the runtime keeps their trust, capability, and execution semantics distinct
+
+### 5.7 Routine Definition
+
+Routine work must be first-class rather than encoded only as free-form schedule text.
+
+Fields:
+
+- id
+- teamId
+- name
+- description
+- schedule
+- trigger source
+- target blueprint or workflow
+- work item template
+- required capabilities
+- review requirements
+- approval policy
+- fallback policy
+- success criteria
+- createdAt
+- updatedAt
+
+Required rule:
+
+- routines do not directly wake a producer member by default
+- routines wake the orchestrator or the team intake pipeline, which then creates work items and dispatches work through the team loop
+
+### 5.8 Work Item
+
+The orchestrator system requires a durable operational object that represents real work.
+
+Fields:
+
+- id
+- teamId
+- roomId
+- runId
+- sourceType
+- sourceRef
+- title
+- objective
+- status
+- priority
+- assignedMemberId
+- reviewerMemberId
+- approverMemberId
+- riskClass
+- dueAt
+- artifactRefs
+- approvalState
+- summary
+- createdAt
+- updatedAt
+
+Recommended baseline statuses:
+
+- `planned`
+- `triaged`
+- `researching`
+- `drafting`
+- `in_review`
+- `needs_revision`
+- `awaiting_approval`
+- `scheduled_for_delivery`
+- `completed`
+- `failed`
+- `blocked`
+
+### 5.9 External Connector
+
+An external connector is a durable integration record that allows an outside system to act like a team member without being modeled as a persona.
+
+Fields:
+
+- id
+- tenantId
+- name
+- connectorType
+- authConfig
+- endpointConfig
+- capabilityTags
+- healthStatus
+- defaultTimeoutSec
+- retryPolicyJson
+- approvalPolicyJson
+- callbackConfig
+- createdAt
+- updatedAt
+
 ## 6. Persona Architecture
 
 ### 6.1 Persona Hierarchy
@@ -608,9 +715,13 @@ Messages should support:
 - sender type: `user | agent | system`
 - sender id
 - recipient type: `all | user | agent | subgroup`
+- message type: `work_update | critique | suggestion | revision | approval | decision | summary`
 - visibility level
 - artifact refs
 - memory refs
+- citation refs, including RAG/library references when applicable
+- work item id
+- reply-to message id
 - reasoning/public note distinction
 - turn type: `discussion | handoff | review | decision | execution_update | summary`
 
@@ -621,6 +732,28 @@ The orchestrator should control discussion visibility:
 - `transparent`: show all assistant discussion
 - `milestone`: show only important exchanges and decisions
 - `summary`: show final synthesis and attached artifacts
+
+### 8.6 Room-First Work Trace
+
+The team room is the canonical shared workspace for the team.
+
+Non-negotiable collaboration rules:
+
+- every meaningful work step performed by a persona must be posted into the room
+- draft artifacts, research findings, RAG/library links, review comments, revision attempts, and completion proposals must all appear in the room timeline
+- other personas must be able to comment on, challenge, or extend that work inside the same room
+- the real user must be able to inspect the full chain of “proposal -> critique -> revision -> approval/decision”
+- private scratch memory may still exist, but it does not replace room posting for work that changes team-visible state or output
+- when the underlying output is sensitive, the room should show a sanitized summary plus references rather than raw secret-bearing payloads
+
+Example room thread shape:
+
+1. agent A posts research findings and article draft with cited references
+2. agent B replies with creative direction or a proposed visual idea
+3. agent C replies with editorial or conversion-oriented critique
+4. agent A posts a revised draft
+5. reviewers react or approve
+6. orchestrator posts the final decision and next action
 
 ## 9. Brainstorm Migration
 
@@ -706,6 +839,27 @@ Each virtual member should visibly show:
 
 This is important for trust and inspectability.
 
+### 10.4 Daily Operations Board
+
+The orchestrator workspace should include a daily operations view that answers, at a glance:
+
+- what routines were due today
+- what work is still open from yesterday
+- what succeeded yesterday
+- what failed yesterday
+- what alerts or approvals are still waiting
+- which member is currently blocked or overloaded
+- what the orchestrator plans to do next
+
+The board should support both:
+
+- `operator view`
+  - designed for the user or admin
+- `orchestrator summary view`
+  - the AI-produced morning brief and end-of-day recap
+
+This turns the system from “multi-agent chat” into a durable office operating surface.
+
 ## 11. Team Templates
 
 ### 11.1 Template Types
@@ -736,6 +890,55 @@ Examples:
 - product + marketing
 - legal + operations
 - research + writer + designer
+
+### 11.4 Team Blueprint Contract
+
+Preset teams must be richer than a member list.
+
+Every preset blueprint should package:
+
+- team purpose
+- recommended roster size
+- member definitions
+- member kinds
+- lead/orchestrator default
+- handoff order
+- review loop
+- approval gate defaults
+- routine seeds
+- sample prompts/objectives
+- artifact expectations
+- escalation rules
+
+This allows a user to load a functioning office pattern in one action rather than assembling five uncoordinated personas manually.
+
+### 11.5 Default Blueprint Examples
+
+The first system blueprints should include at least:
+
+- `Daily Content Desk`
+  - orchestrator, news researcher, writer, visual producer, reviewer/publisher
+- `Quote And Proposal Desk`
+  - orchestrator, requirement analyst, pricing specialist, proposal writer, reviewer/approver
+- `Research And Insight Desk`
+  - orchestrator, researcher, data analyst, writer, reviewer
+- `Operations Watch Desk`
+  - orchestrator, alert investigator, analyst, remediation planner, human escalation liaison
+- `Presentation Studio`
+  - orchestrator, brief analyst, slide writer, visual producer, reviewer
+
+### 11.6 Template Acceptance Rule
+
+A preset is not complete unless it teaches the user how team coordination works.
+
+Minimum blueprint standard:
+
+- at least one producer role
+- at least one independent reviewer role
+- a clearly defined orchestrator
+- a visible handoff path
+- a visible approval path
+- a visible summary/output format
 
 ## 12. Execution And Automation
 
@@ -770,6 +973,70 @@ In the future, each assistant may continue work proactively, but only under expl
 - maximum autonomous rounds
 - user-visible audit trail
 
+### 12.4 Routine Execution Model
+
+Daily work should be initiated by routines, inbox tasks, or user requests, but all of them should converge into the same operational path:
+
+1. intake
+2. triage
+3. work item creation
+4. delegation
+5. review
+6. approval
+7. delivery or publication
+8. summary and carry-over
+
+Default rule:
+
+- schedules wake the orchestrator or intake pipeline
+- schedules do not bypass the team loop for medium-risk or high-risk work
+
+### 12.5 Quality Loop Requirement
+
+The purpose of multi-persona teams is not only parallelism. It is quality improvement through structured re-checking.
+
+Required quality loop behaviors:
+
+- one member may research or draft
+- a different member should review or challenge the work
+- each meaningful update should be posted to the team room so peers can react in context
+- peers may add suggestions, critiques, alternative creative directions, or approval comments directly on that room thread
+- rejected work should return to revision rather than silently fail
+- important artifacts should not be marked complete until they pass their review gate
+- the end-of-day summary should record what failed, what was revised, and what still needs attention
+
+Default loop for content-like work:
+
+- orchestrator -> researcher -> producer -> reviewer -> approver/publisher -> orchestrator summary
+
+### 12.6 External Connector Members
+
+The runtime should support connector-backed members that can receive work from the orchestrator when the platform itself cannot complete the task.
+
+Examples:
+
+- OpenClaw for external agent task execution
+- Manus for browser or tool-driven external workflows
+- ComfyUI for image generation/render pipelines
+- n8n for workflow/action delivery
+
+Required rule:
+
+- external connector members appear in the team roster
+- they are not modeled as personas
+- routing to them is capability-based and policy-checked
+- all handoffs and callbacks must be auditable in the room/run timeline
+
+### 12.7 Unsupported-Action Escalation Rule
+
+If the orchestrator determines that the desired action is not yet supported natively, the runtime should:
+
+1. search for an eligible external connector member with the required capability
+2. evaluate approval and trust policy
+3. create an auditable handoff
+4. wait for callback/result/timeout
+5. continue the review loop inside the team after the external result returns
+
 ## 13. Governance And Safety
 
 ### 13.1 Existing Strengths To Preserve
@@ -801,6 +1068,40 @@ Suggested risk tiers:
 - low: drafting, analysis, internal discussion
 - medium: workflow creation, draft content generation, scheduled jobs in draft mode
 - high: publishing, external communication, account actions, destructive edits
+
+### 13.4 Connector And External Source Safety
+
+External systems should never be treated as implicitly trusted just because they are visible in the team roster.
+
+Required guardrails:
+
+- connector capabilities must be explicitly declared
+- approvals may be required before dispatch, before side effects, or before delivery
+- connector health and auth validity must be monitored
+- callbacks must be authenticated and bound to the original handoff
+- unsupported or degraded connectors must not be silently selected
+
+Required callback security controls:
+
+- every outbound connector dispatch must carry an idempotency key
+- every callback must include a signed body hash plus timestamp
+- every callback must be validated against an allowed clock skew window
+- callback tokens/nonces must be one-time or short-lived
+- replayed callbacks must be rejected and audit-logged
+- callback payloads must bind to the original `handoffId`, `workItemId`, `teamId`, and `runId`
+
+### 13.5 Room Posting Redaction And Data Minimization
+
+Room-first traceability must not become a mechanism for leaking raw secrets, personal data, or oversized tool dumps.
+
+Required rules:
+
+- room posts should default to sanitized summaries plus references, not raw internal tool payloads
+- citations may point to underlying RAG/library sources, but secrets, credentials, and private connector payloads must be redacted
+- attachments and tool outputs must respect per-room and per-team visibility policy
+- personally identifiable data should be masked or minimized unless the room policy explicitly allows the full content
+- the system should preserve the audit trail that a tool was used, without requiring the raw sensitive payload to be shown in the room timeline
+- summarization/redaction policy must be configurable per team and overridable per work item risk class
 
 ## 14. Observability And Agent Monitoring
 
@@ -1185,6 +1486,8 @@ When conversation history exceeds budget:
 1. Keep all messages from the current run
 2. Summarize earlier turns into a condensed form
 3. Always preserve: handoff messages, decision messages, approval messages
+4. Prefer sanitized `summaryContent` over raw tool payloads when a room message is marked redacted
+5. Preserve thread structure for the active work item so critique and revision context is not lost
 4. Drop: internal reasoning that has already been summarized
 
 ### 14A.6 Tool And Permission Injection
@@ -1420,6 +1723,7 @@ Multiple agents may attempt to write to the same artifact, memory scope, or auto
 - Only one agent may edit a given artifact at a time
 - If agent B tries to edit an artifact locked by agent A, agent B receives a "busy" response and should retry or skip
 - Lock timeout: 60 seconds (auto-release if agent doesn't complete)
+- Artifact revisions should be explicit: every new revision records `parentRevisionId`, `createdByMemberId`, and `supersedesArtifactId` when applicable
 
 #### Shared Memory
 
@@ -1433,6 +1737,14 @@ Multiple agents may attempt to write to the same artifact, memory scope, or auto
 - Only one agent may trigger a given automation destination per run at a time
 - Queue additional requests; second agent's request executes after the first completes
 - Prevents duplicate workflow creation or conflicting presentation edits
+
+#### Work Items And Room Threads
+
+- Work items must use optimistic concurrency via a revision/version field
+- A revision attempt that is based on a stale version must fail with a conflict response rather than silently overwrite
+- Work-item discussions should preserve thread lineage through `threadRootMessageId` and `replyToMessageId`
+- A final approval or rejection should resolve the active revision thread, not just mutate top-level status
+- If multiple peers suggest changes at once, the orchestrator or assigned owner chooses the next active revision explicitly
 
 ### 14F.3 Turn Concurrency
 
@@ -2047,7 +2359,7 @@ Notes:
 
 Purpose:
 
-- product-facing assistant identity and behavioral layer
+- product-facing team roster and behavioral layer
 
 Key fields:
 
@@ -2056,15 +2368,21 @@ Key fields:
 - `teamId`
 - `agencyAgentId`
 - `personaId`
+- `memberKind`
+- `humanUserId`
+- `externalConnectorId`
 - `displayName`
 - `nickname`
 - `roleTitle`
 - `genderStyle`
 - `specialtyTags`
+- `capabilityTags`
 - `toolPolicyJson`
 - `approvalPolicyJson`
 - `memoryPolicyJson`
 - `visibilityPolicyJson`
+- `routingPolicyJson`
+- `workingHoursOverrideJson`
 - `sortOrder`
 - `isLead`
 - `isActive`
@@ -2075,6 +2393,8 @@ Notes:
 
 - `personaId` links to reusable persona definitions
 - `agencyAgentId` links to the runtime node that executes work
+- `memberKind` distinguishes persona, human, and external connector members inside one roster
+- `workingHoursOverrideJson` allows team-specific schedule rules without mutating the shared persona itself
 
 ##### `assistant_team_templates`
 
@@ -2090,10 +2410,143 @@ Key fields:
 - `category`
 - `teamConfigJson`
 - `memberTemplateJson`
+- `routineTemplateJson`
+- `reviewLoopJson`
+- `approvalFlowJson`
 - `defaultDiscussionMode`
 - `isSystem`
 - `createdAt`
 - `updatedAt`
+
+##### `team_routines`
+
+Purpose:
+
+- durable recurring work definitions for a team
+
+Key fields:
+
+- `id`
+- `tenantId`
+- `teamId`
+- `name`
+- `description`
+- `scheduleExpr`
+- `timezone`
+- `triggerMode`
+- `workTemplateJson`
+- `reviewPolicyJson`
+- `approvalPolicyJson`
+- `fallbackPolicyJson`
+- `isActive`
+- `lastTriggeredAt`
+- `createdAt`
+- `updatedAt`
+
+##### `team_work_items`
+
+Purpose:
+
+- first-class work/backlog objects for orchestrator-driven operations
+
+Key fields:
+
+- `id`
+- `tenantId`
+- `teamId`
+- `roomId`
+- `runId`
+- `routineId`
+- `sourceType`
+- `sourceRef`
+- `title`
+- `objective`
+- `status`
+- `revisionVersion`
+- `threadRootMessageId`
+- `activeDraftArtifactId`
+- `priority`
+- `riskClass`
+- `assignedMemberId`
+- `reviewerMemberId`
+- `approverMemberId`
+- `lockOwnerMemberId`
+- `lockExpiresAt`
+- `parentWorkItemId`
+- `artifactRefsJson`
+- `approvalState`
+- `carryOverReason`
+- `dueAt`
+- `completedAt`
+- `createdAt`
+- `updatedAt`
+
+##### `external_connectors`
+
+Purpose:
+
+- stores external execution systems that can be attached to one or more teams
+
+Key fields:
+
+- `id`
+- `tenantId`
+- `name`
+- `connectorType`
+- `authMode`
+- `endpointUrl`
+- `authConfigEncrypted`
+- `secretVersion`
+- `capabilityTags`
+- `healthStatus`
+- `healthCheckedAt`
+- `lastHealthError`
+- `allowedSourceIpsJson`
+- `callbackSigningKeyId`
+- `maxClockSkewSec`
+- `defaultTimeoutSec`
+- `retryPolicyJson`
+- `approvalPolicyJson`
+- `callbackConfigJson`
+- `isActive`
+- `createdAt`
+- `updatedAt`
+
+##### `work_item_events`
+
+Purpose:
+
+- immutable audit log for triage, delegation, review, approval, failure, retry, and completion decisions
+
+Key fields:
+
+- `id`
+- `workItemId`
+- `roomId`
+- `runId`
+- `actorMemberId`
+- `eventType`
+- `summary`
+- `payloadJson`
+- `createdAt`
+
+##### `room_message_redactions`
+
+Purpose:
+
+- track structured redaction decisions for room-visible content and attachments
+
+Key fields:
+
+- `id`
+- `roomMessageId`
+- `tenantId`
+- `redactionType`
+- `targetPath`
+- `reason`
+- `appliedByType`
+- `appliedById`
+- `createdAt`
 
 ##### `team_rooms`
 
@@ -2167,11 +2620,17 @@ Key fields:
 - `recipientAssistantId`
 - `recipientGroupJson`
 - `turnType`
+- `messageType`
 - `visibility`
 - `content`
 - `summaryContent`
 - `artifactRefsJson`
 - `memoryRefsJson`
+- `citationRefsJson`
+- `workItemId`
+- `threadRootMessageId`
+- `replyToMessageId`
+- `redactionState`
 - `metadataJson`
 - `tokenUsageJson`
 - `createdAt`
@@ -2274,13 +2733,20 @@ Key fields:
 - `roomId`
 - `runId`
 - `assistantId`
+- `workItemId`
 - `destinationType`
 - `destinationId`
 - `intent`
+- `idempotencyKey`
+- `dispatchTokenHash`
+- `callbackNonce`
+- `callbackDeadlineAt`
 - `requestPayloadJson`
 - `resultPayloadJson`
 - `status`
 - `approvalState`
+- `attemptCount`
+- `lastAttemptAt`
 - `createdAt`
 - `updatedAt`
 
@@ -2299,6 +2765,9 @@ Key fields:
 - `sourceType`
 - `authMode`
 - `authConfigJson`
+- `secretVersion`
+- `allowedSourceIpsJson`
+- `maxClockSkewSec`
 - `defaultTeamId`
 - `defaultRoomMode`
 - `defaultAutonomyLevel`
@@ -2329,6 +2798,8 @@ Key fields:
 - `status`
 - `submittedByLabel`
 - `externalTaskId`
+- `idempotencyKey`
+- `requestBodyHash`
 - `targetTeamId`
 - `targetRoomId`
 - `suggestedAssistantId`
@@ -2560,17 +3031,19 @@ Near-term implementation should prioritize:
 Every external submission should pass through the same normalized pipeline:
 
 1. authenticate source
-2. validate payload shape and attachment references
-3. normalize into `external_task_inbox`
-4. classify intent and target team
-5. evaluate policy:
+2. validate timestamp, signature, and replay window
+3. deduplicate via idempotency key and/or request body hash
+4. validate payload shape and attachment references
+5. normalize into `external_task_inbox`
+6. classify intent and target team
+7. evaluate policy:
    - auto materialize
    - require inbox review
    - require approval before execution
    - require approval only before side effects
-6. create or attach to a room
-7. create a run if allowed
-8. emit intake and routing events
+8. create or attach to a room
+9. create a run if allowed
+10. emit intake and routing events
 
 #### 16.7.4 Intake Materialization Modes
 
@@ -2697,6 +3170,34 @@ The new design should reuse these transport foundations while adding:
 - routing to teams/rooms
 - policy-based human review
 - source trust management
+
+#### 16.7.11 External Connector Members In The Intake Model
+
+An external platform may participate in two distinct roles:
+
+- `task source`
+  - sends work into SmartSpec
+- `connector member`
+  - receives delegated work from SmartSpec
+
+The same platform may support both roles, but the policy model must track them separately.
+
+Example:
+
+- OpenClaw submits a new quotation request into the team inbox
+- the same tenant also configures Manus as a connector member for browser-based posting work
+
+#### 16.7.12 Callback And Result Continuation
+
+When an external connector returns a result, the runtime should not treat that callback as the final answer automatically.
+
+Required continuation flow:
+
+1. validate callback authenticity, timestamp window, and nonce/idempotency requirements
+2. attach result to the related handoff and work item
+3. post an auditable room event
+4. return control to the orchestrator/reviewer stage
+5. only mark the work item complete after review/approval policy is satisfied
 
 ### 16.8 Existing Chat UI Integration Design
 
@@ -3142,6 +3643,9 @@ Preferred tRPC surface:
 - `team.archive`
 - `team.cloneFromTemplate`
 - `team.listTemplates`
+- `team.instantiateBlueprint`
+- `team.reorderMembers`
+- `team.assignLead`
 
 Representative payloads:
 
@@ -3163,9 +3667,19 @@ Returns:
 {
   teamId: string,
   agencyId: string,
-  members: Array<{ assistantId: string; agencyAgentId: string }>
+  members: Array<
+    | { memberKind: "persona"; memberId: string; assistantId: string; agencyAgentId: string; personaId: string }
+    | { memberKind: "human"; memberId: string; humanUserId: number; roleTitle: string }
+    | { memberKind: "external_connector"; memberId: string; externalConnectorId: string; connectorType: string; capabilityTags: string[] }
+  >
 }
 ```
+
+Team creation/update must support roster members with:
+
+- `memberKind = persona`
+- `memberKind = human`
+- `memberKind = external_connector`
 
 ### 17.3 Assistant Profile APIs
 
@@ -3177,6 +3691,7 @@ Preferred tRPC surface:
 - `assistantProfile.setPersona`
 - `assistantProfile.setPolicies`
 - `assistantProfile.setMemoryPolicy`
+- `assistantProfile.resolveRuntimeMember`
 
 ### 17.4 Room APIs
 
@@ -3190,7 +3705,9 @@ Preferred tRPC surface:
 - `teamRoom.addParticipant`
 - `teamRoom.removeParticipant`
 - `teamRoom.sendMessage`
+- `teamRoom.postWorkUpdate`
 - `teamRoom.listMessages`
+- `teamRoom.listWorkThread`
 - `teamRoom.getSummary`
 
 Representative `create` payload:
@@ -3220,8 +3737,21 @@ teamRoom.sendMessage({
   content,
   additionalInstructions,
   attachments,
+  workItemId?,
+  messageType?,
+  artifactRefs?,
+  citationRefs?,
+  replyToMessageId?,
 })
 ```
+
+Default room API rule:
+
+- any agent-generated work update that changes team-visible progress or proposes an output must be persisted as a room message linked to the relevant work item when one exists
+
+Room API safety rule:
+
+- room-message write APIs must run sanitization/redaction before persisting user-visible content when the source is a tool output, connector callback, or sensitive attachment summary
 
 ### 17.5 Run APIs
 
@@ -3305,6 +3835,17 @@ Destinations supported from the beginning should include:
 - browser_session
 - agency_job
 - scheduled_job
+
+Automation routing should also expose connector-targeted actions such as:
+
+- `automationHandoff.dispatchToConnector`
+- `automationHandoff.getConnectorStatus`
+- `automationHandoff.retryConnectorDispatch`
+
+Connector dispatch contract requirements:
+
+- requests must include `handoffId`, `workItemId`, `teamId`, `runId`, `idempotencyKey`, and signed callback metadata
+- retries must reuse the original `idempotencyKey` while incrementing attempt counters
 
 ### 17.8 Monitoring APIs
 
@@ -3435,6 +3976,20 @@ Preferred control-plane APIs:
 - `externalSource.create`
 - `externalSource.update`
 - `externalSource.rotateSecret`
+- `externalConnector.list`
+- `externalConnector.create`
+- `externalConnector.update`
+- `externalConnector.rotateSecret`
+- `externalConnector.checkHealth`
+- `teamRoutine.list`
+- `teamRoutine.create`
+- `teamRoutine.update`
+- `teamRoutine.runNow`
+- `workItem.list`
+- `workItem.get`
+- `workItem.updateStatus`
+- `workItem.requestReview`
+- `workItem.requestApproval`
 - `externalTaskInbox.list`
 - `externalTaskInbox.get`
 - `externalTaskInbox.approve`
@@ -3448,6 +4003,13 @@ Preferred public or partner-facing endpoints:
 - `POST /v1/external-tasks/{sourceId}`
 - `POST /v1/mcp` task submission via dedicated task tools
 - inbound webhook endpoints bound to `external_task_sources`
+
+Required transport semantics:
+
+- external submissions must support idempotency keys
+- webhook and callback bodies must be signed
+- stale or replayed requests must be rejected
+- all accepted external requests must log body-hash and auth decision metadata for audit
 
 Representative external submission:
 
@@ -3491,6 +4053,9 @@ Preferred task-oriented tools:
 - `team_list_rooms`
 - `team_get_summary`
 - `team_request_review`
+- `team_list_blueprints`
+- `team_list_connectors`
+- `team_submit_connector_result`
 
 This keeps external agent platforms working at the task layer instead of impersonating chat participants unsafely.
 
@@ -3561,6 +4126,11 @@ Suggested event taxonomy:
 - `tool_call_completed`
 - `artifact_created`
 - `artifact_updated`
+- `work_update_posted`
+- `work_comment_posted`
+- `work_revision_posted`
+- `work_review_approved`
+- `work_review_rejected`
 - `memory_written`
 - `memory_promoted`
 - `approval_required`
@@ -3701,6 +4271,8 @@ This is important for inbox UX and audit logs.
 - support assistant persona as named team members
 - support team templates
 - support team chat creation
+- support member kinds in one roster (`persona`, `human`, `external_connector`)
+- support preset team blueprints that include roles, review loops, and approval defaults
 
 ### Phase 2: Scoped Memory
 
@@ -3744,12 +4316,16 @@ This is important for inbox UX and audit logs.
 - allow team members to create workflows
 - allow team members to generate presentations/video jobs
 - allow team members to schedule recurring work
+- allow routines to create work items and wake the orchestrator automatically
+- allow orchestrator to hand off unsupported work to connector-backed external members
 
 ### Phase 7: Autonomous Sessions
 
 - add automatic team chat
 - add stop policies
 - add milestone-only and summary-only modes
+- add multi-step quality loops with review and revision before completion
+- add end-of-day and next-morning operational summaries
 
 ## 20. Acceptance Criteria
 
@@ -3780,6 +4356,14 @@ The system is successful when:
 23. system resource state (provider health, credit balance, queue status) is visible in orchestrator dashboard and injected into agent prompts
 24. inter-agent messages between system and team worlds are audit-logged and security-enforced
 25. external agents receive notifications when their submitted tasks are affected by system events
+26. preset team blueprints can be instantiated into a working 4-5 member roster with clear review and approval paths
+27. scheduled work wakes the orchestrator/intake layer rather than silently bypassing review by sending work to a single producer
+28. work items preserve a full state machine from intake through review, approval, carry-over, and completion
+29. at least one independent review loop exists for medium-risk and high-risk artifact production
+30. external connector members can appear in the team roster without being modeled as personas
+31. unsupported native actions can be routed to approved connector members with authenticated callbacks and full audit history
+32. the daily operations board shows routine status, yesterday success/failure, open alerts, pending approvals, and current blockers in one place
+33. every meaningful team work update is posted into the room timeline with enough context for peers and the real user to inspect, comment, and drive revisions
 
 ## 21. Open Product Questions
 
@@ -3809,6 +4393,7 @@ These do not block the direction, but should be decided before implementation de
 - What is the maximum delay between system incident detection and team impact notification?
 - Should the impact assessment engine use LLM analysis or rule-based logic only?
 - Should external agents receive system messages in real-time (SSE) or batch (webhook callback)?
+- Should the team builder allow multiple connector members of the same connector type in one roster with weighted routing, or only one primary connector per capability in Phase 1?
 
 ## 22. Localization And Multi-Language Support
 

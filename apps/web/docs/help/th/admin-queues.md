@@ -28,7 +28,7 @@ Dashboard ระดับบนแสดงการ์ดสรุปสำห�
 
 ## LLM Queue
 
-LLM Queue จัดการคำขอ Language Model Inference ทั้งหมด — ข้อความ Chat การรัน Skill การปรับปรุง Prompt และการเรียก Brainstorm Mode
+LLM Queue จัดการคำขอ Language Model Inference ทั้งหมด — ข้อความ Chat การรัน Skill การปรับปรุง Prompt และการรันทีม AI
 
 - **กรอง** ตามสถานะ ผู้ใช้ โมเดล หรือช่วงเวลา
 - แต่ละแถวงานแสดง: ผู้ใช้ โมเดลที่ขอ ประมาณ Token ขาเข้า สถานะ เวลารอ และเวลาประมวลผล

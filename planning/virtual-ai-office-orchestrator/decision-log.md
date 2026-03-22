@@ -24,3 +24,9 @@
 - Introduce memory scopes beyond `projectId`.
 - Replace standalone brainstorm with agent discussion patterns and presets.
 - Treat automation surfaces as callable execution destinations for assistant teams.
+- Keep the rule that one persona may belong to multiple teams.
+- Model schedule-driven work as routines that wake the orchestrator/intake layer rather than directly bypassing review by assigning work to one producer.
+- Represent external systems as connector-backed team members, not as fake personas.
+- Require preset teams to include an explicit quality loop (producer, reviewer, approval path), not just a list of members.
+- Use work items as the canonical operational layer between intake, delegation, review, approval, and delivery.
+- Track follow-on hardening work in the dedicated delta plan at `planning/virtual-ai-office-orchestrator-hardening/` so implementation of callback security, revision concurrency, mixed-member contracts, and room redaction stays explicit rather than implicit.

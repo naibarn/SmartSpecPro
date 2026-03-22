@@ -28,7 +28,7 @@ Health indicators use color coding: green (healthy), amber (elevated wait time o
 
 ## LLM Queue
 
-The LLM queue handles all language model inference requests — chat messages, skill executions, prompt enhancements, and brainstorm mode calls.
+The LLM queue handles all language model inference requests — chat messages, skill executions, prompt enhancements, and team discussion runs.
 
 - **Filter** by status, user, model, or time range.
 - Each job row shows: user, model requested, input token estimate, status, wait time, and processing time.

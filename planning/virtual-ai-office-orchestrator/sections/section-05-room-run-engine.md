@@ -224,6 +224,12 @@ The Room Service manages room lifecycle, participant management, and message rou
   4. Publish event to Redis pub/sub channel `room:${roomId}:messages` for SSE fan-out (Section 11 will consume this).
   5. Return the created message.
 
+Room-posting rule:
+
+- assistant work that changes team-visible state must be emitted through `sendMessage` or a thin wrapper such as `postWorkUpdate`
+- message metadata should support `workItemId`, `messageType`, `artifactRefs`, `citationRefs`, and `replyToMessageId`
+- this is how research posts, critique replies, revision proposals, and final decisions become inspectable to both the real user and the rest of the team
+
 **`getMessages(roomId: string, filters: MessageFilters): Promise<TeamRoomMessage[]>`**
 
 - Filters shape: `{ viewMode?: 'transparent' | 'milestone' | 'summary', callerType: 'user' | 'system', cursor?: string, limit?: number }`
