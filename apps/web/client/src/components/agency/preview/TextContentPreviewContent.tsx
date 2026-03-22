@@ -64,7 +64,7 @@ export function TextContentPreviewContent({
   };
 
   const renderedHtml = useMemo(() => {
-    if (data.format === "markdown") return renderMarkdown(data.content);
+    if (data.format === "markdown") return DOMPurify.sanitize(renderMarkdown(data.content));
     if (data.format === "html") return DOMPurify.sanitize(data.content, {
       ALLOWED_TAGS: [
         "h1", "h2", "h3", "h4", "h5", "h6",

@@ -54,7 +54,7 @@ class LoopHandler:
         feedback_mode: str = cfg.get("feedbackMode", "auto")
         feedback_prompt_template: str = cfg.get("feedbackPrompt", "")
         delay_ms: int = min(cfg.get("delayBetweenIterationsMs", 0), 30000)
-        timeout_ms: int = cfg.get("timeoutMs", 300000)
+        timeout_ms: int = min(cfg.get("timeoutMs", 300000), 600000)  # Cap at 10 min
 
         # Validate target node exists
         target_node = orchestrator.nodes.get(target_node_id)

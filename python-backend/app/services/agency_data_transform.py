@@ -56,8 +56,11 @@ def apply_template(data_str: str, template: str) -> str:
         return "Error: Template mode requires a JSON object as input"
 
     try:
+        # SECURITY: Replace triple-mustache {{{ }}} with double {{ }} to prevent
+        # unescaped HTML injection. Triple-mustache bypasses pystache's escape function.
+        safe_template = template.replace("{{{", "{{").replace("}}}", "}}")
         renderer = pystache.Renderer(escape=lambda u: _html_escape(str(u)))
-        return renderer.render(template, data)
+        return renderer.render(safe_template, data)
     except Exception as e:
         return f"Error: Template rendering failed — {str(e)[:200]}"
 

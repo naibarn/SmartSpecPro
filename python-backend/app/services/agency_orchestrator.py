@@ -700,7 +700,8 @@ class AgencyOrchestrator:
                 node_id=node["id"],
                 error=str(exc)[:200],
             )
-            return f"[Agent '{node.get('name')}' error: {str(exc)[:100]}]"
+            from app.services.agency_error_handler import scrub_error_payload
+            return f"[Agent '{node.get('name')}' error: {scrub_error_payload(str(exc))}]"
 
     async def _route(self, router_node: NodeRow, ctx: ExecutionContext) -> str | None:
         """Determine next node ID based on router config."""
@@ -737,23 +738,41 @@ class AgencyOrchestrator:
         return default_target
 
     async def _llm_classify(self, input_text: str, routes: list[dict], user_token: str) -> str | None:
-        """Use LLM to classify input and return target node ID."""
-        python_backend = os.getenv("PYTHON_BACKEND_INTERNAL_URL", "http://127.0.0.1:8000")
+        """Use LLM to classify input and return target node ID.
+
+        SECURITY: Uses role separation to prevent prompt injection.
+        User input is always in the 'user' role, never embedded in system prompt.
+        """
+        llm_url = os.getenv("LLM_GATEWAY_URL", "http://127.0.0.1:3000")
         route_labels = "\n".join(
             f"- {r.get('label', r.get('condition', ''))}: targetNodeId={r.get('targetNodeId', '')}"
             for r in routes
         )
-        prompt = f"Classify the user input into one of these routes:\n{route_labels}\n\nUser input: {input_text}\n\nRespond with only the targetNodeId."
+        system_prompt = (
+            f"You are a message router. Classify the user's message into one of these routes:\n"
+            f"{route_labels}\n\n"
+            "Respond with ONLY the targetNodeId. Do not include any other text."
+        )
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
                 resp = await client.post(
-                    f"{python_backend}/api/v1/llm/simple",
-                    json={"message": prompt, "max_tokens": 50},
+                    f"{llm_url}/api/llm/chat",
+                    json={
+                        "messages": [
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": input_text[:2000]},
+                        ],
+                        "max_tokens": 50,
+                    },
                     headers={"Authorization": f"Bearer {user_token}"},
                 )
                 if resp.status_code == 200:
-                    answer = resp.json().get("content", "").strip()
-                    # Match against known target IDs
+                    body = resp.json()
+                    answer = (
+                        body.get("choices", [{}])[0].get("message", {}).get("content", "")
+                        or body.get("content", "")
+                        or ""
+                    ).strip()
                     for route in routes:
                         if route.get("targetNodeId", "") in answer:
                             return route["targetNodeId"]
