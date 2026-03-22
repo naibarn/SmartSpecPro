@@ -22,6 +22,7 @@ import {
   getUserApiKeys,
   deleteUserApiKey,
   decryptUserApiKey,
+  isUserLlmApiKeySelfServiceEnabled,
 } from "../userApiKeyService";
 
 const mockGetDb = vi.mocked(getDb);
@@ -202,6 +203,34 @@ describe("userApiKeyService", () => {
       mockGetDb.mockResolvedValue(null);
 
       await expect(deleteUserApiKey(1, "openai")).rejects.toThrow("Database not initialized");
+    });
+  });
+
+  describe("isUserLlmApiKeySelfServiceEnabled", () => {
+    it("returns false when the admin setting does not exist", async () => {
+      const limit = vi.fn().mockResolvedValue([]);
+      const where = vi.fn().mockReturnValue({ limit });
+      const from = vi.fn().mockReturnValue({ where });
+      mockSelect.mockReturnValue({ from });
+      setupDb();
+
+      await expect(isUserLlmApiKeySelfServiceEnabled()).resolves.toBe(false);
+    });
+
+    it("returns true when the admin setting is stored as true", async () => {
+      const limit = vi.fn().mockResolvedValue([{ value: "true" }]);
+      const where = vi.fn().mockReturnValue({ limit });
+      const from = vi.fn().mockReturnValue({ where });
+      mockSelect.mockReturnValue({ from });
+      setupDb();
+
+      await expect(isUserLlmApiKeySelfServiceEnabled()).resolves.toBe(true);
+    });
+
+    it("throws when db is not initialized", async () => {
+      mockGetDb.mockResolvedValue(null);
+
+      await expect(isUserLlmApiKeySelfServiceEnabled()).rejects.toThrow("Database not initialized");
     });
   });
 

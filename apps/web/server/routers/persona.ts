@@ -17,15 +17,46 @@ import {
   updatePersona,
   deletePersona,
 } from "../services/personaService";
-import { getFeatureFlag } from "../services/featureFlags";
+import { getTenantFeatureFlags } from "../services/tenantFeatureFlagService";
+import { FEATURE_FLAG_DEFAULTS } from "../../shared/featureFlags";
 
 // ── Zod Schemas ──────────────────────────────────────────────
+
+const workingHoursDaySchema = z.object({
+  startTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/),
+  endTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/),
+});
+
+const workingHoursLegacySchema = z.object({
+  startTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/),
+  endTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/),
+  timezone: z.string().min(1).max(100),
+});
+
+const workingHoursWeeklySchema = z.object({
+  timezone: z.string().min(1).max(100),
+  days: z.object({
+    monday: workingHoursDaySchema.optional(),
+    tuesday: workingHoursDaySchema.optional(),
+    wednesday: workingHoursDaySchema.optional(),
+    thursday: workingHoursDaySchema.optional(),
+    friday: workingHoursDaySchema.optional(),
+    saturday: workingHoursDaySchema.optional(),
+    sunday: workingHoursDaySchema.optional(),
+  }),
+});
+
+const workingHoursSchema = z.union([
+  workingHoursLegacySchema,
+  workingHoursWeeklySchema,
+]);
 
 const personaCreateSchema = z.object({
   name: z.string().min(1).max(200),
   description: z.string().max(1000).nullable().optional(),
   assistantNickname: z.string().max(80).nullable().optional(),
   assistantGender: z.enum(["female", "male", "neutral"]).nullable().optional(),
+  workingHours: workingHoursSchema.nullable().optional(),
   sourceTemplateIds: z.array(z.string().min(1).max(120)).max(5).optional().default([]),
   sourceTemplateLabels: z.array(z.string().min(1).max(200)).max(5).optional().default([]),
   sourceTemplateCategories: z.array(z.string().min(1).max(100)).max(5).optional().default([]),
@@ -44,6 +75,7 @@ const personaUpdateSchema = z.object({
   description: z.string().max(1000).nullable().optional(),
   assistantNickname: z.string().max(80).nullable().optional(),
   assistantGender: z.enum(["female", "male", "neutral"]).nullable().optional(),
+  workingHours: workingHoursSchema.nullable().optional(),
   sourceTemplateIds: z.array(z.string().min(1).max(120)).max(5).optional(),
   sourceTemplateLabels: z.array(z.string().min(1).max(200)).max(5).optional(),
   sourceTemplateCategories: z.array(z.string().min(1).max(100)).max(5).optional(),
@@ -57,8 +89,10 @@ const personaUpdateSchema = z.object({
 
 // ── Helper: check persona feature flag ────────────────────────
 
-async function requirePersonaEnabled() {
-  const enabled = await getFeatureFlag("AI_PERSONA_ENABLED");
+async function requirePersonaEnabled(tenantId: string | null) {
+  const enabled = tenantId
+    ? (await getTenantFeatureFlags(tenantId)).personaSystem
+    : FEATURE_FLAG_DEFAULTS.personaSystem;
   if (!enabled) {
     throw new TRPCError({
       code: "FORBIDDEN",
@@ -105,7 +139,7 @@ function validateScopePermission(
 export const personaRouter = router({
   /** List personas visible to the current user (own + tenant + platform scope). */
   list: protectedProcedure.query(async ({ ctx }) => {
-    await requirePersonaEnabled();
+    await requirePersonaEnabled(ctx.tenantId);
     return listPersonas(ctx.user!.id, ctx.tenantId);
   }),
 
@@ -113,7 +147,7 @@ export const personaRouter = router({
   getById: protectedProcedure
     .input(z.object({ id: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
-      await requirePersonaEnabled();
+      await requirePersonaEnabled(ctx.tenantId);
       const persona = await getPersonaById(input.id);
       if (!persona) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Persona not found" });
@@ -135,7 +169,7 @@ export const personaRouter = router({
   create: protectedProcedure
     .input(personaCreateSchema)
     .mutation(async ({ ctx, input }) => {
-      await requirePersonaEnabled();
+      await requirePersonaEnabled(ctx.tenantId);
 
       const userRole = ctx.user!.role;
       const userTenantId = ctx.tenantId;
@@ -153,7 +187,7 @@ export const personaRouter = router({
   update: protectedProcedure
     .input(personaUpdateSchema)
     .mutation(async ({ ctx, input }) => {
-      await requirePersonaEnabled();
+      await requirePersonaEnabled(ctx.tenantId);
 
       const existing = await getPersonaById(input.id);
       if (!existing) {
@@ -173,14 +207,15 @@ export const personaRouter = router({
       }
 
       const { id, ...updateData } = input;
-      return updatePersona(id, updateData);
+      const tenantId = existing.tenantId;
+      return updatePersona(id, updateData, tenantId);
     }),
 
   /** Delete a persona. Side effect: nullify defaultPersonaId on affected users/tenants. */
   delete: protectedProcedure
     .input(z.object({ id: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
-      await requirePersonaEnabled();
+      await requirePersonaEnabled(ctx.tenantId);
 
       const existing = await getPersonaById(input.id);
       if (!existing) {
@@ -207,7 +242,7 @@ export const personaRouter = router({
   setUserDefault: protectedProcedure
     .input(z.object({ personaId: z.string().uuid().nullable() }))
     .mutation(async ({ ctx, input }) => {
-      await requirePersonaEnabled();
+      await requirePersonaEnabled(ctx.tenantId);
 
       // Validate persona exists and is accessible
       if (input.personaId) {
@@ -243,7 +278,7 @@ export const personaRouter = router({
   setTenantDefault: domainAdminProcedure
     .input(z.object({ personaId: z.string().uuid().nullable() }))
     .mutation(async ({ ctx, input }) => {
-      await requirePersonaEnabled();
+      await requirePersonaEnabled(ctx.tenantId);
 
       if (!ctx.tenantId) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "No tenant context" });

@@ -80,8 +80,12 @@ describe("PersonasPanel", () => {
       screen.getByDisplayValue(/a financial analyst who evaluates budgets/i),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("State clearly that the analysis is informational and not regulated investment advice."),
-    ).toBeInTheDocument();
+      screen.getAllByText((content) =>
+        content.includes(
+          "State clearly that the analysis is informational and not regulated investment advice.",
+        ),
+      ),
+    ).not.toHaveLength(0);
     expect(trackPersonaTemplateApplied).toHaveBeenCalledWith(
       expect.objectContaining({
         applyMode: "single",

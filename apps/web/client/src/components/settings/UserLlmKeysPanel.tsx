@@ -49,7 +49,9 @@ export function UserLlmKeysPanel() {
   const [confirmDelete, setConfirmDelete] = useState<ProviderId | null>(null);
 
   const utils = trpc.useUtils();
+  const policyQuery = trpc.userApiKeys.getPolicy.useQuery();
   const listQuery = trpc.userApiKeys.listKeys.useQuery();
+  const selfServiceAllowed = policyQuery.data?.allowed ?? false;
 
   const setKeyMutation = trpc.userApiKeys.setKey.useMutation({
     onSuccess: (_data, variables) => {
@@ -59,6 +61,10 @@ export function UserLlmKeysPanel() {
       utils.userApiKeys.listKeys.invalidate();
     },
     onError: (error) => {
+      if (error.message?.includes("disabled by admin")) {
+        toast.error("Admin has disabled personal LLM API keys");
+        return;
+      }
       toast.error(error.message?.includes("UNAUTHORIZED") ? "Please log in" : "Failed to save key");
     },
   });
@@ -79,6 +85,7 @@ export function UserLlmKeysPanel() {
   );
 
   function handleSave(provider: ProviderId) {
+    if (!selfServiceAllowed) return;
     if (!apiKeyInput.trim()) return;
     setKeyMutation.mutate({ provider, apiKey: apiKeyInput.trim() });
   }
@@ -102,8 +109,9 @@ export function UserLlmKeysPanel() {
           <CardTitle>LLM API Keys</CardTitle>
         </div>
         <CardDescription>
-          Add your own API keys to use LLM providers directly. Keys are
-          encrypted at rest and never exposed after saving.
+          {selfServiceAllowed
+            ? "Add your own API keys to use LLM providers directly. Keys are encrypted at rest and never exposed after saving."
+            : "Personal LLM API keys are currently disabled by admin for this workspace."}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -120,7 +128,13 @@ export function UserLlmKeysPanel() {
             Failed to load API keys
           </div>
         )}
+        {!listQuery.isLoading && !listQuery.isError && !policyQuery.isLoading && !selfServiceAllowed && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            Admin has disabled personal LLM API keys for this workspace. This section will become available only after an admin enables it.
+          </div>
+        )}
         {!listQuery.isLoading && !listQuery.isError && (
+        selfServiceAllowed ? (
         <div className="space-y-3">
           {LLM_PROVIDERS.map(({ id, label }) => {
             const config = configuredMap.get(id);
@@ -149,7 +163,7 @@ export function UserLlmKeysPanel() {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  {isEditing ? (
+                  {isEditing && selfServiceAllowed ? (
                     <>
                       <Input
                         type="password"
@@ -187,24 +201,30 @@ export function UserLlmKeysPanel() {
                     </>
                   ) : (
                     <>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          setEditingProvider(id);
-                          setApiKeyInput("");
-                        }}
-                      >
-                        {config ? (
-                          <>
-                            <Pencil className="w-3 h-3 mr-1" /> Edit
-                          </>
-                        ) : (
-                          <>
-                            <Plus className="w-3 h-3 mr-1" /> Add Key
-                          </>
-                        )}
-                      </Button>
+                      {selfServiceAllowed ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setEditingProvider(id);
+                            setApiKeyInput("");
+                          }}
+                        >
+                          {config ? (
+                            <>
+                              <Pencil className="w-3 h-3 mr-1" /> Edit
+                            </>
+                          ) : (
+                            <>
+                              <Plus className="w-3 h-3 mr-1" /> Add Key
+                            </>
+                          )}
+                        </Button>
+                      ) : (
+                        <Badge variant="secondary" className="text-gray-500">
+                          Disabled by admin
+                        </Badge>
+                      )}
                       {config && (
                         <Button
                           size="sm"
@@ -223,6 +243,7 @@ export function UserLlmKeysPanel() {
             );
           })}
         </div>
+        ) : null
         )}
       </CardContent>
 

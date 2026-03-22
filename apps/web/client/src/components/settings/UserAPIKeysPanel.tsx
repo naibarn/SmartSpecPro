@@ -271,7 +271,7 @@ export function UserAPIKeysPanel() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {keysQuery.data.map((key) => (
+                    {keysQuery.data.map((key: any) => (
                       <TableRow key={key.id}>
                         <TableCell className="font-medium">{key.name}</TableCell>
                         <TableCell>

@@ -5,6 +5,7 @@ vi.mock("../../services/userApiKeyService", () => ({
   setUserApiKey: vi.fn(),
   getUserApiKeys: vi.fn(),
   deleteUserApiKey: vi.fn(),
+  isUserLlmApiKeySelfServiceEnabled: vi.fn(),
 }));
 
 // Mock rate limit middleware (no-op in tests)
@@ -27,12 +28,14 @@ import {
   setUserApiKey,
   getUserApiKeys,
   deleteUserApiKey,
+  isUserLlmApiKeySelfServiceEnabled,
 } from "../../services/userApiKeyService";
 import { userApiKeysRouter } from "../userApiKeys";
 
 const mockSetUserApiKey = vi.mocked(setUserApiKey);
 const mockGetUserApiKeys = vi.mocked(getUserApiKeys);
 const mockDeleteUserApiKey = vi.mocked(deleteUserApiKey);
+const mockIsUserLlmApiKeySelfServiceEnabled = vi.mocked(isUserLlmApiKeySelfServiceEnabled);
 
 type AuthenticatedUser = NonNullable<TrpcContext["user"]>;
 
@@ -74,6 +77,7 @@ function createAuthenticatedContext(): TrpcContext {
 describe("userApiKeys router", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockIsUserLlmApiKeySelfServiceEnabled.mockResolvedValue(true);
   });
 
   // Use createCaller for auth-gating tests
@@ -93,6 +97,12 @@ describe("userApiKeys router", () => {
       const caller = createCaller(createUnauthenticatedContext());
 
       await expect(caller.listKeys()).rejects.toThrow(/login/);
+    });
+
+    it("getPolicy requires authentication (returns UNAUTHORIZED)", async () => {
+      const caller = createCaller(createUnauthenticatedContext());
+
+      await expect(caller.getPolicy()).rejects.toThrow(/login/);
     });
 
     it("deleteKey requires authentication (returns UNAUTHORIZED)", async () => {
@@ -146,6 +156,20 @@ describe("userApiKeys router", () => {
       expect(result).not.toHaveProperty("apiKey");
       expect(result).not.toHaveProperty("apiKeyEncrypted");
       expect(result.configured).toBe(true);
+    });
+
+    it("blocks saving keys when admin disabled user-managed LLM API keys", async () => {
+      mockIsUserLlmApiKeySelfServiceEnabled.mockResolvedValue(false);
+      const caller = createCaller(createAuthenticatedContext());
+
+      await expect(
+        caller.setKey({
+          provider: "openai",
+          apiKey: "sk-test-key-1234-longenough",
+        }),
+      ).rejects.toThrow("User-managed LLM API keys are disabled by admin");
+
+      expect(mockSetUserApiKey).not.toHaveBeenCalled();
     });
   });
 
@@ -222,6 +246,15 @@ describe("userApiKeys router", () => {
     });
   });
 
+  describe("getPolicy", () => {
+    it("returns whether user-managed LLM API keys are allowed", async () => {
+      mockIsUserLlmApiKeySelfServiceEnabled.mockResolvedValue(false);
+      const caller = createCaller(createAuthenticatedContext());
+
+      await expect(caller.getPolicy()).resolves.toEqual({ allowed: false });
+    });
+  });
+
   // --- deleteKey behavior ---
   describe("deleteKey", () => {
     it("removes the key and returns { success: true }", async () => {
@@ -253,7 +286,7 @@ describe("userApiKeys router", () => {
       expect(procedures).not.toContain("decryptKey");
       expect(procedures).not.toContain("decryptUserApiKey");
       expect(procedures).toEqual(
-        expect.arrayContaining(["setKey", "listKeys", "deleteKey"]),
+        expect.arrayContaining(["getPolicy", "setKey", "listKeys", "deleteKey"]),
       );
     });
   });

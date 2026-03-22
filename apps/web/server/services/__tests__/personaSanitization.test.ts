@@ -96,6 +96,49 @@ describe("persona prompt injection mitigation", () => {
     expect(() => sanitizePersonaInput(input)).toThrow("assistantGender");
   });
 
+  it("rejects invalid working hours time formats", () => {
+    const input = {
+      ...baseInput,
+      workingHours: {
+        timezone: "Asia/Bangkok",
+        days: {
+          monday: {
+            startTime: "9:00",
+            endTime: "18:00",
+          },
+        },
+      },
+    };
+    expect(() => sanitizePersonaInput(input)).toThrow("workingHours.days.monday.startTime");
+  });
+
+  it("rejects blank working hours timezone", () => {
+    const input = {
+      ...baseInput,
+      workingHours: {
+        timezone: "   ",
+        days: {
+          monday: {
+            startTime: "09:00",
+            endTime: "18:00",
+          },
+        },
+      },
+    };
+    expect(() => sanitizePersonaInput(input)).toThrow("workingHours.timezone");
+  });
+
+  it("rejects working hours without active days", () => {
+    const input = {
+      ...baseInput,
+      workingHours: {
+        timezone: "Asia/Bangkok",
+        days: {},
+      },
+    };
+    expect(() => sanitizePersonaInput(input)).toThrow("at least one active day");
+  });
+
   it("normalizes and preserves valid source template metadata", () => {
     const input = {
       ...baseInput,
@@ -107,6 +150,76 @@ describe("persona prompt injection mitigation", () => {
     expect(result.sourceTemplateIds).toEqual(["marketing-strategist", "financial-analyst"]);
     expect(result.sourceTemplateLabels).toEqual(["Marketing Strategist", "Financial Analyst"]);
     expect(result.sourceTemplateCategories).toEqual(["Marketing", "Finance"]);
+  });
+
+  it("allows duplicate source template categories when multiple templates share the same category", () => {
+    const input = {
+      ...baseInput,
+      sourceTemplateIds: ["marketing-strategist", "social-media-manager"],
+      sourceTemplateLabels: ["Marketing Strategist", "Social Media Manager"],
+      sourceTemplateCategories: ["Marketing", "Marketing"],
+    };
+    const result = sanitizePersonaInput(input);
+    expect(result.sourceTemplateIds).toEqual(["marketing-strategist", "social-media-manager"]);
+    expect(result.sourceTemplateLabels).toEqual(["Marketing Strategist", "Social Media Manager"]);
+    expect(result.sourceTemplateCategories).toEqual(["Marketing", "Marketing"]);
+  });
+
+  it("preserves valid working hours metadata", () => {
+    const input = {
+      ...baseInput,
+      workingHours: {
+        timezone: " Asia/Bangkok ",
+        days: {
+          monday: {
+            startTime: "09:00",
+            endTime: "18:00",
+          },
+          saturday: {
+            startTime: "08:00",
+            endTime: "12:00",
+          },
+        },
+      },
+    };
+    const result = sanitizePersonaInput(input);
+    expect(result.workingHours).toEqual({
+      timezone: "Asia/Bangkok",
+      days: {
+        monday: {
+          startTime: "09:00",
+          endTime: "18:00",
+        },
+        saturday: {
+          startTime: "08:00",
+          endTime: "12:00",
+        },
+      },
+    });
+  });
+
+  it("normalizes legacy working hours into a weekly schedule", () => {
+    const input = {
+      ...baseInput,
+      workingHours: {
+        startTime: "09:00",
+        endTime: "18:00",
+        timezone: "Asia/Bangkok",
+      },
+    };
+    const result = sanitizePersonaInput(input);
+    expect(result.workingHours).toEqual({
+      timezone: "Asia/Bangkok",
+      days: {
+        monday: { startTime: "09:00", endTime: "18:00" },
+        tuesday: { startTime: "09:00", endTime: "18:00" },
+        wednesday: { startTime: "09:00", endTime: "18:00" },
+        thursday: { startTime: "09:00", endTime: "18:00" },
+        friday: { startTime: "09:00", endTime: "18:00" },
+        saturday: { startTime: "09:00", endTime: "18:00" },
+        sunday: { startTime: "09:00", endTime: "18:00" },
+      },
+    });
   });
 
   it("passes valid input through unchanged (except newline normalization)", () => {

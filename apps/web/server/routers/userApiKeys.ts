@@ -1,10 +1,12 @@
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import { protectedProcedure, adminProcedure, router } from "../_core/trpc";
 import { createRateLimitMiddleware } from "../_core/rateLimitedProcedure";
 import {
   setUserApiKey,
   getUserApiKeys,
   deleteUserApiKey,
+  isUserLlmApiKeySelfServiceEnabled,
 } from "../services/userApiKeyService";
 import { resolveTenantIdVarchar } from "../services/tenantContext";
 
@@ -33,6 +35,10 @@ const rateLimitedDelete = protectedProcedure.use(
 );
 
 export const userApiKeysRouter = router({
+  getPolicy: protectedProcedure.query(async () => ({
+    allowed: await isUserLlmApiKeySelfServiceEnabled(),
+  })),
+
   setKey: rateLimitedProtected
     .input(
       z.object({
@@ -41,6 +47,14 @@ export const userApiKeysRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      const isAllowed = await isUserLlmApiKeySelfServiceEnabled();
+      if (!isAllowed) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "User-managed LLM API keys are disabled by admin",
+        });
+      }
+
       const tenantId = resolveTenantIdVarchar(
         ctx.tenantId,
         ctx.user.currentTenantId,

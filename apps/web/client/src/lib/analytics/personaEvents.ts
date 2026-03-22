@@ -7,7 +7,7 @@ export interface PersonaTemplateAppliedPayload {
   templateCount: number;
   applyMode: "single" | "mixed";
   editorMode: "create" | "edit";
-  surface: "settings_personas";
+  surface: "settings_personas" | "teams_personas";
 }
 
 export function trackPersonaTemplateApplied(

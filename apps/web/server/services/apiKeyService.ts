@@ -210,9 +210,10 @@ export async function suspendKey(
       suspendedBy: adminUserId,
       updatedAt: new Date(),
     })
-    .where(and(eq(apiKeys.id, keyId), eq(apiKeys.tenantId, tenantId)));
+    .where(and(eq(apiKeys.id, keyId), eq(apiKeys.tenantId, tenantId)))
+    .returning({ id: apiKeys.id });
 
-  if (result.rowCount === 0) {
+  if (result.length === 0) {
     throw new Error("API key not found");
   }
 
@@ -235,9 +236,10 @@ export async function unsuspendKey(
       suspendedBy: null,
       updatedAt: new Date(),
     })
-    .where(and(eq(apiKeys.id, keyId), eq(apiKeys.tenantId, tenantId)));
+    .where(and(eq(apiKeys.id, keyId), eq(apiKeys.tenantId, tenantId)))
+    .returning({ id: apiKeys.id });
 
-  if (result.rowCount === 0) {
+  if (result.length === 0) {
     throw new Error("API key not found");
   }
 
@@ -263,9 +265,10 @@ export async function updateKeySettings(
   const result = await db
     .update(apiKeys)
     .set({ ...settings, updatedAt: new Date() })
-    .where(and(eq(apiKeys.id, keyId), eq(apiKeys.tenantId, tenantId), eq(apiKeys.userId, userId)));
+    .where(and(eq(apiKeys.id, keyId), eq(apiKeys.tenantId, tenantId), eq(apiKeys.userId, userId)))
+    .returning({ id: apiKeys.id });
 
-  if (result.rowCount === 0) {
+  if (result.length === 0) {
     throw new Error("API key not found");
   }
 
@@ -287,9 +290,10 @@ export async function revokeKey(
   const result = await db
     .update(apiKeys)
     .set({ isActive: false, updatedAt: new Date() })
-    .where(and(...conditions));
+    .where(and(...conditions))
+    .returning({ id: apiKeys.id });
 
-  if (result.rowCount === 0) {
+  if (result.length === 0) {
     throw new Error("API key not found");
   }
 

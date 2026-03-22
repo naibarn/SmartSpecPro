@@ -9,7 +9,7 @@ import {
 
 describe("personaTemplates", () => {
   it("covers a broad set of reviewed templates", () => {
-    expect(PERSONA_TEMPLATES.length).toBe(18);
+    expect(PERSONA_TEMPLATES.length).toBe(21);
 
     const categories = new Set(PERSONA_TEMPLATES.map((template) => template.category));
     expect(categories.size).toBeGreaterThanOrEqual(12);
@@ -19,6 +19,9 @@ describe("personaTemplates", () => {
       "Legal Advisor",
       "Code Reviewer",
       "Marketing Strategist",
+      "Graphic Designer",
+      "Video Producer",
+      "Social Media Manager",
       "HR Recruiter",
       "Financial Analyst",
       "Healthcare Documentation",

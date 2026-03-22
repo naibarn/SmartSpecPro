@@ -4,9 +4,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Hoisted mocks
-const { mockGetDb, mockGetFeatureFlag } = vi.hoisted(() => ({
+const { mockGetDb, mockGetTenantFeatureFlags } = vi.hoisted(() => ({
   mockGetDb: vi.fn(),
-  mockGetFeatureFlag: vi.fn(),
+  mockGetTenantFeatureFlags: vi.fn(),
 }));
 
 // Mock database
@@ -15,8 +15,8 @@ vi.mock("../../db", () => ({
 }));
 
 // Mock feature flags
-vi.mock("../featureFlags", () => ({
-  getFeatureFlag: mockGetFeatureFlag,
+vi.mock("../tenantFeatureFlagService", () => ({
+  getTenantFeatureFlags: mockGetTenantFeatureFlags,
 }));
 
 // Mock schema with minimal column refs
@@ -28,7 +28,7 @@ vi.mock("../../../drizzle/schema", () => ({
   chatWidgets: { id: "cw.id", defaultPersonaId: "cw.defaultPersonaId" },
 }));
 
-import { resolvePersona, PLATFORM_DEFAULT_PERSONA } from "../personaService";
+import { resolvePersona, PLATFORM_DEFAULT_PERSONA, matchPersonaByNickname } from "../personaService";
 
 // Helper to create a chainable mock DB
 function createMockDb(results: unknown[] = []) {
@@ -44,11 +44,11 @@ function createMockDb(results: unknown[] = []) {
 describe("personaService.resolvePersona", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetFeatureFlag.mockResolvedValue(true);
+    mockGetTenantFeatureFlags.mockResolvedValue({ personaSystem: true });
   });
 
   it("returns null when persona system is disabled", async () => {
-    mockGetFeatureFlag.mockResolvedValue(false);
+    mockGetTenantFeatureFlags.mockResolvedValue({ personaSystem: false });
 
     const result = await resolvePersona(
       { personaId: null, tenantId: "t1" },
@@ -207,5 +207,40 @@ describe("personaService.resolvePersona", () => {
     );
 
     expect(result).toEqual(platformPersona);
+  });
+});
+
+describe("personaService.matchPersonaByNickname", () => {
+  it("matches Thai nicknames mentioned naturally in the message", () => {
+    const result = matchPersonaByNickname(
+      [
+        { id: "p1", assistantNickname: "น้องเจน" },
+        { id: "p2", assistantNickname: "พี่ภูมิ" },
+      ],
+      "น้องเจน ช่วยสรุปอีเมลนี้ให้หน่อย",
+    );
+
+    expect(result?.id).toBe("p1");
+  });
+
+  it("supports @nickname mentions and prefers the first concrete match", () => {
+    const result = matchPersonaByNickname(
+      [
+        { id: "p1", assistantNickname: "writer" },
+        { id: "p2", assistantNickname: "planner" },
+      ],
+      "@planner help me outline this launch plan",
+    );
+
+    expect(result?.id).toBe("p2");
+  });
+
+  it("avoids matching ascii nicknames inside unrelated words", () => {
+    const result = matchPersonaByNickname(
+      [{ id: "p1", assistantNickname: "art" }],
+      "smartphone accessories",
+    );
+
+    expect(result).toBeNull();
   });
 });

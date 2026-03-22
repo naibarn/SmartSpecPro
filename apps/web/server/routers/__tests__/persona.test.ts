@@ -4,13 +4,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Mock all dependencies
-const { mockListPersonas, mockGetPersonaById, mockCreatePersona, mockUpdatePersona, mockDeletePersona, mockGetFeatureFlag } = vi.hoisted(() => ({
+const { mockListPersonas, mockGetPersonaById, mockCreatePersona, mockUpdatePersona, mockDeletePersona, mockGetTenantFeatureFlags } = vi.hoisted(() => ({
   mockListPersonas: vi.fn(),
   mockGetPersonaById: vi.fn(),
   mockCreatePersona: vi.fn(),
   mockUpdatePersona: vi.fn(),
   mockDeletePersona: vi.fn(),
-  mockGetFeatureFlag: vi.fn(),
+  mockGetTenantFeatureFlags: vi.fn(),
 }));
 
 vi.mock("../../services/personaService", () => ({
@@ -21,8 +21,8 @@ vi.mock("../../services/personaService", () => ({
   deletePersona: mockDeletePersona,
 }));
 
-vi.mock("../../services/featureFlags", () => ({
-  getFeatureFlag: mockGetFeatureFlag,
+vi.mock("../../services/tenantFeatureFlagService", () => ({
+  getTenantFeatureFlags: mockGetTenantFeatureFlags,
 }));
 
 // These tests validate the RBAC logic conceptually since we can't easily
@@ -32,7 +32,7 @@ vi.mock("../../services/featureFlags", () => ({
 describe("persona tRPC router RBAC", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetFeatureFlag.mockResolvedValue(true);
+    mockGetTenantFeatureFlags.mockResolvedValue({ personaSystem: true });
   });
 
   describe("list", () => {

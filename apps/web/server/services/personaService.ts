@@ -22,7 +22,8 @@ import {
   chatWidgets,
   type PersonaTemplate,
 } from "../../drizzle/schema";
-import { getFeatureFlag } from "./featureFlags";
+import { getTenantFeatureFlags } from "./tenantFeatureFlagService";
+import { FEATURE_FLAG_DEFAULTS } from "../../shared/featureFlags";
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -31,6 +32,7 @@ export interface PersonaCreateInput {
   description?: string | null;
   assistantNickname?: string | null;
   assistantGender?: "female" | "male" | "neutral" | null;
+  workingHours?: PersonaWorkingHours | PersonaWorkingHoursLegacy | null;
   sourceTemplateIds?: string[];
   sourceTemplateLabels?: string[];
   sourceTemplateCategories?: string[];
@@ -43,12 +45,47 @@ export interface PersonaCreateInput {
   tenantId?: string | null;
   userId?: number | null;
   isDefault?: boolean;
+  provisionedByBlueprintId?: string | null;
+  provisionedByBlueprintMemberId?: string | null;
 }
 
 export interface PersonaPromptSegments {
   prefix: string;
   styleInstructions: string | null;
   restrictionsBulletPoints: string | null;
+}
+
+export interface PersonaNicknameCandidate {
+  id: string;
+  assistantNickname?: string | null;
+}
+
+export const PERSONA_WORKING_DAY_KEYS = [
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+  "sunday",
+] as const;
+
+export type PersonaWorkingDayKey = (typeof PERSONA_WORKING_DAY_KEYS)[number];
+
+export interface PersonaWorkingHours {
+  timezone: string;
+  days: Partial<Record<PersonaWorkingDayKey, PersonaWorkingHoursDay>>;
+}
+
+export interface PersonaWorkingHoursDay {
+  startTime: string;
+  endTime: string;
+}
+
+export interface PersonaWorkingHoursLegacy {
+  startTime: string;
+  endTime: string;
+  timezone: string;
 }
 
 // ── Platform Default Persona ─────────────────────────────────
@@ -61,6 +98,7 @@ export const PLATFORM_DEFAULT_PERSONA: Omit<PersonaTemplate, "createdAt" | "upda
   description: "Helpful, concise, markdown-friendly general assistant",
   assistantNickname: null,
   assistantGender: "neutral",
+  workingHours: null,
   sourceTemplateIds: [],
   sourceTemplateLabels: [],
   sourceTemplateCategories: [],
@@ -71,6 +109,8 @@ export const PLATFORM_DEFAULT_PERSONA: Omit<PersonaTemplate, "createdAt" | "upda
   restrictions: [],
   scope: "platform",
   isDefault: true,
+  provisionedByBlueprintId: null,
+  provisionedByBlueprintMemberId: null,
 };
 
 // ── Jailbreak Pattern Blocklist ──────────────────────────────
@@ -84,6 +124,63 @@ const BLOCKED_PATTERNS = [
 ];
 
 const BLOCKED_LINE_PREFIXES = ["---", "###"];
+const TIME_OF_DAY_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function isAsciiNickname(value: string): boolean {
+  return /^[A-Za-z0-9_-]+$/.test(value);
+}
+
+function findNicknamePosition(message: string, nickname: string): number {
+  const atMentionIndex = message.indexOf(`@${nickname}`);
+  if (atMentionIndex >= 0) return atMentionIndex;
+
+  if (isAsciiNickname(nickname)) {
+    const boundaryPattern = new RegExp(
+      `(^|[^\\p{L}\\p{N}_])${escapeRegExp(nickname)}(?=$|[^\\p{L}\\p{N}_])`,
+      "iu",
+    );
+    const match = boundaryPattern.exec(message);
+    if (match) {
+      return match.index + (match[1]?.length ?? 0);
+    }
+    return -1;
+  }
+
+  return message.indexOf(nickname);
+}
+
+function isLegacyWorkingHours(
+  workingHours: PersonaWorkingHours | PersonaWorkingHoursLegacy,
+): workingHours is PersonaWorkingHoursLegacy {
+  return "startTime" in workingHours && "endTime" in workingHours;
+}
+
+function normalizeWorkingHours(
+  workingHours: PersonaWorkingHours | PersonaWorkingHoursLegacy,
+): PersonaWorkingHours {
+  if (isLegacyWorkingHours(workingHours)) {
+    const days = PERSONA_WORKING_DAY_KEYS.reduce<
+      Partial<Record<PersonaWorkingDayKey, PersonaWorkingHoursDay>>
+    >((acc, day) => {
+      acc[day] = {
+        startTime: workingHours.startTime,
+        endTime: workingHours.endTime,
+      };
+      return acc;
+    }, {});
+
+    return {
+      timezone: workingHours.timezone,
+      days,
+    };
+  }
+
+  return workingHours;
+}
 
 // ── Sanitization ─────────────────────────────────────────────
 
@@ -112,6 +209,42 @@ export function sanitizePersonaInput(input: PersonaCreateInput): PersonaCreateIn
     throw new Error("assistantGender must be female, male, or neutral");
   }
 
+  if (sanitized.workingHours !== undefined && sanitized.workingHours !== null) {
+    const normalizedWorkingHours = normalizeWorkingHours(sanitized.workingHours);
+    const trimmedTimezone = normalizedWorkingHours.timezone.trim();
+    if (trimmedTimezone.length === 0 || trimmedTimezone.length > 100) {
+      throw new Error("workingHours.timezone must be between 1 and 100 characters");
+    }
+
+    const sanitizedDays: Partial<Record<PersonaWorkingDayKey, PersonaWorkingHoursDay>> = {};
+    let activeDayCount = 0;
+    for (const day of PERSONA_WORKING_DAY_KEYS) {
+      const workingDay = normalizedWorkingHours.days[day];
+      if (!workingDay) continue;
+      if (!TIME_OF_DAY_PATTERN.test(workingDay.startTime)) {
+        throw new Error(`workingHours.days.${day}.startTime must be in HH:MM format`);
+      }
+      if (!TIME_OF_DAY_PATTERN.test(workingDay.endTime)) {
+        throw new Error(`workingHours.days.${day}.endTime must be in HH:MM format`);
+      }
+
+      sanitizedDays[day] = {
+        startTime: workingDay.startTime,
+        endTime: workingDay.endTime,
+      };
+      activeDayCount += 1;
+    }
+
+    if (activeDayCount === 0) {
+      throw new Error("workingHours must include at least one active day");
+    }
+
+    sanitized.workingHours = {
+      timezone: trimmedTimezone,
+      days: sanitizedDays,
+    };
+  }
+
   const sourceTemplateFields = [
     { key: "sourceTemplateIds", value: sanitized.sourceTemplateIds, maxLength: 120 },
     { key: "sourceTemplateLabels", value: sanitized.sourceTemplateLabels, maxLength: 200 },
@@ -130,7 +263,7 @@ export function sanitizePersonaInput(input: PersonaCreateInput): PersonaCreateIn
     if (normalized.some((entry) => entry.length > field.maxLength)) {
       throw new Error(`${field.key} contains a value that exceeds ${field.maxLength} characters`);
     }
-    if (new Set(normalized).size !== normalized.length) {
+    if (field.key !== "sourceTemplateCategories" && new Set(normalized).size !== normalized.length) {
       throw new Error(`${field.key} must contain unique values`);
     }
 
@@ -186,6 +319,36 @@ export function sanitizePersonaInput(input: PersonaCreateInput): PersonaCreateIn
   }
 
   return sanitized;
+}
+
+export function matchPersonaByNickname<T extends PersonaNicknameCandidate>(
+  personas: T[],
+  message?: string | null,
+): T | null {
+  const normalizedMessage = message?.trim().toLocaleLowerCase();
+  if (!normalizedMessage) return null;
+
+  const candidates = personas
+    .map((persona) => {
+      const nickname = persona.assistantNickname?.trim().toLocaleLowerCase();
+      if (!nickname) return null;
+
+      const position = findNicknamePosition(normalizedMessage, nickname);
+      if (position < 0) return null;
+
+      return {
+        persona,
+        position,
+        nicknameLength: nickname.length,
+      };
+    })
+    .filter((candidate): candidate is { persona: T; position: number; nicknameLength: number } => !!candidate)
+    .sort((a, b) => {
+      if (a.position !== b.position) return a.position - b.position;
+      return b.nicknameLength - a.nicknameLength;
+    });
+
+  return candidates[0]?.persona ?? null;
 }
 
 // ── Prompt Building ──────────────────────────────────────────
@@ -279,8 +442,10 @@ export async function resolvePersona(
   tenant: { id: string; defaultPersonaId?: string | null },
   widgetId?: string | null,
 ): Promise<PersonaTemplate | null> {
-  // Check feature flag
-  const enabled = await getFeatureFlag("AI_PERSONA_ENABLED");
+  // Check tenant-scoped persona feature flag
+  const enabled = tenant.id
+    ? (await getTenantFeatureFlags(tenant.id)).personaSystem
+    : FEATURE_FLAG_DEFAULTS.personaSystem;
   if (!enabled) return null;
 
   const conversationTenantId = conversation.tenantId || tenant.id;
@@ -376,6 +541,7 @@ export async function createPersona(input: PersonaCreateInput): Promise<PersonaT
       description: sanitized.description,
       assistantNickname: sanitized.assistantNickname || null,
       assistantGender: sanitized.assistantGender || "neutral",
+      workingHours: sanitized.workingHours || null,
       sourceTemplateIds: sanitized.sourceTemplateIds || [],
       sourceTemplateLabels: sanitized.sourceTemplateLabels || [],
       sourceTemplateCategories: sanitized.sourceTemplateCategories || [],
@@ -388,6 +554,8 @@ export async function createPersona(input: PersonaCreateInput): Promise<PersonaT
       tenantId: sanitized.tenantId || null,
       userId: sanitized.userId || null,
       isDefault: sanitized.isDefault || false,
+      provisionedByBlueprintId: sanitized.provisionedByBlueprintId || null,
+      provisionedByBlueprintMemberId: sanitized.provisionedByBlueprintMemberId || null,
     })
     .returning();
 
@@ -397,6 +565,7 @@ export async function createPersona(input: PersonaCreateInput): Promise<PersonaT
 export async function updatePersona(
   id: string,
   input: Partial<PersonaCreateInput>,
+  tenantId?: string | null,
 ): Promise<PersonaTemplate | null> {
   const db = await getDb();
   if (!db) return null;
@@ -407,6 +576,7 @@ export async function updatePersona(
     input.restrictions !== undefined ||
     input.assistantNickname !== undefined ||
     input.assistantGender !== undefined ||
+    input.workingHours !== undefined ||
     input.sourceTemplateIds !== undefined ||
     input.sourceTemplateLabels !== undefined ||
     input.sourceTemplateCategories !== undefined;
@@ -424,6 +594,7 @@ export async function updatePersona(
   if (sanitized.description !== undefined) updateFields.description = sanitized.description;
   if (sanitized.assistantNickname !== undefined) updateFields.assistantNickname = sanitized.assistantNickname;
   if (sanitized.assistantGender !== undefined) updateFields.assistantGender = sanitized.assistantGender;
+  if (sanitized.workingHours !== undefined) updateFields.workingHours = sanitized.workingHours;
   if (sanitized.sourceTemplateIds !== undefined) updateFields.sourceTemplateIds = sanitized.sourceTemplateIds;
   if (sanitized.sourceTemplateLabels !== undefined) updateFields.sourceTemplateLabels = sanitized.sourceTemplateLabels;
   if (sanitized.sourceTemplateCategories !== undefined) updateFields.sourceTemplateCategories = sanitized.sourceTemplateCategories;
@@ -438,7 +609,10 @@ export async function updatePersona(
   const results = await db
     .update(personaTemplates)
     .set(updateFields)
-    .where(eq(personaTemplates.id, id))
+    .where(and(
+      eq(personaTemplates.id, id),
+      tenantId ? eq(personaTemplates.tenantId, tenantId) : isNull(personaTemplates.tenantId),
+    ))
     .returning();
 
   return results[0] || null;

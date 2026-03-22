@@ -7,6 +7,7 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 // Hoisted mocks for tRPC and sonner
 const {
   mockUseQuery,
+  mockPolicyUseQuery,
   mockSetKeyMutate,
   mockDeleteKeyMutate,
   mockUseUtils,
@@ -14,6 +15,7 @@ const {
   mockDeleteKeyUseMutation,
 } = vi.hoisted(() => ({
   mockUseQuery: vi.fn(),
+  mockPolicyUseQuery: vi.fn(),
   mockSetKeyMutate: vi.fn(),
   mockDeleteKeyMutate: vi.fn(),
   mockUseUtils: vi.fn(),
@@ -24,6 +26,7 @@ const {
 vi.mock("@/lib/trpc", () => ({
   trpc: {
     userApiKeys: {
+      getPolicy: { useQuery: mockPolicyUseQuery },
       listKeys: { useQuery: mockUseQuery },
       setKey: { useMutation: mockSetKeyUseMutation },
       deleteKey: { useMutation: mockDeleteKeyUseMutation },
@@ -83,6 +86,10 @@ beforeEach(() => {
   mockUseUtils.mockReturnValue({
     userApiKeys: { listKeys: { invalidate: mockInvalidate } },
   });
+  mockPolicyUseQuery.mockReturnValue({
+    data: { allowed: true },
+    isLoading: false,
+  });
   mockUseQuery.mockReturnValue({
     data: [
       { provider: "openai", keyHint: "abcd", configured: true },
@@ -118,6 +125,19 @@ describe("UserLlmKeysPanel", () => {
     // DeepSeek, Google AI, OpenRouter are not in the mock data
     const badges = screen.getAllByText("Not configured");
     expect(badges.length).toBe(3);
+  });
+
+  it("shows disabled state when admin turns off personal LLM API keys", () => {
+    mockPolicyUseQuery.mockReturnValue({
+      data: { allowed: false },
+      isLoading: false,
+    });
+
+    render(<UserLlmKeysPanel />);
+
+    expect(screen.getByText("Admin has disabled personal LLM API keys for this workspace. This section will become available only after an admin enables it.")).toBeDefined();
+    expect(screen.queryByText("Add Key")).toBeNull();
+    expect(screen.queryByText("OpenAI")).toBeNull();
   });
 
   it("save button calls setKey mutation with provider and apiKey, then invalidates cache", () => {
