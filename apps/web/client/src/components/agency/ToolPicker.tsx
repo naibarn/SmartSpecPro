@@ -8,13 +8,14 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Search, Wrench, AlertTriangle, ArrowLeft, Check, Plus, Pencil, Trash2 } from "lucide-react";
+import { Search, Wrench, AlertTriangle, ArrowLeft, Check, Plus, Pencil, Trash2, FileUp } from "lucide-react";
 import { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { ToolConfigPanel } from "./ToolConfigPanel";
 import { CustomToolCreator } from "./CustomToolCreator";
+import { OpenAPIImportModal } from "./OpenAPIImportModal";
 
 interface ToolPickerProps {
   open: boolean;
@@ -55,6 +56,7 @@ export function ToolPicker({
   } | null>(null);
   const [toolConfig, setToolConfig] = useState<Record<string, unknown>>({});
   const [creatorOpen, setCreatorOpen] = useState(false);
+  const [openApiOpen, setOpenApiOpen] = useState(false);
   const [editToolId, setEditToolId] = useState<string | undefined>();
   const [editToolData, setEditToolData] = useState<Record<string, unknown> | undefined>();
 
@@ -285,21 +287,34 @@ export function ToolPicker({
               )}
             </ScrollArea>
 
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="w-full mt-2"
-              onClick={() => {
-                setEditToolId(undefined);
-                setEditToolData(undefined);
-                setCreatorOpen(true);
-              }}
-              data-testid="create-custom-tool-btn"
-            >
-              <Plus className="mr-1.5 h-3.5 w-3.5" />
-              Create Custom Tool
-            </Button>
+            <div className="flex gap-2 mt-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="flex-1"
+                onClick={() => {
+                  setEditToolId(undefined);
+                  setEditToolData(undefined);
+                  setCreatorOpen(true);
+                }}
+                data-testid="create-custom-tool-btn"
+              >
+                <Plus className="mr-1.5 h-3.5 w-3.5" />
+                Create Tool
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="flex-1"
+                onClick={() => setOpenApiOpen(true)}
+                data-testid="import-openapi-btn"
+              >
+                <FileUp className="mr-1.5 h-3.5 w-3.5" />
+                Import OpenAPI
+              </Button>
+            </div>
           </>
         )}
 
@@ -313,6 +328,15 @@ export function ToolPicker({
           editToolId={editToolId}
           editToolData={editToolData}
           onSuccess={handleCreatorSuccess}
+        />
+
+        <OpenAPIImportModal
+          open={openApiOpen}
+          onOpenChange={setOpenApiOpen}
+          onImportComplete={() => {
+            utils?.agency?.listTools?.invalidate?.();
+            utils?.agency?.listCustomTools?.invalidate?.();
+          }}
         />
       </DialogContent>
     </Dialog>

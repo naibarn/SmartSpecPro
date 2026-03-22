@@ -3135,4 +3135,116 @@ export const agencyRouter = router({
         clearTimeout(timeout);
       }
     }),
+
+  // ─── OpenAPI Import ─────────────────────────────────────────────────
+
+  importOpenAPITools: protectedProcedure
+    .use(createRateLimitMiddleware({ namespace: "agency-openapi-import", limit: 5, windowMs: 60_000 }))
+    .input(z.object({
+      specContent: z.string().min(1).max(500_000),
+      specFormat: z.enum(["json", "yaml"]),
+      baseUrl: z.string().url().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = ctx.tenantId!;
+      await assertAgencyEnabled(tenantId);
+
+      // SSRF validate baseUrl override if provided
+      if (input.baseUrl) {
+        try {
+          validateSsrfUrl(input.baseUrl);
+        } catch (e: any) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: `SSRF: ${e.message}` });
+        }
+      }
+
+      const { parseOpenApiSpec } = await import("../services/openApiToolFactory");
+      try {
+        const result = await parseOpenApiSpec({
+          specContent: input.specContent,
+          specFormat: input.specFormat,
+          baseUrlOverride: input.baseUrl,
+        });
+        return result;
+      } catch (e: any) {
+        if (e.name === "OpenApiImportError") {
+          throw new TRPCError({ code: "BAD_REQUEST", message: e.message });
+        }
+        throw new TRPCError({ code: "BAD_REQUEST", message: `Failed to parse spec: ${e.message}` });
+      }
+    }),
+
+  confirmOpenAPIImport: protectedProcedure
+    .use(createRateLimitMiddleware({ namespace: "agency-openapi-confirm", limit: 5, windowMs: 60_000 }))
+    .input(z.object({
+      selectedTools: z.array(z.object({
+        name: z.string().max(100),
+        description: z.string().max(500),
+        httpMethod: z.enum(["GET", "POST", "PUT", "DELETE", "PATCH"]),
+        path: z.string(),
+        inputSchema: z.record(z.unknown()),
+      })).min(1).max(100),
+      baseUrl: z.string().url(),
+      apiKey: z.string().max(500).optional(),
+      agencyId: z.string().uuid().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = ctx.tenantId!;
+      await assertAgencyEnabled(tenantId);
+
+      // SSRF validate baseUrl
+      try {
+        validateSsrfUrl(input.baseUrl);
+      } catch (e: any) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: `SSRF: ${e.message}` });
+      }
+
+      // Enforce 50-tool-per-tenant cap
+      const [toolCount] = await db
+        .select({ count: count() })
+        .from(agencyTools)
+        .where(and(eq(agencyTools.tenantId, tenantId), eq(agencyTools.isEnabled, true)));
+      if (toolCount.count + input.selectedTools.length > 50) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Cannot import ${input.selectedTools.length} tools: would exceed 50 tool limit (currently have ${toolCount.count})`,
+        });
+      }
+
+      // Encrypt API key as Authorization header if provided
+      const headersEncrypted = input.apiKey
+        ? encrypt(JSON.stringify({ Authorization: `Bearer ${input.apiKey}` }))
+        : null;
+
+      // Bulk insert all selected tools
+      const toolRows = input.selectedTools.map((tool) => ({
+        id: crypto.randomUUID(),
+        tenantId,
+        name: tool.name,
+        description: tool.description,
+        toolType: "openapi_import" as const,
+        config: { baseUrl: input.baseUrl, path: tool.path },
+        riskLevel: "low" as const,
+        requiresApproval: false,
+        inputSchema: tool.inputSchema,
+        outputSchema: null,
+        httpMethod: tool.httpMethod,
+        headersEncrypted,
+        retryPolicy: null,
+        icon: null,
+        category: null,
+        version: 1,
+        isExposedAsApi: false,
+        strictSchema: false,
+        oneCallAtATime: false,
+        isEnabled: true,
+      }));
+
+      await db.insert(agencyTools).values(toolRows);
+
+      return {
+        created: toolRows.length,
+        toolIds: toolRows.map((r) => r.id),
+      };
+    }),
 });
