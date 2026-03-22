@@ -1,7 +1,17 @@
-"""fal.ai media provider — video (queue), audio (sync TTS), image (sync Flux)."""
+"""fal.ai media provider — video (queue), audio (sync TTS), image (sync Flux).
+
+Auth: ``Key <api_key>`` header (NOT Bearer).
+Endpoints:
+  - Sync (audio/image): POST https://fal.run/{model_id}
+  - Queue (video):      POST https://queue.fal.run/{model_id}
+  - Queue poll:         GET  https://queue.fal.run/{model_id}/requests/{request_id}/status
+  - Queue result:       GET  https://queue.fal.run/{model_id}/requests/{request_id}
+
+All outbound calls use ``follow_redirects=False`` to prevent redirect-based SSRF.
+"""
 
 import re
-from typing import Any, NoReturn
+from typing import Any
 from urllib.parse import urlparse
 
 import httpx
@@ -19,6 +29,9 @@ _REQUEST_ID_RE = re.compile(r"^[a-zA-Z0-9_\-]{4,256}$")
 
 # Max prompt length to prevent abuse (100K chars)
 _MAX_PROMPT_LENGTH = 100_000
+
+# Timeout for queue status polls (shorter than generation timeout)
+_POLL_TIMEOUT = httpx.Timeout(connect=10.0, read=30.0, write=10.0, pool=5.0)
 
 
 class FalAIProvider:
@@ -44,8 +57,14 @@ class FalAIProvider:
     })
     ALL_MODELS: frozenset[str] = VIDEO_MODELS | AUDIO_MODELS | IMAGE_MODELS
 
-    def __init__(self, api_key: str, base_url: str | None = None) -> None:
+    def __init__(
+        self,
+        api_key: str,
+        base_url: str | None = None,
+        queue_base_url: str | None = None,
+    ) -> None:
         self.base_url = (base_url or self.BASE_URL).rstrip("/")
+        self.queue_base_url = (queue_base_url or self.QUEUE_BASE_URL).rstrip("/")
         # SECURITY: _headers contains the API key — never log this dict
         self._headers = {
             "Authorization": f"Key {api_key}",
@@ -103,7 +122,7 @@ class FalAIProvider:
             await self._check_video_size(video_url)
 
     async def _check_video_size(self, url: str) -> None:
-        """Async HEAD check for video file size (best-effort, fail-open)."""
+        """Async HEAD check for video file size (best-effort, fail-open on timeout only)."""
         try:
             resp = await self.client.head(
                 url, follow_redirects=False, timeout=httpx.Timeout(10.0),
@@ -114,13 +133,15 @@ class FalAIProvider:
                 raise ValueError(
                     f"Video file exceeds 500MB limit ({int(cl)} bytes)"
                 )
-        except ValueError:
-            raise  # re-raise size limit error
-        except Exception as exc:
+        except (ValueError, httpx.HTTPStatusError):
+            raise  # re-raise size limit + HTTP errors (incl. redirect 3xx)
+        except httpx.TimeoutException:
+            logger.debug("fal_ai_video_size_check_timeout", url=url[:100])
+        except httpx.RequestError as exc:
             logger.debug(
                 "fal_ai_video_size_check_skipped",
                 url=url[:100],
-                reason=str(exc)[:100],
+                reason=type(exc).__name__,
             )
 
     @staticmethod
@@ -135,16 +156,35 @@ class FalAIProvider:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _handle_http_error(exc: httpx.HTTPStatusError) -> NoReturn:
-        """Convert HTTP errors to sanitized ValueErrors. Never leak response body."""
+    def _handle_http_error(exc: httpx.HTTPStatusError) -> None:
+        """Log sanitized error and re-raise original httpx exception for caller handling.
+
+        Callers that need user-facing messages should catch httpx.HTTPStatusError
+        and map status codes. The Celery polling path relies on seeing the original
+        exception to distinguish 429 from 4xx from 5xx.
+        """
         status = exc.response.status_code
+        # Log with sanitized message — never include response body
         if status == 401:
-            raise ValueError("Invalid fal.ai API key") from None
+            logger.warning("fal_ai_auth_error", status=status)
+        elif status == 422:
+            logger.warning("fal_ai_content_policy", status=status)
+        elif status == 429:
+            logger.warning("fal_ai_rate_limited", status=status)
+        else:
+            logger.warning("fal_ai_http_error", status=status)
+        raise  # re-raise the original httpx.HTTPStatusError
+
+    @staticmethod
+    def map_http_error_to_message(status: int) -> str:
+        """Convert HTTP status code to a user-safe error message."""
+        if status == 401:
+            return "Invalid fal.ai API key"
         if status == 422:
-            raise ValueError("Content policy rejection") from None
+            return "Content policy rejection"
         if status == 429:
-            raise ValueError("fal.ai rate limit exceeded") from None
-        raise ValueError(f"fal.ai error (HTTP {status})") from None
+            return "fal.ai rate limit exceeded"
+        return f"fal.ai error (HTTP {status})"
 
     # ------------------------------------------------------------------
     # Public API — media generation
@@ -173,18 +213,18 @@ class FalAIProvider:
         url = f"{self.base_url}/{model_id}"
         logger.info("fal_ai_generate_audio", model_id=model_id)
 
+        response = await self.client.post(
+            url, headers=self._headers, json=params, follow_redirects=False,
+        )
         try:
-            response = await self.client.post(
-                url, headers=self._headers, json=params, follow_redirects=False,
-            )
             response.raise_for_status()
         except httpx.HTTPStatusError as exc:
             self._handle_http_error(exc)
 
         data = response.json()
-        audio_url = data.get("audio", {}).get("url", "")
+        audio_url = data.get("audio", {}).get("url") or data.get("url")
         return {
-            "data": [{"url": audio_url}],
+            "data": [{"url": audio_url}] if audio_url else [],
             "status": "COMPLETED",
         }
 
@@ -199,10 +239,10 @@ class FalAIProvider:
         url = f"{self.base_url}/{model_id}"
         logger.info("fal_ai_generate_image", model_id=model_id)
 
+        response = await self.client.post(
+            url, headers=self._headers, json=params, follow_redirects=False,
+        )
         try:
-            response = await self.client.post(
-                url, headers=self._headers, json=params, follow_redirects=False,
-            )
             response.raise_for_status()
         except httpx.HTTPStatusError as exc:
             self._handle_http_error(exc)
@@ -210,7 +250,7 @@ class FalAIProvider:
         data = response.json()
         images = data.get("images", [])
         return {
-            "data": [{"url": img.get("url", "")} for img in images],
+            "data": [{"url": img["url"]} for img in images if img.get("url")],
             "status": "COMPLETED",
         }
 
@@ -220,13 +260,13 @@ class FalAIProvider:
 
     async def _submit_queue(self, model_id: str, payload: dict[str, Any]) -> str:
         """POST queue.fal.run/{model_id} → return request_id."""
-        url = f"{self.QUEUE_BASE_URL}/{model_id}"
+        url = f"{self.queue_base_url}/{model_id}"
         logger.info("fal_ai_submit_queue", model_id=model_id)
 
+        response = await self.client.post(
+            url, headers=self._headers, json=payload, follow_redirects=False,
+        )
         try:
-            response = await self.client.post(
-                url, headers=self._headers, json=payload, follow_redirects=False,
-            )
             response.raise_for_status()
         except httpx.HTTPStatusError as exc:
             self._handle_http_error(exc)
@@ -241,13 +281,13 @@ class FalAIProvider:
     async def get_queue_status(self, model_id: str, request_id: str) -> dict:
         """GET queue status → {status: IN_QUEUE|IN_PROGRESS|COMPLETED}."""
         self._validate_request_id(request_id)
-        url = f"{self.QUEUE_BASE_URL}/{model_id}/requests/{request_id}/status"
+        url = f"{self.queue_base_url}/{model_id}/requests/{request_id}/status"
         logger.info("fal_ai_queue_status", model_id=model_id, request_id=request_id)
 
+        response = await self.client.get(
+            url, headers=self._headers, follow_redirects=False, timeout=_POLL_TIMEOUT,
+        )
         try:
-            response = await self.client.get(
-                url, headers=self._headers, follow_redirects=False,
-            )
             response.raise_for_status()
         except httpx.HTTPStatusError as exc:
             self._handle_http_error(exc)
@@ -257,13 +297,13 @@ class FalAIProvider:
     async def get_queue_result(self, model_id: str, request_id: str) -> dict:
         """GET queue result → normalized {data: [{url}], actual_duration, actual_resolution}."""
         self._validate_request_id(request_id)
-        url = f"{self.QUEUE_BASE_URL}/{model_id}/requests/{request_id}"
+        url = f"{self.queue_base_url}/{model_id}/requests/{request_id}"
         logger.info("fal_ai_queue_result", model_id=model_id, request_id=request_id)
 
+        response = await self.client.get(
+            url, headers=self._headers, follow_redirects=False,
+        )
         try:
-            response = await self.client.get(
-                url, headers=self._headers, follow_redirects=False,
-            )
             response.raise_for_status()
         except httpx.HTTPStatusError as exc:
             self._handle_http_error(exc)
@@ -273,20 +313,31 @@ class FalAIProvider:
         # Normalize: try video shape first, then audio, then top-level
         video = data.get("video") or {}
         audio = data.get("audio") or {}
+
         result_url = (
             video.get("url")
             or audio.get("url")
-            or (data.get("data", [{}])[0] if isinstance(data.get("data"), list) and data["data"] else {}).get("url")
-            or data.get("url", "")
+            or self._extract_data_url(data)
+            or data.get("url")
         )
         width = video.get("width")
         duration = video.get("duration") or audio.get("duration") or data.get("duration")
 
         return {
-            "data": [{"url": result_url}],
+            "data": [{"url": result_url}] if result_url else [],
             "actual_duration": duration,
             "actual_resolution": self._derive_resolution(width),
         }
+
+    @staticmethod
+    def _extract_data_url(data: dict) -> str | None:
+        """Safely extract URL from data[0].url pattern."""
+        data_list = data.get("data")
+        if isinstance(data_list, list) and data_list:
+            first = data_list[0]
+            if isinstance(first, dict):
+                return first.get("url")
+        return None
 
     @staticmethod
     def _derive_resolution(width: Any) -> str:

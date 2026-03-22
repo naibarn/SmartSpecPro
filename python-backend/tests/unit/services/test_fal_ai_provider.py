@@ -259,7 +259,7 @@ class TestErrorHandling:
     def provider(self):
         return FalAIProvider(api_key="test-key")
 
-    async def test_401_invalid_api_key(self, provider):
+    async def test_401_raises_httpx_error(self, provider):
         mock_response = MagicMock()
         mock_response.status_code = 401
         mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
@@ -267,10 +267,11 @@ class TestErrorHandling:
         )
 
         with patch.object(provider.client, "post", new_callable=AsyncMock, return_value=mock_response):
-            with pytest.raises(ValueError, match="Invalid fal.ai API key"):
+            with pytest.raises(httpx.HTTPStatusError) as exc_info:
                 await provider.generate_image("fal-ai/flux/schnell", {"prompt": "test"})
+            assert exc_info.value.response.status_code == 401
 
-    async def test_422_content_policy(self, provider):
+    async def test_422_raises_httpx_error(self, provider):
         mock_response = MagicMock()
         mock_response.status_code = 422
         mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
@@ -278,10 +279,11 @@ class TestErrorHandling:
         )
 
         with patch.object(provider.client, "post", new_callable=AsyncMock, return_value=mock_response):
-            with pytest.raises(ValueError, match="Content policy rejection"):
+            with pytest.raises(httpx.HTTPStatusError) as exc_info:
                 await provider.generate_image("fal-ai/flux/schnell", {"prompt": "test"})
+            assert exc_info.value.response.status_code == 422
 
-    async def test_429_rate_limit(self, provider):
+    async def test_429_raises_httpx_error(self, provider):
         mock_response = MagicMock()
         mock_response.status_code = 429
         mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
@@ -289,10 +291,11 @@ class TestErrorHandling:
         )
 
         with patch.object(provider.client, "post", new_callable=AsyncMock, return_value=mock_response):
-            with pytest.raises(ValueError, match="fal.ai rate limit exceeded"):
+            with pytest.raises(httpx.HTTPStatusError) as exc_info:
                 await provider.generate_image("fal-ai/flux/schnell", {"prompt": "test"})
+            assert exc_info.value.response.status_code == 429
 
-    async def test_500_no_body_in_message(self, provider):
+    async def test_500_raises_httpx_error_no_body_leak(self, provider):
         mock_response = MagicMock()
         mock_response.status_code = 500
         mock_response.text = "Internal server error details that should not leak"
@@ -301,8 +304,14 @@ class TestErrorHandling:
         )
 
         with patch.object(provider.client, "post", new_callable=AsyncMock, return_value=mock_response):
-            with pytest.raises(ValueError, match=r"fal\.ai error \(HTTP 500\)"):
+            with pytest.raises(httpx.HTTPStatusError):
                 await provider.generate_image("fal-ai/flux/schnell", {"prompt": "test"})
+
+    def test_map_http_error_to_message(self):
+        assert FalAIProvider.map_http_error_to_message(401) == "Invalid fal.ai API key"
+        assert FalAIProvider.map_http_error_to_message(422) == "Content policy rejection"
+        assert FalAIProvider.map_http_error_to_message(429) == "fal.ai rate limit exceeded"
+        assert FalAIProvider.map_http_error_to_message(503) == "fal.ai error (HTTP 503)"
 
 
 # --- Resource Cleanup ---

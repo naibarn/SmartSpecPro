@@ -693,8 +693,12 @@ class LLMGateway:
                 return response
             except HTTPException:
                 raise
+            except httpx.HTTPStatusError as http_err:
+                msg = FalAIImageProvider.map_http_error_to_message(http_err.response.status_code)
+                logger.error("fal_ai_image_generation_failed", user_id=user.id, model=request.model, status=http_err.response.status_code)
+                raise HTTPException(status_code=http_err.response.status_code, detail=msg)
             except Exception as e:
-                logger.error("fal_ai_image_generation_failed", user_id=user.id, model=request.model, error=str(e))
+                logger.error("fal_ai_image_generation_failed", user_id=user.id, model=request.model, error=type(e).__name__)
                 raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="fal.ai image generation failed")
             finally:
                 if fal_client is not None:
@@ -986,8 +990,12 @@ class LLMGateway:
                 return response
             except HTTPException:
                 raise
+            except httpx.HTTPStatusError as http_err:
+                msg = FalAIProvider.map_http_error_to_message(http_err.response.status_code)
+                logger.error("fal_ai_video_generation_failed", user_id=user.id, model=request.model, status=http_err.response.status_code)
+                raise HTTPException(status_code=http_err.response.status_code, detail=msg)
             except Exception as e:
-                logger.error("fal_ai_video_generation_failed", user_id=user.id, model=request.model, error=str(e))
+                logger.error("fal_ai_video_generation_failed", user_id=user.id, model=request.model, error=type(e).__name__)
                 raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="fal.ai video generation failed")
             finally:
                 if fal_client is not None:
@@ -1275,8 +1283,12 @@ class LLMGateway:
                 return response
             except HTTPException:
                 raise
+            except httpx.HTTPStatusError as http_err:
+                msg = FalAIAudioProvider.map_http_error_to_message(http_err.response.status_code)
+                logger.error("fal_ai_audio_generation_failed", user_id=user.id, model=normalized_request.model, status=http_err.response.status_code)
+                raise HTTPException(status_code=http_err.response.status_code, detail=msg)
             except Exception as e:
-                logger.error("fal_ai_audio_generation_failed", user_id=user.id, model=normalized_request.model, error=str(e))
+                logger.error("fal_ai_audio_generation_failed", user_id=user.id, model=normalized_request.model, error=type(e).__name__)
                 raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="fal.ai audio generation failed")
             finally:
                 if fal_client is not None:
