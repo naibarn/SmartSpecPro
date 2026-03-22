@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from app.tasks.media_tasks import (
     _derive_fal_resolution,
     _extract_fal_duration,
+    _extract_fal_result_url,
 )
 
 
@@ -47,6 +48,33 @@ class TestExtractFalDuration:
 
     def test_string_duration(self):
         assert _extract_fal_duration({"duration": "5.0"}) == 5.0
+
+    def test_non_numeric_string_duration(self):
+        assert _extract_fal_duration({"duration": "unknown"}) is None
+
+    def test_zero_duration(self):
+        assert _extract_fal_duration({"video": {"duration": 0}}) == 0.0
+
+
+class TestExtractFalResultUrl:
+    def test_video_data_url(self):
+        result = {"data": [{"url": "https://fal.media/video.mp4"}]}
+        assert _extract_fal_result_url(result) == "https://fal.media/video.mp4"
+
+    def test_audio_url(self):
+        result = {"audio": {"url": "https://fal.media/audio.wav"}}
+        assert _extract_fal_result_url(result) == "https://fal.media/audio.wav"
+
+    def test_top_level_url(self):
+        result = {"url": "https://fal.media/file.mp4"}
+        assert _extract_fal_result_url(result) == "https://fal.media/file.mp4"
+
+    def test_empty_result(self):
+        assert _extract_fal_result_url({}) is None
+
+    def test_audio_url_key(self):
+        result = {"audio_url": {"url": "https://fal.media/tts.wav"}}
+        assert _extract_fal_result_url(result) == "https://fal.media/tts.wav"
 
 
 # ---------------------------------------------------------------------------

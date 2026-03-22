@@ -128,4 +128,49 @@ export async function validateReferenceUrls(urls: string[]): Promise<void> {
   }
 }
 
+// ---------------------------------------------------------------------------
+// validateExtraParamsNoSsrf — synchronous check for extraParams URL values
+// ---------------------------------------------------------------------------
+
+/**
+ * Validates that no top-level string value in extraParams is a URL targeting
+ * internal/private hosts. Returns an array of error messages (empty = safe).
+ * Runs synchronously (no DNS resolution) for use in Zod .superRefine().
+ */
+export function validateExtraParamsNoSsrf(
+  extraParams: Record<string, unknown> | undefined,
+): string[] {
+  if (!extraParams) return [];
+  const errors: string[] = [];
+  for (const [key, value] of Object.entries(extraParams)) {
+    if (typeof value !== "string") continue;
+    if (!/^https?:\/\//i.test(value)) continue;
+    try {
+      const parsed = new URL(value);
+      const hostname = parsed.hostname;
+
+      // Exact-match blocklist
+      const lower = hostname.toLowerCase();
+      if (
+        lower === "localhost" ||
+        lower === "host.docker.internal" ||
+        lower === "0.0.0.0" ||
+        lower === "[::1]" ||
+        lower === "::1"
+      ) {
+        errors.push(`extraParams.${key} targets internal host`);
+        continue;
+      }
+
+      // IPv4 range check (re-uses isPrivateIPv4 from above)
+      if (isIPv4(hostname) && isPrivateIPv4(hostname)) {
+        errors.push(`extraParams.${key} targets internal host`);
+      }
+    } catch {
+      // Not a valid URL — not an SSRF risk
+    }
+  }
+  return errors;
+}
+
 export { ApiValidationError };

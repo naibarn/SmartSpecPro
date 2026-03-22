@@ -37,6 +37,18 @@ import {
   refreshModelCache,
 } from "../services/modelRegistry";
 
+import { validateExtraParamsNoSsrf } from "../services/ssrfValidation";
+
+const extraParamsSchema = z
+  .record(z.any())
+  .optional()
+  .superRefine((val, ctx) => {
+    const errors = validateExtraParamsNoSsrf(val);
+    for (const msg of errors) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: msg });
+    }
+  });
+
 // Helper to create secure token for Python backend (fallback)
 function createMediaToken(userId: number): string {
   return signBearerToken({
@@ -1042,7 +1054,7 @@ export const mediaRouter = router({
         resolution: z.string().optional(),
         outputFormat: z.string().optional(),
         apiConfig: z.record(z.string()).optional(),
-        extraParams: z.record(z.any()).optional(),
+        extraParams: extraParamsSchema,
       })
     )
     .mutation(async ({ input, ctx }) => {
@@ -1184,7 +1196,7 @@ export const mediaRouter = router({
         fps: z.number().min(15).max(60).optional(),
         resolution: z.string().optional(),
         apiConfig: z.record(z.string()).optional(),
-        extraParams: z.record(z.any()).optional(),
+        extraParams: extraParamsSchema,
       })
     )
     .mutation(async ({ input, ctx }) => {
@@ -1294,7 +1306,7 @@ export const mediaRouter = router({
         voice: z.string().optional(),
         speed: z.number().min(0.5).max(2.0).optional(),
         apiConfig: z.record(z.string()).optional(),
-        extraParams: z.record(z.any()).optional(),
+        extraParams: extraParamsSchema,
       })
     )
     .mutation(async ({ input, ctx }) => {
@@ -1407,7 +1419,7 @@ export const mediaRouter = router({
         voice: z.string().optional(),
         speed: z.number().min(0.5).max(2.0).optional(),
         apiConfig: z.record(z.string()).optional(),
-        extraParams: z.record(z.any()).optional(),
+        extraParams: extraParamsSchema,
       })
     )
     .mutation(async ({ input, ctx }) => {
@@ -1536,7 +1548,7 @@ export const mediaRouter = router({
         referenceImageUrls: z.array(referenceMediaUrlSchema).max(5).optional(),
         referenceStyleUrl: referenceMediaUrlSchema.optional(),
         apiConfig: z.record(z.string()).optional(),
-        extraParams: z.record(z.any()).optional(),
+        extraParams: extraParamsSchema,
       })
     )
     .mutation(async ({ input, ctx }) => {
@@ -1671,7 +1683,7 @@ export const mediaRouter = router({
         referenceImageUrls: z.array(referenceMediaUrlSchema).max(5).optional(),
         referenceVideoUrl: referenceMediaUrlSchema.optional(),
         apiConfig: z.record(z.string()).optional(),
-        extraParams: z.record(z.any()).optional(),
+        extraParams: extraParamsSchema,
       })
     )
     .mutation(async ({ input, ctx }) => {
