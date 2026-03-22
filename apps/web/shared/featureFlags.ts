@@ -34,7 +34,11 @@ export interface TenantFeatureFlags {
   notificationEmailDelivery: boolean; // F27 — Email delivery channel for notifications
   notificationWebhookDelivery: boolean; // F28 — Webhook delivery channel for notifications
   unifiedSkillExecution: boolean; // F29 — Unified skill execution pipeline (routes chat + team room through single orchestrator)
-  agencyMcpBridge: boolean; // F30 — Agency MCP integration (expose/consume MCP tools)
+  agencyCustomTools: boolean; // F30 — Agency custom tool creation & OpenAPI import
+  agencyGuardrails: boolean; // F31 — Agency guardrail system
+  agencyStreaming: boolean; // F32 — Agency SSE streaming
+  agencyMcpBridge: boolean; // F33 — Agency MCP bridge integration
+  agencyToolApi: boolean; // F34 — Agency standalone tool API
 }
 
 export type TenantFeatureFlagKey = keyof TenantFeatureFlags;
@@ -73,7 +77,11 @@ export const ALLOWED_FEATURE_FLAGS: ReadonlySet<string> = new Set<TenantFeatureF
   "notificationEmailDelivery",
   "notificationWebhookDelivery",
   "unifiedSkillExecution",
+  "agencyCustomTools",
+  "agencyGuardrails",
+  "agencyStreaming",
   "agencyMcpBridge",
+  "agencyToolApi",
 ]);
 
 /**
@@ -111,5 +119,9 @@ export const FEATURE_FLAG_DEFAULTS: Readonly<TenantFeatureFlags> = {
   notificationEmailDelivery: false,
   notificationWebhookDelivery: false,
   unifiedSkillExecution: false,
+  agencyCustomTools: false,
+  agencyGuardrails: false,
+  agencyStreaming: false,
   agencyMcpBridge: false,
+  agencyToolApi: false,
 };

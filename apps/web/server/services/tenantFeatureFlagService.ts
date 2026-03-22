@@ -40,6 +40,11 @@ const REDIS_SYNCED_FLAGS: ReadonlySet<TenantFeatureFlagKey> = new Set([
   "publicApi",
   "multimodalMemory",
   "skillOrchestrator",
+  "agencyCustomTools",
+  "agencyGuardrails",
+  "agencyStreaming",
+  "agencyMcpBridge",
+  "agencyToolApi",
 ]);
 
 /**
