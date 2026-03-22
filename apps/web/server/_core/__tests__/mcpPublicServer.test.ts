@@ -48,6 +48,40 @@ vi.mock("../../middleware/apiKeyAuth", () => ({
   },
 }));
 
+const {
+  mockPromoteMessageToWorkItem,
+  mockAdvanceWorkItemByAssistant,
+  mockApproveWorkItemByAssistant,
+  mockRequestWorkItemChangesByAssistant,
+} = vi.hoisted(() => ({
+  mockPromoteMessageToWorkItem: vi.fn(async () => ({
+    workItem: { id: "work-1", title: "Follow up" },
+    createdMessage: { id: "msg-1" },
+    autoRouted: { targetStep: "research", roomMessage: { id: "msg-2" } },
+  })),
+  mockAdvanceWorkItemByAssistant: vi.fn(async () => ({
+    workItem: { id: "work-1" },
+    targetStep: "review",
+    roomMessage: { id: "msg-3" },
+  })),
+  mockApproveWorkItemByAssistant: vi.fn(async () => ({
+    workItem: { id: "work-1" },
+    roomMessage: { id: "msg-4" },
+  })),
+  mockRequestWorkItemChangesByAssistant: vi.fn(async () => ({
+    workItem: { id: "work-1" },
+    roomMessage: { id: "msg-5" },
+    autoRouted: { targetStep: "research", roomMessage: { id: "msg-6" } },
+  })),
+}));
+
+vi.mock("../../services/orchestratorRoomActionsService", () => ({
+  promoteMessageToWorkItem: mockPromoteMessageToWorkItem,
+  advanceWorkItemByAssistant: mockAdvanceWorkItemByAssistant,
+  approveWorkItemByAssistant: mockApproveWorkItemByAssistant,
+  requestWorkItemChangesByAssistant: mockRequestWorkItemChangesByAssistant,
+}));
+
 // ---------------------------------------------------------------------------
 // Test app factory
 // ---------------------------------------------------------------------------
@@ -157,6 +191,59 @@ describe("POST /v1/mcp — protocol", () => {
     expect(res.status).toBe(200);
     expect(res.body.result.content).toBeInstanceOf(Array);
     expect(res.body.result.content.length).toBeGreaterThan(0);
+  });
+
+  it("lists orchestrator room action tools when the session has agencies:invoke + mcp:write", async () => {
+    const app = makeApp();
+    const sessionId = await initializeSession(app);
+
+    const res = await request(app)
+      .post("/v1/mcp")
+      .set("Mcp-Session-Id", sessionId)
+      .send({ jsonrpc: "2.0", method: "tools/list", params: {}, id: 9 });
+
+    const toolNames = res.body.result.tools.map((tool: any) => tool.name);
+    expect(toolNames).toContain("smartspec.orchestrator.promote_message_to_work_item");
+    expect(toolNames).toContain("smartspec.orchestrator.advance_work_item");
+    expect(toolNames).toContain("smartspec.orchestrator.approve_work_item");
+    expect(toolNames).toContain("smartspec.orchestrator.request_work_item_changes");
+  });
+
+  it("delegates orchestrator tool calls to the shared room action service", async () => {
+    const app = makeApp();
+    const sessionId = await initializeSession(app);
+
+    const res = await request(app)
+      .post("/v1/mcp")
+      .set("Mcp-Session-Id", sessionId)
+      .send({
+        jsonrpc: "2.0",
+        method: "tools/call",
+        params: {
+          name: "smartspec.orchestrator.promote_message_to_work_item",
+          arguments: {
+            team_id: "team-1",
+            room_id: "room-1",
+            message_id: "msg-1",
+            actor_assistant_id: "assistant-1",
+            title: "Research follow-up",
+            target_step: "research",
+          },
+        },
+        id: 10,
+      });
+
+    expect(mockPromoteMessageToWorkItem).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: "tenant-1",
+      teamId: "team-1",
+      roomId: "room-1",
+      messageId: "msg-1",
+      actorAssistantId: "assistant-1",
+      actorUserId: 1,
+      title: "Research follow-up",
+      targetStep: "research",
+    }));
+    expect(res.body.result.content[0].text).toContain("\"workItem\"");
   });
 
   it("rejects invalid JSON-RPC format (missing jsonrpc field)", async () => {

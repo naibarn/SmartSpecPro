@@ -109,9 +109,81 @@ const tools: ToolDef[] = [
       additionalProperties: false,
     },
   },
+  {
+    name: "smartspec.orchestrator.promote_message_to_work_item",
+    description:
+      "Promote a room message into a tracked work item and optionally route it into the team workflow.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        team_id: { type: "string" },
+        room_id: { type: "string" },
+        message_id: { type: "string" },
+        actor_assistant_id: { type: "string" },
+        title: { type: "string" },
+        objective: { type: "string" },
+        target_step: { type: "string", enum: ["research", "review", "approval"] },
+      },
+      required: ["team_id", "room_id", "message_id", "actor_assistant_id"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "smartspec.orchestrator.advance_work_item",
+    description:
+      "Advance a team work item to the next workflow stage as an assistant in the room.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        team_id: { type: "string" },
+        room_id: { type: "string" },
+        work_item_id: { type: "string" },
+        actor_assistant_id: { type: "string" },
+        reply_to_message_id: { type: "string" },
+        target_step: { type: "string", enum: ["research", "review", "approval"] },
+      },
+      required: ["team_id", "room_id", "work_item_id", "actor_assistant_id", "target_step"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "smartspec.orchestrator.approve_work_item",
+    description: "Approve the latest revision of a tracked team work item as an assistant.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        team_id: { type: "string" },
+        room_id: { type: "string" },
+        work_item_id: { type: "string" },
+        actor_assistant_id: { type: "string" },
+        reply_to_message_id: { type: "string" },
+      },
+      required: ["team_id", "room_id", "work_item_id", "actor_assistant_id"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "smartspec.orchestrator.request_work_item_changes",
+    description:
+      "Reject a work item revision with feedback and route the work back into research.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        team_id: { type: "string" },
+        room_id: { type: "string" },
+        work_item_id: { type: "string" },
+        actor_assistant_id: { type: "string" },
+        reply_to_message_id: { type: "string" },
+        reason: { type: "string" },
+      },
+      required: ["team_id", "room_id", "work_item_id", "actor_assistant_id"],
+      additionalProperties: false,
+    },
+  },
 ];
 
 function requiredScopeForTool(name: string): string {
+  if (name.startsWith("smartspec.orchestrator.")) return "mcp:write";
   if (name === "workspace_write_file") return "mcp:write";
   return "mcp:read";
 }
@@ -174,6 +246,84 @@ async function callTool(name: string, args: any, req: Request, auth: any) {
 
       writeAudit({ ...baseAudit, ok: true, bytes });
       return { ok: true, content: [{ type: "text", text: "OK" }] };
+    }
+
+    if (name.startsWith("smartspec.orchestrator.")) {
+      const tenantId =
+        (typeof auth?.tenantId === "string" && auth.tenantId) ||
+        String(req.headers["x-tenant-id"] || "");
+      const actorUserIdHeader = String(req.headers["x-user-id"] || "");
+      const actorUserId =
+        Number.isFinite(Number(actorUserIdHeader)) && Number(actorUserIdHeader) > 0
+          ? Number(actorUserIdHeader)
+          : Number.parseInt(String(auth?.sub || ""), 10);
+
+      if (!tenantId) {
+        throw new Error("Tenant context required for orchestrator tools");
+      }
+      if (!Number.isFinite(actorUserId) || actorUserId <= 0) {
+        throw new Error("User context required for orchestrator tools");
+      }
+
+      const orchestratorTools = await import("../services/orchestratorRoomActionsService");
+
+      if (name === "smartspec.orchestrator.promote_message_to_work_item") {
+        return orchestratorTools.promoteMessageToWorkItem({
+          tenantId,
+          teamId: String(args?.team_id || ""),
+          roomId: String(args?.room_id || ""),
+          messageId: String(args?.message_id || ""),
+          actorAssistantId: String(args?.actor_assistant_id || ""),
+          actorUserId,
+          title: typeof args?.title === "string" ? args.title : undefined,
+          objective: typeof args?.objective === "string" ? args.objective : undefined,
+          targetStep:
+            args?.target_step === "research" || args?.target_step === "review" || args?.target_step === "approval"
+              ? args.target_step
+              : undefined,
+        });
+      }
+
+      if (name === "smartspec.orchestrator.advance_work_item") {
+        return orchestratorTools.advanceWorkItemByAssistant({
+          tenantId,
+          teamId: String(args?.team_id || ""),
+          roomId: String(args?.room_id || ""),
+          workItemId: String(args?.work_item_id || ""),
+          actorAssistantId: String(args?.actor_assistant_id || ""),
+          actorUserId,
+          replyToMessageId: typeof args?.reply_to_message_id === "string" ? args.reply_to_message_id : undefined,
+          targetStep:
+            args?.target_step === "research" || args?.target_step === "review" || args?.target_step === "approval"
+              ? args.target_step
+              : undefined,
+        });
+      }
+
+      if (name === "smartspec.orchestrator.approve_work_item") {
+        return orchestratorTools.approveWorkItemByAssistant({
+          tenantId,
+          teamId: String(args?.team_id || ""),
+          roomId: String(args?.room_id || ""),
+          workItemId: String(args?.work_item_id || ""),
+          actorAssistantId: String(args?.actor_assistant_id || ""),
+          actorUserId,
+          replyToMessageId: typeof args?.reply_to_message_id === "string" ? args.reply_to_message_id : undefined,
+        });
+      }
+
+      if (name === "smartspec.orchestrator.request_work_item_changes") {
+        return orchestratorTools.requestWorkItemChangesByAssistant({
+          tenantId,
+          teamId: String(args?.team_id || ""),
+          roomId: String(args?.room_id || ""),
+          workItemId: String(args?.work_item_id || ""),
+          actorAssistantId: String(args?.actor_assistant_id || ""),
+          actorUserId,
+          replyToMessageId: typeof args?.reply_to_message_id === "string" ? args.reply_to_message_id : undefined,
+          reason: typeof args?.reason === "string" ? args.reason : undefined,
+        });
+      }
     }
 
     throw new Error(`Unknown tool: ${name}`);

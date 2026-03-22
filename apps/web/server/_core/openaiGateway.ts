@@ -23,6 +23,7 @@ export async function openaiChatCompletions(req: Request, res: Response) {
     const messages = body.messages ?? [];
 
     const result = await invokeLLM({
+      model: body.model,
       messages,
       tools: body.tools,
       tool_choice: body.tool_choice,

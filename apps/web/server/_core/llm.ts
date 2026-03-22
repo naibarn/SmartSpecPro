@@ -30,6 +30,7 @@ export type Message = {
   content: MessageContent | MessageContent[];
   name?: string;
   tool_call_id?: string;
+  tool_calls?: ToolCall[];
 };
 
 export type Tool = {
@@ -56,6 +57,7 @@ export type ToolChoice =
   | ToolChoiceExplicit;
 
 export type InvokeParams = {
+  model?: string;
   messages: Message[];
   tools?: Tool[];
   toolChoice?: ToolChoice;
@@ -137,7 +139,7 @@ const normalizeContentPart = (
 };
 
 const normalizeMessage = (message: Message) => {
-  const { role, name, tool_call_id } = message;
+  const { role, name, tool_call_id, tool_calls } = message;
 
   if (role === "tool" || role === "function") {
     const content = ensureArray(message.content)
@@ -159,6 +161,7 @@ const normalizeMessage = (message: Message) => {
     return {
       role,
       name,
+      ...(role === "assistant" && tool_calls ? { tool_calls } : {}),
       content: contentParts[0].text,
     };
   }
@@ -166,6 +169,7 @@ const normalizeMessage = (message: Message) => {
   return {
     role,
     name,
+    ...(role === "assistant" && tool_calls ? { tool_calls } : {}),
     content: contentParts,
   };
 };
@@ -266,18 +270,27 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
   assertApiKey();
 
   const {
+    model,
     messages,
     tools,
     toolChoice,
     tool_choice,
+    maxTokens,
+    max_tokens,
     outputSchema,
     output_schema,
     responseFormat,
     response_format,
   } = params;
 
+  if (!model) {
+    throw new Error("invokeLLM: model parameter is required — do not hardcode models");
+  }
+
+  const effectiveMaxTokens = maxTokens ?? max_tokens;
+
   const payload: Record<string, unknown> = {
-    model: "gemini-2.5-flash",
+    model,
     messages: messages.map(normalizeMessage),
   };
 
@@ -293,9 +306,8 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
     payload.tool_choice = normalizedToolChoice;
   }
 
-  payload.max_tokens = 32768
-  payload.thinking = {
-    "budget_tokens": 128
+  if (effectiveMaxTokens != null) {
+    payload.max_tokens = effectiveMaxTokens;
   }
 
   const normalizedResponseFormat = normalizeResponseFormat({

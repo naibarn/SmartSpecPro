@@ -36,7 +36,7 @@ async function storeDeviceCode(key: string, entry: DeviceCodeEntry): Promise<voi
   try {
     const redis = getRedisClient();
     const ttl = Math.max(1, Math.ceil((entry.expiresAt - Date.now()) / 1000));
-    await redis.setEx(`devicecode:${key}`, ttl, JSON.stringify(entry));
+    await redis.setex(`devicecode:${key}`, ttl, JSON.stringify(entry));
   } catch { /* Redis unavailable — memory fallback */ }
 }
 

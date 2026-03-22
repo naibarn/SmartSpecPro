@@ -157,7 +157,7 @@ app.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Origin', origin!);
     res.setHeader('Access-Control-Allow-Credentials', 'true');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-private-vault-token');
   }
 
   // Handle preflight requests
@@ -954,19 +954,18 @@ app.post("/api/internal/agency/create", async (req, res) => {
     // Prefer explicit tenantId from request body (passed by Celery task from the user's tRPC context),
     // then fall back to tenant middleware, then user's currentTenantId
     const tenantId: string = validatedBody.tenantId || tenantReq.tenant?.id || String(user.currentTenantId ?? "");
-    const tenantIdNum = Number(tenantId);
-    if (!Number.isFinite(tenantIdNum)) {
-      return res.status(400).json({ error: "Invalid tenant ID" });
+    if (!tenantId) {
+      return res.status(400).json({ error: "Tenant ID is required" });
     }
 
     // Verify user belongs to the specified tenant (prevents cross-tenant agency creation via internal token)
     if (tenantId && (user as any).__internalAuth) {
-      const { users: usersTable } = await import("../../drizzle/schema");
-      const { eq, and } = await import("drizzle-orm");
-      const userRow = await drizzleDb.select({ id: usersTable.id }).from(usersTable)
-        .where(and(eq(usersTable.id, user.id), eq(usersTable.currentTenantId, tenantIdNum)))
-        .limit(1);
-      if (userRow.length === 0) {
+      const { sql } = await import("drizzle-orm");
+      const rawResult = await drizzleDb.execute(
+        sql`SELECT "currentTenantId"::text FROM users WHERE id = ${user.id} LIMIT 1`
+      );
+      const dbTenantId = (rawResult as any).rows?.[0]?.currentTenantId ?? (rawResult as any)?.[0]?.currentTenantId ?? null;
+      if (!dbTenantId || String(dbTenantId) !== String(tenantId)) {
         return res.status(403).json({ error: "User does not belong to the specified tenant" });
       }
     }

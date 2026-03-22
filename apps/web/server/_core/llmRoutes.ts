@@ -627,6 +627,76 @@ function extractOpenAIFields(body: any): Record<string, any> {
 }
 
 /**
+ * Estimate a reasonable max_tokens based on the skill category and message context.
+ *
+ * This prevents requesting more tokens than needed — especially important for
+ * providers like OpenRouter where max_tokens counts against your balance even
+ * if the model generates far fewer tokens.
+ *
+ * Categories:
+ *   - Media prompt generation (image/video/audio skills): short structured output → 2048
+ *   - Chat/translation/brainstorm: medium conversational output → 4096
+ *   - Article/review/content writing: long-form content → 8192
+ *   - Complex/unknown: generous default → 4096
+ *
+ * The client or skill's executionPolicy can always override this.
+ */
+function estimateMaxTokens(skillUsed?: string, messages?: any[]): number {
+  // If no skill, estimate from conversation length
+  if (!skillUsed) {
+    // Short conversations need less output
+    const msgCount = Array.isArray(messages) ? messages.length : 0;
+    if (msgCount <= 2) return 4096;
+    if (msgCount <= 6) return 4096;
+    return 8192;
+  }
+
+  // Skill-based estimation using slug patterns (no hardcoded skill IDs)
+  const slug = skillUsed.toLowerCase();
+
+  // Media prompt skills: generate short structured prompts (JSON/text)
+  if (
+    slug.includes("image") ||
+    slug.includes("video") ||
+    slug.includes("audio") ||
+    slug.includes("prompt-engineer") ||
+    slug.includes("infographic") ||
+    slug.includes("media")
+  ) {
+    return 2048;
+  }
+
+  // Article/content/review skills: long-form output
+  if (
+    slug.includes("article") ||
+    slug.includes("writer") ||
+    slug.includes("review") ||
+    slug.includes("blog") ||
+    slug.includes("content") ||
+    slug.includes("seo")
+  ) {
+    return 8192;
+  }
+
+  // Code/analysis skills: medium-to-large output
+  if (
+    slug.includes("code") ||
+    slug.includes("analyze") ||
+    slug.includes("debug")
+  ) {
+    return 8192;
+  }
+
+  // Scheduling/alert skills: very short output
+  if (slug.includes("alert") || slug.includes("schedule")) {
+    return 1024;
+  }
+
+  // Default: reasonable middle ground
+  return 4096;
+}
+
+/**
  * Transform OpenAI-format request body to provider-specific format
  * IMPORTANT: This function filters out internal fields (conversationId, preferredProvider, etc.)
  * to prevent them from being sent to upstream LLM APIs
@@ -841,11 +911,30 @@ async function proxyChatWithCredits(
   skillUsed?: string
 ) {
   debugLog("LLM", "proxyChatWithCredits called", { mode, userId, conversationId, skillUsed });
+  const requestStartedAt = Date.now();
+  const timing = {
+    providerLookupMs: 0,
+    enabledModelLookupMs: 0,
+    plannerMs: 0,
+    providerModelLookupMs: 0,
+    queueWaitMs: 0,
+    upstreamConnectMs: 0,
+    firstChunkMs: null as number | null,
+    firstChunkFromRequestMs: null as number | null,
+    firstVisibleContentMs: null as number | null,
+    firstVisibleContentFromRequestMs: null as number | null,
+    streamReadMs: 0,
+    creditsDeductionMs: 0,
+    messageSaveMs: 0,
+    finalizeMs: 0,
+  };
+  let queuePosition = 0;
 
   // Check if a specific provider is requested (multi-provider support)
   const preferredProviderId = req.body?.preferredProvider;
   let provider: LlmProviderConfig | null = null;
 
+  const providerLookupStartedAt = Date.now();
   if (preferredProviderId != null) {
     // Use the specified provider
     provider = await getLlmProviderById(preferredProviderId);
@@ -857,6 +946,7 @@ async function proxyChatWithCredits(
     provider = await getActiveLlmProvider();
     debugLog("LLM", "Using default provider", provider ? { name: provider.providerName, baseUrl: provider.baseUrl, hasKey: !!provider.apiKey } : null);
   }
+  timing.providerLookupMs = Date.now() - providerLookupStartedAt;
 
   if (!provider) {
     throw new Error(
@@ -864,27 +954,47 @@ async function proxyChatWithCredits(
     );
   }
 
+  const enabledModelLookupStartedAt = Date.now();
   const legacyModelId = await resolveEnabledLlmModelId([req.body?.model, provider.defaultModel]);
+  timing.enabledModelLookupMs = Date.now() - enabledModelLookupStartedAt;
   if (!legacyModelId) {
     throw new Error("No enabled LLM model configured");
   }
 
-  // Wire task planner — may override model selection
+  // Standard chat must respect the conversation model directly.
+  // Only skill-driven chat flows are allowed to invoke planner-based model routing.
   const tenantId = (req as any).tenantId ?? "default";
-  const plannerResult = await runPlanner({
-    sourceType: "chat",
-    userId,
-    tenantId,
-    conversationModel: legacyModelId,
-    skillSlug: skillUsed,
-    hasTools: false,
-  });
+  let plannerResult: Awaited<ReturnType<typeof runPlanner>> = null;
+  if (skillUsed) {
+    const plannerStartedAt = Date.now();
+    plannerResult = await runPlanner({
+      sourceType: "chat",
+      userId,
+      tenantId,
+      conversationModel: legacyModelId,
+      skillSlug: skillUsed,
+      hasTools: false,
+    });
+    timing.plannerMs = Date.now() - plannerStartedAt;
+  } else {
+    timing.plannerMs = 0;
+  }
   const requestedModelId = plannerResult?.resolvedModel ?? legacyModelId;
+  debugLog("LLM", "Planner resolution", {
+    conversationId,
+    legacyModelId,
+    plannerResolvedModel: plannerResult?.resolvedModel ?? null,
+    requestedModelId,
+    skillUsed: skillUsed ?? null,
+    plannerTaskRunId: plannerResult?.taskRunId ?? null,
+    plannerBypassed: !skillUsed,
+  });
 
   // Resolve the provider-specific model ID and API style from database
   let model = requestedModelId;
   let apiStyle: ApiStyle | undefined;
 
+  const providerModelLookupStartedAt = Date.now();
   if (preferredProviderId != null) {
     const resolved = await resolveProviderModel(requestedModelId, preferredProviderId);
     if (resolved) {
@@ -909,6 +1019,7 @@ async function proxyChatWithCredits(
       debugLog("LLM", "Resolved model (global)", { requestedModelId, providerModelId: resolved.providerModelId });
     }
   }
+  timing.providerModelLookupMs = Date.now() - providerModelLookupStartedAt;
 
   // Use the resolved model ID and API style to determine the correct endpoint
   const url = resolveApiUrl(provider.baseUrl, model, provider.providerName, apiStyle);
@@ -924,9 +1035,13 @@ async function proxyChatWithCredits(
 
   // Apply provider-specific rate limiting with queue system to avoid API rate limit errors
   const isFreeModel = model.toLowerCase().includes('free') || model.toLowerCase().includes('-free');
-  await acquireProviderSlot(provider.providerName, isFreeModel);
+  const queueWaitStartedAt = Date.now();
+  const slot = await acquireProviderSlot(provider.providerName, isFreeModel);
+  timing.queueWaitMs = Date.now() - queueWaitStartedAt;
+  queuePosition = slot.queuePosition;
 
   let upstream: globalThis.Response;
+  const upstreamFetchStartedAt = Date.now();
   try {
     upstream = await fetch(url, {
       method: "POST",
@@ -943,6 +1058,7 @@ async function proxyChatWithCredits(
     res.status(500).json(formatErrorResponse(parsedError));
     return;
   }
+  timing.upstreamConnectMs = Date.now() - upstreamFetchStartedAt;
 
   debugLog("LLM", "Upstream response", { status: upstream.status, statusText: upstream.statusText });
 
@@ -1025,17 +1141,35 @@ async function proxyChatWithCredits(
 
   const reader = upstream.body.getReader();
   let totalChunks = 0;
+  let totalStreamBytes = 0;
   let accumulatedData = "";
   let fullContent = ""; // Accumulate the actual content for saving
+  let nonContentDeltaCount = 0;
+  let reasoningDeltaCount = 0;
+  let reasoningTextChars = 0;
+  const streamReadStartedAt = Date.now();
 
   try {
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
       if (value) {
+        if (timing.firstChunkMs == null) {
+          timing.firstChunkMs = Date.now() - upstreamFetchStartedAt;
+          timing.firstChunkFromRequestMs = Date.now() - requestStartedAt;
+          debugLog("LLM", "First stream chunk received", {
+            provider: provider.providerName,
+            model,
+            conversationId,
+            firstChunkMs: timing.firstChunkMs,
+            firstChunkFromRequestMs: timing.firstChunkFromRequestMs,
+            queueWaitMs: timing.queueWaitMs,
+          });
+        }
         const chunk = Buffer.from(value);
         res.write(chunk);
         totalChunks++;
+        totalStreamBytes += chunk.length;
 
         // Accumulate data to parse usage at the end
         const chunkStr = chunk.toString();
@@ -1049,9 +1183,42 @@ async function proxyChatWithCredits(
             if (data && data !== "[DONE]") {
               try {
                 const j = JSON.parse(data);
-                const delta = j?.choices?.[0]?.delta?.content;
-                if (typeof delta === "string") {
-                  fullContent += delta;
+                const deltaPayload = j?.choices?.[0]?.delta;
+                const deltaContent = deltaPayload?.content;
+                if (typeof deltaContent === "string") {
+                  if (timing.firstVisibleContentMs == null) {
+                    timing.firstVisibleContentMs = Date.now() - upstreamFetchStartedAt;
+                    timing.firstVisibleContentFromRequestMs = Date.now() - requestStartedAt;
+                    debugLog("LLM", "First visible content received", {
+                      provider: provider.providerName,
+                      model,
+                      conversationId,
+                      firstVisibleContentMs: timing.firstVisibleContentMs,
+                      firstVisibleContentFromRequestMs: timing.firstVisibleContentFromRequestMs,
+                    });
+                  }
+                  fullContent += deltaContent;
+                } else if (deltaPayload && typeof deltaPayload === "object") {
+                  nonContentDeltaCount++;
+
+                  const reasoningValue =
+                    (deltaPayload as Record<string, unknown>).reasoning
+                    ?? (deltaPayload as Record<string, unknown>).reasoning_content
+                    ?? (deltaPayload as Record<string, unknown>).reasoningContent;
+                  if (typeof reasoningValue === "string" && reasoningValue.length > 0) {
+                    reasoningDeltaCount++;
+                    reasoningTextChars += reasoningValue.length;
+                  } else if (Array.isArray(reasoningValue)) {
+                    reasoningDeltaCount++;
+                    reasoningTextChars += reasoningValue.reduce((sum: number, part: unknown) => {
+                      if (typeof part === "string") return sum + part.length;
+                      if (part && typeof part === "object" && "text" in part) {
+                        const text = (part as { text?: unknown }).text;
+                        return typeof text === "string" ? sum + text.length : sum;
+                      }
+                      return sum;
+                    }, 0);
+                  }
                 }
               } catch {
                 // Not JSON, ignore
@@ -1062,6 +1229,7 @@ async function proxyChatWithCredits(
       }
     }
   } finally {
+    timing.streamReadMs = Date.now() - streamReadStartedAt;
     try {
       reader.releaseLock();
     } catch {}
@@ -1103,6 +1271,7 @@ async function proxyChatWithCredits(
 
     // Deduct credits for streaming
     const { deductCreditsForModel } = await import("../services/creditService");
+    const creditsDeductionStartedAt = Date.now();
     await deductCreditsForModel({
       userId,
       model: requestedModelId,  // Use generic model ID for pricing lookup
@@ -1113,12 +1282,14 @@ async function proxyChatWithCredits(
       sourceType: "chat",
       conversationId,
     });
+    timing.creditsDeductionMs = Date.now() - creditsDeductionStartedAt;
 
     // Record model usage for analytics
     recordModelUsage(provider.providerName, requestedModelId, true, inputTokens, outputTokens);
 
     // If conversationId provided, save the assistant message and send final event
     if (conversationId && fullContent) {
+      const messageSaveStartedAt = Date.now();
       try {
         const { createMessage, getConversationById, updateConversationCredits } = await import("../services/chatService");
         const { calculateCreditsForLLM, calculateCreditsFromCost } = await import("../services/creditService");
@@ -1177,8 +1348,68 @@ async function proxyChatWithCredits(
         // Send error event but don't fail the stream
         res.write(`event: save_error\n`);
         res.write(`data: ${JSON.stringify({ error: saveError?.message || "Failed to save message" })}\n\n`);
+      } finally {
+        timing.messageSaveMs = Date.now() - messageSaveStartedAt;
       }
     }
+
+    const finalizeStartedAt = Date.now();
+    auditLogger.log({
+      eventType: "llm_stream_end",
+      userId,
+      providerId: provider.providerId ?? preferredProviderId ?? null,
+      providerName: provider.providerName,
+      model,
+      requestType: "chat_stream",
+      timing: {
+        queueWaitMs: timing.queueWaitMs,
+        networkMs: timing.upstreamConnectMs,
+        parseMs: timing.creditsDeductionMs + timing.messageSaveMs,
+        totalMs: Date.now() - requestStartedAt,
+      },
+      inputTokens,
+      outputTokens,
+      costUsd: providerCostUsd || undefined,
+      statusCode: 200,
+      metadata: {
+        route: "/api/llm/stream",
+        conversationId,
+        skillUsed: skillUsed || null,
+        queuePosition,
+        providerLookupMs: timing.providerLookupMs,
+        enabledModelLookupMs: timing.enabledModelLookupMs,
+        plannerMs: timing.plannerMs,
+        providerModelLookupMs: timing.providerModelLookupMs,
+        firstChunkMs: timing.firstChunkMs,
+        firstChunkFromRequestMs: timing.firstChunkFromRequestMs,
+        firstVisibleContentMs: timing.firstVisibleContentMs,
+        firstVisibleContentFromRequestMs: timing.firstVisibleContentFromRequestMs,
+        streamReadMs: timing.streamReadMs,
+        creditsDeductionMs: timing.creditsDeductionMs,
+        messageSaveMs: timing.messageSaveMs,
+        totalChunks,
+        totalStreamBytes,
+        fullContentLength: fullContent.length,
+        nonContentDeltaCount,
+        reasoningDeltaCount,
+        reasoningTextChars,
+      },
+    });
+    timing.finalizeMs = Date.now() - finalizeStartedAt;
+    debugLog("LLM", "Stream timing summary", {
+      provider: provider.providerName,
+      model,
+      conversationId,
+      queuePosition,
+      totalMs: Date.now() - requestStartedAt,
+      ...timing,
+      totalChunks,
+      totalStreamBytes,
+      fullContentLength: fullContent.length,
+      nonContentDeltaCount,
+      reasoningDeltaCount,
+      reasoningTextChars,
+    });
 
     res.end();
   }
@@ -1199,7 +1430,11 @@ function insufficientCredits(res: Response) {
 
 export function registerLLMRoutes(app: Express) {
   // Initialize database connection
-  getDb().catch((err) => console.warn("[LLM] Database init warning:", err));
+  try {
+    void getDb();
+  } catch (err: unknown) {
+    console.warn("[LLM] Database init warning:", err);
+  }
 
   const guardWithCredits = async (
     req: Request,
@@ -1292,6 +1527,10 @@ export function registerLLMRoutes(app: Express) {
       if (!check.ok) return;
 
       const stream = Boolean(req.body?.stream);
+      // Smart max_tokens for non-streaming requests too
+      if (!req.body.max_tokens) {
+        req.body.max_tokens = estimateMaxTokens(req.body?.skillUsed, req.body?.messages);
+      }
       try {
         await proxyChatWithCredits(req, res, stream ? "stream" : "json", check.userId);
       } catch (err: any) {
@@ -1391,6 +1630,25 @@ export function registerLLMRoutes(app: Express) {
       if (!check.ok) return;
 
       try {
+        const skillUsed = req.body?.skillUsed;
+        if ((!skillUsed || skillUsed === "help-assistant") && Array.isArray(req.body?.messages)) {
+          try {
+            const { injectHelpContextMessage } = await import("../services/helpContextInjector");
+            const result = await injectHelpContextMessage(req.body.messages, {
+              force: skillUsed === "help-assistant",
+            });
+            if (result.injected) {
+              debugLog("LLM", "Help context injected for chat request", {
+                route: "/api/llm/chat",
+                locale: result.locale,
+                reason: result.reason,
+                skillUsed: skillUsed ?? null,
+              });
+            }
+          } catch (err: any) {
+            debugLog("LLM", "Help context injection failed (non-fatal)", err?.message);
+          }
+        }
         await proxyChatWithCredits(req, res, "json", check.userId);
       } catch (err: any) {
         res.status(500).json({ error: { message: err?.message || "LLM error" } });
@@ -1507,31 +1765,32 @@ export function registerLLMRoutes(app: Express) {
         }
       }
 
-      // Help assistant integration: inject matching help docs from help center
-      if (skillUsed === "help-assistant" && Array.isArray(req.body?.messages)) {
+      // Help docs integration: always available for the dedicated help skill,
+      // and auto-enabled for normal chat when the user asks about this product.
+      if ((!skillUsed || skillUsed === "help-assistant") && Array.isArray(req.body?.messages)) {
         try {
-          const { buildHelpContext } = await import("../services/helpContextInjector");
-          const lastUserMsg = [...req.body.messages].reverse().find((m: any) => m.role === "user");
-          if (lastUserMsg?.content) {
-            const msgText = typeof lastUserMsg.content === "string"
-              ? lastUserMsg.content
-              : JSON.stringify(lastUserMsg.content);
-            const locale = /[\u0E00-\u0E7F]/.test(msgText) ? "th" : "en";
-            const helpContext = await buildHelpContext(msgText, locale);
-            if (helpContext) {
-              const helpMsg = { role: "system" as const, content: helpContext };
-              const firstNonSystem = req.body.messages.findIndex((m: any) => m.role !== "system");
-              if (firstNonSystem > 0) {
-                req.body.messages.splice(firstNonSystem, 0, helpMsg);
-              } else {
-                req.body.messages.unshift(helpMsg);
-              }
-              debugLog("LLM", `Help context injected (${helpContext.length} chars)`);
-            }
+          const { injectHelpContextMessage } = await import("../services/helpContextInjector");
+          const result = await injectHelpContextMessage(req.body.messages, {
+            force: skillUsed === "help-assistant",
+          });
+          if (result.injected) {
+            debugLog("LLM", "Help context injected", {
+              route: "/api/llm/stream",
+              locale: result.locale,
+              reason: result.reason,
+              skillUsed: skillUsed ?? null,
+            });
           }
         } catch (err: any) {
           debugLog("LLM", "Help context injection failed (non-fatal)", err?.message);
         }
+      }
+
+      // ── Smart max_tokens: auto-set based on skill category and task type ───
+      // Prevents requesting more tokens than needed (and avoids 402 credit errors
+      // on providers like OpenRouter where max_tokens counts against balance).
+      if (!req.body.max_tokens) {
+        req.body.max_tokens = estimateMaxTokens(skillUsed, req.body?.messages);
       }
 
       try {
@@ -1937,373 +2196,23 @@ export function registerLLMRoutes(app: Express) {
     }
   );
 
-  // ─── Brainstorm endpoint ───────────────────────────────────────────
-  // Multi-round debate between two LLM models with skill-aware context
+  // ─── Brainstorm endpoint (DEPRECATED — replaced by Team Discussions) ──
   app.post(
     "/api/llm/brainstorm",
-    llmLimiter,
-    enforceJsonBodyMaxBytes(MAX_LLM_BODY_BYTES * 2), // Allow larger payload for multi-round context
-    async (req: Request, res: Response) => {
-      const check = await guardWithCredits(req, res);
-      if (!check.ok) return;
-
-      const { userId } = check;
-      const {
-        messages: contextMessages = [],
-        modelA,
-        modelB,
-        conversationId,
-        maxRounds = 3,
-        userMessage,
-      } = req.body;
-
-      if (!modelA || !modelB || !userMessage) {
-        return res.status(400).json({ error: { message: "modelA, modelB, and userMessage are required" } });
-      }
-
-      const HARD_LIMIT = Math.min(Math.max(1, maxRounds), 6);
-
-      const provider = await getActiveLlmProvider();
-      if (!provider) {
-        return res.status(500).json({ error: { message: "No LLM provider configured" } });
-      }
-
-      const url = resolveChatUrl(provider.baseUrl);
-      const controller = new AbortController();
-      req.on("close", () => controller.abort());
-
-      // Setup SSE
-      res.status(200);
-      res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
-      res.setHeader("Cache-Control", "no-cache, no-transform");
-      res.setHeader("Connection", "keep-alive");
-      res.setHeader("X-Content-Type-Options", "nosniff");
-
-      // Helper: stream a single model turn and return full content + usage
-      async function streamModelTurn(
-        model: string,
-        msgs: Array<{ role: string; content: string }>,
-        meta: { round: number; role: string },
-      ): Promise<{ content: string; inputTokens: number; outputTokens: number }> {
-        // Send turn start
-        res.write(`event: brainstorm_turn\ndata: ${JSON.stringify({ round: meta.round, role: meta.role, model, status: "start" })}\n\n`);
-
-        // Apply rate limiting with queue system before brainstorm API call
-        const isFreeModel = model.toLowerCase().includes('free') || model.toLowerCase().includes('-free');
-        await acquireProviderSlot(provider!.providerName, isFreeModel);
-
-        // Audit: log brainstorm LLM request (scrub message content for PII)
-        const turnStartTime = Date.now();
-        auditLogger.log({
-          eventType: "llm_request",
-          userId,
-          providerName: provider!.providerName,
-          model,
-          requestType: "brainstorm",
-          requestPayload: {
-            messageCount: msgs.length,
-            round: meta.round,
-            role: meta.role,
-            stream: true,
-          },
-        });
-
-        let upstream: globalThis.Response;
-        try {
-          upstream = await fetch(url, {
-            method: "POST",
-            headers: upstreamHeaders(provider!.apiKey, provider!.providerName),
-            body: JSON.stringify({ model, messages: msgs, stream: true }),
-            signal: controller.signal,
-          });
-        } catch (fetchError: any) {
-          releaseProviderSlot(provider!.providerName);
-          auditLogger.log({
-            eventType: "llm_response",
-            userId,
-            providerName: provider!.providerName,
-            model,
-            requestType: "brainstorm",
-            errorType: "network_error",
-            errorMessage: (fetchError?.message || "Network error").slice(0, 500),
-            timing: { totalMs: Date.now() - turnStartTime },
-          });
-          throw new Error(`Model ${model} failed: ${fetchError?.message || "Network error"}`);
-        }
-
-        if (!upstream.ok || !upstream.body) {
-          releaseProviderSlot(provider!.providerName);
-          const errText = await upstream.text().catch(() => "LLM request failed");
-          auditLogger.log({
-            eventType: "llm_response",
-            userId,
-            providerName: provider!.providerName,
-            model,
-            requestType: "brainstorm",
-            statusCode: upstream.status,
-            errorType: `http_${upstream.status}`,
-            errorMessage: errText.slice(0, 500),
-            timing: { totalMs: Date.now() - turnStartTime },
-          });
-          throw new Error(`Model ${model} failed: ${errText}`);
-        }
-
-        const reader = upstream.body.getReader();
-        let fullContent = "";
-        let accData = "";
-
-        try {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            if (value) {
-              const chunkStr = Buffer.from(value).toString();
-              accData += chunkStr;
-
-              const lines = chunkStr.split("\n");
-              for (const line of lines) {
-                if (line.startsWith("data:")) {
-                  const d = line.slice("data:".length).trim();
-                  if (d && d !== "[DONE]") {
-                    try {
-                      const j = JSON.parse(d);
-                      const delta = j?.choices?.[0]?.delta?.content;
-                      if (typeof delta === "string") {
-                        fullContent += delta;
-                        res.write(`event: brainstorm_chunk\ndata: ${JSON.stringify({ round: meta.round, role: meta.role, model, content: delta })}\n\n`);
-                      }
-                    } catch {}
-                  }
-                }
-              }
-            }
-          }
-        } finally {
-          try { reader.releaseLock(); } catch {}
-          // Release provider slot after streaming completes
-          releaseProviderSlot(provider!.providerName);
-        }
-
-        // Parse usage from the last SSE chunk that contains it
-        let inputTokens = 0, outputTokens = 0;
-        try {
-          // Look for usage in each SSE data line (last occurrence wins)
-          const dataLines = accData.split("\n").filter(l => l.startsWith("data:"));
-          for (const line of dataLines) {
-            const raw = line.slice("data:".length).trim();
-            if (raw && raw !== "[DONE]") {
-              try {
-                const parsed = JSON.parse(raw);
-                if (parsed?.usage) {
-                  inputTokens = Math.round(parsed.usage.prompt_tokens || 0);
-                  outputTokens = Math.round(parsed.usage.completion_tokens || parsed.usage.total_tokens || 0);
-                }
-              } catch {}
-            }
-          }
-          if (outputTokens === 0) {
-            outputTokens = Math.max(50, Math.ceil(fullContent.length / 4));
-          }
-        } catch {
-          outputTokens = Math.max(50, Math.ceil(fullContent.length / 4));
-        }
-
-        // Send turn end
-        res.write(`event: brainstorm_turn\ndata: ${JSON.stringify({ round: meta.round, role: meta.role, model, status: "end" })}\n\n`);
-
-        // Audit: log brainstorm LLM response
-        auditLogger.log({
-          eventType: "llm_response",
-          userId,
-          providerName: provider!.providerName,
-          model,
-          requestType: "brainstorm",
-          inputTokens,
-          outputTokens,
-          statusCode: 200,
-          timing: { totalMs: Date.now() - turnStartTime },
-          responsePayload: {
-            contentLength: fullContent.length,
-            round: meta.round,
-            role: meta.role,
-          },
-        });
-
-        return { content: fullContent, inputTokens, outputTokens };
-      }
-
-      try {
-        const { createMessage, getConversationById, updateConversationCredits } = await import("../services/chatService");
-        const { calculateCreditsForLLM } = await import("../services/creditService");
-        const { detectSkill } = await import("../services/skillDetector");
-
-        // Skill-aware context injection
-        let skillContext = "";
-        let detectedSkillSlug = "";
-        let detectedSkillName = "";
-        try {
-          const skillResult = await detectSkill(userMessage);
-          if (skillResult.detected && skillResult.skill && skillResult.confidence >= 0.5) {
-            detectedSkillSlug = skillResult.skill.id;
-            detectedSkillName = skillResult.skill.name;
-
-            // Load skill knowledge from DB
-            const { skills: skillsTable } = await import("../../drizzle/schema");
-            const [skillRow] = await db
-              .select({ knowledgebase: skillsTable.knowledgebase, systemPrompt: skillsTable.systemPrompt })
-              .from(skillsTable)
-              .where(eq(skillsTable.slug, detectedSkillSlug))
-              .limit(1);
-
-            if (skillRow?.knowledgebase || skillRow?.systemPrompt) {
-              skillContext = [
-                skillRow.systemPrompt ? `[SKILL EXPERTISE: ${detectedSkillName}]\n${skillRow.systemPrompt}` : "",
-                skillRow.knowledgebase ? `[DOMAIN KNOWLEDGE]\n${skillRow.knowledgebase.substring(0, 8000)}` : "",
-              ].filter(Boolean).join("\n\n");
-
-              res.write(`event: brainstorm_skill\ndata: ${JSON.stringify({ skillSlug: detectedSkillSlug, skillName: detectedSkillName })}\n\n`);
-            }
-          }
-        } catch (err) {
-          debugLog("Brainstorm", "Skill detection failed (non-fatal)", err);
-        }
-
-        // System prompts
-        const SYSTEM_A = `You are Model A in a collaborative brainstorm with another AI model.
-Round 1: Provide your thorough initial analysis of the user's question.
-Rounds 2+: Read Model B's response carefully. Acknowledge valid points, challenge weak ones, and add new insights. Do NOT repeat what you already said.
-Be concise (200-400 words per round). Use structured formatting (bullets, headers).${skillContext ? `\n\n${skillContext}` : ""}`;
-
-        const SYSTEM_B = `You are Model B in a collaborative brainstorm with another AI model.
-Read Model A's response carefully before responding.
-Offer different angles, identify blind spots, play devil's advocate where appropriate.
-Agree and reinforce strong points, but always add something new.
-Be concise (200-400 words per round). Use structured formatting (bullets, headers).${skillContext ? `\n\n${skillContext}` : ""}`;
-
-        const SUMMARY_PROMPT = `You have completed a multi-round brainstorm debate. Now produce a final synthesized answer.
-Integrate the strongest points from ALL rounds of both Model A and Model B.
-Resolve any contradictions by explaining the nuance.
-Structure as: Key Findings → Detailed Analysis → Recommendations (if applicable).
-Start with "## Brainstorm Summary"
-Be comprehensive but avoid redundancy.`;
-
-        let totalCredits = 0;
-        const debateHistory: Array<{ role: string; content: string }> = [];
-        const savedMessageIds: number[] = [];
-
-        // Verify conversation ownership
-        const conversation = conversationId ? await getConversationById(conversationId, userId) : null;
-
-        for (let round = 1; round <= HARD_LIMIT; round++) {
-          // ── Model A turn ──
-          const msgsA = [
-            { role: "system", content: SYSTEM_A },
-            ...contextMessages,
-            { role: "user", content: userMessage },
-            ...debateHistory,
-            ...(round > 1 ? [{ role: "user", content: `Round ${round}: Build on or challenge the previous points. Add new insights.` }] : []),
-          ];
-
-          const resultA = await streamModelTurn(modelA, msgsA, { round, role: "model_a" });
-
-          // Deduct credits
-          await deductCreditsForUsage(userId, {
-            userId, openId: null, model: modelA,
-            promptTokens: resultA.inputTokens, completionTokens: resultA.outputTokens,
-            totalTokens: resultA.inputTokens + resultA.outputTokens,
-          }, { sourceType: "brainstorm", conversationId });
-          const creditsA = calculateCreditsForLLM(resultA.inputTokens, resultA.outputTokens, modelA);
-          totalCredits += creditsA;
-          res.write(`event: brainstorm_credits\ndata: ${JSON.stringify({ round, role: "model_a", credits: creditsA, totalCredits })}\n\n`);
-
-          debateHistory.push({ role: "assistant", content: `[Model A - Round ${round}]: ${resultA.content}` });
-
-          // Save message
-          if (conversation) {
-            const msg = await createMessage({
-              conversationId, role: "assistant", content: resultA.content,
-              inputTokens: resultA.inputTokens, outputTokens: resultA.outputTokens,
-              creditsUsed: creditsA.toString(), modelUsed: modelA, skillUsed: "brainstorm",
-              skillArgs: { brainstormRound: round, brainstormRole: "model_a" } as any,
-            });
-            savedMessageIds.push(msg.id);
-          }
-
-          // ── Model B turn ──
-          const msgsB = [
-            { role: "system", content: SYSTEM_B },
-            ...contextMessages,
-            { role: "user", content: userMessage },
-            ...debateHistory,
-          ];
-
-          const resultB = await streamModelTurn(modelB, msgsB, { round, role: "model_b" });
-
-          await deductCreditsForUsage(userId, {
-            userId, openId: null, model: modelB,
-            promptTokens: resultB.inputTokens, completionTokens: resultB.outputTokens,
-            totalTokens: resultB.inputTokens + resultB.outputTokens,
-          }, { sourceType: "brainstorm", conversationId });
-          const creditsB = calculateCreditsForLLM(resultB.inputTokens, resultB.outputTokens, modelB);
-          totalCredits += creditsB;
-          res.write(`event: brainstorm_credits\ndata: ${JSON.stringify({ round, role: "model_b", credits: creditsB, totalCredits })}\n\n`);
-
-          debateHistory.push({ role: "assistant", content: `[Model B - Round ${round}]: ${resultB.content}` });
-
-          if (conversation) {
-            const msg = await createMessage({
-              conversationId, role: "assistant", content: resultB.content,
-              inputTokens: resultB.inputTokens, outputTokens: resultB.outputTokens,
-              creditsUsed: creditsB.toString(), modelUsed: modelB, skillUsed: "brainstorm",
-              skillArgs: { brainstormRound: round, brainstormRole: "model_b" } as any,
-            });
-            savedMessageIds.push(msg.id);
-          }
-        }
-
-        // ── Final Summary ──
-        const summaryMsgs = [
-          { role: "system", content: SUMMARY_PROMPT },
-          ...contextMessages,
-          { role: "user", content: userMessage },
-          ...debateHistory,
-        ];
-
-        const summaryResult = await streamModelTurn(modelA, summaryMsgs, { round: HARD_LIMIT + 1, role: "summary" });
-
-        await deductCreditsForUsage(userId, {
-          userId, openId: null, model: modelA,
-          promptTokens: summaryResult.inputTokens, completionTokens: summaryResult.outputTokens,
-          totalTokens: summaryResult.inputTokens + summaryResult.outputTokens,
-        }, { sourceType: "brainstorm", conversationId });
-        const creditsSummary = calculateCreditsForLLM(summaryResult.inputTokens, summaryResult.outputTokens, modelA);
-        totalCredits += creditsSummary;
-        res.write(`event: brainstorm_credits\ndata: ${JSON.stringify({ round: 0, role: "summary", credits: creditsSummary, totalCredits })}\n\n`);
-
-        if (conversation) {
-          const msg = await createMessage({
-            conversationId, role: "assistant", content: summaryResult.content,
-            inputTokens: summaryResult.inputTokens, outputTokens: summaryResult.outputTokens,
-            creditsUsed: creditsSummary.toString(), modelUsed: modelA, skillUsed: "brainstorm",
-            skillArgs: { brainstormRound: 0, brainstormRole: "summary" } as any,
-          });
-          savedMessageIds.push(msg.id);
-          await updateConversationCredits(conversationId, totalCredits);
-        }
-
-        // Done event
-        res.write(`event: brainstorm_done\ndata: ${JSON.stringify({
-          totalCredits, totalRounds: HARD_LIMIT, messageIds: savedMessageIds,
-          skillUsed: detectedSkillSlug || null,
-        })}\n\n`);
-      } catch (err: any) {
-        debugError("Brainstorm", "Error", err);
-        res.write(`event: brainstorm_error\ndata: ${JSON.stringify({ error: err?.message || "Brainstorm failed" })}\n\n`);
-      }
-
-      res.end();
-    }
+    (_req: Request, res: Response) => {
+      res.status(410).json({
+        error: {
+          message: "Brainstorm mode has been replaced by Team Discussions. Use the Teams page to start a collaborative discussion.",
+          code: "GONE",
+        },
+      });
+    },
   );
+
+  /* Legacy brainstorm handler removed — replaced by Team Discussions.
+     Historical brainstorm messages (skillUsed="brainstorm") remain readable in the DB.
+     Credit source type "brainstorm" is kept for backward compatibility with credit_transactions.
+     Full handler code is preserved in git history. */
 
   // ─── Multi-provider router endpoints ──────────────────────────────
   // These use the new llmRouter with provider fallback and health tracking.
@@ -2325,6 +2234,7 @@ Be comprehensive but avoid redundancy.`;
           tenantId: (req as any).tenantId || "default",
           conversationId: req.body?.conversationId ? Number(req.body.conversationId) : undefined,
           preferredProvider: req.body?.preferredProvider ? Number(req.body.preferredProvider) : undefined,
+          skillUsed: req.body?.skillUsed,
           res,
         });
       } catch (err: any) {
@@ -2351,6 +2261,7 @@ Be comprehensive but avoid redundancy.`;
           tenantId: (req as any).tenantId || "default",
           conversationId: req.body?.conversationId ? Number(req.body.conversationId) : undefined,
           preferredProvider: req.body?.preferredProvider ? Number(req.body.preferredProvider) : undefined,
+          skillUsed: req.body?.skillUsed,
           res,
         });
       } catch (err: any) {
