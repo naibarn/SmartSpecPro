@@ -2637,6 +2637,11 @@ export const agencyRouter = router({
           title: "Agency Publish Request",
           content: `Agency "${agency.name}" has been submitted for public publishing review.`,
           priority: "normal",
+          relatedResourceType: "agency",
+          relatedResourceId: agency.id,
+          actionUrl: `/admin/agencies?agencyId=${agency.id}`,
+          actionLabel: "Review Agency",
+          metadata: { source: "agency.publishRequest" },
         });
       }
 
@@ -2700,6 +2705,11 @@ export const agencyRouter = router({
           title: "Agency Approved!",
           content: `Your agency "${agency.name}" has been approved and is now public on the Marketplace.`,
           priority: "normal",
+          relatedResourceType: "agency",
+          relatedResourceId: agency.id,
+          actionUrl: `/agency/${agency.id}`,
+          actionLabel: "View Agency",
+          metadata: { source: "agency.approved" },
         });
       }
 
@@ -2739,6 +2749,11 @@ export const agencyRouter = router({
           title: "Agency Publish Request Rejected",
           content: `Your agency "${agency.name}" was not approved for public publishing.${reasonText}`,
           priority: "normal",
+          relatedResourceType: "agency",
+          relatedResourceId: agency.id,
+          actionUrl: `/agency/${agency.id}`,
+          actionLabel: "View Agency",
+          metadata: { source: "agency.rejected" },
         });
       }
 

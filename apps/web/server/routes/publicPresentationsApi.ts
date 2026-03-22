@@ -199,7 +199,7 @@ export function createPresentationPublicRouter(): Router {
           "presentation:export",
         ]);
         const status = await getPresentationExportStatus(
-          String(deckId),
+          deckId,
           { userId, tenantId } as any,
           userToken,
         );

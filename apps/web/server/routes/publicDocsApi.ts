@@ -1179,7 +1179,7 @@ export function registerPublicDocsRoutes(app: Express): void {
   // GET /v1/docs — interactive Swagger UI (unauthenticated)
   app.use(
     "/v1/docs",
-    swaggerUi.serve,
+    swaggerUi.serve as any,
     swaggerUi.setup(spec, {
       customSiteTitle: "SmartSpecPro API Docs",
       customCss: ".swagger-ui .topbar { display: none }",
@@ -1187,6 +1187,6 @@ export function registerPublicDocsRoutes(app: Express): void {
         persistAuthorization: true,
         url: "/v1/openapi.json",
       },
-    }),
+    }) as any,
   );
 }

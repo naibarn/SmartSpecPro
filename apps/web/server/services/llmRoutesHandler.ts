@@ -9,6 +9,7 @@ import type { Response } from "express";
 import { executeWithFallback, type ExecuteResult, type ProviderCandidate } from "./llmRouter";
 import { deductCreditsForModel } from "./creditService";
 import { resolveEnabledLlmModelId } from "./enabledLlmModels";
+import { injectHelpContextMessage } from "./helpContextInjector";
 import type { Message } from "../_core/llm";
 import { runPlanner, recordStepAttempt, type PlannerResult } from "./taskPlannerMiddleware";
 
@@ -19,6 +20,7 @@ interface HandlerParams {
   tenantId: string;
   conversationId?: number;
   preferredProvider?: number;
+  skillUsed?: string;
   res: Response;
 }
 
@@ -26,15 +28,26 @@ interface HandlerParams {
  * Handle a non-streaming (JSON) chat request through the router
  */
 export async function handleChatWithRouter(params: HandlerParams): Promise<void> {
-  const { model, messages, userId, tenantId, conversationId, preferredProvider, res } = params;
+  const { model, messages, userId, tenantId, conversationId, preferredProvider, skillUsed, res } = params;
+  if (!skillUsed || skillUsed === "help-assistant") {
+    try {
+      await injectHelpContextMessage(messages, { force: skillUsed === "help-assistant" });
+    } catch {
+      // Non-fatal: continue without help context
+    }
+  }
 
-  // Run planner (returns null if disabled — zero overhead)
-  const plannerResult = await runPlanner({
-    sourceType: "chat",
-    userId,
-    tenantId,
-    conversationModel: model,
-  });
+  // Normal chat must honor the user-selected conversation model.
+  // Only skill-driven flows may invoke planner-based model selection.
+  const plannerResult = skillUsed
+    ? await runPlanner({
+        sourceType: "chat",
+        userId,
+        tenantId,
+        conversationModel: model,
+        skillSlug: skillUsed,
+      })
+    : null;
 
   // Model selection: planner is primary, legacy is fallback
   let effectiveModel: string | null;
@@ -134,15 +147,26 @@ export async function handleChatWithRouter(params: HandlerParams): Promise<void>
  * will be implemented when the router gains native streaming support.
  */
 export async function handleStreamWithRouter(params: HandlerParams): Promise<void> {
-  const { model, messages, userId, tenantId, conversationId, preferredProvider, res } = params;
+  const { model, messages, userId, tenantId, conversationId, preferredProvider, skillUsed, res } = params;
+  if (!skillUsed || skillUsed === "help-assistant") {
+    try {
+      await injectHelpContextMessage(messages, { force: skillUsed === "help-assistant" });
+    } catch {
+      // Non-fatal: continue without help context
+    }
+  }
 
-  // Run planner (returns null if disabled — zero overhead)
-  const plannerResult = await runPlanner({
-    sourceType: "stream",
-    userId,
-    tenantId,
-    conversationModel: model,
-  });
+  // Normal chat must honor the user-selected conversation model.
+  // Only skill-driven flows may invoke planner-based model selection.
+  const plannerResult = skillUsed
+    ? await runPlanner({
+        sourceType: "stream",
+        userId,
+        tenantId,
+        conversationModel: model,
+        skillSlug: skillUsed,
+      })
+    : null;
 
   // Model selection: planner is primary, legacy is fallback
   let effectiveModel: string | null;

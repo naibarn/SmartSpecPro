@@ -329,6 +329,12 @@ export async function executeWithFallback(params: {
   preferredProvider?: number;
   /** When true, sends reasoning.effort="high" for thinking mode (OpenRouter) */
   enableThinking?: boolean;
+  /** Max output tokens. When omitted the provider uses its own default. */
+  maxTokens?: number;
+  /** Sampling temperature. When omitted the provider uses its own default. */
+  temperature?: number;
+  /** Extra body params forwarded verbatim to the provider (e.g. response_format). */
+  extraBodyParams?: Record<string, unknown>;
 }): Promise<ExecuteResult> {
   const resolvedModel = await resolveEnabledLlmModelId([params.model]);
   if (!resolvedModel) {
@@ -397,7 +403,10 @@ export async function executeWithFallback(params: {
           model: candidate.providerModelId,
           messages: params.messages,
           stream: params.stream,
+          ...(params.maxTokens != null ? { max_tokens: params.maxTokens } : {}),
+          ...(params.temperature != null ? { temperature: params.temperature } : {}),
           ...(params.enableThinking ? { reasoning: { effort: "high" } } : {}),
+          ...(params.extraBodyParams ?? {}),
         }),
         signal: abortController.signal,
       });

@@ -125,6 +125,13 @@ export async function getSkillCatalogSummary(
       }
     }
 
+    // Derive web search capability from executionPolicy
+    const ep = skill.executionPolicy;
+    const webSearchCapable =
+      ep?.requires_web_search === true ||
+      ep?.requirements?.supportsWebSearch === true ||
+      false;
+
     entries.push({
       id: skill.id,
       name: skill.name,
@@ -134,6 +141,7 @@ export async function getSkillCatalogSummary(
       outputTypes: inferOutputTypes(category),
       hasInputSchema,
       requiredFields,
+      webSearchCapable,
     });
   }
 

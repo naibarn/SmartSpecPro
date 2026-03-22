@@ -6,7 +6,7 @@
  * This module is used ONLY for embedding user queries for vector similarity search.
  */
 
-import { eq, and } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { getDb } from "../db";
 import { systemSettings } from "../../drizzle/schema";
 import { decrypt } from "./crypto";
@@ -142,23 +142,19 @@ async function _selectProvider(): Promise<MultimodalEmbeddingProvider> {
 
     const rows = await db
       .select({
+        key: systemSettings.key,
         value: systemSettings.value,
         isSensitive: systemSettings.isSensitive,
       })
       .from(systemSettings)
-      .where(
-        and(
-          eq(systemSettings.category, "multimodal_embedding"),
-          eq(systemSettings.key, "gemini_api_key")
-        )
-      )
-      .limit(1);
+      .where(eq(systemSettings.category, "multimodal_embedding"));
 
-    if (rows.length === 0) return new CloudflareFallbackProvider();
+    const preferredRow = rows.find((row) => row.key === "google_api_key")
+      ?? rows.find((row) => row.key === "gemini_api_key");
+    if (!preferredRow) return new CloudflareFallbackProvider();
 
-    const row = rows[0];
-    let apiKey = row.value ?? "";
-    if (row.isSensitive && apiKey) {
+    let apiKey = preferredRow.value ?? "";
+    if (preferredRow.isSensitive && apiKey) {
       try {
         apiKey = decrypt(apiKey);
       } catch {

@@ -212,7 +212,7 @@ async function tickQueueHealthMonitor(): Promise<void> {
       auditLogger.log({
         traceId: `queue-health:${alert.queue}:${now.getTime()}`,
         timestamp: now.toISOString(),
-        eventType: "queue_health_alert",
+        eventType: "error",
         userId: 0, // System event
         requestPayload: {
           queue: alert.queue,

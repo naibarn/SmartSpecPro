@@ -25,6 +25,205 @@ function getErrorMessage(error: unknown): string {
   return String(error);
 }
 
+function isDatabaseUnavailableError(error: unknown): boolean {
+  return getErrorMessage(error).toLowerCase().includes("database unavailable");
+}
+
+type AuditSearchInput = {
+  dateStart?: string;
+  dateEnd?: string;
+  userId?: number;
+  providerId?: number;
+  provider?: string;
+  model?: string;
+  traceId?: string;
+  errorOnly?: boolean;
+  eventType?: string;
+  requestType?: string;
+  limit: number;
+  offset: number;
+  timelineLimit: number;
+  timelineOffset: number;
+};
+
+type AuditTimelineRow = {
+  id: string;
+  source: "llm" | "media" | "system";
+  timestamp: string | null;
+  traceId: string | null;
+  userId: number | null;
+  provider: string | null;
+  model: string | null;
+  subject: string | null;
+  contextLabel: string | null;
+  eventType: string | null;
+  requestType: string | null;
+  statusCode: number | null;
+  errorType: string | null;
+  errorMessage: string | null;
+  creditsCharged: number | null;
+  costUsd: number | null;
+  responseTimeMs: number | null;
+  endpoint: string | null;
+  mediaTaskId: string | null;
+  raw: unknown;
+};
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
+}
+
+function textOrNull(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function numberOrNull(value: unknown): number | null {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function buildUsageConditions(input: AuditSearchInput) {
+  const conditions: any[] = [];
+  if (input.dateStart) conditions.push(gte(providerUsageLog.createdAt, new Date(input.dateStart)));
+  if (input.dateEnd) conditions.push(lte(providerUsageLog.createdAt, new Date(input.dateEnd)));
+  if (input.userId) conditions.push(eq(providerUsageLog.userId, input.userId));
+  if (input.providerId) conditions.push(eq(providerUsageLog.providerId, input.providerId));
+  if (input.provider) conditions.push(ilike(llmProviders.providerName, `%${input.provider}%`));
+  if (input.model) conditions.push(ilike(providerUsageLog.modelUsed, `%${input.model}%`));
+  if (input.traceId) conditions.push(eq(providerUsageLog.traceId, input.traceId));
+  if (input.requestType) conditions.push(eq(providerUsageLog.requestType, input.requestType));
+  if (input.errorOnly) {
+    conditions.push(
+      or(
+        isNotNull(providerUsageLog.errorType),
+        isNotNull(providerUsageLog.errorMessage),
+      ),
+    );
+  }
+  return conditions;
+}
+
+function buildApiAuditConditions(input: AuditSearchInput) {
+  const conditions: any[] = [];
+  if (input.dateStart) conditions.push(gte(apiAuditEvents.createdAt, new Date(input.dateStart)));
+  if (input.dateEnd) conditions.push(lte(apiAuditEvents.createdAt, new Date(input.dateEnd)));
+  if (input.userId) conditions.push(eq(apiAuditEvents.userId, input.userId));
+  if (input.provider) conditions.push(ilike(apiAuditEvents.provider, `%${input.provider}%`));
+  if (input.model) conditions.push(ilike(apiAuditEvents.model, `%${input.model}%`));
+  if (input.traceId) conditions.push(eq(apiAuditEvents.traceId, input.traceId));
+  if (input.eventType) conditions.push(eq(apiAuditEvents.eventType, input.eventType));
+  if (input.requestType) {
+    conditions.push(
+      or(
+        eq(apiAuditEvents.mediaType, input.requestType),
+        eq(apiAuditEvents.eventType, input.requestType),
+      ),
+    );
+  }
+  if (input.errorOnly) conditions.push(isNotNull(apiAuditEvents.errorMessage));
+  return conditions;
+}
+
+function mapUsageRowToTimeline(row: any): AuditTimelineRow {
+  return {
+    id: `llm-${row.id}`,
+    source: "llm",
+    timestamp: row.createdAt ? String(row.createdAt) : null,
+    traceId: textOrNull(row.traceId),
+    userId: numberOrNull(row.userId),
+    provider: textOrNull(row.providerName) ?? (row.providerId != null ? String(row.providerId) : null),
+    model: textOrNull(row.modelUsed),
+    subject: null,
+    contextLabel: null,
+    eventType: "llm",
+    requestType: textOrNull(row.requestType),
+    statusCode: numberOrNull(row.statusCode),
+    errorType: textOrNull(row.errorType),
+    errorMessage: textOrNull(row.errorMessage),
+    creditsCharged: numberOrNull(row.creditsCharged),
+    costUsd: numberOrNull(row.costUsd),
+    responseTimeMs: numberOrNull(row.responseTimeMs),
+    endpoint: null,
+    mediaTaskId: null,
+    raw: row,
+  };
+}
+
+function mapApiAuditRowToTimeline(row: any): AuditTimelineRow {
+  return {
+    id: `media-${row.id}`,
+    source: "media",
+    timestamp: row.createdAt ? String(row.createdAt) : null,
+    traceId: textOrNull(row.traceId),
+    userId: numberOrNull(row.userId),
+    provider: textOrNull(row.provider),
+    model: textOrNull(row.model),
+    subject: null,
+    contextLabel: null,
+    eventType: textOrNull(row.eventType),
+    requestType: textOrNull(row.mediaType) ?? textOrNull(row.eventType),
+    statusCode: numberOrNull(row.statusCode),
+    errorType: textOrNull(row.errorMessage) ? "provider_error" : null,
+    errorMessage: textOrNull(row.errorMessage),
+    creditsCharged: numberOrNull(row.creditsCharged),
+    costUsd: numberOrNull(row.costUsd),
+    responseTimeMs: numberOrNull(row.responseTimeMs),
+    endpoint: textOrNull(row.endpoint),
+    mediaTaskId: textOrNull(row.mediaTaskId),
+    raw: row,
+  };
+}
+
+function mapSystemAuditRowToTimeline(row: any, idx: number): AuditTimelineRow {
+  const metadata = asRecord(row.metadata);
+  return {
+    id: `system-${row.timestamp ?? idx}-${row.eventType ?? "event"}-${idx}`,
+    source: "system",
+    timestamp: textOrNull(row.timestamp),
+    traceId: textOrNull(row.traceId),
+    userId: numberOrNull(row.userId),
+    provider: null,
+    model: null,
+    subject: textOrNull(metadata?.blueprintId) ?? textOrNull(metadata?.templateId) ?? textOrNull(metadata?.teamId),
+    contextLabel: textOrNull(metadata?.category) ?? textOrNull(metadata?.tenantId),
+    eventType: textOrNull(row.eventType),
+    requestType: textOrNull(row.requestType),
+    statusCode: numberOrNull(row.statusCode),
+    errorType: textOrNull(row.errorType),
+    errorMessage: textOrNull(row.errorMessage),
+    creditsCharged: numberOrNull(row.creditsCharged),
+    costUsd: numberOrNull(row.costUsd),
+    responseTimeMs: numberOrNull(row.timing?.totalMs),
+    endpoint: textOrNull(row.endpoint),
+    mediaTaskId: null,
+    raw: row,
+  };
+}
+
+export function buildMergedTimelineRows(input: {
+  usageRows: any[];
+  auditRows: any[];
+  systemRows: any[];
+  timelineOffset: number;
+  timelineLimit: number;
+}): AuditTimelineRow[] {
+  return [
+    ...input.usageRows.map(mapUsageRowToTimeline),
+    ...input.auditRows.map(mapApiAuditRowToTimeline),
+    ...input.systemRows.map(mapSystemAuditRowToTimeline),
+  ]
+    .sort((a, b) => {
+      const ta = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+      const tb = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+      return tb - ta;
+    })
+    .slice(input.timelineOffset, input.timelineOffset + input.timelineLimit);
+}
+
 export const auditRouter = router({
   /**
    * Search providerUsageLog + apiAuditEvents with filters
@@ -44,32 +243,19 @@ export const auditRouter = router({
         requestType: z.string().optional(),
         limit: z.number().min(1).max(500).default(50),
         offset: z.number().min(0).default(0),
+        timelineLimit: z.number().min(1).max(200).default(50),
+        timelineOffset: z.number().min(0).default(0),
       })
     )
     .query(async ({ input }) => {
       const db = await getDb();
-      if (!db) return { usageLogs: [], auditEvents: [], total: 0 };
+      const usageConditions = buildUsageConditions(input);
+      const apiAuditConditions = buildApiAuditConditions(input);
+      const timelineCandidateLimit = input.timelineOffset + input.timelineLimit;
 
       let usageLogs: any[] = [];
       try {
-        const conditions: any[] = [];
-        if (input.dateStart) conditions.push(gte(providerUsageLog.createdAt, new Date(input.dateStart)));
-        if (input.dateEnd) conditions.push(lte(providerUsageLog.createdAt, new Date(input.dateEnd)));
-        if (input.userId) conditions.push(eq(providerUsageLog.userId, input.userId));
-        if (input.providerId) conditions.push(eq(providerUsageLog.providerId, input.providerId));
-        if (input.provider) conditions.push(ilike(llmProviders.providerName, `%${input.provider}%`));
-        if (input.model) conditions.push(ilike(providerUsageLog.modelUsed, `%${input.model}%`));
-        if (input.traceId) conditions.push(eq(providerUsageLog.traceId, input.traceId));
-        if (input.requestType) conditions.push(eq(providerUsageLog.requestType, input.requestType));
-        if (input.errorOnly) {
-          conditions.push(
-            or(
-              isNotNull(providerUsageLog.errorType),
-              isNotNull(providerUsageLog.errorMessage),
-            ),
-          );
-        }
-
+        if (!db) throw new Error("database unavailable");
         usageLogs = await db
           .select({
             id: providerUsageLog.id,
@@ -93,47 +279,117 @@ export const auditRouter = router({
           })
           .from(providerUsageLog)
           .leftJoin(llmProviders, eq(providerUsageLog.providerId, llmProviders.id))
-          .where(conditions.length > 0 ? and(...conditions) : undefined)
+          .where(usageConditions.length > 0 ? and(...usageConditions) : undefined)
           .orderBy(desc(providerUsageLog.createdAt))
           .limit(input.limit)
           .offset(input.offset);
       } catch (error) {
-        console.warn('[audit.search] provider_usage_log query failed', { error: getErrorMessage(error) });
+        if (!isDatabaseUnavailableError(error)) {
+          console.warn('[audit.search] provider_usage_log query failed', { error: getErrorMessage(error) });
+        }
       }
 
       // Also search apiAuditEvents
       let auditEvents: any[] = [];
       try {
-        const eventConditions: any[] = [];
-        if (input.dateStart) eventConditions.push(gte(apiAuditEvents.createdAt, new Date(input.dateStart)));
-        if (input.dateEnd) eventConditions.push(lte(apiAuditEvents.createdAt, new Date(input.dateEnd)));
-        if (input.userId) eventConditions.push(eq(apiAuditEvents.userId, input.userId));
-        if (input.provider) eventConditions.push(ilike(apiAuditEvents.provider, `%${input.provider}%`));
-        if (input.model) eventConditions.push(ilike(apiAuditEvents.model, `%${input.model}%`));
-        if (input.traceId) eventConditions.push(eq(apiAuditEvents.traceId, input.traceId));
-        if (input.eventType) eventConditions.push(eq(apiAuditEvents.eventType, input.eventType));
-        if (input.requestType) {
-          eventConditions.push(
-            or(
-              eq(apiAuditEvents.mediaType, input.requestType),
-              eq(apiAuditEvents.eventType, input.requestType),
-            ),
-          );
-        }
-        if (input.errorOnly) eventConditions.push(isNotNull(apiAuditEvents.errorMessage));
-
+        if (!db) throw new Error("database unavailable");
         auditEvents = await db
           .select()
           .from(apiAuditEvents)
-          .where(eventConditions.length > 0 ? and(...eventConditions) : undefined)
+          .where(apiAuditConditions.length > 0 ? and(...apiAuditConditions) : undefined)
           .orderBy(desc(apiAuditEvents.createdAt))
           .limit(input.limit)
           .offset(input.offset);
       } catch (error) {
-        console.warn('[audit.search] api_audit_events query failed', { error: getErrorMessage(error) });
+        if (!isDatabaseUnavailableError(error)) {
+          console.warn('[audit.search] api_audit_events query failed', { error: getErrorMessage(error) });
+        }
       }
 
-      return { usageLogs, auditEvents };
+      const systemSearch = await readSystemAuditEntriesForSearch(input);
+      const systemEvents = systemSearch.entries.slice(input.offset, input.offset + input.limit);
+
+      let usageTimelineRows: any[] = [];
+      let usageTimelineTotal = 0;
+      try {
+        if (!db) throw new Error("database unavailable");
+        usageTimelineRows = await db
+          .select({
+            id: providerUsageLog.id,
+            userId: providerUsageLog.userId,
+            providerId: providerUsageLog.providerId,
+            providerName: sql<string>`coalesce(${llmProviders.providerName}, 'Unknown')`,
+            modelUsed: providerUsageLog.modelUsed,
+            inputTokens: providerUsageLog.inputTokens,
+            outputTokens: providerUsageLog.outputTokens,
+            costUsd: providerUsageLog.costUsd,
+            creditsCharged: providerUsageLog.creditsCharged,
+            responseTimeMs: providerUsageLog.responseTimeMs,
+            statusCode: providerUsageLog.statusCode,
+            errorType: providerUsageLog.errorType,
+            errorMessage: providerUsageLog.errorMessage,
+            traceId: providerUsageLog.traceId,
+            requestType: providerUsageLog.requestType,
+            wasFallback: providerUsageLog.wasFallback,
+            fallbackFromProviderId: providerUsageLog.fallbackFromProviderId,
+            createdAt: providerUsageLog.createdAt,
+          })
+          .from(providerUsageLog)
+          .leftJoin(llmProviders, eq(providerUsageLog.providerId, llmProviders.id))
+          .where(usageConditions.length > 0 ? and(...usageConditions) : undefined)
+          .orderBy(desc(providerUsageLog.createdAt))
+          .limit(timelineCandidateLimit)
+          .offset(0);
+
+        const [usageCountRow] = await db
+          .select({ count: sql<number>`count(*)` })
+          .from(providerUsageLog)
+          .leftJoin(llmProviders, eq(providerUsageLog.providerId, llmProviders.id))
+          .where(usageConditions.length > 0 ? and(...usageConditions) : undefined);
+        usageTimelineTotal = Number(usageCountRow?.count ?? 0);
+      } catch {
+        usageTimelineRows = [];
+        usageTimelineTotal = 0;
+      }
+
+      let auditTimelineRows: any[] = [];
+      let auditTimelineTotal = 0;
+      try {
+        if (!db) throw new Error("database unavailable");
+        auditTimelineRows = await db
+          .select()
+          .from(apiAuditEvents)
+          .where(apiAuditConditions.length > 0 ? and(...apiAuditConditions) : undefined)
+          .orderBy(desc(apiAuditEvents.createdAt))
+          .limit(timelineCandidateLimit)
+          .offset(0);
+
+        const [auditCountRow] = await db
+          .select({ count: sql<number>`count(*)` })
+          .from(apiAuditEvents)
+          .where(apiAuditConditions.length > 0 ? and(...apiAuditConditions) : undefined);
+        auditTimelineTotal = Number(auditCountRow?.count ?? 0);
+      } catch {
+        auditTimelineRows = [];
+        auditTimelineTotal = 0;
+      }
+
+      const mergedTimelineRows = buildMergedTimelineRows({
+        usageRows: usageTimelineRows,
+        auditRows: auditTimelineRows,
+        systemRows: systemSearch.entries,
+        timelineOffset: input.timelineOffset,
+        timelineLimit: input.timelineLimit,
+      });
+
+      return {
+        usageLogs,
+        auditEvents,
+        systemEvents,
+        timelineRows: mergedTimelineRows,
+        timelineTotal: usageTimelineTotal + auditTimelineTotal + systemSearch.total,
+        systemEventsMeta: systemSearch.meta,
+      };
     }),
 
   /**
@@ -432,6 +688,168 @@ export const auditRouter = router({
       }
     }),
 });
+
+const TEAM_SYSTEM_AUDIT_EVENT_TYPES = [
+  "team_created",
+  "team_blueprint_created",
+  "team_template_cloned",
+] as const;
+
+function buildAuditSearchDates(input: {
+  dateStart?: string;
+  dateEnd?: string;
+}): {
+  dates: Date[];
+  meta: {
+    defaultWindowApplied: boolean;
+    searchedDayCount: number;
+  };
+} {
+  const defaultWindowDays = 14;
+  const end = input.dateEnd ? new Date(input.dateEnd) : new Date();
+  const start = input.dateStart
+    ? new Date(input.dateStart)
+    : addDays(end, -(defaultWindowDays - 1));
+
+  const normalizedStart = Number.isNaN(start.getTime()) ? addDays(end, -(defaultWindowDays - 1)) : start;
+  const normalizedEnd = Number.isNaN(end.getTime()) ? new Date() : end;
+  const dates: Date[] = [];
+
+  const cursor = new Date(Date.UTC(
+    normalizedStart.getUTCFullYear(),
+    normalizedStart.getUTCMonth(),
+    normalizedStart.getUTCDate(),
+  ));
+  const finalDate = new Date(Date.UTC(
+    normalizedEnd.getUTCFullYear(),
+    normalizedEnd.getUTCMonth(),
+    normalizedEnd.getUTCDate(),
+  ));
+
+  while (cursor <= finalDate) {
+    dates.push(new Date(cursor));
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+
+  if (dates.length === 0) {
+    dates.push(new Date());
+  }
+
+  return {
+    dates,
+    meta: {
+      defaultWindowApplied: !input.dateStart && !input.dateEnd,
+      searchedDayCount: dates.length,
+    },
+  };
+}
+
+async function readSystemAuditEntriesForSearch(input: {
+  dateStart?: string;
+  dateEnd?: string;
+  userId?: number;
+  provider?: string;
+  model?: string;
+  traceId?: string;
+  errorOnly?: boolean;
+  eventType?: string;
+  requestType?: string;
+  limit: number;
+  offset: number;
+  timelineLimit: number;
+  timelineOffset: number;
+}): Promise<{
+  entries: any[];
+  total: number;
+  meta: {
+    defaultWindowApplied: boolean;
+    searchedDayCount: number;
+  };
+}> {
+  if (input.provider || input.model) {
+    return {
+      entries: [],
+      total: 0,
+      meta: {
+        defaultWindowApplied: false,
+        searchedDayCount: 0,
+      },
+    };
+  }
+
+  const requestedSystemEventTypes = input.eventType
+    ? TEAM_SYSTEM_AUDIT_EVENT_TYPES.filter((eventType) => eventType === input.eventType)
+    : TEAM_SYSTEM_AUDIT_EVENT_TYPES;
+
+  if (requestedSystemEventTypes.length === 0) {
+    return {
+      entries: [],
+      total: 0,
+      meta: {
+        defaultWindowApplied: false,
+        searchedDayCount: 0,
+      },
+    };
+  }
+
+  if (input.requestType && input.requestType !== "all") {
+    return {
+      entries: [],
+      total: 0,
+      meta: {
+        defaultWindowApplied: false,
+        searchedDayCount: 0,
+      },
+    };
+  }
+
+  const merged = new Map<string, any>();
+  const { dates, meta } = buildAuditSearchDates(input);
+
+  for (const date of dates) {
+    for (const eventType of requestedSystemEventTypes) {
+      const entries = await auditLogger.readEntries({
+        date,
+        eventType,
+        traceId: input.traceId,
+        userId: input.userId,
+        limit: null,
+        sortOrder: "desc",
+      });
+
+      for (const entry of entries) {
+        if (input.errorOnly && !entry.errorMessage && (entry.statusCode == null || entry.statusCode < 400)) {
+          continue;
+        }
+
+        const key = [
+          entry.timestamp ?? "",
+          entry.eventType ?? "",
+          entry.traceId ?? "",
+          entry.userId ?? "",
+          JSON.stringify(entry.metadata ?? {}),
+        ].join("|");
+
+        if (!merged.has(key)) {
+          merged.set(key, entry);
+        }
+      }
+    }
+  }
+
+  const entries = [...merged.values()]
+    .sort((a, b) => {
+      const ta = a?.timestamp ? new Date(a.timestamp).getTime() : 0;
+      const tb = b?.timestamp ? new Date(b.timestamp).getTime() : 0;
+      return tb - ta;
+    });
+
+  return {
+    entries,
+    total: entries.length,
+    meta,
+  };
+}
 
 function toIsoDate(date: Date): string {
   return date.toISOString().slice(0, 10);

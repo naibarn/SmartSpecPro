@@ -40,6 +40,7 @@ const mockAuditLog = vi.mocked(auditLogger.log);
 function makePolicy(overrides: Partial<SkillExecutionPolicyResult> = {}): SkillExecutionPolicyResult {
   return {
     modelId: "gpt-4o",
+    allowFreeModels: false,
     modelSource: "skill_llmModelId",
     ...overrides,
   };
@@ -76,12 +77,12 @@ function errorResult(statusCode = 429) {
 }
 
 const fakeRows: any[] = [
-  { modelId: "gpt-4o", priority: 10, providerName: "openai" },
-  { modelId: "gpt-4o-mini", priority: 20, providerName: "openai" },
-  { modelId: "claude-sonnet", priority: 30, providerName: "anthropic" },
-  { modelId: "gemini-pro", priority: 40, providerName: "google" },
-  { modelId: "llama-3", priority: 50, providerName: "groq" },
-  { modelId: "mistral-large", priority: 60, providerName: "mistral" },
+  { modelId: "gpt-4o", priority: 10, providerName: "openai", isFree: false },
+  { modelId: "gpt-4o-mini", priority: 20, providerName: "openai", isFree: false },
+  { modelId: "claude-sonnet", priority: 30, providerName: "anthropic", isFree: false },
+  { modelId: "gemini-pro", priority: 40, providerName: "google", isFree: false },
+  { modelId: "llama-3", priority: 50, providerName: "groq", isFree: false },
+  { modelId: "mistral-large", priority: 60, providerName: "mistral", isFree: false },
 ];
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
@@ -412,6 +413,46 @@ describe("executeSkillLlmWithFallback", () => {
     await executeSkillLlmWithFallback(makeRequest({ executionPolicy: policy }));
 
     expect(mockSelectCandidates).not.toHaveBeenCalled();
+  });
+
+  it("filters free models out of the fallback chain by default", async () => {
+    mockLoadRows.mockResolvedValue([
+      { modelId: "paid-primary", priority: 10, providerName: "openai", isFree: false },
+      { modelId: "free-fallback", priority: 20, providerName: "openrouter", isFree: true },
+      { modelId: "paid-fallback", priority: 30, providerName: "anthropic", isFree: false },
+    ] as any);
+    mockExecute.mockResolvedValue(errorResult(500));
+
+    const result = await executeSkillLlmWithFallback(
+      makeRequest({
+        executionPolicy: makePolicy({
+          modelId: "paid-primary",
+          allowFreeModels: false,
+        }),
+      }),
+    );
+
+    expect(result.attempts.map((attempt) => attempt.modelId)).not.toContain("free-fallback");
+  });
+
+  it("includes free models in the fallback chain when explicitly allowed", async () => {
+    mockLoadRows.mockResolvedValue([
+      { modelId: "paid-primary", priority: 10, providerName: "openai", isFree: false },
+      { modelId: "free-fallback", priority: 20, providerName: "openrouter", isFree: true },
+      { modelId: "paid-fallback", priority: 30, providerName: "anthropic", isFree: false },
+    ] as any);
+    mockExecute.mockResolvedValue(errorResult(500));
+
+    const result = await executeSkillLlmWithFallback(
+      makeRequest({
+        executionPolicy: makePolicy({
+          modelId: "paid-primary",
+          allowFreeModels: true,
+        }),
+      }),
+    );
+
+    expect(result.attempts.map((attempt) => attempt.modelId)).toContain("free-fallback");
   });
 
   // ═══════════════════════════════════════════════════════════════════════════

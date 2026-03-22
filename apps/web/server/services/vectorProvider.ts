@@ -51,6 +51,7 @@ export interface VectorProviderConfig {
   pgvectorDatabase?: string;
   pgvectorUser?: string;
   pgvectorPassword?: string;
+  pgvectorConnectTimeout?: string;
   vectorizeAccountId?: string;
   vectorizeApiToken?: string;
 }
@@ -118,6 +119,7 @@ const VECTORDB_SETTING_KEYS = [
   "pgvectorDatabase",
   "pgvectorUser",
   "pgvectorPassword",
+  "pgvectorConnectTimeout",
   "vectorizeAccountId",
   "vectorizeApiToken",
 ] as const;
@@ -962,6 +964,7 @@ export function getVectorProviderConfigFromEnv(): VectorProviderConfig {
     pgvectorDatabase: process.env.PGVECTOR_DATABASE,
     pgvectorUser: process.env.PGVECTOR_USER,
     pgvectorPassword: process.env.PGVECTOR_PASSWORD,
+    pgvectorConnectTimeout: process.env.PGVECTOR_CONNECT_TIMEOUT,
     vectorizeAccountId: process.env.CLOUDFLARE_ACCOUNT_ID,
     vectorizeApiToken: process.env.VECTORIZE_API_TOKEN || process.env.CLOUDFLARE_AI_API_KEY,
   };

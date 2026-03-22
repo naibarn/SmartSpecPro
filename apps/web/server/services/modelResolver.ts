@@ -12,6 +12,7 @@
 import { filterModelsByCapabilities } from "./capabilityRegistry";
 import type { EnabledModelWithCapabilities } from "./capabilityRegistry";
 import type { TaskExecutionPlan } from "./taskExecutionPlanner";
+import { buildModelLookupCandidates } from "./modelLookup";
 
 // ── Types ────────────────────────────────────────────────────────────
 
@@ -57,6 +58,36 @@ export function resolveModelFromPlan(
   }
 
   if (candidates.length === 0) return null;
+
+  const preferredConversationModelId = plan.taskType === "chat" && !plan.context?.skillSlug
+    ? plan.context?.conversationModel
+    : undefined;
+  if (preferredConversationModelId) {
+    const requestedIds = new Set(buildModelLookupCandidates(preferredConversationModelId));
+    requestedIds.add(preferredConversationModelId);
+
+    const preferredCandidate = candidates.find((candidate) => {
+      const candidateIds = new Set(
+        [
+          candidate.modelId,
+          candidate.providerModelId,
+          ...buildModelLookupCandidates(candidate.modelId),
+          ...buildModelLookupCandidates(candidate.providerModelId),
+        ].filter((value): value is string => Boolean(value)),
+      );
+
+      for (const requestedId of requestedIds) {
+        if (candidateIds.has(requestedId)) {
+          return true;
+        }
+      }
+      return false;
+    });
+
+    if (preferredCandidate) {
+      return preferredCandidate;
+    }
+  }
 
   // Apply strategy-based ranking
   switch (plan.strategy) {

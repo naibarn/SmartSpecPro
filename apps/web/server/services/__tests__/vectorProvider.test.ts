@@ -87,6 +87,7 @@ import {
   dispatchVectorOperation,
   getProviderCapabilities,
   getEffectiveVectorProviderConfig,
+  getVectorProviderConfigFromEnv,
   registerVectorProviderAdapter,
   resetVectorProviderConfigCacheForTests,
   resetVectorProviderAdapterRegistry,
@@ -168,6 +169,14 @@ describe("vectorProvider resolver", () => {
     expect(config.mirrorWrites).toBe(true);
     expect(config.pgvectorHost).toBe("db.internal");
     expect(config.pgvectorDatabase).toBe("vectors");
+  });
+
+  it("reads pgvector timeout from environment config", () => {
+    vi.stubEnv("PGVECTOR_CONNECT_TIMEOUT", "9");
+
+    const config = getVectorProviderConfigFromEnv();
+
+    expect(config.pgvectorConnectTimeout).toBe("9");
   });
 });
 

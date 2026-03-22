@@ -32,16 +32,13 @@ const mockGetDb = vi.mocked(getDb);
 const FAKE_VECTOR_768 = Array.from({ length: 768 }, (_, i) => i / 768);
 
 function makeDbWithGeminiKey(key: string | null) {
-  const db = {
+  return {
     select: vi.fn().mockReturnThis(),
     from: vi.fn().mockReturnThis(),
-    where: vi.fn().mockReturnThis(),
-    and: vi.fn().mockReturnThis(),
-    limit: vi.fn().mockResolvedValue(
-      key ? [{ value: key, isSensitive: false }] : []
+    where: vi.fn().mockResolvedValue(
+      key ? [{ key: "google_api_key", value: key, isSensitive: false }] : []
     ),
   };
-  return db;
 }
 
 function mockGeminiEmbedResponse(vector: number[]) {

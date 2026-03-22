@@ -136,7 +136,7 @@ export function processContentOutput(
   }
 
   return {
-    content: parsed as ArticleCMSOutput | ProductReviewCMSOutput,
+    content: parsed as unknown as ArticleCMSOutput | ProductReviewCMSOutput,
     quality: {
       citation_coverage: coverage,
       claims_total: validation.claims_total,
@@ -183,7 +183,8 @@ function matchCitationsToClaims(
     if (matched.length > 0) {
       claim.evidence = matched.map((c) => ({
         source_type: "web" as const,
-        url: c.url,
+        title: c.title,
+        url_or_id: c.url_or_id,
         retrieved_at: new Date().toISOString(),
       }));
     }

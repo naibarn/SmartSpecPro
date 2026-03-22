@@ -61,6 +61,10 @@ async function executePendingApprovalAlert(): Promise<void> {
         title: "Pending Approvals Reminder",
         content,
         priority: "normal",
+        relatedResourceType: "approval",
+        actionUrl: "/admin/approvals",
+        actionLabel: "Review Pending Items",
+        metadata: { source: "jobs.pendingApprovalAlert" },
       });
       sent++;
     } catch (err) {

@@ -485,6 +485,70 @@ describe("resolveSkillExecutionPolicy — requirements mode", () => {
     expect(result.modelId).toBe("claude-3-sonnet");
     expect(result.modelSource).toBe("requirements_match");
   });
+
+  it("filters free models out of requirements matching by default", async () => {
+    mockLoadRows.mockResolvedValue([
+      { modelId: "free-model", isFree: true, priority: 1 },
+      { modelId: "paid-model", isFree: false, priority: 2 },
+    ] as any);
+    mockSelectBestLlmModel.mockImplementation((_requirements, rows) => {
+      expect(rows.map((row) => row.modelId)).toEqual(["paid-model"]);
+      return "paid-model";
+    });
+
+    const result = await resolveSkillExecutionPolicy({
+      skill: makeSkill({
+        executionPolicy: {
+          requirements: { supportsFunctionTools: true },
+        },
+      }),
+    });
+
+    expect(result.modelId).toBe("paid-model");
+    expect(result.allowFreeModels).toBe(false);
+  });
+
+  it("allows free models when execution policy enables them", async () => {
+    mockLoadRows.mockResolvedValue([
+      { modelId: "free-model", isFree: true, priority: 1 },
+      { modelId: "paid-model", isFree: false, priority: 2 },
+    ] as any);
+    mockSelectBestLlmModel.mockImplementation((_requirements, rows) => {
+      expect(rows.map((row) => row.modelId)).toEqual(["free-model", "paid-model"]);
+      return "free-model";
+    });
+
+    const result = await resolveSkillExecutionPolicy({
+      skill: makeSkill({
+        executionPolicy: {
+          allowFreeModels: true,
+          requirements: { supportsFunctionTools: true },
+        },
+      }),
+    });
+
+    expect(result.modelId).toBe("free-model");
+    expect(result.allowFreeModels).toBe(true);
+  });
+
+  it("filters free models out of fallback cascade by default", async () => {
+    mockSelectBestLlmModel.mockReturnValue(null);
+    mockLoadRows.mockResolvedValue([
+      { modelId: "free-model", isFree: true, priority: 1 },
+      { modelId: "paid-model", isFree: false, priority: 2 },
+    ] as any);
+    mockResolveFromRows.mockImplementation(({ rows }) => rows[0]?.modelId ?? null);
+
+    const result = await resolveSkillExecutionPolicy({
+      skill: makeSkill({
+        executionPolicy: {
+          requirements: { supportsFunctionTools: true },
+        },
+      }),
+    });
+
+    expect(result.modelId).toBe("paid-model");
+  });
 });
 
 describe("resolveSkillExecutionPolicy — regression: no requirements", () => {

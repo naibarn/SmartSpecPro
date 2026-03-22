@@ -221,6 +221,15 @@ describe("ClawFeature Database Migrations", () => {
       `);
       expect(result).toHaveLength(2);
     });
+
+    it("entity_memories should have personaId column", async () => {
+      const db = requireDb();
+      const result = await db.execute(sql`
+        SELECT column_name FROM information_schema.columns
+        WHERE table_name = 'entity_memories' AND column_name = 'personaId'
+      `);
+      expect(result).toHaveLength(1);
+    });
   });
 
   describe("Index Verification", () => {

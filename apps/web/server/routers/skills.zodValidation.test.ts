@@ -22,6 +22,7 @@ const executionPolicySchema = z.object({
   // Spec 038 fields
   thinking_level_hint: z.enum(["low", "medium", "high"]).nullable().optional(),
   requires_web_search: z.boolean().optional(),
+  requires_structured_output: z.boolean().optional(),
   min_citation_coverage: z.number().min(0).max(1).optional(),
   refresh_cadence_days: z.number().min(1).max(365).optional(),
   disclosure_required: z.boolean().optional(),
@@ -30,6 +31,7 @@ const executionPolicySchema = z.object({
   requirements: requirementsSchema,
   mode: z.enum(["requirements", "fixed", "hybrid"]).optional(),
   allowConversationOverride: z.boolean().optional(),
+  allowFreeModels: z.boolean().optional(),
 }).optional();
 
 describe("skills.update executionPolicy.requirements — Zod validation", () => {
@@ -111,5 +113,11 @@ describe("skills.update executionPolicy.requirements — Zod validation", () => 
     const input = { allowConversationOverride: true };
     const result = executionPolicySchema.parse(input);
     expect(result!.allowConversationOverride).toBe(true);
+  });
+
+  it("accepts allowFreeModels boolean", () => {
+    const input = { allowFreeModels: false };
+    const result = executionPolicySchema.parse(input);
+    expect(result!.allowFreeModels).toBe(false);
   });
 });

@@ -18,8 +18,9 @@ import os from "os";
 import fs from "fs";
 import path from "path";
 import { authorizeRequest } from "../_core/authz";
-import type { TenantRequest } from "../_core/context";
 import { storagePut, storageResolveUrl, storageDelete } from "../storage";
+
+type TenantRequest = Request & { tenantId?: string };
 
 // Rate-limited procedure for feedback submission: max 10 per hour per IP.
 // Keyed on IP (same as all other rate-limited procedures in the codebase) so a
@@ -253,6 +254,11 @@ export const feedbackRouter = router({
             title: `Reply on feedback: ${ticket.title}`,
             content: input.content.slice(0, 300),
             priority: "normal",
+            relatedResourceType: "feedback",
+            relatedResourceId: String(input.ticketId),
+            actionUrl: `/admin/feedback-hub?ticketId=${input.ticketId}`,
+            actionLabel: "View Feedback",
+            metadata: { source: "feedback.reply" },
           }).catch((err) =>
             console.error("[Feedback] Notification failed:", err),
           );
@@ -315,6 +321,11 @@ export const feedbackRouter = router({
             title: `Reply on feedback: ${ticket.title}`,
             content: `Your feedback "${ticket.title}" ${statusMsg[input.status] ?? "status updated"}.${input.resolutionNotes ? ` Note: ${input.resolutionNotes.slice(0, 200)}` : ""}`,
             priority: input.status === "resolved" ? "high" : "normal",
+            relatedResourceType: "feedback",
+            relatedResourceId: String(input.ticketId),
+            actionUrl: `/admin/feedback-hub?ticketId=${input.ticketId}`,
+            actionLabel: "View Feedback",
+            metadata: { source: "feedback.statusChange" },
           }).catch((err) =>
             console.error("[Feedback] Status notification failed:", err),
           );
@@ -417,7 +428,7 @@ export const feedbackRouter = router({
       WHERE ${conditions}
     `);
 
-    const row = result.rows[0] as any;
+    const [row] = result as any[];
     return {
       total: Number(row?.total ?? 0),
       new: Number(row?.new_count ?? 0),
@@ -473,7 +484,7 @@ const feedbackUpload = multer({
 export function registerFeedbackUploadRoutes(app: Express) {
   app.post(
     "/api/feedback/upload",
-    feedbackUpload.array("files", FEEDBACK_MAX_FILES),
+    feedbackUpload.array("files", FEEDBACK_MAX_FILES) as any,
     async (req: Request, res: Response) => {
       try {
         // Auth — runs after multer; if it fails, clean up temp files

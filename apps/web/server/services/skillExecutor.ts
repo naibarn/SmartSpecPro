@@ -875,9 +875,18 @@ async function executeSandboxSkill(
     console.error(`[SkillExecutor] Sandbox dispatch failed for skill '${skill.id}':`, errMsg);
 
     // Fall back to legacy python subprocess if dispatch mode is optional
+    // BUT only if the skill actually has a Python script — media-generate
+    // skills (image-creator, etc.) don't have python/skill.py and should
+    // fall through to type-based routing (executeImageGeneration, etc.)
     if (getDispatchMode() !== "required" && dispatchExecutionMode !== "sandbox-media") {
-      console.warn(`[SkillExecutor] Falling back to legacy python subprocess for '${skill.id}'`);
-      return await executePythonSkill(skill, params, userToken);
+      const hasPythonScript = resolvePythonSkillPaths(skill) !== null;
+      if (hasPythonScript) {
+        console.warn(`[SkillExecutor] Falling back to legacy python subprocess for '${skill.id}'`);
+        return await executePythonSkill(skill, params, userToken);
+      }
+      // No Python script — re-throw so outer code falls through to type-based routing
+      console.warn(`[SkillExecutor] Sandbox failed for '${skill.id}', no Python script — falling through to type-based routing`);
+      throw error;
     }
 
     return {

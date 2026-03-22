@@ -236,7 +236,7 @@ export async function initWebhookDispatchQueue(): Promise<void> {
   );
 
   // Final-failure handler: record error in webhook trigger log
-  dispatchWorker.on("failed", (job, err) => {
+  dispatchWorker.on("failed", async (job, err) => {
     if (!job) return;
     const maxAttempts = job.opts?.attempts ?? MAX_ATTEMPTS;
     const isExhausted = job.attemptsMade >= maxAttempts;
@@ -248,26 +248,26 @@ export async function initWebhookDispatchQueue(): Promise<void> {
       requestBodySize, requestHeadersSafe, sourceIpMasked, startTime,
     } = job.data;
 
-    getDb()
-      .then((db) => {
-        if (!db) return;
-        return db
-          .insert(webhookTriggerLogs)
-          .values({
-            triggerId,
-            requestMethod,
-            requestBodyHash,
-            requestBodySize,
-            requestHeadersSafe,
-            extractedVariables: {},
-            sourceIpMasked,
-            status: "target_error",
-            creditsConsumed: "0",
-            errorMessage: String(err).slice(0, 1000),
-            processingTimeMs: Date.now() - startTime,
-          } as any);
-      })
-      .catch(() => {});
+    try {
+      const db = getDb();
+      await db
+        .insert(webhookTriggerLogs)
+        .values({
+          triggerId,
+          requestMethod,
+          requestBodyHash,
+          requestBodySize,
+          requestHeadersSafe,
+          extractedVariables: {},
+          sourceIpMasked,
+          status: "target_error",
+          creditsConsumed: "0",
+          errorMessage: String(err).slice(0, 1000),
+          processingTimeMs: Date.now() - startTime,
+        } as any);
+    } catch {
+      // Ignore logging failures
+    }
   });
 
   console.log("[WebhookDispatchQueue] Initialized: concurrency=20, attempts=4, backoff=3s exp");

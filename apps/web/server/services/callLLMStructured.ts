@@ -19,6 +19,8 @@ export interface CallLLMStructuredParams<T> {
   tenantId: string;
   billingDescription?: string;
   billingMetadata?: Record<string, unknown>;
+  /** Max output tokens forwarded to the provider. */
+  maxTokens?: number;
 }
 
 export interface CallLLMStructuredResult<T> {
@@ -68,6 +70,7 @@ export async function callLLMStructured<T>(
     tenantId,
     billingDescription,
     billingMetadata,
+    maxTokens,
   } = params;
 
   const augmentedSystemPrompt = `${systemPrompt}
@@ -125,6 +128,7 @@ The JSON must strictly conform to the expected schema.`;
       preferredProvider: strictProviderPin
         ? preferredProviderId
         : undefined,
+      maxTokens,
     });
 
     if (result.type === "error") {

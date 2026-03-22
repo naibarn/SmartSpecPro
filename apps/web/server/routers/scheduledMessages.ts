@@ -9,8 +9,8 @@ import { protectedProcedure, router } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { getDb } from "../db";
 import { scheduledMessages, scheduledMessageLogs, userNotifications, notificationOccurrences } from "../../drizzle/schema";
-import { eq, and, desc, sql, inArray } from "drizzle-orm";
-import { createScheduledJob, cancelScheduledJob } from "../services/scheduler";
+import { eq, and, desc, sql, inArray, gte } from "drizzle-orm";
+import { createScheduledJob, cancelScheduledJob, deliverScheduledMessage } from "../services/scheduler";
 import { auditLogger } from "../services/auditLogger";
 import { deductCreditsForModel } from "../services/creditService";
 import { resolveEnabledLlmModelId } from "../services/enabledLlmModels";
@@ -367,6 +367,185 @@ export const scheduledMessagesRouter = router({
         .where(eq(scheduledMessages.id, input.id));
 
       return { status: newStatus };
+    }),
+
+  /**
+   * Skip the next run of a recurring schedule.
+   */
+  skipNextRun: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      const [existing] = await db
+        .select()
+        .from(scheduledMessages)
+        .where(and(eq(scheduledMessages.id, input.id), eq(scheduledMessages.userId, ctx.user.id)))
+        .limit(1);
+
+      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+
+      const dynamicParams = { ...(existing.dynamicParams || {}) } as Record<string, unknown>;
+      dynamicParams._skipUntil = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString();
+
+      await db.update(scheduledMessages)
+        .set({ dynamicParams, updatedAt: new Date() })
+        .where(eq(scheduledMessages.id, input.id));
+
+      return { success: true };
+    }),
+
+  /**
+   * Execute a schedule immediately.
+   */
+  triggerNow: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      const [existing] = await db
+        .select()
+        .from(scheduledMessages)
+        .where(and(eq(scheduledMessages.id, input.id), eq(scheduledMessages.userId, ctx.user.id)))
+        .limit(1);
+
+      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+
+      await deliverScheduledMessage(input.id);
+      return { success: true };
+    }),
+
+  /**
+   * Bulk pause/resume/delete actions.
+   */
+  bulkAction: protectedProcedure
+    .input(z.object({
+      ids: z.array(z.number()).min(1).max(100),
+      action: z.enum(["pause", "resume", "delete"]),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      let affected = 0;
+      for (const id of input.ids) {
+        const [existing] = await db
+          .select()
+          .from(scheduledMessages)
+          .where(and(eq(scheduledMessages.id, id), eq(scheduledMessages.userId, ctx.user.id)))
+          .limit(1);
+
+        if (!existing) {
+          continue;
+        }
+
+        if (input.action === "delete") {
+          await cancelScheduledJob(id, existing.bullmqJobId);
+          await db.delete(scheduledMessages).where(eq(scheduledMessages.id, id));
+          affected += 1;
+          continue;
+        }
+
+        if (input.action === "pause" && existing.status === "active") {
+          await cancelScheduledJob(id, existing.bullmqJobId);
+          await db.update(scheduledMessages)
+            .set({ status: "paused", updatedAt: new Date() })
+            .where(eq(scheduledMessages.id, id));
+          affected += 1;
+          continue;
+        }
+
+        if (input.action === "resume" && existing.status === "paused") {
+          const jobId = await createScheduledJob(id, existing.cronExpression, existing.scheduledAt);
+          await db.update(scheduledMessages)
+            .set({ status: "active", bullmqJobId: jobId, updatedAt: new Date() })
+            .where(eq(scheduledMessages.id, id));
+          affected += 1;
+        }
+      }
+
+      return { affected };
+    }),
+
+  /**
+   * Aggregate execution analytics for a date range.
+   */
+  getAnalytics: protectedProcedure
+    .input(z.object({ days: z.number().min(1).max(365).default(30) }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) {
+        return {
+          totalRuns: 0,
+          successRate: 0,
+          totalCredits: 0,
+          failureCount: 0,
+          dailyStats: [],
+        };
+      }
+
+      const scheduleIds = await db
+        .select({ id: scheduledMessages.id })
+        .from(scheduledMessages)
+        .where(eq(scheduledMessages.userId, ctx.user.id));
+
+      if (scheduleIds.length === 0) {
+        return {
+          totalRuns: 0,
+          successRate: 0,
+          totalCredits: 0,
+          failureCount: 0,
+          dailyStats: [],
+        };
+      }
+
+      const since = new Date(Date.now() - (input.days * 24 * 60 * 60 * 1000));
+      const logs = await db
+        .select()
+        .from(scheduledMessageLogs)
+        .where(and(
+          inArray(scheduledMessageLogs.scheduledMessageId, scheduleIds.map((row) => row.id)),
+          gte(scheduledMessageLogs.executedAt, since),
+        ))
+        .orderBy(desc(scheduledMessageLogs.executedAt));
+
+      const dailyMap = new Map<string, { date: string; runs: number; successes: number; failures: number }>();
+      let totalRuns = 0;
+      let successCount = 0;
+      let failureCount = 0;
+      let totalCredits = 0;
+
+      for (const log of logs) {
+        totalRuns += 1;
+        const status = String(log.status ?? "").toLowerCase();
+        const isSuccess = status === "success";
+        if (isSuccess) {
+          successCount += 1;
+        } else {
+          failureCount += 1;
+        }
+        totalCredits += Number(log.creditsUsed ?? 0);
+
+        const date = log.executedAt.toISOString().slice(0, 10);
+        const bucket = dailyMap.get(date) ?? { date, runs: 0, successes: 0, failures: 0 };
+        bucket.runs += 1;
+        if (isSuccess) {
+          bucket.successes += 1;
+        } else {
+          bucket.failures += 1;
+        }
+        dailyMap.set(date, bucket);
+      }
+
+      return {
+        totalRuns,
+        successRate: totalRuns > 0 ? Math.round((successCount / totalRuns) * 100) : 0,
+        totalCredits,
+        failureCount,
+        dailyStats: [...dailyMap.values()].sort((left, right) => left.date.localeCompare(right.date)),
+      };
     }),
 
   /**

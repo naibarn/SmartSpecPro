@@ -71,7 +71,10 @@ export async function suggestModel(
       alternatives: rest.slice(0, 3).map(toEntry),
     };
   } catch (err) {
-    debugError("[suggestModel] model registry lookup failed", err);
+    debugError(
+      "[suggestModel] model registry lookup failed",
+      err instanceof Error ? err.message : String(err),
+    );
     return { recommended: null, alternatives: [] };
   }
 }
@@ -107,7 +110,10 @@ export async function modelSuggestHandler(req: Request, res: Response): Promise<
     return;
   }
 
-  const { purpose, quality_preference, userId, tenantId } = parseResult.data;
+  const { purpose, quality_preference } = parseResult.data;
+  const requestBody = req.body as { userId?: number; tenantId?: string };
+  const userId = requestBody.userId;
+  const tenantId = requestBody.tenantId;
 
   // Safety net: suggestModel() resolves all errors internally
   let result: SuggestResult;

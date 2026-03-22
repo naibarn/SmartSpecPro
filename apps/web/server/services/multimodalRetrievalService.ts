@@ -268,7 +268,7 @@ export async function retrieveRelevantAssets(
       LIMIT 20
     `);
 
-    vectorCandidates = (vectorResult.rows as any[]).map((row: any) => ({
+    vectorCandidates = (vectorResult as any[]).map((row: any) => ({
       assetId: Number(row.assetId),
       vectorScore: Number(row.vectorScore) || 0,
     }));

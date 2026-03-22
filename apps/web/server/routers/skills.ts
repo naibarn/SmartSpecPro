@@ -2230,6 +2230,11 @@ export const skillsRouter = router({
             title: "Skill Approved!",
             content: `Your skill "${skillInfo.name}" has been approved and is now public.`,
             priority: "normal",
+            relatedResourceType: "skill",
+            relatedResourceId: String(input.skillId),
+            actionUrl: `/skills?skillId=${input.skillId}`,
+            actionLabel: "View Skill",
+            metadata: { source: "skill.approved" },
           });
         }
       } catch (_notifErr) {
@@ -2287,6 +2292,11 @@ export const skillsRouter = router({
             title: "Skill Publish Request Rejected",
             content: `Your skill "${skillInfo.name}" was not approved for public visibility.${reasonText}`,
             priority: "normal",
+            relatedResourceType: "skill",
+            relatedResourceId: String(input.skillId),
+            actionUrl: `/skills?skillId=${input.skillId}`,
+            actionLabel: "View Skill",
+            metadata: { source: "skill.rejected" },
           });
         }
       } catch (_notifErr) {
@@ -2582,6 +2592,7 @@ export const skillsRouter = router({
           // Spec 038 fields
           thinking_level_hint: z.enum(["low", "medium", "high"]).nullable().optional(),
           requires_web_search: z.boolean().optional(),
+          requires_structured_output: z.boolean().optional(),
           min_citation_coverage: z.number().min(0).max(1).optional(),
           refresh_cadence_days: z.number().min(1).max(365).optional(),
           disclosure_required: z.boolean().optional(),
@@ -2603,6 +2614,8 @@ export const skillsRouter = router({
           mode: z.enum(["requirements", "fixed", "hybrid"]).optional(),
           // Feature 041: Conversation override flag
           allowConversationOverride: z.boolean().optional(),
+          // Feature 041: Free-model policy
+          allowFreeModels: z.boolean().optional(),
         }).optional(),
       })
     )
@@ -2762,6 +2775,9 @@ export const skillsRouter = router({
           mode: updateData.executionPolicy.mode ?? (hasReqs ? "requirements" : (existing as any)?.mode),
           ...(updateData.executionPolicy.allowConversationOverride !== undefined
             ? { allowConversationOverride: updateData.executionPolicy.allowConversationOverride }
+            : {}),
+          ...(updateData.executionPolicy.allowFreeModels !== undefined
+            ? { allowFreeModels: updateData.executionPolicy.allowFreeModels }
             : {}),
         };
       }

@@ -128,6 +128,64 @@ describe("modelResolver", () => {
       );
       expect(result?.modelId).toBe("gpt-4o-mini");
     });
+
+    it("preserves the user-selected conversation model for normal chat", () => {
+      const models = [
+        makeModel("kimi-k2.5-free", "openrouter", {}, { isFree: true, pricingInput: 0, pricingOutput: 0 }),
+        makeModel("gpt-4o-mini", "openai", {}, { pricingInput: 1, pricingOutput: 2 }),
+      ];
+      const result = resolveModelFromPlan(
+        {
+          ...basePlan,
+          context: {
+            sourceType: "chat",
+            conversationModel: "gpt-4o-mini",
+          },
+        },
+        models,
+      );
+      expect(result?.modelId).toBe("gpt-4o-mini");
+    });
+
+    it("matches the conversation model even when stored as a provider-prefixed id", () => {
+      const models = [
+        {
+          ...makeModel("gpt-4o-mini", "openrouter", {}, { pricingInput: 1, pricingOutput: 2 }),
+          providerModelId: "openai/gpt-4o-mini",
+        },
+        makeModel("kimi-k2.5-free", "openrouter", {}, { isFree: true, pricingInput: 0, pricingOutput: 0 }),
+      ];
+      const result = resolveModelFromPlan(
+        {
+          ...basePlan,
+          context: {
+            sourceType: "chat",
+            conversationModel: "openai/gpt-4o-mini",
+          },
+        },
+        models,
+      );
+      expect(result?.modelId).toBe("gpt-4o-mini");
+    });
+
+    it("still allows planner selection for skill-driven chat flows", () => {
+      const models = [
+        makeModel("kimi-k2.5-free", "openrouter", {}, { isFree: true, pricingInput: 0, pricingOutput: 0 }),
+        makeModel("gpt-4o-mini", "openai", {}, { pricingInput: 1, pricingOutput: 2 }),
+      ];
+      const result = resolveModelFromPlan(
+        {
+          ...basePlan,
+          context: {
+            sourceType: "chat",
+            conversationModel: "gpt-4o-mini",
+            skillSlug: "image-creator",
+          },
+        },
+        models,
+      );
+      expect(result?.modelId).toBe("kimi-k2.5-free");
+    });
   });
 
   describe("buildModelResolutionSnapshot", () => {

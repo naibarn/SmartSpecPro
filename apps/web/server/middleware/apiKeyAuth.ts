@@ -1,16 +1,42 @@
 import type { Request, Response, NextFunction } from "express";
+import crypto from "crypto";
 import { authorizeRequest } from "../_core/authz";
+import { ENV } from "../_core/env";
 
 /**
  * Express middleware that authenticates requests for /v1/* routes.
  * Calls authorizeRequest() and sets req.auth for downstream middleware.
  * Audit logging is handled separately by publicApiAuditMiddleware.
+ *
+ * X-Internal-Token (service-to-service from Python/Celery) is also accepted.
+ * When valid, the request is passed through so downstream route handlers
+ * (e.g. llmRoutes guardWithCreditsOrInternalToken) can perform credit checks.
  */
 export async function apiKeyAuthMiddleware(
   req: Request,
   res: Response,
   next: NextFunction,
 ) {
+  // Allow X-Internal-Token through — downstream handlers do their own credit checks
+  const internalToken = req.headers["x-internal-token"] as string | undefined;
+  if (internalToken && ENV.webGatewayToken && internalToken.length >= 32) {
+    const tokenBuf = Buffer.from(internalToken);
+    const expectedBuf = Buffer.from(ENV.webGatewayToken);
+    if (
+      tokenBuf.length === expectedBuf.length &&
+      crypto.timingSafeEqual(tokenBuf, expectedBuf)
+    ) {
+      (res.locals as any).verifiedInternalToken = true;
+      req.auth = {
+        ok: true,
+        mode: "bearer",
+        sub: "internal",
+        scopes: ["llm:chat", "mcp:read", "mcp:write"],
+      };
+      return next();
+    }
+  }
+
   const auth = await authorizeRequest(req, {
     allowBearer: true,
     allowSession: true,

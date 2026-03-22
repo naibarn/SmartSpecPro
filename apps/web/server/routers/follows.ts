@@ -99,6 +99,11 @@ export const followsRouter = router({
           ? "You can now send unlimited messages to each other."
           : "Follow back to become friends and chat freely.",
         priority: areFriends ? "high" : "normal",
+        relatedResourceType: "user",
+        relatedResourceId: String(ctx.user.id),
+        actionUrl: `/chat?dm=${ctx.user.id}`,
+        actionLabel: areFriends ? "Send Message" : "View Profile",
+        metadata: { source: "follows" },
       });
 
       return { success: true, alreadyFollowing: false, isFriend: areFriends };
@@ -389,6 +394,11 @@ export const followsRouter = router({
           : `Message from ${ctx.user.name || ctx.user.email}`,
         content: input.content.slice(0, 500),
         priority: input.isUrgent ? "critical" : "normal",
+        relatedResourceType: "user",
+        relatedResourceId: String(ctx.user.id),
+        actionUrl: `/chat?dm=${ctx.user.id}`,
+        actionLabel: "Open Chat",
+        metadata: { source: "direct_message" },
       });
 
       return { id: msg.id, success: true };

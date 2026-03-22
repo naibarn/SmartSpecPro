@@ -113,6 +113,8 @@ type ClassificationResponse = z.infer<typeof classificationResponseSchema>;
 
 interface ClassifierContext {
   hasImages?: boolean;
+  /** Pre-filtered candidate skill IDs — reduces prompt size and improves accuracy */
+  candidateSkillIds?: string[];
 }
 
 function buildSystemPrompt(
@@ -192,10 +194,18 @@ export async function classifyIntent(
   }
 
   try {
-    // 2. Load skill catalog
-    const catalog = await getSkillCatalogSummary(userId, tenantId);
+    // 2. Load skill catalog (optionally pre-filtered by candidate list)
+    let catalog = await getSkillCatalogSummary(userId, tenantId);
     if (catalog.length === 0) {
       return null;
+    }
+    if (context?.candidateSkillIds && context.candidateSkillIds.length > 0) {
+      const candidateSet = new Set(context.candidateSkillIds);
+      catalog = catalog.filter((s) => candidateSet.has(s.id));
+      if (catalog.length === 0) {
+        // All candidates filtered out — fall back to full catalog
+        catalog = await getSkillCatalogSummary(userId, tenantId);
+      }
     }
     const categoryGroups = buildSkillCategoryGroups(catalog);
 

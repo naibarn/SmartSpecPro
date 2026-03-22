@@ -8,7 +8,7 @@
 
 import { eq, sql } from "drizzle-orm";
 import { getDb } from "../db";
-import { conversationVisualState } from "../../drizzle/schema";
+import { conversationVisualState, conversations } from "../../drizzle/schema";
 import { getRedisClient, isRedisAvailable } from "./redis";
 
 // ---------------------------------------------------------------------------
@@ -127,9 +127,16 @@ export async function getOrCreateState(conversationId: number): Promise<VisualSt
   }
 
   // Insert default row (handle concurrent inserts with onConflictDoNothing)
+  const [conversation] = await db
+    .select({ tenantId: conversations.tenantId })
+    .from(conversations)
+    .where(eq(conversations.id, conversationId))
+    .limit(1);
+
   const inserted = await db
     .insert(conversationVisualState)
     .values({
+      tenantId: conversation?.tenantId ?? "",
       conversationId,
       recentAssetIds: [],
       activeAssetIds: [],

@@ -23,6 +23,25 @@ export type CreditSourceType =
   // Section 07/08 — multimodal memory pipeline
   | "vision_analysis" | "embedding_generation" | "reference_resolution";
 
+type DbCreditSourceType = Exclude<
+  CreditSourceType,
+  "vision_analysis" | "embedding_generation" | "reference_resolution"
+>;
+
+function normalizeCreditSourceType(
+  sourceType?: CreditSourceType | null,
+): DbCreditSourceType | undefined {
+  if (!sourceType) return undefined;
+  switch (sourceType) {
+    case "vision_analysis":
+    case "embedding_generation":
+    case "reference_resolution":
+      return "other";
+    default:
+      return sourceType;
+  }
+}
+
 export class BudgetExceededError extends Error {
   public readonly monthlyLimit: number;
   public readonly creditsUsed: number;
@@ -213,7 +232,7 @@ export async function deductCredits(params: DeductCreditsParams) {
         traceId: getTraceId() ?? metadata?.traceId ?? null,
         conversationId: params.conversationId ?? null,
         skillSlug: params.skillSlug ?? null,
-        sourceType: params.sourceType ?? null,
+        sourceType: normalizeCreditSourceType(params.sourceType ?? null) ?? null,
       }).returning({ id: creditTransactions.id });
 
       transactionId = txRecord?.id || 0;
@@ -322,7 +341,7 @@ export async function addCredits(params: AddCreditsParams) {
       traceId: getTraceId() ?? null,
       conversationId: params.conversationId ?? null,
       skillSlug: params.skillSlug ?? null,
-      sourceType: params.sourceType ?? null,
+      sourceType: normalizeCreditSourceType(params.sourceType ?? null) ?? null,
     }).returning({ id: creditTransactions.id });
 
     transactionId = txRecord?.id || 0;
@@ -538,7 +557,10 @@ export async function getTransactionHistory(params: TransactionHistoryParams) {
   }
 
   if (sourceType) {
-    conditions.push(eq(creditTransactions.sourceType, sourceType));
+    const dbSourceType = normalizeCreditSourceType(sourceType);
+    if (dbSourceType) {
+      conditions.push(eq(creditTransactions.sourceType, dbSourceType));
+    }
   }
 
   if (startDate) {

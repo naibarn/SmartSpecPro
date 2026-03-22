@@ -15,6 +15,14 @@ import {
   resolveEffectiveUserAutomationPolicy,
   updateUserBrowserPolicyProfile,
 } from "../services/browserPolicyUserSettings";
+import {
+  getPrivateVaultPinVersion,
+  hashPrivateVaultPin,
+  issuePrivateVaultAccessToken,
+  sanitizeUserPreferences,
+  validatePrivateVaultAccessToken,
+  verifyPrivateVaultPin,
+} from "../services/privateVaultService";
 
 // Zod schemas
 const userFiltersSchema = z.object({
@@ -41,6 +49,19 @@ const creditAdjustmentSchema = z.object({
   type: z.enum(["bonus", "refund", "adjustment", "subscription"]),
   description: z.string().min(1).max(512),
   referenceId: z.string().optional(),
+});
+
+const privateVaultPinSchema = z.string().trim().regex(/^\d+$/).min(4).max(12);
+const setPrivateVaultPinSchema = z.object({
+  currentPin: privateVaultPinSchema.optional(),
+  newPin: privateVaultPinSchema,
+  confirmPin: privateVaultPinSchema,
+});
+const unlockPrivateVaultSchema = z.object({
+  pin: privateVaultPinSchema,
+});
+const disablePrivateVaultSchema = z.object({
+  currentPin: privateVaultPinSchema,
 });
 
 export const usersRouter = router({
@@ -89,6 +110,7 @@ export const usersRouter = router({
         email: users.email, role: users.role, credits: users.credits,
         plan: users.plan, loginMethod: users.loginMethod,
         registeredDomain: users.registeredDomain, isDisabled: users.isDisabled,
+        disabledReason: users.disabledReason,
         createdAt: users.createdAt, lastSignedIn: users.lastSignedIn,
       };
       let query = db.select(USER_SAFE_FIELDS).from(users);
@@ -613,6 +635,7 @@ export const usersRouter = router({
         email: users.email, role: users.role, credits: users.credits,
         plan: users.plan, loginMethod: users.loginMethod,
         registeredDomain: users.registeredDomain, isDisabled: users.isDisabled,
+        disabledReason: users.disabledReason,
         createdAt: users.createdAt, lastSignedIn: users.lastSignedIn,
       };
       let query = db.select(USER_SAFE_FIELDS).from(users);
@@ -725,7 +748,7 @@ export const usersRouter = router({
     const db = await getDb();
     if (!db) return {};
     const [user] = await db.select({ userPreferences: users.userPreferences }).from(users).where(eq(users.id, ctx.user.id)).limit(1);
-    return user?.userPreferences || {};
+    return sanitizeUserPreferences((user?.userPreferences as Record<string, any>) || {});
   }),
 
   updatePreferences: protectedProcedure
@@ -749,7 +772,116 @@ export const usersRouter = router({
       }
 
       await db.update(users).set({ userPreferences: updated }).where(eq(users.id, ctx.user.id));
-      return updated;
+      return sanitizeUserPreferences(updated);
+    }),
+
+  setPrivateVaultPin: protectedProcedure
+    .input(setPrivateVaultPinSchema)
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      if (input.newPin !== input.confirmPin) {
+        throw new Error("PIN codes do not match");
+      }
+
+      const [existing] = await db.select({ userPreferences: users.userPreferences }).from(users).where(eq(users.id, ctx.user.id)).limit(1);
+      const currentPrefs = (existing?.userPreferences as Record<string, any>) || {};
+      const currentVault = (currentPrefs.privateVault || {}) as Record<string, any>;
+      const currentPinHash = typeof currentVault.pinHash === "string" ? currentVault.pinHash : "";
+
+      if (currentPinHash) {
+        if (!input.currentPin) {
+          throw new Error("Current PIN is required to change the private vault PIN");
+        }
+        const currentValid = await verifyPrivateVaultPin(input.currentPin, currentPinHash);
+        if (!currentValid) {
+          throw new Error("Current PIN is incorrect");
+        }
+      }
+
+      const nextVersion = (Number.isFinite(Number(currentVault.pinVersion)) ? Number(currentVault.pinVersion) : 0) + 1;
+      const hashedPin = await hashPrivateVaultPin(input.newPin);
+      const updated = {
+        ...currentPrefs,
+        privateVault: {
+          enabled: true,
+          pinHash: hashedPin,
+          pinVersion: nextVersion,
+          pinUpdatedAt: new Date().toISOString(),
+        },
+      };
+
+      await db.update(users).set({ userPreferences: updated }).where(eq(users.id, ctx.user.id));
+      return sanitizeUserPreferences(updated);
+    }),
+
+  disablePrivateVault: protectedProcedure
+    .input(disablePrivateVaultSchema)
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const [existing] = await db.select({ userPreferences: users.userPreferences }).from(users).where(eq(users.id, ctx.user.id)).limit(1);
+      const currentPrefs = (existing?.userPreferences as Record<string, any>) || {};
+      const currentVault = (currentPrefs.privateVault || {}) as Record<string, any>;
+      const currentPinHash = typeof currentVault.pinHash === "string" ? currentVault.pinHash : "";
+
+      if (!currentPinHash) {
+        throw new Error("Private vault PIN is not configured");
+      }
+
+      const currentValid = await verifyPrivateVaultPin(input.currentPin, currentPinHash);
+      if (!currentValid) {
+        throw new Error("Current PIN is incorrect");
+      }
+
+      const nextVersion = (Number.isFinite(Number(currentVault.pinVersion)) ? Number(currentVault.pinVersion) : 0) + 1;
+      const updated = {
+        ...currentPrefs,
+        privateVault: {
+          enabled: false,
+          pinVersion: nextVersion,
+          pinUpdatedAt: new Date().toISOString(),
+        },
+      };
+
+      await db.update(users).set({ userPreferences: updated }).where(eq(users.id, ctx.user.id));
+      return sanitizeUserPreferences(updated);
+    }),
+
+  unlockPrivateVault: protectedProcedure
+    .input(unlockPrivateVaultSchema)
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const [existing] = await db.select({ userPreferences: users.userPreferences }).from(users).where(eq(users.id, ctx.user.id)).limit(1);
+      const currentPrefs = (existing?.userPreferences as Record<string, any>) || {};
+      const currentVault = (currentPrefs.privateVault || {}) as Record<string, any>;
+      const pinHash = typeof currentVault.pinHash === "string" ? currentVault.pinHash : "";
+      const enabled = currentVault.enabled === true && Boolean(pinHash);
+      if (!enabled) {
+        throw new Error("Private vault PIN is not configured");
+      }
+
+      const valid = await verifyPrivateVaultPin(input.pin, pinHash);
+      if (!valid) {
+        throw new Error("Invalid PIN");
+      }
+
+      const pinVersion = getPrivateVaultPinVersion({ privateVault: currentVault });
+      const token = issuePrivateVaultAccessToken({
+        userId: ctx.user.id,
+        tenantId: String(ctx.user.currentTenantId ?? ctx.tenantId ?? ""),
+        pinVersion,
+      });
+
+      return {
+        token,
+        expiresAt: new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString(),
+        preferences: sanitizeUserPreferences(currentPrefs),
+      };
     }),
 
   getAutomationPreferences: protectedProcedure.query(async ({ ctx }) => {

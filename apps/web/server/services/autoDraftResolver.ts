@@ -337,22 +337,17 @@ export async function resolveAutoDraftParams(
         textModel = await pickFirstRoutableTextModel(models.map((model) => model.modelId));
         if (textModel) {
           addStep("textModel", textModel, "first enabled routable text model", true);
+        } else {
+          const defaultTextModel = models[0];
+          if (defaultTextModel) {
+            textModel = defaultTextModel.modelId;
+            addStep("textModel", textModel, "first enabled text model", true);
+          }
         }
       }
     }
   } catch {
     // DB unavailable
-  }
-
-  if (!textModel) {
-    const defaultTextModel = getDefaultModel("text");
-    if (defaultTextModel) {
-      const providers = await resolveProviders(defaultTextModel.id).catch(() => []);
-      if (providers.length > 0) {
-        textModel = defaultTextModel.id;
-        addStep("textModel", textModel, "static registry default with provider", true);
-      }
-    }
   }
 
   if (!textModel) {

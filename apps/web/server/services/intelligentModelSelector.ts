@@ -13,6 +13,7 @@ import type { EnabledLlmModelRow } from "./enabledLlmModels";
  */
 export interface ModelPriorityInput {
   createdAt?: number | null;
+  contextLength?: number | null;
   pricingInput?: string | number | null;
   pricingOutput?: string | number | null;
   isFree?: boolean | null;

@@ -17,7 +17,7 @@ import { KNOWN_EVENT_TYPES } from "../services/webhookDeliveryService";
 
 const CreateWebhookSchema = z.object({
   url: z.string().max(2048).startsWith("https://", "URL must use HTTPS"),
-  events: z.array(z.enum(KNOWN_EVENT_TYPES as [string, ...string[]])).min(1),
+  events: z.array(z.enum(KNOWN_EVENT_TYPES as unknown as [string, ...string[]])).min(1),
   retry_policy: z.enum(["exponential", "none"]).default("exponential"),
 });
 

@@ -177,6 +177,7 @@ describe("skills.previewModelResolution", () => {
     }]);
     mockResolvePolicy.mockResolvedValue({
       modelId: "claude-sonnet-4-6",
+      allowFreeModels: false,
       modelSource: "requirements_match",
       matchedCapabilities: ["vision"],
       requirementsFallback: false,
@@ -205,6 +206,7 @@ describe("skills.previewModelResolution", () => {
     }]);
     mockResolvePolicy.mockResolvedValue({
       modelId: "gpt-4o",
+      allowFreeModels: false,
       modelSource: "system_default",
       requirementsFallback: true,
     });
@@ -230,6 +232,7 @@ describe("skills.previewModelResolution", () => {
     }]);
     mockResolvePolicy.mockResolvedValue({
       modelId: "gpt-4o",
+      allowFreeModels: false,
       modelSource: "system_default",
     });
     mockLoadRows.mockResolvedValue([]);
@@ -253,6 +256,7 @@ describe("skills.previewModelResolution", () => {
     }]);
     mockResolvePolicy.mockResolvedValue({
       modelId: "claude-sonnet-4-6",
+      allowFreeModels: false,
       modelSource: "requirements_match",
       matchedCapabilities: ["functionTools", "structuredOutput"],
       requirementsFallback: false,
@@ -279,6 +283,7 @@ describe("skills.previewModelResolution", () => {
     }]);
     mockResolvePolicy.mockResolvedValue({
       modelId: "gpt-4o",
+      allowFreeModels: false,
       modelSource: "system_default",
     });
     mockLoadRows.mockResolvedValue([

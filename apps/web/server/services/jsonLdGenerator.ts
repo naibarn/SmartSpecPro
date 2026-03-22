@@ -72,11 +72,14 @@ export function generateProductReviewJsonLd(
 
   // FAQ (generates separate FAQPage if present)
   const result: unknown[] = [jsonLd];
-  if (review.faq?.length) {
+  const faq = (review as ProductReviewCMSOutput & {
+    faq?: Array<{ question: string; answer: string }>;
+  }).faq;
+  if (faq?.length) {
     result.push({
       "@context": "https://schema.org",
       "@type": "FAQPage",
-      mainEntity: review.faq.map((item) => ({
+      mainEntity: faq.map((item) => ({
         "@type": "Question",
         name: item.question,
         acceptedAnswer: {

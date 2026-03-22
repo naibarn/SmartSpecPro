@@ -10,7 +10,7 @@ import {
   type LibraryActor,
 } from "./libraryService";
 
-type DbClient = NonNullable<Awaited<ReturnType<typeof getDb>>>;
+type DbClient = any;
 
 export type AgencyCommitStatus = "committed";
 
@@ -51,7 +51,8 @@ export class AgencyPreviewCommitError extends Error {
 }
 
 function getCommitTitle(preview: AgencyPreview): string {
-  return preview.data.title.trim() || preview.summaryText.trim() || `Committed ${preview.previewType}`;
+  const data = preview.data as { title?: string };
+  return data.title?.trim() || preview.summaryText.trim() || `Committed ${preview.previewType}`;
 }
 
 function getLibrarySourceType(preview: AgencyPreview): string {
@@ -230,7 +231,13 @@ function renderLibraryMarkdown(preview: AgencyPreview): string {
   if (preview.previewType === "comparison") {
     return `${renderComparisonMarkdown(preview)}${renderProvenanceMarkdown(preview)}\n`;
   }
-  return `${renderStoryboardMarkdown(preview)}${renderProvenanceMarkdown(preview)}\n`;
+  if (preview.previewType === "storyboard") {
+    return `${renderStoryboardMarkdown(preview)}${renderProvenanceMarkdown(preview)}\n`;
+  }
+  throw new AgencyPreviewCommitError(
+    "UNSUPPORTED_PREVIEW",
+    `Unsupported preview type: ${preview.previewType}`,
+  );
 }
 
 async function validateReadableProvenance(
@@ -243,14 +250,14 @@ async function validateReadableProvenance(
       continue;
     }
     const documentId = Number(entry.documentId);
-    const item = await getLibraryItemById(documentId, actor, dbClient);
+    const item = await getLibraryItemById(documentId, actor as any, dbClient);
     if (!item) {
       throw new AgencyPreviewCommitError(
         "PERMISSION_DENIED",
         `Source document ${entry.documentId} is no longer readable`,
       );
     }
-    const permission = await getUserEffectivePermission(documentId, actor, dbClient);
+    const permission = await getUserEffectivePermission(documentId, actor as any, dbClient);
     if (!permission.effectivePermissionLevel) {
       throw new AgencyPreviewCommitError(
         "PERMISSION_DENIED",
@@ -326,7 +333,7 @@ export async function commitLibraryBackedPreview(params: {
   };
 
   try {
-    return await db.transaction(async (tx) => {
+    return await db.transaction(async (tx: DbClient) => {
       await tx
         .update(agencyRunArtifacts)
         .set({

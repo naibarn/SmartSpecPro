@@ -4,10 +4,14 @@ const {
   mockGetDb,
   mockSignBearerToken,
   mockFetch,
+  mockPoolQuery,
+  mockPoolEnd,
 } = vi.hoisted(() => ({
   mockGetDb: vi.fn(),
   mockSignBearerToken: vi.fn().mockReturnValue("test-admin-token"),
   mockFetch: vi.fn(),
+  mockPoolQuery: vi.fn(),
+  mockPoolEnd: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("../db", () => ({
@@ -25,6 +29,13 @@ vi.mock("../services/googleOAuthValidation", () => ({
 
 vi.mock("../_core/tokens", () => ({
   signBearerToken: mockSignBearerToken,
+}));
+
+vi.mock("pg", () => ({
+  Pool: vi.fn(() => ({
+    query: mockPoolQuery,
+    end: mockPoolEnd,
+  })),
 }));
 
 vi.mock("../../drizzle/schema", () => ({
@@ -149,6 +160,48 @@ describe("systemSettingsRouter vectordb cutover guard", () => {
     expect(mockFetch).not.toHaveBeenCalled();
   });
 
+  it("stores Google AI settings without calling the vectordb cutover guard", async () => {
+    const db = createDbMock();
+    mockGetDb.mockResolvedValue(db);
+
+    const mutation = systemSettingsRouter.updateGoogleAiSettings as any;
+    const result = await mutation({
+      input: { apiKey: "AIza-test-key" },
+      ctx: { user: { id: 9 } },
+    });
+
+    expect(result).toEqual({ success: true, preservedExisting: false });
+    expect(mockFetch).not.toHaveBeenCalled();
+    expect(db.insert).toHaveBeenCalled();
+  });
+
+  it("tests Google AI settings through Google endpoints", async () => {
+    const db = createDbMock();
+    db.select.mockReturnValueOnce({
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockResolvedValue([
+          { key: "google_api_key", value: "enc:AIza-test-key", isSensitive: true },
+        ]),
+      }),
+    });
+    mockGetDb.mockResolvedValue(db);
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ models: [] }),
+      text: async () => "",
+    } as any);
+
+    const mutation = systemSettingsRouter.testGoogleAiConnection as any;
+    const result = await mutation({});
+
+    expect(result).toEqual({
+      success: true,
+      message: "Google AI API key is configured and Gemini endpoints are reachable",
+    });
+    expect(String(mockFetch.mock.calls[0][0])).toContain("generativelanguage.googleapis.com");
+  });
+
   it("bubbles cutover freeze conflicts for vectordb updates", async () => {
     const db = createDbMock();
     mockGetDb.mockResolvedValue(db);
@@ -165,5 +218,130 @@ describe("systemSettingsRouter vectordb cutover guard", () => {
         ctx: { user: { id: 8 } },
       }),
     ).rejects.toThrow("cutover_non_emergency_edit_blocked");
+  });
+
+  it("forwards admin auth when triggering reindex", async () => {
+    const mutation = systemSettingsRouter.triggerReindex as any;
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ task_id: "task-1", status: "started", message: "queued" }),
+    } as any);
+
+    const result = await mutation({
+      ctx: { user: { id: 55 } },
+    });
+
+    expect(result).toEqual({ task_id: "task-1", status: "started", message: "queued" });
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining("/api/admin/vectordb/reindex"),
+      expect.objectContaining({
+        method: "POST",
+        headers: expect.objectContaining({
+          Authorization: "Bearer test-admin-token",
+        }),
+      }),
+    );
+  });
+
+  it("forwards admin auth when reading reindex status", async () => {
+    const query = systemSettingsRouter.getReindexStatus as any;
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ task_id: "task-2", status: "running", result: { active_jobs: 4 } }),
+    } as any);
+
+    const result = await query({
+      ctx: { user: { id: 56 } },
+    });
+
+    expect(result).toEqual({ task_id: "task-2", status: "running", result: { active_jobs: 4 } });
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining("/api/admin/vectordb/reindex/status"),
+      expect.objectContaining({
+        method: "GET",
+        headers: expect.objectContaining({
+          Authorization: "Bearer test-admin-token",
+        }),
+      }),
+    );
+  });
+
+  it("returns vector health through the authenticated admin bridge", async () => {
+    const query = systemSettingsRouter.getVectorDbHealth as any;
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        provider_status: {
+          current_read_provider: "pgvector",
+          target_provider: null,
+          switch_status: "idle",
+          mirror_writes: false,
+        },
+        queue_status: { lag_minutes: 0, lag_threshold_minutes: 10, lag_window_minutes: 15 },
+        campaign_progress: { campaign_id: null, status: "idle", domain: "library", queued: 0, processed: 0, succeeded: 0, failed: 0, skipped: 0 },
+        latency_status: { current_p95_ms: 12, baseline_p95_ms: 10, current_sample_count: 3, baseline_sample_count: 5, insufficient_baseline: false },
+        connection_health: { healthy: true, status: "configured", message: "ok", checked_at: "2026-03-20T00:00:00Z" },
+        provider_capabilities: {},
+        recent_failures: [],
+        timestamp: "2026-03-20T00:00:00Z",
+      }),
+    } as any);
+
+    const result = await query({
+      ctx: { user: { id: 57 } },
+    });
+
+    expect((result as any).provider_status.current_read_provider).toBe("pgvector");
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining("/api/admin/vectordb/health"),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: "Bearer test-admin-token",
+        }),
+      }),
+    );
+  });
+
+  it("uses canonical library_chunk_vectors stats for pgvector", async () => {
+    const settingsDb = {
+      select: vi.fn(() => ({
+        from: vi.fn(() => ({
+          where: vi.fn().mockResolvedValue([
+            { key: "provider", value: "pgvector", isSensitive: false },
+            { key: "pgvectorHost", value: "db.internal", isSensitive: false },
+            { key: "pgvectorPort", value: "5432", isSensitive: false },
+            { key: "pgvectorDatabase", value: "vectors", isSensitive: false },
+            { key: "pgvectorUser", value: "postgres", isSensitive: false },
+            { key: "pgvectorPassword", value: "enc:secret", isSensitive: true },
+          ]),
+        })),
+      })),
+    };
+    mockGetDb.mockResolvedValue(settingsDb);
+    mockPoolQuery
+      .mockResolvedValueOnce({ rows: [{ total_vectors: "311", indexed_items: "168" }] })
+      .mockResolvedValueOnce({ rows: [{ active_items: "168" }] })
+      .mockResolvedValueOnce({ rows: [{ embedding_dimensions: "384" }] })
+      .mockResolvedValueOnce({ rows: [{ relrowsecurity: true, relforcerowsecurity: true }] });
+
+    const query = systemSettingsRouter.getVectorDbStats as any;
+    const result = await query({});
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        provider: "pgvector",
+        totalDocuments: 168,
+        totalVectors: 311,
+        indexedItems: 168,
+        activeItems: 168,
+        dimensions: 384,
+        rlsEnabled: true,
+        forceRls: true,
+      }),
+    );
+    expect(mockPoolQuery.mock.calls[0][0]).toContain("library_chunk_vectors");
   });
 });

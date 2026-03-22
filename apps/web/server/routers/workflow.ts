@@ -1776,6 +1776,11 @@ export const workflowRouter = router({
             title: "Workflow Template Publish Request",
             content: `User requested to publish workflow "${wf.name}" to the Gallery.`,
             priority: "normal",
+            relatedResourceType: "workflow",
+            relatedResourceId: String(templateId),
+            actionUrl: `/admin/workflows?templateId=${templateId}`,
+            actionLabel: "Review Workflow",
+            metadata: { source: "workflow.publishRequest" },
           });
         }
       } catch (_) { /* non-fatal */ }
@@ -1847,6 +1852,11 @@ export const workflowRouter = router({
             title: "Workflow Template Approved!",
             content: `Your workflow "${tpl.name}" has been approved and is now visible in the Gallery.`,
             priority: "normal",
+            relatedResourceType: "workflow",
+            relatedResourceId: String(input.templateId),
+            actionUrl: `/workflows?templateId=${input.templateId}`,
+            actionLabel: "View Workflow",
+            metadata: { source: "workflow.approved" },
           });
         }
       } catch (_) { /* non-fatal */ }
@@ -1895,6 +1905,11 @@ export const workflowRouter = router({
             title: "Workflow Template Rejected",
             content: `Your workflow "${tpl.name}" was not approved for the Gallery.${reasonText}`,
             priority: "normal",
+            relatedResourceType: "workflow",
+            relatedResourceId: String(input.templateId),
+            actionUrl: `/workflows?templateId=${input.templateId}`,
+            actionLabel: "View Workflow",
+            metadata: { source: "workflow.rejected" },
           });
         }
       } catch (_) { /* non-fatal */ }

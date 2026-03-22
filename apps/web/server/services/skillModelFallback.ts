@@ -94,7 +94,7 @@ const MAX_MODEL_ATTEMPTS = 5;
 export async function executeSkillLlmWithFallback(
   request: SkillLlmRequest,
 ): Promise<SkillLlmResult> {
-  const { messages, skillSlug, userId, executionPolicy, stream = false, enableThinking } = request;
+  const { messages, skillSlug, userId, executionPolicy, stream = false, enableThinking, maxTokens, temperature, extraBodyParams } = request;
   const overallStart = Date.now();
   const attempts: FallbackAttempt[] = [];
 
@@ -140,6 +140,9 @@ export async function executeSkillLlmWithFallback(
       userId,
       preferredProvider: i === 0 ? executionPolicy.preferredProviderId : undefined,
       enableThinking,
+      maxTokens,
+      temperature,
+      extraBodyParams,
     });
 
     const durationMs = Date.now() - attemptStart;

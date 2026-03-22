@@ -53,7 +53,7 @@ export function createPublicEventsRouter(): Router {
     try {
       subscriber = getRealtimeClient().duplicate();
 
-      subscriber.subscribe(channel, (message: string) => {
+      void (subscriber as any).subscribe(channel, (message: string) => {
         if (res.writableEnded) return;
         try {
           const parsed = JSON.parse(message) as { type?: string } & Record<string, unknown>;

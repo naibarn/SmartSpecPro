@@ -23,7 +23,7 @@ import {
   updateSlideInDeck,
 } from "./presentationService";
 
-type DbClient = NonNullable<Awaited<ReturnType<typeof getDb>>>;
+type DbClient = any;
 
 export interface AgencyDeckCommitResult extends AgencyPreviewCommitResult {
   deckId: number;
@@ -64,14 +64,14 @@ async function validateReadableProvenance(
       continue;
     }
     const documentId = Number(entry.documentId);
-    const item = await getLibraryItemById(documentId, actor, dbClient);
+    const item = await getLibraryItemById(documentId, actor as any, dbClient);
     if (!item) {
       throw new AgencyPreviewCommitError(
         "PERMISSION_DENIED",
         `Source document ${entry.documentId} is no longer readable`,
       );
     }
-    const permission = await getUserEffectivePermission(documentId, actor, dbClient);
+    const permission = await getUserEffectivePermission(documentId, actor as any, dbClient);
     if (!permission.effectivePermissionLevel) {
       throw new AgencyPreviewCommitError(
         "PERMISSION_DENIED",
@@ -145,7 +145,7 @@ export async function commitPresentationPreview(params: {
   const now = new Date();
 
   try {
-    return await db.transaction(async (tx) => {
+    return await db.transaction(async (tx: DbClient) => {
       await tx
         .update(agencyRunArtifacts)
         .set({
@@ -180,31 +180,40 @@ export async function commitPresentationPreview(params: {
         tx,
       );
 
+      const previewData = preview.data as unknown as {
+        title: string;
+        description: string | null;
+        slides: Array<{
+          title: string;
+          notes: string | null;
+        }>;
+      };
+
       const deckResult = await createPresentationDeckForLibraryItem(
         {
           libraryItemId: libraryItem.item.id,
-          title: preview.data.title,
-          description: preview.data.description,
+          title: previewData.title,
+          description: previewData.description,
         },
-        actor,
-        tx,
+        actor as any,
+        tx as any,
       );
 
-      const existingSlides = await listSlidesForDeck(deckResult.deck.id, actor, tx);
+      const existingSlides = await listSlidesForDeck(deckResult.deck.id, actor as any, tx as any);
       const [firstSlide] = existingSlides;
       if (!firstSlide) {
         throw new Error("Expected initial deck slide to exist");
       }
 
-      const renderedSlides = preview.data.slides.map((slide, index) => {
+      const renderedSlides = previewData.slides.map((slide, index) => {
         const layout = generateSlide({
-          slideData: slide,
+          slideData: slide as any,
           imageUrl: null,
           svgGraphic: null,
           stylePreset,
-          deckTitle: preview.data.title,
+          deckTitle: previewData.title,
           slideIndex: index,
-          totalSlides: preview.data.slides.length,
+          totalSlides: previewData.slides.length,
         });
         return {
           title: slide.title,
@@ -226,9 +235,9 @@ export async function commitPresentationPreview(params: {
           title: firstRendered.title,
           slideContent: firstRendered.slideContent as Record<string, unknown>,
           notes: firstRendered.notes,
-        },
-        actor,
-        tx,
+        } as any,
+        actor as any,
+        tx as any,
       );
 
       let expectedVersion = deckResult.deck.version + 1;
@@ -241,8 +250,8 @@ export async function commitPresentationPreview(params: {
             slideContent: slide.slideContent as Record<string, unknown>,
             notes: slide.notes,
           },
-          actor,
-          tx,
+          actor as any,
+          tx as any,
         );
         expectedVersion += 1;
       }
