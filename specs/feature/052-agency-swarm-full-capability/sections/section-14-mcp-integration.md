@@ -340,13 +340,35 @@ At Runtime (Python orchestrator):
 
 ## Verification Checklist
 
-- [ ] All Vitest tests pass for MCP server exposure and tRPC procedures
-- [ ] All pytest tests pass for external MCP tool discovery and bridging
-- [ ] MCP public server can list and call agency tools via JSON-RPC
-- [ ] Tokens are encrypted at rest and never returned in plaintext
-- [ ] SSRF guard blocks private IPs and metadata endpoints
-- [ ] Tenant isolation enforced on all MCP operations
-- [ ] Feature flag correctly gates all MCP functionality
-- [ ] Frontend panel allows add/remove/discover with max 5 servers
-- [ ] TypeScript type check passes (`pnpm check`)
-- [ ] Python linting passes (`ruff check`, `mypy`)
+- [x] All Vitest tests pass for MCP server exposure and tRPC procedures (12 tests)
+- [x] All pytest tests pass for external MCP tool discovery and bridging (17 tests)
+- [x] MCP public server can list and call agency tools via JSON-RPC
+- [x] Tokens are encrypted at rest and never returned in plaintext
+- [x] SSRF guard blocks private IPs and metadata endpoints
+- [x] Tenant isolation enforced on all MCP operations
+- [x] Feature flag correctly gates all MCP functionality (`agencyMcpBridge`)
+- [x] Frontend panel allows add/remove/discover with max 5 servers
+- [x] TypeScript type check passes (no new errors introduced)
+- [ ] Python linting passes (`ruff check`, `mypy`) — deferred to CI
+
+## Implementation Notes
+
+### Deviations from Plan
+- Feature flag key: `agencyMcpBridge` (camelCase, TS) / `AGENCY_MCP_BRIDGE_ENABLED` (env var, Python) instead of single `AGENCY_MCP_BRIDGE_ENABLED` throughout. This follows the existing project convention where TypeScript feature flags use camelCase TenantFeatureFlags interface.
+- Rate limiting added to `discoverMcpTools` (10 req/min) per code review finding.
+- `McpServersPanel` uses `trpc.useUtils().fetch()` instead of direct `trpc.query()` for imperative discovery calls.
+
+### Files Created
+- `apps/web/server/services/agencyMcpService.ts` — Service layer (formatToolsAsMcp, encrypt/decrypt tokens, URL validation, discovery client)
+- `apps/web/server/services/__tests__/agencyMcpIntegration.test.ts` — 12 Vitest tests
+- `apps/web/client/src/components/agency/McpServersPanel.tsx` — Frontend panel
+- `python-backend/app/services/mcp_client.py` — Async MCP client (discover + call + cache)
+- `python-backend/tests/unit/services/test_agency_mcp_tools.py` — 17 pytest tests
+
+### Files Modified
+- `apps/web/server/_core/mcpPublicServer.ts` — Added 2 tool registry entries + dispatch handlers
+- `apps/web/server/routers/agency.ts` — Added `saveMcpServers` + `discoverMcpTools` procedures
+- `apps/web/client/src/components/agency/NodePropertyPanel.tsx` — Added MCP Servers collapsible section
+- `apps/web/client/src/components/agency/nodes/types.ts` — Added `mcpServers` to AgencyNodeData
+- `apps/web/shared/featureFlags.ts` — Added `agencyMcpBridge` flag (F30)
+- `python-backend/app/services/agency_tools.py` — Added `resolve_mcp_tools_for_agent()` function

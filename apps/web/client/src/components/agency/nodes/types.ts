@@ -26,4 +26,5 @@ export interface AgencyNodeData {
   validationErrors?: string[];
   examples?: Array<Array<{ role: "user" | "assistant"; content: string }>>;
   outputSchema?: Record<string, unknown> | null;
+  mcpServers?: Array<{ url: string; name?: string; transport?: "http" | "sse" }>;
 }

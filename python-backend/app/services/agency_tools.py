@@ -639,6 +639,105 @@ async def resolve_shared_tools_for_agency(
     return tool_classes
 
 
+async def resolve_mcp_tools_for_agent(
+    agent_config: dict,
+    adapter=None,
+) -> list[type]:
+    """Resolve MCP tools from external servers configured on an agent.
+
+    Reads mcpServers from agent config, decrypts tokens, discovers tools
+    from each server, and creates tool bridge classes.
+
+    Returns:
+        List of tool bridge classes for MCP tools.
+    """
+    if os.environ.get("AGENCY_MCP_BRIDGE_ENABLED", "false").lower() != "true":
+        return []
+
+    mcp_servers = agent_config.get("mcpServers")
+    if not mcp_servers or not isinstance(mcp_servers, list):
+        return []
+
+    from app.services.mcp_client import discover_tools, call_tool, _validate_mcp_url
+
+    # Decrypt tokens if available
+    tokens: dict[str, str] = {}
+    encrypted_tokens = agent_config.get("mcpServerTokensEncrypted")
+    if encrypted_tokens:
+        try:
+            from app.core.smartspecweb_crypto import decrypt_smartspecweb
+            import json
+            tokens = json.loads(decrypt_smartspecweb(encrypted_tokens))
+        except Exception as exc:
+            logger.warning("mcp_token_decrypt_failed", error=str(exc))
+
+    tool_classes: list[type] = []
+
+    for server in mcp_servers:
+        server_url = server.get("url", "")
+        server_name = server.get("name", "ext")
+
+        # SSRF validation
+        ssrf_error = _validate_mcp_url(server_url)
+        if ssrf_error:
+            logger.warning("mcp_server_ssrf_blocked", url=server_url, error=ssrf_error)
+            continue
+
+        token = tokens.get(server_url)
+        tools = await discover_tools(server_url, token)
+
+        for tool_info in tools:
+            # Sanitize tool name for use as Python class name
+            safe_name = tool_info.name.replace("-", "_").replace(".", "_")
+            bridge_name = f"mcp_{server_name}_{safe_name}"
+
+            # Create a run function that calls the external MCP server
+            def _make_run_func(url: str, tname: str, tok: str | None):
+                async def _run(**kwargs: str) -> str:
+                    return await call_tool(url, tname, kwargs, token=tok)
+                # Sync wrapper for agency-swarm
+                def run_sync(**kwargs: str) -> str:
+                    import asyncio
+                    try:
+                        loop = asyncio.get_event_loop()
+                        if loop.is_running():
+                            import concurrent.futures
+                            with concurrent.futures.ThreadPoolExecutor() as pool:
+                                return pool.submit(asyncio.run, _run(**kwargs)).result()
+                        return loop.run_until_complete(_run(**kwargs))
+                    except RuntimeError:
+                        return asyncio.run(_run(**kwargs))
+                return run_sync
+            run_func = _make_run_func(server_url, tool_info.name, token)
+
+            if adapter is not None:
+                # Create a tool class via the adapter
+                tool_cls = adapter.create_tool_class(
+                    tool_id=bridge_name,
+                    tool_name=bridge_name,
+                    description=tool_info.description or f"MCP tool: {tool_info.name}",
+                    run_func=run_func,
+                    input_schema=tool_info.input_schema,
+                )
+            else:
+                # Fallback: create a simple callable class
+                tool_cls = type(bridge_name, (), {
+                    "__doc__": tool_info.description,
+                    "run": staticmethod(run_func),
+                    "_tool_id": bridge_name,
+                })
+
+            tool_classes.append(tool_cls)
+
+    logger.info(
+        "mcp_tools_resolved",
+        tool_count=len(tool_classes),
+        server_count=len(mcp_servers),
+    )
+
+    return tool_classes
+
+
 def merge_tools_deduped(
     agent_tools: list[type],
     shared_tools: list[type],

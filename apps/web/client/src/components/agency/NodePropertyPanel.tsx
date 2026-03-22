@@ -45,13 +45,14 @@ import {
 import { ToolPicker } from "./ToolPicker";
 import { ModelPicker } from "./ModelPicker";
 import { GuardrailsPanel } from "./guardrails/GuardrailsPanel";
+import { McpServersPanel } from "./McpServersPanel";
 import { FewShotExamplesEditor, type ExamplePair } from "./FewShotExamplesEditor";
 import type { AgencyNodeData } from "./nodes/types";
 import { BROWSER_SESSION_COPY } from "@shared/browserSession";
 import {
   X, Wrench, ChevronDown, ChevronRight, Trash2, Plus,
   Search, Loader2, Zap, GripVertical, Check, ChevronsUpDown,
-  BookOpen, Shield,
+  BookOpen, Shield, Server,
 } from "lucide-react";
 
 const PANEL_MIN_W = 340;
@@ -233,6 +234,7 @@ function AgentSupervisorForm({
   const [v18FeaturesOpen, setV18FeaturesOpen] = useState(false);
   const [kbOpen, setKbOpen] = useState(false);
   const [guardrailsOpen, setGuardrailsOpen] = useState(false);
+  const [mcpServersOpen, setMcpServersOpen] = useState(false);
   const [kbDocPickerOpen, setKbDocPickerOpen] = useState(false);
   const [kbSettingsOpen, setKbSettingsOpen] = useState(false);
   const [kbDocTypeFilter, setKbDocTypeFilter] = useState<string>("all");
@@ -765,6 +767,40 @@ function AgentSupervisorForm({
           {guardrailsOpen && (
             <div className="mt-2">
               <GuardrailsPanel agencyId={agencyId} agentId={nodeId} />
+            </div>
+          )}
+        </div>
+      )}
+
+      <Separator />
+
+      {/* MCP Servers (section-14) */}
+      {(node.nodeType === "agent" || node.nodeType === "supervisor") && (
+        <div>
+          <button
+            type="button"
+            onClick={() => setMcpServersOpen(!mcpServersOpen)}
+            className="flex w-full items-center justify-between text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors"
+          >
+            <span className="flex items-center gap-1.5">
+              <Server className="h-3.5 w-3.5" />
+              MCP Servers
+            </span>
+            {mcpServersOpen ? (
+              <ChevronDown className="h-4 w-4" />
+            ) : (
+              <ChevronRight className="h-4 w-4" />
+            )}
+          </button>
+          {mcpServersOpen && (
+            <div className="mt-2">
+              <McpServersPanel
+                agentId={nodeId ?? ""}
+                mcpServers={node.mcpServers as any}
+                onChange={(servers, tokens) => {
+                  onChange({ ...node, mcpServers: servers } as any);
+                }}
+              />
             </div>
           )}
         </div>

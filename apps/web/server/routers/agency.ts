@@ -3719,4 +3719,126 @@ export const agencyRouter = router({
 
       return { success: true };
     }),
+
+  // ── MCP Integration (section-14) ──────────────────────────────────────
+
+  saveMcpServers: protectedProcedure
+    .input(
+      z.object({
+        agentId: z.string().uuid(),
+        mcpServers: z.array(z.object({
+          url: z.string().url(),
+          name: z.string().max(50).optional(),
+          transport: z.enum(["http", "sse"]).default("http"),
+        })).max(5, "Maximum 5 MCP servers per agent"),
+        tokens: z.record(z.string(), z.string()).optional(),
+      }),
+    )
+    .mutation(async ({ input, ctx }) => {
+      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      await assertAgencyEnabled(tenantId);
+
+      // Feature flag guard
+      const mcpEnabled = await getTenantFeatureFlag("agencyMcpBridge", tenantId);
+      if (!mcpEnabled && process.env.NODE_ENV === "production") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "MCP integration is not enabled" });
+      }
+
+      // Validate URLs against SSRF
+      const { validateMcpServerUrl, encryptMcpTokens } = await import(
+        "../services/agencyMcpService"
+      );
+      for (const server of input.mcpServers) {
+        const result = validateMcpServerUrl(server.url);
+        if (!result.valid) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `Invalid MCP server URL: ${result.error}`,
+          });
+        }
+      }
+
+      // Verify agent belongs to caller's tenant
+      const [agent] = await db
+        .select({ id: agencyAgents.id, agencyId: agencyAgents.agencyId })
+        .from(agencyAgents)
+        .innerJoin(agencies, eq(agencies.id, agencyAgents.agencyId))
+        .where(
+          and(
+            eq(agencyAgents.id, input.agentId),
+            eq(agencies.tenantId, tenantId),
+          ),
+        )
+        .limit(1);
+
+      if (!agent) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Agent not found" });
+      }
+
+      // Encrypt tokens if provided
+      let encryptedTokens: string | null = null;
+      if (input.tokens && Object.keys(input.tokens).length > 0) {
+        encryptedTokens = encryptMcpTokens(input.tokens);
+      }
+
+      // Update agent
+      await db
+        .update(agencyAgents)
+        .set({
+          mcpServers: input.mcpServers.map((s) => ({
+            url: s.url,
+            name: s.name,
+            transport: s.transport,
+          })),
+          mcpServerTokensEncrypted: encryptedTokens,
+        })
+        .where(eq(agencyAgents.id, input.agentId));
+
+      return { success: true };
+    }),
+
+  discoverMcpTools: protectedProcedure
+    .use(createRateLimitMiddleware({ windowMs: 60_000, maxRequests: 10, keyPrefix: "mcp-discover" }))
+    .input(
+      z.object({
+        serverUrl: z.string().url(),
+        token: z.string().optional(),
+      }),
+    )
+    .query(async ({ input, ctx }) => {
+      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      await assertAgencyEnabled(tenantId);
+
+      // Feature flag guard
+      const mcpEnabled = await getTenantFeatureFlag("agencyMcpBridge", tenantId);
+      if (!mcpEnabled && process.env.NODE_ENV === "production") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "MCP integration is not enabled" });
+      }
+
+      const { validateMcpServerUrl, discoverToolsFromServer } = await import(
+        "../services/agencyMcpService"
+      );
+
+      const urlResult = validateMcpServerUrl(input.serverUrl);
+      if (!urlResult.valid) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Invalid MCP server URL: ${urlResult.error}`,
+        });
+      }
+
+      try {
+        const tools = await discoverToolsFromServer(
+          input.serverUrl,
+          input.token,
+          10_000,
+        );
+        return { tools };
+      } catch (err: any) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `Failed to discover tools: ${err.message}`,
+        });
+      }
+    }),
 });

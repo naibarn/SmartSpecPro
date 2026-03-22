@@ -34,6 +34,7 @@ export interface TenantFeatureFlags {
   notificationEmailDelivery: boolean; // F27 — Email delivery channel for notifications
   notificationWebhookDelivery: boolean; // F28 — Webhook delivery channel for notifications
   unifiedSkillExecution: boolean; // F29 — Unified skill execution pipeline (routes chat + team room through single orchestrator)
+  agencyMcpBridge: boolean; // F30 — Agency MCP integration (expose/consume MCP tools)
 }
 
 export type TenantFeatureFlagKey = keyof TenantFeatureFlags;
@@ -72,6 +73,7 @@ export const ALLOWED_FEATURE_FLAGS: ReadonlySet<string> = new Set<TenantFeatureF
   "notificationEmailDelivery",
   "notificationWebhookDelivery",
   "unifiedSkillExecution",
+  "agencyMcpBridge",
 ]);
 
 /**
@@ -109,4 +111,5 @@ export const FEATURE_FLAG_DEFAULTS: Readonly<TenantFeatureFlags> = {
   notificationEmailDelivery: false,
   notificationWebhookDelivery: false,
   unifiedSkillExecution: false,
+  agencyMcpBridge: false,
 };

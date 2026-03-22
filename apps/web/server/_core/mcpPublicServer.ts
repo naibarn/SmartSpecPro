@@ -138,6 +138,35 @@ const TOOL_REGISTRY: McpToolDef[] = [
       },
     },
   },
+  // Agency Tools (MCP bridge — section 14)
+  {
+    name: "smartspec.agency.tools.list",
+    description: "List all tools available in an agency (builtin + custom + shared)",
+    requiredScope: "agency:tools:mcp",
+    readWrite: "Read",
+    inputSchema: {
+      type: "object",
+      required: ["agency_id"],
+      properties: {
+        agency_id: { type: "string" },
+      },
+    },
+  },
+  {
+    name: "smartspec.agency.tools.call",
+    description: "Execute a specific tool within an agency context",
+    requiredScope: "agency:tools:mcp",
+    readWrite: "Write",
+    inputSchema: {
+      type: "object",
+      required: ["agency_id", "tool_name", "arguments"],
+      properties: {
+        agency_id: { type: "string" },
+        tool_name: { type: "string" },
+        arguments: { type: "object" },
+      },
+    },
+  },
   // LLM
   {
     name: "smartspec.llm.chat",
@@ -576,6 +605,98 @@ async function dispatchToolCall(
   }
   if (toolName === "smartspec.skills.detect") {
     return { detected: null, message: "Skill detection via /v1/skills/detect" };
+  }
+
+  // Agency Tools (MCP bridge — section 14)
+  if (toolName === "smartspec.agency.tools.list") {
+    const agencyId = String(args.agency_id || "");
+    if (!agencyId) {
+      throw { code: -32602, message: "Missing agency_id" };
+    }
+    // Feature flag check
+    const { getTenantFeatureFlag } = await import("../services/featureFlags");
+    const mcpEnabled = await getTenantFeatureFlag("agencyMcpBridge", session.tenantId);
+    if (!mcpEnabled && process.env.NODE_ENV === "production") {
+      throw { code: -32603, message: "MCP integration is not enabled for this tenant" };
+    }
+    // Tenant isolation: verify agency belongs to tenant
+    const { db } = await import("../db");
+    const { agencies, agencyAgentTools, agencyTools } = await import("../../drizzle/schema");
+    const { eq, and } = await import("drizzle-orm");
+    const [agency] = await db
+      .select({ id: agencies.id })
+      .from(agencies)
+      .where(and(eq(agencies.id, agencyId), eq(agencies.tenantId, session.tenantId)))
+      .limit(1);
+    if (!agency) {
+      throw { code: -32603, message: "Agency not found" };
+    }
+    // Get all agents for this agency, then their tools
+    const { agencyAgents: agentsTable } = await import("../../drizzle/schema");
+    const agentRows = await db
+      .select({ id: agentsTable.id })
+      .from(agentsTable)
+      .where(eq(agentsTable.agencyId, agencyId));
+
+    const agentIds = agentRows.map((a: { id: string }) => a.id);
+    if (agentIds.length === 0) {
+      return { tools: [] };
+    }
+
+    const { inArray } = await import("drizzle-orm");
+    const toolRows = await db
+      .select({
+        toolId: agencyAgentTools.toolId,
+        name: agencyTools.name,
+        description: agencyTools.description,
+        inputSchema: agencyTools.inputSchema,
+      })
+      .from(agencyAgentTools)
+      .leftJoin(agencyTools, eq(agencyTools.id, agencyAgentTools.toolId))
+      .where(inArray(agencyAgentTools.agentId, agentIds));
+
+    const { formatToolsAsMcp } = await import("../services/agencyMcpService");
+    const mcpTools = formatToolsAsMcp(
+      toolRows.map((r: { toolId: string; name: string | null; description: string | null; inputSchema: unknown }) => ({
+        toolId: r.toolId,
+        agencyId,
+        name: r.name ?? undefined,
+        description: r.description ?? undefined,
+        inputSchema: (r.inputSchema as Record<string, unknown>) ?? undefined,
+      })),
+    );
+    return { tools: mcpTools };
+  }
+  if (toolName === "smartspec.agency.tools.call") {
+    const agencyId = String(args.agency_id || "");
+    const toolCallName = String(args.tool_name || "");
+    const toolArgs = (args.arguments ?? {}) as Record<string, unknown>;
+    if (!agencyId || !toolCallName) {
+      throw { code: -32602, message: "Missing agency_id or tool_name" };
+    }
+    // Feature flag check
+    const { getTenantFeatureFlag: getFlag } = await import("../services/featureFlags");
+    const mcpOn = await getFlag("agencyMcpBridge", session.tenantId);
+    if (!mcpOn && process.env.NODE_ENV === "production") {
+      throw { code: -32603, message: "MCP integration is not enabled for this tenant" };
+    }
+    // Proxy to Python backend tool execution
+    const pythonUrl = process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
+    const response = await fetch(`${pythonUrl}/api/internal/agency/tool/execute`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        agency_id: agencyId,
+        tool_name: toolCallName,
+        arguments: toolArgs,
+        tenant_id: session.tenantId,
+      }),
+    });
+    if (!response.ok) {
+      throw { code: -32603, message: `Tool execution failed: ${response.status}` };
+    }
+    const result = await response.json();
+    return result;
   }
 
   // Agencies
