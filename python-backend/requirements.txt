@@ -195,3 +195,6 @@ bleach>=6.0.0,<7.0.0
 
 # Section 052: Conditional Branch (JSONPath evaluation)
 jsonpath-ng>=1.6.0
+
+# Section 052: Data Transform (Mustache template rendering)
+pystache>=0.6.0

@@ -808,7 +808,7 @@ export const agencyRouter = router({
               description: z.string().optional(),
               nodeType: z.enum([
                 "agent", "supervisor", "router", "aggregator",
-                "knowledge_base", "skill_call", "human_approval", "browser_session", "conditional_branch", "parallel_fan_out", "loop_retry", "skill_discovery",
+                "knowledge_base", "skill_call", "human_approval", "browser_session", "conditional_branch", "parallel_fan_out", "loop_retry", "skill_discovery", "data_transform", "error_handler",
               ]).default("agent"),
               instructions: z.string().max(50000).optional(),
               model: z.string().max(100).regex(/^[a-zA-Z0-9._\/-]+$/, "Invalid model identifier").optional(),
@@ -1062,7 +1062,7 @@ export const agencyRouter = router({
             description: z.string().optional(),
             nodeType: z.enum([
               "agent", "supervisor", "router", "aggregator",
-              "knowledge_base", "skill_call", "human_approval", "browser_session", "conditional_branch", "parallel_fan_out", "loop_retry", "skill_discovery",
+              "knowledge_base", "skill_call", "human_approval", "browser_session", "conditional_branch", "parallel_fan_out", "loop_retry", "skill_discovery", "data_transform", "error_handler",
             ]).default("agent"),
             instructions: z.string().max(50000).optional(),
             model: z.string().max(100).regex(/^[a-zA-Z0-9._\/-]+$/, "Invalid model identifier").optional(),
@@ -1239,6 +1239,54 @@ export const agencyRouter = router({
                   if (m?.source === "context" && !m?.contextKey) {
                     ctx.addIssue({ code: "custom", path: ["nodeConfig", "inputMappings", field], message: `context source requires contextKey for field "${field}"` });
                   }
+                }
+              }
+            }
+            // Validate error_handler config
+            if (data.nodeType === "error_handler") {
+              const cfg = data.nodeConfig as any;
+              const watchedNodeIds = cfg?.watchedNodeIds;
+              if (!Array.isArray(watchedNodeIds) || watchedNodeIds.length === 0) {
+                ctx.addIssue({ code: "custom", path: ["nodeConfig", "watchedNodeIds"], message: "error_handler requires at least 1 watchedNodeId" });
+              }
+              const onError = cfg?.onError;
+              if (!onError || !["retry", "fallback", "skip", "terminate"].includes(onError)) {
+                ctx.addIssue({ code: "custom", path: ["nodeConfig", "onError"], message: "onError must be: retry, fallback, skip, or terminate" });
+              }
+              if (onError === "retry") {
+                const maxRetries = cfg?.retryConfig?.maxRetries;
+                if (maxRetries !== undefined && (typeof maxRetries !== "number" || maxRetries < 1 || maxRetries > 5)) {
+                  ctx.addIssue({ code: "custom", path: ["nodeConfig", "retryConfig", "maxRetries"], message: "maxRetries must be 1-5" });
+                }
+              }
+              if (onError === "fallback") {
+                const fallbackNodeId = cfg?.fallbackNodeId;
+                const fallbackMessage = cfg?.fallbackMessage;
+                if (!fallbackNodeId && !fallbackMessage) {
+                  ctx.addIssue({ code: "custom", path: ["nodeConfig", "fallbackNodeId"], message: "fallback requires either fallbackNodeId or fallbackMessage" });
+                }
+              }
+            }
+            // Validate data_transform config
+            if (data.nodeType === "data_transform") {
+              const cfg = data.nodeConfig as any;
+              const mode = cfg?.transformMode;
+              if (!mode || !["jsonpath", "template", "filter"].includes(mode)) {
+                ctx.addIssue({ code: "custom", path: ["nodeConfig", "transformMode"], message: "transformMode must be: jsonpath, template, or filter" });
+              }
+              if (mode === "jsonpath" && !cfg?.jsonpathExpression) {
+                ctx.addIssue({ code: "custom", path: ["nodeConfig", "jsonpathExpression"], message: "jsonpath mode requires jsonpathExpression" });
+              }
+              if (mode === "template" && !cfg?.template) {
+                ctx.addIssue({ code: "custom", path: ["nodeConfig", "template"], message: "template mode requires template" });
+              }
+              if (mode === "filter") {
+                const fc = cfg?.filterCondition;
+                if (!fc?.field || !fc?.operator || fc?.value === undefined) {
+                  ctx.addIssue({ code: "custom", path: ["nodeConfig", "filterCondition"], message: "filter mode requires field, operator, and value" });
+                }
+                if (fc?.operator && !["gt", "lt", "equals", "contains"].includes(fc.operator)) {
+                  ctx.addIssue({ code: "custom", path: ["nodeConfig", "filterCondition", "operator"], message: "operator must be: gt, lt, equals, or contains" });
                 }
               }
             }

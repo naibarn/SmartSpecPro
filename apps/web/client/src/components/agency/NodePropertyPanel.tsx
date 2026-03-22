@@ -202,6 +202,8 @@ export function NodePropertyPanel({ node, nodeId, siblingNodes = [], agencyId, o
           {nodeType === "parallel_fan_out" && <ParallelFanOutForm node={node} onChange={onChange} siblingNodes={siblingNodes} />}
           {nodeType === "loop_retry" && <LoopRetryForm node={node} onChange={onChange} siblingNodes={siblingNodes} />}
           {nodeType === "skill_discovery" && <SkillDiscoveryForm node={node} onChange={onChange} />}
+          {nodeType === "error_handler" && <ErrorHandlerForm node={node} onChange={onChange} siblingNodes={siblingNodes} />}
+          {nodeType === "data_transform" && <DataTransformForm node={node} onChange={onChange} />}
 
           <Separator />
 
@@ -3098,6 +3100,339 @@ function SkillDiscoveryForm({
             </button>
           ))}
         </div>
+      </div>
+    </>
+  );
+}
+
+// ── Error Handler Form ───────────────────────────────────────────────────────
+
+function ErrorHandlerForm({
+  node,
+  onChange,
+  siblingNodes = [],
+}: {
+  node: AgencyNodeData;
+  onChange: (updates: Partial<AgencyNodeData>) => void;
+  siblingNodes?: SiblingNode[];
+}) {
+  const watchedNodeIds = ncGet<string[]>(node, "watchedNodeIds", []);
+  const onError = ncGet<string>(node, "onError", "retry");
+  const retryConfig = ncGet<{ maxRetries?: number; backoffMs?: number; backoffMultiplier?: number }>(node, "retryConfig", {});
+  const fallbackNodeId = ncGet<string>(node, "fallbackNodeId", "");
+  const fallbackMessage = ncGet<string>(node, "fallbackMessage", "");
+  const skipMessage = ncGet<string>(node, "skipMessage", "");
+
+  // Exclude self and other error handlers from watched node list
+  const watchableNodes = siblingNodes.filter(
+    (n) => n.nodeType !== "error_handler",
+  );
+
+  return (
+    <>
+      {/* Name */}
+      <div>
+        <Label className="text-xs font-medium">Name</Label>
+        <Input
+          value={node.name}
+          onChange={(e) => onChange({ name: e.target.value })}
+          className="mt-1"
+          placeholder="Error Handler"
+        />
+      </div>
+
+      {/* Description */}
+      <div>
+        <Label className="text-xs font-medium">Description</Label>
+        <Textarea
+          value={node.description ?? ""}
+          onChange={(e) => onChange({ description: e.target.value })}
+          className="mt-1"
+          rows={2}
+          placeholder="Handles errors for watched nodes..."
+        />
+      </div>
+
+      <Separator />
+
+      {/* Watched Nodes */}
+      <div>
+        <Label className="text-xs font-medium">Watched Nodes</Label>
+        <p className="text-[11px] text-muted-foreground mb-1">Select nodes this handler watches for errors</p>
+        <div className="space-y-1.5 mt-1">
+          {watchableNodes.map((n) => {
+            const checked = watchedNodeIds.includes(n.id);
+            return (
+              <label key={n.id} className="flex items-center gap-2 text-xs cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={() => {
+                    const next = checked
+                      ? watchedNodeIds.filter((id) => id !== n.id)
+                      : [...watchedNodeIds, n.id];
+                    onChange(ncSet(node, "watchedNodeIds", next));
+                  }}
+                  className="rounded border-gray-300"
+                />
+                <span>{n.name}</span>
+                <span className="text-muted-foreground">({n.nodeType})</span>
+              </label>
+            );
+          })}
+          {watchableNodes.length === 0 && (
+            <p className="text-xs text-muted-foreground italic">No nodes available to watch</p>
+          )}
+        </div>
+      </div>
+
+      <Separator />
+
+      {/* On Error Strategy */}
+      <div>
+        <Label className="text-xs font-medium">On Error Strategy</Label>
+        <Select value={onError} onValueChange={(v) => onChange(ncSet(node, "onError", v))}>
+          <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="retry">Retry with backoff</SelectItem>
+            <SelectItem value="fallback">Fallback to node/message</SelectItem>
+            <SelectItem value="skip">Skip with message</SelectItem>
+            <SelectItem value="terminate">Terminate run</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Retry Config */}
+      {onError === "retry" && (
+        <div className="space-y-2 pl-2 border-l-2 border-red-200">
+          <div>
+            <Label className="text-xs">Max Retries (1-5)</Label>
+            <Input
+              type="number"
+              min={1}
+              max={5}
+              value={retryConfig.maxRetries ?? 3}
+              onChange={(e) =>
+                onChange(ncSet(node, "retryConfig", { ...retryConfig, maxRetries: Math.min(5, Math.max(1, Number(e.target.value))) }))
+              }
+              className="mt-1"
+            />
+          </div>
+          <div>
+            <Label className="text-xs">Backoff (ms)</Label>
+            <Input
+              type="number"
+              min={50}
+              value={retryConfig.backoffMs ?? 100}
+              onChange={(e) =>
+                onChange(ncSet(node, "retryConfig", { ...retryConfig, backoffMs: Number(e.target.value) }))
+              }
+              className="mt-1"
+            />
+          </div>
+          <div>
+            <Label className="text-xs">Backoff Multiplier</Label>
+            <Input
+              type="number"
+              min={1}
+              step={0.5}
+              value={retryConfig.backoffMultiplier ?? 2}
+              onChange={(e) =>
+                onChange(ncSet(node, "retryConfig", { ...retryConfig, backoffMultiplier: Number(e.target.value) }))
+              }
+              className="mt-1"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Fallback Config */}
+      {onError === "fallback" && (
+        <div className="space-y-2 pl-2 border-l-2 border-red-200">
+          <div>
+            <Label className="text-xs">Fallback Node</Label>
+            <Select value={fallbackNodeId} onValueChange={(v) => onChange(ncSet(node, "fallbackNodeId", v))}>
+              <SelectTrigger className="mt-1"><SelectValue placeholder="Select node..." /></SelectTrigger>
+              <SelectContent>
+                {siblingNodes
+                  .filter((n) => n.nodeType !== "error_handler")
+                  .map((n) => (
+                    <SelectItem key={n.id} value={n.id}>{n.name}</SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs">Fallback Message (if no node)</Label>
+            <Textarea
+              value={fallbackMessage}
+              onChange={(e) => onChange(ncSet(node, "fallbackMessage", e.target.value))}
+              className="mt-1"
+              rows={2}
+              placeholder="Default fallback response..."
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Skip Config */}
+      {onError === "skip" && (
+        <div className="pl-2 border-l-2 border-red-200">
+          <Label className="text-xs">Skip Message</Label>
+          <Textarea
+            value={skipMessage}
+            onChange={(e) => onChange(ncSet(node, "skipMessage", e.target.value))}
+            className="mt-1"
+            rows={2}
+            placeholder="Step skipped due to error"
+          />
+        </div>
+      )}
+    </>
+  );
+}
+
+// ── Data Transform Form ──────────────────────────────────────────────────────
+
+function DataTransformForm({
+  node,
+  onChange,
+}: {
+  node: AgencyNodeData;
+  onChange: (updates: Partial<AgencyNodeData>) => void;
+}) {
+  const transformMode = ncGet<string>(node, "transformMode", "jsonpath");
+  const jsonpathExpression = ncGet<string>(node, "jsonpathExpression", "");
+  const template = ncGet<string>(node, "template", "");
+  const filterCondition = ncGet<{ field?: string; operator?: string; value?: string }>(node, "filterCondition", {});
+  const outputKey = ncGet<string>(node, "outputKey", "");
+
+  return (
+    <>
+      {/* Name */}
+      <div>
+        <Label className="text-xs font-medium">Name</Label>
+        <Input
+          value={node.name}
+          onChange={(e) => onChange({ name: e.target.value })}
+          className="mt-1"
+          placeholder="Data Transform"
+        />
+      </div>
+
+      {/* Description */}
+      <div>
+        <Label className="text-xs font-medium">Description</Label>
+        <Textarea
+          value={node.description ?? ""}
+          onChange={(e) => onChange({ description: e.target.value })}
+          className="mt-1"
+          rows={2}
+          placeholder="Transforms data from previous node..."
+        />
+      </div>
+
+      <Separator />
+
+      {/* Transform Mode */}
+      <div>
+        <Label className="text-xs font-medium">Transform Mode</Label>
+        <Select value={transformMode} onValueChange={(v) => onChange(ncSet(node, "transformMode", v))}>
+          <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="jsonpath">JSONPath extraction</SelectItem>
+            <SelectItem value="template">Mustache template</SelectItem>
+            <SelectItem value="filter">Array filter</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* JSONPath Expression */}
+      {transformMode === "jsonpath" && (
+        <div>
+          <Label className="text-xs">JSONPath Expression</Label>
+          <Input
+            value={jsonpathExpression}
+            onChange={(e) => onChange(ncSet(node, "jsonpathExpression", e.target.value))}
+            className="mt-1 font-mono text-xs"
+            placeholder="$.results[*].title"
+          />
+          <p className="text-[10px] text-muted-foreground mt-0.5">e.g. $.data.items[*].name</p>
+        </div>
+      )}
+
+      {/* Template */}
+      {transformMode === "template" && (
+        <div>
+          <Label className="text-xs">Mustache Template</Label>
+          <Textarea
+            value={template}
+            onChange={(e) => onChange(ncSet(node, "template", e.target.value))}
+            className="mt-1 font-mono text-xs"
+            rows={4}
+            placeholder={"Title: {{title}}\nSummary: {{summary}}"}
+          />
+          <p className="text-[10px] text-muted-foreground mt-0.5">Use {"{{field}}"} for values. HTML is auto-escaped.</p>
+        </div>
+      )}
+
+      {/* Filter Condition */}
+      {transformMode === "filter" && (
+        <div className="space-y-2">
+          <div>
+            <Label className="text-xs">Field</Label>
+            <Input
+              value={filterCondition.field ?? ""}
+              onChange={(e) =>
+                onChange(ncSet(node, "filterCondition", { ...filterCondition, field: e.target.value }))
+              }
+              className="mt-1"
+              placeholder="score"
+            />
+          </div>
+          <div>
+            <Label className="text-xs">Operator</Label>
+            <Select
+              value={filterCondition.operator ?? "equals"}
+              onValueChange={(v) =>
+                onChange(ncSet(node, "filterCondition", { ...filterCondition, operator: v }))
+              }
+            >
+              <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="equals">Equals</SelectItem>
+                <SelectItem value="contains">Contains</SelectItem>
+                <SelectItem value="gt">Greater than</SelectItem>
+                <SelectItem value="lt">Less than</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs">Value</Label>
+            <Input
+              value={filterCondition.value ?? ""}
+              onChange={(e) =>
+                onChange(ncSet(node, "filterCondition", { ...filterCondition, value: e.target.value }))
+              }
+              className="mt-1"
+              placeholder="0.8"
+            />
+          </div>
+        </div>
+      )}
+
+      <Separator />
+
+      {/* Output Key */}
+      <div>
+        <Label className="text-xs font-medium">Output Key (optional)</Label>
+        <Input
+          value={outputKey}
+          onChange={(e) => onChange(ncSet(node, "outputKey", e.target.value))}
+          className="mt-1"
+          placeholder="transformed_data"
+        />
+        <p className="text-[10px] text-muted-foreground mt-0.5">Store result in context under this key</p>
       </div>
     </>
   );

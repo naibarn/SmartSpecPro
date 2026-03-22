@@ -10,7 +10,9 @@ export type AgencyNodeType =
   | "conditional_branch"
   | "parallel_fan_out"
   | "loop_retry"
-  | "skill_discovery";
+  | "skill_discovery"
+  | "data_transform"
+  | "error_handler";
 
 export interface AgencyNodeData {
   nodeType: AgencyNodeType;

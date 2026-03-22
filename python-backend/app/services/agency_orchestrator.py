@@ -38,6 +38,15 @@ from app.services.agency_run_context import AgencyRunContext
 from app.services.agency_skill_discovery import execute_skill_discovery
 from app.services.agency_skill_input_mapper import resolve_skill_input_mappings
 from app.services.agency_trace_collector import TraceCollector
+from app.services.agency_data_transform import execute_data_transform
+from app.services.agency_error_handler import (
+    RunTerminatedError,
+    execute_fallback,
+    execute_retry,
+    execute_skip,
+    execute_terminate,
+    scrub_error_payload,
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -157,6 +166,14 @@ class AgencyOrchestrator:
         self._flow_configs: dict[tuple[str, str], FlowConfig] = {}
         self._shared_tools_cache: list[type] | None = None  # resolved once per run
 
+        # Build error_handler_map: watched_node_id → list of handler nodes
+        self.error_handler_map: dict[str, list[NodeRow]] = {}
+        for n in nodes:
+            if n.get("node_type") == "error_handler":
+                cfg = n.get("node_config") or {}
+                for watched_id in cfg.get("watchedNodeIds", []):
+                    self.error_handler_map.setdefault(watched_id, []).append(n)
+
         # Find entry node
         entry_candidates = [n for n in nodes if n.get("is_entry_point")]
         self.entry_node: NodeRow = entry_candidates[0] if entry_candidates else nodes[0]
@@ -262,79 +279,110 @@ class AgencyOrchestrator:
                 input_data=ctx.get_context_text()[:500],
             )
 
+        # Check if this node has error handlers watching it
+        handlers = self.error_handler_map.get(node_id, [])
+
         result: str
-        match node_type:
-            case "agent" | "supervisor":
-                result = await self._execute_agent_node(node, ctx)
-                # Check after_turn cancellation after agent completes
-                if self.event_emitter and self.redis_client:
-                    cancel_mode = await check_cancelled(self.redis_client, self.event_emitter.run_id)
-                    if cancel_mode in ("immediate", "after_turn"):
-                        await self.event_emitter.emit_error("cancelled", "Run cancelled by user (after turn)")
-                        return result or "[Run cancelled]"
+        try:
+            match node_type:
+                case "error_handler":
+                    # Error handlers are not executed in normal traversal
+                    result = ""
 
-            case "router":
-                next_node_id = await self._route(node, ctx)
-                if next_node_id and next_node_id in self.nodes:
-                    result = await self._execute_node(self.nodes[next_node_id], ctx)
-                else:
-                    result = f"[Router: no matching route in node {node_id}]"
-                return result  # Router doesn't follow normal edges — routing already done
+                case "data_transform":
+                    result = await self._execute_data_transform(node, ctx)
 
-            case "aggregator":
-                result = await self._aggregate(node, ctx)
+                case "agent" | "supervisor":
+                    result = await self._execute_agent_node(node, ctx)
+                    # Check after_turn cancellation after agent completes
+                    if self.event_emitter and self.redis_client:
+                        cancel_mode = await check_cancelled(
+                            self.redis_client, self.event_emitter.run_id
+                        )
+                        if cancel_mode in ("immediate", "after_turn"):
+                            await self.event_emitter.emit_error(
+                                "cancelled", "Run cancelled by user (after turn)"
+                            )
+                            return result or "[Run cancelled]"
 
-            case "knowledge_base":
-                await self._search_knowledge(node, ctx)
-                result = ""  # Knowledge populates ctx.knowledge, doesn't produce a response
-                # Fall through to follow edges
+                case "router":
+                    next_node_id = await self._route(node, ctx)
+                    if next_node_id and next_node_id in self.nodes:
+                        result = await self._execute_node(self.nodes[next_node_id], ctx)
+                    else:
+                        result = f"[Router: no matching route in node {node_id}]"
+                    return result
 
-            case "skill_call":
-                result = await self._call_skill(node, ctx)
+                case "aggregator":
+                    result = await self._aggregate(node, ctx)
 
-            case "skill_discovery":
-                cfg = node.get("node_config") or {}
-                result = await execute_skill_discovery(
-                    node_name=node.get("name", node_id),
-                    node_config=cfg,
-                    context=ctx.shared_context or AgencyRunContext(),
-                    results=ctx.results,
-                )
+                case "knowledge_base":
+                    await self._search_knowledge(node, ctx)
+                    result = ""
 
-            case "human_approval":
-                result = await self._await_approval(node, ctx)
+                case "skill_call":
+                    result = await self._call_skill(node, ctx)
 
-            case "browser_session":
-                execution = await self.browser_session_executor.execute(
-                    node,
-                    ctx,
-                    agency_id=getattr(self.agency_config, "agency_id", None),
-                )
-                result = str(execution.get("result") or "")
+                case "skill_discovery":
+                    cfg = node.get("node_config") or {}
+                    result = await execute_skill_discovery(
+                        node_name=node.get("name", node_id),
+                        node_config=cfg,
+                        context=ctx.shared_context or AgencyRunContext(),
+                        results=ctx.results,
+                    )
 
-            case "conditional_branch":
-                next_node_id = await self._evaluate_conditional_branch(node, ctx)
-                if next_node_id and next_node_id in self.nodes:
-                    result = await self._execute_node(self.nodes[next_node_id], ctx)
-                else:
-                    result = f"[ConditionalBranch: fallback — no valid target in node {node_id}]"
-                return result  # Like router, routing is already done
+                case "human_approval":
+                    result = await self._await_approval(node, ctx)
 
-            case "parallel_fan_out":
-                result = await self._execute_parallel_fan_out(node, ctx)
-                return result  # Fan-out handles its own downstream
+                case "browser_session":
+                    execution = await self.browser_session_executor.execute(
+                        node,
+                        ctx,
+                        agency_id=getattr(self.agency_config, "agency_id", None),
+                    )
+                    result = str(execution.get("result") or "")
 
-            case "loop_retry":
-                handler = LoopHandler()
-                result = await handler.execute(
-                    node, ctx, self,
-                    run_context=ctx.shared_context,
-                    trace_collector=self.trace_collector,
-                )
+                case "conditional_branch":
+                    next_node_id = await self._evaluate_conditional_branch(node, ctx)
+                    if next_node_id and next_node_id in self.nodes:
+                        result = await self._execute_node(self.nodes[next_node_id], ctx)
+                    else:
+                        result = f"[ConditionalBranch: fallback — no valid target in node {node_id}]"
+                    return result
 
-            case _:
-                logger.warning("agency_orchestrator_unknown_node_type", node_type=node_type)
-                result = ""
+                case "parallel_fan_out":
+                    result = await self._execute_parallel_fan_out(node, ctx)
+                    return result
+
+                case "loop_retry":
+                    handler = LoopHandler()
+                    result = await handler.execute(
+                        node, ctx, self,
+                        run_context=ctx.shared_context,
+                        trace_collector=self.trace_collector,
+                    )
+
+                case _:
+                    logger.warning(
+                        "agency_orchestrator_unknown_node_type", node_type=node_type
+                    )
+                    result = ""
+
+        except RunTerminatedError:
+            raise  # Let terminate propagate up
+        except Exception as exc:
+            if handlers:
+                if len(handlers) > 1:
+                    logger.warning(
+                        "agency_error_handler_multiple_handlers",
+                        node_id=node_id,
+                        handler_count=len(handlers),
+                        using_handler=handlers[0].get("name"),
+                    )
+                result = await self._handle_error(handlers[0], node, exc, ctx)
+            else:
+                raise
 
         if result:
             ctx.results[node_id] = result
@@ -1227,6 +1275,101 @@ class AgencyOrchestrator:
                 return "[Human approval: timed out → AUTO-REJECTED]"
             case _:
                 return "[Human approval: timed out → escalated]"
+
+    async def _dispatch_node(self, node: NodeRow, ctx: ExecutionContext) -> str:
+        """Execute node logic WITHOUT error interception wrapping.
+
+        Used by retry to avoid recursive error handler re-entry.
+        """
+        node_type = node.get("node_type", "agent")
+        match node_type:
+            case "agent" | "supervisor":
+                return await self._execute_agent_node(node, ctx)
+            case "data_transform":
+                return await self._execute_data_transform(node, ctx)
+            case "skill_call":
+                return await self._call_skill(node, ctx)
+            case "aggregator":
+                return await self._aggregate(node, ctx)
+            case _:
+                return await self._execute_agent_node(node, ctx)
+
+    async def _handle_error(
+        self,
+        handler_node: NodeRow,
+        failed_node: NodeRow,
+        exc: Exception,
+        ctx: ExecutionContext,
+    ) -> str:
+        """Apply error handler strategy to a failed node."""
+        cfg = handler_node.get("node_config") or {}
+        strategy = cfg.get("onError", "skip")
+        failed_name = failed_node.get("name", failed_node["id"])
+
+        logger.info(
+            "agency_error_handler_triggered",
+            handler=handler_node.get("name"),
+            failed_node=failed_name,
+            strategy=strategy,
+        )
+
+        # Emit SSE event uniformly for all strategies
+        if self.event_emitter:
+            await self.event_emitter.emit("error_handled", {
+                "nodeName": failed_name,
+                "strategy": strategy,
+                "errorSummary": scrub_error_payload(str(exc)),
+            })
+
+        if strategy == "retry":
+            retry_config = cfg.get("retryConfig", {})
+            # Use _dispatch_node to avoid recursive error interception
+            return await execute_retry(
+                self._dispatch_node,
+                failed_node, ctx, retry_config,
+                emitter=self.event_emitter,
+            )
+
+        elif strategy == "fallback":
+            fallback_node_id = cfg.get("fallbackNodeId")
+            fallback_message = cfg.get("fallbackMessage")
+            result, redirect_id = execute_fallback(
+                fallback_node_id, fallback_message, exc,
+            )
+            if redirect_id and redirect_id in self.nodes:
+                return await self._execute_node(self.nodes[redirect_id], ctx)
+            return result or f"[Fallback for {failed_name}]"
+
+        elif strategy == "skip":
+            return execute_skip(cfg.get("skipMessage"))
+
+        else:  # terminate
+            execute_terminate(failed_name, exc)
+            return ""  # unreachable, but keeps mypy happy
+
+    async def _execute_data_transform(self, node: NodeRow, ctx: ExecutionContext) -> str:
+        """Execute a data_transform node."""
+        node_id = node["id"]
+        node_config = node.get("node_config") or {}
+
+        # Find previous node's result by looking at incoming edges
+        incoming = [e for e in self.edges if e.get("to_node_id") == node_id]
+        input_data = ""
+        if incoming:
+            source_id = incoming[0].get("from_node_id", "")
+            input_data = ctx.results.get(source_id, "")
+
+        if not input_data:
+            input_data = ctx.input  # fallback to original input
+
+        result = execute_data_transform(input_data, node_config)
+
+        # Store in context under outputKey if specified
+        output_key = node_config.get("outputKey")
+        if output_key and ctx.shared_context:
+            await ctx.shared_context.set(output_key, result)
+
+        return result
 
 
 # ── Factory function ──────────────────────────────────────────────────────────

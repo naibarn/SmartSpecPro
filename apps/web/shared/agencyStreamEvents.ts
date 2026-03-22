@@ -96,6 +96,19 @@ export interface AgencyTraceCompleteEvent {
   };
 }
 
+export interface AgencyErrorHandledEvent {
+  event: "error_handled";
+  id: string;
+  ts: string;
+  data: {
+    nodeName: string;
+    watchedNodeName?: string;
+    strategy: "retry" | "fallback" | "skip" | "terminate";
+    attempt?: number;
+    errorSummary: string;
+  };
+}
+
 export interface AgencyErrorEvent {
   event: "error";
   id: string;
@@ -116,6 +129,7 @@ export type AgencyStreamEvent =
   | AgencyApprovalRequiredEvent
   | AgencyRunCompleteEvent
   | AgencyTraceCompleteEvent
+  | AgencyErrorHandledEvent
   | AgencyErrorEvent;
 
 export type AgencyStreamEventType = AgencyStreamEvent["event"];
@@ -133,6 +147,7 @@ export const AGENCY_STREAM_EVENT_TYPES: ReadonlySet<AgencyStreamEventType> =
     "approval_required",
     "run_complete",
     "trace_complete",
+    "error_handled",
     "error",
   ]);
 

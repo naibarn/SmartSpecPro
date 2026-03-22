@@ -13,6 +13,8 @@ import { ConditionalBranchNodeCard } from "./ConditionalBranchNodeCard";
 import { ParallelFanOutNodeCard } from "./ParallelFanOutNodeCard";
 import { LoopRetryNodeCard } from "./LoopRetryNodeCard";
 import { SkillDiscoveryNodeCard } from "./SkillDiscoveryNodeCard";
+import { ErrorHandlerNodeCard } from "./ErrorHandlerNodeCard";
+import { DataTransformNodeCard } from "./DataTransformNodeCard";
 
 /**
  * Single ReactFlow node type dispatcher.
@@ -45,6 +47,10 @@ export const BaseAgencyNode = memo(function BaseAgencyNode(props: NodeProps<Agen
       return <LoopRetryNodeCard {...props} />;
     case "skill_discovery":
       return <SkillDiscoveryNodeCard {...props} />;
+    case "error_handler":
+      return <ErrorHandlerNodeCard {...props} />;
+    case "data_transform":
+      return <DataTransformNodeCard {...props} />;
     default:
       return <AgentNodeCard {...props} />;
   }

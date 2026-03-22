@@ -459,11 +459,39 @@ The Python `AgencyEventEmitter.emit("error_handled", {...})` call is made from w
 
 ## Verification Checklist
 
-- [ ] All pytest tests in `test_agency_error_handler.py` pass
-- [ ] All pytest tests in `test_agency_data_transform.py` pass
-- [ ] Vitest saveBuilder validation tests pass for both node types
-- [ ] `pnpm check` (TypeScript) passes with no new errors
-- [ ] Error handler nodes appear correctly in the AgencyBuilder canvas (red, ShieldAlert)
-- [ ] Data transform nodes appear correctly (slate, Braces)
-- [ ] Property panel shows correct config forms for each node type
-- [ ] `error_handled` SSE events are emitted during retry/fallback/skip (requires section-09)
+- [x] All pytest tests in `test_agency_error_handler.py` pass (23 tests)
+- [x] All pytest tests in `test_agency_data_transform.py` pass (21 tests)
+- [x] `pnpm check` (TypeScript) passes with no new errors from this section
+- [x] Error handler nodes appear correctly in the AgencyBuilder canvas (red, ShieldAlert)
+- [x] Data transform nodes appear correctly (slate, Braces)
+- [x] Property panel shows correct config forms for each node type
+- [x] `error_handled` SSE events registered in agencyStreamEvents.ts and emitted via orchestrator
+- [x] `_dispatch_node()` extracted to avoid retry recursion risk
+- [x] `pystache` and `jsonpath_ng` imported at module level (fail-fast on missing dependency)
+- [ ] Vitest saveBuilder validation tests — deferred (no existing per-section test pattern)
+
+## Implementation Notes
+
+### Deviations from Plan
+- `execute_fallback` made synchronous (no longer async) — SSE emission moved to `_handle_error` for uniform handling across all strategies
+- Added `_dispatch_node()` method to orchestrator to avoid recursive error interception during retry
+- Added `AgencyErrorHandledEvent` to `apps/web/shared/agencyStreamEvents.ts` (not in original plan but required for frontend event parsing)
+- Scrub patterns consolidated to single regex covering `/home|app|var|tmp|usr|root|etc` prefixes
+- `apply_filter` returns descriptive error when all array items are non-dict (silent drop prevention)
+
+### Files Created
+- `python-backend/app/services/agency_error_handler.py` — Error handler strategies
+- `python-backend/app/services/agency_data_transform.py` — Data transform functions
+- `python-backend/tests/unit/test_agency_error_handler.py` — 23 tests
+- `python-backend/tests/unit/test_agency_data_transform.py` — 21 tests
+- `apps/web/client/src/components/agency/nodes/ErrorHandlerNodeCard.tsx` — Red card with ShieldAlert
+- `apps/web/client/src/components/agency/nodes/DataTransformNodeCard.tsx` — Slate card with Braces
+
+### Files Modified
+- `python-backend/app/services/agency_orchestrator.py` — error_handler_map, try/except wrapping, _handle_error, _dispatch_node, _execute_data_transform
+- `python-backend/requirements.txt` — Added pystache>=0.6.0
+- `apps/web/server/routers/agency.ts` — nodeType enum + superRefine validation for both types
+- `apps/web/client/src/components/agency/nodes/types.ts` — AgencyNodeType union
+- `apps/web/client/src/components/agency/nodes/BaseAgencyNode.tsx` — Switch cases
+- `apps/web/client/src/components/agency/NodePropertyPanel.tsx` — ErrorHandlerForm + DataTransformForm
+- `apps/web/shared/agencyStreamEvents.ts` — AgencyErrorHandledEvent interface
