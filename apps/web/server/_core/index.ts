@@ -45,6 +45,7 @@ import "../services/channelAdapters/discord"; // Register Discord adapter
 import { adapterRegistry } from "../services/channelAdapters/registry";
 import { createSlideRenderRouter } from "../routes/slideRender";
 import { createGuardianSSERouter } from "../routes/guardianSSE";
+import agencyStreamRouter from "../routes/agencyStream";
 import orchestratorStreamRouter from "../routes/orchestratorStream";
 import notificationStreamRouter from "../routes/notificationStream";
 import internalOrchestratorRouter from "../routes/internalOrchestrator";
@@ -485,6 +486,7 @@ registerFileParseToolRoute(app);
 registerScheduleDraftToolRoute(app);
 registerSkillDiscoveryToolRoute(app);
 app.use("/api/virtual-admin/events", createGuardianSSERouter());
+app.use(agencyStreamRouter);
 app.use(orchestratorStreamRouter);
 app.use(notificationStreamRouter);
 app.use(internalOrchestratorRouter);

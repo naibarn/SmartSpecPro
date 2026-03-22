@@ -890,6 +890,23 @@ class AgencyService:
                 retrieval_scope_mode = self._get_retrieval_scope_mode(context.run_metadata)
                 edges_data = await self._load_flows_full(agency_id)
                 guardrails_map = await self._load_guardrails_for_agents(agency_id)
+
+                # Create event emitter for SSE streaming
+                event_emitter = None
+                redis_client = None
+                try:
+                    from app.core.redis_client import get_realtime_redis
+                    from app.services.agency_event_emitter import AgencyEventEmitter
+                    redis_client = await get_realtime_redis()
+                    if redis_client:
+                        event_emitter = AgencyEventEmitter(
+                            redis_client=redis_client,
+                            run_id=run_id,
+                            agency_id=agency_id,
+                        )
+                except Exception:
+                    logger.warning("agency_event_emitter_init_failed", agency_id=agency_id)
+
                 orchestrator = AgencyOrchestrator(
                     nodes=agents_data,
                     edges=edges_data,
@@ -900,6 +917,8 @@ class AgencyService:
                     retrieval_scope_mode=retrieval_scope_mode,
                     guardrails_by_agent=guardrails_map,
                     user_context=agency_config.user_context,
+                    event_emitter=event_emitter,
+                    redis_client=redis_client,
                 )
                 response_text, execution_context = await orchestrator.run_with_context(
                     message=message,
@@ -910,6 +929,9 @@ class AgencyService:
                 for browser_session in execution_context.browser_sessions:
                     yield {"event": "browser_session", "data": browser_session}
                 yield {"event": "token", "data": {"token": response_text}}
+                # Emit run_complete via event emitter for SSE subscribers
+                if event_emitter:
+                    await event_emitter.emit_complete({"tokens": 0, "cost": 0})
                 yield {"event": "run_finished", "data": {"run_id": run_id, "response": response_text}}
                 return
 

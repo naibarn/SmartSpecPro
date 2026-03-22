@@ -22,6 +22,7 @@ import httpx
 import structlog
 
 from app.services.agency_browser_session_executor import AgencyBrowserSessionExecutor
+from app.services.agency_event_emitter import AgencyEventEmitter, check_cancelled
 from app.services.agency_run_context import AgencyRunContext
 
 logger = structlog.get_logger(__name__)
@@ -101,6 +102,8 @@ class AgencyOrchestrator:
         retrieval_scope_mode: str | None = None,
         guardrails_by_agent: dict[str, list] | None = None,
         user_context: dict[str, Any] | None = None,
+        event_emitter: AgencyEventEmitter | None = None,
+        redis_client: Any | None = None,
     ):
         self.nodes: dict[str, NodeRow] = {n["id"]: n for n in nodes}
         self.edges: list[EdgeRow] = edges
@@ -112,6 +115,8 @@ class AgencyOrchestrator:
         # Guardrail definitions keyed by agent ID for quick lookup
         self.guardrails_by_agent: dict[str, list] = guardrails_by_agent or {}
         self.user_context = user_context
+        self.event_emitter = event_emitter
+        self.redis_client = redis_client
         self.browser_session_executor = AgencyBrowserSessionExecutor()
 
         # Find entry node
@@ -170,7 +175,16 @@ class AgencyOrchestrator:
                 budget_class=task_metadata.get("budget_class"),
             )
 
-        result = await self._execute_node(self.entry_node, ctx)
+        # Emit meta event at run start
+        if self.event_emitter:
+            await self.event_emitter.emit_meta()
+
+        try:
+            result = await self._execute_node(self.entry_node, ctx)
+        except Exception as exc:
+            if self.event_emitter:
+                await self.event_emitter.emit_error("orchestrator_error", str(exc)[:500])
+            raise
 
         # Capture context snapshot for observability (section-15 will persist it)
         ctx.context_snapshot = ctx.shared_context.snapshot()
@@ -182,12 +196,25 @@ class AgencyOrchestrator:
         node_type = node.get("node_type", "agent")
         node_id = node["id"]
 
+        # Check for cancellation between node executions
+        if self.event_emitter and self.redis_client:
+            cancel_mode = await check_cancelled(self.redis_client, self.event_emitter.run_id)
+            if cancel_mode == "immediate":
+                await self.event_emitter.emit_error("cancelled", "Run cancelled by user")
+                return "[Run cancelled]"
+
         logger.info("agency_orchestrator_execute_node", node_id=node_id, node_type=node_type)
 
         result: str
         match node_type:
             case "agent" | "supervisor":
                 result = await self._execute_agent_node(node, ctx)
+                # Check after_turn cancellation after agent completes
+                if self.event_emitter and self.redis_client:
+                    cancel_mode = await check_cancelled(self.redis_client, self.event_emitter.run_id)
+                    if cancel_mode in ("immediate", "after_turn"):
+                        await self.event_emitter.emit_error("cancelled", "Run cancelled by user (after turn)")
+                        return result or "[Run cancelled]"
 
             case "router":
                 next_node_id = await self._route(node, ctx)
@@ -250,8 +277,18 @@ class AgencyOrchestrator:
                 next_id = edge.get("to_node_id")
                 if next_id and next_id in self.nodes:
                     next_node = self.nodes[next_id]
-                    # ── Checkpoint 3: Handoff Guardrails ────────────────────
+                    # Emit agent_switch event on handoff between agents
                     next_type = next_node.get("node_type", "agent")
+                    if (
+                        self.event_emitter
+                        and node_type in AGENT_NODE_TYPES
+                        and next_type in AGENT_NODE_TYPES
+                    ):
+                        await self.event_emitter.emit("agent_switch", {
+                            "from": node.get("name", node_id),
+                            "to": next_node.get("name", next_id),
+                        })
+                    # ── Checkpoint 3: Handoff Guardrails ────────────────────
                     if (
                         node_type in AGENT_NODE_TYPES
                         and next_type in AGENT_NODE_TYPES
@@ -293,12 +330,27 @@ class AgencyOrchestrator:
             input_result = await execute_guardrails(
                 agent_guardrails, augmented_message, "input",
             )
+            guardrail_name = getattr(input_result, "guardrail_name", None) or (
+                getattr(agent_guardrails[0], "name", "unknown") if agent_guardrails else "unknown"
+            )
             if input_result.action == "block":
+                if self.event_emitter:
+                    await self.event_emitter.emit("guardrail_trigger", {
+                        "type": "input",
+                        "guardrailName": guardrail_name,
+                        "action": "block",
+                    })
                 return f"[Guardrail blocked]: {input_result.message}"
             # Apply redaction first, then guidance
             if input_result.redacted_message:
                 augmented_message = input_result.redacted_message
             if input_result.action == "guidance":
+                if self.event_emitter:
+                    await self.event_emitter.emit("guardrail_trigger", {
+                        "type": "input",
+                        "guardrailName": guardrail_name,
+                        "action": "guidance",
+                    })
                 augmented_message = f"[Guardrail guidance: {input_result.message}]\n\n{augmented_message}"
 
         # Retrieve agent-level KB context and augment instructions
@@ -379,6 +431,13 @@ class AgencyOrchestrator:
                 tenant_id=ctx.tenant_id,
             )
             response = run_result.response
+
+            # Emit text_delta with full response (non-streaming path)
+            if self.event_emitter and response:
+                await self.event_emitter.emit("text_delta", {
+                    "agentName": node.get("name", "Agent"),
+                    "delta": response,
+                })
 
             # ── Checkpoint 2: Output Guardrails ─────────────────────────────
             if agent_guardrails:
