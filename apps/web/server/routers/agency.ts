@@ -1184,6 +1184,27 @@ export const agencyRouter = router({
             if (["agent", "supervisor"].includes(data.nodeType)) {
               if (!data.model) ctx.addIssue({ code: "custom", path: ["model"], message: "model is required for agent/supervisor" });
               if (!data.instructions) ctx.addIssue({ code: "custom", path: ["instructions"], message: "instructions are required for agent/supervisor" });
+              // Validate agentic nodeConfig fields
+              const nc = data.nodeConfig as Record<string, unknown> | undefined;
+              const executionMode = nc?.executionMode;
+              if (executionMode !== undefined && executionMode !== "single_shot" && executionMode !== "agentic") {
+                ctx.addIssue({ code: "custom", path: ["nodeConfig", "executionMode"], message: "executionMode must be 'single_shot' or 'agentic'" });
+              }
+              const maxCycles = nc?.maxReflectionCycles;
+              if (maxCycles !== undefined) {
+                const n = Number(maxCycles);
+                if (!Number.isInteger(n) || n < 1 || n > 10) {
+                  ctx.addIssue({ code: "custom", path: ["nodeConfig", "maxReflectionCycles"], message: "maxReflectionCycles must be an integer between 1 and 10" });
+                }
+              }
+              const strategy = nc?.planningStrategy;
+              if (strategy !== undefined && !["basic", "cot", "react"].includes(String(strategy))) {
+                ctx.addIssue({ code: "custom", path: ["nodeConfig", "planningStrategy"], message: "planningStrategy must be 'basic', 'cot', or 'react'" });
+              }
+              const showReasoning = nc?.showReasoning;
+              if (showReasoning !== undefined && typeof showReasoning !== "boolean") {
+                ctx.addIssue({ code: "custom", path: ["nodeConfig", "showReasoning"], message: "showReasoning must be a boolean" });
+              }
             }
             if (data.nodeType === "router" && !(data.nodeConfig as any)?.routes?.length) {
               ctx.addIssue({ code: "custom", path: ["nodeConfig"], message: "router requires at least 1 route" });

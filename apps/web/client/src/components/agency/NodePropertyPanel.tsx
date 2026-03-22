@@ -52,7 +52,7 @@ import { BROWSER_SESSION_COPY } from "@shared/browserSession";
 import {
   X, Wrench, ChevronDown, ChevronRight, Trash2, Plus,
   Search, Loader2, Zap, GripVertical, Check, ChevronsUpDown,
-  BookOpen, Shield, Server,
+  BookOpen, Shield, Server, Brain,
 } from "lucide-react";
 
 const PANEL_MIN_W = 340;
@@ -241,6 +241,7 @@ function AgentSupervisorForm({
   const [kbOpen, setKbOpen] = useState(false);
   const [guardrailsOpen, setGuardrailsOpen] = useState(false);
   const [mcpServersOpen, setMcpServersOpen] = useState(false);
+  const [intelligenceOpen, setIntelligenceOpen] = useState(false);
   const [kbDocPickerOpen, setKbDocPickerOpen] = useState(false);
   const [kbSettingsOpen, setKbSettingsOpen] = useState(false);
   const [kbDocTypeFilter, setKbDocTypeFilter] = useState<string>("all");
@@ -746,6 +747,94 @@ function AgentSupervisorForm({
                 <p className="text-xs text-amber-600">Low turn limit may prevent complex tasks from completing</p>
               )}
             </div>
+          </div>
+        )}
+      </div>
+
+      <Separator />
+
+      {/* Intelligence */}
+      <div>
+        <button
+          type="button"
+          onClick={() => setIntelligenceOpen(!intelligenceOpen)}
+          className="flex w-full items-center justify-between text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors"
+        >
+          <span className="flex items-center gap-1.5">
+            <Brain className="h-3.5 w-3.5" />
+            Intelligence
+          </span>
+          {intelligenceOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+
+        {intelligenceOpen && (
+          <div className="mt-2 space-y-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Execution Mode</Label>
+              <Select
+                value={ncGet(node, "executionMode", "single_shot")}
+                onValueChange={(v) => onChange(ncSet(node, "executionMode", v))}
+              >
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="single_shot">Standard</SelectItem>
+                  <SelectItem value="agentic">Agentic</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {ncGet(node, "executionMode", "single_shot") === "agentic" && (
+              <>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Planning Strategy</Label>
+                  <Select
+                    value={ncGet(node, "planningStrategy", "basic")}
+                    onValueChange={(v) => onChange(ncSet(node, "planningStrategy", v))}
+                  >
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="basic">Basic</SelectItem>
+                      <SelectItem value="cot">Chain-of-Thought</SelectItem>
+                      <SelectItem value="react">ReAct</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs">Max Reflection Cycles</Label>
+                    <span className="text-xs text-muted-foreground font-mono">
+                      {ncGet(node, "maxReflectionCycles", 3)}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={1}
+                    max={10}
+                    value={ncGet(node, "maxReflectionCycles", 3)}
+                    onChange={(e) => onChange(ncSet(node, "maxReflectionCycles", Number(e.target.value)))}
+                    className="w-full accent-blue-600"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs">Show reasoning steps in output</Label>
+                  <Switch
+                    checked={ncGet(node, "showReasoning", false)}
+                    onCheckedChange={(v) => onChange(ncSet(node, "showReasoning", v))}
+                  />
+                </div>
+
+                <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-md p-2 text-xs flex items-center gap-1.5">
+                  <Zap className="h-3.5 w-3.5 shrink-0" />
+                  Agentic mode may use 2-5x more credits per run
+                </div>
+              </>
+            )}
           </div>
         )}
       </div>
