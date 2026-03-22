@@ -23,6 +23,7 @@ from sqlalchemy import select, update
 from app.core.celery_app import celery_app
 from app.core.config import settings
 from app.core.database import AsyncSessionLocal
+from app.core.system_settings_loader import get_google_ai_api_key
 from app.models.vision import (
     MediaAsset,
     MediaAssetAnalysis,
@@ -172,9 +173,9 @@ async def _run_analysis(
     system_cost: bool,
 ) -> None:
     """Main async analysis flow."""
-    api_key = getattr(settings, "GOOGLE_API_KEY", None)
+    api_key = await get_google_ai_api_key()
     if not api_key:
-        logger.warning("GOOGLE_API_KEY not configured — skipping vision analysis", asset_id=asset_id)
+        logger.warning("google_ai_api_key_not_configured", asset_id=asset_id)
         await _update_asset_status(asset_id, "failed")
         return
 

@@ -179,6 +179,8 @@ async def mcp_call(
     trace_id: Optional[str] = None,
     write_token: Optional[str] = None,
     user_token: Optional[str] = None,
+    tenant_id: Optional[str] = None,
+    user_id: Optional[int] = None,
 ) -> httpx.Response:
     """
     Call an MCP tool on SmartSpecWeb.
@@ -198,6 +200,10 @@ async def mcp_call(
     extra: Dict[str, str] = {}
     if write_token:
         extra["x-mcp-write-token"] = write_token
+    if tenant_id:
+        extra["x-tenant-id"] = tenant_id
+    if user_id is not None:
+        extra["x-user-id"] = str(user_id)
     headers = {**_auth_headers(tid, user_token), **extra, "Content-Type": "application/json"}
     return await _request_with_retries("POST", url, json={"name": name, "arguments": arguments}, headers=headers)
 

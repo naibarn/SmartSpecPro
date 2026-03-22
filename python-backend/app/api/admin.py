@@ -17,6 +17,17 @@ logger = logging.getLogger(__name__)
 from app.core.database import get_db
 from app.core.auth import get_current_user
 from app.core.config import settings
+from app.api.internal_library import (
+    REINDEX_BATCH_TTL_SECONDS,
+    REINDEX_TASK_ID_KEY,
+    _build_reindex_batch_summary,
+    _determine_reindex_status,
+    _load_reindex_batch_metadata,
+    _match_reindex_batch_metadata,
+    _merge_reindex_batch_outcome,
+    _store_reindex_batch_metadata,
+)
+from app.models.library import LibraryIndexJob
 from app.models.user import User
 from app.models.credit import CreditTransaction
 from app.models.payment import PaymentTransaction
@@ -1021,26 +1032,44 @@ async def trigger_vectordb_reindex(
 ):
     """Trigger a full reindex of all library items via Celery."""
     import redis
+    from celery.result import AsyncResult
     from app.tasks.media_tasks import reindex_all_library_task
 
-    # Check if a reindex is already running
     redis_url = settings.REDIS_URL or "redis://localhost:6379/0"
     r = redis.from_url(redis_url)
-    existing_task_id = r.get("vectordb:reindex:task_id")
+    existing_task_id = r.get(REINDEX_TASK_ID_KEY)
+    existing_batch = _load_reindex_batch_metadata(r)
     if existing_task_id:
         existing_task_id = existing_task_id.decode() if isinstance(existing_task_id, bytes) else existing_task_id
-        from celery.result import AsyncResult
+        existing_batch = _match_reindex_batch_metadata(existing_batch, task_id=str(existing_task_id))
         result = AsyncResult(existing_task_id)
-        if result.state in ("PENDING", "STARTED", "RETRY"):
+        existing_summary = await _build_reindex_batch_summary(db, existing_batch)
+        existing_task_result = result.result if isinstance(result.result, dict) else None
+        if _determine_reindex_status(
+            queue_state=result.state,
+            batch_summary=existing_summary,
+            batch_metadata=existing_batch,
+            task_result=existing_task_result,
+        ) == "running":
             return {
                 "task_id": existing_task_id,
                 "status": "already_running",
                 "message": "A reindex job is already in progress",
             }
 
-    # Trigger the reindex task
+    baseline_job_id = int(
+        await db.scalar(select(func.max(LibraryIndexJob.id)))
+        or 0
+    )
     task = reindex_all_library_task.delay(tenant_id=None)
-    r.set("vectordb:reindex:task_id", task.id, ex=3600)  # TTL 1 hour
+    batch_metadata = {
+        "task_id": task.id,
+        "baseline_job_id": baseline_job_id,
+        "tenant_id": None,
+        "requested_at": datetime.utcnow().isoformat(),
+    }
+    r.set(REINDEX_TASK_ID_KEY, task.id, ex=REINDEX_BATCH_TTL_SECONDS)
+    _store_reindex_batch_metadata(r, batch_metadata)
 
     return {
         "task_id": task.id,
@@ -1053,6 +1082,7 @@ async def trigger_vectordb_reindex(
 async def get_vectordb_reindex_status(
     request: Request,
     admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
 ):
     """Check the status of the current reindex job."""
     import redis
@@ -1060,26 +1090,60 @@ async def get_vectordb_reindex_status(
 
     redis_url = settings.REDIS_URL or "redis://localhost:6379/0"
     r = redis.from_url(redis_url)
-    task_id = r.get("vectordb:reindex:task_id")
+    task_id = r.get(REINDEX_TASK_ID_KEY)
+    batch_metadata = _load_reindex_batch_metadata(r)
 
     if not task_id:
         return {"status": "idle", "task_id": None, "result": None}
 
     task_id = task_id.decode() if isinstance(task_id, bytes) else task_id
+    batch_metadata = _match_reindex_batch_metadata(batch_metadata, task_id=str(task_id))
     result = AsyncResult(task_id)
+    batch_summary = await _build_reindex_batch_summary(db, batch_metadata)
+    task_result = result.result if isinstance(result.result, dict) else None
+    merged_batch_metadata = _merge_reindex_batch_outcome(batch_metadata, task_result)
+    if merged_batch_metadata and merged_batch_metadata != (batch_metadata or {}):
+        _store_reindex_batch_metadata(r, merged_batch_metadata)
 
     response: Dict[str, Any] = {
         "task_id": task_id,
         "status": result.state.lower(),
         "result": None,
     }
+    if batch_summary:
+        response["result"] = {
+            "queue_task_state": result.state.lower(),
+            **batch_summary,
+        }
+    if merged_batch_metadata:
+        response["result"] = {
+            **(response["result"] or {}),
+            "expected_total_items": int(merged_batch_metadata.get("expected_total_items") or 0),
+            "expected_enqueued_jobs": int(merged_batch_metadata.get("expected_enqueued_jobs") or 0),
+            "enqueue_errors": int(merged_batch_metadata.get("enqueue_errors") or 0),
+        }
+
+    response["status"] = _determine_reindex_status(
+        queue_state=result.state,
+        batch_summary=batch_summary,
+        batch_metadata=merged_batch_metadata,
+        task_result=task_result,
+    )
 
     if result.state == "SUCCESS":
-        response["result"] = result.result
-        response["status"] = "completed"
+        if task_result is not None:
+            response["result"] = {
+                **(response["result"] or {}),
+                **task_result,
+            }
+        elif response["result"] is None:
+            response["result"] = result.result
     elif result.state == "FAILURE":
         response["status"] = "failed"
-        response["result"] = {"error": str(result.result)}
+        response["result"] = {
+            **(response["result"] or {}),
+            "error": str(result.result),
+        }
 
     return response
 

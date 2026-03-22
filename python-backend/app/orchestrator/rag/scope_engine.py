@@ -250,7 +250,12 @@ async def propagate_scopes_to_vector_stores(
 
     metadata_update = {"allowed_scopes": new_allowed_scopes}
 
-    # 1. pgvector — update metadata on each document
+    # 1. pgvector — update metadata on each document or canonical library table
+    provider_name = "chroma"
+    if pgvector_store is None:
+        from app.services.library_indexing_service import resolve_library_vector_provider
+
+        provider_name, _provider_config = resolve_library_vector_provider()
     if pgvector_store is not None:
         try:
             for ref_id in vector_ref_ids:
@@ -258,6 +263,22 @@ async def propagate_scopes_to_vector_stores(
                     doc_id=ref_id, metadata=metadata_update,
                 )
             result["pgvector"] = len(vector_ref_ids)
+        except Exception as e:
+            logger.warning(
+                "propagate_scopes_pgvector_error",
+                item_id=item_id, error=str(e),
+            )
+    elif provider_name == "pgvector":
+        try:
+            from app.services.library_pgvector_service import update_library_chunk_vector_metadata
+
+            updated = await update_library_chunk_vector_metadata(
+                session,
+                tenant_id=tenant_id,
+                item_id=item_id,
+                metadata_patch=metadata_update,
+            )
+            result["pgvector"] = updated
         except Exception as e:
             logger.warning(
                 "propagate_scopes_pgvector_error",

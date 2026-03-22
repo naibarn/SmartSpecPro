@@ -6,16 +6,16 @@ Supports agent-generated (with persona) and system-generated (neutral) methods.
 
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass, field
-from typing import Optional
 
-logger = logging.getLogger(__name__)
+import structlog
+
+logger = structlog.get_logger(__name__)
 
 
 @dataclass
 class RunSummaryResult:
-    objective: Optional[str] = None
+    objective: str | None = None
     key_decisions: list[str] = field(default_factory=list)
     key_findings: list[str] = field(default_factory=list)
     artifacts_produced: list[str] = field(default_factory=list)
@@ -36,7 +36,7 @@ class SummaryGeneratorService:
         run_id: str,
         messages: list[dict],
         method: str = "system_generated",
-        persona_context: Optional[str] = None,
+        persona_context: str | None = None,
     ) -> RunSummaryResult:
         """Generate a summary for the given run messages."""
         if method == "extractive":
@@ -91,7 +91,7 @@ class SummaryGeneratorService:
         )
 
     def _build_messages(
-        self, messages: list[dict], method: str, persona_context: Optional[str]
+        self, messages: list[dict], method: str, persona_context: str | None
     ) -> list[dict]:
         """
         Build role-structured message list for the LLM call.

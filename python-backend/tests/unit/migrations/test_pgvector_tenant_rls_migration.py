@@ -23,6 +23,7 @@ class TestPgvectorTenantRlsMigration:
 
         assert "CREATE EXTENSION IF NOT EXISTS vector" in joined
         assert "CREATE TABLE IF NOT EXISTS library_chunk_vectors" in joined
+        assert "embedding vector(384)" in joined
         assert "ENABLE ROW LEVEL SECURITY" in joined
         assert "FORCE ROW LEVEL SECURITY" in joined
         assert "CREATE INDEX IF NOT EXISTS ix_library_chunk_vectors_embedding_hnsw" in joined
@@ -59,6 +60,8 @@ class TestPgvectorTenantRlsMigration:
                 "ix_library_chunk_vectors_tenant_item": True,
                 "ix_library_chunk_vectors_embedding_hnsw": False,
             },
+            "embedding_dimensions": 384,
+            "expected_embedding_dimensions": 384,
             "rls_enabled": True,
             "policy_names": {
                 "library_chunk_vectors_tenant_select",
@@ -67,6 +70,28 @@ class TestPgvectorTenantRlsMigration:
         }
 
         with pytest.raises(RuntimeError, match="missing_indexes"):
+            migration.assert_verification_ok(bad_snapshot)
+
+    def test_verification_detects_embedding_dimension_drift(self):
+        bad_snapshot = {
+            "extension_present": True,
+            "table_present": True,
+            "index_presence": {
+                "ix_library_chunk_vectors_tenant_item": True,
+                "ix_library_chunk_vectors_embedding_hnsw": True,
+            },
+            "embedding_dimensions": 1536,
+            "expected_embedding_dimensions": 384,
+            "rls_enabled": True,
+            "policy_names": {
+                "library_chunk_vectors_tenant_select",
+                "library_chunk_vectors_tenant_insert",
+                "library_chunk_vectors_tenant_update",
+                "library_chunk_vectors_tenant_delete",
+            },
+        }
+
+        with pytest.raises(RuntimeError, match="embedding_dimension_drift"):
             migration.assert_verification_ok(bad_snapshot)
 
     def test_rollback_sql_drops_table_indexes_and_policies(self):

@@ -387,3 +387,32 @@ class TestLibraryRolloutValidation:
         )
         assert diagnostics["config_masked"]["password"] == "***redacted***"
         assert diagnostics["connection_health"]["healthy"] is True
+
+    @pytest.mark.asyncio
+    async def test_observability_health_ignores_superseded_failures(self, rollout_db):
+        rollout_db.add_all(
+            [
+                LibraryIndexJob(
+                    tenant_id="tenant-804",
+                    library_item_id=31,
+                    job_type="reindex",
+                    status="failed",
+                    run_at=datetime.utcnow(),
+                    completed_at=datetime.utcnow(),
+                    last_error="old dimension mismatch",
+                ),
+                LibraryIndexJob(
+                    tenant_id="tenant-804",
+                    library_item_id=31,
+                    job_type="reindex",
+                    status="completed",
+                    run_at=datetime.utcnow(),
+                    completed_at=datetime.utcnow(),
+                ),
+            ]
+        )
+        await rollout_db.commit()
+
+        snapshot = await build_admin_vector_health_snapshot(rollout_db, tenant_id="tenant-804")
+
+        assert snapshot["recent_failures"] == []

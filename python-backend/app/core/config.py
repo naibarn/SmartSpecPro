@@ -128,6 +128,8 @@ class Settings(BaseSettings):
 
     # Restrict OpenAI-compatible surface to localhost by default (recommended for desktop)
     SMARTSPEC_LOCALHOST_ONLY: bool = True
+    SMARTSPEC_REINDEX_LOCALHOST_ONLY: bool = True
+    SMARTSPEC_INTERNAL_REINDEX_TOKEN: str = ""
 
     # LLM Proxy
     USE_OPENROUTER: bool = True  # Use OpenRouter by default

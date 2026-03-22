@@ -16,11 +16,15 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+from pathlib import Path
 from typing import Any
 
+from dotenv import load_dotenv
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
+
+load_dotenv(Path(__file__).resolve().parents[1] / ".env", override=False)
 
 from app.core.config import settings
 
@@ -42,12 +46,26 @@ RLS_POLICIES = (
     "library_chunk_vectors_tenant_delete",
 )
 
-DEFAULT_VECTOR_DIMENSIONS = 1536
+DEFAULT_VECTOR_DIMENSIONS = 384
 DEFAULT_MAX_DATABASE_BYTES = 50 * 1024 * 1024 * 1024
 DEFAULT_MIN_CAPACITY_HEADROOM_BYTES = 2 * 1024 * 1024 * 1024
 
 
-def build_upgrade_sql(vector_dimensions: int = DEFAULT_VECTOR_DIMENSIONS) -> list[str]:
+def _resolve_vector_dimensions() -> int:
+    raw_value = (
+        os.getenv("PGVECTOR_VECTOR_DIMENSIONS")
+        or os.getenv("LIBRARY_EMBEDDING_DIMENSIONS")
+        or str(DEFAULT_VECTOR_DIMENSIONS)
+    )
+    try:
+        parsed = int(str(raw_value).strip())
+    except (TypeError, ValueError):
+        return DEFAULT_VECTOR_DIMENSIONS
+    return max(1, parsed)
+
+
+def build_upgrade_sql(vector_dimensions: int | None = None) -> list[str]:
+    resolved_vector_dimensions = int(vector_dimensions or _resolve_vector_dimensions())
     return [
         f"CREATE EXTENSION IF NOT EXISTS {VECTOR_EXTENSION_NAME}",
         f"""
@@ -56,7 +74,7 @@ def build_upgrade_sql(vector_dimensions: int = DEFAULT_VECTOR_DIMENSIONS) -> lis
             tenant_id VARCHAR(36) NOT NULL,
             library_item_id INTEGER NOT NULL REFERENCES library_items(id) ON DELETE CASCADE,
             chunk_index INTEGER NOT NULL,
-            embedding vector({int(vector_dimensions)}) NOT NULL,
+            embedding vector({resolved_vector_dimensions}) NOT NULL,
             metadata JSONB NOT NULL DEFAULT '{{}}'::jsonb,
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
             updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -66,6 +84,12 @@ def build_upgrade_sql(vector_dimensions: int = DEFAULT_VECTOR_DIMENSIONS) -> lis
         """
         CREATE INDEX IF NOT EXISTS ix_library_chunk_vectors_tenant_item
         ON library_chunk_vectors (tenant_id, library_item_id)
+        """.strip(),
+        "DROP INDEX IF EXISTS ix_library_chunk_vectors_embedding_hnsw",
+        f"""
+        ALTER TABLE {VECTOR_TABLE_NAME}
+        ALTER COLUMN embedding TYPE vector({resolved_vector_dimensions})
+        USING embedding::vector({resolved_vector_dimensions})
         """.strip(),
         """
         CREATE INDEX IF NOT EXISTS ix_library_chunk_vectors_embedding_hnsw
@@ -128,6 +152,15 @@ def build_verification_queries() -> dict[str, str]:
         "table_present": "SELECT to_regclass('public.library_chunk_vectors') IS NOT NULL",
         "tenant_index_present": "SELECT to_regclass('public.ix_library_chunk_vectors_tenant_item') IS NOT NULL",
         "embedding_index_present": "SELECT to_regclass('public.ix_library_chunk_vectors_embedding_hnsw') IS NOT NULL",
+        "embedding_dimensions": """
+            SELECT a.atttypmod
+            FROM pg_attribute a
+            JOIN pg_class c ON a.attrelid = c.oid
+            JOIN pg_namespace n ON c.relnamespace = n.oid
+            WHERE n.nspname = 'public'
+              AND c.relname = 'library_chunk_vectors'
+              AND a.attname = 'embedding'
+        """.strip(),
         "rls_enabled": """
             SELECT COALESCE(
                 (
@@ -147,7 +180,8 @@ def build_verification_queries() -> dict[str, str]:
     }
 
 
-def build_rls_validation_queries() -> dict[str, str]:
+def build_rls_validation_queries(vector_dimensions: int | None = None) -> dict[str, str]:
+    resolved_vector_dimensions = int(vector_dimensions or _resolve_vector_dimensions())
     return {
         "allow_same_tenant_select": """
             BEGIN;
@@ -165,16 +199,16 @@ def build_rls_validation_queries() -> dict[str, str]:
             BEGIN;
             SELECT set_config('app.current_tenant_id', 'tenant-alpha', true);
             INSERT INTO library_chunk_vectors (tenant_id, library_item_id, chunk_index, embedding)
-            VALUES ('tenant-alpha', 1, 0, array_fill(0.0::real, ARRAY[1536])::vector);
+            VALUES ('tenant-alpha', 1, 0, array_fill(0.0::real, ARRAY[:vector_dimensions])::vector);
             ROLLBACK;
-        """.strip(),
+        """.strip().replace(":vector_dimensions", str(resolved_vector_dimensions)),
         "deny_cross_tenant_insert": """
             BEGIN;
             SELECT set_config('app.current_tenant_id', 'tenant-alpha', true);
             INSERT INTO library_chunk_vectors (tenant_id, library_item_id, chunk_index, embedding)
-            VALUES ('tenant-beta', 1, 1, array_fill(0.0::real, ARRAY[1536])::vector);
+            VALUES ('tenant-beta', 1, 1, array_fill(0.0::real, ARRAY[:vector_dimensions])::vector);
             ROLLBACK;
-        """.strip(),
+        """.strip().replace(":vector_dimensions", str(resolved_vector_dimensions)),
     }
 
 
@@ -227,6 +261,13 @@ def _verification_issues(snapshot: dict[str, Any]) -> list[str]:
 
     if not bool(snapshot.get("rls_enabled")):
         issues.append("rls_not_enforced")
+
+    expected_dimensions = int(snapshot.get("expected_embedding_dimensions") or 0)
+    actual_dimensions = int(snapshot.get("embedding_dimensions") or 0)
+    if expected_dimensions > 0 and actual_dimensions != expected_dimensions:
+        issues.append(
+            f"embedding_dimension_drift:expected={expected_dimensions}:actual={actual_dimensions}"
+        )
 
     actual_policies = set(snapshot.get("policy_names") or set())
     missing_policies = sorted(set(RLS_POLICIES) - actual_policies)
@@ -283,6 +324,9 @@ async def _collect_verification_snapshot(session: AsyncSession) -> dict[str, Any
     table_present = bool((await session.execute(text(queries["table_present"]))).scalar())
     tenant_index_present = bool((await session.execute(text(queries["tenant_index_present"]))).scalar())
     embedding_index_present = bool((await session.execute(text(queries["embedding_index_present"]))).scalar())
+    embedding_dimensions = int(
+        (await session.execute(text(queries["embedding_dimensions"]))).scalar() or 0
+    )
     rls_enabled = bool((await session.execute(text(queries["rls_enabled"]))).scalar())
 
     policy_rows = (await session.execute(text(queries["policy_names"]))).fetchall()
@@ -295,6 +339,8 @@ async def _collect_verification_snapshot(session: AsyncSession) -> dict[str, Any
             "ix_library_chunk_vectors_tenant_item": tenant_index_present,
             "ix_library_chunk_vectors_embedding_hnsw": embedding_index_present,
         },
+        "embedding_dimensions": embedding_dimensions,
+        "expected_embedding_dimensions": _resolve_vector_dimensions(),
         "rls_enabled": rls_enabled,
         "policy_names": policy_names,
     }
@@ -339,8 +385,9 @@ async def upgrade(
             assert_verification_ok(verification_snapshot)
 
             logger.info(
-                "pgvector_migration_upgrade_completed",
-                preflight=preflight_snapshot,
+                "pgvector_migration_upgrade_completed preflight=%s verification=%s",
+                preflight_snapshot,
+                verification_snapshot,
             )
             return {
                 "preflight": preflight_snapshot,
@@ -372,7 +419,10 @@ async def downgrade(
             if table_present:
                 raise RuntimeError("pgvector_rollback_failed:table_still_present")
 
-            logger.info("pgvector_migration_rollback_completed", drop_extension=drop_extension)
+            logger.info(
+                "pgvector_migration_rollback_completed drop_extension=%s",
+                drop_extension,
+            )
             return {
                 "table_present": table_present,
                 "drop_extension": drop_extension,
@@ -390,7 +440,7 @@ async def verify_migration(*, database_url: str | None = None) -> dict[str, Any]
         async with async_session() as session:
             snapshot = await _collect_verification_snapshot(session)
             assert_verification_ok(snapshot)
-            logger.info("pgvector_migration_verification_passed", snapshot=snapshot)
+            logger.info("pgvector_migration_verification_passed snapshot=%s", snapshot)
             return snapshot
     finally:
         await engine.dispose()

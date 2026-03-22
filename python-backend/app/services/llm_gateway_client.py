@@ -172,6 +172,8 @@ class LLMGatewayClient:
         user_id: int | None = None,
         tenant_id: str | None = None,
         *,
+        tools: list[dict[str, Any]] | None = None,
+        tool_choice: Any | None = None,
         response_format: dict[str, Any] | None = None,
         temperature: float | None = None,
         max_tokens: int | None = None,
@@ -182,6 +184,10 @@ class LLMGatewayClient:
         headers = self._build_headers(user_id, tenant_id, trace_id)
 
         body: dict[str, Any] = {"model": model, "messages": messages}
+        if tools is not None:
+            body["tools"] = tools
+        if tool_choice is not None:
+            body["tool_choice"] = tool_choice
         if response_format is not None:
             body["response_format"] = response_format
         if temperature is not None:

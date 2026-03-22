@@ -57,6 +57,37 @@ class TestPropagateToVectorStores:
 
         assert result["pgvector"] == 2
 
+    async def test_pgvector_provider_updates_canonical_library_chunk_vectors(self):
+        """When pgvector is the active provider, metadata is updated in the canonical table."""
+        session = _mock_session_with_chunks([
+            {"id": 1, "vector_ref_id": "vec-001"},
+            {"id": 2, "vector_ref_id": "vec-002"},
+        ])
+
+        with patch(
+            "app.services.library_indexing_service.resolve_library_vector_provider",
+            return_value=("pgvector", {}),
+        ), patch(
+            "app.services.library_pgvector_service.update_library_chunk_vector_metadata",
+            new_callable=AsyncMock,
+        ) as mock_update:
+            mock_update.return_value = 2
+
+            result = await propagate_scopes_to_vector_stores(
+                item_id=10,
+                new_allowed_scopes=["u:1", "g:10"],
+                tenant_id="t1",
+                session=session,
+            )
+
+        mock_update.assert_awaited_once_with(
+            session,
+            tenant_id="t1",
+            item_id=10,
+            metadata_patch={"allowed_scopes": ["u:1", "g:10"]},
+        )
+        assert result["pgvector"] == 2
+
     async def test_cloudflare_vectorize_delete_and_reinsert(self):
         """Cloudflare Vectorize should delete + re-insert (no in-place update)."""
         mock_cf = AsyncMock()

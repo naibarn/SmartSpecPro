@@ -1,11 +1,13 @@
 """Unit tests for library indexing pipeline service (Section 04)."""
 
 from datetime import datetime, timedelta
+from pathlib import Path
+from tempfile import TemporaryDirectory
 
 import pytest
-from sqlalchemy import func, select
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from sqlalchemy.pool import StaticPool
+import pytest_asyncio
+from sqlalchemy import create_engine, func, select
+from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.database import Base
 from app.models.library import LibraryChunk, LibraryIndexJob, LibraryItem
@@ -13,6 +15,7 @@ from app.models.user import User
 from app.services import library_indexing_service
 from app.services.library_indexing_service import (
     build_library_job_dedupe_key,
+    delete_library_item_vectors,
     enqueue_library_index_job,
     extract_library_item_text,
     parse_library_index_job_payload,
@@ -33,36 +36,114 @@ class FakeEmbeddingService:
         return [[float(len(t)), 1.0, 0.5] for t in texts]
 
 
-@pytest.fixture
+class AsyncSessionAdapter:
+    """Small async shim over a sync SQLAlchemy session for deterministic unit tests."""
+
+    def __init__(self, session: Session):
+        self._session = session
+        self.info = {}
+
+    def add(self, instance):
+        self._session.add(instance)
+
+    async def scalar(self, statement):
+        return self._session.scalar(statement)
+
+    async def execute(self, statement, *args, **kwargs):
+        return self._session.execute(statement, *args, **kwargs)
+
+    async def commit(self):
+        self._session.commit()
+
+    async def rollback(self):
+        self._session.rollback()
+
+    async def refresh(self, instance):
+        self._session.refresh(instance)
+
+    async def close(self):
+        self._session.close()
+
+
+@pytest.fixture(autouse=True)
+def stub_credit_billing(monkeypatch):
+    async def fake_charge_credits_post_deduct(**_kwargs):
+        return None
+
+    monkeypatch.setenv("LIBRARY_VECTOR_PROVIDER", "chroma")
+    monkeypatch.delenv("VECTOR_DB_PROVIDER", raising=False)
+    monkeypatch.setattr(
+        library_indexing_service,
+        "charge_credits_post_deduct",
+        fake_charge_credits_post_deduct,
+    )
+
+
+def test_provider_resolution_accepts_vectordb_provider_alias(monkeypatch):
+    monkeypatch.delenv("LIBRARY_VECTOR_PROVIDER", raising=False)
+    monkeypatch.delenv("VECTOR_DB_PROVIDER", raising=False)
+    monkeypatch.setenv("VECTORDB_PROVIDER", "pgvector")
+
+    provider, config = resolve_library_vector_provider()
+
+    assert provider == "pgvector"
+    assert isinstance(config, dict)
+
+
+def test_provider_resolution_falls_back_to_database_url_for_pgvector(monkeypatch):
+    monkeypatch.setenv("LIBRARY_VECTOR_PROVIDER", "pgvector")
+    monkeypatch.delenv("PGVECTOR_HOST", raising=False)
+    monkeypatch.delenv("PGVECTOR_PORT", raising=False)
+    monkeypatch.delenv("PGVECTOR_DATABASE", raising=False)
+    monkeypatch.delenv("PGVECTOR_USER", raising=False)
+    monkeypatch.delenv("PGVECTOR_PASSWORD", raising=False)
+    monkeypatch.setenv(
+        "DATABASE_URL",
+        "postgresql+asyncpg://vector_user:vector_pass@db.internal:5433/vector_db",
+    )
+
+    provider, config = resolve_library_vector_provider()
+
+    assert provider == "pgvector"
+    assert config["pgvectorHost"] == "db.internal"
+    assert config["pgvectorPort"] == "5433"
+    assert config["pgvectorDatabase"] == "vector_db"
+    assert config["pgvectorUser"] == "vector_user"
+    assert config["pgvectorPassword"] == "vector_pass"
+
+
+@pytest_asyncio.fixture
 async def indexing_db():
-    engine = create_async_engine(
-        "sqlite+aiosqlite:///:memory:",
-        poolclass=StaticPool,
+    temp_dir = TemporaryDirectory(prefix="library-indexing-test-")
+    db_path = Path(temp_dir.name) / "indexing.sqlite3"
+    engine = create_engine(
+        f"sqlite:///{db_path}",
         connect_args={"check_same_thread": False},
     )
 
-    async with engine.begin() as conn:
-        await conn.run_sync(
-            lambda sync_conn: Base.metadata.create_all(
-                sync_conn,
-                tables=[
-                    User.__table__,
-                    LibraryItem.__table__,
-                    LibraryChunk.__table__,
-                    LibraryIndexJob.__table__,
-                ],
-            )
-        )
+    Base.metadata.create_all(
+        engine,
+        tables=[
+            User.__table__,
+            LibraryItem.__table__,
+            LibraryChunk.__table__,
+            LibraryIndexJob.__table__,
+        ],
+    )
 
-    session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
-
-    async with session_factory() as session:
+    session_factory = sessionmaker(bind=engine, expire_on_commit=False)
+    session = AsyncSessionAdapter(session_factory())
+    session.info["_fixture_engine"] = engine
+    session.info["_fixture_temp_dir"] = temp_dir
+    try:
         yield session
+    finally:
+        await session.close()
+        engine.dispose()
+        temp_dir.cleanup()
 
-    await engine.dispose()
 
-
-async def _create_library_item(db: AsyncSession, tenant_id: str, title: str, metadata=None):
+async def _create_library_item(db: AsyncSessionAdapter, tenant_id: str, title: str, metadata=None):
     user = User(email=f"lib-index-{tenant_id}-{title}@example.com", password="hash", credits=100)
     db.add(user)
     await db.commit()
@@ -174,7 +255,10 @@ class TestLibraryIndexingService:
         assert (chunk_count or 0) > 0
 
         one_chunk = await indexing_db.scalar(
-            select(LibraryChunk).where(LibraryChunk.library_item_id == item.id).limit(1)
+            select(LibraryChunk).where(
+                LibraryChunk.library_item_id == item.id,
+                LibraryChunk.vector_ref_id.is_not(None),
+            )
         )
         assert one_chunk is not None
         assert one_chunk.vector_ref_id is not None
@@ -522,6 +606,56 @@ class TestLibraryIndexingService:
         )
         assert duplicate_result["status"] == "completed"
         assert duplicate_result["duplicate"] is True
+
+    @pytest.mark.asyncio
+    async def test_delete_library_item_vectors_removes_pgvector_rows_when_provider_is_pgvector(
+        self,
+        indexing_db,
+        monkeypatch,
+    ):
+        item = await _create_library_item(
+            indexing_db,
+            tenant_id="tenant-310",
+            title="Delete pgvector rows",
+            metadata={"prompt": "cleanup pgvector rows"},
+        )
+        initial_job = await enqueue_library_index_job(indexing_db, item.id, tenant_id=item.tenant_id)
+        await process_library_index_job(
+            indexing_db,
+            initial_job["job_id"],
+            embedding_service=FakeEmbeddingService(),
+            vector_upsert_fn=lambda tenant_id, item_id, chunks, embeddings: [
+                f"vec:{tenant_id}:{item_id}:{chunk['chunk_index']}" for chunk in chunks
+            ],
+        )
+
+        async def fake_delete_pgvector_rows(_db, *, tenant_id, item_id):
+            assert tenant_id == item.tenant_id
+            assert item_id == item.id
+            return 7
+
+        monkeypatch.setattr(
+            library_indexing_service,
+            "resolve_library_vector_provider",
+            lambda: ("pgvector", {}),
+        )
+        monkeypatch.setattr(
+            library_indexing_service,
+            "delete_library_chunk_vectors",
+            fake_delete_pgvector_rows,
+        )
+
+        result = await delete_library_item_vectors(
+            indexing_db,
+            item.id,
+            tenant_id=item.tenant_id,
+            soft_delete_item=False,
+        )
+
+        assert result["not_found"] is False
+        assert result["removed_chunks"] > 0
+        assert result["removed_vector_refs"] > 0
+        assert result["removed_pgvector_rows"] == 7
 
 
 def test_payload_parser_supports_v2_and_legacy_contracts():

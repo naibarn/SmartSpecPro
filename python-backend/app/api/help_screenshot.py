@@ -147,4 +147,4 @@ async def capture_help_screenshot(req: ScreenshotRequest) -> ScreenshotResponse:
         raise
     except Exception as exc:
         logger.error("help_screenshot_failed", error=str(exc))
-        raise HTTPException(status_code=500, detail=f"Screenshot capture failed: {exc}") from exc
+        raise HTTPException(status_code=500, detail="Screenshot capture failed") from exc

@@ -6,10 +6,9 @@ Uses Celery for async processing and OpenAI text-embedding-3-small for 1536-dim 
 
 from __future__ import annotations
 
-import logging
-from typing import Optional
+import structlog
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class MemoryEmbeddingService:
@@ -56,7 +55,7 @@ class MemoryEmbeddingService:
             async with get_session() as session:
                 await session.execute(
                     text("UPDATE scoped_memories SET embedding = :embedding WHERE id = :id"),
-                    {"embedding": str(embedding), "id": memory_id},
+                    {"embedding": str(embedding).replace(" ", ""), "id": memory_id},
                 )
                 await session.commit()
             return True

@@ -6,6 +6,7 @@ import os
 import re
 from datetime import datetime, timedelta
 from typing import Any, Callable, Optional, Protocol
+from urllib.parse import unquote, urlparse
 
 import structlog
 from sqlalchemy import and_, delete, func, or_, select
@@ -20,6 +21,11 @@ from app.services.credit_billing_client import charge_credits_post_deduct
 from app.services.library_vector_observability_service import (
     build_vector_audit_event,
     record_vector_audit_event,
+)
+from app.services.library_pgvector_service import (
+    delete_library_chunk_vectors,
+    get_pgvector_table_dimension,
+    upsert_library_chunk_vectors,
 )
 
 logger = structlog.get_logger()
@@ -363,68 +369,22 @@ def _pgvector_vector_upsert(
     pgvector_config: dict[str, str] | None = None,
 ) -> list[str]:
     """Store chunk embeddings via pgvector and return vector IDs."""
-    from app.orchestrator.vector_store.pgvector_store import PgVectorStore, VectorDocument
-
     if len(chunks) != len(embeddings):
         raise RuntimeError("embedding_count_mismatch")
 
-    cfg = pgvector_config or {}
-    host = cfg.get("pgvectorHost", "localhost")
-    port = cfg.get("pgvectorPort", "5432")
-    database = cfg.get("pgvectorDatabase", "smartspec")
-    user = cfg.get("pgvectorUser", "smartspec")
-    password = cfg.get("pgvectorPassword", "")
-    conn_str = f"postgresql://{user}:{password}@{host}:{port}/{database}"
-
-    # Detect embedding dimension from first embedding (default 384 for MiniLM)
-    embed_dim = len(embeddings[0]) if embeddings else 384
-    store = PgVectorStore(connection_string=conn_str, embedding_dimension=embed_dim)
-
-    vector_ids = [f"lib:{tenant_id}:{item_id}:{chunk['chunk_index']}" for chunk in chunks]
-
-    docs = [
-        VectorDocument(
-            doc_id=vid,
-            content=chunk["content"],
-            embedding=emb,
-            metadata={
-                "tenant_id": tenant_id,
-                "item_id": item_id,
-                "chunk_index": chunk["chunk_index"],
-                "token_count": chunk.get("token_count") or 0,
-                "content_type": chunk.get("content_type") or "text",
-            },
-            tenant_id=tenant_id,
-            doc_type="library_chunk",
-            source=f"library_item:{item_id}",
-        )
-        for vid, chunk, emb in zip(vector_ids, chunks, embeddings)
-    ]
-
-    # Use synchronous psycopg (v3) to avoid async event loop conflicts in Celery
-    import psycopg
-    conn = psycopg.connect(conn_str.replace("+asyncpg", ""))
     try:
-        cur = conn.cursor()
-        for doc in docs:
-            embedding_str = "[" + ",".join(str(x) for x in doc.embedding) + "]"
-            import json as _json
-            metadata_str = _json.dumps(doc.metadata) if doc.metadata else "{}"
-            cur.execute(
-                """INSERT INTO vector_documents (doc_id, content, embedding, metadata, tenant_id, doc_type, source, created_at, updated_at)
-                   VALUES (gen_random_uuid(), %s, %s::vector, %s::jsonb, %s, %s, %s, NOW(), NOW())
-                   ON CONFLICT (doc_id) DO UPDATE SET embedding = EXCLUDED.embedding, metadata = EXCLUDED.metadata, updated_at = NOW()""",
-                (doc.content, embedding_str, metadata_str, doc.tenant_id or tenant_id, doc.doc_type or "library_chunk", doc.source or f"library_item:{item_id}")
-            )
-        conn.commit()
-        logger.info("pgvector_upsert_success", item_id=item_id, vectors=len(docs), dim=embed_dim)
+        vector_ids = upsert_library_chunk_vectors(
+            tenant_id=tenant_id,
+            item_id=item_id,
+            chunks=chunks,
+            embeddings=embeddings,
+            pgvector_config=pgvector_config,
+        )
+        logger.info("pgvector_upsert_success", item_id=item_id, vectors=len(vector_ids))
+        return vector_ids
     except Exception as e:
-        conn.rollback()
         logger.error("pgvector_upsert_failed", item_id=item_id, error=str(e))
         raise
-    finally:
-        conn.close()
-    return vector_ids
 
 
 def _cloudflare_vector_upsert(
@@ -528,6 +488,7 @@ def _vector_provider_config_from_env() -> dict[str, str]:
         "PGVECTOR_DATABASE": "pgvectorDatabase",
         "PGVECTOR_USER": "pgvectorUser",
         "PGVECTOR_PASSWORD": "pgvectorPassword",
+        "PGVECTOR_CONNECT_TIMEOUT": "pgvectorConnectTimeout",
         "VECTORIZE_ACCOUNT_ID": "vectorizeAccountId",
         "VECTORIZE_API_TOKEN": "vectorizeApiToken",
         "VECTORIZE_INDEX_NAME": "vectorizeIndexName",
@@ -536,11 +497,30 @@ def _vector_provider_config_from_env() -> dict[str, str]:
         value = os.getenv(env_key)
         if value:
             config[config_key] = value
+
+    database_url = os.getenv("DATABASE_URL", "").strip()
+    if database_url.startswith("postgresql"):
+        parsed = urlparse(database_url)
+        if parsed.hostname and "pgvectorHost" not in config:
+            config["pgvectorHost"] = parsed.hostname
+        if parsed.port and "pgvectorPort" not in config:
+            config["pgvectorPort"] = str(parsed.port)
+        if parsed.path and parsed.path != "/" and "pgvectorDatabase" not in config:
+            config["pgvectorDatabase"] = parsed.path.lstrip("/")
+        if parsed.username and "pgvectorUser" not in config:
+            config["pgvectorUser"] = unquote(parsed.username)
+        if parsed.password and "pgvectorPassword" not in config:
+            config["pgvectorPassword"] = unquote(parsed.password)
     return config
 
 
 def resolve_library_vector_provider() -> tuple[str, dict[str, str]]:
-    raw = (os.getenv("LIBRARY_VECTOR_PROVIDER") or os.getenv("VECTOR_DB_PROVIDER") or "chroma").strip().lower()
+    raw = (
+        os.getenv("LIBRARY_VECTOR_PROVIDER")
+        or os.getenv("VECTOR_DB_PROVIDER")
+        or os.getenv("VECTORDB_PROVIDER")
+        or "chroma"
+    ).strip().lower()
     aliases = {
         "vectorize": "cloudflare_vectorize",
         "cloudflare": "cloudflare_vectorize",
@@ -734,6 +714,7 @@ async def delete_library_item_vectors(
             "tenant_id": tenant_id,
             "removed_chunks": 0,
             "removed_vector_refs": 0,
+            "removed_pgvector_rows": 0,
             "soft_delete_item": soft_delete_item,
             "not_found": True,
         }
@@ -753,6 +734,15 @@ async def delete_library_item_vectors(
     )
     removed_chunks = len(chunk_rows)
     removed_vector_refs = len([row for row in chunk_rows if row.vector_ref_id])
+    removed_pgvector_rows = 0
+
+    provider, _provider_config = resolve_library_vector_provider()
+    if provider == "pgvector":
+        removed_pgvector_rows = await delete_library_chunk_vectors(
+            db,
+            tenant_id=tenant_id,
+            item_id=library_item_id,
+        )
 
     await db.execute(
         delete(LibraryChunk).where(
@@ -780,6 +770,7 @@ async def delete_library_item_vectors(
         library_item_id=library_item_id,
         removed_chunks=removed_chunks,
         removed_vector_refs=removed_vector_refs,
+        removed_pgvector_rows=removed_pgvector_rows,
         soft_delete_item=soft_delete_item,
     )
     _safe_record_vector_audit_event(
@@ -793,6 +784,7 @@ async def delete_library_item_vectors(
         details={
             "removed_chunks": removed_chunks,
             "removed_vector_refs": removed_vector_refs,
+            "removed_pgvector_rows": removed_pgvector_rows,
             "soft_delete_item": soft_delete_item,
         },
     )
@@ -802,6 +794,7 @@ async def delete_library_item_vectors(
         "tenant_id": tenant_id,
         "removed_chunks": removed_chunks,
         "removed_vector_refs": removed_vector_refs,
+        "removed_pgvector_rows": removed_pgvector_rows,
         "soft_delete_item": soft_delete_item,
         "not_found": False,
     }
@@ -1102,7 +1095,14 @@ async def process_library_index_job(
 
         upsert = _resolve_vector_upsert_fn(vector_upsert_fn)
         chunks_for_upsert = [
-            {"content": c.content, "chunk_index": c.index, "metadata": c.metadata}
+            {
+                "content": c.content,
+                "chunk_index": c.index,
+                "metadata": c.metadata,
+                "token_count": c.token_count,
+                "content_type": "text",
+                "allowed_scopes": c.allowed_scopes,
+            }
             for c in child_chunks
         ]
         vector_ids = upsert(
@@ -1396,6 +1396,19 @@ async def retry_due_library_index_jobs(
 ) -> dict[str, int]:
     """Retry and process index jobs due for execution."""
     now = datetime.utcnow()
+    provider_name, _provider_config = resolve_library_vector_provider()
+    effective_embedding_service = embedding_service or get_embedding_service()
+    if provider_name == "pgvector":
+        table_dimension = await get_pgvector_table_dimension(db)
+        embedder_dimension = int(getattr(effective_embedding_service, "dimension", 0) or 0)
+        if (
+            table_dimension is not None
+            and embedder_dimension > 0
+            and table_dimension != embedder_dimension
+        ):
+            raise RuntimeError(
+                f"pgvector_dimension_mismatch:table={table_dimension}:embedding={embedder_dimension}"
+            )
 
     due_jobs = (
         (
@@ -1433,7 +1446,7 @@ async def retry_due_library_index_jobs(
         result = await process_library_index_job(
             db,
             job.id,
-            embedding_service=embedding_service,
+            embedding_service=effective_embedding_service,
             vector_upsert_fn=vector_upsert_fn,
         )
         summary["processed"] += 1

@@ -29,8 +29,9 @@ def setup_logging() -> None:
         structlog.stdlib.PositionalArgumentsFormatter(),
         structlog.processors.TimeStamper(fmt="iso"),
         structlog.processors.StackInfoRenderer(),
+        structlog.processors.format_exc_info,
     ]
-    
+
     if settings.DEBUG:
         # Pretty console output for development
         processors.append(structlog.dev.ConsoleRenderer())

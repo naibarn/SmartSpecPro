@@ -3,8 +3,10 @@ SmartSpec Pro - Python Backend
 Main FastAPI Application
 """
 
+import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
+import httpx
 import structlog
 from dotenv import load_dotenv
 
@@ -96,6 +98,79 @@ setup_logging()
 logger = structlog.get_logger()
 
 
+_DOCKER_INTERNAL_HOST = "host.docker.internal"
+
+
+def _validate_gateway_url_format(url: str) -> str | None:
+    """
+    Return an error string if the URL is misconfigured, otherwise None.
+
+    Rules:
+    - Must start with http:// or https://
+    - Must not contain host.docker.internal unless we are actually running
+      inside Docker (detected via /.dockerenv or the DOCKER_CONTAINER env var).
+    """
+    if not url.startswith(("http://", "https://")):
+        return f"SMARTSPEC_WEB_GATEWAY_URL must start with http:// or https://, got: {url!r}"
+
+    if _DOCKER_INTERNAL_HOST in url:
+        in_docker = os.path.exists("/.dockerenv") or os.environ.get("DOCKER_CONTAINER", "").strip() != ""
+        if not in_docker:
+            return (
+                f"SMARTSPEC_WEB_GATEWAY_URL contains '{_DOCKER_INTERNAL_HOST}' but the process does not "
+                "appear to be running inside Docker (/.dockerenv absent, DOCKER_CONTAINER unset). "
+                "Use localhost or the real hostname instead."
+            )
+
+    return None
+
+
+async def _check_gateway_reachability(url: str) -> None:
+    """
+    Attempt a lightweight GET to ``{url}/health``.
+
+    Logs a WARNING on any failure — never raises so startup is not blocked.
+    """
+    probe_url = url.rstrip("/") + "/health"
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            response = await client.get(probe_url)
+        if response.status_code < 500:
+            logger.info(
+                "Web gateway reachability check passed",
+                gateway_url=url,
+                probe_url=probe_url,
+                status_code=response.status_code,
+            )
+        else:
+            logger.warning(
+                "Web gateway returned server error during startup probe",
+                gateway_url=url,
+                probe_url=probe_url,
+                status_code=response.status_code,
+            )
+    except httpx.TimeoutException:
+        logger.warning(
+            "Web gateway reachability check timed out (5 s) — gateway may be unavailable",
+            gateway_url=url,
+            probe_url=probe_url,
+        )
+    except httpx.ConnectError as exc:
+        logger.warning(
+            "Web gateway reachability check failed — connection refused or DNS error",
+            gateway_url=url,
+            probe_url=probe_url,
+            error=str(exc),
+        )
+    except Exception as exc:
+        logger.warning(
+            "Web gateway reachability check raised unexpected error",
+            gateway_url=url,
+            probe_url=probe_url,
+            error=str(exc),
+        )
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager"""
@@ -149,6 +224,21 @@ async def lifespan(app: FastAPI):
         logger.info("LLM Proxy initialized successfully")
     except Exception as e:
         logger.warning("LLM Proxy initialization failed", error=str(e))
+
+    # Validate and probe SMARTSPEC_WEB_GATEWAY_URL
+    if settings.SMARTSPEC_USE_WEB_GATEWAY:
+        gateway_url = settings.SMARTSPEC_WEB_GATEWAY_URL.strip()
+        if not gateway_url:
+            logger.warning(
+                "SMARTSPEC_USE_WEB_GATEWAY is enabled but SMARTSPEC_WEB_GATEWAY_URL is not set — "
+                "gateway-dependent features will fail at runtime"
+            )
+        else:
+            fmt_error = _validate_gateway_url_format(gateway_url)
+            if fmt_error:
+                logger.warning("SMARTSPEC_WEB_GATEWAY_URL format validation failed", detail=fmt_error)
+            else:
+                await _check_gateway_reachability(gateway_url)
 
     # Initialize PostgreSQL Checkpointer (for LangGraph workflow state persistence)
     try:

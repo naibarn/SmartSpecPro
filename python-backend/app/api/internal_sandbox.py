@@ -78,6 +78,18 @@ class SandboxProbeResponse(BaseModel):
     status: str
 
 
+class SandboxStatusResponse(BaseModel):
+    job_id: str
+    status: str
+    status_reason: Optional[str] = None
+    opensandbox_id: Optional[str] = None
+    output_manifest: Optional[dict[str, Any]] = None
+    stdout_excerpt: Optional[str] = None
+    stderr_excerpt: Optional[str] = None
+    started_at: Optional[datetime] = None
+    finished_at: Optional[datetime] = None
+
+
 def _normalize_execution_mode(mode: str) -> str:
     """Normalize Node.js execution mode names to backend values."""
     if mode == "sandbox-python":
@@ -208,6 +220,37 @@ async def cancel_sandbox_job(
     await db.commit()
 
     return SandboxCancelResponse(success=True, job_id=job_id, status="canceled")
+
+
+@router.get(
+    "/status/{job_id}",
+    response_model=SandboxStatusResponse,
+    dependencies=[Depends(_verify_internal_token)],
+)
+async def get_sandbox_job_status(
+    job_id: str,
+    db: AsyncSession = Depends(get_db),
+) -> SandboxStatusResponse:
+    """Fetch the latest state of a sandbox job for UI polling."""
+    from sqlalchemy import select
+
+    result = await db.execute(select(SandboxJob).where(SandboxJob.id == job_id))
+    job = result.scalar_one_or_none()
+    if job is None:
+        raise HTTPException(status_code=404, detail="Sandbox job not found")
+
+    output_manifest = job.output_manifest_json if isinstance(job.output_manifest_json, dict) else None
+    return SandboxStatusResponse(
+      job_id=job.id,
+      status=str(job.status),
+      status_reason=job.status_reason,
+      opensandbox_id=job.opensandbox_id,
+      output_manifest=output_manifest,
+      stdout_excerpt=job.stdout_excerpt,
+      stderr_excerpt=job.stderr_excerpt,
+      started_at=job.started_at,
+      finished_at=job.finished_at,
+    )
 
 
 @router.post(

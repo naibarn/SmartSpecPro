@@ -229,6 +229,7 @@ class CSRFMiddleware(BaseHTTPMiddleware):
         "/api/oauth/",     # OAuth endpoints called server-to-server with Bearer token
         "/api/webhooks/",
         "/api/internal/",  # Internal endpoints use proxy token auth
+        "/api/team-orchestrator/",  # Node -> Python internal orchestration bridge uses X-Proxy-Token
         "/tasks/",         # Cloud Tasks endpoints use OIDC token auth
     )
 

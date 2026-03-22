@@ -19,6 +19,9 @@ from sqlalchemy.dialects.postgresql import ARRAY
 from app.core.database import Base
 
 
+_SCOPE_LIST_TYPE = ARRAY(Text).with_variant(JSON, "sqlite")
+
+
 class LibraryItem(Base):
     """Top-level library item metadata and lifecycle state."""
 
@@ -43,7 +46,7 @@ class LibraryItem(Base):
     thumbnail_url = Column(Text, nullable=True)
 
     # Denormalized scope cache for vector DB filtering
-    allowed_scopes = Column(ARRAY(Text), default=list, server_default="{}")
+    allowed_scopes = Column(_SCOPE_LIST_TYPE, default=list)
 
     deleted_at = Column(DateTime, nullable=True, index=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
@@ -111,7 +114,7 @@ class LibraryChunk(Base):
     metadata_json = Column("metadata", JSON, nullable=False, default=dict)
 
     # Denormalized scope cache — mirrors parent item's allowed_scopes
-    allowed_scopes = Column(ARRAY(Text), default=list, server_default="{}")
+    allowed_scopes = Column(_SCOPE_LIST_TYPE, default=list)
 
     # Parent-child chunk support for RAG
     is_parent = Column(Boolean, nullable=False, default=False, server_default="false")

@@ -9,6 +9,7 @@ from typing import Any
 
 from sqlalchemy import and_, asc, desc, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
 from app.models.library import (
     LibraryBackfillCampaign,
@@ -367,6 +368,20 @@ async def build_admin_vector_health_snapshot(
     pending_query = select(LibraryIndexJob).where(
         LibraryIndexJob.status.in_([INDEX_JOB_PENDING_STATUS, INDEX_JOB_RETRY_PENDING_STATUS])
     )
+    completed_job = aliased(LibraryIndexJob)
+    superseded_by_completion = (
+        select(completed_job.id)
+        .where(
+            and_(
+                completed_job.library_item_id == LibraryIndexJob.library_item_id,
+                completed_job.tenant_id == LibraryIndexJob.tenant_id,
+                completed_job.job_type == LibraryIndexJob.job_type,
+                completed_job.status == "completed",
+                completed_job.id > LibraryIndexJob.id,
+            )
+        )
+        .exists()
+    )
     failed_query = select(LibraryIndexJob).where(
         and_(
             LibraryIndexJob.status == INDEX_JOB_FAILED_STATUS,
@@ -374,6 +389,7 @@ async def build_admin_vector_health_snapshot(
                 LibraryIndexJob.completed_at.is_(None),
                 LibraryIndexJob.completed_at >= now_ts - timedelta(minutes=FAILURE_RATE_WINDOW_MINUTES),
             ),
+            ~superseded_by_completion,
         )
     )
 
