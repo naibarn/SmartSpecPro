@@ -76,16 +76,17 @@ def _is_private_ip(hostname: str) -> bool:
         return False
 
 
-def _is_internal_hostname(hostname: str) -> bool:
+def _is_internal_hostname(hostname: str, *, allow_docker_internal: bool = True) -> bool:
     """Check if hostname is a known internal name.
 
-    Note: 'host.docker.internal' is explicitly allowed because Docker
-    media workers use it to reach the Node.js server on the host for
-    downloading assets (uploads, media-job files).
+    Args:
+        allow_docker_internal: If True (default), host.docker.internal is
+            permitted for Docker worker asset downloads. External-facing
+            providers (e.g., fal.ai) should pass False.
     """
     lower = hostname.lower()
     if lower == "host.docker.internal":
-        return False  # Trusted: Docker→Host communication for asset downloads
+        return not allow_docker_internal
     return lower in ("localhost", "0.0.0.0")
 
 
@@ -98,8 +99,17 @@ def _has_shell_metacharacters(s: str) -> bool:
 # URI validation
 # ========================================
 
-def validate_uri_no_ssrf(uri: str) -> str:
+def validate_uri_no_ssrf(
+    uri: str,
+    *,
+    allow_docker_internal: bool = True,
+) -> str:
     """Validate that a URI does not target internal/private network addresses.
+
+    Args:
+        allow_docker_internal: If True (default), host.docker.internal is
+            permitted. Docker media workers need this to fetch assets from
+            the Node.js host. External providers should pass False.
 
     Raises ValueError if the URI is SSRF-prone.
     Returns the URI unchanged if safe.
@@ -121,13 +131,13 @@ def validate_uri_no_ssrf(uri: str) -> str:
     hostname = parsed.hostname or ""
 
     # Check for internal hostnames
-    if _is_internal_hostname(hostname):
+    if _is_internal_hostname(hostname, allow_docker_internal=allow_docker_internal):
         raise ValueError(f"URI targets internal address: {uri!r}")
 
-    # Allow host.docker.internal — Docker workers need to reach the
-    # Node.js host to download assets via /uploads/*. Skip private-IP
-    # check since it resolves to 172.17.0.1 (Docker bridge gateway).
-    if hostname.lower() == "host.docker.internal":
+    # Skip private-IP DNS check for host.docker.internal when allowed —
+    # it resolves to 172.17.0.1 (Docker bridge gateway) which would
+    # otherwise be blocked by _is_private_ip.
+    if hostname.lower() == "host.docker.internal" and allow_docker_internal:
         return uri
 
     # Check for private/internal IP ranges
@@ -135,6 +145,15 @@ def validate_uri_no_ssrf(uri: str) -> str:
         raise ValueError(f"URI targets private/internal IP: {uri!r}")
 
     return uri
+
+
+def validate_uri_strict(uri: str) -> str:
+    """Strict URI validation that blocks ALL internal hosts including host.docker.internal.
+
+    Use this for external provider URLs (fal.ai, etc.) where no internal
+    host access is ever needed.
+    """
+    return validate_uri_no_ssrf(uri, allow_docker_internal=False)
 
 
 # ========================================

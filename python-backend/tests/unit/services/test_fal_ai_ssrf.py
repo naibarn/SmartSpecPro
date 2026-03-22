@@ -33,8 +33,8 @@ class TestSSRFValidation:
             await provider._validate_urls({"image_url": "http://192.168.1.1/internal"})
 
     async def test_rejects_host_docker_internal(self, provider):
-        """fal.ai provider must reject host.docker.internal even though base SSRF allows it."""
-        with pytest.raises(ValueError, match="host.docker.internal"):
+        """fal.ai provider must reject host.docker.internal via validate_uri_strict."""
+        with pytest.raises(ValueError, match="internal"):
             await provider._validate_urls({"image_url": "http://host.docker.internal/uploads/img.png"})
 
     async def test_allows_public_url(self, provider):

@@ -1288,48 +1288,6 @@ def reindex_all_library_task(tenant_id: int | None = None):
         return {"status": "failed", "error": str(e)}
 
 
-def _derive_fal_resolution(result: dict) -> str:
-    """Derive resolution from video width. Default: '1080p'."""
-    width = result.get("video", {}).get("width")
-    if width is None:
-        width = result.get("width")
-    if isinstance(width, (int, float)):
-        if width >= 3840:
-            return "2160p"
-        if width >= 2560:
-            return "1440p"
-    return "1080p"
-
-
-def _extract_fal_duration(result: dict) -> float | None:
-    """Extract actual duration from fal.ai result."""
-    duration = result.get("video", {}).get("duration")
-    if duration is None:
-        duration = result.get("duration")
-    if duration is None:
-        return None
-    try:
-        return float(duration)
-    except (ValueError, TypeError):
-        return None
-
-
-def _extract_fal_result_url(result: dict) -> str | None:
-    """Extract result URL from fal.ai response (video or audio)."""
-    # Video: {"data": [{"url": "..."}]}
-    data = result.get("data")
-    if isinstance(data, list) and len(data) > 0:
-        url = data[0].get("url") if isinstance(data[0], dict) else None
-        if url:
-            return url
-    # Audio: {"audio": {"url": "..."}} or {"audio_url": {"url": "..."}}
-    audio = result.get("audio") or result.get("audio_url")
-    if isinstance(audio, dict) and audio.get("url"):
-        return audio["url"]
-    # Fallback: top-level URL
-    return result.get("url")
-
-
 async def _recover_stuck_tasks_async():
     """
     Find and recover tasks stuck in 'processing' status
@@ -1481,14 +1439,13 @@ async def _recover_stuck_tasks_async():
                             status_response = await fal_client.get_queue_status(task.model, task.task_id)
 
                             if status_response.get("status") == "COMPLETED":
+                                # get_queue_result returns normalized:
+                                # {data: [{url}], actual_duration, actual_resolution}
                                 result = await fal_client.get_queue_result(task.model, task.task_id)
                                 task.status = TaskStatus.COMPLETED
-                                task.result_url = _extract_fal_result_url(result)
-                                task.result_data = {
-                                    **result,
-                                    "actual_duration": _extract_fal_duration(result),
-                                    "actual_resolution": _derive_fal_resolution(result),
-                                }
+                                data_list = result.get("data", [])
+                                task.result_url = data_list[0]["url"] if data_list else None
+                                task.result_data = result
                                 task.completed_at = datetime.now(timezone.utc)
                                 recovered_count += 1
                                 logger.info(

@@ -1,80 +1,13 @@
-"""Tests for fal.ai polling branch in _recover_stuck_tasks_async()."""
+"""Tests for fal.ai polling branch in _recover_stuck_tasks_async().
+
+Helper function tests (resolution, duration, URL extraction) are now in
+test_fal_ai_provider.py since the canonical implementations live in
+FalAIProvider. This file focuses on the Celery polling branch logic.
+"""
 
 import pytest
 from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
-
-from app.tasks.media_tasks import (
-    _derive_fal_resolution,
-    _extract_fal_duration,
-    _extract_fal_result_url,
-)
-
-
-# ---------------------------------------------------------------------------
-# Helper-function unit tests
-# ---------------------------------------------------------------------------
-
-
-class TestDeriveFalResolution:
-    def test_4k_resolution(self):
-        assert _derive_fal_resolution({"video": {"width": 3840}}) == "2160p"
-
-    def test_1440p_resolution(self):
-        assert _derive_fal_resolution({"video": {"width": 2560}}) == "1440p"
-
-    def test_1080p_default(self):
-        assert _derive_fal_resolution({"video": {"width": 1920}}) == "1080p"
-
-    def test_missing_video_key(self):
-        assert _derive_fal_resolution({}) == "1080p"
-
-    def test_top_level_width(self):
-        assert _derive_fal_resolution({"width": 3840}) == "2160p"
-
-    def test_non_numeric_width(self):
-        assert _derive_fal_resolution({"video": {"width": "big"}}) == "1080p"
-
-
-class TestExtractFalDuration:
-    def test_nested_duration(self):
-        assert _extract_fal_duration({"video": {"duration": 8.5}}) == 8.5
-
-    def test_top_level_duration(self):
-        assert _extract_fal_duration({"duration": 12}) == 12.0
-
-    def test_missing_duration(self):
-        assert _extract_fal_duration({}) is None
-
-    def test_string_duration(self):
-        assert _extract_fal_duration({"duration": "5.0"}) == 5.0
-
-    def test_non_numeric_string_duration(self):
-        assert _extract_fal_duration({"duration": "unknown"}) is None
-
-    def test_zero_duration(self):
-        assert _extract_fal_duration({"video": {"duration": 0}}) == 0.0
-
-
-class TestExtractFalResultUrl:
-    def test_video_data_url(self):
-        result = {"data": [{"url": "https://fal.media/video.mp4"}]}
-        assert _extract_fal_result_url(result) == "https://fal.media/video.mp4"
-
-    def test_audio_url(self):
-        result = {"audio": {"url": "https://fal.media/audio.wav"}}
-        assert _extract_fal_result_url(result) == "https://fal.media/audio.wav"
-
-    def test_top_level_url(self):
-        result = {"url": "https://fal.media/file.mp4"}
-        assert _extract_fal_result_url(result) == "https://fal.media/file.mp4"
-
-    def test_empty_result(self):
-        assert _extract_fal_result_url({}) is None
-
-    def test_audio_url_key(self):
-        result = {"audio_url": {"url": "https://fal.media/tts.wav"}}
-        assert _extract_fal_result_url(result) == "https://fal.media/tts.wav"
 
 
 # ---------------------------------------------------------------------------
@@ -131,24 +64,23 @@ class TestFalAiPollingBranch:
 
         mock_provider = AsyncMock(spec=FalAIProvider)
         mock_provider.get_queue_status = AsyncMock(return_value={"status": "COMPLETED"})
+        # get_queue_result returns normalized output (actual_duration/resolution already set)
         mock_provider.get_queue_result = AsyncMock(return_value={
             "data": [{"url": "https://fal.media/result.mp4"}],
-            "video": {"width": 1920, "height": 1080, "duration": 8.5},
+            "actual_duration": 8.5,
+            "actual_resolution": "1080p",
         })
 
         task = self._make_task()
 
-        # Simulate the polling logic inline
+        # Simulate the polling logic (mirrors production code in media_tasks.py)
         status_response = await mock_provider.get_queue_status(task.model, task.task_id)
         assert status_response["status"] == "COMPLETED"
 
         result = await mock_provider.get_queue_result(task.model, task.task_id)
-        task.result_url = result["data"][0]["url"]
-        task.result_data = {
-            **result,
-            "actual_duration": _extract_fal_duration(result),
-            "actual_resolution": _derive_fal_resolution(result),
-        }
+        data_list = result.get("data", [])
+        task.result_url = data_list[0]["url"] if data_list else None
+        task.result_data = result
         task.completed_at = datetime.now(timezone.utc)
 
         assert task.result_url == "https://fal.media/result.mp4"
@@ -279,19 +211,18 @@ class TestFalAiPollingBranch:
     @pytest.mark.asyncio
     async def test_resolution_4k(self):
         """Width >= 3840 -> '2160p'."""
-        result = {"video": {"width": 3840, "height": 2160, "duration": 5.0}}
-        assert _derive_fal_resolution(result) == "2160p"
+        from app.llm_proxy.providers.fal_ai_provider import FalAIProvider
+        assert FalAIProvider._derive_resolution(3840) == "2160p"
 
     @pytest.mark.asyncio
     async def test_resolution_1440p(self):
         """Width >= 2560 -> '1440p'."""
-        result = {"video": {"width": 2560, "height": 1440, "duration": 5.0}}
-        assert _derive_fal_resolution(result) == "1440p"
+        from app.llm_proxy.providers.fal_ai_provider import FalAIProvider
+        assert FalAIProvider._derive_resolution(2560) == "1440p"
 
     @pytest.mark.asyncio
     async def test_provider_not_configured_continues(self):
         """Provider not configured -> logs warning and continues."""
-        # This tests the guard: if not provider_config or not provider_config.get("apiKey")
         provider_config = None
         assert not provider_config or not (provider_config or {}).get("apiKey")
 

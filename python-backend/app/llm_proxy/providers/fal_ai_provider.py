@@ -12,12 +12,10 @@ All outbound calls use ``follow_redirects=False`` to prevent redirect-based SSRF
 
 import re
 from typing import Any
-from urllib.parse import urlparse
-
 import httpx
 import structlog
 
-from app.core.media_job_validators import validate_uri_no_ssrf
+from app.core.media_job_validators import validate_uri_strict
 
 logger = structlog.get_logger()
 
@@ -105,16 +103,9 @@ class FalAIProvider:
             if not isinstance(url, str):
                 raise ValueError(f"URL field '{key}' must be a string")
 
-            # Reject host.docker.internal (fal.ai provider-specific)
-            parsed = urlparse(url)
-            hostname = (parsed.hostname or "").lower()
-            if hostname == "host.docker.internal":
-                raise ValueError(
-                    f"URL field '{key}' targets host.docker.internal which is not allowed for fal.ai"
-                )
-
-            # Run the shared SSRF validator
-            validate_uri_no_ssrf(url)
+            # Strict SSRF validation: blocks ALL internal hosts including
+            # host.docker.internal (external providers must never reach internal infra)
+            validate_uri_strict(url)
 
         # Async video file size check
         video_url = params.get("video_url")
