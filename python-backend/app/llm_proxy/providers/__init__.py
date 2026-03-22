@@ -14,6 +14,7 @@ from app.llm_proxy.providers.zai_provider import ZAIProvider
 from .kie_ai_provider import KieAIProvider
 from .byteplus_modelark_provider import BytePlusModelArkProvider
 from .uvoice_provider import UVoiceProvider
+from .fal_ai_provider import FalAIProvider
 
 __all__ = [
     "BaseLLMProvider",
@@ -27,4 +28,5 @@ __all__ = [
     "KieAIProvider",
     "BytePlusModelArkProvider",
     "UVoiceProvider",
+    "FalAIProvider",
 ]
