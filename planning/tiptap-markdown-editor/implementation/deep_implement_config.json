@@ -1,0 +1,87 @@
+{
+  "plugin_root": "/home/dev/.claude/plugins/cache/piercelamb-plugins/deep-implement/0.2.0",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/planning/tiptap-markdown-editor/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/planning/tiptap-markdown-editor/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-tiptap-setup",
+    "section-02-markdown-bridge",
+    "section-03-editor-surface",
+    "section-04-toolbar-modes",
+    "section-05-slash-commands",
+    "section-06-media-extensions",
+    "section-07-media-node-views",
+    "section-08-media-insert-menu",
+    "section-09-paste-dragdrop",
+    "section-10-page-integration",
+    "section-11-safemarkdown-fixes",
+    "section-12-conflict-dialog",
+    "section-13-hardening-tests"
+  ],
+  "sections_state": {
+    "section-01-tiptap-setup": {
+      "status": "complete",
+      "commit_hash": "e869e8da"
+    },
+    "section-02-markdown-bridge": {
+      "status": "complete",
+      "commit_hash": "f57c1d29"
+    },
+    "section-03-editor-surface": {
+      "status": "complete",
+      "commit_hash": "d1cef416"
+    },
+    "section-04-toolbar-modes": {
+      "status": "complete",
+      "commit_hash": "f61c6aab"
+    },
+    "section-05-slash-commands": {
+      "status": "complete",
+      "commit_hash": "c111f837"
+    },
+    "section-06-media-extensions": {
+      "status": "complete",
+      "commit_hash": "de873bc9"
+    },
+    "section-07-media-node-views": {
+      "status": "complete",
+      "commit_hash": "a2881a1c"
+    },
+    "section-08-media-insert-menu": {
+      "status": "complete",
+      "commit_hash": "7fd3d48a"
+    },
+    "section-09-paste-dragdrop": {
+      "status": "complete",
+      "commit_hash": "21f6618f"
+    },
+    "section-10-page-integration": {
+      "status": "complete",
+      "commit_hash": "763d1eb0"
+    },
+    "section-11-safemarkdown-fixes": {
+      "status": "complete",
+      "commit_hash": "7a240391"
+    },
+    "section-12-conflict-dialog": {
+      "status": "complete",
+      "commit_hash": "50ddce05"
+    },
+    "section-13-hardening-tests": {
+      "status": "complete",
+      "commit_hash": "23342b2b"
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-03-18T23:16:46.183482+00:00"
+}

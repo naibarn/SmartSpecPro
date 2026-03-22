@@ -1,0 +1,87 @@
+{
+  "plugin_root": "/home/dev/.claude/plugins/cache/piercelamb-plugins/deep-implement/0.2.1",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/planning/unified-skill-execution/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/planning/unified-skill-execution/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-types-and-contract",
+    "section-02-executor-registry",
+    "section-03-feature-flag",
+    "section-04-context-builder",
+    "section-05-text-skill-executor",
+    "section-06-unified-orchestrator",
+    "section-07-wire-chat-router",
+    "section-08-wire-team-room",
+    "section-09-orchestrator-tests",
+    "section-10-parity-tests",
+    "section-11-image-executor",
+    "section-12-video-audio-executors",
+    "section-13-media-routing-integration"
+  ],
+  "sections_state": {
+    "section-01-types-and-contract": {
+      "status": "complete",
+      "commit_hash": "9cccebdd"
+    },
+    "section-02-executor-registry": {
+      "status": "complete",
+      "commit_hash": "a1b2fe42"
+    },
+    "section-03-feature-flag": {
+      "status": "complete",
+      "commit_hash": "43455fd4"
+    },
+    "section-04-context-builder": {
+      "status": "complete",
+      "commit_hash": "910393c8"
+    },
+    "section-05-text-skill-executor": {
+      "status": "complete",
+      "commit_hash": "bcb06b1a"
+    },
+    "section-06-unified-orchestrator": {
+      "status": "complete",
+      "commit_hash": "cd650253"
+    },
+    "section-07-wire-chat-router": {
+      "status": "complete",
+      "commit_hash": "3d9f1db2"
+    },
+    "section-08-wire-team-room": {
+      "status": "complete",
+      "commit_hash": "dd38d14e"
+    },
+    "section-09-orchestrator-tests": {
+      "status": "complete",
+      "commit_hash": "55ba9053"
+    },
+    "section-10-parity-tests": {
+      "status": "complete",
+      "commit_hash": "5a323f8b"
+    },
+    "section-11-image-executor": {
+      "status": "complete",
+      "commit_hash": "d5d20008"
+    },
+    "section-12-video-audio-executors": {
+      "status": "complete",
+      "commit_hash": "29adbdc6"
+    },
+    "section-13-media-routing-integration": {
+      "status": "complete",
+      "commit_hash": "d9bb9593"
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-03-21T05:57:57.851733+00:00"
+}
