@@ -1,5 +1,5 @@
 import type { ComponentType } from "react";
-import { Cloud, FolderOpen, Share2, Trash2, Users } from "lucide-react";
+import { Cloud, FolderOpen, Lock, Share2, Trash2, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { DocumentScopeTab } from "@/lib/documentManagementUi";
 
@@ -22,6 +22,12 @@ const TABS: TabDef[] = [
     label: "My Library",
     icon: FolderOpen,
     activeClass: "border-sky-300 bg-sky-50 text-sky-800 shadow-sm",
+  },
+  {
+    value: "private_vault",
+    label: "Private Files",
+    icon: Lock,
+    activeClass: "border-amber-300 bg-amber-50 text-amber-800 shadow-sm",
   },
   {
     value: "my_drive",

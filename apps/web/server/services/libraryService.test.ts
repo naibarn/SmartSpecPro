@@ -113,6 +113,7 @@ function makeSelectOrderByChain(rows: any[]) {
 beforeEach(() => {
   vi.clearAllMocks();
   mockGetDb.mockResolvedValue(mockDb);
+  mockDb.select.mockReturnValue(makeSelectChain([]));
   groupsServiceMocks.getUserGroups.mockResolvedValue([]);
   creditServiceMocks.calculateLibraryUploadCreditCost.mockResolvedValue({
     category: "document",
@@ -443,6 +444,27 @@ describe("tenant boundaries", () => {
 });
 
 describe("uploadLibraryFile", () => {
+  it("rejects spoofed file types when magic bytes do not match", async () => {
+    const pdfBytes = Buffer.from("%PDF-1.7 fake pdf", "utf8").toString("base64");
+
+    await expect(
+      uploadLibraryFile(
+        {
+          fileName: "hero.png",
+          fileType: "image/png",
+          fileBase64: pdfBytes,
+        },
+        {
+          userId: 9,
+          tenantId: 44,
+          role: "user",
+        },
+      ),
+    ).rejects.toThrow("declared file type");
+
+    expect(mockStoragePut).not.toHaveBeenCalled();
+  });
+
   it("rejects unsafe svg payload before persisting", async () => {
     const unsafeSvg = Buffer.from(`<svg><script>alert(1)</script></svg>`, "utf8").toString("base64");
     await expect(
@@ -464,6 +486,49 @@ describe("uploadLibraryFile", () => {
     expect(mockDb.insert).not.toHaveBeenCalled();
   });
 
+  it("reuses an existing exact upload duplicate without recharging credits", async () => {
+    const existingItem = {
+      id: 915,
+      tenantId: "44",
+      ownerUserId: 9,
+      itemType: "text",
+      source: "document_upload",
+      title: "notes.txt",
+      description: null,
+      status: "ready",
+      visibility: "private",
+      metadata: {
+        content_checksum_sha256: "existing",
+      },
+      sourceUrl: "https://cdn.example.com/notes.txt",
+      thumbnailUrl: null,
+      deletedAt: null,
+      createdAt: new Date("2026-03-20T00:00:00.000Z"),
+      updatedAt: new Date("2026-03-20T00:00:00.000Z"),
+    };
+
+    mockDb.select.mockReturnValueOnce(makeSelectChain([existingItem]));
+
+    const result = await uploadLibraryFile(
+      {
+        fileName: "notes.txt",
+        fileType: "text/plain",
+        fileBase64: Buffer.from("same content", "utf8").toString("base64"),
+      },
+      {
+        userId: 9,
+        tenantId: 44,
+        role: "user",
+      },
+    );
+
+    expect(result.duplicateOfItemId).toBe(915);
+    expect(result.indexJob.status).toBe("duplicate_reused");
+    expect(result.billing.creditsCharged).toBe(0);
+    expect(mockStoragePut).not.toHaveBeenCalled();
+    expect(creditServiceMocks.deductCredits).not.toHaveBeenCalled();
+  });
+
   it("preserves primary write success when enqueue fails transiently", async () => {
     mockStoragePut.mockResolvedValueOnce({
       key: "library/uploads/t-1/9/file.txt",
@@ -472,6 +537,7 @@ describe("uploadLibraryFile", () => {
 
     const now = new Date("2026-02-10T00:00:00.000Z");
     mockDb.select
+      .mockReturnValueOnce(makeSelectChain([]))
       .mockReturnValueOnce(makeSelectChain([], true))
       .mockReturnValueOnce(makeSelectChain([]));
 
@@ -501,6 +567,10 @@ describe("uploadLibraryFile", () => {
       onConflictDoNothing: vi.fn().mockResolvedValue(undefined),
     });
 
+    const sourceChunkValues = vi.fn().mockReturnValue({
+      onConflictDoUpdate: vi.fn().mockResolvedValue(undefined),
+    });
+
     const enqueueValues = vi.fn().mockImplementation(() => {
       throw new Error("queue timeout");
     });
@@ -508,6 +578,7 @@ describe("uploadLibraryFile", () => {
     mockDb.insert
       .mockReturnValueOnce({ values: insertLibraryItemValues })
       .mockReturnValueOnce({ values: insertLibraryLinkValues })
+      .mockReturnValueOnce({ values: sourceChunkValues })
       .mockReturnValueOnce({ values: enqueueValues });
 
     const result = await uploadLibraryFile(

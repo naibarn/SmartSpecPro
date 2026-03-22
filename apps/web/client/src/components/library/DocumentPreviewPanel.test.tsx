@@ -1,0 +1,105 @@
+/**
+ * @vitest-environment jsdom
+ */
+import { render, screen } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const getItemSharesMock = vi.fn(() => ({
+  data: { shares: [] },
+}));
+
+const processingMetaMock = vi.fn(() => ({
+  label: "Ready",
+  className: "bg-emerald-100 text-emerald-800",
+  detail: "Should be hidden for media previews",
+  searchQuality: "metadata_only",
+}));
+
+const shareButtonMock = vi.fn((props: { compact?: boolean }) => (
+  <button data-testid="share-button" data-compact={String(Boolean(props.compact))} type="button">
+    Share
+  </button>
+));
+
+const versionHistoryMock = vi.fn((props: { compact?: boolean }) => (
+  <button data-testid="version-history" data-compact={String(Boolean(props.compact))} type="button">
+    Version History
+  </button>
+));
+
+vi.mock("@/lib/trpc", () => ({
+  trpc: {
+    library: {
+      getItemShares: {
+        useQuery: (...args: any[]) => getItemSharesMock(...args),
+      },
+    },
+  },
+}));
+
+vi.mock("@/lib/libraryUi", () => ({
+  getLibraryItemProcessingMeta: (...args: any[]) => processingMetaMock(...args),
+}));
+
+vi.mock("@/lib/previewHostSafety", () => ({
+  getOfficePreviewDecision: () => null,
+}));
+
+vi.mock("./ShareButton", () => ({
+  ShareButton: (props: any) => shareButtonMock(props),
+}));
+
+vi.mock("./DocumentVersionHistory", () => ({
+  DocumentVersionHistory: (props: any) => versionHistoryMock(props),
+}));
+
+vi.mock("./ShareDialog", () => ({
+  ShareDialog: () => null,
+}));
+
+import DocumentPreviewPanel from "./DocumentPreviewPanel";
+
+function renderPreview(previewType: "image" | "video") {
+  return render(
+    <DocumentPreviewPanel
+      item={{
+        id: 1,
+        title: previewType === "image" ? "Old1.png" : "Video 01.mp4",
+        source_url: `https://example.com/${previewType}`,
+        status: "ready",
+        item_type: previewType,
+        metadata: {},
+      } as any}
+      previewType={previewType}
+      previewText="Preview text"
+      documentId={1}
+    />,
+  );
+}
+
+describe("DocumentPreviewPanel media previews", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getItemSharesMock.mockReturnValue({ data: { shares: [] } });
+    processingMetaMock.mockReturnValue({
+      label: "Ready",
+      className: "bg-emerald-100 text-emerald-800",
+      detail: "Should be hidden for media previews",
+      searchQuality: "metadata_only",
+    });
+  });
+
+  it.each(["image", "video"] as const)(
+    "renders %s preview with a compact header and fit-to-page body",
+    (previewType) => {
+      renderPreview(previewType);
+
+      expect(screen.getByTestId("media-preview-body").className).toContain("overflow-hidden");
+      expect(screen.getByRole("button", { name: /enter fullscreen preview/i })).toBeTruthy();
+      expect(screen.getByTestId("share-button").getAttribute("data-compact")).toBe("true");
+      expect(screen.getByTestId("version-history").getAttribute("data-compact")).toBe("true");
+      expect(screen.queryByText("Should be hidden for media previews")).toBeNull();
+      expect(screen.queryByText("Metadata Search")).toBeNull();
+    },
+  );
+});

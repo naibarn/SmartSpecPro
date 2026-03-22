@@ -6,7 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { resolveDocumentPreviewType } from "@/lib/documentManagementUi";
 import { cn } from "@/lib/utils";
-import { getLibraryStatusMeta } from "@/lib/libraryUi";
+import { getLibraryItemProcessingMeta } from "@/lib/libraryUi";
 import { getDocumentAccessLabel, type DocumentLibraryItem } from "@/lib/documentManagementUi";
 import {
   FileText,
@@ -191,7 +191,10 @@ export default function DocumentGridList({
         {items.map((item) => {
           const isFolder = item.item_type === "folder";
           const isChecked = selectedIds?.has(item.id) ?? false;
-          const statusMeta = getLibraryStatusMeta(item.status);
+          const statusMeta = getLibraryItemProcessingMeta({
+            status: item.status,
+            metadata: item.metadata,
+          });
 
           return (
             <div
@@ -251,6 +254,11 @@ export default function DocumentGridList({
 
                     <div className="flex items-start justify-between gap-2 sm:flex-col sm:items-end">
                       {!isFolder && <Badge className={statusMeta.className}>{statusMeta.label}</Badge>}
+                      {!isFolder && statusMeta.searchQuality === "metadata_only" && (
+                        <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
+                          Metadata Search
+                        </Badge>
+                      )}
                       <div className="flex items-center gap-1.5">
                         {!isFolder && (
                           <Button
@@ -295,6 +303,11 @@ export default function DocumentGridList({
                   )}
                   {!isFolder && (
                     <div className="mt-1.5 rounded-lg bg-slate-50 px-2.5 py-2 text-[11px] text-slate-600">
+                      {statusMeta.detail ? (
+                        <div className="mb-1.5 rounded-md bg-white/80 px-2 py-1 text-[11px] text-slate-700">
+                          {statusMeta.detail}
+                        </div>
+                      ) : null}
                       Updated:
                       {" "}
                       <span className="font-medium text-slate-700">

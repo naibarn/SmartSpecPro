@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   closeDocumentEditorTab,
+  syncDocumentEditorTabsFromDocuments,
   upsertDocumentEditorTab,
   type DocumentEditorTab,
 } from "./documentManagementTabs";
@@ -92,5 +93,84 @@ describe("documentManagementTabs", () => {
     expect(result.closed).toBe(true);
     expect(result.nextTabs.map((tab) => tab.id)).toEqual([22, 33]);
     expect(result.nextSelectedId).toBe(33);
+  });
+
+  it("keeps the same tab array when document metadata has not changed", () => {
+    const tabs: DocumentEditorTab[] = [
+      {
+        id: 11,
+        title: "One.md",
+        itemType: "md",
+        accessSource: "owner",
+        openedFromScope: "my_library",
+      },
+      {
+        id: 22,
+        title: "Two.md",
+        itemType: "md",
+        accessSource: "shared_direct",
+        openedFromScope: "shared_with_me",
+      },
+    ];
+
+    const documents = [
+      {
+        id: 11,
+        title: "One.md",
+        item_type: "md",
+        access_source: "owner" as const,
+      },
+      {
+        id: 22,
+        title: "Two.md",
+        item_type: "md",
+        access_source: "shared_direct" as const,
+      },
+    ];
+
+    const nextTabs = syncDocumentEditorTabsFromDocuments(tabs, documents);
+
+    expect(nextTabs).toBe(tabs);
+  });
+
+  it("updates only the tabs whose document metadata changed", () => {
+    const tabs: DocumentEditorTab[] = [
+      {
+        id: 11,
+        title: "One.md",
+        itemType: "md",
+        accessSource: "owner",
+        openedFromScope: "my_library",
+      },
+      {
+        id: 22,
+        title: "Two.md",
+        itemType: "md",
+        accessSource: "shared_direct",
+        openedFromScope: "shared_with_me",
+      },
+    ];
+
+    const documents = [
+      {
+        id: 11,
+        title: "One (renamed).md",
+        item_type: "md",
+        access_source: "owner" as const,
+      },
+      {
+        id: 22,
+        title: "Two.md",
+        item_type: "md",
+        access_source: "shared_direct" as const,
+      },
+    ];
+
+    const nextTabs = syncDocumentEditorTabsFromDocuments(tabs, documents);
+
+    expect(nextTabs).not.toBe(tabs);
+    expect(nextTabs[0]).not.toBe(tabs[0]);
+    expect(nextTabs[1]).toBe(tabs[1]);
+    expect(nextTabs[0].title).toBe("One (renamed).md");
   });
 });

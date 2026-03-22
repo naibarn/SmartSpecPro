@@ -19,6 +19,13 @@ export interface UpsertDocumentEditorTabInput {
   openedFromScope?: DocumentScopeTab;
 }
 
+export interface DocumentTabSourceItem {
+  id: number;
+  title: string;
+  item_type: string;
+  access_source: DocumentAccessSource;
+}
+
 export function upsertDocumentEditorTab(
   tabs: DocumentEditorTab[],
   nextTab: UpsertDocumentEditorTabInput,
@@ -48,6 +55,43 @@ export function upsertDocumentEditorTab(
   const next = [...tabs];
   next[existingIndex] = mergedTab;
   return next;
+}
+
+export function syncDocumentEditorTabsFromDocuments(
+  tabs: DocumentEditorTab[],
+  documents: DocumentTabSourceItem[],
+): DocumentEditorTab[] {
+  if (tabs.length === 0 || documents.length === 0) {
+    return tabs;
+  }
+
+  const byId = new Map(documents.map((item) => [item.id, item]));
+  let changed = false;
+
+  const nextTabs = tabs.map((tab) => {
+    const matched = byId.get(tab.id);
+    if (!matched) {
+      return tab;
+    }
+
+    if (
+      tab.title === matched.title &&
+      tab.itemType === matched.item_type &&
+      tab.accessSource === matched.access_source
+    ) {
+      return tab;
+    }
+
+    changed = true;
+    return {
+      ...tab,
+      title: matched.title,
+      itemType: matched.item_type,
+      accessSource: matched.access_source,
+    };
+  });
+
+  return changed ? nextTabs : tabs;
 }
 
 export interface CloseDocumentEditorTabResult {

@@ -4,6 +4,7 @@ import {
   buildTaskLibraryErrorState,
   buildTaskLibraryStateFromAddResult,
   getAddToLibrarySuccessMessage,
+  getLibraryItemProcessingMeta,
   getLibraryStatusMeta,
   isMediaTaskEligibleForLibraryAdd,
   selectLibrarySearchItem,
@@ -120,6 +121,22 @@ describe("libraryUi helpers", () => {
     expect(getLibraryStatusMeta("failed")).toMatchObject({
       label: "Failed",
       retryable: true,
+    });
+  });
+
+  it("prefers upload pipeline state over coarse item status", () => {
+    expect(getLibraryItemProcessingMeta({
+      status: "indexing",
+      metadata: {
+        upload_pipeline: {
+          stage: "parsing",
+          stageMessage: "Extracting searchable content from the file.",
+        },
+      },
+    })).toMatchObject({
+      label: "Parsing",
+      detail: "Extracting searchable content from the file.",
+      searchQuality: "metadata_only",
     });
   });
 });

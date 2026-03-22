@@ -1,6 +1,6 @@
 export const DOCUMENT_MANAGEMENT_ROUTE = "/document-management";
 
-export type DocumentScopeTab = "my_library" | "my_drive" | "my_onedrive" | "shared_with_me" | "shared_groups" | "trash";
+export type DocumentScopeTab = "my_library" | "private_vault" | "my_drive" | "my_onedrive" | "shared_with_me" | "shared_groups" | "trash";
 export type DocumentSortOrder = "updated_desc" | "created_desc";
 export type DocumentViewMode = "library" | "editor";
 export type DocumentAccessSource = "owner" | "shared_direct" | "shared_group";
@@ -47,6 +47,34 @@ export interface DocumentQueryState {
   folderId?: number | null;
 }
 
+export function toDocumentLibraryItem(item: any): DocumentLibraryItem {
+  const normalizeDateIso = (value: unknown): string => {
+    if (typeof value === "string" && value.trim()) {
+      return value;
+    }
+    if (value instanceof Date) {
+      return value.toISOString();
+    }
+    return new Date().toISOString();
+  };
+
+  return {
+    id: Number(item?.id ?? item?.item_id),
+    item_type: String(item?.itemType ?? item?.item_type ?? "document"),
+    title: String(item?.title ?? "Untitled"),
+    description: item?.description ?? null,
+    source: String(item?.source ?? "document_management"),
+    source_url: item?.sourceUrl ?? item?.source_url ?? null,
+    thumbnail_url: item?.thumbnailUrl ?? item?.thumbnail_url ?? null,
+    metadata: (item?.metadata ?? {}) as Record<string, unknown>,
+    access_source: String(item?.access_source ?? "owner") as DocumentAccessSource,
+    status: String(item?.status ?? "ready") as DocumentLibraryItem["status"],
+    updated_at: normalizeDateIso(item?.updatedAt ?? item?.updated_at),
+    created_at: normalizeDateIso(item?.createdAt ?? item?.created_at),
+    parent_id: item?.parentId ?? item?.parent_id ?? null,
+  };
+}
+
 export const DEFAULT_DOCUMENT_QUERY_STATE: DocumentQueryState = {
   scope: "my_library",
   sort: "updated_desc",
@@ -73,6 +101,7 @@ export function parseDocumentQueryState(search: string): DocumentQueryState {
     scope:
       scope === "shared_with_me" ||
       scope === "shared_groups" ||
+      scope === "private_vault" ||
       scope === "trash" ||
       scope === "my_drive" ||
       scope === "my_onedrive"

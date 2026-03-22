@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,7 +17,7 @@ import type { DocumentLibraryItem, DocumentPreviewType } from "@/lib/documentMan
 import { getLibraryItemProcessingMeta } from "@/lib/libraryUi";
 import { getOfficePreviewDecision } from "@/lib/previewHostSafety";
 import { trpc } from "@/lib/trpc";
-import { AlertTriangle, Check, Copy, ExternalLink, Loader2, Pencil, Upload, X } from "lucide-react";
+import { AlertTriangle, Check, Copy, ExternalLink, Loader2, Maximize2, Minimize2, Minus, Pencil, Plus, Upload, X } from "lucide-react";
 // Heavy viewer components — lazy-loaded so they don't bloat the initial DocumentManagement chunk
 // ROLLBACK: To revert to old editor, replace UnifiedDocumentSurface with:
 // const MarkdownFileEditor = lazy(() => import("./MarkdownFileEditor"));
@@ -29,6 +29,7 @@ const ExcelViewer = lazy(() => import("./ExcelViewer"));
 import { DocumentVersionHistory } from "./DocumentVersionHistory";
 import { ShareButton } from "./ShareButton";
 import { ShareDialog } from "./ShareDialog";
+import type { TiptapEditorTemplate } from "../editor/types";
 
 function getFileExtension(name: string): string {
   const dot = name.lastIndexOf(".");
@@ -46,12 +47,13 @@ interface DocumentPreviewPanelProps {
   isRenamingTitle?: boolean;
   documentId?: number;
   onMarkdownChange?: (value: string) => void;
-  onMarkdownSave?: () => void;
+  onMarkdownSave?: (value?: string) => void;
   onVersionRestore?: () => void;
   onEnterEditMode?: () => void;
   onRenameTitle?: (title: string) => Promise<void> | void;
   onReplaceFile?: (file: File, changeDescription?: string) => Promise<void>;
   isReplacingFile?: boolean;
+  initialEditorTemplate?: TiptapEditorTemplate;
 }
 
 export default function DocumentPreviewPanel({
@@ -71,6 +73,7 @@ export default function DocumentPreviewPanel({
   onRenameTitle,
   onReplaceFile,
   isReplacingFile,
+  initialEditorTemplate,
 }: DocumentPreviewPanelProps) {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState("");
@@ -82,16 +85,26 @@ export default function DocumentPreviewPanel({
   const [promptCopied, setPromptCopied] = useState(false);
   const [pendingReplaceFile, setPendingReplaceFile] = useState<File | null>(null);
   const [replaceDescription, setReplaceDescription] = useState("");
+  const [previewZoom, setPreviewZoom] = useState(100);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const replaceFileInputRef = useRef<HTMLInputElement | null>(null);
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const isPrivateVaultItem = Boolean(
+    item?.metadata?.private_vault === true
+    || item?.metadata?.privateVault === true
+    || item?.metadata?.vault === true,
+  );
+  const editorUploadMetadata = isPrivateVaultItem ? { private_vault: true } : undefined;
 
   const { data: sharesData } = trpc.library.getItemShares.useQuery(
     { itemId: item?.id ?? 0 },
-    { enabled: Boolean(item?.id) },
+    { enabled: Boolean(item?.id) && !isPrivateVaultItem },
   );
 
   useEffect(() => {
     setTitleDraft(item?.title || "");
     setIsEditingTitle(false);
+    setShareDialogOpen(false);
   }, [item?.id, item?.title]);
 
   // Reset replace dialog state when switching items
@@ -104,6 +117,42 @@ export default function DocumentPreviewPanel({
   useEffect(() => {
     setPreviewLoadError(null);
   }, [item?.id, item?.source_url, previewType]);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(document.fullscreenElement === panelRef.current);
+    };
+    handleFullscreenChange();
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
+  }, []);
+
+  const decreasePreviewZoom = useCallback(() => {
+    setPreviewZoom((prev) => Math.max(80, prev - 10));
+  }, []);
+
+  const increasePreviewZoom = useCallback(() => {
+    setPreviewZoom((prev) => Math.min(140, prev + 10));
+  }, []);
+
+  const resetPreviewZoom = useCallback(() => {
+    setPreviewZoom(100);
+  }, []);
+
+  const toggleFullscreen = useCallback(async () => {
+    const el = panelRef.current;
+    if (!el) return;
+
+    try {
+      if (document.fullscreenElement === el) {
+        await document.exitFullscreen();
+      } else if (typeof el.requestFullscreen === "function") {
+        await el.requestFullscreen();
+      }
+    } catch (error) {
+      console.error("[DocumentPreviewPanel] fullscreen toggle failed:", error);
+    }
+  }, []);
 
   useEffect(() => {
     if (previewType !== "pdf" || !item?.source_url) {
@@ -171,12 +220,76 @@ export default function DocumentPreviewPanel({
   const canUseOfficeViewer = Boolean(officePreviewDecision?.canEmbed && officeViewerUrl);
   const officeFallbackMessage = officePreviewDecision?.message
     || "Office preview is limited in this environment. Use Download File for full document access.";
+  const isMarkdownPreview = previewType === "markdown";
+  const isMediaPreview = previewType === "image" || previewType === "video" || previewType === "audio";
+  const canZoomPreview = previewType === "pdf" || (previewType === "office" && Boolean(officeViewerUrl));
+  const previewScale = Math.max(80, Math.min(140, previewZoom)) / 100;
+  const previewZoomStyle = canZoomPreview && previewScale !== 1
+    ? {
+        transform: `scale(${previewScale})`,
+        transformOrigin: "top center",
+        width: `${100 / previewScale}%`,
+        marginInline: "auto",
+      }
+    : undefined;
+  const markdownEditorHeaderActions =
+    isMarkdownPreview ? (
+      <>
+        {documentId ? (
+          <DocumentVersionHistory
+            itemId={documentId}
+            onRestore={onVersionRestore}
+            compact={isMediaPreview}
+          />
+        ) : null}
+        {onReplaceFile ? (
+          <Button
+            size="sm"
+            variant="outline"
+            className={isMediaPreview ? "h-8 w-8 rounded-full p-0" : "gap-1.5 px-2 sm:px-3"}
+            onClick={() => replaceFileInputRef.current?.click()}
+            disabled={isReplacingFile}
+            aria-label="Upload new version"
+            title="Upload new version"
+          >
+            {isReplacingFile ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Upload className="h-4 w-4" />
+            )}
+            {isMediaPreview ? null : <span className="hidden sm:inline">Upload New Version</span>}
+          </Button>
+        ) : null}
+        {!isPrivateVaultItem ? (
+          <ShareButton
+            shareCount={sharesData?.shares?.length ?? 0}
+            onOpenDialog={() => setShareDialogOpen(true)}
+            compact={isMediaPreview}
+          />
+        ) : null}
+        {sourceUrl ? (
+          <Button
+            asChild
+            size="sm"
+            variant="outline"
+            className={isMediaPreview ? "h-8 w-8 rounded-full p-0" : ""}
+            aria-label="Download file"
+            title="Download file"
+          >
+            <a href={sourceUrl} target="_blank" rel="noreferrer" download>
+              <ExternalLink className={isMediaPreview ? "h-4 w-4" : "mr-1 h-4 w-4"} />
+              {isMediaPreview ? null : "Download File"}
+            </a>
+          </Button>
+        ) : null}
+      </>
+    ) : null;
 
   return (
-    <div className="space-y-4 rounded-xl border bg-background/90 p-4 shadow-sm">
-      <div className="rounded-lg border bg-gradient-to-r from-slate-50 via-sky-50 to-cyan-50 p-3">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
+    <div ref={panelRef} className="flex h-full min-h-0 flex-col gap-3 overflow-hidden rounded-xl border bg-background/90 p-3 shadow-sm">
+      <div className={`shrink-0 rounded-lg border bg-gradient-to-r from-slate-50 via-sky-50 to-cyan-50 ${isMarkdownPreview ? "p-2.5" : isMediaPreview ? "p-2.5" : "p-3"}`}>
+        <div className={isMarkdownPreview ? "flex items-center justify-between gap-2" : "flex items-start justify-between gap-3"}>
+          <div className={isMarkdownPreview ? "flex min-w-0 flex-1 items-center gap-2" : isMediaPreview ? "min-w-0 flex-1" : "min-w-0 flex-1"}>
             {isEditingTitle ? (
               <div className="space-y-2">
                 <Input
@@ -234,6 +347,42 @@ export default function DocumentPreviewPanel({
                   </Button>
                 </div>
               </div>
+            ) : isMarkdownPreview ? (
+              <div className="flex min-w-0 items-center gap-2">
+                <h2 className="truncate text-base font-semibold sm:text-lg" title={item.title}>
+                  {item.title}
+                </h2>
+                {canRename ? (
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    className="h-6 w-6 shrink-0 sm:h-7 sm:w-7"
+                    onClick={() => setIsEditingTitle(true)}
+                    title="Rename document"
+                  >
+                    <Pencil className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  </Button>
+                ) : null}
+              </div>
+            ) : isMediaPreview ? (
+              <div className="flex min-w-0 items-center gap-2">
+                <h2 className="truncate text-base font-semibold sm:text-lg" title={item.title}>
+                  {item.title}
+                </h2>
+                {canRename ? (
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    className="h-6 w-6 shrink-0"
+                    onClick={() => setIsEditingTitle(true)}
+                    title="Rename document"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                ) : null}
+              </div>
             ) : (
               <div className="flex items-start gap-2">
                 <h2 className="truncate text-lg font-semibold" title={item.title}>
@@ -253,108 +402,209 @@ export default function DocumentPreviewPanel({
                 ) : null}
               </div>
             )}
-            <div className="mt-2 flex flex-wrap gap-2">
-              <Badge variant="secondary" className="bg-white/70">{item.item_type}</Badge>
+            {!isMarkdownPreview && !isMediaPreview ? (
+              <>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <Badge className={processingMeta.className}>{processingMeta.label}</Badge>
+                  <Badge variant="secondary" className="bg-white/70">{item.item_type}</Badge>
+                  {processingMeta.searchQuality === "metadata_only" ? (
+                    <Badge variant="outline">Metadata Search</Badge>
+                  ) : null}
+                </div>
+                {processingMeta.detail ? (
+                  <div className="mt-2 rounded-md border border-slate-200 bg-white/80 px-3 py-2 text-xs text-slate-700">
+                    {processingMeta.detail}
+                  </div>
+                ) : null}
+              </>
+            ) : null}
+          </div>
+          {isMarkdownPreview ? (
+            <div className="flex shrink-0 items-center gap-1.5">
               <Badge className={processingMeta.className}>{processingMeta.label}</Badge>
-              {processingMeta.searchQuality === "metadata_only" ? (
-                <Badge variant="outline">Metadata Search</Badge>
+            </div>
+          ) : null}
+          {isMediaPreview ? (
+            <div className="flex shrink-0 items-center gap-1.5">
+              <Badge className={processingMeta.className}>{processingMeta.label}</Badge>
+            </div>
+          ) : null}
+          {previewType !== "markdown" ? (
+            <div className={isMediaPreview ? "flex shrink-0 flex-wrap items-center gap-1.5" : "flex shrink-0 flex-wrap items-center gap-2"}>
+              {canZoomPreview ? (
+                <div className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white/80 p-1 shadow-sm">
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    className="h-7 w-7 rounded-full"
+                    onClick={decreasePreviewZoom}
+                    disabled={previewZoom <= 80}
+                    aria-label="Zoom out preview"
+                    title="Zoom out"
+                  >
+                    <Minus className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 rounded-full px-2 text-[11px] font-semibold"
+                    onClick={resetPreviewZoom}
+                    title="Reset zoom"
+                  >
+                    {previewZoom}%
+                  </Button>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    className="h-7 w-7 rounded-full"
+                    onClick={increasePreviewZoom}
+                    disabled={previewZoom >= 140}
+                    aria-label="Zoom in preview"
+                    title="Zoom in"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              ) : null}
+              <Button
+                type="button"
+                size="icon"
+                variant="outline"
+                className="h-8 w-8 rounded-full"
+                onClick={toggleFullscreen}
+                aria-label={isFullscreen ? "Exit fullscreen preview" : "Enter fullscreen preview"}
+                title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+              >
+                {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+              </Button>
+              {documentId ? (
+                <DocumentVersionHistory
+                  itemId={documentId}
+                  onRestore={onVersionRestore}
+                  compact={isMediaPreview}
+                />
+              ) : null}
+              {onReplaceFile ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className={isMediaPreview ? "h-8 w-8 rounded-full p-0" : "gap-1.5 px-2 sm:px-3"}
+                  onClick={() => replaceFileInputRef.current?.click()}
+                  disabled={isReplacingFile}
+                  aria-label="Upload new version"
+                  title="Upload new version"
+                >
+                  {isReplacingFile ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Upload className="h-4 w-4" />
+                  )}
+                  {isMediaPreview ? null : <span className="hidden sm:inline">Upload New Version</span>}
+                </Button>
+              ) : null}
+              {!isPrivateVaultItem ? (
+                <ShareButton
+                  shareCount={sharesData?.shares?.length ?? 0}
+                  onOpenDialog={() => setShareDialogOpen(true)}
+                  compact={isMediaPreview}
+                />
+              ) : null}
+              {sourceUrl ? (
+                <Button
+                  asChild
+                  size="sm"
+                  variant="outline"
+                  className={isMediaPreview ? "h-8 w-8 rounded-full p-0" : "gap-1.5 px-2 sm:px-3"}
+                  aria-label="Download file"
+                  title="Download file"
+                >
+                  <a href={sourceUrl} target="_blank" rel="noreferrer" download>
+                    <ExternalLink className="h-4 w-4" />
+                    {isMediaPreview ? null : <span className="hidden sm:inline">Download File</span>}
+                  </a>
+                </Button>
               ) : null}
             </div>
-            {processingMeta.detail ? (
-              <div className="mt-2 rounded-md border border-slate-200 bg-white/80 px-3 py-2 text-xs text-slate-700">
-                {processingMeta.detail}
-              </div>
-            ) : null}
-          </div>
-          <div className="flex shrink-0 flex-wrap items-center gap-2">
-            {previewType !== "markdown" && documentId ? (
-              <DocumentVersionHistory
-                itemId={documentId}
-                onRestore={onVersionRestore}
-              />
-            ) : null}
-            {onReplaceFile ? (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => replaceFileInputRef.current?.click()}
-                disabled={isReplacingFile}
-              >
-                {isReplacingFile ? (
-                  <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-                ) : (
-                  <Upload className="mr-1 h-4 w-4" />
-                )}
-                Upload New Version
-              </Button>
-            ) : null}
-            <ShareButton
-              shareCount={sharesData?.shares?.length ?? 0}
-              onOpenDialog={() => setShareDialogOpen(true)}
-            />
-            {sourceUrl ? (
-              <Button asChild size="sm" variant="outline">
-                <a href={sourceUrl} target="_blank" rel="noreferrer" download>
-                  <ExternalLink className="mr-1 h-4 w-4" />
-                  Download File
-                </a>
-              </Button>
-            ) : null}
-          </div>
+          ) : null}
         </div>
       </div>
 
       {previewType === "markdown" ? (
-        <Suspense fallback={null}>
-          <UnifiedDocumentSurface
-            initialContent={markdownValue || ""}
-            onContentChange={(value) => onMarkdownChange?.(value)}
-            onSave={() => onMarkdownSave?.()}
-            onVersionRestore={onVersionRestore}
-            onEnterEditMode={onEnterEditMode}
-            updatedAt={markdownUpdatedAt}
-            isSaving={isMarkdownSaving}
-            errorMessage={markdownError}
-            documentId={documentId}
-          />
-        </Suspense>
+        <div className="flex-1 min-h-0 overflow-hidden">
+          <Suspense fallback={null}>
+            <UnifiedDocumentSurface
+              initialContent={markdownValue || ""}
+              onContentChange={(value) => onMarkdownChange?.(value)}
+              onSave={(markdown) => onMarkdownSave?.(markdown)}
+              onVersionRestore={onVersionRestore}
+              onEnterEditMode={onEnterEditMode}
+              updatedAt={markdownUpdatedAt}
+              isSaving={isMarkdownSaving}
+              errorMessage={markdownError}
+              documentId={documentId}
+              initialEditorTemplate={initialEditorTemplate}
+              editorHeaderActions={markdownEditorHeaderActions}
+              editorUploadMetadata={editorUploadMetadata}
+              editorLibraryScope={isPrivateVaultItem ? "private_vault" : "all"}
+            />
+          </Suspense>
+        </div>
       ) : null}
 
       {previewType === "image" && sourceUrl ? (
-        <div className="space-y-2 rounded-xl border bg-gradient-to-br from-slate-100 via-slate-50 to-sky-100 p-3 shadow-inner">
-          <img
-            src={sourceUrl}
-            alt={item.title}
-            className="max-h-[70vh] w-full rounded-lg border border-white/80 bg-white object-contain shadow-sm"
-            onError={() => setPreviewLoadError("Image preview failed to load. Try Download File.")}
-          />
-          {previewLoadError ? (
-            <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-              {previewLoadError}
+        <div
+          data-testid="media-preview-body"
+          className="flex flex-1 min-h-0 flex-col overflow-hidden rounded-xl border bg-gradient-to-br from-slate-100 via-slate-50 to-sky-100 p-2 shadow-inner"
+        >
+          <div className="flex h-full min-h-0 flex-col gap-3 p-1.5">
+            <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-lg border border-white/80 bg-white/90 p-2 shadow-sm">
+              <img
+                src={sourceUrl}
+                alt={item.title}
+                className="max-h-full w-auto max-w-full rounded-md object-contain"
+                onError={() => setPreviewLoadError("Image preview failed to load. Try Download File.")}
+              />
             </div>
-          ) : null}
+            {previewLoadError ? (
+              <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                {previewLoadError}
+              </div>
+            ) : null}
+          </div>
         </div>
       ) : null}
 
       {previewType === "video" && sourceUrl ? (
-        <div className="space-y-2 rounded-xl border bg-gradient-to-br from-slate-100 via-slate-50 to-cyan-100 p-3 shadow-inner">
-          <video
-            src={sourceUrl}
-            controls
-            className="max-h-[70vh] w-full rounded-lg border border-white/80 bg-black shadow-sm"
-            onError={() => setPreviewLoadError("Video preview failed to load. Try Download File.")}
-          />
-          {previewLoadError ? (
-            <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-              {previewLoadError}
+        <div
+          data-testid="media-preview-body"
+          className="flex flex-1 min-h-0 flex-col overflow-hidden rounded-xl border bg-gradient-to-br from-slate-100 via-slate-50 to-cyan-100 p-2 shadow-inner"
+        >
+          <div className="flex h-full min-h-0 flex-col gap-3 p-1.5">
+            <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-lg border border-white/80 bg-black/95 p-2 shadow-sm">
+              <video
+                src={sourceUrl}
+                controls
+                className="max-h-full w-auto max-w-full rounded-md bg-black object-contain shadow-sm"
+                onError={() => setPreviewLoadError("Video preview failed to load. Try Download File.")}
+              />
             </div>
-          ) : null}
+            {previewLoadError ? (
+              <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                {previewLoadError}
+              </div>
+            ) : null}
+          </div>
         </div>
       ) : null}
 
       {previewType === "audio" && sourceUrl ? (
-        <div className="rounded-xl border bg-gradient-to-r from-slate-50 to-sky-50 p-4">
-          <audio src={sourceUrl} controls className="w-full" />
+        <div className="flex flex-1 min-h-0 flex-col overflow-auto rounded-xl border bg-gradient-to-r from-slate-50 to-sky-50 p-3">
+          <div className="flex min-h-[24vh] items-center">
+            <audio src={sourceUrl} controls className="w-full" />
+          </div>
         </div>
       ) : null}
 
@@ -393,12 +643,14 @@ export default function DocumentPreviewPanel({
               Loading PDF preview...
             </div>
           ) : (
-            <iframe
-              title={`preview-${item.id}`}
-              src={pdfObjectUrl || sourceUrl}
-              className="h-[70vh] w-full rounded-lg border bg-white"
-              onError={() => setPreviewLoadError("PDF preview failed to load. Try Download File.")}
-            />
+            <div style={previewZoomStyle}>
+              <iframe
+                title={`preview-${item.id}`}
+                src={pdfObjectUrl || sourceUrl}
+                className="h-[70vh] w-full rounded-lg border bg-white"
+                onError={() => setPreviewLoadError("PDF preview failed to load. Try Download File.")}
+              />
+            </div>
           )}
           {previewLoadError ? (
             <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
@@ -421,12 +673,14 @@ export default function DocumentPreviewPanel({
         <div className="space-y-2 rounded-xl border bg-slate-50 p-2 shadow-inner">
           {canUseOfficeViewer && officeViewerUrl ? (
             <>
-              <iframe
-                title={`office-preview-${item.id}`}
-                src={officeViewerUrl}
-                className="h-[70vh] w-full rounded-lg border bg-white"
-                onError={() => setPreviewLoadError("Office preview failed to load. Try Download File.")}
-              />
+              <div style={previewZoomStyle}>
+                <iframe
+                  title={`office-preview-${item.id}`}
+                  src={officeViewerUrl}
+                  className="h-[70vh] w-full rounded-lg border bg-white"
+                  onError={() => setPreviewLoadError("Office preview failed to load. Try Download File.")}
+                />
+              </div>
               <div className="px-2 pb-1 text-xs text-muted-foreground">
                 Office preview uses Microsoft online viewer. If it cannot render this URL, use Open file.
               </div>

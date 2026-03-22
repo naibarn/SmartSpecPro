@@ -28,12 +28,24 @@ export interface LibrarySearchResultItem {
   item_id: number;
   item_type: string;
   title: string;
+  description?: string | null;
   source_url: string | null;
   thumbnail_url: string | null;
   status: string;
   source: string;
   provider_name: string | null;
   model_name: string | null;
+  metadata?: Record<string, unknown>;
+  access_source?: string;
+  parent_id?: number | null;
+}
+
+export interface LibraryUploadPipelineLike {
+  stage?: string | null;
+  stageMessage?: string | null;
+  searchQuality?: string | null;
+  parseError?: string | null;
+  warnings?: string[] | null;
 }
 
 export function isMediaTaskEligibleForLibraryAdd(task: MediaTaskForLibraryUI): boolean {
@@ -133,6 +145,95 @@ export function getLibraryStatusMeta(status?: string | null): {
         className: "bg-slate-100 text-slate-700",
         retryable: false,
       };
+  }
+}
+
+export function getLibraryUploadPipeline(metadata?: Record<string, unknown> | null): LibraryUploadPipelineLike | null {
+  if (!metadata || typeof metadata !== "object") {
+    return null;
+  }
+
+  const pipeline = metadata.upload_pipeline;
+  if (!pipeline || typeof pipeline !== "object" || Array.isArray(pipeline)) {
+    return null;
+  }
+
+  return pipeline as LibraryUploadPipelineLike;
+}
+
+export function getLibraryItemProcessingMeta(input: {
+  status?: string | null;
+  metadata?: Record<string, unknown> | null;
+}): {
+  label: string;
+  className: string;
+  retryable: boolean;
+  detail: string | null;
+  searchQuality: "full_text" | "metadata_only";
+} {
+  const pipeline = getLibraryUploadPipeline(input.metadata);
+  const stage = (pipeline?.stage || "").toLowerCase();
+  const searchQuality = pipeline?.searchQuality === "full_text" || input.metadata?.search_quality === "full_text"
+    ? "full_text"
+    : "metadata_only";
+
+  switch (stage) {
+    case "uploading":
+      return {
+        label: "Uploading",
+        className: "bg-sky-100 text-sky-800",
+        retryable: false,
+        detail: pipeline?.stageMessage ?? "File transfer is still in progress.",
+        searchQuality,
+      };
+    case "uploaded":
+      return {
+        label: "Uploaded",
+        className: "bg-slate-100 text-slate-700",
+        retryable: false,
+        detail: pipeline?.stageMessage ?? "Upload finished. Processing will start shortly.",
+        searchQuality,
+      };
+    case "parsing":
+      return {
+        label: "Parsing",
+        className: "bg-violet-100 text-violet-800",
+        retryable: false,
+        detail: pipeline?.stageMessage ?? "Extracting searchable content from the file.",
+        searchQuality,
+      };
+    case "parsed":
+      return {
+        label: "Parsed",
+        className: "bg-cyan-100 text-cyan-800",
+        retryable: false,
+        detail: pipeline?.stageMessage ?? "Content extracted successfully.",
+        searchQuality,
+      };
+    case "quarantined":
+      return {
+        label: "Quarantined",
+        className: "bg-rose-100 text-rose-800",
+        retryable: false,
+        detail: pipeline?.stageMessage ?? pipeline?.parseError ?? "This upload was blocked for safety review.",
+        searchQuality,
+      };
+    case "failed":
+      return {
+        label: "Failed",
+        className: "bg-red-100 text-red-700",
+        retryable: true,
+        detail: pipeline?.parseError ?? pipeline?.stageMessage ?? "Upload processing failed.",
+        searchQuality,
+      };
+    default: {
+      const fallback = getLibraryStatusMeta(input.status);
+      return {
+        ...fallback,
+        detail: pipeline?.stageMessage ?? null,
+        searchQuality,
+      };
+    }
   }
 }
 

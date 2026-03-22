@@ -46,12 +46,17 @@ export function LibraryFilePicker({
   disabled,
 }: LibraryFilePickerProps) {
   const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [triggerWidth, setTriggerWidth] = useState(0);
 
   const docsQuery = trpc.library.listDocuments.useQuery(
     { limit: 50 },
-    { staleTime: 60_000, enabled: open },
+    { staleTime: 60_000, enabled: open && query.trim().length === 0 },
+  );
+  const searchQuery = trpc.library.search.useQuery(
+    { query: query.trim() || undefined, limit: 50 },
+    { staleTime: 30_000, enabled: open && query.trim().length > 0 },
   );
 
   useEffect(() => {
@@ -60,7 +65,21 @@ export function LibraryFilePicker({
     }
   }, [open]);
 
-  const allResults = docsQuery.data?.results ?? [];
+  useEffect(() => {
+    if (!open && query) {
+      setQuery("");
+    }
+  }, [open, query]);
+
+  const allResults = (
+    query.trim().length > 0
+      ? (searchQuery.data?.results ?? []).map((item: any) => ({
+          ...item,
+          id: item.id ?? item.item_id,
+        }))
+      : (docsQuery.data?.results ?? [])
+  );
+  const isLoading = docsQuery.isLoading || searchQuery.isLoading;
 
   // Filter by extension if specified
   const matchingResults =
@@ -97,7 +116,7 @@ export function LibraryFilePicker({
         align="start"
       >
         <Command>
-          <CommandInput placeholder="Search files…" />
+          <CommandInput placeholder="Search files…" value={query} onValueChange={setQuery} />
           <CommandList>
             <CommandEmpty>No matching files found.</CommandEmpty>
             <CommandGroup>
@@ -118,7 +137,7 @@ export function LibraryFilePicker({
                 <span className="italic text-muted-foreground">None</span>
               </CommandItem>
 
-              {docsQuery.isLoading && (
+              {isLoading && (
                 <div className="flex items-center justify-center py-4">
                   <Loader2 className="h-4 w-4 animate-spin" />
                 </div>
@@ -156,7 +175,7 @@ export function LibraryFilePicker({
                 );
               })}
 
-              {matchingResults.length === 0 && !docsQuery.isLoading && (
+              {matchingResults.length === 0 && !isLoading && (
                 <div className="px-2 pb-2 pt-1 text-[11px] text-muted-foreground">
                   {allowedExtensions && allowedExtensions.length > 0
                     ? `No files with extension: ${allowedExtensions.map((e) => `.${e}`).join(", ")}`

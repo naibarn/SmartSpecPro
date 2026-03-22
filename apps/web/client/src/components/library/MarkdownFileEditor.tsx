@@ -105,20 +105,32 @@ export default function MarkdownFileEditor({
   }, [audioSearchQuery]);
 
   const imageSearchInput = useMemo(() => ({
-    query: debouncedImageQuery || undefined,
     limit: 50,
     offset: 0,
     scope: "all" as const,
     filters: { itemType: "image" },
-  }), [debouncedImageQuery]);
+  }), []);
 
-  const { data: imageSearchData, isLoading: imageSearchLoading } =
+  const { data: imageListData, isLoading: imageListLoading } =
     trpc.library.listDocuments.useQuery(imageSearchInput, {
-      enabled: imagePickerOpen,
+      enabled: imagePickerOpen && debouncedImageQuery.length === 0,
+    });
+  const { data: imageSearchData, isLoading: imageSemanticLoading } =
+    trpc.library.search.useQuery({
+      ...imageSearchInput,
+      query: debouncedImageQuery || undefined,
+    }, {
+      enabled: imagePickerOpen && debouncedImageQuery.length > 0,
     });
 
   const availableImages = useMemo(() => {
-    return (imageSearchData?.results || [])
+    const results = debouncedImageQuery.length > 0
+      ? (imageSearchData?.results || []).map((item: any) => ({
+          ...item,
+          id: item.id ?? item.item_id,
+        }))
+      : (imageListData?.results || []);
+    return results
       .filter((item: any) => Boolean(item.source_url))
       .map((item: any) => ({
         id: item.id as number,
@@ -126,23 +138,36 @@ export default function MarkdownFileEditor({
         source_url: item.source_url as string | null,
         thumbnail_url: (item.thumbnail_url ?? item.source_url) as string | null,
       }));
-  }, [imageSearchData]);
+  }, [debouncedImageQuery.length, imageListData, imageSearchData]);
+  const imageSearchLoading = imageListLoading || imageSemanticLoading;
 
   const videoSearchInput = useMemo(() => ({
-    query: debouncedVideoQuery || undefined,
     limit: 50,
     offset: 0,
     scope: "all" as const,
     filters: { itemType: "video" },
-  }), [debouncedVideoQuery]);
+  }), []);
 
-  const { data: videoSearchData, isLoading: videoSearchLoading } =
+  const { data: videoListData, isLoading: videoListLoading } =
     trpc.library.listDocuments.useQuery(videoSearchInput, {
-      enabled: videoPickerOpen,
+      enabled: videoPickerOpen && debouncedVideoQuery.length === 0,
+    });
+  const { data: videoSearchData, isLoading: videoSemanticLoading } =
+    trpc.library.search.useQuery({
+      ...videoSearchInput,
+      query: debouncedVideoQuery || undefined,
+    }, {
+      enabled: videoPickerOpen && debouncedVideoQuery.length > 0,
     });
 
   const availableVideos = useMemo(() => {
-    return (videoSearchData?.results || [])
+    const results = debouncedVideoQuery.length > 0
+      ? (videoSearchData?.results || []).map((item: any) => ({
+          ...item,
+          id: item.id ?? item.item_id,
+        }))
+      : (videoListData?.results || []);
+    return results
       .filter((item: any) => Boolean(item.source_url))
       .map((item: any) => ({
         id: item.id as number,
@@ -150,30 +175,44 @@ export default function MarkdownFileEditor({
         source_url: item.source_url as string | null,
         thumbnail_url: item.thumbnail_url as string | null,
       }));
-  }, [videoSearchData]);
+  }, [debouncedVideoQuery.length, videoListData, videoSearchData]);
+  const videoSearchLoading = videoListLoading || videoSemanticLoading;
 
   const audioSearchInput = useMemo(() => ({
-    query: debouncedAudioQuery || undefined,
     limit: 50,
     offset: 0,
     scope: "all" as const,
     filters: { itemType: "audio" },
-  }), [debouncedAudioQuery]);
+  }), []);
 
-  const { data: audioSearchData, isLoading: audioSearchLoading } =
+  const { data: audioListData, isLoading: audioListLoading } =
     trpc.library.listDocuments.useQuery(audioSearchInput, {
-      enabled: audioPickerOpen,
+      enabled: audioPickerOpen && debouncedAudioQuery.length === 0,
+    });
+  const { data: audioSearchData, isLoading: audioSemanticLoading } =
+    trpc.library.search.useQuery({
+      ...audioSearchInput,
+      query: debouncedAudioQuery || undefined,
+    }, {
+      enabled: audioPickerOpen && debouncedAudioQuery.length > 0,
     });
 
   const availableAudios = useMemo(() => {
-    return (audioSearchData?.results || [])
+    const results = debouncedAudioQuery.length > 0
+      ? (audioSearchData?.results || []).map((item: any) => ({
+          ...item,
+          id: item.id ?? item.item_id,
+        }))
+      : (audioListData?.results || []);
+    return results
       .filter((item: any) => Boolean(item.source_url))
       .map((item: any) => ({
         id: item.id as number,
         title: item.title as string,
         source_url: item.source_url as string | null,
       }));
-  }, [audioSearchData]);
+  }, [audioListData, audioSearchData, debouncedAudioQuery.length]);
+  const audioSearchLoading = audioListLoading || audioSemanticLoading;
 
   function wrapSelection(prefix: string, suffix: string, fallbackText: string) {
     if (!editorRef.current) return;

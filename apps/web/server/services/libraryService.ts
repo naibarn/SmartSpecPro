@@ -36,6 +36,14 @@ import {
   hasEnoughCredits,
   refundCredits,
 } from "./creditService";
+import {
+  buildUploadPipelineState,
+  computeLibraryUploadChecksum,
+  enrichLibraryUploadContent,
+  type LibraryUploadPipelineStage,
+  validateLibraryUploadSignature,
+} from "./libraryUploadPipeline";
+import { getEffectiveVectorProviderConfig, resolveVectorProvider } from "./vectorProvider";
 import type { EffectivePermission, PermissionSource } from "../../shared/types/library";
 
 export type LibraryPermissionLevel = "read" | "write" | "delete" | "owner";
@@ -48,6 +56,7 @@ export interface LibraryActor {
   userId: number;
   tenantId: LibraryTenantId;
   role?: string | null;
+  privateVaultUnlocked?: boolean;
 }
 
 export interface LibrarySourceLinkInput {
@@ -156,6 +165,8 @@ export interface LibrarySearchInput {
   limit?: number;
   offset?: number;
   filters?: LibrarySearchFilters;
+  scope?: LibraryDocumentScope;
+  folderId?: number | null;
 }
 
 export interface UploadLibraryFileInput {
@@ -172,6 +183,7 @@ export interface UploadLibraryFileResult {
   item: LibraryItemDto;
   storageKey: string;
   indexJob: LibraryEnqueueResult;
+  duplicateOfItemId?: number | null;
   billing: {
     creditsCharged: number;
     category: string;
@@ -183,12 +195,32 @@ export interface UploadLibraryFileResult {
   };
 }
 
+export interface LibraryUploadStatusDto {
+  itemId: number;
+  item: LibraryItemDto;
+  stage: LibraryUploadPipelineStage;
+  stageMessage: string | null;
+  parserJobId: string | null;
+  parserStatus: string | null;
+  indexJobId: number | null;
+  indexJobStatus: string | null;
+  checksumSha256: string | null;
+  extractor: string | null;
+  searchQuality: "full_text" | "metadata_only";
+  parseError: string | null;
+  warnings: string[];
+  duplicateOfItemId: number | null;
+  readyForSearch: boolean;
+  updatedAt: string;
+}
+
 export interface ReplaceLibraryFileInput {
   itemId: number;
   fileName: string;
   fileType: string;
   fileBase64: string;
   changeDescription?: string;
+  metadata?: Record<string, unknown>;
 }
 
 export interface ReplaceLibraryFileResult {
@@ -201,6 +233,7 @@ export interface LibrarySearchResultV1 {
   item_id: number;
   item_type: string;
   title: string;
+  description: string | null;
   source_url: string | null;
   thumbnail_url: string | null;
   status: string;
@@ -208,6 +241,9 @@ export interface LibrarySearchResultV1 {
   provider_name: string | null;
   model_name: string | null;
   owner_user_id: number;
+  parent_id: number | null;
+  metadata: Record<string, unknown>;
+  access_source: LibraryDocumentAccessSource;
   created_at: string;
   updated_at: string;
   combined_score: number;
@@ -231,7 +267,40 @@ export interface LibrarySearchResponseV1 {
   results: LibrarySearchResultV1[];
 }
 
-export type LibraryDocumentScope = "all" | "my_library" | "shared_with_me" | "shared_groups";
+const PYTHON_BACKEND_URL = process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
+const DEFAULT_LIBRARY_PGVECTOR_SEARCH_TIMEOUT_MS = 1_500;
+const DEFAULT_LIBRARY_PGVECTOR_CANDIDATE_LIMIT = 1_000;
+const MAX_LIBRARY_PGVECTOR_QUERY_LENGTH = 2_000;
+
+function parseBoundedIntegerEnv(params: {
+  name: string;
+  fallback: number;
+  min: number;
+  max: number;
+}): number {
+  const raw = process.env[params.name];
+  if (!raw) return params.fallback;
+
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed)) return params.fallback;
+  return Math.min(Math.max(parsed, params.min), params.max);
+}
+
+const LIBRARY_PGVECTOR_SEARCH_TIMEOUT_MS = parseBoundedIntegerEnv({
+  name: "LIBRARY_PGVECTOR_SEARCH_TIMEOUT_MS",
+  fallback: DEFAULT_LIBRARY_PGVECTOR_SEARCH_TIMEOUT_MS,
+  min: 100,
+  max: 10_000,
+});
+
+const LIBRARY_PGVECTOR_CANDIDATE_LIMIT = parseBoundedIntegerEnv({
+  name: "LIBRARY_PGVECTOR_CANDIDATE_LIMIT",
+  fallback: DEFAULT_LIBRARY_PGVECTOR_CANDIDATE_LIMIT,
+  min: 1,
+  max: 5_000,
+});
+
+export type LibraryDocumentScope = "all" | "my_library" | "private_vault" | "shared_with_me" | "shared_groups";
 export type LibraryDocumentSort = "updated_desc" | "created_desc";
 export type LibraryDocumentAccessSource = "owner" | "shared_direct" | "shared_group";
 
@@ -274,6 +343,65 @@ export interface LibraryDocumentListItem {
   has_shared_out: boolean;
   created_at: string;
   updated_at: string;
+}
+
+async function fetchPgvectorLibraryScores(params: {
+  tenantId: string;
+  query: string;
+  itemIds: number[];
+}): Promise<Map<number, number> | null> {
+  if (!params.query.trim() || params.itemIds.length === 0) {
+    return new Map();
+  }
+
+  const proxyToken = process.env.SMARTSPEC_PROXY_TOKEN;
+  if (!proxyToken) {
+    return null;
+  }
+
+  try {
+    const controller = new AbortController();
+    const timeoutHandle = setTimeout(() => controller.abort(), LIBRARY_PGVECTOR_SEARCH_TIMEOUT_MS);
+    let response: Response;
+    try {
+      response = await fetch(`${PYTHON_BACKEND_URL}/api/internal/library/search`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-proxy-token": proxyToken,
+        },
+        body: JSON.stringify({
+          tenant_id: params.tenantId,
+          query: params.query.slice(0, MAX_LIBRARY_PGVECTOR_QUERY_LENGTH),
+          candidate_item_ids: params.itemIds.slice(0, LIBRARY_PGVECTOR_CANDIDATE_LIMIT),
+        }),
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeoutHandle);
+    }
+
+    if (!response.ok) {
+      console.warn("[library.search] pgvector native search failed:", response.status);
+      return null;
+    }
+
+    const payload = (await response.json()) as {
+      success?: boolean;
+      results?: Array<{ item_id: number; vector_score: number }>;
+    };
+
+    return new Map(
+      (payload.results || []).map((row) => [Number(row.item_id), Number(row.vector_score) || 0]),
+    );
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      console.warn("[library.search] pgvector native search timed out");
+      return null;
+    }
+    console.warn("[library.search] pgvector native search error:", error);
+    return null;
+  }
 }
 
 export interface LibraryDocumentListResponse {
@@ -322,6 +450,22 @@ function normalizeLibraryTenantId(tenantId: LibraryTenantId): string {
     throw new Error("Invalid tenant ID");
   }
   return normalized;
+}
+
+function isPrivateVaultLibraryItem(item: Pick<LibraryItemRow, "metadata">): boolean {
+  const metadata = normalizeLibraryMetadata(item.metadata as Record<string, unknown>);
+  return metadata.private_vault === true || metadata.privateVault === true || metadata.vault === true;
+}
+
+function isPrivateVaultMetadata(metadata: unknown): boolean {
+  const normalized = normalizeLibraryMetadata(metadata as Record<string, unknown>);
+  return normalized.private_vault === true || normalized.privateVault === true || normalized.vault === true;
+}
+
+function hasPrivateVaultAccess(
+  actor: LibraryActor,
+): boolean {
+  return actor.privateVaultUnlocked === true;
 }
 
 function getLibraryQueueBackpressureState() {
@@ -399,6 +543,7 @@ const ALLOWED_LIBRARY_UPLOAD_EXTENSIONS = new Set([
   "pdf",
   "txt", "md", "markdown", "csv", "json", "html", "htm", "xml",
   "doc", "docx", "ppt", "pptx", "xls", "xlsx",
+  "zip", "rar", "7z",
 ]);
 
 const ALLOWED_LIBRARY_UPLOAD_MIME_PREFIXES = [
@@ -418,6 +563,17 @@ const ALLOWED_LIBRARY_UPLOAD_MIME_TYPES = new Set([
   "application/vnd.openxmlformats-officedocument.presentationml.presentation",
   "application/vnd.ms-excel",
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/zip",
+  "application/x-zip-compressed",
+  "application/vnd.rar",
+  "application/x-rar-compressed",
+  "application/x-7z-compressed",
+]);
+const TEXT_LIKE_LIBRARY_UPLOAD_EXTENSIONS = new Set([
+  "txt", "md", "markdown", "csv", "json", "xml", "html", "htm",
+  "js", "jsx", "ts", "tsx", "css", "scss", "less",
+  "py", "rb", "java", "c", "cpp", "cs", "go", "rs",
+  "sql", "sh", "yaml", "yml", "toml", "ini",
 ]);
 
 function extractFileExtension(fileName: string): string {
@@ -455,6 +611,68 @@ function inferLibraryItemType(fileType: string, extension: string): string {
     return "text";
   }
   return "file";
+}
+
+function isMarkdownLibraryUpload(extension: string): boolean {
+  return extension === "md" || extension === "markdown";
+}
+
+function extractTextLikeUploadContent(
+  fileBuffer: Buffer<ArrayBufferLike>,
+  fileType: string,
+  extension: string,
+): string | null {
+  const normalizedFileType = fileType.toLowerCase();
+  const isTextLikeMime =
+    normalizedFileType.startsWith("text/")
+    || normalizedFileType === "application/json"
+    || normalizedFileType === "application/xml";
+  const isTextLikeExtension = TEXT_LIKE_LIBRARY_UPLOAD_EXTENSIONS.has(extension);
+
+  if (!isTextLikeMime && !isTextLikeExtension) {
+    return null;
+  }
+
+  const text = fileBuffer.toString("utf8").replace(/\r\n/g, "\n").trim();
+  return text.length > 0 ? text : null;
+}
+
+async function upsertLibrarySourceTextChunk(
+  db: DbClient,
+  params: {
+    tenantId: string;
+    libraryItemId: number;
+    content: string;
+    source: string;
+  },
+): Promise<void> {
+  await db
+    .insert(libraryChunks)
+    .values({
+      tenantId: params.tenantId,
+      libraryItemId: params.libraryItemId,
+      chunkIndex: 0,
+      content: params.content,
+      contentType: "markdown_source",
+      tokenCount: null,
+      vectorRefId: null,
+      metadata: {
+        source: params.source,
+      },
+      createdAt: new Date(),
+    })
+    .onConflictDoUpdate({
+      target: [libraryChunks.libraryItemId, libraryChunks.chunkIndex],
+      set: {
+        content: params.content,
+        contentType: "markdown_source",
+        tokenCount: null,
+        vectorRefId: null,
+        metadata: {
+          source: params.source,
+        },
+      },
+    });
 }
 
 function isAllowedLibraryUploadMime(fileType: string): boolean {
@@ -533,6 +751,101 @@ export function normalizeLibraryMetadata(
   }
 
   return output;
+}
+
+function buildLibraryUploadMetadata(
+  baseMetadata: Record<string, unknown> | undefined,
+  uploadFields: {
+    fileName: string;
+    fileType: string;
+    extension: string;
+    fileSizeBytes: number;
+    checksumSha256: string;
+    extractedText: string | null;
+    extractor: string | null;
+    searchQuality: "full_text" | "metadata_only";
+    stage: LibraryUploadPipelineStage;
+    stageMessage?: string;
+    parseError?: string | null;
+    warnings?: string[];
+    svgSanitized?: boolean;
+    duplicateOfItemId?: number | null;
+    extraMetadata?: Record<string, unknown>;
+  },
+): Record<string, unknown> {
+  const pipeline = buildUploadPipelineState(uploadFields.stage, {
+    checksumSha256: uploadFields.checksumSha256,
+    extractor: uploadFields.extractor,
+    searchQuality: uploadFields.searchQuality,
+    parseError: uploadFields.parseError ?? null,
+    warnings: uploadFields.warnings ?? [],
+    stageMessage: uploadFields.stageMessage,
+  });
+
+  return normalizeLibraryMetadata({
+    ...(baseMetadata || {}),
+    file_name: uploadFields.fileName,
+    file_type: uploadFields.fileType,
+    extension: uploadFields.extension || null,
+    file_size_bytes: uploadFields.fileSizeBytes,
+    source_type: "document_upload",
+    extracted_text: uploadFields.extractedText || undefined,
+    extraction_method: uploadFields.extractor || undefined,
+    content_checksum_sha256: uploadFields.checksumSha256,
+    search_quality: uploadFields.searchQuality,
+    upload_pipeline: pipeline,
+    upload_pipeline_updated_at: pipeline.updatedAt,
+    parse_error: uploadFields.parseError || undefined,
+    parse_warnings: uploadFields.warnings?.length ? uploadFields.warnings : undefined,
+    duplicate_of_item_id: uploadFields.duplicateOfItemId ?? undefined,
+    svg_sanitized: uploadFields.svgSanitized || undefined,
+    ...(uploadFields.extraMetadata || {}),
+  });
+}
+
+function getUploadPipelineMetadata(
+  metadata: Record<string, unknown> | null | undefined,
+): Record<string, unknown> {
+  if (!metadata || Array.isArray(metadata)) {
+    return {};
+  }
+
+  const pipeline = metadata.upload_pipeline;
+  if (!pipeline || Array.isArray(pipeline) || typeof pipeline !== "object") {
+    return {};
+  }
+
+  return pipeline as Record<string, unknown>;
+}
+
+async function findDuplicateUploadedLibraryItem(
+  db: DbClient,
+  params: {
+    tenantId: string;
+    userId: number;
+    checksumSha256: string;
+    excludeItemId?: number;
+  },
+): Promise<LibraryItemRow | null> {
+  const predicates = [
+    eq(libraryItems.tenantId, params.tenantId),
+    eq(libraryItems.ownerUserId, params.userId),
+    eq(libraryItems.source, "document_upload"),
+    isNull(libraryItems.deletedAt),
+    sql`coalesce(${libraryItems.metadata}->>'content_checksum_sha256', '') = ${params.checksumSha256}`,
+  ];
+
+  if (params.excludeItemId) {
+    predicates.push(ne(libraryItems.id, params.excludeItemId));
+  }
+
+  const rows = await db
+    .select()
+    .from(libraryItems)
+    .where(and(...predicates))
+    .limit(1);
+
+  return rows[0] ?? null;
 }
 
 function tokenize(value: string): string[] {
@@ -905,11 +1218,14 @@ export async function getUserEffectivePermission(
 }
 
 export function canReadLibraryItem(
-  item: Pick<LibraryItemRow, "tenantId" | "ownerUserId" | "visibility">,
+  item: Pick<LibraryItemRow, "tenantId" | "ownerUserId" | "visibility" | "metadata">,
   actor: LibraryActor,
   permissionLevel: LibraryPermissionLevel | null,
 ): boolean {
   if (normalizeLibraryTenantId(item.tenantId) !== normalizeLibraryTenantId(actor.tenantId)) return false;
+  if (isPrivateVaultLibraryItem(item)) {
+    return item.ownerUserId === actor.userId && hasPrivateVaultAccess(actor);
+  }
   if (actor.role === "admin") return true;
   if (item.ownerUserId === actor.userId) return true;
   if (item.visibility === "public") return true;
@@ -918,11 +1234,14 @@ export function canReadLibraryItem(
 }
 
 export function canManageLibraryItem(
-  item: Pick<LibraryItemRow, "tenantId" | "ownerUserId">,
+  item: Pick<LibraryItemRow, "tenantId" | "ownerUserId" | "metadata">,
   actor: LibraryActor,
   permissionLevel: LibraryPermissionLevel | null,
 ): boolean {
   if (normalizeLibraryTenantId(item.tenantId) !== normalizeLibraryTenantId(actor.tenantId)) return false;
+  if (isPrivateVaultLibraryItem(item)) {
+    return item.ownerUserId === actor.userId && hasPrivateVaultAccess(actor);
+  }
   if (actor.role === "admin") return true;
   if (item.ownerUserId === actor.userId) return true;
   return permissionLevel === "write" || permissionLevel === "delete" || permissionLevel === "owner";
@@ -960,6 +1279,10 @@ export async function createLibraryItem(
 
   const validatedSourceUrl = validateLibraryItemUrlField("sourceUrl", input.sourceUrl);
   const validatedThumbnailUrl = validateLibraryItemUrlField("thumbnailUrl", input.thumbnailUrl);
+
+  if (isPrivateVaultMetadata(input.metadata) && !hasPrivateVaultAccess(actor)) {
+    throw new Error("Private vault is locked");
+  }
 
   if (input.sourceLink) {
     const existing = await db
@@ -1163,6 +1486,10 @@ export async function uploadLibraryFile(
     throw new Error("File type is not supported for library upload");
   }
 
+  if (isPrivateVaultMetadata(input.metadata) && !hasPrivateVaultAccess(actor)) {
+    throw new Error("Private vault is locked");
+  }
+
   if (ext && !ALLOWED_LIBRARY_UPLOAD_EXTENSIONS.has(ext)) {
     throw new Error(`File extension .${ext} is not allowed`);
   }
@@ -1189,7 +1516,48 @@ export async function uploadLibraryFile(
     fileBuffer = sanitized.sanitizedBuffer;
   }
 
+  validateLibraryUploadSignature(fileBuffer, fileType, ext);
+  const checksumSha256 = computeLibraryUploadChecksum(fileBuffer);
+  const duplicate = await findDuplicateUploadedLibraryItem(db, {
+    tenantId,
+    userId: actor.userId,
+    checksumSha256,
+  });
+  if (duplicate) {
+    return {
+      item: toLibraryItemDto(duplicate),
+      storageKey: String((duplicate.metadata ?? {}).source_key || ""),
+      duplicateOfItemId: duplicate.id,
+      indexJob: {
+        jobId: 0,
+        status: "duplicate_reused",
+        created: false,
+        payloadVersion: "v2",
+        dedupeKey: `library-upload:duplicate:${duplicate.id}`,
+      },
+      billing: {
+        creditsCharged: 0,
+        category: "duplicate_reused",
+        fileSizeBytes: Number((duplicate.metadata ?? {}).file_size_bytes || fileBuffer.length),
+        baseCredits: 0,
+        stepCredits: 0,
+        extraSteps: 0,
+        sizeStepMb: 0,
+      },
+    };
+  }
+
   const billing = await calculateLibraryUploadCreditCost(fileType, fileBuffer.length);
+  const fallbackText = extractTextLikeUploadContent(fileBuffer, fileType, ext);
+  const enrichment = await enrichLibraryUploadContent({
+    fileBuffer,
+    fileName,
+    fileType,
+    extension: ext,
+    fallbackText,
+    metadata: input.metadata,
+  });
+  const extractedText = enrichment.extractedText;
   if (billing.totalCredits > 0) {
     const hasCredits = await hasEnoughCredits(actor.userId, billing.totalCredits);
     if (!hasCredits) {
@@ -1212,13 +1580,22 @@ export async function uploadLibraryFile(
       visibility: input.visibility ?? "private",
       parentId: input.parentId ?? null,
       metadata: {
-        file_name: fileName,
-        file_type: fileType,
-        extension: ext || null,
-        file_size_bytes: fileBuffer.length,
-        source_type: "document_upload",
-        svg_sanitized: svgUpload || undefined,
-        ...(input.metadata || {}),
+        ...buildLibraryUploadMetadata(input.metadata, {
+          fileName,
+          fileType,
+          extension: ext,
+          fileSizeBytes: fileBuffer.length,
+          checksumSha256,
+          extractedText,
+          extractor: enrichment.extractor,
+          searchQuality: enrichment.searchQuality,
+          stage: "indexing",
+          stageMessage: enrichment.stageMessage,
+          warnings: enrichment.warnings,
+          svgSanitized: svgUpload,
+          extraMetadata: enrichment.extraMetadata,
+        }),
+        source_key: storage.key,
       },
       sourceUrl: storage.url,
       thumbnailUrl: inferredItemType === "image" ? storage.url : null,
@@ -1230,6 +1607,15 @@ export async function uploadLibraryFile(
     actor,
     db,
   );
+
+  if (extractedText) {
+    await upsertLibrarySourceTextChunk(db, {
+      tenantId,
+      libraryItemId: created.item.id,
+      content: extractedText,
+      source: isMarkdownLibraryUpload(ext) ? "document_upload_markdown" : "document_upload_extracted",
+    });
+  }
 
   if (billing.totalCredits > 0) {
     try {
@@ -1289,6 +1675,7 @@ export async function uploadLibraryFile(
   return {
     item: created.item,
     storageKey: storage.key,
+    duplicateOfItemId: null,
     indexJob,
     billing: {
       creditsCharged: billing.totalCredits,
@@ -1357,7 +1744,29 @@ export async function replaceLibraryFile(
     fileBuffer = sanitized.sanitizedBuffer;
   }
 
+  validateLibraryUploadSignature(fileBuffer, fileType, ext);
+  const checksumSha256 = computeLibraryUploadChecksum(fileBuffer);
+  const duplicate = await findDuplicateUploadedLibraryItem(db, {
+    tenantId,
+    userId: actor.userId,
+    checksumSha256,
+    excludeItemId: existing.id,
+  });
+  if (duplicate) {
+    throw new Error("An identical file already exists in your library. Reuse the existing item instead of uploading a duplicate.");
+  }
+
   const billing = await calculateLibraryUploadCreditCost(fileType, fileBuffer.length);
+  const fallbackText = extractTextLikeUploadContent(fileBuffer, fileType, ext);
+  const enrichment = await enrichLibraryUploadContent({
+    fileBuffer,
+    fileName,
+    fileType,
+    extension: ext,
+    fallbackText,
+    metadata: input.metadata,
+  });
+  const extractedText = enrichment.extractedText;
   let debitTransactionId: number | null = null;
   if (billing.totalCredits > 0) {
     const hasCredits = await hasEnoughCredits(actor.userId, billing.totalCredits);
@@ -1444,14 +1853,24 @@ export async function replaceLibraryFile(
           thumbnailUrl: inferredItemType === "image" ? storage.url : existing.thumbnailUrl,
           itemType: inferredItemType,
           status: "indexing",
-          metadata: normalizeLibraryMetadata({
-            ...oldMetadata,
-            file_name: fileName,
-            file_type: fileType,
-            extension: ext || null,
-            file_size_bytes: fileBuffer.length,
-            svg_sanitized: svgUpload || undefined,
-          }),
+          metadata: {
+            ...buildLibraryUploadMetadata({ ...oldMetadata, ...(input.metadata || {}) }, {
+              fileName,
+              fileType,
+              extension: ext,
+              fileSizeBytes: fileBuffer.length,
+              checksumSha256,
+              extractedText,
+              extractor: enrichment.extractor,
+              searchQuality: enrichment.searchQuality,
+              stage: "indexing",
+              stageMessage: enrichment.stageMessage,
+              warnings: enrichment.warnings,
+              svgSanitized: svgUpload,
+              extraMetadata: enrichment.extraMetadata,
+            }),
+            source_key: storage.key,
+          },
           updatedAt: now,
         })
         .where(and(eq(libraryItems.id, existing.id), eq(libraryItems.tenantId, tenantId)))
@@ -1479,6 +1898,24 @@ export async function replaceLibraryFile(
 
       return txUpdated;
     });
+
+    if (extractedText) {
+      await upsertLibrarySourceTextChunk(db, {
+        tenantId,
+        libraryItemId: existing.id,
+        content: extractedText,
+        source: isMarkdownLibraryUpload(ext) ? "document_replace_markdown" : "document_replace_extracted",
+      });
+    } else {
+      await db
+        .delete(libraryChunks)
+        .where(
+          and(
+            eq(libraryChunks.libraryItemId, existing.id),
+            eq(libraryChunks.contentType, "markdown_source"),
+          ),
+        );
+    }
 
     // 8. Enqueue re-indexing (outside transaction — job queue insert)
     const indexJob = await safeEnqueueLibraryIndexJob(
@@ -1551,6 +1988,106 @@ export async function getLibraryItemById(
   }
 
   return toLibraryItemDto(item);
+}
+
+export async function getLibraryUploadStatuses(
+  itemIds: number[],
+  actor: LibraryActor,
+  dbClient?: DbClient,
+): Promise<LibraryUploadStatusDto[]> {
+  const db = await resolveDb(dbClient);
+  const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
+  const normalizedIds = Array.from(new Set(itemIds.filter((value) => Number.isFinite(value) && value > 0)));
+
+  if (normalizedIds.length === 0) {
+    return [];
+  }
+
+  const rows = await db
+    .select()
+    .from(libraryItems)
+    .where(
+      and(
+        eq(libraryItems.tenantId, actorTenantId),
+        inArray(libraryItems.id, normalizedIds),
+        isNull(libraryItems.deletedAt),
+      ),
+    );
+
+  const results: LibraryUploadStatusDto[] = [];
+  for (const row of rows) {
+    const permission = await getUserPermissionLevel(db, row.id, actor);
+    if (!canReadLibraryItem(row, actor, permission)) {
+      continue;
+    }
+
+    const latestJob = await db
+      .select()
+      .from(libraryIndexJobs)
+      .where(eq(libraryIndexJobs.libraryItemId, row.id))
+      .orderBy(desc(libraryIndexJobs.createdAt))
+      .limit(1);
+
+    const metadata = normalizeLibraryMetadata(row.metadata ?? {});
+    const pipeline = getUploadPipelineMetadata(metadata);
+    const itemDto = toLibraryItemDto(row);
+    const indexJob = latestJob[0] ?? null;
+    const parserWarnings = Array.isArray(pipeline.warnings)
+      ? pipeline.warnings.filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+      : [];
+
+    const stage = row.status === "ready"
+      ? "ready"
+      : row.status === "failed"
+        ? "failed"
+        : indexJob && ["pending", "processing", "retry_pending"].includes(indexJob.status)
+          ? "indexing"
+          : (typeof pipeline.stage === "string" ? pipeline.stage : "uploaded");
+
+    const searchQuality = metadata.search_quality === "full_text" ? "full_text" : "metadata_only";
+
+    results.push({
+      itemId: row.id,
+      item: itemDto,
+      stage: stage as LibraryUploadPipelineStage,
+      stageMessage: typeof pipeline.stageMessage === "string"
+        ? pipeline.stageMessage
+        : row.status === "ready"
+          ? "Ready for search."
+          : row.status === "failed"
+            ? "Upload processing failed."
+            : indexJob
+              ? "File uploaded. Indexing is still in progress."
+              : "File uploaded and waiting for processing.",
+      parserJobId: typeof pipeline.parserJobId === "string" ? pipeline.parserJobId : null,
+      parserStatus: typeof pipeline.parserStatus === "string" ? pipeline.parserStatus : null,
+      indexJobId: indexJob?.id ?? null,
+      indexJobStatus: indexJob?.status ?? null,
+      checksumSha256: typeof pipeline.checksumSha256 === "string"
+        ? pipeline.checksumSha256
+        : typeof metadata.content_checksum_sha256 === "string"
+          ? metadata.content_checksum_sha256
+          : null,
+      extractor: typeof pipeline.extractor === "string"
+        ? pipeline.extractor
+        : typeof metadata.extraction_method === "string"
+          ? metadata.extraction_method
+          : null,
+      searchQuality,
+      parseError: typeof pipeline.parseError === "string"
+        ? pipeline.parseError
+        : typeof metadata.parse_error === "string"
+          ? metadata.parse_error
+          : null,
+      warnings: parserWarnings,
+      duplicateOfItemId: typeof metadata.duplicate_of_item_id === "number" ? metadata.duplicate_of_item_id : null,
+      readyForSearch: row.status === "ready",
+      updatedAt: typeof pipeline.updatedAt === "string" ? pipeline.updatedAt : row.updatedAt.toISOString(),
+    });
+  }
+
+  results.sort((a, b) => normalizedIds.indexOf(a.itemId) - normalizedIds.indexOf(b.itemId));
+  return results;
 }
 
 export async function updateLibraryItem(
@@ -1908,6 +2445,10 @@ export async function shareLibraryItem(
     return false;
   }
 
+  if (isPrivateVaultLibraryItem(existing)) {
+    return false;
+  }
+
   // Prevent privilege escalation: actor cannot grant higher permission than they have
   // Owner and admin bypass this check (they can grant any level)
   if (existing.ownerUserId !== actor.userId && actor.role !== "admin") {
@@ -2146,6 +2687,7 @@ function matchesDocumentScope(
 ): boolean {
   if (scope === "all") return true;
   if (scope === "my_library") return accessSource === "owner";
+  if (scope === "private_vault") return accessSource === "owner";
   // Shared-with-me should include only explicit direct user shares.
   if (scope === "shared_with_me") return permissionInfo.hasDirectShare;
   // Shared-groups should include only explicit group shares from other users.
@@ -2184,6 +2726,14 @@ function itemMatchesDocumentQuery(item: LibraryItemRow, query: string): boolean 
     .toLowerCase();
 
   return haystack.includes(normalizedQuery);
+}
+
+function matchesPrivateVaultScope(item: LibraryItemRow, scope: LibraryDocumentScope): boolean {
+  const isVaultItem = isPrivateVaultLibraryItem(item);
+  if (scope === "private_vault") {
+    return isVaultItem;
+  }
+  return !isVaultItem;
 }
 
 export class LibraryMarkdownVersionConflictError extends Error {
@@ -2232,8 +2782,6 @@ export async function listLibraryDocuments(
     ))
     .orderBy(desc(libraryItems.updatedAt), desc(libraryItems.createdAt), desc(libraryItems.id));
 
-  console.log("[listLibraryDocuments] DB rows found:", itemRows.length, itemRows.map(r => ({ id: r.id, title: r.title, ownerUserId: r.ownerUserId, tenantId: r.tenantId, visibility: r.visibility, status: r.status })));
-
   if (!itemRows.length) {
     return {
       total: 0,
@@ -2281,8 +2829,9 @@ export async function listLibraryDocuments(
 
   const afterFilters = itemRows.filter((item) => itemMatchesDocumentFilters(item, input.filters));
   const afterQuery = afterFilters.filter((item) => itemMatchesDocumentQuery(item, query));
+  const scopedItems = afterQuery.filter((item) => matchesPrivateVaultScope(item, scope));
 
-  const visible = afterQuery.reduce<LibraryDocumentListItem[]>((acc, item) => {
+  const visible = scopedItems.reduce<LibraryDocumentListItem[]>((acc, item) => {
       const permissionInfo = getPermissionLevelForItem(permissionRows, item.id, actor, groupIdNums);
       const canRead = canReadLibraryItem(item, actor, permissionInfo.effectivePermissionLevel);
       if (!canRead) {
@@ -2914,11 +3463,25 @@ export async function searchLibraryItems(
   const offset = Math.max(input.offset ?? 0, 0);
   const query = (input.query ?? "").trim();
   const queryTokens = tokenize(query);
+  const scope = input.scope ?? "all";
+
+  const applyFolderFilter =
+    (scope === "my_library" || scope === "all")
+    && "folderId" in input;
+  const folderCondition = applyFolderFilter
+    ? (input.folderId == null ? isNull(libraryItems.parentId) : eq(libraryItems.parentId, input.folderId))
+    : undefined;
 
   const itemRows = await db
     .select()
     .from(libraryItems)
-    .where(and(eq(libraryItems.tenantId, actorTenantId), isNull(libraryItems.deletedAt)))
+    .where(
+      and(
+        eq(libraryItems.tenantId, actorTenantId),
+        isNull(libraryItems.deletedAt),
+        folderCondition,
+      ),
+    )
     .orderBy(desc(libraryItems.createdAt));
 
   const filteredItems = itemRows.filter((item) => itemMatchesFilters(item, input.filters));
@@ -2936,58 +3499,117 @@ export async function searchLibraryItems(
     };
   }
 
+  const providerConfig = await getEffectiveVectorProviderConfig({
+    tenantId: actorTenantId,
+  });
+  const resolvedProvider = resolveVectorProvider("search", providerConfig);
+
   // Get user's groups for group permission filtering
   const userGroups = await getUserGroups(actor.userId, actorTenantId);
   const groupIds = userGroups.map(g => String(g.id));
 
-  const [chunkRows, permissionRows] = await Promise.all([
-    db
-      .select({
-        libraryItemId: libraryChunks.libraryItemId,
-        content: libraryChunks.content,
-        vectorRefId: libraryChunks.vectorRefId,
-      })
-      .from(libraryChunks)
-      .where(
-        and(
-          eq(libraryChunks.tenantId, actorTenantId),
-          inArray(libraryChunks.libraryItemId, itemIds),
-        ),
-      ),
-    db
-      .select({
-        libraryItemId: libraryPermissions.libraryItemId,
-        subjectType: libraryPermissions.subjectType,
-        subjectId: libraryPermissions.subjectId,
-        permissionLevel: libraryPermissions.permissionLevel,
-        expiresAt: libraryPermissions.expiresAt,
-      })
-      .from(libraryPermissions)
-      .where(
-        and(
-          eq(libraryPermissions.tenantId, actorTenantId),
-          or(
-            and(
-              eq(libraryPermissions.subjectType, "user"),
-              eq(libraryPermissions.subjectId, String(actor.userId)),
-            ),
-            and(
-              eq(libraryPermissions.subjectType, "tenant_role"),
-              eq(libraryPermissions.subjectId, actor.role || ""),
-            ),
-            // NEW: Include group permissions
-            ...(groupIds.length > 0 ? [
-              and(
-                eq(libraryPermissions.subjectType, "group"),
-                inArray(libraryPermissions.subjectId, groupIds),
-              )
-            ] : [])
+  const permissionRows = await db
+    .select({
+      libraryItemId: libraryPermissions.libraryItemId,
+      subjectType: libraryPermissions.subjectType,
+      subjectId: libraryPermissions.subjectId,
+      permissionLevel: libraryPermissions.permissionLevel,
+      expiresAt: libraryPermissions.expiresAt,
+    })
+    .from(libraryPermissions)
+    .where(
+      and(
+        eq(libraryPermissions.tenantId, actorTenantId),
+        or(
+          and(
+            eq(libraryPermissions.subjectType, "user"),
+            eq(libraryPermissions.subjectId, String(actor.userId)),
           ),
-          inArray(libraryPermissions.libraryItemId, itemIds),
-          or(isNull(libraryPermissions.expiresAt), gt(libraryPermissions.expiresAt, new Date())),
+          and(
+            eq(libraryPermissions.subjectType, "tenant_role"),
+            eq(libraryPermissions.subjectId, actor.role || ""),
+          ),
+          ...(groupIds.length > 0 ? [
+            and(
+              eq(libraryPermissions.subjectType, "group"),
+              inArray(libraryPermissions.subjectId, groupIds),
+            )
+          ] : [])
         ),
+        inArray(libraryPermissions.libraryItemId, itemIds),
+        or(isNull(libraryPermissions.expiresAt), gt(libraryPermissions.expiresAt, new Date())),
       ),
-  ]);
+    );
+
+  const groupIdNums = userGroups.map(g => g.id);
+  const scopedItems = filteredItems.filter((item) => matchesPrivateVaultScope(item, scope));
+
+  const visibleEntries = scopedItems.reduce<Array<{
+    item: LibraryItemRow;
+    accessSource: LibraryDocumentAccessSource;
+    permissionInfo: ReturnType<typeof getPermissionLevelForItem>;
+  }>>((acc, item) => {
+    const permissionInfo = getPermissionLevelForItem(permissionRows, item.id, actor, groupIdNums);
+    if (!canReadLibraryItem(item, actor, permissionInfo.effectivePermissionLevel)) {
+      return acc;
+    }
+
+    const accessSource = getDocumentAccessSource(item, actor, permissionInfo);
+    if (
+      !matchesDocumentScope(scope, accessSource, {
+        hasDirectShare: permissionInfo.hasDirectShare,
+        hasGroupShare: permissionInfo.hasGroupShare,
+      })
+    ) {
+      return acc;
+    }
+
+    acc.push({
+      item,
+      accessSource,
+      permissionInfo,
+    });
+    return acc;
+  }, []);
+
+  const visibleItemIds = visibleEntries.map((entry) => entry.item.id);
+  const pgvectorCandidateIds = visibleItemIds.slice(0, LIBRARY_PGVECTOR_CANDIDATE_LIMIT);
+  const shouldTryNativePgvector =
+    query.length > 0 &&
+    resolvedProvider.provider === "pgvector" &&
+    Boolean(process.env.SMARTSPEC_PROXY_TOKEN);
+
+  let pgvectorScores: Map<number, number> | null = null;
+  let chunkRows: Array<{ libraryItemId: number; content: string; vectorRefId: string | null }> = [];
+
+  if (query.length > 0) {
+    if (shouldTryNativePgvector) {
+      pgvectorScores = await fetchPgvectorLibraryScores({
+        tenantId: actorTenantId,
+        query,
+        itemIds: pgvectorCandidateIds,
+      });
+    }
+
+    if (!shouldTryNativePgvector || pgvectorScores === null) {
+      const chunkCandidateIds = shouldTryNativePgvector ? pgvectorCandidateIds : visibleItemIds;
+      if (chunkCandidateIds.length > 0) {
+        chunkRows = await db
+          .select({
+            libraryItemId: libraryChunks.libraryItemId,
+            content: libraryChunks.content,
+            vectorRefId: libraryChunks.vectorRefId,
+          })
+          .from(libraryChunks)
+          .where(
+            and(
+              eq(libraryChunks.tenantId, actorTenantId),
+              inArray(libraryChunks.libraryItemId, chunkCandidateIds),
+            ),
+          );
+      }
+    }
+  }
 
   const chunksByItem = new Map<number, Array<{ content: string; vectorRefId: string | null }>>();
   for (const chunk of chunkRows) {
@@ -2999,14 +3621,9 @@ export async function searchLibraryItems(
     chunksByItem.set(chunk.libraryItemId, list);
   }
 
-  const groupIdNums = userGroups.map(g => g.id);
-
-  const visibleScored = filteredItems
-    .filter((item) => {
-      const permissionInfo = getPermissionLevelForItem(permissionRows, item.id, actor, groupIdNums);
-      return canReadLibraryItem(item, actor, permissionInfo.effectivePermissionLevel);
-    })
-    .map((item) => {
+  const visibleScored = visibleEntries
+    .map((entry) => {
+      const item = entry.item;
       const metadata = normalizeLibraryMetadata(item.metadata as Record<string, unknown>);
       const chunks = chunksByItem.get(item.id) ?? [];
 
@@ -3017,13 +3634,18 @@ export async function searchLibraryItems(
       ].join(" ");
 
       const keywordScore = query ? computeTokenOverlapScore(queryTokens, itemText) : 0;
-      const vectorScore = query
+      const fallbackVectorScore = query
         ? chunks
             .filter((chunk) => Boolean(chunk.vectorRefId))
             .reduce((maxScore, chunk) => {
               const score = computeTokenOverlapScore(queryTokens, chunk.content);
               return score > maxScore ? score : maxScore;
             }, 0)
+        : 0;
+      const vectorScore = query
+        ? pgvectorScores
+          ? (pgvectorScores.get(item.id) ?? 0)
+          : fallbackVectorScore
         : 0;
 
       const combinedScore = query
@@ -3044,6 +3666,7 @@ export async function searchLibraryItems(
 
       return {
         item,
+        accessSource: entry.accessSource,
         keywordScore,
         vectorScore,
         combinedScore,
@@ -3071,6 +3694,7 @@ export async function searchLibraryItems(
     item_id: entry.item.id,
     item_type: entry.item.itemType,
     title: entry.item.title,
+    description: entry.item.description ?? null,
     source_url: entry.item.sourceUrl,
     thumbnail_url: entry.item.thumbnailUrl,
     status: entry.item.status,
@@ -3078,6 +3702,9 @@ export async function searchLibraryItems(
     provider_name: entry.providerName,
     model_name: entry.modelName,
     owner_user_id: entry.item.ownerUserId,
+    parent_id: entry.item.parentId ?? null,
+    metadata: normalizeLibraryMetadata(entry.item.metadata as Record<string, unknown>),
+    access_source: entry.accessSource,
     created_at: entry.item.createdAt.toISOString(),
     updated_at: entry.item.updatedAt.toISOString(),
     combined_score: entry.combinedScore,

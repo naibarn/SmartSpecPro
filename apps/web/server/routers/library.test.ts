@@ -5,6 +5,7 @@ const {
   mockGetLibraryItemById,
   mockGetLibraryMarkdownContent,
   mockGetUserEffectivePermission,
+  mockGetLibraryUploadStatuses,
   mockListLibraryDocuments,
   mockSaveLibraryMarkdown,
   mockSearchLibraryItems,
@@ -18,6 +19,7 @@ const {
   mockGetLibraryItemById: vi.fn(),
   mockGetLibraryMarkdownContent: vi.fn(),
   mockGetUserEffectivePermission: vi.fn(),
+  mockGetLibraryUploadStatuses: vi.fn(),
   mockListLibraryDocuments: vi.fn(),
   mockSaveLibraryMarkdown: vi.fn(),
   mockSearchLibraryItems: vi.fn(),
@@ -33,6 +35,7 @@ vi.mock("../services/libraryService", () => ({
   getLibraryItemById: mockGetLibraryItemById,
   getLibraryMarkdownContent: mockGetLibraryMarkdownContent,
   getUserEffectivePermission: mockGetUserEffectivePermission,
+  getLibraryUploadStatuses: mockGetLibraryUploadStatuses,
   listLibraryDocuments: mockListLibraryDocuments,
   saveLibraryMarkdown: mockSaveLibraryMarkdown,
   searchLibraryItems: mockSearchLibraryItems,
@@ -102,7 +105,7 @@ describe("libraryRouter.createItem", () => {
 
     expect(mockCreateLibraryItem).toHaveBeenCalledWith(
       expect.objectContaining({ title: "Demo" }),
-      expect.objectContaining({ userId: 9, tenantId: 44 }),
+      expect.objectContaining({ userId: 9, tenantId: "44" }),
     );
     expect(mockAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -151,7 +154,7 @@ describe("libraryRouter.createItem", () => {
 
     expect(mockCreateLibraryItem).toHaveBeenCalledWith(
       expect.anything(),
-      expect.objectContaining({ tenantId: 44 }),
+      expect.objectContaining({ tenantId: "tenant-ZCSKEM9s" }),
     );
   });
 
@@ -176,7 +179,7 @@ describe("libraryRouter.createItem", () => {
 
     expect(mockCreateLibraryItem).toHaveBeenCalledWith(
       expect.anything(),
-      expect.objectContaining({ tenantId: 44 }),
+      expect.objectContaining({ tenantId: "44" }),
     );
   });
 
@@ -301,7 +304,7 @@ describe("libraryRouter.search", () => {
     expect(result.version).toBe("library_search_v1");
     expect(mockSearchLibraryItems).toHaveBeenCalledWith(
       expect.objectContaining({ query: "launch" }),
-      expect.objectContaining({ userId: 9, tenantId: 44 }),
+      expect.objectContaining({ userId: 9, tenantId: "44" }),
     );
   });
 
@@ -365,7 +368,7 @@ describe("libraryRouter.listDocuments", () => {
     expect(result.scope).toBe("my_library");
     expect(mockListLibraryDocuments).toHaveBeenCalledWith(
       expect.objectContaining({ scope: "my_library" }),
-      expect.objectContaining({ userId: 9, tenantId: 44 }),
+      expect.objectContaining({ userId: 9, tenantId: "44" }),
     );
   });
 
@@ -446,7 +449,47 @@ describe("libraryRouter.uploadFile", () => {
     expect(result.item.id).toBe(901);
     expect(mockUploadLibraryFile).toHaveBeenCalledWith(
       expect.objectContaining({ fileName: "hero.png", fileType: "image/png" }),
-      expect.objectContaining({ userId: 9, tenantId: 44 }),
+      expect.objectContaining({ userId: 9, tenantId: "44" }),
+    );
+  });
+});
+
+describe("libraryRouter.getUploadStatus", () => {
+  it("returns upload status entries for allowed items", async () => {
+    mockGetLibraryUploadStatuses.mockResolvedValue([
+      {
+        itemId: 901,
+        item: { id: 901, title: "hero.png", metadata: {}, status: "indexing" },
+        stage: "indexing",
+        stageMessage: "File uploaded. Indexing is still in progress.",
+        parserJobId: null,
+        parserStatus: null,
+        indexJobId: 123,
+        indexJobStatus: "pending",
+        checksumSha256: "abc",
+        extractor: "inline_text",
+        searchQuality: "full_text",
+        parseError: null,
+        warnings: [],
+        duplicateOfItemId: null,
+        readyForSearch: false,
+        updatedAt: "2026-03-20T00:00:00.000Z",
+      },
+    ]);
+
+    const fn = libraryRouter.getUploadStatus as Function;
+    const result = await fn({
+      ctx: {
+        user: { id: 9, role: "user", currentTenantId: 44 },
+        tenantId: null,
+      },
+      input: { ids: [901] },
+    });
+
+    expect(result).toHaveLength(1);
+    expect(mockGetLibraryUploadStatuses).toHaveBeenCalledWith(
+      [901],
+      expect.objectContaining({ userId: 9, tenantId: "44" }),
     );
   });
 });
@@ -494,7 +537,7 @@ describe("libraryRouter.saveMarkdown", () => {
     expect(result.indexJob.jobId).toBe(7001);
     expect(mockSaveLibraryMarkdown).toHaveBeenCalledWith(
       expect.objectContaining({ itemId: 5, content: "# Updated" }),
-      expect.objectContaining({ userId: 9, tenantId: 44 }),
+      expect.objectContaining({ userId: 9, tenantId: "44" }),
     );
   });
 });
@@ -521,7 +564,7 @@ describe("libraryRouter.getMarkdownContent", () => {
     expect(result.item_id).toBe(5);
     expect(mockGetLibraryMarkdownContent).toHaveBeenCalledWith(
       5,
-      expect.objectContaining({ userId: 9, tenantId: 44 }),
+      expect.objectContaining({ userId: 9, tenantId: "44" }),
     );
   });
 });
@@ -663,7 +706,7 @@ describe("libraryRouter.shareItem", () => {
     expect(result).toEqual({ success: true });
     expect(mockShareLibraryItem).toHaveBeenCalledWith(
       expect.objectContaining({ itemId: 123 }),
-      expect.objectContaining({ userId: 4, tenantId: 2, role: "admin" }),
+      expect.objectContaining({ userId: 4, tenantId: "2", role: "admin" }),
     );
   });
 });

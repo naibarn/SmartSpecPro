@@ -23,6 +23,7 @@ import { trpc } from "@/lib/trpc";
 interface DocumentVersionHistoryProps {
   itemId: number;
   onRestore?: () => void;
+  compact?: boolean;
 }
 
 interface FileSnapshotMeta {
@@ -49,6 +50,7 @@ function formatFileSize(bytes: number): string {
 export function DocumentVersionHistory({
   itemId,
   onRestore,
+  compact = false,
 }: DocumentVersionHistoryProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedVersionId, setSelectedVersionId] = useState<number | null>(null);
@@ -105,10 +107,13 @@ export function DocumentVersionHistory({
         variant="outline"
         size="sm"
         onClick={() => setIsOpen(true)}
-        className="gap-2"
+        className={compact
+          ? "h-8 w-8 rounded-full p-0"
+          : "gap-1.5 px-2 sm:gap-2 sm:px-3"}
+        aria-label="Version history"
       >
         <Clock className="h-4 w-4" />
-        Version History
+        {compact ? null : <span className="hidden sm:inline">Version History</span>}
       </Button>
 
       <DialogPrimitive.Root

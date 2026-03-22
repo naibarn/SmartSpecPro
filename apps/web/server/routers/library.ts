@@ -4,11 +4,13 @@ import { PRESENTATION_ITEM_TYPE } from "@shared/presentation/constants";
 import { isPresentationTemplateItem } from "@shared/presentation/template";
 
 import { protectedProcedure, router } from "../_core/trpc";
+import { getDb } from "../db";
 import { shouldUseSandbox, dispatchToSandbox } from "../services/sandbox/dispatchService";
 import { auditLogger } from "../services/auditLogger";
 import { shareOperationLimiter } from "../services/rateLimiter";
 import { isLibraryEnabledForTenant } from "../services/libraryFeatureFlags";
 import { resolveTenantIdVarchar } from "../services/tenantContext";
+import { getPrivateVaultPinVersion, validatePrivateVaultAccessToken } from "../services/privateVaultService";
 import { federatedSearch } from "../services/federatedSearch";
 import {
   createLibraryItem,
@@ -20,6 +22,7 @@ import {
   getLibraryMarkdownContent,
   getLibraryItemById,
   getLibraryItemShares,
+  getLibraryUploadStatuses,
   getUserEffectivePermission,
   LibraryMarkdownVersionConflictError,
   listLibraryDocuments,
@@ -40,6 +43,8 @@ import {
   getVersionSnapshotDownloadUrl,
   updateLibraryItem,
 } from "../services/libraryService";
+import { eq } from "drizzle-orm";
+import { users } from "../../drizzle/schema";
 
 /**
  * MIME types that require sandbox-isolated parsing.
@@ -84,7 +89,7 @@ const searchFilterSchema = z.object({
   recentDays: recentDaysSchema.optional(),
 }).optional();
 
-const documentScopeSchema = z.enum(["all", "my_library", "shared_with_me", "shared_groups"]);
+const documentScopeSchema = z.enum(["all", "my_library", "private_vault", "shared_with_me", "shared_groups"]);
 const documentSortSchema = z.enum(["updated_desc", "created_desc"]);
 const documentFilterSchema = z.object({
   itemType: z.string().min(1).max(32).optional(),
@@ -105,6 +110,11 @@ const uploadLibraryFileSchema = z.object({
   title: z.string().min(1).max(255).optional(),
   visibility: visibilitySchema.optional(),
   parentId: z.number().int().positive().nullable().optional(),
+  metadata: z.record(z.any()).optional(),
+});
+
+const uploadStatusSchema = z.object({
+  ids: z.array(z.number().int().positive()).min(1).max(25),
 });
 
 async function resolveLibraryTenantId(
@@ -120,6 +130,41 @@ async function resolveLibraryTenantId(
   }
 
   return tenantId;
+}
+
+async function createLibraryActor(
+  ctx: { user: { id: number; role?: string | null; currentTenantId?: unknown }; tenantId: unknown; privateVaultToken: string | null },
+  tenantIdResolved: string,
+) {
+  const db = await getDb();
+  let privateVaultUnlocked = false;
+
+  if (db) {
+    const [row] = await db
+      .select({ userPreferences: users.userPreferences })
+      .from(users)
+      .where(eq(users.id, ctx.user.id))
+      .limit(1);
+    const prefs = (row?.userPreferences as Record<string, any>) || {};
+    const currentVault = (prefs.privateVault || {}) as Record<string, any>;
+    const enabled = currentVault.enabled === true && Boolean(currentVault.pinHash);
+    const pinVersion = getPrivateVaultPinVersion({ privateVault: currentVault });
+    if (enabled && ctx.privateVaultToken) {
+      privateVaultUnlocked = await validatePrivateVaultAccessToken({
+        token: ctx.privateVaultToken,
+        userId: ctx.user.id,
+        tenantId: tenantIdResolved,
+        pinVersion,
+      });
+    }
+  }
+
+  return {
+    userId: ctx.user.id,
+    tenantId: tenantIdResolved,
+    role: ctx.user.role,
+    privateVaultUnlocked,
+  };
 }
 
 function assertLibraryEnabled(tenantId: string): void {
@@ -154,16 +199,21 @@ export const libraryRouter = router({
         limit: z.number().int().min(1).max(50).optional(),
         offset: z.number().int().min(0).optional(),
         filters: searchFilterSchema,
+        scope: documentScopeSchema.optional(),
+        folderId: z.number().int().positive().nullable().optional(),
       }).optional(),
     )
     .query(async ({ input, ctx }) => {
       const tenantIdResolved = await resolveLibraryTenantId(ctx);
       assertLibraryEnabled(tenantIdResolved);
-      const actor = {
-        userId: ctx.user.id,
-        tenantId: tenantIdResolved,
-        role: ctx.user.role,
-      };
+      const actor = await createLibraryActor(ctx, tenantIdResolved);
+
+      if (input?.scope === "private_vault" && !actor.privateVaultUnlocked) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Private vault is locked",
+        });
+      }
 
       return searchLibraryItems(
         {
@@ -171,6 +221,8 @@ export const libraryRouter = router({
           limit: input?.limit,
           offset: input?.offset,
           filters: input?.filters,
+          scope: input?.scope,
+          folderId: input?.folderId,
         },
         actor,
       );
@@ -191,11 +243,14 @@ export const libraryRouter = router({
     .query(async ({ input, ctx }) => {
       const tenantIdResolved = await resolveLibraryTenantId(ctx);
       assertLibraryEnabled(tenantIdResolved);
-      const actor = {
-        userId: ctx.user.id,
-        tenantId: tenantIdResolved,
-        role: ctx.user.role,
-      };
+      const actor = await createLibraryActor(ctx, tenantIdResolved);
+
+      if (input?.scope === "private_vault" && !actor.privateVaultUnlocked) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Private vault is locked",
+        });
+      }
 
       const result = await listLibraryDocuments(
         {
@@ -212,16 +267,22 @@ export const libraryRouter = router({
       return result;
     }),
 
+  getUploadStatus: protectedProcedure
+    .input(uploadStatusSchema)
+    .query(async ({ input, ctx }) => {
+      const tenantIdResolved = await resolveLibraryTenantId(ctx);
+      assertLibraryEnabled(tenantIdResolved);
+      const actor = await createLibraryActor(ctx, tenantIdResolved);
+
+      return getLibraryUploadStatuses(input.ids, actor);
+    }),
+
   uploadFile: protectedProcedure
     .input(uploadLibraryFileSchema)
     .mutation(async ({ input, ctx }) => {
       const tenantIdResolved = await resolveLibraryTenantId(ctx);
       assertLibraryEnabled(tenantIdResolved);
-      const actor = {
-        userId: ctx.user.id,
-        tenantId: tenantIdResolved,
-        role: ctx.user.role,
-      };
+      const actor = await createLibraryActor(ctx, tenantIdResolved);
 
       let result;
       try {
@@ -263,6 +324,17 @@ export const libraryRouter = router({
           });
 
           (result as any).sandboxParseJobId = sandboxResult.jobId;
+          const metadata = (result.item.metadata ?? {}) as Record<string, any>;
+          const uploadPipeline = metadata.upload_pipeline && typeof metadata.upload_pipeline === "object"
+            ? { ...metadata.upload_pipeline }
+            : {};
+          uploadPipeline.parserJobId = sandboxResult.jobId;
+          uploadPipeline.parserStatus = "queued";
+          uploadPipeline.updatedAt = new Date().toISOString();
+          result.item.metadata = {
+            ...metadata,
+            upload_pipeline: uploadPipeline,
+          };
         } catch (err) {
           console.error("[library.uploadFile] Sandbox parsing dispatch failed:", err);
         }
@@ -297,16 +369,13 @@ export const libraryRouter = router({
         fileType: z.string().min(1).max(255),
         fileBase64: z.string().min(1).max(MAX_FILE_BASE64_LENGTH),
         changeDescription: z.string().max(500).optional(),
+        metadata: z.record(z.any()).optional(),
       }),
     )
     .mutation(async ({ input, ctx }) => {
       const tenantIdResolved = await resolveLibraryTenantId(ctx);
       assertLibraryEnabled(tenantIdResolved);
-      const actor = {
-        userId: ctx.user.id,
-        tenantId: tenantIdResolved,
-        role: ctx.user.role,
-      };
+      const actor = await createLibraryActor(ctx, tenantIdResolved);
 
       let result;
       try {
@@ -347,11 +416,7 @@ export const libraryRouter = router({
     .query(async ({ input, ctx }) => {
       const tenantIdResolved = await resolveLibraryTenantId(ctx);
       assertLibraryEnabled(tenantIdResolved);
-      const actor = {
-        userId: ctx.user.id,
-        tenantId: tenantIdResolved,
-        role: ctx.user.role,
-      };
+      const actor = await createLibraryActor(ctx, tenantIdResolved);
 
       const result = await getLibraryMarkdownContent(input.id, actor);
       if (!result) {
@@ -376,11 +441,7 @@ export const libraryRouter = router({
     .mutation(async ({ input, ctx }) => {
       const tenantIdResolved = await resolveLibraryTenantId(ctx);
       assertLibraryEnabled(tenantIdResolved);
-      const actor = {
-        userId: ctx.user.id,
-        tenantId: tenantIdResolved,
-        role: ctx.user.role,
-      };
+      const actor = await createLibraryActor(ctx, tenantIdResolved);
 
       try {
         const result = await saveLibraryMarkdown(
@@ -448,11 +509,7 @@ export const libraryRouter = router({
     .mutation(async ({ input, ctx }) => {
       const tenantIdResolved = await resolveLibraryTenantId(ctx);
       assertLibraryEnabled(tenantIdResolved);
-      const actor = {
-        userId: ctx.user.id,
-        tenantId: tenantIdResolved,
-        role: ctx.user.role,
-      };
+      const actor = await createLibraryActor(ctx, tenantIdResolved);
 
       try {
         const result = await createLibraryItem(input, actor);
@@ -488,11 +545,7 @@ export const libraryRouter = router({
     .query(async ({ input, ctx }) => {
       const tenantIdResolved = await resolveLibraryTenantId(ctx);
       assertLibraryEnabled(tenantIdResolved);
-      const actor = {
-        userId: ctx.user.id,
-        tenantId: tenantIdResolved,
-        role: ctx.user.role,
-      };
+      const actor = await createLibraryActor(ctx, tenantIdResolved);
 
       const item = await getLibraryItemById(input.id, actor);
       if (!item) {
@@ -536,11 +589,7 @@ export const libraryRouter = router({
     .mutation(async ({ input, ctx }) => {
       const tenantIdResolved = await resolveLibraryTenantId(ctx);
       assertLibraryEnabled(tenantIdResolved);
-      const actor = {
-        userId: ctx.user.id,
-        tenantId: tenantIdResolved,
-        role: ctx.user.role,
-      };
+      const actor = await createLibraryActor(ctx, tenantIdResolved);
 
       try {
         const { id, ...payload } = input;
@@ -584,11 +633,7 @@ export const libraryRouter = router({
     .mutation(async ({ input, ctx }) => {
       const tenantIdResolved = await resolveLibraryTenantId(ctx);
       assertLibraryEnabled(tenantIdResolved);
-      const actor = {
-        userId: ctx.user.id,
-        tenantId: tenantIdResolved,
-        role: ctx.user.role,
-      };
+      const actor = await createLibraryActor(ctx, tenantIdResolved);
 
       const item = await getLibraryItemById(input.id, actor);
       if (!item) {
@@ -665,11 +710,7 @@ export const libraryRouter = router({
       }
       const tenantIdResolved = await resolveLibraryTenantId(ctx);
       assertLibraryEnabled(tenantIdResolved);
-      const actor = {
-        userId: ctx.user.id,
-        tenantId: tenantIdResolved,
-        role: ctx.user.role,
-      };
+      const actor = await createLibraryActor(ctx, tenantIdResolved);
 
       const success = await shareLibraryItem(input, actor);
       if (!success) {
@@ -712,11 +753,7 @@ export const libraryRouter = router({
     .mutation(async ({ input, ctx }) => {
       const tenantIdResolved = await resolveLibraryTenantId(ctx);
       assertLibraryEnabled(tenantIdResolved);
-      const actor = {
-        userId: ctx.user.id,
-        tenantId: tenantIdResolved,
-        role: ctx.user.role,
-      };
+      const actor = await createLibraryActor(ctx, tenantIdResolved);
 
       await removeLibraryShare(input, actor);
 
@@ -749,11 +786,7 @@ export const libraryRouter = router({
     .mutation(async ({ input, ctx }) => {
       const tenantIdResolved = await resolveLibraryTenantId(ctx);
       assertLibraryEnabled(tenantIdResolved);
-      const actor = {
-        userId: ctx.user.id,
-        tenantId: tenantIdResolved,
-        role: ctx.user.role,
-      };
+      const actor = await createLibraryActor(ctx, tenantIdResolved);
 
       await updateLibrarySharePermission(input, actor);
 
@@ -780,11 +813,7 @@ export const libraryRouter = router({
     .query(async ({ input, ctx }) => {
       const tenantIdResolved = await resolveLibraryTenantId(ctx);
       assertLibraryEnabled(tenantIdResolved);
-      const actor = {
-        userId: ctx.user.id,
-        tenantId: tenantIdResolved,
-        role: ctx.user.role,
-      };
+      const actor = await createLibraryActor(ctx, tenantIdResolved);
 
       return getLibraryItemShares(input.itemId, actor);
     }),
@@ -799,11 +828,7 @@ export const libraryRouter = router({
     .query(async ({ input, ctx }) => {
       const tenantIdResolved = await resolveLibraryTenantId(ctx);
       assertLibraryEnabled(tenantIdResolved);
-      const actor = {
-        userId: ctx.user.id,
-        tenantId: tenantIdResolved,
-        role: ctx.user.role,
-      };
+      const actor = await createLibraryActor(ctx, tenantIdResolved);
 
       return listLibraryTrash(
         { limit: input?.limit, offset: input?.offset },
@@ -816,11 +841,7 @@ export const libraryRouter = router({
     .mutation(async ({ input, ctx }) => {
       const tenantIdResolved = await resolveLibraryTenantId(ctx);
       assertLibraryEnabled(tenantIdResolved);
-      const actor = {
-        userId: ctx.user.id,
-        tenantId: tenantIdResolved,
-        role: ctx.user.role,
-      };
+      const actor = await createLibraryActor(ctx, tenantIdResolved);
 
       await restoreFromLibraryTrash(input.itemId, actor);
 
@@ -850,11 +871,7 @@ export const libraryRouter = router({
     .query(async ({ input, ctx }) => {
       const tenantIdResolved = await resolveLibraryTenantId(ctx);
       assertLibraryEnabled(tenantIdResolved);
-      const actor = {
-        userId: ctx.user.id,
-        tenantId: tenantIdResolved,
-        role: ctx.user.role,
-      };
+      const actor = await createLibraryActor(ctx, tenantIdResolved);
 
       return getContentVersionHistory(input.itemId, actor, {
         limit: input.limit,
@@ -867,11 +884,7 @@ export const libraryRouter = router({
     .query(async ({ input, ctx }) => {
       const tenantIdResolved = await resolveLibraryTenantId(ctx);
       assertLibraryEnabled(tenantIdResolved);
-      const actor = {
-        userId: ctx.user.id,
-        tenantId: tenantIdResolved,
-        role: ctx.user.role,
-      };
+      const actor = await createLibraryActor(ctx, tenantIdResolved);
 
       const version = await getContentVersionById(input.versionId, actor);
       if (!version) {
@@ -889,11 +902,7 @@ export const libraryRouter = router({
     .query(async ({ input, ctx }) => {
       const tenantIdResolved = await resolveLibraryTenantId(ctx);
       assertLibraryEnabled(tenantIdResolved);
-      const actor = {
-        userId: ctx.user.id,
-        tenantId: tenantIdResolved,
-        role: ctx.user.role,
-      };
+      const actor = await createLibraryActor(ctx, tenantIdResolved);
 
       const result = await getVersionSnapshotDownloadUrl(input.versionId, actor);
       if (!result) {
@@ -911,11 +920,7 @@ export const libraryRouter = router({
     .mutation(async ({ input, ctx }) => {
       const tenantIdResolved = await resolveLibraryTenantId(ctx);
       assertLibraryEnabled(tenantIdResolved);
-      const actor = {
-        userId: ctx.user.id,
-        tenantId: tenantIdResolved,
-        role: ctx.user.role,
-      };
+      const actor = await createLibraryActor(ctx, tenantIdResolved);
 
       const result = await restoreContentVersion(input.versionId, actor);
       if (!result) {
@@ -948,11 +953,7 @@ export const libraryRouter = router({
     .mutation(async ({ input, ctx }) => {
       const tenantIdResolved = await resolveLibraryTenantId(ctx);
       assertLibraryEnabled(tenantIdResolved);
-      const actor = {
-        userId: ctx.user.id,
-        tenantId: tenantIdResolved,
-        role: ctx.user.role,
-      };
+      const actor = await createLibraryActor(ctx, tenantIdResolved);
 
       const result = await permanentDeleteLibraryItem(input.itemId, actor);
 
@@ -984,7 +985,7 @@ export const libraryRouter = router({
     .mutation(async ({ input, ctx }) => {
       const tenantIdResolved = await resolveLibraryTenantId(ctx);
       assertLibraryEnabled(tenantIdResolved);
-      const actor = { userId: ctx.user.id, tenantId: tenantIdResolved, role: ctx.user.role };
+      const actor = await createLibraryActor(ctx, tenantIdResolved);
 
       const result = await createLibraryFolder(input, actor);
 
@@ -1028,7 +1029,7 @@ export const libraryRouter = router({
     .mutation(async ({ input, ctx }) => {
       const tenantIdResolved = await resolveLibraryTenantId(ctx);
       assertLibraryEnabled(tenantIdResolved);
-      const actor = { userId: ctx.user.id, tenantId: tenantIdResolved, role: ctx.user.role };
+      const actor = await createLibraryActor(ctx, tenantIdResolved);
 
       const deleted = await batchSoftDeleteLibraryItems(input.ids, actor);
 
@@ -1059,7 +1060,7 @@ export const libraryRouter = router({
       }
       const tenantIdResolved = await resolveLibraryTenantId(ctx);
       assertLibraryEnabled(tenantIdResolved);
-      const actor = { userId: ctx.user.id, tenantId: tenantIdResolved, role: ctx.user.role };
+      const actor = await createLibraryActor(ctx, tenantIdResolved);
 
       const result = await shareLibraryToGroup(input, actor);
 

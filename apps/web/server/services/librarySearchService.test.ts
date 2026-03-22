@@ -1,6 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockGetDb, mockDb } = vi.hoisted(() => {
+const {
+  mockGetDb,
+  mockDb,
+  mockGetEffectiveVectorProviderConfig,
+  mockResolveVectorProvider,
+  mockFetch,
+} = vi.hoisted(() => {
   const db = {
     select: vi.fn(),
     insert: vi.fn(),
@@ -10,6 +16,9 @@ const { mockGetDb, mockDb } = vi.hoisted(() => {
   return {
     mockGetDb: vi.fn().mockResolvedValue(db),
     mockDb: db,
+    mockGetEffectiveVectorProviderConfig: vi.fn(),
+    mockResolveVectorProvider: vi.fn(),
+    mockFetch: vi.fn(),
   };
 });
 
@@ -24,6 +33,11 @@ vi.mock("./groupsService", async (importOriginal) => {
     getUserGroups: vi.fn().mockResolvedValue([]),
   };
 });
+
+vi.mock("./vectorProvider", () => ({
+  getEffectiveVectorProviderConfig: mockGetEffectiveVectorProviderConfig,
+  resolveVectorProvider: mockResolveVectorProvider,
+}));
 
 import { searchLibraryItems } from "./libraryService";
 
@@ -45,6 +59,21 @@ const baseDate = new Date("2026-02-10T00:00:00.000Z");
 beforeEach(() => {
   vi.clearAllMocks();
   mockGetDb.mockResolvedValue(mockDb);
+  mockDb.select.mockReset();
+  mockDb.insert.mockReset();
+  mockDb.update.mockReset();
+  mockGetEffectiveVectorProviderConfig.mockResolvedValue({
+    provider: "chromadb",
+    currentReadProvider: "chromadb",
+    targetProvider: "chromadb",
+  });
+  mockResolveVectorProvider.mockReturnValue({
+    provider: "chromadb",
+    fallbackApplied: false,
+  });
+  mockFetch.mockReset();
+  vi.stubGlobal("fetch", mockFetch);
+  delete process.env.SMARTSPEC_PROXY_TOKEN;
 });
 
 describe("searchLibraryItems", () => {
@@ -111,8 +140,8 @@ describe("searchLibraryItems", () => {
 
     mockDb.select
       .mockReturnValueOnce(makeSelectWithOrder(items))
-      .mockReturnValueOnce(makeSelect(chunks))
-      .mockReturnValueOnce(makeSelect([]));
+      .mockReturnValueOnce(makeSelect([]))
+      .mockReturnValueOnce(makeSelect(chunks));
 
     const response = await searchLibraryItems(
       { query: "launch", limit: 10, offset: 0 },
@@ -205,14 +234,14 @@ describe("searchLibraryItems", () => {
         subjectType: "user",
         subjectId: "5",
         permissionLevel: "read",
-        expiresAt: new Date(baseDate.getTime() + (7 * 86_400_000)),
+        expiresAt: new Date("2099-01-01T00:00:00.000Z"),
       },
     ];
 
     mockDb.select
       .mockReturnValueOnce(makeSelectWithOrder(items))
-      .mockReturnValueOnce(makeSelect(chunks))
-      .mockReturnValueOnce(makeSelect(permissions));
+      .mockReturnValueOnce(makeSelect(permissions))
+      .mockReturnValueOnce(makeSelect(chunks));
 
     const response = await searchLibraryItems(
       { query: "docs" },
@@ -301,5 +330,206 @@ describe("searchLibraryItems", () => {
 
     expect(response.total).toBe(1);
     expect(response.results[0].item_id).toBe(21);
+  });
+
+  it("uses native pgvector scores when pgvector is the active read provider", async () => {
+    process.env.SMARTSPEC_PROXY_TOKEN = "test-proxy-token";
+    mockGetEffectiveVectorProviderConfig.mockResolvedValue({
+      provider: "pgvector",
+      currentReadProvider: "pgvector",
+      targetProvider: "pgvector",
+    });
+    mockResolveVectorProvider.mockReturnValue({
+      provider: "pgvector",
+      fallbackApplied: false,
+    });
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        success: true,
+        results: [{ item_id: 2, vector_score: 0.95 }],
+      }),
+    });
+
+    const items = [
+      {
+        id: 1,
+        tenantId: 53,
+        ownerUserId: 7,
+        itemType: "document",
+        source: "upload",
+        title: "Launch summary",
+        description: "keyword-only match",
+        status: "ready",
+        visibility: "private",
+        metadata: {},
+        sourceUrl: null,
+        thumbnailUrl: null,
+        deletedAt: null,
+        createdAt: new Date(baseDate.getTime() + 1_000),
+        updatedAt: new Date(baseDate.getTime() + 1_000),
+      },
+      {
+        id: 2,
+        tenantId: 53,
+        ownerUserId: 7,
+        itemType: "document",
+        source: "upload",
+        title: "Roadmap memo",
+        description: "semantic match only",
+        status: "ready",
+        visibility: "private",
+        metadata: {},
+        sourceUrl: null,
+        thumbnailUrl: null,
+        deletedAt: null,
+        createdAt: new Date(baseDate.getTime() + 2_000),
+        updatedAt: new Date(baseDate.getTime() + 2_000),
+      },
+    ];
+
+    mockDb.select
+      .mockReturnValueOnce(makeSelectWithOrder(items))
+      .mockReturnValueOnce(makeSelect([]));
+
+    const response = await searchLibraryItems(
+      { query: "launch", limit: 10, offset: 0 },
+      { userId: 7, tenantId: 53, role: "user" },
+    );
+
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    expect(mockFetch).toHaveBeenCalledWith(
+      "http://localhost:8000/api/internal/library/search",
+      expect.objectContaining({
+        method: "POST",
+        headers: expect.objectContaining({
+          "Content-Type": "application/json",
+          "x-proxy-token": "test-proxy-token",
+        }),
+      }),
+    );
+    expect(response.results.map((r) => r.item_id)).toEqual([2, 1]);
+    expect(response.results[0].vector_score).toBe(0.95);
+    expect(response.results[1].vector_score).toBe(0);
+  });
+
+  it("falls back to chunk scoring when native pgvector search errors", async () => {
+    process.env.SMARTSPEC_PROXY_TOKEN = "test-proxy-token";
+    mockGetEffectiveVectorProviderConfig.mockResolvedValue({
+      provider: "pgvector",
+      currentReadProvider: "pgvector",
+      targetProvider: "pgvector",
+    });
+    mockResolveVectorProvider.mockReturnValue({
+      provider: "pgvector",
+      fallbackApplied: false,
+    });
+    mockFetch.mockRejectedValue(new Error("backend unavailable"));
+
+    const items = [
+      {
+        id: 1,
+        tenantId: 54,
+        ownerUserId: 7,
+        itemType: "document",
+        source: "upload",
+        title: "Roadmap notes",
+        description: "fallback candidate",
+        status: "ready",
+        visibility: "private",
+        metadata: {},
+        sourceUrl: null,
+        thumbnailUrl: null,
+        deletedAt: null,
+        createdAt: new Date(baseDate.getTime() + 1_000),
+        updatedAt: new Date(baseDate.getTime() + 1_000),
+      },
+      {
+        id: 2,
+        tenantId: 54,
+        ownerUserId: 7,
+        itemType: "document",
+        source: "upload",
+        title: "Other notes",
+        description: "weaker fallback candidate",
+        status: "ready",
+        visibility: "private",
+        metadata: {},
+        sourceUrl: null,
+        thumbnailUrl: null,
+        deletedAt: null,
+        createdAt: new Date(baseDate.getTime() + 2_000),
+        updatedAt: new Date(baseDate.getTime() + 2_000),
+      },
+    ];
+
+    const chunks = [
+      { libraryItemId: 1, content: "launch launch release rollout", vectorRefId: "vec-1" },
+      { libraryItemId: 2, content: "quarterly staffing review", vectorRefId: "vec-2" },
+    ];
+
+    mockDb.select
+      .mockReturnValueOnce(makeSelectWithOrder(items))
+      .mockReturnValueOnce(makeSelect([]))
+      .mockReturnValueOnce(makeSelect(chunks));
+
+    const response = await searchLibraryItems(
+      { query: "launch", limit: 10, offset: 0 },
+      { userId: 7, tenantId: 54, role: "user" },
+    );
+
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    expect(response.results.map((r) => r.item_id)).toEqual([1]);
+    expect(response.results[0].vector_score).toBeGreaterThan(0);
+  });
+
+  it("caps native pgvector candidate ids before calling the Python backend", async () => {
+    process.env.SMARTSPEC_PROXY_TOKEN = "test-proxy-token";
+    mockGetEffectiveVectorProviderConfig.mockResolvedValue({
+      provider: "pgvector",
+      currentReadProvider: "pgvector",
+      targetProvider: "pgvector",
+    });
+    mockResolveVectorProvider.mockReturnValue({
+      provider: "pgvector",
+      fallbackApplied: false,
+    });
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ success: true, results: [] }),
+    });
+
+    const items = Array.from({ length: 1005 }, (_, index) => ({
+      id: index + 1,
+      tenantId: 55,
+      ownerUserId: 7,
+      itemType: "document",
+      source: "upload",
+      title: `Doc ${index + 1}`,
+      description: "candidate",
+      status: "ready",
+      visibility: "private",
+      metadata: {},
+      sourceUrl: null,
+      thumbnailUrl: null,
+      deletedAt: null,
+      createdAt: new Date(baseDate.getTime() + index),
+      updatedAt: new Date(baseDate.getTime() + index),
+    }));
+
+    mockDb.select
+      .mockReturnValueOnce(makeSelectWithOrder(items))
+      .mockReturnValueOnce(makeSelect([]));
+
+    await searchLibraryItems(
+      { query: "launch", limit: 10, offset: 0 },
+      { userId: 7, tenantId: 55, role: "user" },
+    );
+
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    const payload = JSON.parse(String(mockFetch.mock.calls[0]?.[1]?.body ?? "{}"));
+    expect(payload.candidate_item_ids).toHaveLength(1000);
+    expect(payload.candidate_item_ids[0]).toBe(1);
+    expect(payload.candidate_item_ids.at(-1)).toBe(1000);
   });
 });

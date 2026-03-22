@@ -19,6 +19,7 @@ describe("documentManagementUi", () => {
       itemType: "md",
       status: "ready",
       docId: undefined,
+      folderId: null,
     });
 
     expect(
