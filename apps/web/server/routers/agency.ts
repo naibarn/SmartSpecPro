@@ -808,7 +808,7 @@ export const agencyRouter = router({
               description: z.string().optional(),
               nodeType: z.enum([
                 "agent", "supervisor", "router", "aggregator",
-                "knowledge_base", "skill_call", "human_approval", "browser_session", "conditional_branch", "parallel_fan_out",
+                "knowledge_base", "skill_call", "human_approval", "browser_session", "conditional_branch", "parallel_fan_out", "loop_retry",
               ]).default("agent"),
               instructions: z.string().max(50000).optional(),
               model: z.string().max(100).regex(/^[a-zA-Z0-9._\/-]+$/, "Invalid model identifier").optional(),
@@ -1062,7 +1062,7 @@ export const agencyRouter = router({
             description: z.string().optional(),
             nodeType: z.enum([
               "agent", "supervisor", "router", "aggregator",
-              "knowledge_base", "skill_call", "human_approval", "browser_session", "conditional_branch", "parallel_fan_out",
+              "knowledge_base", "skill_call", "human_approval", "browser_session", "conditional_branch", "parallel_fan_out", "loop_retry",
             ]).default("agent"),
             instructions: z.string().max(50000).optional(),
             model: z.string().max(100).regex(/^[a-zA-Z0-9._\/-]+$/, "Invalid model identifier").optional(),
@@ -1175,6 +1175,30 @@ export const agencyRouter = router({
               const timeout = cfg?.timeoutMs;
               if (timeout !== undefined && (typeof timeout !== "number" || timeout < 1000 || timeout > 600000)) {
                 ctx.addIssue({ code: "custom", path: ["nodeConfig", "timeoutMs"], message: "timeoutMs must be 1000-600000" });
+              }
+            }
+            // Validate loop_retry config
+            if (data.nodeType === "loop_retry") {
+              const cfg = data.nodeConfig as any;
+              if (!cfg?.loopTargetNodeId) {
+                ctx.addIssue({ code: "custom", path: ["nodeConfig", "loopTargetNodeId"], message: "loop_retry requires loopTargetNodeId" });
+              }
+              const exit = cfg?.exitCondition;
+              if (!exit?.mode || !["max_iterations", "rule_based", "llm_evaluate", "context_check"].includes(exit.mode)) {
+                ctx.addIssue({ code: "custom", path: ["nodeConfig", "exitCondition", "mode"], message: "exitCondition mode must be: max_iterations, rule_based, llm_evaluate, context_check" });
+              }
+              if (exit?.maxIterations !== undefined && (exit.maxIterations < 1 || exit.maxIterations > 20)) {
+                ctx.addIssue({ code: "custom", path: ["nodeConfig", "exitCondition", "maxIterations"], message: "maxIterations must be 1-20" });
+              }
+              if (exit?.evaluationPrompt && typeof exit.evaluationPrompt === "string" && exit.evaluationPrompt.length > 500) {
+                ctx.addIssue({ code: "custom", path: ["nodeConfig", "exitCondition", "evaluationPrompt"], message: "evaluationPrompt max 500 chars" });
+              }
+              const timeout = cfg?.timeoutMs;
+              if (timeout !== undefined && (typeof timeout !== "number" || timeout < 1000 || timeout > 600000)) {
+                ctx.addIssue({ code: "custom", path: ["nodeConfig", "timeoutMs"], message: "timeoutMs must be 1000-600000" });
+              }
+              if (cfg?.feedbackPrompt && typeof cfg.feedbackPrompt === "string" && cfg.feedbackPrompt.length > 500) {
+                ctx.addIssue({ code: "custom", path: ["nodeConfig", "feedbackPrompt"], message: "feedbackPrompt max 500 chars" });
               }
             }
             // Validate knowledgeBase config

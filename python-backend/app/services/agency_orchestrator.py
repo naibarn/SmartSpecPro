@@ -28,6 +28,7 @@ from app.services.agency_communication_flows import FlowConfig, RoundTripTracker
 from app.services.agency_event_emitter import AgencyEventEmitter, check_cancelled
 from app.services.agency_instruction_resolver import resolve_instructions
 from app.services.agency_output_validator import AgencyOutputValidator
+from app.services.agency_loop_handler import LoopHandler
 from app.services.agency_conditional_branch import (
     evaluate_context_check,
     evaluate_llm_classify,
@@ -311,6 +312,14 @@ class AgencyOrchestrator:
             case "parallel_fan_out":
                 result = await self._execute_parallel_fan_out(node, ctx)
                 return result  # Fan-out handles its own downstream
+
+            case "loop_retry":
+                handler = LoopHandler()
+                result = await handler.execute(
+                    node, ctx, self,
+                    run_context=ctx.shared_context,
+                    trace_collector=self.trace_collector,
+                )
 
             case _:
                 logger.warning("agency_orchestrator_unknown_node_type", node_type=node_type)

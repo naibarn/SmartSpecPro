@@ -11,6 +11,7 @@ import { HumanApprovalNodeCard } from "./HumanApprovalNodeCard";
 import { BrowserSessionNodeCard } from "./BrowserSessionNodeCard";
 import { ConditionalBranchNodeCard } from "./ConditionalBranchNodeCard";
 import { ParallelFanOutNodeCard } from "./ParallelFanOutNodeCard";
+import { LoopRetryNodeCard } from "./LoopRetryNodeCard";
 
 /**
  * Single ReactFlow node type dispatcher.
@@ -39,6 +40,8 @@ export const BaseAgencyNode = memo(function BaseAgencyNode(props: NodeProps<Agen
       return <ConditionalBranchNodeCard {...props} />;
     case "parallel_fan_out":
       return <ParallelFanOutNodeCard {...props} />;
+    case "loop_retry":
+      return <LoopRetryNodeCard {...props} />;
     default:
       return <AgentNodeCard {...props} />;
   }

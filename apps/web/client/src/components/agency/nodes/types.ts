@@ -8,7 +8,8 @@ export type AgencyNodeType =
   | "human_approval"
   | "browser_session"
   | "conditional_branch"
-  | "parallel_fan_out";
+  | "parallel_fan_out"
+  | "loop_retry";
 
 export interface AgencyNodeData {
   nodeType: AgencyNodeType;

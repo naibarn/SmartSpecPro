@@ -200,6 +200,7 @@ export function NodePropertyPanel({ node, nodeId, siblingNodes = [], agencyId, o
           {nodeType === "human_approval" && <HumanApprovalForm node={node} onChange={onChange} />}
           {nodeType === "conditional_branch" && <ConditionalBranchForm node={node} onChange={onChange} siblingNodes={siblingNodes} />}
           {nodeType === "parallel_fan_out" && <ParallelFanOutForm node={node} onChange={onChange} siblingNodes={siblingNodes} />}
+          {nodeType === "loop_retry" && <LoopRetryForm node={node} onChange={onChange} siblingNodes={siblingNodes} />}
 
           <Separator />
 
@@ -1107,6 +1108,7 @@ function RouterForm({
     browser_session: "\uD83D\uDDA5\uFE0F", human_approval: "\uD83D\uDC64",
     conditional_branch: "\u2696\uFE0F",
     parallel_fan_out: "\u2194\uFE0F",
+    loop_retry: "\uD83D\uDD04",
   };
 
   // Handle badge styles
@@ -2761,6 +2763,208 @@ function ParallelFanOutForm({
               checked={continueOnError}
               onCheckedChange={(v) => onChange(ncSet(node, "continueOnError", v))}
             />
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+// ── Loop / Retry Form ────────────────────────────────────────────────────────
+
+interface LoopRule {
+  field: string;
+  operator: string;
+  value: string;
+}
+
+function LoopRetryForm({
+  node,
+  onChange,
+  siblingNodes = [],
+}: {
+  node: AgencyNodeData;
+  onChange: (updates: Partial<AgencyNodeData>) => void;
+  siblingNodes?: SiblingNode[];
+}) {
+  const loopTargetNodeId = ncGet<string>(node, "loopTargetNodeId", "");
+  const exitCondition = ncGet<any>(node, "exitCondition", { mode: "max_iterations", maxIterations: 5 });
+  const feedbackMode = ncGet<string>(node, "feedbackMode", "auto");
+  const feedbackPrompt = ncGet<string>(node, "feedbackPrompt", "");
+  const timeoutMs = ncGet<number>(node, "timeoutMs", 300000);
+  const delayMs = ncGet<number>(node, "delayBetweenIterationsMs", 0);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+
+  const LOOP_OPERATORS = ["equals", "contains", "regex", "gt", "lt", "gte", "lte", "exists"];
+
+  const updateExit = (key: string, value: unknown) => {
+    onChange({ nodeConfig: { ...(node.nodeConfig ?? {}), exitCondition: { ...exitCondition, [key]: value } } });
+  };
+
+  const rules: LoopRule[] = exitCondition?.rules ?? [];
+
+  const updateRule = (i: number, key: keyof LoopRule, value: string) => {
+    const updated = rules.map((r: LoopRule, idx: number) => (idx === i ? { ...r, [key]: value } : r));
+    updateExit("rules", updated);
+  };
+
+  const addRule = () => updateExit("rules", [...rules, { field: "$.result", operator: "equals", value: "" }]);
+  const removeRule = (i: number) => updateExit("rules", rules.filter((_: LoopRule, idx: number) => idx !== i));
+
+  return (
+    <>
+      <div className="space-y-1.5">
+        <Label>Name</Label>
+        <Input value={node.name} onChange={(e) => onChange({ name: e.target.value })} placeholder="Loop name" />
+      </div>
+
+      <div className="space-y-1.5">
+        <Label>Target Node (loop body)</Label>
+        <Select value={loopTargetNodeId} onValueChange={(v) => onChange(ncSet(node, "loopTargetNodeId", v))}>
+          <SelectTrigger className="h-7 text-xs">
+            <SelectValue placeholder="Select target node..." />
+          </SelectTrigger>
+          <SelectContent>
+            {siblingNodes.map((sn) => (
+              <SelectItem key={sn.id} value={sn.id}>{sn.name} ({sn.nodeType})</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <Separator />
+
+      <div className="space-y-1.5">
+        <Label>Exit Condition Mode</Label>
+        <Select value={exitCondition?.mode ?? "max_iterations"} onValueChange={(v) => updateExit("mode", v)}>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="max_iterations">Max Iterations Only</SelectItem>
+            <SelectItem value="rule_based">Rule-based</SelectItem>
+            <SelectItem value="llm_evaluate">LLM Evaluation</SelectItem>
+            <SelectItem value="context_check">Context Check</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label>Max Iterations</Label>
+        <Input
+          type="number"
+          value={exitCondition?.maxIterations ?? 5}
+          onChange={(e) => updateExit("maxIterations", Math.min(20, Math.max(1, Number(e.target.value))))}
+          min={1}
+          max={20}
+          className="text-xs h-7"
+        />
+        <p className="text-[10px] text-muted-foreground">Server-side cap: 20</p>
+      </div>
+
+      {exitCondition?.mode === "rule_based" && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Label className="text-sm font-medium">Exit Rules</Label>
+            <Button variant="outline" size="sm" className="h-6 text-xs" onClick={addRule}>
+              <Plus className="h-3 w-3 mr-1" /> Add
+            </Button>
+          </div>
+          {rules.map((rule: LoopRule, i: number) => (
+            <div key={i} className="rounded border border-amber-200 bg-amber-50/50 p-2 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Input value={rule.field} onChange={(e) => updateRule(i, "field", e.target.value)} placeholder="$.result.status" className="text-xs h-7 flex-1 mr-1" />
+                <Button variant="ghost" size="icon" className="h-5 w-5 shrink-0" onClick={() => removeRule(i)}>
+                  <Trash2 className="h-3 w-3 text-red-500" />
+                </Button>
+              </div>
+              <div className="flex gap-1.5">
+                <Select value={rule.operator} onValueChange={(v) => updateRule(i, "operator", v)}>
+                  <SelectTrigger className="h-7 text-xs w-28"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {LOOP_OPERATORS.map((op) => <SelectItem key={op} value={op}>{op}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                {rule.operator !== "exists" && (
+                  <Input value={rule.value} onChange={(e) => updateRule(i, "value", e.target.value)} placeholder="Value" className="text-xs h-7 flex-1" />
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {exitCondition?.mode === "llm_evaluate" && (
+        <div className="space-y-1.5">
+          <Label>Evaluation Prompt</Label>
+          <Textarea
+            value={exitCondition?.evaluationPrompt ?? ""}
+            onChange={(e) => updateExit("evaluationPrompt", e.target.value)}
+            placeholder="Is the result satisfactory? (max 500 chars)"
+            rows={2}
+            maxLength={500}
+            className="text-xs"
+          />
+        </div>
+      )}
+
+      {exitCondition?.mode === "context_check" && (
+        <div className="space-y-1.5">
+          <Label>Context Key</Label>
+          <Input
+            value={exitCondition?.contextKey ?? ""}
+            onChange={(e) => updateExit("contextKey", e.target.value)}
+            placeholder="Key in AgencyRunContext"
+            className="text-xs h-7"
+          />
+        </div>
+      )}
+
+      <Separator />
+
+      <div className="space-y-1.5">
+        <Label>Feedback Mode</Label>
+        <Select value={feedbackMode} onValueChange={(v) => onChange(ncSet(node, "feedbackMode", v))}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="auto">Auto (include previous output)</SelectItem>
+            <SelectItem value="custom_prompt">Custom Prompt</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {feedbackMode === "custom_prompt" && (
+        <div className="space-y-1.5">
+          <Label>Feedback Prompt</Label>
+          <Textarea
+            value={feedbackPrompt}
+            onChange={(e) => onChange(ncSet(node, "feedbackPrompt", e.target.value))}
+            placeholder="Use {previous_output}, {iteration}, {original_input}"
+            rows={2}
+            maxLength={500}
+            className="text-xs"
+          />
+        </div>
+      )}
+
+      <button
+        type="button"
+        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+        onClick={() => setShowAdvanced(!showAdvanced)}
+      >
+        {showAdvanced ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+        Advanced Settings
+      </button>
+
+      {showAdvanced && (
+        <div className="space-y-3 pl-2 border-l-2 border-amber-100">
+          <div className="space-y-1.5">
+            <Label>Delay Between Iterations (ms)</Label>
+            <Input type="number" value={delayMs} onChange={(e) => onChange(ncSet(node, "delayBetweenIterationsMs", Number(e.target.value)))} min={0} max={30000} className="text-xs h-7" />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Total Timeout (ms)</Label>
+            <Input type="number" value={timeoutMs} onChange={(e) => onChange(ncSet(node, "timeoutMs", Number(e.target.value)))} min={1000} max={600000} className="text-xs h-7" />
           </div>
         </div>
       )}
