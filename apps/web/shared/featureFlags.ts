@@ -39,6 +39,10 @@ export interface TenantFeatureFlags {
   agencyStreaming: boolean; // F32 — Agency SSE streaming
   agencyMcpBridge: boolean; // F33 — Agency MCP bridge integration
   agencyToolApi: boolean; // F34 — Agency standalone tool API
+  agencyAgenticModeEnabled: boolean; // F35 — Agency agentic execution mode (Level 1)
+  agencyReactExecutorEnabled: boolean; // F36 — Agency ReAct executor (Level 2)
+  agencyAutonomousAgentEnabled: boolean; // F37 — Agency autonomous agent (Level 3)
+  agencyLongTermMemoryEnabled: boolean; // F38 — Agency long-term memory (Level 3)
 }
 
 export type TenantFeatureFlagKey = keyof TenantFeatureFlags;
@@ -82,6 +86,10 @@ export const ALLOWED_FEATURE_FLAGS: ReadonlySet<string> = new Set<TenantFeatureF
   "agencyStreaming",
   "agencyMcpBridge",
   "agencyToolApi",
+  "agencyAgenticModeEnabled",
+  "agencyReactExecutorEnabled",
+  "agencyAutonomousAgentEnabled",
+  "agencyLongTermMemoryEnabled",
 ]);
 
 /**
@@ -124,4 +132,8 @@ export const FEATURE_FLAG_DEFAULTS: Readonly<TenantFeatureFlags> = {
   agencyStreaming: false,
   agencyMcpBridge: false,
   agencyToolApi: false,
+  agencyAgenticModeEnabled: true,
+  agencyReactExecutorEnabled: false,
+  agencyAutonomousAgentEnabled: false,
+  agencyLongTermMemoryEnabled: false,
 };
