@@ -820,7 +820,13 @@ export const agencyRouter = router({
             z.object({
               fromAgentName: z.string(),
               toAgentName: z.string(),
-              flowType: z.enum(["delegation", "handoff", "parallel"]),
+              flowType: z.enum(["delegation", "handoff", "parallel", "orchestrator_worker", "custom"]),
+              flowConfig: z.object({
+                contextFields: z.array(z.string().max(100)).max(20).optional(),
+                requireSummary: z.boolean().optional(),
+                maxRoundTrips: z.number().int().min(0).max(1000).optional(),
+                timeout: z.number().int().min(0).max(3600).optional(),
+              }).optional(),
             }),
           )
           .optional(),
@@ -947,6 +953,7 @@ export const agencyRouter = router({
               fromAgentId: fromId,
               toAgentId: toId,
               flowType: flow.flowType,
+              flowConfig: flow.flowConfig ?? null,
             });
           }
         }
@@ -1104,7 +1111,13 @@ export const agencyRouter = router({
             z.object({
               fromAgentName: z.string(),
               toAgentName: z.string(),
-              flowType: z.enum(["delegation", "handoff", "parallel"]),
+              flowType: z.enum(["delegation", "handoff", "parallel", "orchestrator_worker", "custom"]),
+              flowConfig: z.object({
+                contextFields: z.array(z.string().max(100)).max(20).optional(),
+                requireSummary: z.boolean().optional(),
+                maxRoundTrips: z.number().int().min(0).max(1000).optional(),
+                timeout: z.number().int().min(0).max(3600).optional(),
+              }).optional(),
             }),
           )
           .optional(),
@@ -1246,6 +1259,7 @@ export const agencyRouter = router({
               fromAgentId: fromId,
               toAgentId: toId,
               flowType: flow.flowType,
+              flowConfig: flow.flowConfig ?? null,
             });
           }
         }
@@ -2061,6 +2075,7 @@ export const agencyRouter = router({
               fromAgentId: fromId,
               toAgentId: toId,
               flowType: edge.flowType ?? "delegation",
+              flowConfig: edge.flowConfig ?? null,
             });
           }
         }
@@ -2633,6 +2648,7 @@ export const agencyRouter = router({
               fromAgentId: newFromId,
               toAgentId: newToId,
               flowType: flow.flowType,
+              flowConfig: flow.flowConfig ?? null,
             });
           }
         }

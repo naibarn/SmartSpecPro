@@ -22,7 +22,10 @@ import httpx
 import structlog
 
 from app.services.agency_browser_session_executor import AgencyBrowserSessionExecutor
+from app.services.agency_communication_flows import FlowConfig, RoundTripTracker
 from app.services.agency_event_emitter import AgencyEventEmitter, check_cancelled
+from app.services.agency_instruction_resolver import resolve_instructions
+from app.services.agency_output_validator import AgencyOutputValidator
 from app.services.agency_run_context import AgencyRunContext
 
 logger = structlog.get_logger(__name__)
@@ -118,6 +121,8 @@ class AgencyOrchestrator:
         self.event_emitter = event_emitter
         self.redis_client = redis_client
         self.browser_session_executor = AgencyBrowserSessionExecutor()
+        self._round_trip_tracker = RoundTripTracker()
+        self._flow_configs: dict[tuple[str, str], FlowConfig] = {}
 
         # Find entry node
         entry_candidates = [n for n in nodes if n.get("is_entry_point")]
@@ -368,6 +373,15 @@ class AgencyOrchestrator:
             if kb_context:
                 agent_instructions = agent_instructions + kb_context
 
+        # ── Dynamic instruction resolution ───────────────────────────────
+        agent_instructions = resolve_instructions(
+            raw_instructions=agent_instructions,
+            agent_name=node.get("name", "Agent"),
+            tool_names=None,  # Will be populated after tools are resolved
+            context=ctx.shared_context,
+            user_context=self.user_context,
+        )
+
         try:
             from app.services.agency_swarm_adapter import AgentConfig
 
@@ -431,6 +445,38 @@ class AgencyOrchestrator:
                 tenant_id=ctx.tenant_id,
             )
             response = run_result.response
+
+            # ── Structured output validation ─────────────────────────────
+            output_schema = node.get("output_schema") or node_config.get("outputSchema")
+            if output_schema and ctx.shared_context:
+                validator = AgencyOutputValidator(output_schema, node.get("name", "Agent"))
+                validation_attempts = node_config.get("validationAttempts", 1)
+                for attempt in range(validation_attempts):
+                    result_obj = validator.validate(response)
+                    if result_obj.is_valid:
+                        if result_obj.parsed_data is not None:
+                            await ctx.shared_context.set(
+                                f"{node.get('name', 'Agent')}_output",
+                                result_obj.parsed_data,
+                            )
+                        break
+                    if attempt < validation_attempts - 1 and result_obj.retry_feedback:
+                        # Retry with feedback
+                        retry_result = await self.adapter.run(
+                            agency=agency_obj,
+                            message=result_obj.retry_feedback,
+                            timeout_seconds=sub_config.max_run_time_seconds,
+                            agency_id=sub_config.agency_id,
+                            tenant_id=ctx.tenant_id,
+                        )
+                        response = retry_result.response
+                    else:
+                        logger.warning(
+                            "structured_output_validation_failed",
+                            agent=node.get("name"),
+                            attempts=validation_attempts,
+                            last_error=result_obj.retry_feedback,
+                        )
 
             # Emit text_delta with full response (non-streaming path)
             if self.event_emitter and response:

@@ -551,12 +551,13 @@ class AgencyService:
         return [(row.from_agent_name, row.to_agent_name) for row in result.all()]
 
     async def _load_flows_full(self, agency_id: str) -> list[dict]:
-        """Load full edge data for AgencyOrchestrator (includes flowType + node IDs)."""
+        """Load full edge data for AgencyOrchestrator (includes flowType, flowConfig + node IDs)."""
         result = await self.db.execute(
             text("""
                 SELECT cf."fromAgentId" as from_node_id,
                        cf."toAgentId" as to_node_id,
-                       cf."flowType" as flow_type
+                       cf."flowType" as flow_type,
+                       cf."flowConfig" as flow_config
                 FROM agency_communication_flows cf
                 WHERE cf."agencyId" = :agency_id
             """),
@@ -567,6 +568,7 @@ class AgencyService:
                 "from_node_id": row.from_node_id,
                 "to_node_id": row.to_node_id,
                 "flow_type": row.flow_type or "delegation",
+                "flow_config": row.flow_config,
             }
             for row in result.all()
         ]
