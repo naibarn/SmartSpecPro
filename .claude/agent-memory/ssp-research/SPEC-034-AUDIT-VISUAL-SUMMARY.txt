@@ -1,0 +1,388 @@
+================================================================================
+SPEC 034 — AGENCY EXPERIENCE TEMPLATES SYSTEM AUDIT
+Comprehensive Analysis across Python/Node.js/Frontend Layers
+Date: 2026-03-18 | Status: COMPLETE | Confidence: HIGH
+================================================================================
+
+OVERALL SYSTEM HEALTH: 79% COMPLETE
+───────────────────────────────────────────────────────────────────────────────
+
+[████████████████████████░░░░░░░░░░░░] 5 of 9 intent types fully supported
+[████████████████████████░░░░░░░░░░░░] 3 of 3 templates properly defined
+[██████████████░░░░░░░░░░░░░░░░░░░░░░] Minimal test coverage (Phase 3 needed)
+[██████████████████░░░░░░░░░░░░░░░░░░] Feature flag gating incomplete
+
+
+CRITICAL FINDINGS BY LAYER
+═══════════════════════════════════════════════════════════════════════════════
+
+┌─ PYTHON BACKEND (agency_result_envelope.py) ─────────────────────────────────┐
+│ Status: ✅ PASS — Complete implementation                                     │
+│                                                                                │
+│ • AgencyIntent literal: 9 types (chat_reply, research_report, research,      │
+│   ticket_comparison, hotel_comparison, shortlist, video_storyboard,          │
+│   presentation_deck, media_prompt, text_content)                             │
+│                                                                                │
+│ • Envelope regex: ✅ Handles 3 fence patterns (agency-result, agency_result,  │
+│   json)                                                                        │
+│                                                                                │
+│ • Error handling: ✅ 3 paths (not found, malformed JSON, validation error)     │
+│                                                                                │
+│ Tooling:                                                                       │
+│ ├─ builtin-rag-knowledge           ✅ /api/internal/tools/rag-knowledge       │
+│ ├─ builtin-document-search         ✅ /api/internal/tools/document-search    │
+│ ├─ builtin-web-search             ✅ /api/internal/tools/web-search         │
+│ ├─ builtin-skill-executor         ✅ /api/internal/tools/skill-executor     │
+│ ├─ builtin-model-suggest          ✅ /api/internal/tools/model-suggest      │
+│ └─ builtin-auto-draft             ✅ /api/internal/tools/auto-draft         │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+┌─ NODE.JS TEMPLATES (agencyExperienceTemplateService.ts) ─────────────────────┐
+│ Status: ✅ PASS — Templates properly structured                              │
+│                                                                                │
+│ Template 1: platform-deep-research (lines 44–100)                            │
+│ ├─ Instructions: ✅ Contains agency-result envelope example (research_report) │
+│ ├─ Default Tools: [rag-knowledge, document-search, web-search,               │
+│ │                  skill-executor, model-suggest]                            │
+│ ├─ Default Intent: research_report                                            │
+│ └─ Retrieval Scope: tenant_accessible (user override allowed)                │
+│                                                                                │
+│ Template 2: platform-storyboard-planner (lines 101–153)                      │
+│ ├─ Instructions: ✅ Contains agency-result envelope example (video_storyboard)│
+│ ├─ Default Tools: [auto-draft, rag-knowledge, model-suggest,                 │
+│ │                  skill-executor, web-search]                               │
+│ ├─ Default Intent: video_storyboard                                           │
+│ └─ Retrieval Scope: library_only (user override allowed)                     │
+│                                                                                │
+│ Template 3: platform-deck-builder (lines 154–211)                            │
+│ ├─ Instructions: ✅ Contains agency-result envelope example (presentation_deck)
+│ ├─ Default Tools: [auto-draft, rag-knowledge, document-search,               │
+│ │                  skill-executor, model-suggest]                            │
+│ ├─ Default Intent: presentation_deck                                          │
+│ └─ Retrieval Scope: tenant_accessible (user override allowed)                │
+│                                                                                │
+│ Upsert Logic: ✅ Idempotent (insert-or-nothing + update)                     │
+│              ✅ Upserts both agencyTemplates AND agentTemplates              │
+│              ✅ Properly links agents to templates                            │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+┌─ NODE.JS PREVIEW SERVICE (agencyPreviewService.ts) ──────────────────────────┐
+│ Status: ❌ CRITICAL — Missing 2 of 9 intent handlers                          │
+│                                                                                │
+│ Handler Coverage:                                                              │
+│                                                                                │
+│ research_report     Line 293   ✅ PASS   buildAgencyPreview returns preview   │
+│ video_storyboard    Line 318   ✅ PASS   buildAgencyPreview returns preview   │
+│ presentation_deck   Line 351   ✅ PASS   buildAgencyPreview returns preview   │
+│ ticket_comparison   Line 380   ✅ PASS   via comparisonKindFromIntent         │
+│ hotel_comparison    Line 380   ✅ PASS   via comparisonKindFromIntent         │
+│ shortlist           Line 380   ✅ PASS   via comparisonKindFromIntent         │
+│ ─────────────────────────────────────────────────────────────────────────     │
+│ media_prompt        ❌ MISSING  buildAgencyPreview returns null → no preview   │
+│ text_content        ❌ MISSING  buildAgencyPreview returns null → no preview   │
+│ chat_reply          ❌ UNKNOWN  (Python-only intent?)                         │
+│                                                                                │
+│ Field Alignment:                                                               │
+│ ├─ Research:     ✅ executive_summary, key_findings, recommendations (snake)  │
+│ ├─ Storyboard:   ✅ total_duration_seconds, video_prompt, audio_prompt       │
+│ ├─ Presentation: ✅ style_preset (snake), slides.templateId (camel)          │
+│ └─ Normalization: ✅ Frontend receives camelCase (totalDurationSeconds, etc)  │
+│                                                                                │
+│ IMPACT: If Python emits media_prompt/text_content → null returned → no UI     │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+┌─ NODE.JS ROUTING (agencyResultRouter.ts) ──────────────────────────────────┐
+│ Status: ✅ PASS — Routing logic exists for media_prompt & text_content      │
+│                                                                               │
+│ Switch statement properly routes all envelope types:                         │
+│                                                                               │
+│ presentation_deck   →  /presentations/{deckId}/edit                         │
+│ media_prompt        →  /media-studio?prompt=...&type=...&model=...  ✅      │
+│ video_storyboard    →  Chat display (structured scenes)                     │
+│ research_report     →  Chat display (structured report)                     │
+│ text_content        →  Chat display (title + content)  ✅                   │
+│                                                                               │
+│ Issue: Router sends to right destinations, but agencyPreviewService         │
+│        never builds the preview objects, so router never called.            │
+│                                                                               │
+│ Audit logging: ✅ Uses auditLogger (not console.log)                         │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+┌─ FRONTEND PREVIEW CARD (AgencyPreviewCard.tsx) ────────────────────────────┐
+│ Status: ❌ CRITICAL — Missing media_prompt & text_content type support     │
+│                                                                               │
+│ Supported Types:                                                             │
+│                                                                               │
+│ ├─ research      (FileText icon)     ✅ configured + renderer exists         │
+│ ├─ storyboard    (Film icon)         ✅ configured + StoryboardPreview       │
+│ ├─ deck          (Presentation icon) ✅ configured + DeckPreviewContent     │
+│ ├─ comparison    (ReceiptText icon)  ✅ configured + renderer exists         │
+│ └─ media_prompt  ❌ NOT CONFIGURED                                           │
+│    text_content  ❌ NOT CONFIGURED                                           │
+│                                                                               │
+│ TypeScript interface (lines 28–29):                                          │
+│   previewType: "research" | "storyboard" | "deck" | "comparison"            │
+│               ❌ Missing: "media_prompt" | "text_content"                    │
+│                                                                               │
+│ Type config (lines 62–91):                                                  │
+│   ❌ media_prompt not in typeConfig                                          │
+│   ❌ text_content not in typeConfig                                          │
+│                                                                               │
+│ IMPACT: If preview object arrives, card can't render it                    │
+│         User sees no feedback (silent failure)                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+┌─ FRONTEND CONTENT COMPONENTS ──────────────────────────────────────────────┐
+│ Status: ⚠️ PARTIAL — Existing types working, new types missing              │
+│                                                                               │
+│ ResearchPreviewContent.tsx         ✅ Renders research report sections       │
+│ StoryboardPreviewContent.tsx       ✅ Renders video scenes with camera/light │
+│ DeckPreviewContent.tsx             ✅ Renders slide thumbnails               │
+│                                                                               │
+│ MediaPromptPreviewContent.tsx      ❌ MISSING (needs creation)              │
+│ TextContentPreviewContent.tsx      ❌ MISSING (needs creation)              │
+│                                                                               │
+│ PreviewCommitButton.tsx:                                                    │
+│ ├─ commitLabel()        Uses generic fallback for unknown types             │
+│ ├─ commitSuccessMessage() Uses generic fallback for unknown types           │
+│ └─ Can be improved with explicit media_prompt & text_content cases         │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+┌─ FEATURE FLAGS ────────────────────────────────────────────────────────────┐
+│ Status: ⚠️ PARTIAL — Template sync gated, commit gates missing             │
+│                                                                               │
+│ AGENCY_SWARM_ENABLED                                                        │
+│ ├─ Location: agency.ts:54–64                                               │
+│ ├─ Purpose: Feature guard for entire agency system                         │
+│ └─ Status: ✅ Properly checked                                              │
+│                                                                               │
+│ AGENCY_TEMPLATE_EXPERIENCES_ENABLED                                         │
+│ ├─ Location: agency.ts:314–316, 689–691                                    │
+│ ├─ Purpose: Gate template sync in listExperienceTemplates & createFromTemplate
+│ └─ Status: ✅ Properly checked                                              │
+│                                                                               │
+│ AGENCY_ORCHESTRATOR_ENABLED                                                 │
+│ ├─ Location: python-backend (should_use_orchestrator)                       │
+│ └─ Status: ✅ Exists                                                         │
+│                                                                               │
+│ AGENCY_DECK_COMMIT_ENABLED         ❌ NOT CHECKED                           │
+│ ├─ Should gate: agencyDeckCommitService.ts                                  │
+│ └─ Risk: Commits allowed even if tenant flag disabled                       │
+│                                                                               │
+│ AGENCY_LIBRARY_COMMIT_ENABLED      ❌ NOT CHECKED                           │
+│ ├─ Should gate: agencyCommitService.ts                                      │
+│ └─ Risk: Commits allowed even if tenant flag disabled                       │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+┌─ TEST COVERAGE ────────────────────────────────────────────────────────────┐
+│ Status: ⚠️ MINIMAL — Agency router tests exist, template tests missing     │
+│                                                                               │
+│ Existing Tests:                                                              │
+│ ├─ apps/web/server/routers/__tests__/agency.test.ts                        │
+│ │  └─ Mocks for: ensureBuiltInAgencyExperienceTemplates,                   │
+│ │              resolveAgencyRetrievalScope,                                 │
+│ │              preview lifecycle services                                    │
+│ └─ Status: ✅ Mocks in place, actual test bodies not reviewed              │
+│                                                                               │
+│ Missing Tests:                                                               │
+│ ├─ buildAgencyPreview with media_prompt intent                              │
+│ ├─ buildAgencyPreview with text_content intent                              │
+│ ├─ StoryboardPreviewContent field normalization (snake→camel)               │
+│ ├─ AgencyPreviewCard rendering all 7 preview types                          │
+│ └─ Full integration: template → run → media_prompt → preview → commit       │
+│                                                                               │
+│ Recommended Test File: agencyPreviewService.test.ts (NEW)                   │
+│ Tests needed:                                                                │
+│ ├─ buildAgencyPreview returns correct type for research_report              │
+│ ├─ buildAgencyPreview returns correct type for video_storyboard             │
+│ ├─ buildAgencyPreview returns correct type for presentation_deck            │
+│ ├─ buildAgencyPreview returns correct type for media_prompt  (NEW)         │
+│ ├─ buildAgencyPreview returns correct type for text_content  (NEW)         │
+│ ├─ buildAgencyPreview handles missing payload gracefully                    │
+│ └─ buildAgencyPreview returns null for unknown intent types                 │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+ISSUE SEVERITY & PRIORITY
+═══════════════════════════════════════════════════════════════════════════════
+
+CRITICAL (Blocks user workflows)
+────────────────────────────────
+❌ ISSUE 1: Missing media_prompt handler in buildAgencyPreview()
+   Impact: If Python emits intent="media_prompt", Node.js returns null
+   File:   agencyPreviewService.ts (lines 280–410)
+   Fix:    Add handler block with Zod schema validation (30 min)
+   Affects: Any template that generates media_prompt results
+
+❌ ISSUE 2: Missing text_content handler in buildAgencyPreview()
+   Impact: If Python emits intent="text_content", Node.js returns null
+   File:   agencyPreviewService.ts (lines 280–410)
+   Fix:    Add handler block with Zod schema validation (30 min)
+   Affects: Any template that generates text_content results
+
+❌ ISSUE 3: Missing media_prompt preview type in frontend
+   Impact: Even if Node.js builds preview, frontend can't render it
+   File:   AgencyPreviewCard.tsx (lines 28, 62–91)
+   Fix:    Add to typeConfig + interface + import component (30 min)
+   Affects: User sees nothing when preview arrives
+
+❌ ISSUE 4: Missing text_content preview type in frontend
+   Impact: Even if Node.js builds preview, frontend can't render it
+   File:   AgencyPreviewCard.tsx (lines 28, 62–91)
+   Fix:    Add to typeConfig + interface + import component (30 min)
+   Affects: User sees nothing when preview arrives
+
+HIGH (Affects user experience)
+──────────────────────────────
+⚠️  ISSUE 5: Missing MediaPromptPreviewContent component
+   Impact: typeConfig references component that doesn't exist
+   File:   NEW (should be created)
+   Fix:    Create component with prompt display + copy button (30 min)
+   Affects: UI would crash if preview card tries to render media_prompt
+
+⚠️  ISSUE 6: Missing TextContentPreviewContent component
+   Impact: typeConfig references component that doesn't exist
+   File:   NEW (should be created)
+   Fix:    Create component with markdown/HTML rendering (30 min)
+   Affects: UI would crash if preview card tries to render text_content
+
+MEDIUM (Degrades gracefully)
+────────────────────────────
+⚠️  ISSUE 7: Commit button has generic labels for new types
+   Impact: UX shows "Save" instead of specific action
+   File:   PreviewCommitButton.tsx (lines 160–188)
+   Fix:    Add explicit cases for media_prompt & text_content (15 min)
+   Affects: Users less clear on what "commit" does
+
+⚠️  ISSUE 8: AGENCY_DECK_COMMIT_ENABLED flag not checked
+   Impact: Could commit presentations even if flag disabled
+   File:   agencyDeckCommitService.ts (should add check)
+   Fix:    Add feature flag guard (15 min)
+   Affects: Tenant quotas could be bypassed
+
+⚠️  ISSUE 9: AGENCY_LIBRARY_COMMIT_ENABLED flag not checked
+   Impact: Could save to library even if flag disabled
+   File:   agencyCommitService.ts (should add check)
+   Fix:    Add feature flag guard (15 min)
+   Affects: Tenant quotas could be bypassed
+
+LOW (Nice to have)
+──────────────────
+└─ ISSUE 10: Minimal test coverage for preview generation
+   Impact: New intent types aren't verified by tests
+   File:   NEW agencyPreviewService.test.ts
+   Fix:    Add unit tests for all 7 intent types (3 hours)
+   Affects: Regressions not caught by CI
+
+
+IMPLEMENTATION ROADMAP
+═══════════════════════════════════════════════════════════════════════════════
+
+Phase 1: FIX CRITICAL ISSUES (4 hours)
+────────────────────────────────────
+✓ Add media_prompt handler to agencyPreviewService.ts    [30 min]
+✓ Add text_content handler to agencyPreviewService.ts    [30 min]
+✓ Create MediaPromptPreviewContent.tsx                   [30 min]
+✓ Create TextContentPreviewContent.tsx                   [30 min]
+✓ Update AgencyPreviewCard typeConfig                    [20 min]
+✓ Update AgencyPreviewCard interface & render logic      [30 min]
+✓ Update PreviewCommitButton labels                      [15 min]
+──────────────────────────────────────────────────────────
+Total: ~3-4 hours
+
+Phase 2: ADD FEATURE FLAG GUARDS (1.5 hours)
+─────────────────────────────────────
+✓ Add AGENCY_DECK_COMMIT_ENABLED check                   [15 min]
+✓ Add AGENCY_LIBRARY_COMMIT_ENABLED check                [15 min]
+✓ Document flag requirements in CLAUDE.md                [30 min]
+──────────────────────────────────────────────────────────
+Total: ~1.5 hours
+
+Phase 3: EXPAND TEST COVERAGE (3 hours)
+────────────────────────────────────
+✓ Create agencyPreviewService.test.ts                    [1.5 hours]
+✓ Add integration test (template → preview flow)         [1.5 hours]
+──────────────────────────────────────────────────────────
+Total: 3 hours
+
+
+VERIFICATION CHECKLIST
+═════════════════════════════════════════════════════════════════════════════
+
+After Phase 1 Implementation:
+├─ pnpm check             (TypeScript type validation)
+├─ pnpm test             (Run all tests, verify existing tests still pass)
+├─ Manual test: Create deep-research agency, run with Python backend
+├─ Manual test: Verify preview renders (research, storyboard, deck)
+├─ Manual test: Attempt media_prompt scenario if possible
+└─ Manual test: Attempt text_content scenario if possible
+
+After Phase 2 Implementation:
+├─ Verify feature flag check doesn't block normal flow
+├─ Test with flag disabled for at least one commit type
+└─ Verify error message is clear to user
+
+After Phase 3 Implementation:
+├─ npm run test           (All tests pass)
+├─ npm run test:coverage  (Verify coverage >80%)
+└─ npm run check          (No type errors)
+
+
+QUESTIONS FOR USER
+═══════════════════════════════════════════════════════════════════════════════
+
+Before implementing Phase 1:
+1. Is chat_reply intent still needed? It's in Python but nowhere in Node.js.
+2. Should media_prompt preview auto-navigate to Media Studio on commit?
+3. Should text_content be committable to Library or display-only?
+
+Before implementing Phase 2:
+4. Are AGENCY_DECK_COMMIT_ENABLED and AGENCY_LIBRARY_COMMIT_ENABLED flags
+   actually used/enforced? Or are commits always allowed?
+
+Before implementing Phase 3:
+5. Should test suite focus on unit tests or integration tests?
+6. Is there a preferred pattern for agency-related tests?
+
+
+RISK ASSESSMENT
+═══════════════════════════════════════════════════════════════════════════════
+
+What can go wrong if we DON'T fix these issues?
+
+1. Silent failures: Users run templates that generate media_prompt or
+   text_content, but preview never displays. No error, just blank.
+
+2. Incomplete feature: Three template types exist but only work with
+   3-5 intents. New intents fall through with no feedback.
+
+3. Quota bypass: If commit flags aren't checked, templates could bypass
+   tenant quota restrictions.
+
+4. Regression: New intents added in future will fail silently without
+   tests to verify them.
+
+What can go wrong during the fix?
+
+Risk: VERY LOW
+└─ Changes are all additive (new handlers, new components)
+└─ Existing handlers unchanged (no regression risk)
+└─ Feature flags are guards only (won't break existing flow)
+└─ Tests are new only (won't affect existing tests)
+
+Rollback plan:
+├─ Revert agencyPreviewService.ts additions
+├─ Remove new component files
+└─ AgencyPreviewCard falls back gracefully (null → no render)
+
+
+═══════════════════════════════════════════════════════════════════════════════
+END OF AUDIT REPORT
+═══════════════════════════════════════════════════════════════════════════════

@@ -2,6 +2,7 @@ import pytest
 import json
 import subprocess
 import sys
+import shutil
 from pathlib import Path
 
 from scripts.checks.setup_implementation_session import (
@@ -453,10 +454,15 @@ class TestSessionIdHandling:
         """Run setup script and return parsed JSON output."""
         import os
 
+        repo_sections_dir = target_dir / "sections-for-session-tests"
+        if repo_sections_dir.exists():
+            shutil.rmtree(repo_sections_dir)
+        shutil.copytree(sections_dir, repo_sections_dir)
+
         cmd = [
             sys.executable,
             str(SETUP_SCRIPT),
-            "--sections-dir", str(sections_dir),
+            "--sections-dir", str(repo_sections_dir),
             "--target-dir", str(target_dir),
             "--plugin-root", str(plugin_root),
         ]
@@ -548,7 +554,9 @@ class TestSessionIdHandling:
         assert output["session_id"] is None
         assert output["session_id_source"] == "none"
         assert output["session_id_matched"] is None
-        assert output["task_write_error"] is not None  # Should report error
+        assert output["workflow_backend"] == "compatible"
+        assert output["tracking_backend"] == "compatible"
+        assert output["task_write_error"] is None
 
     def test_tasks_written_with_context_session_id(
         self, mock_sections_dir, mock_git_repo, tmp_path
@@ -567,3 +575,4 @@ class TestSessionIdHandling:
         assert output["success"] is True
         assert output["tasks_written"] > 0
         assert output["task_write_error"] is None
+        assert output["tracking_backend"] == "claude_tasks"

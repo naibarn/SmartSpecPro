@@ -1,0 +1,230 @@
+================================================================================
+HELP SYSTEM ARCHITECTURE OVERVIEW
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         USER ACCESS POINTS                                  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│   1. ChatHelpDialog         2. BrowserSessionHelpDialog   3. /help/* Pages  │
+│      (in chat UI)              (in browser session UI)       (standalone)     │
+│      └─ i18n keys             └─ i18n keys                └─ Markdown files  │
+│         300+ hardcoded           (bsHelp.*)                  (dynamic load)   │
+│                                                                              │
+│   4. Contextual Injection   5. Help Router Endpoints                         │
+│      (in LLM prompts)           (tRPC queries)                              │
+│      └─ helpContextInjector  ├─ getManifest(locale)                        │
+│         auto-matches topics  ├─ getTopic(slug, locale)                      │
+│                              ├─ getSearchIndex(locale)                      │
+│                              └─ getContextualTopics(page, locale)           │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+                                    ↓ ↓ ↓
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    BACKEND SERVICES (tRPC + Node)                           │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│   ┌─────────────────────────────────────────────────────────────────────┐  │
+│   │ help.ts (Router)                                                     │  │
+│   │  • publicProcedure endpoints (no auth)                              │  │
+│   │  • adminProcedure for captureScreenshot                            │  │
+│   └─────────────────────────────────────────────────────────────────────┘  │
+│                                    ↓                                        │
+│   ┌─────────────────────────────────────────────────────────────────────┐  │
+│   │ helpContentService.ts (Parser + Cache)                             │  │
+│   │  • Reads markdown from docs/help/{en,th}/*.md                      │  │
+│   │  • Parses YAML frontmatter (slug, title, section, pages, tags...)  │  │
+│   │  • Converts markdown → HTML (via marked library)                   │  │
+│   │  • Caches results for 5 minutes                                    │  │
+│   │  • Implements getManifest(), getTopic(), getSearchIndex()         │  │
+│   └─────────────────────────────────────────────────────────────────────┘  │
+│                                    ↓                                        │
+│   ┌─────────────────────────────────────────────────────────────────────┐  │
+│   │ helpContextInjector.ts (Keyword Matching)                          │  │
+│   │  • Extract keywords from user message (English + Thai)             │  │
+│   │  • Score topics (slug +3, title +2, tag +2, description +1)        │  │
+│   │  • Load top 3 topics with score ≥ 2                                │  │
+│   │  • Format as "=== HELP REFERENCE ===" section for LLM              │  │
+│   │  • Used by "help-assistant" skill in llmRoutes.ts                  │  │
+│   └─────────────────────────────────────────────────────────────────────┘  │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+                                    ↓ ↓ ↓
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    DATA SOURCES (File System)                               │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│   docs/help/                                                                 │
+│   ├── _manifest.json              (section definitions)                    │
+│   │   └─ 5 sections: getting-started, features, content-creation,        │
+│   │                  advanced, admin                                       │
+│   │                                                                         │
+│   ├── en/                                                                   │
+│   │   ├── chat.md                 (slug: chat)                            │
+│   │   ├── agencies.md             (slug: agencies)                        │
+│   │   ├── memory.md               (slug: memory)                          │
+│   │   ├── [28 topics total]                                               │
+│   │   └── team-rooms.md           (NEW: slug: team-rooms)                │
+│   │                                                                         │
+│   └── th/                                                                   │
+│       ├── chat.md                 (Thai translation)                       │
+│       ├── agencies.md                                                       │
+│       ├── memory.md                                                         │
+│       ├── [28 topics total]                                               │
+│       └── team-rooms.md           (NEW: Thai translation)                │
+│                                                                              │
+│   Markdown file structure:                                                  │
+│   ┌────────────────────────────────┐                                       │
+│   │ ---                            │                                       │
+│   │ slug: chat                     │ ← Unique identifier                  │
+│   │ title: Chat Guide              │ ← Displayed in manifest              │
+│   │ description: How to use...     │ ← Shown in search                    │
+│   │ icon: MessageSquare            │ ← Lucide icon name                   │
+│   │ section: features              │ ← Must match _manifest.json          │
+│   │ order: 10                      │ ← Display order in section           │
+│   │ pages: ["/chat"]               │ ← Contextual help pages              │
+│   │ tags: [chat, conversation]     │ ← Keyword matching                   │
+│   │ ---                            │                                       │
+│   │                                │                                       │
+│   │ # Chat Guide                   │ ← Markdown content                   │
+│   │                                │                                       │
+│   │ ## What Chat is best for...    │                                       │
+│   │                                │                                       │
+│   │ Markdown content continues...  │                                       │
+│   └────────────────────────────────┘                                       │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+                                    ↓ ↓ ↓
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    FRONTEND (React + i18n)                                  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│   ChatHelpDialog.tsx                                                        │
+│   ├─ Collapsible sections:                                                  │
+│   │  ├─ Chat Best For (i18n: help.chatBestFor.*)                          │
+│   │  ├─ Chat Basics (i18n: help.chatBasics.1-4)                           │
+│   │  ├─ Skills (i18n: help.skills.1-4)                                    │
+│   │  ├─ Media (i18n: help.media.1-5)                                      │
+│   │  ├─ Presentations (i18n: help.presentation.*)                         │
+│   │  ├─ Auto Skill Detection (i18n: help.skillDetection.*)                │
+│   │  ├─ Memory (i18n: help.memory.* — 7 subsections)                      │
+│   │  ├─ Browser Session (i18n: help.browser.*)                            │
+│   │  ├─ Agencies (i18n: help.agencies.* — templates, preview)             │
+│   │  └─ Use Cases (i18n: help.useCases.1-6)                               │
+│   └─ Language toggle: EN | TH                                              │
+│                                                                              │
+│   BrowserSessionHelpDialog.tsx                                              │
+│   ├─ What is Browser Session (i18n: bsHelp.what.*)                        │
+│   ├─ Quick Start (i18n: bsHelp.quickStart.1-5)                            │
+│   ├─ Writing Strong Requests (i18n: bsHelp.request.1-3)                   │
+│   ├─ Example Prompts (i18n: bsHelp.prompts.1-6)                           │
+│   ├─ While Running (i18n: bsHelp.running.1-4)                             │
+│   ├─ Best Practices (i18n: bsHelp.best.1-5)                               │
+│   ├─ Use Cases (i18n: bsHelp.useCases.1-18)                               │
+│   ├─ Pause Scenarios (i18n: bsHelp.pause.1-3)                             │
+│   └─ Language toggle: EN | TH                                              │
+│                                                                              │
+│   i18n context (locales/en.ts, locales/th.ts)                             │
+│   └─ 300+ translation strings for UI help                                  │
+│      (Does NOT include /help/* page content — that comes from Markdown)   │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+================================================================================
+DOCUMENTATION COVERAGE STATUS
+================================================================================
+
+DOCUMENTED (28 topics):
+✅ Chat               ✅ Agencies            ✅ Admin Providers     ✅ Credits
+✅ Skills             ✅ Personas            ✅ Admin Settings      ✅ Settings
+✅ Media Generation   ✅ Groups              ✅ Domain Admin        ✅ Feedback
+✅ Presentations      ✅ Webhooks            ✅ Admin Advanced      ✅ API Keys
+✅ Memory             ✅ Marketplace         ✅ Getting Started     ✅ Usage Analytics
+✅ Browser Session    ✅ Usage Analytics     ✅ Automation          ✅ Marketplace
+✅ Agency Builder     ✅ Admin Users         ✅ Admin Queues        ✅ Webhooks
+✅ Workflows          ✅ Admin Audit         ✅ Admin Skills        ✅ Gallery
+                      ✅ Document Management ✅ Video Editor        ✅ Presentations
+                      ✅ Settings            ✅ Personas            ✅ Admin Users
+
+MISSING — NEW ORCHESTRATOR FEATURES (8 topics):
+❌ Team Management        ❌ Team Runs              ❌ Live Updates (SSE)
+❌ Team Rooms             ❌ Run Monitoring         ❌ Inter-Agent Communication
+❌ Scoped Memory          ❌ Automation Handoffs
+
+Implementation needed: 8 topics × 2 locales = 16 Markdown files
+
+================================================================================
+NEW TOPIC CREATION WORKFLOW
+================================================================================
+
+Step 1: Create English markdown
+        ├─ File: docs/help/en/{slug}.md
+        ├─ Add YAML frontmatter (slug, title, icon, section, order, pages, tags)
+        └─ Add markdown content
+
+Step 2: Create Thai markdown (1:1 translation)
+        ├─ File: docs/help/th/{slug}.md
+        ├─ Same slug as English version
+        └─ All text translated to Thai
+
+Step 3: Update manifest (if new section needed)
+        ├─ Check _manifest.json
+        └─ Add new section entry if not present (most new features use "advanced")
+
+Step 4: (Optional) Add i18n keys for ChatHelpDialog
+        ├─ Only if feature should appear in help.* modal
+        ├─ locales/en.ts: add "help.{feature}.* keys
+        ├─ locales/th.ts: add "help.{feature}.* Thai translations
+        └─ Update ChatHelpDialog.tsx to render new section
+
+Step 5: Test
+        ├─ Restart server (cache TTL = 5 min)
+        ├─ Query help.getTopic("your-slug", "en")
+        ├─ Verify HTML renders
+        └─ Verify search index includes topic
+
+================================================================================
+CACHE BEHAVIOR
+================================================================================
+
+Components: All cached with 5-minute TTL
+├─ Manifest cache
+├─ Topic cache (per slug + locale)
+├─ Search index cache
+└─ Contextual topics cache
+
+Cache keys: "{locale}:{slug}" or "{locale}:manifest" or "{locale}:search"
+
+Clear cache:
+├─ Restart server (automatic)
+├─ Wait 5 minutes (automatic)
+└─ Manual: Not exposed via API (service caches in-memory)
+
+Development:
+└─ After editing docs/help/en/chat.md → Restart server to see changes
+
+================================================================================
+RECOMMENDATION FOR NEW TEAM FEATURES
+================================================================================
+
+Use Option A (Markdown-only):
+✅ Searchable via help.getSearchIndex()
+✅ Linkable via /help/team-rooms URL
+✅ Contextually injectable into LLM prompts
+✅ No i18n duplication
+✅ Single source of truth
+✅ Easier for Thai translation
+
+Implementation: 16 files (8 topics × 2 locales)
+Timeline: 4 hours content creation + 40-60 hours Thai translation
+Files: docs/help/en/*.md, docs/help/th/*.md, _manifest.json update
+
+================================================================================
+END OF VISUAL SUMMARY
+================================================================================

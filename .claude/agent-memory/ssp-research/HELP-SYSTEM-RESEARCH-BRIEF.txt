@@ -1,0 +1,154 @@
+RESEARCH BRIEF: SmartSpecPro Help Documentation System
+=====================================================
+
+Audience: Product, Engineering, Content teams
+Date: 2026-03-18
+Urgency: HIGH (blocks Feature 044 release)
+Time to Read: 8 minutes
+
+FINDINGS
+--------
+
+Help System Status: MATURE BUT INCOMPLETE
+
+The help documentation system is well-architected and ready for expansion, but has significant coverage gaps for new features.
+
+Key Numbers:
+- 31 help topics (English + Thai paired)
+- 77 total routes in application
+- 43 routes have help (56%)
+- 34 routes have NO help (44%)
+- 8 new features undocumented
+
+Architecture:
+- File-based Markdown: docs/help/{en,th}/*.md
+- Zero database overhead, zero code changes needed
+- YAML frontmatter drives contextual injection
+- 5-minute cache TTL
+- Auto-discovery from files
+
+Feature Coverage:
+- Chat: 70% (GOOD)
+- Media: 60% (FAIR)
+- Agencies: 40% (POOR)
+- Workflows: 70% (GOOD)
+- Admin Monitoring: 40% (POOR)
+- Admin Models/Providers: 25% (POOR)
+- Admin Users: 33% (FAIR)
+- Admin Settings: 12% (POOR)
+- Domain Admin: 100% (EXCELLENT)
+- Credits/Analytics: 100% (EXCELLENT)
+
+8 NEW FEATURES WITH ZERO DOCUMENTATION
+- Teams management (/teams)
+- Team rooms (shared work spaces)
+- Team runs (execution tracking)
+- Scoped memory (team-level)
+- Run monitoring (pipeline dashboard)
+- SSE streaming (real-time)
+- Inter-agent communication
+- Automation handoffs
+
+RISKS
+-----
+
+Risk 1: Feature 044 Ships Without Help (HIGH PROBABILITY)
+- Impact: User confusion, support burden, adoption delayed
+- Mitigation: Make help release requirement, assign ownership now
+
+Risk 2: Thai Translation Bottleneck (HIGH PROBABILITY)
+- Impact: Violates dual-locale requirement, delays release
+- Mitigation: Hire freelance Thai translator, parallelize with English
+
+Risk 3: Incomplete Page Mappings (MEDIUM PROBABILITY)
+- Impact: Help invisible to users, false coverage
+- Mitigation: Validate frontmatter in PR, test endpoints
+
+Risk 4: Help Drifts from Features (MEDIUM PROBABILITY)
+- Impact: Outdated help confuses users
+- Mitigation: Update help when UI ships, quarterly audits
+
+OPTIONS
+-------
+
+Option A: Markdown-Only Expansion (RECOMMENDED)
+- Continue file-based system
+- Create 14 new topics (6 Feature 044 + 4 admin + 4 sub-routes)
+- Effort: 63-112h across team
+- Timeline: 3-4 weeks
+- Cost: ~$400-600 (Thai freelancer)
+- Pros: Consistent, zero code changes, fast, searchable
+- Cons: Requires translator, manual translation
+
+Option B: Hybrid (Markdown + DB)
+- Move to database for richer content
+- Effort: 50h + risk
+- Timeline: 2-3 weeks
+- Recommendation: DEFER to Phase 2 (over-engineering)
+
+Option C: AI-Generated Help
+- Auto-generate from code/README
+- Effort: 48h + quality risk
+- Recommendation: SKIP (quality unpredictable)
+
+RECOMMENDATION
+--------------
+
+Implement Option A (Markdown Expansion) in Two Phases:
+
+PHASE 1: Feature 044 Readiness (3 weeks, BLOCKING)
+- Create 6 topics: team-management, team-rooms, team-runs, scoped-memory, run-monitoring, automation-handoffs
+- Owner: Content team + Product
+- Gate: Help merges before feature ships
+- Timeline: By 2026-04-15
+
+PHASE 2: Coverage Gaps (2 weeks, next sprint)
+- Create 4 admin topics (llm-models, media-models, media-providers, channel-router)
+- Fix 3 broken mappings (/settings/skills, admin-personas, others)
+- Timeline: By 2026-04-30
+
+PHASE 3: Sub-Routes & Dashboards (optional, 1 month)
+- Add remaining guidance for editorial surfaces
+
+SUCCESS CRITERIA
+----------------
+
+- All 6 Phase 1 topics created by 2026-04-15
+- Both EN + TH for each topic
+- Contextual help surfaces on intended routes
+- <5% of support tickets preventable by help
+- >20% of users access help monthly
+
+NEXT STEPS
+----------
+
+Week 1:
+- Assign help content owner
+- Hire Thai translator (~$20/h)
+- Create English drafts using template
+- Set up PR review checklist
+
+Week 2:
+- English review + revisions
+- Thai translation (parallel)
+- Add screenshots/verification
+
+Week 3:
+- Final QA
+- Merge to feature branch
+- Verify in dev/staging
+
+OPEN QUESTIONS
+--------------
+
+1. Who owns help content? (Product? Technical writers? Shared?)
+2. Thai budget? (Freelance or full-time?)
+3. How prevent help drift when features change?
+4. Should we track help usage/analytics?
+5. How to handle versioning of help updates?
+
+Related Documents:
+- HELP-SYSTEM-AUDIT-COMPLETE.md (full technical audit)
+- HELP-SYSTEM-QUICK-REFERENCE.md (how to create topics)
+- HELP-SYSTEM-GAPS-VISUAL.md (visual coverage)
+- HELP-SYSTEM-EXECUTIVE-SUMMARY.md (stakeholder overview)

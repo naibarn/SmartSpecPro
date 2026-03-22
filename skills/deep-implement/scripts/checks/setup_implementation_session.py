@@ -3,7 +3,9 @@
 Setup script for deep-implement sessions.
 
 Validates sections directory, detects git configuration, checks pre-commit hooks,
-infers resume state, and generates TODOs for the skill.
+infers resume state, and optionally writes Claude task-list reminders when a
+task-list backend is available. The workflow itself is file-based and can run in
+compatible mode without Claude-specific session hooks.
 
 Usage:
     uv run scripts/checks/setup-implementation-session.py \
@@ -815,9 +817,11 @@ def main():
     # Build dependency graph
     dependency_graph = build_impl_dependency_graph(tasks_to_write, sections)
 
-    # Write tasks to disk
+    # Write tasks to disk when a Claude task-list backend is available.
     write_result = None
     task_write_error = None
+    tracking_backend = "compatible"
+    tracking_message = "Compatible mode active; task-list tracking not available."
     if session_id:
         write_result = write_tasks(
             session_id,
@@ -826,13 +830,23 @@ def main():
         )
         if not write_result.success:
             task_write_error = write_result.error
+            tracking_message = (
+                "Claude task-list tracking failed; continuing in compatible mode "
+                "with file-based resume."
+            )
+        else:
+            tracking_backend = "claude_tasks"
+            tracking_message = "Claude task-list tracking enabled."
     else:
-        task_write_error = "No session ID available (neither --session-id nor env vars set)"
+        task_write_error = None
 
     # Output result
     result = {
         "success": True,
         "mode": state["mode"],
+        "workflow_backend": "compatible",
+        "tracking_backend": tracking_backend,
+        "tracking_message": tracking_message,
         "sections_dir": str(sections_dir),
         "target_dir": str(target_dir),
         "state_dir": str(state_dir),

@@ -1,8 +1,7 @@
 """Implementation task definitions for deep-implement.
 
-This module defines the task templates and configuration for the
-implementation workflow. Tasks are generated based on these definitions
-and written directly to the task storage.
+These definitions back the optional Claude task-list integration. Compatible
+mode can run fully from files even when no task-list backend is available.
 """
 
 from dataclasses import dataclass
@@ -49,8 +48,8 @@ SECTION_STEP_DEFINITIONS: dict[str, TaskDefinition] = {
         active_form="Implementing {display_name}",
     ),
     "review_subagent": TaskDefinition(
-        subject="Run code review subagent for {section}",
-        description="Run the code review subagent on implemented changes",
+        subject="Run code review agent for {section}",
+        description="Run a read-only review agent on implemented changes",
         active_form="Running code review for {display_name}",
     ),
     "review_interview": TaskDefinition(

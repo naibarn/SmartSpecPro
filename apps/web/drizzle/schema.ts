@@ -4612,8 +4612,8 @@ export const agencies = pgTable("agencies", {
   sharedInstructions: text("sharedInstructions"),
   userContext: jsonb("userContext").$type<Record<string, unknown>>(),
   conversationStarters: jsonb("conversationStarters").$type<string[]>(),
-  topology: varchar("topology", { length: 30 }).default("custom"),
-  cacheConversationStarters: boolean("cacheConversationStarters").default(false),
+  topology: varchar("topology", { length: 30 }).default("custom").notNull(),
+  cacheConversationStarters: boolean("cacheConversationStarters").default(false).notNull(),
   createdBy: integer("createdBy").references(() => users.id, { onDelete: "set null" }),
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
@@ -4715,6 +4715,7 @@ export const agencyAgents = pgTable("agency_agents", {
       targetNodeId: string;
       label?: string;
     }>;
+    // defaultTargetNodeId — reused from router (above) for conditional_branch fallback
     llmClassifyPrompt?: string;
     contextKey?: string;
     // parallel_fan_out (section-18)
@@ -4754,8 +4755,8 @@ export const agencyAgents = pgTable("agency_agents", {
   examples: jsonb("examples").$type<Array<{ role: string; content: string }[]>>(),
   mcpServers: jsonb("mcpServers").$type<Array<{ url: string; name?: string }>>(),
   mcpServerTokensEncrypted: text("mcpServerTokensEncrypted"),
-  parallelToolCalls: boolean("parallelToolCalls").default(true),
-  maxTurns: integer("maxTurns").default(25),
+  parallelToolCalls: boolean("parallelToolCalls").default(true).notNull(),
+  maxTurns: integer("maxTurns").default(25).notNull(),
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
@@ -4832,13 +4833,13 @@ export const agencyTools = pgTable("agency_tools", {
   retryPolicy: jsonb("retryPolicy").$type<{ maxRetries?: number; backoffMs?: number }>(),
   icon: varchar("icon", { length: 50 }),
   category: varchar("category", { length: 50 }),
-  version: integer("version").default(1),
-  isExposedAsApi: boolean("isExposedAsApi").default(false),
-  strictSchema: boolean("strictSchema").default(false),
-  oneCallAtATime: boolean("oneCallAtATime").default(false),
-  isEnabled: boolean("isEnabled").default(true),
+  version: integer("version").default(1).notNull(),
+  isExposedAsApi: boolean("isExposedAsApi").default(false).notNull(),
+  strictSchema: boolean("strictSchema").default(false).notNull(),
+  oneCallAtATime: boolean("oneCallAtATime").default(false).notNull(),
+  isEnabled: boolean("isEnabled").default(true).notNull(),
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
   index("agency_tools_tenant_idx").on(t.tenantId),
   uniqueIndex("agency_tools_tenant_name_idx").on(t.tenantId, t.name),
@@ -5011,9 +5012,9 @@ export const agencyGuardrails = pgTable("agency_guardrails", {
   mode: varchar("mode", { length: 10 }).notNull(),
   strategy: varchar("strategy", { length: 30 }).notNull(),
   config: jsonb("config"),
-  validationAttempts: integer("validationAttempts").default(1),
-  isEnabled: boolean("isEnabled").default(true),
-  sortOrder: integer("sortOrder").default(0),
+  validationAttempts: integer("validationAttempts").default(1).notNull(),
+  isEnabled: boolean("isEnabled").default(true).notNull(),
+  sortOrder: integer("sortOrder").default(0).notNull(),
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [

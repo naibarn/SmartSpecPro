@@ -1,0 +1,289 @@
+================================================================================
+SMARTSPECPRO AUTHENTICATION ARCHITECTURE — EXECUTIVE SUMMARY
+================================================================================
+Date: 2026-03-18
+Status: RESEARCH COMPLETE — Ready for security spec writing
+
+================================================================================
+CURRENT STATE: DUAL ARCHITECTURE
+================================================================================
+
+PRODUCTION (BROWSER):
+  Cookie: app_session_id (HS256 JWT, httpOnly, 30-day expiry) ✅ SECURE
+  Transmission: Automatic via browser (credentials: 'include')
+  Verification: HS256 HMAC with env.cookieSecret
+  Revocation: Redis + in-memory JTI denylist
+  User lookup: Database (openId) on each request
+
+FALLBACK (TAURI DESKTOP):
+  Primary: Tauri secure store (native Rust keychain)
+  Fallback: localStorage ("smartspec_auth_token", "smartspec_user_data")
+  Risk: localStorage is XSS-vulnerable if Tauri unavailable
+
+USER DATA:
+  Storage: localStorage ("smartspec_user_data") — cached JSON
+  Risk: XSS-vulnerable; plaintext user object
+
+API KEYS (USER-PROVIDED):
+  Storage: sessionStorage ("smartspec_apikey_{provider}") — CRITICAL TODO
+  Providers: openrouter, openai, anthropic, deepseek, google
+  Risk: ⚠️⚠️ CRITICAL XSS VULNERABILITY — All LLM keys exposed if XSS
+  Status: TODO at authService.ts:272 to move to encrypted DB store
+
+================================================================================
+LOGIN FLOW
+================================================================================
+
+1. User submits email + password
+   ↓
+2. Server verifies credentials + creates HS256 JWT:
+   - Payload: { openId, appId, name, jti (for revocation), exp }
+   - Secret: env.cookieSecret → SHA-256
+   ↓
+3. JWT set as httpOnly cookie with options:
+   - httpOnly: true (prevents JS access)
+   - secure: true (HTTPS only in prod)
+   - sameSite: "none" (prod HTTPS) / "lax" (dev HTTP)
+   - domain: ".smartspec.pro" (allows subdomain sharing)
+   - maxAge: 30 days
+   ↓
+4. Browser auto-includes cookie in tRPC requests (credentials: 'include')
+   ↓
+5. Server extracts from request (context.ts):
+   - Check Authorization: Bearer header first
+   - Fall back to "app_session_id" cookie
+   ↓
+6. Verify JWT signature + check JTI not revoked
+   ↓
+7. Look up user by openId in database
+   ↓
+8. Return authenticated user context
+
+================================================================================
+SECURITY ASSESSMENT
+================================================================================
+
+STRONG POINTS ✅
+- httpOnly cookies prevent JavaScript access (XSS protection)
+- HS256 HMAC with server-side secret (not vulnerable to tampering)
+- SameSite=none with secure=true for HTTPS (CSRF protection)
+- Revocation system (JTI-based logout + Redis caching)
+- Password hashing with bcrypt (12 rounds)
+- Email verification before account activation
+- 2FA support (with backup codes)
+
+WEAK POINTS ⚠️
+- localStorage fallback for Tauri (exposes token if XSS on desktop app)
+- sessionStorage API keys (CRITICAL XSS risk for all LLM credentials)
+- Unclear if JTI revocation is checked in verifySession()
+- No token rotation (same JWT valid for entire 30-day window)
+- No refresh token rotation (requires new login after 30 days)
+- Client-side token expiry check (at isTokenExpired(), not enforced server-side)
+
+================================================================================
+KEY STATISTICS
+================================================================================
+
+Files analyzed: 8 core files
+  - authService.ts (320 lines) — Tauri fallback logic
+  - sdk.ts (319 lines) — Session token creation/verification
+  - cookies.ts (83 lines) — httpOnly + SameSite configuration
+  - context.ts (86 lines) — tRPC context + token extraction
+  - routers.ts (400+ lines) — Login/logout/2FA endpoints
+  - revocation.ts (78 lines) — JTI denylist management
+  - oauth.ts (custom flows) — Google/GitHub OAuth
+  - AuthContext.tsx (287 lines) — Legacy context (mostly obsolete)
+
+localStorage Keys: 5 (for Tauri fallback)
+  - smartspec_auth_token
+  - smartspec_user_data
+  - smartspec_web_refresh_token (unused?)
+  - smartspec_web_token_expiry (unused?)
+  - smartspec_web_user (unused?)
+
+sessionStorage Keys: 5 (API keys + OAuth state)
+  - smartspec_apikey_openrouter, openai, anthropic, deepseek, google
+  - oauth_state (CSRF token)
+  - oauth_provider (state tracking)
+
+Cookie Attributes Set:
+  - httpOnly: true ✅
+  - secure: true (HTTPS) ✅
+  - sameSite: "none" (prod HTTPS) ✅
+  - domain: ".smartspec.pro" ✅
+
+================================================================================
+IMPACT ANALYSIS: COMPONENTS CONSUMING AUTH
+================================================================================
+
+Components that read localStorage:
+  NONE in production (useAuth hook uses tRPC + session cookies)
+
+Components that read sessionStorage:
+  NONE in components (authService functions only)
+
+Functions that call getAuthToken / setAuthToken:
+  - authService.ts internal functions (cache management)
+  - Tauri startup flow (if applicable)
+  - No component calls; auth delegated to tRPC
+
+Implication: Removing localStorage JWT will have MINIMAL impact on components
+
+================================================================================
+MIGRATION ROADMAP
+================================================================================
+
+PHASE 1: IMMEDIATE (1-2 weeks) — BLOCKING SECURITY VULNERABILITIES
+  - Remove localStorage JWT fallback (keep Tauri path only)
+  - Migrate sessionStorage API keys to server-side encrypted DB table
+    * Create userApiKeys table with encrypted storage (AES-256-GCM)
+    * Add tRPC endpoints: setUserApiKey, getUserApiKey, listUserApiKeys
+    * Remove sessionStorage entirely
+  - Verify JTI revocation check in verifySession()
+
+PHASE 2: MEDIUM PRIORITY (2-3 weeks)
+  - Clarify refresh token mechanism (separate from session cookies?)
+  - Document Tauri OAuth startup flow
+  - Add token rotation on each request (optional)
+
+PHASE 3: FUTURE (NICE-TO-HAVE)
+  - Short-lived access tokens (15 min) + refresh tokens (30 days)
+  - Token rotation on logout + periodic rotation
+  - Rate limiting on login attempts
+
+================================================================================
+MIGRATION DECISION TREE
+================================================================================
+
+Q: Keep localStorage JWT fallback?
+A: NO. Remove entirely; Tauri should have native secure store only.
+   Reason: Creates attack surface for XSS if Tauri unavailable.
+
+Q: Keep httpOnly session cookies?
+A: YES. Already correct; no changes needed.
+   Reason: Browser-managed; no JavaScript access.
+
+Q: Migrate API keys to encrypted DB table?
+A: YES. BLOCKING ISSUE. sessionStorage is XSS-vulnerable.
+   Timeline: Phase 1 (1-2 weeks)
+
+Q: Add token rotation?
+A: OPTIONAL. Not required for Phase 1 launch.
+   Timeline: Phase 3 (future iteration)
+
+Q: Switch to refresh token pattern?
+A: OPTIONAL. Only if 30-day session duration becomes a pain point.
+   Timeline: Phase 3 (future iteration)
+
+================================================================================
+FILES REQUIRING CHANGES
+================================================================================
+
+FRONTEND (Client)
+  ✏️  apps/web/client/src/services/authService.ts
+      - Remove localStorage JWT fallback (lines 44, 67-68, 149)
+      - Remove setApiKey/getApiKey sessionStorage calls (lines 284, 293, 303)
+      - Add new tRPC calls for server-side API key management
+
+  ✅ apps/web/client/src/contexts/AuthContext.tsx
+      - No changes needed (already uses tRPC + session cookies)
+
+  ✅ apps/web/client/src/_core/hooks/useAuth.ts
+      - No changes needed (already tRPC-based)
+
+BACKEND (Server)
+  ⚠️  apps/web/server/_core/sdk.ts:198-234 (verifySession)
+      - Add JTI revocation check (call isJtiRevoked())
+      - Verify flow doesn't skip revocation
+
+  ✅ apps/web/server/_core/cookies.ts
+      - No changes needed (already correct)
+
+  ✅ apps/web/server/_core/context.ts
+      - No changes needed (already cookie-based)
+
+  ✅ apps/web/server/routers.ts:280-325
+      - No changes needed (already sets httpOnly cookie)
+
+DATABASE (Schema)
+  ✏️  apps/web/drizzle/schema.ts
+      - Add userApiKeys table (encrypted AES-256-GCM storage)
+      - Columns: id, userId, provider, apiKeyEncrypted, createdAt, updatedAt
+
+  ✏️  apps/web/server/routers.ts (new)
+      - Add tRPC router: userApiKeys.setKey, getKey, listKeys, deleteKey
+      - Use crypto.ts encrypt/decrypt functions
+
+TESTS
+  ✏️  apps/web/server/__tests__/auth-cookies.test.ts
+      - Expand coverage for all cookie attributes
+
+  ✏️  apps/web/server/__tests__/session-validation.test.ts
+      - Add JTI revocation verification tests
+
+  🆕 apps/web/server/__tests__/api-key-storage.test.ts
+      - New test file for encrypted API key storage
+
+================================================================================
+CRITICAL DEPENDENCIES TO VERIFY
+================================================================================
+
+1. Does verifySession() actually check JTI revocation?
+   Location: apps/web/server/_core/sdk.ts:198-234
+   Status: UNCLEAR — Need to verify isJtiRevoked() is called
+
+2. Is refresh token still in use?
+   Location: authService.ts:151 (smartspec_web_refresh_token)
+   Status: UNCLEAR — Looks unused; need to audit
+
+3. What's the Tauri desktop startup flow?
+   Status: UNCLEAR — How does Tauri app get auth token at startup?
+   Need to verify it doesn't fall back to localStorage
+
+4. Are there other storage mechanisms?
+   (IndexedDB, Cache API, Service Workers, etc.)
+   Status: UNKNOWN — Full audit needed
+
+================================================================================
+RECOMMENDED NEXT STEPS
+================================================================================
+
+1. ✅ Read AUTH-ARCHITECTURE-RESEARCH-BRIEF.md (full 40 KB audit)
+
+2. ⚠️  Verify JTI revocation is actually checked (sdk.ts line 207-234)
+     - Grep for calls to isJtiRevoked()
+     - If not called, add check immediately
+
+3. 📝  Write security spec for API key migration
+     - Scope: sessionStorage → encrypted DB table
+     - Design: New tRPC router for userApiKeys
+     - Timeline: 1-2 weeks for Phase 1
+
+4. 🔍  Audit Tauri startup flow
+     - Where does Tauri app get initial token?
+     - Does it ever fall back to localStorage?
+     - Ensure native secure store is ONLY source
+
+5. 📋  Create implementation plan document
+     - Detail all required changes
+     - File-by-file breakdown
+     - Test coverage requirements
+     - Rollback strategy
+
+================================================================================
+SUMMARY
+================================================================================
+
+SmartSpecPro authentication is MOSTLY SECURE (httpOnly cookies ✅) but has
+CRITICAL VULNERABILITIES in API key storage (sessionStorage ❌).
+
+Production-Ready: YES — for browser apps with httpOnly cookies
+Security Issue: CRITICAL — sessionStorage API key exposure (XSS risk)
+Tauri Fallback: RISKY — localStorage fallback should be removed
+
+Next Action: Migrate API keys to encrypted server-side storage (Phase 1)
+Estimated Timeline: 1-2 weeks for critical path; 1+ months for full hardening
+
+================================================================================
+END OF SUMMARY
+================================================================================

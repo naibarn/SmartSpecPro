@@ -502,6 +502,7 @@ class TestTaskGeneration:
         assert "session_id" in output
         assert output["session_id"] == "test-session-123"
         assert output["session_id_source"] == "env"
+        assert output["tracking_backend"] == "claude_tasks"
         # With 2 sections, 6 context items, 12 section tasks (6 per section), 1 finalization = 19 tasks
         assert output["tasks_written"] > 0
 
@@ -517,6 +518,9 @@ class TestTaskGeneration:
         monkeypatch.delenv("DEEP_SESSION_ID", raising=False)
         monkeypatch.delenv("CLAUDE_CODE_TASK_LIST_ID", raising=False)
 
+        sections_in_repo = mock_git_repo / "sections-for-no-session"
+        shutil.copytree(mock_sections_dir, sections_in_repo)
+
         setup_script = Path(__file__).parent.parent / "scripts" / "checks" / "setup_implementation_session.py"
         if not setup_script.exists():
             pytest.skip("Setup script not found")
@@ -528,7 +532,7 @@ class TestTaskGeneration:
         result = subprocess.run(
             [
                 "uv", "run", str(setup_script),
-                "--sections-dir", str(mock_sections_dir),
+                "--sections-dir", str(sections_in_repo),
                 "--target-dir", str(target_dir),
                 "--plugin-root", str(plugin_root)
             ],
@@ -545,3 +549,6 @@ class TestTaskGeneration:
         assert output["tasks_written"] == 0
         assert output["session_id"] is None
         assert output["session_id_source"] == "none"
+        assert output["workflow_backend"] == "compatible"
+        assert output["tracking_backend"] == "compatible"
+        assert output["task_write_error"] is None

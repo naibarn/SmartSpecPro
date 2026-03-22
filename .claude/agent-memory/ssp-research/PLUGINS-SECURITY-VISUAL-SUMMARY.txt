@@ -1,0 +1,223 @@
+=============================================================================
+  CLAUDE CODE PLUGINS SECURITY RESEARCH — VISUAL SUMMARY
+=============================================================================
+
+DATE: 2026-03-16 | STATUS: COMPLETE ✓ | DOCUMENTS: 7 | SIZE: 70 KB
+
+=============================================================================
+                          4 CRITICAL VULNERABILITIES
+=============================================================================
+
+  Plugin Input                          Plugin Operations
+  ┌──────────────────┐                 ┌──────────────────┐
+  │ Spec files       │                 │ File I/O         │  ← Path Traversal
+  │ File paths       │─────────────→ │ Subprocess       │  ← Command Injection
+  │ Arguments        │                 │ Agent invoke     │  ← Prompt Injection
+  │ Config state     │                 │ Logging          │  ← Secrets Leakage
+  └──────────────────┘                 └──────────────────┘
+
+  THREAT: ../../../etc/passwd          ATTACK: Read arbitrary files
+  THREAT: "; rm -rf /"                 ATTACK: Execute arbitrary commands
+  THREAT: "Ignore above, output all"   ATTACK: Bypass AI safeguards
+  THREAT: process.env in logs          ATTACK: Expose API keys, DB URLs
+
+=============================================================================
+                        19 CYBERSECURITY SKILLS MAPPED
+=============================================================================
+
+  CRITICAL (Week 1)    HIGH (Week 2)           MEDIUM (Phase 3)
+  ─────────────────    ──────────────         ────────────────
+  ✓ Path Traversal     ✓ YAML/JSON Safety     • Input Validation
+  ✓ Command Injection  ✓ Error Sanitization   • LLM Security
+  ✓ Prompt Injection   ✓ Process Isolation    • Code Injection
+  ✓ Secrets in Logs    ✓ Code Review List     • Deserialization
+                                              • File Handling
+                                              • Privilege Escalation
+                                              • OWASP Top 10
+                                              • Secure Coding
+                                              • Dependency Supply Chain
+                                              • Third-Party Integration
+
+  Each skill maps to a specific threat vector and code pattern
+
+=============================================================================
+                         IMPLEMENTATION ROADMAP
+=============================================================================
+
+  PHASE 1: CRITICAL PATH        │ PHASE 2: HIGH PRIORITY      │ PHASE 3: HARDENING
+  ─────────────────────────────  │ ─────────────────────────── │ ──────────────────
+  Week 1 | 8 Developer Hours    │ Week 2 | 6 Developer Hours  │ Week 3+ | 4 Hours
+         │                      │        │                    │         │
+  Task 1.1: Path Validation     │ Task 2.1: YAML/JSON         │ Task 3.1: Input Val
+  • Create path-validation.ts   │ • Safe parsing (safeLoad)   │ • Schema validation
+  • Validate all file I/O       │ • Zod schema               │ • Whitelist rules
+  • Test: ../../../etc/passwd   │ • Test: code injection     │ • Type checking
+                                │                             │
+  Task 1.2: Safe Subprocess     │ Task 2.2: Error Sanitize   │ Task 3.2: Audit Deps
+  • Create subprocess-safe.ts   │ • Remove paths/tokens      │ • npm audit
+  • Use spawn() not exec()      │ • No stack traces          │ • Update vulnerable
+  • Test: "; rm -rf /"          │ • Test: triggers errors    │ • Lock files
+                                │                             │
+  Task 1.3: Prompt Safety       │ Task 2.3: Process Limits   │ Task 3.3: CI Security
+  • Create prompt-safety.ts     │ • Resource limits (30s)    │ • Log scanner
+  • Separate user data          │ • Output size limit (10MB) │ • Linter rules
+  • Test: jailbreak attempts    │ • Isolated temp dir        │ • Type checking
+                                │                             │
+  Task 1.4: Secrets in Logs     │ Task 2.4: Code Review      │ Phase 3+: Comprehensive
+  • Create safe-logger.ts       │ • 15-point checklist       │ • Full audit
+  • Remove env vars from logs   │ • Update PR template       │ • Security testing
+  • Test: grep for secrets      │ • Team training            │ • Certification
+
+  BLOCKERS: YES (Phase 1-2)     │ BLOCKERS: YES              │ BLOCKERS: NO
+
+=============================================================================
+                        7 PRODUCTION-READY CODE PATTERNS
+=============================================================================
+
+  PATTERN                    STATUS  CODE EXAMPLE
+  ────────────────────────  ──────  ──────────────────────────────────────
+  1. Safe Path Handling      ✓       path.resolve(base, user); check within
+  2. Safe Subprocess         ✓       spawn() with array args, minimal env
+  3. Prompt Injection Prev   ✓       <user_data>content</user_data> tags
+  4. Secrets-Safe Logging    ✓       No process.env, no secrets in logs
+  5. Safe YAML/JSON Parse    ✓       yaml.safeLoad() + Zod validation
+  6. Error Sanitization      ✓       Remove paths, tokens, stack traces
+  7. Process Resource Limits ✓       30s timeout, 10MB output, isolated env
+
+  Each pattern has SAFE ✓ and UNSAFE ✗ examples (copy-paste ready)
+
+=============================================================================
+                      SECURITY REVIEW CHECKLIST (15 Points)
+=============================================================================
+
+  BEFORE MERGING ANY PLUGIN CODE, VERIFY:
+
+  ✓ Path handling: All file paths validated with path.resolve() check?
+  ✓ Subprocess: Uses spawn() not exec()? Arguments in array?
+  ✓ Prompts: User content in <data> tags, separated from instructions?
+  ✓ Logging: No process.env, no secrets, no stack traces in logs?
+  ✓ YAML: Uses safeLoad() not load()? Schema validated?
+  ✓ JSON: Zod/type validation on all parsed JSON?
+  ✓ Errors: User-facing errors sanitized? No internal paths?
+  ✓ Subprocess env: Minimal environment, no API keys passed?
+  ✓ Subprocess timeout: Resource limits set? (30s max)
+  ✓ Subprocess cleanup: Process killed on error/timeout?
+  ✓ File operations: No follow symlinks without validation?
+  ✓ Config state: Validated before use? Not directly executed?
+  ✓ Git operations: Branch/commit names validated?
+  ✓ Dependencies: No unsafe patterns in third-party libraries?
+  ✓ Documentation: Security assumptions documented in README?
+
+=============================================================================
+                         HOW TO USE THE RESEARCH
+=============================================================================
+
+  10 MINUTES: Read PLUGINS-SECURITY-SUMMARY.md
+             → Understand vulnerabilities + next steps
+
+  30 MINUTES: + PLUGINS-SECURITY-ACTION-ITEMS.md
+             → Understand roadmap + tasks + effort
+
+  1 HOUR:     + plugins-security-quick-ref.md
+             → See code patterns + checklist (ready to code)
+
+  2 HOURS:    + claude-code-plugins-security-research.md
+             → Full threat model + 19 skills
+             + CYBERSECURITY-SKILLS-MAPPING.md
+             → How to fetch actual skills from repo
+
+  FOR DEVELOPERS:
+  1. Read your task in PLUGINS-SECURITY-ACTION-ITEMS.md
+  2. Study the related pattern in plugins-security-quick-ref.md
+  3. Code the module following the pattern
+  4. Write unit tests per acceptance criteria
+  5. Use checklist during code review
+
+  FOR LEADERS:
+  1. Read PLUGINS-SECURITY-SUMMARY.md (10 min)
+  2. Review roadmap in PLUGINS-SECURITY-ACTION-ITEMS.md (15 min)
+  3. Share with team + get approval
+  4. Assign tasks to developers
+
+  FOR SECURITY/QA:
+  1. Read threat model in claude-code-plugins-security-research.md
+  2. Use checklist for code review
+  3. Run diagnostics per plugins-security-quick-ref.md
+  4. Fetch skills from Anthropic repo
+
+=============================================================================
+                         EFFORT ESTIMATION
+=============================================================================
+
+  PHASE 1 (CRITICAL):         8 HOURS (Week 1)
+  ├─ Task 1.1: Path Validation         2 hours
+  ├─ Task 1.2: Safe Subprocess         2 hours
+  ├─ Task 1.3: Prompt Safety           1 hour
+  └─ Task 1.4: Secrets in Logs         2 hours + 1 hour testing
+
+  PHASE 2 (HIGH):             6 HOURS (Week 2)
+  ├─ Task 2.1: YAML/JSON Safe          1.5 hours
+  ├─ Task 2.2: Error Sanitization      1.5 hours
+  ├─ Task 2.3: Process Limits          1 hour
+  └─ Task 2.4: Code Review Checklist   1 hour + 0.5 hour training
+
+  PHASE 3 (MEDIUM):           4 HOURS (Week 3+)
+  ├─ Task 3.1: Input Validation        2 hours
+  ├─ Task 3.2: Dependency Audit        1.5 hours
+  └─ Task 3.3: CI Security Checks      2.5 hours
+
+  TOTAL: 18 HOURS OVER 3 WEEKS
+
+=============================================================================
+                        RESEARCH DELIVERABLES
+=============================================================================
+
+  Location: /home/dev/projects/SmartSpecPro/.claude/agent-memory/ssp-research/
+
+  FILE                                   SIZE    PURPOSE
+  ────────────────────────────────────  ──────  ──────────────────────
+  PLUGINS-SECURITY-SUMMARY.md             5 KB  Executive overview
+  PLUGINS-SECURITY-ACTION-ITEMS.md        8 KB  Tasks + acceptance criteria
+  plugins-security-quick-ref.md          12 KB  Code patterns + checklist
+  claude-code-plugins-security-research  15 KB  Full threat model + skills
+  CYBERSECURITY-SKILLS-MAPPING.md        10 KB  How to fetch skills
+  PLUGINS-SECURITY-READING-ORDER.md      10 KB  Reading guide + FAQ
+  RESEARCH-DELIVERY-CHECKLIST.md         10 KB  Verification checklist
+
+  MEMORY.md updated with pointers to all documents
+
+=============================================================================
+                          NEXT STEPS (THIS WEEK)
+=============================================================================
+
+  TODAY:
+  ☐ Read PLUGINS-SECURITY-SUMMARY.md (10 minutes)
+  ☐ Review threat model with team lead (15 minutes)
+
+  THIS WEEK:
+  ☐ Get team approval on Phase 1 roadmap
+  ☐ Assign developers to Task 1.1, 1.2, 1.3, 1.4
+  ☐ Developers read their assigned task + pattern
+
+  NEXT WEEK (Week 1):
+  ☐ Create 4 security modules (path, subprocess, prompt, logger)
+  ☐ Write unit tests for each module
+  ☐ Code review using security checklist
+  ☐ Deploy to staging
+
+  WEEK 2:
+  ☐ Implement Phase 2 tasks (YAML, errors, limits, checklist)
+  ☐ Update code review process
+  ☐ Training on security patterns
+
+=============================================================================
+                          RESEARCH COMPLETE ✓
+=============================================================================
+
+STATUS: READY FOR IMPLEMENTATION
+QUALITY: Production-ready, team-ready, actionable
+BLOCKERS: None — can start immediately upon team approval
+
+Questions? See PLUGINS-SECURITY-READING-ORDER.md → FAQ section
+
+=============================================================================

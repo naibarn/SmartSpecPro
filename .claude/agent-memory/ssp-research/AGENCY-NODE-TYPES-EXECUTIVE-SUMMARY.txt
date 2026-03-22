@@ -1,0 +1,208 @@
+================================================================================
+RESEARCH BRIEF: AGENCY NODE TYPES & SKILL SYSTEM GAPS
+================================================================================
+
+DATE: 2026-03-22
+SCOPE: Complete audit of 8 existing agency node types + skill integration
+STATUS: RESEARCH COMPLETE — Ready for implementation planning
+
+================================================================================
+CURRENT STATE (8 Node Types)
+================================================================================
+
+✓ AGENT (LLM + 16 tools + knowledge base)
+✓ SUPERVISOR (semantically distinct, functionally identical to Agent)
+✓ ROUTER (keyword/regex/LLM classification, single branch execution)
+✓ AGGREGATOR (merge N parallel results via first_wins/majority_vote/llm_merge/concat)
+✓ KNOWLEDGE BASE (RAG search, vector + keyword, multi-scope)
+✓ SKILL CALL (execute SmartSpec skills, static input mapping)
+✓ HUMAN APPROVAL (async decision gate, timeout policies)
+✓ BROWSER SESSION (hands-off automation, RPA)
+
+CRITICAL GAPS (10 Missing Node Types):
+
+✗ CONDITIONAL BRANCH — "if/else/else-if" multi-branch routing
+✗ PARALLEL FAN-OUT — "send to N agents simultaneously, collect results"
+✗ LOOP / RETRY — "repeat until condition met, exponential backoff"
+✗ DATA TRANSFORM — "map/filter/template intermediate results"
+✗ TIMER / DELAY — "wait N seconds or cron trigger"
+✗ MEMORY / STATE — "persist state across runs"
+✗ WEBHOOK TRIGGER — "trigger from external events"
+✗ CODE EXECUTION — "run Python/JS in sandbox"
+✗ HTTP API CALL — "first-class HTTP requests with retry logic"
+✗ ERROR HANDLER — "try/catch branches with fallbacks"
+
+================================================================================
+SKILL INTEGRATION ISSUE
+================================================================================
+
+PROBLEM: skill_call node has static input mapping
+- 50+ skills exist (image-creator, video-engineer, product reviewers, etc.)
+- Each skill defines input.schema.json (required fields) + ui.schema.json (UI layout)
+- But orchestrator ignores these schemas
+- All skills receive identical context (message + knowledge + prior results)
+- No field-level routing ("feed knowledge to prompt field, results to context field")
+- This creates a leaky abstraction: skill modularity is lost
+
+SOLUTION: Implement skill input mapping (4-6 hours)
+- Parse skill input.schema.json in property panel
+- Visually map skill inputs to context fields (message, knowledge, results)
+- Use JSONPath or Jinja2 templates for field extraction
+- Validate before execution
+
+QUICK WIN: Expose Sub-Agency node (3-4 hours)
+- builtin-agency-call tool already exists (not exposed as node type)
+- Just needs UI card + property panel
+- Reuse existing tool execution path
+
+================================================================================
+ARCHITECTURE ASSESSMENT
+================================================================================
+
+✓ DATABASE: Extensible
+  - agencyAgents.nodeType is varchar (easy to extend)
+  - agencyAgents.nodeConfig is JSON (flexible per-type)
+  - No migrations needed until scale requires it
+
+✓ ORCHESTRATOR: Extensible
+  - agency_orchestrator.py _execute_node() dispatch (add case per type)
+  - ExecutionContext is mutable (can add fields for new node types)
+  - No refactoring required
+
+✓ FRONTEND: Extensible
+  - BaseAgencyNode dispatcher (add card component per type)
+  - Property panels exist for all types
+  - Node property panel in sidebar (extend NODE_TYPE_SECTIONS)
+
+⚠ RISKS:
+  - Execution latency from complex graphs (conditional + loop = more LLM calls)
+  - State persistence requires new DB table + backward compatibility design
+  - Code execution is security-sensitive (must use sandbox, feature flag)
+  - Webhook/Timer nodes require infrastructure (Celery job queue, reverse DNS)
+
+================================================================================
+RECOMMENDATION: INCREMENTAL IMPLEMENTATION (Option A)
+================================================================================
+
+PHASE 1 (Week 1-2): 22-30 hours
+├── Conditional Branch node (12-16h)
+├── Data Transform node (6-8h)
+└── Skill input mapping (4-6h)
+    TARGET: 20% of new agencies use conditional nodes within 4 weeks
+
+PHASE 2 (Week 3-4): 18-24 hours
+├── Parallel Fan-Out node (8-10h)
+└── Loop/Retry node (10-14h)
+    TARGET: 40% of workflows use parallel nodes
+
+PHASE 3 (Week 5+): 21-28 hours (on-demand)
+├── Code Execution node (10-14h)
+├── HTTP API Call node (8-10h)
+└── Sub-Agency node (3-4h)
+
+PHASE 4 (Future): 38-54 hours (requires design review)
+├── Memory/State node (12-16h)
+├── Timer/Delay node (8-12h)
+├── Webhook Trigger (10-14h)
+└── Error Handler (8-12h)
+
+TOTAL EFFORT: 80-100 hours spread over 2-3 months
+TEAM: 1-2 engineers, parallel implementation in Phases 2-4
+
+================================================================================
+SUCCESS CRITERIA
+================================================================================
+
+Phase 1:
+- >= 20% of new agencies use conditional nodes within 4 weeks
+- Zero regressions in existing agent-only workflows
+- Skill input mapping reduces support tickets for "why can't I route data?"
+
+Phase 2:
+- >= 40% of workflows use parallel fan-out
+- Loop retry reduces manual retry requests by 50%
+
+Overall:
+- User adoption of new node types (metrics from agency builder)
+- Support ticket volume (monitor new node type issues)
+- Workflow complexity metrics (branch depth, loop nesting)
+
+================================================================================
+OPEN QUESTIONS
+================================================================================
+
+1. Conditional evaluation: LLM-based (flexible, expensive) or rule-based (fast, limited)?
+2. Loop termination: Max attempts, timeout, or both?
+3. Data transform syntax: JSONPath, Jinja2, or Python expressions?
+4. Memory/state scope: Per-run, per-conversation, per-user?
+5. Error handler placement: Per-node or per-subgraph?
+6. Parallel execution: Explicit fan-out node or edge-level flow_type attribute?
+7. Backward compatibility: How to handle missing nodeConfig in old agencies?
+
+================================================================================
+RELATED DOCUMENTATION
+================================================================================
+
+PRIMARY:
+- AGENCY-NODE-TYPES-RESEARCH-BRIEF.md (findings, risks, options, recommendations)
+
+SUPPORTING:
+- AGENCY-NODE-TYPES-GAP-ANALYSIS.md (detailed breakdown for each type)
+- AGENCY-NODE-TYPES-VISUAL-SUMMARY.md (diagrams, capability matrix, flow examples)
+
+QUICK REFERENCE:
+- MEMORY.md (index, effort estimates, code locations)
+
+================================================================================
+KEY TAKEAWAYS
+================================================================================
+
+1. Current 8 node types cover basic orchestration but miss common patterns
+   (conditional routing, parallel work, loops, error handling)
+
+2. Skill system is isolated from agency orchestrator
+   (separate detection, routing, chaining; no input mapping)
+
+3. Architecture is READY for extension
+   (no blockers, incremental implementation possible)
+
+4. Recommend Phase 1 + validation approach
+   (3 core nodes, measure adoption, add remaining on-demand)
+
+5. Parallel fan-out + loops unlock most enterprise workflows
+   (enables 70% of missing patterns)
+
+6. Skill input mapping is HIGH-VALUE quick win
+   (4-6 hours, improves UX significantly)
+
+================================================================================
+NEXT STEPS
+================================================================================
+
+1. VALIDATE: Get stakeholder feedback on priorities
+   - Which gaps matter most to your users?
+   - Which node types drive adoption?
+
+2. DESIGN: Review open questions with product team
+   - Conditional evaluation strategy
+   - Memory/state scope and lifetime
+   - Error handling semantics
+
+3. PLAN: Commit to Phase 1 timeline
+   - Assign 1-2 engineers
+   - Schedule code review + testing
+   - Plan database migration strategy
+
+4. BUILD: Start with Conditional Branch node (12-16 hours)
+   - Extends _execute_node() match statement
+   - New ConditionalBranchNodeCard component
+   - Property panel for condition + branch target config
+
+5. VALIDATE: Monitor adoption metrics
+   - % of new agencies using conditional nodes
+   - Support tickets mentioning branch/condition
+   - Workflow complexity trends
+
+================================================================================
+END RESEARCH BRIEF
+================================================================================

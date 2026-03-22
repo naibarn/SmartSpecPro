@@ -7,7 +7,7 @@ Per-section implementation workflow for /deep-implement.
 For each section in the manifest:
 
 ```
-1. Mark section in progress (TaskUpdate)
+1. Mark section in progress in your local tracking system if available
 2. Read section file
 3. Create skeleton files
 4. Write tests (TDD red phase)
@@ -21,10 +21,8 @@ For each section in the manifest:
 
 ### 1. Mark In Progress
 
-Update the section task to `in_progress`:
-```
-TaskUpdate(taskId=X, status="in_progress")
-```
+If a task-list backend exists, you may mark the section task as `in_progress`.
+In compatible mode, this step is informational only and file-based state remains the source of truth.
 
 ### 2. Read Section File
 

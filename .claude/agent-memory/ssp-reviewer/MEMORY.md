@@ -5,8 +5,384 @@
 - tRPC routers: `apps/web/server/routers/library.ts` — library feature router
 - Library service: `apps/web/server/services/libraryService.ts`
 - Zod schemas inline in router `.input()` — no separate schema file for library
-- `fileBase64` is used for file uploads/replace — **no server-side size cap on `replaceFile`** (only `saveMarkdown` has a 5MB cap)
+- `fileBase64` is used for file uploads/replace — **no server-side size cap on `replaceFile`** (only `saveMarkdown` has a 5MB cap); `uploadFile` cap is 68MB base64 (`MAX_FILE_BASE64_LENGTH = 68_000_000`)
+- `fileBase64` must be a **raw base64 string** (no `data:` prefix). `FileReader.readAsDataURL()` returns a prefixed data URL — callers must strip the prefix with `.split(",")[1]` before sending. Sending the full data URL corrupts stored files silently.
 - Auth pattern: `protectedProcedure` enforces JWT; tenant isolation via `resolveLibraryTenantId`
+
+## Spec 052 — Agency Swarm Full Capability, Section-01 (Database Migration) — Verdict: APPROVE_WITH_FIXES (2026-03-22)
+
+2 CRITICAL, 4 HIGH, 4 MEDIUM, 3 LOW findings. Key:
+- **CRITICAL-1 — modelSettings data migration SQL absent from `.sql` file**: The `UPDATE agency_agents SET "modelSettings" = jsonb_strip_nulls(...)` to rename `top_p`→`topP` and `max_tokens`→`maxTokens` is missing. Existing rows will silently lose settings at runtime.
+- **CRITICAL-2 — `defaultTargetNodeId` omitted from conditional_branch nodeConfig block**: Spec §4 explicitly requires it listed in the conditional_branch section as a reuse marker for section-17 authors.
+- **HIGH — Pervasive `.notNull()` omissions**: 13 columns with DB defaults are missing `.notNull()`, inflating TypeScript types with spurious `| null`. Affects: `agencies.topology`, `agencies.cacheConversationStarters`, `agencyAgents.parallelToolCalls`, `agencyAgents.maxTurns`, all default-bearing columns on `agencyGuardrails` and `agencyTools`.
+- **MEDIUM — Tests missing default-value assertions and index-shape verification**: The TDD spec required both; neither is present.
+- **LOW — Out-of-scope change**: `users.userPreferences.privateVault` type extension bundled from Feature 044.
+Review file: `specs/feature/052-agency-swarm-full-capability/implementation/code_review/section-01-review.md`
+
+## Unified Skill Execution Pipeline — Re-audit after fixes (commit 4c20e1e7) — Verdict: APPROVE_WITH_FIXES (2026-03-21)
+
+All 5 HIGH and 3 MEDIUM findings resolved. 1 LOW (skill_factory silent fallback) still open. 2 new findings: `unified_error` missing from `AuditEventType` union (MEDIUM), `parseNextSpeakerHint` still duplicated between `textSkillExecutor.ts` and `teamRunSkillExecutor.ts` (LOW).
+Review file: `.claude/agent-memory/ssp-reviewer/project_unified_skill_execution_reaudit.md`
+
+## Unified Skill Execution Pipeline — Full System Completeness Audit — Verdict: APPROVE_WITH_FIXES (2026-03-21)
+
+5 HIGH, 6 MEDIUM, 5 LOW findings. Key:
+- **HIGH-1 — `capabilitiesAllowed` never enforced**: Declared in `UnifiedExecutionRequest` but `executeUnified` never reads it.
+- **HIGH-2 — `retrieveForPrompt` receives `personaId` where `assistantId` expected**: Wrong scoped-memory scope for chat persona path.
+- **HIGH-3 — `teamRunSkillExecutor` catch block resets `handledByUnified = false`**: Allows double-execution (unified side-effects + legacy retry) on error.
+- **HIGH-4 — `as any` cast on `executionPolicy` in textSkillExecutor**: Type mismatch with `SkillExecutionPolicyResult` suppressed.
+- **HIGH-5 — `temperature` field never populated**: Present in `ExecutorInput` and forwarded by executor but never set in `executeUnified` build step.
+- **MEDIUM-1 — `orchestrator_error` detection misses `skill_resolution_failed`/`executor_not_found`**: Silent empty content returned.
+- **MEDIUM-2 — No system-prompt cap**: Legacy path caps at 12,000 chars; unified path passes uncapped.
+- **MEDIUM-3 — `capabilitiesAllowed` field not enforced** (see HIGH-1 for primary).
+- **LOW-1 — `extractUserPrompt` duplicated in all 3 media executor files**.
+- **LOW-3 — Swarm/skill_factory capability families have no executor**: Silent fallback to text executor.
+Review file: `.claude/agent-memory/ssp-reviewer/project_unified_skill_execution_completeness.md`
+
+## Unified Skill Execution Pipeline, Section-10 (Cross-Channel Parity Tests) — Verdict: APPROVE_WITH_FIXES (2026-03-21)
+
+4 HIGH, 4 MEDIUM, 3 LOW findings. Key:
+- **HIGH — manual `vi.clearAllMocks()` + full mock re-setup inside one test body**: Duplicates `beforeEach`, will silently diverge if `beforeEach` changes. Remove the inline block entirely.
+- **HIGH — "web search enabled" policy test checks call count only**: Does not assert that `injectWebSearchIfNeeded` received `requires_web_search: true` in both calls. Passes even if the flag is ignored.
+- **HIGH — "requires_thinking" test does not verify `enableThinking` on executor input**: `mockBuildDynamicModelReqs` returns `supportsThinking: true` but the test never confirms `executorInput.enableThinking === true` for both channels.
+- **HIGH — "executor not found" failure test uses only cross-channel equality**: Both `route.reason` and `telemetry.executorId` assertions compare chat vs team_room rather than against concrete expected values (`"executor_not_found"` / `"unknown"`). Vacuous if both channels misbehave identically.
+- **MEDIUM — `canHandle` on module-level executor fixtures not re-applied after `vi.clearAllMocks()`**: Only `execute` is reset in `beforeEach`; `canHandle` will return `undefined` if any prior test overrides it.
+- **MEDIUM — persistence hook parity entirely absent**: `registerPersistenceHook` / `clearPersistenceHooks` are exported for testing; no test verifies a hook for channel A does not fire for channel B.
+- **LOW — dead `vi.mock("../executors/textSkillExecutor")`**: Orchestrator accesses executor via registry, not direct import; mock is unused.
+Review file: `planning/unified-skill-execution/implementation/code_review/section-10-review.md`
+
+## Unified Skill Execution Pipeline, Section-07 (Wire Chat Router) — Verdict: APPROVE_WITH_FIXES (2026-03-21)
+
+4 HIGH, 4 MEDIUM, 3 LOW findings. Key:
+- **HIGH — inline `type _UER = import(...)` alias**: Declared inside an `if` block instead of a top-level static import. The underscore prefix misleads linters; type enforcement is fragile across edits. Fix: `import type { UnifiedExecutionRequest }` at top of `chat.ts`.
+- **HIGH — duplicate `getConversationById` query on fallback path**: Unified path fetches conversation at line 1510; legacy path fetches same row at line 1691. When orchestrator errors and falls back, two DB round-trips occur for the same data. Plan §7 explicitly required loading once and reusing.
+- **HIGH — 2 of 6 tests are vacuous (flag path tests)**: `flag=false` test imports the router but never calls a procedure; assertions pass trivially. `flag=true` throws test calls `mockAuditLog` itself rather than routing through production code. No end-to-end wiring invariant is actually verified.
+- **HIGH — 2 additional tests call mocks directly**: `conversationContext` and `reference images` tests construct data locally without invoking the router. They verify nothing about `chat.ts`.
+- **MEDIUM — `"unified_fallback"` absent from `AuditEventType` union**: `as any` cast required to log the event. Add to `auditLogger.ts` union.
+- **LOW — unplanned modification to legacy `executionPolicy` mode mapping**: The `modelSource` → `mode` conversion in `runPlanner` call is a behavioural change to existing code. Plan stated "Do NOT Modify Existing Code". Confirm this was intentional carry-over from section-05 fix.
+Review file: `planning/unified-skill-execution/implementation/code_review/section-07-review.md`
+
+## Unified Skill Execution Pipeline, Section-05 (TextSkillExecutor) — Verdict: APPROVE_WITH_FIXES (2026-03-21)
+
+2 HIGH, 2 MEDIUM, 3 LOW. Key:
+- **HIGH — `as any` cast on `executionPolicy`**: `ExecutorInput.executionPolicy` typed as `Record<string, unknown>` but `executeSkillLlmWithFallback` requires `SkillExecutionPolicyResult`. Cast suppresses future type errors. Fix: narrow `ExecutorInput.executionPolicy` type in `types.ts`.
+- **HIGH — `maxTokens`/`temperature` not forwarded**: Both are valid `SkillLlmRequest` fields but absent from `ExecutorInput` and dropped silently at the executor boundary.
+- **MEDIUM — `parseNextSpeakerHint` duplicated**: Identical private function already in `teamRunSkillExecutor.ts:48`. Extract to shared utility to prevent regex divergence.
+- **MEDIUM — mid-content tag leaves double-space**: `trimEnd()` only trims trailing whitespace; tag in the middle of content produces `"intro  body"`. Use `.trim()` or collapse adjacent spaces.
+Review file: `planning/unified-skill-execution/implementation/code_review/section-05-review.md`
+
+## Spec 049 — Enterprise Notification System, Section-13 (Feature Flags, i18n, Health Checks) — Verdict: APPROVE_WITH_FIXES (2026-03-21)
+
+2 HIGH, 3 MEDIUM, 4 LOW findings. Key:
+- **HIGH — `checkNotificationHealth()` never registered**: The combined health probe exists but has no caller — not wired to `/healthz` or any monitoring router. Dead code. Fix: import and call in `server/_core/index.ts` `/healthz` handler.
+- **HIGH — `recordBroadcastRequest()` never called**: The broadcast error-rate counter is never incremented from the admin-broadcast handler. The probe permanently returns `healthy: true, errorRate: 0`. Fix: import and call from the admin-broadcast tRPC procedure.
+- **MEDIUM — `notificationMenu.test.ts` wrong location**: File placed at `apps/web/shared/__tests__/` but spec requires `packages/shared/src/constants/__tests__/`.
+- **MEDIUM — `main.tsx` routes absent from diff**: Spec says section-13 owns route registrations; diff has no `main.tsx` changes. Must confirm routes pre-exist from prior sections.
+- Core correct: all 6 flags in `TenantFeatureFlags`, `ALLOWED_FEATURE_FLAGS`, and `FEATURE_FLAG_DEFAULTS` (all `false`). F23–F28 renumbering from prior sections correct. All 44 i18n keys in EN and TH. Both menu entries with correct `requiresFeature` camelCase keys that now resolve properly. `notificationStream.ts` mounted in Express, `getActiveSSEConnectionCount()` exported. Redis pub/sub health probe logic is sound.
+Review file: `specs/feature/049-enterprise-notification-system/implementation/code_review/section-13-review.md`
+
+## Spec 049 — Enterprise Notification System, Section-10 (Phase 7 Email Delivery) — Verdict: APPROVE_WITH_FIXES (2026-03-21)
+
+3 HIGH, 5 MEDIUM, 4 LOW findings. Key:
+- **HIGH — `NOTIFICATION_EMAIL_DELIVERY` feature flag absent**: Flag missing from `featureFlags.ts`; `notificationService.ts` hook has no flag check — email delivery fires for all tenants immediately on deploy. Fix: add `notificationEmailDelivery: boolean` as F24 to `TenantFeatureFlags` and add tenant flag gate around the email block.
+- **HIGH — BullMQ connection extracts `redis.options?.host/port`**: `redisClients.ts` builds IORedis from a URL string; `options.host/port` are unreliable/absent. Digest queue will silently route to `localhost:6379` in production. Fix: pass the IORedis instance directly (`connection: getRealtimeClient()`), matching the pattern in `deliveryQueue.ts`.
+- **HIGH — Locale hardcoded to `"en"`**: `users` table has no `locale` column (confirmed schema). Thai users always receive English emails. Must be documented as a known gap and a schema migration planned.
+- **MEDIUM — `emailDigestFrequency IS NOT NULL` not in SQL**: DB fetches all `email=true` rows; null-frequency filtering is in-app. Import `isNotNull` and add to `.where()`.
+- **MEDIUM — Deduplication discards per-category frequency**: First preference row wins for each userId; other email-enabled categories' frequency/hour settings are lost.
+- **MEDIUM — `SELECT *` on `userNotifications`**: Fetches all columns when only 6 are needed.
+- **MEDIUM — `userId: "redacted"` in success log**: Misleading; either add `userId` param to `sendNotificationEmail` or remove the key.
+- Core correct: HTML escaping thorough (`&`, `<`, `>`, `"`, `'`), priority/digest routing, template stub contract, BullMQ repeat interval, Redis 7-day TTL, per-user error isolation, unsubscribe link in all emails, all 20 plan-required tests present.
+Review file: `specs/feature/049-enterprise-notification-system/implementation/code_review/section-10-review.md`
+
+## Spec 049 — Enterprise Notification System, Section-09 (Phase 6 Admin Dashboard) — Verdict: REQUEST_CHANGES (2026-03-21)
+
+4 HIGH, 5 MEDIUM, 3 LOW findings. Key:
+- **HIGH — `NOTIFICATION_UNIFIED_CENTER` not in `TenantFeatureFlags`**: `useTenantFeatureFlag("NOTIFICATION_UNIFIED_CENTER" as any)` escapes the type system. The flag is absent from `featureFlags.ts` — the hook returns `undefined` (falsy), so the "Feature Not Enabled" card renders for all tenants. Fix: add `notificationUnifiedCenter: boolean` as F23 to `TenantFeatureFlags`.
+- **HIGH — Menu entry `requiresFeature: 'NOTIFICATION_UNIFIED_CENTER'` never matches**: `menu.ts` filter does `enabledFeatures[item.requiresFeature] === true`, where key is not in the `TenantFeatureFlags` interface. Menu item never appears. Same root cause as above.
+- **HIGH — `UnifiedNotification.priority` vs server's `severity` field**: Local interface uses `priority` but the server mapper outputs `severity`. All severity badge renders (`item.priority`) are `undefined` at runtime — badges show blank. Same mismatch in detail panel and `SEVERITY_COLORS` lookup.
+- **HIGH — Severity filter enum mismatch**: Dropdown sends `"info" | "warning" | "error"` but server Zod schema validates `z.enum(["low","normal","high","critical"])`. Selecting info/warning/error triggers a 400 bad request.
+- **MEDIUM — `domain_admin` excluded by frontend guard**: `user.role !== "admin"` redirects `domain_admin` to dashboard, but `adminProcedure` on the backend allows `domain_admin`. Frontend is more restrictive than the backend contract.
+- **MEDIUM — `bySeverity: []` stub from section-08 produces blank chart**: Empty card body with no placeholder text.
+- **MEDIUM — Filter interaction tests missing**: Tests check element existence for source/severity dropdowns, not that changing the filter updates query params.
+- **SECURITY — `actionUrl` not sanitized**: Detail panel renders raw `<a href={actionUrl}>` — a `javascript:` URI stored in the DB would be clickable.
+- **SCOPE CREEP**: `menu.ts` also changes `requiresFeature` for `teams` (`ORCHESTRATOR_ENABLED` → `orchestratorEnabled`) and `admin-personas` (`AI_PERSONA_ENABLED` → `personaSystem`) — these belong to section-13.
+- Core correct: layout matches spec, loading/error states, pagination, keyboard navigation, accessibility markup, route registration, lazy import, stat cards, CSS bar charts, detail panel close behavior.
+Review file: `specs/feature/049-enterprise-notification-system/implementation/code_review/section-09-review.md`
+
+## Spec 049 — Enterprise Notification System, Section-08 (Phase 6 Unified Query) — Verdict: APPROVE_WITH_FIXES (2026-03-21)
+
+3 HIGH, 3 MEDIUM findings. Key:
+- **HIGH — `notificationUnifiedCenter` feature flag gate absent**: Both `getUnifiedNotifications` and `getUnifiedStats` in `monitoring.ts` are live on deploy regardless of flag state. Spec §7 requires `throw FORBIDDEN` when flag is false.
+- **HIGH — Tenant isolation subquery type safety risk**: `userNotifications` scoped via `userId IN (SELECT id FROM users WHERE currentTenantId = (SELECT id FROM tenants WHERE id = $tenantId LIMIT 1))`. Double-subquery is unindexed on `users.currentTenantId`; if the type mismatch between `varchar(36)` tenantId and integer FK causes the inner join to return zero rows, legitimate admins silently get empty results.
+- **HIGH — Guardian source filter performs full table scan + in-memory discard**: `filters.source === "guardian"` skips orch query but does not add a SQL predicate to the user query. Full tenant user scan runs, then non-guardian rows are discarded in memory — 200ms budget risk at 500+ notifications.
+- **MEDIUM — N+1 hasMore detection broken for merged queries**: Each source fetches `limit+1` independently; merged array can be `2*(limit+1)` items. `filtered.length > limit` is trivially true even when total items ≤ limit, producing false `hasMore=true`.
+- **MEDIUM — `bySeverity: []` hardcoded stub**: Section-09 admin dashboard will receive an empty severity distribution array, breaking its chart. Not documented as intentional deferral.
+- **MEDIUM — Integration tests entirely absent**: Test file covers only pure mapper functions. Missing: cross-source sort, pagination hasMore, source/date filter, Redis cache hit/miss/TTL, Redis unavailability, S8 tenant isolation assertion.
+- **SCOPE CREEP**: Spec 049 section-07 fixes and Spec 051 section-05 fixes bundled into this diff.
+- Core correct: mapper functions, severity mapping, Redis caching with graceful degradation, `feedbackProcessor` Guardian enrichment, `adminProcedure` role guard, `orchestratorNotifications` direct tenantId filter all pass.
+Review file: `specs/feature/049-enterprise-notification-system/implementation/code_review/section-08-review.md`
+
+## Spec 051 — Team Room Reuse Chat Pipeline, Section-05 (Migration Cleanup) — Verdict: APPROVE_WITH_FIXES (2026-03-21)
+
+3 HIGH, 4 MEDIUM, 3 LOW findings. Key:
+- **HIGH — `queued` run status omitted from SQL migration and startup guard**: `teamRunStatusEnum` includes `"queued"` but `0105_stop_legacy_team_runs.sql` only targets `'running'` and `'paused'`. Queued legacy runs are orphaned. Same gap in `recoverActiveRunsOnStartup()` `inArray` call.
+- **HIGH — SQL migration missing `stopReason IS NULL` guard**: The startup guard in `runEngine.ts` adds `stopReason IS NULL` to avoid re-stopping already-explicitly-stopped runs. The SQL migration has no equivalent, allowing a double-run to overwrite legitimate `stopReason` values.
+- **HIGH — `recoverActiveRunsOnStartup()` never tested**: `runEngine.migration.test.ts` only text-parses the SQL file — it never imports or calls the Node.js function. The six plan-required behavioral test cases are absent.
+- **MEDIUM — Migration numbered `0105` but plan specifies `0103`**: Correct number given actual journal state, but discrepancy is a maintenance hazard.
+- **MEDIUM — Journal test does not assert `idx: 105`**: Only checks tag name and version string.
+- **MEDIUM/SCOPE — Spec 049 frontend fixes bundled into this diff**: `NotificationPreferencesPanel.tsx` feature-flag gate, `AlertRuleFormDialog` conditional-render fix, and `form.watch` → `form.getValues` fix all belong to Spec 049 section-07 follow-up.
+- Core cleanup correct: `TEAM_DISCUSSION_SKILL_ID` fully removed, `formatPromptMessagesForAgent` deleted, bridge import gone, `roomIntentRouter.ts` uses `FALLBACK_CONTENT_SKILL_ID = "general-article-writer"`, `roomIntentRouter.test.ts` updated to positive assertion.
+Review file: `specs/feature/051-team-room-reuse-chat-pipeline/implementation/code_review/section-05-review.md`
+
+## Spec 049 — Enterprise Notification System, Section-07 (Phase 5 Frontend Settings) — Verdict: APPROVE_WITH_FIXES (2026-03-21)
+
+3 HIGH, 4 MEDIUM, 4 LOW findings. Key:
+- **HIGH — Feature flag gate absent**: `NotificationPreferencesPanel` renders unconditionally; `NOTIFICATION_PREFERENCES_ENABLED` check from spec section 2.1 is not implemented.
+- **HIGH — `AlertRuleFormDialog` does not reset form state on reopen**: `useForm` defaults fixed at mount; opening Create after Edit shows stale field values from the previous edit.
+- **HIGH — Escalation policies test block is vacuous**: 3 of 5 tests never render the component; one calls `mockDeletePolicy` directly without rendering; one checks mock data not DOM.
+- **MEDIUM — Several plan-required tests missing**: No `onError` toast test, no `isPending` disable test, no edit-dialog pre-fill test, no create-form submission test, no blank-form validation test. Operator allowlist test only checks element existence, not option count.
+- Core security S7 correct: `OPERATORS` const tuple → `z.enum(OPERATORS)` → Radix Select, no free-text path. All aria-labels present on toggles. Optimistic update with rollback on error is correctly implemented. Route guarded by `RequireAdmin`. `Bell` icon already imported in Settings.tsx.
+- Out-of-scope scope creep: `runEngine.ts` token-field rename and `runEngine.bridgeRemoval.test.ts` bundled into this diff.
+Review file: `specs/feature/049-enterprise-notification-system/implementation/code_review/section-07-review.md`
+
+## Spec 049 — Enterprise Notification System, Section-06 (Phase 5 Escalation Job) — Verdict: APPROVE_WITH_FIXES (2026-03-21)
+
+2 HIGH (tenant isolation), 3 MEDIUM, 3 LOW findings. Key:
+- **HIGH — Notification query has no `tenantId` scope**: `executeEscalationCheck` queries `userNotifications` for ALL tenants' notifications matching each policy. A policy in tenant A can escalate notifications belonging to users in tenant B.
+- **HIGH — Role-based target resolution (`escalateToRole`) queries ALL users globally**: No `currentTenantId = policy.tenantId` filter. Admins in every tenant receive escalations from any tenant's policy. Also: `policy.tenantId` is `varchar(36)` but `users.currentTenantId` is `integer` — requires a cast or lookup.
+- **MEDIUM — `metadata` update runs even when `targetUserIds` is empty**: Marks original notification `escalatedAt` with no actual targets, making it permanently immune from future escalation and hiding the policy misconfiguration.
+- **MEDIUM — "skips already-escalated" tests are vacuous**: Both tests use `notifications: []` mock — they would pass even if the SQL filters were removed.
+- Core logic correct: `isEscalated` metadata bypass through `createNotification` works correctly (section-05 reads field before sanitization strips it), SQL double-guard (`IS DISTINCT FROM 'true'` + `IS NULL`), per-target try/catch, BullMQ config, idempotent init all pass.
+Review file: `specs/feature/049-enterprise-notification-system/implementation/code_review/section-06-review.md`
+
+## Spec 049 — Enterprise Notification System, Section-05 (Phase 5 Preference Delivery Gate) — Verdict: APPROVE_WITH_FIXES (2026-03-21)
+
+3 HIGH, 3 MEDIUM, 3 LOW findings. Key:
+- **HIGH — `snoozeCategory` never invalidates Redis cache**: `upsertPreference` calls `redis.del` at line 77, but `snoozeCategory` does not. Snooze operations silently fail to take effect for up to 60s if a prior cache hit has `mutedUntil: null`.
+- **HIGH — `NOTIFICATION_PREFERENCES_ENABLED` flag bypasses `featureFlags.ts`**: `isPreferenceEnabled()` reads `process.env` directly; the flag is absent from `TenantFeatureFlags`. Cannot be toggled per-tenant, no audit trail. Section 13 was supposed to add it as F23 but never did.
+- **HIGH — `sanitizeMetadata` does not strip `isEscalated`**: All metadata fields including `isEscalated: true` pass through unmodified. Any caller forwarding user-controlled metadata could trigger escalation bypass. Fix: either strip it in `sanitizeMetadata` or move `isEscalated` to a separate first-class parameter on `CreateNotificationParams`.
+- **MEDIUM — `"delivered"` log fires for both explicit-pref and no-pref-row paths**: The `console.log(...result: "delivered")` at line 334 is outside the `if (pref)` block. Misleading in observability.
+- **MEDIUM — `sanitizeMetadata` called after preference gate reads `metadata`**: `isEscalated` is evaluated from unsanitized input at line 293; sanitization happens at line 379. If sanitizer is later updated to strip the field, the gate silently breaks.
+- Core logic correct: all 10 `mapToCategory` mappings match spec, Redis TTL=60s, cache-before-DB flow, Telegram gate, escalation bypass logic, and all 4 escalation test scenarios all pass review.
+Review file: `specs/feature/049-enterprise-notification-system/implementation/code_review/section-05-review.md`
+
+## Spec 051 — Team Room Reuse Chat Pipeline, Section-02 (Prompt Composer) — Verdict: APPROVE_WITH_FIXES (2026-03-21)
+
+2 CRITICAL, 4 IMPORTANT, 3 SUGGESTION, 2 NITPICK findings. Key:
+- **CRITICAL — `buildPersonaPromptSegments` emits `"null"` literally**: When `persona.systemPromptPrefix` is null in the DB, `personaService` assembles `[PERSONA START]\nnull\n[PERSONA END]`. The old code guarded this via `.filter(Boolean)`. Add a null-guard before calling `buildPersonaPromptSegments` or inside `personaService`.
+- **CRITICAL — Double "Restrictions:" prefix**: `buildPersonaPromptSegments` already prepends `"Restrictions:\n"` to `restrictionsBulletPoints`; the composer then wraps it again as `` `Restrictions:\n${segments.restrictionsBulletPoints}` ``. Remove the outer wrapper in the composer.
+- **IMPORTANT — `getEntityMemories` over-injects when `profile` is undefined**: `profile?.personaId ?? undefined` passes `undefined` as the `personaId` arg, which causes `getEntityMemories` to skip persona scoping and return memories across all personas.
+- **IMPORTANT — Mixed-role message ordering**: `[user:objective]` is inserted between system messages (before memories at steps 4/4b). Move objective push to after all system messages, immediately before history.
+- `users` import added to schema imports but never used — remove unused import.
+Review file: `specs/feature/051-team-room-reuse-chat-pipeline/implementation/code_review/section-02-review.md`
+
+## Spec 051 — Team Room Reuse Chat Pipeline, Section-01 (Skill Detection) — Verdict: APPROVE_WITH_FIXES (2026-03-21)
+
+2 CRITICAL, 4 IMPORTANT, 2 SUGGESTION, 2 NITPICK findings. Key:
+- **CRITICAL — `general-article-writer` fails `isTeamRunEligibleSkill` gate**: The skill has no `teamRunEligible: true` flag, is not `internalOnly`, and is not `type: "chat-assistant"`. `teamRunSkillExecutor.resolveTeamRunSkill` will reject it and fall back to `TEAM_DISCUSSION_SKILL_ID` at execution time, making the router change a no-op in production.
+- **CRITICAL — `conversationId` dropped on assistant path**: `detectSkill(normalized, undefined, undefined, input.userId)` — the human path passes `input.conversationId`. Agent role context is stripped, reducing skill detection quality for the exact turns this change targets.
+- **IMPORTANT — `FALLBACK_CONTENT_SKILL_ID` is an unguarded string literal**: If the skill is renamed or deleted, the fallback silently routes to a non-existent ID and `resolveTeamRunSkill` falls back to `TEAM_DISCUSSION_SKILL_ID` anyway with no visible error.
+- **IMPORTANT — Agent greeting messages route to `general-article-writer`**: `CHAT_SIGNAL_RE` and the chat fallback are only reachable by `human_user` path. Assistants saying "สวัสดี" get billed as article-generation turns.
+- **IMPORTANT — Fallback tests don't assert the actual fallback skill ID**: Tests check `selectedSkillId !== "team-discussion-assistant"` but not `selectedSkillId === "general-article-writer"`.
+Review file: `specs/feature/051-team-room-reuse-chat-pipeline/implementation/code_review/section-01-review.md`
+
+## Spec 049 — Enterprise Notification System, Section-04 (Phase 5 Schema) — Verdict: APPROVE_WITH_FIXES (2026-03-21)
+
+3 HIGH, 3 MEDIUM, 2 LOW findings. Key:
+- **HIGH — `checkAdmin` test asserts `domain_admin` is rejected**: The inline test helper excludes `domain_admin` but the real `adminProcedure` in `_core/trpc.ts:84` explicitly allows it. Test validates wrong policy.
+- **HIGH — `snoozeCategory` past-timestamp test missing**: Runtime guard exists (`notificationPreferences.ts:60615`) but the plan-required test case "rejects mutedUntil timestamps in the past" is absent from the test file.
+- **HIGH — All router tests are structural assertions, not caller-based**: No test calls through the actual `adminProcedure` or `protectedProcedure`. Auth gates and tenant isolation clauses are never exercised. Tests for tenant isolation (`updateRule` / `deleteRule` cross-tenant rejection) are missing entirely.
+- **MEDIUM — `updateRule`/`deleteRule` cross-tenant rejection tests missing**: Plan requires these; not implemented.
+- **MEDIUM — No-op migration `0104_mean_power_man.sql`**: Left from a type correction iteration. Should be removed if not yet applied to any environment.
+- Schema tables, column types, FK constraints, indexes all correct. `tenants.id` is `varchar(36)` — implementation correctly uses `varchar(36)` (plan erroneously said `integer`). Operator allowlist (S7), tenant scoping, user scoping, Redis cache invalidation, and router registration all correct.
+- **Out-of-scope scope creep**: `roomIntentRouter.ts`, `roomIntentRouter.test.ts`, and `roomIntentRouter.enhanced.test.ts` belong to Spec 051, not Section 04.
+Review file: `specs/feature/049-enterprise-notification-system/implementation/code_review/section-04-review.md`
+
+## Tiptap Editor — Section-13 (Hardening Tests) — Verdict: APPROVE_WITH_FIXES (2026-03-21)
+
+3 HIGH, 3 MEDIUM, 2 LOW findings. See `project_046_tiptap_section13.md` for details. Key:
+- **HIGH — Accessibility tests entirely absent**: 4 plan-required tests (role="textbox", toolbar labels, mode switcher keyboard nav, slash command aria-selected) not written.
+- **HIGH — Thai IME composition guard test missing**: No test for "/" typed during IME composition; guard itself not confirmed added to slash command handler.
+- **HIGH — Error boundary component not implemented**: Only a vacuous mock test; no component mount, no error boundary added to UnifiedDocumentSurface.
+- **MEDIUM — `aria-label` and serialization warning use hardcoded English strings** instead of `t("editor.ariaLabel")` / `t("editor.serializationWarning")`.
+- **SCOPE CREEP**: `notificationPreferenceDelivery.test.ts` (Spec 049) and `promptComposer.enhanced.test.ts` bundled into this diff.
+Review file: `planning/tiptap-markdown-editor/implementation/code_review/section-13-review.md`
+
+## Tiptap Editor — Section-12 (Conflict Resolution Dialog) — Verdict: APPROVE_WITH_FIXES (2026-03-21)
+
+2 HIGH, 3 MEDIUM, 3 LOW findings. Key:
+- **HIGH — `triggerConflict` is dead code**: The callback is defined in `UnifiedDocumentSurface` but never added to `UnifiedDocumentSurfaceProps`, never forwarded via ref, and never called by the parent save handler. The dialog is unreachable from a real conflict.
+- **HIGH — `DocumentManagement.tsx` still uses forbidden string-match conflict detection**: Line 770 uses `error.message.toLowerCase().includes("version conflict")` — the plan explicitly requires `error.data?.httpStatus === 409` or an error-code check. The parent also still silently retries instead of surfacing the dialog.
+- **HIGH — `handleConflictOverwrite` clears conflict flag before confirming save success**: `setConflictDetected(false)` at line 184 fires before `doSave` at line 185. If the overwrite mutation fails, conflict state is lost with no recovery path.
+- **MEDIUM — `open` prop / conditional render are redundant and confusing**: Surface renders `{conflictDetected && <ConflictResolutionDialog open={true}>}` — the `open` prop is always `true` at this call site. Either pass `open={conflictDetected}` unconditionally or remove the `open` prop from the interface.
+- **MEDIUM — Escape-prevention test is vacuous**: `fireEvent.keyDown` targets the title text node, not `AlertDialogContent`. Radix's synthetic Escape event is not triggered; the test passes trivially. Needs `onOpenChange` spy or integration test.
+- **MEDIUM — `editor.save.conflict` i18n key added but unused**: Status label in `UnifiedDocumentSurface.tsx:235` is hardcoded "Conflict detected" in English, not `t("editor.save.conflict")`.
+- Component itself is well-built: `onEscapeKeyDown` + `onPointerDownOutside` guards correct; `documentTitle` rendered as React text node (no XSS); all 6 i18n keys present in en.ts and th.ts.
+- Scope creep: `useSSEReconnect.ts`, `Notifications.tsx`, `GlobalAlerts.tsx` changes belong to Spec 049, not Section 12.
+Review file: `planning/tiptap-markdown-editor/implementation/code_review/section-12-review.md`
+
+## Tiptap Editor — Section-11 (SafeMarkdown Fixes) — Verdict: APPROVE_WITH_FIXES (2026-03-21)
+
+2 HIGH, 3 MEDIUM, 3 LOW findings. Key:
+- **HIGH — `extractAttr` interpolates `name` into RegExp without escaping**: Hyphenated attribute names like `data-asset-id` work in practice because `-` is a literal in most positions, but any future caller with special-char names would silently malform the regex. Fix: escape `name` with `name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")`.
+- **HIGH — `\b` word-boundary in `extractAttr` can match inside longer attribute names**: `\bdata-poster` also matches inside `xdata-poster="evil"`. Replace `\b` with `(?:^|\s)` to anchor on whitespace.
+- **MEDIUM — `isUrlSafe` duplicates URL policy that already exists in `sanitizeMediaSrc`** (`mediaSerializationRules.ts`). They are functionally equivalent today but will diverge if `BLOCKED_PROTOCOLS` is updated in the shared file. Replace `isUrlSafe` with an import of `sanitizeMediaSrc`.
+- **MEDIUM — `key={undefined}` on inner `videoEl`/`audioEl`** when caption is present (line 313/340). The outer `<figure>` has the key, inner element has `key={undefined}` — benign for static lists but causes unexpected remounting during reconciliation when caption is toggled. Remove `key` from the inner element entirely.
+- **MEDIUM — `data-alignment` missing from ADD_ATTR**: `MEDIA_DATA_ATTRS` in `mediaSerializationRules.ts` lists 4 attrs; only 3 are added to `ADD_ATTR`. `data-alignment` is omitted, so image alignment is stripped by DOMPurify on the fallback path.
+- **MEDIUM — mixed-content test missing text assertions**: Test 9 does not assert "Some text before" / "Some text after" — the plan explicitly required those checks.
+- All 4 plan changes implemented correctly. `javascript:` in `data-poster` is blocked. `data-caption` rendered as JSX text (no XSS). `<figure>` wrapper with caption `<p>` correct.
+Review file: `planning/tiptap-markdown-editor/implementation/code_review/section-11-review.md`
+
+## Spec 049 — Enterprise Notification System, Section-03 (Phase 4 Frontend SSE) — Verdict: APPROVE_WITH_FIXES (2026-03-21)
+
+2 HIGH, 3 MEDIUM, 3 LOW findings. Key:
+- **HIGH — inline `actionUrl` in bell expanded view bypasses `safeNavigate`**: `setLocation((n as any).actionUrl)` is called directly in the `GlobalNotificationBell` inline expanded section. `NotificationDetailPanel` uses `safeNavigate` correctly but this path does not. Fix: wrap with `safeNavigate(...)`.
+- **HIGH — `getGroupOccurrences` test never asserts `notificationId` arg**: The expansion test verifies sub-items render but never checks `mockGetGroupOccurrences` was called with `{ notificationId: 10, limit: 10 }`. Plan explicitly required this assertion.
+- **HIGH — detail panel test missing `firstOccurredAt`/`lastOccurredAt` assertions**: Test only checks "7 occurrences"; plan requires timestamp fields to be asserted.
+- **MEDIUM — "no double-schedule" test does not exercise the guard**: Test advances timer fully after each error, testing sequential reconnection. Should trigger second error BEFORE timer fires to test the `reconnectTimerRef.current !== null` guard.
+- **MEDIUM — `errorMessage` not truncated in `Notifications.tsx` detail panel**: GlobalAlerts bell truncates at 500 chars; Notifications page does not.
+- **MEDIUM — `safeNavigate` duplicated across files with divergent behavior**: `GlobalAlerts.tsx` includes `console.warn`, `Notifications.tsx` silently drops it. Extract to `@/lib/navigation.ts`.
+- SSE hook design is correct: `onMessageRef` latest-value pattern prevents stale closures; refs used for all internal state; cleanup clears both timer and EventSource; `enabled=false` guard works correctly.
+Review file: `specs/feature/049-enterprise-notification-system/implementation/code_review/section-03-review.md`
+
+## Spec 051 — Team Room Reuse Chat Pipeline — Round 3 Verdict: CONDITIONAL PASS (2026-03-21)
+
+All 6 section files are fully substantive (round-1 empty stubs resolved). All 17 prior security issues addressed. 1 MEDIUM residual finding:
+- **MEDIUM — Section-06 `roomIntentRouter.enhanced.test.ts` line 46 comment still references `TEAM_DISCUSSION_SKILL_ID`**: Says "NOT TEAM_DISCUSSION_SKILL_ID" — the constant will be deleted by section-05, causing a NameError if that test imports it. Test must use a string literal `"team-discussion-assistant"` or avoid the import entirely.
+- **MEDIUM — `estimateCreditCost` function does not exist in `creditService.ts`**: Section-03 specifies `const { estimateCreditCost } = await import("./creditService")`. `creditService.ts` has no such export. Implementer must inspect `SkillLlmFallbackResult` for an existing `costCredits` field or derive from `inputTokens + outputTokens * modelRate`.
+- Migration number `0103` is safe — latest existing files are `0100` (SQL) and `0102` (two conflicting files from prior work). Implementer must verify current max before writing.
+- `general-article-writer` skill exists at `apps/web/skills/general-article-writer/` — fallback constant is valid.
+- `advance` tRPC procedure in `teamRun.ts` exists without rate limit — section-03 rate limit addition is correctly targeted.
+See `project_051_team_room_chat_pipeline.md` for round-1/2 details.
+
+## Spec 049 — Enterprise Notification System, Section-02 (Phase 4 Dedup Service) — Verdict: APPROVE_WITH_FIXES (2026-03-21)
+
+3 HIGH, 4 MEDIUM, 2 LOW. Key:
+- **HIGH — feature flag gate absent**: `notificationDedupEnabled` check is not implemented. Dedup activates for every call with a groupKey. Cannot be rolled back by flag toggle after deploy.
+- **HIGH — truncation test is vacuous**: `if (callArgs?.groupKey)` guard makes the assertion silently skip when `values.mock.calls[0]` is undefined (dedup path uses `onConflictDoUpdate`, not plain `values`). Always passes regardless of implementation.
+- **HIGH — SSE publishes unsanitized `actionUrl`**: Redis SSE event uses raw `actionUrl` from params, not the sanitized value. `javascript:` URIs pass through to the frontend if the DB sanitization output is not captured back into a local variable.
+- **MEDIUM — `groupKey` not Zod-validated** in admin-broadcast endpoint. Plan §6 requires `z.string().max(200).optional()`. Only a runtime `typeof` guard present.
+- **MEDIUM — 6 of 12 planned tests missing**: `adminBroadcastGroupKey.test.ts` absent entirely; `test_alerts_groupkey.py` absent; Test 3 (post-dismiss dedup bypass) and Test 5 (flag=false bypass) missing from `notificationDedup.test.ts`.
+- **MEDIUM — `workflow.ts` groupKey not wired**: Plan requires `groupKey: \`workflow_publish:\${templateId}\`` for workflow publish notifications. Diff omits this.
+- Core INSERT ON CONFLICT mechanics, occurrence snapshot, ownership check on `getGroupOccurrences`, and Python `python_alert:{rule.name}` groupKey pattern are all correct.
+Review file: `specs/feature/049-enterprise-notification-system/implementation/code_review/section-02-review.md`
+
+## Spec 049 — Enterprise Notification System, Section-01 (Phase 4 Schema Migration) — Verdict: APPROVE_WITH_FIXES (2026-03-21)
+
+1 HIGH (blocking), 2 MEDIUM, 3 LOW. Key:
+- **HIGH (blocking) — migration file sequence collision**: Both the hand-written enum extension and the drizzle-kit generated migration carry prefix `0102`. Plan requires enum at `0102`, generated schema at `0103`. The generated file `0102_slim_red_wolf.sql` must be renamed to `0103_*` before merge or drizzle-kit will mis-sequence the migrations.
+- **MEDIUM — partial index WHERE predicate untested**: Test checks `idx_notif_dedup_active` exists and is unique but does not assert the WHERE clause content. The dedup security guarantee (S6) depends on `isDismissed = false AND groupKey IS NOT NULL`. Fix: `expect(dedupIndex!.config.where).toContain("isDismissed")`.
+- **MEDIUM — journal seeding not confirmed in diff**: The `drizzle.__drizzle_migrations` manual seed for `0102_notification_type_enum_extension.sql` is not visible in the diff. Must be confirmed before merge to prevent drizzle-kit from trying to run the enum migration inside a transaction.
+- **LOW — `= false` vs `IS FALSE`**: Both `0102_slim_red_wolf.sql` and `schema.ts` `.where(sql\`...\`)` use `"isDismissed" = false`; prefer `IS FALSE`. Both must stay identical so drizzle-kit recognizes them as the same index.
+- All new columns are additive (nullable or have defaults) — zero data-loss risk confirmed.
+- FK CASCADE on `notificationOccurrences.notificationId` correct in both schema.ts and SQL.
+Review file: `specs/feature/049-enterprise-notification-system/implementation/code_review/section-01-review.md`
+
+## Tiptap Editor — Section-10 (Page Integration) — Verdict: APPROVE_WITH_FIXES (2026-03-21)
+
+2 HIGH, 3 MEDIUM, 5 LOW findings. Key:
+- **HIGH — `undefined` propagation on `selectedItem`**: `uploadStatusById.get(selectedItemBase.id)?.item` is passed to `toProvisionalDocumentItem()` — optional-chain can return `undefined`, causing silent corruption of `selectedItem` displayed in the editor. Guard: only call `toProvisionalDocumentItem` when the item field is defined.
+- **HIGH — sentinel ID `[1]` in `uploadStatusQuery`**: When `uploadStatusIds` is empty, the query falls back to `ids: [1]` — hardcoded real item ID. The `enabled` guard prevents it firing today, but the sentinel should be `[-1]` to prevent accidental cross-tenant leakage if the guard is ever dropped.
+- **MEDIUM — 3 missing i18n keys** in both `en.ts` and `th.ts`: `editor.toolbar.strikethrough`, `editor.toolbar.divider`, `editor.toolbar.table` not added. Also `editor.save.conflict` value is `"Conflict detected"` in the file vs. `"Document modified elsewhere"` in the plan.
+- **MEDIUM — mobile-tab test is a no-op placeholder**: `expect(true).toBe(true)` provides no regression protection for the removal of the "preview" tab.
+- **MEDIUM — large out-of-scope scope creep**: OCR mode toggle, upload pipeline UI, semantic search routing, and reindex progress counters are bundled into the Section 10 diff but are not in the plan.
+- Core migration correct: `MarkdownFileEditor` replaced by `UnifiedDocumentSurface`, rollback comment present, `MarkdownFileEditor.tsx` not deleted, all 3 preview-panel state vars removed, mobile tab type narrowed, `beginHorizontalResize` signature simplified, `SafeMarkdown` import cleaned up.
+Review file: `planning/tiptap-markdown-editor/implementation/code_review/section-10-review.md`
+
+## Tiptap Editor — Section-08 (Media Insert Menu) — Verdict: APPROVE_WITH_FIXES (2026-03-20)
+
+2 HIGH, 3 MEDIUM, 3 LOW findings. Key:
+- **HIGH (data URL prefix)**: `readFileAsBase64` uses `FileReader.readAsDataURL()` which returns a `data:<mime>;base64,...` string. `trpc.library.uploadFile.fileBase64` expects raw base64 only — every upload stores a corrupt payload. Prior review stub claimed this was verified against `DocumentManagement.tsx` but that was wrong: that caller strips the prefix. Fix: `resolve(result.split(",")[1] ?? result)`.
+- **HIGH (useMemo dep)**: `items` memo depends on `[debouncedQuery.length, listData, searchData]` — stale results persist when query changes within the same character count. Fix: use `debouncedQuery` as dep.
+- **MEDIUM (3 missing tests)**: Debounce-to-search transition, full upload flow, and state-reset-on-close are all uncovered despite being in the plan stubs.
+- **MEDIUM**: `scope: "all"` sent to `trpc.library.search` — server-side `searchLibraryItems` may not honour the scope filter; needs integration verification.
+- Both `trpc.library.listDocuments` and `trpc.library.search` input shapes are correctly formed.
+- `MediaInsertAttrs` union matches plan spec exactly; no arbitrary URL input path exists.
+Review file: `planning/tiptap-markdown-editor/implementation/code_review/section-08-review.md`
+
+## Tiptap Editor — Section-06 (Media Extensions) — Verdict: APPROVE_WITH_FIXES (2026-03-20)
+
+2 HIGH, 4 MEDIUM, 4 LOW findings. Key:
+- **HIGH (x2)**: `javascript:` rejection tests in `imageExtension` and `audioExtension` use `if (node)` guard — assertions are vacuous if node is absent, providing no real XSS guarantee.
+- **MEDIUM**: `MEDIA_DATA_ATTRS` is missing `"data-alignment"` — Section 11 builds DOMPurify allowlist from this constant; will strip `data-alignment` and corrupt image alignment in read-only rendering.
+- **MEDIUM**: `width`/`height` attrs are silently dropped from video markdown serialization — round-trip data loss.
+- **MEDIUM**: No tests for non-`javascript:` blocked schemes (`data:text/html`, `blob:`, `file:`, etc.).
+- **LOW**: `Commands` namespace uses `imageExtension` key instead of `image` — may conflict with base extension's command type augmentation.
+- Core security fixes from prior audit ARE correctly implemented: full protocol blocklist, `escapeAttr` throughout serializers, `setVideo`/`setAudio` sanitize at command time.
+Review file: `planning/tiptap-markdown-editor/implementation/code_review/section-06-review.md`
+
+## Feature 046 — Security Audit (2026-03-19)
+
+Verdict: **CONDITIONAL**. See `project_046_security_audit.md` for full findings. 4 HIGH, 5 MEDIUM, 4 LOW.
+Key blocking issues: (1) `sanitizeMediaSrc` blocks only `javascript:`, not `data:text/html`/`data:image/svg+xml`; (2) markdown serializer uses unescaped string interpolation for user-controlled caption/alt → stored XSS; (3) paste sanitizer missing URL protocol filtering for pasted `<img src>`; (4) `setVideo` command bypasses `parseHTML` sanitization path.
+Also: Radix AlertDialog spec in S12 is wrong — Escape closes the dialog unless `onEscapeKeyDown={e => e.preventDefault()}` is explicitly added.
+
+## Feature 046 — Ultimate Final Audit (2026-03-19)
+
+Verdict: **APPROVE_WITH_FIXES**. 7 new findings. See `project_046_tiptap_final_audit.md`.
+Key: (1) S11 ADD_ATTR fix has wrong rationale — DOMPurify never sees media tags in the mediaParts path; (2) S12 conflict detection via string-match is fragile — should instanceof-check the error class; (3) S09 async upload callback has no unmount guard; (4) S08/S09 handoff gap — `uploadMedia.ts` not explicitly created by S08; (5) S05 audio table row has extra column; (6) `initialContent` prop re-parse needs a reset-key guard; (7) F23 flag is added but never read.
+
+## Feature 046 — Tiptap Editor Section Cross-Consistency Review (2026-03-19)
+
+See `project_046_tiptap_editor.md` for full findings. Key: 4/13 sections are empty stubs; 2 HIGH naming conflicts; 1 MEDIUM i18n gap; mixed test directory convention.
+
+## Feature 046 — Final Deep-Plan Quality Audit (2026-03-19)
+
+Verdict: **NEEDS_FIXES**. All 13 sections read; all plan items mapped. Key unresolved issues:
+
+- **HIGH**: `SaveStatus` type defined twice with different members (S03: `"idle"` vs S04: `"clean"/"dirty"`). Must consolidate into `types.ts`.
+- **HIGH**: `TiptapEditorProps` missing `onMediaInsert` prop that Section 05 depends on.
+- **HIGH**: `UnifiedDocumentSurfaceProps` missing `updatedAt` prop that Section 10 adds but Section 03 never declares.
+- **HIGH**: `editor.status.*` (S04) vs `editor.save.*` (S10) — two competing i18n namespaces for save status.
+- **HIGH**: Directory name `node-views/` (S01) vs `nodeviews/` (S07) — all S07 file paths will be wrong.
+- **HIGH**: `MediaInsertMenu.tsx` at `editor/` root (S01) vs `editor/toolbar/` (S08).
+- **MEDIUM**: `editor.toolbar.horizontalRule` (S04) vs `editor.toolbar.divider` (S10) — different keys for same concept.
+- **MEDIUM**: `editor.media.*` keys defined in S07 but Section 10 i18n block omits them.
+- **MEDIUM**: `featureFlags.ts` modification (listed in plan Phase 3) has no section coverage.
+- **MEDIUM**: `tiptap-markdown` v0.8 serialization API for custom nodes left as "consult docs" — unresolved.
+- **MEDIUM**: `uploadMedia.ts` extraction expected by S09 but not extracted by S08.
+- **MEDIUM**: `TiptapEditorProps.content: any` — should be `JSONContent`.
+- **MEDIUM**: 5 different test file placement conventions across 13 sections.
+- `getDefaultExtensions()` (S02) vs inline extension list in `TiptapEditor.tsx` (S03) — drift risk.
+
+See full review output for interface contract table and all 16 findings.
+
+## Spec 048 — Auth Token Storage Hardening
+
+### Section-04 (DB Schema & Migration) — Verdict: APPROVE_WITH_FIXES (2026-03-19)
+- **Both blocking issues confirmed fixed** in current `schema.ts`: `.notNull()` added to timestamps (lines 6638–6639), `export type UserLlmApiKey` / `InsertUserLlmApiKey` added (lines 6645–6646).
+- **`tenantId` without FK** — still unresolved (camelCase DB column name, no FK, nullable). Tracked as LOW, does not block section-06.
+- Review file: `specs/feature/048-auth-token-storage-hardening/implementation/code_review/section-04-review.md`
+
+### Section-05 (API Key Service Layer) — Verdict: PASS_WITH_NOTES (2026-03-19)
+- **Implementation correct and secure.** All 4 functions match plan signatures. `decryptUserApiKey` correctly marked INTERNAL ONLY and not imported by any router.
+- Both MEDIUM blockers (short-key guard, DB-not-initialized tests for 3 functions) are **confirmed fixed** in current `userApiKeyService.ts` before section-06 was built.
+- Review file: `specs/feature/048-auth-token-storage-hardening/implementation/code_review/section-05-review.md`
+
+### Section-07 (Frontend API Key Panel) — Verdict: APPROVE_WITH_FIXES (2026-03-19)
+- **Component correct and secure.** Input is `type="password"`, raw key never rendered (only `keyHint`), all 3 tRPC procedures called with correct shapes, sessionStorage functions fully removed from `authService.ts`, zero remaining imports of removed functions.
+- **HIGH — Test file entirely absent.** `__tests__/UserLlmKeysPanel.test.tsx` was never created. Plan required 8 test stubs including the security DOM-exposure test. Blocking fix.
+- **MEDIUM — `listQuery.refetch()` instead of `utils.userApiKeys.listKeys.invalidate()`.** Bypasses TanStack Query cache graph; other components displaying the same data won't update. Fix: `const utils = trpc.useUtils()` then `utils.userApiKeys.listKeys.invalidate()`.
+- **LOW — No visual separator** between `UserAPIKeysPanel` and `UserLlmKeysPanel` in Settings (plan specified a divider).
+- **LOW — No loading/error state** for `listKeys` query; error silently shows all providers as "Not configured."
+- Review file: `specs/feature/048-auth-token-storage-hardening/implementation/code_review/section-07-review.md`
+
+### Section-08 (Phase 2 Tests: UserLlmKeysPanel) — Verdict: APPROVE_WITH_FIXES (2026-03-19)
+- **Test file now exists** — resolves the HIGH blocking issue from section-07. 8 test cases present.
+- **HIGH — Delete button test uses broken `Set.has()` filter.** `knownTexts` contains button DOM elements from `getAllByText`, then `Set.has(btn)` checks against role-query elements — different object references, filter always false. Test works only because `textContent === ""` happens to match the icon-only delete button. Fix: use `data-testid` or accessible name query.
+- **MEDIUM — DOM-exposure security test is structurally weak.** Asserts `"sk-full-key"` not in DOM, but that string was never injected into the mock data — test passes trivially even if the component renders the full key. Fix: inject a real secret value (e.g., `"sk-proj-SECRETVALUE1234"`) into `mockUseQuery` data and assert it does NOT appear in the DOM.
+- **MEDIUM — No `onError` path tests.** Mutation mock fires `onSuccess` unconditionally; `toast.error` path is never exercised.
+- **FAIL — `mockInvalidate` never asserted.** `utils.userApiKeys.listKeys.invalidate()` is the correct post-mutation pattern (component does call it), but no test asserts `mockInvalidate` was called.
+- Review file: `specs/feature/048-auth-token-storage-hardening/implementation/code_review/section-08-review.md`
+
+### Section-06 (API Key tRPC Router) — Verdict: NEEDS_CHANGES (2026-03-19)
+- **Router implementation correct and secure.** All 3 procedures present, `protectedProcedure` used throughout, rate limit (10/hour, namespace `user-api-key-set`) correctly composed via `createRateLimitMiddleware`, `providerEnum` allowlist matches plan exactly, `decryptUserApiKey` not imported.
+- **MEDIUM — Tests bypass tRPC stack.** The test suite calls mocked service functions directly instead of using `appRouter.createCaller(ctx)`. The `protectedProcedure` auth guard is never exercised by any test. A change from `protectedProcedure` to `publicProcedure` would not be caught.
+- **MEDIUM — Zero unauthenticated-context tests.** The plan requires 3 auth-gating tests (setKey/listKeys/deleteKey → UNAUTHORIZED for null user). None exist.
+- **LOW — Inline Zod schema duplication** in validation tests — schemas re-declared in tests rather than testing through the caller, meaning provider enum drift would not be caught.
+- **LOW — `decryptUserApiKey` import test** checks module export namespace (trivially passes) rather than tRPC procedure surface. Replace with `expect(Object.keys(userApiKeysRouter)).not.toContain("decryptKey")`.
+- Registration in `routers.ts` correct. Section-05 blocking issues resolved before this section.
+- Review file: `specs/feature/048-auth-token-storage-hardening/implementation/code_review/section-06-review.md`
 
 ## Recurring Patterns to Flag
 
@@ -188,6 +564,13 @@ See `project_feedback_upload_review.md`. Verdict: REQUEST_CHANGES.
 - MEDIUM: COUNT(*) + INSERT not atomic — concurrent uploads can exceed the 5-attachment cap.
 - MEDIUM: `storagePut` success followed by DB insert failure leaves orphaned storage objects.
 - MEDIUM: `parseInt(auth.sub)` is NaN for static-token bearer (`auth.sub = "static"`) — ownership check is silently bypassed.
+
+## Spec 046 — Tiptap Single-Panel Markdown Editor (2026-03-18)
+
+See `project_046_tiptap_editor.md`. Round 7 Verdict: APPROVE_WITH_FIXES.
+- 3 HIGH findings: `TIPTAP_EDITOR_ENABLED` absent from `featureFlags.ts` (all 3 locations); `SafeMarkdown.tsx` ADD_ATTR still `["target"]` only (data-poster/caption/asset-id not added); `MediaPart` + `splitByMedia()` do not carry data-* attrs.
+- 2 MEDIUM: `onEnterEditMode` prop contract undefined; `parseMarkdownToTiptap`/`countNodes` still undocumented exports.
+- 3 LOW: `DocumentPreviewPanel` is 627 lines (spec says 628); `transformPastedHTML` config location ambiguous; flag name screaming-snake vs camelCase inconsistency.
 
 ## Feature 044 — Generate Layout with AI (2026-03-15)
 

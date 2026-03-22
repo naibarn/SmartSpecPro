@@ -1,5 +1,11 @@
 # CMD-6 tRPC Security Auditor — Persistent Memory
 
+## Index of Topic Files
+- `feature_unified_skill_execution_audit.md` — Unified skill execution system (executors/, unifiedOrchestrator.ts) — 2026-03-21
+- `feature_049_notification_reaudit.md` — Notification system re-audit
+- `feature_049_notification_system_audit.md` — Notification system initial audit
+- `feature_api_key_systems_audit.md` — API key systems audit
+
 ## Project Security Conventions
 
 ### Auth & Tenant Isolation Pattern
@@ -8,6 +14,13 @@
 - Standard WHERE clause for tenant-scoped mutations:
   `and(eq(table.id, input.id), eq(table.tenantId, ctx.tenantId), eq(table.ownerUserId, ctx.user.id))`
 - `resolveLibraryTenantId()` helper used in both gdrive and onedrive routers
+
+### CRITICAL: resolveTenantIdVarchar Calling Convention
+- **Correct call**: `resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId)` — as used in all established routers (groups.ts, library.ts, media.ts, apiKeys.ts, etc.)
+- **BROKEN call**: `resolveTenantIdVarchar(ctx)` — passing the full ctx object as first arg; `normalizeTenantIdVarchar(ctx)` returns null since ctx is neither string nor number; second arg is undefined → also null → **always returns null**
+- In `runEngine.loadRunWithTenantCheck`: when `tenantId` is null, the `if (tenantId)` guard is **skipped entirely**, making the isolation check a no-op → true IDOR
+- In Drizzle: `eq(column, null)` generates `column = NULL` (always false in SQL) → services throw NOT_FOUND instead of leaking data, BUT this is still a CRITICAL security misconfiguration since the WHERE clause is semantically broken
+- **Routers affected (Feature 047)**: teamRoom.ts, teamRun.ts, monitoring.ts, scopedMemory.ts, team.ts (all lines calling `resolveTenantIdVarchar(ctx)`)
 
 ### Internal Proxy Token Pattern
 - `SMARTSPEC_PROXY_TOKEN` via `process.env.SMARTSPEC_PROXY_TOKEN` (not VITE_ prefixed — correct)
@@ -125,7 +138,141 @@
 #### teamRun.ts — Missing rate limiting on start mutation
 - `start` mutation triggers a run that spawns LLM calls and accrues credits (budget up to maxBudgetCredits). No rate limiter middleware is applied before the mutation. A user can repeatedly call `start` to exhaust credits or flood the run queue.
 
-## Files Audited (Full Scan — 2026-03-16)
+### Feature 047 — Virtual AI Office Orchestrator (tRPC + SSE layer) — 2026-03-18 FULL AUDIT
+
+#### resolveTenantIdVarchar(ctx) — CRITICAL CALLING CONVENTION BUG (5 routers affected)
+- ALL new Feature 047 routers call `resolveTenantIdVarchar(ctx)` — passes full context object
+- Function signature requires `(ctxTenantId: unknown, userCurrentTenantId: unknown)` — object → null; undefined → null → always returns null
+- In runEngine.ts `loadRunWithTenantCheck` (line 267): `if (tenantId)` guard skipped when null → entire tenant isolation bypassed for pause/resume/stop/get run operations
+- In other services: `eq(column, null)` generates `column = NULL` SQL (always false) → NOT_FOUND errors rather than data leaks — but the isolation is broken and future code could be deceived
+- Fix: change all `resolveTenantIdVarchar(ctx)` calls to `resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId)` in: teamRoom.ts, teamRun.ts, monitoring.ts, scopedMemory.ts, team.ts
+
+#### orchestratorStream.ts — SSE endpoint IDOR
+- `/run/:runId` (line 160): no ownership check — any authenticated user subscribes to any run's events including `private_internal` messages
+- `/team/:teamId` (line 169): no team ownership check — cross-tenant team event access
+- `replayMissedEvents` (line 58): queries `agentActivityEvents WHERE runId = runId AND createdAt > lastEvent.createdAt` — no tenantId filter; all historical events replayed cross-tenant
+- `lastEventId` (line 165): accepted as raw string from query param, used in DB lookup with no UUID format validation
+
+#### persona.ts / personaService.ts — UPDATE IDOR
+- `update` router (line 176): RBAC check reads existing persona (ownership check by scope), but then calls `updatePersona(id, updateData)` where service issues `UPDATE ... WHERE id = id` only — no tenantId in WHERE clause. Domain admin who passes RBAC check can update any tenant-scope persona by UUID.
+
+#### help.ts / helpContentService.ts — Path Traversal
+- `getTopic` (help.ts line 23): `slug: z.string().min(1).max(100)` — no path component validation
+- helpContentService.ts line 270: `path.join(localeDir, ${slug}.md)` — slug with `../` sequences traverses outside `docs/help/{locale}/` directory
+- `publicProcedure` — unauthenticated; no rate limiting
+- Attack: `slug = "../../server/_core/env"` → reads `apps/web/server/_core/env.md` if it exists; `"../../.env"` → reads `.env` file (if accessible from CWD)
+
+#### summaryService.ts — no tenant isolation on generateSummary
+- `generateSummary` (line 90): loads run by id only (`eq(teamRuns.id, input.runId)`) — no tenantId WHERE condition
+- Called internally from `runEngine.stopRun` (safe: receives correct runId from verified run)
+- Called via `teamOrchestrationBridge.generateSummary` which may not pass tenantId
+- Risk is LOW for direct exploitation but exposes cross-tenant run data if bridge is called with unverified runId
+
+#### systemUser.ts — long-lived system_agent JWT
+- `getSystemUserToken` (line 57): 365-day expiry, same `ENV.cookieSecret` as all user JWTs
+- No revocation: if token leaks (e.g., audit log, error message), it grants system_agent (= full admin) access for up to 1 year
+- No separate secret or aud/iss claims distinguishing it from normal user JWTs
+
+#### teamRun.ts `start` — missing rate limit (carried forward)
+- Confirmed: no `.use(rateLimitMiddleware)` in the `start` mutation chain
+- Spawns LLM calls + Celery tasks that charge credits; no per-user or per-tenant frequency cap
+
+### Feature 048 — Invite Code + Registration System — Round 4 Final Audit 2026-03-19
+
+#### FIXED in earlier rounds (verified clean in Round 4)
+- IC01: rate limit on validate — FIXED
+- IC02: open-mode invalid code blocks registration — FIXED (allows registration, ignores code)
+- IC03/IC12: cookie Secure flag — FIXED (clearCookie now has `secure: true`)
+- IC04/IC05/R3-01: IDOR update/delete intra-tenant — FIXED (tenantId in WHERE)
+- IC06: self-referral SELECT FOR UPDATE — FIXED (check before increment)
+- IC07/NEW-01: credit idempotency existence check — FIXED
+- IC08/NEW-02: IP fraud check — FIXED (real IP-based path now exists)
+- IC09: Zod regex — FIXED (routers.ts:336)
+- IC10: inArray not raw SQL — FIXED
+- R3-02: tenant scope on getUsageDetails — FIXED
+- R3-03: null tenantId restricts to global codes in validateInviteCode — FIXED
+- R3-04: reactivateUser tenant guard in service — FIXED
+- R3-05: getUserInviteCode tenant-scoped lookup — FIXED
+
+#### Round 4 findings — FIXED in Round 5 (verified clean 2026-03-19)
+- R4-01: `buildTenantScope` helper now handles all role/tenantId combos — null tenantId super-admin gets no filter (global), domain_admin without tenantId gets impossible sentinel. FIXED.
+- R4-02: `update`/`delete` now use `buildTenantScope(ctx, "write")` — domain_admin restricted to own tenant codes. Super admin with tenantId can still touch global codes (see R5-02 below — by-design ambiguity). FIXED for domain_admin case.
+- R4-03: `giveInviteCodeBonuses` atomic conditional UPDATE with `WHERE creditsGivenToUser = 0 AND creditsGivenToOwner = 0`. PARTIALLY FIXED — see R5-01 for zero-amount edge case.
+- R4-04: `reactivateUser` now uses `domainAdminProcedure`. FIXED.
+- R4-05: `getMyReferralStats` now pushes tenantId or isNull condition. FIXED.
+- R4-06: `oauth.ts` variable shadowing removed — all three vars declared once at outer scope (lines 69-71). FIXED.
+
+#### Round 5 findings — open (2026-03-19)
+- **R5-01 MEDIUM**: `giveInviteCodeBonuses` (inviteCodeService.ts:370-371) — when both bonus amounts are 0, in-progress markers are set to `-1`, then final update writes them back to `0`. Second caller arriving after final update sees `creditsGivenToUser = 0` and passes idempotency guard, re-entering the claim path. No actual credits awarded (amounts are 0), but the guard is semantically broken for zero-bonus codes. Fix: use a separate `bonusesProcessed boolean` column, or never write `0` as the final value after claiming — use `-1` permanently when bonus amount was 0.
+- **R5-02 LOW**: `buildTenantScope` write mode (inviteCode.ts:64-68) — super admin with non-null tenantId receives `or(own tenant, null)`, giving write access to global codes. May be intentional design. If not, fix: restrict super admin with tenantId to own-tenant codes only in write mode.
+
+#### Structural notes (accepted / by design)
+- `validate` reveals code status in error message (expired vs used vs invalid) — mitigated by 15/min rate limit
+- `getRegistrationConfig` public, no sensitive data — CLEAN
+- `list` ownerEmail exposure — acceptable for admin-only access when tenantId is scoped
+
+### Both API Key Systems Deep Audit — 2026-03-19
+See: `feature_api_key_systems_audit.md` for full findings.
+Key gaps: no per-user key count cap on System 1 create; no rate limit on tRPC `create` mutation; no brute-force protection on failed validateKey calls; soft-delete only (keyHash persists); no atomic rotate endpoint; no expiry warning; LLM key system lacks admin revocation path and audit logging.
+
+### Feature 048 — Auth Token Storage Hardening — userApiKeys tRPC layer — 2026-03-19
+
+#### userApiKeys.ts + userApiKeyService.ts
+
+##### HIGH findings (must fix before merge)
+- **U01 — IDOR (read)**: `getUserApiKeys(userId)` — no tenantId filter. `listKeys` tRPC handler has `ctx.tenantId` available but does not pass it to the service. Latent cross-tenant read if userIds are ever non-globally-unique.
+- **U02 — IDOR (delete)**: `deleteUserApiKey(userId, provider)` — no tenantId in WHERE. `deleteKey` router passes only `ctx.user.id`; the `tenantId` column on the row is ignored.
+
+##### MEDIUM findings (should fix before merge)
+- **U03 — Missing rate limit on deleteKey**: mutation has no middleware; sibling `setKey` has 10/hour. Three-line fix with `createRateLimitMiddleware`.
+- **U08 — Schema cardinality inconsistency**: `tenantId` column stored on insert but unique index is `(userId, provider)` only — upsert silently overwrites keys across tenants for the same user. Must decide: per-user-global or per-user-per-tenant cardinality.
+
+##### LOW / INFO findings
+- **U04**: `listKeys` query has no rate limit (LOW).
+- **U05**: `createRateLimitMiddleware` keys on IP only, not `userId` — bypassable via rotating-IP VPN (MEDIUM systemic, not router-specific).
+- **U06**: `keyHint = apiKey.slice(-4)` — minimum 4-char key yields hint = entire key (LOW).
+- **U07**: `providerEnum` static list may drift from LLM router's provider set (LOW).
+- **U09**: `decryptUserApiKey` is exported but not wired into any router — confirmed clean; test suite enforces this.
+- **U10-U12**: Encryption pattern correct, userId sourced from ctx only, no raw SQL — all clean.
+
+##### Confirmed clean patterns (no action)
+- `encrypt(apiKey)` used correctly, `apiKeyEncrypted` never returned in any tRPC response.
+- All three procedures use `protectedProcedure`; no public procedure exposure.
+- `decryptUserApiKey` not importable from routers (only in services/ + tests/).
+
+#### Post-fix remaining issues (2026-03-19 re-audit)
+- **IC07 / NEW-01 (HIGH)**: `giveInviteCodeBonuses` passes `referenceId` to `addCredits`, but the DB unique constraint is on `idempotencyKey`, not `referenceId`. `addCredits` never writes `idempotencyKey`. Duplicate credit rows remain possible on retry/race. Fix: use `idempotencyKey` param in `addCredits` calls, or add unique partial index on `referenceId`.
+- **IC11 (MEDIUM)**: `reactivateUser` still scoped only by `eq(users.id, userId)` — no tenantId. Global admin on multi-tenant can reactivate cross-tenant users.
+- **NEW-02 (MEDIUM)**: IP fraud check is an else-only fallback (only runs when no fingerprint). IP check and fingerprint check should be independent/cumulative.
+- **NEW-03 (MEDIUM)**: `getUsageDetails` adminProcedure returns PII (email, name, isDisabled) for any codeId without verifying the code belongs to the requesting admin.
+- **NEW-04 (MEDIUM)**: `getRegistrationConfig` publicProcedure has no rate limiter. Reveals invite_only mode and enabled OAuth providers.
+- **NEW-05 (LOW)**: `oauth.ts` declares `ipAddress` twice — once inside `if (isNewUser)` block (line 95) and once at outer scope (line 116). Identical expressions, maintenance hazard.
+
+#### Feature 048 Round 3 — remaining/new issues (2026-03-19 final audit)
+VERIFIED FIXED (do not re-flag):
+- IC02 (open mode invalid code blocking registration) — FIXED: `checkRegistrationAllowed` returns `allowed:true` on invalid code in open mode
+- IC06 (IP fraud check else-only) — FIXED: IP check runs independently via separate `if(ipAddress)` block
+- IC07 (idempotency check broken) — FIXED: `giveInviteCodeBonuses` checks existing usage record AND `creditsGivenToUser/Owner > 0` before awarding; `addCredits` called with `referenceId` for deduplication at the credit layer
+- IC08 (self-referral increment before check) — FIXED: SELECT FOR UPDATE before any increment, self-referral check before UPDATE
+- IC09 (missing inviteCode regex in register) — FIXED
+- IC10 (inArray raw SQL) — FIXED
+- IC11 (reactivateUser no tenantId) — PARTIALLY FIXED: guard present but both sides nullable; null adminTenantId bypasses check
+- IC12 (invite_code cookie missing Secure) — FIXED: clearCookie now includes `secure:true, sameSite:"lax"`
+- NEW-02 (IP check fallback only) — FIXED: now independent if-blocks
+
+REMAINING ISSUES (Round 3):
+- **R3-01 (HIGH)**: `inviteCode.ts:282` — `update` mutation SELECT verifies tenant, but UPDATE WHERE is `eq(inviteCodes.id, id)` only. Tenant conditions not carried into UPDATE WHERE. TOCTOU: concurrent row reassignment could allow cross-tenant update between SELECT and UPDATE. Fix: `and(eq(inviteCodes.id, id), or(eq(inviteCodes.tenantId, ctx.tenantId), isNull(inviteCodes.tenantId)))`.
+- **R3-02 (HIGH)**: `inviteCode.ts:321` — `getUsageDetails` queries by `codeId` only, no tenant scope. Admin from tenant A can read usage PII (name, email, disabled status) for any other tenant's invite code. Fix: add tenant condition to WHERE clause joining through inviteCodes.tenantId.
+- **R3-03 (MEDIUM)**: `inviteCodeService.ts:114` — `validateInviteCode`: when `tenantId` arg is null/falsy, the entire tenant-scope filter is skipped. Public `validate` endpoint passes `ctx.tenantId` which can be null on single-tenant or unauthenticated context → all codes across all tenants are queryable. Fix: always apply the filter; when tenantId is null use `isNull(inviteCodes.tenantId)` to restrict to global-only codes.
+- **R3-04 (MEDIUM)**: `inactiveUserService.ts:144` — `reactivateUser` tenant guard: `if (adminTenantId && user.currentTenantId && ...)` — both operands nullable. When adminTenantId is null (super-admin) the check is entirely skipped; also UPDATE WHERE uses `eq(users.id, userId)` only. Impact: any admin with null tenantId reactivates cross-tenant users silently. Fix: reject when `!adminTenantId && !isSuperAdmin` or harden both nullable sides.
+- **R3-05 (LOW)**: `inviteCodeService.ts:441` — `getUserInviteCode` SELECT queries by `ownerId + type="user"` only, no tenantId filter. A user with the same userId across tenants always gets back the first code created regardless of tenant context. Fix: add `and(eq(inviteCodes.tenantId, tenantId))` or `or(..., isNull(...))` to the WHERE clause.
+- **R3-06 (LOW)**: `inactiveUserService.ts:63` — `checkAndDisableInactiveUsers` INNER JOIN on inviteCodes does not filter by `inviteCodes.tenantId`. On multi-tenant, a user in tenant A referred by an admin code from tenant B is subject to tenant B's inactive-disable logic. Fix: add tenantId scoping on the joined inviteCodes row, or remove the join and use a subquery scoped per tenant.
+
+#### systemSettings.ts updateRegistrationSettings
+- `allowedAuthMethods` (line 1018): Validated as `z.array(z.enum(["email", "google", "github"])).min(1)` — CLEAN (cannot disable all auth methods).
+- No tenantId isolation on `systemSettings` mutations — consistent with existing pattern (global settings); acceptable given `adminProcedure` guard.
+
+## Files Audited (Full Scan — 2026-03-16 + Feature 047 2026-03-18)
 - `apps/web/server/routers/credits.ts` — CLEAN
 - `apps/web/server/routers/users.ts` — partial secret exposure risk on admin `get`
 - `apps/web/server/routers/llmProviders.ts` — CLEAN (no key returned, SSRF guard present)
@@ -146,6 +293,11 @@
 - `apps/web/server/routers/googleDrive.ts` — previously audited (see above)
 - `apps/web/server/routers/oneDrive.ts` — previously audited (see above)
 - `apps/web/server/_core/env.ts` — VITE_ fallback reads (MEDIUM risk)
+- `apps/web/server/routers/inviteCode.ts` — re-audited 2026-03-19: IC01/IC04/IC05 fixed; getUsageDetails PII risk (NEW-03); getRegistrationConfig no rate limit (NEW-04)
+- `apps/web/server/services/inviteCodeService.ts` — re-audited 2026-03-19: IC02/IC06/IC08 fixed; idempotency still broken (IC07/NEW-01); IP check is fallback-only (NEW-02)
+- `apps/web/server/services/inactiveUserService.ts` — re-audited 2026-03-19: IC10 fixed (inArray); IC11 still open (reactivateUser no tenantId)
+- `apps/web/server/_core/oauth.ts` — re-audited 2026-03-19: IC12 fixed (cookie Secure+sameSite match); ipAddress double-declaration (NEW-05)
+- `apps/web/server/routers/systemSettings.ts` (lines 968-1090) — CLEAN on new registration settings block (2026-03-19)
 - `apps/web/server/routers/virtualAdmin.ts` — IDOR on all 5 ID-scoped endpoints; null-tenantId dumps; settings key pollution; unbounded inputs (2026-03-18)
 - `apps/web/server/routers/feedback.ts` — IDOR on getTicket/addComment/updateStatus; null-tenantId list/stats; missing tenantId on myTickets (2026-03-18)
 - `apps/web/server/_core/trpc.ts` — system_agent role added to admin/domainAdmin procedures; same-secret risk (2026-03-18)
@@ -160,4 +312,23 @@
 - `apps/web/server/services/roomService.ts` — sendMessage participant check no tenantId; getMessages no tenantId (2026-03-18)
 - `apps/web/server/services/runEngine.ts` — startRun loads room with no tenantId; pause/resume/stop/get all id-only (2026-03-18)
 - `apps/web/server/services/scopedMemoryService.ts` — getMemory/updateMemory/deleteMemory/promoteMemory all id-only (2026-03-18)
-- `apps/web/server/services/monitoringService.ts` — getRunEvents/captureSnapshot/checkStuckAgent all id-only (2026-03-18)
+- `apps/web/server/services/monitoringService.ts` — CLEAN after resolveTenantIdVarchar fix; captureSnapshot/checkStuckAgent use INNER JOIN on teamRooms for tenantId isolation (2026-03-18)
+- `apps/web/server/routers/persona.ts` — update calls updatePersona with id-only WHERE in service layer (2026-03-18)
+- `apps/web/server/routers/help.ts` — slug path traversal (publicProcedure, unauthenticated) (2026-03-18)
+- `apps/web/server/routers/queues.ts` — CLEAN (adminProcedure throughout) (2026-03-18)
+- `apps/web/server/routes/orchestratorStream.ts` — SSE IDOR on run/team channels; replay no tenantId; lastEventId unvalidated (2026-03-18)
+- `apps/web/server/services/personaService.ts` — updatePersona WHERE id-only (2026-03-18)
+- `apps/web/server/services/interAgentService.ts` — CLEAN (tenantId always from trusted server context) (2026-03-18)
+- `apps/web/server/services/orchestratorEventBus.ts` — CLEAN (publish-only) (2026-03-18)
+- `apps/web/server/services/orchestratorNotificationService.ts` — CLEAN (userId+tenantId scoped) (2026-03-18)
+- `apps/web/server/services/helpContentService.ts` — path traversal via slug (2026-03-18)
+- `apps/web/server/services/helpContextInjector.ts` — CLEAN (read-only, no user-controlled DB ops) (2026-03-18)
+- `apps/web/server/services/queueHealthMonitor.ts` — CLEAN (admin-only, system monitoring) (2026-03-18)
+- `apps/web/server/services/summaryService.ts` — generateSummary loads run by id-only, no tenantId (2026-03-18)
+- `apps/web/server/services/jobAutomationService.ts` — CLEAN (tenantId/userId properly scoped) (2026-03-18)
+- `apps/web/server/services/virtualAdmin/systemUser.ts` — 1-year JWT expiry; same secret as user sessions (2026-03-18)
+- `apps/web/server/services/agencyPreviewService.ts` — CLEAN (pure transformation, no DB ops) (2026-03-18)
+- `apps/web/server/services/agencyResultRouter.ts` — CLEAN (pure routing logic) (2026-03-18)
+- `apps/web/server/services/promptComposer.ts` — CLEAN (tenantId from profile.tenantId, not user input) (2026-03-18)
+- `apps/web/server/_core/llmRoutes.ts` — CLEAN (auth via authorizeRequest, rate limited) (2026-03-18)
+- Feature 049 (notification system) — see `feature_049_notification_system_audit.md` for full findings (2026-03-21)

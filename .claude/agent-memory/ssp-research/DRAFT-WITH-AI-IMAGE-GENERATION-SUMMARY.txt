@@ -1,0 +1,129 @@
+================================================================================
+DRAFT WITH AI: INCOMPLETE IMAGE GENERATION — ROOT CAUSE ANALYSIS SUMMARY
+================================================================================
+
+USER REPORT
+-----------
+"Out of 7 slides, only 3 have images"
+
+CONFIRMED ROOT CAUSE
+--------------------
+File: apps/web/server/services/aiPresentationService.ts
+Line: 10208-10210
+
+Code:
+  await mapWithConcurrency(
+    slides,
+    async (slide, index) => { /* image generation */ },
+    MAX_IMAGE_CONCURRENCY,  // = 3
+    { stopOnError: true },  // ← PROBLEM: Halt all workers on ANY error
+  );
+
+MECHANISM
+---------
+With MAX_IMAGE_CONCURRENCY = 3:
+
+1. Worker 1 processes slides 0, 3, 6, ...
+2. Worker 2 processes slides 1, 4, 7, ...
+3. Worker 3 processes slides 2, 5, ...
+
+Expected (current broken):
+  Batch 1: [slide 0 ✓, slide 1 ✓, slide 2 ✓] — all succeed
+  Batch 2: [slide 3 ✗ ERROR, slide 4 ⛔, slide 5 ⛔, slide 6 ⛔]
+           After slide 3 fails, stopOnError=true halts all workers
+
+Result: Only first ~3 slides have images
+
+ERRORS THAT TRIGGER HALT
+------------------------
+1. BillingChargeError: User runs out of credits mid-generation
+2. CancellationError: User cancels the operation
+3. Unhandled Promise rejections: Edge cases in loop setup
+
+DESIGN INTENT vs ACTUAL BEHAVIOR
+---------------------------------
+INTENT: "Stop if we can't charge credits anymore"
+ACTUAL: "Stop on ANY error, including timeouts and API failures"
+
+CONSEQUENCE: Transient errors (network blip, provider timeout) on slide 3
+             prevents ALL slides 4-7 from ever attempting generation
+
+THREE FIX OPTIONS
+-----------------
+
+Option 1: FASTEST (30 minutes)
+  Change line 10209: { stopOnError: true } → { stopOnError: false }
+  Effect: Slides 4-7 attempt generation even if slide 3 fails
+  Risk: If user out of credits, charges 7 slides not 3
+  When: Use if issue is timeouts/API failures, not billing
+
+Option 2: RECOMMENDED (1-2 hours)
+  Add upfront credit check before Phase 4 starts
+  Fail immediately if not enough credits for all slides
+  Change to stopOnError: false
+  Effect: Clear "insufficient credits" message, or all slides succeed
+  Risk: Low (over-estimates credits but prevents surprise billing)
+  When: Use for best UX and safety
+
+Option 3: MOST ROBUST (3-4 hours)
+  Implement per-slide error boundaries
+  Each slide's error doesn't block others
+  Presentation completes with mixed results
+  Effect: Slides with failed images show warnings
+  Risk: Medium complexity, ambiguous completion state
+  When: Use for production-grade resilience
+
+QUICK FIX COMMAND
+-----------------
+For Option 1 (if you've diagnosed it's NOT a billing issue):
+
+  sed -i 's/{ stopOnError: true }/{ stopOnError: false }/g' \
+    apps/web/server/services/aiPresentationService.ts
+
+Test:
+  pnpm test -- aiPresentationService.test.ts
+
+VERIFICATION
+------------
+After fix, audit logs should show attempts for ALL slides:
+
+  grep '"phase_4_' apps/web/logs/audit/audit-YYYY-MM-DD.jsonl | \
+    jq '.[] | {slideIndex, stage, error: .errorMessage}' | head -20
+
+Expect: slideIndex 0, 1, 2, 3, 4, 5, 6 (all attempt)
+NOT: slideIndex 0, 1, 2 (stops at 3)
+
+DOCUMENTATION
+--------------
+See these files for complete analysis:
+1. DRAFT-WITH-AI-IMAGE-GENERATION-ROOT-CAUSE.md (12 KB)
+   - Complete architecture analysis
+   - Error paths with code locations
+   - Why each option works
+
+2. DRAFT-WITH-AI-IMAGE-GENERATION-QUICK-FIX.md (8 KB)
+   - Implementation details for each option
+   - Testing strategy
+   - Decision matrix
+
+IMPACT ASSESSMENT
+-----------------
+Scope: All presentations generated with "Draft with AI"
+Severity: MEDIUM (visual degradation, not data loss)
+Frequency: Depends on error rate per slide + concurrency luck
+Blast Radius: ~10-20 presentations affected (estimate)
+
+If credit exhaustion is cause: HIGH priority (billing risk)
+If timeout is cause: MEDIUM priority (works sometimes)
+If other: Depends on error type
+
+TIME TO FIX
+-----------
+Analysis: DONE (you're reading it)
+Implementation: 30 min - 4 hours depending on option
+Testing: 30 min - 1 hour
+Deployment: 15 min
+
+TOTAL: 1.5 - 5.5 hours
+
+================================================================================

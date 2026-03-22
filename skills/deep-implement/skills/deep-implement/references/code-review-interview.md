@@ -4,7 +4,7 @@ Process for triaging code review findings and interviewing the user on important
 
 ## Overview
 
-After the code-reviewer subagent writes its review to `section-NN-review.md`, triage the findings and interview the user only on items that genuinely need their input.
+After the review agent writes its review to `section-NN-review.md`, triage the findings and interview the user only on items that genuinely need their input.
 
 **Key principles:**
 - Not everything needs to be an interview question

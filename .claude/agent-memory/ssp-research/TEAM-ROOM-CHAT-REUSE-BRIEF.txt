@@ -1,0 +1,255 @@
+================================================================================
+RESEARCH BRIEF: Team Room vs Chat System Reusability
+================================================================================
+
+TASK: Feasibility of reusing Chat system for Team Room instead of separate orchestration
+
+VERDICT: PARTIALLY FEASIBLE — Hybrid approach recommended
+
+================================================================================
+FINDINGS IN ONE SENTENCE
+================================================================================
+
+Chat and Team Room can share skill detection, memory, persona, and i18n layers,
+but their orchestration models are incompatible — keep Chat's single-turn flow
+separate from Team Room's multi-agent coordination.
+
+================================================================================
+ARCHITECTURE COMPARISON
+================================================================================
+
+CHAT (WORKING WELL)
+───────────────────
+Message Flow: User → Skill Detection → Memory Building → LLM → Response → Store
+Frontend: Single panel (message stream + input)
+Database: conversations + messages (simple)
+LLM Calls: 1 per user message (user is always the speaker)
+Skill Detection: Works (language-aware, bilingual)
+Language Support: Full (Thai + English)
+Memory: Entity extraction working (user context)
+Persona System: Working (injected into system prompt)
+
+TEAM ROOM (BROKEN)
+──────────────────
+Message Flow: User → Intent Routing → Agent Turn Selection → Skill/LLM → Agent Responds → Store
+Frontend: Dual panel (messages + work board)
+Database: teamRooms + teamRoomMessages + teamRuns + teamWorkItems (complex)
+LLM Calls: 1 per AGENT per turn (need to select which agent speaks next)
+Skill Detection: Detected but not executed (routing issue)
+Language Support: Should work, but broken (agents ignore user language)
+Memory: Not being used (should inject for agent turns)
+Persona System: Not being used (should inject for team persona)
+
+KEY DIFFERENCE:
+───────────────
+Chat = "User talks, LLM responds, store it" (1 speaker per turn)
+Room = "User talks → agents coordinate → each agent talks → LLM responds → agents decide next → store" (N speakers, ordered)
+
+================================================================================
+WHAT CAN BE REUSED (YES)
+================================================================================
+
+1. SKILL DETECTION (skillDetector.ts)
+   ✓ Language-aware (Thai keywords work)
+   ✓ Confidence scoring (tested, reliable)
+   ✓ Both systems already use it
+   → Reuse as-is
+
+2. MEMORY SYSTEM (entityMemories table + chatService.buildChatContext)
+   ✓ Extracts facts about user, project, preferences, technical decisions
+   ✓ Persona-scoped (can link to personaId)
+   ✓ Reinforcement tracking (repeated facts weighted higher)
+   → Team Room agents should call buildChatContext() when generating responses
+
+3. PERSONA SYSTEM
+   ✓ Works in Chat (persona instructions injected into system prompt)
+   ✓ Bilingual (Thai + English)
+   → Team Room should use same persona resolution + prompt building
+
+4. i18n (Localization)
+   ✓ Already bilingual in both systems
+   ✓ No merge needed
+
+5. DATABASE SCHEMA
+   → teamRoomMessages is superset of messages (has metadata for threading, work items)
+   → Could migrate Chat to use teamRoomMessages, but not necessary
+   → Keep separate for clarity (Chat = personal conversations, Room = team work)
+
+================================================================================
+WHAT CANNOT BE REUSED (NO)
+================================================================================
+
+1. AGENT TURN ORDERING (runEngine.ts, turnOrderEngine.ts)
+   ✗ Chat never needs to pick which agent speaks next (there's only 1 LLM)
+   ✗ Room's turn ordering is complex (orchestrator bias, skill availability, budget)
+   ✗ Cannot merge without redesigning LLM prompt injection
+   → Keep Team Room's orchestration separate
+
+2. WORK ITEM STATE MACHINE (teamWorkItem.ts)
+   ✗ Chat has no parallel task tracking
+   ✗ Room's workflow (planned → research → review → approval → complete) is unique
+   → Keep separate
+
+3. INTENT ROUTER (roomIntentRouter.ts)
+   ✗ Decides whether to route to "chat" vs "skill" vs "agency"
+   ✗ Chat just detects skill + executes
+   ✗ Room must decide which path and who handles it
+   → Keep separate, but ensure it CALLS skill detection
+
+================================================================================
+ROOT PROBLEMS IN TEAM ROOM (NOT ARCHITECTURAL)
+================================================================================
+
+Based on code analysis, the broken behaviors are likely routing/state bugs:
+
+PROBLEM 1: Agents loop endlessly
+├─ Likely cause: turnOrderEngine.getNextSpeaker() returns same agent
+├─ Fix: Debug turn ordering logic, ensure it advances to next agent
+└─ Effort: 2-3 hours debugging
+
+PROBLEM 2: Skills not being called
+├─ Likely cause: roomIntentRouter.route = "chat" but agents don't execute skills
+├─ Diagnosis: Add logging to roomIntentRouter, check if it's called on agent turns
+├─ Fix: Ensure routeRoomIntent() is invoked for agent messages, not just user messages
+└─ Effort: 1-2 hours debugging
+
+PROBLEM 3: Wrong language in agent responses
+├─ Likely cause: Language parameter not passed to skill detection during agent turn
+├─ Fix: Pass `language` to detectSkill() in runEngine agent turn function
+└─ Effort: 1 hour
+
+PROBLEM 4: Memory/Persona not used
+├─ Likely cause: Agent turn doesn't call buildChatContext()
+├─ Fix: Have agents call buildChatContext(conversationId, userId, systemPrompt, personaId)
+└─ Effort: 1 hour
+
+TOTAL DEBUG EFFORT: 6-8 hours (not a rewrite)
+
+================================================================================
+PROPOSED HYBRID APPROACH
+================================================================================
+
+Keep Chat and Room architecturally separate (orchestration incompatible), but ensure
+Room reuses Chat's skill/memory/persona infrastructure at the execution layer:
+
+TEAM ROOM MESSAGE FLOW (IMPROVED)
+─────────────────────────────────
+1. User sends message to room
+2. Intent routing: detect what user wants (chat/skill/agency)
+3. Agent orchestration: select which agent should respond
+4. Agent turn preparation:
+   ├─ Load memory via buildChatContext() [← REUSE from Chat]
+   ├─ Inject persona system prompt [← REUSE from Chat]
+   ├─ Detect if this should trigger a skill [← REUSE from Chat]
+   └─ If skill detected, execute it [← REUSE from Chat]
+5. Build agent prompt + language setting [← ENSURE language is passed]
+6. Call LLM
+7. Store response to teamRoomMessages
+
+BACKEND CHANGES
+───────────────
+runEngine.ts:
+  └─ Agent turn function should:
+     • Pass language parameter to detectSkill()
+     • Call buildChatContext() to get memory + persona
+     • Check if skill should be executed
+     • If yes, execute skill (don't call LLM directly)
+     • If no, proceed with regular agent LLM call
+
+roomIntentRouter.ts:
+  └─ Ensure it's called for AGENT turns too, not just user messages
+  └─ Verify detected route is being respected
+
+FRONTEND CHANGES (NONE)
+───────────────────────
+Keep Team Room UI as-is (message panel + work board). No change needed.
+
+DATABASE CHANGES (NONE)
+───────────────────────
+Keep separate tables. No merge needed.
+
+================================================================================
+RISK ASSESSMENT
+================================================================================
+
+Risk 1: Intent routing not called on agent turns [HIGH]
+├─ Impact: HIGH (agents can't detect/execute skills)
+├─ Mitigation: Verify roomIntentRouter is called for all messages, add logging
+└─ Effort: 1-2 hours
+
+Risk 2: Language not passed through agent turn [MEDIUM]
+├─ Impact: HIGH (agents respond in wrong language)
+├─ Mitigation: Add language parameter to agent turn function
+└─ Effort: 1 hour
+
+Risk 3: Memory not injected for agent turns [MEDIUM]
+├─ Impact: MEDIUM (agents lose user context)
+├─ Mitigation: Call buildChatContext() during agent turn
+└─ Effort: 1 hour
+
+Risk 4: Persona system not injected [MEDIUM]
+├─ Impact: MEDIUM (personality inconsistency)
+├─ Mitigation: Persona is loaded in buildChatContext(), so fix #3 fixes this
+└─ Effort: 0 hours (included in fix #3)
+
+Risk 5: Turn ordering logic itself is broken [MEDIUM]
+├─ Impact: HIGH (agents loop)
+├─ Mitigation: Debug turnOrderEngine, ensure state transitions correctly
+└─ Effort: 2-3 hours
+
+================================================================================
+IMPLEMENTATION ROADMAP
+================================================================================
+
+Phase 1: Debug Intent Routing (1-2 hours)
+  [ ] Add logging to roomIntentRouter to verify it's called
+  [ ] Check if detected skills are being executed or ignored
+  [ ] Verify skill confidence scoring isn't too high/low
+  [ ] Create test case: room message in Thai that should trigger skill
+
+Phase 2: Fix Language Awareness (1 hour)
+  [ ] Add language parameter to agent turn function
+  [ ] Pass language to detectSkill()
+  [ ] Ensure skill execution preserves language
+  [ ] Test: agent responds in user's language
+
+Phase 3: Integrate Memory + Persona (1 hour)
+  [ ] Agent turn calls buildChatContext()
+  [ ] Persona injected into agent system prompt
+  [ ] Entity memories loaded for user context
+  [ ] Test: agent knows user preferences + persona
+
+Phase 4: Debug Agent Looping (2-3 hours)
+  [ ] Add logging to turnOrderEngine.getNextSpeaker()
+  [ ] Verify state transitions between agent turns
+  [ ] Check if agents are advancing correctly
+  [ ] Test: room runs multiple agent turns without looping
+
+Phase 5: Test + Verify (2-3 hours)
+  [ ] Create multi-agent team room with bilingual prompt
+  [ ] Send task that requires skill + team coordination
+  [ ] Verify: correct agent selected, skill called, response in right language
+  [ ] Verify: agents coordinate without looping
+  [ ] Verify: user memory loaded and respected
+
+TOTAL: 6-8 hours
+
+================================================================================
+CONCLUSION
+================================================================================
+
+Reusing Chat infrastructure for Team Room is feasible at the MESSAGE/SKILL/MEMORY
+layer, but NOT at the ORCHESTRATION layer.
+
+✓ SHARE: Skill detection, memory system, persona system, i18n
+✗ DON'T SHARE: Agent turn ordering, work item state machine, intent router
+  (Keep these separate; Team Room is fundamentally multi-agent, Chat is single-turn)
+
+NEXT STEP: Debug why agents loop + skills aren't called. This is likely a routing
+or state bug, not an architectural problem. Phase 1 (intent routing debug) should
+reveal the root cause within 1-2 hours.
+
+After fixes, Team Room will have same robust skill/language/memory support as Chat,
+but implemented correctly for multi-agent coordination.
+
+================================================================================
