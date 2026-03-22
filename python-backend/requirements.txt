@@ -192,3 +192,6 @@ agency-swarm==1.8.0
 
 # Section 032: Browser Automation Security
 bleach>=6.0.0,<7.0.0
+
+# Section 052: Conditional Branch (JSONPath evaluation)
+jsonpath-ng>=1.6.0

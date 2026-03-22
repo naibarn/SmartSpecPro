@@ -14,6 +14,8 @@ Feature flag: AGENCY_ORCHESTRATOR_ENABLED (default True)
 from __future__ import annotations
 
 import asyncio
+import copy
+import json
 import os
 import re
 from typing import Any
@@ -26,6 +28,11 @@ from app.services.agency_communication_flows import FlowConfig, RoundTripTracker
 from app.services.agency_event_emitter import AgencyEventEmitter, check_cancelled
 from app.services.agency_instruction_resolver import resolve_instructions
 from app.services.agency_output_validator import AgencyOutputValidator
+from app.services.agency_conditional_branch import (
+    evaluate_context_check,
+    evaluate_llm_classify,
+    evaluate_rule_based,
+)
 from app.services.agency_run_context import AgencyRunContext
 from app.services.agency_trace_collector import TraceCollector
 
@@ -72,6 +79,25 @@ class ExecutionContext:
         # Shared run context (populated by orchestrator)
         self.shared_context: AgencyRunContext | None = None
         self.context_snapshot: dict[str, Any] | None = None
+
+    def clone(self) -> ExecutionContext:
+        """Deep-copy mutable state for branch isolation; share read-only refs."""
+        ctx = ExecutionContext(
+            input_message=self.input,
+            user_token=self.user_token,
+            tenant_id=self.tenant_id,
+            user_id=self.user_id,
+            task_metadata=self.task_metadata,
+        )
+        ctx.results = copy.deepcopy(self.results)
+        ctx.knowledge = copy.deepcopy(self.knowledge)
+        ctx.history = copy.deepcopy(self.history)
+        ctx.step_attempts = []  # Fresh per branch
+        ctx.browser_sessions = list(self.browser_sessions)
+        ctx.active_browser_session_id = self.active_browser_session_id
+        ctx.shared_context = self.shared_context  # Shared across branches
+        ctx.context_snapshot = self.context_snapshot
+        return ctx
 
     def get_context_text(self) -> str:
         """Build a context string from accumulated knowledge and results."""
@@ -274,6 +300,18 @@ class AgencyOrchestrator:
                 )
                 result = str(execution.get("result") or "")
 
+            case "conditional_branch":
+                next_node_id = await self._evaluate_conditional_branch(node, ctx)
+                if next_node_id and next_node_id in self.nodes:
+                    result = await self._execute_node(self.nodes[next_node_id], ctx)
+                else:
+                    result = f"[ConditionalBranch: fallback — no valid target in node {node_id}]"
+                return result  # Like router, routing is already done
+
+            case "parallel_fan_out":
+                result = await self._execute_parallel_fan_out(node, ctx)
+                return result  # Fan-out handles its own downstream
+
             case _:
                 logger.warning("agency_orchestrator_unknown_node_type", node_type=node_type)
                 result = ""
@@ -289,7 +327,7 @@ class AgencyOrchestrator:
             )
 
         # Follow outgoing edges (unless router which already handled routing)
-        if node_type not in ("router",):
+        if node_type not in ("router", "conditional_branch", "parallel_fan_out"):
             outgoing = [e for e in self.edges if e.get("from_node_id") == node_id]
 
             parallel_edges = [e for e in outgoing if e.get("flow_type") == "parallel"]
@@ -654,6 +692,190 @@ class AgencyOrchestrator:
         except Exception as exc:
             logger.warning("agency_router_llm_classify_failed", error=str(exc)[:100])
         return None
+
+    async def _evaluate_conditional_branch(
+        self, node: NodeRow, ctx: ExecutionContext,
+    ) -> str | None:
+        """Evaluate a conditional_branch node and return the target node ID."""
+        cfg: dict = node.get("node_config") or {}
+        mode = cfg.get("evaluationMode", "rule_based")
+        default_target = cfg.get("defaultTargetNodeId")
+
+        # Previous node output (last result in context)
+        previous_output = ""
+        incoming = [e for e in self.edges if e.get("to_node_id") == node["id"]]
+        if incoming:
+            prev_id = incoming[0].get("from_node_id", "")
+            previous_output = ctx.results.get(prev_id, ctx.input)
+        else:
+            previous_output = ctx.input
+
+        result_target: str | None = None
+        match mode:
+            case "rule_based":
+                result_target = evaluate_rule_based(
+                    cfg.get("rules", []),
+                    previous_output,
+                )
+            case "llm_classify":
+                llm_gateway = os.getenv("LLM_GATEWAY_URL", "http://127.0.0.1:3000")
+                result_target = await evaluate_llm_classify(
+                    cfg, previous_output, llm_gateway, ctx.user_token,
+                )
+            case "context_check":
+                if ctx.shared_context:
+                    result_target = await evaluate_context_check(cfg, ctx.shared_context)
+            case _:
+                logger.warning("conditional_branch_unknown_mode", mode=mode)
+
+        if result_target and result_target in self.nodes:
+            return result_target
+        return default_target
+
+    async def _execute_parallel_fan_out(
+        self, node: NodeRow, ctx: ExecutionContext,
+    ) -> str:
+        """Execute branches concurrently and merge results."""
+        node_id = node["id"]
+        cfg: dict = node.get("node_config") or {}
+        branches: list[dict] = cfg.get("branches", [])
+        merge_strategy: str = cfg.get("mergeStrategy", "wait_all")
+        merge_prompt: str = cfg.get("mergePrompt", "")
+        timeout_ms: int = cfg.get("timeoutMs", 120000)
+        max_concurrent: int = min(cfg.get("maxConcurrent", 5), 10)
+        continue_on_error: bool = cfg.get("continueOnError", True)
+        timeout_seconds = timeout_ms / 1000.0
+
+        # Resolve dynamic branches if configured
+        dyn_source = cfg.get("dynamicBranchSource")
+        if dyn_source:
+            source_output = ctx.results.get(dyn_source.get("nodeId", ""), "")
+            try:
+                items = json.loads(source_output)
+                if isinstance(items, list):
+                    template = dyn_source.get("taskTemplate", "{item}")
+                    branches = [
+                        {"id": f"dyn-{i}", "targetNodeId": branches[0]["targetNodeId"] if branches else "", "taskDescription": template.replace("{item}", str(item))}
+                        for i, item in enumerate(items[:10])
+                    ]
+            except (json.JSONDecodeError, TypeError, IndexError):
+                logger.warning("parallel_fan_out_dynamic_parse_error", node_id=node_id)
+
+        if not branches:
+            logger.warning("parallel_fan_out_no_branches", node_id=node_id)
+            return "[ParallelFanOut: no branches configured]"
+
+        sem = asyncio.Semaphore(max_concurrent)
+
+        async def run_branch(branch: dict, branch_ctx: ExecutionContext) -> str:
+            async with sem:
+                target_node = self.nodes.get(branch.get("targetNodeId", ""))
+                if not target_node:
+                    return f"[Branch {branch.get('id', '?')}: target not found]"
+                if branch.get("taskDescription"):
+                    branch_ctx.input = branch["taskDescription"] + "\n\n" + ctx.input
+                try:
+                    return await asyncio.wait_for(
+                        self._execute_node(target_node, branch_ctx),
+                        timeout=timeout_seconds,
+                    )
+                except asyncio.TimeoutError:
+                    return f"[Branch {branch.get('id', '?')}: timed out after {timeout_ms}ms]"
+                except Exception as exc:
+                    if not continue_on_error:
+                        raise
+                    return f"[Branch {branch.get('id', '?')}: error — {str(exc)[:200]}]"
+
+        # Create branch tasks with cloned contexts
+        branch_contexts: list[ExecutionContext] = []
+        tasks = []
+        for branch in branches:
+            branch_ctx = ctx.clone()
+            branch_contexts.append(branch_ctx)
+            tasks.append(run_branch(branch, branch_ctx))
+
+        # Execute
+        if merge_strategy == "first_complete":
+            # Use asyncio.wait with FIRST_COMPLETED
+            pending = {asyncio.ensure_future(t) for t in tasks}
+            done: set = set()
+            result = ""
+            try:
+                done, pending = await asyncio.wait(pending, return_when=asyncio.FIRST_COMPLETED)
+                for task in done:
+                    r = task.result()
+                    if isinstance(r, str) and not r.startswith("[Branch"):
+                        result = r
+                        break
+                    result = r
+            finally:
+                for task in pending:
+                    task.cancel()
+        else:
+            results = await asyncio.gather(*tasks, return_exceptions=continue_on_error)
+            branch_results: list[str] = []
+            for i, r in enumerate(results):
+                if isinstance(r, Exception):
+                    branch_results.append(f"[Branch {branches[i].get('id', i)}: error — {str(r)[:200]}]")
+                else:
+                    branch_results.append(str(r) if r else "")
+
+            # Merge
+            if merge_strategy == "wait_all":
+                parts = []
+                for i, r in enumerate(branch_results):
+                    label = branches[i].get("label", f"Branch {i+1}")
+                    parts.append(f"**{label}**:\n{r}")
+                result = "\n\n---\n\n".join(parts)
+            elif merge_strategy == "majority":
+                # Simple majority vote by string equality
+                from collections import Counter
+                valid = [r for r in branch_results if not r.startswith("[Branch")]
+                if valid:
+                    most_common = Counter(valid).most_common(1)[0][0]
+                    result = most_common
+                else:
+                    result = "\n".join(branch_results)
+            elif merge_strategy == "custom_prompt":
+                # Call LLM Gateway to merge
+                combined = "\n\n".join(
+                    f"Branch {branches[i].get('label', i+1)}: {r}"
+                    for i, r in enumerate(branch_results)
+                )
+                llm_prompt = f"{merge_prompt}\n\nBranch Results:\n{combined}"
+                try:
+                    llm_url = os.getenv("LLM_GATEWAY_URL", "http://127.0.0.1:3000")
+                    async with httpx.AsyncClient(timeout=30.0) as client:
+                        resp = await client.post(
+                            f"{llm_url}/api/llm/chat",
+                            json={"messages": [
+                                {"role": "system", "content": merge_prompt},
+                                {"role": "user", "content": combined},
+                            ]},
+                            headers={"Authorization": f"Bearer {ctx.user_token}"},
+                        )
+                        if resp.status_code == 200:
+                            result = (
+                                resp.json().get("choices", [{}])[0].get("message", {}).get("content", "")
+                                or resp.json().get("content", "")
+                                or ""
+                            ).strip()
+                        else:
+                            result = "\n\n---\n\n".join(branch_results)
+                except Exception as exc:
+                    logger.warning("parallel_fan_out_merge_llm_error", error=str(exc)[:100])
+                    result = "\n\n---\n\n".join(branch_results)
+            else:
+                result = "\n\n---\n\n".join(branch_results)
+
+        # Copy branch step_attempts back to parent
+        for i, branch_ctx in enumerate(branch_contexts):
+            for attempt in branch_ctx.step_attempts:
+                attempt["branch_id"] = branches[i].get("id", f"branch-{i}") if i < len(branches) else f"branch-{i}"
+                ctx.step_attempts.append(attempt)
+
+        ctx.results[node_id] = result
+        return result
 
     async def _aggregate(self, agg_node: NodeRow, ctx: ExecutionContext) -> str:
         """Aggregate results from upstream nodes."""

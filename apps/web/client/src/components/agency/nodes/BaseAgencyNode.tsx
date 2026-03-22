@@ -9,6 +9,8 @@ import { KnowledgeBaseNodeCard } from "./KnowledgeBaseNodeCard";
 import { SkillCallNodeCard } from "./SkillCallNodeCard";
 import { HumanApprovalNodeCard } from "./HumanApprovalNodeCard";
 import { BrowserSessionNodeCard } from "./BrowserSessionNodeCard";
+import { ConditionalBranchNodeCard } from "./ConditionalBranchNodeCard";
+import { ParallelFanOutNodeCard } from "./ParallelFanOutNodeCard";
 
 /**
  * Single ReactFlow node type dispatcher.
@@ -33,6 +35,10 @@ export const BaseAgencyNode = memo(function BaseAgencyNode(props: NodeProps<Agen
       return <HumanApprovalNodeCard {...props} />;
     case "browser_session":
       return <BrowserSessionNodeCard {...props} />;
+    case "conditional_branch":
+      return <ConditionalBranchNodeCard {...props} />;
+    case "parallel_fan_out":
+      return <ParallelFanOutNodeCard {...props} />;
     default:
       return <AgentNodeCard {...props} />;
   }

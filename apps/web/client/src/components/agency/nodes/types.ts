@@ -6,7 +6,9 @@ export type AgencyNodeType =
   | "knowledge_base"
   | "skill_call"
   | "human_approval"
-  | "browser_session";
+  | "browser_session"
+  | "conditional_branch"
+  | "parallel_fan_out";
 
 export interface AgencyNodeData {
   nodeType: AgencyNodeType;

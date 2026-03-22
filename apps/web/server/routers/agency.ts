@@ -808,7 +808,7 @@ export const agencyRouter = router({
               description: z.string().optional(),
               nodeType: z.enum([
                 "agent", "supervisor", "router", "aggregator",
-                "knowledge_base", "skill_call", "human_approval", "browser_session",
+                "knowledge_base", "skill_call", "human_approval", "browser_session", "conditional_branch", "parallel_fan_out",
               ]).default("agent"),
               instructions: z.string().max(50000).optional(),
               model: z.string().max(100).regex(/^[a-zA-Z0-9._\/-]+$/, "Invalid model identifier").optional(),
@@ -1062,7 +1062,7 @@ export const agencyRouter = router({
             description: z.string().optional(),
             nodeType: z.enum([
               "agent", "supervisor", "router", "aggregator",
-              "knowledge_base", "skill_call", "human_approval", "browser_session",
+              "knowledge_base", "skill_call", "human_approval", "browser_session", "conditional_branch", "parallel_fan_out",
             ]).default("agent"),
             instructions: z.string().max(50000).optional(),
             model: z.string().max(100).regex(/^[a-zA-Z0-9._\/-]+$/, "Invalid model identifier").optional(),
@@ -1115,6 +1115,67 @@ export const agencyRouter = router({
             }
             if (data.isEntryPoint && !["agent", "supervisor"].includes(data.nodeType)) {
               ctx.addIssue({ code: "custom", path: ["isEntryPoint"], message: `Only agent/supervisor nodes can be entry points, not ${data.nodeType}` });
+            }
+            // Validate conditional_branch config
+            if (data.nodeType === "conditional_branch") {
+              const cfg = data.nodeConfig as any;
+              const mode = cfg?.evaluationMode;
+              if (!mode || !["rule_based", "llm_classify", "context_check"].includes(mode)) {
+                ctx.addIssue({ code: "custom", path: ["nodeConfig", "evaluationMode"], message: "conditional_branch requires evaluationMode: rule_based | llm_classify | context_check" });
+              }
+              if (!cfg?.defaultTargetNodeId) {
+                ctx.addIssue({ code: "custom", path: ["nodeConfig", "defaultTargetNodeId"], message: "conditional_branch requires defaultTargetNodeId" });
+              }
+              if (mode === "rule_based") {
+                const rules = cfg?.rules;
+                if (!Array.isArray(rules) || rules.length === 0) {
+                  ctx.addIssue({ code: "custom", path: ["nodeConfig", "rules"], message: "rule_based mode requires at least 1 rule" });
+                } else {
+                  const validOps = ["equals", "contains", "regex", "gt", "lt", "gte", "lte", "exists"];
+                  for (let ri = 0; ri < rules.length; ri++) {
+                    const r = rules[ri];
+                    if (!r.field) ctx.addIssue({ code: "custom", path: ["nodeConfig", "rules", ri, "field"], message: "rule field is required" });
+                    if (!r.operator || !validOps.includes(r.operator)) ctx.addIssue({ code: "custom", path: ["nodeConfig", "rules", ri, "operator"], message: `operator must be one of: ${validOps.join(", ")}` });
+                    if (!r.targetNodeId) ctx.addIssue({ code: "custom", path: ["nodeConfig", "rules", ri, "targetNodeId"], message: "rule targetNodeId is required" });
+                  }
+                }
+              }
+              if (mode === "llm_classify") {
+                const cats = cfg?.categories;
+                if (!Array.isArray(cats) || cats.length < 2) {
+                  ctx.addIssue({ code: "custom", path: ["nodeConfig", "categories"], message: "llm_classify mode requires at least 2 categories" });
+                }
+                const desc = cfg?.classificationDescription;
+                if (desc && typeof desc === "string" && desc.length > 200) {
+                  ctx.addIssue({ code: "custom", path: ["nodeConfig", "classificationDescription"], message: "classificationDescription max 200 chars" });
+                }
+              }
+            }
+            // Validate parallel_fan_out config
+            if (data.nodeType === "parallel_fan_out") {
+              const cfg = data.nodeConfig as any;
+              const branches = cfg?.branches;
+              if (!Array.isArray(branches) || branches.length < 2) {
+                ctx.addIssue({ code: "custom", path: ["nodeConfig", "branches"], message: "parallel_fan_out requires at least 2 branches" });
+              }
+              const strategy = cfg?.mergeStrategy;
+              if (!strategy || !["wait_all", "first_complete", "majority", "custom_prompt"].includes(strategy)) {
+                ctx.addIssue({ code: "custom", path: ["nodeConfig", "mergeStrategy"], message: "mergeStrategy must be: wait_all, first_complete, majority, or custom_prompt" });
+              }
+              if (strategy === "custom_prompt" && !cfg?.mergePrompt?.trim()) {
+                ctx.addIssue({ code: "custom", path: ["nodeConfig", "mergePrompt"], message: "custom_prompt strategy requires mergePrompt" });
+              }
+              if (cfg?.mergePrompt && typeof cfg.mergePrompt === "string" && cfg.mergePrompt.length > 1000) {
+                ctx.addIssue({ code: "custom", path: ["nodeConfig", "mergePrompt"], message: "mergePrompt max 1000 chars" });
+              }
+              const maxC = cfg?.maxConcurrent;
+              if (maxC !== undefined && (typeof maxC !== "number" || maxC < 1 || maxC > 10)) {
+                ctx.addIssue({ code: "custom", path: ["nodeConfig", "maxConcurrent"], message: "maxConcurrent must be 1-10" });
+              }
+              const timeout = cfg?.timeoutMs;
+              if (timeout !== undefined && (typeof timeout !== "number" || timeout < 1000 || timeout > 600000)) {
+                ctx.addIssue({ code: "custom", path: ["nodeConfig", "timeoutMs"], message: "timeoutMs must be 1000-600000" });
+              }
             }
             // Validate knowledgeBase config
             const kb = (data.nodeConfig as any)?.knowledgeBase;

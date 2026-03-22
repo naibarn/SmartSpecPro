@@ -198,6 +198,8 @@ export function NodePropertyPanel({ node, nodeId, siblingNodes = [], agencyId, o
           {nodeType === "skill_call" && <SkillCallForm node={node} onChange={onChange} />}
           {nodeType === "browser_session" && <BrowserSessionForm node={node} onChange={onChange} />}
           {nodeType === "human_approval" && <HumanApprovalForm node={node} onChange={onChange} />}
+          {nodeType === "conditional_branch" && <ConditionalBranchForm node={node} onChange={onChange} siblingNodes={siblingNodes} />}
+          {nodeType === "parallel_fan_out" && <ParallelFanOutForm node={node} onChange={onChange} siblingNodes={siblingNodes} />}
 
           <Separator />
 
@@ -1103,6 +1105,8 @@ function RouterForm({
     agent: "\uD83E\uDD16", supervisor: "\uD83D\uDC51", router: "\u2194\uFE0F",
     aggregator: "\uD83D\uDD00", knowledge_base: "\uD83D\uDCDA", skill_call: "\u26A1",
     browser_session: "\uD83D\uDDA5\uFE0F", human_approval: "\uD83D\uDC64",
+    conditional_branch: "\u2696\uFE0F",
+    parallel_fan_out: "\u2194\uFE0F",
   };
 
   // Handle badge styles
@@ -2244,6 +2248,522 @@ function HumanApprovalForm({
           </div>
         ))}
       </div>
+    </>
+  );
+}
+
+// ── Conditional Branch Form ──────────────────────────────────────────────────
+
+interface ConditionalRule {
+  id: string;
+  field: string;
+  operator: string;
+  value: string;
+  targetNodeId: string;
+  label?: string;
+}
+
+interface CategoryEntry {
+  label: string;
+  targetNodeId: string;
+}
+
+interface ContextCondition {
+  operator: string;
+  value: string;
+  targetNodeId: string;
+}
+
+function ConditionalBranchForm({
+  node,
+  onChange,
+  siblingNodes = [],
+}: {
+  node: AgencyNodeData;
+  onChange: (updates: Partial<AgencyNodeData>) => void;
+  siblingNodes?: SiblingNode[];
+}) {
+  const evaluationMode = ncGet<string>(node, "evaluationMode", "rule_based");
+  const rules: ConditionalRule[] = ncGet(node, "rules", []);
+  const categories: CategoryEntry[] = ncGet(node, "categories", []);
+  const contextKey = ncGet<string>(node, "contextKey", "");
+  const contextConditions: ContextCondition[] = ncGet(node, "contextConditions", []);
+  const classificationLabel = ncGet<string>(node, "classificationLabel", "");
+  const classificationDescription = ncGet<string>(node, "classificationDescription", "");
+  const defaultTargetNodeId = ncGet<string>(node, "defaultTargetNodeId", "");
+
+  const CB_OPERATORS = ["equals", "contains", "regex", "gt", "lt", "gte", "lte", "exists"];
+
+  const updateRule = (i: number, key: keyof ConditionalRule, value: string) => {
+    const updated = rules.map((r, idx) => (idx === i ? { ...r, [key]: value } : r));
+    onChange({ nodeConfig: { ...(node.nodeConfig ?? {}), rules: updated } });
+  };
+
+  const addRule = () => {
+    const newRule: ConditionalRule = {
+      id: `rule-${Date.now()}`,
+      field: "$.result",
+      operator: "equals",
+      value: "",
+      targetNodeId: "",
+    };
+    onChange({ nodeConfig: { ...(node.nodeConfig ?? {}), rules: [...rules, newRule] } });
+  };
+
+  const removeRule = (i: number) => {
+    onChange({ nodeConfig: { ...(node.nodeConfig ?? {}), rules: rules.filter((_, idx) => idx !== i) } });
+  };
+
+  const updateCategory = (i: number, key: keyof CategoryEntry, value: string) => {
+    const updated = categories.map((c, idx) => (idx === i ? { ...c, [key]: value } : c));
+    onChange({ nodeConfig: { ...(node.nodeConfig ?? {}), categories: updated } });
+  };
+
+  const addCategory = () => {
+    onChange({ nodeConfig: { ...(node.nodeConfig ?? {}), categories: [...categories, { label: "", targetNodeId: "" }] } });
+  };
+
+  const removeCategory = (i: number) => {
+    onChange({ nodeConfig: { ...(node.nodeConfig ?? {}), categories: categories.filter((_, idx) => idx !== i) } });
+  };
+
+  const updateContextCondition = (i: number, key: keyof ContextCondition, value: string) => {
+    const updated = contextConditions.map((c, idx) => (idx === i ? { ...c, [key]: value } : c));
+    onChange({ nodeConfig: { ...(node.nodeConfig ?? {}), contextConditions: updated } });
+  };
+
+  const addContextCondition = () => {
+    onChange({ nodeConfig: { ...(node.nodeConfig ?? {}), contextConditions: [...contextConditions, { operator: "equals", value: "", targetNodeId: "" }] } });
+  };
+
+  const removeContextCondition = (i: number) => {
+    onChange({ nodeConfig: { ...(node.nodeConfig ?? {}), contextConditions: contextConditions.filter((_, idx) => idx !== i) } });
+  };
+
+  return (
+    <>
+      <div className="space-y-1.5">
+        <Label>Name</Label>
+        <Input
+          value={node.name}
+          onChange={(e) => onChange({ name: e.target.value })}
+          placeholder="Branch name"
+        />
+      </div>
+
+      <div className="space-y-1.5">
+        <Label>Description</Label>
+        <Textarea
+          value={node.description}
+          onChange={(e) => onChange({ description: e.target.value })}
+          placeholder="Short description"
+          rows={2}
+        />
+      </div>
+
+      <div className="space-y-1.5">
+        <Label>Evaluation Mode</Label>
+        <Select
+          value={evaluationMode}
+          onValueChange={(v) => onChange(ncSet(node, "evaluationMode", v))}
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="rule_based">Rule-based</SelectItem>
+            <SelectItem value="llm_classify">LLM Classification</SelectItem>
+            <SelectItem value="context_check">Context Check</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <Separator />
+
+      {/* ── Rule-based mode ── */}
+      {evaluationMode === "rule_based" && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Label className="text-sm font-medium">Rules</Label>
+            <Button variant="outline" size="sm" className="h-6 text-xs" onClick={addRule}>
+              <Plus className="h-3 w-3 mr-1" /> Add Rule
+            </Button>
+          </div>
+          <p className="text-[10px] text-muted-foreground">Rules are evaluated in order. First match wins.</p>
+
+          {rules.map((rule, i) => (
+            <div key={rule.id} className="rounded border border-amber-200 bg-amber-50/50 p-2.5 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-medium text-amber-700">Rule {i + 1}</span>
+                <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => removeRule(i)}>
+                  <Trash2 className="h-3 w-3 text-red-500" />
+                </Button>
+              </div>
+              <Input
+                value={rule.field}
+                onChange={(e) => updateRule(i, "field", e.target.value)}
+                placeholder="JSONPath (e.g. $.result.status)"
+                className="text-xs h-7"
+              />
+              <div className="flex gap-1.5">
+                <Select value={rule.operator} onValueChange={(v) => updateRule(i, "operator", v)}>
+                  <SelectTrigger className="h-7 text-xs w-28">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CB_OPERATORS.map((op) => (
+                      <SelectItem key={op} value={op}>{op}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {rule.operator !== "exists" && (
+                  <Input
+                    value={rule.value}
+                    onChange={(e) => updateRule(i, "value", e.target.value)}
+                    placeholder="Value"
+                    className="text-xs h-7 flex-1"
+                  />
+                )}
+              </div>
+              <Select value={rule.targetNodeId} onValueChange={(v) => updateRule(i, "targetNodeId", v)}>
+                <SelectTrigger className="h-7 text-xs">
+                  <SelectValue placeholder="Target node..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {siblingNodes.map((sn) => (
+                    <SelectItem key={sn.id} value={sn.id}>{sn.name} ({sn.nodeType})</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── LLM Classify mode ── */}
+      {evaluationMode === "llm_classify" && (
+        <div className="space-y-2">
+          <div className="space-y-1.5">
+            <Label>Classification Label</Label>
+            <Input
+              value={classificationLabel}
+              onChange={(e) => onChange(ncSet(node, "classificationLabel", e.target.value))}
+              placeholder="e.g. sentiment, topic"
+              className="text-xs h-7"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Description</Label>
+            <Textarea
+              value={classificationDescription}
+              onChange={(e) => onChange(ncSet(node, "classificationDescription", e.target.value))}
+              placeholder="Describe what to classify (max 200 chars)"
+              rows={2}
+              maxLength={200}
+              className="text-xs"
+            />
+            <p className="text-[10px] text-muted-foreground text-right">{classificationDescription.length}/200</p>
+          </div>
+          <div className="flex items-center justify-between">
+            <Label className="text-sm font-medium">Categories</Label>
+            <Button variant="outline" size="sm" className="h-6 text-xs" onClick={addCategory}>
+              <Plus className="h-3 w-3 mr-1" /> Add
+            </Button>
+          </div>
+          {categories.map((cat, i) => (
+            <div key={i} className="rounded border border-amber-200 bg-amber-50/50 p-2.5 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Input
+                  value={cat.label}
+                  onChange={(e) => updateCategory(i, "label", e.target.value)}
+                  placeholder="Category label"
+                  className="text-xs h-7 flex-1 mr-2"
+                />
+                <Button variant="ghost" size="icon" className="h-5 w-5 shrink-0" onClick={() => removeCategory(i)}>
+                  <Trash2 className="h-3 w-3 text-red-500" />
+                </Button>
+              </div>
+              <Select value={cat.targetNodeId} onValueChange={(v) => updateCategory(i, "targetNodeId", v)}>
+                <SelectTrigger className="h-7 text-xs">
+                  <SelectValue placeholder="Target node..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {siblingNodes.map((sn) => (
+                    <SelectItem key={sn.id} value={sn.id}>{sn.name} ({sn.nodeType})</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── Context Check mode ── */}
+      {evaluationMode === "context_check" && (
+        <div className="space-y-2">
+          <div className="space-y-1.5">
+            <Label>Context Key</Label>
+            <Input
+              value={contextKey}
+              onChange={(e) => onChange(ncSet(node, "contextKey", e.target.value))}
+              placeholder="Key name from AgencyRunContext"
+              className="text-xs h-7"
+            />
+          </div>
+          <div className="flex items-center justify-between">
+            <Label className="text-sm font-medium">Conditions</Label>
+            <Button variant="outline" size="sm" className="h-6 text-xs" onClick={addContextCondition}>
+              <Plus className="h-3 w-3 mr-1" /> Add
+            </Button>
+          </div>
+          {contextConditions.map((cond, i) => (
+            <div key={i} className="rounded border border-amber-200 bg-amber-50/50 p-2.5 space-y-1.5">
+              <div className="flex items-center gap-1.5">
+                <Select value={cond.operator} onValueChange={(v) => updateContextCondition(i, "operator", v)}>
+                  <SelectTrigger className="h-7 text-xs w-28">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CB_OPERATORS.map((op) => (
+                      <SelectItem key={op} value={op}>{op}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {cond.operator !== "exists" && (
+                  <Input
+                    value={cond.value}
+                    onChange={(e) => updateContextCondition(i, "value", e.target.value)}
+                    placeholder="Value"
+                    className="text-xs h-7 flex-1"
+                  />
+                )}
+                <Button variant="ghost" size="icon" className="h-5 w-5 shrink-0" onClick={() => removeContextCondition(i)}>
+                  <Trash2 className="h-3 w-3 text-red-500" />
+                </Button>
+              </div>
+              <Select value={cond.targetNodeId} onValueChange={(v) => updateContextCondition(i, "targetNodeId", v)}>
+                <SelectTrigger className="h-7 text-xs">
+                  <SelectValue placeholder="Target node..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {siblingNodes.map((sn) => (
+                    <SelectItem key={sn.id} value={sn.id}>{sn.name} ({sn.nodeType})</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <Separator />
+
+      {/* Default target — always visible */}
+      <div className="space-y-1.5">
+        <Label>Default Target (fallback)</Label>
+        <Select
+          value={defaultTargetNodeId}
+          onValueChange={(v) => onChange(ncSet(node, "defaultTargetNodeId", v))}
+        >
+          <SelectTrigger className="h-7 text-xs">
+            <SelectValue placeholder="Select default target..." />
+          </SelectTrigger>
+          <SelectContent>
+            {siblingNodes.map((sn) => (
+              <SelectItem key={sn.id} value={sn.id}>{sn.name} ({sn.nodeType})</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <p className="text-[10px] text-muted-foreground">Used when no rule/condition matches</p>
+      </div>
+    </>
+  );
+}
+
+// ── Parallel Fan-Out Form ────────────────────────────────────────────────────
+
+interface FanOutBranch {
+  id: string;
+  targetNodeId: string;
+  taskDescription?: string;
+  label?: string;
+}
+
+function ParallelFanOutForm({
+  node,
+  onChange,
+  siblingNodes = [],
+}: {
+  node: AgencyNodeData;
+  onChange: (updates: Partial<AgencyNodeData>) => void;
+  siblingNodes?: SiblingNode[];
+}) {
+  const branches: FanOutBranch[] = ncGet(node, "branches", []);
+  const mergeStrategy = ncGet<string>(node, "mergeStrategy", "wait_all");
+  const mergePrompt = ncGet<string>(node, "mergePrompt", "");
+  const timeoutMs = ncGet<number>(node, "timeoutMs", 120000);
+  const maxConcurrent = ncGet<number>(node, "maxConcurrent", 5);
+  const continueOnError = ncGet<boolean>(node, "continueOnError", true);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+
+  const updateBranch = (i: number, key: keyof FanOutBranch, value: string) => {
+    const updated = branches.map((b, idx) => (idx === i ? { ...b, [key]: value } : b));
+    onChange({ nodeConfig: { ...(node.nodeConfig ?? {}), branches: updated } });
+  };
+
+  const addBranch = () => {
+    const newBranch: FanOutBranch = { id: `branch-${Date.now()}`, targetNodeId: "", label: "" };
+    onChange({ nodeConfig: { ...(node.nodeConfig ?? {}), branches: [...branches, newBranch] } });
+  };
+
+  const removeBranch = (i: number) => {
+    if (branches.length <= 2) return;
+    onChange({ nodeConfig: { ...(node.nodeConfig ?? {}), branches: branches.filter((_, idx) => idx !== i) } });
+  };
+
+  return (
+    <>
+      <div className="space-y-1.5">
+        <Label>Name</Label>
+        <Input value={node.name} onChange={(e) => onChange({ name: e.target.value })} placeholder="Fan-out name" />
+      </div>
+
+      <div className="space-y-1.5">
+        <Label>Description</Label>
+        <Textarea value={node.description} onChange={(e) => onChange({ description: e.target.value })} placeholder="Short description" rows={2} />
+      </div>
+
+      <Separator />
+
+      {/* Branches */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <Label className="text-sm font-medium">Branches</Label>
+          <Button variant="outline" size="sm" className="h-6 text-xs" onClick={addBranch}>
+            <Plus className="h-3 w-3 mr-1" /> Add Branch
+          </Button>
+        </div>
+        <p className="text-[10px] text-muted-foreground">Min 2 branches. All run concurrently.</p>
+
+        {branches.map((branch, i) => (
+          <div key={branch.id} className="rounded border border-cyan-200 bg-cyan-50/50 p-2.5 space-y-1.5">
+            <div className="flex items-center justify-between">
+              <Input
+                value={branch.label ?? ""}
+                onChange={(e) => updateBranch(i, "label", e.target.value)}
+                placeholder={`Branch ${i + 1} label`}
+                className="text-xs h-7 flex-1 mr-2"
+              />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-5 w-5 shrink-0"
+                disabled={branches.length <= 2}
+                onClick={() => removeBranch(i)}
+              >
+                <Trash2 className="h-3 w-3 text-red-500" />
+              </Button>
+            </div>
+            <Select value={branch.targetNodeId} onValueChange={(v) => updateBranch(i, "targetNodeId", v)}>
+              <SelectTrigger className="h-7 text-xs">
+                <SelectValue placeholder="Target node..." />
+              </SelectTrigger>
+              <SelectContent>
+                {siblingNodes.map((sn) => (
+                  <SelectItem key={sn.id} value={sn.id}>{sn.name} ({sn.nodeType})</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Textarea
+              value={branch.taskDescription ?? ""}
+              onChange={(e) => updateBranch(i, "taskDescription", e.target.value)}
+              placeholder="Task description (optional)"
+              rows={2}
+              className="text-xs"
+            />
+          </div>
+        ))}
+      </div>
+
+      <Separator />
+
+      {/* Merge strategy */}
+      <div className="space-y-1.5">
+        <Label>Merge Strategy</Label>
+        <Select value={mergeStrategy} onValueChange={(v) => onChange(ncSet(node, "mergeStrategy", v))}>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="wait_all">Wait All</SelectItem>
+            <SelectItem value="first_complete">First Complete</SelectItem>
+            <SelectItem value="majority">Majority Vote</SelectItem>
+            <SelectItem value="custom_prompt">Custom Prompt</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {mergeStrategy === "custom_prompt" && (
+        <div className="space-y-1.5">
+          <Label>Merge Prompt</Label>
+          <Textarea
+            value={mergePrompt}
+            onChange={(e) => onChange(ncSet(node, "mergePrompt", e.target.value))}
+            placeholder="Prompt for combining branch results (max 1000 chars)"
+            rows={3}
+            maxLength={1000}
+            className="text-xs"
+          />
+          <p className="text-[10px] text-muted-foreground text-right">{mergePrompt.length}/1000</p>
+        </div>
+      )}
+
+      {/* Advanced section */}
+      <button
+        type="button"
+        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+        onClick={() => setShowAdvanced(!showAdvanced)}
+      >
+        {showAdvanced ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+        Advanced Settings
+      </button>
+
+      {showAdvanced && (
+        <div className="space-y-3 pl-2 border-l-2 border-cyan-100">
+          <div className="space-y-1.5">
+            <Label>Timeout (ms)</Label>
+            <Input
+              type="number"
+              value={timeoutMs}
+              onChange={(e) => onChange(ncSet(node, "timeoutMs", Number(e.target.value)))}
+              min={1000}
+              max={600000}
+              className="text-xs h-7"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Max Concurrent</Label>
+            <Input
+              type="number"
+              value={maxConcurrent}
+              onChange={(e) => onChange(ncSet(node, "maxConcurrent", Number(e.target.value)))}
+              min={1}
+              max={10}
+              className="text-xs h-7"
+            />
+          </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <Label>Continue on Error</Label>
+              <p className="text-[10px] text-muted-foreground">Keep going when a branch fails</p>
+            </div>
+            <Switch
+              checked={continueOnError}
+              onCheckedChange={(v) => onChange(ncSet(node, "continueOnError", v))}
+            />
+          </div>
+        </div>
+      )}
     </>
   );
 }
