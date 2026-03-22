@@ -373,15 +373,6 @@ class AgencyOrchestrator:
             if kb_context:
                 agent_instructions = agent_instructions + kb_context
 
-        # ── Dynamic instruction resolution ───────────────────────────────
-        agent_instructions = resolve_instructions(
-            raw_instructions=agent_instructions,
-            agent_name=node.get("name", "Agent"),
-            tool_names=None,  # Will be populated after tools are resolved
-            context=ctx.shared_context,
-            user_context=self.user_context,
-        )
-
         try:
             from app.services.agency_swarm_adapter import AgentConfig
 
@@ -396,6 +387,16 @@ class AgencyOrchestrator:
                     retrieval_scope_mode=self.retrieval_scope_mode,
                     run_context=ctx.shared_context,
                 )
+
+            # ── Dynamic instruction resolution (after tools resolved) ──────
+            tool_name_list = [getattr(t, "name", str(t)) for t in tools] if tools else []
+            agent_instructions = resolve_instructions(
+                raw_instructions=agent_instructions,
+                agent_name=node.get("name", "Agent"),
+                tool_names=tool_name_list,
+                context=ctx.shared_context,
+                user_context=self.user_context,
+            )
 
             agent = self.adapter.create_agent(
                 config=AgentConfig(

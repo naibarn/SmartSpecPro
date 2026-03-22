@@ -75,7 +75,7 @@ class AgencyOutputValidator:
             return ValidationResult(
                 is_valid=False,
                 retry_feedback=(
-                    f"Your JSON response did not match the required schema: {e.message}. "
+                    f"Your JSON response did not match the required schema: {e.message[:200]}. "
                     "Please fix the response and return valid JSON."
                 ),
             )

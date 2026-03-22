@@ -811,6 +811,7 @@ export const agencyRouter = router({
               toolIds: z.array(z.string().min(1).max(100)).optional(),
               toolConfigs: z.record(z.string(), z.record(z.unknown())).optional(),
               nodeConfig: z.record(z.unknown()).optional(),
+              outputSchema: z.record(z.unknown()).nullable().optional(),
             }),
           )
           .min(1)
@@ -920,6 +921,7 @@ export const agencyRouter = router({
             isEntryPoint: agent.isEntryPoint,
             isOptional: agent.isOptional,
             position: agent.position ?? null,
+            outputSchema: (agent.outputSchema ?? null) as any,
           });
 
           // Insert tool assignments
@@ -1063,6 +1065,7 @@ export const agencyRouter = router({
             toolIds: z.array(z.string().min(1).max(100)).optional(),
             toolConfigs: z.record(z.string(), z.record(z.unknown())).optional(),
             nodeConfig: z.record(z.unknown()).optional(),
+            outputSchema: z.record(z.unknown()).nullable().optional(),
           }).superRefine((data, ctx) => {
             if (["agent", "supervisor"].includes(data.nodeType)) {
               if (!data.model) ctx.addIssue({ code: "custom", path: ["model"], message: "model is required for agent/supervisor" });
@@ -1229,6 +1232,7 @@ export const agencyRouter = router({
             isEntryPoint: agent.isEntryPoint,
             isOptional: agent.isOptional,
             position: agent.position ?? null,
+            outputSchema: (agent.outputSchema ?? null) as any,
           });
 
           if (agent.toolIds?.length) {
