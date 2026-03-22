@@ -11,6 +11,7 @@ All outbound calls use ``follow_redirects=False`` to prevent redirect-based SSRF
 """
 
 import re
+import unicodedata
 from typing import Any
 import httpx
 import structlog
@@ -19,8 +20,13 @@ from app.core.media_job_validators import validate_uri_strict
 
 logger = structlog.get_logger()
 
-# URL-bearing fields that must pass SSRF validation
-_URL_FIELDS = frozenset({"image_url", "end_image_url", "audio_url", "video_url"})
+# URL-bearing fields that must pass SSRF validation.
+# Covers all known fal.ai URL params across video/audio/image models.
+_URL_FIELDS = frozenset({
+    "image_url", "end_image_url", "audio_url", "video_url",
+    "reference_url", "mask_url", "init_image_url", "control_image_url",
+    "source_url", "target_url", "lora_url",
+})
 
 # Regex for validating request_id from fal.ai (alphanumeric + dash/underscore)
 _REQUEST_ID_RE = re.compile(r"^[a-zA-Z0-9_\-]{4,256}$")
@@ -28,8 +34,14 @@ _REQUEST_ID_RE = re.compile(r"^[a-zA-Z0-9_\-]{4,256}$")
 # Max prompt length to prevent abuse (100K chars)
 _MAX_PROMPT_LENGTH = 100_000
 
+# Max response body size (10 MB) to prevent OOM from malformed responses
+_MAX_RESPONSE_BYTES = 10 * 1024 * 1024
+
 # Timeout for queue status polls (shorter than generation timeout)
 _POLL_TIMEOUT = httpx.Timeout(connect=10.0, read=30.0, write=10.0, pool=5.0)
+
+# Regex to detect URL-like values in extra_params (catch-all SSRF check)
+_URL_PATTERN = re.compile(r"^https?://", re.IGNORECASE)
 
 
 class FalAIProvider:
@@ -95,17 +107,23 @@ class FalAIProvider:
     # ------------------------------------------------------------------
 
     async def _validate_urls(self, params: dict[str, Any]) -> None:
-        """SSRF: validate URL fields + reject host.docker.internal + HEAD size check for video_url."""
+        """SSRF: validate known URL fields + catch-all for URL-like string values."""
+        # Check known URL fields
         for key in _URL_FIELDS:
             url = params.get(key)
             if url is None:
                 continue
             if not isinstance(url, str):
                 raise ValueError(f"URL field '{key}' must be a string")
-
-            # Strict SSRF validation: blocks ALL internal hosts including
-            # host.docker.internal (external providers must never reach internal infra)
             validate_uri_strict(url)
+
+        # Catch-all: validate any string value that looks like a URL
+        # This prevents SSRF via unknown/new URL fields in extra_params
+        for key, value in params.items():
+            if key in _URL_FIELDS:
+                continue  # Already validated above
+            if isinstance(value, str) and _URL_PATTERN.match(value):
+                validate_uri_strict(value)
 
         # Async video file size check
         video_url = params.get("video_url")
@@ -113,7 +131,7 @@ class FalAIProvider:
             await self._check_video_size(video_url)
 
     async def _check_video_size(self, url: str) -> None:
-        """Async HEAD check for video file size (best-effort, fail-open on timeout only)."""
+        """Async HEAD check for video file size. Fail-open ONLY on timeout."""
         try:
             resp = await self.client.head(
                 url, follow_redirects=False, timeout=httpx.Timeout(10.0),
@@ -129,17 +147,28 @@ class FalAIProvider:
         except httpx.TimeoutException:
             logger.debug("fal_ai_video_size_check_timeout", url=url[:100])
         except httpx.RequestError as exc:
-            logger.debug(
-                "fal_ai_video_size_check_skipped",
+            # SECURITY: Fail-closed on connection errors (not timeout).
+            # An attacker could deliberately reset connections to bypass size check.
+            logger.warning(
+                "fal_ai_video_size_check_connection_error",
                 url=url[:100],
                 reason=type(exc).__name__,
+            )
+            raise ValueError(
+                f"Cannot verify video file size: {type(exc).__name__}"
             )
 
     @staticmethod
     def _sanitize_prompt(prompt: str) -> str:
-        """Strip HTML/XML tags from prompt and enforce length cap."""
+        """Strip HTML/XML tags and unicode control characters, enforce length cap."""
         if len(prompt) > _MAX_PROMPT_LENGTH:
             prompt = prompt[:_MAX_PROMPT_LENGTH]
+        # Strip unicode control characters (keep newline, tab, carriage return)
+        prompt = "".join(
+            c for c in prompt
+            if unicodedata.category(c)[0] != "C" or c in "\n\t\r"
+        )
+        # Strip HTML/XML tags
         return re.sub(r"<[^>]*>", "", prompt)
 
     # ------------------------------------------------------------------
@@ -148,14 +177,8 @@ class FalAIProvider:
 
     @staticmethod
     def _handle_http_error(exc: httpx.HTTPStatusError) -> None:
-        """Log sanitized error and re-raise original httpx exception for caller handling.
-
-        Callers that need user-facing messages should catch httpx.HTTPStatusError
-        and map status codes. The Celery polling path relies on seeing the original
-        exception to distinguish 429 from 4xx from 5xx.
-        """
+        """Log sanitized error and re-raise original httpx exception for caller handling."""
         status = exc.response.status_code
-        # Log with sanitized message — never include response body
         if status == 401:
             logger.warning("fal_ai_auth_error", status=status)
         elif status == 422:
@@ -176,6 +199,20 @@ class FalAIProvider:
         if status == 429:
             return "fal.ai rate limit exceeded"
         return f"fal.ai error (HTTP {status})"
+
+    # ------------------------------------------------------------------
+    # Response validation
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _safe_parse_response(response: httpx.Response) -> dict:
+        """Parse JSON response with size limit to prevent OOM."""
+        if len(response.content) > _MAX_RESPONSE_BYTES:
+            raise ValueError(
+                f"fal.ai response exceeds {_MAX_RESPONSE_BYTES // (1024 * 1024)}MB limit "
+                f"({len(response.content)} bytes)"
+            )
+        return response.json()
 
     # ------------------------------------------------------------------
     # Public API — media generation
@@ -212,7 +249,7 @@ class FalAIProvider:
         except httpx.HTTPStatusError as exc:
             self._handle_http_error(exc)
 
-        data = response.json()
+        data = self._safe_parse_response(response)
         audio_url = data.get("audio", {}).get("url") or data.get("url")
         return {
             "data": [{"url": audio_url}] if audio_url else [],
@@ -238,7 +275,7 @@ class FalAIProvider:
         except httpx.HTTPStatusError as exc:
             self._handle_http_error(exc)
 
-        data = response.json()
+        data = self._safe_parse_response(response)
         images = data.get("images", [])
         return {
             "data": [{"url": img["url"]} for img in images if img.get("url")],
@@ -262,7 +299,7 @@ class FalAIProvider:
         except httpx.HTTPStatusError as exc:
             self._handle_http_error(exc)
 
-        data = response.json()
+        data = self._safe_parse_response(response)
         request_id = data.get("request_id")
         if not request_id:
             raise ValueError("fal.ai queue response missing request_id")
@@ -271,6 +308,7 @@ class FalAIProvider:
 
     async def get_queue_status(self, model_id: str, request_id: str) -> dict:
         """GET queue status → {status: IN_QUEUE|IN_PROGRESS|COMPLETED}."""
+        self._validate_model_id(model_id)
         self._validate_request_id(request_id)
         url = f"{self.queue_base_url}/{model_id}/requests/{request_id}/status"
         logger.info("fal_ai_queue_status", model_id=model_id, request_id=request_id)
@@ -283,10 +321,11 @@ class FalAIProvider:
         except httpx.HTTPStatusError as exc:
             self._handle_http_error(exc)
 
-        return response.json()
+        return self._safe_parse_response(response)
 
     async def get_queue_result(self, model_id: str, request_id: str) -> dict:
         """GET queue result → normalized {data: [{url}], actual_duration, actual_resolution}."""
+        self._validate_model_id(model_id)
         self._validate_request_id(request_id)
         url = f"{self.queue_base_url}/{model_id}/requests/{request_id}"
         logger.info("fal_ai_queue_result", model_id=model_id, request_id=request_id)
@@ -299,7 +338,7 @@ class FalAIProvider:
         except httpx.HTTPStatusError as exc:
             self._handle_http_error(exc)
 
-        data = response.json()
+        data = self._safe_parse_response(response)
 
         # Normalize: try video shape first, then audio, then top-level
         video = data.get("video") or {}

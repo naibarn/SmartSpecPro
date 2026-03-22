@@ -659,6 +659,7 @@ class LLMGateway:
             or normalized_model in fal_image_models
         )
         if route_to_fal_img:
+            await self._check_fal_concurrent_limit(user.id)
             from app.services.media_provider_service import get_media_provider_key as get_fal_img_key
             provider_config_fal = await get_fal_img_key("fal_ai")
             if not provider_config_fal or not provider_config_fal.get("apiKey"):
@@ -1256,6 +1257,7 @@ class LLMGateway:
             or normalized_model in fal_audio_models
         )
         if route_to_fal_audio:
+            await self._check_fal_concurrent_limit(user.id)
             from app.services.media_provider_service import get_media_provider_key as get_fal_audio_key
             provider_config_fal = await get_fal_audio_key("fal_ai")
             if not provider_config_fal or not provider_config_fal.get("apiKey"):
@@ -1616,20 +1618,22 @@ class LLMGateway:
             return transaction
 
     async def _check_fal_concurrent_limit(self, user_id: int, max_concurrent: int = 3) -> None:
-        """Raise HTTPException 429 if user has >= max_concurrent in-flight fal.ai video tasks."""
+        """Raise HTTPException 429 if user has >= max_concurrent in-flight fal.ai tasks."""
         from sqlalchemy import text as sa_text
         from app.llm_proxy.providers.fal_ai_provider import FalAIProvider as _FalProvider
-        model_list = ",".join(f"'{m}'" for m in _FalProvider.VIDEO_MODELS)
+        # SECURITY: Use parameterized query with ANY() instead of f-string IN()
+        # to prevent SQL injection (model list comes from frozenset, but defense-in-depth)
+        all_models = list(_FalProvider.ALL_MODELS)
         query = sa_text(
-            f'SELECT count(*) FROM media_tasks WHERE "userId" = :uid '
-            f"AND status = 'PROCESSING' AND model IN ({model_list})"
+            'SELECT count(*) FROM media_tasks WHERE "userId" = :uid '
+            "AND status = 'PROCESSING' AND model = ANY(:models)"
         )
-        result = await self.db.execute(query, {"uid": user_id})
+        result = await self.db.execute(query, {"uid": user_id, "models": all_models})
         count = result.scalar() or 0
         if count >= max_concurrent:
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail=f"Maximum {max_concurrent} concurrent fal.ai video tasks. Please wait for existing tasks to complete.",
+                detail=f"Maximum {max_concurrent} concurrent fal.ai tasks. Please wait for existing tasks to complete.",
             )
 
     async def _check_credits(self, user: User, estimated_cost: Decimal) -> None:

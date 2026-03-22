@@ -1444,14 +1444,29 @@ async def _recover_stuck_tasks_async():
                                 result = await fal_client.get_queue_result(task.model, task.task_id)
                                 task.status = TaskStatus.COMPLETED
                                 data_list = result.get("data", [])
-                                task.result_url = data_list[0]["url"] if data_list else None
+                                raw_url = data_list[0]["url"] if data_list else None
+                                # SECURITY: Validate result URL from fal.ai before storing
+                                if raw_url:
+                                    try:
+                                        from app.core.media_job_validators import validate_uri_strict
+                                        validate_uri_strict(raw_url)
+                                        task.result_url = raw_url
+                                    except ValueError:
+                                        logger.warning(
+                                            "recover_stuck_task_fal_invalid_result_url",
+                                            task_id=task.id,
+                                            url_prefix=raw_url[:80] if raw_url else "",
+                                        )
+                                        task.result_url = None
+                                else:
+                                    task.result_url = None
                                 task.result_data = result
                                 task.completed_at = datetime.now(timezone.utc)
                                 recovered_count += 1
                                 logger.info(
                                     "recover_stuck_task_fal_completed",
                                     task_id=task.id,
-                                    result_url=task.result_url,
+                                    has_url=task.result_url is not None,
                                 )
 
                             elif status_response.get("status") == "FAILED":
