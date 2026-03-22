@@ -1,14 +1,16 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import type { Editor } from "@tiptap/core";
-import { parse, serialize } from "./TiptapMarkdownBridge";
-import { checkSerializationIntegrity } from "./serialization-guard";
+import { parse } from "./TiptapMarkdownBridge";
 import TiptapEditor from "./TiptapEditor";
 import SourceModePanel from "./SourceModePanel";
 import { ConflictResolutionDialog } from "./ConflictResolutionDialog";
+import { EDITOR_TEMPLATE_PRESETS } from "./editorTemplates";
+import { Minus, Plus, Maximize2, Minimize2 } from "lucide-react";
 import type {
   EditorMode,
   SaveStatus,
   JSONContent,
+  TiptapEditorTemplate,
   UnifiedDocumentSurfaceProps,
 } from "./types";
 
@@ -26,34 +28,77 @@ export default function UnifiedDocumentSurface({
   errorMessage,
   hasConflict = false,
   documentTitle,
+  documentId,
+  initialEditorTemplate = "page",
+  editorHeaderActions,
+  editorUploadMetadata,
+  editorLibraryScope = "all",
 }: UnifiedDocumentSurfaceProps) {
   const [mode, setMode] = useState<EditorMode>("view");
+  const [editorTemplate, setEditorTemplate] =
+    useState<TiptapEditorTemplate>(initialEditorTemplate);
   const [tiptapContent, setTiptapContent] = useState<JSONContent>(() =>
     parse(initialContent),
   );
   const [sourceMarkdown, setSourceMarkdown] = useState(initialContent);
   const [dirty, setDirty] = useState(false);
+  const [viewZoom, setViewZoom] = useState(100);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const editorRef = useRef<Editor | null>(null);
-  const lastResetKeyRef = useRef(updatedAt);
+  const surfaceRef = useRef<HTMLDivElement | null>(null);
+  const lastHydratedDocumentIdRef = useRef<number | null>(null);
+  const lastHydratedContentRef = useRef<string | null>(null);
+  const lastHydratedUpdatedAtRef = useRef<string | undefined>(undefined);
   const latestMarkdownRef = useRef(initialContent);
   const modeRef = useRef(mode);
   modeRef.current = mode;
+  const currentDocumentId = documentId ?? null;
+  const currentTemplateIsPage = editorTemplate === "page";
+  const zoomStep = 10;
+  const minZoom = 80;
+  const maxZoom = 140;
 
-  // Reset content on version restore (updatedAt change)
   useEffect(() => {
-    if (updatedAt !== lastResetKeyRef.current) {
-      const parsed = parse(initialContent);
-      setTiptapContent(parsed);
-      // Push new document into live Tiptap instance (it ignores content prop after mount)
-      editorRef.current?.commands.setContent(parsed);
-      setSourceMarkdown(initialContent);
-      latestMarkdownRef.current = initialContent;
-      setDirty(false);
-      lastResetKeyRef.current = updatedAt;
+    const handler = () => {
+      setIsFullscreen(document.fullscreenElement === surfaceRef.current);
+    };
+    handler();
+    document.addEventListener("fullscreenchange", handler);
+    return () => document.removeEventListener("fullscreenchange", handler);
+  }, []);
+
+  // Reset content when the active document or source snapshot changes.
+  useEffect(() => {
+    if (isSaving) {
+      return;
     }
-  }, [updatedAt, initialContent]);
+
+    const documentChanged = currentDocumentId !== lastHydratedDocumentIdRef.current;
+    const snapshotChanged =
+      initialContent !== lastHydratedContentRef.current ||
+      updatedAt !== lastHydratedUpdatedAtRef.current;
+
+    if (!documentChanged && !snapshotChanged) {
+      return;
+    }
+
+    if (!documentChanged && dirty) {
+      return;
+    }
+
+    const parsed = parse(initialContent);
+    setTiptapContent(parsed);
+    // Push new document into live Tiptap instance (it ignores content prop after mount)
+    editorRef.current?.commands?.setContent(parsed);
+    setSourceMarkdown(initialContent);
+    latestMarkdownRef.current = initialContent;
+    setDirty(false);
+    lastHydratedDocumentIdRef.current = currentDocumentId;
+    lastHydratedContentRef.current = initialContent;
+    lastHydratedUpdatedAtRef.current = updatedAt;
+  }, [currentDocumentId, dirty, initialContent, isSaving, updatedAt]);
 
   // Cleanup debounce timer on unmount
   useEffect(() => {
@@ -62,16 +107,21 @@ export default function UnifiedDocumentSurface({
     };
   }, []);
 
-  // Check serialization integrity on initial load
+  // Check serialization integrity on initial load (lazy import to avoid circular dep)
   const [serializationWarning, setSerializationWarning] = useState<
     string | null
   >(null);
   useEffect(() => {
-    const result = checkSerializationIntegrity(tiptapContent);
-    if (!result.ok && result.warning) {
-      setSerializationWarning(result.warning);
-      console.warn("[Editor] Serialization integrity warning:", result.warning);
-    }
+    import("./serialization-guard").then(({ checkSerializationIntegrity }) => {
+      const result = checkSerializationIntegrity(tiptapContent);
+      if (!result.ok && result.warning) {
+        setSerializationWarning(result.warning);
+        console.warn(
+          "[Editor] Serialization integrity warning:",
+          result.warning,
+        );
+      }
+    });
     // Only run once on mount (initial content)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -116,6 +166,14 @@ export default function UnifiedDocumentSurface({
       const md = (
         editor.storage as Record<string, any>
       ).markdown.getMarkdown() as string;
+      // Ignore transactions that merely re-apply the same markdown we already
+      // know about.  Tiptap can emit `onUpdate` for programmatic setContent
+      // calls during hydrate/switching modes, and we must not treat those as
+      // user edits or we'll lock the draft into a dirty state before the real
+      // server content arrives.
+      if (md === latestMarkdownRef.current) {
+        return;
+      }
       latestMarkdownRef.current = md;
       setDirty(true);
       onContentChange?.(md);
@@ -209,13 +267,39 @@ export default function UnifiedDocumentSurface({
     // Content will be updated via initialContent/updatedAt prop changes
   }, [onReloadContent]);
 
+  const decreaseViewZoom = useCallback(() => {
+    setViewZoom((prev) => Math.max(minZoom, prev - zoomStep));
+  }, []);
+
+  const increaseViewZoom = useCallback(() => {
+    setViewZoom((prev) => Math.min(maxZoom, prev + zoomStep));
+  }, []);
+
+  const resetViewZoom = useCallback(() => {
+    setViewZoom(100);
+  }, []);
+
+  const toggleFullscreen = useCallback(async () => {
+    const el = surfaceRef.current;
+    if (!el) return;
+
+    try {
+      if (document.fullscreenElement === el) {
+        await document.exitFullscreen();
+      } else if (typeof el.requestFullscreen === "function") {
+        await el.requestFullscreen();
+      }
+    } catch (error) {
+      console.error("[UnifiedDocumentSurface] fullscreen toggle failed:", error);
+    }
+  }, []);
+
   return (
-    <div className="unified-document-surface flex flex-col h-full">
-      {/* Minimal mode switcher — EditorToolbar replaces this in Section 04 */}
-      <div className="flex items-center gap-2 p-2 border-b border-border">
+    <div ref={surfaceRef} className="unified-document-surface flex flex-col h-full">
+      <div className="flex flex-wrap items-center gap-1.5 border-b border-border p-2 sm:gap-2">
         <button
           type="button"
-          className={`px-2 py-1 text-sm rounded ${mode === "view" ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}
+          className={`rounded px-2 py-1 text-xs font-medium sm:text-sm ${mode === "view" ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}
           onClick={() => switchMode("view")}
           data-testid="mode-view"
         >
@@ -223,7 +307,7 @@ export default function UnifiedDocumentSurface({
         </button>
         <button
           type="button"
-          className={`px-2 py-1 text-sm rounded ${mode === "edit" ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}
+          className={`rounded px-2 py-1 text-xs font-medium sm:text-sm ${mode === "edit" ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}
           onClick={() => switchMode("edit")}
           data-testid="mode-edit"
         >
@@ -231,13 +315,71 @@ export default function UnifiedDocumentSurface({
         </button>
         <button
           type="button"
-          className={`px-2 py-1 text-sm rounded ${mode === "source" ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}
+          className={`rounded px-2 py-1 text-xs font-medium sm:text-sm ${mode === "source" ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}
           onClick={() => switchMode("source")}
           data-testid="mode-source"
         >
           Source
         </button>
-        <span className="ml-auto text-xs text-muted-foreground" data-testid="save-status">
+        <div className="ml-0 inline-flex items-center rounded-full border border-border bg-muted/20 p-0.5 shadow-sm sm:ml-2">
+          {(Object.values(EDITOR_TEMPLATE_PRESETS) as Array<
+            (typeof EDITOR_TEMPLATE_PRESETS)[keyof typeof EDITOR_TEMPLATE_PRESETS]
+          >).map((preset) => (
+            <button
+              key={preset.id}
+              type="button"
+              className={`rounded-full px-2.5 py-1 text-[11px] font-semibold leading-none transition-colors sm:px-3 ${editorTemplate === preset.id ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+              onClick={() => setEditorTemplate(preset.id)}
+              data-testid={`template-${preset.id}`}
+              aria-pressed={editorTemplate === preset.id}
+              title={preset.description}
+            >
+              {preset.label}
+            </button>
+          ))}
+        </div>
+        {mode === "view" && currentTemplateIsPage ? (
+          <div className="ml-0 inline-flex items-center gap-1 rounded-full border border-border bg-background/80 p-1 shadow-sm sm:ml-2">
+            <button
+              type="button"
+              className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-border text-muted-foreground hover:bg-muted hover:text-foreground"
+              onClick={decreaseViewZoom}
+              aria-label="Zoom out"
+              disabled={viewZoom <= minZoom}
+              title="Zoom out"
+            >
+              <Minus className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              className="min-w-14 rounded-full px-2 py-1 text-[11px] font-semibold text-foreground hover:bg-muted"
+              onClick={resetViewZoom}
+              title="Reset zoom"
+            >
+              {viewZoom}%
+            </button>
+            <button
+              type="button"
+              className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-border text-muted-foreground hover:bg-muted hover:text-foreground"
+              onClick={increaseViewZoom}
+              aria-label="Zoom in"
+              disabled={viewZoom >= maxZoom}
+              title="Zoom in"
+            >
+              <Plus className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-border text-muted-foreground hover:bg-muted hover:text-foreground"
+              onClick={toggleFullscreen}
+              aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+              title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+            >
+              {isFullscreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+            </button>
+          </div>
+        ) : null}
+        <span className="basis-full text-right text-xs text-muted-foreground sm:ml-auto sm:basis-auto sm:text-left" data-testid="save-status">
           {saveStatus === "conflict"
             ? "Conflict detected"
             : saveStatus === "saving"
@@ -278,7 +420,7 @@ export default function UnifiedDocumentSurface({
       )}
 
       <div
-        className="flex-1 overflow-auto"
+        className="flex-1 min-h-0 overflow-hidden"
         style={{ display: mode === "source" ? "none" : undefined }}
         onDoubleClick={handleDoubleClick}
       >
@@ -286,6 +428,11 @@ export default function UnifiedDocumentSurface({
           content={tiptapContent}
           editable={mode === "edit"}
           onUpdate={handleTiptapUpdate}
+          template={editorTemplate}
+          headerActions={editorHeaderActions}
+          uploadMetadata={editorUploadMetadata}
+          libraryScope={editorLibraryScope}
+          viewZoom={viewZoom}
         />
       </div>
 

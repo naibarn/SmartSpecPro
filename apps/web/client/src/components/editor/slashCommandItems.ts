@@ -4,12 +4,13 @@ export interface SlashCommandItem {
   id: string;
   label: string;
   icon: string;
-  category: "text" | "list" | "block" | "media" | "table";
+  category: "text" | "list" | "block" | "media" | "attachment" | "table";
   command: (props: { editor: Editor; range: Range }) => void;
 }
 
 export function getSlashCommandItems(
   onMediaInsert?: (type: "image" | "video" | "audio") => void,
+  onFileInsert?: () => void,
 ): SlashCommandItem[] {
   return [
     {
@@ -112,6 +113,16 @@ export function getSlashCommandItems(
       command: ({ editor, range }) => {
         editor.chain().focus().deleteRange(range).run();
         onMediaInsert?.("audio");
+      },
+    },
+    {
+      id: "file",
+      label: "File",
+      icon: "FileUp",
+      category: "attachment",
+      command: ({ editor, range }) => {
+        editor.chain().focus().deleteRange(range).run();
+        onFileInsert?.();
       },
     },
     {

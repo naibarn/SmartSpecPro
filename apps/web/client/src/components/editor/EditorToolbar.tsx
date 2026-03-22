@@ -114,6 +114,16 @@ export default function EditorToolbar({
       {showFormatting && (
         <>
           <ToolbarButton
+            onClick={() => editor?.chain().focus().setParagraph().run()}
+            active={editor?.isActive("paragraph") ?? false}
+            disabled={!editor}
+            title="Normal text"
+            aria-label="Normal text"
+          >
+            <span className="text-[11px] font-semibold tracking-tight">Aa</span>
+          </ToolbarButton>
+
+          <ToolbarButton
             onClick={() => editor?.chain().focus().undo().run()}
             disabled={!editor?.can().chain().focus().undo().run()}
             title="Undo (Ctrl+Z)"

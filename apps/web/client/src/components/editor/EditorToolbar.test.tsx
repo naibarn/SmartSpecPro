@@ -10,6 +10,7 @@ function createMockEditor(overrides: Record<string, boolean> = {}) {
   const chainMethods: Record<string, any> = {};
   const commandNames = [
     "focus",
+    "setParagraph",
     "toggleBold",
     "toggleItalic",
     "toggleUnderline",
@@ -119,6 +120,12 @@ describe("EditorToolbar — Formatting Commands", () => {
     fireEvent.click(screen.getByLabelText("Bold"));
     expect(mock.chain).toHaveBeenCalled();
     expect(mock.chainMethods.toggleBold).toHaveBeenCalled();
+  });
+
+  it("Normal text button calls setParagraph", () => {
+    const { mock } = renderToolbar();
+    fireEvent.click(screen.getByLabelText("Normal text"));
+    expect(mock.chainMethods.setParagraph).toHaveBeenCalled();
   });
 
   it("Italic button calls toggleItalic", () => {

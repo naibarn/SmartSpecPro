@@ -155,8 +155,7 @@ describe("TiptapMarkdownBridge.serialize", () => {
     expect(md).toContain("![text](https://example.com/img.png)");
   });
 
-  // Video serialization depends on section 06
-  it.skip("serializes a video node to <video> HTML with data-* attributes", () => {
+  it("serializes a video node to <video> HTML with data-* attributes", () => {
     const doc: JSONContent = {
       type: "doc",
       content: [
@@ -174,6 +173,49 @@ describe("TiptapMarkdownBridge.serialize", () => {
     const md = serialize(doc);
     expect(md).toContain("<video");
     expect(md).toContain('data-poster="p.jpg"');
+  });
+
+  it("serializes an audio node to <audio> HTML with data-* attributes", () => {
+    const doc: JSONContent = {
+      type: "doc",
+      content: [
+        {
+          type: "audio",
+          attrs: {
+            src: "https://example.com/a.mp3",
+            caption: "My audio",
+            assetId: "aud-1",
+          },
+        },
+      ],
+    };
+    const md = serialize(doc);
+    expect(md).toContain("<audio");
+    expect(md).toContain('data-caption="My audio"');
+    expect(md).toContain('data-asset-id="aud-1"');
+  });
+
+  it("serializes an attachment node to a file attachment link", () => {
+    const doc: JSONContent = {
+      type: "doc",
+      content: [
+        {
+          type: "attachment",
+          attrs: {
+            src: "https://example.com/file.pdf",
+            title: "File",
+            fileName: "File.pdf",
+            mimeType: "application/pdf",
+            assetId: "file-1",
+            sizeBytes: 1024,
+          },
+        },
+      ],
+    };
+    const md = serialize(doc);
+    expect(md).toContain('data-file-attachment="true"');
+    expect(md).toContain('href="https://example.com/file.pdf"');
+    expect(md).toContain('data-file-name="File.pdf"');
   });
 });
 
@@ -224,6 +266,36 @@ describe("TiptapMarkdownBridge round-trip", () => {
     const i2 = findNode(doc2, "image");
     expect(i1?.attrs?.src).toBe(i2?.attrs?.src);
     expect(i1?.attrs?.alt).toBe(i2?.attrs?.alt);
+  });
+
+  it("round-trips video HTML", () => {
+    const { doc1, doc2, serialized } = roundTrip(
+      '<video src="https://example.com/v.mp4" data-poster="https://example.com/p.jpg" data-caption="cap" controls></video>',
+    );
+    expect(serialized).toContain("<video");
+    expect(findNode(doc1, "video")).toBeDefined();
+    expect(findNode(doc2, "video")).toBeDefined();
+    expect(findNode(doc2, "video")?.attrs?.poster).toBe("https://example.com/p.jpg");
+  });
+
+  it("round-trips audio HTML", () => {
+    const { doc1, doc2, serialized } = roundTrip(
+      '<audio src="https://example.com/a.mp3" data-caption="cap" controls></audio>',
+    );
+    expect(serialized).toContain("<audio");
+    expect(findNode(doc1, "audio")).toBeDefined();
+    expect(findNode(doc2, "audio")).toBeDefined();
+    expect(findNode(doc2, "audio")?.attrs?.caption).toBe("cap");
+  });
+
+  it("round-trips attachment HTML", () => {
+    const { doc1, doc2, serialized } = roundTrip(
+      '<figure data-file-attachment="true" data-src="https://example.com/file.pdf" data-file-name="File.pdf" data-mime-type="application/pdf"><a href="https://example.com/file.pdf" target="_blank" rel="noopener noreferrer" download="File.pdf">File</a></figure>',
+    );
+    expect(serialized).toContain("data-file-attachment");
+    expect(findNode(doc1, "attachment")).toBeDefined();
+    expect(findNode(doc2, "attachment")).toBeDefined();
+    expect(findNode(doc2, "attachment")?.attrs?.mimeType).toBe("application/pdf");
   });
 });
 

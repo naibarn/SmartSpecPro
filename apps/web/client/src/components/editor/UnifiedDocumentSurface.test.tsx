@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, fireEvent, act } from "@testing-library/react";
+import { render, screen, fireEvent, act, waitFor } from "@testing-library/react";
+import { useEffect, useRef } from "react";
 import UnifiedDocumentSurface from "./UnifiedDocumentSurface";
 
 // Mock TiptapEditor to avoid heavy ProseMirror DOM setup
@@ -9,30 +10,74 @@ vi.mock("./TiptapEditor", () => ({
     editable,
     onUpdate,
     content,
+    template,
+    viewZoom,
   }: {
     editable: boolean;
     onUpdate?: (editor: any) => void;
     content: any;
+    template?: string;
+    viewZoom?: number;
   }) => (
+    <MockTiptapEditor
+      editable={editable}
+      onUpdate={onUpdate}
+      content={content}
+      template={template}
+      viewZoom={viewZoom}
+    />
+  ),
+}));
+
+function MockTiptapEditor({
+  editable,
+  onUpdate,
+  content,
+  template,
+  viewZoom,
+}: {
+  editable: boolean;
+  onUpdate?: (editor: any) => void;
+  content: any;
+  template?: string;
+  viewZoom?: number;
+}) {
+  const prevContentRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const nextContent = JSON.stringify(content);
+    if (prevContentRef.current !== null && prevContentRef.current !== nextContent) {
+      onUpdate?.({
+        storage: {
+          markdown: {
+            getMarkdown: () => content?.content?.[0]?.content?.[0]?.text ?? "",
+          },
+        },
+      });
+    }
+    prevContentRef.current = nextContent;
+  }, [content, onUpdate]);
+
+  return (
     <div
       data-testid="tiptap-editor"
       data-editable={editable}
+      data-template={template}
+      data-view-zoom={viewZoom}
       onClick={() => {
-        if (onUpdate) {
-          onUpdate({
-            storage: {
-              markdown: {
-                getMarkdown: () => "# Changed content",
-              },
+        onUpdate?.({
+          storage: {
+            markdown: {
+              getMarkdown: () => "# Changed content",
             },
-          });
-        }
+          },
+        });
       }}
     >
-      {JSON.stringify(content).slice(0, 50)}
+      {JSON.stringify(content)}
     </div>
-  ),
-}));
+  );
+}
 
 // Mock SourceModePanel
 vi.mock("./SourceModePanel", () => ({
@@ -67,11 +112,14 @@ vi.mock("./TiptapMarkdownBridge", () => ({
   serialize: (doc: any) => doc?.content?.[0]?.content?.[0]?.text ?? "",
 }));
 
+
 describe("UnifiedDocumentSurface — Mode Switching", () => {
   it("renders in View mode by default (editable: false)", () => {
     render(<UnifiedDocumentSurface initialContent="# Hello" />);
     const editor = screen.getByTestId("tiptap-editor");
     expect(editor.dataset.editable).toBe("false");
+    expect(editor.dataset.template).toBe("page");
+    expect(editor.parentElement?.className).toContain("overflow-hidden");
   });
 
   it("clicking Edit button switches to Edit mode (editable: true)", () => {
@@ -111,6 +159,29 @@ describe("UnifiedDocumentSurface — Mode Switching", () => {
     expect(editor.dataset.editable).toBe("true");
   });
 
+  it("template toggle switches between simple and page editors", () => {
+    render(<UnifiedDocumentSurface initialContent="# Hello" />);
+    expect(screen.getByTestId("tiptap-editor").dataset.template).toBe("page");
+    fireEvent.click(screen.getByTestId("template-page"));
+    expect(screen.getByTestId("tiptap-editor").dataset.template).toBe("page");
+    fireEvent.click(screen.getByTestId("template-simple"));
+    expect(screen.getByTestId("tiptap-editor").dataset.template).toBe("simple");
+  });
+
+  it("shows zoom controls in page view mode and updates the zoom level", () => {
+    render(<UnifiedDocumentSurface initialContent="# Hello" />);
+    expect(screen.getByTestId("tiptap-editor").dataset.viewZoom).toBe("100");
+
+    fireEvent.click(screen.getByRole("button", { name: /zoom in/i }));
+    expect(screen.getByTestId("tiptap-editor").dataset.viewZoom).toBe("110");
+
+    fireEvent.click(screen.getByRole("button", { name: /zoom out/i }));
+    expect(screen.getByTestId("tiptap-editor").dataset.viewZoom).toBe("100");
+
+    fireEvent.click(screen.getByRole("button", { name: /100%/i }));
+    expect(screen.getByTestId("tiptap-editor").dataset.viewZoom).toBe("100");
+  });
+
   it("switching Edit->View triggers save callback when dirty", () => {
     const onSave = vi.fn();
     render(<UnifiedDocumentSurface initialContent="# Hello" onSave={onSave} />);
@@ -119,6 +190,34 @@ describe("UnifiedDocumentSurface — Mode Switching", () => {
     fireEvent.click(screen.getByTestId("tiptap-editor"));
     fireEvent.click(screen.getByTestId("mode-view"));
     expect(onSave).toHaveBeenCalled();
+    expect(onSave).toHaveBeenCalledWith("# Changed content");
+  });
+
+  it("hydrates later-arriving content even when updatedAt stays the same", async () => {
+    const onContentChange = vi.fn();
+    const { rerender } = render(
+      <UnifiedDocumentSurface
+        documentId={42}
+        initialContent=""
+        updatedAt="2026-03-21T00:00:00.000Z"
+        onContentChange={onContentChange}
+      />,
+    );
+
+    rerender(
+      <UnifiedDocumentSurface
+        documentId={42}
+        initialContent="# Loaded document"
+        updatedAt="2026-03-21T00:00:00.000Z"
+        onContentChange={onContentChange}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("tiptap-editor").textContent).toContain("Loaded document");
+    });
+
+    expect(onContentChange).not.toHaveBeenCalled();
   });
 });
 

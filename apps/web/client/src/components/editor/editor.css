@@ -1,5 +1,9 @@
 /* Tiptap ProseMirror base styles — scoped to .tiptap-editor */
 
+.tiptap-editor {
+  min-height: 0;
+}
+
 .tiptap-editor .ProseMirror {
   width: 100%;
   min-height: 200px;
@@ -150,4 +154,54 @@
   float: left;
   height: 0;
   pointer-events: none;
+}
+
+/* Template-specific shells */
+
+.tiptap-editor[data-template="simple"] .ProseMirror {
+  min-height: 360px;
+  padding: 1.25rem 1.5rem;
+  background: white;
+}
+
+.tiptap-editor[data-template="page"] {
+  border-radius: 1.5rem;
+  background:
+    radial-gradient(circle at top left, rgba(56, 189, 248, 0.08), transparent 35%),
+    radial-gradient(circle at top right, rgba(148, 163, 184, 0.1), transparent 30%),
+    linear-gradient(180deg, rgba(248, 250, 252, 0.9), rgba(255, 255, 255, 1));
+  padding: 0.75rem;
+}
+
+.tiptap-editor[data-template="page"] .ProseMirror {
+  min-height: 520px;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 2.5rem 2rem 3rem;
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid var(--border);
+  border-radius: 1.5rem;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.08);
+}
+
+@media (max-width: 768px) {
+  .tiptap-editor .ProseMirror {
+    padding: 0.875rem;
+    min-height: 240px;
+  }
+
+  .tiptap-editor[data-template="simple"] .ProseMirror {
+    min-height: 300px;
+    padding: 1rem 1rem 1.25rem;
+  }
+
+  .tiptap-editor[data-template="page"] {
+    padding: 0.5rem;
+  }
+
+  .tiptap-editor[data-template="page"] .ProseMirror {
+    min-height: 360px;
+    padding: 1.25rem 1rem 1.5rem;
+    border-radius: 1rem;
+  }
 }

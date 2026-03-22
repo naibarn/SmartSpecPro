@@ -79,7 +79,7 @@ export default function ImageNodeView({
           <img
             src={safeSrc}
             alt={alt || ""}
-            className="max-w-full h-auto rounded"
+            className="max-h-[75vh] w-full max-w-full h-auto rounded object-contain"
             style={width ? { width } : undefined}
             draggable={false}
           />

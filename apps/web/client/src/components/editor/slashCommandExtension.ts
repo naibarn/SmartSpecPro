@@ -11,6 +11,7 @@ import {
 
 export function createSlashCommandExtension(options: {
   onMediaInsert?: (type: "image" | "video" | "audio") => void;
+  onFileInsert?: () => void;
 }): Extension {
   return Extension.create({
     name: "slashCommand",
@@ -32,7 +33,7 @@ export function createSlashCommandExtension(options: {
             props.command({ editor, range });
           },
           items: ({ query }: { query: string }) => {
-            const allItems = getSlashCommandItems(options.onMediaInsert);
+            const allItems = getSlashCommandItems(options.onMediaInsert, options.onFileInsert);
             return filterSlashItems(allItems, query);
           },
           render: () => {

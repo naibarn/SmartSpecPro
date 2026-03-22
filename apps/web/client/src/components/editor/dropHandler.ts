@@ -2,7 +2,11 @@ import type { EditorView } from "@tiptap/pm/view";
 import type { Slice } from "@tiptap/pm/model";
 import type { Editor } from "@tiptap/core";
 import { toast } from "sonner";
-import { uploadMedia, classifyMediaType } from "./uploadMedia";
+import {
+  uploadMedia,
+  classifyMediaType,
+  validateAttachmentFile,
+} from "./uploadMedia";
 
 /**
  * Tiptap editorProps.handleDrop handler.
@@ -15,6 +19,10 @@ export function handleDrop(
   _slice: Slice,
   moved: boolean,
   editor: Editor,
+  options?: {
+    uploadMetadata?: Record<string, unknown>;
+    onInserted?: (editor: Editor) => void;
+  },
 ): boolean {
   // Internal drag-and-drop is handled by ProseMirror
   if (moved) return false;
@@ -22,13 +30,17 @@ export function handleDrop(
   const files = event.dataTransfer?.files;
   if (!files || files.length === 0) return false;
 
-  // Filter to supported media files
-  const mediaFiles: { file: File; type: "image" | "video" | "audio" }[] = [];
+  // Filter to supported editor uploads
+  const mediaFiles: { file: File; type: "image" | "video" | "audio" | "file" }[] = [];
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
     const mediaType = classifyMediaType(file.type);
     if (mediaType) {
       mediaFiles.push({ file, type: mediaType });
+      continue;
+    }
+    if (validateAttachmentFile(file) === null) {
+      mediaFiles.push({ file, type: "file" });
     }
   }
 
@@ -48,17 +60,40 @@ export function handleDrop(
     let insertPos = pos;
     for (const { file, type } of mediaFiles) {
       try {
-        const url = await uploadMedia(file);
+        const uploaded = await uploadMedia(file, {
+          metadata: options?.uploadMetadata,
+        });
         if (editor.isDestroyed) return;
 
-        const attrs: Record<string, string> = { src: url };
-        if (type === "image") attrs.alt = file.name;
+        if (type === "image") {
+          editor.chain().focus().insertContentAt(insertPos, {
+            type,
+            attrs: { src: uploaded.url, alt: file.name, assetId: uploaded.assetId },
+          }).run();
+        } else if (type === "video") {
+          editor.chain().focus().insertContentAt(insertPos, {
+            type,
+            attrs: { src: uploaded.url, caption: file.name, assetId: uploaded.assetId },
+          }).run();
+        } else if (type === "audio") {
+          editor.chain().focus().insertContentAt(insertPos, {
+            type,
+            attrs: { src: uploaded.url, caption: file.name, assetId: uploaded.assetId },
+          }).run();
+        } else {
+          editor.chain().focus().insertContentAt(insertPos, {
+            type: "attachment",
+            attrs: {
+              src: uploaded.url,
+              title: file.name,
+              fileName: file.name,
+              mimeType: uploaded.mimeType,
+              assetId: uploaded.assetId,
+            },
+          }).run();
+        }
 
-        editor
-          .chain()
-          .focus()
-          .insertContentAt(insertPos, { type, attrs })
-          .run();
+        options?.onInserted?.(editor);
 
         // Advance position past the inserted node for next file
         insertPos = editor.state.selection.to;

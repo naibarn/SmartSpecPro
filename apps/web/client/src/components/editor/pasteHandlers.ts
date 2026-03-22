@@ -2,8 +2,13 @@ import type { EditorView } from "@tiptap/pm/view";
 import type { Slice } from "@tiptap/pm/model";
 import type { Editor } from "@tiptap/core";
 import DOMPurify from "dompurify";
+import type { Config as DOMPurifyConfig } from "dompurify";
 import { toast } from "sonner";
-import { uploadMedia, classifyMediaType } from "./uploadMedia";
+import {
+  uploadMedia,
+  classifyMediaType,
+  validateAttachmentFile,
+} from "./uploadMedia";
 import { sanitizeMediaSrc } from "./extensions/mediaSerializationRules";
 
 /**
@@ -16,31 +21,69 @@ export function handlePaste(
   event: ClipboardEvent,
   _slice: Slice,
   editor: Editor,
+  options?: {
+    uploadMetadata?: Record<string, unknown>;
+    onInserted?: (editor: Editor) => void;
+  },
 ): boolean {
   const items = event.clipboardData?.items;
   if (!items) return false;
 
-  const imageItems: DataTransferItem[] = [];
+  const fileItems: Array<{ item: DataTransferItem; type: "image" | "video" | "audio" | "file" }> = [];
   for (let i = 0; i < items.length; i++) {
     const item = items[i];
-    if (item.kind === "file" && classifyMediaType(item.type) === "image") {
-      imageItems.push(item);
+    if (item.kind !== "file") continue;
+    const mediaType = classifyMediaType(item.type);
+    if (mediaType) {
+      fileItems.push({ item, type: mediaType });
+      continue;
+    }
+    const file = item.getAsFile();
+    if (!file) continue;
+    if (validateAttachmentFile(file) === null) {
+      fileItems.push({ item, type: "file" });
     }
   }
 
-  if (imageItems.length === 0) return false;
+  if (fileItems.length === 0) return false;
 
   event.preventDefault();
 
   // Upload async — handlePaste must return synchronously
-  for (const item of imageItems) {
+  for (const { item, type } of fileItems) {
     const file = item.getAsFile();
     if (!file) continue;
 
-    uploadMedia(file)
-      .then((url) => {
+    uploadMedia(file, {
+      metadata: options?.uploadMetadata,
+    })
+      .then((uploaded) => {
         if (editor.isDestroyed) return;
-        editor.chain().focus().setImage({ src: url, alt: file.name }).run();
+        if (type === "image") {
+          editor.chain().focus().setImage({ src: uploaded.url, alt: file.name, assetId: uploaded.assetId }).run();
+        } else if (type === "video") {
+          editor.chain().focus().setVideo({
+            src: uploaded.url,
+            caption: file.name,
+            assetId: uploaded.assetId,
+          }).run();
+        } else if (type === "audio") {
+          editor.chain().focus().setAudio({
+            src: uploaded.url,
+            caption: file.name,
+            assetId: uploaded.assetId,
+          }).run();
+        } else {
+          editor.chain().focus().setAttachment({
+            src: uploaded.url,
+            title: file.name,
+            fileName: file.name,
+            mimeType: uploaded.mimeType,
+            assetId: uploaded.assetId,
+          }).run();
+        }
+
+        options?.onInserted?.(editor);
       })
       .catch(() => {
         toast.error(`Failed to upload ${file.name}`);
@@ -55,7 +98,7 @@ const XML_NS_TAG = /<\/?[a-zA-Z]+:[a-zA-Z]+[^>]*>/g;
 const MSO_STYLE_ATTR = /\s*style="[^"]*mso-[^"]*"/gi;
 const EMPTY_SPAN = /<span\s*>\s*([\s\S]*?)\s*<\/span>/gi;
 
-const PURIFY_CONFIG: DOMPurify.Config = {
+const PURIFY_CONFIG: DOMPurifyConfig = {
   ALLOWED_TAGS: [
     "p",
     "br",
@@ -84,9 +127,26 @@ const PURIFY_CONFIG: DOMPurify.Config = {
     "th",
     "td",
     "img",
+    "figure",
+    "figcaption",
     "hr",
   ],
-  ALLOWED_ATTR: ["href", "src", "alt", "title", "colspan", "rowspan"],
+  ALLOWED_ATTR: [
+    "href",
+    "src",
+    "alt",
+    "title",
+    "colspan",
+    "rowspan",
+    "download",
+    "target",
+    "rel",
+    "data-file-attachment",
+    "data-file-name",
+    "data-mime-type",
+    "data-asset-id",
+    "data-file-size-bytes",
+  ],
   ALLOW_DATA_ATTR: false,
   FORBID_TAGS: ["script", "style", "iframe", "object", "embed"],
   FORBID_ATTR: ["onerror", "onload", "onclick", "onmouseover", "onfocus"],
@@ -117,7 +177,5 @@ export function transformPastedHTML(html: string): string {
   );
 
   // 5. DOMPurify sanitize (terminal step — no regex post-processing)
-  cleaned = DOMPurify.sanitize(cleaned, PURIFY_CONFIG);
-
-  return cleaned;
+  return String(DOMPurify.sanitize(cleaned, PURIFY_CONFIG));
 }

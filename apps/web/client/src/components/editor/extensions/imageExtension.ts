@@ -9,18 +9,11 @@ import {
 } from "./mediaSerializationRules";
 import ImageNodeView from "../nodeviews/ImageNodeView";
 
-declare module "@tiptap/core" {
-  interface Commands<ReturnType> {
-    image: {
-      setImage: (attrs: {
-        src: string;
-        alt?: string;
-        caption?: string | null;
-        width?: string | null;
-        alignment?: string | null;
-        assetId?: string | null;
-      }) => ReturnType;
-    };
+declare module "@tiptap/extension-image" {
+  interface SetImageOptions {
+    caption?: string | null;
+    alignment?: string | null;
+    assetId?: string | null;
   }
 }
 

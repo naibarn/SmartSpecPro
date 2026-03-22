@@ -32,6 +32,7 @@ vi.mock("../uploadMedia", () => ({
     if (mime.startsWith("audio/")) return "audio";
     return null;
   }),
+  validateAttachmentFile: vi.fn(() => null),
 }));
 
 import { handlePaste, transformPastedHTML } from "../pasteHandlers";
@@ -45,6 +46,9 @@ function makeEditor(overrides?: Partial<Record<string, unknown>>) {
     chain: vi.fn().mockReturnThis(),
     focus: vi.fn().mockReturnThis(),
     setImage: vi.fn().mockReturnThis(),
+    setVideo: vi.fn().mockReturnThis(),
+    setAudio: vi.fn().mockReturnThis(),
+    setAttachment: vi.fn().mockReturnThis(),
     run: vi.fn().mockReturnValue(true),
     ...overrides,
   } as any;
@@ -86,12 +90,24 @@ describe("handlePaste", () => {
   });
 
   it("pasting image from clipboard triggers upload + insert", async () => {
-    mockUpload.mockResolvedValue("https://cdn.example.com/img.png");
+    mockUpload.mockResolvedValue({
+      url: "https://cdn.example.com/img.png",
+      sourceUrl: "https://cdn.example.com/img.png",
+      assetId: "asset-1",
+      title: "screenshot",
+      itemType: "image",
+      mimeType: "image/png",
+      thumbnailUrl: null,
+      metadata: {},
+    });
     const editor = makeEditor();
+    const onInserted = vi.fn();
     const view = makeView();
     const event = makeClipboardEvent([makeImageItem()]);
 
-    const result = handlePaste(view, event, null as any, editor);
+    const result = handlePaste(view, event, null as any, editor, {
+      onInserted,
+    });
     expect(result).toBe(true);
     expect(event.preventDefault).toHaveBeenCalled();
 
@@ -103,6 +119,8 @@ describe("handlePaste", () => {
     await vi.waitFor(() => {
       expect(editor.chain).toHaveBeenCalled();
     });
+
+    expect(onInserted).toHaveBeenCalledWith(editor);
   });
 
   it("returns false when no image items in clipboard", () => {
@@ -132,7 +150,16 @@ describe("handlePaste", () => {
   });
 
   it("does not insert when editor is destroyed during upload", async () => {
-    mockUpload.mockResolvedValue("https://cdn.example.com/img.png");
+    mockUpload.mockResolvedValue({
+      url: "https://cdn.example.com/img.png",
+      sourceUrl: "https://cdn.example.com/img.png",
+      assetId: "asset-1",
+      title: "screenshot",
+      itemType: "image",
+      mimeType: "image/png",
+      thumbnailUrl: null,
+      metadata: {},
+    });
     const editor = makeEditor();
     const view = makeView();
     const event = makeClipboardEvent([makeImageItem()]);

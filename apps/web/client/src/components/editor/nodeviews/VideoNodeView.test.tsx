@@ -46,6 +46,7 @@ describe("VideoNodeView", () => {
     expect(video).toBeDefined();
     expect(video!.getAttribute("src")).toBe("https://example.com/video.mp4");
     expect(video!.hasAttribute("controls")).toBe(true);
+    expect(video!.className).toContain("max-h-[75vh]");
   });
 
   it("shows caption below video when caption attr set", () => {

@@ -1,6 +1,9 @@
+import type { ReactNode } from "react";
+
 export type { JSONContent } from "@tiptap/core";
 
 export type EditorMode = "view" | "edit" | "source";
+export type TiptapEditorTemplate = "simple" | "page";
 
 export type SaveStatus =
   | "clean"
@@ -27,4 +30,9 @@ export interface UnifiedDocumentSurfaceProps {
   hasConflict?: boolean;
   documentId?: number;
   documentTitle?: string;
+  initialEditorTemplate?: TiptapEditorTemplate;
+  editorHeaderActions?: ReactNode;
+  editorUploadMetadata?: Record<string, unknown>;
+  editorLibraryScope?: "all" | "my_library" | "private_vault";
+  viewZoom?: number;
 }

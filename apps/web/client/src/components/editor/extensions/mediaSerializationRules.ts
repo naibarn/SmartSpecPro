@@ -38,13 +38,30 @@ const BLOCKED_PROTOCOLS = [
  * Validates a media URL. SECURITY-CRITICAL.
  * Returns empty string for rejected URLs.
  * Allows only: https://, http://, relative paths starting with /
+ *
+ * Decodes percent-encoded characters before checking the blocklist
+ * to prevent bypass via e.g. "java%73cript:alert(1)".
  */
 export function sanitizeMediaSrc(src: string): string {
   if (!src || typeof src !== "string") return "";
   const trimmed = src.trim();
   if (!trimmed) return "";
 
-  const lower = trimmed.toLowerCase();
+  // Decode percent-encoded characters to catch bypass attempts
+  // like "java%73cript:" or "%6Aavascript:". Wrap in try/catch
+  // because decodeURIComponent throws on malformed sequences (e.g. "%ZZ").
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(trimmed);
+  } catch {
+    // Malformed percent-encoding — reject as suspicious
+    return "";
+  }
+
+  // Strip null bytes and whitespace that can bypass protocol checks
+  const cleaned = decoded.replace(/[\x00-\x1f\x7f]/g, "").trim();
+  const lower = cleaned.toLowerCase();
+
   for (const proto of BLOCKED_PROTOCOLS) {
     if (lower.startsWith(proto)) return "";
   }
@@ -53,7 +70,7 @@ export function sanitizeMediaSrc(src: string): string {
   if (
     lower.startsWith("https://") ||
     lower.startsWith("http://") ||
-    trimmed.startsWith("/")
+    cleaned.startsWith("/")
   ) {
     return trimmed;
   }
@@ -76,6 +93,48 @@ export function buildDataAttrs(
     }
   }
   return result;
+}
+
+/**
+ * Validates a link href URL. SECURITY-CRITICAL.
+ * Uses the same decode-then-check approach as sanitizeMediaSrc
+ * but also allows mailto: and tel: for anchor links.
+ * Returns true if the URL is safe for use in <a href>.
+ */
+export function isAllowedLinkUri(url: string): boolean {
+  if (!url || typeof url !== "string") return false;
+  const trimmed = url.trim();
+  if (!trimmed) return false;
+
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(trimmed);
+  } catch {
+    return false;
+  }
+
+  const cleaned = decoded.replace(/[\x00-\x1f\x7f]/g, "").trim();
+  const lower = cleaned.toLowerCase();
+
+  for (const proto of BLOCKED_PROTOCOLS) {
+    if (lower.startsWith(proto)) return false;
+  }
+
+  // Allow standard link protocols + relative paths
+  if (
+    lower.startsWith("https://") ||
+    lower.startsWith("http://") ||
+    lower.startsWith("mailto:") ||
+    lower.startsWith("tel:") ||
+    cleaned.startsWith("/") ||
+    cleaned.startsWith("#") ||
+    cleaned.startsWith("./") ||
+    cleaned.startsWith("../")
+  ) {
+    return true;
+  }
+
+  return false;
 }
 
 /**

@@ -45,6 +45,7 @@ describe("ImageNodeView", () => {
     expect(img).toBeDefined();
     expect(img.getAttribute("src")).toBe("https://example.com/photo.jpg");
     expect(img.getAttribute("alt")).toBe("A photo");
+    expect(img.className).toContain("max-h-[75vh]");
   });
 
   it("shows caption below image when caption attr set", () => {

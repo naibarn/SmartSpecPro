@@ -29,7 +29,6 @@ export function ConflictResolutionDialog({
     <AlertDialog open={open}>
       <AlertDialogContent
         onEscapeKeyDown={(e) => e.preventDefault()}
-        onPointerDownOutside={(e) => e.preventDefault()}
       >
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">

@@ -62,7 +62,7 @@ export default function VideoNodeView({
             src={safeSrc}
             poster={posterSafe && safePoster ? safePoster : undefined}
             controls={controls !== false}
-            className="w-full rounded"
+            className="max-h-[75vh] w-full max-w-full rounded bg-black object-contain"
             style={{
               ...(width ? { width } : {}),
               ...(height ? { height } : {}),
