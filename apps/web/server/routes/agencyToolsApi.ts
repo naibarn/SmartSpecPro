@@ -12,7 +12,7 @@ import { eq, and } from "drizzle-orm";
 import Ajv from "ajv";
 import { requireScopes } from "../middleware/requireScopes";
 import { sendApiError } from "../middleware/publicApiHeaders";
-import { getFeatureFlag } from "../services/featureFlags";
+import { isFeatureEnabled } from "../services/tenantFeatureFlagService";
 import { decrypt } from "../services/crypto";
 import { getRedisClient } from "../services/redis";
 import { db } from "../db";
@@ -77,15 +77,21 @@ export function createAgencyToolsApiRouter(): Router {
   // ── POST /api/v1/agency-tools/:toolId/execute ─────────────────────────
   router.post("/:toolId/execute", async (req: Request, res: Response) => {
     try {
-      // Feature flag check
-      const flagEnabled = await getFeatureFlag("AGENCY_TOOL_API_ENABLED");
-      if (!flagEnabled) {
-        return sendApiError(res, 403, "feature_disabled", "Agency Tool API is not enabled for this instance");
-      }
-
       const auth = req.auth;
       if (!auth || auth.mode !== "api_key") {
         return sendApiError(res, 401, "invalid_api_key", "API key authentication required");
+      }
+
+      // Tenant-scoped feature flag check
+      const { tenants } = await import("../../drizzle/schema");
+      const [tenantRow] = await db.instance
+        .select({ featureFlags: tenants.featureFlags })
+        .from(tenants)
+        .where(eq(tenants.id, auth.tenantId))
+        .limit(1);
+      const storedFlags = (tenantRow?.featureFlags as Record<string, boolean>) ?? null;
+      if (!isFeatureEnabled(storedFlags, "agencyToolApi")) {
+        return sendApiError(res, 403, "feature_disabled", "Agency Tool API is not enabled for this tenant");
       }
 
       // Rate limiting
@@ -189,14 +195,21 @@ export function createAgencyToolsApiRouter(): Router {
   // ── GET /api/v1/agency-tools/openapi.json ─────────────────────────────
   router.get("/openapi.json", async (req: Request, res: Response) => {
     try {
-      const flagEnabled = await getFeatureFlag("AGENCY_TOOL_API_ENABLED");
-      if (!flagEnabled) {
-        return sendApiError(res, 403, "feature_disabled", "Agency Tool API is not enabled");
-      }
-
       const auth = req.auth;
       if (!auth || auth.mode !== "api_key") {
         return sendApiError(res, 401, "invalid_api_key", "API key authentication required");
+      }
+
+      // Tenant-scoped feature flag check
+      const { tenants } = await import("../../drizzle/schema");
+      const [tenantRow2] = await db.instance
+        .select({ featureFlags: tenants.featureFlags })
+        .from(tenants)
+        .where(eq(tenants.id, auth.tenantId))
+        .limit(1);
+      const storedFlags2 = (tenantRow2?.featureFlags as Record<string, boolean>) ?? null;
+      if (!isFeatureEnabled(storedFlags2, "agencyToolApi")) {
+        return sendApiError(res, 403, "feature_disabled", "Agency Tool API is not enabled for this tenant");
       }
 
       const drizzle = db.instance;

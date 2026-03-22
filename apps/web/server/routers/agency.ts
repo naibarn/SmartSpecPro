@@ -10,6 +10,7 @@ import { z } from "zod";
 import { router, protectedProcedure, adminProcedure, publicProcedure } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { createRateLimitMiddleware } from "../_core/rateLimitedProcedure";
+import { requireFeatureFlag } from "../middleware/requireFeatureFlag";
 import { db } from "../db";
 import {
   agencies,
@@ -90,6 +91,69 @@ export const customToolInputSchema = z.object({
     backoffMs: z.number().int().min(100).max(30000),
   }).optional(),
 });
+
+/**
+ * Auto-generate trigger phrases from agency metadata.
+ * Creates regex-friendly phrases from the agency name, description, and agent names
+ * so that the chat can detect when a user's message should invoke this agency.
+ */
+function generateTriggerPhrases(
+  name: string,
+  description: string,
+  agentNames: string[],
+): string[] {
+  const phrases: string[] = [];
+
+  // 1. Agency name as exact phrase (case-insensitive via regex later)
+  const cleanName = name.trim();
+  if (cleanName) {
+    phrases.push(cleanName);
+  }
+
+  // 2. Extract meaningful keywords from description (words ≥ 3 chars, skip stopwords)
+  const stopwords = new Set([
+    "the", "and", "for", "with", "that", "this", "from", "your", "are", "was",
+    "will", "can", "has", "had", "have", "been", "being", "does", "did", "not",
+    "but", "all", "any", "each", "every", "both", "few", "more", "most", "other",
+    "some", "such", "than", "too", "very", "just", "about", "into", "over", "also",
+    "การ", "ที่", "ของ", "ใน", "และ", "เป็น", "ได้", "จะ", "ให้", "ไม่", "มี",
+    "กับ", "อยู่", "จาก", "แล้ว", "ทำ", "ต้อง", "เพื่อ", "หรือ", "อัน", "แต่",
+    "agent", "agents", "team", "system", "custom", "instructions", "model",
+  ]);
+
+  if (description) {
+    const descWords = description
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}\s]/gu, " ")
+      .split(/\s+/)
+      .filter((w) => w.length >= 3 && !stopwords.has(w));
+
+    // Take top unique keywords (max 10)
+    const uniqueWords = [...new Set(descWords)].slice(0, 10);
+
+    // Create 2-word keyword pairs from consecutive unique words
+    for (let i = 0; i < uniqueWords.length - 1 && phrases.length < 15; i++) {
+      phrases.push(`${uniqueWords[i]}\\s+${uniqueWords[i + 1]}`);
+    }
+
+    // Add individual strong keywords (≥ 4 chars)
+    for (const w of uniqueWords) {
+      if (w.length >= 4 && phrases.length < 20) {
+        phrases.push(w);
+      }
+    }
+  }
+
+  // 3. Add agent role names (e.g. "Researcher", "SEO Writer") as triggers
+  for (const agentName of agentNames) {
+    const clean = agentName.trim();
+    if (clean && clean.length >= 3 && phrases.length < 25) {
+      phrases.push(clean);
+    }
+  }
+
+  return [...new Set(phrases)].slice(0, 25);
+}
 
 // Q-1: Detect cycles in communication flows using DFS
 function detectFlowCycle(
@@ -187,6 +251,29 @@ export const agencyRouter = router({
         })),
       };
     }),
+
+  /** Lightweight list for trigger detection in chat — returns only agencies with triggerPhrases */
+  listTriggers: protectedProcedure.query(async ({ ctx }) => {
+    const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+    await assertAgencyEnabled(tenantId);
+
+    const result = await db
+      .select({
+        id: agencies.id,
+        name: agencies.name,
+        description: agencies.description,
+        triggerPhrases: agencies.triggerPhrases,
+      })
+      .from(agencies)
+      .where(
+        and(
+          eq(agencies.tenantId, tenantId),
+          sql`${agencies.triggerPhrases} IS NOT NULL AND jsonb_array_length(${agencies.triggerPhrases}) > 0`,
+        ),
+      );
+
+    return { agencies: result };
+  }),
 
   // --- Sharing / Permissions ---
 
@@ -1545,7 +1632,15 @@ export const agencyRouter = router({
           .where(eq(agencyCommunicationFlows.agencyId, input.id));
 
         const previewSvg = generateAgencySvg(svgAgents, svgFlows);
-        await tx.update(agencies).set({ previewSvg, updatedAt: new Date() }).where(eq(agencies.id, input.id));
+
+        // Auto-generate trigger phrases from agency name, description, and agent names
+        const triggerPhrases = generateTriggerPhrases(
+          input.name ?? agency.name,
+          input.description ?? agency.description ?? "",
+          input.agents.map((a) => a.name),
+        );
+
+        await tx.update(agencies).set({ previewSvg, triggerPhrases, updatedAt: new Date() }).where(eq(agencies.id, input.id));
       });
 
       return { success: true };
@@ -3159,6 +3254,7 @@ export const agencyRouter = router({
   // ─── Custom Tool CRUD ────────────────────────────────────────────────
 
   createCustomTool: protectedProcedure
+    .use(requireFeatureFlag("agencyCustomTools"))
     .use(createRateLimitMiddleware({ namespace: "agency-tool-create", limit: 10, windowMs: 60_000 }))
     .input(customToolInputSchema)
     .mutation(async ({ ctx, input }) => {
@@ -3230,6 +3326,7 @@ export const agencyRouter = router({
     }),
 
   updateCustomTool: protectedProcedure
+    .use(requireFeatureFlag("agencyCustomTools"))
     .input(z.object({ toolId: z.string().uuid() }).merge(customToolInputSchema.partial()))
     .mutation(async ({ ctx, input }) => {
       const tenantId = ctx.tenantId!;
@@ -3282,6 +3379,7 @@ export const agencyRouter = router({
     }),
 
   deleteCustomTool: protectedProcedure
+    .use(requireFeatureFlag("agencyCustomTools"))
     .input(z.object({ toolId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
       const tenantId = ctx.tenantId!;
@@ -3317,6 +3415,7 @@ export const agencyRouter = router({
     }),
 
   listCustomTools: protectedProcedure
+    .use(requireFeatureFlag("agencyCustomTools"))
     .input(z.object({
       search: z.string().optional(),
       page: z.number().int().min(1).default(1),
@@ -3374,6 +3473,7 @@ export const agencyRouter = router({
     }),
 
   testCustomTool: protectedProcedure
+    .use(requireFeatureFlag("agencyCustomTools"))
     .use(createRateLimitMiddleware({ namespace: "agency-tool-test", limit: 20, windowMs: 60_000 }))
     .input(z.object({
       toolId: z.string().uuid(),
@@ -3459,6 +3559,7 @@ export const agencyRouter = router({
   // ─── OpenAPI Import ─────────────────────────────────────────────────
 
   importOpenAPITools: protectedProcedure
+    .use(requireFeatureFlag("agencyCustomTools"))
     .use(createRateLimitMiddleware({ namespace: "agency-openapi-import", limit: 5, windowMs: 60_000 }))
     .input(z.object({
       specContent: z.string().min(1).max(500_000),
@@ -3495,6 +3596,7 @@ export const agencyRouter = router({
     }),
 
   confirmOpenAPIImport: protectedProcedure
+    .use(requireFeatureFlag("agencyCustomTools"))
     .use(createRateLimitMiddleware({ namespace: "agency-openapi-confirm", limit: 5, windowMs: 60_000 }))
     .input(z.object({
       selectedTools: z.array(z.object({
@@ -3571,6 +3673,7 @@ export const agencyRouter = router({
   // ─── Guardrails CRUD ────────────────────────────────────────────────────
 
   createGuardrail: protectedProcedure
+    .use(requireFeatureFlag("agencyGuardrails"))
     .use(createRateLimitMiddleware({ namespace: "agency-guardrail", limit: 30, windowMs: 60_000 }))
     .input(z.object({
       agencyId: z.string().uuid(),
@@ -3666,6 +3769,7 @@ export const agencyRouter = router({
     }),
 
   updateGuardrail: protectedProcedure
+    .use(requireFeatureFlag("agencyGuardrails"))
     .use(createRateLimitMiddleware({ namespace: "agency-guardrail", limit: 30, windowMs: 60_000 }))
     .input(z.object({
       guardrailId: z.string().uuid(),
@@ -3713,6 +3817,7 @@ export const agencyRouter = router({
     }),
 
   deleteGuardrail: protectedProcedure
+    .use(requireFeatureFlag("agencyGuardrails"))
     .use(createRateLimitMiddleware({ namespace: "agency-guardrail", limit: 30, windowMs: 60_000 }))
     .input(z.object({ guardrailId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
@@ -3733,6 +3838,7 @@ export const agencyRouter = router({
     }),
 
   listGuardrails: protectedProcedure
+    .use(requireFeatureFlag("agencyGuardrails"))
     .use(createRateLimitMiddleware({ namespace: "agency-guardrail", limit: 30, windowMs: 60_000 }))
     .input(z.object({
       agencyId: z.string().uuid(),
@@ -3771,6 +3877,7 @@ export const agencyRouter = router({
     }),
 
   testGuardrail: protectedProcedure
+    .use(requireFeatureFlag("agencyGuardrails"))
     .use(createRateLimitMiddleware({ namespace: "agency-guardrail-test", limit: 10, windowMs: 60_000 }))
     .input(z.object({
       guardrailId: z.string().uuid(),
@@ -3817,6 +3924,7 @@ export const agencyRouter = router({
     }),
 
   assignGuardrailToAgent: protectedProcedure
+    .use(requireFeatureFlag("agencyGuardrails"))
     .use(createRateLimitMiddleware({ namespace: "agency-guardrail", limit: 30, windowMs: 60_000 }))
     .input(z.object({
       guardrailId: z.string().uuid(),
@@ -3862,6 +3970,7 @@ export const agencyRouter = router({
     }),
 
   removeGuardrailFromAgent: protectedProcedure
+    .use(requireFeatureFlag("agencyGuardrails"))
     .use(createRateLimitMiddleware({ namespace: "agency-guardrail", limit: 30, windowMs: 60_000 }))
     .input(z.object({
       guardrailId: z.string().uuid(),
