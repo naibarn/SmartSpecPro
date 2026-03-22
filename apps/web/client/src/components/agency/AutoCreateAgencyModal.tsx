@@ -46,7 +46,10 @@ const MAX_POLL_WAIT_MS = 5 * 60 * 1000; // 5 minutes
 const PHASES = [
   { id: "discover", label: "Discover" },
   { id: "interview", label: "Interview" },
+  { id: "plan", label: "Plan" },
+  { id: "review_plan", label: "Review Plan" },
   { id: "design", label: "Design" },
+  { id: "review_design", label: "Review Design" },
   { id: "validate", label: "Validate" },
   { id: "implement", label: "Implement" },
   { id: "verify", label: "Verify" },
