@@ -241,3 +241,34 @@ async def test_discovery_context_task_source():
     call_kwargs = mock_client.post.call_args
     request_json = call_kwargs.kwargs.get("json") or call_kwargs[1].get("json")
     assert request_json["description"] == "create a banner"
+
+
+@pytest.mark.unit
+@pytest.mark.agency
+@pytest.mark.asyncio
+async def test_discovery_previous_output_task_source():
+    """taskSource='previous_output' uses last node result as task description."""
+    ctx = AgencyRunContext()
+    results = {"node-1": "analyze the dataset", "node-2": "generate a chart"}
+    node_config = {
+        "taskSource": "previous_output",
+        "confidenceThreshold": 0.5,
+        "maxResults": 5,
+    }
+
+    with patch("app.services.agency_skill_discovery.httpx.AsyncClient") as mock_client_cls:
+        mock_client = AsyncMock()
+        mock_client_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client_cls.return_value.__aexit__ = AsyncMock(return_value=False)
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = _make_discovery_response([])
+        mock_client.post.return_value = mock_resp
+
+        await execute_skill_discovery(
+            node_name="disc", node_config=node_config, context=ctx, results=results
+        )
+
+    call_kwargs = mock_client.post.call_args
+    request_json = call_kwargs.kwargs.get("json") or call_kwargs[1].get("json")
+    assert request_json["description"] == "generate a chart"

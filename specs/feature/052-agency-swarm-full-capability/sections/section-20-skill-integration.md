@@ -382,3 +382,37 @@ These are documentation-only; the runtime types are enforced by Zod on the backe
 8. Add `SkillDiscoveryForm` to `NodePropertyPanel.tsx`.
 9. Add chain badge rendering in `SkillCallForm`.
 10. Implement `ExportAsSkillDialog.tsx` (lower priority, can be deferred).
+
+---
+
+## Implementation Notes (Actual)
+
+### Files Created
+- `python-backend/app/services/agency_skill_input_mapper.py` — Field-level input mapping resolution
+- `python-backend/app/services/agency_skill_discovery.py` — Skill discovery node handler
+- `python-backend/tests/unit/test_agency_skill_input_mapper.py` — 8 unit tests
+- `python-backend/tests/unit/test_agency_skill_discovery.py` — 8 unit tests (16 total Python tests)
+- `apps/web/client/src/components/agency/nodes/SkillDiscoveryNodeCard.tsx` — Teal node card
+- `apps/web/client/src/components/agency/SkillInputMapper.tsx` — Per-field mapping UI component
+- `apps/web/client/src/components/agency/ExportAsSkillDialog.tsx` — Export dialog shell (UI only, tRPC mutation deferred)
+- `apps/web/server/routers/__tests__/agencySkillIntegration.test.ts` — 8 Vitest tests
+
+### Files Modified
+- `python-backend/app/services/agency_orchestrator.py` — Added `skill_discovery` case, enhanced `_call_skill` with input mapping + output routing + chainTo
+- `apps/web/client/src/components/agency/nodes/types.ts` — Added `"skill_discovery"` to union
+- `apps/web/client/src/components/agency/nodes/BaseAgencyNode.tsx` — Added dispatcher case
+- `apps/web/client/src/components/agency/NodePropertyPanel.tsx` — Added `SkillDiscoveryForm`
+- `apps/web/server/routers/agency.ts` — Added Zod validation for skill_discovery + skill_call inputMappings
+- `apps/web/server/lib/agencySvgGenerator.ts` — Added teal color for skill_discovery
+- `apps/web/server/routers/skillDiscoveryTool.ts` — Raised limit cap from 5 to 10
+
+### Deviations from Plan
+1. **SkillInputMapper wiring deferred**: Component created but not yet wired into SkillCallForm. Needs `getInputSchema` query integration — will be connected in section-22.
+2. **Chain badge deferred**: Backend stores chainTo metadata correctly; UI badge rendering deferred.
+3. **ExportAsSkillDialog**: UI shell created; `skills.exportFromAgency` tRPC mutation deferred per plan §10.
+4. **Env var fix**: Plan used `INTERNAL_API_TOKEN`; corrected to `SMARTSPEC_WEB_GATEWAY_TOKEN` during code review.
+
+### Test Results
+- Python: 16/16 passed (8 input mapper + 8 discovery)
+- TypeScript: 8/8 passed (Zod schema validation)
+- TypeScript type check: 0 new errors introduced

@@ -44,7 +44,7 @@ async def execute_skill_discovery(
 
     # Build request
     nodejs_url = os.getenv("NODEJS_INTERNAL_URL", "http://127.0.0.1:3000")
-    internal_token = os.getenv("INTERNAL_API_TOKEN", "")
+    internal_token = os.getenv("SMARTSPEC_WEB_GATEWAY_TOKEN", "")
     request_body: dict[str, Any] = {
         "description": task_description,
         "limit": max_results,

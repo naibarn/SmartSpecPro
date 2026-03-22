@@ -29,8 +29,8 @@ const SkillDiscoveryRequestSchema = z.object({
   category: z.string().optional(),
   /** Natural language description used for keyword overlap scoring */
   description: z.string().max(500).optional(),
-  /** Maximum number of results to return (capped at 5) */
-  limit: z.number().int().min(1).max(5).default(5),
+  /** Maximum number of results to return (capped at 10) */
+  limit: z.number().int().min(1).max(10).default(5),
 });
 
 // ── Internal token verification ────────────────────────────────────────────

@@ -81,7 +81,7 @@ export function SkillInputMapper({
 
                 <select
                   value={mapping.source}
-                  onChange={(e) => updateField(field.name, { source: e.target.value as InputMapping["source"] })}
+                  onChange={(e) => updateField(field.name, { ...mapping, source: e.target.value as InputMapping["source"] })}
                   className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs"
                 >
                   <option value="static">Static value</option>
