@@ -444,3 +444,31 @@ The following tables are defined in section-01 and must exist before this sectio
 3. **LLM prompt injection**: The `llm_classify` strategy uses a fixed prompt template where user content is placed in the human-message role only. The `config.prompt` is set by the guardrail creator (admin/owner), not the end user.
 4. **Regex DoS**: Compiled regex patterns should use a timeout or be wrapped in a safety check. Consider using Python's `re` with a maximum match length or a library like `regex` with timeout support. Cap `config.pattern` length at 1000 characters.
 5. **Fail-open**: Both `llm_classify` and `custom_endpoint` fail-open on external service errors to avoid blocking all agent traffic due to a transient dependency failure. This decision should be documented in the guardrail UI.
+
+---
+
+## Implementation Notes (Actual vs. Planned)
+
+### Files Created
+- `python-backend/app/services/agency_guardrails.py` — 7 strategy implementations + `execute_guardrails()` entry point
+- `python-backend/tests/unit/services/test_agency_guardrails.py` — 23 pytest tests covering all strategies + orchestration
+- `python-backend/app/api/internal_guardrails.py` — Internal test endpoint with strategy validation
+- `apps/web/server/routers/__tests__/agencyGuardrails.test.ts` — 14 Vitest tests (schema validation, SSRF, tenant isolation)
+
+### Files Modified
+- `apps/web/server/routers/agency.ts` — 7 new tRPC procedures: `createGuardrail`, `updateGuardrail`, `deleteGuardrail`, `listGuardrails`, `testGuardrail`, `assignGuardrailToAgent`, `removeGuardrailFromAgent`
+- `apps/web/drizzle/schema.ts` — Added `agencyGuardrails` + `agencyAgentGuardrails` imports to agency router
+- `python-backend/app/services/agency_orchestrator.py` — Added 3 checkpoints: input (CP1), output (CP2 with retry), handoff (CP3)
+- `python-backend/app/services/agency_service.py` — Added `_load_guardrails_for_agents()` and integrated at both orchestrator construction sites
+- `python-backend/app/main.py` — Registered `internal_guardrails` router
+
+### Deviations from Plan
+1. **llm_classify matching**: Changed from substring to exact match after code review identified false positive risk
+2. **ReDoS protection**: Added runtime pattern length guard (1000 chars) and message cap (50,000 chars) for regex evaluation
+3. **Internal test endpoint**: Added `ALLOWED_STRATEGIES` validation to reject unknown strategies with 422
+4. **TypeScript tests**: Schema-level validation tests rather than full procedure-level tests with `createCallerFactory` (deferred for future enhancement)
+
+### Test Results
+- Python: 23/23 passing
+- TypeScript: 14/14 passing
+- TypeScript type check: 0 errors in agency.ts

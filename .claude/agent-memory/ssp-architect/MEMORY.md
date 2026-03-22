@@ -49,6 +49,13 @@
 - `tenantPages.tenantId` is `integer` despite `tenants.id` being `varchar(36)` — do NOT use tenantPages as an FK reference pattern
 - Audit tables (`providerUsageLog`) with NOT NULL FKs (e.g., `providerId`) require pre-existing rows for new provider types
 
+## 053-Agency Agentic Intelligence Spec Review (2026-03-22)
+- See `project_053_review.md` for full findings
+- Critical: `agency_agent_memories.tenant_id` must be VARCHAR(36), not INTEGER
+- Critical: ReActExecutor must route LLM calls through adapter/gateway (credit+audit)
+- High: Double-loop risk — agency-swarm already has its own internal tool loop
+- High: Crash recovery assumption that Redis survives process restarts is unsafe
+
 ## 02-ClawFeature Spec Review (2026-03-01)
 - v1.0 review: 43 findings (11 CRITICAL, 14 HIGH, 12 MEDIUM, 6 LOW) — captured in spec Sections 15, 16, 17
 - v1.2.0 third-pass review: 29 NEW findings (5 CRITICAL, 9 HIGH, 10 MEDIUM, 5 LOW) — NOT yet in spec

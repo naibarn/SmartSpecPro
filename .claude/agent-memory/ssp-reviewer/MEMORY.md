@@ -9,6 +9,42 @@
 - `fileBase64` must be a **raw base64 string** (no `data:` prefix). `FileReader.readAsDataURL()` returns a prefixed data URL — callers must strip the prefix with `.split(",")[1]` before sending. Sending the full data URL corrupts stored files silently.
 - Auth pattern: `protectedProcedure` enforces JWT; tenant isolation via `resolveLibraryTenantId`
 
+## Spec 053 — Agency Agentic Intelligence Layer — Verdict: APPROVE_WITH_FIXES (2026-03-22)
+
+4 MUST FIX, 6 SHOULD FIX, 3 NICE TO HAVE. Key: `agency_agent_memories` tenant_id type mismatch (INTEGER vs varchar(36)), missing TenantFeatureFlags entries for all 4 feature flags, `_is_complete()` parsing logic unspecified, no tRPC procedure contracts for memory CRUD, no test strategy, `autonomous_agent` node type not added to Drizzle enum/check constraint, ReAct LLM call mechanism unresolved.
+Review file: `.claude/agent-memory/ssp-reviewer/project_spec053_review.md`
+
+## Spec 052 — Agency Swarm Full Capability, Section-05 (Guardrails Backend) — Verdict: APPROVE_WITH_FIXES (2026-03-22)
+
+4 HIGH, 5 MEDIUM, 3 LOW findings. Key:
+- **HIGH-1 — Checkpoint 3 (handoff guardrails) entirely absent**: Orchestrator diff has CP1 (input) and CP2 (output) but no `is_handoff=True` execution path for inter-agent routing.
+- **HIGH-2 — Input guardrail guidance/redaction applied in wrong order**: If a PII-redact guardrail fires after a guidance-mode failure, the guidance prefix is silently discarded.
+- **HIGH-3 — Vitest test file contains zero procedure-level tests**: All 12 spec-required tRPC tests (cross-tenant FORBIDDEN, tenantId-from-session, CONFLICT handling, testGuardrail HTTP call) are absent; file only re-tests Zod enum schemas inline.
+- **HIGH-4 — Output guardrail retry: strict-mode final failure does not short-circuit outer guardrail loop**: `break` exits inner `for attempt` loop but outer guardrail loop continues to G2 with the failed response.
+- **MEDIUM-1 — ReDoS protection absent for `regex_match`**: No timeout or length enforcement at execution time despite explicit spec requirement.
+- **MEDIUM-2 — `internal_guardrails.py` test endpoint accepts unknown strategy string**: No validation against STRATEGY_MAP keys; silently returns `passed: True`.
+- **MEDIUM-3 — `_load_guardrails_for_agents` uses positional row indexing (`row[0]`…`row[9]`)**: Fragile; column order changes break silently.
+- **MEDIUM-4 — CP1 runs before KB context augmentation completes**: Input guardrails execute on `ctx.get_context_text()` before KB-injected content is appended.
+- **LOW-1 — `listGuardrails` missing rate-limit middleware**: All other 6 procedures have it.
+- **LOW-2 — `llm_classify` uses substring match on LLM response**: `"no harm"` matches `blockIf="harm"` — should use exact or word-boundary match.
+- **LOW-3 — `updateGuardrail`/`deleteGuardrail`/`testGuardrail`/`removeGuardrailFromAgent` use two-step SELECT-then-check**: Leaks cross-tenant ID existence; should use AND-filter in WHERE.
+Review file: `specs/feature/052-agency-swarm-full-capability/implementation/code_review/section-05-review.md`
+
+## Spec 052 — Agency Swarm Full Capability, Section-04 (OpenAPI Import) — Verdict: APPROVE_WITH_FIXES (2026-03-22)
+
+4 HIGH, 5 MEDIUM, 3 LOW findings. Key:
+- **HIGH-1 — `buildInputSchema` param schema `$ref` resolution bug**: Condition checks `param["$ref"]` after `param` is already resolved; parameter schemas that are themselves `$ref`s pass through unresolved and silently fall back to `type: "string"`.
+- **HIGH-2 — `resolveRef` visited-set cloning defeats circular ref detection**: `new Set(visited)` per recursive call means sibling-branch A→B→A cycles hit `max_depth_exceeded` instead of `circular_ref` — error-code contract violation.
+- **HIGH-3 — Duplicate path key in test object silently drops an operation**: JS object with `"/pets"` twice keeps only the last; assertion `toBeGreaterThanOrEqual(1)` is vacuous.
+- **HIGH-4 — Rate-limit test entirely absent**: Spec §4.2 requires a 6-call test for `TOO_MANY_REQUESTS`. Not implemented.
+- **MEDIUM-1 — `buildInputSchema` strips all schema keywords except `type`**: Loses `format`, `enum`, `minimum`, `maximum`, `pattern` etc.
+- **MEDIUM-2 — 50-tool cap counts only `isEnabled=true` rows**: Tenants can transiently exceed 50 total tools; cap should cover all rows.
+- **MEDIUM-3 — `apiKey` accepted in `importOpenAPITools` Zod input but silently discarded**: Never read by the procedure body.
+- **MEDIUM-4 — `(trpc as any)` casts in `OpenAPIImportModal.tsx`**: Defeats end-to-end TypeScript safety.
+- **MEDIUM-5 — "shows error toast on parse failure" frontend test missing**: 6 of 7 spec-required tests present.
+- **LOW — `httpMethod` not enum-constrained in `confirmOpenAPIImport`**: Accepts arbitrary strings into the database.
+Review file: `specs/feature/052-agency-swarm-full-capability/implementation/code_review/section-04-review.md`
+
 ## Spec 052 — Agency Swarm Full Capability, Section-01 (Database Migration) — Verdict: APPROVE_WITH_FIXES (2026-03-22)
 
 2 CRITICAL, 4 HIGH, 4 MEDIUM, 3 LOW findings. Key:

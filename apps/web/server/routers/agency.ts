@@ -21,6 +21,8 @@ import {
   agencyTools,
   agencyVersions,
   agencyPermissions,
+  agencyGuardrails,
+  agencyAgentGuardrails,
   userGroups,
   users,
   systemSettings,
@@ -3246,5 +3248,325 @@ export const agencyRouter = router({
         created: toolRows.length,
         toolIds: toolRows.map((r) => r.id),
       };
+    }),
+
+  // ─── Guardrails CRUD ────────────────────────────────────────────────────
+
+  createGuardrail: protectedProcedure
+    .use(createRateLimitMiddleware({ namespace: "agency-guardrail", limit: 30, windowMs: 60_000 }))
+    .input(z.object({
+      agencyId: z.string().uuid(),
+      name: z.string().min(1).max(100),
+      type: z.enum(["input", "output"]),
+      mode: z.enum(["guidance", "strict"]),
+      strategy: z.enum([
+        "keyword_block", "regex_match", "llm_classify", "json_schema",
+        "max_length", "pii_detection", "custom_endpoint",
+      ]),
+      config: z.record(z.unknown()),
+      validationAttempts: z.number().int().min(1).max(5).default(1),
+      isEnabled: z.boolean().default(true),
+      sortOrder: z.number().int().min(0).default(0),
+      enforceOnHandoff: z.boolean().default(false),
+    }).superRefine((data, ctx) => {
+      const c = data.config as Record<string, unknown>;
+      switch (data.strategy) {
+        case "keyword_block": {
+          const kw = c.keywords;
+          if (!Array.isArray(kw) || kw.length < 1 || kw.length > 100)
+            ctx.addIssue({ code: "custom", message: "keywords must be 1-100 items", path: ["config", "keywords"] });
+          break;
+        }
+        case "regex_match": {
+          if (typeof c.pattern !== "string" || (c.pattern as string).length > 1000)
+            ctx.addIssue({ code: "custom", message: "pattern required, max 1000 chars", path: ["config", "pattern"] });
+          break;
+        }
+        case "llm_classify": {
+          if (typeof c.prompt !== "string" || (c.prompt as string).length > 2000)
+            ctx.addIssue({ code: "custom", message: "prompt required, max 2000 chars", path: ["config", "prompt"] });
+          if (typeof c.blockIf !== "string")
+            ctx.addIssue({ code: "custom", message: "blockIf is required", path: ["config", "blockIf"] });
+          break;
+        }
+        case "json_schema": {
+          if (typeof c.schema !== "object" || c.schema === null)
+            ctx.addIssue({ code: "custom", message: "schema must be an object", path: ["config", "schema"] });
+          break;
+        }
+        case "max_length": {
+          if (typeof c.maxChars !== "number" || c.maxChars < 1 || c.maxChars > 100000)
+            ctx.addIssue({ code: "custom", message: "maxChars must be 1-100000", path: ["config", "maxChars"] });
+          break;
+        }
+        case "pii_detection": {
+          const pats = c.patterns;
+          if (!Array.isArray(pats) || pats.length < 1)
+            ctx.addIssue({ code: "custom", message: "patterns required", path: ["config", "patterns"] });
+          break;
+        }
+        case "custom_endpoint": {
+          if (typeof c.endpoint !== "string")
+            ctx.addIssue({ code: "custom", message: "endpoint URL required", path: ["config", "endpoint"] });
+          else {
+            try { validateSsrfUrl(c.endpoint as string); } catch (e: any) {
+              ctx.addIssue({ code: "custom", message: `SSRF: ${e.message}`, path: ["config", "endpoint"] });
+            }
+          }
+          break;
+        }
+      }
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = ctx.tenantId!;
+      await assertAgencyEnabled(tenantId);
+
+      // Verify agency belongs to tenant
+      const [agency] = await db.select({ id: agencies.id })
+        .from(agencies)
+        .where(and(eq(agencies.id, input.agencyId), eq(agencies.tenantId, tenantId)));
+      if (!agency) throw new TRPCError({ code: "NOT_FOUND", message: "Agency not found" });
+
+      const id = crypto.randomUUID();
+      const configWithHandoff = { ...input.config, enforceOnHandoff: input.enforceOnHandoff };
+
+      const [created] = await db.insert(agencyGuardrails).values({
+        id,
+        tenantId,
+        agencyId: input.agencyId,
+        name: input.name,
+        type: input.type,
+        mode: input.mode,
+        strategy: input.strategy,
+        config: configWithHandoff,
+        validationAttempts: input.validationAttempts,
+        isEnabled: input.isEnabled,
+        sortOrder: input.sortOrder,
+      }).returning();
+
+      return created;
+    }),
+
+  updateGuardrail: protectedProcedure
+    .use(createRateLimitMiddleware({ namespace: "agency-guardrail", limit: 30, windowMs: 60_000 }))
+    .input(z.object({
+      guardrailId: z.string().uuid(),
+      name: z.string().min(1).max(100).optional(),
+      type: z.enum(["input", "output"]).optional(),
+      mode: z.enum(["guidance", "strict"]).optional(),
+      config: z.record(z.unknown()).optional(),
+      validationAttempts: z.number().int().min(1).max(5).optional(),
+      isEnabled: z.boolean().optional(),
+      sortOrder: z.number().int().min(0).optional(),
+      enforceOnHandoff: z.boolean().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = ctx.tenantId!;
+      await assertAgencyEnabled(tenantId);
+
+      const [existing] = await db.select()
+        .from(agencyGuardrails)
+        .where(eq(agencyGuardrails.id, input.guardrailId));
+      if (!existing) throw new TRPCError({ code: "NOT_FOUND", message: "Guardrail not found" });
+      if (existing.tenantId !== tenantId)
+        throw new TRPCError({ code: "FORBIDDEN", message: "Cross-tenant access denied" });
+
+      const updates: Record<string, unknown> = {};
+      if (input.name !== undefined) updates.name = input.name;
+      if (input.type !== undefined) updates.type = input.type;
+      if (input.mode !== undefined) updates.mode = input.mode;
+      if (input.validationAttempts !== undefined) updates.validationAttempts = input.validationAttempts;
+      if (input.isEnabled !== undefined) updates.isEnabled = input.isEnabled;
+      if (input.sortOrder !== undefined) updates.sortOrder = input.sortOrder;
+      if (input.config !== undefined || input.enforceOnHandoff !== undefined) {
+        const currentConfig = (existing.config as Record<string, unknown>) || {};
+        const newConfig = input.config ? { ...currentConfig, ...input.config } : currentConfig;
+        if (input.enforceOnHandoff !== undefined) newConfig.enforceOnHandoff = input.enforceOnHandoff;
+        updates.config = newConfig;
+      }
+      updates.updatedAt = new Date();
+
+      const [updated] = await db.update(agencyGuardrails)
+        .set(updates)
+        .where(eq(agencyGuardrails.id, input.guardrailId))
+        .returning();
+
+      return updated;
+    }),
+
+  deleteGuardrail: protectedProcedure
+    .use(createRateLimitMiddleware({ namespace: "agency-guardrail", limit: 30, windowMs: 60_000 }))
+    .input(z.object({ guardrailId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = ctx.tenantId!;
+      await assertAgencyEnabled(tenantId);
+
+      const [existing] = await db.select()
+        .from(agencyGuardrails)
+        .where(eq(agencyGuardrails.id, input.guardrailId));
+      if (!existing) throw new TRPCError({ code: "NOT_FOUND", message: "Guardrail not found" });
+      if (existing.tenantId !== tenantId)
+        throw new TRPCError({ code: "FORBIDDEN", message: "Cross-tenant access denied" });
+
+      await db.delete(agencyGuardrails)
+        .where(eq(agencyGuardrails.id, input.guardrailId));
+
+      return { deleted: true };
+    }),
+
+  listGuardrails: protectedProcedure
+    .use(createRateLimitMiddleware({ namespace: "agency-guardrail", limit: 30, windowMs: 60_000 }))
+    .input(z.object({
+      agencyId: z.string().uuid(),
+    }))
+    .query(async ({ ctx, input }) => {
+      const tenantId = ctx.tenantId!;
+      await assertAgencyEnabled(tenantId);
+
+      const rows = await db.select()
+        .from(agencyGuardrails)
+        .where(and(
+          eq(agencyGuardrails.tenantId, tenantId),
+          eq(agencyGuardrails.agencyId, input.agencyId),
+        ))
+        .orderBy(asc(agencyGuardrails.sortOrder));
+
+      // Fetch agent assignments for each guardrail
+      const guardrailIds = rows.map((r: { id: string }) => r.id);
+      const assignments = guardrailIds.length > 0
+        ? await db.select()
+            .from(agencyAgentGuardrails)
+            .where(inArray(agencyAgentGuardrails.guardrailId, guardrailIds))
+        : [];
+
+      const assignmentMap = new Map<string, string[]>();
+      for (const a of assignments) {
+        const list = assignmentMap.get(a.guardrailId) || [];
+        list.push(a.agentId);
+        assignmentMap.set(a.guardrailId, list);
+      }
+
+      return rows.map((r: { id: string }) => ({
+        ...r,
+        assignedAgentIds: assignmentMap.get(r.id) || [],
+      }));
+    }),
+
+  testGuardrail: protectedProcedure
+    .use(createRateLimitMiddleware({ namespace: "agency-guardrail-test", limit: 10, windowMs: 60_000 }))
+    .input(z.object({
+      guardrailId: z.string().uuid(),
+      sampleMessage: z.string().min(1).max(50000),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = ctx.tenantId!;
+      await assertAgencyEnabled(tenantId);
+
+      const [guardrail] = await db.select()
+        .from(agencyGuardrails)
+        .where(eq(agencyGuardrails.id, input.guardrailId));
+      if (!guardrail) throw new TRPCError({ code: "NOT_FOUND", message: "Guardrail not found" });
+      if (guardrail.tenantId !== tenantId)
+        throw new TRPCError({ code: "FORBIDDEN", message: "Cross-tenant access denied" });
+
+      const PY_BACKEND = process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
+      const token = process.env.SMARTSPEC_WEB_GATEWAY_TOKEN || "";
+
+      try {
+        const resp = await fetch(`${PY_BACKEND}/api/internal/guardrails/test`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Internal-Token": token,
+          },
+          body: JSON.stringify({
+            strategy: guardrail.strategy,
+            config: guardrail.config || {},
+            message: input.sampleMessage,
+          }),
+        });
+
+        if (!resp.ok) {
+          const errText = await resp.text();
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Guardrail test failed: ${errText}` });
+        }
+
+        return await resp.json() as { passed: boolean; message: string; action: string; redactedMessage?: string };
+      } catch (e: any) {
+        if (e instanceof TRPCError) throw e;
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Guardrail test failed: ${e.message}` });
+      }
+    }),
+
+  assignGuardrailToAgent: protectedProcedure
+    .use(createRateLimitMiddleware({ namespace: "agency-guardrail", limit: 30, windowMs: 60_000 }))
+    .input(z.object({
+      guardrailId: z.string().uuid(),
+      agentId: z.string().uuid(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = ctx.tenantId!;
+      await assertAgencyEnabled(tenantId);
+
+      // Verify guardrail belongs to tenant
+      const [guardrail] = await db.select()
+        .from(agencyGuardrails)
+        .where(eq(agencyGuardrails.id, input.guardrailId));
+      if (!guardrail) throw new TRPCError({ code: "NOT_FOUND", message: "Guardrail not found" });
+      if (guardrail.tenantId !== tenantId)
+        throw new TRPCError({ code: "FORBIDDEN", message: "Cross-tenant access denied" });
+
+      // Verify agent's agency belongs to same tenant
+      const [agent] = await db.select({ id: agencyAgents.id, agencyId: agencyAgents.agencyId })
+        .from(agencyAgents)
+        .where(eq(agencyAgents.id, input.agentId));
+      if (!agent) throw new TRPCError({ code: "NOT_FOUND", message: "Agent not found" });
+
+      const [agentAgency] = await db.select({ tenantId: agencies.tenantId })
+        .from(agencies)
+        .where(eq(agencies.id, agent.agencyId));
+      if (!agentAgency || agentAgency.tenantId !== tenantId)
+        throw new TRPCError({ code: "FORBIDDEN", message: "Cross-tenant assignment denied" });
+
+      try {
+        const [created] = await db.insert(agencyAgentGuardrails).values({
+          id: crypto.randomUUID(),
+          agentId: input.agentId,
+          guardrailId: input.guardrailId,
+        }).returning();
+        return created;
+      } catch (e: any) {
+        if (e.code === "23505" || e.message?.includes("unique")) {
+          throw new TRPCError({ code: "CONFLICT", message: "Guardrail already assigned to this agent" });
+        }
+        throw e;
+      }
+    }),
+
+  removeGuardrailFromAgent: protectedProcedure
+    .use(createRateLimitMiddleware({ namespace: "agency-guardrail", limit: 30, windowMs: 60_000 }))
+    .input(z.object({
+      guardrailId: z.string().uuid(),
+      agentId: z.string().uuid(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = ctx.tenantId!;
+      await assertAgencyEnabled(tenantId);
+
+      // Verify guardrail belongs to tenant
+      const [guardrail] = await db.select()
+        .from(agencyGuardrails)
+        .where(eq(agencyGuardrails.id, input.guardrailId));
+      if (!guardrail) throw new TRPCError({ code: "NOT_FOUND", message: "Guardrail not found" });
+      if (guardrail.tenantId !== tenantId)
+        throw new TRPCError({ code: "FORBIDDEN", message: "Cross-tenant access denied" });
+
+      await db.delete(agencyAgentGuardrails)
+        .where(and(
+          eq(agencyAgentGuardrails.agentId, input.agentId),
+          eq(agencyAgentGuardrails.guardrailId, input.guardrailId),
+        ));
+
+      return { deleted: true };
     }),
 });

@@ -31,7 +31,24 @@
     "section-22-ai-creator-v2",
     "section-23-feature-flags-integration"
   ],
-  "sections_state": {},
+  "sections_state": {
+    "section-04-openapi-import": {
+      "status": "complete",
+      "commit_hash": "e4f17ee2"
+    },
+    "section-01-database-migration": {
+      "status": "complete",
+      "commit_hash": "64b9b30f"
+    },
+    "section-02-custom-tools-backend": {
+      "status": "complete",
+      "commit_hash": "7c7d92f8"
+    },
+    "section-03-custom-tools-frontend": {
+      "status": "complete",
+      "commit_hash": "4bda9eca"
+    }
+  },
   "pre_commit": {
     "present": false,
     "type": "none",

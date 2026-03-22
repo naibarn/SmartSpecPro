@@ -95,6 +95,7 @@ class AgencyOrchestrator:
         agency_config=None,
         agency_whitelist: set[str] | None = None,
         retrieval_scope_mode: str | None = None,
+        guardrails_by_agent: dict[str, list] | None = None,
     ):
         self.nodes: dict[str, NodeRow] = {n["id"]: n for n in nodes}
         self.edges: list[EdgeRow] = edges
@@ -103,6 +104,8 @@ class AgencyOrchestrator:
         self.agency_config = agency_config
         self.agency_whitelist = agency_whitelist or set()
         self.retrieval_scope_mode = retrieval_scope_mode
+        # Guardrail definitions keyed by agent ID for quick lookup
+        self.guardrails_by_agent: dict[str, list] = guardrails_by_agent or {}
         self.browser_session_executor = AgencyBrowserSessionExecutor()
 
         # Find entry node
@@ -233,7 +236,28 @@ class AgencyOrchestrator:
             for edge in sequential_edges:
                 next_id = edge.get("to_node_id")
                 if next_id and next_id in self.nodes:
-                    sub_result = await self._execute_node(self.nodes[next_id], ctx)
+                    next_node = self.nodes[next_id]
+                    # ── Checkpoint 3: Handoff Guardrails ────────────────────
+                    next_type = next_node.get("node_type", "agent")
+                    if (
+                        node_type in AGENT_NODE_TYPES
+                        and next_type in AGENT_NODE_TYPES
+                        and result
+                    ):
+                        receiving_guardrails = self.guardrails_by_agent.get(next_id, [])
+                        if receiving_guardrails:
+                            from app.services.agency_guardrails import execute_guardrails as _exec_gr
+                            handoff_result = await _exec_gr(
+                                receiving_guardrails, result, "input", is_handoff=True,
+                            )
+                            if handoff_result.action == "block":
+                                result = f"[Handoff guardrail blocked]: {handoff_result.message}"
+                                ctx.results[node_id] = result
+                                return result
+                            if handoff_result.redacted_message:
+                                result = handoff_result.redacted_message
+                                ctx.results[node_id] = result
+                    sub_result = await self._execute_node(next_node, ctx)
                     if sub_result:
                         result = sub_result  # Last result in the chain is the final answer
 
@@ -248,6 +272,21 @@ class AgencyOrchestrator:
 
         # Inject accumulated knowledge + prior results into the message
         augmented_message = ctx.get_context_text()
+
+        # ── Checkpoint 1: Input Guardrails ──────────────────────────────────
+        agent_guardrails = self.guardrails_by_agent.get(node["id"], [])
+        if agent_guardrails:
+            from app.services.agency_guardrails import execute_guardrails
+            input_result = await execute_guardrails(
+                agent_guardrails, augmented_message, "input",
+            )
+            if input_result.action == "block":
+                return f"[Guardrail blocked]: {input_result.message}"
+            # Apply redaction first, then guidance
+            if input_result.redacted_message:
+                augmented_message = input_result.redacted_message
+            if input_result.action == "guidance":
+                augmented_message = f"[Guardrail guidance: {input_result.message}]\n\n{augmented_message}"
 
         # Retrieve agent-level KB context and augment instructions
         agent_instructions = node.get("instructions", "")
@@ -323,7 +362,41 @@ class AgencyOrchestrator:
                 agency_id=sub_config.agency_id,
                 tenant_id=ctx.tenant_id,
             )
-            return run_result.response
+            response = run_result.response
+
+            # ── Checkpoint 2: Output Guardrails ─────────────────────────────
+            if agent_guardrails:
+                from app.services.agency_guardrails import execute_guardrails as exec_gr
+                output_guardrails = [
+                    g for g in agent_guardrails if g.type == "output"
+                ]
+                for g in output_guardrails:
+                    for attempt in range(g.validation_attempts):
+                        out_result = await exec_gr([g], response, "output")
+                        if out_result.passed:
+                            break
+                        if attempt < g.validation_attempts - 1:
+                            # Retry: re-run agent with feedback
+                            feedback = f"Your output failed validation: {out_result.message}"
+                            retry_result = await self.adapter.run(
+                                agency=agency_obj,
+                                message=feedback,
+                                timeout_seconds=sub_config.max_run_time_seconds,
+                                agency_id=sub_config.agency_id,
+                                tenant_id=ctx.tenant_id,
+                            )
+                            response = retry_result.response
+                        else:
+                            if g.mode == "strict":
+                                return f"[Output guardrail failed]: {out_result.message}"
+                            # guidance mode: return response with warning
+                            logger.warning(
+                                "output_guardrail_guidance",
+                                guardrail=g.name,
+                                message=out_result.message,
+                            )
+
+            return response
         except Exception as exc:
             logger.error(
                 "agency_orchestrator_agent_node_failed",

@@ -492,6 +492,44 @@ class AgencyService:
         )
         return {row[0] for row in result.all()}
 
+    async def _load_guardrails_for_agents(self, agency_id: str) -> dict[str, list]:
+        """Load guardrails assigned to agents in this agency, keyed by agent ID."""
+        from app.services.agency_guardrails import GuardrailDefinition
+
+        result = await self.db.execute(
+            text("""
+                SELECT g.id, g.name, g.type, g.mode, g.strategy, g.config,
+                       g."validationAttempts", g."sortOrder", g."isEnabled",
+                       aag."agentId"
+                FROM agency_guardrails g
+                JOIN agency_agent_guardrails aag ON aag."guardrailId" = g.id
+                JOIN agency_agents aa ON aa.id = aag."agentId"
+                WHERE aa."agencyId" = :agency_id
+                  AND g."isEnabled" = true
+                ORDER BY g."sortOrder" ASC
+            """),
+            {"agency_id": agency_id},
+        )
+        rows = result.all()
+        guardrails_map: dict[str, list] = {}
+        for row in rows:
+            config = row[5] or {}
+            gdef = GuardrailDefinition(
+                id=row[0],
+                name=row[1],
+                type=row[2],
+                mode=row[3],
+                strategy=row[4],
+                config=config if isinstance(config, dict) else {},
+                validation_attempts=row[6] or 1,
+                sort_order=row[7] or 0,
+                enforce_on_handoff=bool(config.get("enforceOnHandoff", False)) if isinstance(config, dict) else False,
+                is_enabled=row[8],
+            )
+            agent_id = row[9]
+            guardrails_map.setdefault(agent_id, []).append(gdef)
+        return guardrails_map
+
     async def _load_flows(self, agency_id: str) -> list[tuple[str, str]]:
         """Load communication flows as (from_name, to_name) tuples (for AgencySwarmAdapter)."""
         result = await self.db.execute(
@@ -565,6 +603,7 @@ class AgencyService:
             agency_whitelist = await self._load_tool_whitelist(agency_id)
             retrieval_scope_mode = self._get_retrieval_scope_mode(context.run_metadata)
             edges_data = await self._load_flows_full(agency_id)
+            guardrails_map = await self._load_guardrails_for_agents(agency_id)
             orchestrator = AgencyOrchestrator(
                 nodes=agents_data,
                 edges=edges_data,
@@ -573,6 +612,7 @@ class AgencyService:
                 agency_config=agency_config,
                 agency_whitelist=agency_whitelist,
                 retrieval_scope_mode=retrieval_scope_mode,
+                guardrails_by_agent=guardrails_map,
             )
             response_text = await orchestrator.run(
                 message=message,
@@ -842,6 +882,7 @@ class AgencyService:
                 agency_whitelist = await self._load_tool_whitelist(agency_id)
                 retrieval_scope_mode = self._get_retrieval_scope_mode(context.run_metadata)
                 edges_data = await self._load_flows_full(agency_id)
+                guardrails_map = await self._load_guardrails_for_agents(agency_id)
                 orchestrator = AgencyOrchestrator(
                     nodes=agents_data,
                     edges=edges_data,
@@ -850,6 +891,7 @@ class AgencyService:
                     agency_config=agency_config,
                     agency_whitelist=agency_whitelist,
                     retrieval_scope_mode=retrieval_scope_mode,
+                    guardrails_by_agent=guardrails_map,
                 )
                 response_text, execution_context = await orchestrator.run_with_context(
                     message=message,
