@@ -59,6 +59,25 @@ class TestSSRFValidation:
         # Non-URL fields should not be validated
         await provider._validate_urls({"prompt": "http://127.0.0.1/not-a-url-field", "width": 1920})
 
+    async def test_rejects_172_16_network(self, provider):
+        with pytest.raises(ValueError):
+            await provider._validate_urls({"image_url": "http://172.16.0.1/internal"})
+
+    async def test_rejects_172_31_network(self, provider):
+        with pytest.raises(ValueError):
+            await provider._validate_urls({"image_url": "http://172.31.255.255/internal"})
+
+    async def test_rejects_zero_bind(self, provider):
+        with pytest.raises(ValueError):
+            await provider._validate_urls({"image_url": "http://0.0.0.0:3000"})
+
+    async def test_allows_gcs_url(self, provider):
+        await provider._validate_urls({"image_url": "https://storage.googleapis.com/bucket/file.wav"})
+
+    async def test_absent_url_fields_skipped(self, provider):
+        # No URL fields at all — should not raise
+        await provider._validate_urls({"prompt": "test", "duration": 5})
+
 
 class TestPromptSanitization:
     @pytest.fixture
@@ -98,6 +117,32 @@ class TestVideoFileSizeValidation:
         ):
             with pytest.raises(ValueError, match="500MB"):
                 await provider._validate_urls({"video_url": "https://example.com/big-video.mp4"})
+
+    async def test_video_url_under_500mb_allowed(self, provider):
+        mock_head_response = MagicMock()
+        mock_head_response.headers = {"Content-Length": str(100 * 1024 * 1024)}  # 100MB
+        mock_head_response.raise_for_status = MagicMock()
+
+        with patch.object(
+            provider.client, "head", new_callable=AsyncMock, return_value=mock_head_response
+        ):
+            await provider._validate_urls({"video_url": "https://example.com/video.mp4"})
+
+    async def test_head_request_failure_allows_through(self, provider):
+        """HEAD request failure is best-effort — allow the request."""
+        with patch.object(
+            provider.client, "head", new_callable=AsyncMock,
+            side_effect=httpx.RequestError("Network error")
+        ):
+            await provider._validate_urls({"video_url": "https://example.com/video.mp4"})
+
+    async def test_no_head_for_image_url(self, provider):
+        """Only video_url should trigger HEAD check."""
+        with patch.object(
+            provider.client, "head", new_callable=AsyncMock
+        ) as mock_head:
+            await provider._validate_urls({"image_url": "https://example.com/img.png"})
+            mock_head.assert_not_called()
 
     async def test_missing_content_length_handled(self, provider):
         mock_head_response = MagicMock()

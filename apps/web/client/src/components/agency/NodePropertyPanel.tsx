@@ -201,6 +201,7 @@ export function NodePropertyPanel({ node, nodeId, siblingNodes = [], agencyId, o
           {nodeType === "conditional_branch" && <ConditionalBranchForm node={node} onChange={onChange} siblingNodes={siblingNodes} />}
           {nodeType === "parallel_fan_out" && <ParallelFanOutForm node={node} onChange={onChange} siblingNodes={siblingNodes} />}
           {nodeType === "loop_retry" && <LoopRetryForm node={node} onChange={onChange} siblingNodes={siblingNodes} />}
+          {nodeType === "skill_discovery" && <SkillDiscoveryForm node={node} onChange={onChange} />}
 
           <Separator />
 
@@ -2968,6 +2969,136 @@ function LoopRetryForm({
           </div>
         </div>
       )}
+    </>
+  );
+}
+
+// ── Skill Discovery Form ────────────────────────────────────────────────────
+
+const SKILL_CATEGORIES = [
+  { value: "prompt_enhancement", label: "Prompt Enhancement" },
+  { value: "image_generation", label: "Image Generation" },
+  { value: "video_generation", label: "Video Generation" },
+  { value: "audio_generation", label: "Audio Generation" },
+  { value: "chat_assistant", label: "Chat Assistant" },
+] as const;
+
+function SkillDiscoveryForm({
+  node,
+  onChange,
+}: {
+  node: AgencyNodeData;
+  onChange: (updates: Partial<AgencyNodeData>) => void;
+}) {
+  const taskSource = ncGet<string>(node, "taskSource", "static");
+  const taskValue = ncGet<string>(node, "taskValue", "");
+  const contextKey = ncGet<string>(node, "contextKey", "");
+  const confidenceThreshold = ncGet<number>(node, "confidenceThreshold", 0.7);
+  const maxResults = ncGet<number>(node, "maxResults", 5);
+  const skillCategories = ncGet<string[]>(node, "skillCategories", []);
+
+  const toggleCategory = (cat: string) => {
+    const next = skillCategories.includes(cat)
+      ? skillCategories.filter((c) => c !== cat)
+      : [...skillCategories, cat];
+    onChange(ncSet(node, "skillCategories", next));
+  };
+
+  return (
+    <>
+      <div className="space-y-1.5">
+        <Label>Name</Label>
+        <Input
+          value={node.name}
+          onChange={(e) => onChange({ name: e.target.value })}
+          placeholder="Skill discovery node"
+        />
+      </div>
+
+      <div className="space-y-1.5">
+        <Label>Task Source</Label>
+        <select
+          value={taskSource}
+          onChange={(e) => onChange(ncSet(node, "taskSource", e.target.value))}
+          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+        >
+          <option value="static">Static text</option>
+          <option value="context">From context key</option>
+          <option value="previous_output">Previous node output</option>
+        </select>
+      </div>
+
+      {taskSource === "static" && (
+        <div className="space-y-1.5">
+          <Label>Task Description</Label>
+          <Input
+            value={taskValue}
+            onChange={(e) => onChange(ncSet(node, "taskValue", e.target.value))}
+            placeholder="e.g. generate a product image"
+            maxLength={500}
+          />
+        </div>
+      )}
+
+      {taskSource === "context" && (
+        <div className="space-y-1.5">
+          <Label>Context Key</Label>
+          <Input
+            value={contextKey}
+            onChange={(e) => onChange(ncSet(node, "contextKey", e.target.value))}
+            placeholder="e.g. task_description"
+            maxLength={100}
+          />
+        </div>
+      )}
+
+      <Separator />
+
+      <div className="space-y-1.5">
+        <Label>Confidence Threshold</Label>
+        <Input
+          type="number"
+          value={confidenceThreshold}
+          onChange={(e) => onChange(ncSet(node, "confidenceThreshold", Number(e.target.value)))}
+          min={0}
+          max={1}
+          step={0.05}
+          className="text-xs h-7"
+        />
+        <p className="text-[10px] text-muted-foreground">Minimum confidence score (0.0 - 1.0)</p>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label>Max Results</Label>
+        <Input
+          type="number"
+          value={maxResults}
+          onChange={(e) => onChange(ncSet(node, "maxResults", Number(e.target.value)))}
+          min={1}
+          max={10}
+          className="text-xs h-7"
+        />
+      </div>
+
+      <div className="space-y-1.5">
+        <Label>Skill Categories (optional filter)</Label>
+        <div className="flex flex-wrap gap-1.5">
+          {SKILL_CATEGORIES.map((cat) => (
+            <button
+              key={cat.value}
+              type="button"
+              onClick={() => toggleCategory(cat.value)}
+              className={`px-2 py-0.5 text-[10px] rounded-full border transition-colors ${
+                skillCategories.includes(cat.value)
+                  ? "bg-teal-50 border-teal-300 text-teal-700"
+                  : "bg-background border-input text-muted-foreground hover:bg-accent/50"
+              }`}
+            >
+              {cat.label}
+            </button>
+          ))}
+        </div>
+      </div>
     </>
   );
 }

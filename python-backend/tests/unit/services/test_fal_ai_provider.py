@@ -311,6 +311,31 @@ class TestErrorHandling:
 # --- Resource Cleanup ---
 
 
+class TestPromptSanitization:
+    """Test _sanitize_prompt method."""
+
+    def test_strips_script_tags(self):
+        assert FalAIProvider._sanitize_prompt("<script>alert('x')</script>") == "alert('x')"
+
+    def test_strips_img_tags(self):
+        assert FalAIProvider._sanitize_prompt("<img src=x onerror=alert(1)>") == ""
+
+    def test_strips_bold_tags(self):
+        assert FalAIProvider._sanitize_prompt("<b>bold</b>") == "bold"
+
+    def test_preserves_plain_text(self):
+        assert FalAIProvider._sanitize_prompt("A cat on a rooftop") == "A cat on a rooftop"
+
+    def test_empty_prompt(self):
+        assert FalAIProvider._sanitize_prompt("") == ""
+
+    def test_only_tags(self):
+        assert FalAIProvider._sanitize_prompt("<div></div>") == ""
+
+    def test_nested_tags(self):
+        assert FalAIProvider._sanitize_prompt("<div><span>text</span></div>") == "text"
+
+
 class TestResourceCleanup:
     async def test_aclose_closes_client(self):
         provider = FalAIProvider(api_key="test-key")

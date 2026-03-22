@@ -35,6 +35,8 @@ from app.services.agency_conditional_branch import (
     evaluate_rule_based,
 )
 from app.services.agency_run_context import AgencyRunContext
+from app.services.agency_skill_discovery import execute_skill_discovery
+from app.services.agency_skill_input_mapper import resolve_skill_input_mappings
 from app.services.agency_trace_collector import TraceCollector
 
 logger = structlog.get_logger(__name__)
@@ -289,6 +291,15 @@ class AgencyOrchestrator:
 
             case "skill_call":
                 result = await self._call_skill(node, ctx)
+
+            case "skill_discovery":
+                cfg = node.get("node_config") or {}
+                result = await execute_skill_discovery(
+                    node_name=node.get("name", node_id),
+                    node_config=cfg,
+                    context=ctx.shared_context or AgencyRunContext(),
+                    results=ctx.results,
+                )
 
             case "human_approval":
                 result = await self._await_approval(node, ctx)
@@ -1073,9 +1084,20 @@ class AgencyOrchestrator:
         cfg: dict = skill_node.get("node_config") or {}
         skill_slug: str | None = cfg.get("skillSlug")
         skill_id: str | None = cfg.get("skillId")
+        node_name = skill_node.get("name", skill_node.get("id", ""))
 
         if not skill_slug and not skill_id:
-            return f"[Skill node '{skill_node.get('name')}': no skillSlug configured]"
+            return f"[Skill node '{node_name}': no skillSlug configured]"
+
+        # Resolve input mappings (section-20 enhancement)
+        input_mappings = cfg.get("inputMappings")
+        resolved_input: str | dict = ctx.input
+        if input_mappings and ctx.shared_context:
+            mapped = await resolve_skill_input_mappings(
+                input_mappings, ctx.shared_context, ctx.results
+            )
+            if mapped is not None:
+                resolved_input = mapped
 
         python_backend = os.getenv("PYTHON_BACKEND_INTERNAL_URL", "http://127.0.0.1:8000")
         try:
@@ -1084,18 +1106,47 @@ class AgencyOrchestrator:
                     f"{python_backend}/api/v1/skills/execute",
                     json={
                         "skill_slug": skill_slug or skill_id,
-                        "input": ctx.input,
+                        "input": resolved_input,
                         "context": ctx.get_context_text(),
                     },
                     headers={"Authorization": f"Bearer {ctx.user_token}"},
                 )
                 if resp.status_code == 200:
                     data = resp.json()
-                    return data.get("output", "") or data.get("result", "")
+                    result_text = data.get("output", "") or data.get("result", "")
+                    # Output routing by skill category
+                    category = data.get("category", "")
+                    await self._route_skill_output(
+                        node_name, category, result_text, data, ctx
+                    )
+                    # Chain metadata
+                    chain_to = data.get("chainTo")
+                    if chain_to and ctx.shared_context:
+                        await ctx.shared_context.set(f"{node_name}_chainTo", chain_to)
+                        logger.info("agency_skill_chain_detected", node=node_name, chain_to=chain_to)
+                    return result_text
                 return f"[Skill '{skill_slug}' returned HTTP {resp.status_code}]"
         except Exception as exc:
             logger.error("agency_skill_call_failed", skill=skill_slug, error=str(exc)[:100])
             return f"[Skill '{skill_slug}' failed: {str(exc)[:100]}]"
+
+    async def _route_skill_output(
+        self,
+        node_name: str,
+        category: str,
+        result_text: str,
+        data: dict[str, Any],
+        ctx: ExecutionContext,
+    ) -> None:
+        """Route skill output to context based on skill category."""
+        if not ctx.shared_context or not category:
+            return
+        if category in ("image_generation", "audio_generation"):
+            media_url = data.get("media_url") or data.get("url") or result_text
+            await ctx.shared_context.set(f"{node_name}_media_url", media_url)
+        elif category == "video_generation":
+            job_ref = data.get("job_id") or data.get("task_id") or result_text
+            await ctx.shared_context.set(f"{node_name}_job", job_ref)
 
     async def _await_approval(self, approval_node: NodeRow, ctx: ExecutionContext) -> str:
         """Create an approval request and wait for decision via SSE + context polling."""

@@ -26,6 +26,7 @@ const NODE_TYPE_COLORS: Record<string, string> = {
   knowledge_base: "#10B981",  // green
   skill_call: "#F59E0B",      // amber
   human_approval: "#EF4444",  // red
+  skill_discovery: "#14B8A6",  // teal
 };
 
 const DEFAULT_COLOR = "#6B7280";

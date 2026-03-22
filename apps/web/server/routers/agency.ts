@@ -808,7 +808,7 @@ export const agencyRouter = router({
               description: z.string().optional(),
               nodeType: z.enum([
                 "agent", "supervisor", "router", "aggregator",
-                "knowledge_base", "skill_call", "human_approval", "browser_session", "conditional_branch", "parallel_fan_out", "loop_retry",
+                "knowledge_base", "skill_call", "human_approval", "browser_session", "conditional_branch", "parallel_fan_out", "loop_retry", "skill_discovery",
               ]).default("agent"),
               instructions: z.string().max(50000).optional(),
               model: z.string().max(100).regex(/^[a-zA-Z0-9._\/-]+$/, "Invalid model identifier").optional(),
@@ -1062,7 +1062,7 @@ export const agencyRouter = router({
             description: z.string().optional(),
             nodeType: z.enum([
               "agent", "supervisor", "router", "aggregator",
-              "knowledge_base", "skill_call", "human_approval", "browser_session", "conditional_branch", "parallel_fan_out", "loop_retry",
+              "knowledge_base", "skill_call", "human_approval", "browser_session", "conditional_branch", "parallel_fan_out", "loop_retry", "skill_discovery",
             ]).default("agent"),
             instructions: z.string().max(50000).optional(),
             model: z.string().max(100).regex(/^[a-zA-Z0-9._\/-]+$/, "Invalid model identifier").optional(),
@@ -1199,6 +1199,47 @@ export const agencyRouter = router({
               }
               if (cfg?.feedbackPrompt && typeof cfg.feedbackPrompt === "string" && cfg.feedbackPrompt.length > 500) {
                 ctx.addIssue({ code: "custom", path: ["nodeConfig", "feedbackPrompt"], message: "feedbackPrompt max 500 chars" });
+              }
+            }
+            // Validate skill_discovery config
+            if (data.nodeType === "skill_discovery") {
+              const cfg = data.nodeConfig as any;
+              const taskSource = cfg?.taskSource;
+              if (!taskSource || !["static", "context", "previous_output"].includes(taskSource)) {
+                ctx.addIssue({ code: "custom", path: ["nodeConfig", "taskSource"], message: "skill_discovery requires taskSource (static, context, or previous_output)" });
+              }
+              if (taskSource === "static" && !cfg?.taskValue) {
+                ctx.addIssue({ code: "custom", path: ["nodeConfig", "taskValue"], message: "taskValue is required when taskSource is static" });
+              }
+              if (taskSource === "context" && !cfg?.contextKey) {
+                ctx.addIssue({ code: "custom", path: ["nodeConfig", "contextKey"], message: "contextKey is required when taskSource is context" });
+              }
+              const threshold = cfg?.confidenceThreshold;
+              if (threshold !== undefined && (typeof threshold !== "number" || threshold < 0 || threshold > 1)) {
+                ctx.addIssue({ code: "custom", path: ["nodeConfig", "confidenceThreshold"], message: "confidenceThreshold must be 0.0 to 1.0" });
+              }
+              const maxResults = cfg?.maxResults;
+              if (maxResults !== undefined && (typeof maxResults !== "number" || maxResults < 1 || maxResults > 10)) {
+                ctx.addIssue({ code: "custom", path: ["nodeConfig", "maxResults"], message: "maxResults must be 1-10" });
+              }
+            }
+            // Validate skill_call inputMappings
+            if (data.nodeType === "skill_call") {
+              const cfg = data.nodeConfig as any;
+              const mappings = cfg?.inputMappings;
+              if (mappings && typeof mappings === "object") {
+                for (const [field, mapping] of Object.entries(mappings)) {
+                  const m = mapping as any;
+                  if (!m?.source || !["static", "node_output", "context"].includes(m.source)) {
+                    ctx.addIssue({ code: "custom", path: ["nodeConfig", "inputMappings", field], message: `Invalid source type for field "${field}"` });
+                  }
+                  if (m?.source === "node_output" && (!m?.nodeId || !m?.outputField)) {
+                    ctx.addIssue({ code: "custom", path: ["nodeConfig", "inputMappings", field], message: `node_output requires nodeId and outputField for field "${field}"` });
+                  }
+                  if (m?.source === "context" && !m?.contextKey) {
+                    ctx.addIssue({ code: "custom", path: ["nodeConfig", "inputMappings", field], message: `context source requires contextKey for field "${field}"` });
+                  }
+                }
               }
             }
             // Validate knowledgeBase config
