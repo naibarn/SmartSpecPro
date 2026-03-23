@@ -5,6 +5,7 @@
 
 import { encrypt, decrypt } from "./crypto";
 import { validateSsrfUrl } from "./ssrfValidator";
+import { assertPublicIp } from "./ssrfValidation";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -34,16 +35,24 @@ export interface McpServerEntry {
 // Tool formatting
 // ---------------------------------------------------------------------------
 
+// M23: Validate tool name components to prevent injection
+const SAFE_ID_RE = /^[a-zA-Z0-9_-]+$/;
+
 /**
  * Converts internal agency tool records to MCP tool definition format.
  * Each tool is namespaced as `agency.{agencyId}.{toolId}`.
  */
 export function formatToolsAsMcp(tools: AgencyToolRecord[]): McpToolDef[] {
-  return tools.map((t) => ({
-    name: `agency.${t.agencyId}.${t.toolId}`,
-    description: t.description || `Agency tool: ${t.name || t.toolId}`,
-    inputSchema: t.inputSchema ?? { type: "object", properties: {} },
-  }));
+  return tools.map((t) => {
+    if (!SAFE_ID_RE.test(t.agencyId) || !SAFE_ID_RE.test(t.toolId)) {
+      throw new Error(`Invalid characters in tool name component: agencyId=${t.agencyId}, toolId=${t.toolId}`);
+    }
+    return {
+      name: `agency.${t.agencyId}.${t.toolId}`,
+      description: t.description || `Agency tool: ${t.name || t.toolId}`,
+      inputSchema: t.inputSchema ?? { type: "object", properties: {} },
+    };
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -73,7 +82,8 @@ export function decryptMcpTokens(encrypted: string): Record<string, string> {
  * Validates an MCP server URL for safety and format.
  * In production, only HTTPS is allowed. In development, http://localhost is permitted.
  */
-export function validateMcpServerUrl(url: string): { valid: boolean; error?: string } {
+// SEC-C2: Use async SSRF validation with DNS resolution
+export async function validateMcpServerUrl(url: string): Promise<{ valid: boolean; error?: string }> {
   if (!url || typeof url !== "string") {
     return { valid: false, error: "URL is required" };
   }
@@ -94,11 +104,18 @@ export function validateMcpServerUrl(url: string): { valid: boolean; error?: str
     return { valid: false, error: "Only HTTP(S) URLs are allowed" };
   }
 
-  // SSRF check (reuse existing validator)
+  // Synchronous SSRF check (pattern-based)
   try {
     validateSsrfUrl(url);
   } catch (err: any) {
     return { valid: false, error: err.message || "SSRF validation failed" };
+  }
+
+  // SEC-C2: Async DNS-based SSRF check (catches domains resolving to private IPs)
+  try {
+    await assertPublicIp(parsed.hostname);
+  } catch (err: any) {
+    return { valid: false, error: err.message || "SSRF: hostname resolves to private IP" };
   }
 
   return { valid: true };
@@ -143,7 +160,13 @@ export async function discoverToolsFromServer(
       throw new Error(`MCP server returned ${response.status}`);
     }
 
-    const json = (await response.json()) as any;
+    // M24: Handle malformed JSON gracefully
+    let json: any;
+    try {
+      json = await response.json();
+    } catch {
+      throw new Error("MCP server returned invalid JSON");
+    }
     if (json.error) {
       throw new Error(json.error.message || "MCP server error");
     }

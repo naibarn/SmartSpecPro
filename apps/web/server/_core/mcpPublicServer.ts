@@ -43,7 +43,8 @@ interface McpToolDef {
 // Constants
 // ---------------------------------------------------------------------------
 
-const SESSION_TTL_SECONDS = 1800; // 30 minutes
+// M14: Configurable session TTL, default 900s (15 minutes)
+const SESSION_TTL_SECONDS = parseInt(process.env.MCP_SESSION_TTL_SECONDS || "900", 10);
 const TOOL_TIMEOUT_MS = 60_000;
 const MAX_RESULT_BYTES = 100 * 1024; // 100KB
 
@@ -680,11 +681,26 @@ async function dispatchToolCall(
     if (!mcpOn) {
       throw { code: -32603, message: "MCP integration is not enabled for this tenant" };
     }
-    // Proxy to Python backend tool execution
+    // M10: Verify agency belongs to session tenant before proxying
+    const { db: db2 } = await import("../db");
+    const { agencies: agTable2 } = await import("../../drizzle/schema");
+    const { eq: eq2, and: and2 } = await import("drizzle-orm");
+    const [ownedAgency] = await db2
+      .select({ id: agTable2.id })
+      .from(agTable2)
+      .where(and2(eq2(agTable2.id, agencyId), eq2(agTable2.tenantId, session.tenantId)))
+      .limit(1);
+    if (!ownedAgency) {
+      throw { code: -32602, message: "Agency not found or access denied" };
+    }
+    // M07: Proxy to Python backend with proxy auth token
     const pythonUrl = process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
     const response = await fetch(`${pythonUrl}/api/internal/agency/tool/execute`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "x-proxy-token": process.env.SMARTSPEC_PROXY_TOKEN || "",
+      },
       body: JSON.stringify({
         agency_id: agencyId,
         tool_name: toolCallName,
@@ -695,7 +711,13 @@ async function dispatchToolCall(
     if (!response.ok) {
       throw { code: -32603, message: `Tool execution failed: ${response.status}` };
     }
-    const result = await response.json() as Record<string, unknown>;
+    // M24: Handle malformed JSON gracefully
+    let result: Record<string, unknown>;
+    try {
+      result = await response.json() as Record<string, unknown>;
+    } catch {
+      throw { code: -32603, message: "Tool returned invalid response" };
+    }
     // Wrap in MCP content format per spec
     const text = String(result.output ?? result.text ?? JSON.stringify(result));
     return { content: [{ type: "text", text }] };
@@ -828,8 +850,8 @@ async function dispatchToolCall(
     });
   }
 
-  // Files / Drive / Browser
-  return { message: `Tool ${toolName} executed successfully`, args };
+  // M11: No fallthrough — unimplemented tools must return an error, not raw args
+  throw { code: -32601, message: "Tool not implemented" };
 }
 
 // ---------------------------------------------------------------------------
@@ -987,7 +1009,8 @@ async function mcpHandler(req: Request, res: Response): Promise<void> {
       const result = await handleToolsCall(session, params);
       res.json(jsonRpcResult(id, result));
     } else {
-      res.json(jsonRpcError(id, -32601, `Method not found: ${method}`));
+      // M28: Do not reflect method name in error (prevents XSS/injection)
+      res.json(jsonRpcError(id, -32601, "Method not found"));
     }
   } catch (err: any) {
     if (err?.code && typeof err.code === "number") {

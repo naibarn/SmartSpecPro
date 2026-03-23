@@ -30,9 +30,9 @@ export function requireScopes(...requiredScopes: string[]) {
       return;
     }
 
-    // Session and bearer (JWT) auth modes get implicit full scope access.
-    // These represent authenticated web app users, not external API key callers.
-    // Only api_key mode is subject to scope enforcement.
+    // Session and bearer (JWT) auth modes get implicit full scope access
+    // for web app routes. These represent authenticated web app users.
+    // MCP public server enforces scopes separately via its session system.
     if (auth.mode === "session" || auth.mode === "bearer") {
       next();
       return;
