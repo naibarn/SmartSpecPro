@@ -134,6 +134,8 @@ class ExecutionContext:
         self.context_snapshot: dict[str, Any] | None = None
         # Delegation depth for autonomous cross-agent calls (section-10)
         self.delegation_depth: int = 0
+        # Context-window budget tracker for agent execution
+        self.budget_manager: Any | None = None
 
     def clone(self) -> ExecutionContext:
         """Deep-copy mutable state for branch isolation; share read-only refs."""
@@ -153,6 +155,7 @@ class ExecutionContext:
         ctx.shared_context = self.shared_context  # Shared across branches
         ctx.context_snapshot = self.context_snapshot
         ctx.delegation_depth = self.delegation_depth
+        ctx.budget_manager = copy.deepcopy(self.budget_manager)
         return ctx
 
     def get_context_text(self) -> str:
@@ -229,6 +232,250 @@ class AgencyOrchestrator:
             for n in self.nodes.values()
         )
 
+    async def _build_legacy_memory_context(
+        self,
+        node: NodeRow,
+        ctx: ExecutionContext,
+        base_url: str,
+        budget_manager: Any | None = None,
+    ) -> dict[str, str]:
+        """Fallback to the legacy confidence-sorted memory injection path."""
+        memory_context: dict[str, str] = {}
+        try:
+            from app.services.long_term_memory import LongTermMemoryService
+            from app.core.database import AsyncSessionLocal
+
+            async with AsyncSessionLocal() as ltm_session:
+                ltm_service = LongTermMemoryService(
+                    db_session=ltm_session,
+                    gateway_url=base_url,
+                    user_token=ctx.user_token,
+                )
+                # Respect memory scope: agency-wide (default) or node-only
+                node_config = node.get("nodeConfig") or {}
+                memory_scope = node_config.get("memoryScope", "agency")
+                effective_node_id = node["id"] if memory_scope == "node" else None
+
+                ltm_memories = await ltm_service.get_memories_for_agent(
+                    tenant_id=ctx.tenant_id,
+                    agency_id=getattr(self.agency_config, "agency_id", ""),
+                    agent_node_id=effective_node_id,
+                    user_id=ctx.user_id,
+                )
+                if ltm_memories:
+                    injection = ltm_service.format_memories_for_injection(ltm_memories)
+                    if injection:
+                        content = injection["content"]
+                        if budget_manager is not None and hasattr(budget_manager, "allocate"):
+                            allocated = budget_manager.allocate(content, "long_term_memory")
+                            if allocated:
+                                content = allocated
+                        memory_context["long_term_memory"] = content
+        except Exception as exc:
+            logger.debug("ltm_inject_skipped", error=str(exc)[:100])
+        return memory_context
+
+    async def _build_semantic_memory_context(
+        self,
+        node: NodeRow,
+        ctx: ExecutionContext,
+        query_text: str,
+        base_url: str,
+    ) -> dict[str, str]:
+        """Build semantic memory context with 2-level retrieval and fallback."""
+        budget = None  # Initialize before try block to avoid NameError in fallback
+        try:
+            model_name = node.get("model", "gpt-4o")
+            from app.services.agency_context_budget import ContextBudgetManager
+            from app.core.database import AsyncSessionLocal
+            from app.services.embedding_service import get_embedding_service
+            from app.services.agency_chunk_service import AgencyChunkService
+            from app.services.agency_memory_retriever import (
+                AgencyMemoryRetriever,
+                format_retrieval_for_context,
+            )
+            from app.services.long_term_memory import LongTermMemoryService
+
+            budget = ContextBudgetManager(model_name=model_name)
+            ctx.budget_manager = budget
+            logger.debug(
+                "budget_manager_initialized",
+                model=model_name,
+                budget=budget.remaining,
+                completion_reserve=budget.completion_reserve_tokens,
+            )
+
+            async with AsyncSessionLocal() as session:
+                embedding_service = get_embedding_service()
+                ltm_service = LongTermMemoryService(
+                    db_session=session,
+                    gateway_url=base_url,
+                    user_token=ctx.user_token,
+                    embedding_service=embedding_service,
+                )
+                chunk_service = AgencyChunkService(session, embedding_service)
+                retriever = AgencyMemoryRetriever(
+                    db=session,
+                    embedding_service=embedding_service,
+                    ltm_service=ltm_service,
+                    chunk_service=chunk_service,
+                )
+                # Memory scope: "agency" (default) shares across all nodes,
+                # "node" restricts to this node's own memories only
+                node_config = node.get("nodeConfig") or {}
+                memory_scope = node_config.get("memoryScope", "agency")
+
+                retrieval = await retriever.retrieve(
+                    query=query_text,
+                    tenant_id=ctx.tenant_id,
+                    agency_id=getattr(self.agency_config, "agency_id", ""),
+                    agent_node_id=node["id"],
+                    user_id=ctx.user_id,
+                    max_tokens=max(1, budget.remaining // 2),
+                    scope=memory_scope,
+                )
+                formatted = format_retrieval_for_context(retrieval)
+                if formatted:
+                    allocated = budget.allocate(formatted, "long_term_memory")
+                    if allocated:
+                        formatted = allocated
+                    # Track which memories were used for confidence boosting
+                    if retrieval.used_memory_ids:
+                        if not hasattr(ctx, "_used_memory_ids"):
+                            ctx._used_memory_ids = []
+                        ctx._used_memory_ids.extend(retrieval.used_memory_ids)
+
+                    logger.info(
+                        "semantic_memory_retrieved",
+                        l1_count=retrieval.l1_count,
+                        l2_count=retrieval.l2_count,
+                        query_len=len(query_text),
+                    )
+                    return {"long_term_memory": formatted}
+                return {}
+        except ImportError as exc:
+            logger.debug("semantic_memory_import_failed", error=str(exc)[:100], fallback="legacy")
+        except Exception as exc:
+            logger.debug("semantic_memory_inject_skipped", error=str(exc)[:100], fallback="legacy")
+
+        return await self._build_legacy_memory_context(node, ctx, base_url, budget_manager=budget if budget is not None else None)
+
+    async def _store_chunked_output(
+        self,
+        node: NodeRow,
+        ctx: ExecutionContext,
+        output: str,
+        executor: str,
+    ) -> None:
+        """Persist full executor output into the L2 chunk store."""
+        if not output or len(output) <= 100:
+            return
+
+        try:
+            from app.core.database import AsyncSessionLocal
+            from app.services.embedding_service import get_embedding_service
+            from app.services.agency_chunk_service import AgencyChunkService
+
+            # Read chunkRetentionDays from tenant settings
+            chunk_retention_days = 7
+            try:
+                from sqlalchemy import text as sa_text
+                async with AsyncSessionLocal() as settings_session:
+                    row = await settings_session.execute(
+                        sa_text('SELECT settings FROM tenants WHERE id = :tid'),
+                        {"tid": ctx.tenant_id},
+                    )
+                    settings_row = row.fetchone()
+                    if settings_row and settings_row[0]:
+                        import json
+                        settings_data = settings_row[0] if isinstance(settings_row[0], dict) else json.loads(settings_row[0])
+                        chunk_retention_days = int(settings_data.get("chunkRetentionDays", 7) or 7)
+            except Exception:
+                pass  # Use default 7
+
+            async with AsyncSessionLocal() as chunk_session:
+                embedding_service = get_embedding_service()
+                chunk_service = AgencyChunkService(chunk_session, embedding_service)
+                chunk_count = await chunk_service.chunk_and_store(
+                    output=output,
+                    tenant_id=ctx.tenant_id,
+                    agency_id=getattr(self.agency_config, "agency_id", ""),
+                    user_id=ctx.user_id,
+                    agent_node_id=node["id"],
+                    run_id=getattr(ctx, "run_id", "") or node["id"],
+                    source_node_id=node["id"],
+                    metadata={
+                        "model": node.get("model", "gpt-4o"),
+                        "executor": executor,
+                    },
+                    chunk_retention_days=chunk_retention_days,
+                )
+                logger.debug(
+                    "chunk_store_completed",
+                    node_id=node["id"],
+                    executor=executor,
+                    chunk_count=chunk_count,
+                )
+        except Exception as exc:
+            logger.debug(
+                "chunk_store_failed",
+                node_id=node["id"],
+                executor=executor,
+                error=str(exc)[:100],
+            )
+
+    async def _generate_workflow_suggestions(
+        self, ctx: ExecutionContext, final_result: str,
+    ) -> None:
+        """Post-run: analyze execution and generate workflow improvement suggestions."""
+        if not ctx.results or len(ctx.results) < 2:
+            return  # Need at least 2 nodes for meaningful analysis
+
+        try:
+            from app.services.agency_workflow_advisor import (
+                generate_workflow_suggestions,
+                store_workflow_suggestions,
+            )
+
+            gateway_client = self._get_gateway_client(ctx)
+            if not gateway_client:
+                return
+
+            nodes_list = list((self.nodes or {}).values()) if hasattr(self, "nodes") and self.nodes else []
+            suggestions = await generate_workflow_suggestions(
+                gateway_client=gateway_client,
+                model_name="gpt-4o-mini",  # Use cheap model for analysis
+                agency_name=getattr(self.agency_config, "name", ""),
+                nodes=nodes_list,
+                node_results=dict(ctx.results),
+                run_status="completed",
+                total_duration_ms=0,
+                total_tokens=0,
+            )
+
+            if suggestions:
+                await store_workflow_suggestions(
+                    suggestions=suggestions,
+                    tenant_id=ctx.tenant_id,
+                    agency_id=getattr(self.agency_config, "agency_id", ""),
+                    user_id=ctx.user_id,
+                )
+        except Exception as exc:
+            logger.debug("workflow_suggestions_skipped", error=str(exc)[:100])
+
+    def _get_gateway_client(self, ctx: ExecutionContext) -> Any:
+        """Get an OpenAI-compatible gateway client for internal LLM calls."""
+        try:
+            import os
+            from openai import AsyncOpenAI
+            base_url = os.environ.get("NODEJS_INTERNAL_URL", "http://localhost:3000")
+            return AsyncOpenAI(
+                api_key=ctx.user_token or "internal",
+                base_url=f"{base_url}/api/llm/v1",
+            )
+        except Exception:
+            return None
+
     async def run(
         self,
         message: str,
@@ -292,6 +539,12 @@ class AgencyOrchestrator:
 
         # Capture context snapshot for observability
         ctx.context_snapshot = ctx.shared_context.snapshot()
+
+        # Post-run: generate workflow improvement suggestions (async, non-blocking)
+        try:
+            await self._generate_workflow_suggestions(ctx, result or "")
+        except Exception as exc:
+            logger.debug("workflow_advisor_failed", error=str(exc)[:100])
 
         return result or "", ctx
 
@@ -440,7 +693,7 @@ class AgencyOrchestrator:
 
         if result:
             # Cap result size and context growth
-            ctx.results[node_id] = result[:50000] if len(result) > 50000 else result
+            ctx.results[node_id] = result[:2000] if len(result) > 2000 else result
             # Evict oldest entries if results dict exceeds limit
             if len(ctx.results) > 100:
                 oldest_keys = list(ctx.results.keys())[:len(ctx.results) - 100]
@@ -517,7 +770,11 @@ class AgencyOrchestrator:
     # ── Node executors ────────────────────────────────────────────────────────
 
     async def _execute_react_path(
-        self, node: NodeRow, ctx: ExecutionContext, augmented_message: str
+        self,
+        node: NodeRow,
+        ctx: ExecutionContext,
+        augmented_message: str,
+        memory_context: dict[str, str] | None = None,
     ) -> str:
         """Execute an agent node via the ReAct executor (Level 2).
 
@@ -574,6 +831,29 @@ class AgencyOrchestrator:
             # Resolve tools for ReAct
             tool_definitions, tool_endpoint_map = await self._resolve_tool_configs_for_react(node)
 
+            # Apply deferred tool registry if tool count exceeds threshold
+            deferred_registry = None
+            try:
+                from app.services.agency_deferred_tools import DeferredToolRegistry
+                deferred_registry = DeferredToolRegistry()
+                prepared = deferred_registry.prepare_tools(tool_definitions)
+                if prepared.deferred:
+                    tool_definitions = prepared.bind_tools
+                    # Add tool_search to endpoint map as a local handler
+                    tool_endpoint_map["tool_search"] = {
+                        "url": "__deferred_search__",
+                        "risk_level": "low",
+                        "config": {},
+                    }
+                    agent_instructions_suffix = (
+                        f"\n<available-deferred-tools>\n{prepared.available_names}\n"
+                        "</available-deferred-tools>"
+                    )
+                else:
+                    agent_instructions_suffix = ""
+            except ImportError:
+                agent_instructions_suffix = ""
+
             # Initialize working memory
             run_id = getattr(ctx, "run_id", None) or node["id"]
             wm = WorkingMemory(
@@ -583,37 +863,20 @@ class AgencyOrchestrator:
                 agent_id=node["id"],
             ) if redis_client else None
 
-            memory_context = {}
             if wm:
                 summary = wm.get_summary()
                 if summary:
+                    if memory_context is None:
+                        memory_context = {}
                     memory_context["working_memory"] = summary
-
-            # Inject long-term memories if available
-            ltm_service = None
-            try:
-                from app.services.long_term_memory import LongTermMemoryService
-                from app.core.database import AsyncSessionLocal
-                async with AsyncSessionLocal() as ltm_session:
-                    ltm_service = LongTermMemoryService(db_session=ltm_session, gateway_url=base_url, user_token=ctx.user_token)
-                    ltm_memories = await ltm_service.get_memories_for_agent(
-                        tenant_id=ctx.tenant_id,
-                        agency_id=getattr(self.agency_config, "agency_id", ""),
-                        agent_node_id=node["id"],
-                        user_id=ctx.user_id,
-                    )
-                    if ltm_memories:
-                        injection = ltm_service.format_memories_for_injection(ltm_memories)
-                        if injection:
-                            memory_context["long_term_memory"] = injection["content"]
-            except Exception as e:
-                logger.debug("ltm_inject_skipped", error=str(e)[:100])
 
             # Build agent instructions
             agent_instructions = resolve_instructions(
                 node.get("instructions", ""),
                 agent_name=node.get("name", "Agent"),
             )
+            if agent_instructions_suffix:
+                agent_instructions += agent_instructions_suffix
 
             # Budget tracker
             max_budget = min(
@@ -637,10 +900,12 @@ class AgencyOrchestrator:
             )
 
             result: ReActResult = await executor.execute(
-                task=augmented_message, context=memory_context or None
+                task=augmented_message,
+                context=memory_context or None,
             )
 
-            ctx.results[node["id"]] = result.final_answer
+            # Cap result for inter-node passing; full output stored in L2 chunks
+            ctx.results[node["id"]] = result.final_answer[:2000] if result.final_answer and len(result.final_answer) > 2000 else (result.final_answer or "")
 
             # Extract and store long-term memories from successful runs
             if result.status == "complete" and node_config.get("enableLongTermMemory"):
@@ -657,8 +922,19 @@ class AgencyOrchestrator:
                             user_id=ctx.user_id,
                             source_run_id=getattr(ctx, "run_id", ""),
                         )
+                        # Boost confidence for memories that contributed to this success
+                        used_ids = getattr(ctx, "_used_memory_ids", [])
+                        if used_ids:
+                            await ltm_svc.boost_confidence_for_memories(used_ids)
                 except Exception as e:
                     logger.debug("ltm_extract_failed", error=str(e)[:100])
+
+            await self._store_chunked_output(
+                node=node,
+                ctx=ctx,
+                output=result.final_answer,
+                executor="react",
+            )
 
             if self.event_emitter:
                 await self.event_emitter.emit("text_delta", {
@@ -756,8 +1032,18 @@ class AgencyOrchestrator:
                     if nt in ("agent", "supervisor"):
                         available_agents[nid] = n
 
+            task_text = ctx.get_context_text() if hasattr(ctx, "get_context_text") else str(getattr(ctx, "input", ""))
+            memory_context = await self._build_semantic_memory_context(
+                node,
+                ctx,
+                task_text,
+                base_url,
+            )
+            if memory_context.get("long_term_memory"):
+                task_text = f"{task_text}\n\n{memory_context['long_term_memory']}"
+
             result = await run_autonomous(
-                task=ctx.get_context_text() if hasattr(ctx, "get_context_text") else str(getattr(ctx, "input", "")),
+                task=task_text,
                 ctx=ctx,
                 node_config=node_config,
                 gateway_client=gateway_client,
@@ -770,7 +1056,8 @@ class AgencyOrchestrator:
                 memory_store=memory_store,
             )
 
-            ctx.results[node["id"]] = result.final_answer
+            # Cap result for inter-node passing; full output stored in L2 chunks
+            ctx.results[node["id"]] = result.final_answer[:2000] if result.final_answer and len(result.final_answer) > 2000 else (result.final_answer or "")
 
             # Extract long-term memories from successful autonomous runs
             if result.status == "complete" and node_config.get("enableLongTermMemory"):
@@ -787,8 +1074,37 @@ class AgencyOrchestrator:
                             user_id=ctx.user_id,
                             source_run_id=getattr(ctx, "run_id", ""),
                         )
+                        # Boost confidence for memories that contributed to this success
+                        used_ids = getattr(ctx, "_used_memory_ids", [])
+                        if used_ids:
+                            await ltm_svc.boost_confidence_for_memories(used_ids)
                 except Exception as e:
                     logger.debug("ltm_extract_autonomous_failed", error=str(e)[:100])
+
+            # Auto few-shot: save high-quality autonomous runs as examples
+            if result.status == "complete" and getattr(result, "quality_score", 0) >= 0.9:
+                try:
+                    from app.services.agency_auto_fewshot import maybe_save_auto_fewshot
+                    from app.core.database import AsyncSessionLocal
+                    async with AsyncSessionLocal() as fs_session:
+                        await maybe_save_auto_fewshot(
+                            db=fs_session,
+                            tenant_id=ctx.tenant_id,
+                            agency_id=getattr(self.agency_config, "agency_id", ""),
+                            agent_node_id=node["id"],
+                            user_input=task_text[:2000],
+                            agent_output=result.final_answer[:2000],
+                            quality_score=result.quality_score,
+                        )
+                except Exception as e:
+                    logger.debug("auto_fewshot_failed", error=str(e)[:100])
+
+            await self._store_chunked_output(
+                node=node,
+                ctx=ctx,
+                output=result.final_answer,
+                executor="autonomous",
+            )
 
             # Clean up scratch pad after successful completion
             if memory_store:
@@ -892,14 +1208,23 @@ class AgencyOrchestrator:
         return tool_definitions, tool_endpoint_map
 
     async def _execute_agent_node_agentic(
-        self, node: NodeRow, ctx: ExecutionContext, augmented_message: str
+        self,
+        node: NodeRow,
+        ctx: ExecutionContext,
+        augmented_message: str,
+        memory_context: dict[str, str] | None = None,
     ) -> str:
         """Execute an agent node with agentic mode — dispatches to ReAct or reflection loop."""
         node_config = node.get("node_config") or {}
         strategy = node_config.get("planningStrategy", "basic")
 
         if strategy == "react":
-            return await self._execute_react_path(node, ctx, augmented_message)
+            return await self._execute_react_path(
+                node,
+                ctx,
+                augmented_message,
+                memory_context=memory_context,
+            )
 
         return await self._execute_agent_node_agentic_reflection(node, ctx, augmented_message)
 
@@ -1000,6 +1325,12 @@ class AgencyOrchestrator:
                     })
 
                 if signal and signal.complete:
+                    await self._store_chunked_output(
+                        node=node,
+                        ctx=ctx,
+                        output=signal.answer,
+                        executor="reflection",
+                    )
                     return signal.answer
 
             except Exception as exc:
@@ -1011,6 +1342,12 @@ class AgencyOrchestrator:
                 )
                 return f"[Agent '{node.get('name')}' agentic error: {scrub_error_payload(str(exc))}]"
 
+        await self._store_chunked_output(
+            node=node,
+            ctx=ctx,
+            output=last_response,
+            executor="reflection",
+        )
         return last_response
 
     async def _resolve_node_model(self, node: NodeRow) -> str:
@@ -1060,7 +1397,22 @@ class AgencyOrchestrator:
                         })
                     augmented_message = f"[Guardrail guidance: {input_result.message}]\n\n{augmented_message}"
 
-            answer = await self._execute_agent_node_agentic(node, ctx, augmented_message)
+            base_url = os.environ.get("NODEJS_INTERNAL_URL", "http://localhost:3000")
+            memory_context = await self._build_semantic_memory_context(
+                node,
+                ctx,
+                augmented_message,
+                base_url,
+            )
+            if memory_context.get("long_term_memory") and node_config.get("planningStrategy") != "react":
+                augmented_message = f"{augmented_message}\n\n{memory_context['long_term_memory']}"
+
+            answer = await self._execute_agent_node_agentic(
+                node,
+                ctx,
+                augmented_message,
+                memory_context=memory_context,
+            )
 
             # ── Output Guardrails (run on final answer) ──────────────────
             if agent_guardrails and answer:
@@ -1123,6 +1475,16 @@ class AgencyOrchestrator:
             )
             if kb_context:
                 agent_instructions = agent_instructions + kb_context
+
+        base_url = os.environ.get("NODEJS_INTERNAL_URL", "http://localhost:3000")
+        memory_context = await self._build_semantic_memory_context(
+            node,
+            ctx,
+            augmented_message,
+            base_url,
+        )
+        if memory_context.get("long_term_memory"):
+            augmented_message = f"{augmented_message}\n\n{memory_context['long_term_memory']}"
 
         try:
             from app.services.agency_swarm_adapter import AgentConfig
@@ -1308,6 +1670,12 @@ class AgencyOrchestrator:
                                 message=out_result.message,
                             )
 
+            await self._store_chunked_output(
+                node=node,
+                ctx=ctx,
+                output=response,
+                executor="single_shot",
+            )
             return response
         except Exception as exc:
             logger.error(

@@ -1,0 +1,46 @@
+## Review Report
+
+### Verdict: REQUEST_CHANGES
+
+### Findings
+
+| Severity | File:Line | Issue | Recommended Fix |
+|---|---|---|---|
+| HIGH | `agency_deferred_tools.py:64` | **NEW-03 scope restriction not enforced — global registry leaks tools across agents.** `_tools` is an instance-level dict that accumulates across `prepare_tools` calls. If a registry instance is reused (or if tools are registered per-call without clearing), Agent A's tools remain searchable by Agent B's `tool_search`. The spec (Security Considerations §NEW-03) is explicit: `search()` must filter against the agent's `execution_tools` list only, not a global/persistent store. A prompt injection in Agent B's MCP response could craft `tool_search("select:dangerous_tool_from_agent_a")` to discover and call tools Agent B was never authorized. | `search()` must accept the `execution_tools` list of the current agent as a parameter and restrict matches to that set. Alternatively, clear `_tools` at the start of each `prepare_tools` call and scope each registry instance to a single agent invocation. |
+| HIGH | `agency_tools.py` (no diff) | **`agency_tools.py` integration absent — `DeferredToolRegistry` is completely unwired.** The spec lists `agency_tools.py` as a required file to modify and provides explicit integration guidance (call `registry.prepare_tools(all_tools)` inside `resolve_mcp_tools_for_agent()`, inject `available_names` into the system prompt, use `bind_tools` for LLM binding). No diff for this file exists; confirmed by grep — no production code imports `DeferredToolRegistry`. The deferred tool mechanism is therefore dead code. | Add the wiring inside `resolve_mcp_tools_for_agent()` as specified. Return a `PreparedTools`-aware structure (or adapt the return type) so callers can distinguish `bind_tools` from `execution_tools` and inject the system-prompt block. |
+| HIGH | `agency_deferred_tools.py:126–128` (spec) | **Tool description injection sanitization absent.** The spec (Security Considerations §1) requires applying `fewShotSanitizer` strip-injection patterns to tool descriptions before including them in the `<available-deferred-tools>` block injected into the system prompt. External MCP server descriptions are untrusted and could contain prompt injection payloads. Neither `prepare_tools()` (when building `available_names`) nor any caller sanitizes descriptions before writing them into the system prompt. | Import and apply the sanitizer (or an equivalent regex scrubber) to `func.get("description", "")` before appending to `names_lines` in `prepare_tools()`, and to `info.get("description", "")` inside `_rank()`. |
+| MEDIUM | `agency_deferred_tools.py:64–65` | **`_tools` accumulates state across multiple `prepare_tools` calls on the same instance.** The dict is never cleared at the start of `prepare_tools`. If the same `DeferredToolRegistry` object is reused (e.g., stored on an agent class, or called twice for different invocations), tools from the first call persist into the second. In the case where the second call has fewer than `THRESHOLD` tools, the earlier tools remain in `_tools` and are fully searchable via `search()` even though they should not be bound. | Add `self._tools.clear()` at the beginning of `prepare_tools()` or document clearly that instances must not be reused across agent invocations. |
+| MEDIUM | `tests/unit/services/test_agency_deferred_tools.py` (entire file) | **No integration test for `agency_tools.py` wiring.** The spec requires modifying `agency_tools.py` to wire in the registry. Since that wiring is absent, there is no test verifying the integrated behavior (e.g., that when an agent has 15 tools, `resolve_mcp_tools_for_agent` returns `bind_tools=[tool_search]` and the system prompt receives the `<available-deferred-tools>` block). Unit tests for `DeferredToolRegistry` in isolation are present but do not catch the missing integration. | Add at least one integration-level test that patches `resolve_mcp_tools_for_agent` with a 15-tool set and asserts `bind_tools` contains only `tool_search`, and the returned metadata includes the available-names block. |
+| MEDIUM | `agency_deferred_tools.py:131` | **`+keyword` search returns ALL matching candidates regardless of `MAX_SEARCH_RESULTS` when `include_all=True` is set.** `_rank` with `include_all=True` includes every candidate with `score >= 0` (which is all of them), and only the final slice `scored[:MAX_SEARCH_RESULTS]` caps the output. For the `+keyword` mode the intention is to return candidates filtered by keyword (correct) but still capped at 5 (also correct via the slice). However, when there is no `rest` text to rank by (empty ranking query), `_rank` short-circuits at line 149–153 and returns `list(candidates.values())[:MAX_SEARCH_RESULTS]` — bypassing `include_all` entirely and returning unordered results. This is a behavioral inconsistency: `+web` with no rest text returns 5 arbitrary web-prefixed tools with no stable ordering, potentially returning different tools on repeated calls if dict iteration order changes. | For the empty-rest case inside `_rank`, sort candidates by name for determinism before slicing, or document the non-determinism explicitly. |
+| LOW | `agency_deferred_tools.py:17` | **`field` imported from `dataclasses` but never used.** `from dataclasses import dataclass, field` — `field` is imported and unused. | Remove `field` from the import. |
+| LOW | `tests/unit/services/test_agency_deferred_tools.py:264–267` | **`test_select_exact_matches` asserts ordering by equality (`==`) against insertion order.** The `select:` handler iterates `names` in the order they appear in the query string (`web-search` then `email-notify`) and looks each up in `self._tools`. The test asserts `names == ["web-search", "email-notify"]` which validates order. This is fine today, but if the implementation changes to use a set or parallel lookup, the test will fail noisily. | Assert contents with `set(names) == {"web-search", "email-notify"}` or add a comment documenting that order is intentionally preserved from the query. |
+
+### Contract Compliance
+
+| Check | Status | Notes |
+|---|---|---|
+| `PreparedTools` dataclass matches spec shape | PASS | All 4 fields present: `bind_tools`, `execution_tools`, `deferred`, `available_names` |
+| `DeferredToolRegistry.THRESHOLD = 10` | PASS | Matches spec |
+| `DeferredToolRegistry.MAX_SEARCH_RESULTS = 5` | PASS | Matches spec |
+| `prepare_tools` passthrough when `<= THRESHOLD` | PASS | Correct boundary (exact 10 = passthrough) |
+| `prepare_tools` deferred mode when `> THRESHOLD` | PASS | `bind_tools=[tool_search]`, `execution_tools = all + tool_search` |
+| `available_names` populated in deferred mode | PASS | Descriptions truncated at 80 chars as implied by spec |
+| `tool_search` schema in OpenAI function format | PASS | `type: function`, `function.name`, `function.parameters` with `query` required |
+| `search("select:...")` exact match | PASS | Correct comma-split, skips missing names |
+| `search("+keyword rest")` keyword filter | PASS | Name-substring filter applied before ranking |
+| `search("free text")` relevance rank | PASS | Name match weighted 10x vs description 1x, exact name bonus |
+| `search("")` returns empty | PASS | Guard at line 115 |
+| NEW-03: `tool_search` restricted to agent's authorized tools only | **FAIL** | `_tools` is a shared/accumulating dict; no per-agent scoping |
+| `agency_tools.py` integration wired | **FAIL** | File not modified; `DeferredToolRegistry` never called in production |
+| Tool description injection sanitization | **FAIL** | No sanitizer applied before writing to `available_names` |
+| TDD: passthrough test | PASS | `test_passthrough_when_under_threshold` |
+| TDD: deferred activation test | PASS | `test_activates_deferred_when_over_threshold` |
+| TDD: `select:` test | PASS | `test_select_exact_matches` |
+| TDD: free text max-5 test | PASS | `test_free_text_returns_max_5` |
+| TDD: `+keyword` test | PASS | `test_keyword_filter` |
+| TDD: no-match empty test | PASS | `test_no_matches_returns_empty` |
+| TDD: `tool_search` schema valid test | PASS | `test_schema_valid_for_binding` |
+
+### Summary
+
+The `DeferredToolRegistry` and `PreparedTools` classes are well-structured and all seven TDD-specified unit tests are present and correct in isolation. However, three blocking issues prevent this section from being approved. First and most critically, the NEW-03 security requirement — that `tool_search` may only return schemas for the calling agent's pre-authorized tools — is not enforced: the `_tools` dict is instance-scoped and accumulates across calls, meaning a compromised MCP response could use `tool_search("select:...")` to discover tools from other agents sharing the registry. Second, the entire integration with `agency_tools.py` is absent — the spec explicitly requires wiring `prepare_tools()` into `resolve_mcp_tools_for_agent()`, but the file is unmodified and no production code imports `DeferredToolRegistry`, making this section dead code. Third, tool descriptions from external MCP servers are injected into the LLM system prompt without sanitization, creating a prompt injection vector that the spec explicitly required be mitigated.
