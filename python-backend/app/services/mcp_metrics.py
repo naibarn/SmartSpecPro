@@ -61,14 +61,11 @@ def get_mcp_health() -> dict[str, Any]:
     try:
         from app.services.mcp_client_manager import get_mcp_client_manager
         manager = get_mcp_client_manager()
-        active = len(manager._connections)
-        stdio_count = sum(manager._stdio_counts.values())
+        # F12: Use public get_stats() API instead of private attribute access
+        return manager.get_stats()
     except Exception:
-        active = 0
-        stdio_count = 0
-
-    return {
-        "server_count": active,
-        "active_connections": active,
-        "stdio_process_count": stdio_count,
-    }
+        return {
+            "server_count": 0,
+            "active_connections": 0,
+            "stdio_process_count": 0,
+        }

@@ -50,9 +50,11 @@ class McpConfigWatcher:
         self,
         db_session_factory: Callable | None = None,
         poll_interval: int = MIN_POLL_INTERVAL_SECONDS,
+        tenant_id: int | None = None,
     ) -> None:
         self._db_session_factory = db_session_factory
         self.poll_interval = max(poll_interval, MIN_POLL_INTERVAL_SECONDS)
+        self._tenant_id = tenant_id  # F10: Tenant-scoped polling
         self._known_hashes: dict[int, str] = {}  # server_id -> configHash
         self._known_configs: dict[int, dict] = {}  # server_id -> config dict
         self._running = False
@@ -167,9 +169,16 @@ class McpConfigWatcher:
             # This is a placeholder — actual SQLAlchemy query depends on model
             if hasattr(session, "execute"):
                 from sqlalchemy import text
-                result = await session.execute(
-                    text("SELECT id, name, config, config_hash, enabled, transport_type FROM mcp_servers")
-                )
+                # F10: Tenant-scoped query — never return cross-tenant servers
+                if self._tenant_id is not None:
+                    result = await session.execute(
+                        text("SELECT id, name, config, config_hash, enabled, transport_type FROM mcp_servers WHERE tenant_id = :tid"),
+                        {"tid": str(self._tenant_id)},
+                    )
+                else:
+                    result = await session.execute(
+                        text("SELECT id, name, config, config_hash, enabled, transport_type FROM mcp_servers")
+                    )
                 servers = result.fetchall()
             else:
                 servers = []

@@ -113,6 +113,20 @@ async def discover_tools(
         )
         return []
 
+    # F11: DNS resolution SSRF check — catch hostnames resolving to private IPs
+    try:
+        from app.services.mcp_client_manager import _resolve_and_validate_dns
+        parsed_hostname = urlparse(normalized_url).hostname or ""
+        await _resolve_and_validate_dns(parsed_hostname)
+    except Exception as dns_exc:
+        logger.warning(
+            "mcp_discover_dns_blocked",
+            tenant_id=normalized_tenant_id,
+            url=normalized_url,
+            error=str(dns_exc),
+        )
+        return []
+
     # Check cache
     key = _cache_key(normalized_tenant_id, normalized_url, token)
     cached = _discovery_cache.get(key)
@@ -213,6 +227,21 @@ async def call_tool(
             error=validation_error,
         )
         return f"MCP tool call blocked: {validation_error}"
+
+    # F11: DNS resolution SSRF check
+    try:
+        from app.services.mcp_client_manager import _resolve_and_validate_dns
+        parsed_hostname = urlparse(normalized_url).hostname or ""
+        await _resolve_and_validate_dns(parsed_hostname)
+    except Exception as dns_exc:
+        logger.warning(
+            "mcp_call_dns_blocked",
+            tenant_id=normalized_tenant_id,
+            url=normalized_url,
+            tool_name=tool_name,
+            error=str(dns_exc),
+        )
+        return f"MCP tool call blocked: DNS validation failed"
 
     rpc_url = normalized_url
     if not rpc_url.endswith("/rpc"):

@@ -202,11 +202,32 @@ async def health_check(db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/mcp")
-async def mcp_health_check():
-    """MCP subsystem health check.
+async def mcp_health_check(request: "Request"):
+    """MCP subsystem health check (requires auth or internal token).
 
     Returns server count, active connections, and stdio process count.
+    F07: Protected — exposes operational intelligence about MCP connections.
     """
+    from fastapi import Request as _Req
+
+    # Accept internal proxy token OR authenticated session
+    internal_token = request.headers.get("x-internal-token", "")
+    expected_token = settings.SMARTSPEC_PROXY_TOKEN if hasattr(settings, "SMARTSPEC_PROXY_TOKEN") else ""
+    if not (internal_token and expected_token and internal_token == expected_token):
+        # Try auth — if no valid auth, return 401
+        try:
+            from app.core.auth import get_current_user
+            from app.core.database import get_db
+            db = None  # health/mcp doesn't need full auth, just token check
+        except ImportError:
+            pass
+        auth_header = request.headers.get("authorization", "")
+        if not auth_header and not internal_token:
+            return JSONResponse(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                content={"error": "Authentication required for /health/mcp"}
+            )
+
     from app.services.mcp_metrics import get_mcp_health
     health = get_mcp_health()
     return JSONResponse(

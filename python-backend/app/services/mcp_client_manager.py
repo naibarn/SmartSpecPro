@@ -338,11 +338,20 @@ class McpClientManager:
         conn: McpConnection,
         method: str,
         params: dict[str, Any] | None = None,
+        caller_tenant_id: int | None = None,
     ) -> dict[str, Any]:
         """Send a JSON-RPC request over the connection's transport.
 
         Enforces 1MB response size limit.
+        F05: Validates caller_tenant_id matches connection tenant.
         """
+        # F05: Tenant ownership check — prevent cross-tenant connection reuse
+        if caller_tenant_id is not None and conn.tenant_id != caller_tenant_id:
+            raise McpConnectionError(
+                f"Tenant mismatch: connection belongs to tenant {conn.tenant_id}, "
+                f"caller is tenant {caller_tenant_id}"
+            )
+
         if conn.transport in ("http", "streamable_http"):
             return await self._call_rpc_http(conn, method, params or {})
         elif conn.transport == "stdio":
@@ -410,7 +419,13 @@ class McpClientManager:
                         f"HTTP {resp.status_code}: {body[:200].decode(errors='replace')}"
                     )
 
-                return json.loads(body)
+                try:
+                    return json.loads(body)
+                except (json.JSONDecodeError, ValueError) as exc:
+                    # F09: Limit body in error message to prevent large payload leak
+                    raise McpConnectionError(
+                        f"Invalid JSON response ({len(body)} bytes): {str(exc)[:200]}"
+                    ) from exc
 
         except httpx.TimeoutException as exc:
             raise McpConnectionError(f"Request timed out after {conn.timeout}s") from exc
@@ -548,6 +563,18 @@ class McpClientManager:
         self._stdio_counts.clear()
 
     # -------------------------------------------------------------------
+    # Stats (F12: public API instead of direct _attribute access)
+    # -------------------------------------------------------------------
+
+    def get_stats(self) -> dict[str, int]:
+        """Return aggregate connection stats for monitoring."""
+        return {
+            "server_count": len(self._connections),
+            "active_connections": len(self._connections),
+            "stdio_process_count": sum(self._stdio_counts.values()),
+        }
+
+    # -------------------------------------------------------------------
     # Env Variable Resolution
     # -------------------------------------------------------------------
 
@@ -568,9 +595,12 @@ class McpClientManager:
         resolved: dict[str, str] = {}
         for key, value in env.items():
             if isinstance(value, str) and value.startswith("$ref:"):
-                decrypted = encrypted_env.get(key, "")
+                decrypted = encrypted_env.get(key)
                 if not decrypted:
-                    logger.warning("mcp_env_ref_missing", key=key)
+                    # F08: Fail-closed — missing secret should raise, not substitute empty
+                    raise McpConnectionError(
+                        f"Required env secret '{key}' not found in encrypted storage"
+                    )
                 resolved[key] = decrypted
             else:
                 resolved[key] = str(value)

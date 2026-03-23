@@ -16,12 +16,20 @@ from app.services.mcp_oauth_manager import (
     _generate_state,
 )
 
+# Mock DNS validation for all OAuth tests (URLs are always "public" in tests)
+_DNS_PATCH = patch(
+    "app.services.mcp_oauth_manager._resolve_and_validate_dns",
+    new_callable=AsyncMock,
+    return_value="93.184.216.34",
+)
+
 
 @pytest.fixture
 def oauth_manager():
-    """Create McpOAuthManager with mocked Redis."""
+    """Create McpOAuthManager with mocked Redis and secret resolver."""
     redis_mock = AsyncMock()
-    return McpOAuthManager(redis=redis_mock)
+    secret_resolver = AsyncMock(return_value="resolved-secret")
+    return McpOAuthManager(redis=redis_mock, secret_resolver=secret_resolver)
 
 
 # ---------------------------------------------------------------------------
@@ -46,10 +54,10 @@ class TestTokenCaching:
         oauth_manager._token_cache[1] = {
             "access_token": "old-token",
             "refresh_token": "refresh-123",
-            "expires_at": time.time() - 10,  # Already expired
+            "expires_at": time.time() - 10,
             "token_url": "https://auth.example.com/token",
             "client_id": "test-client",
-            "client_secret": "test-secret",
+            # F03: No client_secret in cache — resolved from DB via _resolve_secret
         }
         with patch.object(oauth_manager, "_refresh_token") as mock_refresh:
             mock_refresh.return_value = "new-token"
@@ -65,7 +73,8 @@ class TestTokenCaching:
 class TestClientCredentials:
 
     @pytest.mark.asyncio
-    async def test_client_credentials_fetches_new_token(self, oauth_manager):
+    @_DNS_PATCH
+    async def test_client_credentials_fetches_new_token(self, mock_dns, oauth_manager):
         """client_credentials flow fetches new token from token_url."""
         with patch("app.services.mcp_oauth_manager.httpx.AsyncClient") as mock_client_cls:
             mock_client = AsyncMock()
@@ -89,6 +98,8 @@ class TestClientCredentials:
             )
             assert token == "new-cc-token"
             assert 1 in oauth_manager._token_cache
+            # F03: Verify client_secret NOT in cache
+            assert "client_secret" not in oauth_manager._token_cache[1]
 
 
 # ---------------------------------------------------------------------------
@@ -98,7 +109,8 @@ class TestClientCredentials:
 class TestAuthorizationCode:
 
     @pytest.mark.asyncio
-    async def test_auth_code_generates_state_and_verifier(self, oauth_manager):
+    @_DNS_PATCH
+    async def test_auth_code_generates_state_and_verifier(self, mock_dns, oauth_manager):
         """authorization_code flow generates state + code_verifier, stores in Redis."""
         redirect_url = await oauth_manager.initiate_auth_code_flow(
             server_id=1,
@@ -110,20 +122,20 @@ class TestAuthorizationCode:
         assert "https://auth.example.com/authorize" in redirect_url
         assert "state=" in redirect_url
         assert "code_challenge=" in redirect_url
-        # Verify Redis was called to store state
-        oauth_manager._redis.setex.assert_called_once()
+        # F02: Verify Redis called twice — state key + reverse-index key
+        assert oauth_manager._redis.setex.call_count == 2
 
     @pytest.mark.asyncio
-    async def test_callback_validates_state(self, oauth_manager):
-        """callback validates state, exchanges code for token, encrypts + stores."""
-        # Set up Redis to return valid state data
+    @_DNS_PATCH
+    async def test_callback_validates_state(self, mock_dns, oauth_manager):
+        """callback validates state, exchanges code for token."""
+        # F03: State data does NOT include client_secret
         state_data = json.dumps({
             "server_id": 1,
             "tenant_id": 42,
             "code_verifier": "test-verifier-abc123",
             "token_url": "https://auth.example.com/token",
             "client_id": "test-client",
-            "client_secret": "test-secret",
         })
         oauth_manager._redis.get.return_value = state_data.encode()
         oauth_manager._redis.delete = AsyncMock()
@@ -152,7 +164,7 @@ class TestAuthorizationCode:
     @pytest.mark.asyncio
     async def test_callback_rejects_invalid_state(self, oauth_manager):
         """callback rejects invalid state parameter."""
-        oauth_manager._redis.get.return_value = None  # State not found
+        oauth_manager._redis.get.return_value = None
 
         with pytest.raises(OAuthFlowError, match="Invalid.*state"):
             await oauth_manager.handle_callback(
@@ -174,9 +186,7 @@ class TestPKCE:
     def test_code_verifier_is_32_bytes_base64url(self):
         """code_verifier is 32 bytes base64url, stored server-side only."""
         verifier = _generate_code_verifier()
-        # base64url of 32 bytes = 43 chars
         assert len(verifier) == 43
-        # Should only contain base64url chars
         assert all(c in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_=" for c in verifier)
 
 
@@ -187,7 +197,8 @@ class TestPKCE:
 class TestRevocationAndAudit:
 
     @pytest.mark.asyncio
-    async def test_token_revocation_on_delete(self, oauth_manager):
+    @_DNS_PATCH
+    async def test_token_revocation_on_delete(self, mock_dns, oauth_manager):
         """token revocation called on server delete (RFC 7009)."""
         with patch("app.services.mcp_oauth_manager.httpx.AsyncClient") as mock_client_cls:
             mock_client = AsyncMock()
@@ -213,7 +224,7 @@ class TestRevocationAndAudit:
                 "expires_at": time.time() - 10,
                 "token_url": "https://auth.example.com/token",
                 "client_id": "test-client",
-                "client_secret": "test-secret",
+                # F03: No client_secret in cache
             }
             with patch.object(oauth_manager, "_refresh_token") as mock_refresh:
                 mock_refresh.return_value = "new-token"
