@@ -1161,7 +1161,7 @@ export const agencyRouter = router({
             description: z.string().optional(),
             nodeType: z.enum([
               "agent", "supervisor", "router", "aggregator",
-              "knowledge_base", "skill_call", "human_approval", "browser_session", "conditional_branch", "parallel_fan_out", "loop_retry", "skill_discovery", "data_transform", "error_handler",
+              "knowledge_base", "skill_call", "human_approval", "browser_session", "conditional_branch", "parallel_fan_out", "loop_retry", "skill_discovery", "data_transform", "error_handler", "autonomous_agent",
             ]).default("agent"),
             instructions: z.string().max(50000).optional(),
             model: z.string().max(100).regex(/^[a-zA-Z0-9._\/-]+$/, "Invalid model identifier").optional(),
@@ -1233,7 +1233,7 @@ export const agencyRouter = router({
                 ctx.addIssue({ code: "custom", path: ["nodeConfig", "handoffSummary"], message: "browser_session requires a handoff summary for review or user input states" });
               }
             }
-            if (data.isEntryPoint && !["agent", "supervisor"].includes(data.nodeType)) {
+            if (data.isEntryPoint && !["agent", "supervisor", "autonomous_agent"].includes(data.nodeType)) {
               ctx.addIssue({ code: "custom", path: ["isEntryPoint"], message: `Only agent/supervisor nodes can be entry points, not ${data.nodeType}` });
             }
             // Validate conditional_branch config
@@ -1408,6 +1408,39 @@ export const agencyRouter = router({
                 if (fc?.operator && !["gt", "lt", "equals", "contains"].includes(fc.operator)) {
                   ctx.addIssue({ code: "custom", path: ["nodeConfig", "filterCondition", "operator"], message: "operator must be: gt, lt, equals, or contains" });
                 }
+              }
+            }
+            // Validate autonomous_agent config
+            if (data.nodeType === "autonomous_agent") {
+              if (!data.model) ctx.addIssue({ code: "custom", path: ["model"], message: "model is required for autonomous_agent" });
+              if (!data.instructions) ctx.addIssue({ code: "custom", path: ["instructions"], message: "instructions are required for autonomous_agent" });
+              const nc = data.nodeConfig as Record<string, unknown> | undefined;
+              const maxPlanDepth = nc?.maxPlanDepth;
+              if (maxPlanDepth !== undefined) {
+                const n = Number(maxPlanDepth);
+                if (!Number.isInteger(n) || n < 1 || n > 5) ctx.addIssue({ code: "custom", path: ["nodeConfig", "maxPlanDepth"], message: "maxPlanDepth must be 1-5" });
+              }
+              const maxTotalIterations = nc?.maxTotalIterations;
+              if (maxTotalIterations !== undefined) {
+                const n = Number(maxTotalIterations);
+                if (!Number.isInteger(n) || n < 1 || n > 50) ctx.addIssue({ code: "custom", path: ["nodeConfig", "maxTotalIterations"], message: "maxTotalIterations must be 1-50" });
+              }
+              const delegationMode = nc?.delegationMode;
+              if (delegationMode !== undefined && !["self_only", "delegate_to_agents", "auto"].includes(String(delegationMode))) {
+                ctx.addIssue({ code: "custom", path: ["nodeConfig", "delegationMode"], message: "delegationMode must be 'self_only', 'delegate_to_agents', or 'auto'" });
+              }
+              const qualityThreshold = nc?.qualityThreshold;
+              if (qualityThreshold !== undefined) {
+                const n = Number(qualityThreshold);
+                if (isNaN(n) || n < 0 || n > 1) ctx.addIssue({ code: "custom", path: ["nodeConfig", "qualityThreshold"], message: "qualityThreshold must be 0-1" });
+              }
+              const decompositionStrategy = nc?.decompositionStrategy;
+              if (decompositionStrategy !== undefined && !["sequential", "parallel", "adaptive"].includes(String(decompositionStrategy))) {
+                ctx.addIssue({ code: "custom", path: ["nodeConfig", "decompositionStrategy"], message: "decompositionStrategy must be 'sequential', 'parallel', or 'adaptive'" });
+              }
+              const enableLongTermMemory = nc?.enableLongTermMemory;
+              if (enableLongTermMemory !== undefined && typeof enableLongTermMemory !== "boolean") {
+                ctx.addIssue({ code: "custom", path: ["nodeConfig", "enableLongTermMemory"], message: "enableLongTermMemory must be a boolean" });
               }
             }
             // Validate knowledgeBase config

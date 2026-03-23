@@ -12,7 +12,8 @@ export type AgencyNodeType =
   | "loop_retry"
   | "skill_discovery"
   | "data_transform"
-  | "error_handler";
+  | "error_handler"
+  | "autonomous_agent";
 
 export interface AgencyNodeData {
   nodeType: AgencyNodeType;

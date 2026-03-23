@@ -47,6 +47,7 @@ import { ModelPicker } from "./ModelPicker";
 import { GuardrailsPanel } from "./guardrails/GuardrailsPanel";
 import { McpServersPanel } from "./McpServersPanel";
 import { FewShotExamplesEditor, type ExamplePair } from "./FewShotExamplesEditor";
+import { AutonomousConfigPanel } from "./AutonomousConfigPanel";
 import type { AgencyNodeData } from "./nodes/types";
 import { BROWSER_SESSION_COPY } from "@shared/browserSession";
 import {
@@ -195,8 +196,11 @@ export function NodePropertyPanel({ node, nodeId, siblingNodes = [], agencyId, o
 
       <ScrollArea className="flex-1 min-h-0">
         <div className="space-y-4 p-4">
-          {(nodeType === "agent" || nodeType === "supervisor") && (
+          {(nodeType === "agent" || nodeType === "supervisor" || nodeType === "autonomous_agent") && (
             <AgentSupervisorForm node={node} onChange={onChange} agencyId={agencyId} nodeId={nodeId} />
+          )}
+          {nodeType === "autonomous_agent" && (
+            <AutonomousConfigPanel node={node} onChange={onChange} />
           )}
           {nodeType === "router" && <RouterForm node={node} onChange={onChange} siblingNodes={siblingNodes} />}
           {nodeType === "aggregator" && <AggregatorForm node={node} onChange={onChange} />}
