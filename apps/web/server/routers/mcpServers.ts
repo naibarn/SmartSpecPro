@@ -16,9 +16,9 @@ import {
   router,
 } from "../_core/trpc";
 import { getDb } from "../db";
-import { mcpServerAssignments, mcpServers } from "../../drizzle/schema";
+import { agencies, agencyAgents, mcpServerAssignments, mcpServers } from "../../drizzle/schema";
 import { encrypt } from "../services/crypto";
-import { assertPublicIp } from "../services/ssrfValidation";
+import { assertPublicIp, sanitizeUri } from "../services/ssrfValidation";
 
 // ────────────────────────────────────────────────────────────
 // Constants
@@ -146,7 +146,7 @@ export const createMcpServerSchema = z.object({
   config: z.union([httpConfigSchema, stdioConfigSchema, streamableHttpConfigSchema]),
   oauthConfig: oauthConfigSchema.optional(),
   oauthClientId: z.string().optional(),
-  oauthClientSecret: z.string().optional(),
+  oauthClientSecret: z.string().max(1024).optional(),
   timeoutSeconds: z.number().int().min(5).max(120).default(30),
   riskLevel: z.enum(["low", "medium", "high"]).default("high"),
   dataClassification: z
@@ -165,7 +165,7 @@ export const updateMcpServerSchema = z.object({
     .optional(),
   oauthConfig: oauthConfigSchema.optional(),
   oauthClientId: z.string().optional(),
-  oauthClientSecret: z.string().optional(),
+  oauthClientSecret: z.string().max(1024).optional(),
   enabled: z.boolean().optional(),
   timeoutSeconds: z.number().int().min(5).max(120).optional(),
   riskLevel: z.enum(["low", "medium", "high"]).optional(),
@@ -327,7 +327,7 @@ export const mcpServersRouter = router({
       const [updated] = await getDb()
         .update(mcpServers)
         .set(updates)
-        .where(eq(mcpServers.id, input.id))
+        .where(and(eq(mcpServers.id, input.id), eq(mcpServers.tenantId, ctx.user.tenantId)))
         .returning();
 
       return toResponse(updated);
@@ -352,7 +352,7 @@ export const mcpServersRouter = router({
       }
 
       // Cascade delete handles assignments via FK
-      await getDb().delete(mcpServers).where(eq(mcpServers.id, input.id));
+      await getDb().delete(mcpServers).where(and(eq(mcpServers.id, input.id), eq(mcpServers.tenantId, ctx.user.tenantId)));
 
       return { success: true };
     }),
@@ -383,8 +383,9 @@ export const mcpServersRouter = router({
       }
 
       try {
-        // SSRF protection — reject private IPs
-        const parsed = new URL(url);
+        // SSRF protection — sanitize URL (strip credentials, enforce HTTPS) then reject private IPs
+        const sanitizedUrl = sanitizeUri(url);
+        const parsed = new URL(sanitizedUrl);
         await assertPublicIp(parsed.hostname);
 
         const start = Date.now();
@@ -395,7 +396,7 @@ export const mcpServersRouter = router({
         );
 
         try {
-          const resp = await fetch(url, {
+          const resp = await fetch(sanitizedUrl, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -431,7 +432,7 @@ export const mcpServersRouter = router({
               healthStatus: "healthy",
               lastHealthCheck: new Date(),
             })
-            .where(eq(mcpServers.id, input.id));
+            .where(and(eq(mcpServers.id, input.id), eq(mcpServers.tenantId, ctx.user.tenantId)));
 
           return {
             reachable: true,
@@ -449,7 +450,7 @@ export const mcpServersRouter = router({
             healthStatus: "unhealthy",
             lastHealthCheck: new Date(),
           })
-          .where(eq(mcpServers.id, input.id));
+          .where(and(eq(mcpServers.id, input.id), eq(mcpServers.tenantId, ctx.user.tenantId)));
 
         // Never expose error details (SSRF oracle prevention)
         return { reachable: false, toolCount: 0, latencyMs: 0 };
@@ -482,7 +483,8 @@ export const mcpServersRouter = router({
       }
 
       try {
-        const parsed = new URL(url);
+        const sanitizedUrl = sanitizeUri(url);
+        const parsed = new URL(sanitizedUrl);
         await assertPublicIp(parsed.hostname);
 
         const controller = new AbortController();
@@ -492,7 +494,7 @@ export const mcpServersRouter = router({
         );
 
         try {
-          const resp = await fetch(url, {
+          const resp = await fetch(sanitizedUrl, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -569,6 +571,30 @@ export const mcpServersRouter = router({
 
       if (!server) {
         throw new TRPCError({ code: "NOT_FOUND", message: "MCP server not found" });
+      }
+
+      // Verify targetId belongs to the caller's tenant (prevent cross-tenant assignment)
+      if (input.targetType === "tenant" && input.targetId !== ctx.user.tenantId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Cannot assign to another tenant" });
+      }
+      if (input.targetType === "agency") {
+        const [agency] = await getDb()
+          .select({ id: agencies.id })
+          .from(agencies)
+          .where(and(eq(agencies.id, input.targetId), eq(agencies.tenantId, ctx.user.tenantId)));
+        if (!agency) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Agency not found in your tenant" });
+        }
+      }
+      if (input.targetType === "agent") {
+        const [agent] = await getDb()
+          .select({ id: agencyAgents.id })
+          .from(agencyAgents)
+          .innerJoin(agencies, eq(agencyAgents.agencyId, agencies.id))
+          .where(and(eq(agencyAgents.id, input.targetId), eq(agencies.tenantId, ctx.user.tenantId)));
+        if (!agent) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Agent not found in your tenant" });
+        }
       }
 
       const [assignment] = await getDb()

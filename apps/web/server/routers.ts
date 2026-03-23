@@ -59,6 +59,7 @@ import { factoryRouter } from "./routers/factory";
 import { groupsRouter } from "./routers/groups";
 import { googleDriveRouter } from "./routers/googleDrive";
 import { oneDriveRouter } from "./routers/oneDrive";
+import { metaChannelsRouter } from "./routers/metaChannels";
 import { searchRouter } from "./routers/search";
 import { adminOpsRouter } from "./routers/adminOps";
 import { automationCopilotRouter } from "./routers/automationCopilot";
@@ -1854,6 +1855,7 @@ export const appRouter = router({
   tenantFeatureFlags: tenantFeatureFlagsRouter,
   automationCopilot: automationCopilotRouter,
   liveBrowser: liveBrowserRouter,
+  metaChannels: metaChannelsRouter,
   contentArtifacts: contentArtifactsRouter,
   contentQuality: contentQualityRouter,
   apiKeys: apiKeysRouter,
