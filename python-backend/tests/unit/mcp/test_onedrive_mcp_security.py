@@ -79,15 +79,18 @@ class TestExcelPathInjection:
 
     @pytest.mark.asyncio
     async def test_cell_range_path_traversal_blocked(self):
-        """Cell range with path traversal chars is URL-encoded."""
+        """Cell range with path traversal chars fails validation."""
         from app.mcp.onedrive_mcp import read_excel_data, ToolError
 
-        # Cell range with slashes should fail validation
-        with pytest.raises(ToolError):
-            await read_excel_data(
-                "valid-item-id", user_id=1, tenant_id="t1",
-                cell_range="A1:B2/../../admin",
-            )
+        # Cell range with slashes should fail the regex validation
+        with patch("app.mcp.onedrive_mcp._get_access_token", AsyncMock(return_value="token")):
+            with pytest.raises(ToolError) as exc_info:
+                await read_excel_data(
+                    "valid-item-id", user_id=1, tenant_id="t1",
+                    cell_range="A1:B2/../../admin",
+                    credit_charge_fn=AsyncMock(),
+                )
+            assert "invalid" in exc_info.value.message.lower() or "cell range" in exc_info.value.message.lower()
 
 
 class TestResponseFiltering:

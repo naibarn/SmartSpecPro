@@ -23,6 +23,9 @@ GRAPH_BASE = "https://graph.microsoft.com/v1.0"
 # Drive item ID validation: alphanumeric, hyphens, dots, exclamation marks, max 256 chars
 _ITEM_ID_RE = re.compile(r"^[a-zA-Z0-9_.!-]{1,256}$")
 
+# Safe fields for file info response (filter out owner emails, parent references)
+_SAFE_FILE_INFO_FIELDS = {"id", "name", "file", "folder", "size", "lastModifiedDateTime", "createdDateTime", "webUrl"}
+
 
 # ── Exceptions ──────────────────────────────────────────────────────────────
 
@@ -444,7 +447,6 @@ async def get_onedrive_file_info(
             _handle_graph_error(resp.status_code, resp.text)
             raise ToolError("api_error", f"Failed to get file info (HTTP {resp.status_code})")
 
-        _SAFE_FILE_INFO_FIELDS = {"id", "name", "file", "folder", "size", "lastModifiedDateTime", "createdDateTime", "webUrl"}
         raw = resp.json()
         return {k: v for k, v in raw.items() if k in _SAFE_FILE_INFO_FIELDS}
 
