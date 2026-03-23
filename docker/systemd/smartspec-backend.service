@@ -26,10 +26,15 @@ ExecStart=/home/dev/projects/SmartSpecPro/python-backend/.venv/bin/uvicorn app.m
 # Verify backend is actually responding after startup (30s — Python imports take ~15s on cold boot)
 ExecStartPost=/bin/bash -c 'for i in $(seq 1 30); do curl -sf http://localhost:8000/health >/dev/null 2>&1 && exit 0; sleep 1; done; echo "FATAL: health check failed after 30s"; exit 1'
 
-# Clean shutdown: SIGTERM to main, then SIGKILL entire cgroup after 15s
-KillMode=mixed
+# Clean shutdown: SIGTERM + SIGKILL entire cgroup — control-group kills all
+# children (MCP stdio subprocesses) instead of just the main process
+KillMode=control-group
 KillSignal=SIGTERM
-TimeoutStopSec=15s
+TimeoutStopSec=30s
+
+# Resource limits for MCP stdio processes
+LimitNOFILE=65536
+LimitNPROC=4096
 
 # Clean up port after stop
 ExecStopPost=/bin/bash -c '/usr/bin/fuser -k 8000/tcp 2>/dev/null || true'
