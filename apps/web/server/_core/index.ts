@@ -874,6 +874,42 @@ app.post("/api/internal/presentation-import/callback", presentationImportCallbac
 
 // Internal agency creation endpoint (Python AI Creator task -> Node.js)
 // Auth: X-Internal-Token + X-User-Id (service-to-service), or Bearer JWT (legacy)
+// ── Internal: Resolve best LLM model from capability requirements ──────────
+app.get("/api/internal/models/resolve", async (req, res) => {
+  const internalToken = req.headers["x-internal-token"] as string | undefined;
+  if (!internalToken || !ENV.webGatewayToken) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  const tokenBuf = Buffer.from(internalToken);
+  const expectedBuf = Buffer.from(ENV.webGatewayToken);
+  if (tokenBuf.length !== expectedBuf.length || !crypto.timingSafeEqual(tokenBuf, expectedBuf)) {
+    return res.status(401).json({ error: "Invalid token" });
+  }
+
+  try {
+    const requirementsParam = req.query.requirements as string;
+    if (!requirementsParam) {
+      return res.status(400).json({ error: "requirements query param required" });
+    }
+    const requirements = JSON.parse(requirementsParam);
+    const { loadEnabledLlmModelRows } = await import("../services/enabledLlmModels");
+    const { selectBestLlmModel } = await import("../services/intelligentModelSelector");
+    const rows = await loadEnabledLlmModelRows();
+    const modelId = selectBestLlmModel(requirements, rows);
+    if (!modelId) {
+      return res.json({ modelId: null, error: "No matching model found" });
+    }
+    const matched = rows.find((r) => r.modelId === modelId);
+    return res.json({
+      modelId,
+      modelName: matched?.providerModelId ?? modelId,
+      provider: matched?.providerName ?? "unknown",
+    });
+  } catch (e: any) {
+    return res.status(400).json({ error: e.message?.slice(0, 200) ?? "Invalid request" });
+  }
+});
+
 app.post("/api/internal/agency/create", async (req, res) => {
   let user: Awaited<ReturnType<typeof sdk.authenticateRequest>> | null = null;
 

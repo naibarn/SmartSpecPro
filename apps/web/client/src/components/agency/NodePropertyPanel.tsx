@@ -588,9 +588,31 @@ function AgentSupervisorForm({
         )}
       </div>
 
-      <div className="space-y-1.5">
-        <Label>Model</Label>
-        <ModelPicker value={node.model ?? ""} onChange={(v) => onChange({ model: v })} />
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <Label>Model Selection</Label>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              className={cn("text-[10px] px-2 py-0.5 rounded-l border transition-colors", !node.modelRequirements ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}
+              onClick={() => onChange({ modelRequirements: undefined })}
+            >Manual</button>
+            <button
+              type="button"
+              className={cn("text-[10px] px-2 py-0.5 rounded-r border transition-colors", node.modelRequirements ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}
+              onClick={() => onChange({ modelRequirements: { strategy: "cheapest" }, model: undefined })}
+            >Smart</button>
+          </div>
+        </div>
+
+        {!node.modelRequirements ? (
+          <ModelPicker value={node.model ?? ""} onChange={(v) => onChange({ model: v })} />
+        ) : (
+          <SmartModelConfig
+            requirements={node.modelRequirements}
+            onChange={(reqs) => onChange({ modelRequirements: reqs, model: undefined })}
+          />
+        )}
       </div>
 
       {/* Supervisor-only: maxRounds + routingStrategy */}
@@ -3535,5 +3557,100 @@ function DataTransformForm({
         <p className="text-[10px] text-muted-foreground mt-0.5">Store result in context under this key</p>
       </div>
     </>
+  );
+}
+
+// ── Smart Model Config ───────────────────────────────────────────────────────
+
+const CAPABILITY_OPTIONS = [
+  { key: "supportsVision" as const, label: "Vision", description: "Image analysis" },
+  { key: "supportsThinking" as const, label: "Thinking", description: "Extended reasoning" },
+  { key: "supportsFunctionTools" as const, label: "Function Tools", description: "Tool calling" },
+  { key: "supportsStructuredOutputs" as const, label: "Structured Outputs", description: "JSON schema output" },
+  { key: "supportsWebSearch" as const, label: "Web Search", description: "Live web search" },
+  { key: "supportsCodeExecution" as const, label: "Code Execution", description: "Run code" },
+  { key: "supportsComputerUse" as const, label: "Computer Use", description: "Browser control" },
+] as const;
+
+type ModelReqs = NonNullable<import("./nodes/types").AgencyNodeData["modelRequirements"]>;
+
+function SmartModelConfig({
+  requirements,
+  onChange,
+}: {
+  requirements: ModelReqs;
+  onChange: (reqs: ModelReqs) => void;
+}) {
+  const resolveQuery = trpc.agency.resolveModel.useQuery(
+    { requirements },
+    { staleTime: 10_000, keepPreviousData: true },
+  );
+
+  return (
+    <div className="space-y-3">
+      {/* Strategy */}
+      <div>
+        <Label className="text-xs font-medium">Strategy</Label>
+        <Select
+          value={requirements.strategy ?? "cheapest"}
+          onValueChange={(v) => onChange({ ...requirements, strategy: v as ModelReqs["strategy"] })}
+        >
+          <SelectTrigger className="mt-1 h-8 text-xs"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="cheapest">Cheapest matching model</SelectItem>
+            <SelectItem value="balanced">Balanced (cost + quality)</SelectItem>
+            <SelectItem value="best">Best quality (highest priority)</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Capabilities */}
+      <div>
+        <Label className="text-xs font-medium mb-1.5 block">Required Capabilities</Label>
+        <div className="grid grid-cols-2 gap-1.5">
+          {CAPABILITY_OPTIONS.map(({ key, label, description }) => {
+            const checked = requirements[key] === true;
+            return (
+              <label
+                key={key}
+                className={cn(
+                  "flex items-center gap-2 rounded-md border px-2 py-1.5 text-xs cursor-pointer transition-colors",
+                  checked ? "border-primary bg-primary/5" : "border-input hover:bg-accent/50",
+                )}
+              >
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={() => {
+                    const next = { ...requirements, [key]: checked ? undefined : true };
+                    onChange(next);
+                  }}
+                  className="rounded border-gray-300 h-3.5 w-3.5"
+                />
+                <div>
+                  <div className="font-medium">{label}</div>
+                  <div className="text-[10px] text-muted-foreground">{description}</div>
+                </div>
+              </label>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Resolved Model Preview */}
+      <div className="rounded-md border bg-muted/30 px-3 py-2">
+        <div className="text-[10px] text-muted-foreground mb-0.5">Auto-selected model</div>
+        {resolveQuery.isLoading ? (
+          <div className="text-xs text-muted-foreground">Resolving...</div>
+        ) : resolveQuery.data?.modelId ? (
+          <div className="flex items-center gap-1.5">
+            <span className="text-sm font-medium">{resolveQuery.data.modelId}</span>
+            <Badge variant="outline" className="text-[10px] px-1 py-0">{resolveQuery.data.provider}</Badge>
+          </div>
+        ) : (
+          <div className="text-xs text-destructive">No matching model found — adjust capabilities</div>
+        )}
+      </div>
+    </div>
   );
 }

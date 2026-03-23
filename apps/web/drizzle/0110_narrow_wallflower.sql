@@ -1,0 +1,1 @@
+ALTER TABLE "agency_agents" ADD COLUMN "modelRequirements" json;

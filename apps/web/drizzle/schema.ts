@@ -4665,6 +4665,18 @@ export const agencyAgents = pgTable("agency_agents", {
     topP?: number;
     reasoningEffort?: "minimal" | "low" | "medium" | "high";
   }>(),
+  /** Capability-based model selection requirements (null = use manual model field) */
+  modelRequirements: json("modelRequirements").$type<{
+    supportsVision?: boolean;
+    supportsThinking?: boolean;
+    supportsFunctionTools?: boolean;
+    supportsStructuredOutputs?: boolean;
+    supportsWebSearch?: boolean;
+    supportsCodeExecution?: boolean;
+    supportsComputerUse?: boolean;
+    contextLength?: number;
+    strategy?: "cheapest" | "balanced" | "best";
+  }>(),
   isEntryPoint: boolean("isEntryPoint").default(false).notNull(),
   isOptional: boolean("isOptional").default(false).notNull(),
   position: json("position").$type<{ x: number; y: number }>(),

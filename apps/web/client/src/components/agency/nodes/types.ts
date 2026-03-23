@@ -22,6 +22,17 @@ export interface AgencyNodeData {
   instructions?: string;
   model?: string;
   modelSettings?: { maxTokens?: number; temperature?: number; topP?: number; reasoningEffort?: "minimal" | "low" | "medium" | "high" };
+  modelRequirements?: {
+    supportsVision?: boolean;
+    supportsThinking?: boolean;
+    supportsFunctionTools?: boolean;
+    supportsStructuredOutputs?: boolean;
+    supportsWebSearch?: boolean;
+    supportsCodeExecution?: boolean;
+    supportsComputerUse?: boolean;
+    contextLength?: number;
+    strategy?: "cheapest" | "balanced" | "best";
+  };
   parallelToolCalls?: boolean;
   maxTurns?: number;
   isEntryPoint?: boolean;

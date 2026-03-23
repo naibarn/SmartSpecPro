@@ -944,7 +944,7 @@ class AgencyOrchestrator:
                     config=AgentConfig(
                         name=node.get("name", "Agent"),
                         instructions=agent_instructions,
-                        model=node.get("model", "gpt-4o"),
+                        model=await self._resolve_node_model(node),
                         model_settings=node.get("model_settings"),
                         tools=[],
                         is_entry_point=node.get("is_entry_point", False),
@@ -1012,6 +1012,17 @@ class AgencyOrchestrator:
                 return f"[Agent '{node.get('name')}' agentic error: {scrub_error_payload(str(exc))}]"
 
         return last_response
+
+    async def _resolve_node_model(self, node: NodeRow) -> str:
+        """Resolve the best LLM model for a node based on its capabilities or manual setting."""
+        model_requirements = node.get("model_requirements")
+        if model_requirements and isinstance(model_requirements, dict):
+            from app.services.agency_model_resolver import resolve_agent_model
+            return await resolve_agent_model(
+                requirements=model_requirements,
+                fallback_model=node.get("model") or "gpt-4o",
+            )
+        return node.get("model") or "gpt-4o"
 
     async def _execute_agent_node(self, node: NodeRow, ctx: ExecutionContext) -> str:
         """Execute an agent/supervisor node via AgencySwarmAdapter."""

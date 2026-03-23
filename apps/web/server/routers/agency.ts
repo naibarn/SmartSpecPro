@@ -919,6 +919,17 @@ export const agencyRouter = router({
                   reasoningEffort: z.enum(["minimal", "low", "medium", "high"]).optional(),
                 })
                 .optional(),
+              modelRequirements: z.object({
+                supportsVision: z.boolean().optional(),
+                supportsThinking: z.boolean().optional(),
+                supportsFunctionTools: z.boolean().optional(),
+                supportsStructuredOutputs: z.boolean().optional(),
+                supportsWebSearch: z.boolean().optional(),
+                supportsCodeExecution: z.boolean().optional(),
+                supportsComputerUse: z.boolean().optional(),
+                contextLength: z.number().int().min(0).max(2000000).optional(),
+                strategy: z.enum(["cheapest", "balanced", "best"]).optional(),
+              }).optional(),
               parallelToolCalls: z.boolean().default(true),
               maxTurns: z.number().int().min(1).max(100).default(25),
               isEntryPoint: z.boolean().default(false),
@@ -1032,6 +1043,7 @@ export const agencyRouter = router({
             instructions: agent.instructions ?? null,
             model: agent.model ?? null,
             modelSettings: agent.modelSettings ?? null,
+            modelRequirements: (agent as any).modelRequirements ?? null,
             parallelToolCalls: agent.parallelToolCalls,
             maxTurns: agent.maxTurns,
             isEntryPoint: agent.isEntryPoint,
@@ -1630,6 +1642,7 @@ export const agencyRouter = router({
             instructions: agent.instructions ?? null,
             model: agent.model ?? null,
             modelSettings: agent.modelSettings ?? null,
+            modelRequirements: (agent as any).modelRequirements ?? null,
             parallelToolCalls: agent.parallelToolCalls,
             maxTurns: agent.maxTurns,
             isEntryPoint: agent.isEntryPoint,
@@ -2835,6 +2848,40 @@ export const agencyRouter = router({
         agencyId?: string;
         guide?: string;
         error?: string;
+      };
+    }),
+
+  /**
+   * Resolve the best LLM model for given capability requirements.
+   * Used by the frontend to preview which model will be selected.
+   */
+  resolveModel: protectedProcedure
+    .input(z.object({
+      requirements: z.object({
+        supportsVision: z.boolean().optional(),
+        supportsThinking: z.boolean().optional(),
+        supportsFunctionTools: z.boolean().optional(),
+        supportsStructuredOutputs: z.boolean().optional(),
+        supportsWebSearch: z.boolean().optional(),
+        supportsCodeExecution: z.boolean().optional(),
+        supportsComputerUse: z.boolean().optional(),
+        contextLength: z.number().int().min(0).max(2000000).optional(),
+        strategy: z.enum(["cheapest", "balanced", "best"]).optional(),
+      }),
+    }))
+    .query(async ({ input }) => {
+      const { loadEnabledLlmModelRows } = await import("../services/enabledLlmModels");
+      const { selectBestLlmModel } = await import("../services/intelligentModelSelector");
+      const rows = await loadEnabledLlmModelRows();
+      const modelId = selectBestLlmModel(input.requirements, rows);
+      if (!modelId) {
+        return { modelId: null, modelName: null, provider: null };
+      }
+      const matched = rows.find((r) => r.modelId === modelId);
+      return {
+        modelId,
+        modelName: matched?.providerModelId ?? modelId,
+        provider: matched?.providerName ?? "unknown",
       };
     }),
 
