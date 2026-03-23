@@ -59,11 +59,29 @@ import { invalidateStarterCache } from "../services/conversationStarterCache";
 import { generateAgencySvg } from "../lib/agencySvgGenerator";
 import { createNotification } from "../services/notificationService";
 
+/**
+ * Safely resolve tenantId from tRPC context.
+ * Returns empty string "" ONLY when genuinely no tenant context exists.
+ * The key difference from the old pattern: this returns "" for null/undefined
+ * currentTenantId so callers can check `tenantId.length > 0` before using it
+ * in SQL queries.
+ */
+function resolveTenantId(ctx: { tenantId?: string | null; user?: { currentTenantId?: string | number | null } | null }): string {
+  if (ctx.tenantId && ctx.tenantId.length > 0) return ctx.tenantId;
+  const ct = ctx.user?.currentTenantId;
+  if (ct != null && String(ct).length > 0 && String(ct) !== "null") return String(ct);
+  return "";
+}
+
 // Feature flag guard (tenant-scoped)
 async function assertAgencyEnabled(tenantId: string): Promise<void> {
   // Always enable in non-production environments for local development
   // OR if explicitly enabled via environment variable
   if (process.env.NODE_ENV !== "production" || process.env.AGENCY_SWARM_ENABLED === "true") {
+    return;
+  }
+  // Skip tenant flag check when no tenant context (admin/system users)
+  if (!tenantId || tenantId.length === 0) {
     return;
   }
 
@@ -211,7 +229,7 @@ export const agencyRouter = router({
       }),
     )
     .query(async ({ ctx, input }) => {
-      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      const tenantId = resolveTenantId(ctx);
       await assertAgencyEnabled(tenantId);
 
       // Include user's tenant agencies + system template agencies
@@ -255,7 +273,7 @@ export const agencyRouter = router({
 
   /** Lightweight list for trigger detection in chat — returns only agencies with triggerPhrases */
   listTriggers: protectedProcedure.query(async ({ ctx }) => {
-    const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+    const tenantId = resolveTenantId(ctx);
     await assertAgencyEnabled(tenantId);
 
     const result = await db
@@ -281,7 +299,7 @@ export const agencyRouter = router({
   listAgencyGroups: protectedProcedure
     .input(z.object({ agencyId: z.string() }))
     .query(async ({ ctx, input }) => {
-      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      const tenantId = resolveTenantId(ctx);
       await assertAgencyEnabled(tenantId);
 
       const userId = ctx.user!.id;
@@ -320,7 +338,7 @@ export const agencyRouter = router({
       groupIds: z.array(z.number()).min(1).max(50),
     }))
     .mutation(async ({ ctx, input }) => {
-      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      const tenantId = resolveTenantId(ctx);
       await assertAgencyEnabled(tenantId);
 
       const userId = ctx.user!.id;
@@ -380,7 +398,7 @@ export const agencyRouter = router({
       groupId: z.number(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      const tenantId = resolveTenantId(ctx);
       await assertAgencyEnabled(tenantId);
 
       const userId = ctx.user!.id;
@@ -425,7 +443,7 @@ export const agencyRouter = router({
 
   listTemplates: protectedProcedure
     .query(async ({ ctx }) => {
-      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      const tenantId = resolveTenantId(ctx);
       await assertAgencyEnabled(tenantId);
       const templateExposureEnabled = await getTenantFeatureFlag("AGENCY_TEMPLATE_EXPERIENCES_ENABLED", tenantId);
       if (templateExposureEnabled) {
@@ -446,7 +464,7 @@ export const agencyRouter = router({
   listAgentTemplates: protectedProcedure
     .input(z.object({ agencyTemplateId: z.string().optional() }).optional())
     .query(async ({ ctx, input }) => {
-      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      const tenantId = resolveTenantId(ctx);
       await assertAgencyEnabled(tenantId);
 
       const { agentTemplates } = await import("../../drizzle/schema");
@@ -475,7 +493,7 @@ export const agencyRouter = router({
       }).optional().default({ limit: 50, offset: 0 })
     )
     .query(async ({ ctx, input }) => {
-      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      const tenantId = resolveTenantId(ctx);
       await assertAgencyEnabled(tenantId);
 
       // Default built-in tools that Agency Swarm agents can use
@@ -751,7 +769,7 @@ export const agencyRouter = router({
   getById: protectedProcedure
     .input(z.object({ id: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
-      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      const tenantId = resolveTenantId(ctx);
       await assertAgencyEnabled(tenantId);
 
       const userId = ctx.user!.id;
@@ -835,7 +853,7 @@ export const agencyRouter = router({
   createFromTemplate: agencyCreateProcedure
     .input(z.object({ agencyTemplateId: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      const tenantId = resolveTenantId(ctx);
       const userId = ctx.user!.id;
       await assertAgencyEnabled(tenantId);
       const templateExposureEnabled = await getTenantFeatureFlag("AGENCY_TEMPLATE_EXPERIENCES_ENABLED", tenantId);
@@ -973,7 +991,7 @@ export const agencyRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      const tenantId = resolveTenantId(ctx);
       await assertAgencyEnabled(tenantId);
       const userId = ctx.user!.id;
 
@@ -1120,7 +1138,7 @@ export const agencyRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      const tenantId = resolveTenantId(ctx);
       await assertAgencyEnabled(tenantId);
       const userId = ctx.user!.id;
       const isAdmin = ctx.user!.role === "admin";
@@ -1517,7 +1535,7 @@ export const agencyRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      const tenantId = resolveTenantId(ctx);
       await assertAgencyEnabled(tenantId);
       const userId = ctx.user!.id;
       const isAdmin = ctx.user!.role === "admin";
@@ -1766,7 +1784,7 @@ export const agencyRouter = router({
   delete: protectedProcedure
     .input(z.object({ id: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
-      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      const tenantId = resolveTenantId(ctx);
       await assertAgencyEnabled(tenantId);
       const userId = ctx.user!.id;
       const isAdmin = ctx.user!.role === "admin";
@@ -1807,7 +1825,7 @@ export const agencyRouter = router({
       }),
     )
     .query(async ({ ctx, input }) => {
-      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      const tenantId = resolveTenantId(ctx);
       await assertAgencyEnabled(tenantId);
       const userId = ctx.user!.id;
 
@@ -1846,7 +1864,7 @@ export const agencyRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      const tenantId = resolveTenantId(ctx);
       await assertAgencyEnabled(tenantId);
       const userId = ctx.user!.id;
 
@@ -1904,7 +1922,7 @@ export const agencyRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      const tenantId = resolveTenantId(ctx);
       await assertAgencyEnabled(tenantId);
       const userId = ctx.user!.id;
       const userToken = ctx.userToken ?? "";
@@ -2031,7 +2049,7 @@ export const agencyRouter = router({
       }),
     )
     .query(async ({ ctx, input }) => {
-      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      const tenantId = resolveTenantId(ctx);
       await assertAgencyEnabled(tenantId);
       const userId = ctx.user!.id;
       const userToken = ctx.userToken ?? "";
@@ -2092,7 +2110,7 @@ export const agencyRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      const tenantId = resolveTenantId(ctx);
       await assertAgencyEnabled(tenantId);
       const userId = ctx.user!.id;
       const userToken = ctx.userToken ?? "";
@@ -2401,7 +2419,7 @@ export const agencyRouter = router({
   listVersions: protectedProcedure
     .input(z.object({ agencyId: z.string().uuid(), limit: z.number().min(1).max(50).default(30) }))
     .query(async ({ ctx, input }) => {
-      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      const tenantId = resolveTenantId(ctx);
       await assertAgencyEnabled(tenantId);
 
       const [agency] = await db
@@ -2431,7 +2449,7 @@ export const agencyRouter = router({
   restoreVersion: protectedProcedure
     .input(z.object({ versionId: z.number().int().positive() }))
     .mutation(async ({ ctx, input }) => {
-      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      const tenantId = resolveTenantId(ctx);
       await assertAgencyEnabled(tenantId);
       const userId = ctx.user!.id;
       const isAdmin = ctx.user!.role === "admin";
@@ -2808,7 +2826,7 @@ export const agencyRouter = router({
           model: input.model,
           skip_interview: input.skipInterview,
           user_id: ctx.user!.id,
-          tenant_id: ctx.tenantId ?? String(ctx.user!.currentTenantId ?? ""),
+          tenant_id: resolveTenantId(ctx),
         }),
       });
 
@@ -3089,7 +3107,7 @@ export const agencyRouter = router({
   useMarketplaceAgency: protectedProcedure
     .input(z.object({ agencyId: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      const tenantId = resolveTenantId(ctx);
       const userId = ctx.user!.id;
 
       // Verify source agency is published + public
@@ -3207,7 +3225,7 @@ export const agencyRouter = router({
   requestPublish: protectedProcedure
     .input(z.object({ agencyId: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      const tenantId = resolveTenantId(ctx);
       const userId = ctx.user!.id;
       const isAdmin = ctx.user!.role === "admin";
 
@@ -3262,7 +3280,7 @@ export const agencyRouter = router({
   cancelPublishRequest: protectedProcedure
     .input(z.object({ agencyId: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      const tenantId = resolveTenantId(ctx);
       const userId = ctx.user!.id;
 
       const [agency] = await db
@@ -4186,7 +4204,7 @@ export const agencyRouter = router({
       const userId = ctx.user!.id;
       const userRole = ctx.user!.role;
 
-      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      const tenantId = resolveTenantId(ctx);
       // 1. Look up the conversation/run — SECURITY: scope to tenant to prevent cross-tenant approval
       const [conv] = await db
         .select()
@@ -4237,7 +4255,7 @@ export const agencyRouter = router({
       }),
     )
     .mutation(async ({ input, ctx }) => {
-      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      const tenantId = resolveTenantId(ctx);
       await assertAgencyEnabled(tenantId);
 
       // Feature flag guard
@@ -4309,7 +4327,7 @@ export const agencyRouter = router({
       }),
     )
     .query(async ({ input, ctx }) => {
-      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      const tenantId = resolveTenantId(ctx);
       await assertAgencyEnabled(tenantId);
 
       // Feature flag guard
@@ -4359,7 +4377,7 @@ export const agencyRouter = router({
       }),
     )
     .query(async ({ input, ctx }) => {
-      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      const tenantId = resolveTenantId(ctx);
       await assertAgencyEnabled(tenantId);
 
       // Verify agency ownership
@@ -4391,7 +4409,7 @@ export const agencyRouter = router({
       }),
     )
     .query(async ({ input, ctx }) => {
-      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      const tenantId = resolveTenantId(ctx);
       await assertAgencyEnabled(tenantId);
 
       const { getRunTrace } = await import("../services/agencyTraceService");
@@ -4413,7 +4431,7 @@ export const agencyRouter = router({
       pageSize: z.number().int().min(1).max(100).default(20),
     }))
     .query(async ({ input, ctx }) => {
-      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      const tenantId = resolveTenantId(ctx);
       const userId = ctx.user!.id;
       const isDomainAdmin = ctx.user!.role === "domain_admin";
       const offset = (input.page - 1) * input.pageSize;
@@ -4455,7 +4473,7 @@ export const agencyRouter = router({
       memoryId: z.number().int().positive(),
     }))
     .mutation(async ({ input, ctx }) => {
-      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      const tenantId = resolveTenantId(ctx);
       const userId = ctx.user!.id;
       const isDomainAdmin = ctx.user!.role === "domain_admin";
 
@@ -4482,7 +4500,7 @@ export const agencyRouter = router({
       userId: z.number().int().positive().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
-      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      const tenantId = resolveTenantId(ctx);
       const isDomainAdmin = ctx.user!.role === "domain_admin";
       const targetUserId = isDomainAdmin && input.userId ? input.userId : ctx.user!.id;
 
