@@ -16,6 +16,7 @@ import { SkillDiscoveryNodeCard } from "./SkillDiscoveryNodeCard";
 import { ErrorHandlerNodeCard } from "./ErrorHandlerNodeCard";
 import { DataTransformNodeCard } from "./DataTransformNodeCard";
 import { AutonomousAgentNode } from "./AutonomousAgentNode";
+import { McpServerNodeCard } from "./McpServerNodeCard";
 
 /**
  * Single ReactFlow node type dispatcher.
@@ -54,6 +55,8 @@ export const BaseAgencyNode = memo(function BaseAgencyNode(props: NodeProps<Agen
       return <DataTransformNodeCard {...props} />;
     case "autonomous_agent":
       return <AutonomousAgentNode {...props} />;
+    case "mcp_server":
+      return <McpServerNodeCard {...props} />;
     default:
       return <AgentNodeCard {...props} />;
   }

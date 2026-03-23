@@ -986,7 +986,7 @@ export const agencyRouter = router({
               description: z.string().optional(),
               nodeType: z.enum([
                 "agent", "supervisor", "router", "aggregator",
-                "knowledge_base", "skill_call", "human_approval", "browser_session", "conditional_branch", "parallel_fan_out", "loop_retry", "skill_discovery", "data_transform", "error_handler", "autonomous_agent",
+                "knowledge_base", "skill_call", "human_approval", "browser_session", "conditional_branch", "parallel_fan_out", "loop_retry", "skill_discovery", "data_transform", "error_handler", "autonomous_agent", "mcp_server",
               ]).default("agent"),
               instructions: z.string().max(50000).optional(),
               model: z.string().max(100).regex(/^[a-zA-Z0-9._\/-]+$/, "Invalid model identifier").optional(),

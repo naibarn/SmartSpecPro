@@ -670,6 +670,9 @@ class AgencyOrchestrator:
                         trace_collector=self.trace_collector,
                     )
 
+                case "mcp_server":
+                    result = await self._execute_mcp_server_node(node, ctx)
+
                 case _:
                     logger.warning(
                         "agency_orchestrator_unknown_node_type", node_type=node_type
@@ -2179,6 +2182,48 @@ class AgencyOrchestrator:
         except Exception as exc:
             logger.error("agency_skill_call_failed", skill=skill_slug, error=str(exc)[:100])
             return f"[Skill '{skill_slug}' failed: {str(exc)[:100]}]"
+
+    async def _execute_mcp_server_node(self, node: "NodeRow", ctx: "ExecutionContext") -> str:
+        """Execute an MCP server node — calls a tool on an external MCP server.
+
+        Reads config from node_config: serverSlug, serverUrl, toolName, parameters.
+        Uses the MCP client with SSRF validation and rate limiting.
+        """
+        cfg = node.get("node_config") or {}
+        server_url = cfg.get("serverUrl", "")
+        tool_name = cfg.get("toolName", "")
+        parameters = cfg.get("parameters", {})
+        node_name = node.get("name", node.get("id", "mcp"))
+
+        if not server_url:
+            return f"[MCP '{node_name}': no server URL configured]"
+        if not tool_name:
+            return f"[MCP '{node_name}': no tool name configured]"
+
+        try:
+            from app.services.mcp_client import call_tool
+            tenant_id = (
+                getattr(self.agency_config, "tenant_id", None)
+                or ctx.shared_context.tenant_id if ctx.shared_context else None
+            )
+            result = await call_tool(
+                server_url=server_url,
+                tool_name=tool_name,
+                arguments=parameters,
+                tenant_id=tenant_id,
+            )
+            # Store result in context for downstream nodes
+            ctx.results[node.get("id", "")] = result
+            logger.info(
+                "agency_mcp_server_node_executed",
+                node=node_name,
+                tool=tool_name,
+                result_len=len(result),
+            )
+            return result
+        except Exception as exc:
+            logger.error("agency_mcp_server_node_failed", node=node_name, error=str(exc)[:200])
+            return f"[MCP '{node_name}' failed: {str(exc)[:100]}]"
 
     async def _route_skill_output(
         self,
