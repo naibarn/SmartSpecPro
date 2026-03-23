@@ -333,6 +333,21 @@ agencyStreamRouter.post(
       return res.status(400).json({ error: "Invalid agencyId format" });
     }
 
+    // 3b. SECURITY: Verify agency belongs to user's tenant (prevent cross-tenant cancel)
+    if (cancelTenantId) {
+      const { db: ownerDb } = await import("../db");
+      const { agencies: agenciesTable } = await import("../../drizzle/schema");
+      const { eq, and } = await import("drizzle-orm");
+      const [agencyRow] = await ownerDb
+        .select({ id: agenciesTable.id })
+        .from(agenciesTable)
+        .where(and(eq(agenciesTable.id, agencyId), eq(agenciesTable.tenantId, cancelTenantId)))
+        .limit(1);
+      if (!agencyRow) {
+        return res.status(404).json({ error: "Agency not found" });
+      }
+    }
+
     // 4. Validate body
     const bodyResult = cancelBodySchema.safeParse(req.body);
     if (!bodyResult.success) {
