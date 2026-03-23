@@ -436,7 +436,7 @@ async def _design_async(task_id: str, user_id: int, payload: dict) -> dict:
             "message": f"Reviewing plan (iteration {iteration}/3)...",
             "_user_id": user_id,
         })
-        review = await _llm_review_plan(plan, model, user_id, discover_analysis=discover_analysis)
+        review = await _llm_review_plan(plan, model, user_id, discover_analysis=discover_analysis, llm_fn=_budget_llm_call)
         if not review or review.get("verdict") == "pass":
             break
         if review.get("fixedPlan"):
@@ -449,7 +449,7 @@ async def _design_async(task_id: str, user_id: int, payload: dict) -> dict:
         "message": "Designing agency architecture...",
         "_user_id": user_id,
     })
-    spec = await _llm_design(requirement, intent, answers, model, user_id, plan_steps=plan.get("planSteps"))
+    spec = await _llm_design(requirement, intent, answers, model, user_id, plan_steps=plan.get("planSteps"), discover_analysis=discover_analysis)
 
     # Phase 6: REVIEW_DESIGN (max 3 iterations)
     for iteration in range(1, 4):
@@ -461,7 +461,7 @@ async def _design_async(task_id: str, user_id: int, payload: dict) -> dict:
             "message": f"Reviewing design (iteration {iteration}/3)...",
             "_user_id": user_id,
         })
-        review = await _llm_review_design(spec, model, user_id, discover_analysis=discover_analysis)
+        review = await _llm_review_design(spec, model, user_id, discover_analysis=discover_analysis, llm_fn=_budget_llm_call)
         if not review or review.get("verdict") == "pass":
             break
         if review.get("fixedSpec"):
@@ -497,7 +497,7 @@ async def _design_async(task_id: str, user_id: int, payload: dict) -> dict:
         logger.error("agency_creator_implement_returned_none", task_id=task_id)
         return {"status": "failed", "error": "Agency creation failed"}
 
-    # Phase 9: VERIFY
+    # Phase 8: VERIFY
     _set_status(task_id, {
         "status": "processing",
         "phase": "verify",
@@ -516,7 +516,7 @@ async def _design_async(task_id: str, user_id: int, payload: dict) -> dict:
     })
     guide = await _llm_document(spec, model, user_id)
 
-    # Phase 9: SUGGEST — generate optional improvement suggestions
+    # Phase 11: SUGGEST — generate optional improvement suggestions
     suggestions: list[dict] = []
     try:
         _set_status(task_id, {
@@ -829,7 +829,7 @@ def _fallback_plan(requirement: str, intent: dict) -> dict:
 
 
 async def _llm_review_plan(
-    plan: dict, model: str, user_id: int, discover_analysis: dict | None = None
+    plan: dict, model: str, user_id: int, discover_analysis: dict | None = None, llm_fn=None,
 ) -> dict | None:
     """Phase 4: Review the plan for completeness and correctness."""
     # Build capability context from discover phase
@@ -871,7 +871,8 @@ Return JSON:
   "fixedPlan": {{ ... }}  // only if verdict is "needs_fix" — the corrected plan
 }}"""
 
-    content = await _llm_call(
+    _call = llm_fn or _llm_call
+    content = await _call(
         system_prompt=system_prompt,
         user_message=f"Plan to review:\n{json.dumps(plan, indent=2)}",
         model=model,
@@ -885,7 +886,7 @@ Return JSON:
 
 
 async def _llm_review_design(
-    spec: dict, model: str, user_id: int, discover_analysis: dict | None = None
+    spec: dict, model: str, user_id: int, discover_analysis: dict | None = None, llm_fn=None,
 ) -> dict | None:
     """Phase 6: Review the design spec for correctness and completeness."""
     # Build capability context from discover phase
@@ -940,7 +941,8 @@ Return JSON:
     if len(spec_str) > 8000:
         spec_str = spec_str[:8000] + "\n... (truncated)"
 
-    content = await _llm_call(
+    _call = llm_fn or _llm_call
+    content = await _call(
         system_prompt=system_prompt,
         user_message=f"Spec to review:\n{spec_str}",
         model=model,
@@ -953,7 +955,7 @@ Return JSON:
     return None
 
 
-async def _llm_design(requirement: str, intent: dict, answers: dict, model: str, user_id: int, plan_steps: list | None = None) -> dict:
+async def _llm_design(requirement: str, intent: dict, answers: dict, model: str, user_id: int, plan_steps: list | None = None, discover_analysis: dict | None = None) -> dict:
     """Phase 5: Design the agency architecture as JSON spec."""
     answers_text = ""
     if answers:
@@ -1078,7 +1080,17 @@ Model strategy:
     if plan_steps:
         plan_text = f"\n\nArchitecture plan (follow this structure):\n{json.dumps(plan_steps, indent=2)}"
 
-    user_message = f"Requirement: {requirement}{answers_text}\n\nDomain analysis: {json.dumps(intent)}{plan_text}"
+    capability_hint = ""
+    da = discover_analysis or {}
+    if da.get("recommended_capabilities"):
+        caps = da["recommended_capabilities"]
+        enabled = [k for k, v in caps.items() if v]
+        if enabled:
+            capability_hint = f"\n\nDiscover phase recommended: {', '.join(f'{k}=True' for k in enabled)}"
+            capability_hint += f"\nComplexity: {da.get('complexity_level', 'moderate')}"
+            capability_hint += f"\nMemory recommended: {da.get('memory_recommendation', False)}"
+
+    user_message = f"Requirement: {requirement}{answers_text}\n\nDomain analysis: {json.dumps(intent)}{plan_text}{capability_hint}"
 
     content = await _llm_call(
         system_prompt=system_prompt,
