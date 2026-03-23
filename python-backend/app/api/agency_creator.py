@@ -98,14 +98,20 @@ async def get_agency_creator_status(
     if not re.match(r"^agcreate-[a-f0-9]{12}$", task_id):
         raise HTTPException(status_code=400, detail="Invalid task_id format")
 
-    from app.tasks.agency_creator_task import get_status
+    from app.tasks.agency_creator_task import get_status, get_suggestions
 
     data = get_status(task_id, user_id=current_user.id)
     if data is None:
         raise HTTPException(status_code=404, detail="Task not found")
 
     # Strip internal fields before returning to client
-    return {k: v for k, v in data.items() if not k.startswith("_")}
+    result = {k: v for k, v in data.items() if not k.startswith("_")}
+
+    # Merge suggestions into completed status response
+    if result.get("status") == "completed" and result.get("hasSuggestions"):
+        result["suggestions"] = get_suggestions(task_id)
+
+    return result
 
 
 @router.post("/answer")

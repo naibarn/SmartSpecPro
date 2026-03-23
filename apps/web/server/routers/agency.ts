@@ -670,6 +670,47 @@ export const agencyRouter = router({
           },
         },
         {
+          id: "builtin-meta-channels",
+          name: "Meta Channels",
+          description: "Send messages, publish posts, read inbox, and manage comments on connected Facebook Pages",
+          toolType: "builtin",
+          riskLevel: "medium",
+          requiresApproval: false,
+          icon: "share-2",
+          category: "social",
+          configSchema: {
+            fields: [
+              {
+                key: "pageId",
+                label: "Connected Page",
+                type: "select",
+                required: true,
+                optionsEndpoint: "/api/v1/social/connected-pages",
+              },
+              {
+                key: "allowedActions",
+                label: "Allowed Actions",
+                type: "multiselect",
+                required: true,
+                options: [
+                  { label: "Read Inbox", value: "read_inbox" },
+                  { label: "Send Reply", value: "send_reply" },
+                  { label: "Publish Post", value: "publish_post" },
+                  { label: "Read Comments", value: "read_comments" },
+                  { label: "Reply to Comments", value: "reply_comment" },
+                ],
+                default: ["read_inbox"],
+              },
+              {
+                key: "requireApproval",
+                label: "Require Approval for Outbound",
+                type: "toggle",
+                default: true,
+              },
+            ],
+          },
+        },
+        {
           id: "builtin-agency-call",
           name: "Agency Call",
           description:
@@ -2887,6 +2928,14 @@ export const agencyRouter = router({
         agencyId?: string;
         guide?: string;
         error?: string;
+        hasSuggestions?: boolean;
+        suggestions?: Array<{
+          category: string;
+          title: string;
+          description: string;
+          impact: string;
+          targetNodeId?: string;
+        }>;
       };
     }),
 
