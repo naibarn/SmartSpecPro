@@ -17,6 +17,7 @@ vi.mock("../../_core/trpc", () => {
 
   return {
     router: (routes: any) => routes,
+    middleware: (fn: Function) => fn,
     protectedProcedure: createProcedure(),
     adminProcedure: createProcedure(),
     publicProcedure: createProcedure(),
@@ -112,6 +113,7 @@ const { mockDbSelect, mockDbInsert, mockDbUpdate, mockDbDelete, mockDbTransactio
   }));
 
 vi.mock("../../db", () => ({
+  getDb: vi.fn(),
   db: {
     select: mockDbSelect,
     insert: mockDbInsert,
@@ -206,6 +208,15 @@ vi.mock("../../../drizzle/schema", () => ({
   agencyTemplates: {
     id: "id",
     tenantId: "tenantId",
+    createdBy: "createdBy",
+    sourceAgencyId: "sourceAgencyId",
+    status: "status",
+    agentDefinitions: "agentDefinitions",
+    communicationFlows: "communicationFlows",
+    name: "name",
+    description: "description",
+    category: "category",
+    isActive: "isActive",
   },
   agentTemplates: {
     id: "id",
@@ -216,6 +227,7 @@ vi.mock("../../../drizzle/schema", () => ({
 vi.mock("drizzle-orm", () => ({
   eq: vi.fn((...args: any[]) => ({ type: "eq", args })),
   and: vi.fn((...args: any[]) => ({ type: "and", args })),
+  or: vi.fn((...args: any[]) => ({ type: "or", args })),
   desc: vi.fn((col: any) => ({ type: "desc", col })),
   inArray: vi.fn((...args: any[]) => ({ type: "inArray", args })),
   sql: Object.assign(
@@ -311,6 +323,28 @@ describe("agencyRouter", () => {
           canEdit: false,
         },
       ]);
+    });
+
+    it("hides archived agencies by default", async () => {
+      const chain = {
+        from: vi.fn().mockReturnThis(),
+        leftJoin: vi.fn().mockReturnThis(),
+        where: vi.fn().mockReturnThis(),
+        orderBy: vi.fn().mockReturnThis(),
+        limit: vi.fn().mockReturnThis(),
+        offset: vi.fn().mockResolvedValue([]),
+      };
+      mockDbSelect.mockReturnValue(chain);
+
+      const handler = agencyRouter.list;
+      await handler({
+        ctx: makeCtx(),
+        input: { limit: 50, offset: 0 },
+      });
+
+      const whereArg = (chain.where as any).mock.calls[0][0];
+      expect(whereArg.type).toBe("and");
+      expect(whereArg.args.some((clause: any) => clause.type === "sql")).toBe(true);
     });
   });
 
@@ -1290,6 +1324,174 @@ describe("agencyRouter", () => {
           expect.objectContaining({ toolId: "builtin-document-search" }),
         ]),
       );
+    });
+  });
+
+  describe("saveAsTemplate", () => {
+    it("creates a template from an agency owned by user", async () => {
+      const mockAgency = {
+        id: "agency-001",
+        tenantId: "tenant-001",
+        createdBy: 1,
+        description: "Test agency",
+        topology: "custom",
+      };
+      const mockAgents = [
+        {
+          id: "agent-1",
+          agencyId: "agency-001",
+          name: "Researcher",
+          nodeType: "agent",
+          instructions: "Research things",
+          modelRequirements: { supportsWebSearch: true },
+          nodeConfig: { executionMode: "agentic" },
+          isEntryPoint: true,
+          position: { x: 100, y: 200 },
+        },
+        {
+          id: "agent-2",
+          agencyId: "agency-001",
+          name: "Writer",
+          nodeType: "agent",
+          instructions: "Write content",
+          modelRequirements: null,
+          nodeConfig: null,
+          isEntryPoint: false,
+          position: { x: 300, y: 200 },
+        },
+      ];
+      const mockFlows = [
+        {
+          id: "flow-1",
+          agencyId: "agency-001",
+          fromAgentId: "agent-1",
+          toAgentId: "agent-2",
+          flowType: "delegation",
+          flowConfig: null,
+        },
+      ];
+      const mockTools = [
+        { id: "t1", agentId: "agent-1", toolId: "builtin-web-search" },
+      ];
+
+      const insertCalls: any[] = [];
+      const selectResults = [
+        [mockAgency],   // 1st select: agency lookup
+        mockAgents,     // 2nd select: agents lookup
+        mockFlows,      // 3rd select: flows lookup
+        mockTools,      // 4th select: tools lookup
+      ];
+      let selectIdx = 0;
+
+      mockDbSelect.mockImplementation(() => {
+        const result = selectResults[selectIdx] ?? [];
+        selectIdx++;
+        return {
+          from: vi.fn().mockReturnValue({
+            where: vi.fn().mockResolvedValue(result),
+          }),
+        };
+      });
+
+      mockDbInsert.mockImplementation((table: any) => {
+        const inserter = {
+          values: (vals: any) => {
+            insertCalls.push({ table, values: vals });
+            return Promise.resolve();
+          },
+        };
+        return inserter;
+      });
+
+      const handler = agencyRouter.saveAsTemplate;
+      const result = await handler({
+        ctx: makeCtx(),
+        input: {
+          agencyId: "agency-001",
+          name: "My Template",
+          description: "Template description",
+        },
+      });
+
+      expect(result).toHaveProperty("templateId");
+      expect(insertCalls).toHaveLength(1);
+      const templateValues = insertCalls[0].values;
+      expect(templateValues.name).toBe("My Template");
+      expect(templateValues.tenantId).toBe("tenant-001");
+      expect(templateValues.createdBy).toBe(1);
+      expect(templateValues.sourceAgencyId).toBe("agency-001");
+      expect(templateValues.status).toBe("draft");
+      expect(templateValues.agentDefinitions).toHaveLength(2);
+      expect(templateValues.agentDefinitions[0].name).toBe("Researcher");
+      expect(templateValues.agentDefinitions[0].toolIds).toEqual(["builtin-web-search"]);
+      expect(templateValues.agentDefinitions[0].isEntryPoint).toBe(true);
+      // Relative positions
+      expect(templateValues.agentDefinitions[0].relativePosition).toEqual({ x: 0, y: 0 });
+      expect(templateValues.agentDefinitions[1].relativePosition).toEqual({ x: 200, y: 0 });
+      // Communication flows use indices
+      expect(templateValues.communicationFlows).toHaveLength(1);
+      expect(templateValues.communicationFlows[0]).toMatchObject({
+        fromIndex: 0,
+        toIndex: 1,
+        flowType: "delegation",
+      });
+    });
+
+    it("rejects non-owner non-admin users", async () => {
+      const mockAgency = {
+        id: "agency-001",
+        tenantId: "tenant-001",
+        createdBy: 999, // different user
+      };
+
+      mockDbSelect.mockImplementation(() => ({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue([mockAgency]),
+        }),
+      }));
+
+      const handler = agencyRouter.saveAsTemplate;
+      await expect(handler({
+        ctx: makeCtx({ user: { id: 1, role: "user", currentTenantId: "tenant-001" } }),
+        input: { agencyId: "agency-001", name: "Test" },
+      })).rejects.toThrow(/owner or admin/);
+    });
+
+    it("allows admin to save template for any agency", async () => {
+      const mockAgency = {
+        id: "agency-001",
+        tenantId: "tenant-001",
+        createdBy: 999,
+        description: "Desc",
+      };
+
+      const adminSelectResults = [
+        [mockAgency],  // agency lookup
+        [],            // agents lookup (empty)
+        [],            // flows lookup (empty)
+      ];
+      let adminSelectIdx = 0;
+      mockDbSelect.mockImplementation(() => {
+        const result = adminSelectResults[adminSelectIdx] ?? [];
+        adminSelectIdx++;
+        return {
+          from: vi.fn().mockReturnValue({
+            where: vi.fn().mockResolvedValue(result),
+          }),
+        };
+      });
+
+      mockDbInsert.mockImplementation(() => ({
+        values: vi.fn().mockResolvedValue(undefined),
+      }));
+
+      const handler = agencyRouter.saveAsTemplate;
+      const result = await handler({
+        ctx: makeCtx({ user: { id: 1, role: "admin", currentTenantId: "tenant-001" } }),
+        input: { agencyId: "agency-001", name: "Admin Template" },
+      });
+
+      expect(result).toHaveProperty("templateId");
     });
   });
 });

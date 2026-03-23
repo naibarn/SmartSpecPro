@@ -5000,9 +5000,38 @@ export const agencyTemplates = pgTable("agency_templates", {
   systemPrompt: text("systemPrompt"),
   category: varchar("category", { length: 64 }).notNull(), // e.g. "Marketing", "Development"
   isActive: boolean("isActive").default(true).notNull(),
+  /** Tenant that owns this template (F04 security requirement) */
+  tenantId: varchar("tenantId", { length: 36 }).references(() => tenants.id, { onDelete: "cascade" }),
+  /** User who created this template */
+  createdBy: integer("createdBy").references(() => users.id, { onDelete: "set null" }),
+  /** Original agency this template was derived from */
+  sourceAgencyId: varchar("sourceAgencyId", { length: 36 }).references(() => agencies.id, { onDelete: "set null" }),
+  /** Template status: draft (needs approval for public), approved, rejected */
+  status: varchar("status", { length: 20 }).default("draft").notNull(),
+  /** Portable agent definitions (array indices instead of UUIDs) */
+  agentDefinitions: jsonb("agentDefinitions").$type<Array<{
+    name: string;
+    nodeType: string;
+    instructions?: string;
+    modelRequirements?: Record<string, unknown>;
+    nodeConfig?: Record<string, unknown>;
+    toolIds?: string[];
+    isEntryPoint?: boolean;
+    relativePosition?: { x: number; y: number };
+  }>>(),
+  /** Portable communication flows (array indices instead of UUIDs) */
+  communicationFlows: jsonb("communicationFlows").$type<Array<{
+    fromIndex: number;
+    toIndex: number;
+    flowType: string;
+    flowConfig?: Record<string, unknown>;
+  }>>(),
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
-});
+}, (t) => [
+  index("agency_templates_tenant_idx").on(t.tenantId),
+  index("agency_templates_created_by_idx").on(t.createdBy),
+]);
 
 export type AgencyTemplate = typeof agencyTemplates.$inferSelect;
 export type InsertAgencyTemplate = typeof agencyTemplates.$inferInsert;
@@ -7469,3 +7498,246 @@ export const mcpServerAssignments = pgTable("mcp_server_assignments", {
 
 export type McpServerAssignment = typeof mcpServerAssignments.$inferSelect;
 export type InsertMcpServerAssignment = typeof mcpServerAssignments.$inferInsert;
+
+// ==================== Social Channels ====================
+
+export const socialProviderConnections = pgTable("social_provider_connections", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  provider: varchar("provider", { length: 50 }).notNull(),
+  providerUserId: varchar("providerUserId", { length: 255 }),
+  status: varchar("status", { length: 20 }).notNull().default("active"),
+  grantedScopes: json("grantedScopes").$type<string[]>(),
+  encryptedAccessToken: text("encryptedAccessToken"),
+  encryptedRefreshToken: text("encryptedRefreshToken"),
+  tokenExpiresAt: timestamp("tokenExpiresAt", { withTimezone: true }),
+  metadata: json("metadata").$type<Record<string, unknown>>(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("idx_social_provider_connections_tenant").on(t.tenantId),
+  index("idx_social_provider_connections_user").on(t.userId),
+]);
+
+export type SocialProviderConnection = typeof socialProviderConnections.$inferSelect;
+export type InsertSocialProviderConnection = typeof socialProviderConnections.$inferInsert;
+
+export const socialPages = pgTable("social_pages", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  connectionId: integer("connectionId").notNull().references(() => socialProviderConnections.id, { onDelete: "cascade" }),
+  providerPageId: varchar("providerPageId", { length: 255 }).notNull(),
+  pageName: varchar("pageName", { length: 500 }),
+  pageCategory: varchar("pageCategory", { length: 255 }),
+  status: varchar("status", { length: 20 }).notNull().default("active"),
+  encryptedPageAccessToken: text("encryptedPageAccessToken"),
+  tokenExpiresAt: timestamp("tokenExpiresAt", { withTimezone: true }),
+  selectedForInbox: boolean("selectedForInbox").notNull().default(true),
+  selectedForPublishing: boolean("selectedForPublishing").notNull().default(true),
+  selectedForModeration: boolean("selectedForModeration").notNull().default(false),
+  aiActionMode: varchar("aiActionMode", { length: 20 }).notNull().default("draft_only"),
+  autoSendConfidenceThreshold: doublePrecision("autoSendConfidenceThreshold").notNull().default(0.95),
+  metadata: json("metadata").$type<Record<string, unknown>>(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("idx_social_pages_tenant").on(t.tenantId),
+  index("idx_social_pages_connection").on(t.connectionId),
+]);
+
+export type SocialPage = typeof socialPages.$inferSelect;
+export type InsertSocialPage = typeof socialPages.$inferInsert;
+
+export const socialWebhookSubscriptions = pgTable("social_webhook_subscriptions", {
+  id: serial("id").primaryKey(),
+  pageId: integer("pageId").notNull().references(() => socialPages.id, { onDelete: "cascade" }),
+  subscriptionStatus: varchar("subscriptionStatus", { length: 20 }).notNull().default("pending"),
+  subscribedFields: json("subscribedFields").$type<string[]>(),
+  lastVerifiedAt: timestamp("lastVerifiedAt", { withTimezone: true }),
+  lastDeliveryAt: timestamp("lastDeliveryAt", { withTimezone: true }),
+  lastError: text("lastError"),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type SocialWebhookSubscription = typeof socialWebhookSubscriptions.$inferSelect;
+export type InsertSocialWebhookSubscription = typeof socialWebhookSubscriptions.$inferInsert;
+
+export const socialConversations = pgTable("social_conversations", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  pageId: integer("pageId").notNull().references(() => socialPages.id, { onDelete: "cascade" }),
+  providerConversationId: varchar("providerConversationId", { length: 255 }),
+  channelType: varchar("channelType", { length: 50 }).notNull().default("messenger"),
+  customerExternalId: varchar("customerExternalId", { length: 255 }).notNull(),
+  customerDisplayName: varchar("customerDisplayName", { length: 500 }),
+  status: varchar("status", { length: 20 }).notNull().default("open"),
+  assignedToUserId: integer("assignedToUserId").references(() => users.id, { onDelete: "set null" }),
+  priority: integer("priority").notNull().default(0),
+  lastMessageAt: timestamp("lastMessageAt", { withTimezone: true }),
+  lastInboundAt: timestamp("lastInboundAt", { withTimezone: true }),
+  lastOutboundAt: timestamp("lastOutboundAt", { withTimezone: true }),
+  unreadCount: integer("unreadCount").notNull().default(0),
+  labels: json("labels").$type<string[]>(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("idx_social_conversations_page_customer").on(t.pageId, t.customerExternalId),
+  index("idx_social_conversations_tenant_page").on(t.tenantId, t.pageId),
+  index("idx_social_conversations_status_last_msg").on(t.status, t.lastMessageAt),
+  index("idx_social_conversations_tenant_status").on(t.tenantId, t.status),
+]);
+
+export type SocialConversation = typeof socialConversations.$inferSelect;
+export type InsertSocialConversation = typeof socialConversations.$inferInsert;
+
+export const socialMessages = pgTable("social_messages", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  conversationId: integer("conversationId").notNull().references(() => socialConversations.id, { onDelete: "cascade" }),
+  pageId: integer("pageId").notNull().references(() => socialPages.id, { onDelete: "cascade" }),
+  providerMessageId: varchar("providerMessageId", { length: 255 }),
+  direction: varchar("direction", { length: 10 }).notNull(),
+  senderType: varchar("senderType", { length: 20 }).notNull(),
+  senderExternalId: varchar("senderExternalId", { length: 255 }),
+  senderUserId: integer("senderUserId").references(() => users.id, { onDelete: "set null" }),
+  messageType: varchar("messageType", { length: 30 }).notNull().default("text"),
+  body: text("body"),
+  payload: json("payload").$type<Record<string, unknown>>(),
+  deliveryStatus: varchar("deliveryStatus", { length: 20 }).notNull().default("sent"),
+  errorMessage: text("errorMessage"),
+  sentAt: timestamp("sentAt", { withTimezone: true }),
+  receivedAt: timestamp("receivedAt", { withTimezone: true }),
+  workflowTriggerStatus: varchar("workflowTriggerStatus", { length: 20 }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("idx_social_messages_conversation_created").on(t.conversationId, t.createdAt),
+  uniqueIndex("idx_social_messages_provider_msg_id").on(t.providerMessageId),
+]);
+
+export type SocialMessage = typeof socialMessages.$inferSelect;
+export type InsertSocialMessage = typeof socialMessages.$inferInsert;
+
+export const socialPosts = pgTable("social_posts", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  pageId: integer("pageId").notNull().references(() => socialPages.id, { onDelete: "cascade" }),
+  providerPostId: varchar("providerPostId", { length: 255 }),
+  status: varchar("status", { length: 20 }).notNull().default("draft"),
+  contentText: text("contentText"),
+  contentLink: text("contentLink"),
+  mediaRefs: json("mediaRefs").$type<string[]>(),
+  scheduledAt: timestamp("scheduledAt", { withTimezone: true }),
+  publishedAt: timestamp("publishedAt", { withTimezone: true }),
+  createdByUserId: integer("createdByUserId").references(() => users.id, { onDelete: "set null" }),
+  approvedByUserId: integer("approvedByUserId").references(() => users.id, { onDelete: "set null" }),
+  errorMessage: text("errorMessage"),
+  metadata: json("metadata").$type<Record<string, unknown>>(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("idx_social_posts_tenant_status").on(t.tenantId, t.status),
+  index("idx_social_posts_page_scheduled").on(t.pageId, t.scheduledAt),
+]);
+
+export type SocialPost = typeof socialPosts.$inferSelect;
+export type InsertSocialPost = typeof socialPosts.$inferInsert;
+
+export const socialComments = pgTable("social_comments", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  pageId: integer("pageId").notNull().references(() => socialPages.id, { onDelete: "cascade" }),
+  providerCommentId: varchar("providerCommentId", { length: 255 }),
+  providerObjectId: varchar("providerObjectId", { length: 255 }),
+  parentCommentId: integer("parentCommentId").references((): AnyPgColumn => socialComments.id, { onDelete: "set null" }),
+  authorExternalId: varchar("authorExternalId", { length: 255 }),
+  authorDisplayName: varchar("authorDisplayName", { length: 500 }),
+  body: text("body"),
+  status: varchar("status", { length: 20 }).notNull().default("visible"),
+  lastAction: varchar("lastAction", { length: 20 }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("idx_social_comments_page_created").on(t.pageId, t.createdAt),
+  uniqueIndex("idx_social_comments_provider_id").on(t.providerCommentId),
+]);
+
+export type SocialComment = typeof socialComments.$inferSelect;
+export type InsertSocialComment = typeof socialComments.$inferInsert;
+
+export const socialCommentActions = pgTable("social_comment_actions", {
+  id: serial("id").primaryKey(),
+  commentId: integer("commentId").notNull().references(() => socialComments.id, { onDelete: "cascade" }),
+  actionType: varchar("actionType", { length: 20 }).notNull(),
+  performedByUserId: integer("performedByUserId").references(() => users.id, { onDelete: "set null" }),
+  performedBySystem: boolean("performedBySystem").notNull().default(false),
+  providerResult: json("providerResult").$type<Record<string, unknown>>(),
+  status: varchar("status", { length: 20 }).notNull().default("completed"),
+  errorMessage: text("errorMessage"),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type SocialCommentAction = typeof socialCommentActions.$inferSelect;
+export type InsertSocialCommentAction = typeof socialCommentActions.$inferInsert;
+
+export const socialAutomationRules = pgTable("social_automation_rules", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  pageId: integer("pageId").references(() => socialPages.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 255 }).notNull(),
+  isEnabled: boolean("isEnabled").notNull().default(false),
+  triggerType: varchar("triggerType", { length: 50 }).notNull(),
+  conditions: json("conditions").$type<Record<string, unknown>>(),
+  actionMode: varchar("actionMode", { length: 20 }).notNull().default("draft_only"),
+  policyConfig: json("policyConfig").$type<Record<string, unknown>>(),
+  createdByUserId: integer("createdByUserId").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("idx_social_automation_rules_tenant").on(t.tenantId),
+]);
+
+export type SocialAutomationRule = typeof socialAutomationRules.$inferSelect;
+export type InsertSocialAutomationRule = typeof socialAutomationRules.$inferInsert;
+
+export const socialHumanApprovals = pgTable("social_human_approvals", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  pageId: integer("pageId").notNull().references(() => socialPages.id, { onDelete: "cascade" }),
+  entityType: varchar("entityType", { length: 50 }).notNull(),
+  entityId: integer("entityId").notNull(),
+  proposedContent: text("proposedContent"),
+  confidence: doublePrecision("confidence"),
+  status: varchar("status", { length: 20 }).notNull().default("pending"),
+  requestedBySystem: boolean("requestedBySystem").notNull().default(true),
+  reviewedByUserId: integer("reviewedByUserId").references(() => users.id, { onDelete: "set null" }),
+  decisionNote: text("decisionNote"),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("idx_social_human_approvals_tenant_status").on(t.tenantId, t.status, t.createdAt),
+]);
+
+export type SocialHumanApproval = typeof socialHumanApprovals.$inferSelect;
+export type InsertSocialHumanApproval = typeof socialHumanApprovals.$inferInsert;
+
+export const socialWebhookEventsRaw = pgTable("social_webhook_events_raw", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }),
+  provider: varchar("provider", { length: 50 }).notNull(),
+  pageId: integer("pageId"),
+  deliveryId: varchar("deliveryId", { length: 255 }).notNull(),
+  eventType: varchar("eventType", { length: 100 }),
+  payload: json("payload").$type<Record<string, unknown>>(),
+  headers: json("headers").$type<Record<string, string>>(),
+  receivedAt: timestamp("receivedAt", { withTimezone: true }).defaultNow().notNull(),
+  processingStatus: varchar("processingStatus", { length: 20 }).notNull().default("pending"),
+  errorMessage: text("errorMessage"),
+}, (t) => [
+  index("idx_social_webhook_events_raw_status").on(t.processingStatus, t.receivedAt),
+  uniqueIndex("idx_social_webhook_events_raw_provider_delivery").on(t.provider, t.deliveryId),
+]);
+
+export type SocialWebhookEventRaw = typeof socialWebhookEventsRaw.$inferSelect;
+export type InsertSocialWebhookEventRaw = typeof socialWebhookEventsRaw.$inferInsert;

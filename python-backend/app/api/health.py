@@ -201,6 +201,20 @@ async def health_check(db: AsyncSession = Depends(get_db)):
     )
 
 
+@router.get("/mcp")
+async def mcp_health_check():
+    """MCP subsystem health check.
+
+    Returns server count, active connections, and stdio process count.
+    """
+    from app.services.mcp_metrics import get_mcp_health
+    health = get_mcp_health()
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content={"status": "ok", "mcp": health}
+    )
+
+
 @router.get("/ready")
 async def readiness_check(db: AsyncSession = Depends(get_db)):
     """
