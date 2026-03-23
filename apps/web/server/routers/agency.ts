@@ -26,6 +26,7 @@ import {
   agencyAgentGuardrails,
   agencySharedTools,
   agencyRunTraces,
+  agencyAgentMemories,
   userGroups,
   users,
   systemSettings,
@@ -756,18 +757,20 @@ export const agencyRouter = router({
       const userId = ctx.user!.id;
       const isAdmin = ctx.user!.role === "admin";
 
-      // Lookup by ID first, then verify tenant access
+      // SECURITY: Filter by tenantId in SQL (defense-in-depth, no cross-tenant scan)
       const [agency] = await db
         .select()
         .from(agencies)
-        .where(eq(agencies.id, input.id))
+        .where(and(eq(agencies.id, input.id), eq(agencies.tenantId, tenantId)))
         .limit(1);
 
-      if (!agency) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Agency not found" });
+      if (!agency && isAdmin) {
+        // Admin fallback: allow cross-tenant lookup
+        const [adminAgency] = await db.select().from(agencies).where(eq(agencies.id, input.id)).limit(1);
+        if (!adminAgency) throw new TRPCError({ code: "NOT_FOUND", message: "Agency not found" });
+        Object.assign(agency ?? {}, adminAgency);
       }
-      // Allow same-tenant users or admins
-      if (agency.tenantId !== tenantId && !isAdmin) {
+      if (!agency) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Agency not found" });
       }
 
@@ -800,10 +803,17 @@ export const agencyRouter = router({
         .from(agencySharedTools)
         .where(eq(agencySharedTools.agencyId, input.id));
 
+      // SECURITY: Strip encrypted MCP tokens from response — return boolean flag only
+      const safeAgents = agents.map((a: any) => ({
+        ...a,
+        mcpServerTokensEncrypted: undefined,
+        hasMcpTokens: !!a.mcpServerTokensEncrypted,
+      }));
+
       return {
         ...agency,
         canEdit,
-        agents,
+        agents: safeAgents,
         communicationFlows: flows,
         agentToolAssignments: toolAssignments,
         sharedToolAssignments: sharedTools,
@@ -913,8 +923,8 @@ export const agencyRouter = router({
               maxTurns: z.number().int().min(1).max(100).default(25),
               isEntryPoint: z.boolean().default(false),
               isOptional: z.boolean().default(false),
-              position: z.object({ x: z.number(), y: z.number() }).optional(),
-              toolIds: z.array(z.string().min(1).max(100)).optional(),
+              position: z.object({ x: z.number().finite(), y: z.number().finite() }).optional(),
+              toolIds: z.array(z.string().min(1).max(100)).max(50).optional(),
               toolConfigs: z.record(z.string(), z.record(z.unknown())).optional(),
               nodeConfig: z.record(z.unknown()).optional(),
               outputSchema: z.record(z.unknown()).nullable().optional(),
@@ -1167,8 +1177,8 @@ export const agencyRouter = router({
             maxTurns: z.number().int().min(1).max(100).default(25),
             isEntryPoint: z.boolean().default(false),
             isOptional: z.boolean().default(false),
-            position: z.object({ x: z.number(), y: z.number() }).optional(),
-            toolIds: z.array(z.string().min(1).max(100)).optional(),
+            position: z.object({ x: z.number().finite(), y: z.number().finite() }).optional(),
+            toolIds: z.array(z.string().min(1).max(100)).max(50).optional(),
             toolConfigs: z.record(z.string(), z.record(z.unknown())).optional(),
             nodeConfig: z.record(z.unknown()).optional(),
             outputSchema: z.record(z.unknown()).nullable().optional(),
@@ -2361,8 +2371,22 @@ export const agencyRouter = router({
       }
 
       const snapshot = version.snapshotJson as any;
-      // Reconstruct saveBuilder input from snapshot and call the builder save logic
-      // This is done by directly applying the snapshot to the DB
+      // SECURITY: Validate snapshot nodeTypes against current allowlist before restoring
+      const VALID_NODE_TYPES = new Set([
+        "agent", "supervisor", "router", "aggregator",
+        "knowledge_base", "skill_call", "human_approval", "browser_session",
+        "conditional_branch", "parallel_fan_out", "loop_retry", "skill_discovery",
+        "data_transform", "error_handler",
+      ]);
+      for (const node of (snapshot.nodes ?? [])) {
+        if (node.nodeType && !VALID_NODE_TYPES.has(node.nodeType)) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: `Invalid node type '${node.nodeType}' in snapshot` });
+        }
+        // Sanitize nodeConfig size
+        if (node.nodeConfig && JSON.stringify(node.nodeConfig).length > 32768) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: `nodeConfig too large for node '${node.name}'` });
+        }
+      }
       await db.transaction(async (tx) => {
         const existingAgents = await tx
           .select({ id: agencyAgents.id })
@@ -2734,7 +2758,16 @@ export const agencyRouter = router({
       }
 
       const data = await response.json();
-      return data as {
+
+      // SECURITY: Verify the task belongs to the requesting user
+      // The Python backend stores _user_id in Redis status (stripped before client response)
+      if (data._user_id !== undefined && data._user_id !== ctx.user!.id) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Task not found" });
+      }
+
+      // Strip internal fields before returning to client
+      const { _user_id, ...safeData } = data;
+      return safeData as {
         status: "queued" | "processing" | "awaiting_answers" | "completed" | "failed";
         phase?: string;
         message?: string;
@@ -4035,11 +4068,12 @@ export const agencyRouter = router({
       const userId = ctx.user!.id;
       const userRole = ctx.user!.role;
 
-      // 1. Look up the conversation/run (ownership verified via userId)
+      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      // 1. Look up the conversation/run — SECURITY: scope to tenant to prevent cross-tenant approval
       const [conv] = await db
         .select()
         .from(agencyConversations)
-        .where(eq(agencyConversations.id, input.runId));
+        .where(and(eq(agencyConversations.id, input.runId), eq(agencyConversations.tenantId, tenantId)));
       if (!conv) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Run not found" });
       }
@@ -4248,5 +4282,102 @@ export const agencyRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "Trace not found" });
       }
       return trace;
+    }),
+
+  // ── Agent Memory CRUD ──────────────────────────────────────────
+
+  listAgentMemories: protectedProcedure
+    .input(z.object({
+      agencyId: z.string().min(1),
+      agentNodeId: z.string().min(1),
+      memoryType: z.enum(["constraint", "preference", "fact", "skill"]).optional(),
+      page: z.number().int().min(1).default(1),
+      pageSize: z.number().int().min(1).max(100).default(20),
+    }))
+    .query(async ({ input, ctx }) => {
+      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      const userId = ctx.user!.id;
+      const isDomainAdmin = ctx.user!.role === "domain_admin";
+      const offset = (input.page - 1) * input.pageSize;
+
+      const conditions = [
+        eq(agencyAgentMemories.tenantId, tenantId),
+        eq(agencyAgentMemories.agencyId, input.agencyId),
+        eq(agencyAgentMemories.agentNodeId, input.agentNodeId),
+        eq(agencyAgentMemories.isActive, true),
+      ];
+      if (!isDomainAdmin) {
+        conditions.push(eq(agencyAgentMemories.userId, userId));
+      }
+      if (input.memoryType) {
+        conditions.push(eq(agencyAgentMemories.memoryType, input.memoryType));
+      }
+
+      const [items, totalResult] = await Promise.all([
+        db.select()
+          .from(agencyAgentMemories)
+          .where(and(...conditions))
+          .orderBy(desc(agencyAgentMemories.confidence), desc(agencyAgentMemories.useCount))
+          .limit(input.pageSize)
+          .offset(offset),
+        db.select({ count: count() })
+          .from(agencyAgentMemories)
+          .where(and(...conditions)),
+      ]);
+
+      return {
+        items,
+        total: totalResult[0]?.count ?? 0,
+        page: input.page,
+      };
+    }),
+
+  deleteAgentMemory: protectedProcedure
+    .input(z.object({
+      memoryId: z.number().int().positive(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      const userId = ctx.user!.id;
+      const isDomainAdmin = ctx.user!.role === "domain_admin";
+
+      const conditions = [
+        eq(agencyAgentMemories.id, input.memoryId),
+        eq(agencyAgentMemories.tenantId, tenantId),
+        eq(agencyAgentMemories.isActive, true),
+      ];
+      if (!isDomainAdmin) {
+        conditions.push(eq(agencyAgentMemories.userId, userId));
+      }
+
+      const result = await db.update(agencyAgentMemories)
+        .set({ isActive: false, updatedAt: new Date() })
+        .where(and(...conditions));
+
+      return { success: (result.rowCount ?? 0) > 0 };
+    }),
+
+  resetAgentMemories: protectedProcedure
+    .input(z.object({
+      agencyId: z.string().min(1),
+      agentNodeId: z.string().min(1),
+      userId: z.number().int().positive().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      const isDomainAdmin = ctx.user!.role === "domain_admin";
+      const targetUserId = isDomainAdmin && input.userId ? input.userId : ctx.user!.id;
+
+      const result = await db.update(agencyAgentMemories)
+        .set({ isActive: false, updatedAt: new Date() })
+        .where(and(
+          eq(agencyAgentMemories.tenantId, tenantId),
+          eq(agencyAgentMemories.agencyId, input.agencyId),
+          eq(agencyAgentMemories.agentNodeId, input.agentNodeId),
+          eq(agencyAgentMemories.userId, targetUserId),
+          eq(agencyAgentMemories.isActive, true),
+        ));
+
+      return { deletedCount: result.rowCount ?? 0 };
     }),
 });

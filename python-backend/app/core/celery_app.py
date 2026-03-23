@@ -196,6 +196,10 @@ beat_schedule = {
         "task": "app.tasks.sandbox_maintenance_tasks.detect_stuck_sandbox_jobs",
         "schedule": crontab(minute="*/5"),  # Every 5 minutes
     },
+    "decay-agent-memories": {
+        "task": "agency.decay_agent_memories",
+        "schedule": crontab(hour=4, minute=30),  # Daily at 4:30 AM UTC
+    },
 }
 
 if all(os.getenv(var) for var in ONEDRIVE_SCHEDULE_REQUIRED_VARS):
