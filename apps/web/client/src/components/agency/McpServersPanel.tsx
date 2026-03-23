@@ -18,6 +18,7 @@ import {
   Plus, Trash2, Search, Loader2, Server, ChevronDown, ChevronRight, Lock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface McpServer {
   url: string;
@@ -55,8 +56,20 @@ export function McpServersPanel({ agentId, mcpServers = [], onChange }: McpServe
 
   const handleAddServer = useCallback(() => {
     if (!newUrl.trim()) return;
+    // FE01: Validate URL protocol — only http/https allowed
+    const trimmedUrl = newUrl.trim();
+    try {
+      const parsed = new URL(trimmedUrl);
+      if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+        toast?.error?.("Only http:// and https:// URLs are allowed");
+        return;
+      }
+    } catch {
+      toast?.error?.("Invalid URL format");
+      return;
+    }
     const server: McpServer = {
-      url: newUrl.trim(),
+      url: trimmedUrl,
       name: newName.trim() || undefined,
       transport: "http",
     };
@@ -144,7 +157,7 @@ export function McpServersPanel({ agentId, mcpServers = [], onChange }: McpServe
                 <Server className="h-4 w-4 shrink-0 text-muted-foreground" />
                 <div className="min-w-0">
                   <p className="text-sm font-medium truncate">
-                    {server.name || new URL(server.url).hostname}
+                    {server.name || (() => { try { return new URL(server.url).hostname || server.url; } catch { return server.url; } })()}
                   </p>
                   <p className="text-xs text-muted-foreground truncate">{server.url}</p>
                 </div>
@@ -219,12 +232,14 @@ export function McpServersPanel({ agentId, mcpServers = [], onChange }: McpServe
             value={newUrl}
             onChange={(e) => setNewUrl(e.target.value)}
             className="text-sm"
+            maxLength={500}
           />
           <Input
             placeholder="Server name (optional)"
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             className="text-sm"
+            maxLength={100}
           />
           <Input
             type="password"

@@ -7,6 +7,7 @@
 
 import { useState, useCallback } from "react";
 import { trpc } from "@/lib/trpc";
+import { useTenantFeatureFlag } from "@/hooks/useTenantFeatureFlag";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -109,6 +110,20 @@ const DEFAULT_FORM: ServerFormData = {
 // ── Page ──
 
 export default function McpServerManager() {
+  // FE03: Feature flag gate — hide page when MCP registry is disabled
+  const mcpEnabled = useTenantFeatureFlag("mcpServerRegistry");
+  if (mcpEnabled === false) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px] text-muted-foreground">
+        <div className="text-center">
+          <Server className="mx-auto h-12 w-12 mb-4 opacity-50" />
+          <h2 className="text-lg font-medium mb-2">MCP Server Registry</h2>
+          <p>This feature is not enabled for your organization.</p>
+        </div>
+      </div>
+    );
+  }
+
   const [showModal, setShowModal] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
   const [form, setForm] = useState<ServerFormData>(DEFAULT_FORM);
