@@ -456,6 +456,13 @@ class McpClientManager:
             # Base64-encode to prevent shell injection — payload may contain
             # single quotes, backticks, or other shell metacharacters.
             b64_payload = base64.b64encode(payload.encode()).decode()
+            # F13: Check payload size before sending — ARG_MAX limits may truncate
+            MAX_STDIO_PAYLOAD_BYTES = 512 * 1024  # 512KB
+            if len(b64_payload) > MAX_STDIO_PAYLOAD_BYTES:
+                raise McpConnectionError(
+                    f"stdio payload too large: {len(b64_payload)} bytes "
+                    f"(max {MAX_STDIO_PAYLOAD_BYTES})"
+                )
             result = await sandbox_client.run_command(
                 conn.sandbox_id,
                 f"echo {b64_payload} | base64 -d",

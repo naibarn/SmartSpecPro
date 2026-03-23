@@ -36,11 +36,15 @@ def wrap_mcp_response(result: str, server_slug: str, tool_name: str) -> str:
 
 
 def truncate_response(result: str, max_bytes: int = MAX_RESULT_BYTES) -> str:
-    """Truncate MCP response to max size, appending marker if truncated."""
-    if len(result.encode("utf-8", errors="replace")) <= max_bytes:
+    """Truncate MCP response to max byte size, respecting UTF-8 boundaries."""
+    encoded = result.encode("utf-8", errors="replace")
+    if len(encoded) <= max_bytes:
         return result
-    # Truncate by chars (approximate), leave room for marker
-    truncated = result[: max_bytes - len(TRUNCATION_MARKER)]
+    # Slice bytes, then decode back — handles multi-byte chars correctly
+    marker_bytes = TRUNCATION_MARKER.encode("utf-8")
+    truncated_bytes = encoded[: max_bytes - len(marker_bytes)]
+    # Decode with error handling to avoid breaking mid-character
+    truncated = truncated_bytes.decode("utf-8", errors="ignore")
     return truncated + TRUNCATION_MARKER
 
 
@@ -66,16 +70,25 @@ class PerTurnCounter:
 async def check_run_rate_limit(
     redis_client,
     run_id: str,
+    tenant_id: str = "",
     max_calls: int = MAX_MCP_CALLS_PER_RUN,
     ttl: int = 3600,
 ) -> Optional[str]:
-    """Check per-run MCP call counter. Returns error if exceeded."""
+    """Check per-run MCP call counter. Returns error if exceeded.
+
+    Uses pipeline for atomic INCR+EXPIRE to prevent orphaned keys on crash.
+    Key includes tenant_id for cleanup via on_tenant_disabled.
+    """
     if not redis_client or not run_id:
         return None
-    key = f"mcp:rate:run:{run_id}"
-    count = await redis_client.incr(key)
-    if count == 1:
-        await redis_client.expire(key, ttl)
+    # Include tenant_id in key for per-tenant cleanup
+    key = f"mcp:rate:run:{tenant_id}:{run_id}" if tenant_id else f"mcp:rate:run:{run_id}"
+    # Atomic INCR + EXPIRE via pipeline to prevent orphaned keys
+    pipe = redis_client.pipeline()
+    pipe.incr(key)
+    pipe.expire(key, ttl)
+    results = await pipe.execute()
+    count = results[0]
     if count > max_calls:
         return f"[MCP ERROR] Run MCP call limit exceeded ({max_calls} max)"
     return None
@@ -87,13 +100,19 @@ async def check_tenant_rate_limit(
     max_calls: int = MAX_MCP_CALLS_PER_TENANT_MINUTE,
     window_seconds: int = 60,
 ) -> Optional[str]:
-    """Check per-tenant MCP calls per minute. Returns error if exceeded."""
+    """Check per-tenant MCP calls per minute. Returns error if exceeded.
+
+    Uses pipeline for atomic INCR+EXPIRE.
+    """
     if not redis_client or not tenant_id:
         return None
     key = f"mcp:rate:{tenant_id}:minute"
-    count = await redis_client.incr(key)
-    if count == 1:
-        await redis_client.expire(key, window_seconds)
+    # Atomic INCR + EXPIRE via pipeline
+    pipe = redis_client.pipeline()
+    pipe.incr(key)
+    pipe.expire(key, window_seconds)
+    results = await pipe.execute()
+    count = results[0]
     if count > max_calls:
         return f"[MCP ERROR] Tenant MCP rate limit exceeded ({max_calls}/min)"
     return None
@@ -105,7 +124,7 @@ async def on_tenant_disabled(redis_client, tenant_id: str):
         return
     minute_key = f"mcp:rate:{tenant_id}:minute"
     await redis_client.delete(minute_key)
-    # Pattern-delete run keys for this tenant (best effort)
+    # Pattern-delete run keys for this tenant (keys now include tenant_id)
     pattern = f"mcp:rate:run:{tenant_id}:*"
     cursor = 0
     while True:
@@ -143,7 +162,10 @@ def check_tool_chain_depth(
 
 
 def scrub_params(params: dict, secret_patterns: list[re.Pattern]) -> dict:
-    """Scrub sensitive values from MCP tool parameters before sending."""
+    """Scrub sensitive values from MCP tool parameters before sending.
+
+    Recurses into dicts and lists to catch nested secrets.
+    """
     scrubbed = {}
     for key, value in params.items():
         if isinstance(value, str):
@@ -153,6 +175,27 @@ def scrub_params(params: dict, secret_patterns: list[re.Pattern]) -> dict:
             scrubbed[key] = scrubbed_val
         elif isinstance(value, dict):
             scrubbed[key] = scrub_params(value, secret_patterns)
+        elif isinstance(value, list):
+            # Recurse into list elements
+            scrubbed[key] = _scrub_list(value, secret_patterns)
         else:
             scrubbed[key] = value
     return scrubbed
+
+
+def _scrub_list(items: list, secret_patterns: list[re.Pattern]) -> list:
+    """Scrub sensitive values from list elements."""
+    result = []
+    for item in items:
+        if isinstance(item, str):
+            scrubbed = item
+            for pattern in secret_patterns:
+                scrubbed = pattern.sub("[REDACTED]", scrubbed)
+            result.append(scrubbed)
+        elif isinstance(item, dict):
+            result.append(scrub_params(item, secret_patterns))
+        elif isinstance(item, list):
+            result.append(_scrub_list(item, secret_patterns))
+        else:
+            result.append(item)
+    return result
