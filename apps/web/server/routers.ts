@@ -87,6 +87,7 @@ import { teamRunRouter } from "./routers/teamRun";
 import { teamWorkItemRouter } from "./routers/teamWorkItem";
 import { scopedMemoryRouter } from "./routers/scopedMemory";
 import { monitoringRouter } from "./routers/monitoring";
+import { mcpServersRouter } from "./routers/mcpServers";
 import { inviteCodeRouter } from "./routers/inviteCode";
 import { userApiKeysRouter } from "./routers/userApiKeys";
 import { notificationPreferencesRouter } from "./routers/notificationPreferences";
@@ -1867,6 +1868,7 @@ export const appRouter = router({
   teamWorkItem: teamWorkItemRouter,
   scopedMemory: scopedMemoryRouter,
   monitoring: monitoringRouter,
+  mcpServers: mcpServersRouter,
   help: helpRouter,
 });
 

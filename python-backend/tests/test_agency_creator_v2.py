@@ -7,12 +7,161 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.tasks.agency_creator_task import (
     _fallback_plan,
+    _llm_discover,
     _llm_plan,
     _llm_review_plan,
     _llm_review_design,
     _validate_spec,
     _safe_json_parse,
+    MAX_DISCOVER_CALLS,
 )
+
+
+@pytest.mark.unit
+@pytest.mark.agency
+class TestLlmDiscover:
+    @pytest.mark.asyncio
+    async def test_discover_returns_capability_fields(self):
+        discover_response = json.dumps({
+            "is_clear": True,
+            "domain": "content_creation",
+            "estimated_agents": 3,
+            "questions": [],
+            "notes": "Content pipeline",
+            "recommended_capabilities": {
+                "web_search": True,
+                "thinking": True,
+                "vision": False,
+                "code_execution": False,
+                "computer_use": False,
+            },
+            "complexity_level": "moderate",
+            "memory_recommendation": True,
+            "domain_insights": "Content workflows benefit from web research",
+        })
+
+        with patch("app.tasks.agency_creator_task._llm_call", new_callable=AsyncMock) as mock_call:
+            mock_call.return_value = discover_response
+            result = await _llm_discover("Create a content marketing team", "gpt-4o", 1)
+
+        assert "recommended_capabilities" in result
+        caps = result["recommended_capabilities"]
+        assert isinstance(caps, dict)
+        for key in ("web_search", "thinking", "vision", "code_execution", "computer_use"):
+            assert key in caps
+        assert result["complexity_level"] in ("simple", "moderate", "complex")
+        assert isinstance(result["memory_recommendation"], bool)
+        assert "domain_insights" in result
+
+    @pytest.mark.asyncio
+    async def test_discover_fallback_has_capability_fields(self):
+        with patch("app.tasks.agency_creator_task._llm_call", new_callable=AsyncMock) as mock_call:
+            mock_call.return_value = None
+            result = await _llm_discover("test requirement", "gpt-4o", 1)
+
+        assert result["is_clear"] is True
+        assert "recommended_capabilities" in result
+        caps = result["recommended_capabilities"]
+        assert all(caps[k] is False for k in ("web_search", "thinking", "vision", "code_execution", "computer_use"))
+        assert result["complexity_level"] == "moderate"
+        assert result["memory_recommendation"] is True
+
+    @pytest.mark.asyncio
+    async def test_discover_budget_cap_retries_on_parse_failure(self):
+        """MAX_DISCOVER_CALLS limits retries when LLM returns unparseable JSON."""
+        valid_response = json.dumps({
+            "is_clear": True, "domain": "general", "estimated_agents": 2, "questions": [],
+            "notes": "", "recommended_capabilities": {
+                "web_search": False, "thinking": False, "vision": False,
+                "code_execution": False, "computer_use": False,
+            },
+            "complexity_level": "simple", "memory_recommendation": False, "domain_insights": "",
+        })
+
+        with patch("app.tasks.agency_creator_task._llm_call", new_callable=AsyncMock) as mock_call:
+            # First call returns garbage, second returns valid JSON
+            mock_call.side_effect = ["NOT VALID JSON {{{{", valid_response]
+            result = await _llm_discover("test", "gpt-4o", 1)
+
+        assert mock_call.call_count == 2
+        assert mock_call.call_count <= MAX_DISCOVER_CALLS
+        assert result["is_clear"] is True
+
+    @pytest.mark.asyncio
+    async def test_discover_budget_cap_falls_back_after_max_retries(self):
+        """Falls back when all attempts return unparseable JSON."""
+        with patch("app.tasks.agency_creator_task._llm_call", new_callable=AsyncMock) as mock_call:
+            mock_call.return_value = "NOT VALID JSON"
+            result = await _llm_discover("test", "gpt-4o", 1)
+
+        assert mock_call.call_count == MAX_DISCOVER_CALLS
+        # Should return fallback
+        assert result["is_clear"] is True
+        assert result["domain"] == "general"
+
+    @pytest.mark.asyncio
+    async def test_discover_no_technical_questions(self):
+        discover_response = json.dumps({
+            "is_clear": False,
+            "domain": "general",
+            "estimated_agents": 2,
+            "questions": [
+                {"id": "q1", "question": "Who is the target audience?", "type": "text"},
+            ],
+            "notes": "Need more info",
+            "recommended_capabilities": {
+                "web_search": False, "thinking": False, "vision": False,
+                "code_execution": False, "computer_use": False,
+            },
+            "complexity_level": "simple",
+            "memory_recommendation": False,
+            "domain_insights": "",
+        })
+
+        with patch("app.tasks.agency_creator_task._llm_call", new_callable=AsyncMock) as mock_call:
+            mock_call.return_value = discover_response
+            result = await _llm_discover("Build an agency", "gpt-4o", 1)
+
+        mock_call.assert_called_once()
+        system_prompt = mock_call.call_args.kwargs["system_prompt"]
+        assert "Do NOT ask technical questions" in system_prompt
+
+
+@pytest.mark.unit
+@pytest.mark.agency
+class TestValidateSpecComputerUseGuardrail:
+    def test_computer_use_stripped_when_present(self):
+        spec = {
+            "nodes": [
+                {
+                    "id": "n1", "nodeType": "agent", "isEntryPoint": True,
+                    "name": "Browser Agent",
+                    "modelRequirements": {"supportsComputerUse": True, "supportsFunctionTools": True},
+                    "nodeConfig": {},
+                },
+            ],
+            "edges": [],
+        }
+        result = _validate_spec(spec)
+        agent = result["nodes"][0]
+        # Without feature flag enabled, computer_use should be stripped
+        assert agent["modelRequirements"]["supportsComputerUse"] is False
+
+    def test_computer_use_not_stripped_when_absent(self):
+        spec = {
+            "nodes": [
+                {
+                    "id": "n1", "nodeType": "agent", "isEntryPoint": True,
+                    "name": "Normal Agent",
+                    "modelRequirements": {"supportsFunctionTools": True},
+                    "nodeConfig": {},
+                },
+            ],
+            "edges": [],
+        }
+        result = _validate_spec(spec)
+        agent = result["nodes"][0]
+        assert agent["modelRequirements"].get("supportsComputerUse") is None
 
 
 @pytest.mark.unit
