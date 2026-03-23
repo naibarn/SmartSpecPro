@@ -4888,6 +4888,8 @@ export const agencyRouter = router({
             .where(inArray(agencyAgentTools.agentId, agentIds))
         : [];
 
+      // agencyAgentTools has no tenantId — isolation is guaranteed by agentIds being scoped
+      // to the agency which is already verified to belong to the tenant above.
       // Build tool lookup: agentId → toolId[]
       const toolsByAgent: Record<string, string[]> = {};
       for (const t of tools) {
@@ -4905,6 +4907,8 @@ export const agencyRouter = router({
       const refY = firstPos?.y ?? 0;
 
       // 3. Build portable agent definitions (strip UUIDs)
+      // SECURITY: Only include whitelisted fields below. NEVER spread the full agent row —
+      // it may contain mcpServers (URLs) and mcpServerTokensEncrypted (AES ciphertext).
       const agentDefinitions = agents.map((a) => {
         const pos = a.position as { x: number; y: number } | null;
         return {

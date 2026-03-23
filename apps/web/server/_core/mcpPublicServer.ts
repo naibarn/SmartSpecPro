@@ -891,10 +891,15 @@ async function handleInitialize(
   return { result, sessionId };
 }
 
-async function handleToolsList(session: McpSession): Promise<unknown> {
+async function handleToolsList(
+  session: McpSession,
+  params?: Record<string, unknown>,
+): Promise<unknown> {
+  const PAGE_SIZE = 50;
+
   // Only expose tools the session can actually invoke:
   // must have requiredScope AND (read tool OR mcp:write for write tools)
-  const tools = TOOL_REGISTRY
+  const allTools = TOOL_REGISTRY
     .filter((t) => {
       const hasScope = session.scopes.includes(t.requiredScope);
       const hasWriteAccess = t.readWrite === "Read" || session.scopes.includes("mcp:write");
@@ -904,8 +909,28 @@ async function handleToolsList(session: McpSession): Promise<unknown> {
       name: t.name,
       description: t.description,
       inputSchema: t.inputSchema,
+      annotations: {
+        readOnlyHint: t.readWrite === "Read",
+        destructiveHint: false,
+        idempotentHint: t.readWrite === "Read",
+      },
     }));
-  return { tools };
+
+  // Cursor-based pagination (NEW-08)
+  const rawCursor = params?.cursor;
+  const cursor = rawCursor !== undefined ? Number(rawCursor) : 0;
+  // Validate cursor is a safe integer — prevents NaN/Infinity bypass
+  if (!Number.isInteger(cursor) || cursor < 0 || cursor > 100000) {
+    throw { code: -32602, message: "Invalid cursor value" };
+  }
+
+  const page = allTools.slice(cursor, cursor + PAGE_SIZE);
+  const nextCursor =
+    cursor + PAGE_SIZE < allTools.length
+      ? String(cursor + PAGE_SIZE)
+      : undefined;
+
+  return { tools: page, nextCursor };
 }
 
 async function handleToolsCall(
@@ -1018,7 +1043,7 @@ async function processSingleRequest(
     if (method === "ping") {
       return jsonRpcResult(id, {});
     } else if (method === "tools/list") {
-      const result = await handleToolsList(session);
+      const result = await handleToolsList(session, params as Record<string, unknown>);
       return jsonRpcResult(id, result);
     } else if (method === "tools/call") {
       const result = await handleToolsCall(session, params as Record<string, unknown>);

@@ -1425,6 +1425,12 @@ describe("agencyRouter", () => {
       expect(templateValues.agentDefinitions[0].name).toBe("Researcher");
       expect(templateValues.agentDefinitions[0].toolIds).toEqual(["builtin-web-search"]);
       expect(templateValues.agentDefinitions[0].isEntryPoint).toBe(true);
+      // Verify UUIDs are stripped
+      expect(templateValues.agentDefinitions[0]).not.toHaveProperty("id");
+      expect(templateValues.agentDefinitions[0]).not.toHaveProperty("agencyId");
+      // Verify nodeConfig and modelRequirements preserved
+      expect(templateValues.agentDefinitions[0].nodeConfig).toEqual({ executionMode: "agentic" });
+      expect(templateValues.agentDefinitions[0].modelRequirements).toEqual({ supportsWebSearch: true });
       // Relative positions
       expect(templateValues.agentDefinitions[0].relativePosition).toEqual({ x: 0, y: 0 });
       expect(templateValues.agentDefinitions[1].relativePosition).toEqual({ x: 200, y: 0 });
