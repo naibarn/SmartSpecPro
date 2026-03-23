@@ -2861,6 +2861,9 @@ export const agencyRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      const tenantId = resolveTenantId(ctx);
+      await assertAgencyEnabled(tenantId);
+
       const { ENV } = await import("../_core/env");
       const pythonBackendUrl = (ENV.pythonBackendUrl || "http://localhost:8000").replace(/\/+$/, "");
 
@@ -2932,6 +2935,7 @@ export const agencyRouter = router({
           description: string;
           impact: string;
           targetNodeId?: string;
+          suggestedValue?: string;
         }>;
       };
     }),
@@ -3033,7 +3037,7 @@ export const agencyRouter = router({
         .where(
           and(
             eq(agencyTools.id, input.toolId),
-            eq(agencyTools.tenantId, ctx.tenantId),
+            eq(agencyTools.tenantId, resolveTenantId(ctx)),
           ),
         )
         .returning({ id: agencyTools.id });
@@ -4300,7 +4304,7 @@ export const agencyRouter = router({
   // ── MCP Integration (section-14) ──────────────────────────────────────
 
   saveMcpServers: protectedProcedure
-    .use(createRateLimitMiddleware({ windowMs: 60_000, maxRequests: 20, keyPrefix: "mcp-save" }))
+    .use(createRateLimitMiddleware({ namespace: "mcp-save", limit: 20, windowMs: 60_000 }))
     .input(
       z.object({
         agentId: z.string().uuid(),
@@ -4327,7 +4331,7 @@ export const agencyRouter = router({
         "../services/agencyMcpService"
       );
       for (const server of input.mcpServers) {
-        const result = validateMcpServerUrl(server.url);
+        const result = await validateMcpServerUrl(server.url);
         if (!result.valid) {
           throw new TRPCError({
             code: "BAD_REQUEST",
@@ -4377,7 +4381,7 @@ export const agencyRouter = router({
     }),
 
   discoverMcpTools: protectedProcedure
-    .use(createRateLimitMiddleware({ windowMs: 60_000, maxRequests: 10, keyPrefix: "mcp-discover" }))
+    .use(createRateLimitMiddleware({ namespace: "mcp-discover", limit: 10, windowMs: 60_000 }))
     .input(
       z.object({
         serverUrl: z.string().url(),
@@ -4398,7 +4402,7 @@ export const agencyRouter = router({
         "../services/agencyMcpService"
       );
 
-      const urlResult = validateMcpServerUrl(input.serverUrl);
+      const urlResult = await validateMcpServerUrl(input.serverUrl);
       if (!urlResult.valid) {
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -4623,11 +4627,12 @@ export const agencyRouter = router({
         conditions.push(eq(agencyAgentMemories.userId, userId));
       }
 
-      const result = await db.update(agencyAgentMemories)
+      const updated = await db.update(agencyAgentMemories)
         .set({ isActive: false, updatedAt: new Date() })
-        .where(and(...conditions));
+        .where(and(...conditions))
+        .returning({ id: agencyAgentMemories.id });
 
-      return { success: (result.rowCount ?? 0) > 0 };
+      return { success: updated.length > 0 };
     }),
 
   resetAgentMemories: protectedProcedure
@@ -4641,7 +4646,7 @@ export const agencyRouter = router({
       const isDomainAdmin = ctx.user!.role === "domain_admin";
       const targetUserId = isDomainAdmin && input.userId ? input.userId : ctx.user!.id;
 
-      const result = await db.update(agencyAgentMemories)
+      const updated = await db.update(agencyAgentMemories)
         .set({ isActive: false, updatedAt: new Date() })
         .where(and(
           eq(agencyAgentMemories.tenantId, tenantId),
@@ -4649,9 +4654,10 @@ export const agencyRouter = router({
           eq(agencyAgentMemories.agentNodeId, input.agentNodeId),
           eq(agencyAgentMemories.userId, targetUserId),
           eq(agencyAgentMemories.isActive, true),
-        ));
+        ))
+        .returning({ id: agencyAgentMemories.id });
 
-      return { deletedCount: result.rowCount ?? 0 };
+      return { deletedCount: updated.length };
     }),
 
   // ── Agency Objective ────────────────────────────────────────────
@@ -4727,8 +4733,8 @@ export const agencyRouter = router({
             whatDidntWork: input.whatDidntWork,
             improvementRequests: input.improvementRequests,
           })
-          .returning();
-        feedbackId = inserted.id;
+          .returning({ id: agencyRunFeedback.id });
+        feedbackId = Number(inserted.id);
       }
 
       // Trigger async LLM advisor analysis via Python backend
@@ -4780,7 +4786,7 @@ export const agencyRouter = router({
       const tenantId = resolveTenantId(ctx);
 
       // Get latest unapplied feedback with suggestions
-      const feedbacks = await db.select()
+      const feedbacks = (await db.select()
         .from(agencyRunFeedback)
         .where(and(
           eq(agencyRunFeedback.agencyId, input.agencyId),
@@ -4788,7 +4794,7 @@ export const agencyRouter = router({
           eq(agencyRunFeedback.suggestionsApplied, false),
         ))
         .orderBy(desc(agencyRunFeedback.createdAt))
-        .limit(5);
+        .limit(5)) as Array<typeof agencyRunFeedback.$inferSelect>;
 
       // Only return unresolved LLM-generated suggestions — strip raw feedback text
       const suggestions = feedbacks
@@ -4887,6 +4893,94 @@ export const agencyRouter = router({
         .limit(input.limit);
     }),
 
+  /**
+   * Apply a whitelisted improvement suggestion to an agency node.
+   * Only supports: add_capability, upgrade_mode, add_tool.
+   * add_node and improve_flow are informational-only (user applies manually).
+   */
+  applySuggestion: protectedProcedure
+    .input(z.object({
+      agencyId: z.string().uuid(),
+      targetNodeId: z.string().uuid(),
+      category: z.enum(["add_capability", "upgrade_mode", "add_tool"]),
+      value: z.string().min(1).max(100),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = resolveTenantId(ctx);
+      const userId = ctx.user?.id;
+      if (!tenantId || !userId) {
+        throw new TRPCError({ code: "UNAUTHORIZED" });
+      }
+
+      // Verify agency ownership + tenant isolation
+      const [agency] = await db.select()
+        .from(agencies)
+        .where(and(eq(agencies.id, input.agencyId), eq(agencies.tenantId, tenantId)));
+      if (!agency) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Agency not found" });
+      }
+      if (agency.createdBy !== userId && ctx.user?.role !== "admin" && ctx.user?.role !== "domain_admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Only the owner or admin can apply suggestions" });
+      }
+
+      // Fetch the target agent node (verify it belongs to this agency)
+      const [agent] = await db.select()
+        .from(agencyAgents)
+        .where(and(eq(agencyAgents.id, input.targetNodeId), eq(agencyAgents.agencyId, input.agencyId)));
+      if (!agent) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Agent node not found" });
+      }
+
+      // Whitelisted mutations only — no arbitrary JSON patches
+      const VALID_CAPABILITIES = new Set([
+        "supportsVision", "supportsThinking", "supportsFunctionTools",
+        "supportsStructuredOutputs", "supportsWebSearch", "supportsCodeExecution",
+      ]);
+      const VALID_MODES = new Set(["single_shot", "agentic"]);
+      const VALID_TOOLS_PREFIX = "builtin-";
+
+      if (input.category === "add_capability") {
+        if (!VALID_CAPABILITIES.has(input.value)) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: `Invalid capability: ${input.value}` });
+        }
+        const current = (agent.modelRequirements as Record<string, unknown>) ?? {};
+        await db.update(agencyAgents)
+          .set({ modelRequirements: { ...current, [input.value]: true } })
+          .where(eq(agencyAgents.id, input.targetNodeId));
+
+      } else if (input.category === "upgrade_mode") {
+        if (!VALID_MODES.has(input.value)) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: `Invalid mode: ${input.value}` });
+        }
+        const current = (agent.nodeConfig as Record<string, unknown>) ?? {};
+        await db.update(agencyAgents)
+          .set({ nodeConfig: { ...current, executionMode: input.value } })
+          .where(eq(agencyAgents.id, input.targetNodeId));
+
+      } else if (input.category === "add_tool") {
+        if (!input.value.startsWith(VALID_TOOLS_PREFIX)) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Only builtin tools can be added via suggestions" });
+        }
+        // Check tool not already assigned
+        const existing = await db.select()
+          .from(agencyAgentTools)
+          .where(and(
+            eq(agencyAgentTools.agentId, input.targetNodeId),
+            eq(agencyAgentTools.toolId, input.value),
+          ));
+        if (existing.length === 0) {
+          await db.insert(agencyAgentTools).values({
+            id: crypto.randomUUID(),
+            agentId: input.targetNodeId,
+            toolId: input.value,
+            toolConfig: {},
+          });
+        }
+      }
+
+      return { applied: true, category: input.category, value: input.value };
+    }),
+
   saveAsTemplate: protectedProcedure
     .input(z.object({
       agencyId: z.string().uuid(),
@@ -4921,16 +5015,16 @@ export const agencyRouter = router({
       }
 
       // 2. Read agents and communication flows
-      const agents = await db.select()
+      const agents = (await db.select()
         .from(agencyAgents)
-        .where(eq(agencyAgents.agencyId, input.agencyId));
+        .where(eq(agencyAgents.agencyId, input.agencyId))) as Array<typeof agencyAgents.$inferSelect>;
 
-      const flows = await db.select()
+      const flows = (await db.select()
         .from(agencyCommunicationFlows)
-        .where(eq(agencyCommunicationFlows.agencyId, input.agencyId));
+        .where(eq(agencyCommunicationFlows.agencyId, input.agencyId))) as Array<typeof agencyCommunicationFlows.$inferSelect>;
 
       // Read tool assignments for all agents
-      const agentIds = agents.map(a => a.id);
+      const agentIds = agents.map((a) => a.id);
       const tools = agentIds.length > 0
         ? await db.select()
             .from(agencyAgentTools)
@@ -4974,8 +5068,8 @@ export const agencyRouter = router({
 
       // 4. Build portable communication flows (use array indices instead of UUIDs)
       const communicationFlows = flows
-        .filter(f => agentIndexMap[f.fromAgentId] !== undefined && agentIndexMap[f.toAgentId] !== undefined)
-        .map(f => ({
+        .filter((f) => agentIndexMap[f.fromAgentId] !== undefined && agentIndexMap[f.toAgentId] !== undefined)
+        .map((f) => ({
           fromIndex: agentIndexMap[f.fromAgentId],
           toIndex: agentIndexMap[f.toAgentId],
           flowType: f.flowType,

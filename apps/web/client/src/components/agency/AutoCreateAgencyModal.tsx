@@ -93,6 +93,7 @@ export function AutoCreateAgencyModal({ open, onOpenChange, onCreated, defaultMo
     description: string;
     impact: string;
     targetNodeId?: string;
+    suggestedValue?: string;
   }>>([]);
   const [dismissedSuggestions, setDismissedSuggestions] = useState<Set<number>>(new Set());
   const [showTemplateDialog, setShowTemplateDialog] = useState(false);
@@ -109,6 +110,7 @@ export function AutoCreateAgencyModal({ open, onOpenChange, onCreated, defaultMo
   const autoCreateMutation = (trpc as any).agency?.autoCreate?.useMutation?.() ?? { mutateAsync: null };
   const autoCreateAnswerMutation = (trpc as any).agency?.autoCreateAnswer?.useMutation?.() ?? { mutateAsync: null };
   const saveAsTemplateMutation = (trpc as any).agency?.saveAsTemplate?.useMutation?.() ?? { mutateAsync: null };
+  const applySuggestionMutation = (trpc as any).agency?.applySuggestion?.useMutation?.() ?? { mutateAsync: null };
 
   const isProcessing =
     taskStatus === "queued" || taskStatus === "processing";
@@ -488,16 +490,42 @@ export function AutoCreateAgencyModal({ open, onOpenChange, onCreated, defaultMo
                       <p className="text-muted-foreground">{s.description}</p>
                       <div className="flex gap-1.5">
                         {!dismissedSuggestions.has(i) ? (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 text-[10px]"
-                            onClick={() => setDismissedSuggestions(prev => new Set(prev).add(i))}
-                          >
-                            Skip
-                          </Button>
+                          <>
+                            {s.suggestedValue && s.targetNodeId && createdAgencyId &&
+                             ["add_capability", "upgrade_mode", "add_tool"].includes(s.category) &&
+                             applySuggestionMutation.mutateAsync && (
+                              <Button
+                                size="sm"
+                                className="h-6 text-[10px]"
+                                onClick={async () => {
+                                  try {
+                                    await applySuggestionMutation.mutateAsync({
+                                      agencyId: createdAgencyId,
+                                      targetNodeId: s.targetNodeId,
+                                      category: s.category,
+                                      value: s.suggestedValue,
+                                    });
+                                    setDismissedSuggestions(prev => new Set(prev).add(i));
+                                    toast.success(`Applied: ${s.title}`);
+                                  } catch {
+                                    toast.error("Failed to apply suggestion");
+                                  }
+                                }}
+                              >
+                                Apply
+                              </Button>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 text-[10px]"
+                              onClick={() => setDismissedSuggestions(prev => new Set(prev).add(i))}
+                            >
+                              Skip
+                            </Button>
+                          </>
                         ) : (
-                          <span className="text-[10px] text-green-600">Noted</span>
+                          <span className="text-[10px] text-green-600">Applied</span>
                         )}
                       </div>
                     </div>

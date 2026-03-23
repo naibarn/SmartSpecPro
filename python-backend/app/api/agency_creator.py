@@ -107,14 +107,23 @@ async def get_agency_creator_status(
     # Strip internal fields before returning to client
     result = {k: v for k, v in data.items() if not k.startswith("_")}
 
-    # Merge suggestions into completed status response (strip 'change' field — F03 security)
+    # Merge suggestions into completed status response
+    # Strip raw 'change' dict (F03 security) but extract the primary value as 'suggestedValue'
     if result.get("status") == "completed" and result.get("hasSuggestions"):
+        _CHANGE_KEYS = {"add_capability": "capability", "add_tool": "toolId", "upgrade_mode": "executionMode"}
         raw_suggestions = get_suggestions(task_id)
-        result["suggestions"] = [
-            {k: v for k, v in s.items() if k != "change"}
-            for s in raw_suggestions
-            if isinstance(s, dict)
-        ]
+        safe_suggestions = []
+        for s in raw_suggestions:
+            if not isinstance(s, dict):
+                continue
+            change = s.get("change", {}) if isinstance(s.get("change"), dict) else {}
+            primary_key = _CHANGE_KEYS.get(s.get("category", ""))
+            suggested_value = str(change.get(primary_key, ""))[:100] if primary_key else ""
+            safe = {k: v for k, v in s.items() if k != "change"}
+            if suggested_value:
+                safe["suggestedValue"] = suggested_value
+            safe_suggestions.append(safe)
+        result["suggestions"] = safe_suggestions
 
     return result
 

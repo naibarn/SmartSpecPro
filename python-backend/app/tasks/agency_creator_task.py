@@ -476,6 +476,21 @@ async def _design_async(task_id: str, user_id: int, payload: dict) -> dict:
     })
     spec = _validate_spec(spec)
 
+    # Re-enable computer_use if the discover phase recommended it AND the tenant flag allows it.
+    # _validate_spec strips it synchronously; this async check re-enables selectively.
+    if discover_analysis and discover_analysis.get("recommended_capabilities", {}).get("computer_use"):
+        try:
+            from app.services.agentic_feature_flags import check_agentic_flag
+            cu_enabled = await check_agentic_flag("agencyComputerUseEnabled", tenant_id)
+            if cu_enabled:
+                for node in spec.get("nodes", []):
+                    mr = node.get("modelRequirements", {})
+                    if isinstance(mr, dict):
+                        mr["supportsComputerUse"] = True
+                logger.info("computer_use_re_enabled", task_id=task_id, tenant_id=tenant_id)
+        except Exception:
+            pass  # Non-fatal — keep stripped
+
     # Phase 8: IMPLEMENT — call Node.js internal API to create agency
     _set_status(task_id, {
         "status": "processing",
