@@ -23,6 +23,8 @@ from app.services.agentic_limits import (
     MAX_TOTAL_ITERATIONS,
 )
 from app.services.agentic_sanitizer import sanitize_llm_input
+from app.services.agency_context_budget import ContextBudgetManager
+from app.services.agency_context_summarizer import AgencyContextSummarizer
 
 if TYPE_CHECKING:
     from openai import AsyncOpenAI
@@ -74,6 +76,7 @@ class AutonomousResult:
     total_subtasks: int
     total_tokens: int
     subtask_results: dict[str, str] = field(default_factory=dict)
+    quality_score: float = 0.0  # From reflection (0.0-1.0)
 
 
 # ── Planner ──────────────────────────────────────────────────────
@@ -126,6 +129,12 @@ class AutonomousPlanner:
                     f"Focus on improving: {replan_focus}"
                 ),
             })
+
+        # Auto-condense planner messages when context accumulates across re-plans
+        summarizer = AgencyContextSummarizer(gateway_client=self.gateway_client)
+        model_budget = ContextBudgetManager(self.model_name).model_limit
+        if summarizer.should_condense(messages, model_budget):
+            messages = await summarizer.condense(messages, model_budget, model=self.model_name)
 
         try:
             response = await asyncio.wait_for(
@@ -556,6 +565,7 @@ async def run_autonomous(
                 total_subtasks=total_subtasks,
                 total_tokens=total_tokens,
                 subtask_results=subtask_results,
+                quality_score=reflection.quality_score,
             )
 
         previous_result = final_answer
