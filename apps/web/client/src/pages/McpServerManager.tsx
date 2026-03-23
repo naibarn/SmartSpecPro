@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -28,6 +29,12 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   Server,
   Plus,
@@ -44,7 +51,13 @@ import {
   Globe,
   Shield,
   Lock,
+  ChevronDown,
+  ChevronRight,
+  Wrench,
+  Link2,
+  X,
 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { Link } from "wouter";
 import { toast } from "sonner";
@@ -91,6 +104,24 @@ interface ServerFormData {
   oauthClientSecret: string;
 }
 
+interface DiscoveredTool {
+  name: string;
+  originalName: string;
+  description: string | null;
+  hasInputSchema: boolean;
+}
+
+interface AssignmentRow {
+  id: number;
+  mcpServerId: number;
+  targetType: string;
+  targetId: string;
+  createdAt: Date | string;
+}
+
+const TARGET_TYPES = ["tenant", "agency", "agent"] as const;
+type TargetType = (typeof TARGET_TYPES)[number];
+
 const DEFAULT_FORM: ServerFormData = {
   name: "",
   slug: "",
@@ -134,11 +165,28 @@ export default function McpServerManager() {
     latencyMs: number;
   } | null>(null);
 
+  // Feature 1: Discovered tools per server id
+  const [discoveredTools, setDiscoveredTools] = useState<Record<number, DiscoveredTool[]>>({});
+  const [toolPanelOpen, setToolPanelOpen] = useState<Record<number, boolean>>({});
+  const [loadingTools, setLoadingTools] = useState<number | null>(null);
+
+  // Feature 3: Assignment panel
+  const [selectedServerId, setSelectedServerId] = useState<number | null>(null);
+  const [assignments, setAssignments] = useState<Record<number, AssignmentRow[]>>({});
+  const [assignForm, setAssignForm] = useState<{ targetType: TargetType; targetId: string }>({
+    targetType: "agency",
+    targetId: "",
+  });
+  const [assigningId, setAssigningId] = useState<number | null>(null);
+  const [removingAssignmentId, setRemovingAssignmentId] = useState<number | null>(null);
+
   const listQuery = trpc.mcpServers.list.useQuery();
   const createMutation = trpc.mcpServers.create.useMutation();
   const updateMutation = trpc.mcpServers.update.useMutation();
   const deleteMutation = trpc.mcpServers.delete.useMutation();
   const testMutation = trpc.mcpServers.testConnection.useMutation();
+  const assignMutation = trpc.mcpServers.assignToTarget.useMutation();
+  const removeAssignmentMutation = trpc.mcpServers.removeAssignment.useMutation();
   const utils = trpc.useUtils();
 
   const handleOpenAdd = useCallback(() => {
@@ -240,6 +288,17 @@ export default function McpServerManager() {
         utils.mcpServers.list.invalidate();
         if (result.reachable) {
           toast.success(`Connected! ${result.toolCount} tools found (${result.latencyMs}ms)`);
+          // Feature 1: Fetch discovered tools after successful connection test
+          setLoadingTools(id);
+          try {
+            const toolData = await utils.mcpServers.listDiscoveredTools.fetch({ id });
+            setDiscoveredTools((prev) => ({ ...prev, [id]: toolData.tools }));
+            setToolPanelOpen((prev) => ({ ...prev, [id]: true }));
+          } catch {
+            // Non-fatal — tool discovery is best-effort
+          } finally {
+            setLoadingTools(null);
+          }
         } else {
           toast.error("Server unreachable");
         }
@@ -250,6 +309,77 @@ export default function McpServerManager() {
       }
     },
     [testMutation, utils],
+  );
+
+  // Feature 2: Enable/Disable toggle
+  const handleToggleEnabled = useCallback(
+    async (id: number, currentEnabled: boolean) => {
+      try {
+        await updateMutation.mutateAsync({ id, enabled: !currentEnabled });
+        utils.mcpServers.list.invalidate();
+        toast.success(!currentEnabled ? "Server enabled" : "Server disabled");
+      } catch (err: any) {
+        toast.error(err.message || "Failed to update server");
+      }
+    },
+    [updateMutation, utils],
+  );
+
+  // Feature 3: Assign server to target
+  const handleAssign = useCallback(
+    async (mcpServerId: number) => {
+      if (!assignForm.targetId.trim()) {
+        toast.error("Target ID is required");
+        return;
+      }
+      setAssigningId(mcpServerId);
+      try {
+        const result = await assignMutation.mutateAsync({
+          mcpServerId,
+          targetType: assignForm.targetType,
+          targetId: assignForm.targetId.trim(),
+        });
+        setAssignments((prev) => ({
+          ...prev,
+          [mcpServerId]: [
+            ...(prev[mcpServerId] ?? []),
+            {
+              id: result.id,
+              mcpServerId: result.mcpServerId,
+              targetType: result.targetType,
+              targetId: result.targetId,
+              createdAt: result.createdAt,
+            },
+          ],
+        }));
+        setAssignForm((prev) => ({ ...prev, targetId: "" }));
+        toast.success("Assignment created");
+      } catch (err: any) {
+        toast.error(err.message || "Failed to create assignment");
+      } finally {
+        setAssigningId(null);
+      }
+    },
+    [assignMutation, assignForm],
+  );
+
+  const handleRemoveAssignment = useCallback(
+    async (assignmentId: number, mcpServerId: number) => {
+      setRemovingAssignmentId(assignmentId);
+      try {
+        await removeAssignmentMutation.mutateAsync({ id: assignmentId });
+        setAssignments((prev) => ({
+          ...prev,
+          [mcpServerId]: (prev[mcpServerId] ?? []).filter((a) => a.id !== assignmentId),
+        }));
+        toast.success("Assignment removed");
+      } catch (err: any) {
+        toast.error(err.message || "Failed to remove assignment");
+      } finally {
+        setRemovingAssignmentId(null);
+      }
+    },
+    [removeAssignmentMutation],
   );
 
   const servers = listQuery.data ?? [];
@@ -301,8 +431,17 @@ export default function McpServerManager() {
             const risk = RISK_BADGES[server.riskLevel ?? "high"] ?? RISK_BADGES.high;
             const TransportIcon = transport.icon;
 
+            const serverTools = discoveredTools[server.id];
+            const toolsOpen = toolPanelOpen[server.id] ?? false;
+
             return (
-              <Card key={server.id} className={cn(!server.enabled && "opacity-60")}>
+              <Card
+                key={server.id}
+                className={cn(
+                  !server.enabled && "opacity-60",
+                  selectedServerId === server.id && "ring-2 ring-primary",
+                )}
+              >
                 <CardContent className="py-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3 min-w-0">
@@ -317,7 +456,7 @@ export default function McpServerManager() {
                             <Badge variant="secondary" className="text-xs">Disabled</Badge>
                           )}
                         </div>
-                        <div className="flex items-center gap-2 mt-1">
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
                           <Badge className={cn("text-xs", health.color)}>{health.label}</Badge>
                           <Badge className={cn("text-xs", classification.color)}>
                             {classification.label}
@@ -327,14 +466,25 @@ export default function McpServerManager() {
                           </Badge>
                           <span className="text-xs text-muted-foreground">{transport.label}</span>
                           {server.oauthConfigured && (
-                            <span title="OAuth configured">
+                            <span className="flex items-center gap-1" title="OAuth configured">
                               <Lock className="h-3 w-3 text-green-600" />
+                              {/* Feature 4: OAuth badge */}
+                              <Badge className="text-xs bg-green-100 text-green-700">OAuth</Badge>
                             </span>
                           )}
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-2">
+                      {/* Feature 2: Enable/Disable toggle */}
+                      <div className="flex items-center gap-1.5" title={server.enabled ? "Disable server" : "Enable server"}>
+                        <Switch
+                          checked={server.enabled ?? true}
+                          onCheckedChange={() => handleToggleEnabled(server.id, server.enabled ?? true)}
+                          disabled={updateMutation.isPending}
+                          aria-label={server.enabled ? "Disable server" : "Enable server"}
+                        />
+                      </div>
                       <Button
                         variant="ghost"
                         size="icon"
@@ -347,6 +497,17 @@ export default function McpServerManager() {
                         ) : (
                           <RefreshCw className="h-4 w-4" />
                         )}
+                      </Button>
+                      {/* Feature 3: Assignments button */}
+                      <Button
+                        variant={selectedServerId === server.id ? "secondary" : "ghost"}
+                        size="icon"
+                        onClick={() =>
+                          setSelectedServerId((prev) => (prev === server.id ? null : server.id))
+                        }
+                        title="Manage assignments"
+                      >
+                        <Link2 className="h-4 w-4" />
                       </Button>
                       <Button
                         variant="ghost"
@@ -375,12 +536,198 @@ export default function McpServerManager() {
                       Tool calls to this server may transmit confidential data outside your organization.
                     </div>
                   )}
+
+                  {/* Feature 4: OAuth connect button (when oauthConfigured but no active token) */}
+                  {server.oauthConfigured && (
+                    <div className="mt-2">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="inline-block">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled
+                                className="text-xs h-7 cursor-not-allowed opacity-60"
+                              >
+                                <Lock className="h-3 w-3 mr-1" />
+                                Connect OAuth
+                              </Button>
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            Coming soon — OAuth callback route required
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+                  )}
+
+                  {/* Feature 1: Discovered tools panel */}
+                  {serverTools !== undefined && (
+                    <div className="mt-3 border-t pt-2">
+                      <button
+                        type="button"
+                        className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                        onClick={() =>
+                          setToolPanelOpen((prev) => ({ ...prev, [server.id]: !toolsOpen }))
+                        }
+                      >
+                        {toolsOpen ? (
+                          <ChevronDown className="h-3.5 w-3.5" />
+                        ) : (
+                          <ChevronRight className="h-3.5 w-3.5" />
+                        )}
+                        <Wrench className="h-3.5 w-3.5" />
+                        <span>
+                          {serverTools.length} discovered tool{serverTools.length !== 1 ? "s" : ""}
+                        </span>
+                        {loadingTools === server.id && (
+                          <Loader2 className="h-3 w-3 animate-spin ml-1" />
+                        )}
+                      </button>
+                      {toolsOpen && serverTools.length > 0 && (
+                        <ul className="mt-2 space-y-1.5 pl-5">
+                          {serverTools.map((tool) => (
+                            <li key={tool.name} className="text-xs">
+                              <span className="font-mono text-foreground">{tool.originalName}</span>
+                              {tool.description && (
+                                <span className="text-muted-foreground ml-2">{tool.description}</span>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      {toolsOpen && serverTools.length === 0 && (
+                        <p className="mt-1 pl-5 text-xs text-muted-foreground">No tools discovered.</p>
+                      )}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             );
           })}
         </div>
       )}
+
+      {/* Feature 3: Assignment Panel */}
+      {selectedServerId !== null && (() => {
+        const selectedServer = servers.find((s) => s.id === selectedServerId);
+        if (!selectedServer) return null;
+        const serverAssignments = assignments[selectedServerId] ?? [];
+
+        return (
+          <Card className="mt-2">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Link2 className="h-4 w-4" />
+                  Assignments for <span className="font-semibold">{selectedServer.name}</span>
+                </CardTitle>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setSelectedServerId(null)}
+                  aria-label="Close assignments panel"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Current assignments */}
+              {serverAssignments.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No assignments yet. Add one below to make this server available to a target.
+                </p>
+              ) : (
+                <ul className="space-y-2">
+                  {serverAssignments.map((a) => (
+                    <li
+                      key={a.id}
+                      className="flex items-center justify-between text-sm bg-muted/50 rounded px-3 py-2"
+                    >
+                      <span>
+                        <Badge variant="outline" className="text-xs mr-2">{a.targetType}</Badge>
+                        <span className="font-mono text-xs">{a.targetId}</span>
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 text-destructive"
+                        disabled={removingAssignmentId === a.id}
+                        onClick={() => handleRemoveAssignment(a.id, selectedServerId)}
+                        title="Remove assignment"
+                      >
+                        {removingAssignmentId === a.id ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <X className="h-3 w-3" />
+                        )}
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              <Separator />
+
+              {/* Add new assignment form */}
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  Add Assignment
+                </p>
+                <div className="flex gap-2">
+                  <Select
+                    value={assignForm.targetType}
+                    onValueChange={(v) =>
+                      setAssignForm((prev) => ({ ...prev, targetType: v as TargetType }))
+                    }
+                  >
+                    <SelectTrigger className="w-32">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {TARGET_TYPES.map((t) => (
+                        <SelectItem key={t} value={t}>
+                          {t.charAt(0).toUpperCase() + t.slice(1)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    className="flex-1"
+                    placeholder="Target ID (UUID or slug)"
+                    value={assignForm.targetId}
+                    maxLength={36}
+                    onChange={(e) =>
+                      setAssignForm((prev) => ({ ...prev, targetId: e.target.value }))
+                    }
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleAssign(selectedServerId);
+                    }}
+                  />
+                  <Button
+                    size="sm"
+                    disabled={!assignForm.targetId.trim() || assigningId === selectedServerId}
+                    onClick={() => handleAssign(selectedServerId)}
+                  >
+                    {assigningId === selectedServerId ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Plus className="h-4 w-4" />
+                    )}
+                    <span className="ml-1">Assign</span>
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Enter the UUID or identifier of the target tenant, agency, or agent.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {/* Add/Edit Modal */}
       <Dialog open={showModal} onOpenChange={setShowModal}>
@@ -563,6 +910,11 @@ export default function McpServerManager() {
                   />
                 </div>
               </div>
+              {/* Feature 4: OAuth flow note */}
+              <p className="text-xs text-muted-foreground">
+                OAuth authorization flow requires the MCP OAuth feature flag to be enabled.
+                After saving, use the &quot;Connect&quot; button on the server card to initiate the OAuth flow.
+              </p>
             </div>
           </div>
 
