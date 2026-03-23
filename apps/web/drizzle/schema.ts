@@ -4999,6 +4999,41 @@ export type AgencyVersion = typeof agencyVersions.$inferSelect;
 export type InsertAgencyVersion = typeof agencyVersions.$inferInsert;
 
 /**
+ * Agency Agent Memories — Long-term learnings extracted from agent runs.
+ * Scoped per-user: each user's memories are isolated.
+ * Used by Level 3 autonomous agents to improve over time.
+ */
+export const agencyAgentMemories = pgTable("agency_agent_memories", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull()
+    .references(() => tenants.id, { onDelete: "cascade" }),
+  agencyId: varchar("agencyId", { length: 36 }).notNull()
+    .references(() => agencies.id, { onDelete: "cascade" }),
+  userId: integer("userId").notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  agentNodeId: text("agentNodeId").notNull(),
+  memoryType: text("memoryType").notNull(),
+  content: text("content").notNull(),
+  contentHash: text("contentHash").notNull(),
+  sourceRunId: text("sourceRunId"),
+  confidence: numeric("confidence", { precision: 4, scale: 3 }).default("1.000"),
+  useCount: integer("useCount").default(0).notNull(),
+  lastUsedAt: timestamp("lastUsedAt", { withTimezone: true }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+  isActive: boolean("isActive").default(true).notNull(),
+}, (t) => [
+  index("agent_memories_tenant_idx").on(t.tenantId),
+  index("agent_memories_agency_idx").on(t.agencyId),
+  index("agent_memories_user_idx").on(t.userId),
+  index("agent_memories_lookup_idx").on(t.tenantId, t.agencyId, t.agentNodeId, t.userId, t.isActive),
+  uniqueIndex("agent_memories_content_hash_idx").on(t.tenantId, t.agencyId, t.agentNodeId, t.userId, t.contentHash),
+]);
+
+export type AgencyAgentMemory = typeof agencyAgentMemories.$inferSelect;
+export type InsertAgencyAgentMemory = typeof agencyAgentMemories.$inferInsert;
+
+/**
  * Agency Guardrails — input/output validation rules for agency agents.
  */
 export const agencyGuardrails = pgTable("agency_guardrails", {
