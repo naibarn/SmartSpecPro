@@ -1058,6 +1058,15 @@ async function processSingleRequest(
     }
   } catch (err: any) {
     if (err?.code && typeof err.code === "number") {
+      // M08: For internal error code (-32603), use a generic message to avoid
+      // leaking implementation details (e.g. upstream HTTP status codes, internal
+      // service URLs). Log the original message server-side for diagnostics.
+      // -32601 (method/tool not found) and -32602 (invalid params) are safe to
+      // forward verbatim because they reflect user-input errors, not internals.
+      if (err.code === -32603) {
+        console.error("[MCP] internal error (original):", err.message);
+        return jsonRpcError(id, -32603, "Internal error");
+      }
       return jsonRpcError(id, err.code, err.message);
     } else {
       console.error("[MCP] handler error", err);
@@ -1166,6 +1175,19 @@ function mcpDiscoveryHandler(_req: Request, res: Response): void {
 // ---------------------------------------------------------------------------
 
 export function registerMcpPublicRoutes(app: Express): void {
+  // M07: Warn at startup if required backend env vars are not set.
+  // These are needed for agency tool proxying and inter-service auth.
+  if (!process.env.PYTHON_BACKEND_URL) {
+    console.warn(
+      "[MCP] PYTHON_BACKEND_URL is not set — agency tool calls will fall back to http://localhost:8000",
+    );
+  }
+  if (!process.env.SMARTSPEC_PROXY_TOKEN) {
+    console.warn(
+      "[MCP] SMARTSPEC_PROXY_TOKEN is not set — inter-service requests to Python backend will be unauthenticated",
+    );
+  }
+
   // NOTE: /v1/mcp relies on the shared app.use("/v1", ...) middleware chain for
   // CORS, headers, auth, feature guard, rate limiting, idempotency, and audit.
   // The duplicate apiKeyAuthMiddleware that was previously here is removed —

@@ -77,6 +77,23 @@ function computeConfigHash(config: unknown): string {
 }
 
 function toResponse(server: typeof mcpServers.$inferSelect) {
+  // M09: Strip env values from stdio configs — they may contain API keys.
+  // Replace each env value with "***" so callers know keys exist but secrets
+  // are never returned over the wire.
+  const rawConfig = server.config as Record<string, unknown> | null;
+  let safeConfig: Record<string, unknown> | null = rawConfig;
+  if (rawConfig && typeof rawConfig === "object") {
+    safeConfig = { ...rawConfig };
+    if (safeConfig.env && typeof safeConfig.env === "object") {
+      safeConfig.env = Object.fromEntries(
+        Object.keys(safeConfig.env as Record<string, unknown>).map((k) => [
+          k,
+          "***",
+        ]),
+      );
+    }
+  }
+
   return {
     id: server.id,
     name: server.name,
@@ -84,7 +101,7 @@ function toResponse(server: typeof mcpServers.$inferSelect) {
     description: server.description,
     transportType: server.transportType,
     enabled: server.enabled,
-    config: server.config,
+    config: safeConfig,
     oauthConfigured: !!(server.oauthAccessTokenEncrypted || server.oauthClientSecretEncrypted),
     riskLevel: server.riskLevel,
     dataClassification: server.dataClassification,
@@ -178,6 +195,7 @@ export const updateMcpServerSchema = z.object({
 
 const UUID_FORMAT = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+// M04: UUID format validated for agent/agency targets
 export const assignToAgencySchema = z
   .object({
     mcpServerId: z.number().int().positive(),
@@ -240,7 +258,7 @@ export const mcpServersRouter = router({
   create: adminProcedure
     .input(createMcpServerSchema)
     .mutation(async ({ ctx, input }) => {
-      // Validate headers in config (unconditional — function handles undefined)
+      // M06: Validate headers unconditionally — function handles undefined
       validateHeaders((input.config as { headers?: Record<string, string> }).headers);
 
       // SSRF protection for HTTP transports
@@ -312,10 +330,8 @@ export const mcpServersRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "MCP server not found" });
       }
 
-      // Validate headers if config changed (unconditional — function handles undefined)
-      if (input.config) {
-        validateHeaders((input.config as { headers?: Record<string, string> }).headers);
-      }
+      // M06: Validate headers unconditionally — function handles undefined
+      validateHeaders((input.config as { headers?: Record<string, string> } | undefined)?.headers);
 
       // SSRF protection for HTTP transports on config change
       if (input.config) {
