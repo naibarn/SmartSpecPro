@@ -113,4 +113,16 @@ describe("AgenticConfig - Intelligence Section", () => {
       screen.getByText("Agentic mode may use 2-5x more credits per run"),
     ).toBeTruthy();
   });
+
+  it("calls onChange with correct nodeConfig when slider changes", () => {
+    renderPanel({
+      nodeConfig: { executionMode: "agentic" },
+    });
+    openIntelligence();
+    const slider = screen.getByRole("slider") as HTMLInputElement;
+    fireEvent.change(slider, { target: { value: "7" } });
+    expect(onChange).toHaveBeenCalledWith({
+      nodeConfig: { executionMode: "agentic", maxReflectionCycles: 7 },
+    });
+  });
 });

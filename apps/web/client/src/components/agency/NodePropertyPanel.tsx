@@ -768,6 +768,7 @@ function AgentSupervisorForm({
         <button
           type="button"
           onClick={() => setIntelligenceOpen(!intelligenceOpen)}
+          aria-expanded={intelligenceOpen}
           className="flex w-full items-center justify-between text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors"
         >
           <span className="flex items-center gap-1.5">
