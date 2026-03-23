@@ -94,7 +94,7 @@ export function AutoCreateAgencyModal({ open, onOpenChange, onCreated, defaultMo
     impact: string;
     targetNodeId?: string;
   }>>([]);
-  const [dismissedSuggestions, setAppliedSuggestions] = useState<Set<number>>(new Set());
+  const [dismissedSuggestions, setDismissedSuggestions] = useState<Set<number>>(new Set());
   const [showTemplateDialog, setShowTemplateDialog] = useState(false);
   const [templateName, setTemplateName] = useState("");
   const [templateDesc, setTemplateDesc] = useState("");
@@ -155,7 +155,7 @@ export function AutoCreateAgencyModal({ open, onOpenChange, onCreated, defaultMo
           if (pollRef.current) clearInterval(pollRef.current);
         } else if (status.status === "completed") {
           setTaskStatus("completed");
-          setGuide(status.guide ?? "");
+          setGuide((status.guide ?? "").slice(0, 2000));
           if (pollRef.current) clearInterval(pollRef.current);
           if (status.suggestions && Array.isArray(status.suggestions)) {
             setSuggestions(status.suggestions);
@@ -270,7 +270,7 @@ export function AutoCreateAgencyModal({ open, onOpenChange, onCreated, defaultMo
     setElapsedSeconds(0);
     setGuide("");
     setSuggestions([]);
-    setAppliedSuggestions(new Set());
+    setDismissedSuggestions(new Set());
     setShowTemplateDialog(false);
     setTemplateName("");
     setTemplateDesc("");
@@ -492,7 +492,7 @@ export function AutoCreateAgencyModal({ open, onOpenChange, onCreated, defaultMo
                             variant="ghost"
                             size="sm"
                             className="h-6 text-[10px]"
-                            onClick={() => setAppliedSuggestions(prev => new Set(prev).add(i))}
+                            onClick={() => setDismissedSuggestions(prev => new Set(prev).add(i))}
                           >
                             Skip
                           </Button>
@@ -531,6 +531,7 @@ export function AutoCreateAgencyModal({ open, onOpenChange, onCreated, defaultMo
                       value={templateName}
                       onChange={(e) => setTemplateName(e.target.value)}
                       placeholder="e.g. Research Team"
+                      maxLength={255}
                       className="h-8 text-xs"
                     />
                   </div>
@@ -541,6 +542,7 @@ export function AutoCreateAgencyModal({ open, onOpenChange, onCreated, defaultMo
                       value={templateDesc}
                       onChange={(e) => setTemplateDesc(e.target.value)}
                       placeholder="Brief description..."
+                      maxLength={2000}
                       className="h-8 text-xs"
                     />
                   </div>
@@ -559,8 +561,8 @@ export function AutoCreateAgencyModal({ open, onOpenChange, onCreated, defaultMo
                           });
                           toast.success("Template saved!");
                           setShowTemplateDialog(false);
-                        } catch (e) {
-                          console.warn("saveAsTemplate failed", e);
+                        } catch (e: any) {
+                          console.warn("saveAsTemplate failed", e?.message);
                           toast.error("Failed to save template");
                         }
                       }}

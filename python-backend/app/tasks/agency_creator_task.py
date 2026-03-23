@@ -745,8 +745,10 @@ async def _llm_plan(
 
     answers_text = ""
     if answers:
+        from app.services.agentic_sanitizer import sanitize_llm_input
         answers_text = "\n\nClarification answers:\n" + "\n".join(
-            f"- {k}: {v}" for k, v in answers.items()
+            f"- {sanitize_llm_input(str(k), max_length=100)}: {sanitize_llm_input(str(v), max_length=2000)}"
+            for k, v in list(answers.items())[:20]
         )
 
     system_prompt = f"""You are an AI agency architect. Plan a multi-agent agency architecture.
@@ -955,8 +957,10 @@ async def _llm_design(requirement: str, intent: dict, answers: dict, model: str,
     """Phase 5: Design the agency architecture as JSON spec."""
     answers_text = ""
     if answers:
+        from app.services.agentic_sanitizer import sanitize_llm_input
         answers_text = "\n\nClarification answers:\n" + "\n".join(
-            f"- {k}: {v}" for k, v in answers.items()
+            f"- {sanitize_llm_input(str(k), max_length=100)}: {sanitize_llm_input(str(v), max_length=2000)}"
+            for k, v in list(answers.items())[:20]
         )
 
     system_prompt = """You are an expert AI agency architect. Design a complete multi-agent agency based on the user's requirement.

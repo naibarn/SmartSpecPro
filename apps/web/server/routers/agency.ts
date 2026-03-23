@@ -2911,13 +2911,10 @@ export const agencyRouter = router({
 
       const data = await response.json();
 
-      // SECURITY: Verify the task belongs to the requesting user
-      // The Python backend stores _user_id in Redis status (stripped before client response)
-      if (data._user_id !== undefined && data._user_id !== ctx.user!.id) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Task not found" });
-      }
-
-      // Strip internal fields before returning to client
+      // SECURITY: Ownership is enforced by the Python backend's get_status(user_id=...)
+      // which returns None (→ 404) if the task belongs to a different user.
+      // The _user_id field is stripped by Python before it reaches this layer,
+      // so this destructure is a no-op safety net.
       const { _user_id, ...safeData } = data;
       return safeData as {
         status: "queued" | "processing" | "awaiting_answers" | "completed" | "failed";
@@ -2980,7 +2977,10 @@ export const agencyRouter = router({
     .input(
       z.object({
         taskId: z.string().regex(/^agcreate-[a-f0-9]{12}$/),
-        answers: z.record(z.string(), z.string()),
+        answers: z.record(z.string().max(100), z.string().max(5000)).refine(
+          (obj) => Object.keys(obj).length <= 20,
+          { message: "Too many answers (max 20)" },
+        ),
       }),
     )
     .mutation(async ({ ctx, input }) => {
