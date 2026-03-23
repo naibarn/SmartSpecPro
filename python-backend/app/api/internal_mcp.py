@@ -9,7 +9,7 @@ import logging
 import secrets
 from typing import Any, Optional
 
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel
 
 from app.core.config import settings
@@ -61,14 +61,13 @@ class ToolCallResponse(BaseModel):
 @router.get("/tools")
 async def list_tools(
     user_id: Optional[int] = None,
-    x_proxy_token: Optional[str] = Header(None),
+    _: None = Depends(_verify_proxy_token),
 ):
     """Return the list of available Python-native MCP tools.
 
     If user_id is provided and the user does not have an active Google
     connection, returns an empty tools list.
     """
-    await _verify_proxy_token(x_proxy_token)
 
     tools = []
     if user_id is not None:
@@ -79,7 +78,7 @@ async def list_tools(
         if has_microsoft:
             tools.extend(ONEDRIVE_TOOLS)
     else:
-        tools = GOOGLE_DRIVE_TOOLS + ONEDRIVE_TOOLS
+        pass  # No user_id — cannot verify OAuth; only browser tools added below
 
     # Browser tools are always available (no OAuth needed)
     tools.extend(BROWSER_TOOLS)
@@ -90,10 +89,9 @@ async def list_tools(
 @router.post("/tools/call")
 async def call_tool(
     body: ToolCallRequest,
-    x_proxy_token: Optional[str] = Header(None),
+    _: None = Depends(_verify_proxy_token),
 ):
     """Execute a specific MCP tool."""
-    await _verify_proxy_token(x_proxy_token)
 
     handler = TOOL_HANDLERS.get(body.name)
     if not handler:

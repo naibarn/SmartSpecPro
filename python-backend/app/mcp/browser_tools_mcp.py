@@ -5,19 +5,48 @@ functions invoked via the internal MCP HTTP API.
 """
 
 import logging
+import re
+import shlex
 from typing import Any
 
 import httpx
 
 from app.core.config import settings
 from app.mcp.google_drive_mcp import ToolError
+from app.services.mcp_client import _BLOCKED_HOSTS
 
 logger = logging.getLogger(__name__)
 
 # ── Constants ──────────────────────────────────────────────────────────────
 
 ALLOWED_COMMANDS = {"python", "python3", "node", "npm", "pip"}
+BLOCKED_FLAGS = {"-e", "--eval", "-c", "--command", "--exec"}
 MAX_EXEC_TIMEOUT = 300
+
+_PRIVATE_HOSTNAME_PATTERNS = [
+    re.compile(r"^localhost$", re.I),
+    re.compile(r"^127\."),
+    re.compile(r"^10\."),
+    re.compile(r"^172\.(1[6-9]|2\d|3[01])\."),
+    re.compile(r"^192\.168\."),
+    re.compile(r"^169\.254\."),
+    re.compile(r"^\[?::1\]?$"),
+    re.compile(r"\.internal$", re.I),
+    re.compile(r"\.local$", re.I),
+]
+
+
+def _validate_domains(domains: list[str]) -> list[str]:
+    """Filter out SSRF-blocked domains."""
+    safe = []
+    for domain in domains:
+        domain_lower = domain.strip().lower()
+        if domain_lower in _BLOCKED_HOSTS:
+            continue
+        if any(p.match(domain_lower) for p in _PRIVATE_HOSTNAME_PATTERNS):
+            continue
+        safe.append(domain)
+    return safe
 
 # ── Tool Definitions (MCP schema format) ──────────────────────────────────
 
@@ -90,9 +119,15 @@ async def handle_browser_execute_actions(
     **kwargs: Any,
 ) -> dict:
     """Dispatch browser actions to the Node browser tool route."""
-    gateway_url = settings.SMARTSPEC_WEB_GATEWAY_URL or "http://localhost:3000"
-    gateway_token = settings.SMARTSPEC_WEB_GATEWAY_TOKEN
+    allowed_domains = _validate_domains(allowed_domains)
+    if not allowed_domains:
+        raise ToolError("invalid_input", "No valid domains after SSRF filtering")
 
+    gateway_url = settings.SMARTSPEC_WEB_GATEWAY_URL
+    if not gateway_url:
+        raise ToolError("config_error", "SMARTSPEC_WEB_GATEWAY_URL not configured")
+
+    gateway_token = settings.SMARTSPEC_WEB_GATEWAY_TOKEN
     if not gateway_token:
         raise ToolError("config_error", "SMARTSPEC_WEB_GATEWAY_TOKEN not configured")
 
@@ -146,10 +181,16 @@ async def handle_sandbox_exec_command(
         if not capabilities.get("sandbox_command"):
             raise ToolError("capability_required", "sandbox_command capability is required")
 
-    # Command allowlist check
-    base_command = command.strip().split()[0] if command.strip() else ""
+    # Command allowlist + dangerous flag check
+    parts = shlex.split(command.strip()) if command.strip() else []
+    base_command = parts[0] if parts else ""
     if base_command not in ALLOWED_COMMANDS:
         raise ToolError("command_not_allowed", f"Command '{base_command}' is not in the allowed commands list")
+    for flag in parts[1:]:
+        if flag in BLOCKED_FLAGS:
+            raise ToolError("command_not_allowed", f"Flag '{flag}' is not allowed")
+        if ".." in flag:
+            raise ToolError("command_not_allowed", "Path traversal not allowed in command arguments")
 
     # Clamp timeout
     effective_timeout = min(timeout_seconds, MAX_EXEC_TIMEOUT)
