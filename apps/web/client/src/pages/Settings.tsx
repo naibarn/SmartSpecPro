@@ -58,6 +58,7 @@ import {
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { GoogleDrivePanel } from '@/components/settings/GoogleDrivePanel';
+import { McpServersSettingsPanel } from '@/components/settings/McpServersSettingsPanel';
 import { OneDrivePanel } from '@/components/settings/OneDrivePanel';
 import { UserAPIKeysPanel } from '@/components/settings/UserAPIKeysPanel';
 import { UserLlmKeysPanel } from '@/components/settings/UserLlmKeysPanel';
@@ -1779,6 +1780,7 @@ export default function Settings() {
                     <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Integrations</h2>
                     <p className="text-gray-600 dark:text-gray-400">Connect external services to enhance your workflow</p>
                   </div>
+                  <McpServersSettingsPanel />
                   <GoogleDrivePanel />
                   <OneDrivePanel />
                 </div>
