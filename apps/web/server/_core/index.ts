@@ -72,6 +72,7 @@ import { initializeTrashPurgeJob, shutdownTrashPurgeWorker } from "../jobs/purge
 import { initializeGDriveCleanupJob, shutdownGDriveCleanupWorker } from "../jobs/gdriveSessionCleanup";
 import { initializePendingApprovalAlertJob } from "../jobs/pendingApprovalAlert";
 import { initializeNotificationJobs } from "../jobs/notificationJobs";
+import { initializeMemoryMaintenanceJobs, shutdownMemoryMaintenanceJobs } from "../jobs/memoryMaintenanceJobs";
 import { initializeContentRefreshJob } from "../jobs/contentRefreshJob";
 import { initializeInactiveUserJob } from "../jobs/inactiveUserJob";
 import { initFromDb, startPeriodicPersistence } from "../services/providerHealth";
@@ -100,6 +101,7 @@ import { initAutomationJobsQueue, closeAutomationJobsQueue } from "../services/j
 import { createPublicWebhooksRouter } from "../routes/publicWebhooksApi";
 import { createPublicEventsRouter } from "../routes/publicEventsApi";
 import { initWebhookApiDeliveryQueue, closeWebhookApiDeliveryQueue } from "../services/webhookDeliveryService";
+import { closeEmbeddingQueue } from "../services/embeddingQueue";
 import { registerPublicDocsRoutes } from "../routes/publicDocsApi";
 import { createAgencyToolsApiRouter } from "../routes/agencyToolsApi";
 import { apiKeyAuthMiddleware } from "../middleware/apiKeyAuth";
@@ -952,6 +954,8 @@ app.post("/api/internal/agency/create", async (req, res) => {
   const agencyCreateSchema = z.object({
     name: z.string().min(1).max(200),
     description: z.string().max(2000).optional().default(""),
+    objective: z.string().max(2000).optional(),
+    sharedInstructions: z.string().max(10000).optional(),
     tenantId: z.string().max(100).optional().default(""),
     agents: z.array(z.object({
       id: z.string(),
@@ -966,6 +970,16 @@ app.post("/api/internal/agency/create", async (req, res) => {
       position: z.object({ x: z.number(), y: z.number() }).optional(),
       toolIds: z.array(z.string().max(100)).optional().default([]),
       toolConfigs: z.record(z.record(z.unknown())).optional().default({}),
+      modelRequirements: z.object({
+        strategy: z.enum(["cheapest", "balanced", "best"]).optional(),
+        supportsVision: z.boolean().optional(),
+        supportsThinking: z.boolean().optional(),
+        supportsFunctionTools: z.boolean().optional(),
+        supportsStructuredOutputs: z.boolean().optional(),
+        supportsWebSearch: z.boolean().optional(),
+        supportsCodeExecution: z.boolean().optional(),
+        supportsComputerUse: z.boolean().optional(),
+      }).optional(),
     })).min(1).max(20),
     communicationFlows: z.array(z.object({
       id: z.string().optional(),
@@ -1010,7 +1024,7 @@ app.post("/api/internal/agency/create", async (req, res) => {
       }
     }
 
-    const { name, description, agents, communicationFlows } = validatedBody;
+    const { name, description, objective, sharedInstructions, agents, communicationFlows } = validatedBody;
 
     if (!name?.trim()) {
       return res.status(400).json({ error: "name is required" });
@@ -1034,6 +1048,7 @@ app.post("/api/internal/agency/create", async (req, res) => {
         model: a.model ? String(a.model).slice(0, 100) : null,
         nodeType: (a.nodeType ?? "agent") as any,
         nodeConfig: (a.nodeConfig ?? {}) as any,
+        modelRequirements: a.modelRequirements,
         isEntryPoint: Boolean(a.isEntryPoint),
         isOptional: Boolean(a.isOptional),
         position: a.position ?? { x: 400, y: 80 + idx * 200 },
@@ -1053,6 +1068,8 @@ app.post("/api/internal/agency/create", async (req, res) => {
         slug,
         name: String(name).slice(0, 255),
         description: description ? String(description).slice(0, 500) : null,
+        objective: objective ? objective.slice(0, 2000) : null,
+        sharedInstructions: sharedInstructions ? sharedInstructions.slice(0, 10000) : null,
         creditMultiplier: "1",
         maxAgents: 20,
         maxRunTimeSeconds: 600,
@@ -1107,8 +1124,8 @@ app.post("/api/internal/agency/create", async (req, res) => {
 
     return res.status(201).json({ id: agencyId });
   } catch (err: any) {
-    console.error("[internal/agency/create] error:", err?.message ?? err);
-    return res.status(500).json({ error: err?.message ?? "Internal server error" });
+    debugError("internal_agency_create", "Agency creation failed", { message: String(err?.message ?? "").slice(0, 200) });
+    return res.status(500).json({ error: "Internal server error" });
   }
 });
 
@@ -1447,6 +1464,13 @@ async function main() {
     console.error("[Startup] Failed to initialize notification jobs:", error);
   }
 
+  // Initialize chat memory maintenance jobs (daily/weekly recurring cleanup)
+  try {
+    await initializeMemoryMaintenanceJobs();
+  } catch (error) {
+    console.error("[Startup] Failed to initialize memory maintenance jobs:", error);
+  }
+
   // Initialize Google Drive edit session cleanup (every 6h)
   try {
     await initializeGDriveCleanupJob();
@@ -1558,6 +1582,8 @@ process.on("SIGTERM", async () => {
   await closeWebhookDispatchQueue().catch(() => {});
   await closeAutomationJobsQueue().catch(() => {});
   await closeWebhookApiDeliveryQueue().catch(() => {});
+  await shutdownMemoryMaintenanceJobs().catch(() => {});
+  await closeEmbeddingQueue().catch(() => {});
   await shutdownVoiceGateway().catch(() => {});
 
   // 3b. Shut down channel adapters
@@ -1612,6 +1638,8 @@ process.on("SIGINT", async () => {
   await closeWebhookDispatchQueue().catch(() => {});
   await closeAutomationJobsQueue().catch(() => {});
   await closeWebhookApiDeliveryQueue().catch(() => {});
+  await shutdownMemoryMaintenanceJobs().catch(() => {});
+  await closeEmbeddingQueue().catch(() => {});
   await shutdownVoiceGateway().catch(() => {});
   await Promise.all(
     adapterRegistry.getAll()
