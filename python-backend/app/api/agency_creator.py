@@ -129,11 +129,15 @@ async def submit_agency_creator_answers(
 
     store_answers(body.task_id, body.answers)
 
-    # Retrieve stored payload + intent, dispatch design task
+    # Retrieve stored payload + intent + discover_analysis, dispatch design task
     payload = status.get("_payload", {})
     intent = status.get("_intent", {})
     model = status.get("_model", "gpt-4o")
-    design_payload = {**payload, "intent": intent, "answers": body.answers, "model": model}
+    discover_analysis = status.get("_discover_analysis", {})
+    design_payload = {
+        **payload, "intent": intent, "answers": body.answers,
+        "model": model, "discover_analysis": discover_analysis,
+    }
 
     _set_status(body.task_id, {
         "status": "processing",

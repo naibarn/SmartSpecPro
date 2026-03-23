@@ -58,6 +58,7 @@ const AdminSettings = lazy(() => import("./pages/AdminSettings"));
 const AdminQueueDashboard = lazy(() => import("./pages/AdminQueueDashboard"));
 const AdminQueueLLM = lazy(() => import("./pages/AdminQueueLLM"));
 const AdminQueueMedia = lazy(() => import("./pages/AdminQueueMedia"));
+const AdminScheduledJobs = lazy(() => import("./pages/AdminScheduledJobs"));
 const AdminAlertRules = lazy(() => import("./pages/AdminAlertRules"));
 const AdminAuditLogs = lazy(() => import("./pages/AdminAuditLogs"));
 const AdminOrchestrationLogs = lazy(() => import("./pages/AdminOrchestrationLogs"));
@@ -67,12 +68,17 @@ const AdminOpsDashboard = lazy(() => import("./pages/Admin/AdminOpsDashboard"));
 const AdminOverviewDashboard = lazy(() => import("./pages/Admin/AdminOverviewDashboard"));
 const AdminFunnelDashboard = lazy(() => import("./pages/AdminFunnelDashboard"));
 const AdminSandbox = lazy(() => import("./pages/AdminSandbox"));
+const McpServerManager = lazy(() => import("./pages/McpServerManager"));
 const DomainAdmin = lazy(() => import("./pages/DomainAdmin"));
 const DomainThemeEditor = lazy(() => import("./pages/DomainThemeEditor"));
 const DomainAdminContent = lazy(() => import("./pages/DomainAdminContent"));
 const DomainUsers = lazy(() => import("./pages/DomainUsers"));
 const TenantSettings = lazy(() => import("./pages/TenantSettings"));
 const Chat = lazy(() => import("./pages/Chat"));
+const SocialChannels = lazy(() => import("./pages/SocialChannels"));
+const SocialInbox = lazy(() => import("./pages/SocialInbox"));
+const SocialPublishing = lazy(() => import("./pages/SocialPublishing"));
+const SocialModeration = lazy(() => import("./pages/SocialModeration"));
 const Notifications = lazy(() => import("./pages/Notifications"));
 const Generate = lazy(() => import("./pages/Generate"));
 const MediaStudio = lazy(() => import("./pages/MediaStudio"));
@@ -255,6 +261,9 @@ function Router() {
         <Route path="/admin/queues/media">
           <RequireAdmin><AdminQueueMedia /></RequireAdmin>
         </Route>
+        <Route path="/admin/scheduled-jobs">
+          <RequireAdmin><AdminScheduledJobs /></RequireAdmin>
+        </Route>
         <Route path="/admin/alert-rules">
           <RequireAdmin><AdminAlertRules /></RequireAdmin>
         </Route>
@@ -284,6 +293,9 @@ function Router() {
         </Route>
         <Route path="/admin/sandbox">
           <RequireAdmin><AdminSandbox /></RequireAdmin>
+        </Route>
+        <Route path="/admin/mcp-servers">
+          <RequireAdmin><McpServerManager /></RequireAdmin>
         </Route>
         <Route path="/admin/content-quality">
           <RequireAdmin><ContentQualityDashboard /></RequireAdmin>
@@ -319,6 +331,10 @@ function Router() {
         <Route path="/signup" component={Signup} />
         <Route path="/forgot-password" component={ForgotPassword} />
         <Route path="/chat"><RequireAuth><Chat /></RequireAuth></Route>
+        <Route path="/social/channels"><RequireAuth><SocialChannels /></RequireAuth></Route>
+        <Route path="/social/inbox"><RequireAuth><SocialInbox /></RequireAuth></Route>
+        <Route path="/social/publishing"><RequireAuth><SocialPublishing /></RequireAuth></Route>
+        <Route path="/social/moderation"><RequireAuth><SocialModeration /></RequireAuth></Route>
         <Route path="/automation"><RequireAuth><AutomationPage /></RequireAuth></Route>
         <Route path="/automation/live/:sessionId"><RequireAuth><AutomationPage /></RequireAuth></Route>
         <Route path="/teams"><RequireAuth><Teams /></RequireAuth></Route>

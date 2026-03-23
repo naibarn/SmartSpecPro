@@ -6,7 +6,9 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.tasks.agency_creator_task import (
+    _discover_async,
     _fallback_plan,
+    _filter_goal_questions,
     _llm_discover,
     _llm_plan,
     _llm_review_plan,
@@ -14,6 +16,8 @@ from app.tasks.agency_creator_task import (
     _validate_spec,
     _safe_json_parse,
     MAX_DISCOVER_CALLS,
+    MAX_GOAL_QUESTIONS,
+    TECHNICAL_KEYWORDS,
 )
 
 
@@ -125,6 +129,125 @@ class TestLlmDiscover:
         mock_call.assert_called_once()
         system_prompt = mock_call.call_args.kwargs["system_prompt"]
         assert "Do NOT ask technical questions" in system_prompt
+
+
+@pytest.mark.unit
+@pytest.mark.agency
+class TestFilterGoalQuestions:
+    def test_technical_questions_filtered(self):
+        questions = [
+            {"id": "q1", "question": "Who is the target audience?", "type": "text"},
+            {"id": "q2", "question": "Which execution mode do you want?", "type": "text"},
+            {"id": "q3", "question": "What model should be used?", "type": "text"},
+            {"id": "q4", "question": "What is the main goal?", "type": "text"},
+        ]
+        filtered = _filter_goal_questions(questions)
+        assert len(filtered) == 2
+        assert filtered[0]["id"] == "q1"
+        assert filtered[1]["id"] == "q4"
+
+    def test_filters_all_technical_keywords(self):
+        for kw in TECHNICAL_KEYWORDS:
+            questions = [{"id": "q1", "question": f"Should we use {kw}?", "type": "text"}]
+            filtered = _filter_goal_questions(questions)
+            assert len(filtered) == 0, f"Keyword '{kw}' was not filtered"
+
+    def test_limits_to_max_goal_questions(self):
+        questions = [
+            {"id": f"q{i}", "question": f"Goal question {i}?", "type": "text"}
+            for i in range(10)
+        ]
+        filtered = _filter_goal_questions(questions)
+        assert len(filtered) == MAX_GOAL_QUESTIONS
+
+    def test_empty_questions_returns_empty(self):
+        assert _filter_goal_questions([]) == []
+
+
+@pytest.mark.unit
+@pytest.mark.agency
+class TestDiscoverAnalysisPassthrough:
+    @pytest.mark.asyncio
+    async def test_discover_analysis_passed_to_design_on_skip_interview(self):
+        discover_response = json.dumps({
+            "is_clear": True, "domain": "research", "estimated_agents": 2,
+            "questions": [], "notes": "",
+            "recommended_capabilities": {
+                "web_search": True, "thinking": True, "vision": False,
+                "code_execution": False, "computer_use": False,
+            },
+            "complexity_level": "moderate", "memory_recommendation": True,
+            "domain_insights": "Research benefits from web search",
+        })
+
+        with patch("app.tasks.agency_creator_task._llm_call", new_callable=AsyncMock) as mock_llm, \
+             patch("app.tasks.agency_creator_task.create_agency_design_task") as mock_design, \
+             patch("app.tasks.agency_creator_task._set_status"):
+            mock_llm.return_value = discover_response
+            await _discover_async("test-task", 1, {
+                "requirement": "Build a research team",
+                "skipInterview": True,
+                "model": "gpt-4o",
+            })
+
+        mock_design.delay.assert_called_once()
+        call_payload = mock_design.delay.call_args.kwargs["payload"]
+        assert "discover_analysis" in call_payload
+        da = call_payload["discover_analysis"]
+        assert da["recommended_capabilities"]["web_search"] is True
+        assert da["complexity_level"] == "moderate"
+
+    @pytest.mark.asyncio
+    async def test_discover_analysis_passed_when_is_clear(self):
+        discover_response = json.dumps({
+            "is_clear": True, "domain": "general", "estimated_agents": 2,
+            "questions": [], "notes": "",
+            "recommended_capabilities": {
+                "web_search": False, "thinking": False, "vision": False,
+                "code_execution": True, "computer_use": False,
+            },
+            "complexity_level": "simple", "memory_recommendation": False,
+            "domain_insights": "",
+        })
+
+        with patch("app.tasks.agency_creator_task._llm_call", new_callable=AsyncMock) as mock_llm, \
+             patch("app.tasks.agency_creator_task.create_agency_design_task") as mock_design, \
+             patch("app.tasks.agency_creator_task._set_status"):
+            mock_llm.return_value = discover_response
+            await _discover_async("test-task", 1, {
+                "requirement": "Build a calculator", "model": "gpt-4o",
+            })
+
+        call_payload = mock_design.delay.call_args.kwargs["payload"]
+        assert call_payload["discover_analysis"]["recommended_capabilities"]["code_execution"] is True
+
+    @pytest.mark.asyncio
+    async def test_discover_analysis_stored_in_redis_for_interview(self):
+        discover_response = json.dumps({
+            "is_clear": False, "domain": "general", "estimated_agents": 2,
+            "questions": [{"id": "q1", "question": "What is the goal?", "type": "text"}],
+            "notes": "",
+            "recommended_capabilities": {
+                "web_search": True, "thinking": False, "vision": False,
+                "code_execution": False, "computer_use": False,
+            },
+            "complexity_level": "simple", "memory_recommendation": True,
+            "domain_insights": "",
+        })
+
+        status_calls = []
+        with patch("app.tasks.agency_creator_task._llm_call", new_callable=AsyncMock) as mock_llm, \
+             patch("app.tasks.agency_creator_task._set_status", side_effect=lambda tid, s: status_calls.append(s)):
+            mock_llm.return_value = discover_response
+            result = await _discover_async("test-task", 1, {
+                "requirement": "Build something", "model": "gpt-4o",
+            })
+
+        assert result["status"] == "awaiting_answers"
+        # The last _set_status call should have _discover_analysis
+        awaiting_status = status_calls[-1]
+        assert "_discover_analysis" in awaiting_status
+        assert awaiting_status["_discover_analysis"]["recommended_capabilities"]["web_search"] is True
 
 
 @pytest.mark.unit

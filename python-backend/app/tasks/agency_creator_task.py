@@ -30,6 +30,21 @@ logger = structlog.get_logger(__name__)
 REDIS_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
 RESULT_TTL = 7200  # 2 hours
 MAX_DISCOVER_CALLS = 2  # Budget cap: max LLM calls during discover phase
+MAX_GOAL_QUESTIONS = 3  # Max goal-clarification questions to present
+
+TECHNICAL_KEYWORDS = [
+    "execution mode", "model", "planning strategy", "capability",
+    "memory", "agentic", "react executor", "single_shot",
+]
+
+
+def _filter_goal_questions(questions: list) -> list:
+    """Keep only goal-clarification questions, remove technical ones."""
+    filtered = [
+        q for q in questions
+        if not any(kw in q.get("question", "").lower() for kw in TECHNICAL_KEYWORDS)
+    ]
+    return filtered[:MAX_GOAL_QUESTIONS]
 
 _redis_pool = sync_redis.ConnectionPool.from_url(REDIS_URL, decode_responses=True)
 
@@ -146,9 +161,16 @@ async def _discover_async(task_id: str, user_id: int, payload: dict) -> dict:
 
     intent = await _llm_discover(requirement, model, user_id)
 
+    # Extract discover analysis for design phase
+    discover_analysis = {
+        "recommended_capabilities": intent.get("recommended_capabilities", {}),
+        "complexity_level": intent.get("complexity_level", "moderate"),
+        "memory_recommendation": intent.get("memory_recommendation", True),
+    }
+
     # Phase 2: INTERVIEW — decide if we need more info
     if skip_interview or intent.get("is_clear", True):
-        # Immediately dispatch design task
+        # Immediately dispatch design task with discover_analysis
         _set_status(task_id, {
             "status": "processing",
             "phase": "design",
@@ -158,17 +180,18 @@ async def _discover_async(task_id: str, user_id: int, payload: dict) -> dict:
         create_agency_design_task.delay(
             task_id=task_id,
             user_id=user_id,
-            payload={**payload, "intent": intent, "answers": {}},
+            payload={**payload, "intent": intent, "answers": {}, "discover_analysis": discover_analysis},
         )
         return {"status": "dispatched"}
 
-    questions = intent.get("questions", [])
+    # Filter out technical questions, keep only goal-clarification ones
+    questions = _filter_goal_questions(intent.get("questions", []))
     if not questions:
-        # No questions → go straight to design
+        # No goal questions remain → go straight to design
         create_agency_design_task.delay(
             task_id=task_id,
             user_id=user_id,
-            payload={**payload, "intent": intent, "answers": {}},
+            payload={**payload, "intent": intent, "answers": {}, "discover_analysis": discover_analysis},
         )
         return {"status": "dispatched"}
 
@@ -181,6 +204,7 @@ async def _discover_async(task_id: str, user_id: int, payload: dict) -> dict:
         "_payload": payload,  # stored for when design task is dispatched
         "_intent": intent,
         "_model": model,
+        "_discover_analysis": discover_analysis,
         # _user_jwt intentionally omitted — never persist bearer tokens at rest in Redis
     })
     return {"status": "awaiting_answers", "questions": questions}
@@ -232,6 +256,7 @@ async def _design_async(task_id: str, user_id: int, payload: dict) -> dict:
     requirement: str = payload.get("requirement", "")
     intent: dict = payload.get("intent", {})
     answers: dict = payload.get("answers", {})
+    discover_analysis: dict = payload.get("discover_analysis", {})
     raw_model: str = payload.get("model", "gpt-4o")
     # SECURITY: Restrict model to known safe models to prevent cost bypass
     ALLOWED_CREATOR_MODELS = {"gpt-4o", "gpt-4o-mini", "gpt-4.1", "gpt-4.1-mini", "claude-sonnet-4-20250514", "claude-haiku-4-5-20251001"}
@@ -260,7 +285,7 @@ async def _design_async(task_id: str, user_id: int, payload: dict) -> dict:
         "message": "Planning agency architecture...",
         "_user_id": user_id,
     })
-    plan = await _llm_plan(requirement, intent, answers, available_skills, model, user_id)
+    plan = await _llm_plan(requirement, intent, answers, available_skills, model, user_id, discover_analysis=discover_analysis)
 
     # Phase 4: REVIEW_PLAN (max 3 iterations)
     for iteration in range(1, 4):
@@ -549,6 +574,7 @@ async def _llm_plan(
     available_skills: list[dict],
     model: str,
     user_id: int,
+    discover_analysis: dict | None = None,
 ) -> dict:
     """Phase 3: Plan the agency architecture with all 14 node types."""
     skills_text = ""
@@ -592,7 +618,17 @@ RULES:
 - Keep it practical: 3-8 nodes is usually best
 - Entry point must be agent or supervisor"""
 
-    user_message = f"Requirement: {requirement}{answers_text}\n\nDomain analysis: {json.dumps(intent)}"
+    # Build user message with capability context from discover phase
+    capability_text = ""
+    da = discover_analysis or {}
+    if da.get("recommended_capabilities"):
+        caps = da["recommended_capabilities"]
+        enabled = [k for k, v in caps.items() if v]
+        if enabled:
+            capability_text = f"\n\nRecommended capabilities: {', '.join(enabled)}"
+            capability_text += f"\nComplexity: {da.get('complexity_level', 'moderate')}"
+
+    user_message = f"Requirement: {requirement}{answers_text}{capability_text}\n\nDomain analysis: {json.dumps(intent)}"
 
     content = await _llm_call(
         system_prompt=system_prompt,
