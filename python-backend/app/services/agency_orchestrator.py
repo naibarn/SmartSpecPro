@@ -589,6 +589,26 @@ class AgencyOrchestrator:
                 if summary:
                     memory_context["working_memory"] = summary
 
+            # Inject long-term memories if available
+            ltm_service = None
+            try:
+                from app.services.long_term_memory import LongTermMemoryService
+                from app.core.database import AsyncSessionLocal
+                async with AsyncSessionLocal() as ltm_session:
+                    ltm_service = LongTermMemoryService(db_session=ltm_session, gateway_url=base_url, user_token=ctx.user_token)
+                    ltm_memories = await ltm_service.get_memories_for_agent(
+                        tenant_id=ctx.tenant_id,
+                        agency_id=getattr(self.agency_config, "agency_id", ""),
+                        agent_node_id=node["id"],
+                        user_id=ctx.user_id,
+                    )
+                    if ltm_memories:
+                        injection = ltm_service.format_memories_for_injection(ltm_memories)
+                        if injection:
+                            memory_context["long_term_memory"] = injection["content"]
+            except Exception as e:
+                logger.debug("ltm_inject_skipped", error=str(e)[:100])
+
             # Build agent instructions
             agent_instructions = resolve_instructions(
                 node.get("instructions", ""),
@@ -613,6 +633,7 @@ class AgencyOrchestrator:
                 ),
                 max_tokens_budget=max_budget,
                 event_emitter=self.event_emitter,
+                working_memory=wm,
             )
 
             result: ReActResult = await executor.execute(
@@ -620,6 +641,24 @@ class AgencyOrchestrator:
             )
 
             ctx.results[node["id"]] = result.final_answer
+
+            # Extract and store long-term memories from successful runs
+            if result.status == "complete" and node_config.get("enableLongTermMemory"):
+                try:
+                    from app.services.long_term_memory import LongTermMemoryService
+                    from app.core.database import AsyncSessionLocal
+                    async with AsyncSessionLocal() as ltm_session:
+                        ltm_svc = LongTermMemoryService(db_session=ltm_session, gateway_url=base_url, user_token=ctx.user_token)
+                        await ltm_svc.extract_and_store_memories(
+                            run_result=result.final_answer,
+                            tenant_id=ctx.tenant_id,
+                            agency_id=getattr(self.agency_config, "agency_id", ""),
+                            agent_node_id=node["id"],
+                            user_id=ctx.user_id,
+                            source_run_id=getattr(ctx, "run_id", ""),
+                        )
+                except Exception as e:
+                    logger.debug("ltm_extract_failed", error=str(e)[:100])
 
             if self.event_emitter:
                 await self.event_emitter.emit("text_delta", {
@@ -696,6 +735,19 @@ class AgencyOrchestrator:
 
             tool_definitions, tool_endpoint_map = await self._resolve_tool_configs_for_react(node)
 
+            # Create ExecutionMemoryStore for checkpointing
+            memory_store = None
+            try:
+                from app.services.execution_memory_store import ExecutionMemoryStore
+                memory_store = ExecutionMemoryStore(
+                    tenant_id=ctx.tenant_id,
+                    run_id=getattr(ctx, "run_id", None) or node["id"],
+                    agency_id=getattr(self.agency_config, "agency_id", ""),
+                    redis_client=redis_client,
+                )
+            except Exception:
+                pass  # Non-critical — autonomous runs work without checkpointing
+
             # Collect available agents for delegation
             available_agents: dict[str, NodeRow] = {}
             if hasattr(self, "nodes") and self.nodes:
@@ -715,9 +767,35 @@ class AgencyOrchestrator:
                 tool_endpoints=tool_endpoint_map,
                 orchestrator=self,
                 event_emitter=self.event_emitter,
+                memory_store=memory_store,
             )
 
             ctx.results[node["id"]] = result.final_answer
+
+            # Extract long-term memories from successful autonomous runs
+            if result.status == "complete" and node_config.get("enableLongTermMemory"):
+                try:
+                    from app.services.long_term_memory import LongTermMemoryService
+                    from app.core.database import AsyncSessionLocal
+                    async with AsyncSessionLocal() as ltm_session:
+                        ltm_svc = LongTermMemoryService(db_session=ltm_session, gateway_url=base_url, user_token=ctx.user_token)
+                        await ltm_svc.extract_and_store_memories(
+                            run_result=result.final_answer,
+                            tenant_id=ctx.tenant_id,
+                            agency_id=getattr(self.agency_config, "agency_id", ""),
+                            agent_node_id=node["id"],
+                            user_id=ctx.user_id,
+                            source_run_id=getattr(ctx, "run_id", ""),
+                        )
+                except Exception as e:
+                    logger.debug("ltm_extract_autonomous_failed", error=str(e)[:100])
+
+            # Clean up scratch pad after successful completion
+            if memory_store:
+                try:
+                    await memory_store.delete_scratch_pad()
+                except Exception:
+                    pass
 
             if self.event_emitter:
                 await self.event_emitter.emit("text_delta", {

@@ -206,11 +206,13 @@ class AutonomousExecutor:
         orchestrator: Any = None,
         event_emitter: Any = None,
         max_total_iterations: int = 50,
+        memory_store: Any = None,
     ) -> None:
         self.react_executor_factory = react_executor_factory
         self.orchestrator = orchestrator
         self.event_emitter = event_emitter
         self.max_total_iterations = min(max_total_iterations, MAX_TOTAL_ITERATIONS)
+        self.memory_store = memory_store
         self._total_iterations = 0
 
     async def execute(self, plan: TaskPlan, ctx: Any) -> dict[str, str]:
@@ -242,6 +244,21 @@ class AutonomousExecutor:
                     else:
                         subtask_results[sid] = result
                     self._total_iterations += 1
+
+            # Checkpoint after each wave completes
+            if self.memory_store:
+                try:
+                    await self.memory_store.save_scratch_pad({
+                        "completed_subtask_ids": list(subtask_results.keys()),
+                        "total_iterations": self._total_iterations,
+                    })
+                    await self.memory_store.write_checkpoint({
+                        "completed_subtask_ids": list(subtask_results.keys()),
+                        "current_plan_version": getattr(plan, "plan_id", "unknown"),
+                        "total_tokens_used": 0,
+                    })
+                except Exception as e:
+                    logger.warning("checkpoint_failed", error=str(e)[:200])
 
         return subtask_results
 
@@ -424,6 +441,7 @@ async def run_autonomous(
     tool_endpoints: dict[str, dict],
     orchestrator: Any = None,
     event_emitter: Any = None,
+    memory_store: Any = None,
 ) -> AutonomousResult:
     """Main entry point for autonomous Plan-Execute-Reflect cycle."""
     max_plan_depth = min(node_config.get("maxPlanDepth", 3), MAX_PLAN_DEPTH)
@@ -457,6 +475,7 @@ async def run_autonomous(
         orchestrator=orchestrator,
         event_emitter=event_emitter,
         max_total_iterations=max_total_iterations,
+        memory_store=memory_store,
     )
 
     reflector = AutonomousReflector(

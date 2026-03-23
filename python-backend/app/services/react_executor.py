@@ -69,6 +69,7 @@ class ReActExecutor:
         max_tokens_budget: int = 100000,
         max_tokens_per_iteration: int = 8000,
         event_emitter: Any = None,
+        working_memory: Any = None,
     ) -> None:
         if gateway_client is None:
             raise ValueError("gateway_client is required")
@@ -82,6 +83,7 @@ class ReActExecutor:
         self.max_tokens_budget = min(max_tokens_budget, MAX_TOKENS_BUDGET)
         self.max_tokens_per_iteration = max_tokens_per_iteration
         self.event_emitter = event_emitter
+        self.working_memory = working_memory
 
         self._consecutive_failures: int = 0
         self._total_tokens: int = 0
@@ -175,7 +177,34 @@ class ReActExecutor:
             for tool_call in message.tool_calls:
                 tool_name = tool_call.function.name
                 tool_names.append(tool_name)
-                result = await self._handle_tool_call(tool_call)
+
+                # Parse args for working memory checks
+                try:
+                    tool_args = json.loads(tool_call.function.arguments)
+                except json.JSONDecodeError:
+                    tool_args = {}
+
+                # Check for duplicate tool calls via working memory
+                if self.working_memory and self.working_memory.check_duplicate_tool_call(tool_name, tool_args):
+                    result = f"[Skipped: duplicate call to {tool_name} with same parameters]"
+                    if self.working_memory:
+                        await self.working_memory.add_constraint(
+                            f"Already called {tool_name} with these params — try different parameters"
+                        )
+                else:
+                    result = await self._handle_tool_call(tool_call)
+
+                    # Record observation in working memory
+                    if self.working_memory:
+                        is_error = result.startswith("Tool execution failed") or result.startswith("SSRF blocked")
+                        await self.working_memory.add_observation(
+                            tool=tool_name, params=tool_args,
+                            result=result[:500], useful=not is_error,
+                        )
+                        if is_error:
+                            await self.working_memory.add_failed_approach(
+                                f"{tool_name} failed: {result[:200]}"
+                            )
 
                 messages.append({
                     "role": "tool",
