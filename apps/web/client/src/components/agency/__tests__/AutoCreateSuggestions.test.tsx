@@ -88,7 +88,7 @@ describe("Suggestion data handling", () => {
     expect(validSuggestions[1].targetNodeId).toBeUndefined();
   });
 
-  it("appliedSuggestions Set tracks applied indices", () => {
+  it("dismissedSuggestions Set tracks applied indices", () => {
     const applied = new Set<number>();
     expect(applied.has(0)).toBe(false);
 

@@ -94,7 +94,7 @@ export function AutoCreateAgencyModal({ open, onOpenChange, onCreated, defaultMo
     impact: string;
     targetNodeId?: string;
   }>>([]);
-  const [appliedSuggestions, setAppliedSuggestions] = useState<Set<number>>(new Set());
+  const [dismissedSuggestions, setAppliedSuggestions] = useState<Set<number>>(new Set());
   const [showTemplateDialog, setShowTemplateDialog] = useState(false);
   const [templateName, setTemplateName] = useState("");
   const [templateDesc, setTemplateDesc] = useState("");
@@ -487,7 +487,7 @@ export function AutoCreateAgencyModal({ open, onOpenChange, onCreated, defaultMo
                       </div>
                       <p className="text-muted-foreground">{s.description}</p>
                       <div className="flex gap-1.5">
-                        {!appliedSuggestions.has(i) ? (
+                        {!dismissedSuggestions.has(i) ? (
                           <Button
                             variant="ghost"
                             size="sm"
@@ -559,7 +559,8 @@ export function AutoCreateAgencyModal({ open, onOpenChange, onCreated, defaultMo
                           });
                           toast.success("Template saved!");
                           setShowTemplateDialog(false);
-                        } catch {
+                        } catch (e) {
+                          console.warn("saveAsTemplate failed", e);
                           toast.error("Failed to save template");
                         }
                       }}

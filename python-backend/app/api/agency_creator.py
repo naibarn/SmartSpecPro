@@ -107,9 +107,14 @@ async def get_agency_creator_status(
     # Strip internal fields before returning to client
     result = {k: v for k, v in data.items() if not k.startswith("_")}
 
-    # Merge suggestions into completed status response
+    # Merge suggestions into completed status response (strip 'change' field — F03 security)
     if result.get("status") == "completed" and result.get("hasSuggestions"):
-        result["suggestions"] = get_suggestions(task_id)
+        raw_suggestions = get_suggestions(task_id)
+        result["suggestions"] = [
+            {k: v for k, v in s.items() if k != "change"}
+            for s in raw_suggestions
+            if isinstance(s, dict)
+        ]
 
     return result
 
