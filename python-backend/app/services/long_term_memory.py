@@ -44,6 +44,14 @@ class LongTermMemoryService:
         self.gateway_url = gateway_url
         self.user_token = user_token
 
+    async def _check_memory_flag(self, tenant_id: str) -> bool:
+        """Check if long-term memory is enabled for this tenant."""
+        try:
+            from app.services.agentic_feature_flags import check_agentic_flag
+            return await check_agentic_flag("agencyLongTermMemoryEnabled", tenant_id)
+        except Exception:
+            return False
+
     async def save_memory(
         self,
         tenant_id: str,
@@ -56,6 +64,9 @@ class LongTermMemoryService:
         confidence: float = 1.0,
     ) -> dict | None:
         """Store a memory after sanitization, safety filter, duplicate check."""
+        if not await self._check_memory_flag(tenant_id):
+            return None
+
         # Sanitize and cap
         content = sanitize_llm_input(content)
         content = content[:MAX_MEMORY_CONTENT_LENGTH]
@@ -186,17 +197,20 @@ class LongTermMemoryService:
         return {"role": "user", "content": text}
 
     async def delete_memory(
-        self, memory_id: int, tenant_id: str, actor_user_id: int
+        self, memory_id: int, tenant_id: str, actor_user_id: int,
+        is_admin: bool = False,
     ) -> bool:
-        """Soft-delete a memory."""
+        """Soft-delete a memory. Non-admins can only delete their own."""
+        conditions = [
+            AgencyAgentMemory.id == memory_id,
+            AgencyAgentMemory.tenant_id == tenant_id,
+            AgencyAgentMemory.is_active == True,
+        ]
+        if not is_admin:
+            conditions.append(AgencyAgentMemory.user_id == actor_user_id)
+
         result = await self.db.execute(
-            select(AgencyAgentMemory).where(
-                and_(
-                    AgencyAgentMemory.id == memory_id,
-                    AgencyAgentMemory.tenant_id == tenant_id,
-                    AgencyAgentMemory.is_active == True,
-                )
-            )
+            select(AgencyAgentMemory).where(and_(*conditions))
         )
         memory = result.scalars().first()
         if not memory:
@@ -287,7 +301,7 @@ class LongTermMemoryService:
             "Return a JSON array of objects with 'content' (string) and "
             "'memory_type' (one of: constraint, preference, fact, skill). "
             "Only include genuinely learnable insights, not task-specific details.\n\n"
-            f"Run result:\n{run_result[:3000]}"
+            f"Run result:\n{sanitize_llm_input(run_result, max_length=3000)}"
         )
 
         try:
@@ -350,20 +364,50 @@ class LongTermMemoryService:
         return stored
 
     async def _safety_filter(self, content: str) -> bool:
-        """LLM-based safety check. Returns True if content is safe."""
-        # Simple heuristic filter for common injection patterns
+        """Heuristic + structural safety check. Returns True if content is safe to store.
+
+        Rejects content that contains instructions, commands, role-playing prompts,
+        or attempts to manipulate agent behavior. Defense in depth — even if bypassed,
+        memories are always injected as user-role with <past_learnings> framing.
+        """
+        content_lower = content.lower().strip()
+
+        # ── Pattern-based rejection ──
         unsafe_patterns = [
-            "ignore previous",
-            "ignore all instructions",
-            "always output",
-            "always ignore",
-            "disregard",
-            "override instructions",
-            "you must always",
-            "from now on",
+            "ignore previous", "ignore all instructions", "ignore the above",
+            "always output", "always ignore", "always respond",
+            "disregard", "override instructions", "override the",
+            "you must always", "you must never", "you are now",
+            "from now on", "forget everything", "forget your",
+            "new instructions", "updated instructions", "system prompt",
+            "act as", "pretend to be", "role play as",
+            "do not follow", "do not obey", "bypass",
+            "jailbreak", "dan mode", "developer mode",
+            "output the system", "reveal your", "show me your prompt",
+            "repeat after me", "say exactly",
         ]
-        content_lower = content.lower()
         for pattern in unsafe_patterns:
             if pattern in content_lower:
                 return False
+
+        # ── Structural rejection — imperative commands directed at the agent ──
+        imperative_starts = [
+            "you must", "you should always", "you will", "you are",
+            "always ", "never ", "do not ", "don't ",
+        ]
+        for prefix in imperative_starts:
+            if content_lower.startswith(prefix):
+                return False
+
+        # ── Length-based rejection — very short content is likely a command, not a fact ──
+        if len(content.strip()) < 10:
+            return False
+
+        # ── Ratio check — content with many imperative verbs is suspicious ──
+        imperative_verbs = ["must", "shall", "always", "never", "ensure", "require", "mandate"]
+        verb_count = sum(1 for v in imperative_verbs if v in content_lower)
+        word_count = len(content_lower.split())
+        if word_count > 0 and verb_count / word_count > 0.15:
+            return False
+
         return True

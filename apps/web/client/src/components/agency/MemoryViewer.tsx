@@ -96,7 +96,7 @@ export function MemoryViewer({ agencyId, agentNodeId, userId, isAdmin }: MemoryV
               size="sm"
               variant="destructive"
               className="h-6 text-xs"
-              onClick={() => resetMutation.mutate({ agencyId, agentNodeId })}
+              onClick={() => resetMutation.mutate({ agencyId, agentNodeId, userId: isAdmin ? userId : undefined })}
             >
               Confirm Reset
             </Button>

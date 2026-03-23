@@ -1438,6 +1438,15 @@ export const agencyRouter = router({
               if (decompositionStrategy !== undefined && !["sequential", "parallel", "adaptive"].includes(String(decompositionStrategy))) {
                 ctx.addIssue({ code: "custom", path: ["nodeConfig", "decompositionStrategy"], message: "decompositionStrategy must be 'sequential', 'parallel', or 'adaptive'" });
               }
+              const reflectAfterSteps = nc?.reflectAfterSteps;
+              if (reflectAfterSteps !== undefined) {
+                const n = Number(reflectAfterSteps);
+                if (!Number.isInteger(n) || n < 1 || n > 10) ctx.addIssue({ code: "custom", path: ["nodeConfig", "reflectAfterSteps"], message: "reflectAfterSteps must be 1-10" });
+              }
+              const budgetAllocation = nc?.budgetAllocation;
+              if (budgetAllocation !== undefined && !["equal", "proportional", "dynamic"].includes(String(budgetAllocation))) {
+                ctx.addIssue({ code: "custom", path: ["nodeConfig", "budgetAllocation"], message: "budgetAllocation must be 'equal', 'proportional', or 'dynamic'" });
+              }
               const enableLongTermMemory = nc?.enableLongTermMemory;
               if (enableLongTermMemory !== undefined && typeof enableLongTermMemory !== "boolean") {
                 ctx.addIssue({ code: "custom", path: ["nodeConfig", "enableLongTermMemory"], message: "enableLongTermMemory must be a boolean" });
@@ -4321,10 +4330,10 @@ export const agencyRouter = router({
 
   listAgentMemories: protectedProcedure
     .input(z.object({
-      agencyId: z.string().min(1),
-      agentNodeId: z.string().min(1),
+      agencyId: z.string().uuid(),
+      agentNodeId: z.string().min(1).max(200),
       memoryType: z.enum(["constraint", "preference", "fact", "skill"]).optional(),
-      page: z.number().int().min(1).default(1),
+      page: z.number().int().min(1).max(1000).default(1),
       pageSize: z.number().int().min(1).max(100).default(20),
     }))
     .query(async ({ input, ctx }) => {
@@ -4392,8 +4401,8 @@ export const agencyRouter = router({
 
   resetAgentMemories: protectedProcedure
     .input(z.object({
-      agencyId: z.string().min(1),
-      agentNodeId: z.string().min(1),
+      agencyId: z.string().uuid(),
+      agentNodeId: z.string().min(1).max(200),
       userId: z.number().int().positive().optional(),
     }))
     .mutation(async ({ input, ctx }) => {

@@ -343,6 +343,9 @@ class AgencyOrchestrator:
                 case "data_transform":
                     result = await self._execute_data_transform(node, ctx)
 
+                case "autonomous_agent":
+                    result = await self._execute_autonomous_node(node, ctx)
+
                 case "agent" | "supervisor":
                     result = await self._execute_agent_node(node, ctx)
                     # Check after_turn cancellation after agent completes
@@ -641,6 +644,98 @@ class AgencyOrchestrator:
                 user_id=ctx.user_id,
                 run_type="react",
                 run_id=getattr(ctx, "run_id", ""),
+            )
+
+    async def _execute_autonomous_node(
+        self, node: NodeRow, ctx: ExecutionContext
+    ) -> str:
+        """Execute an autonomous_agent node via the Plan/Execute/Reflect engine."""
+        try:
+            from app.services.autonomous_executor import run_autonomous
+            from app.services.agentic_feature_flags import check_agentic_flag
+            from app.services.agentic_limits import MAX_REACT_ITERATIONS, MAX_TOKENS_BUDGET
+        except ImportError:
+            logger.error("autonomous_executor_imports_missing")
+            return "[Autonomous executor not available — required modules not installed]"
+
+        # Feature flag check
+        try:
+            flag_enabled = await check_agentic_flag("agencyAutonomousAgentEnabled", ctx.tenant_id)
+        except Exception:
+            flag_enabled = False
+        if not flag_enabled:
+            return await self._execute_agent_node(node, ctx)
+
+        node_config = node.get("node_config") or {}
+
+        # Concurrent run limiter
+        redis_client = None
+        try:
+            from app.core.redis_client import get_cache_redis
+            redis_client = await get_cache_redis()
+        except Exception:
+            pass
+
+        from app.services.agentic_cost_controls import ConcurrentRunLimiter
+        limiter = ConcurrentRunLimiter(redis_client=redis_client)
+        acquire_result = await limiter.acquire(
+            tenant_id=ctx.tenant_id, user_id=ctx.user_id,
+            run_type="autonomous", run_id=getattr(ctx, "run_id", ""),
+        )
+        if not acquire_result.success:
+            return acquire_result.message
+
+        try:
+            from openai import AsyncOpenAI
+
+            base_url = os.environ.get("NODEJS_INTERNAL_URL", "http://localhost:3000")
+            gateway_client = AsyncOpenAI(
+                api_key=ctx.user_token,
+                base_url=f"{base_url}/v1",
+            )
+
+            tool_definitions, tool_endpoint_map = await self._resolve_tool_configs_for_react(node)
+
+            # Collect available agents for delegation
+            available_agents: dict[str, NodeRow] = {}
+            if hasattr(self, "nodes") and self.nodes:
+                for nid, n in self.nodes.items():
+                    nt = n.get("node_type") or n.get("nodeType", "")
+                    if nt in ("agent", "supervisor"):
+                        available_agents[nid] = n
+
+            result = await run_autonomous(
+                task=ctx.get_context_text() if hasattr(ctx, "get_context_text") else str(getattr(ctx, "input", "")),
+                ctx=ctx,
+                node_config=node_config,
+                gateway_client=gateway_client,
+                model_name=node.get("model", "gpt-4o"),
+                available_agents=available_agents,
+                tools=tool_definitions,
+                tool_endpoints=tool_endpoint_map,
+                orchestrator=self,
+                event_emitter=self.event_emitter,
+            )
+
+            ctx.results[node["id"]] = result.final_answer
+
+            if self.event_emitter:
+                await self.event_emitter.emit("text_delta", {
+                    "content": result.final_answer,
+                    "agentName": node.get("name", "Autonomous Agent"),
+                    "status": result.status,
+                    "planVersions": result.plan_versions,
+                })
+
+            return result.final_answer
+
+        except Exception as exc:
+            logger.error("autonomous_node_failed", node_id=node["id"], error=str(exc)[:200])
+            return f"[Agent '{node.get('name')}' autonomous error: {scrub_error_payload(str(exc))}]"
+        finally:
+            await limiter.release(
+                tenant_id=ctx.tenant_id, user_id=ctx.user_id,
+                run_type="autonomous", run_id=getattr(ctx, "run_id", ""),
             )
 
     async def _resolve_tool_configs_for_react(

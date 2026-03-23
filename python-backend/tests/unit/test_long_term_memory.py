@@ -7,6 +7,12 @@ from datetime import datetime, timezone, timedelta
 
 from app.services.long_term_memory import LongTermMemoryService, _content_hash
 
+# Patch feature flag to always return True for tests
+@pytest.fixture(autouse=True)
+def mock_memory_flag():
+    with patch("app.services.agentic_feature_flags.check_agentic_flag", return_value=True):
+        yield
+
 
 # ── Memory Creation ──
 

@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import {
   Bot, Crown, GitBranch, Merge, Database, Zap, UserCheck,
   MonitorPlay, GitFork, Layers, RefreshCw, Sparkles,
-  ShieldAlert, Braces,
+  ShieldAlert, Braces, Brain,
   Briefcase, FileText, Code, BarChart, Calendar, Search, PenTool,
   ChevronDown, Info, Wrench,
 } from "lucide-react";
@@ -38,6 +38,14 @@ const NODE_TYPE_SECTIONS = [
         detail: "Smart team leader that uses AI to decide which agent handles each task, in what order, and when to loop back for revisions. No manual IF/ELSE conditions needed — the LLM makes routing decisions automatically.",
         icon: <Crown className="h-3.5 w-3.5" />,
         color: "text-amber-500",
+      },
+      {
+        nodeType: "autonomous_agent",
+        label: "Autonomous Agent",
+        description: "AI agent that plans, delegates, and self-evaluates",
+        detail: "Advanced agent that autonomously decomposes complex tasks into sub-tasks, executes them via ReAct loops, delegates to other agents, and reflects on quality to re-plan if needed. Supports long-term memory across runs.",
+        icon: <Brain className="h-3.5 w-3.5" />,
+        color: "text-purple-500",
       },
     ],
   },

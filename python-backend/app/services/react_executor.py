@@ -93,7 +93,8 @@ class ReActExecutor:
         ]
 
         if context:
-            messages.append({"role": "user", "content": f"Context: {json.dumps(context)}"})
+            context_str = sanitize_llm_input(json.dumps(context), max_length=4000)
+            messages.append({"role": "user", "content": f"Context: {context_str}"})
 
         messages.append({"role": "user", "content": sanitize_llm_input(task)})
 
