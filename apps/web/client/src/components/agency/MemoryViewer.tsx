@@ -110,36 +110,46 @@ export function MemoryViewer({ agencyId, agentNodeId, userId, isAdmin }: MemoryV
       {/* Memory list */}
       {memories.length === 0 ? (
         <div className="text-center py-6 text-xs text-muted-foreground">
-          <Database className="h-6 w-6 mx-auto mb-2 opacity-50" />
+          <Database className="h-6 w-6 mx-auto mb-2 opacity-50" aria-hidden="true" />
           No memories recorded yet
         </div>
       ) : (
         <div className="space-y-2">
-          {memories.map((m: any) => (
-            <div key={m.id} className="border rounded-md p-2 text-xs space-y-1">
+          {memories.map((m: Record<string, unknown>) => {
+            const id = Number(m.id) || 0;
+            const memoryType = String(m.memoryType ?? "fact");
+            const content = String(m.content ?? "");
+            const confidence = Number(m.confidence) || 0;
+            const useCount = Number(m.useCount) || 0;
+            const lastUsedAt = m.lastUsedAt ? String(m.lastUsedAt) : null;
+
+            return (
+            <div key={id} className="border rounded-md p-2 text-xs space-y-1">
               <div className="flex items-center gap-1.5">
-                <Badge className={`text-[9px] px-1 py-0 ${TYPE_COLORS[m.memoryType] ?? ""}`}>
-                  {m.memoryType}
+                <Badge className={`text-[9px] px-1 py-0 ${TYPE_COLORS[memoryType] ?? ""}`}>
+                  {memoryType}
                 </Badge>
                 <span className="text-muted-foreground ml-auto">
-                  Used {m.useCount}x
+                  Used {useCount}x
                 </span>
                 <Button
                   variant="ghost"
                   size="sm"
                   className="h-5 w-5 p-0"
-                  onClick={() => deleteMutation.mutate({ memoryId: m.id })}
+                  disabled={deleteMutation.isPending}
+                  onClick={() => deleteMutation.mutate({ memoryId: id })}
                 >
                   <Trash2 className="h-3 w-3 text-red-400" />
                 </Button>
               </div>
-              <p className="text-slate-700 line-clamp-2">{m.content}</p>
+              <p className="text-slate-700 line-clamp-2">{content}</p>
               <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                <span>Confidence: {((Number(m.confidence) || 0) * 100).toFixed(0)}%</span>
-                {m.lastUsedAt && <span>Last used: {new Date(m.lastUsedAt).toLocaleDateString()}</span>}
+                <span>Confidence: {(confidence * 100).toFixed(0)}%</span>
+                {lastUsedAt && <span>Last used: {new Date(lastUsedAt).toLocaleDateString()}</span>}
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

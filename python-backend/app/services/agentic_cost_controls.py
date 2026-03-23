@@ -98,46 +98,62 @@ class ConcurrentRunLimiter:
             return self.per_user_autonomous_max
         return self.per_user_react_max
 
+    # Lua script for atomic acquire: check + increment in one round-trip
+    _ACQUIRE_LUA = """
+    local tenant_key = KEYS[1]
+    local user_key = KEYS[2]
+    local tenant_max = tonumber(ARGV[1])
+    local user_max = tonumber(ARGV[2])
+    local ttl = tonumber(ARGV[3])
+
+    local tenant_count = redis.call('INCR', tenant_key)
+    redis.call('EXPIRE', tenant_key, ttl)
+
+    if tenant_count > tenant_max then
+        redis.call('DECR', tenant_key)
+        return -1
+    end
+
+    local user_count = redis.call('INCR', user_key)
+    redis.call('EXPIRE', user_key, ttl)
+
+    if user_count > user_max then
+        redis.call('DECR', user_key)
+        redis.call('DECR', tenant_key)
+        return -2
+    end
+
+    return 1
+    """
+
     async def acquire(
         self, tenant_id: str, user_id: str, run_type: str, run_id: str = ""
     ) -> AcquireResult:
-        """Attempt to acquire a concurrency slot."""
+        """Attempt to acquire a concurrency slot (atomic via Lua script)."""
         if self._redis is None:
             return AcquireResult(success=True)
 
         try:
             tenant_key = self._tenant_key(tenant_id)
             user_key = self._user_key(tenant_id, user_id, run_type)
-
-            # Increment tenant counter
-            tenant_count = await self._redis.incr(tenant_key)
-            await self._redis.expire(tenant_key, self.ttl_seconds)
-
-            if tenant_count > self.per_tenant_max:
-                await self._redis.decr(tenant_key)
-                return AcquireResult(
-                    success=False,
-                    error_code="concurrent_limit_exceeded",
-                    retry_after=30,
-                    message="Maximum concurrent agentic runs reached. Please wait for an existing run to complete.",
-                )
-
-            # Increment user counter
-            user_count = await self._redis.incr(user_key)
-            await self._redis.expire(user_key, self.ttl_seconds)
-
             user_max = self._user_max(run_type)
-            if user_count > user_max:
-                await self._redis.decr(user_key)
-                await self._redis.decr(tenant_key)
-                return AcquireResult(
-                    success=False,
-                    error_code="concurrent_limit_exceeded",
-                    retry_after=30,
-                    message="Maximum concurrent agentic runs reached. Please wait for an existing run to complete.",
-                )
 
-            return AcquireResult(success=True)
+            result = await self._redis.eval(
+                self._ACQUIRE_LUA,
+                2,
+                tenant_key, user_key,
+                self.per_tenant_max, user_max, self.ttl_seconds,
+            )
+
+            if result == 1:
+                return AcquireResult(success=True)
+
+            return AcquireResult(
+                success=False,
+                error_code="concurrent_limit_exceeded",
+                retry_after=30,
+                message="Maximum concurrent agentic runs reached. Please wait for an existing run to complete.",
+            )
 
         except Exception as e:
             logger.warning("concurrency_limiter_acquire_failed", extra={"error": str(e)})

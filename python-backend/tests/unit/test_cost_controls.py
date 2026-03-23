@@ -76,27 +76,40 @@ def test_zero_budget_means_unlimited():
 
 
 def make_mock_redis_counter():
-    """Create mock Redis that tracks incr/decr values."""
+    """Create mock Redis that simulates Lua eval for atomic acquire."""
     counters: dict[str, int] = {}
     mock = AsyncMock()
 
-    async def mock_incr(key):
-        counters[key] = counters.get(key, 0) + 1
-        return counters[key]
+    async def mock_eval(script, numkeys, *args):
+        """Simulate the acquire Lua script behavior."""
+        tenant_key = args[0]
+        user_key = args[1]
+        tenant_max = int(args[2])
+        user_max = int(args[3])
+
+        counters[tenant_key] = counters.get(tenant_key, 0) + 1
+        if counters[tenant_key] > tenant_max:
+            counters[tenant_key] -= 1
+            return -1
+
+        counters[user_key] = counters.get(user_key, 0) + 1
+        if counters[user_key] > user_max:
+            counters[user_key] -= 1
+            counters[tenant_key] -= 1
+            return -2
+
+        return 1
 
     async def mock_decr(key):
         counters[key] = counters.get(key, 0) - 1
         return counters[key]
 
-    async def mock_expire(key, ttl):
-        pass
-
     async def mock_set(key, value, **kwargs):
         counters[key] = int(value)
 
-    mock.incr = AsyncMock(side_effect=mock_incr)
+    mock.eval = AsyncMock(side_effect=mock_eval)
     mock.decr = AsyncMock(side_effect=mock_decr)
-    mock.expire = AsyncMock(side_effect=mock_expire)
+    mock.expire = AsyncMock()
     mock.set = AsyncMock(side_effect=mock_set)
     mock._counters = counters
     return mock
@@ -167,11 +180,14 @@ async def test_different_tenants_independent():
 
 
 @pytest.mark.asyncio
-async def test_ttl_set_on_acquire():
+async def test_ttl_passed_to_lua_script():
     redis = make_mock_redis_counter()
     limiter = ConcurrentRunLimiter(redis, per_tenant_max=3, ttl_seconds=3600)
     await limiter.acquire("t1", "u1", "react", "run1")
-    redis.expire.assert_called()
+    # TTL is passed as ARGV[3] to the Lua script
+    redis.eval.assert_called_once()
+    call_args = redis.eval.call_args[0]
+    assert call_args[6] == 3600  # ttl_seconds is ARGV[3] (7th positional after script, numkeys, 2 keys, 2 args)
 
 
 @pytest.mark.asyncio

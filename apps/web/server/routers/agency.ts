@@ -1234,7 +1234,7 @@ export const agencyRouter = router({
               }
             }
             if (data.isEntryPoint && !["agent", "supervisor", "autonomous_agent"].includes(data.nodeType)) {
-              ctx.addIssue({ code: "custom", path: ["isEntryPoint"], message: `Only agent/supervisor nodes can be entry points, not ${data.nodeType}` });
+              ctx.addIssue({ code: "custom", path: ["isEntryPoint"], message: `Only agent/supervisor/autonomous_agent nodes can be entry points, not ${data.nodeType}` });
             }
             // Validate conditional_branch config
             if (data.nodeType === "conditional_branch") {
