@@ -8,6 +8,7 @@ bypassing agency-swarm to avoid double-loop cost multiplication.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from dataclasses import dataclass, field
@@ -100,7 +101,19 @@ class ReActExecutor:
 
         last_content = ""
         for iteration in range(1, self.max_iterations + 1):
-            response = await self._call_llm(messages)
+            try:
+                response = await asyncio.wait_for(
+                    self._call_llm(messages), timeout=120.0
+                )
+            except asyncio.TimeoutError:
+                logger.warning("react_llm_timeout", iteration=iteration)
+                return ReActResult(
+                    status="budget_exceeded",
+                    final_answer=last_content or "[LLM call timed out]",
+                    iterations=iteration,
+                    total_tokens=self._total_tokens,
+                    reasoning_trace=self._reasoning_trace,
+                )
 
             # Track tokens
             if response.usage:

@@ -1498,6 +1498,23 @@ export const agencyRouter = router({
       const userId = ctx.user!.id;
       const isAdmin = ctx.user!.role === "admin";
 
+      // Feature flag gates for agentic node types
+      const hasAutonomous = input.agents.some((a) => a.nodeType === "autonomous_agent");
+      const hasAgentic = input.agents.some((a) => (a.nodeConfig as Record<string, unknown>)?.executionMode === "agentic");
+
+      if (hasAutonomous) {
+        const flagEnabled = await getTenantFeatureFlag("agencyAutonomousAgentEnabled", tenantId);
+        if (!flagEnabled) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Autonomous agent is not enabled for this tenant" });
+        }
+      }
+      if (hasAgentic) {
+        const flagEnabled = await getTenantFeatureFlag("agencyAgenticModeEnabled", tenantId);
+        if (!flagEnabled) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Agentic execution mode is not enabled for this tenant" });
+        }
+      }
+
       // Look up agency by ID first, then verify tenant access
       const [agency] = await db
         .select()

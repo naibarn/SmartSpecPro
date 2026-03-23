@@ -127,12 +127,18 @@ class AutonomousPlanner:
                 ),
             })
 
-        response = await self.gateway_client.chat.completions.create(
-            model=self.model_name,
-            messages=messages,
-            max_tokens=2000,
-            response_format={"type": "json_object"},
-        )
+        try:
+            response = await asyncio.wait_for(
+                self.gateway_client.chat.completions.create(
+                    model=self.model_name,
+                    messages=messages,
+                    max_tokens=2000,
+                    response_format={"type": "json_object"},
+                ),
+                timeout=120.0,
+            )
+        except asyncio.TimeoutError:
+            raise PlanValidationError("Planning LLM call timed out after 120s")
 
         content = response.choices[0].message.content or "{}"
         plan = TaskPlan.model_validate_json(content)
@@ -361,11 +367,12 @@ class AutonomousReflector:
     ) -> ReflectionResult:
         """Evaluate quality of completed work."""
         results_text = "\n".join(
-            f"- {sid}: {result[:500]}" for sid, result in subtask_results.items()
+            f"- {sid}: {sanitize_llm_input(result, max_length=500)}" for sid, result in subtask_results.items()
         )
         plan_text = "\n".join(
             f"- {st.id}: {st.description}" for st in plan.sub_tasks
         )
+        task = sanitize_llm_input(task, max_length=5000)
 
         messages = [
             {
@@ -386,12 +393,18 @@ class AutonomousReflector:
             },
         ]
 
-        response = await self.gateway_client.chat.completions.create(
-            model=self.model_name,
-            messages=messages,
-            max_tokens=1000,
-            response_format={"type": "json_object"},
-        )
+        try:
+            response = await asyncio.wait_for(
+                self.gateway_client.chat.completions.create(
+                    model=self.model_name,
+                    messages=messages,
+                    max_tokens=1000,
+                    response_format={"type": "json_object"},
+                ),
+                timeout=60.0,
+            )
+        except asyncio.TimeoutError:
+            return ReflectionResult(quality_score=0.5, is_complete=False, gaps=["Reflection timed out"])
 
         content = response.choices[0].message.content or "{}"
         return ReflectionResult.model_validate_json(content)
