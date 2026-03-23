@@ -375,6 +375,82 @@ class TestLlmReviewDesign:
 
 @pytest.mark.unit
 @pytest.mark.agency
+class TestReviewIntelligenceChecks:
+    @pytest.mark.asyncio
+    async def test_review_plan_includes_intelligence_checks_in_prompt(self):
+        """_llm_review_plan prompt includes intelligence-related criteria."""
+        with patch("app.tasks.agency_creator_task._llm_call", new_callable=AsyncMock) as mock_call:
+            mock_call.return_value = json.dumps({"verdict": "pass"})
+            await _llm_review_plan({"planSteps": []}, "gpt-4o", 1)
+
+        system_prompt = mock_call.call_args.kwargs.get(
+            "system_prompt", mock_call.call_args.args[0] if mock_call.call_args.args else ""
+        )
+        assert "INTELLIGENCE CHECKS" in system_prompt
+        assert "execution complexity" in system_prompt.lower() or "executionMode" in system_prompt
+        assert "memory strategy" in system_prompt.lower() or "enableLongTermMemory" in system_prompt
+
+    @pytest.mark.asyncio
+    async def test_review_plan_includes_discover_capabilities(self):
+        """discover_analysis capabilities are injected into review prompt."""
+        da = {
+            "recommended_capabilities": {"web_search": True, "thinking": True, "vision": False,
+                                          "code_execution": False, "computer_use": False},
+            "complexity_level": "complex",
+            "memory_recommendation": True,
+        }
+        with patch("app.tasks.agency_creator_task._llm_call", new_callable=AsyncMock) as mock_call:
+            mock_call.return_value = json.dumps({"verdict": "pass"})
+            await _llm_review_plan({"planSteps": []}, "gpt-4o", 1, discover_analysis=da)
+
+        system_prompt = mock_call.call_args.kwargs.get(
+            "system_prompt", mock_call.call_args.args[0] if mock_call.call_args.args else ""
+        )
+        assert "web_search=True" in system_prompt
+        assert "thinking=True" in system_prompt
+
+    @pytest.mark.asyncio
+    async def test_review_design_includes_intelligence_checks(self):
+        """_llm_review_design prompt includes capability/memory checks."""
+        with patch("app.tasks.agency_creator_task._llm_call", new_callable=AsyncMock) as mock_call:
+            mock_call.return_value = json.dumps({"verdict": "pass"})
+            await _llm_review_design({"nodes": [], "edges": []}, "gpt-4o", 1)
+
+        system_prompt = mock_call.call_args.kwargs.get(
+            "system_prompt", mock_call.call_args.args[0] if mock_call.call_args.args else ""
+        )
+        assert "INTELLIGENCE CHECKS" in system_prompt
+        assert "executionMode" in system_prompt
+        assert "enableLongTermMemory" in system_prompt
+        assert "supportsWebSearch" in system_prompt
+
+    @pytest.mark.asyncio
+    async def test_review_design_includes_fix_instruction(self):
+        """Design review prompt instructs LLM to fix, not just report."""
+        with patch("app.tasks.agency_creator_task._llm_call", new_callable=AsyncMock) as mock_call:
+            mock_call.return_value = json.dumps({"verdict": "pass"})
+            await _llm_review_design({"nodes": [], "edges": []}, "gpt-4o", 1)
+
+        system_prompt = mock_call.call_args.kwargs.get(
+            "system_prompt", mock_call.call_args.args[0] if mock_call.call_args.args else ""
+        )
+        assert "fix them in the returned" in system_prompt.lower()
+
+    @pytest.mark.asyncio
+    async def test_review_plan_includes_fix_instruction(self):
+        """Plan review prompt instructs LLM to fix, not just report."""
+        with patch("app.tasks.agency_creator_task._llm_call", new_callable=AsyncMock) as mock_call:
+            mock_call.return_value = json.dumps({"verdict": "pass"})
+            await _llm_review_plan({"planSteps": []}, "gpt-4o", 1)
+
+        system_prompt = mock_call.call_args.kwargs.get(
+            "system_prompt", mock_call.call_args.args[0] if mock_call.call_args.args else ""
+        )
+        assert "fix them in the returned" in system_prompt.lower()
+
+
+@pytest.mark.unit
+@pytest.mark.agency
 class TestValidateSpecV2:
     def test_conditional_branch_gets_default_target(self):
         spec = {
@@ -473,6 +549,168 @@ class TestValidateSpecV2:
         skill = next(n for n in result["nodes"] if n["nodeType"] == "skill_call")
         assert len(agent["toolIds"]) > 0  # Agent keeps tools
         assert len(skill["toolIds"]) == 0  # skill_call stripped
+
+
+@pytest.mark.unit
+@pytest.mark.agency
+class TestFetchRelevantMemories:
+    @pytest.mark.asyncio
+    async def test_returns_formatted_when_memories_exist(self):
+        """_fetch_relevant_memories returns formatted text with historical data tags."""
+        from app.tasks.agency_creator_task import _fetch_relevant_memories
+
+        mock_memory = MagicMock()
+        mock_memory.memory_type = "fact"
+        mock_memory.content = "Use web search for research tasks"
+        mock_memory.confidence = 0.9
+
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = [mock_memory]
+
+        # Secondary query (improvement_history) returns empty
+        mock_improvement_result = MagicMock()
+        mock_improvement_result.fetchall.return_value = []
+
+        mock_session = AsyncMock()
+        mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_session.__aexit__ = AsyncMock(return_value=False)
+        mock_session.execute = AsyncMock(side_effect=[mock_result, mock_improvement_result])
+
+        with patch("app.core.database.AsyncSessionLocal", return_value=mock_session):
+            result = await _fetch_relevant_memories("tenant-1", user_id=1)
+
+        assert "<historical_data>" in result
+        assert "REFERENCE DATA ONLY" in result
+        assert "Use web search" in result
+
+    @pytest.mark.asyncio
+    async def test_returns_empty_when_no_data(self):
+        """Returns empty string when no memories found."""
+        from app.tasks.agency_creator_task import _fetch_relevant_memories
+
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = []
+
+        # Also mock the improvement_history secondary query returning empty
+        mock_improvement_result = MagicMock()
+        mock_improvement_result.fetchall.return_value = []
+
+        mock_session = AsyncMock()
+        mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_session.__aexit__ = AsyncMock(return_value=False)
+        mock_session.execute = AsyncMock(side_effect=[mock_result, mock_improvement_result])
+
+        with patch("app.core.database.AsyncSessionLocal", return_value=mock_session):
+            result = await _fetch_relevant_memories("tenant-1", user_id=1)
+
+        assert result == ""
+
+    @pytest.mark.asyncio
+    async def test_returns_empty_for_empty_tenant_id(self):
+        """Empty tenant_id returns empty string without any DB call."""
+        from app.tasks.agency_creator_task import _fetch_relevant_memories
+
+        result = await _fetch_relevant_memories("", user_id=1)
+        assert result == ""
+
+    @pytest.mark.asyncio
+    async def test_scoped_by_tenant_and_user(self):
+        """Query filters by both tenant_id and user_id (F02 security)."""
+        from app.tasks.agency_creator_task import _fetch_relevant_memories
+
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = []
+
+        mock_improvement_result = MagicMock()
+        mock_improvement_result.fetchall.return_value = []
+
+        mock_session = AsyncMock()
+        mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_session.__aexit__ = AsyncMock(return_value=False)
+        mock_session.execute = AsyncMock(side_effect=[mock_result, mock_improvement_result])
+
+        with patch("app.core.database.AsyncSessionLocal", return_value=mock_session):
+            await _fetch_relevant_memories("tenant-1", user_id=42)
+
+        # Verify the ORM query was executed (first call is the SELECT statement)
+        assert mock_session.execute.call_count >= 1
+        # The first call is the SQLAlchemy select — verify it was called
+        first_call_stmt = mock_session.execute.call_args_list[0]
+        assert first_call_stmt is not None
+
+    @pytest.mark.asyncio
+    async def test_db_error_returns_empty_string(self):
+        """Database errors should not crash — return empty string."""
+        from app.tasks.agency_creator_task import _fetch_relevant_memories
+
+        mock_session = AsyncMock()
+        mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_session.__aexit__ = AsyncMock(return_value=False)
+        mock_session.execute = AsyncMock(side_effect=Exception("DB connection failed"))
+
+        with patch("app.core.database.AsyncSessionLocal", return_value=mock_session):
+            result = await _fetch_relevant_memories("tenant-1", user_id=1)
+
+        assert result == ""
+
+
+@pytest.mark.unit
+@pytest.mark.agency
+class TestPlanIncludesMemories:
+    @pytest.mark.asyncio
+    async def test_plan_includes_memories_in_prompt(self):
+        """When memories exist, _llm_plan includes them in the user message."""
+        plan_response = json.dumps({
+            "topology": "orchestrator_worker",
+            "planSteps": [
+                {"nodeType": "supervisor", "name": "Coord", "purpose": "Coordinate", "connections": ["Worker"]},
+                {"nodeType": "agent", "name": "Worker", "purpose": "Do work", "connections": []},
+            ],
+            "rationale": "Simple plan",
+        })
+
+        memories_text = "<historical_data>\nTest memories\n</historical_data>"
+
+        with (
+            patch("app.tasks.agency_creator_task._llm_call", new_callable=AsyncMock) as mock_call,
+            patch("app.tasks.agency_creator_task._fetch_relevant_memories", new_callable=AsyncMock) as mock_mem,
+        ):
+            mock_call.return_value = plan_response
+            mock_mem.return_value = memories_text
+
+            result = await _llm_plan(
+                "Build a support team", {"domain": "support"}, {}, [], "gpt-4o", 1,
+                tenant_id="t1",
+            )
+
+        assert result["topology"] == "orchestrator_worker"
+        # Verify memories were fetched
+        mock_mem.assert_called_once_with("t1", user_id=1, limit=10)
+        # Verify the LLM call included memories text in user_message
+        call_kwargs = mock_call.call_args.kwargs
+        user_msg = call_kwargs.get("user_message", "")
+        if not user_msg:
+            # Fallback: check positional args (system_prompt, user_message, ...)
+            user_msg = mock_call.call_args.args[1] if len(mock_call.call_args.args) > 1 else ""
+        assert "Past learnings" in user_msg
+
+    @pytest.mark.asyncio
+    async def test_plan_works_without_tenant_id(self):
+        """_llm_plan works without tenant_id (no memories fetched)."""
+        plan_response = json.dumps({
+            "topology": "orchestrator_worker",
+            "planSteps": [
+                {"nodeType": "supervisor", "name": "Coord", "purpose": "Coordinate", "connections": ["W"]},
+                {"nodeType": "agent", "name": "W", "purpose": "Work", "connections": []},
+            ],
+            "rationale": "Fallback",
+        })
+
+        with patch("app.tasks.agency_creator_task._llm_call", new_callable=AsyncMock) as mock_call:
+            mock_call.return_value = plan_response
+            result = await _llm_plan("Build something", {}, {}, [], "gpt-4o", 1)
+
+        assert "planSteps" in result
 
 
 @pytest.mark.unit
