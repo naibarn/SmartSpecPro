@@ -176,13 +176,27 @@ export const updateMcpServerSchema = z.object({
   maxToolsExposed: z.number().int().min(1).max(200).optional(),
 });
 
-export const assignToAgencySchema = z.object({
-  mcpServerId: z.number().int().positive(),
-  targetType: z.enum(["tenant", "agency", "agent"]),
-  targetId: z.string().min(1).max(36),
-  enabledToolNames: z.array(z.string().max(100)).max(200).optional(),
-  disabledToolNames: z.array(z.string().max(100)).max(200).optional(),
-});
+const UUID_FORMAT = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export const assignToAgencySchema = z
+  .object({
+    mcpServerId: z.number().int().positive(),
+    targetType: z.enum(["tenant", "agency", "agent"]),
+    targetId: z.string().min(1).max(36),
+    enabledToolNames: z.array(z.string().max(100)).max(200).optional(),
+    disabledToolNames: z.array(z.string().max(100)).max(200).optional(),
+  })
+  .superRefine((val, ctx) => {
+    if (val.targetType === "agent" || val.targetType === "agency") {
+      if (!UUID_FORMAT.test(val.targetId)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["targetId"],
+          message: "targetId must be a valid UUID for agent or agency targets",
+        });
+      }
+    }
+  });
 
 // ────────────────────────────────────────────────────────────
 // Router
@@ -226,9 +240,20 @@ export const mcpServersRouter = router({
   create: adminProcedure
     .input(createMcpServerSchema)
     .mutation(async ({ ctx, input }) => {
-      // Validate headers in config
-      if ("headers" in input.config && input.config.headers) {
-        validateHeaders(input.config.headers);
+      // Validate headers in config (unconditional — function handles undefined)
+      validateHeaders((input.config as { headers?: Record<string, string> }).headers);
+
+      // SSRF protection for HTTP transports
+      if (
+        input.transportType === "http" ||
+        input.transportType === "streamable_http"
+      ) {
+        const rawUrl = (input.config as { url?: string }).url;
+        if (rawUrl) {
+          const sanitizedUrl = sanitizeUri(rawUrl);
+          const parsed = new URL(sanitizedUrl);
+          await assertPublicIp(parsed.hostname);
+        }
       }
 
       const description = sanitizeDescription(input.description);
@@ -287,9 +312,25 @@ export const mcpServersRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "MCP server not found" });
       }
 
-      // Validate headers if config changed
-      if (input.config && "headers" in input.config && input.config.headers) {
-        validateHeaders(input.config.headers);
+      // Validate headers if config changed (unconditional — function handles undefined)
+      if (input.config) {
+        validateHeaders((input.config as { headers?: Record<string, string> }).headers);
+      }
+
+      // SSRF protection for HTTP transports on config change
+      if (input.config) {
+        const transportType = input.transportType ?? existing.transportType;
+        if (
+          transportType === "http" ||
+          transportType === "streamable_http"
+        ) {
+          const rawUrl = (input.config as { url?: string }).url;
+          if (rawUrl) {
+            const sanitizedUrl = sanitizeUri(rawUrl);
+            const parsed = new URL(sanitizedUrl);
+            await assertPublicIp(parsed.hostname);
+          }
+        }
       }
 
       const updates: Record<string, unknown> = {
@@ -648,7 +689,7 @@ export const mcpServersRouter = router({
 
       await getDb()
         .delete(mcpServerAssignments)
-        .where(eq(mcpServerAssignments.id, input.id));
+        .where(eq(mcpServerAssignments.id, assignment.id));
 
       return { success: true };
     }),

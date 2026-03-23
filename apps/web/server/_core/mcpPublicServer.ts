@@ -918,6 +918,9 @@ async function handleToolsList(
 
   // Cursor-based pagination (NEW-08)
   const rawCursor = params?.cursor;
+  if (rawCursor !== undefined && !/^\d+$/.test(String(rawCursor))) {
+    throw { code: -32602, message: "Invalid cursor value" };
+  }
   const cursor = rawCursor !== undefined ? Number(rawCursor) : 0;
   // Validate cursor is a safe integer — prevents NaN/Infinity bypass
   if (!Number.isInteger(cursor) || cursor < 0 || cursor > 100000) {
@@ -946,7 +949,8 @@ async function handleToolsCall(
 
   const tool = TOOL_REGISTRY.find((t) => t.name === toolName);
   if (!tool) {
-    throw { code: -32601, message: `Tool not found: ${toolName}` };
+    console.error("[MCP] tool not found:", toolName);
+    throw { code: -32601, message: "Tool not found" };
   }
 
   // Scope check: must have requiredScope AND (read tool OR mcp:write for write tools)
