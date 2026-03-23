@@ -31,6 +31,9 @@ REDIS_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
 RESULT_TTL = 7200  # 2 hours
 MAX_DISCOVER_CALLS = 2  # Budget cap: max LLM calls during discover phase
 MAX_GOAL_QUESTIONS = 3  # Max goal-clarification questions to present
+MAX_SUGGESTIONS = 5  # Cap on improvement suggestions
+RATE_LIMIT_MAX = 5  # Max agency creations per hour per user
+RATE_LIMIT_TTL = 3600  # 1 hour
 
 TECHNICAL_KEYWORDS = [
     "execution mode", "model", "planning strategy", "capability",
@@ -96,6 +99,46 @@ def get_answers(task_id: str) -> dict[str, str]:
     r = _get_redis()
     raw = r.get(f"agency-creator:{task_id}:ans")
     return json.loads(raw) if raw else {}
+
+
+def store_suggestions(task_id: str, suggestions: list[dict]) -> None:
+    """Store improvement suggestions in a separate Redis key (F09 isolation)."""
+    try:
+        r = _get_redis()
+        r.set(f"agency-creator:{task_id}:suggestions", json.dumps(suggestions, default=str), ex=RESULT_TTL)
+    except Exception as exc:
+        logger.error("agency_creator_store_suggestions_failed", task_id=task_id, error=str(exc)[:200])
+
+
+def get_suggestions(task_id: str) -> list[dict]:
+    """Read improvement suggestions from Redis."""
+    try:
+        r = _get_redis()
+        raw = r.get(f"agency-creator:{task_id}:suggestions")
+        if raw is None:
+            return []
+        data = json.loads(raw)
+        return data if isinstance(data, list) else []
+    except Exception as exc:
+        logger.error("agency_creator_get_suggestions_failed", task_id=task_id, error=str(exc)[:200])
+        return []
+
+
+def check_rate_limit(user_id: int) -> None:
+    """Enforce per-user rate limit on agency creation (F10).
+
+    Uses atomic INCR to avoid race conditions. Fixed-window: TTL is set only
+    on the first increment (when count == 1), not on every call.
+
+    Raises ValueError if user has exceeded RATE_LIMIT_MAX creations in the TTL window.
+    """
+    r = _get_redis()
+    rate_key = f"agency-creator:ratelimit:{user_id}"
+    count = r.incr(rate_key)
+    if count == 1:
+        r.expire(rate_key, RATE_LIMIT_TTL)
+    if count > RATE_LIMIT_MAX:
+        raise ValueError("Rate limit exceeded — max 5 agency creations per hour")
 
 
 def create_task_id() -> str:
@@ -208,6 +251,19 @@ def create_agency_discover_task(
     Otherwise returns with status='awaiting_answers' + questions for the frontend to render.
     """
     logger.info("agency_creator_discover_started", task_id=task_id)
+
+    # F10: Rate limit check before any LLM calls
+    try:
+        check_rate_limit(user_id)
+    except ValueError as exc:
+        logger.warning("agency_creator_rate_limited", task_id=task_id, user_id=user_id)
+        _set_status(task_id, {
+            "status": "failed",
+            "error": str(exc),
+            "_user_id": user_id,
+        })
+        return {"status": "failed", "error": str(exc)}
+
     _set_status(task_id, {
         "status": "processing",
         "phase": "discover",
@@ -348,7 +404,7 @@ async def _design_async(task_id: str, user_id: int, payload: dict) -> dict:
 
     # Budget tracking
     llm_call_count = 0
-    MAX_LLM_CALLS = 12
+    MAX_LLM_CALLS = 18
 
     async def _budget_llm_call(system_prompt, user_message, max_tokens=4000, timeout=120.0):
         nonlocal llm_call_count
@@ -460,17 +516,36 @@ async def _design_async(task_id: str, user_id: int, payload: dict) -> dict:
     })
     guide = await _llm_document(spec, model, user_id)
 
+    # Phase 9: SUGGEST — generate optional improvement suggestions
+    suggestions: list[dict] = []
+    try:
+        _set_status(task_id, {
+            "status": "processing",
+            "phase": "suggest",
+            "message": "Generating improvement suggestions...",
+            "_user_id": user_id,
+            "agencyId": agency_id,
+        })
+        suggestions = await _llm_suggest_improvements(spec, model, user_id, llm_fn=_budget_llm_call)
+        if suggestions:
+            store_suggestions(task_id, suggestions)
+    except Exception as exc:
+        logger.warning("agency_creator_suggest_failed", task_id=task_id, error=str(exc)[:200])
+        # Non-fatal — continue to completion
+
     _set_status(task_id, {
         "status": "completed",
         "phase": "done",
         "agencyId": agency_id,
         "previewJson": spec,
         "guide": guide,
+        "hasSuggestions": len(suggestions) > 0,
         "_user_id": user_id,
     })
     logger.info(
         "agency_creator_completed",
         task_id=task_id, agency_id=agency_id, llm_calls=llm_call_count,
+        suggestions_count=len(suggestions),
     )
     return {"status": "completed", "agencyId": agency_id}
 
@@ -1357,6 +1432,115 @@ async def _llm_document(spec: dict, model: str, user_id: int) -> str:
         timeout=60.0,
     )
     return content or f"Agency '{spec.get('name')}' created successfully. Start a conversation to begin using it."
+
+
+SUGGEST_SYSTEM_PROMPT = """You are an AI agency improvement advisor. Given a completed agency spec, suggest 3-5 optional improvements.
+
+Return JSON array:
+[
+  {
+    "category": "add_capability" | "add_node" | "upgrade_mode" | "add_tool" | "improve_flow",
+    "title": "Short title (max 50 chars)",
+    "description": "What to change and why (max 200 chars)",
+    "impact": "high" | "medium" | "low",
+    "targetNodeId": "node-id or null for agency-level",
+    "change": { ... specific typed action ... }
+  }
+]
+
+CATEGORY ACTIONS (return the specific typed field, NOT arbitrary JSON):
+- add_capability: {"capability": "supportsVision"} — set modelRequirements.supportsX = true
+- upgrade_mode: {"executionMode": "agentic", "planningStrategy": "plan_and_solve"} — change execution mode
+- add_tool: {"toolId": "builtin-web-search"} — add a tool to the agent
+- add_node: description only — user applies manually in builder
+- improve_flow: description only — user applies manually
+
+Only suggest genuinely valuable improvements. Don't suggest things already in the spec."""
+
+# Per-category change-field validation
+_CHANGE_VALIDATORS: dict[str, type | None] = {
+    "add_capability": str,   # change.capability must be a string
+    "add_tool": str,          # change.toolId must be a string
+    "upgrade_mode": str,      # change.executionMode must be a string
+    "add_node": None,         # no change field required
+    "improve_flow": None,     # no change field required
+}
+_CHANGE_KEYS: dict[str, str] = {
+    "add_capability": "capability",
+    "add_tool": "toolId",
+    "upgrade_mode": "executionMode",
+}
+
+
+def _validate_suggestion_change(category: str, change: dict) -> bool:
+    """Validate the change field matches the expected shape for the category."""
+    required_key = _CHANGE_KEYS.get(category)
+    if required_key is None:
+        return True  # add_node / improve_flow don't need change validation
+    return isinstance(change.get(required_key), str) and len(change[required_key]) > 0
+
+
+async def _llm_suggest_improvements(spec: dict, model: str, user_id: int, llm_fn=None) -> list[dict]:
+    """Generate optional improvement suggestions for a newly created agency.
+
+    Args:
+        spec: The agency spec dict.
+        model: LLM model name.
+        user_id: User ID for billing.
+        llm_fn: Optional callable (budget_llm_call closure). Falls back to _llm_call.
+
+    Returns list of suggestion dicts (max 5), or empty list on failure.
+    """
+    nodes_summary = [{"id": n.get("id"), "name": n.get("name"), "nodeType": n.get("nodeType")} for n in spec.get("nodes", [])]
+    user_message = (
+        f"Agency: {spec.get('name')}\n"
+        f"Description: {spec.get('description')}\n"
+        f"Nodes: {json.dumps(nodes_summary)}"
+    )
+
+    if llm_fn:
+        content = await llm_fn(SUGGEST_SYSTEM_PROMPT, user_message, 1500, 60.0)
+    else:
+        content = await _llm_call(
+            system_prompt=SUGGEST_SYSTEM_PROMPT,
+            user_message=user_message,
+            model=model,
+            user_id=user_id,
+            max_tokens=1500,
+            timeout=60.0,
+        )
+
+    if not content:
+        return []
+
+    parsed = _safe_json_parse(content, None)
+    if not isinstance(parsed, list):
+        return []
+
+    # Validate and cap
+    valid_categories = {"add_capability", "add_node", "upgrade_mode", "add_tool", "improve_flow"}
+    valid_impacts = {"high", "medium", "low"}
+    suggestions = []
+    for item in parsed[:MAX_SUGGESTIONS]:
+        if not isinstance(item, dict):
+            continue
+        if item.get("category") not in valid_categories:
+            continue
+        change = item.get("change", {}) if isinstance(item.get("change"), dict) else {}
+        if not _validate_suggestion_change(item["category"], change):
+            continue  # Skip suggestions with malformed change payloads
+        if item.get("impact") not in valid_impacts:
+            item["impact"] = "medium"
+        suggestions.append({
+            "category": item["category"],
+            "title": str(item.get("title", ""))[:50],
+            "description": str(item.get("description", ""))[:200],
+            "impact": item["impact"],
+            "targetNodeId": item.get("targetNodeId"),
+            "change": change,
+        })
+
+    return suggestions
 
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────

@@ -13,8 +13,10 @@ from app.tasks.agency_creator_task import (
     _llm_plan,
     _llm_review_plan,
     _llm_review_design,
+    _llm_suggest_improvements,
     _validate_spec,
     _safe_json_parse,
+    check_rate_limit,
     MAX_DISCOVER_CALLS,
     MAX_GOAL_QUESTIONS,
     TECHNICAL_KEYWORDS,
@@ -722,3 +724,271 @@ class TestFallbackPlan:
         assert len(plan["planSteps"]) >= 2
         types = {s["nodeType"] for s in plan["planSteps"]}
         assert "supervisor" in types or "agent" in types
+
+
+@pytest.mark.unit
+@pytest.mark.agency
+class TestSuggestImprovements:
+    @pytest.mark.asyncio
+    async def test_suggest_returns_list(self):
+        """_llm_suggest_improvements returns a list of dicts with required fields."""
+        suggestions = json.dumps([
+            {
+                "category": "add_capability",
+                "title": "Enable vision for image analysis",
+                "description": "Add vision to the researcher node for chart analysis",
+                "impact": "high",
+                "targetNodeId": "agent-1",
+                "change": {"capability": "supportsVision"},
+            },
+            {
+                "category": "add_tool",
+                "title": "Add web search",
+                "description": "Enable web search for real-time data",
+                "impact": "medium",
+                "targetNodeId": "agent-2",
+                "change": {"toolId": "builtin-web-search"},
+            },
+        ])
+
+        with patch("app.tasks.agency_creator_task._llm_call", new_callable=AsyncMock) as mock_call:
+            mock_call.return_value = suggestions
+            result = await _llm_suggest_improvements(
+                {"name": "Test Agency", "nodes": [{"id": "agent-1", "name": "Researcher"}]},
+                "gpt-4o", 1,
+            )
+
+        assert isinstance(result, list)
+        assert len(result) == 2
+        for s in result:
+            assert "category" in s
+            assert "title" in s
+            assert "description" in s
+            assert "impact" in s
+
+    @pytest.mark.asyncio
+    async def test_suggest_max_5(self):
+        """Suggestions are capped at 5 even if LLM returns more."""
+        many = [
+            {"category": "add_tool", "title": f"Suggestion {i}", "description": "desc",
+             "impact": "low", "targetNodeId": None, "change": {}}
+            for i in range(10)
+        ]
+
+        with patch("app.tasks.agency_creator_task._llm_call", new_callable=AsyncMock) as mock_call:
+            mock_call.return_value = json.dumps(many)
+            result = await _llm_suggest_improvements({"name": "Test", "nodes": []}, "gpt-4o", 1)
+
+        assert len(result) <= 5
+
+    @pytest.mark.asyncio
+    async def test_suggest_fallback_empty_on_failure(self):
+        """Returns empty list when LLM call fails."""
+        with patch("app.tasks.agency_creator_task._llm_call", new_callable=AsyncMock) as mock_call:
+            mock_call.return_value = None
+            result = await _llm_suggest_improvements({"name": "Test", "nodes": []}, "gpt-4o", 1)
+
+        assert result == []
+
+    @pytest.mark.asyncio
+    async def test_suggest_fallback_on_bad_json(self):
+        """Returns empty list when LLM returns non-JSON."""
+        with patch("app.tasks.agency_creator_task._llm_call", new_callable=AsyncMock) as mock_call:
+            mock_call.return_value = "This is not JSON"
+            result = await _llm_suggest_improvements({"name": "Test", "nodes": []}, "gpt-4o", 1)
+
+        assert result == []
+
+    @pytest.mark.asyncio
+    async def test_suggest_fallback_on_dict_not_list(self):
+        """Returns empty list when LLM returns a dict instead of a list."""
+        with patch("app.tasks.agency_creator_task._llm_call", new_callable=AsyncMock) as mock_call:
+            mock_call.return_value = json.dumps({"category": "add_tool"})
+            result = await _llm_suggest_improvements({"name": "Test", "nodes": []}, "gpt-4o", 1)
+
+        assert result == []
+
+    @pytest.mark.asyncio
+    async def test_suggest_uses_budget_llm_fn(self):
+        """When llm_fn is provided, it is used instead of _llm_call."""
+        mock_fn = AsyncMock(return_value=json.dumps([
+            {"category": "add_tool", "title": "Add search", "description": "desc",
+             "impact": "high", "targetNodeId": "a1", "change": {"toolId": "builtin-web-search"}},
+        ]))
+        result = await _llm_suggest_improvements(
+            {"name": "Test", "nodes": []}, "gpt-4o", 1, llm_fn=mock_fn,
+        )
+        assert len(result) == 1
+        mock_fn.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_suggest_validates_change_field(self):
+        """Suggestions with malformed change fields are skipped."""
+        suggestions = json.dumps([
+            {"category": "add_capability", "title": "Good", "description": "desc",
+             "impact": "high", "targetNodeId": "a1", "change": {"capability": "supportsVision"}},
+            {"category": "add_capability", "title": "Bad", "description": "desc",
+             "impact": "high", "targetNodeId": "a1", "change": {}},  # Missing capability key
+            {"category": "add_tool", "title": "Bad2", "description": "desc",
+             "impact": "high", "targetNodeId": "a1", "change": {"toolId": ""}},  # Empty toolId
+        ])
+        with patch("app.tasks.agency_creator_task._llm_call", new_callable=AsyncMock) as mock_call:
+            mock_call.return_value = suggestions
+            result = await _llm_suggest_improvements({"name": "Test", "nodes": []}, "gpt-4o", 1)
+
+        assert len(result) == 1
+        assert result[0]["title"] == "Good"
+
+
+@pytest.mark.unit
+@pytest.mark.agency
+class TestRateLimit:
+    def test_rate_limit_allows_under_threshold(self):
+        """Rate limit passes when under 5 calls per hour (atomic INCR)."""
+        mock_redis = MagicMock()
+        mock_redis.incr.return_value = 3  # 3rd call
+
+        with patch("app.tasks.agency_creator_task._get_redis", return_value=mock_redis):
+            # Should not raise
+            check_rate_limit(user_id=42)
+
+    def test_rate_limit_blocks_over_threshold(self):
+        """Rate limit raises when exceeding 5 calls (atomic INCR)."""
+        mock_redis = MagicMock()
+        mock_redis.incr.return_value = 6  # 6th call
+
+        with patch("app.tasks.agency_creator_task._get_redis", return_value=mock_redis):
+            with pytest.raises(ValueError, match="Rate limit exceeded"):
+                check_rate_limit(user_id=42)
+
+    def test_rate_limit_sets_ttl_only_on_first_call(self):
+        """TTL is set only when count == 1 (fixed window, not sliding)."""
+        mock_redis = MagicMock()
+        mock_redis.incr.return_value = 1  # First call
+
+        with patch("app.tasks.agency_creator_task._get_redis", return_value=mock_redis):
+            check_rate_limit(user_id=42)
+
+        mock_redis.incr.assert_called_once_with("agency-creator:ratelimit:42")
+        mock_redis.expire.assert_called_once_with("agency-creator:ratelimit:42", 3600)
+
+    def test_rate_limit_no_ttl_on_subsequent_calls(self):
+        """TTL is NOT reset on subsequent calls (fixed window)."""
+        mock_redis = MagicMock()
+        mock_redis.incr.return_value = 3  # Not first call
+
+        with patch("app.tasks.agency_creator_task._get_redis", return_value=mock_redis):
+            check_rate_limit(user_id=42)
+
+        mock_redis.expire.assert_not_called()
+
+
+@pytest.mark.unit
+@pytest.mark.agency
+class TestSuggestionsRedisIsolation:
+    def test_suggestions_stored_in_separate_key(self):
+        """Suggestions are stored in a separate Redis key, not in main status."""
+        mock_redis = MagicMock()
+
+        with patch("app.tasks.agency_creator_task._get_redis", return_value=mock_redis):
+            from app.tasks.agency_creator_task import store_suggestions, get_suggestions
+
+            suggestions = [{"category": "add_tool", "title": "Test"}]
+            store_suggestions("task-123", suggestions)
+
+            mock_redis.set.assert_called_once()
+            call_args = mock_redis.set.call_args
+            assert call_args[0][0] == "agency-creator:task-123:suggestions"
+
+    def test_get_suggestions_returns_list(self):
+        """get_suggestions returns parsed list from Redis."""
+        mock_redis = MagicMock()
+        mock_redis.get.return_value = json.dumps([{"category": "add_tool", "title": "Test"}])
+
+        with patch("app.tasks.agency_creator_task._get_redis", return_value=mock_redis):
+            from app.tasks.agency_creator_task import get_suggestions
+            result = get_suggestions("task-123")
+
+        assert isinstance(result, list)
+        assert len(result) == 1
+
+    def test_get_suggestions_returns_empty_on_missing(self):
+        """get_suggestions returns empty list when key doesn't exist."""
+        mock_redis = MagicMock()
+        mock_redis.get.return_value = None
+
+        with patch("app.tasks.agency_creator_task._get_redis", return_value=mock_redis):
+            from app.tasks.agency_creator_task import get_suggestions
+            result = get_suggestions("task-123")
+
+        assert result == []
+
+    def test_get_suggestions_handles_redis_failure(self):
+        """get_suggestions returns empty list on Redis connection failure."""
+        mock_redis = MagicMock()
+        mock_redis.get.side_effect = Exception("Connection refused")
+
+        with patch("app.tasks.agency_creator_task._get_redis", return_value=mock_redis):
+            from app.tasks.agency_creator_task import get_suggestions
+            result = get_suggestions("task-123")
+
+        assert result == []
+
+
+@pytest.mark.unit
+@pytest.mark.agency
+class TestSuggestionsInCompletedStatus:
+    @pytest.mark.asyncio
+    async def test_completed_status_has_suggestions_flag(self):
+        """Phase 9 SUGGEST stores suggestions and sets hasSuggestions in completed status."""
+        from app.tasks.agency_creator_task import store_suggestions
+
+        suggestions = [{"category": "add_tool", "title": "Test", "change": {"toolId": "builtin-web-search"}}]
+        set_status_calls = []
+
+        def mock_set_status(task_id, status):
+            set_status_calls.append(status)
+
+        mock_redis = MagicMock()
+        store_calls = []
+
+        def mock_store(tid, sug):
+            store_calls.append((tid, sug))
+
+        with patch("app.tasks.agency_creator_task._set_status", side_effect=mock_set_status), \
+             patch("app.tasks.agency_creator_task.store_suggestions", side_effect=mock_store), \
+             patch("app.tasks.agency_creator_task._llm_suggest_improvements", new_callable=AsyncMock) as mock_suggest, \
+             patch("app.tasks.agency_creator_task._llm_plan", new_callable=AsyncMock) as mock_plan, \
+             patch("app.tasks.agency_creator_task._llm_review_plan", new_callable=AsyncMock) as mock_rev_plan, \
+             patch("app.tasks.agency_creator_task._llm_review_design", new_callable=AsyncMock) as mock_rev_design, \
+             patch("app.tasks.agency_creator_task._llm_design", new_callable=AsyncMock) as mock_design, \
+             patch("app.tasks.agency_creator_task._implement_agency", new_callable=AsyncMock) as mock_impl, \
+             patch("app.tasks.agency_creator_task._llm_document", new_callable=AsyncMock) as mock_doc, \
+             patch("app.tasks.agency_creator_task._fetch_available_skills", new_callable=AsyncMock) as mock_skills, \
+             patch("app.tasks.agency_creator_task._fetch_relevant_memories", new_callable=AsyncMock) as mock_mem:
+
+            mock_plan.return_value = {"planSteps": [{"nodeType": "agent", "name": "A"}]}
+            mock_rev_plan.return_value = {"verdict": "pass"}
+            mock_rev_design.return_value = {"verdict": "pass"}
+            mock_design.return_value = {"name": "Test", "nodes": [], "edges": []}
+            mock_impl.return_value = "agency-123"
+            mock_doc.return_value = "Usage guide"
+            mock_suggest.return_value = suggestions
+            mock_skills.return_value = []
+            mock_mem.return_value = ""
+
+            from app.tasks.agency_creator_task import _design_async
+            result = await _design_async("task-1", 1, {
+                "requirement": "test",
+                "model": "gpt-4o",
+                "tenantId": "t1",
+            })
+
+        assert result["status"] == "completed"
+        # Check completed status has hasSuggestions
+        completed = [s for s in set_status_calls if s.get("status") == "completed"]
+        assert len(completed) == 1
+        assert completed[0]["hasSuggestions"] is True
+        # Check store_suggestions was called
+        assert len(store_calls) == 1
+        assert store_calls[0][0] == "task-1"
