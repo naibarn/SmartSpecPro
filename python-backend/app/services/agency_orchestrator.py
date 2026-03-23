@@ -500,10 +500,219 @@ class AgencyOrchestrator:
 
     # ── Node executors ────────────────────────────────────────────────────────
 
+    async def _execute_react_path(
+        self, node: NodeRow, ctx: ExecutionContext, augmented_message: str
+    ) -> str:
+        """Execute an agent node via the ReAct executor (Level 2).
+
+        Bypasses agency-swarm and makes direct LLM calls via the Node.js gateway.
+        """
+        try:
+            from app.services.react_executor import ReActExecutor, ReActResult, tool_config_to_function
+            from app.services.working_memory import WorkingMemory
+            from app.services.agentic_cost_controls import ConcurrentRunLimiter, TokenBudgetTracker
+            from app.services.agentic_feature_flags import check_agentic_flag
+            from app.services.agentic_limits import MAX_REACT_ITERATIONS, MAX_TOKENS_BUDGET
+        except ImportError:
+            logger.error("react_executor_imports_missing", hint="Sections 05-07 not deployed")
+            return "[ReAct executor not available — required modules not installed]"
+
+        node_config = node.get("node_config") or {}
+
+        # Feature flag check
+        try:
+            flag_enabled = await check_agentic_flag("agencyReactExecutorEnabled", ctx.tenant_id)
+        except Exception:
+            flag_enabled = False
+        if not flag_enabled:
+            # Fall back to reflection loop
+            return await self._execute_agent_node_agentic_reflection(node, ctx, augmented_message)
+
+        # Concurrent run limiter
+        redis_client = None
+        try:
+            from app.core.redis_client import get_cache_redis
+            redis_client = await get_cache_redis()
+        except Exception:
+            pass
+
+        limiter = ConcurrentRunLimiter(redis_client=redis_client)
+        acquire_result = await limiter.acquire(
+            tenant_id=ctx.tenant_id,
+            user_id=ctx.user_id,
+            run_type="react",
+            run_id=getattr(ctx, "run_id", ""),
+        )
+        if not acquire_result.success:
+            return acquire_result.message
+
+        try:
+            from openai import AsyncOpenAI
+
+            base_url = os.environ.get("NODEJS_INTERNAL_URL", "http://localhost:3000")
+            gateway_client = AsyncOpenAI(
+                api_key=ctx.user_token,
+                base_url=f"{base_url}/v1",
+            )
+
+            # Resolve tools for ReAct
+            tool_definitions, tool_endpoint_map = await self._resolve_tool_configs_for_react(node)
+
+            # Initialize working memory
+            run_id = getattr(ctx, "run_id", None) or node["id"]
+            wm = WorkingMemory(
+                redis_client=redis_client,
+                tenant_id=ctx.tenant_id,
+                run_id=run_id,
+                agent_id=node["id"],
+            ) if redis_client else None
+
+            memory_context = {}
+            if wm:
+                summary = wm.get_summary()
+                if summary:
+                    memory_context["working_memory"] = summary
+
+            # Build agent instructions
+            agent_instructions = resolve_instructions(
+                node.get("instructions", ""),
+                agent_name=node.get("name", "Agent"),
+            )
+
+            # Budget tracker
+            max_budget = min(
+                node_config.get("maxTokensBudget", MAX_TOKENS_BUDGET),
+                MAX_TOKENS_BUDGET,
+            )
+
+            # Create and execute ReActExecutor
+            executor = ReActExecutor(
+                gateway_client=gateway_client,
+                model_name=node.get("model", "gpt-4o"),
+                agent_instructions=agent_instructions,
+                tools=tool_definitions,
+                tool_endpoints=tool_endpoint_map,
+                max_iterations=min(
+                    node_config.get("maxReflectionCycles", 5), MAX_REACT_ITERATIONS
+                ),
+                max_tokens_budget=max_budget,
+                event_emitter=self.event_emitter,
+            )
+
+            result: ReActResult = await executor.execute(
+                task=augmented_message, context=memory_context or None
+            )
+
+            ctx.results[node["id"]] = result.final_answer
+
+            if self.event_emitter:
+                await self.event_emitter.emit("text_delta", {
+                    "content": result.final_answer,
+                    "agentName": node.get("name", "Agent"),
+                    "status": result.status,
+                    "iterations": result.iterations,
+                })
+
+            return result.final_answer
+
+        except Exception as exc:
+            logger.error(
+                "react_path_failed",
+                node_id=node["id"],
+                error=str(exc)[:200],
+            )
+            return f"[Agent '{node.get('name')}' ReAct error: {scrub_error_payload(str(exc))}]"
+        finally:
+            await limiter.release(
+                tenant_id=ctx.tenant_id,
+                user_id=ctx.user_id,
+                run_type="react",
+                run_id=getattr(ctx, "run_id", ""),
+            )
+
+    async def _resolve_tool_configs_for_react(
+        self, node: NodeRow
+    ) -> tuple[list[dict], dict[str, dict]]:
+        """Resolve tools for ReAct executor (OpenAI function format + endpoint map)."""
+        from app.services.react_executor import tool_config_to_function
+        from app.services.agency_tools import _BUILTIN_ENDPOINTS, _BUILTIN_RISK_LEVELS
+
+        internal_url = os.getenv("SMARTSPEC_INTERNAL_URL", "http://127.0.0.1:3000")
+
+        _BUILTIN_DESCRIPTIONS: dict[str, str] = {
+            "builtin-rag-knowledge": "Search and retrieve relevant documents from the knowledge base",
+            "builtin-skill-executor": "Execute a SmartSpecPro skill to generate content",
+            "builtin-web-search": "Search the web for current information",
+            "builtin-code-runner": "Execute code in a sandboxed environment",
+            "builtin-http-request": "Make HTTP requests to external APIs",
+            "builtin-email-notify": "Send email notifications",
+            "builtin-webhook": "Call webhook endpoints",
+            "builtin-document-search": "Search documents in the library",
+            "builtin-browser": "Browse web pages",
+            "builtin-agency-call": "Call another agency to handle a sub-task",
+            "builtin-auto-draft": "Auto-generate draft content",
+            "builtin-model-suggest": "Suggest appropriate AI models",
+            "builtin-file-parse": "Parse file contents",
+            "builtin-schedule-draft": "Schedule content drafts",
+            "builtin-skill-discovery": "Discover available skills",
+        }
+
+        tool_definitions: list[dict] = []
+        tool_endpoint_map: dict[str, dict] = {}
+
+        # Get tools from node data
+        tools = node.get("tools") or []
+        for tool in tools:
+            tool_id = tool.get("toolId") or tool.get("tool_id", "")
+            if not tool_id:
+                continue
+
+            tool_config = tool.get("toolConfig") or tool.get("tool_config") or {}
+            description = tool_config.get("description", "") or _BUILTIN_DESCRIPTIONS.get(tool_id, tool_id)
+            input_schema = tool_config.get("input_schema") or tool_config.get("inputSchema")
+
+            # Resolve endpoint URL
+            endpoint_path = _BUILTIN_ENDPOINTS.get(tool_id)
+            if endpoint_path is None and not tool_id.startswith("builtin-"):
+                # Custom tool — endpoint from config
+                endpoint_url = tool_config.get("endpoint_url", tool_config.get("endpointUrl", ""))
+            elif endpoint_path:
+                endpoint_url = internal_url + endpoint_path
+            else:
+                continue  # No endpoint (e.g., builtin-agency-call with None path)
+
+            if not endpoint_url:
+                continue
+
+            risk = _BUILTIN_RISK_LEVELS.get(tool_id, "medium")
+
+            tool_definitions.append(
+                tool_config_to_function(tool_id, description, input_schema)
+            )
+            tool_endpoint_map[tool_id] = {
+                "url": endpoint_url,
+                "risk_level": risk,
+                "config": tool_config,
+            }
+
+        return tool_definitions, tool_endpoint_map
+
     async def _execute_agent_node_agentic(
         self, node: NodeRow, ctx: ExecutionContext, augmented_message: str
     ) -> str:
-        """Execute an agent node with reflection loop (agentic mode).
+        """Execute an agent node with agentic mode — dispatches to ReAct or reflection loop."""
+        node_config = node.get("node_config") or {}
+        strategy = node_config.get("planningStrategy", "basic")
+
+        if strategy == "react":
+            return await self._execute_react_path(node, ctx, augmented_message)
+
+        return await self._execute_agent_node_agentic_reflection(node, ctx, augmented_message)
+
+    async def _execute_agent_node_agentic_reflection(
+        self, node: NodeRow, ctx: ExecutionContext, augmented_message: str
+    ) -> str:
+        """Execute an agent node with reflection loop (basic/cot agentic mode).
 
         Input guardrails should be applied to augmented_message before calling this.
         Output guardrails are applied by the caller on the returned answer.
