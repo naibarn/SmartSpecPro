@@ -2,6 +2,22 @@ import { integer, pgEnum, pgTable, text, timestamp, varchar, json, jsonb, boolea
 import { sql } from "drizzle-orm";
 
 /**
+ * pgvector custom column type for 1536-dimension embeddings (OpenAI text-embedding-3-small).
+ * Defined early so both agency and scoped memory tables can reuse it.
+ */
+const vector1536 = customType<{ data: number[]; driverParam: string }>({
+  dataType() {
+    return "vector(1536)";
+  },
+  toDriver(value: number[]): string {
+    return `[${value.join(",")}]`;
+  },
+  fromDriver(value: unknown): number[] {
+    return typeof value === "string" ? JSON.parse(value) : (value as number[]);
+  },
+});
+
+/**
  * Enums
  */
 export const roleEnum = pgEnum("role", ["user", "admin", "domain_admin", "system_agent"]);
@@ -25,7 +41,32 @@ export const billingPeriodEnum = pgEnum("billing_period", ["monthly", "quarterly
 export const contentTypeEnum = pgEnum("content_type", ["image", "video", "website"]);
 export const aspectRatioEnum = pgEnum("aspect_ratio", ["1:1", "9:16", "16:9"]);
 export const messageRoleEnum = pgEnum("message_role", ["user", "assistant", "system"]);
-export const entityTypeEnum = pgEnum("entity_type", ["user", "project", "preference", "technical", "decision", "plan", "architecture", "component", "task", "code_knowledge", "rule"]);
+export const entityTypeEnum = pgEnum("entity_type", [
+  "user",
+  "project",
+  "preference",
+  "technical",
+  "decision",
+  "plan",
+  "architecture",
+  "component",
+  "task",
+  "code_knowledge",
+  "rule",
+  "fact",
+  "goal",
+  "insight",
+  "context",
+  "relationship",
+  "process",
+  "constraint",
+  "reference",
+  "note",
+  "checklist",
+  "artifact_note",
+  "handoff_note",
+  "episode",
+]);
 
 // API style for different LLM provider endpoints (OpenCode Zen uses different endpoints per model family)
 export const apiStyleEnum = pgEnum("api_style", ["chat-completions", "responses", "messages", "gemini"]);
@@ -1461,6 +1502,7 @@ export const messages = pgTable("messages", {
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
   index("messages_created_at_idx").on(t.createdAt),
+  index("messages_conversation_created_idx").on(t.conversationId, t.createdAt),
   index("idx_messages_traceid").on(t.traceId),
 ]);
 
@@ -1495,11 +1537,72 @@ export const conversationSummaries = pgTable("conversation_summaries", {
   /** Project ID for cross-session summary sharing */
   projectId: varchar("project_id", { length: 100 }),
 
+  /** Number of risky segments skipped during smart summarization */
+  skippedRiskyCount: integer("skippedRiskyCount").default(0),
+
+  /** IDs of extracted facts that contributed to the summary */
+  extractedFactIds: text("extractedFactIds").array(),
+
+  /** Whether this summary was generated from a preserved archive */
+  hasRawArchive: boolean("hasRawArchive").default(false),
+
+  /** Classification metadata for smart summarization */
+  classificationStats: jsonb("classificationStats"),
+
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
 });
 
 export type ConversationSummary = typeof conversationSummaries.$inferSelect;
 export type InsertConversationSummary = typeof conversationSummaries.$inferInsert;
+
+/**
+ * Message Chunks - Conversation segments prepared for vector + keyword retrieval
+ * Stored separately from messages so async embedding and search can run safely.
+ */
+export const messageChunks = pgTable("message_chunks", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  tenantId: varchar("tenantId", { length: 36 }).notNull(),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  conversationId: integer("conversationId").notNull().references(() => conversations.id, { onDelete: "cascade" }),
+  messageRangeStart: integer("messageRangeStart").notNull(),
+  messageRangeEnd: integer("messageRangeEnd").notNull(),
+  chunkIndex: integer("chunkIndex").notNull(),
+  content: text("content").notNull(),
+  tokenCount: integer("tokenCount").notNull(),
+  embedding: vector1536("embedding"),
+  projectId: varchar("projectId", { length: 100 }),
+  personaId: varchar("personaId", { length: 36 }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("message_chunks_conv_chunk_idx").on(t.conversationId, t.chunkIndex),
+  index("message_chunks_tenant_user_idx").on(t.tenantId, t.userId),
+  index("message_chunks_created_idx").on(t.createdAt),
+  index("message_chunks_tenant_project_idx").on(t.tenantId, t.projectId),
+]);
+
+export type MessageChunk = typeof messageChunks.$inferSelect;
+export type InsertMessageChunk = typeof messageChunks.$inferInsert;
+
+/**
+ * Memory Archive Metadata - File-backed chat archives for raw conversation preservation.
+ */
+export const memoryArchiveMetadata = pgTable("memory_archive_metadata", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull(),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  conversationId: integer("conversationId").notNull().references(() => conversations.id, { onDelete: "cascade" }),
+  archiveDate: varchar("archiveDate", { length: 10 }).notNull(),
+  filePath: text("filePath").notNull(),
+  messageCount: integer("messageCount").default(0),
+  fileSizeBytes: integer("fileSizeBytes").default(0),
+  encryptionVersion: integer("encryptionVersion").default(1),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("memory_archive_conv_date_idx").on(t.conversationId, t.archiveDate),
+]);
+
+export type MemoryArchiveMetadata = typeof memoryArchiveMetadata.$inferSelect;
+export type InsertMemoryArchiveMetadata = typeof memoryArchiveMetadata.$inferInsert;
 
 /**
  * Entity Memories - Long-term facts about users, projects, and preferences
@@ -4315,6 +4418,38 @@ export const cloudTaskEvents = pgTable("cloud_task_events", {
 export type CloudTaskEvent = typeof cloudTaskEvents.$inferSelect;
 export type InsertCloudTaskEvent = typeof cloudTaskEvents.$inferInsert;
 
+/**
+ * Scheduled Job Runs — Tracks execution history of Celery Beat scheduled tasks.
+ * Enables admin monitoring of what ran, when, success/failure, and duration.
+ */
+export const scheduledJobRuns = pgTable("scheduled_job_runs", {
+  id: serial("id").primaryKey(),
+  /** Celery task name (e.g., "agency.purge_expired_memories") */
+  taskName: varchar("taskName", { length: 200 }).notNull(),
+  /** Celery task ID (unique per execution) */
+  taskId: varchar("taskId", { length: 100 }),
+  /** Status: started, success, failure, timeout */
+  status: varchar("status", { length: 20 }).notNull(),
+  /** When execution started */
+  startedAt: timestamp("startedAt", { withTimezone: true }).defaultNow().notNull(),
+  /** When execution completed (null if still running) */
+  completedAt: timestamp("completedAt", { withTimezone: true }),
+  /** Duration in milliseconds */
+  durationMs: integer("durationMs"),
+  /** Return value or result summary (JSON string, truncated) */
+  result: text("result"),
+  /** Error message if failed */
+  errorMessage: text("errorMessage"),
+  /** Retry attempt number (0 = first attempt) */
+  retryCount: integer("retryCount").default(0),
+}, (t) => [
+  index("scheduled_job_runs_task_idx").on(t.taskName, t.startedAt),
+  index("scheduled_job_runs_status_idx").on(t.status, t.startedAt),
+]);
+
+export type ScheduledJobRun = typeof scheduledJobRuns.$inferSelect;
+export type InsertScheduledJobRun = typeof scheduledJobRuns.$inferInsert;
+
 // Funnel Events — Canonical milestone analytics stream
 export const funnelEvents = pgTable("funnel_events", {
   id: serial("id").primaryKey(),
@@ -4609,6 +4744,8 @@ export const agencies = pgTable("agencies", {
   approvedAt: timestamp("approvedAt", { withTimezone: true }),
   /** Reason for rejection (shown to creator) */
   rejectionReason: text("rejectionReason"),
+  /** User-defined objective for this agency — used by improvement loop to evaluate results */
+  objective: text("objective"),
   sharedInstructions: text("sharedInstructions"),
   userContext: jsonb("userContext").$type<Record<string, unknown>>(),
   conversationStarters: jsonb("conversationStarters").$type<string[]>(),
@@ -4647,6 +4784,79 @@ export const agencyPermissions = pgTable("agency_permissions", {
 
 export type AgencyPermission = typeof agencyPermissions.$inferSelect;
 export type InsertAgencyPermission = typeof agencyPermissions.$inferInsert;
+
+/**
+ * Agency Run Feedback — User ratings and feedback after each agency run.
+ * Powers the continuous improvement loop.
+ */
+export const agencyRunFeedback = pgTable("agency_run_feedback", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull()
+    .references(() => tenants.id, { onDelete: "cascade" }),
+  agencyId: varchar("agencyId", { length: 36 }).notNull()
+    .references(() => agencies.id, { onDelete: "cascade" }),
+  runId: varchar("runId", { length: 36 }).notNull(),
+  conversationId: varchar("conversationId", { length: 36 }),
+  userId: integer("userId").notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  /** 1-5 star rating */
+  rating: integer("rating").notNull(),
+  /** What matched expectations */
+  whatWorked: text("whatWorked"),
+  /** What didn't match expectations */
+  whatDidntWork: text("whatDidntWork"),
+  /** Specific improvement requests */
+  improvementRequests: text("improvementRequests"),
+  /** LLM-generated analysis of this feedback + suggestions */
+  advisorAnalysis: jsonb("advisorAnalysis").$type<{
+    suggestions: Array<{ category: string; suggestion: string; priority: string; autoApplyable: boolean }>;
+    objectiveAlignment: number;
+    analyzedAt: string;
+  }>(),
+  /** Whether advisor suggestions have been applied */
+  suggestionsApplied: boolean("suggestionsApplied").default(false),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("agency_run_feedback_unique").on(t.runId, t.userId),
+  index("agency_run_feedback_agency_idx").on(t.agencyId, t.createdAt),
+]);
+
+export type AgencyRunFeedback = typeof agencyRunFeedback.$inferSelect;
+export type InsertAgencyRunFeedback = typeof agencyRunFeedback.$inferInsert;
+
+/**
+ * Agency Improvement History — Tracks every improvement applied to an agency.
+ * Provides audit trail for the continuous improvement loop.
+ */
+export const agencyImprovementHistory = pgTable("agency_improvement_history", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull()
+    .references(() => tenants.id, { onDelete: "cascade" }),
+  agencyId: varchar("agencyId", { length: 36 }).notNull()
+    .references(() => agencies.id, { onDelete: "cascade" }),
+  /** What triggered this improvement */
+  triggerType: varchar("triggerType", { length: 30 }).notNull(),
+  /** Source reference (feedbackId, health_monitor, etc.) */
+  triggerRef: varchar("triggerRef", { length: 100 }),
+  /** What was changed */
+  changeType: varchar("changeType", { length: 30 }).notNull(),
+  /** Which node was affected (null = agency-level) */
+  agentNodeId: text("agentNodeId"),
+  /** Description of the change */
+  description: text("description").notNull(),
+  /** Previous value (for rollback) */
+  previousValue: text("previousValue"),
+  /** New value */
+  newValue: text("newValue"),
+  /** Who approved (null = auto-applied) */
+  approvedBy: integer("approvedBy").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("agency_improvement_agency_idx").on(t.agencyId, t.createdAt),
+]);
+
+export type AgencyImprovementHistory = typeof agencyImprovementHistory.$inferSelect;
+export type InsertAgencyImprovementHistory = typeof agencyImprovementHistory.$inferInsert;
 
 /**
  * Agency Agents -- Individual AI agents within an agency.
@@ -5034,6 +5244,7 @@ export const agencyAgentMemories = pgTable("agency_agent_memories", {
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
   isActive: boolean("isActive").default(true).notNull(),
+  embedding: vector1536("embedding"),
 }, (t) => [
   index("agent_memories_tenant_idx").on(t.tenantId),
   index("agent_memories_agency_idx").on(t.agencyId),
@@ -5044,6 +5255,36 @@ export const agencyAgentMemories = pgTable("agency_agent_memories", {
 
 export type AgencyAgentMemory = typeof agencyAgentMemories.$inferSelect;
 export type InsertAgencyAgentMemory = typeof agencyAgentMemories.$inferInsert;
+
+/**
+ * Agency Memory Chunks — Raw agent output chunks stored for Level 2 fallback retrieval.
+ * These rows are short-lived and are cleaned up by a TTL purge job.
+ */
+export const agencyMemoryChunks = pgTable("agency_memory_chunks", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  tenantId: varchar("tenantId", { length: 36 }).notNull()
+    .references(() => tenants.id, { onDelete: "cascade" }),
+  agencyId: varchar("agencyId", { length: 36 }).notNull()
+    .references(() => agencies.id, { onDelete: "cascade" }),
+  userId: integer("userId").notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  agentNodeId: text("agentNodeId").notNull(),
+  runId: text("runId").notNull(),
+  sourceNodeId: text("sourceNodeId").notNull(),
+  chunkIndex: integer("chunkIndex").notNull(),
+  content: text("content").notNull(),
+  embedding: vector1536("embedding"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  expiresAt: timestamp("expiresAt", { withTimezone: true }).notNull(),
+}, (t) => [
+  index("memory_chunks_scope_idx").on(t.tenantId, t.agencyId, t.agentNodeId, t.userId),
+  index("memory_chunks_expires_idx").on(t.expiresAt),
+  index("memory_chunks_run_idx").on(t.runId, t.sourceNodeId),
+]);
+
+export type AgencyMemoryChunk = typeof agencyMemoryChunks.$inferSelect;
+export type InsertAgencyMemoryChunk = typeof agencyMemoryChunks.$inferInsert;
 
 /**
  * Agency Guardrails — input/output validation rules for agency agents.
@@ -6853,21 +7094,6 @@ export const memorySourceTypeEnum = pgEnum("memory_source_type", [
 ]);
 
 /**
- * pgvector custom column type for 1536-dimension embeddings (OpenAI text-embedding-3-small).
- */
-const vector1536 = customType<{ data: number[]; driverParam: string }>({
-  dataType() {
-    return "vector(1536)";
-  },
-  toDriver(value: number[]): string {
-    return `[${value.join(",")}]`;
-  },
-  fromDriver(value: unknown): number[] {
-    return typeof value === "string" ? JSON.parse(value) : (value as number[]);
-  },
-});
-
-/**
  * scoped_memories — hierarchical memory store with scope isolation.
  * Supports keyword + vector (hybrid) retrieval via pgvector.
  */
@@ -7173,3 +7399,73 @@ export const userLlmApiKeys = pgTable("user_llm_api_keys", {
 
 export type UserLlmApiKey = typeof userLlmApiKeys.$inferSelect;
 export type InsertUserLlmApiKey = typeof userLlmApiKeys.$inferInsert;
+
+// ==================== MCP Server Registry ====================
+
+/**
+ * MCP Server Registry — centralized management of MCP servers per tenant.
+ * Replaces per-agent JSONB (agencyAgents.mcpServers) with normalized tables.
+ * OAuth tokens stored in dedicated encrypted columns (not JSONB).
+ */
+export const mcpServers = pgTable("mcp_servers", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 100 }).notNull(),
+  slug: varchar("slug", { length: 100 }).notNull(),
+  description: text("description"),
+  transportType: varchar("transport_type", { length: 20 }).notNull().default("http"),
+  enabled: boolean("enabled").notNull().default(true),
+  config: jsonb("config").notNull().default({}),
+  // OAuth tokens in dedicated encrypted columns (CLAUDE.md encryption rules)
+  oauthClientId: text("oauth_client_id"),
+  oauthClientSecretEncrypted: text("oauth_client_secret_encrypted"),
+  oauthAccessTokenEncrypted: text("oauth_access_token_encrypted"),
+  oauthRefreshTokenEncrypted: text("oauth_refresh_token_encrypted"),
+  oauthTokenExpiresAt: timestamp("oauth_token_expires_at", { withTimezone: true }),
+  // Non-secret OAuth metadata only
+  oauthConfig: jsonb("oauth_config"),
+  capabilities: jsonb("capabilities").default({ tools: true }),
+  toolNamePrefix: boolean("tool_name_prefix").default(true),
+  maxToolsExposed: integer("max_tools_exposed").default(50),
+  timeoutSeconds: integer("timeout_seconds").default(30),
+  endpointPath: varchar("endpoint_path", { length: 100 }).default("/rpc"),
+  riskLevel: varchar("risk_level", { length: 10 }).notNull().default("high"),
+  dataClassification: varchar("data_classification", { length: 20 }).default("internal"),
+  configHash: varchar("config_hash", { length: 64 }),
+  approvedAt: timestamp("approved_at", { withTimezone: true }),
+  approvedBy: integer("approved_by").references(() => users.id),
+  creditPerCall: numeric("credit_per_call", { precision: 10, scale: 2 }).default("1.0"),
+  lastHealthCheck: timestamp("last_health_check", { withTimezone: true }),
+  healthStatus: varchar("health_status", { length: 20 }).default("unknown"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  createdBy: integer("created_by").references(() => users.id),
+}, (t) => [
+  uniqueIndex("mcp_servers_tenant_slug_unique").on(t.tenantId, t.slug),
+  index("ix_mcp_servers_tenant").on(t.tenantId),
+  index("ix_mcp_servers_enabled").on(t.tenantId, t.enabled),
+]);
+
+export type McpServer = typeof mcpServers.$inferSelect;
+export type InsertMcpServer = typeof mcpServers.$inferInsert;
+
+/**
+ * MCP Server Assignments — links MCP servers to tenants, agencies, or agents.
+ * Supports scoped tool filtering (enable/disable specific tools per assignment).
+ */
+export const mcpServerAssignments = pgTable("mcp_server_assignments", {
+  id: serial("id").primaryKey(),
+  mcpServerId: integer("mcp_server_id").notNull().references(() => mcpServers.id, { onDelete: "cascade" }),
+  targetType: varchar("target_type", { length: 10 }).notNull(),
+  targetId: varchar("target_id", { length: 36 }).notNull(),
+  enabledToolNames: text("enabled_tool_names").array(),
+  disabledToolNames: text("disabled_tool_names").array(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("mcp_assignments_server_target_unique").on(t.mcpServerId, t.targetType, t.targetId),
+  index("ix_mcp_assignments_target").on(t.targetType, t.targetId),
+]);
+
+export type McpServerAssignment = typeof mcpServerAssignments.$inferSelect;
+export type InsertMcpServerAssignment = typeof mcpServerAssignments.$inferInsert;
