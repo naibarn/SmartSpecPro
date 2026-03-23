@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import {
   Bot, Crown, GitBranch, Merge, Database, Zap, UserCheck,
   MonitorPlay, GitFork, Layers, RefreshCw, Sparkles,
-  ShieldAlert, Braces, Brain,
+  ShieldAlert, Braces, Brain, Plug,
   Briefcase, FileText, Code, BarChart, Calendar, Search, PenTool,
   ChevronDown, Info, Wrench,
 } from "lucide-react";
@@ -166,6 +166,20 @@ const NODE_TYPE_SECTIONS = [
         detail: "Watches selected nodes for errors and applies a recovery strategy: retry with exponential backoff (max 5 attempts), redirect to a fallback node, skip with a message, or terminate the run. Error details are scrubbed for security.",
         icon: <ShieldAlert className="h-3.5 w-3.5" />,
         color: "text-red-500",
+      },
+    ],
+  },
+  {
+    label: "Integrations",
+    color: "orange",
+    items: [
+      {
+        nodeType: "mcp_server",
+        label: "MCP Server",
+        description: "Connect to external MCP tools and resources",
+        detail: "Connects to an external MCP (Model Context Protocol) server to call tools, read resources, or list capabilities. Supports HTTP, Streamable HTTP, and stdio transports. Configure via Admin > MCP Servers, then assign to this agent.",
+        icon: <Plug className="h-3.5 w-3.5" />,
+        color: "text-orange-500",
       },
     ],
   },

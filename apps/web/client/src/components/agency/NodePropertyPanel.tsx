@@ -43,9 +43,10 @@ import {
   CommandItem,
 } from "@/components/ui/command";
 import { ToolPicker } from "./ToolPicker";
-import { ModelPicker } from "./ModelPicker";
+import { ModelPicker, AUTO_MODEL } from "./ModelPicker";
 import { GuardrailsPanel } from "./guardrails/GuardrailsPanel";
 import { McpServersPanel } from "./McpServersPanel";
+import { McpRegistryPicker } from "./McpRegistryPicker";
 import { FewShotExamplesEditor, type ExamplePair } from "./FewShotExamplesEditor";
 import { AutonomousConfigPanel } from "./AutonomousConfigPanel";
 import type { AgencyNodeData } from "./nodes/types";
@@ -589,25 +590,18 @@ function AgentSupervisorForm({
       </div>
 
       <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <Label>Model Selection</Label>
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              className={cn("text-[10px] px-2 py-0.5 rounded-l border transition-colors", !node.modelRequirements ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}
-              onClick={() => onChange({ modelRequirements: undefined })}
-            >Manual</button>
-            <button
-              type="button"
-              className={cn("text-[10px] px-2 py-0.5 rounded-r border transition-colors", node.modelRequirements ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}
-              onClick={() => onChange({ modelRequirements: { strategy: "cheapest" }, model: undefined })}
-            >Smart</button>
-          </div>
-        </div>
-
-        {!node.modelRequirements ? (
-          <ModelPicker value={node.model ?? ""} onChange={(v) => onChange({ model: v })} />
-        ) : (
+        <Label>Model</Label>
+        <ModelPicker
+          value={node.modelRequirements ? AUTO_MODEL : (node.model ?? "")}
+          onChange={(v) => {
+            if (v === AUTO_MODEL) {
+              onChange({ modelRequirements: { strategy: "balanced" }, model: undefined });
+            } else {
+              onChange({ model: v, modelRequirements: undefined });
+            }
+          }}
+        />
+        {node.modelRequirements && (
           <SmartModelConfig
             requirements={node.modelRequirements}
             onChange={(reqs) => onChange({ modelRequirements: reqs, model: undefined })}
@@ -734,7 +728,9 @@ function AgentSupervisorForm({
                   onChange({
                     modelSettings: {
                       ...node.modelSettings,
-                      reasoningEffort: e.target.value || undefined,
+                      reasoningEffort: e.target.value
+                        ? (e.target.value as "minimal" | "low" | "medium" | "high")
+                        : undefined,
                     },
                   })
                 }
@@ -818,7 +814,7 @@ function AgentSupervisorForm({
               </Select>
             </div>
 
-            {ncGet(node, "executionMode", "single_shot") === "agentic" && (
+            {ncGet<"single_shot" | "agentic">(node, "executionMode", "single_shot") === "agentic" && (
               <>
                 <div className="space-y-1.5">
                   <Label className="text-xs">Planning Strategy</Label>
@@ -868,6 +864,28 @@ function AgentSupervisorForm({
                 </div>
               </>
             )}
+
+            {/* Memory Scope */}
+            <div className="space-y-1.5">
+              <Label className="text-xs">Memory Scope</Label>
+              <Select
+                value={ncGet(node, "memoryScope", "agency")}
+                onValueChange={(v) => onChange(ncSet(node, "memoryScope", v))}
+              >
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="agency">All Agents (shared)</SelectItem>
+                  <SelectItem value="node">This Agent Only (private)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-[10px] text-muted-foreground">
+                {ncGet(node, "memoryScope", "agency") === "agency"
+                  ? "This agent can access memories from all agents in this workflow"
+                  : "This agent can only access its own memories"}
+              </p>
+            </div>
           </div>
         )}
       </div>
@@ -902,8 +920,23 @@ function AgentSupervisorForm({
 
       <Separator />
 
-      {/* MCP Servers (section-14) */}
-      {(node.nodeType === "agent" || node.nodeType === "supervisor") && (
+      {/* MCP Server Registry Picker (for mcp_server node type) */}
+      {node.nodeType === "mcp_server" && (
+        <McpRegistryPicker
+          serverSlug={ncGet(node, "serverSlug", "")}
+          toolName={ncGet(node, "toolName", "")}
+          onChange={(updates) => {
+            onChange({
+              nodeConfig: { ...(node.nodeConfig ?? {}), ...updates },
+            });
+          }}
+        />
+      )}
+
+      <Separator />
+
+      {/* MCP Servers inline (for agent/supervisor — legacy JSONB approach) */}
+      {(node.nodeType === "agent" || node.nodeType === "supervisor" || node.nodeType === "mcp_server") && (
         <div>
           <button
             type="button"
@@ -3583,7 +3616,7 @@ function SmartModelConfig({
 }) {
   const resolveQuery = trpc.agency.resolveModel.useQuery(
     { requirements },
-    { staleTime: 10_000, keepPreviousData: true },
+    { staleTime: 10_000, placeholderData: (previous) => previous },
   );
 
   return (
