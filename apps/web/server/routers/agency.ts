@@ -757,20 +757,32 @@ export const agencyRouter = router({
       const userId = ctx.user!.id;
       const isAdmin = ctx.user!.role === "admin";
 
-      // SECURITY: Filter by tenantId in SQL (defense-in-depth, no cross-tenant scan)
-      const [agency] = await db
-        .select()
-        .from(agencies)
-        .where(and(eq(agencies.id, input.id), eq(agencies.tenantId, tenantId)))
-        .limit(1);
+      // SECURITY: Filter by tenantId in SQL (defense-in-depth)
+      // tenantId can be "" when user has no currentTenantId — treat as no tenant
+      const hasTenant = tenantId && tenantId.length > 0;
 
-      if (!agency && isAdmin) {
-        // Admin fallback: allow cross-tenant lookup
-        const [adminAgency] = await db.select().from(agencies).where(eq(agencies.id, input.id)).limit(1);
-        if (!adminAgency) throw new TRPCError({ code: "NOT_FOUND", message: "Agency not found" });
-        Object.assign(agency ?? {}, adminAgency);
+      let agency: any;
+
+      if (hasTenant) {
+        const [found] = await db
+          .select()
+          .from(agencies)
+          .where(and(eq(agencies.id, input.id), eq(agencies.tenantId, tenantId)))
+          .limit(1);
+        agency = found;
       }
+
+      // Admin or no-tenant fallback: allow cross-tenant lookup
+      if (!agency && (isAdmin || !hasTenant)) {
+        const [found] = await db.select().from(agencies).where(eq(agencies.id, input.id)).limit(1);
+        agency = found;
+      }
+
       if (!agency) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Agency not found" });
+      }
+      // Non-admin with different tenant → deny
+      if (hasTenant && agency.tenantId !== tenantId && !isAdmin) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Agency not found" });
       }
 
