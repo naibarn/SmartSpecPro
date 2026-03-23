@@ -231,7 +231,10 @@ async def _design_async(task_id: str, user_id: int, payload: dict) -> dict:
     requirement: str = payload.get("requirement", "")
     intent: dict = payload.get("intent", {})
     answers: dict = payload.get("answers", {})
-    model: str = payload.get("model", "gpt-4o")
+    raw_model: str = payload.get("model", "gpt-4o")
+    # SECURITY: Restrict model to known safe models to prevent cost bypass
+    ALLOWED_CREATOR_MODELS = {"gpt-4o", "gpt-4o-mini", "gpt-4.1", "gpt-4.1-mini", "claude-sonnet-4-20250514", "claude-haiku-4-5-20251001"}
+    model = raw_model if raw_model in ALLOWED_CREATOR_MODELS else "gpt-4o"
     tenant_id: str = payload.get("tenantId", "")
 
     # Budget tracking
@@ -541,6 +544,8 @@ RULES:
     if content:
         plan = _safe_json_parse(content, None)
         if plan and "planSteps" in plan:
+            # Cap planSteps to prevent oversized agencies
+            plan["planSteps"] = plan["planSteps"][:20]
             return plan
 
     # Fallback: minimal plan

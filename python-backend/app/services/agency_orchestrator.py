@@ -295,8 +295,15 @@ class AgencyOrchestrator:
 
         return result or "", ctx
 
-    async def _execute_node(self, node: NodeRow, ctx: ExecutionContext) -> str:
+    MAX_EXECUTION_DEPTH = 50  # Prevent infinite recursion from graph cycles
+
+    async def _execute_node(self, node: NodeRow, ctx: ExecutionContext, _depth: int = 0) -> str:
         """Execute a single node and follow its outgoing edges."""
+        # SECURITY: Depth guard prevents infinite recursion from graph cycles
+        if _depth > self.MAX_EXECUTION_DEPTH:
+            logger.error("agency_orchestrator_max_depth", depth=_depth, node_id=node.get("id"))
+            return f"[Error: Maximum execution depth ({self.MAX_EXECUTION_DEPTH}) exceeded — possible graph cycle]"
+
         node_type = node.get("node_type", "agent")
         node_id = node["id"]
         node_name = node.get("name", node_id)
@@ -352,7 +359,7 @@ class AgencyOrchestrator:
                 case "router":
                     next_node_id = await self._route(node, ctx)
                     if next_node_id and next_node_id in self.nodes:
-                        result = await self._execute_node(self.nodes[next_node_id], ctx)
+                        result = await self._execute_node(self.nodes[next_node_id], ctx, _depth + 1)
                     else:
                         result = f"[Router: no matching route in node {node_id}]"
                     return result
@@ -390,7 +397,7 @@ class AgencyOrchestrator:
                 case "conditional_branch":
                     next_node_id = await self._evaluate_conditional_branch(node, ctx)
                     if next_node_id and next_node_id in self.nodes:
-                        result = await self._execute_node(self.nodes[next_node_id], ctx)
+                        result = await self._execute_node(self.nodes[next_node_id], ctx, _depth + 1)
                     else:
                         result = f"[ConditionalBranch: fallback — no valid target in node {node_id}]"
                     return result
@@ -429,7 +436,13 @@ class AgencyOrchestrator:
                 raise
 
         if result:
-            ctx.results[node_id] = result
+            # Cap result size and context growth
+            ctx.results[node_id] = result[:50000] if len(result) > 50000 else result
+            # Evict oldest entries if results dict exceeds limit
+            if len(ctx.results) > 100:
+                oldest_keys = list(ctx.results.keys())[:len(ctx.results) - 100]
+                for k in oldest_keys:
+                    del ctx.results[k]
 
         # End trace span for this node
         if self.trace_collector and span_id:
@@ -448,7 +461,7 @@ class AgencyOrchestrator:
             if parallel_edges:
                 # Execute parallel branches concurrently
                 tasks = [
-                    self._execute_node(self.nodes[e["to_node_id"]], ctx)
+                    self._execute_node(self.nodes[e["to_node_id"]], ctx.clone(), _depth + 1)
                     for e in parallel_edges
                     if e.get("to_node_id") in self.nodes
                 ]
@@ -492,7 +505,7 @@ class AgencyOrchestrator:
                             if handoff_result.redacted_message:
                                 result = handoff_result.redacted_message
                                 ctx.results[node_id] = result
-                    sub_result = await self._execute_node(next_node, ctx)
+                    sub_result = await self._execute_node(next_node, ctx, _depth + 1)
                     if sub_result:
                         result = sub_result  # Last result in the chain is the final answer
 
@@ -1766,7 +1779,7 @@ class AgencyOrchestrator:
                 fallback_node_id, fallback_message, exc,
             )
             if redirect_id and redirect_id in self.nodes:
-                return await self._execute_node(self.nodes[redirect_id], ctx)
+                return await self._execute_node(self.nodes[redirect_id], ctx, _depth + 1)
             return result or f"[Fallback for {failed_name}]"
 
         elif strategy == "skip":

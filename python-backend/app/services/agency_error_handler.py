@@ -54,7 +54,11 @@ def scrub_error_payload(raw: str) -> str:
 
     Returns a safe summary truncated to MAX_SCRUBBED_LENGTH chars.
     """
-    result = raw
+    import unicodedata
+
+    # SECURITY: Normalize unicode to NFKD to defeat homoglyph bypass
+    # (e.g. Cyrillic "р" normalizes to Latin "p" for pattern matching)
+    result = unicodedata.normalize("NFKD", raw)
     for pattern in SCRUB_PATTERNS:
         result = pattern.sub("[REDACTED]", result)
     if len(result) > MAX_SCRUBBED_LENGTH:
@@ -92,6 +96,8 @@ async def execute_retry(
                     "errorSummary": f"Succeeded on attempt {attempt + 1}",
                 })
             return result
+        except RunTerminatedError:
+            raise  # SECURITY: Never swallow terminate — propagate immediately
         except Exception as exc:
             last_error = exc
             if emitter:

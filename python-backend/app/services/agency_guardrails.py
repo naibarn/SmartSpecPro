@@ -343,7 +343,7 @@ async def _strategy_pii_detection(message: str, config: dict[str, Any]) -> Guard
 
 async def _strategy_custom_endpoint(message: str, config: dict[str, Any]) -> GuardrailResult:
     endpoint = config.get("endpoint", "")
-    timeout_ms = config.get("timeout", 5000)
+    timeout_ms = min(config.get("timeout", 5000), 30000)  # Cap at 30s
 
     # SSRF validation
     try:
