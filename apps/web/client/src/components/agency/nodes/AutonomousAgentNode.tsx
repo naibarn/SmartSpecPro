@@ -18,6 +18,7 @@ export const AutonomousAgentNode = memo(function AutonomousAgentNode({
 
   return (
     <div
+      aria-label={data.name || "Autonomous Agent"}
       className={cn(
         "relative rounded-lg border-2 bg-white shadow-sm min-w-[180px] max-w-[220px] transition-all",
         data.isEntryPoint && "border-l-4 border-l-green-500",
@@ -48,7 +49,7 @@ export const AutonomousAgentNode = memo(function AutonomousAgentNode({
             </Badge>
           )}
           {enableMemory && (
-            <Database className="h-3 w-3 text-purple-400" />
+            <Database className="h-3 w-3 text-purple-400" aria-hidden="true" />
           )}
         </div>
       </div>

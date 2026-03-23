@@ -92,18 +92,9 @@ describe("MemoryViewer", () => {
 
   it("delete button calls deleteAgentMemory mutation", () => {
     renderViewer();
-    // Find trash buttons
-    const buttons = screen.getAllByRole("button");
-    const trashButtons = buttons.filter((b) => b.querySelector("svg"));
-    // Click first trash button (for memory id=1)
-    const firstTrash = trashButtons.find((b) => {
-      const svg = b.querySelector("svg");
-      return svg && b.classList.contains("h-5");
-    });
-    if (firstTrash) {
-      fireEvent.click(firstTrash);
-      expect(mockMutate).toHaveBeenCalled();
-    }
+    const deleteBtn = screen.getByTestId("delete-memory-1");
+    fireEvent.click(deleteBtn);
+    expect(mockMutate).toHaveBeenCalledWith({ memoryId: 1 });
   });
 
   it("shows confirmation dialog before reset", () => {

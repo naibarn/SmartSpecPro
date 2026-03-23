@@ -555,7 +555,7 @@ class AgencyOrchestrator:
         limiter = ConcurrentRunLimiter(redis_client=redis_client)
         acquire_result = await limiter.acquire(
             tenant_id=ctx.tenant_id,
-            user_id=ctx.user_id,
+            user_id=str(ctx.user_id),
             run_type="react",
             run_id=getattr(ctx, "run_id", ""),
         )
@@ -641,7 +641,7 @@ class AgencyOrchestrator:
         finally:
             await limiter.release(
                 tenant_id=ctx.tenant_id,
-                user_id=ctx.user_id,
+                user_id=str(ctx.user_id),
                 run_type="react",
                 run_id=getattr(ctx, "run_id", ""),
             )
@@ -679,7 +679,7 @@ class AgencyOrchestrator:
         from app.services.agentic_cost_controls import ConcurrentRunLimiter
         limiter = ConcurrentRunLimiter(redis_client=redis_client)
         acquire_result = await limiter.acquire(
-            tenant_id=ctx.tenant_id, user_id=ctx.user_id,
+            tenant_id=ctx.tenant_id, user_id=str(ctx.user_id),
             run_type="autonomous", run_id=getattr(ctx, "run_id", ""),
         )
         if not acquire_result.success:
@@ -734,7 +734,7 @@ class AgencyOrchestrator:
             return f"[Agent '{node.get('name')}' autonomous error: {scrub_error_payload(str(exc))}]"
         finally:
             await limiter.release(
-                tenant_id=ctx.tenant_id, user_id=ctx.user_id,
+                tenant_id=ctx.tenant_id, user_id=str(ctx.user_id),
                 run_type="autonomous", run_id=getattr(ctx, "run_id", ""),
             )
 
@@ -791,6 +791,14 @@ class AgencyOrchestrator:
 
             if not endpoint_url:
                 continue
+
+            # SSRF defense-in-depth: validate custom tool URLs at resolution time
+            if not tool_id.startswith("builtin-"):
+                try:
+                    _validate_tool_url(endpoint_url)
+                except Exception:
+                    logger.warning("ssrf_blocked_at_resolve", tool_id=tool_id, url=endpoint_url[:50])
+                    continue
 
             risk = _BUILTIN_RISK_LEVELS.get(tool_id, "medium")
 

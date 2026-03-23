@@ -26,14 +26,14 @@ const TYPE_COLORS: Record<string, string> = {
 };
 
 export function MemoryViewer({ agencyId, agentNodeId, userId, isAdmin }: MemoryViewerProps) {
-  const [selectedType, setSelectedType] = useState<string | undefined>(undefined);
+  const [selectedType, setSelectedType] = useState<"constraint" | "preference" | "fact" | "skill" | undefined>(undefined);
   const [currentPage, setCurrentPage] = useState(1);
   const [showReset, setShowReset] = useState(false);
 
   const memoriesQuery = trpc.agency.listAgentMemories.useQuery({
     agencyId,
     agentNodeId,
-    memoryType: selectedType as any,
+    memoryType: selectedType,
     page: currentPage,
     pageSize: 20,
   });
@@ -59,7 +59,7 @@ export function MemoryViewer({ agencyId, agentNodeId, userId, isAdmin }: MemoryV
         <Select
           value={selectedType ?? "all"}
           onValueChange={(v) => {
-            setSelectedType(v === "all" ? undefined : v);
+            setSelectedType(v === "all" ? undefined : v as "constraint" | "preference" | "fact" | "skill");
             setCurrentPage(1);
           }}
         >
@@ -137,6 +137,7 @@ export function MemoryViewer({ agencyId, agentNodeId, userId, isAdmin }: MemoryV
                   size="sm"
                   className="h-5 w-5 p-0"
                   disabled={deleteMutation.isPending}
+                  data-testid={`delete-memory-${id}`}
                   onClick={() => deleteMutation.mutate({ memoryId: id })}
                 >
                   <Trash2 className="h-3 w-3 text-red-400" />

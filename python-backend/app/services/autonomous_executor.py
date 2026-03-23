@@ -266,7 +266,9 @@ class AutonomousExecutor:
             if dep_id in prior_results
         )
 
-        if subtask.execution_mode == "delegate" and subtask.delegate_to and self.orchestrator:
+        if subtask.execution_mode == "cross_agency":
+            return "[Cross-agency delegation is not permitted in autonomous mode]"
+        elif subtask.execution_mode == "delegate" and subtask.delegate_to and self.orchestrator:
             result = await self._delegate(subtask.delegate_to, subtask.description, ctx)
         else:
             executor = self.react_executor_factory()
