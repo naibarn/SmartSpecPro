@@ -66,6 +66,7 @@ _BUILTIN_ENDPOINTS: dict[str, str] = {
     "builtin-document-search": "/api/internal/tools/document-search",
     "builtin-voice": "/api/internal/tools/voice",
     "builtin-browser": "/api/internal/tools/browser",
+    "builtin-code-interpreter": None,  # Dispatched to OpenSandbox (not HTTP) — see _execute_code_interpreter()
     "builtin-agency-call": None,  # No HTTP endpoint -- handled internally via execute_agency_call()
     "builtin-auto-draft": "/api/internal/tools/auto-draft",
     "builtin-model-suggest": "/api/internal/tools/model-suggest",
@@ -86,6 +87,7 @@ _BUILTIN_RISK_LEVELS: dict[str, str] = {
     "builtin-document-search": "low",
     "builtin-voice": "medium",
     "builtin-browser": "high",
+    "builtin-code-interpreter": "high",  # Must run in OpenSandbox
     "builtin-agency-call": "high",
     "builtin-auto-draft": "medium",
     "builtin-model-suggest": "low",
@@ -341,8 +343,11 @@ def _make_run_func(
         if config.tool_id in _tool_progress_before:
             _emit_progress_sync(_tool_progress_before[config.tool_id])
 
-        # Route based on risk level
-        if config.tool_id == "builtin-agency-call":
+        # Route based on tool type and risk level
+        if config.tool_id == "builtin-code-interpreter":
+            # Code interpreter dispatched to OpenSandbox for safe execution
+            result = _execute_code_interpreter(query, config)
+        elif config.tool_id == "builtin-agency-call":
             # Cross-agency calls are handled internally — not via HTTP sandbox.
             # execute_agency_call() requires async context; this sync wrapper
             # runs it via asyncio.run() since agency-swarm calls run() synchronously.
@@ -434,6 +439,46 @@ def _execute_http(config: ToolConfig, query: str) -> str:
             error=str(exc),
         )
         return f"Tool execution failed: {str(exc)[:200]}"
+
+
+def _execute_code_interpreter(query: str, config: ToolConfig) -> str:
+    """Execute code via OpenSandbox code interpreter (isolated container).
+
+    SECURITY: User-generated code MUST run in sandbox, never in the main process.
+    Falls back to a safe error message if sandbox is unavailable.
+    """
+    try:
+        import asyncio as _asyncio
+        from app.integrations.opensandbox.config import get_sandbox_config
+        from app.integrations.opensandbox.client import OpenSandboxClient
+        from app.integrations.opensandbox.execution import run_code
+
+        sandbox_cfg = get_sandbox_config()
+        if not sandbox_cfg.enabled:
+            return (
+                "Code interpreter is not available. "
+                "OpenSandbox is not enabled on this instance. "
+                "Please contact your administrator."
+            )
+
+        async def _run():
+            async with OpenSandboxClient(sandbox_cfg) as client:
+                sandbox = await client.create_sandbox(
+                    image="python:3.12-slim",
+                    timeout_seconds=30,
+                    memory_mb=256,
+                    network_enabled=False,
+                )
+                result = await run_code(client, sandbox.sandbox_id, query, language="python")
+                await client.destroy_sandbox(sandbox.sandbox_id)
+                if result.exit_code != 0:
+                    return f"Code execution error (exit {result.exit_code}):\n{result.stderr[:2000]}"
+                return result.stdout[:10000] if result.stdout else "(no output)"
+
+        return _asyncio.run(_run())
+    except Exception as exc:
+        logger.error("agency_code_interpreter_error", error=str(exc)[:200])
+        return f"Code interpreter error: {str(exc)[:200]}"
 
 
 def _execute_sandbox(config: ToolConfig, query: str) -> str:
