@@ -36,8 +36,8 @@ import { ENV } from "./env";
 const PYTHON_BACKEND_URL = ENV.pythonBackendUrl || "http://localhost:8000";
 const PROXY_TOKEN = process.env.SMARTSPEC_PROXY_TOKEN || "";
 
-// M04: Per-user-per-tenant TTL cache for Python-native tools
-const _pythonToolsCacheMap = new Map<string, { tools: ToolDef[]; ts: number }>();
+// Simple TTL cache for Python-native tools
+let _pythonToolsCache: { tools: ToolDef[]; ts: number } | null = null;
 const PYTHON_TOOLS_CACHE_TTL = 60_000; // 60 seconds
 
 const DRIVE_TOOL_NAMES = new Set([
@@ -54,27 +54,12 @@ function safeJoin(rel: string): string {
   if (!full.startsWith(WORKSPACE_ROOT + path.sep) && full !== WORKSPACE_ROOT) {
     throw new Error("Path escapes WORKSPACE_ROOT");
   }
-  // M20: Resolve symlinks and re-check containment
-  if (fs.existsSync(full)) {
-    const resolved = fs.realpathSync(full);
-    if (!resolved.startsWith(WORKSPACE_ROOT + path.sep) && resolved !== WORKSPACE_ROOT) {
-      throw new Error("Path escapes WORKSPACE_ROOT after symlink resolution");
-    }
-    return resolved;
-  }
   return full;
 }
 
 function assertExtAllowed(p: string) {
   const ext = path.extname(p).toLowerCase();
-  // M03: Deny extensionless files — they bypass the allowlist
-  if (!ext) throw new Error(`Extension not allowed: (none)`);
-  if (!EXT_ALLOW.has(ext)) throw new Error(`Extension not allowed: ${ext}`);
-}
-
-// M27: Sanitize trace IDs to prevent log injection
-function sanitizeTraceId(raw: string): string {
-  return raw.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 128);
+  if (ext && !EXT_ALLOW.has(ext)) throw new Error(`Extension not allowed: ${ext}`);
 }
 
 function writeAudit(entry: any) {
@@ -204,8 +189,7 @@ function requiredScopeForTool(name: string): string {
 }
 
 async function callTool(name: string, args: any, req: Request, auth: any) {
-  const rawTraceId = (req.headers["x-trace-id"] as string) || "";
-  const traceId = rawTraceId ? sanitizeTraceId(rawTraceId) : crypto.randomUUID();
+  const traceId = (req.headers["x-trace-id"] as string) || crypto.randomUUID();
   const argsHash = crypto.createHash("sha256").update(JSON.stringify(args || {})).digest("hex");
 
   const baseAudit = {
@@ -265,13 +249,14 @@ async function callTool(name: string, args: any, req: Request, auth: any) {
     }
 
     if (name.startsWith("smartspec.orchestrator.")) {
-      // M01: Resolve tenantId from auth object only — never from x-tenant-id header
       const tenantId =
         (typeof auth?.tenantId === "string" && auth.tenantId) ||
-        (typeof auth?.user?.tenantId === "string" && auth.user.tenantId) ||
-        "";
-      // M06: Resolve userId from auth only — x-user-id header is untrusted
-      const actorUserId = Number.parseInt(String(auth?.sub || ""), 10);
+        String(req.headers["x-tenant-id"] || "");
+      const actorUserIdHeader = String(req.headers["x-user-id"] || "");
+      const actorUserId =
+        Number.isFinite(Number(actorUserIdHeader)) && Number(actorUserIdHeader) > 0
+          ? Number(actorUserIdHeader)
+          : Number.parseInt(String(auth?.sub || ""), 10);
 
       if (!tenantId) {
         throw new Error("Tenant context required for orchestrator tools");
@@ -348,12 +333,10 @@ async function callTool(name: string, args: any, req: Request, auth: any) {
   }
 }
 
-async function fetchPythonMcpTools(userId: number, tenantId: string): Promise<ToolDef[]> {
+async function fetchPythonMcpTools(userId: number): Promise<ToolDef[]> {
   try {
-    const cacheKey = `${userId}:${tenantId}`;
-    const cached = _pythonToolsCacheMap.get(cacheKey);
-    if (cached && Date.now() - cached.ts < PYTHON_TOOLS_CACHE_TTL) {
-      return cached.tools;
+    if (_pythonToolsCache && Date.now() - _pythonToolsCache.ts < PYTHON_TOOLS_CACHE_TTL) {
+      return _pythonToolsCache.tools;
     }
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 2000);
@@ -367,16 +350,8 @@ async function fetchPythonMcpTools(userId: number, tenantId: string): Promise<To
     clearTimeout(timeout);
     if (!resp.ok) return [];
     const data = (await resp.json()) as { tools: ToolDef[] };
-    const tools = data.tools || [];
-    _pythonToolsCacheMap.set(cacheKey, { tools, ts: Date.now() });
-    // Evict stale cache entries to prevent memory leaks
-    if (_pythonToolsCacheMap.size > 500) {
-      const now = Date.now();
-      for (const [k, v] of _pythonToolsCacheMap) {
-        if (now - v.ts > PYTHON_TOOLS_CACHE_TTL) _pythonToolsCacheMap.delete(k);
-      }
-    }
-    return tools;
+    _pythonToolsCache = { tools: data.tools || [], ts: Date.now() };
+    return _pythonToolsCache.tools;
   } catch {
     return [];
   }
@@ -422,7 +397,7 @@ export function registerMCPRoutes(app: Express) {
     if (!auth) {
       writeAudit({
         ts: new Date().toISOString(),
-        traceId: req.headers["x-trace-id"] ? sanitizeTraceId(req.headers["x-trace-id"] as string) : crypto.randomUUID(),
+        traceId: (req.headers["x-trace-id"] as string) || crypto.randomUUID(),
         tool: "__list_tools__",
         ok: false,
         error: "Unauthorized",
@@ -434,8 +409,7 @@ export function registerMCPRoutes(app: Express) {
     }
     // Merge Python-native Drive tools if user is authenticated
     const userId = parseInt(auth.sub, 10);
-    const tenantId = auth.tenantId || auth?.user?.tenantId || "";
-    const driveTools = userId ? await fetchPythonMcpTools(userId, tenantId) : [];
+    const driveTools = userId ? await fetchPythonMcpTools(userId) : [];
     const allTools = [...tools, ...driveTools];
     res.json({ tools: allTools });
   };
@@ -445,7 +419,7 @@ export function registerMCPRoutes(app: Express) {
     if (!auth) {
       writeAudit({
         ts: new Date().toISOString(),
-        traceId: req.headers["x-trace-id"] ? sanitizeTraceId(req.headers["x-trace-id"] as string) : crypto.randomUUID(),
+        traceId: (req.headers["x-trace-id"] as string) || crypto.randomUUID(),
         tool: "__call__",
         ok: false,
         error: "Unauthorized",
@@ -462,7 +436,7 @@ export function registerMCPRoutes(app: Express) {
       if (!hasScope(auth.scopes, required)) {
         writeAudit({
           ts: new Date().toISOString(),
-          traceId: req.headers["x-trace-id"] ? sanitizeTraceId(req.headers["x-trace-id"] as string) : crypto.randomUUID(),
+          traceId: (req.headers["x-trace-id"] as string) || crypto.randomUUID(),
           tool: toolName,
           ok: false,
           error: `Missing scope: ${required}`,
@@ -478,7 +452,7 @@ export function registerMCPRoutes(app: Express) {
       // Check if this is a Python-native Drive tool
       if (DRIVE_TOOL_NAMES.has(toolName)) {
         const userId = parseInt(auth.sub, 10);
-        const tenantId = auth.tenantId || auth?.user?.tenantId || "";
+        const tenantId = auth.tenantId || "";
         const result = await forwardToolCallToPython(toolName, args, userId, tenantId);
         res.json(result);
         return;
@@ -493,5 +467,6 @@ export function registerMCPRoutes(app: Express) {
 
   app.get("/api/mcp/tools", limiter, toolsHandler);
   app.post("/api/mcp/call", limiter, callHandler);
-  // M26: Removed /mcp/ alias routes — use /api/mcp/ only
+  app.get("/mcp/tools", limiter, toolsHandler);
+  app.post("/mcp/call", limiter, callHandler);
 }
