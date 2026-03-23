@@ -18,6 +18,10 @@ import {
 import { retrieveForPrompt, type MemorySearchResult } from "./scopedMemoryService";
 import { buildPersonaPromptSegments, type PersonaPromptSegments } from "./personaService";
 import { getEntityMemories } from "./chatService";
+import {
+  estimateTokens,
+  truncateToTokenBudget,
+} from "../utils/tokenEstimator";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -150,9 +154,6 @@ export function scaleBudget(
  *
  * This gives ~15% more accurate estimates than flat 4-char division.
  */
-const CHARS_PER_TOKEN_ASCII = 4.0;
-const CHARS_PER_TOKEN_CJK = 1.5;
-
 // ─── Sanitization ───────────────────────────────────────────────────────────
 
 /** Sanitize message content to prevent stored prompt injection */
@@ -170,34 +171,8 @@ function sanitizeHistoryContent(content: string): string {
     .replace(/ignore (all )?previous/gi, "[filtered]");
 }
 
-// ─── Helpers (exported for testing) ─────────────────────────────────────────
-
-/** Regex to detect CJK / Thai / Korean script ranges */
-const CJK_RANGE = /[\u2E80-\u9FFF\uAC00-\uD7AF\u0E00-\u0E7F]/g;
-
-export function estimateTokens(text: string): number {
-  if (!text) return 0;
-
-  // Count CJK/Thai characters (tokenized at ~1.5 chars per token)
-  const cjkMatches = text.match(CJK_RANGE);
-  const cjkCharCount = cjkMatches?.length ?? 0;
-
-  // Remaining ASCII-like characters (tokenized at ~4 chars per token)
-  const asciiCharCount = text.length - cjkCharCount;
-
-  const cjkTokens = cjkCharCount / CHARS_PER_TOKEN_CJK;
-  const asciiTokens = asciiCharCount / CHARS_PER_TOKEN_ASCII;
-
-  // Add overhead for message framing (~4 tokens per message)
-  return Math.ceil(cjkTokens + asciiTokens + 4);
-}
-
-export function truncateToTokenBudget(text: string, budget: number): string {
-  // Use ASCII rate for safe truncation (slightly conservative)
-  const maxChars = Math.floor(budget * CHARS_PER_TOKEN_ASCII);
-  if (text.length <= maxChars) return text;
-  return text.substring(0, maxChars) + "\n...(truncated)";
-}
+// Re-export for backwards compatibility with existing test imports
+export { estimateTokens, truncateToTokenBudget };
 
 /** Compress history by removing oldest discussion messages first, preserving important types */
 export function compressHistory(

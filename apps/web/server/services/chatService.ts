@@ -10,6 +10,7 @@ import {
   entityMemories,
   skillPreferences,
   users,
+  llmModels,
   Conversation,
   InsertConversation,
   Message,
@@ -21,6 +22,7 @@ import {
   tenants,
 } from "../../drizzle/schema";
 import { resolveEnabledLlmModelId } from "./enabledLlmModels";
+import { estimateTokens, estimateMessages } from "../utils/tokenEstimator";
 
 // ==================== Google Drive Integration ====================
 
@@ -816,16 +818,64 @@ Use 'react' for interactive React components, 'chart' for data visualizations (J
     });
   }
 
-  // 4. Add recent messages
+  // 4. Add recent messages with token budget enforcement
   const recentMessages = await getRecentMessages(conversationId, 20);
-  for (const msg of recentMessages) {
-    if (msg.role === "system") continue; // Skip system messages in buffer
-    context.push({
+
+  // Estimate token budget from model context length
+  const DEFAULT_CONTEXT_LENGTH = 32000;
+  const OUTPUT_RESERVE = 8192;
+  let inputBudget = DEFAULT_CONTEXT_LENGTH - OUTPUT_RESERVE;
+  try {
+    const db = await getDb();
+    if (db) {
+      const [conv] = await db
+        .select({ model: conversations.model })
+        .from(conversations)
+        .where(eq(conversations.id, conversationId))
+        .limit(1);
+      if (conv?.model) {
+        const [modelRow] = await db
+          .select({ contextLength: llmModels.contextLength })
+          .from(llmModels)
+          .where(eq(llmModels.modelId, conv.model))
+          .limit(1);
+        if (modelRow?.contextLength != null && modelRow.contextLength > 0) {
+          inputBudget = modelRow.contextLength - OUTPUT_RESERVE;
+        }
+      }
+    }
+  } catch {
+    // Use default budget if model lookup fails
+  }
+
+  // Calculate tokens already used by system context
+  const systemTokens = estimateMessages(context);
+
+  // Add messages from most recent first, respecting token budget
+  const remainingBudget = Math.max(0, inputBudget - systemTokens);
+  const chatMessages: Array<{ role: "user" | "assistant"; content: string }> = [];
+  let usedTokens = 0;
+
+  // Iterate from newest to oldest, stop when budget is exceeded
+  for (let i = recentMessages.length - 1; i >= 0; i--) {
+    const msg = recentMessages[i];
+    if (msg.role === "system") continue;
+    const tokens = estimateTokens(msg.content);
+    if (usedTokens + tokens > remainingBudget && chatMessages.length >= 6) {
+      break; // Keep at least 6 most recent turns
+    }
+    // Skip single oversized messages (>50% of budget) if we already have context
+    if (tokens > remainingBudget * 0.5 && chatMessages.length >= 1) {
+      continue;
+    }
+    chatMessages.unshift({
       role: msg.role as "user" | "assistant",
       content: msg.content,
     });
+    usedTokens += tokens;
   }
 
+  context.push(...chatMessages);
   return context;
 }
 

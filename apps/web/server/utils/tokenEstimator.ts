@@ -1,0 +1,40 @@
+/**
+ * Shared token estimation utilities for chat context budget enforcement.
+ *
+ * Estimates token counts for text using character-based heuristics:
+ * - ASCII/Latin text: ~4 characters per token
+ * - CJK/Thai/Korean text: ~1.5 characters per token
+ * - 4 tokens overhead per message (framing)
+ */
+
+const CHARS_PER_TOKEN_ASCII = 4.0;
+const CHARS_PER_TOKEN_CJK = 1.5;
+const MESSAGE_OVERHEAD_TOKENS = 4;
+
+/** Regex to detect CJK / Thai / Korean script ranges */
+const CJK_RANGE = /[\u2E80-\u9FFF\uAC00-\uD7AF\u0E00-\u0E7F]/g;
+
+export function estimateTokens(text: string): number {
+  if (!text) return 0;
+
+  const cjkMatches = text.match(CJK_RANGE);
+  const cjkCharCount = cjkMatches?.length ?? 0;
+  const asciiCharCount = text.length - cjkCharCount;
+
+  const cjkTokens = cjkCharCount / CHARS_PER_TOKEN_CJK;
+  const asciiTokens = asciiCharCount / CHARS_PER_TOKEN_ASCII;
+
+  return Math.ceil(cjkTokens + asciiTokens + MESSAGE_OVERHEAD_TOKENS);
+}
+
+export function estimateMessages(
+  messages: Array<{ content?: string; role?: string }>,
+): number {
+  return messages.reduce((sum, m) => sum + estimateTokens(m.content || ""), 0);
+}
+
+export function truncateToTokenBudget(text: string, budget: number): string {
+  const maxChars = Math.floor(budget * CHARS_PER_TOKEN_ASCII);
+  if (text.length <= maxChars) return text;
+  return text.substring(0, maxChars) + "\n...(truncated)";
+}
