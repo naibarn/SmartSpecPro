@@ -2,7 +2,7 @@
  * Tenant-scoped feature flags for gating Claw features.
  *
  * Stored in tenants.featureFlags (JSON column).
- * All flags default to false unless specified otherwise.
+ * All flags default to true — features are enabled by default.
  */
 export interface TenantFeatureFlags {
   multiChannel: boolean; // F01 — Multi-channel adapters
@@ -43,6 +43,10 @@ export interface TenantFeatureFlags {
   agencyReactExecutorEnabled: boolean; // F36 — Agency ReAct executor (Level 2)
   agencyAutonomousAgentEnabled: boolean; // F37 — Agency autonomous agent (Level 3)
   agencyLongTermMemoryEnabled: boolean; // F38 — Agency long-term memory (Level 3)
+  META_CHANNELS_ENABLED: boolean; // F39 — Meta Channels feature set
+  mcpServerRegistry: boolean; // F40 — MCP Server Registry (centralized management)
+  mcpStdio: boolean; // F41 — MCP stdio transport (subprocess-based servers)
+  mcpOAuth: boolean; // F42 — MCP OAuth 2.1 authentication
 }
 
 export type TenantFeatureFlagKey = keyof TenantFeatureFlags;
@@ -90,50 +94,58 @@ export const ALLOWED_FEATURE_FLAGS: ReadonlySet<string> = new Set<TenantFeatureF
   "agencyReactExecutorEnabled",
   "agencyAutonomousAgentEnabled",
   "agencyLongTermMemoryEnabled",
+  "META_CHANNELS_ENABLED",
+  "mcpServerRegistry",
+  "mcpStdio",
+  "mcpOAuth",
 ]);
 
 /**
  * Default values for each feature flag.
- * costDisplay and personaSystem default to true (low-risk, high-value).
- * All others default to false (opt-in for new features).
+ * All flags default to true — features are enabled by default.
+ * Disable individual flags per-tenant via the admin panel if needed.
  */
 export const FEATURE_FLAG_DEFAULTS: Readonly<TenantFeatureFlags> = {
-  multiChannel: false,
-  chatWidget: false,
-  browserTool: false,
-  canvas: false,
-  voiceChat: false,
-  webhookTriggers: false,
+  multiChannel: true,
+  chatWidget: true,
+  browserTool: true,
+  canvas: true,
+  voiceChat: true,
+  webhookTriggers: true,
   costDisplay: true,
   personaSystem: true,
-  crossAgency: false,
-  channelRouter: false,
-  automationCopilot: false,
-  liveBrowser: false,
-  responsesApi: false,
-  taskPlannerEnabled: false,
-  taskPlannerAgencyEscalation: false,
-  chatBrowserSessionEntry: false,
-  agencyBrowserSessionUi: false,
-  workflowBrowserSessionNodes: false,
-  publicApi: false,
-  multimodalMemory: false,
-  skillOrchestrator: false,
+  crossAgency: true,
+  channelRouter: true,
+  automationCopilot: true,
+  liveBrowser: true,
+  responsesApi: true,
+  taskPlannerEnabled: true,
+  taskPlannerAgencyEscalation: true,
+  chatBrowserSessionEntry: true,
+  agencyBrowserSessionUi: true,
+  workflowBrowserSessionNodes: true,
+  publicApi: true,
+  multimodalMemory: true,
+  skillOrchestrator: true,
   orchestratorEnabled: true,
-  notificationDedupEnabled: false,
-  notificationPreferencesEnabled: false,
-  notificationEscalationEnabled: false,
-  notificationUnifiedCenter: false,
-  notificationEmailDelivery: false,
-  notificationWebhookDelivery: false,
-  unifiedSkillExecution: false,
-  agencyCustomTools: false,
-  agencyGuardrails: false,
-  agencyStreaming: false,
-  agencyMcpBridge: false,
-  agencyToolApi: false,
+  notificationDedupEnabled: true,
+  notificationPreferencesEnabled: true,
+  notificationEscalationEnabled: true,
+  notificationUnifiedCenter: true,
+  notificationEmailDelivery: true,
+  notificationWebhookDelivery: true,
+  unifiedSkillExecution: true,
+  agencyCustomTools: true,
+  agencyGuardrails: true,
+  agencyStreaming: true,
+  agencyMcpBridge: true,
+  agencyToolApi: true,
   agencyAgenticModeEnabled: true,
-  agencyReactExecutorEnabled: false,
-  agencyAutonomousAgentEnabled: false,
-  agencyLongTermMemoryEnabled: false,
+  agencyReactExecutorEnabled: true,
+  agencyAutonomousAgentEnabled: true,
+  agencyLongTermMemoryEnabled: true,
+  META_CHANNELS_ENABLED: false,
+  mcpServerRegistry: false,
+  mcpStdio: false,
+  mcpOAuth: false,
 };

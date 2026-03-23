@@ -80,6 +80,9 @@ export type AuditEventType =
   | "channel_webhook_no_active_channel"
   | "channel_webhook_ingest_error"
   | "channel_adapter_registered"
+  | "social_inbox_reply_sent"
+  | "social_inbox_reply_failed"
+  | "social_inbox_status_updated"
   | "responses_api_call"
   | "web_search_call"
   | "browser_tool_call"
@@ -103,6 +106,11 @@ export type AuditEventType =
   | "unified_route"
   | "unified_credit"
   | "unified_error"
+  | "mcp_tool_call"
+  | "mcp_server_created"
+  | "mcp_server_updated"
+  | "mcp_server_deleted"
+  | "mcp_server_assigned"
   | "error";
 
 export interface AuditLogEntry {
