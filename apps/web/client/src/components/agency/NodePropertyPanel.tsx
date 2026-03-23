@@ -161,6 +161,12 @@ export function NodePropertyPanel({ node, nodeId, siblingNodes = [], agencyId, o
     skill_call: "Skill Call Properties",
     browser_session: "Browser Session Properties",
     human_approval: "Human Approval Properties",
+    conditional_branch: "Conditional Branch Properties",
+    parallel_fan_out: "Parallel Fan-Out Properties",
+    loop_retry: "Loop / Retry Properties",
+    skill_discovery: "Skill Discovery Properties",
+    data_transform: "Data Transform Properties",
+    error_handler: "Error Handler Properties",
   };
 
   return (
