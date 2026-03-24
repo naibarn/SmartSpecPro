@@ -141,19 +141,8 @@ const DEFAULT_FORM: ServerFormData = {
 // ── Page ──
 
 export default function McpServerManager() {
-  // FE03: Feature flag gate — hide page when MCP registry is disabled
+  // ALL hooks must be called unconditionally (React rules of hooks)
   const mcpEnabled = useTenantFeatureFlag("mcpServerRegistry");
-  if (mcpEnabled === false) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px] text-muted-foreground">
-        <div className="text-center">
-          <Server className="mx-auto h-12 w-12 mb-4 opacity-50" />
-          <h2 className="text-lg font-medium mb-2">MCP Server Registry</h2>
-          <p>This feature is not enabled for your organization.</p>
-        </div>
-      </div>
-    );
-  }
 
   const [showModal, setShowModal] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
@@ -180,7 +169,7 @@ export default function McpServerManager() {
   const [assigningId, setAssigningId] = useState<number | null>(null);
   const [removingAssignmentId, setRemovingAssignmentId] = useState<number | null>(null);
 
-  const listQuery = trpc.mcpServers.list.useQuery();
+  const listQuery = trpc.mcpServers.list.useQuery(undefined, { enabled: mcpEnabled !== false });
   const createMutation = trpc.mcpServers.create.useMutation();
   const updateMutation = trpc.mcpServers.update.useMutation();
   const deleteMutation = trpc.mcpServers.delete.useMutation();
@@ -188,6 +177,19 @@ export default function McpServerManager() {
   const assignMutation = trpc.mcpServers.assignToTarget.useMutation();
   const removeAssignmentMutation = trpc.mcpServers.removeAssignment.useMutation();
   const utils = trpc.useUtils();
+
+  // FE03: Feature flag gate — after all hooks, before render
+  if (mcpEnabled === false) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px] text-muted-foreground">
+        <div className="text-center">
+          <Server className="mx-auto h-12 w-12 mb-4 opacity-50" />
+          <h2 className="text-lg font-medium mb-2">MCP Server Registry</h2>
+          <p>This feature is not enabled for your organization.</p>
+        </div>
+      </div>
+    );
+  }
 
   const handleOpenAdd = useCallback(() => {
     setEditId(null);
