@@ -144,8 +144,8 @@ export const FEATURE_FLAG_DEFAULTS: Readonly<TenantFeatureFlags> = {
   agencyReactExecutorEnabled: true,
   agencyAutonomousAgentEnabled: true,
   agencyLongTermMemoryEnabled: true,
-  META_CHANNELS_ENABLED: false,
-  mcpServerRegistry: false,
-  mcpStdio: false,
-  mcpOAuth: false,
+  META_CHANNELS_ENABLED: true,
+  mcpServerRegistry: true,
+  mcpStdio: false,  // Requires OpenSandbox — keep disabled by default
+  mcpOAuth: false,  // Requires Express callback route — keep disabled until wired
 };
