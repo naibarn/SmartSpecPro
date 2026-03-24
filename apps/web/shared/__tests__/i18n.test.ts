@@ -77,4 +77,12 @@ describe("shared/i18n constants", () => {
       expect(SUPPORTED_LANGUAGES).toContain(rtl);
     }
   });
+
+  it("LANGUAGE_LABELS contain no HTML markup (security: plain text only)", () => {
+    const htmlPattern = /<[^>]+>/;
+    for (const lang of SUPPORTED_LANGUAGES) {
+      expect(LANGUAGE_LABELS[lang]).not.toMatch(htmlPattern);
+      expect(LANGUAGE_LABELS_EN[lang]).not.toMatch(htmlPattern);
+    }
+  });
 });
