@@ -9,7 +9,11 @@ import { getPostHog } from "@/lib/posthog";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { TenantProvider } from "./contexts/TenantContext";
-import { I18nProvider } from "@/lib/i18n";
+import { I18nextProvider } from "react-i18next";
+import { i18n } from "@/i18n";
+import { useNamespacePreloader } from "@/i18n/useNamespacePreloader";
+import { RouteLoadingSkeleton } from "@/components/RouteLoadingSkeleton";
+import { useLanguageSync } from "@/hooks/useLanguageSync";
 import { cleanupLegacyAuth } from "@/lib/cleanupLegacyAuth";
 
 // Route-based code splitting — all page components are loaded lazily
@@ -79,6 +83,7 @@ const SocialChannels = lazy(() => import("./pages/SocialChannels"));
 const SocialInbox = lazy(() => import("./pages/SocialInbox"));
 const SocialPublishing = lazy(() => import("./pages/SocialPublishing"));
 const SocialModeration = lazy(() => import("./pages/SocialModeration"));
+const SocialAutomation = lazy(() => import("./pages/SocialAutomation"));
 const Notifications = lazy(() => import("./pages/Notifications"));
 const Generate = lazy(() => import("./pages/Generate"));
 const MediaStudio = lazy(() => import("./pages/MediaStudio"));
@@ -93,6 +98,7 @@ const SkillBrowser = lazy(() => import("./pages/SkillBrowser"));
 const DockerRedirect = lazy(() => import("./pages/DockerRedirect"));
 const GoogleDriveCallback = lazy(() => import("./pages/GoogleDriveCallback"));
 const OneDriveCallback = lazy(() => import("./pages/OneDriveCallback"));
+const UploadPostCallback = lazy(() => import("./pages/UploadPostCallback"));
 const DocPage = lazy(() => import("./pages/DocPage"));
 const About = lazy(() => import("./pages/About"));
 const Changelog = lazy(() => import("./pages/Changelog"));
@@ -108,6 +114,7 @@ const TaskQueueMonitor = lazy(() => import("./pages/TaskQueueMonitor"));
 const Teams = lazy(() => import("./pages/Teams"));
 const AgencyBrowser = lazy(() => import("./pages/AgencyBrowser"));
 const AgencyChat = lazy(() => import("./pages/AgencyChat"));
+const HybridOrchestrationPreview = lazy(() => import("./pages/HybridOrchestrationPreview"));
 const AgencyBuilder = lazy(() => import("./pages/AgencyBuilder"));
 const AgencyTemplates = lazy(() => import("./pages/AgencyTemplates"));
 const AgencyMarketplace = lazy(() => import("./pages/AgencyMarketplace"));
@@ -180,12 +187,18 @@ function PostHogPageViewTracker() {
   return null;
 }
 
+function LanguageSyncBridge() {
+  useLanguageSync();
+  return null;
+}
+
 function Router() {
+  useNamespacePreloader();
   // make sure to consider if you need authentication for certain routes
   return (
     <>
     <PostHogPageViewTracker />
-    <Suspense fallback={null}>
+    <Suspense fallback={<RouteLoadingSkeleton />}>
       <Switch>
         <Route path="/" component={Home} />
         <Route path="/pricing" component={Pricing} />
@@ -335,6 +348,7 @@ function Router() {
         <Route path="/social/inbox"><RequireAuth><SocialInbox /></RequireAuth></Route>
         <Route path="/social/publishing"><RequireAuth><SocialPublishing /></RequireAuth></Route>
         <Route path="/social/moderation"><RequireAuth><SocialModeration /></RequireAuth></Route>
+        <Route path="/social/automation"><RequireAuth><SocialAutomation /></RequireAuth></Route>
         <Route path="/automation"><RequireAuth><AutomationPage /></RequireAuth></Route>
         <Route path="/automation/live/:sessionId"><RequireAuth><AutomationPage /></RequireAuth></Route>
         <Route path="/teams"><RequireAuth><Teams /></RequireAuth></Route>
@@ -343,6 +357,8 @@ function Router() {
         <Route path="/agencies/templates"><RequireAuth><AgencyTemplates /></RequireAuth></Route>
         <Route path="/agencies/marketplace"><RequireAuth><AgencyMarketplace /></RequireAuth></Route>
         <Route path="/agencies/:id/edit"><RequireAuth><AgencyBuilder /></RequireAuth></Route>
+        <Route path="/agencies/:id/hybrid-preview"><RequireAuth><HybridOrchestrationPreview /></RequireAuth></Route>
+        <Route path="/agencies/:id/review"><RequireAuth><AgencyChat /></RequireAuth></Route>
         <Route path="/agencies/:id"><RequireAuth><AgencyChat /></RequireAuth></Route>
         <Route path="/workflows"><RequireAuth><Workflows /></RequireAuth></Route>
         <Route path="/workflows/editor"><RequireAuth><WorkflowEditor /></RequireAuth></Route>
@@ -374,6 +390,7 @@ function Router() {
         <Route path="/verify-email" component={VerifyEmail} />
         <Route path="/auth/callback/google-drive" component={GoogleDriveCallback} />
         <Route path="/auth/callback/onedrive" component={OneDriveCallback} />
+        <Route path="/auth/callback/upload-post" component={UploadPostCallback} />
         <Route path="/auth/callback/:provider" component={AuthCallback} />
         <Route path="/auth/device" component={DeviceAuth} />
         <Route path="/factory"><RequireAuth><Factory /></RequireAuth></Route>
@@ -396,7 +413,7 @@ function App() {
   return (
     <ErrorBoundary>
       <HelmetProvider>
-        <I18nProvider>
+        <I18nextProvider i18n={i18n}>
         <ThemeProvider defaultTheme="light">
           <AuthProvider>
             <TenantProvider>
@@ -404,13 +421,14 @@ function App() {
                 <Toaster />
                 <GlobalAlerts />
                 <SystemHealthBanner />
+                <LanguageSyncBridge />
                 <Router />
                 <FeedbackButton />
               </TooltipProvider>
             </TenantProvider>
           </AuthProvider>
         </ThemeProvider>
-        </I18nProvider>
+        </I18nextProvider>
       </HelmetProvider>
     </ErrorBoundary>
   );

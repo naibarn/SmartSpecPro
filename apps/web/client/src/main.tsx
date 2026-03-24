@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import App from "./App";
 import { getLoginUrl } from "./const";
 import "./index.css";
+import { i18nReady } from "@/i18n";
 
 const CHUNK_RELOAD_MARKER = "__smartspec_chunk_reload_at__";
 const CHUNK_RELOAD_WINDOW_MS = 30_000;
@@ -296,10 +297,17 @@ const trpcClient = trpc.createClient({
   ],
 });
 
-createRoot(document.getElementById("root")!).render(
-  <trpc.Provider client={trpcClient} queryClient={queryClient}>
-    <QueryClientProvider client={queryClient}>
-      <App />
-    </QueryClientProvider>
-  </trpc.Provider>
-);
+// Gate React tree on i18nReady to prevent flash of translation keys on startup.
+// The 3-second timeout in i18nReady guarantees the app mounts even if namespace
+// loading fails (defined in i18n/index.ts).
+i18nReady.then(() => {
+  const rootEl = document.getElementById("root");
+  if (!rootEl) return;
+  createRoot(rootEl).render(
+    <trpc.Provider client={trpcClient} queryClient={queryClient}>
+      <QueryClientProvider client={queryClient}>
+        <App />
+      </QueryClientProvider>
+    </trpc.Provider>
+  );
+});
