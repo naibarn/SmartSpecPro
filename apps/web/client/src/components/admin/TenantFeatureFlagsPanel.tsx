@@ -1,16 +1,17 @@
 /**
  * TenantFeatureFlagsPanel
  *
- * Admin panel component for toggling Claw feature flags on a per-tenant basis.
- * Used within the tenant management UI.
+ * Admin panel for toggling feature flags on a per-tenant basis.
+ * Used within the tenant edit dialog in AdminTenants.
  *
- * - Displays all feature flags grouped by category (7 groups)
- * - Shows enabled/disabled state with toggle switches
- * - Calls updateFeatureFlags mutation on toggle
+ * - 42 flags organized in 7 collapsible groups
+ * - Search filter to quickly find flags
+ * - Shows "X/Y enabled" summary per group
  * - Optimistic updates with rollback on error
+ * - Scrollable layout for overflow
  */
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import type { TenantFeatureFlags, TenantFeatureFlagKey } from "@shared/featureFlags";
 import { FEATURE_FLAG_DEFAULTS } from "@shared/featureFlags";
@@ -21,94 +22,102 @@ interface FlagInfo {
   description: string;
 }
 
-const FLAG_GROUPS: { title: string; flags: FlagInfo[] }[] = [
+const FLAG_GROUPS: { title: string; icon: string; flags: FlagInfo[] }[] = [
   {
     title: "Channels & Social",
+    icon: "📡",
     flags: [
       { key: "multiChannel", label: "Multi-Channel Adapters", description: "Telegram, WhatsApp, LINE, Slack, Discord" },
       { key: "chatWidget", label: "Embeddable Chat Widget", description: "Embed chat on external websites" },
       { key: "channelRouter", label: "Channel Routing Rules", description: "Route messages based on rules" },
-      { key: "META_CHANNELS_ENABLED", label: "Meta Channels", description: "Facebook/Instagram Pages — inbox, publishing, comments, automation" },
+      { key: "META_CHANNELS_ENABLED", label: "Meta Channels", description: "Facebook/Instagram Pages — inbox, publishing, comments" },
     ],
   },
   {
     title: "AI Tools & Browser",
+    icon: "🌐",
     flags: [
       { key: "browserTool", label: "Browser Automation", description: "AI-controlled web browsing" },
       { key: "liveBrowser", label: "Live Browser", description: "Real-time shared browser sessions" },
-      { key: "automationCopilot", label: "Automation Copilot", description: "LLM-driven browser task planner and executor" },
-      { key: "chatBrowserSessionEntry", label: "Chat Browser Session", description: "Start and reopen Browser Session from Chat" },
-      { key: "agencyBrowserSessionUi", label: "Agency Browser Session", description: "Show Browser Session nodes in Agency builder" },
-      { key: "workflowBrowserSessionNodes", label: "Workflow Browser Session", description: "Browser Session nodes in Workflow editor" },
+      { key: "automationCopilot", label: "Automation Copilot", description: "LLM-driven browser task planner" },
+      { key: "chatBrowserSessionEntry", label: "Chat Browser Session", description: "Browser Sessions from Chat" },
+      { key: "agencyBrowserSessionUi", label: "Agency Browser Session", description: "Browser nodes in Agency" },
+      { key: "workflowBrowserSessionNodes", label: "Workflow Browser Session", description: "Browser nodes in Workflow" },
       { key: "canvas", label: "Canvas / AI Artifacts", description: "Interactive artifact rendering" },
       { key: "voiceChat", label: "Voice Chat Mode", description: "Real-time voice conversation" },
-      { key: "personaSystem", label: "AI Persona System", description: "Custom AI personalities per conversation" },
+      { key: "personaSystem", label: "AI Persona System", description: "Custom AI personalities" },
     ],
   },
   {
     title: "Agency & Agents",
+    icon: "🤖",
     flags: [
-      { key: "crossAgency", label: "Cross-Agency Communication", description: "Agents calling other agencies" },
-      { key: "agencyCustomTools", label: "Custom Tools", description: "Create and manage custom agency tools" },
+      { key: "crossAgency", label: "Cross-Agency Calls", description: "Agents calling other agencies" },
+      { key: "agencyCustomTools", label: "Custom Tools", description: "Create custom agency tools" },
       { key: "agencyGuardrails", label: "Guardrails", description: "Safety rules for agent outputs" },
-      { key: "agencyStreaming", label: "Streaming Responses", description: "Real-time token streaming from agents" },
-      { key: "agencyMcpBridge", label: "MCP Bridge (per-agent)", description: "Inline MCP server connections on agent nodes" },
-      { key: "agencyToolApi", label: "Tool API", description: "Standalone tool execution API endpoints" },
-      { key: "agencyAgenticModeEnabled", label: "Agentic Mode (Level 1)", description: "Basic agentic execution with tool use" },
-      { key: "agencyReactExecutorEnabled", label: "ReAct Executor (Level 2)", description: "Reasoning + Acting loop executor" },
-      { key: "agencyAutonomousAgentEnabled", label: "Autonomous Agent (Level 3)", description: "Self-planning, self-evaluating autonomous agents" },
-      { key: "agencyLongTermMemoryEnabled", label: "Long-Term Memory", description: "Persistent memory across agent runs" },
+      { key: "agencyStreaming", label: "Streaming Responses", description: "Real-time token streaming" },
+      { key: "agencyMcpBridge", label: "MCP Bridge (per-agent)", description: "Inline MCP server on agent nodes" },
+      { key: "agencyToolApi", label: "Tool API", description: "Standalone tool execution API" },
+      { key: "agencyAgenticModeEnabled", label: "Agentic Mode (L1)", description: "Basic agentic execution with tool use" },
+      { key: "agencyReactExecutorEnabled", label: "ReAct Executor (L2)", description: "Reasoning + Acting loop" },
+      { key: "agencyAutonomousAgentEnabled", label: "Autonomous Agent (L3)", description: "Self-planning autonomous agents" },
+      { key: "agencyLongTermMemoryEnabled", label: "Long-Term Memory", description: "Persistent memory across runs" },
     ],
   },
   {
     title: "MCP Server Registry",
+    icon: "🔌",
     flags: [
-      { key: "mcpServerRegistry", label: "MCP Server Registry", description: "Centralized management of external MCP tool servers" },
-      { key: "mcpStdio", label: "MCP stdio Transport", description: "Run MCP servers via OpenSandbox containers (subprocess)" },
-      { key: "mcpOAuth", label: "MCP OAuth 2.1", description: "OAuth authentication for MCP server connections" },
+      { key: "mcpServerRegistry", label: "MCP Server Registry", description: "Centralized MCP tool server management" },
+      { key: "mcpStdio", label: "MCP stdio Transport", description: "MCP via OpenSandbox containers" },
+      { key: "mcpOAuth", label: "MCP OAuth 2.1", description: "OAuth for MCP server connections" },
     ],
   },
   {
     title: "Planner & Orchestrator",
+    icon: "🎯",
     flags: [
-      { key: "taskPlannerEnabled", label: "Task Planner", description: "Active model selection via task execution planner" },
-      { key: "taskPlannerAgencyEscalation", label: "Planner Agency Escalation", description: "Escalate to agency orchestration for multi-step tasks" },
-      { key: "orchestratorEnabled", label: "Workflow Orchestrator", description: "Visual workflow execution engine" },
-      { key: "skillOrchestrator", label: "Skill Orchestrator", description: "Automated skill chaining and orchestration" },
-      { key: "unifiedSkillExecution", label: "Unified Skill Execution", description: "Unified execution pipeline for all skill types" },
+      { key: "taskPlannerEnabled", label: "Task Planner", description: "Active model selection planner" },
+      { key: "taskPlannerAgencyEscalation", label: "Planner Escalation", description: "Escalate to agency for multi-step" },
+      { key: "orchestratorEnabled", label: "Workflow Orchestrator", description: "Visual workflow engine" },
+      { key: "skillOrchestrator", label: "Skill Orchestrator", description: "Automated skill chaining" },
+      { key: "unifiedSkillExecution", label: "Unified Skill Execution", description: "Unified skill pipeline" },
     ],
   },
   {
     title: "Integration & API",
+    icon: "🔗",
     flags: [
-      { key: "responsesApi", label: "Responses API Gateway", description: "OpenAI-compatible Responses API proxy" },
-      { key: "publicApi", label: "Public API", description: "External API access with API keys" },
-      { key: "webhookTriggers", label: "Inbound Webhook Triggers", description: "Trigger agents and workflows via HTTP webhooks" },
-      { key: "costDisplay", label: "Per-Response Cost Display", description: "Show token cost to users" },
-      { key: "multimodalMemory", label: "Multimodal Memory", description: "Image and audio content in conversation memory" },
+      { key: "responsesApi", label: "Responses API Gateway", description: "OpenAI-compatible proxy" },
+      { key: "publicApi", label: "Public API", description: "External API access" },
+      { key: "webhookTriggers", label: "Webhook Triggers", description: "Inbound webhook triggers" },
+      { key: "costDisplay", label: "Cost Display", description: "Show per-response costs" },
+      { key: "multimodalMemory", label: "Multimodal Memory", description: "Image/audio in memory" },
     ],
   },
   {
     title: "Notifications",
+    icon: "🔔",
     flags: [
-      { key: "notificationUnifiedCenter", label: "Notification Center", description: "Unified notification inbox" },
-      { key: "notificationPreferencesEnabled", label: "Notification Preferences", description: "User-configurable notification settings" },
-      { key: "notificationDedupEnabled", label: "Notification Dedup", description: "Suppress duplicate notifications" },
-      { key: "notificationEscalationEnabled", label: "Notification Escalation", description: "Escalate unacknowledged alerts" },
-      { key: "notificationEmailDelivery", label: "Email Delivery", description: "Send notifications via email" },
-      { key: "notificationWebhookDelivery", label: "Webhook Delivery", description: "Send notifications to external webhooks" },
+      { key: "notificationUnifiedCenter", label: "Notification Center", description: "Unified inbox" },
+      { key: "notificationPreferencesEnabled", label: "Preferences", description: "User notification settings" },
+      { key: "notificationDedupEnabled", label: "Dedup", description: "Suppress duplicates" },
+      { key: "notificationEscalationEnabled", label: "Escalation", description: "Escalate unacknowledged" },
+      { key: "notificationEmailDelivery", label: "Email Delivery", description: "Notifications via email" },
+      { key: "notificationWebhookDelivery", label: "Webhook Delivery", description: "Notifications via webhook" },
     ],
   },
 ];
 
 interface TenantFeatureFlagsPanelProps {
   tenantId: string;
-  /** Whether the current user can modify flags for this tenant */
   canEdit?: boolean;
 }
 
 export function TenantFeatureFlagsPanel({ tenantId, canEdit = false }: TenantFeatureFlagsPanelProps) {
   const utils = trpc.useUtils();
+  const [search, setSearch] = useState("");
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
   const { data: flags, isLoading } = trpc.tenantFeatureFlags.getFeatureFlags.useQuery(
     { tenantId },
@@ -118,23 +127,15 @@ export function TenantFeatureFlagsPanel({ tenantId, canEdit = false }: TenantFea
   const mutation = trpc.tenantFeatureFlags.updateFeatureFlags.useMutation({
     onMutate: async ({ flags: updates, tenantId: tid }) => {
       if (!tid) return {};
-
-      // Cancel outgoing refetches
       await utils.tenantFeatureFlags.getFeatureFlags.cancel({ tenantId: tid });
-
-      // Snapshot current value
       const previous = utils.tenantFeatureFlags.getFeatureFlags.getData({ tenantId: tid });
-
-      // Optimistically update
       utils.tenantFeatureFlags.getFeatureFlags.setData(
         { tenantId: tid },
         (old) => (old ? { ...old, ...updates } : { ...FEATURE_FLAG_DEFAULTS, ...updates }),
       );
-
       return { previous };
     },
     onError: (_err, variables, context) => {
-      // Roll back on error — only if tenantId is available
       if (variables.tenantId && context?.previous) {
         utils.tenantFeatureFlags.getFeatureFlags.setData(
           { tenantId: variables.tenantId },
@@ -151,7 +152,6 @@ export function TenantFeatureFlagsPanel({ tenantId, canEdit = false }: TenantFea
 
   const handleToggle = (flag: TenantFeatureFlagKey, currentValue: boolean) => {
     if (!canEdit || mutation.isPending) return;
-
     setPendingKey(flag);
     mutation.mutate(
       { tenantId, flags: { [flag]: !currentValue } },
@@ -159,61 +159,137 @@ export function TenantFeatureFlagsPanel({ tenantId, canEdit = false }: TenantFea
     );
   };
 
+  const toggleGroup = (title: string) => {
+    setCollapsed((prev) => ({ ...prev, [title]: !prev[title] }));
+  };
+
+  const resolvedFlags: TenantFeatureFlags = { ...FEATURE_FLAG_DEFAULTS, ...(flags ?? {}) };
+
+  // Filter groups by search
+  const filteredGroups = useMemo(() => {
+    if (!search.trim()) return FLAG_GROUPS;
+    const q = search.toLowerCase();
+    return FLAG_GROUPS.map((g) => ({
+      ...g,
+      flags: g.flags.filter(
+        (f) =>
+          f.label.toLowerCase().includes(q) ||
+          f.description.toLowerCase().includes(q) ||
+          f.key.toLowerCase().includes(q),
+      ),
+    })).filter((g) => g.flags.length > 0);
+  }, [search]);
+
   if (isLoading) {
     return <div className="p-4 text-sm text-gray-500">Loading feature flags...</div>;
   }
 
-  const resolvedFlags: TenantFeatureFlags = { ...FEATURE_FLAG_DEFAULTS, ...(flags ?? {}) };
+  const totalFlags = FLAG_GROUPS.reduce((n, g) => n + g.flags.length, 0);
+  const enabledCount = FLAG_GROUPS.reduce(
+    (n, g) => n + g.flags.filter((f) => resolvedFlags[f.key]).length,
+    0,
+  );
 
   return (
-    <div className="space-y-6">
-      {FLAG_GROUPS.map((group) => (
-        <div key={group.title}>
-          <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">
-            {group.title}
-          </h3>
-          <div className="space-y-2">
-            {group.flags.map(({ key, label, description }) => {
-              const enabled = resolvedFlags[key];
-              const isPending = pendingKey === key;
+    <div className="space-y-3">
+      {/* Summary + Search */}
+      <div className="flex items-center gap-2">
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search flags..."
+          className="flex-1 rounded-md border border-gray-200 bg-gray-50 px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
+        />
+        <span className="shrink-0 rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700">
+          {enabledCount}/{totalFlags} on
+        </span>
+      </div>
 
-              return (
-                <div
-                  key={key}
-                  className="flex items-center justify-between rounded-lg border border-gray-200 p-3"
-                >
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-900">{label}</p>
-                    <p className="text-xs text-gray-500">{description}</p>
-                  </div>
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={enabled}
-                    aria-label={`Toggle ${label}`}
-                    disabled={!canEdit || isPending}
-                    onClick={() => handleToggle(key, enabled)}
-                    className={[
-                      "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent",
-                      "transition-colors duration-200 ease-in-out focus:outline-none",
-                      "disabled:cursor-not-allowed disabled:opacity-50",
-                      enabled ? "bg-blue-600" : "bg-gray-200",
-                    ].join(" ")}
+      {/* Groups */}
+      <div className="space-y-1">
+        {filteredGroups.map((group) => {
+          const isCollapsed = !!collapsed[group.title];
+          const groupEnabled = group.flags.filter((f) => resolvedFlags[f.key]).length;
+
+          return (
+            <div key={group.title} className="rounded-lg border border-gray-200 overflow-hidden">
+              {/* Group header — clickable to collapse/expand */}
+              <button
+                type="button"
+                onClick={() => toggleGroup(group.title)}
+                className="flex w-full items-center justify-between bg-gray-50 px-3 py-2 text-left hover:bg-gray-100 transition-colors"
+              >
+                <span className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-600">
+                  <span>{group.icon}</span>
+                  {group.title}
+                </span>
+                <span className="flex items-center gap-2">
+                  <span className="text-[10px] text-gray-400">
+                    {groupEnabled}/{group.flags.length}
+                  </span>
+                  <svg
+                    className={`h-3.5 w-3.5 text-gray-400 transition-transform ${isCollapsed ? "" : "rotate-180"}`}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
                   >
-                    <span
-                      className={[
-                        "pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow",
-                        "transform transition duration-200 ease-in-out",
-                        enabled ? "translate-x-4" : "translate-x-0",
-                      ].join(" ")}
-                    />
-                  </button>
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </span>
+              </button>
+
+              {/* Flag rows */}
+              {!isCollapsed && (
+                <div className="divide-y divide-gray-100">
+                  {group.flags.map(({ key, label, description }) => {
+                    const enabled = resolvedFlags[key];
+                    const isPending = pendingKey === key;
+
+                    return (
+                      <div
+                        key={key}
+                        className="flex items-center justify-between px-3 py-2 hover:bg-gray-50/50"
+                      >
+                        <div className="flex-1 min-w-0 pr-3">
+                          <p className="text-sm font-medium text-gray-800 truncate">{label}</p>
+                          <p className="text-[11px] text-gray-400 truncate">{description}</p>
+                        </div>
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={enabled}
+                          aria-label={`Toggle ${label}`}
+                          disabled={!canEdit || isPending}
+                          onClick={() => handleToggle(key, enabled)}
+                          className={[
+                            "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent",
+                            "transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-1",
+                            "disabled:cursor-not-allowed disabled:opacity-50",
+                            enabled ? "bg-blue-600" : "bg-gray-200",
+                          ].join(" ")}
+                        >
+                          <span
+                            className={[
+                              "pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow",
+                              "transform transition duration-200 ease-in-out",
+                              enabled ? "translate-x-4" : "translate-x-0",
+                            ].join(" ")}
+                          />
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
-              );
-            })}
-          </div>
-        </div>
-      ))}
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {filteredGroups.length === 0 && (
+        <p className="py-4 text-center text-xs text-gray-400">No flags match "{search}"</p>
+      )}
 
       {mutation.isError && (
         <p className="text-sm text-red-600">
