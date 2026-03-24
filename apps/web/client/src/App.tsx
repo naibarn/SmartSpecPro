@@ -15,6 +15,7 @@ import { useNamespacePreloader } from "@/i18n/useNamespacePreloader";
 import { RouteLoadingSkeleton } from "@/components/RouteLoadingSkeleton";
 import { useLanguageSync } from "@/hooks/useLanguageSync";
 import { cleanupLegacyAuth } from "@/lib/cleanupLegacyAuth";
+import { WelcomeLanguagePicker } from "@/components/WelcomeLanguagePicker";
 
 // Route-based code splitting — all page components are loaded lazily
 const NotFound = lazy(() => import("@/pages/NotFound"));
@@ -422,6 +423,7 @@ function App() {
                 <GlobalAlerts />
                 <SystemHealthBanner />
                 <LanguageSyncBridge />
+                <WelcomeLanguagePicker />
                 <Router />
                 <FeedbackButton />
               </TooltipProvider>
