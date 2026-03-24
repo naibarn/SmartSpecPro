@@ -1,6 +1,8 @@
 import { useTranslation } from "react-i18next";
-import { LANGUAGE_LABELS } from "@shared/i18n";
+import { SUPPORTED_LANGUAGES, LANGUAGE_LABELS, type SupportedLanguage } from "@shared/i18n";
 import { cn } from "@/lib/utils";
+
+const DEFAULT_LANGUAGE = "en";
 
 interface LocaleToggleProps {
   className?: string;
@@ -8,10 +10,13 @@ interface LocaleToggleProps {
 
 export function LocaleToggle({ className }: LocaleToggleProps) {
   const { i18n } = useTranslation();
-  const currentLang = i18n.language;
+  // Normalize against SUPPORTED_LANGUAGES to guard against browser-resolved codes like "en-US"
+  const lang = (SUPPORTED_LANGUAGES as readonly string[]).includes(i18n.language)
+    ? (i18n.language as SupportedLanguage)
+    : DEFAULT_LANGUAGE;
 
   // Show English + current non-English language; only English if already on English
-  const visibleLocales = currentLang === "en" ? ["en"] : ["en", currentLang];
+  const visibleLocales: SupportedLanguage[] = lang === "en" ? ["en"] : ["en", lang];
 
   return (
     <div
@@ -29,14 +34,14 @@ export function LocaleToggle({ className }: LocaleToggleProps) {
           onClick={() => i18n.changeLanguage(loc)}
           className={cn(
             "rounded-full px-3 py-1 font-medium transition-colors",
-            currentLang === loc
+            lang === loc
               ? "bg-primary text-primary-foreground"
               : "text-muted-foreground hover:bg-muted hover:text-foreground",
           )}
-          aria-pressed={currentLang === loc}
-          title={LANGUAGE_LABELS[loc as keyof typeof LANGUAGE_LABELS] ?? loc}
+          aria-pressed={lang === loc}
+          title={LANGUAGE_LABELS[loc]}
         >
-          {LANGUAGE_LABELS[loc as keyof typeof LANGUAGE_LABELS] ?? loc}
+          {LANGUAGE_LABELS[loc]}
         </button>
       ))}
     </div>
