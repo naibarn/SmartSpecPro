@@ -1,0 +1,21 @@
+{
+  "header.notifications": "Notifications",
+  "header.profile": "Profile",
+  "header.search": "Search",
+  "header.signOut": "Sign out",
+  "navbar.features": "Features",
+  "navbar.getStarted": "Get Started",
+  "navbar.home": "Home",
+  "navbar.pricing": "Pricing",
+  "navbar.signIn": "Sign In",
+  "sidebar.agencies": "Agencies",
+  "sidebar.chat": "Chat",
+  "sidebar.credits": "Credits",
+  "sidebar.dashboard": "Dashboard",
+  "sidebar.library": "Library",
+  "sidebar.mediaStudio": "Media Studio",
+  "sidebar.presentations": "Presentations",
+  "sidebar.settings": "Settings",
+  "sidebar.teams": "Teams",
+  "sidebar.workflows": "Workflows"
+}

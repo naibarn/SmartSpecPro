@@ -1,0 +1,21 @@
+{
+  "header.notifications": "การแจ้งเตือน",
+  "header.profile": "โปรไฟล์",
+  "header.search": "ค้นหา",
+  "header.signOut": "ออกจากระบบ",
+  "navbar.features": "ฟีเจอร์",
+  "navbar.getStarted": "เริ่มต้นใช้งาน",
+  "navbar.home": "หน้าหลัก",
+  "navbar.pricing": "ราคา",
+  "navbar.signIn": "เข้าสู่ระบบ",
+  "sidebar.agencies": "เอเจนซี",
+  "sidebar.chat": "แชท",
+  "sidebar.credits": "เครดิต",
+  "sidebar.dashboard": "แดชบอร์ด",
+  "sidebar.library": "ไลบรารี",
+  "sidebar.mediaStudio": "มีเดียสตูดิโอ",
+  "sidebar.presentations": "งานนำเสนอ",
+  "sidebar.settings": "การตั้งค่า",
+  "sidebar.teams": "ทีม",
+  "sidebar.workflows": "เวิร์กโฟลว์"
+}

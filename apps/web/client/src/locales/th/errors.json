@@ -1,0 +1,16 @@
+{
+  "forbidden.message": "คุณไม่มีสิทธิ์เข้าถึงทรัพยากรนี้",
+  "forbidden.title": "การเข้าถึงถูกปฏิเสธ",
+  "generic.somethingWentWrong": "เกิดข้อผิดพลาด กรุณาลองใหม่",
+  "generic.tryAgain": "ลองใหม่",
+  "networkError": "ข้อผิดพลาดเครือข่าย กรุณาตรวจสอบการเชื่อมต่อ",
+  "notFound.message": "ไม่พบหน้าที่คุณกำลังค้นหา",
+  "notFound.title": "ไม่พบหน้า",
+  "requestFailed": "คำขอล้มเหลว กรุณาลองใหม่",
+  "serverError.message": "เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์",
+  "serverError.title": "ข้อผิดพลาดเซิร์ฟเวอร์",
+  "session.expired": "เซสชันของคุณหมดอายุ กรุณาลงชื่อเข้าใช้ใหม่",
+  "validation.invalidEmail": "กรุณากรอกที่อยู่อีเมลที่ถูกต้อง",
+  "validation.passwordTooShort": "รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร",
+  "validation.required": "จำเป็นต้องกรอกข้อมูลในช่องนี้"
+}
