@@ -14,30 +14,31 @@ import {
   getHelpSearchIndex,
   getContextualHelpTopics,
 } from "../services/helpContentService";
+import { SUPPORTED_LANGUAGES } from "../../shared/i18n";
 
 export const helpRouter = router({
   getManifest: publicProcedure
-    .input(z.object({ locale: z.enum(["en", "th"]).default("en") }))
+    .input(z.object({ locale: z.enum(SUPPORTED_LANGUAGES).default("en") }))
     .query(async ({ input }) => getHelpManifest(input.locale)),
 
   getTopic: publicProcedure
     .input(
       z.object({
         slug: z.string().min(1).max(100).regex(/^[a-z0-9-]+$/, "Invalid slug format"),
-        locale: z.enum(["en", "th"]).default("en"),
+        locale: z.enum(SUPPORTED_LANGUAGES).default("en"),
       }),
     )
     .query(async ({ input }) => getHelpTopic(input.slug, input.locale)),
 
   getSearchIndex: publicProcedure
-    .input(z.object({ locale: z.enum(["en", "th"]).default("en") }))
+    .input(z.object({ locale: z.enum(SUPPORTED_LANGUAGES).default("en") }))
     .query(async ({ input }) => getHelpSearchIndex(input.locale)),
 
   getContextualTopics: publicProcedure
     .input(
       z.object({
         page: z.string().min(1),
-        locale: z.enum(["en", "th"]).default("en"),
+        locale: z.enum(SUPPORTED_LANGUAGES).default("en"),
       }),
     )
     .query(async ({ input }) => getContextualHelpTopics(input.page, input.locale)),

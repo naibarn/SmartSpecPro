@@ -11,6 +11,7 @@ import { eq, desc, like, or, sql, and } from "drizzle-orm";
 import { addCredits, deductCredits, type TransactionType } from "../services/creditService";
 import { resolveEnabledLlmModelId } from "../services/enabledLlmModels";
 import { browserPolicyUserProfileSchema } from "../../shared/browserPolicy";
+import { SUPPORTED_LANGUAGES } from "../../shared/i18n";
 import {
   resolveEffectiveUserAutomationPolicy,
   updateUserBrowserPolicyProfile,
@@ -753,7 +754,7 @@ export const usersRouter = router({
 
   updatePreferences: protectedProcedure
     .input(z.object({
-      translationLanguage: z.string().max(10).optional(),
+      translationLanguage: z.enum(SUPPORTED_LANGUAGES).optional(),
       translationModel: z.string().max(100).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
