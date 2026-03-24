@@ -920,23 +920,10 @@ function AgentSupervisorForm({
 
       <Separator />
 
-      {/* MCP Server Registry Picker (for mcp_server node type) */}
-      {node.nodeType === "mcp_server" && (
-        <McpRegistryPicker
-          serverSlug={ncGet(node, "serverSlug", "")}
-          toolName={ncGet(node, "toolName", "")}
-          onChange={(updates) => {
-            onChange({
-              nodeConfig: { ...(node.nodeConfig ?? {}), ...updates },
-            });
-          }}
-        />
-      )}
-
       <Separator />
 
-      {/* MCP Servers inline (for agent/supervisor — legacy JSONB approach) */}
-      {(node.nodeType === "agent" || node.nodeType === "supervisor" || node.nodeType === "mcp_server") && (
+      {/* MCP Servers (for agent/supervisor — legacy inline + registry tools) */}
+      {(node.nodeType === "agent" || node.nodeType === "supervisor") && (
         <div>
           <button
             type="button"

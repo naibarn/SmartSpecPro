@@ -169,20 +169,6 @@ const NODE_TYPE_SECTIONS = [
       },
     ],
   },
-  {
-    label: "Integrations",
-    color: "orange",
-    items: [
-      {
-        nodeType: "mcp_server",
-        label: "MCP Server",
-        description: "Connect to external MCP tools and resources",
-        detail: "Connects to an external MCP (Model Context Protocol) server to call tools, read resources, or list capabilities. Supports HTTP, Streamable HTTP, and stdio transports. Configure via Admin > MCP Servers, then assign to this agent.",
-        icon: <Plug className="h-3.5 w-3.5" />,
-        color: "text-orange-500",
-      },
-    ],
-  },
 ];
 
 const ICON_MAP: Record<string, React.ReactNode> = {

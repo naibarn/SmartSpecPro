@@ -670,9 +670,6 @@ class AgencyOrchestrator:
                         trace_collector=self.trace_collector,
                     )
 
-                case "mcp_server":
-                    result = await self._execute_mcp_server_node(node, ctx)
-
                 case _:
                     logger.warning(
                         "agency_orchestrator_unknown_node_type", node_type=node_type

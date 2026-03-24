@@ -13,8 +13,7 @@ export type AgencyNodeType =
   | "skill_discovery"
   | "data_transform"
   | "error_handler"
-  | "autonomous_agent"
-  | "mcp_server";
+  | "autonomous_agent";
 
 export interface AgencyNodeData {
   nodeType: AgencyNodeType;

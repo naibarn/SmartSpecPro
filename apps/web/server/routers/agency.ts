@@ -30,6 +30,7 @@ import {
   agencyRunFeedback,
   agencyImprovementHistory,
   agencyTemplates,
+  mcpServers,
   userGroups,
   users,
   systemSettings,
@@ -809,8 +810,34 @@ export const agencyRouter = router({
         isOwned: true,  // Custom tools belong to this tenant — can be edited/deleted
       }));
 
+      // MCP server tools from registry (dynamic, per-tenant)
+      let mcpTools: typeof builtinTools = [];
+      try {
+        const mcpRows = await db
+          .select()
+          .from(mcpServers)
+          .where(and(eq(mcpServers.tenantId, tenantId), eq(mcpServers.enabled, true)));
+        mcpTools = mcpRows.map((s: any) => ({
+          id: `builtin-mcp-${s.slug}`,
+          name: `MCP: ${s.name}`,
+          description: `External tools from MCP server "${s.name}" (${s.transportType})`,
+          toolType: "mcp_bridge" as const,
+          riskLevel: (s.riskLevel ?? "high") as "low" | "medium" | "high",
+          requiresApproval: false,
+          configSchema: {
+            fields: [
+              { key: "mcpServerId", label: "MCP Server", type: "hidden", default: s.id },
+              { key: "mcpServerSlug", label: "Server", type: "text", readonly: true, default: s.slug },
+              { key: "mcpServerUrl", label: "URL", type: "text", readonly: true, default: (s.config as any)?.url ?? "" },
+            ],
+          },
+        }));
+      } catch {
+        // MCP registry table may not exist yet — gracefully degrade
+      }
+
       // Combine and filter if searching or paginating (simple combined array)
-      const combined = [...builtinTools, ...dbToolsFormatted];
+      const combined = [...builtinTools, ...mcpTools, ...dbToolsFormatted];
 
       return { tools: combined };
     }),
@@ -986,7 +1013,7 @@ export const agencyRouter = router({
               description: z.string().optional(),
               nodeType: z.enum([
                 "agent", "supervisor", "router", "aggregator",
-                "knowledge_base", "skill_call", "human_approval", "browser_session", "conditional_branch", "parallel_fan_out", "loop_retry", "skill_discovery", "data_transform", "error_handler", "autonomous_agent", "mcp_server",
+                "knowledge_base", "skill_call", "human_approval", "browser_session", "conditional_branch", "parallel_fan_out", "loop_retry", "skill_discovery", "data_transform", "error_handler", "autonomous_agent",
               ]).default("agent"),
               instructions: z.string().max(50000).optional(),
               model: z.string().max(100).regex(/^[a-zA-Z0-9._\/-]+$/, "Invalid model identifier").optional(),
