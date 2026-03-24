@@ -1,8 +1,21 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
-// Mock the loader module that doesn't exist yet (section-03)
+// Mock the loader module
 vi.mock("../loader", () => ({
   loadNamespace: vi.fn().mockResolvedValue({}),
+  createBackendLoader: vi.fn().mockReturnValue(
+    () => Promise.resolve({}),
+  ),
+}));
+
+// Mock the language detector
+vi.mock("../languageDetector", () => ({
+  languageDetector: {
+    type: "languageDetector" as const,
+    detect: vi.fn().mockReturnValue("en"),
+    cacheUserLanguage: vi.fn(),
+  },
+  STORAGE_KEY: "smartspec_locale",
 }));
 
 describe("i18n/index (initialization)", () => {
@@ -45,7 +58,6 @@ describe("i18n/index (initialization)", () => {
   });
 
   it("i18nReady promise resolves even on init failure", async () => {
-    // The promise should always resolve, never reject
     const { i18nReady } = await import("../index");
     await expect(i18nReady).resolves.toBeUndefined();
   });
