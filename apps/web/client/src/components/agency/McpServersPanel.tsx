@@ -36,11 +36,15 @@ interface McpServersPanelProps {
   agentId: string;
   mcpServers?: McpServer[];
   onChange: (servers: McpServer[], tokens?: Record<string, string>) => void;
+  /** Called when user clicks "Add to Agent" on a discovered tool */
+  onAddTool?: (tool: { toolId: string; toolName: string; toolConfig?: Record<string, unknown> }) => void;
+  /** Tool IDs already assigned to this agent (to prevent duplicates) */
+  excludeToolIds?: string[];
 }
 
 const MAX_SERVERS = 5;
 
-export function McpServersPanel({ agentId, mcpServers = [], onChange }: McpServersPanelProps) {
+export function McpServersPanel({ agentId, mcpServers = [], onChange, onAddTool, excludeToolIds = [] }: McpServersPanelProps) {
   const mcpEnabled = useTenantFeatureFlag("agencyMcpBridge");
   const [showAddForm, setShowAddForm] = useState(false);
   const [newUrl, setNewUrl] = useState("");
@@ -208,14 +212,46 @@ export function McpServersPanel({ agentId, mcpServers = [], onChange }: McpServe
                 </button>
                 {expandedServer === server.url && (
                   <div className="mt-1 space-y-1 pl-4">
-                    {discoveredTools[server.url].map((tool) => (
-                      <div key={tool.name} className="text-xs">
-                        <span className="font-mono text-primary">{tool.name}</span>
-                        {tool.description && (
-                          <span className="text-muted-foreground ml-1">— {tool.description}</span>
-                        )}
-                      </div>
-                    ))}
+                    {discoveredTools[server.url].map((tool) => {
+                      const mcpToolId = `mcp:${new URL(server.url).hostname}:${tool.name}`;
+                      const alreadyAdded = excludeToolIds.includes(mcpToolId);
+                      return (
+                        <div key={tool.name} className="text-xs flex items-start gap-1.5 group">
+                          <div className="flex-1 min-w-0">
+                            <span className="font-mono text-primary">{tool.name}</span>
+                            {tool.description && (
+                              <span className="text-muted-foreground ml-1">— {tool.description}</span>
+                            )}
+                          </div>
+                          {onAddTool && (
+                            alreadyAdded ? (
+                              <span className="text-[10px] text-green-600 shrink-0 mt-0.5">Added</span>
+                            ) : (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-5 px-1.5 text-[10px] shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                onClick={() => {
+                                  onAddTool({
+                                    toolId: mcpToolId,
+                                    toolName: `${tool.name} (MCP)`,
+                                    toolConfig: {
+                                      mcpServerUrl: server.url,
+                                      mcpToolName: tool.name,
+                                      mcpTransport: server.transport ?? "sse",
+                                    },
+                                  });
+                                  toast.success(`Added ${tool.name} to agent`);
+                                }}
+                              >
+                                <Plus className="h-3 w-3 mr-0.5" />
+                                Add
+                              </Button>
+                            )
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>

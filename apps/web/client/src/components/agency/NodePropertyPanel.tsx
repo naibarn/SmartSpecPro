@@ -948,6 +948,8 @@ function AgentSupervisorForm({
                 onChange={(servers) => {
                   onChange({ mcpServers: servers });
                 }}
+                onAddTool={handleAddTool}
+                excludeToolIds={(node.tools ?? []).map((t) => t.toolId)}
               />
             </div>
           )}

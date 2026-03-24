@@ -1078,6 +1078,11 @@ Model strategy:
 - "builtin-webhook"           → Send webhook data
 - "builtin-slack-message"     → Post to Slack
 - "builtin-document-search"   → Search document collections
+- "builtin-meta-channels"     → Full Meta/Facebook page integration (messages, posts, comments)
+- "builtin-social-publish"    → Schedule or publish posts to Facebook Pages
+- "builtin-social-moderate"   → Monitor and moderate comments on Facebook Pages
+- "builtin-social-inbox"      → Read and reply to direct messages on Facebook Pages
+- "builtin-agency-call"       → Call another agency for subtasks (cross-agency)
 
 ═══ DESIGN PRINCIPLES ═══
 1. ALWAYS set objective — this is critical for the agency's self-improvement loop
@@ -1344,6 +1349,8 @@ def _validate_spec(spec: dict) -> dict:
         "builtin-file-writer", "builtin-rag-knowledge", "builtin-skill-executor",
         "builtin-cmd-executor", "builtin-http-request", "builtin-email-notify",
         "builtin-webhook", "builtin-slack-message", "builtin-document-search",
+        "builtin-meta-channels", "builtin-social-publish", "builtin-social-moderate",
+        "builtin-social-inbox", "builtin-agency-call",
     }
     for node in nodes:
         if node.get("nodeType") not in non_tool_node_types:
