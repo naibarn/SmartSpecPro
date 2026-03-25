@@ -46,6 +46,7 @@ import {
   type MenuGroup,
   type UserRole,
 } from '@smartspec/shared';
+import i18next from 'i18next';
 
 const iconMap: Record<string, LucideIcon> = {
   TrendingUp,
@@ -100,8 +101,13 @@ export function getResolvedMenuItems(
 ): ResolvedMenuItem[] {
   const platform = detectPlatform();
   const items = getMenuItemsByGroup(platform, role, group, overrides, enabledFeatures);
-  return items.map(item => ({
-    ...item,
-    IconComponent: iconMap[item.icon] || Sparkles,
-  }));
+  return items.map(item => {
+    const navKey = `nav:sidebar.${item.id}`;
+    const translatedLabel = i18next.exists(navKey) ? i18next.t(navKey) : item.label;
+    return {
+      ...item,
+      label: translatedLabel,
+      IconComponent: iconMap[item.icon] || Sparkles,
+    };
+  });
 }

@@ -7,6 +7,7 @@
 
 import { useState } from 'react';
 import { Link } from 'wouter';
+import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,6 +29,7 @@ type Channel = 'email' | 'backup_email' | 'sms';
 type Step = 'choose' | 'input' | 'sent' | 'reset' | 'success';
 
 export default function ForgotPassword() {
+  const { t } = useTranslation('auth');
   const [step, setStep] = useState<Step>('choose');
   const [channel, setChannel] = useState<Channel>('email');
   const [email, setEmail] = useState('');
@@ -125,11 +127,11 @@ export default function ForgotPassword() {
   return (
     <div className="min-h-screen flex">
       {/* Left Side - Branding */}
-      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-purple-600 via-pink-500 to-orange-400">
+      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-blue-600 via-cyan-500 to-teal-400">
         {/* Animated Background */}
         <div className="absolute inset-0">
           <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-white/20 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-purple-300/30 rounded-full blur-3xl animate-pulse delay-1000" />
+          <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-cyan-300/30 rounded-full blur-3xl animate-pulse delay-1000" />
         </div>
 
         {/* Content */}
@@ -180,7 +182,7 @@ export default function ForgotPassword() {
       </div>
 
       {/* Right Side - Form */}
-      <div className="flex-1 flex items-center justify-center p-8 bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/20">
+      <div className="flex-1 flex items-center justify-center p-8 bg-gradient-to-br from-slate-50 via-blue-50/30 to-cyan-50/20">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -188,7 +190,7 @@ export default function ForgotPassword() {
         >
           {/* Mobile Logo */}
           <Link href="/" className="flex items-center gap-3 mb-8 lg:hidden">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
               <Sparkles className="w-5 h-5 text-white" />
             </div>
             <span className="text-xl font-bold text-gray-900">SmartAIHub</span>
@@ -200,7 +202,7 @@ export default function ForgotPassword() {
               <div key={s} className="flex items-center">
                 <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium transition-all ${
                   step === s
-                    ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
+                    ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white'
                     : ['choose', 'input', 'sent', 'reset', 'success'].indexOf(step) > index
                     ? 'bg-green-500 text-white'
                     : 'bg-gray-200 text-gray-500'
@@ -223,7 +225,7 @@ export default function ForgotPassword() {
           </div>
 
           {/* Form Card */}
-          <div className="bg-white/70 backdrop-blur-xl rounded-3xl border border-white/50 shadow-xl shadow-purple-500/10 p-8">
+          <div className="bg-white/70 backdrop-blur-xl rounded-3xl border border-white/50 shadow-xl shadow-cyan-500/10 p-8">
             <AnimatePresence mode="wait">
               {/* Step 0: Choose recovery channel */}
               {step === 'choose' && (
@@ -249,10 +251,10 @@ export default function ForgotPassword() {
                       <button
                         key={opt.ch}
                         onClick={() => { setChannel(opt.ch); setStep('input'); }}
-                        className="w-full flex items-center gap-4 p-4 rounded-xl border border-gray-200 hover:border-purple-400 hover:bg-purple-50/50 transition-all text-left"
+                        className="w-full flex items-center gap-4 p-4 rounded-xl border border-gray-200 hover:border-cyan-400 hover:bg-cyan-50/50 transition-all text-left"
                       >
-                        <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center shrink-0">
-                          <opt.icon className="w-5 h-5 text-purple-600" />
+                        <div className="w-10 h-10 rounded-lg bg-cyan-100 flex items-center justify-center shrink-0">
+                          <opt.icon className="w-5 h-5 text-cyan-600" />
                         </div>
                         <div>
                           <div className="font-medium text-gray-900">{opt.label}</div>
@@ -263,7 +265,7 @@ export default function ForgotPassword() {
                   </div>
 
                   <div className="mt-6 text-center">
-                    <Link href="/login" className="text-purple-600 hover:text-purple-700 font-medium inline-flex items-center gap-1">
+                    <Link href="/login" className="text-cyan-600 hover:text-cyan-700 font-medium inline-flex items-center gap-1">
                       <ArrowLeft className="w-4 h-4" />
                       Back to Sign In
                     </Link>
@@ -299,7 +301,7 @@ export default function ForgotPassword() {
                               placeholder="+66812345678"
                               value={phone}
                               onChange={(e) => setPhone(e.target.value)}
-                              className="pl-10 h-12 bg-white/50 border-gray-200 focus:border-purple-500 focus:ring-purple-500"
+                              className="pl-10 h-12 bg-white/50 border-gray-200 focus:border-cyan-500 focus:ring-cyan-500"
                             />
                           </div>
                         </>
@@ -314,7 +316,7 @@ export default function ForgotPassword() {
                               placeholder="you@example.com"
                               value={email}
                               onChange={(e) => setEmail(e.target.value)}
-                              className="pl-10 h-12 bg-white/50 border-gray-200 focus:border-purple-500 focus:ring-purple-500"
+                              className="pl-10 h-12 bg-white/50 border-gray-200 focus:border-cyan-500 focus:ring-cyan-500"
                             />
                           </div>
                         </>
@@ -324,7 +326,7 @@ export default function ForgotPassword() {
                     <Button
                       type="submit"
                       disabled={isLoading}
-                      className="w-full h-12 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-medium"
+                      className="w-full h-12 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-medium"
                     >
                       {isLoading ? (
                         <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Sending...</>
@@ -335,7 +337,7 @@ export default function ForgotPassword() {
                   </form>
 
                   <div className="mt-6 text-center">
-                    <button onClick={() => setStep('choose')} className="text-purple-600 hover:text-purple-700 font-medium inline-flex items-center gap-1">
+                    <button onClick={() => setStep('choose')} className="text-cyan-600 hover:text-cyan-700 font-medium inline-flex items-center gap-1">
                       <ArrowLeft className="w-4 h-4" /> Choose another method
                     </button>
                   </div>
@@ -350,8 +352,8 @@ export default function ForgotPassword() {
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
                 >
-                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center mx-auto mb-6">
-                    <Mail className="w-8 h-8 text-purple-600" />
+                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-100 to-cyan-100 flex items-center justify-center mx-auto mb-6">
+                    <Mail className="w-8 h-8 text-cyan-600" />
                   </div>
 
                   <h2 className="text-2xl font-bold text-gray-900 mb-2 text-center">
@@ -371,7 +373,7 @@ export default function ForgotPassword() {
                         placeholder="000000"
                         value={code}
                         onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                        className="h-12 text-center text-2xl tracking-widest bg-white/50 border-gray-200 focus:border-purple-500 focus:ring-purple-500"
+                        className="h-12 text-center text-2xl tracking-widest bg-white/50 border-gray-200 focus:border-cyan-500 focus:ring-cyan-500"
                         maxLength={6}
                       />
                     </div>
@@ -379,7 +381,7 @@ export default function ForgotPassword() {
                     <Button
                       type="submit"
                       disabled={isLoading || code.length !== 6}
-                      className="w-full h-12 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-medium"
+                      className="w-full h-12 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-medium"
                     >
                       {isLoading ? (
                         <>
@@ -397,7 +399,7 @@ export default function ForgotPassword() {
                       onClick={() => setStep('input')}
                       className="text-gray-500 hover:text-gray-700 text-sm"
                     >
-                      Didn't receive the code? <span className="text-purple-600 font-medium">Resend</span>
+                      Didn't receive the code? <span className="text-cyan-600 font-medium">Resend</span>
                     </button>
                   </div>
                 </motion.div>
@@ -429,7 +431,7 @@ export default function ForgotPassword() {
                           placeholder="••••••••"
                           value={newPassword}
                           onChange={(e) => setNewPassword(e.target.value)}
-                          className="pl-10 h-12 bg-white/50 border-gray-200 focus:border-purple-500 focus:ring-purple-500"
+                          className="pl-10 h-12 bg-white/50 border-gray-200 focus:border-cyan-500 focus:ring-cyan-500"
                         />
                       </div>
                     </div>
@@ -444,7 +446,7 @@ export default function ForgotPassword() {
                           placeholder="••••••••"
                           value={confirmPassword}
                           onChange={(e) => setConfirmPassword(e.target.value)}
-                          className="pl-10 h-12 bg-white/50 border-gray-200 focus:border-purple-500 focus:ring-purple-500"
+                          className="pl-10 h-12 bg-white/50 border-gray-200 focus:border-cyan-500 focus:ring-cyan-500"
                         />
                       </div>
                     </div>
@@ -483,7 +485,7 @@ export default function ForgotPassword() {
                     <Button
                       type="submit"
                       disabled={isLoading}
-                      className="w-full h-12 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-medium"
+                      className="w-full h-12 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-medium"
                     >
                       {isLoading ? (
                         <>
@@ -518,7 +520,7 @@ export default function ForgotPassword() {
                   </p>
 
                   <Link href="/login">
-                    <Button className="w-full h-12 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-medium">
+                    <Button className="w-full h-12 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-medium">
                       Sign In Now
                     </Button>
                   </Link>

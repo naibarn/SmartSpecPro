@@ -6,6 +6,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Link, useLocation } from 'wouter';
+import { useTranslation } from 'react-i18next';
 import { generateFingerprint } from '@/lib/fingerprint';
 import { getPostHog } from '@/lib/posthog';
 import { useAuth } from '@/_core/hooks/useAuth';
@@ -29,6 +30,7 @@ import {
 } from 'lucide-react';
 
 export default function Login() {
+  const { t } = useTranslation('auth');
   const [, navigate] = useLocation();
   const { user, loading: authLoading } = useAuth();
 
@@ -317,10 +319,10 @@ export default function Login() {
             </Link>
 
             <h1 className="text-4xl font-bold mb-6">
-              Welcome back to the future of development
+              {t('login.title')}
             </h1>
             <p className="text-xl text-white/80 mb-8">
-              Sign in to continue building amazing applications with AI-powered tools.
+              {t('login.subtitle')}
             </p>
 
             {/* Features List */}
@@ -477,7 +479,7 @@ export default function Login() {
             ) : (
             <>
             <div className="text-center mb-8">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Sign in to your account</h2>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">{t('login.signIn')}</h2>
               <p className="text-gray-600">
                 Don't have an account?{' '}
                 <Link href="/signup" className="text-purple-600 hover:text-purple-700 font-medium">

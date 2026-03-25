@@ -6,6 +6,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Link, useLocation } from 'wouter';
+import { useTranslation } from 'react-i18next';
 import { generateFingerprint } from '@/lib/fingerprint';
 import { getPostHog } from '@/lib/posthog';
 import { useAuth } from '@/_core/hooks/useAuth';
@@ -71,6 +72,7 @@ const plans: Plan[] = [
 ];
 
 export default function Signup() {
+  const { t } = useTranslation('auth');
   const [, navigate] = useLocation();
   const { user, loading: authLoading } = useAuth();
   const [step, setStep] = useState<1 | 2>(1);

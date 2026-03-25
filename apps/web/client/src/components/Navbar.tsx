@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Menu, X, Sparkles, ChevronDown, Zap, Bot } from 'lucide-react';
 import { useTenant } from '@/contexts/TenantContext';
+import { useTranslation } from 'react-i18next';
 
 interface NavLink {
   href: string;
@@ -27,29 +28,6 @@ function isDropdown(item: NavItem): item is NavDropdown {
   return 'items' in item;
 }
 
-const navItems: NavItem[] = [
-  { href: '/', label: 'Home' },
-  { href: '/features', label: 'Features' },
-  { href: '/workflows/gallery', label: 'Workflows' },
-  { href: '/pricing', label: 'Pricing' },
-  { href: '/gallery', label: 'Gallery' },
-  {
-    label: 'Marketplace',
-    items: [
-      { href: '/marketplace', label: 'Skills', icon: Zap, description: 'Browse AI skills & prompts' },
-      { href: '/agencies/marketplace', label: 'Agencies', icon: Bot, description: 'Multi-agent team templates' },
-    ],
-  },
-  { href: '/docs', label: 'Docs' },
-  { href: '/blog', label: 'Blog' },
-  { href: '/contact', label: 'Contact' },
-];
-
-// Flatten for mobile menu
-const mobileLinks: NavLink[] = navItems.flatMap((item) =>
-  isDropdown(item) ? item.items.map((sub) => ({ href: sub.href, label: `${item.label} — ${sub.label}` })) : [item],
-);
-
 export function Navbar() {
   const [location] = useLocation();
   const [isScrolled, setIsScrolled] = useState(false);
@@ -57,6 +35,30 @@ export function Navbar() {
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { tenant } = useTenant();
+  const { t } = useTranslation('nav');
+
+  const navItems: NavItem[] = [
+    { href: '/', label: t('navbar.home') },
+    { href: '/features', label: t('navbar.features') },
+    { href: '/workflows/gallery', label: t('navbar.workflows') },
+    { href: '/pricing', label: t('navbar.pricing') },
+    { href: '/gallery', label: t('navbar.gallery') },
+    {
+      label: t('navbar.marketplace'),
+      items: [
+        { href: '/marketplace', label: t('navbar.marketplaceSkills'), icon: Zap, description: 'Browse reusable skills and prompts' },
+        { href: '/agencies/marketplace', label: t('navbar.marketplaceAgencies'), icon: Bot, description: 'Swarm-ready team templates' },
+      ],
+    },
+    { href: '/docs', label: t('navbar.docs') },
+    { href: '/blog', label: t('navbar.blog') },
+    { href: '/contact', label: t('navbar.contact') },
+  ];
+
+  // Flatten for mobile menu
+  const mobileLinks: NavLink[] = navItems.flatMap((item) =>
+    isDropdown(item) ? item.items.map((sub) => ({ href: sub.href, label: `${item.label} — ${sub.label}` })) : [item],
+  );
 
   useEffect(() => {
     const handleScroll = () => {
@@ -109,7 +111,7 @@ export function Navbar() {
                 />
               ) : (
                 <>
-                  <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 rounded-xl bg-gradient-to-br from-violet-500 via-coral-400 to-teal-400 flex items-center justify-center shadow-lg shrink-0">
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 rounded-xl bg-gradient-to-br from-blue-500 via-cyan-400 to-teal-400 flex items-center justify-center shadow-lg shrink-0">
                     <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-white" />
                   </div>
                   <span className="text-lg sm:text-xl lg:text-2xl font-bold gradient-text">SmartAIHub</span>
@@ -205,15 +207,15 @@ export function Navbar() {
           <div className="hidden lg:flex items-center gap-3">
             <Link href="/login">
               <Button variant="ghost" size="sm" className="text-muted-foreground">
-                Sign In
+                {t('navbar.signIn')}
               </Button>
             </Link>
             <Link href="/signup">
               <Button
                 size="sm"
-                className="bg-gradient-to-r from-violet-500 to-teal-400 hover:from-violet-600 hover:to-teal-500 text-white shadow-lg shadow-violet-500/25"
+                className="bg-gradient-to-r from-blue-500 to-teal-400 hover:from-blue-600 hover:to-teal-500 text-white shadow-lg shadow-blue-500/25"
               >
-                Get Started Free
+                {t('navbar.getStarted')}
               </Button>
             </Link>
           </div>
@@ -261,15 +263,15 @@ export function Navbar() {
               <div className="pt-4 space-y-2">
                 <Link href="/login">
                   <Button variant="outline" className="w-full" onClick={() => setIsMobileMenuOpen(false)}>
-                    Sign In
+                    {t('navbar.signIn')}
                   </Button>
                 </Link>
                 <Link href="/signup">
                   <Button
-                    className="w-full bg-gradient-to-r from-violet-500 to-teal-400 text-white"
+                    className="w-full bg-gradient-to-r from-blue-500 to-teal-400 text-white"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
-                    Get Started Free
+                    {t('navbar.getStarted')}
                   </Button>
                 </Link>
               </div>
