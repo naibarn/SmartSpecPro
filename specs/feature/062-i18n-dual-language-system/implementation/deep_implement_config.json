@@ -1,0 +1,87 @@
+{
+  "plugin_root": "/home/dev/.claude/plugins/cache/piercelamb-plugins/deep-implement/0.2.0",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/062-i18n-dual-language-system/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/062-i18n-dual-language-system/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-shared-config",
+    "section-02-i18n-core",
+    "section-03-loader-detector",
+    "section-04-namespace-preloader",
+    "section-05-app-integration",
+    "section-06-backward-compat",
+    "section-07-server-allowlist",
+    "section-08-locale-files",
+    "section-09-welcome-picker",
+    "section-10-locale-toggle",
+    "section-11-settings-language",
+    "section-12-wave1-nav-auth",
+    "section-13-wave1-dashboard-common"
+  ],
+  "sections_state": {
+    "section-01-shared-config": {
+      "status": "complete",
+      "commit_hash": "914f00a6"
+    },
+    "section-02-i18n-core": {
+      "status": "complete",
+      "commit_hash": "cba9047c"
+    },
+    "section-03-loader-detector": {
+      "status": "complete",
+      "commit_hash": "7889336f"
+    },
+    "section-04-namespace-preloader": {
+      "status": "complete",
+      "commit_hash": "cb750f07"
+    },
+    "section-05-app-integration": {
+      "status": "complete",
+      "commit_hash": "cf8d397e"
+    },
+    "section-06-backward-compat": {
+      "status": "complete",
+      "commit_hash": "f2106755"
+    },
+    "section-07-server-allowlist": {
+      "status": "complete",
+      "commit_hash": "5bb3f7db"
+    },
+    "section-08-locale-files": {
+      "status": "complete",
+      "commit_hash": "510e65ec"
+    },
+    "section-09-welcome-picker": {
+      "status": "complete",
+      "commit_hash": "f98b794f"
+    },
+    "section-10-locale-toggle": {
+      "status": "complete",
+      "commit_hash": "83042b49"
+    },
+    "section-11-settings-language": {
+      "status": "complete",
+      "commit_hash": "e3ec4670"
+    },
+    "section-12-wave1-nav-auth": {
+      "status": "complete",
+      "commit_hash": "9a9af6da"
+    },
+    "section-13-wave1-dashboard-common": {
+      "status": "complete",
+      "commit_hash": "67e2de45"
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-03-24T10:09:00.593643+00:00"
+}
