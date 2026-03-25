@@ -97,8 +97,8 @@ export const translationRouter = router({
       });
 
       if (!response.ok) {
-        const err = await response.text();
-        console.error("[Translation] LLM error:", err);
+        // Log only HTTP status — never log raw provider error body (may contain key fragments)
+        console.error("[Translation] LLM error: HTTP", response.status);
         throw new Error("Translation failed");
       }
 

@@ -380,7 +380,7 @@ export function DisplayLanguageDropdown({ defaultValue, onLanguageChange }: Disp
     try { localStorage.setItem('smartspec_locale', newLng); } catch { /* quota/private mode */ }
     setDisplayLanguage(newLng);
     onLanguageChange?.(newLng);
-    updatePrefs({ translationLanguage: newLng as SupportedLanguage });
+    updatePrefs({ translationLanguage: newLng as SupportedLanguage, displayLocale: newLng as SupportedLanguage });
   }
 
   return (
@@ -1554,7 +1554,7 @@ export default function Settings() {
 
                   {/* Display Language */}
                   <DisplayLanguageDropdown
-                    defaultValue={prefsData?.translationLanguage || i18next.language}
+                    defaultValue={prefsData?.displayLocale || prefsData?.translationLanguage || i18next.language}
                     onLanguageChange={(lng) => setTranslationLanguage(lng)}
                   />
 

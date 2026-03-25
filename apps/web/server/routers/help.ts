@@ -37,7 +37,7 @@ export const helpRouter = router({
   getContextualTopics: publicProcedure
     .input(
       z.object({
-        page: z.string().min(1),
+        page: z.string().min(1).max(64).regex(/^[a-z0-9/-]+$/, "Invalid page identifier"),
         locale: z.enum(SUPPORTED_LANGUAGES).default("en"),
       }),
     )

@@ -756,6 +756,7 @@ export const usersRouter = router({
     .input(z.object({
       translationLanguage: z.enum(SUPPORTED_LANGUAGES).optional(),
       translationModel: z.string().max(100).optional(),
+      displayLocale: z.enum(SUPPORTED_LANGUAGES).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
@@ -767,6 +768,7 @@ export const usersRouter = router({
       const updated = { ...current };
 
       if (input.translationLanguage !== undefined) updated.translationLanguage = input.translationLanguage;
+      if (input.displayLocale !== undefined) updated.displayLocale = input.displayLocale;
       if (input.translationModel !== undefined) {
         updated.translationModel =
           (await resolveEnabledLlmModelId([input.translationModel])) || undefined;

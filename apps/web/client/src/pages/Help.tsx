@@ -13,6 +13,7 @@ import { useI18n, AVAILABLE_LOCALES, LOCALE_LABELS } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
 import { trpc } from "@/lib/trpc";
 import { useHelpSearch } from "@/components/help/useHelpSearch";
+import { useTranslation } from "react-i18next";
 
 type LucideIcon = React.ComponentType<{ className?: string; size?: number }>;
 
@@ -23,6 +24,7 @@ function getIcon(name: string): LucideIcon {
 
 export default function Help() {
   const { locale, setLocale } = useI18n();
+  const { t } = useTranslation('help');
   const [, navigate] = useLocation();
 
   const { data: manifest } = trpc.help.getManifest.useQuery(
@@ -38,12 +40,10 @@ export default function Help() {
       <div className="mb-8 text-center">
         <BookOpen className="mx-auto mb-3 h-12 w-12 text-sky-500" />
         <h1 className="text-3xl font-bold">
-          {locale === "th" ? "ศูนย์ช่วยเหลือ" : "Help Center"}
+          {t('center.title')}
         </h1>
         <p className="mt-2 text-muted-foreground">
-          {locale === "th"
-            ? "ค้นหาคำตอบและคู่มือการใช้งาน"
-            : "Find answers and user guides"}
+          {t('center.subtitle')}
         </p>
         <div className="mt-3 flex justify-center gap-1">
           {AVAILABLE_LOCALES.map((loc) => (
@@ -64,11 +64,7 @@ export default function Help() {
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder={
-              locale === "th"
-                ? "ค้นหาเอกสารช่วยเหลือ..."
-                : "Search help documentation..."
-            }
+            placeholder={t('center.searchPlaceholder')}
             value={query}
             onChange={(e) => search(e.target.value)}
             className="h-12 pl-10 text-base"
@@ -81,7 +77,7 @@ export default function Help() {
         <div className="mx-auto max-w-xl">
           {results.length === 0 ? (
             <p className="py-8 text-center text-muted-foreground">
-              {locale === "th" ? "ไม่พบผลลัพธ์" : "No results found"}
+              {t('center.noResults')}
             </p>
           ) : (
             <div className="space-y-2">

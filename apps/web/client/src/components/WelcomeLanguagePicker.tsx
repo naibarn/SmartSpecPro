@@ -65,7 +65,9 @@ export function WelcomeLanguagePicker() {
   useEffect(() => {
     if (!isAuthenticated || alreadyChosen) return;
     if (!isSuccess && !isError) return; // still loading
-    const hasPreference = typeof prefs?.translationLanguage === "string" && prefs.translationLanguage !== "";
+    const hasPreference =
+      (typeof prefs?.displayLocale === "string" && prefs.displayLocale !== "") ||
+      (typeof prefs?.translationLanguage === "string" && prefs.translationLanguage !== "");
     if (!hasPreference) setOpen(true);
   }, [isAuthenticated, alreadyChosen, isSuccess, isError, prefs?.translationLanguage]);
 
@@ -85,7 +87,7 @@ export function WelcomeLanguagePicker() {
     void i18next.changeLanguage(lang);
     storage.set(LOCALE_KEY, lang);
     storage.set(LOCALE_CHOSEN_KEY, "true");
-    updatePreferences({ translationLanguage: lang as SupportedLanguage });
+    updatePreferences({ translationLanguage: lang as SupportedLanguage, displayLocale: lang as SupportedLanguage });
     setOpen(false);
   }
 

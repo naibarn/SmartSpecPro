@@ -1,4 +1,8 @@
 {
+  "center.noResults": "No results found",
+  "center.searchPlaceholder": "Search help documentation...",
+  "center.subtitle": "Find answers and user guides",
+  "center.title": "Help Center",
   "agencies.1": "Agencies are multi-agent teams that work together to complete complex tasks.",
   "agencies.2": "Each agency has specialized agents (researcher, writer, planner) that collaborate automatically.",
   "agencies.3": "Access agencies via the Agencies button in the toolbar or the Explore Agencies button on the welcome screen.",
