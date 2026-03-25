@@ -3,7 +3,10 @@
  * i18n-auto-translate.mjs
  *
  * Automatically translates missing keys in locale JSON files using the
- * existing LLM gateway (Python backend at localhost:8000).
+ * internal SmartSpec LLM gateway (Node.js web server at localhost:3000).
+ *
+ * Authenticates via x-internal-token header (SMARTSPEC_WEB_GATEWAY_TOKEN).
+ * No external API keys needed — uses whichever provider is configured in the system.
  *
  * Usage:
  *   node scripts/i18n-auto-translate.mjs [options]
@@ -12,21 +15,22 @@
  *   --lang <code>       Target language code (default: th). Must be in SUPPORTED_LANGUAGES.
  *   --namespace <name>  Translate only this namespace (e.g. --namespace chat). Default: all.
  *   --dry-run           Print what would be translated without writing files.
- *   --model <id>        LLM model to use (default: uses env LLM_MODEL or claude-sonnet-4-6).
+ *   --model <id>        LLM model to use (default: uses env LLM_TRANSLATE_MODEL or system default).
  *   --batch-size <n>    Keys per LLM request (default: 30).
+ *   --gateway <url>     Override gateway URL (default: http://localhost:3000).
  *
  * Examples:
  *   node scripts/i18n-auto-translate.mjs --lang th
  *   node scripts/i18n-auto-translate.mjs --lang ja --namespace chat
  *   node scripts/i18n-auto-translate.mjs --lang th --dry-run
  *
- * Environment:
- *   SMARTSPEC_WEB_GATEWAY_TOKEN  (required) Bearer token for LLM gateway
- *   LLM_MODEL                    Override default model
- *   PYTHON_BACKEND_URL           Override gateway URL (default: http://localhost:8000)
+ * Environment (auto-loaded from apps/web/.env):
+ *   SMARTSPEC_WEB_GATEWAY_TOKEN  Internal service token (required)
+ *   LLM_TRANSLATE_MODEL          Model override for translations
+ *   WEB_GATEWAY_URL              Override gateway URL
  */
 
-import { readFileSync, writeFileSync, readdirSync, existsSync } from "fs";
+import { readFileSync, writeFileSync, readdirSync, mkdirSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 
@@ -63,16 +67,21 @@ const DRY_RUN = args.includes("--dry-run");
 const TARGET_LANG = getArg("--lang", "th");
 const TARGET_NS = getArg("--namespace", null); // null = all
 const BATCH_SIZE = parseInt(getArg("--batch-size", "30"), 10);
-const GATEWAY_URL = process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
+// Internal gateway: Node.js web server at :3000, authenticated with x-internal-token
+const GATEWAY_URL = process.env.WEB_GATEWAY_URL || getArg("--gateway", "http://localhost:3000");
 const GATEWAY_TOKEN = process.env.SMARTSPEC_WEB_GATEWAY_TOKEN || "";
-const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY || "";
-const OPENAI_KEY = process.env.OPENAI_API_KEY || "";
-const LLM_MODEL = process.env.LLM_MODEL || getArg("--model", "claude-haiku-4-5-20251001");
+const LLM_MODEL = process.env.LLM_TRANSLATE_MODEL || getArg("--model", "");
+// Empty model = gateway picks the best available (respects system LLM settings)
 
-// Determine which LLM backend to use
-// Priority: Anthropic direct → OpenAI direct → internal gateway
-const BACKEND = ANTHROPIC_KEY ? "anthropic" : OPENAI_KEY ? "openai" : "gateway";
-if (!DRY_RUN) console.log(`🤖 Using LLM backend: ${BACKEND} (model: ${LLM_MODEL})\n`);
+if (!DRY_RUN) {
+  console.log(`🤖 Using SmartSpec internal gateway: ${GATEWAY_URL}/v1/chat/completions`);
+  if (LLM_MODEL) console.log(`   Model override: ${LLM_MODEL}`);
+  if (!GATEWAY_TOKEN) {
+    console.error("❌ SMARTSPEC_WEB_GATEWAY_TOKEN not set in apps/web/.env");
+    process.exit(1);
+  }
+  console.log("");
+}
 
 // Language display names for the LLM prompt
 const LANG_NAMES = {
@@ -106,6 +115,7 @@ function writeJson(path, data) {
 
 const EN_DIR = join(LOCALES_DIR, "en");
 const TH_DIR = join(LOCALES_DIR, TARGET_LANG);
+mkdirSync(TH_DIR, { recursive: true }); // create target locale directory if new language
 
 const namespaces = readdirSync(EN_DIR)
   .filter(f => f.endsWith(".json"))
@@ -141,9 +151,12 @@ if (DRY_RUN) {
   process.exit(0);
 }
 
-// ─── LLM Translation ─────────────────────────────────────────────────────────
+// ─── LLM Translation via SmartSpec internal gateway ──────────────────────────
 async function translateBatch(pairs, namespace) {
   /**
+   * Calls the web server's OpenAI-compatible gateway at /v1/chat/completions
+   * using x-internal-token for service-to-service auth.
+   *
    * pairs: [{ key, en_value }, ...]
    * Returns: { key: translated_value, ... }
    */
@@ -164,80 +177,42 @@ Rules:
 
   const userPrompt = `Namespace: ${namespace}\n\nTranslate these English values to ${LANG_NAME}:\n{\n${keyList}\n}`;
 
-  let resp;
+  const requestBody = {
+    messages: [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt },
+    ],
+    temperature: 0.1,
+    max_tokens: 4096,
+    // model is optional — gateway uses system default if omitted
+    ...(LLM_MODEL ? { model: LLM_MODEL } : {}),
+  };
 
-  if (BACKEND === "anthropic") {
-    // Anthropic Messages API
-    const requestBody = {
-      model: LLM_MODEL,
-      max_tokens: 4096,
-      system: systemPrompt,
-      messages: [{ role: "user", content: userPrompt }],
-    };
-    resp = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": ANTHROPIC_KEY,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify(requestBody),
-    });
-    if (!resp.ok) {
-      const err = await resp.text();
-      throw new Error(`Anthropic API error HTTP ${resp.status}`);
-    }
-    const data = await resp.json();
-    const content = data.content?.[0]?.text?.trim() ?? "";
-    const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/) || [null, content];
-    try { return JSON.parse((jsonMatch[1] || content).trim()); } catch {
-      console.error("❌ Bad JSON from Anthropic:", content.slice(0, 200)); return {};
-    }
-  }
-
-  if (BACKEND === "openai") {
-    // OpenAI Chat Completions API
-    const requestBody = {
-      model: LLM_MODEL.startsWith("claude") ? "gpt-4o-mini" : LLM_MODEL,
-      messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }],
-      temperature: 0.1,
-      max_tokens: 4096,
-    };
-    resp = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${OPENAI_KEY}` },
-      body: JSON.stringify(requestBody),
-    });
-  } else {
-    // Internal gateway fallback
-    const requestBody = {
-      model: LLM_MODEL,
-      messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }],
-      temperature: 0.1, max_tokens: 4096,
-    };
-    resp = await fetch(`${GATEWAY_URL}/api/v1/llm/chat/completions`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", ...(GATEWAY_TOKEN ? { Authorization: `Bearer ${GATEWAY_TOKEN}` } : {}) },
-      body: JSON.stringify(requestBody),
-    });
-  }
+  const resp = await fetch(`${GATEWAY_URL}/v1/chat/completions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-internal-token": GATEWAY_TOKEN,   // service-to-service auth (see llmRoutes.ts:1460)
+    },
+    body: JSON.stringify(requestBody),
+  });
 
   if (!resp.ok) {
     const errText = await resp.text();
-    throw new Error(`LLM gateway error HTTP ${resp.status}: ${errText.slice(0, 200)}`);
+    throw new Error(`Gateway error HTTP ${resp.status}: ${errText.slice(0, 200)}`);
   }
 
   const data = await resp.json();
   const content = data.choices?.[0]?.message?.content?.trim() ?? "";
 
-  // Extract JSON from response (handle markdown code blocks)
+  // Extract JSON (handle markdown code fences from some models)
   const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/) || [null, content];
   const jsonStr = (jsonMatch[1] || content).trim();
 
   try {
     return JSON.parse(jsonStr);
   } catch {
-    console.error("❌ Failed to parse LLM response as JSON:", content.slice(0, 300));
+    console.error("❌ Failed to parse gateway response as JSON:", content.slice(0, 300));
     return {};
   }
 }
