@@ -908,7 +908,7 @@ export function MemoryPanel({ onClose, conversationId, onNewChatFromProject }: M
             ) : (
               <div className="flex items-center justify-between">
                 <span className="text-xs">
-                  {currentProjectId || <span className="text-muted-foreground italic">Not set</span>}
+                  {currentProjectId || <span className="text-muted-foreground italic">{t("memory.projectNotSet")}</span>}
                 </span>
                 <Button
                   variant="ghost"
@@ -1008,7 +1008,7 @@ export function MemoryPanel({ onClose, conversationId, onNewChatFromProject }: M
                   {memorySearchResult.l2Triggered && <span>• chunk fallback enabled</span>}
                 </div>
                 {memorySearchResult.l1Results.length === 0 && memorySearchResult.l2Results.length === 0 ? (
-                  <div className="text-muted-foreground">No matching memory context found.</div>
+                  <div className="text-muted-foreground">{t("memory.noSearchResults")}</div>
                 ) : (
                   <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                     {memorySearchResult.l1Results.map((result) => (
@@ -1372,14 +1372,14 @@ export function MemoryPanel({ onClose, conversationId, onNewChatFromProject }: M
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete memory?</AlertDialogTitle>
+            <AlertDialogTitle>{t("memory.deleteTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
               This will remove this memory permanently. The AI will no longer
               remember this fact.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("common:cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
@@ -1397,7 +1397,7 @@ export function MemoryPanel({ onClose, conversationId, onNewChatFromProject }: M
       <AlertDialog open={clearDialogOpen} onOpenChange={setClearDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Clear old memories?</AlertDialogTitle>
+            <AlertDialogTitle>{t("memory.clearOldTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
               This will delete memories older than the selected period. Rules are never deleted.
             </AlertDialogDescription>
@@ -1415,7 +1415,7 @@ export function MemoryPanel({ onClose, conversationId, onNewChatFromProject }: M
             </Select>
           </div>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("common:cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleClearOld}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
@@ -1438,7 +1438,7 @@ export function MemoryPanel({ onClose, conversationId, onNewChatFromProject }: M
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("common:cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDeleteSummary}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
