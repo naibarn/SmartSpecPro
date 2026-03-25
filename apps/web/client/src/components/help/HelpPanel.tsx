@@ -15,6 +15,7 @@ import { Separator } from "@/components/ui/separator";
 import { useI18n, AVAILABLE_LOCALES, LOCALE_LABELS } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
 import { trpc } from "@/lib/trpc";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { HelpTopicRenderer } from "./HelpTopicRenderer";
@@ -34,6 +35,7 @@ interface HelpPanelProps {
 
 export function HelpPanel({ initialPage, initialTopic }: HelpPanelProps) {
   const { locale, setLocale } = useI18n();
+  const { t } = useTranslation('help');
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
   const [activeTopic, setActiveTopic] = useState<string | null>(
@@ -98,7 +100,7 @@ export function HelpPanel({ initialPage, initialTopic }: HelpPanelProps) {
       <div className="relative">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
-          placeholder={locale === "th" ? "ค้นหาเอกสาร..." : "Search help..."}
+          placeholder={t('center.searchPlaceholder')}
           value={query}
           onChange={(e) => search(e.target.value)}
           className="h-8 pl-9 text-sm"
@@ -112,7 +114,7 @@ export function HelpPanel({ initialPage, initialTopic }: HelpPanelProps) {
     <div className="px-4 py-3">
       {results.length === 0 ? (
         <p className="py-4 text-center text-sm text-muted-foreground">
-          {locale === "th" ? "ไม่พบผลลัพธ์" : "No results found"}
+          {t('center.noResults')}
         </p>
       ) : (
         <div className="space-y-1">
@@ -173,7 +175,7 @@ export function HelpPanel({ initialPage, initialTopic }: HelpPanelProps) {
                 className="inline-flex items-center gap-1 text-sm text-sky-600 hover:underline"
               >
                 <ExternalLink className="h-3 w-3" />
-                {locale === "th" ? "เปิดในหน้าเต็ม" : "Open full page"}
+                {t('center.openFullPage')}
               </a>
               {isAdmin && (
                 <Button
@@ -183,7 +185,7 @@ export function HelpPanel({ initialPage, initialTopic }: HelpPanelProps) {
                   onClick={() => setShowCapture(!showCapture)}
                 >
                   <Camera className="h-3 w-3" />
-                  {locale === "th" ? "จับภาพ" : "Screenshot"}
+                  {t('center.screenshot')}
                 </Button>
               )}
             </div>
@@ -192,9 +194,7 @@ export function HelpPanel({ initialPage, initialTopic }: HelpPanelProps) {
             {isAdmin && showCapture && (
               <div className="mt-4 rounded-lg border bg-muted/30 p-4">
                 <p className="mb-3 text-xs font-medium">
-                  {locale === "th"
-                    ? "จับภาพหน้าจอ UI สำหรับ help นี้"
-                    : "Capture UI screenshot for this help topic"}
+                  {t('center.captureForm.title')}
                 </p>
                 <div className="space-y-2">
                   <Input
@@ -231,19 +231,11 @@ export function HelpPanel({ initialPage, initialTopic }: HelpPanelProps) {
                         await navigator.clipboard.writeText(
                           result.markdown,
                         );
-                        toast.success(
-                          locale === "th"
-                            ? "จับภาพสำเร็จ — markdown คัดลอกแล้ว"
-                            : "Screenshot captured — markdown copied",
-                        );
+                        toast.success(t('center.captureForm.successMsg'));
                         setCaptureUrl("");
                         setCaptureStep("");
                       } catch {
-                        toast.error(
-                          locale === "th"
-                            ? "จับภาพล้มเหลว"
-                            : "Screenshot capture failed",
-                        );
+                        toast.error(t('center.captureForm.errorMsg'));
                       } finally {
                         setIsCapturing(false);
                       }
@@ -254,13 +246,7 @@ export function HelpPanel({ initialPage, initialTopic }: HelpPanelProps) {
                     ) : (
                       <Camera className="h-3 w-3" />
                     )}
-                    {isCapturing
-                      ? locale === "th"
-                        ? "กำลังจับภาพ..."
-                        : "Capturing..."
-                      : locale === "th"
-                        ? "จับภาพและคัดลอก Markdown"
-                        : "Capture & Copy Markdown"}
+                    {isCapturing ? t('center.captureForm.capturing') : t('center.captureForm.capture')}
                   </Button>
                 </div>
               </div>
@@ -279,7 +265,7 @@ export function HelpPanel({ initialPage, initialTopic }: HelpPanelProps) {
       {/* Header */}
       <div className="flex shrink-0 items-center justify-between border-b px-4 py-2">
         <h2 className="text-sm font-semibold">
-          {locale === "th" ? "ศูนย์ช่วยเหลือ" : "Help Center"}
+          {t('center.title')}
         </h2>
         {langToggle}
       </div>
@@ -294,7 +280,7 @@ export function HelpPanel({ initialPage, initialTopic }: HelpPanelProps) {
           {contextualTopics && contextualTopics.length > 0 && (
             <div className="px-4 py-3">
               <p className="mb-2 text-xs font-medium uppercase text-muted-foreground">
-                {locale === "th" ? "เกี่ยวกับหน้านี้" : "For this page"}
+                {t('center.forThisPage')}
               </p>
               <div className="space-y-1">
                 {contextualTopics.map((topic) => {

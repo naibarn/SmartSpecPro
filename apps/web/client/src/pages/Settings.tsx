@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { HelpButton } from "@/components/help";
 import { useI18n } from '@/lib/i18n';
 import i18next from 'i18next';
+import { STORAGE_KEY as LOCALE_STORAGE_KEY } from '@/i18n/languageDetector';
 import { SUPPORTED_LANGUAGES, LANGUAGE_LABELS, LANGUAGE_LABELS_EN, LANGUAGE_COVERAGE, type SupportedLanguage } from '@shared/i18n';
 import {
   Dialog,
@@ -377,7 +378,7 @@ export function DisplayLanguageDropdown({ defaultValue, onLanguageChange }: Disp
     if (!(SUPPORTED_LANGUAGES as readonly string[]).includes(newLng)) return;
     if (isPending) return;
     void i18next.changeLanguage(newLng);
-    try { localStorage.setItem('smartspec_locale', newLng); } catch { /* quota/private mode */ }
+    try { localStorage.setItem(LOCALE_STORAGE_KEY, newLng); } catch { /* quota/private mode */ }
     setDisplayLanguage(newLng);
     onLanguageChange?.(newLng);
     updatePrefs({ translationLanguage: newLng as SupportedLanguage, displayLocale: newLng as SupportedLanguage });

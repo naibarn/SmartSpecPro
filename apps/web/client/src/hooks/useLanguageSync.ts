@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { trpc } from "@/lib/trpc";
 import { i18n } from "@/i18n";
+import { STORAGE_KEY } from "@/i18n/languageDetector";
 import { SUPPORTED_LANGUAGES } from "@shared/i18n";
 
 /**
@@ -44,7 +45,7 @@ export function useLanguageSync(): void {
 
     void i18n.changeLanguage(dbLang);
     try {
-      localStorage.setItem("smartspec_locale", dbLang);
+      localStorage.setItem(STORAGE_KEY, dbLang);
     } catch {
       // Private/full storage — language still applied to i18next
     }

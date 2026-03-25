@@ -17,6 +17,7 @@
 
 import { useState, useEffect } from "react";
 import i18next from "i18next";
+import { STORAGE_KEY as LOCALE_STORAGE_KEY } from "@/i18n/languageDetector";
 import {
   Dialog,
   DialogContent,
@@ -37,7 +38,7 @@ import {
 } from "@shared/i18n";
 
 const LOCALE_CHOSEN_KEY = "smartspec_locale_chosen";
-const LOCALE_KEY = "smartspec_locale";
+const LOCALE_KEY = LOCALE_STORAGE_KEY; // canonical key from languageDetector.ts
 const MIN_COVERAGE = 50;
 
 // Module-level singleton to avoid recreating on every render

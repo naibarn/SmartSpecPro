@@ -912,7 +912,9 @@ export const presentationRouter = router({
         stylePresetId: z.enum(AI_STYLE_PRESET_IDS).optional(),
         imageModel: z.string().optional(),
         imageSkillId: z.string().optional(),
-        language: z.enum(["auto", "en", "th"]).optional(),
+        // "auto" = detect from content; "en"/"th" = force slide text language.
+        // This is a presentation-content language, NOT an i18n UI locale (see SUPPORTED_LANGUAGES).
+        language: z.enum(["auto", "en", "th"] as const).optional(),
         canvasWidth: z.number().int().min(64).max(10000).optional(),
         canvasHeight: z.number().int().min(64).max(10000).optional(),
       }))
