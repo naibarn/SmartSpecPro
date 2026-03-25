@@ -22,11 +22,15 @@ import { registerFeedbackUploadRoutes } from "../routers/feedback";
 import { registerAgencyStreamRoutes } from "./agencyStreamProxy";
 import { registerLiveBrowserStreamRoutes } from "./liveBrowserStreamProxy";
 import { registerContentAutomationRoutes } from "../routers/contentAutomationRoutes";
+import { registerContentManifestImportRoutes } from "../routers/contentManifestImport";
 import { registerAutoDraftToolRoute } from "../routers/autoDraftTool";
 import { registerModelSuggestToolRoute } from "../routers/modelSuggestTool";
 import { registerFileParseToolRoute } from "../routers/fileParseTool";
 import { registerScheduleDraftToolRoute } from "../routers/scheduleDraftTool";
 import { registerSkillDiscoveryToolRoute } from "../routers/skillDiscoveryTool";
+import { registerInternalSocialToolRoute } from "../routes/internalSocialTool";
+import { registerInternalSocialActionsRoute } from "../routes/internalSocialActions";
+import { registerInternalMetricsRoute } from "../routes/internalMetrics";
 
 import { createWebhookRouter } from "../routes/webhooks";
 import { createWebhookTriggerRouter } from "../routes/webhookTrigger";
@@ -70,6 +74,7 @@ import { initDeliveryQueue, closeDeliveryQueue } from "../services/deliveryQueue
 import { initWebhookDispatchQueue, closeWebhookDispatchQueue } from "../services/webhookDispatchQueue";
 import { initializeTrashPurgeJob, shutdownTrashPurgeWorker } from "../jobs/purgeOldTrashItems";
 import { initializeGDriveCleanupJob, shutdownGDriveCleanupWorker } from "../jobs/gdriveSessionCleanup";
+import { initializeUploadPostCleanupJob, shutdownUploadPostCleanupWorker } from "../jobs/uploadPostCleanup";
 import { initializePendingApprovalAlertJob } from "../jobs/pendingApprovalAlert";
 import { initializeNotificationJobs } from "../jobs/notificationJobs";
 import { initializeMemoryMaintenanceJobs, shutdownMemoryMaintenanceJobs } from "../jobs/memoryMaintenanceJobs";
@@ -103,6 +108,7 @@ import { createPublicEventsRouter } from "../routes/publicEventsApi";
 import { initWebhookApiDeliveryQueue, closeWebhookApiDeliveryQueue } from "../services/webhookDeliveryService";
 import { closeEmbeddingQueue } from "../services/embeddingQueue";
 import { registerPublicDocsRoutes } from "../routes/publicDocsApi";
+import { registerPublicSitemapRoutes } from "../routers/publicSitemap";
 import { createAgencyToolsApiRouter } from "../routes/agencyToolsApi";
 import { apiKeyAuthMiddleware } from "../middleware/apiKeyAuth";
 import { assertHmacSecretConfigured } from "../services/apiKeyService";
@@ -473,6 +479,7 @@ app.use("/v1/events", createPublicEventsRouter());
 app.use("/v1/agency-tools", createAgencyToolsApiRouter());
 
 // Public API documentation (unauthenticated)
+registerPublicSitemapRoutes(app);
 registerPublicDocsRoutes(app);
 
 // REST/SSE endpoints
@@ -484,11 +491,15 @@ registerFeedbackUploadRoutes(app);
 registerAgencyStreamRoutes(app);
 registerLiveBrowserStreamRoutes(app);
 registerContentAutomationRoutes(app);
+registerContentManifestImportRoutes(app);
 registerAutoDraftToolRoute(app);
 registerModelSuggestToolRoute(app);
 registerFileParseToolRoute(app);
 registerScheduleDraftToolRoute(app);
 registerSkillDiscoveryToolRoute(app);
+registerInternalSocialToolRoute(app);
+registerInternalSocialActionsRoute(app);
+registerInternalMetricsRoute(app);
 app.use("/api/virtual-admin/events", createGuardianSSERouter());
 app.use(agencyStreamRouter);
 app.use(orchestratorStreamRouter);
@@ -1478,6 +1489,13 @@ async function main() {
     console.error("[Startup] Failed to initialize GDrive cleanup job:", error);
   }
 
+  // Initialize Upload-Post retention cleanup (every 6h)
+  try {
+    await initializeUploadPostCleanupJob();
+  } catch (error) {
+    console.error("[Startup] Failed to initialize Upload-Post cleanup job:", error);
+  }
+
   // Initialize content staleness checker (every 6h) — Spec 038
   try {
     await initializeContentRefreshJob();
@@ -1576,6 +1594,7 @@ process.on("SIGTERM", async () => {
 
   // 3. Shut down background workers
   await shutdownGDriveCleanupWorker().catch(() => {});
+  await shutdownUploadPostCleanupWorker().catch(() => {});
   await shutdownTrashPurgeWorker().catch(() => {});
   await shutdownTelegramWorker().catch(() => {});
   await closeDeliveryQueue().catch(() => {});
@@ -1632,6 +1651,7 @@ process.on("SIGINT", async () => {
 
   await auditLogger.shutdown().catch(() => {});
   await shutdownGDriveCleanupWorker().catch(() => {});
+  await shutdownUploadPostCleanupWorker().catch(() => {});
   await shutdownTrashPurgeWorker().catch(() => {});
   await shutdownTelegramWorker().catch(() => {});
   await closeDeliveryQueue().catch(() => {});

@@ -103,4 +103,65 @@ export const monitoringRouter = router({
   notificationHealth: adminProcedure.query(async () => {
     return checkNotificationHealth();
   }),
+
+  // ─── System Monitoring (Celery Push) ────────────────────────────────────
+
+  /**
+   * List health checks pushed by Celery tasks, with pagination and filters.
+   */
+  getChecks: adminProcedure
+    .input(
+      z.object({
+        page: z.number().int().min(1).default(1),
+        limit: z.number().int().min(1).max(200).default(50),
+        status: z.string().optional(),
+        checkType: z.string().optional(),
+        since: z.string().datetime().optional(),
+      }),
+    )
+    .query(async ({ input }) => {
+      return monitoringService.getChecks(input);
+    }),
+
+  /**
+   * List monitoring alerts with pagination and optional severity / ack filters.
+   */
+  getAlerts: adminProcedure
+    .input(
+      z.object({
+        page: z.number().int().min(1).default(1),
+        limit: z.number().int().min(1).max(200).default(50),
+        severity: z.enum(["info", "warning", "error", "critical"]).optional(),
+        acknowledged: z.boolean().optional(),
+      }),
+    )
+    .query(async ({ input }) => {
+      return monitoringService.getAlerts(input);
+    }),
+
+  /**
+   * Acknowledge a monitoring alert by ID.
+   */
+  acknowledgeAlert: adminProcedure
+    .input(z.object({ alertId: z.number().int().positive() }))
+    .mutation(async ({ input }) => {
+      await monitoringService.acknowledgeAlert(input.alertId);
+      return { success: true };
+    }),
+
+  /**
+   * Return system_metrics_history rows from the last N hours for chart display.
+   */
+  getMetricsHistory: adminProcedure
+    .input(z.object({ hours: z.number().int().min(1).max(720).default(24) }))
+    .query(async ({ input }) => {
+      return monitoringService.getMetricsHistory(input.hours);
+    }),
+
+  /**
+   * Aggregate current status: services, unacknowledged alert counts, last check time.
+   */
+  getCurrentStatus: adminProcedure.query(async () => {
+    return monitoringService.getCurrentStatus();
+  }),
 });

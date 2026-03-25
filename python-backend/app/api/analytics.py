@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 from typing import Optional, List
 
 from app.core.auth import get_current_user
+from app.models.user import User
 from app.core.database import get_db
 from app.services.analytics_service import AnalyticsService
 from app.services.notification_service import NotificationService
@@ -35,7 +36,7 @@ class CreateNotificationRequest(BaseModel):
 @router.get("/analytics/summary")
 async def get_usage_summary(
     days: int = 30,
-    current_user: dict = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db = Depends(get_db)
 ):
     """
@@ -50,7 +51,7 @@ async def get_usage_summary(
     service = AnalyticsService(db)
     
     summary = await service.get_usage_summary(
-        user_id=current_user["id"],
+        user_id=current_user.id,
         days=days
     )
     
@@ -61,7 +62,7 @@ async def get_usage_summary(
 async def get_time_series(
     days: int = 30,
     granularity: str = "day",
-    current_user: dict = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db = Depends(get_db)
 ):
     """
@@ -80,7 +81,7 @@ async def get_time_series(
     service = AnalyticsService(db)
     
     data = await service.get_time_series(
-        user_id=current_user["id"],
+        user_id=current_user.id,
         days=days,
         granularity=granularity
     )
@@ -96,7 +97,7 @@ async def get_time_series(
 @router.get("/analytics/providers")
 async def get_provider_comparison(
     days: int = 30,
-    current_user: dict = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db = Depends(get_db)
 ):
     """
@@ -108,7 +109,7 @@ async def get_provider_comparison(
     service = AnalyticsService(db)
     
     comparison = await service.get_provider_comparison(
-        user_id=current_user["id"],
+        user_id=current_user.id,
         days=days
     )
     
@@ -123,7 +124,7 @@ async def get_provider_comparison(
 async def get_top_models(
     days: int = 30,
     limit: int = 10,
-    current_user: dict = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db = Depends(get_db)
 ):
     """
@@ -134,7 +135,7 @@ async def get_top_models(
     service = AnalyticsService(db)
     
     top_models = await service.get_top_models(
-        user_id=current_user["id"],
+        user_id=current_user.id,
         days=days,
         limit=limit
     )
@@ -150,7 +151,7 @@ async def get_top_models(
 @router.get("/analytics/export/csv")
 async def export_usage_csv(
     days: int = 30,
-    current_user: dict = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db = Depends(get_db)
 ):
     """
@@ -161,7 +162,7 @@ async def export_usage_csv(
     service = AnalyticsService(db)
     
     csv_data = await service.export_usage_csv(
-        user_id=current_user["id"],
+        user_id=current_user.id,
         days=days
     )
     
@@ -181,7 +182,7 @@ async def export_usage_csv(
 @router.post("/notifications", status_code=status.HTTP_201_CREATED)
 async def create_notification(
     request: CreateNotificationRequest,
-    current_user: dict = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db = Depends(get_db)
 ):
     """
@@ -194,7 +195,7 @@ async def create_notification(
     service = NotificationService(db)
     
     notification = await service.create_notification(
-        user_id=current_user["id"],
+        user_id=current_user.id,
         type=request.type,
         title=request.title,
         message=request.message,
@@ -211,7 +212,7 @@ async def get_notifications(
     type: Optional[str] = None,
     limit: int = 50,
     offset: int = 0,
-    current_user: dict = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db = Depends(get_db)
 ):
     """
@@ -222,7 +223,7 @@ async def get_notifications(
     service = NotificationService(db)
     
     notifications = await service.get_notifications(
-        user_id=current_user["id"],
+        user_id=current_user.id,
         is_read=is_read,
         type=type,
         limit=limit,
@@ -239,13 +240,13 @@ async def get_notifications(
 
 @router.get("/notifications/unread-count")
 async def get_unread_count(
-    current_user: dict = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db = Depends(get_db)
 ):
     """Get count of unread notifications"""
     service = NotificationService(db)
     
-    count = await service.get_unread_count(current_user["id"])
+    count = await service.get_unread_count(current_user.id)
     
     return {"unread_count": count}
 
@@ -253,13 +254,13 @@ async def get_unread_count(
 @router.put("/notifications/{notification_id}/read")
 async def mark_as_read(
     notification_id: str,
-    current_user: dict = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db = Depends(get_db)
 ):
     """Mark notification as read"""
     service = NotificationService(db)
     
-    marked = await service.mark_as_read(notification_id, current_user["id"])
+    marked = await service.mark_as_read(notification_id, current_user.id)
     
     if not marked:
         raise HTTPException(
@@ -272,13 +273,13 @@ async def mark_as_read(
 
 @router.put("/notifications/read-all")
 async def mark_all_as_read(
-    current_user: dict = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db = Depends(get_db)
 ):
     """Mark all notifications as read"""
     service = NotificationService(db)
     
-    count = await service.mark_all_as_read(current_user["id"])
+    count = await service.mark_all_as_read(current_user.id)
     
     return {
         "message": f"Marked {count} notifications as read",
@@ -289,13 +290,13 @@ async def mark_all_as_read(
 @router.delete("/notifications/{notification_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_notification(
     notification_id: str,
-    current_user: dict = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db = Depends(get_db)
 ):
     """Delete a notification"""
     service = NotificationService(db)
     
-    deleted = await service.delete_notification(notification_id, current_user["id"])
+    deleted = await service.delete_notification(notification_id, current_user.id)
     
     if not deleted:
         raise HTTPException(

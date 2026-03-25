@@ -1,4 +1,4 @@
-import { integer, pgEnum, pgTable, text, timestamp, varchar, json, jsonb, boolean, numeric, serial, uniqueIndex, index, foreignKey, bigint, bigserial, check, doublePrecision, type AnyPgColumn, customType } from "drizzle-orm/pg-core";
+import { integer, pgEnum, pgTable, text, timestamp, varchar, json, jsonb, boolean, numeric, serial, uniqueIndex, index, foreignKey, bigint, bigserial, check, doublePrecision, real, type AnyPgColumn, customType } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
 /**
@@ -4715,7 +4715,7 @@ export type InsertTenantSandboxPolicy = typeof tenantSandboxPolicies.$inferInser
 export const agencies = pgTable("agencies", {
   id: varchar("id", { length: 36 }).primaryKey(),
   tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
-  sourceTemplateId: varchar("sourceTemplateId", { length: 36 }).references(() => agencyTemplates.id, { onDelete: "set null" }),
+  sourceTemplateId: varchar("sourceTemplateId", { length: 36 }).references((): AnyPgColumn => agencyTemplates.id, { onDelete: "set null" }),
   slug: varchar("slug", { length: 100 }).notNull(),
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),
@@ -4736,6 +4736,8 @@ export const agencies = pgTable("agencies", {
   visibility: varchar("visibility", { length: 20 }).default("private").notNull(),
   /** Pre-generated SVG topology diagram for marketplace preview */
   previewSvg: text("previewSvg"),
+  /** Generated phrases used by chat trigger detection */
+  triggerPhrases: jsonb("triggerPhrases").$type<string[]>(),
   /** When the creator requested public publishing */
   requestedPublishAt: timestamp("requestedPublishAt", { withTimezone: true }),
   /** Admin who approved/rejected the publish request */
@@ -5001,11 +5003,11 @@ export const agencyTemplates = pgTable("agency_templates", {
   category: varchar("category", { length: 64 }).notNull(), // e.g. "Marketing", "Development"
   isActive: boolean("isActive").default(true).notNull(),
   /** Tenant that owns this template (F04 security requirement) */
-  tenantId: varchar("tenantId", { length: 36 }).references(() => tenants.id, { onDelete: "cascade" }),
+  tenantId: varchar("tenantId", { length: 36 }).references((): AnyPgColumn => tenants.id, { onDelete: "cascade" }),
   /** User who created this template */
   createdBy: integer("createdBy").references(() => users.id, { onDelete: "set null" }),
   /** Original agency this template was derived from */
-  sourceAgencyId: varchar("sourceAgencyId", { length: 36 }).references(() => agencies.id, { onDelete: "set null" }),
+  sourceAgencyId: varchar("sourceAgencyId", { length: 36 }).references((): AnyPgColumn => agencies.id, { onDelete: "set null" }),
   /** Template status: draft (needs approval for public), approved, rejected */
   status: varchar("status", { length: 20 }).default("draft").notNull(),
   /** Portable agent definitions (array indices instead of UUIDs) */
@@ -5166,6 +5168,7 @@ export type InsertAgencyCommunicationFlow = typeof agencyCommunicationFlows.$inf
 export const agencyConversations = pgTable("agency_conversations", {
   id: varchar("id", { length: 36 }).primaryKey(),
   agencyId: varchar("agencyId", { length: 36 }).notNull().references(() => agencies.id, { onDelete: "cascade" }),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
   userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
   title: varchar("title", { length: 255 }).default("New Agency Chat").notNull(),
   totalCreditsUsed: numeric("totalCreditsUsed", { precision: 12, scale: 4 }).default("0"),
@@ -7501,6 +7504,93 @@ export type InsertMcpServerAssignment = typeof mcpServerAssignments.$inferInsert
 
 // ==================== Social Channels ====================
 
+export const uploadPostConnections = pgTable("upload_post_connections", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  apiKeyEncrypted: text("apiKeyEncrypted").notNull(),
+  apiKeyFingerprint: varchar("apiKeyFingerprint", { length: 128 }).notNull(),
+  apiKeyHint: varchar("apiKeyHint", { length: 12 }),
+  status: varchar("status", { length: 20 }).notNull().default("pending"),
+  healthStatus: varchar("healthStatus", { length: 20 }).notNull().default("unknown"),
+  disclosureAcceptedAt: timestamp("disclosureAcceptedAt", { withTimezone: true }),
+  disclosurePolicyVersion: varchar("disclosurePolicyVersion", { length: 32 }),
+  consentAcknowledgedByUserId: integer("consentAcknowledgedByUserId").references(() => users.id, { onDelete: "set null" }),
+  handshakeNonce: varchar("handshakeNonce", { length: 255 }),
+  handshakeNonceExpiresAt: timestamp("handshakeNonceExpiresAt", { withTimezone: true }),
+  lastVerifiedAt: timestamp("lastVerifiedAt", { withTimezone: true }),
+  lastHealthCheckAt: timestamp("lastHealthCheckAt", { withTimezone: true }),
+  quotaRemaining: integer("quotaRemaining"),
+  quotaLimit: integer("quotaLimit"),
+  quotaResetAt: timestamp("quotaResetAt", { withTimezone: true }),
+  queueSettings: jsonb("queueSettings").$type<Record<string, unknown>>(),
+  metadata: jsonb("metadata").$type<Record<string, unknown>>(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("idx_upload_post_connections_tenant").on(t.tenantId),
+  index("idx_upload_post_connections_user").on(t.userId),
+  index("idx_upload_post_connections_status").on(t.status),
+  uniqueIndex("idx_upload_post_connections_fingerprint").on(t.tenantId, t.apiKeyFingerprint),
+]);
+
+export type UploadPostConnection = typeof uploadPostConnections.$inferSelect;
+export type InsertUploadPostConnection = typeof uploadPostConnections.$inferInsert;
+
+export const uploadPostProfiles = pgTable("upload_post_profiles", {
+  id: serial("id").primaryKey(),
+  connectionId: integer("connectionId").notNull().references(() => uploadPostConnections.id, { onDelete: "cascade" }),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  platform: varchar("platform", { length: 50 }).notNull(),
+  platformPageId: varchar("platformPageId", { length: 255 }).notNull(),
+  displayName: varchar("displayName", { length: 500 }),
+  status: varchar("status", { length: 20 }).notNull().default("active"),
+  metadata: jsonb("metadata").$type<Record<string, unknown>>(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("idx_upload_post_profiles_tenant").on(t.tenantId),
+  index("idx_upload_post_profiles_connection").on(t.connectionId),
+  index("idx_upload_post_profiles_user").on(t.userId),
+  uniqueIndex("idx_upload_post_profiles_unique").on(t.connectionId, t.platform, t.platformPageId),
+]);
+
+export type UploadPostProfile = typeof uploadPostProfiles.$inferSelect;
+export type InsertUploadPostProfile = typeof uploadPostProfiles.$inferInsert;
+
+export const uploadPostJobs = pgTable("upload_post_jobs", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  connectionId: integer("connectionId").notNull().references(() => uploadPostConnections.id, { onDelete: "cascade" }),
+  profileId: integer("profileId").references(() => uploadPostProfiles.id, { onDelete: "set null" }),
+  platform: varchar("platform", { length: 50 }).notNull(),
+  queueKey: varchar("queueKey", { length: 255 }).notNull(),
+  status: varchar("status", { length: 20 }).notNull().default("queued"),
+  contentText: text("contentText"),
+  contentLink: text("contentLink"),
+  mediaRefs: jsonb("mediaRefs").$type<string[]>(),
+  scheduledAt: timestamp("scheduledAt", { withTimezone: true }),
+  publishedAt: timestamp("publishedAt", { withTimezone: true }),
+  providerJobId: varchar("providerJobId", { length: 255 }),
+  platformResults: jsonb("platformResults").$type<Record<string, unknown>>(),
+  metadata: jsonb("metadata").$type<Record<string, unknown>>(),
+  metadataClearedAt: timestamp("metadataClearedAt", { withTimezone: true }),
+  errorMessage: text("errorMessage"),
+  lastSyncedAt: timestamp("lastSyncedAt", { withTimezone: true }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("idx_upload_post_jobs_tenant_status").on(t.tenantId, t.status),
+  index("idx_upload_post_jobs_connection_status").on(t.connectionId, t.status),
+  index("idx_upload_post_jobs_tenant_scheduled").on(t.tenantId, t.scheduledAt),
+  uniqueIndex("idx_upload_post_jobs_queue_key").on(t.tenantId, t.queueKey),
+]);
+
+export type UploadPostJob = typeof uploadPostJobs.$inferSelect;
+export type InsertUploadPostJob = typeof uploadPostJobs.$inferInsert;
+
 export const socialProviderConnections = pgTable("social_provider_connections", {
   id: serial("id").primaryKey(),
   tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
@@ -7741,3 +7831,63 @@ export const socialWebhookEventsRaw = pgTable("social_webhook_events_raw", {
 
 export type SocialWebhookEventRaw = typeof socialWebhookEventsRaw.$inferSelect;
 export type InsertSocialWebhookEventRaw = typeof socialWebhookEventsRaw.$inferInsert;
+
+// ---------------------------------------------------------------------------
+// Monitoring System Tables
+// ---------------------------------------------------------------------------
+
+export const monitoringChecks = pgTable("monitoring_checks", {
+  id: serial("id").primaryKey(),
+  checkType: text("checkType").notNull(),     // "health_check" | "crash_monitor" | "celery_health_monitor" | "memory_check"
+  status: text("status").notNull(),            // "ok" | "warning" | "critical" | "error"
+  details: json("details").$type<Record<string, unknown>>(),
+  alertSent: boolean("alertSent").notNull().default(false),
+  alertChannel: text("alertChannel"),          // "slack" | "discord" | "webhook" | "log" | null
+  source: text("source").notNull(),            // "cron_script" | "celery_task" | "guardian"
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("idx_monitoring_checks_check_type").on(t.checkType),
+  index("idx_monitoring_checks_status").on(t.status),
+  index("idx_monitoring_checks_created_at").on(t.createdAt),
+]);
+
+export type MonitoringCheck = typeof monitoringChecks.$inferSelect;
+export type InsertMonitoringCheck = typeof monitoringChecks.$inferInsert;
+
+export const monitoringAlerts = pgTable("monitoring_alerts", {
+  id: serial("id").primaryKey(),
+  severity: text("severity").notNull(),        // "info" | "warning" | "error" | "critical"
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  channel: text("channel").notNull(),          // "slack" | "discord" | "webhook" | "log"
+  acknowledged: boolean("acknowledged").notNull().default(false),
+  acknowledgedBy: integer("acknowledgedBy"),   // plain int, no FK
+  acknowledgedAt: timestamp("acknowledgedAt", { withTimezone: true }),
+  metadata: json("metadata").$type<Record<string, unknown>>(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("idx_monitoring_alerts_severity").on(t.severity),
+  index("idx_monitoring_alerts_acknowledged").on(t.acknowledged),
+  index("idx_monitoring_alerts_created_at").on(t.createdAt),
+]);
+
+export type MonitoringAlert = typeof monitoringAlerts.$inferSelect;
+export type InsertMonitoringAlert = typeof monitoringAlerts.$inferInsert;
+
+export const systemMetricsHistory = pgTable("system_metrics_history", {
+  id: serial("id").primaryKey(),
+  memoryUsedMb: integer("memoryUsedMb").notNull(),
+  memoryTotalMb: integer("memoryTotalMb").notNull(),
+  memoryPercent: real("memoryPercent").notNull(),
+  cpuPercent: real("cpuPercent"),
+  diskUsedGb: real("diskUsedGb"),
+  diskTotalGb: real("diskTotalGb"),
+  serviceStatuses: json("serviceStatuses").$type<Record<string, string>>(),
+  processRestartCounts: json("processRestartCounts").$type<Record<string, number>>(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("idx_system_metrics_history_created_at").on(t.createdAt),
+]);
+
+export type SystemMetricsHistory = typeof systemMetricsHistory.$inferSelect;
+export type InsertSystemMetricsHistory = typeof systemMetricsHistory.$inferInsert;

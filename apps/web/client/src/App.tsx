@@ -106,10 +106,12 @@ const Changelog = lazy(() => import("./pages/Changelog"));
 const Careers = lazy(() => import("./pages/Careers"));
 const Community = lazy(() => import("./pages/Community"));
 const Support = lazy(() => import("./pages/Support"));
+const Resources = lazy(() => import("./pages/Resources"));
 const Status = lazy(() => import("./pages/Status"));
 const Security = lazy(() => import("./pages/Security"));
 const BlogPost = lazy(() => import("./pages/BlogPost"));
 const DomainBlogAdmin = lazy(() => import("./pages/DomainBlogAdmin"));
+const DomainDocsAdmin = lazy(() => import("./pages/DomainDocsAdmin"));
 const UsageAnalytics = lazy(() => import("./pages/UsageAnalytics"));
 const TaskQueueMonitor = lazy(() => import("./pages/TaskQueueMonitor"));
 const Teams = lazy(() => import("./pages/Teams"));
@@ -127,6 +129,7 @@ const WorkflowGallery = lazy(() => import("./pages/WorkflowGallery"));
 const WebhookTriggers = lazy(() => import("./pages/WebhookTriggers"));
 const AdminChannelRouter = lazy(() => import("./pages/AdminChannelRouter"));
 const AdminSystemGuardian = lazy(() => import("./pages/AdminSystemGuardian"));
+const AdminMonitoring = lazy(() => import("./pages/AdminMonitoring"));
 const AdminFeedbackHub = lazy(() => import("./pages/AdminFeedbackHub"));
 const MyFeedback = lazy(() => import("./pages/MyFeedback"));
 const ContentQualityDashboard = lazy(() => import("./pages/ContentQualityDashboard"));
@@ -214,6 +217,7 @@ function Router() {
         <Route path="/careers" component={Careers} />
         <Route path="/community" component={Community} />
         <Route path="/support" component={Support} />
+        <Route path="/resources" component={Resources} />
         <Route path="/status" component={Status} />
         <Route path="/security" component={Security} />
         <Route path="/blog" component={Blog} />
@@ -317,6 +321,9 @@ function Router() {
         <Route path="/admin/system-guardian">
           <RequireAdmin><AdminSystemGuardian /></RequireAdmin>
         </Route>
+        <Route path="/admin/monitoring">
+          <RequireAdmin><AdminMonitoring /></RequireAdmin>
+        </Route>
         <Route path="/admin/feedback-hub">
           <RequireAdmin><AdminFeedbackHub /></RequireAdmin>
         </Route>
@@ -340,6 +347,9 @@ function Router() {
         </Route>
         <Route path="/domain-admin/blog">
           <RequireDomainAdmin><DomainBlogAdmin /></RequireDomainAdmin>
+        </Route>
+        <Route path="/domain-admin/docs">
+          <RequireDomainAdmin><DomainDocsAdmin /></RequireDomainAdmin>
         </Route>
         <Route path="/login" component={Login} />
         <Route path="/signup" component={Signup} />

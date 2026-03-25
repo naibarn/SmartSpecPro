@@ -1,103 +1,140 @@
 #!/bin/bash
 
-set -euo pipefail
+# SmartSpecPro System Crash Monitor
+# Detects service restart loops and RAM pressure before they become fatal.
+# Runs every minute via cron:
+#   * * * * * /home/dev/projects/SmartSpecPro/scripts/system-crash-monitor.sh >> /home/dev/projects/SmartSpecPro/logs/system-watch/cron.log 2>&1
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LOG_DIR="${PROJECT_ROOT}/logs/system-watch"
-HEARTBEAT_FILE="${LOG_DIR}/heartbeat.txt"
-DAILY_LOG="${LOG_DIR}/system-watch-$(date +%F).log"
-TEMP_LOG="${DAILY_LOG}.tmp"
+DAILY_LOG="${LOG_DIR}/system-watch-$(date +%Y-%m-%d).log"
 ALERT_LOG="${LOG_DIR}/alerts.log"
-RSS_ALERT_MB="${SYSTEM_WATCH_RSS_ALERT_MB:-3072}"
-MEMORY_ALERT_PCT="${SYSTEM_WATCH_MEMORY_ALERT_PCT:-85}"
-LOAD_ALERT_PER_CPU="${SYSTEM_WATCH_LOAD_ALERT_PER_CPU:-1.5}"
+RESTART_THRESHOLD="${CRASH_MONITOR_RESTART_THRESHOLD:-2}"
+RAM_WARN_PCT="${CRASH_MONITOR_RAM_WARN_PCT:-70}"
+RAM_CRIT_PCT="${CRASH_MONITOR_RAM_CRIT_PCT:-85}"
+WEBHOOK_URL="${ALERT_WEBHOOK_URL:-${SLACK_WEBHOOK_URL:-${DISCORD_WEBHOOK_URL:-}}}"
 
 mkdir -p "${LOG_DIR}"
 
-timestamp="$(date '+%F %T %z')"
-host="$(hostname)"
-uptime_line="$(uptime 2>/dev/null || true)"
-last_boot="$(who -b 2>/dev/null || true)"
-disk_root="$(df -h / 2>/dev/null | tail -n 1 || true)"
-memory_line="$(free -h 2>/dev/null | awk '/Mem:/ {printf "used=%s free=%s available=%s", $3, $4, $7}' || true)"
-swap_line="$(free -h 2>/dev/null | awk '/Swap:/ {printf "%s", $3}' || true)"
-loadavg_line="$(cat /proc/loadavg 2>/dev/null || true)"
-psi_memory="$(tr '\n' ' ' < /proc/pressure/memory 2>/dev/null || true)"
-psi_cpu="$(tr '\n' ' ' < /proc/pressure/cpu 2>/dev/null || true)"
-psi_io="$(tr '\n' ' ' < /proc/pressure/io 2>/dev/null || true)"
-cpu_count="$(nproc 2>/dev/null || echo 1)"
-load_1m="$(awk '{print $1}' /proc/loadavg 2>/dev/null || echo 0)"
-mem_pct="$(free 2>/dev/null | awk '/Mem:/ {printf "%.0f", ($3/$2)*100}' || echo 0)"
+timestamp="$(date '+%Y-%m-%d %T %z')"
 
-alerts=()
-while IFS='|' read -r pid rss_mb cmd; do
-  [ -n "${pid}" ] || continue
-  if [ "${rss_mb}" -ge "${RSS_ALERT_MB}" ]; then
-    alerts+=("high_rss pid=${pid} rss_mb=${rss_mb} cmd=${cmd}")
-  fi
-done < <(ps -eo pid,rss,args --no-headers | awk '{pid=$1; rss_mb=int($2/1024); $1=$2=""; sub(/^  */, ""); printf "%s|%s|%s\n", pid, rss_mb, $0}')
+# ---------------------------------------------------------------------------
+# send_webhook MESSAGE LEVEL
+# Sends to webhook if URL configured; otherwise logs only.
+# ---------------------------------------------------------------------------
+send_webhook() {
+    local msg="$1"
+    local level="${2:-WARN}"
 
-if [ "${mem_pct}" -ge "${MEMORY_ALERT_PCT}" ]; then
-  alerts+=("high_memory mem_pct=${mem_pct}")
-fi
+    if [ -z "${WEBHOOK_URL}" ]; then
+        echo "[ALERT-SKIP] Webhook not configured. ${level}: ${msg}" >> "${ALERT_LOG}"
+        return 0
+    fi
 
-if awk "BEGIN {exit !(${load_1m} > (${cpu_count} * ${LOAD_ALERT_PER_CPU}))}"; then
-  alerts+=("high_load load1=${load_1m} cpu_count=${cpu_count}")
-fi
+    local color=16776960  # yellow = WARN
+    if [ "${level}" = "CRITICAL" ]; then color=15158332; fi  # red
+    if [ "${level}" = "INFO" ]; then color=3066993; fi       # blue
 
+    local payload
+    payload="$(cat <<EOF
 {
-  echo "===== ${timestamp} ====="
-  echo "host=${host}"
-  echo "last_boot=${last_boot}"
-  echo "uptime=${uptime_line}"
-  echo "loadavg=${loadavg_line}"
-  echo "memory=${memory_line} swap_used=${swap_line}"
-  echo "disk_root=${disk_root}"
-  echo "psi_memory=${psi_memory}"
-  echo "psi_cpu=${psi_cpu}"
-  echo "psi_io=${psi_io}"
-  echo "-- thermal --"
-  for zone in /sys/class/thermal/thermal_zone*; do
-    [ -d "${zone}" ] || continue
-    zone_name="$(basename "${zone}")"
-    zone_type="$(cat "${zone}/type" 2>/dev/null || echo unknown)"
-    zone_temp="$(cat "${zone}/temp" 2>/dev/null || echo unknown)"
-    echo "${zone_name} type=${zone_type} temp=${zone_temp}"
-  done
-  echo "-- top_mem --"
-  ps -eo pid,ppid,user,%mem,%cpu,rss,vsz,etimes,cmd --sort=-%mem | head -n 12
-  echo "-- top_cpu --"
-  ps -eo pid,ppid,user,%mem,%cpu,rss,vsz,etimes,cmd --sort=-%cpu | head -n 12
-  echo "-- recent_kernel_warnings --"
-  if sudo -n journalctl -k --since '-2 min' -p warning..alert --no-pager 2>/dev/null; then
-    :
-  else
-    echo "unavailable"
-  fi
-  echo "-- recent_system_warnings --"
-  if sudo -n journalctl --since '-2 min' -p warning..alert --no-pager 2>/dev/null; then
-    :
-  else
-    echo "unavailable"
-  fi
-  echo "-- alerts --"
-  if [ "${#alerts[@]}" -eq 0 ]; then
-    echo "none"
-  else
-    printf '%s\n' "${alerts[@]}"
-  fi
-  echo
-} > "${TEMP_LOG}"
+  "username": "SmartSpec CrashMonitor",
+  "embeds": [{
+    "title": "[${level}] SmartSpecPro Crash Monitor",
+    "description": "${msg}",
+    "color": ${color},
+    "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  }]
+}
+EOF
+)"
+    curl -sf -H "Content-Type: application/json" -X POST -d "${payload}" \
+        "${WEBHOOK_URL}" > /dev/null 2>&1 || true
+}
 
-cat "${TEMP_LOG}" >> "${DAILY_LOG}"
-rm -f "${TEMP_LOG}"
+# ---------------------------------------------------------------------------
+# Main logic — wrapped so any unexpected error is caught and logged
+# ---------------------------------------------------------------------------
+main() {
+    local alerts=()
 
-printf '%s host=%s uptime=%s\n' "${timestamp}" "${host}" "${uptime_line}" > "${HEARTBEAT_FILE}"
+    # ------------------------------------------------------------------
+    # 1. Restart-loop detection
+    # Count "Started SmartSpecPro" events in the last 10 minutes across
+    # all smartspec-*.service units.
+    # ------------------------------------------------------------------
+    local restart_output
+    restart_output="$(sudo journalctl -u 'smartspec-*.service' \
+        --since '10 minutes ago' --no-pager -q 2>/dev/null || true)"
 
-if [ "${#alerts[@]}" -gt 0 ]; then
-  {
-    printf '%s ' "${timestamp}"
-    printf '%s; ' "${alerts[@]}"
-    printf '\n'
-  } >> "${ALERT_LOG}"
+    for service in smartspec-web smartspec-backend; do
+        local count
+        count="$(echo "${restart_output}" | grep -c "Started SmartSpecPro" 2>/dev/null || echo 0)"
+        # Per-service count: grep the service name too
+        count="$(echo "${restart_output}" | grep "${service}" | grep -c "Started SmartSpecPro" 2>/dev/null || echo 0)"
+
+        if [ "${count}" -gt "${RESTART_THRESHOLD}" ]; then
+            alerts+=("CRITICAL restart_loop service=${service} restarts_10m=${count} threshold=${RESTART_THRESHOLD}")
+        elif [ "${count}" -gt 0 ]; then
+            alerts+=("INFO restarted service=${service} restarts_10m=${count}")
+        fi
+    done
+
+    # ------------------------------------------------------------------
+    # 2. RAM usage check
+    # ------------------------------------------------------------------
+    local mem_total mem_used mem_pct
+    mem_total="$(free -m | awk '/^Mem:/ {print $2}')"
+    mem_used="$(free -m | awk '/^Mem:/ {print $3}')"
+
+    if [ -n "${mem_total}" ] && [ "${mem_total}" -gt 0 ]; then
+        mem_pct=$(( (mem_used * 100) / mem_total ))
+        if [ "${mem_pct}" -ge "${RAM_CRIT_PCT}" ]; then
+            alerts+=("CRITICAL high_ram ram_pct=${mem_pct} used_mb=${mem_used} total_mb=${mem_total}")
+        elif [ "${mem_pct}" -ge "${RAM_WARN_PCT}" ]; then
+            alerts+=("WARNING high_ram ram_pct=${mem_pct} used_mb=${mem_used} total_mb=${mem_total}")
+        fi
+    fi
+
+    # ------------------------------------------------------------------
+    # 3. Write to daily log
+    # ------------------------------------------------------------------
+    {
+        echo "===== ${timestamp} ====="
+        echo "ram_pct=${mem_pct:-?} used_mb=${mem_used:-?} total_mb=${mem_total:-?}"
+        if [ "${#alerts[@]}" -eq 0 ]; then
+            echo "alerts=none"
+        else
+            printf 'alert: %s\n' "${alerts[@]}"
+        fi
+        echo ""
+    } >> "${DAILY_LOG}"
+
+    # ------------------------------------------------------------------
+    # 4. Fire webhooks for actionable alerts
+    # ------------------------------------------------------------------
+    for alert in "${alerts[@]}"; do
+        local level
+        if [[ "${alert}" == CRITICAL* ]]; then
+            level="CRITICAL"
+        elif [[ "${alert}" == WARNING* ]]; then
+            level="WARN"
+        else
+            level="INFO"
+        fi
+
+        # Only alert on CRITICAL or WARNING (skip INFO restarts to avoid noise)
+        if [ "${level}" = "CRITICAL" ] || [ "${level}" = "WARN" ]; then
+            send_webhook "${alert}" "${level}"
+            echo "[${level}] ${alert}" >> "${ALERT_LOG}"
+        fi
+    done
+
+    # Print summary to stdout (captured by cron into cron.log)
+    echo "${timestamp} alerts=${#alerts[@]}"
+}
+
+# Run main, capturing any unexpected errors so the script never exits dirty
+if ! main 2>>"${ALERT_LOG}"; then
+    echo "${timestamp} crash-monitor-error: main() failed, see ${ALERT_LOG}" >> "${DAILY_LOG}"
 fi

@@ -120,6 +120,8 @@ celery_app.conf.update(
         "app.tasks.sandbox_maintenance_tasks.detect_stuck_sandbox_jobs": {"queue": "sandbox"},
         # Vision analysis (Gemini 2.5 Flash image analysis) -> vision queue
         "app.tasks.vision_tasks.analyze_image_task": {"queue": "vision"},
+        # System health monitor -> celery queue (lightweight, periodic)
+        "app.tasks.system_health_task.monitor_system_health": {"queue": "celery"},
     },
     # Ensure non-default task modules are always loaded at worker startup.
     imports=("app.workers.sandbox_job_worker",),
@@ -188,6 +190,12 @@ beat_schedule = {
         "task": "app.tasks.sandbox_maintenance_tasks.cleanup_expired_sandbox_jobs",
         "schedule": crontab(hour=4, minute=0),  # Daily at 4:00 AM UTC
     },
+    # System health monitor — every 60 seconds
+    "monitor-system-health": {
+        "task": "app.tasks.system_health_task.monitor_system_health",
+        "schedule": 60.0,
+        "options": {"queue": "media"},
+    },
     "cleanup-orphan-sandboxes": {
         "task": "app.tasks.sandbox_maintenance_tasks.cleanup_orphan_sandboxes",
         "schedule": crontab(minute="*/10"),  # Every 10 minutes
@@ -195,10 +203,6 @@ beat_schedule = {
     "detect-stuck-sandbox-jobs": {
         "task": "app.tasks.sandbox_maintenance_tasks.detect_stuck_sandbox_jobs",
         "schedule": crontab(minute="*/5"),  # Every 5 minutes
-    },
-    "decay-agent-memories": {
-        "task": "agency.decay_agent_memories",
-        "schedule": crontab(hour=4, minute=30),  # Daily at 4:30 AM UTC
     },
 }
 

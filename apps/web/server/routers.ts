@@ -60,6 +60,10 @@ import { groupsRouter } from "./routers/groups";
 import { googleDriveRouter } from "./routers/googleDrive";
 import { oneDriveRouter } from "./routers/oneDrive";
 import { metaChannelsRouter } from "./routers/metaChannels";
+import { uploadPostRouter } from "./routers/uploadPost";
+import { socialPublishingRouter } from "./routers/socialPublishing";
+import { socialModerationRouter } from "./routers/socialModeration";
+import { socialAutomationRouter } from "./routers/socialAutomation";
 import { searchRouter } from "./routers/search";
 import { adminOpsRouter } from "./routers/adminOps";
 import { automationCopilotRouter } from "./routers/automationCopilot";
@@ -89,11 +93,13 @@ import { teamWorkItemRouter } from "./routers/teamWorkItem";
 import { scopedMemoryRouter } from "./routers/scopedMemory";
 import { monitoringRouter } from "./routers/monitoring";
 import { mcpServersRouter } from "./routers/mcpServers";
+import { hybridOrchestrationRouter } from "./routers/hybridOrchestration";
 import { inviteCodeRouter } from "./routers/inviteCode";
 import { userApiKeysRouter } from "./routers/userApiKeys";
 import { notificationPreferencesRouter } from "./routers/notificationPreferences";
 import { alertRulesRouter } from "./routers/alertRules";
 import { notificationWebhooksRouter } from "./routers/notificationWebhooks";
+import { socialInboxRouter } from "./routers/socialInbox";
 
 // Zod schemas for validation
 const strongPasswordSchema = z.string().min(8).refine(
@@ -1856,6 +1862,11 @@ export const appRouter = router({
   automationCopilot: automationCopilotRouter,
   liveBrowser: liveBrowserRouter,
   metaChannels: metaChannelsRouter,
+  uploadPost: uploadPostRouter,
+  socialPublishing: socialPublishingRouter,
+  socialModeration: socialModerationRouter,
+  socialInbox: socialInboxRouter,
+  socialAutomation: socialAutomationRouter,
   contentArtifacts: contentArtifactsRouter,
   contentQuality: contentQualityRouter,
   apiKeys: apiKeysRouter,
@@ -1871,6 +1882,7 @@ export const appRouter = router({
   scopedMemory: scopedMemoryRouter,
   monitoring: monitoringRouter,
   mcpServers: mcpServersRouter,
+  hybridOrchestration: hybridOrchestrationRouter,
   help: helpRouter,
 });
 

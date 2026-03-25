@@ -82,6 +82,7 @@ export const defaultMenuItems: MenuItem[] = [
   { id: 'admin-mcp-servers',   label: 'MCP Servers',       labelTh: 'MCP เซิร์ฟเวอร์', icon: 'Plug',    path: '/admin/mcp-servers',        platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 30.1, requiresFeature: 'mcpServerRegistry' },
   { id: 'admin-channel-router', label: 'Channel Router',    labelTh: 'ตัวกำหนดเส้นทาง', icon: 'GitFork', path: '/admin/channel-router', platforms: ['web', 'desktop'], roles: ['admin', 'domain_admin'], group: 'admin', sortOrder: 30.2, requiresFeature: 'channelRouter' },
   { id: 'admin-guardian',       label: 'System Guardian',   labelTh: 'ผู้พิทักษ์ระบบ', icon: 'ShieldCheck', path: '/admin/system-guardian', platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 19, requiresFeature: 'VIRTUAL_ADMIN_ENABLED' },
+  { id: 'admin-monitoring',     label: 'Server Monitoring', labelTh: 'ตรวจสอบ Server', icon: 'Activity', path: '/admin/monitoring', platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 19.3 },
   { id: 'admin-feedback',       label: 'Feedback Hub',      labelTh: 'ศูนย์รวมข้อเสนอ', icon: 'MessageSquare', path: '/admin/feedback-hub', platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 19.5 },
   { id: 'admin-content-quality', label: 'Content Quality',   labelTh: 'คุณภาพเนื้อหา', icon: 'ShieldCheck', path: '/admin/content-quality', platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 30.8 },
   { id: 'admin-gallery',        label: 'Gallery Admin',     icon: 'Images',      path: '/admin/gallery',            platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 31 },
@@ -91,9 +92,10 @@ export const defaultMenuItems: MenuItem[] = [
   // === Domain admin group ===
   { id: 'domain-users',    label: 'Manage Users',    labelTh: 'จัดการผู้ใช้',   icon: 'UserCog',   path: '/domain-admin/users',    platforms: ['web', 'desktop'], roles: ['domain_admin', 'admin'], group: 'domain-admin', sortOrder: 40 },
   { id: 'domain-content',  label: 'Edit Content',    labelTh: 'แก้ไขเนื้อหา',  icon: 'FileText',  path: '/domain-admin/content',  platforms: ['web', 'desktop'], roles: ['domain_admin', 'admin'], group: 'domain-admin', sortOrder: 41 },
-  { id: 'domain-theme',    label: 'Edit Theme',      labelTh: 'แก้ไขธีม',      icon: 'Palette',   path: '/domain-admin/theme',    platforms: ['web', 'desktop'], roles: ['domain_admin', 'admin'], group: 'domain-admin', sortOrder: 42 },
-  { id: 'domain-blog',     label: 'Manage Blog',     labelTh: 'จัดการบล็อก',   icon: 'PenLine',   path: '/domain-admin/blog',     platforms: ['web', 'desktop'], roles: ['domain_admin', 'admin'], group: 'domain-admin', sortOrder: 43 },
-  { id: 'domain-settings', label: 'Tenant Settings', labelTh: 'ตั้งค่าโดเมน', icon: 'FileText',  path: '/domain-admin/settings', platforms: ['web', 'desktop'], roles: ['domain_admin', 'admin'], group: 'domain-admin', sortOrder: 44 },
+  { id: 'domain-docs',     label: 'Manage Docs',     labelTh: 'จัดการเอกสาร',  icon: 'BookOpen',  path: '/domain-admin/docs',     platforms: ['web', 'desktop'], roles: ['domain_admin', 'admin'], group: 'domain-admin', sortOrder: 42 },
+  { id: 'domain-theme',    label: 'Edit Theme',      labelTh: 'แก้ไขธีม',      icon: 'Palette',   path: '/domain-admin/theme',    platforms: ['web', 'desktop'], roles: ['domain_admin', 'admin'], group: 'domain-admin', sortOrder: 43 },
+  { id: 'domain-blog',     label: 'Manage Blog',     labelTh: 'จัดการบล็อก',   icon: 'PenLine',   path: '/domain-admin/blog',     platforms: ['web', 'desktop'], roles: ['domain_admin', 'admin'], group: 'domain-admin', sortOrder: 44 },
+  { id: 'domain-settings', label: 'Tenant Settings', labelTh: 'ตั้งค่าโดเมน', icon: 'FileText',  path: '/domain-admin/settings', platforms: ['web', 'desktop'], roles: ['domain_admin', 'admin'], group: 'domain-admin', sortOrder: 45 },
 ];
 
 /**

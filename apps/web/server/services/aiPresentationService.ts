@@ -11121,14 +11121,22 @@ export async function resolvePendingMediaForDeck(
         );
       } catch (err) {
         const reason = sanitizeErrorMessage(err).slice(0, 256);
-        nextJobs[i] = {
-          ...job,
-          status: "pending",
-          reason,
-          lastCheckedAt: checkedAt,
-        };
-        slideMutated = true;
-        warnings.push(`Slide ${slide.orderIndex + 1}: failed to fetch task ${job.mediaTaskId} (${reason})`);
+        const isNotFound = reason.toLowerCase().includes("not found") || reason.includes("404");
+        if (isNotFound) {
+          // Task no longer exists — remove from pending list to stop infinite polling
+          nextJobs[i] = null;
+          slideMutated = true;
+          warnings.push(`Slide ${slide.orderIndex + 1}: task ${job.mediaTaskId} not found, removing from pending`);
+        } else {
+          nextJobs[i] = {
+            ...job,
+            status: "pending",
+            reason,
+            lastCheckedAt: checkedAt,
+          };
+          slideMutated = true;
+          warnings.push(`Slide ${slide.orderIndex + 1}: failed to fetch task ${job.mediaTaskId} (${reason})`);
+        }
         continue;
       }
 
