@@ -370,9 +370,9 @@ export function DisplayLanguageDropdown({ defaultValue, onLanguageChange }: Disp
     onError: (err) => toast.error(err.message),
   });
 
-  const displayLanguages = SUPPORTED_LANGUAGES.filter(
-    (lng) => lng === 'en' || (LANGUAGE_COVERAGE[lng as SupportedLanguage] ?? 0) >= 50
-  );
+  // Settings shows ALL supported languages so users can select any language.
+  // Coverage % is shown in the label to indicate translation completeness.
+  const displayLanguages = SUPPORTED_LANGUAGES;
 
   function handleDisplayLangChange(newLng: string) {
     if (!(SUPPORTED_LANGUAGES as readonly string[]).includes(newLng)) return;
@@ -401,14 +401,21 @@ export function DisplayLanguageDropdown({ defaultValue, onLanguageChange }: Disp
           disabled={isPending}
           className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
         >
-          {displayLanguages.map((lng) => (
-            <option key={lng} value={lng}>
-              {LANGUAGE_LABELS[lng as SupportedLanguage]}
-              {lng !== 'en' ? ` (${LANGUAGE_LABELS_EN[lng as SupportedLanguage]})` : ''}
-            </option>
-          ))}
+          {displayLanguages.map((lng) => {
+            const coverage = LANGUAGE_COVERAGE[lng as SupportedLanguage] ?? 0;
+            const nativeName = LANGUAGE_LABELS[lng as SupportedLanguage];
+            const englishName = lng !== 'en' ? LANGUAGE_LABELS_EN[lng as SupportedLanguage] : '';
+            const coverageLabel = lng === 'en' ? '' : coverage >= 90 ? '' : ` — ${coverage}% translated`;
+            return (
+              <option key={lng} value={lng}>
+                {nativeName}{englishName ? ` (${englishName})` : ''}{coverageLabel}
+              </option>
+            );
+          })}
         </select>
-        <p className="text-xs text-gray-500 mt-1">English is always available as fallback.</p>
+        <p className="text-xs text-gray-500 mt-1">
+          English is always available as fallback. Languages below 100% may have untranslated sections.
+        </p>
       </div>
     </div>
   );

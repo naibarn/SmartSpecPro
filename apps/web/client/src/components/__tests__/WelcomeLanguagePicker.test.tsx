@@ -180,12 +180,13 @@ describe("WelcomeLanguagePicker — selection behavior", () => {
     expect(localStorageMock.setItem).toHaveBeenCalledWith("smartspec_locale", "th");
   });
 
-  it("selecting Thai fires tRPC users.updatePreferences with { translationLanguage: 'th' }", async () => {
+  it("selecting Thai fires tRPC users.updatePreferences with { translationLanguage: 'th', displayLocale: 'th' }", async () => {
     setup({ translationLanguage: "" });
     render(<WelcomeLanguagePicker />);
     const thBtn = await screen.findByText("ภาษาไทย");
     fireEvent.click(thBtn.closest("button")!);
-    expect(mockMutate).toHaveBeenCalledWith({ translationLanguage: "th" });
+    // Both translationLanguage and displayLocale are saved together
+    expect(mockMutate).toHaveBeenCalledWith({ translationLanguage: "th", displayLocale: "th" });
   });
 
   it("sets localStorage smartspec_locale_chosen to 'true' after selection", async () => {

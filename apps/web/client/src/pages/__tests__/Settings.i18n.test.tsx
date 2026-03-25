@@ -66,13 +66,14 @@ describe("DisplayLanguageDropdown", () => {
     expect(screen.getByText(/display language/i)).toBeTruthy();
   });
 
-  it("dropdown lists only languages with >= 50% coverage plus English", () => {
+  it("dropdown lists ALL supported languages (Settings shows every option for power users)", () => {
     render(<DisplayLanguageDropdown />);
     const select = screen.getByRole("combobox");
     const options = Array.from(select.querySelectorAll("option")).map((o) => (o as HTMLOptionElement).value);
+    // Settings always shows all languages so users can pick any, even partially-translated ones
     expect(options).toContain("en");
-    expect(options).toContain("th"); // 60% coverage
-    expect(options).not.toContain("ja"); // 0% coverage
+    expect(options).toContain("th");
+    expect(options).toContain("ja"); // Settings shows all, unlike WelcomeLanguagePicker (>= 50% only)
   });
 
   it("dropdown shows native name with English name for non-English options", () => {
