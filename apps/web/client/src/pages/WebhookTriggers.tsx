@@ -12,6 +12,7 @@
  */
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -119,22 +120,23 @@ function StatusBadge({ status }: { status: string }) {
 // ── Delivery Logs panel ────────────────────────────────────────────────────────
 
 function DeliveryLogs({ triggerId }: { triggerId: string }) {
+  const { t } = useTranslation("common");
   const logsQuery = trpc.webhookTriggers.getLogs.useQuery({ triggerId, limit: 20, offset: 0 });
   const logs = (logsQuery.data ?? []) as LogRow[];
 
   if (!logs.length) {
-    return <p className="text-sm text-muted-foreground py-2">No delivery logs yet.</p>;
+    return <p className="text-sm text-muted-foreground py-2">{t("webhook.noLogs")}</p>;
   }
 
   return (
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Time</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead>Duration</TableHead>
-          <TableHead>Credits</TableHead>
-          <TableHead>Error</TableHead>
+          <TableHead>{t("webhook.time")}</TableHead>
+          <TableHead>{t("webhook.status")}</TableHead>
+          <TableHead>{t("webhook.duration")}</TableHead>
+          <TableHead>{t("webhook.credits")}</TableHead>
+          <TableHead>{t("webhook.error")}</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -191,6 +193,7 @@ function TriggerFormDialog({
   onClose: () => void;
   editTrigger?: TriggerRow | null;
 }) {
+  const { t } = useTranslation("common");
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const isEdit = Boolean(editTrigger);
@@ -279,30 +282,30 @@ function TriggerFormDialog({
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>{isEdit ? "Edit Trigger" : "Create Webhook Trigger"}</DialogTitle>
+          <DialogTitle>{isEdit ? t("webhook.editTrigger") : t("webhook.createTrigger")}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div>
-            <Label htmlFor="wt-name">Name</Label>
+            <Label htmlFor="wt-name">{t("webhook.name")}</Label>
             <Input
               id="wt-name"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
-              placeholder="Order notifications"
+              placeholder={t("webhook.namePlaceholder")}
             />
           </div>
           <div>
-            <Label htmlFor="wt-desc">Description (optional)</Label>
+            <Label htmlFor="wt-desc">{t("webhook.descriptionOptional")}</Label>
             <Input
               id="wt-desc"
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
-              placeholder="Triggered when a new order is placed"
+              placeholder={t("webhook.descriptionPlaceholder")}
             />
           </div>
           {!isEdit && (
             <div>
-              <Label>Auth Type</Label>
+              <Label>{t("webhook.authType")}</Label>
               <Select
                 value={form.authType}
                 onValueChange={(v) => setForm({ ...form, authType: v as "token" | "hmac_sha256" })}
@@ -311,8 +314,8 @@ function TriggerFormDialog({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="token">Bearer Token</SelectItem>
-                  <SelectItem value="hmac_sha256">HMAC-SHA256</SelectItem>
+                  <SelectItem value="token">{t("webhook.authBearer")}</SelectItem>
+                  <SelectItem value="hmac_sha256">{t("webhook.authHmac")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -330,7 +333,7 @@ function TriggerFormDialog({
             />
           </div>
           <div>
-            <Label>Target Type</Label>
+            <Label>{t("webhook.targetType")}</Label>
             <Select
               value={form.targetType}
               onValueChange={(v) => setForm({ ...form, targetType: v as any })}
@@ -339,15 +342,15 @@ function TriggerFormDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="chat">Chat Conversation</SelectItem>
-                <SelectItem value="agency">Agency</SelectItem>
-                <SelectItem value="workflow">Workflow</SelectItem>
+                <SelectItem value="chat">{t("webhook.targetChat")}</SelectItem>
+                <SelectItem value="agency">{t("webhook.targetAgency")}</SelectItem>
+                <SelectItem value="workflow">{t("webhook.targetWorkflow")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
           {form.targetType === "chat" && (
             <div>
-              <Label htmlFor="wt-conv">Conversation ID</Label>
+              <Label htmlFor="wt-conv">{t("webhook.conversationId")}</Label>
               <Input
                 id="wt-conv"
                 value={form.targetConversationId}
@@ -357,7 +360,7 @@ function TriggerFormDialog({
             </div>
           )}
           <div>
-            <Label htmlFor="wt-rl">Rate Limit (per minute)</Label>
+            <Label htmlFor="wt-rl">{t("webhook.rateLimit")}</Label>
             <Input
               id="wt-rl"
               type="number"
@@ -408,6 +411,7 @@ function TestTriggerModal({
   trigger: TriggerRow;
   onClose: () => void;
 }) {
+  const { t } = useTranslation("common");
   const { toast } = useToast();
   const [sampleJson, setSampleJson] = useState('{\n  "type": "test",\n  "message": "Hello from test"\n}');
   const [result, setResult] = useState<{ ok: boolean; dispatchedMessage?: string; detail?: string; executionId?: string } | null>(null);
@@ -429,7 +433,7 @@ function TestTriggerModal({
     try {
       parsed = JSON.parse(sampleJson);
     } catch {
-      setJsonError("Invalid JSON — please fix before sending.");
+      setJsonError(t("webhook.invalidJson"));
       return;
     }
     testMut.mutate({ triggerId: trigger.id, samplePayload: parsed });
@@ -488,7 +492,7 @@ function TestTriggerModal({
           <Button variant="outline" onClick={onClose}>Close</Button>
           <Button onClick={handleTest} disabled={testMut.isPending}>
             <FlaskConical className="h-4 w-4 mr-2" />
-            {testMut.isPending ? "Sending…" : "Send Test"}
+            {testMut.isPending ? t("webhook.sending") : t("webhook.sendTest")}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -512,7 +516,7 @@ function SecretRevealDialog({
     <AlertDialog open onOpenChange={(v) => !v && onClose()}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>New Secret Generated</AlertDialogTitle>
+          <AlertDialogTitle>{t("webhook.newSecret")}</AlertDialogTitle>
           <AlertDialogDescription>
             Copy your new secret now — it will not be shown again.
           </AlertDialogDescription>
@@ -531,7 +535,7 @@ function SecretRevealDialog({
           </Button>
         </div>
         <AlertDialogFooter>
-          <AlertDialogAction onClick={onClose}>Done</AlertDialogAction>
+          <AlertDialogAction onClick={onClose}>{t("webhook.done")}</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
@@ -541,6 +545,7 @@ function SecretRevealDialog({
 // ── Main page component ────────────────────────────────────────────────────────
 
 export default function WebhookTriggers() {
+  const { t } = useTranslation("common");
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [formOpen, setFormOpen] = useState(false);
@@ -674,7 +679,7 @@ export default function WebhookTriggers() {
                     <Button
                       size="icon"
                       variant="ghost"
-                      title="Regenerate secret"
+                      title={t("webhook.regenerateSecret")}
                       onClick={() => regenMut.mutate({ triggerId: trigger.id })}
                     >
                       <RefreshCw className="h-4 w-4" />
@@ -682,7 +687,7 @@ export default function WebhookTriggers() {
                     <Button
                       size="icon"
                       variant="ghost"
-                      title="Test trigger"
+                      title={t("webhook.testTrigger")}
                       onClick={() => setTestTrigger(trigger)}
                     >
                       <FlaskConical className="h-4 w-4" />
@@ -739,14 +744,14 @@ export default function WebhookTriggers() {
         <AlertDialog open onOpenChange={(v) => !v && setDeleteTarget(null)}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Delete trigger?</AlertDialogTitle>
+              <AlertDialogTitle>{t("webhook.deleteTitle")}</AlertDialogTitle>
               <AlertDialogDescription>
                 Are you sure you want to delete <strong>{deleteTarget.name}</strong>? This will
                 deactivate the trigger and it will no longer accept webhook events.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
               <AlertDialogAction
                 onClick={() => deleteMut.mutate({ triggerId: deleteTarget.id })}
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
