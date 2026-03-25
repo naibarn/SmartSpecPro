@@ -1,5 +1,5 @@
 /**
- * Tests for section-10: LocaleToggle updated to use react-i18next
+ * Tests for LocaleToggle — always shows two buttons (EN + secondary)
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -19,97 +19,117 @@ vi.mock("react-i18next", () => ({
   }),
 }));
 
+// Mock localStorage for LAST_NON_EN_KEY
+const localStorageMock: Record<string, string> = {};
+vi.spyOn(Storage.prototype, "getItem").mockImplementation((k) => localStorageMock[k] ?? null);
+vi.spyOn(Storage.prototype, "setItem").mockImplementation((k, v) => { localStorageMock[k] = v; });
+
 beforeEach(() => {
   vi.clearAllMocks();
   mockLanguage = "th";
+  // Reset stored locale
+  delete localStorageMock["smartspec_last_locale"];
 });
 
-describe("LocaleToggle (i18n)", () => {
-  it("renders current language and English options when language is non-English", () => {
+describe("LocaleToggle — always two buttons", () => {
+  it("always shows 2 buttons when language is non-English (EN + current lang)", () => {
     mockLanguage = "th";
     render(<LocaleToggle />);
-    const buttons = screen.getAllByRole("button");
-    expect(buttons).toHaveLength(2);
-    // English button should be present
-    const labels = buttons.map((b) => b.getAttribute("title") || b.textContent || "");
-    expect(labels.some((l) => /english/i.test(l) || l.includes("English"))).toBe(true);
+    expect(screen.getAllByRole("button")).toHaveLength(2);
+    expect(screen.getByTitle("English")).toBeTruthy();
+    expect(screen.getByTitle("ไทย")).toBeTruthy();
   });
 
-  it("renders only English button when language is 'en'", () => {
+  it("always shows 2 buttons even when language is English (EN + last-used secondary)", () => {
+    // User previously used Thai, now switched back to English
+    localStorageMock["smartspec_last_locale"] = "th";
     mockLanguage = "en";
     render(<LocaleToggle />);
-    const buttons = screen.getAllByRole("button");
-    expect(buttons).toHaveLength(1);
+    // Should still show both EN and TH
+    expect(screen.getAllByRole("button")).toHaveLength(2);
+    expect(screen.getByTitle("English")).toBeTruthy();
+    expect(screen.getByTitle("ไทย")).toBeTruthy();
+  });
+
+  it("falls back to TH when on English with no stored secondary", () => {
+    mockLanguage = "en";
+    render(<LocaleToggle />);
+    expect(screen.getAllByRole("button")).toHaveLength(2);
+    expect(screen.getByTitle("ไทย")).toBeTruthy();
+  });
+
+  it("persists non-English choice to localStorage on click", () => {
+    mockLanguage = "th";
+    render(<LocaleToggle />);
+    fireEvent.click(screen.getByTitle("ไทย"));
+    expect(localStorageMock["smartspec_last_locale"]).toBe("th");
   });
 
   it("clicking English button calls i18next.changeLanguage('en')", () => {
     mockLanguage = "th";
     render(<LocaleToggle />);
-    // Find English button by title attribute
-    const enBtn = screen.getByTitle("English");
-    fireEvent.click(enBtn);
+    fireEvent.click(screen.getByTitle("English"));
     expect(mockChangeLanguage).toHaveBeenCalledWith("en");
   });
 
-  it("clicking non-English button calls i18next.changeLanguage with the correct code", () => {
-    mockLanguage = "th";
+  it("clicking Thai button calls i18next.changeLanguage('th')", () => {
+    mockLanguage = "en";
+    localStorageMock["smartspec_last_locale"] = "th";
     render(<LocaleToggle />);
-    // Thai button — find by title
-    const thBtn = screen.getByTitle("ไทย");
-    fireEvent.click(thBtn);
+    fireEvent.click(screen.getByTitle("ไทย"));
     expect(mockChangeLanguage).toHaveBeenCalledWith("th");
   });
 
-  it("has correct ARIA attributes — role and aria-label", () => {
+  it("has correct ARIA attributes", () => {
     mockLanguage = "th";
     render(<LocaleToggle />);
-    const group = screen.getByRole("group");
-    expect(group.getAttribute("aria-label")).toBe("Language switcher");
+    expect(screen.getByRole("group").getAttribute("aria-label")).toBe("Language switcher");
   });
 
   it("active language button has aria-pressed=true, inactive has aria-pressed=false", () => {
     mockLanguage = "th";
     render(<LocaleToggle />);
-    const enBtn = screen.getByTitle("English");
-    const thBtn = screen.getByTitle("ไทย");
-    expect(thBtn.getAttribute("aria-pressed")).toBe("true");
-    expect(enBtn.getAttribute("aria-pressed")).toBe("false");
+    expect(screen.getByTitle("ไทย").getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByTitle("English").getAttribute("aria-pressed")).toBe("false");
   });
 
-  it("passes className prop to container element", () => {
+  it("active language button has aria-pressed=true when English is active", () => {
     mockLanguage = "en";
-    render(<LocaleToggle className="custom-class" />);
-    const group = screen.getByRole("group");
-    expect(group.classList.contains("custom-class")).toBe(true);
+    localStorageMock["smartspec_last_locale"] = "th";
+    render(<LocaleToggle />);
+    expect(screen.getByTitle("English").getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByTitle("ไทย").getAttribute("aria-pressed")).toBe("false");
   });
 
-  it("normalises BCP-47 subtag language (zh-Hans) — renders correct label", () => {
+  it("passes className prop to container", () => {
+    mockLanguage = "th";
+    render(<LocaleToggle className="custom-class" />);
+    expect(screen.getByRole("group").classList.contains("custom-class")).toBe(true);
+  });
+
+  it("normalises BCP-47 subtag (zh-Hans) — shows 2 buttons with correct label", () => {
     mockLanguage = "zh-Hans";
     render(<LocaleToggle />);
-    const buttons = screen.getAllByRole("button");
-    expect(buttons).toHaveLength(2);
+    expect(screen.getAllByRole("button")).toHaveLength(2);
     expect(screen.getByTitle("简体中文")).toBeTruthy();
   });
 
-  it("normalises unsupported browser language (en-US) to default 'en' — renders single button", () => {
+  it("normalises unsupported browser language (en-US) to 'en' — shows 2 buttons", () => {
     mockLanguage = "en-US";
     render(<LocaleToggle />);
-    const buttons = screen.getAllByRole("button");
-    // en-US is not in SUPPORTED_LANGUAGES → should normalise to 'en' → single button
-    expect(buttons).toHaveLength(1);
+    // en-US → normalised to "en" → shows EN + fallback TH
+    expect(screen.getAllByRole("button")).toHaveLength(2);
   });
 
-  it("active language button has bg-primary class", () => {
+  it("active button has bg-primary class", () => {
     mockLanguage = "th";
     render(<LocaleToggle />);
-    const thBtn = screen.getByTitle("ไทย");
-    expect(thBtn.classList.contains("bg-primary")).toBe(true);
+    expect(screen.getByTitle("ไทย").classList.contains("bg-primary")).toBe(true);
   });
 
-  it("inactive language button has text-muted-foreground class", () => {
+  it("inactive button has text-muted-foreground class", () => {
     mockLanguage = "th";
     render(<LocaleToggle />);
-    const enBtn = screen.getByTitle("English");
-    expect(enBtn.classList.contains("text-muted-foreground")).toBe(true);
+    expect(screen.getByTitle("English").classList.contains("text-muted-foreground")).toBe(true);
   });
 });
