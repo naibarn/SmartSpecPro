@@ -136,7 +136,7 @@ export default function Login() {
         const loginUserId = result.userId || result.id;
         if (loginUserId) getPostHog()?.identify(String(loginUserId));
         getPostHog()?.capture("login_succeeded", { auth_method: "email" });
-        toast.success('Login successful! Redirecting...');
+        toast.success(t('login.toast.success'));
         setNeedsVerification(false);
         const redirectUrl = getReturnUrl();
         window.location.href = redirectUrl;
@@ -154,7 +154,7 @@ export default function Login() {
     } catch (error) {
       console.error('Login error:', error);
       getPostHog()?.capture("login_failed", { failure_reason: "network_error", auth_method: "email" });
-      toast.error('Login failed. Please try again.');
+      toast.error(t('login.toast.failed'));
     } finally {
       setIsLoading(false);
     }
@@ -162,7 +162,7 @@ export default function Login() {
 
   const handleResendVerification = async () => {
     if (!email) {
-      toast.error('Please enter your email address first');
+      toast.error(t('login.toast.emailRequired'));
       return;
     }
     setIsResending(true);
@@ -178,18 +178,18 @@ export default function Login() {
       if (errorMsg) {
         toast.error(errorMsg);
       } else {
-        toast.success('Verification code sent! Check your email inbox.');
+        toast.success(t('login.toast.codeSentEmail'));
         setResendCountdown(60);
       }
     } catch {
-      toast.error('Failed to resend verification code');
+      toast.error(t('login.toast.resendFailed'));
     } finally {
       setIsResending(false);
     }
   };
 
   const handle2FAVerify = async () => {
-    if (!twoFACode) { toast.error('Please enter your code'); return; }
+    if (!twoFACode) { toast.error(t('login.toast.enterCode')); return; }
     setIsLoading(true);
     try {
       const response = await fetch('/trpc/auth.verify2FA', {
@@ -204,13 +204,13 @@ export default function Login() {
       if (err) { toast.error(err); return; }
       if (result?.success) {
         if (result.usedRecoveryCode) {
-          toast.success(`Signed in. ${result.recoveryCodesRemaining} recovery codes remaining.`);
+          toast.success(t('login.toast.signedInRecovery', { count: result.recoveryCodesRemaining }));
         } else {
-          toast.success('Login successful! Redirecting...');
+          toast.success(t('login.toast.success'));
         }
         window.location.href = getReturnUrl();
       }
-    } catch { toast.error('Verification failed'); } finally { setIsLoading(false); }
+    } catch { toast.error(t('login.toast.verifyFailed')); } finally { setIsLoading(false); }
   };
 
   const handle2FAResetRequest = async () => {
@@ -225,13 +225,13 @@ export default function Login() {
       const data = await response.json();
       const err = data.error?.json?.message;
       if (err) { toast.error(err); return; }
-      toast.success('Reset code sent!');
+      toast.success(t('login.toast.resetCodeSent'));
       setResetStep('sent');
-    } catch { toast.error('Failed to send reset code'); } finally { setIsLoading(false); }
+    } catch { toast.error(t('login.toast.resetCodeFailed')); } finally { setIsLoading(false); }
   };
 
   const handle2FAResetConfirm = async () => {
-    if (resetCode.length !== 6) { toast.error('Enter the 6-digit code'); return; }
+    if (resetCode.length !== 6) { toast.error(t('login.toast.enterSixDigit')); return; }
     setIsLoading(true);
     try {
       const response = await fetch('/trpc/auth.confirm2FAReset', {
@@ -248,7 +248,7 @@ export default function Login() {
         toast.success('2FA disabled. You are now signed in.');
         window.location.href = getReturnUrl();
       }
-    } catch { toast.error('Reset failed'); } finally { setIsLoading(false); }
+    } catch { toast.error(t('login.toast.resetFailed')); } finally { setIsLoading(false); }
   };
 
   const handleSocialLogin = async (provider: string) => {
@@ -268,7 +268,7 @@ export default function Login() {
       sessionStorage.setItem('oauth_state', data.state);
       window.location.href = data.authorization_url;
     } catch {
-      toast.error(`Could not connect to authentication service. Please try email login.`);
+      toast.error(t('login.toast.oauthFailed'));
     }
   };
 

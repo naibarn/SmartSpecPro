@@ -327,5 +327,9 @@
   "useCases.4": "Switch to Browser Session when the task moves from planning into live website execution.",
   "useCases.5": "Use AI Teams when you want multiple models to explore alternatives before choosing one — create a team discussion.",
   "useCases.6": "Move to Agencies when the task needs a multi-agent team to produce structured deliverables like reports or decks.",
-  "useCases.title": "Common use cases"
+  "useCases.title": "Common use cases",
+  "topic.backToHelp": "Back to Help Center",
+  "topic.helpCenter": "Help Center",
+  "topic.notFound": "Topic not found",
+  "topic.notFoundDesc": "The help topic you're looking for doesn't exist."
 }

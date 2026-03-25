@@ -44,8 +44,8 @@ export default function ForgotPassword() {
 
   const handleSendCode = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (channel === 'sms' && !phone) { toast.error('Please enter your phone number'); return; }
-    if (channel !== 'sms' && !email) { toast.error('Please enter your email address'); return; }
+    if (channel === 'sms' && !phone) { toast.error(t('forgot.toast.phoneRequired')); return; }
+    if (channel !== 'sms' && !email) { toast.error(t('forgot.toast.emailRequired')); return; }
 
     setIsLoading(true);
     try {
@@ -67,7 +67,7 @@ export default function ForgotPassword() {
         toast.success(channel === 'sms' ? 'Reset code sent via SMS!' : 'Reset code sent! Check your email inbox.');
       }
     } catch {
-      toast.error('Failed to send reset code');
+      toast.error(t('forgot.toast.sendFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -75,7 +75,7 @@ export default function ForgotPassword() {
 
   const handleVerifyCode = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (code.length !== 6) { toast.error('Please enter a valid 6-digit code'); return; }
+    if (code.length !== 6) { toast.error(t('forgot.toast.enterValidCode')); return; }
 
     setIsLoading(true);
     try {
@@ -92,7 +92,7 @@ export default function ForgotPassword() {
       const errorMsg = data.error?.json?.message;
       if (errorMsg) { toast.error(errorMsg); } else { setStep('reset'); }
     } catch {
-      toast.error('Verification failed');
+      toast.error(t('forgot.toast.verifyFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -100,8 +100,8 @@ export default function ForgotPassword() {
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (newPassword.length < 8) { toast.error('Password must be at least 8 characters'); return; }
-    if (newPassword !== confirmPassword) { toast.error('Passwords do not match'); return; }
+    if (newPassword.length < 8) { toast.error(t('forgot.toast.passwordTooShort')); return; }
+    if (newPassword !== confirmPassword) { toast.error(t('forgot.toast.passwordMismatch')); return; }
 
     setIsLoading(true);
     try {
@@ -116,9 +116,9 @@ export default function ForgotPassword() {
       });
       const data = await response.json();
       const errorMsg = data.error?.json?.message;
-      if (errorMsg) { toast.error(errorMsg); } else { setStep('success'); toast.success('Password reset successfully!'); }
+      if (errorMsg) { toast.error(errorMsg); } else { setStep('success'); toast.success(t('forgot.toast.resetSuccess')); }
     } catch {
-      toast.error('Failed to reset password');
+      toast.error(t('forgot.toast.resetFailed'));
     } finally {
       setIsLoading(false);
     }

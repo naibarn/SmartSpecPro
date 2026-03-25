@@ -63,7 +63,7 @@ export const LANGUAGE_LABELS_EN: Record<SupportedLanguage, string> = {
 // th: calculated from locales/en/ vs locales/th/ — 99% as of feature-062 Wave 1.
 export const LANGUAGE_COVERAGE: Record<SupportedLanguage, number> = {
   en: 100,
-  th: 99,
+  th: 100,
   ja: 0,
   ar: 0,
   "zh-Hans": 0,
