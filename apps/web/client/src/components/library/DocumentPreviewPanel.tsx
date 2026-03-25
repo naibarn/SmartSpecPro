@@ -17,7 +17,7 @@ import type { DocumentLibraryItem, DocumentPreviewType } from "@/lib/documentMan
 import { getLibraryItemProcessingMeta } from "@/lib/libraryUi";
 import { getOfficePreviewDecision } from "@/lib/previewHostSafety";
 import { trpc } from "@/lib/trpc";
-import { AlertTriangle, Check, Copy, ExternalLink, Loader2, Maximize2, Minimize2, Minus, Pencil, Plus, Upload, X } from "lucide-react";
+import { AlertTriangle, Check, Copy, Download, ExternalLink, Loader2, Maximize2, Minimize2, Minus, Pencil, Plus, Upload, X } from "lucide-react";
 // Heavy viewer components — lazy-loaded so they don't bloat the initial DocumentManagement chunk
 // ROLLBACK: To revert to old editor, replace UnifiedDocumentSurface with:
 // const MarkdownFileEditor = lazy(() => import("./MarkdownFileEditor"));
@@ -27,6 +27,7 @@ const CSVViewer = lazy(() => import("./CSVViewer"));
 const JSONViewer = lazy(() => import("./JSONViewer"));
 const ExcelViewer = lazy(() => import("./ExcelViewer"));
 import { DocumentVersionHistory } from "./DocumentVersionHistory";
+import MarkdownExportActions from "./MarkdownExportActions";
 import { ShareButton } from "./ShareButton";
 import { ShareDialog } from "./ShareDialog";
 import type { TiptapEditorTemplate } from "../editor/types";
@@ -232,58 +233,45 @@ export default function DocumentPreviewPanel({
         marginInline: "auto",
       }
     : undefined;
-  const markdownEditorHeaderActions =
-    isMarkdownPreview ? (
-      <>
-        {documentId ? (
-          <DocumentVersionHistory
-            itemId={documentId}
-            onRestore={onVersionRestore}
-            compact={isMediaPreview}
-          />
-        ) : null}
-        {onReplaceFile ? (
-          <Button
-            size="sm"
-            variant="outline"
-            className={isMediaPreview ? "h-8 w-8 rounded-full p-0" : "gap-1.5 px-2 sm:px-3"}
-            onClick={() => replaceFileInputRef.current?.click()}
-            disabled={isReplacingFile}
-            aria-label="Upload new version"
-            title="Upload new version"
-          >
-            {isReplacingFile ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Upload className="h-4 w-4" />
-            )}
-            {isMediaPreview ? null : <span className="hidden sm:inline">Upload New Version</span>}
-          </Button>
-        ) : null}
-        {!isPrivateVaultItem ? (
-          <ShareButton
-            shareCount={sharesData?.shares?.length ?? 0}
-            onOpenDialog={() => setShareDialogOpen(true)}
-            compact={isMediaPreview}
-          />
-        ) : null}
-        {sourceUrl ? (
-          <Button
-            asChild
-            size="sm"
-            variant="outline"
-            className={isMediaPreview ? "h-8 w-8 rounded-full p-0" : ""}
-            aria-label="Download file"
-            title="Download file"
-          >
-            <a href={sourceUrl} target="_blank" rel="noreferrer" download>
-              <ExternalLink className={isMediaPreview ? "h-4 w-4" : "mr-1 h-4 w-4"} />
-              {isMediaPreview ? null : "Download File"}
-            </a>
-          </Button>
-        ) : null}
-      </>
-    ) : null;
+  const markdownSurfaceHeaderActions = isMarkdownPreview ? (
+    <MarkdownExportActions title={item.title} markdown={markdownValue || ""} />
+  ) : null;
+  const markdownEditorHeaderActions = isMarkdownPreview ? (
+    <>
+      {documentId ? (
+        <DocumentVersionHistory
+          itemId={documentId}
+          onRestore={onVersionRestore}
+          compact={isMediaPreview}
+        />
+      ) : null}
+      {onReplaceFile ? (
+        <Button
+          size="sm"
+          variant="outline"
+          className={isMediaPreview ? "h-8 w-8 rounded-full p-0" : "gap-1.5 px-2 sm:px-3"}
+          onClick={() => replaceFileInputRef.current?.click()}
+          disabled={isReplacingFile}
+          aria-label="Upload new version"
+          title="Upload new version"
+        >
+          {isReplacingFile ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Upload className="h-4 w-4" />
+          )}
+          {isMediaPreview ? null : <span className="hidden sm:inline">Upload New Version</span>}
+        </Button>
+      ) : null}
+      {!isPrivateVaultItem ? (
+        <ShareButton
+          shareCount={sharesData?.shares?.length ?? 0}
+          onOpenDialog={() => setShareDialogOpen(true)}
+          compact={isMediaPreview}
+        />
+      ) : null}
+    </>
+  ) : null;
 
   return (
     <div ref={panelRef} className="flex h-full min-h-0 flex-col gap-3 overflow-hidden rounded-xl border bg-background/90 p-3 shadow-sm">
@@ -546,6 +534,7 @@ export default function DocumentPreviewPanel({
               errorMessage={markdownError}
               documentId={documentId}
               initialEditorTemplate={initialEditorTemplate}
+              surfaceHeaderActions={markdownSurfaceHeaderActions}
               editorHeaderActions={markdownEditorHeaderActions}
               editorUploadMetadata={editorUploadMetadata}
               editorLibraryScope={isPrivateVaultItem ? "private_vault" : "all"}

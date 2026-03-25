@@ -117,4 +117,75 @@ describe("GlobalNotificationBell occurrence badge", () => {
 
     expect(screen.getByText("Latest: Job failed")).toBeTruthy();
   });
+
+  it("opens a notification detail panel when clicking a generic alert", async () => {
+    notificationsData = [
+      {
+        id: 4,
+        title: "Generic alert",
+        content: "Something happened",
+        isRead: false,
+        priority: "normal",
+        createdAt: new Date().toISOString(),
+        occurrenceCount: 1,
+      },
+    ];
+
+    render(<GlobalAlerts />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByLabelText(/unread notification/i));
+    });
+
+    fireEvent.click(screen.getByText("Generic alert"));
+
+    expect(screen.getByRole("button", { name: /back/i })).toBeTruthy();
+  });
+
+  it("keeps the bell visible even when unread count is zero", () => {
+    notificationCountData = { count: 0 };
+
+    render(<GlobalAlerts />);
+
+    expect(screen.getByLabelText(/0 unread notification/i)).toBeTruthy();
+  });
+
+  it("shows a history CTA when unread count is zero", async () => {
+    notificationCountData = { count: 0 };
+    notificationsData = [
+      {
+        id: 5,
+        title: "Old read item",
+        content: "Archived event",
+        isRead: true,
+        priority: "low",
+        createdAt: new Date().toISOString(),
+        occurrenceCount: 1,
+      },
+    ];
+
+    render(<GlobalAlerts />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByLabelText(/0 unread notification/i));
+    });
+
+    expect(
+      screen.getByText(/No unread alerts, but 1 recent item available/i)
+    ).toBeTruthy();
+    expect(screen.getByText("ดูย้อนหลัง")).toBeTruthy();
+  });
+
+  it("shows a no-history message when there are no notifications at all", async () => {
+    notificationCountData = { count: 0 };
+    notificationsData = [];
+
+    render(<GlobalAlerts />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByLabelText(/0 unread notification/i));
+    });
+
+    expect(screen.getByText("No notifications yet")).toBeTruthy();
+  });
 });

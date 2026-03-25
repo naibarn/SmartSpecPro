@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Check, ChevronsUpDown } from "lucide-react";
+import { Check, ChevronsUpDown, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -9,6 +9,7 @@ import {
     CommandInput,
     CommandItem,
     CommandList,
+    CommandSeparator,
 } from "@/components/ui/command";
 import {
     Popover,
@@ -17,15 +18,20 @@ import {
 } from "@/components/ui/popover";
 import { trpc } from "@/lib/trpc";
 
+/** Sentinel value indicating automatic model selection */
+export const AUTO_MODEL = "__auto__";
+
 interface ModelPickerProps {
     value: string;
     onChange: (value: string) => void;
     className?: string;
     /** Compact mode for toolbar — smaller height & text */
     compact?: boolean;
+    /** Hide the Auto option (e.g. for non-agent contexts) */
+    hideAuto?: boolean;
 }
 
-export function ModelPicker({ value, onChange, className, compact }: ModelPickerProps) {
+export function ModelPicker({ value, onChange, className, compact, hideAuto }: ModelPickerProps) {
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState("");
 
@@ -50,7 +56,7 @@ export function ModelPicker({ value, onChange, className, compact }: ModelPicker
 
     // Find selected model name for display
     const selectedModelName = useMemo(() => {
-        if (!value) return "Select model...";
+        if (!value || value === AUTO_MODEL) return "Auto (system selects best model)";
 
         if (modelsData?.models) {
             const found = modelsData.models.find(m => m.id === value);
@@ -59,6 +65,8 @@ export function ModelPicker({ value, onChange, className, compact }: ModelPicker
         // Fallback if model not in list
         return value;
     }, [value, modelsData?.models]);
+
+    const isAuto = !value || value === AUTO_MODEL;
 
     return (
         <Popover open={open} onOpenChange={setOpen}>
@@ -70,6 +78,7 @@ export function ModelPicker({ value, onChange, className, compact }: ModelPicker
                     className={cn(
                         "w-full justify-between font-normal",
                         compact && "h-7 text-xs px-2 border-0 bg-transparent hover:bg-accent/50",
+                        isAuto && "text-primary",
                         className,
                     )}
                     disabled={isLoading}
@@ -77,7 +86,10 @@ export function ModelPicker({ value, onChange, className, compact }: ModelPicker
                     {isLoading ? (
                         <span className="text-muted-foreground truncate">Loading...</span>
                     ) : (
-                        <span className="truncate">{selectedModelName}</span>
+                        <span className="truncate flex items-center gap-1.5">
+                            {isAuto && <Sparkles className="h-3.5 w-3.5 shrink-0" />}
+                            {selectedModelName}
+                        </span>
                     )}
                     <ChevronsUpDown className={cn("ml-1 shrink-0 opacity-50", compact ? "h-3 w-3" : "h-4 w-4")} />
                 </Button>
@@ -91,6 +103,36 @@ export function ModelPicker({ value, onChange, className, compact }: ModelPicker
                     />
                     <CommandList>
                         <CommandEmpty>No models found.</CommandEmpty>
+
+                        {/* Auto option */}
+                        {!hideAuto && (!search || "auto".includes(search.toLowerCase())) && (
+                            <>
+                                <CommandGroup heading="Recommended">
+                                    <CommandItem
+                                        value="Auto system selects best model"
+                                        onSelect={() => {
+                                            onChange(AUTO_MODEL);
+                                            setOpen(false);
+                                        }}
+                                    >
+                                        <Check
+                                            className={cn(
+                                                "mr-2 h-4 w-4",
+                                                isAuto ? "opacity-100" : "opacity-0"
+                                            )}
+                                        />
+                                        <div className="flex items-center gap-1.5">
+                                            <Sparkles className="h-4 w-4 text-primary" />
+                                            <div className="flex flex-col">
+                                                <span className="text-sm font-medium">Auto</span>
+                                                <span className="text-[10px] text-muted-foreground">System selects the best available model</span>
+                                            </div>
+                                        </div>
+                                    </CommandItem>
+                                </CommandGroup>
+                                <CommandSeparator />
+                            </>
+                        )}
 
                         {Object.entries(modelsByProvider).map(([provider, models]) => {
                             // Filter by search term before rendering group

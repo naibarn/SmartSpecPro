@@ -476,45 +476,23 @@ function AgencySelector({ value, onChange, placeholder }: AgencySelectorProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = React.useRef<HTMLDivElement>(null);
-  const [agencies, setAgencies] = useState<Array<{ value: string; label: string; description?: string; status?: string }>>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  // Fetch agencies from API
-  React.useEffect(() => {
-    const fetchAgencies = async () => {
-      try {
-        setIsLoading(true);
-        const response = await fetch("/api/v1/workflows/agencies");
-        if (!response.ok) throw new Error("Failed to fetch agencies");
-        const data = await response.json();
-        let rawItems: any[] = [];
-        if (Array.isArray(data)) {
-          rawItems = data;
-        } else if (data && typeof data === "object") {
-          for (const key of Object.keys(data)) {
-            if (Array.isArray(data[key])) {
-              rawItems = data[key];
-              break;
-            }
-          }
-        }
-        setAgencies(
-          rawItems.map((item: any) => ({
-            value: String(item.value ?? item.id ?? ""),
-            label: String(item.label ?? item.name ?? ""),
-            description: item.description || "",
-            status: item.status || "draft",
-          }))
-        );
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Unknown error");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchAgencies();
-  }, []);
+  // Fetch agencies via tRPC (same auth/session as the rest of the app)
+  const { data: agencyData, isLoading, error: queryError } = (trpc as any).agency?.list?.useQuery?.(
+    { limit: 100, offset: 0 },
+  ) ?? { data: undefined, isLoading: true, error: null };
+
+  const error = queryError ? (queryError as any).message ?? "Failed to load agencies" : null;
+
+  const agencies = React.useMemo(() => {
+    const rawItems: any[] = agencyData?.agencies ?? [];
+    return rawItems.map((item: any) => ({
+      value: String(item.id ?? ""),
+      label: String(item.name ?? ""),
+      description: item.description || "",
+      status: item.status || "draft",
+    }));
+  }, [agencyData]);
 
   const selectedAgency = agencies.find((a) => a.value === value);
 

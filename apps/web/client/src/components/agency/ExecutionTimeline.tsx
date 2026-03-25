@@ -78,18 +78,20 @@ export function ExecutionTimeline({ agencyId, runId, events = [] }: ExecutionTim
         {/* Reflection Summary */}
         {reflectionEvents.map((evt, i) => {
           const score = Number(evt.data.qualityScore) || 0;
+          const isComplete = Boolean(evt.data.isComplete);
+          const replanRequired = Boolean(evt.data.replanRequired);
           const color = score >= 0.8 ? "bg-green-500" : score >= 0.5 ? "bg-amber-500" : "bg-red-500";
           return (
             <div key={`reflect-${i}`} className="border rounded-md p-2 bg-slate-50 space-y-1">
               <div className="flex items-center gap-1.5 text-xs font-medium">
                 <BarChart3 className="h-3.5 w-3.5" />
                 Quality: {(score * 100).toFixed(0)}%
-                {evt.data.isComplete && (
+                {isComplete && (
                   <Badge variant="secondary" className="text-[9px] px-1 py-0 bg-green-100 text-green-700">
                     Complete
                   </Badge>
                 )}
-                {evt.data.replanRequired && (
+                {replanRequired && (
                   <Badge variant="secondary" className="text-[9px] px-1 py-0 bg-amber-100 text-amber-700">
                     Re-planning...
                   </Badge>

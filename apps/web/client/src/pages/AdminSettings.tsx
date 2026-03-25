@@ -774,7 +774,7 @@ export default function AdminSettings() {
   if (authLoading || !user || !isAdmin) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
+        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
       </div>
     );
   }
@@ -822,7 +822,7 @@ export default function AdminSettings() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-purple-50/30">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30">
       {/* Top Header */}
       <div className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-10">
         <div className="px-4 sm:px-6 lg:px-8 py-4 flex items-center gap-4">
@@ -837,7 +837,7 @@ export default function AdminSettings() {
           </Button>
           <div className="h-5 w-px bg-gray-200" />
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-md shadow-purple-200/50">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center shadow-md shadow-blue-200/50">
               <Settings className="w-5 h-5 text-white" />
             </div>
             <div>
@@ -863,7 +863,7 @@ export default function AdminSettings() {
                     onClick={() => setActiveTab(item.key)}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all duration-150 ${
                       isActive
-                        ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-md shadow-purple-200/50"
+                        ? "bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-md shadow-blue-200/50"
                         : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                     }`}
                   >
@@ -886,9 +886,9 @@ export default function AdminSettings() {
           {/* Stripe Settings Tab */}
           <TabsContent value="stripe">
             <Card className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
-              <CardHeader className="border-b bg-gradient-to-r from-purple-50/50 to-pink-50/30 pb-5">
+              <CardHeader className="border-b bg-gradient-to-r from-blue-50/50 to-cyan-50/30 pb-5">
                 <CardTitle className="flex items-center gap-2 text-lg">
-                  <CreditCard className="w-5 h-5 text-purple-500" />
+                  <CreditCard className="w-5 h-5 text-blue-500" />
                   Stripe Configuration
                 </CardTitle>
                 <CardDescription>
@@ -897,7 +897,7 @@ export default function AdminSettings() {
                     href="https://dashboard.stripe.com/apikeys"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-purple-600 hover:underline"
+                    className="text-blue-600 hover:underline"
                   >
                     Stripe Dashboard
                   </a>
@@ -1034,7 +1034,7 @@ export default function AdminSettings() {
                   <Button
                     onClick={handleSaveStripe}
                     disabled={updateStripeMutation.isPending}
-                    className="bg-purple-600 hover:bg-purple-700"
+                    className="bg-blue-600 hover:bg-blue-700"
                   >
                     {updateStripeMutation.isPending ? (
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -1063,9 +1063,9 @@ export default function AdminSettings() {
           {/* OAuth Settings Tab */}
           <TabsContent value="oauth">
             <Card className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
-              <CardHeader className="border-b bg-gradient-to-r from-purple-50/50 to-pink-50/30 pb-5">
+              <CardHeader className="border-b bg-gradient-to-r from-blue-50/50 to-cyan-50/30 pb-5">
                 <CardTitle className="flex items-center gap-2 text-lg">
-                  <Globe className="w-5 h-5 text-purple-500" />
+                  <Globe className="w-5 h-5 text-blue-500" />
                   OAuth / Social Login Configuration
                 </CardTitle>
                 <CardDescription>
@@ -1560,7 +1560,7 @@ export default function AdminSettings() {
                   <Button
                     onClick={handleSaveOAuth}
                     disabled={updateOAuthMutation.isPending}
-                    className="bg-purple-600 hover:bg-purple-700"
+                    className="bg-blue-600 hover:bg-blue-700"
                   >
                     {updateOAuthMutation.isPending ? (
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -1576,9 +1576,9 @@ export default function AdminSettings() {
           {/* SMTP Settings Tab */}
           <TabsContent value="smtp">
             <Card className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
-              <CardHeader className="border-b bg-gradient-to-r from-purple-50/50 to-pink-50/30 pb-5">
+              <CardHeader className="border-b bg-gradient-to-r from-blue-50/50 to-cyan-50/30 pb-5">
                 <CardTitle className="flex items-center gap-2 text-lg">
-                  <Mail className="w-5 h-5 text-purple-500" />
+                  <Mail className="w-5 h-5 text-blue-500" />
                   Email / SMTP Settings
                 </CardTitle>
                 <CardDescription>
@@ -1664,7 +1664,7 @@ export default function AdminSettings() {
                     type="checkbox"
                     checked={smtpForm.secure}
                     onChange={(e) => setSmtpForm((p) => ({ ...p, secure: e.target.checked }))}
-                    className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                    className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                   />
                   <Label htmlFor="smtpSecure">Use SSL/TLS (port 465)</Label>
                 </div>
@@ -1744,7 +1744,7 @@ export default function AdminSettings() {
                       fromEmail: smtpForm.fromEmail,
                     })}
                     disabled={updateSmtpMutation.isPending}
-                    className="bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-700 hover:to-pink-600"
+                    className="bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600"
                   >
                     {updateSmtpMutation.isPending ? (
                       <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</>
@@ -1760,9 +1760,9 @@ export default function AdminSettings() {
           {/* SMS Provider Settings Tab */}
           <TabsContent value="sms">
             <Card className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
-              <CardHeader className="border-b bg-gradient-to-r from-purple-50/50 to-pink-50/30 pb-5">
+              <CardHeader className="border-b bg-gradient-to-r from-blue-50/50 to-cyan-50/30 pb-5">
                 <CardTitle className="flex items-center gap-2 text-lg">
-                  <MessageSquare className="w-5 h-5 text-purple-500" />
+                  <MessageSquare className="w-5 h-5 text-blue-500" />
                   SMS Provider Settings
                 </CardTitle>
                 <CardDescription>
@@ -1782,7 +1782,7 @@ export default function AdminSettings() {
                     <select
                       value={smsForm.provider}
                       onChange={(e) => setSmsForm((p) => ({ ...p, provider: e.target.value as "twilio" | "vonage" }))}
-                      className="mt-1 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm focus:border-purple-400 focus:ring-purple-400"
+                      className="mt-1 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm focus:border-blue-400 focus:ring-blue-400"
                     >
                       <option value="twilio">Twilio</option>
                       <option value="vonage">Vonage (Nexmo)</option>
@@ -1872,7 +1872,7 @@ export default function AdminSettings() {
                       fromNumber: smsForm.fromNumber,
                     })}
                     disabled={updateSmsMutation.isPending}
-                    className="bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-700 hover:to-pink-600"
+                    className="bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600"
                   >
                     {updateSmsMutation.isPending ? (
                       <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</>
@@ -1888,9 +1888,9 @@ export default function AdminSettings() {
           {/* Telegram Bot Settings Tab */}
           <TabsContent value="telegram">
             <Card className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
-              <CardHeader className="border-b bg-gradient-to-r from-purple-50/50 to-pink-50/30 pb-5">
+              <CardHeader className="border-b bg-gradient-to-r from-blue-50/50 to-cyan-50/30 pb-5">
                 <CardTitle className="flex items-center gap-2 text-lg">
-                  <Send className="w-5 h-5 text-purple-500" />
+                  <Send className="w-5 h-5 text-blue-500" />
                   Telegram Bot Settings
                 </CardTitle>
                 <CardDescription>
@@ -1918,7 +1918,7 @@ export default function AdminSettings() {
                       onChange={(e) => setTelegramForm((p) => ({ ...p, enabled: e.target.checked }))}
                       className="sr-only peer"
                     />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                   </label>
                 </div>
 
@@ -1950,7 +1950,7 @@ export default function AdminSettings() {
                     </button>
                   </div>
                   <p className="text-xs text-gray-500 mt-1">
-                    Create a bot at <a href="https://t.me/BotFather" target="_blank" rel="noopener noreferrer" className="text-purple-600 hover:underline">@BotFather</a> on Telegram
+                    Create a bot at <a href="https://t.me/BotFather" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">@BotFather</a> on Telegram
                   </p>
                 </div>
 
@@ -2038,7 +2038,7 @@ export default function AdminSettings() {
                       enabled: telegramForm.enabled,
                     })}
                     disabled={updateTelegramMutation.isPending}
-                    className="bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-700 hover:to-pink-600"
+                    className="bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600"
                   >
                     {updateTelegramMutation.isPending ? (
                       <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</>
@@ -2060,9 +2060,9 @@ export default function AdminSettings() {
           <TabsContent value="registration">
             <div className="space-y-6">
               <Card className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
-                <CardHeader className="border-b bg-gradient-to-r from-purple-50/50 to-pink-50/30 pb-5">
+                <CardHeader className="border-b bg-gradient-to-r from-blue-50/50 to-cyan-50/30 pb-5">
                   <CardTitle className="flex items-center gap-2 text-lg">
-                    <UserPlus className="w-5 h-5 text-purple-500" />
+                    <UserPlus className="w-5 h-5 text-blue-500" />
                     Registration Settings
                   </CardTitle>
                   <CardDescription>
@@ -2074,7 +2074,7 @@ export default function AdminSettings() {
                   <div>
                     <h4 className="font-semibold text-sm text-gray-900 mb-3">Registration Mode</h4>
                     <div className="flex gap-4">
-                      <label className={`flex-1 p-4 rounded-xl border-2 cursor-pointer transition-all ${regForm.registrationMode === "open" ? "border-purple-500 bg-purple-50/50" : "border-gray-200 hover:border-gray-300"}`}>
+                      <label className={`flex-1 p-4 rounded-xl border-2 cursor-pointer transition-all ${regForm.registrationMode === "open" ? "border-blue-500 bg-blue-50/50" : "border-gray-200 hover:border-gray-300"}`}>
                         <input
                           type="radio"
                           name="regMode"
@@ -2086,7 +2086,7 @@ export default function AdminSettings() {
                         <div className="font-medium text-sm">Open Registration</div>
                         <p className="text-xs text-gray-500 mt-1">Anyone can register (invite code optional)</p>
                       </label>
-                      <label className={`flex-1 p-4 rounded-xl border-2 cursor-pointer transition-all ${regForm.registrationMode === "invite_only" ? "border-purple-500 bg-purple-50/50" : "border-gray-200 hover:border-gray-300"}`}>
+                      <label className={`flex-1 p-4 rounded-xl border-2 cursor-pointer transition-all ${regForm.registrationMode === "invite_only" ? "border-blue-500 bg-blue-50/50" : "border-gray-200 hover:border-gray-300"}`}>
                         <input
                           type="radio"
                           name="regMode"
@@ -2117,7 +2117,7 @@ export default function AdminSettings() {
                               if (newMethods.length === 0) return; // at least one required
                               setRegForm((prev) => ({ ...prev, allowedAuthMethods: newMethods }));
                             }}
-                            className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                            className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                           />
                           <span className="text-sm capitalize">{method === "email" ? "Email/Password" : method}</span>
                         </label>
@@ -2164,7 +2164,7 @@ export default function AdminSettings() {
                         type="checkbox"
                         checked={regForm.userInviteEnabled}
                         onChange={(e) => setRegForm((prev) => ({ ...prev, userInviteEnabled: e.target.checked }))}
-                        className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                        className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                       />
                       <div>
                         <Label htmlFor="userInviteEnabled">Allow users to share invite codes</Label>
@@ -2227,7 +2227,7 @@ export default function AdminSettings() {
                       type="checkbox"
                       checked={regForm.autoAssignTenant}
                       onChange={(e) => setRegForm((prev) => ({ ...prev, autoAssignTenant: e.target.checked }))}
-                      className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                      className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                     />
                     <div>
                       <Label htmlFor="autoTenant">Auto-assign tenant by domain</Label>
@@ -2239,7 +2239,7 @@ export default function AdminSettings() {
                     <Button
                       onClick={() => updateRegMutation.mutate(regForm)}
                       disabled={updateRegMutation.isPending}
-                      className="bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-700 hover:to-pink-600"
+                      className="bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600"
                     >
                       {updateRegMutation.isPending ? (
                         <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</>
@@ -2270,9 +2270,9 @@ export default function AdminSettings() {
           {/* 2FA Settings Tab */}
           <TabsContent value="2fa">
             <Card className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
-              <CardHeader className="border-b bg-gradient-to-r from-purple-50/50 to-pink-50/30 pb-5">
+              <CardHeader className="border-b bg-gradient-to-r from-blue-50/50 to-cyan-50/30 pb-5">
                 <CardTitle className="flex items-center gap-2 text-lg">
-                  <Shield className="w-5 h-5 text-purple-500" />
+                  <Shield className="w-5 h-5 text-blue-500" />
                   Two-Factor Authentication Settings
                 </CardTitle>
                 <CardDescription>
@@ -2294,7 +2294,7 @@ export default function AdminSettings() {
                       onChange={(e) => setTwoFaForm((p) => ({ ...p, enabled: e.target.checked }))}
                       className="sr-only peer"
                     />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                   </label>
                 </div>
 
@@ -2312,7 +2312,7 @@ export default function AdminSettings() {
                       className="sr-only peer"
                       disabled={!twoFaForm.enabled}
                     />
-                    <div className={`w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600 ${!twoFaForm.enabled ? 'opacity-50' : ''}`}></div>
+                    <div className={`w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 ${!twoFaForm.enabled ? 'opacity-50' : ''}`}></div>
                   </label>
                 </div>
 
@@ -2364,7 +2364,7 @@ export default function AdminSettings() {
                   <Button
                     onClick={() => updateTwoFaMutation.mutate(twoFaForm)}
                     disabled={updateTwoFaMutation.isPending}
-                    className="bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-700 hover:to-pink-600"
+                    className="bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600"
                   >
                     {updateTwoFaMutation.isPending ? (
                       <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</>
@@ -2380,9 +2380,9 @@ export default function AdminSettings() {
           {/* STT Providers Tab */}
           <TabsContent value="stt">
             <Card className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
-              <CardHeader className="border-b bg-gradient-to-r from-purple-50/50 to-pink-50/30 pb-5">
+              <CardHeader className="border-b bg-gradient-to-r from-blue-50/50 to-cyan-50/30 pb-5">
                 <CardTitle className="flex items-center gap-2 text-lg">
-                  <Mic className="w-5 h-5 text-purple-500" />
+                  <Mic className="w-5 h-5 text-blue-500" />
                   Speech-to-Text Providers
                 </CardTitle>
                 <CardDescription>
@@ -2439,7 +2439,7 @@ export default function AdminSettings() {
                             {tpl.creditCostPerMinute === 0 ? "Free" : `${tpl.creditCostPerMinute} credits/min`}
                           </strong>
                         </span>
-                        <a href={tpl.signupUrl} target="_blank" rel="noopener noreferrer" className="text-purple-600 hover:underline flex items-center gap-1">
+                        <a href={tpl.signupUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center gap-1">
                           Get API Key <ExternalLink className="w-3 h-3" />
                         </a>
                       </div>
@@ -2482,7 +2482,7 @@ export default function AdminSettings() {
                                 });
                               }}
                               disabled={sttUpsertMutation.isPending}
-                              className="bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-700 hover:to-pink-600"
+                              className="bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600"
                             >
                               {sttUpsertMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4 mr-1" />}
                               Save
@@ -2543,9 +2543,9 @@ export default function AdminSettings() {
           {/* AI / Memory Settings Tab */}
           <TabsContent value="ai">
             <Card className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
-              <CardHeader className="bg-gradient-to-r from-purple-50 to-indigo-50 border-b">
+              <CardHeader className="bg-gradient-to-r from-blue-50 to-cyan-50 border-b">
                 <CardTitle className="flex items-center gap-2 text-lg">
-                  <Brain className="w-5 h-5 text-purple-600" />
+                  <Brain className="w-5 h-5 text-blue-600" />
                   AI / Memory Settings
                 </CardTitle>
                 <p className="text-sm text-muted-foreground mt-1">
@@ -2745,9 +2745,9 @@ export default function AdminSettings() {
           {/* Vector Database Settings Tab */}
           <TabsContent value="vectordb">
             <Card className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
-              <CardHeader className="border-b bg-gradient-to-r from-purple-50/50 to-pink-50/30 pb-5">
+              <CardHeader className="border-b bg-gradient-to-r from-blue-50/50 to-cyan-50/30 pb-5">
                 <CardTitle className="flex items-center gap-2 text-lg">
-                  <Database className="w-5 h-5 text-purple-600" />
+                  <Database className="w-5 h-5 text-blue-600" />
                   Vector Database Configuration
                 </CardTitle>
                 <CardDescription>
@@ -3608,7 +3608,7 @@ function MenuOverridesPanel() {
     return (
       <Card className="border-0 shadow-sm rounded-2xl">
         <CardContent className="py-12 flex justify-center">
-          <Loader2 className="w-6 h-6 animate-spin text-purple-500" />
+          <Loader2 className="w-6 h-6 animate-spin text-blue-500" />
         </CardContent>
       </Card>
     );
@@ -3616,9 +3616,9 @@ function MenuOverridesPanel() {
 
   return (
     <Card className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
-      <CardHeader className="border-b bg-gradient-to-r from-purple-50/50 to-pink-50/30 pb-5">
+      <CardHeader className="border-b bg-gradient-to-r from-blue-50/50 to-cyan-50/30 pb-5">
         <CardTitle className="flex items-center gap-2 text-lg">
-          <Menu className="w-5 h-5 text-purple-500" />
+          <Menu className="w-5 h-5 text-blue-500" />
           Main Menu Settings
         </CardTitle>
         <CardDescription>
@@ -3670,7 +3670,7 @@ function MenuOverridesPanel() {
                                       type="checkbox"
                                       checked={checked}
                                       onChange={() => toggle(item.id, col)}
-                                      className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500 cursor-pointer"
+                                      className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                                     />
                                   ) : (
                                     <span className="text-gray-300">—</span>

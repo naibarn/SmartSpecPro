@@ -9,7 +9,7 @@ import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSSEReconnect } from "@/lib/useSSEReconnect";
-import { Bell, AlarmClock, X, Check, ChevronDown } from "lucide-react";
+import { Bell, AlarmClock, X, Check, ChevronDown, Clock3 } from "lucide-react";
 import { toast } from "sonner";
 
 /** Safe navigation — blocks javascript:, data:, vbscript: protocol URLs */
@@ -476,6 +476,7 @@ function GlobalUrgentReminders() {
 
 function NotificationDetailPanel({ notification: n, onBack, onNavigate }: { notification: any; onBack: () => void; onNavigate: (url: string) => void }) {
   const meta = n.metadata as any;
+  const hasLegacyActions = !n.actionUrl && !n.conversationId && !n.scheduledMessageId && n.type === "alert";
   return (
     <div style={{ padding: "12px 16px" }}>
       {/* Header */}
@@ -586,24 +587,139 @@ function NotificationDetailPanel({ notification: n, onBack, onNavigate }: { noti
         </div>
       )}
 
-      {/* Action Button */}
-      {n.actionUrl && (
-        <button
-          onClick={() => safeNavigate(n.actionUrl, onNavigate)}
-          style={{
-            marginTop: "12px",
-            padding: "8px 16px",
-            background: "#0078d4",
-            color: "#fff",
-            border: "none",
-            borderRadius: "6px",
-            fontSize: "13px",
-            cursor: "pointer",
-            width: "100%",
-          }}
-        >
-          {n.actionLabel || "View Details"} &rarr;
-        </button>
+      {/* Actions */}
+      {(n.actionUrl || n.conversationId || n.scheduledMessageId || hasLegacyActions) && (
+        <div style={{ display: "grid", gap: "8px", marginTop: "12px" }}>
+          {n.actionUrl && (
+            <button
+              onClick={() => safeNavigate(n.actionUrl, onNavigate)}
+              style={{
+                padding: "8px 16px",
+                background: "#0078d4",
+                color: "#fff",
+                border: "none",
+                borderRadius: "6px",
+                fontSize: "13px",
+                cursor: "pointer",
+                width: "100%",
+              }}
+            >
+              {n.actionLabel || "View Details"} &rarr;
+            </button>
+          )}
+          {n.conversationId && !n.actionUrl && (
+            <button
+              onClick={() => safeNavigate(`/chat?conversationId=${n.conversationId}`, onNavigate)}
+              style={{
+                padding: "8px 16px",
+                background: "#0078d4",
+                color: "#fff",
+                border: "none",
+                borderRadius: "6px",
+                fontSize: "13px",
+                cursor: "pointer",
+                width: "100%",
+              }}
+            >
+              Open Chat &rarr;
+            </button>
+          )}
+          {n.scheduledMessageId && !n.actionUrl && (
+            <button
+              onClick={() => safeNavigate(`/chat?panel=schedule&alertId=${n.scheduledMessageId}`, onNavigate)}
+              style={{
+                padding: "8px 16px",
+                background: "#0078d4",
+                color: "#fff",
+                border: "none",
+                borderRadius: "6px",
+                fontSize: "13px",
+                cursor: "pointer",
+                width: "100%",
+              }}
+            >
+              View Schedule &rarr;
+            </button>
+          )}
+          {hasLegacyActions && (
+            <>
+              {n.title?.includes("Media Job") && (
+                <button
+                  onClick={() => safeNavigate("/media-studio", onNavigate)}
+                  style={{
+                    padding: "8px 16px",
+                    background: "#0078d4",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: "6px",
+                    fontSize: "13px",
+                    cursor: "pointer",
+                    width: "100%",
+                  }}
+                >
+                  Open Media Studio &rarr;
+                </button>
+              )}
+              {(n.title?.includes("credit") || n.title?.includes("Credit")) && (
+                <button
+                  onClick={() => safeNavigate("/admin/settings", onNavigate)}
+                  style={{
+                    padding: "8px 16px",
+                    background: "#0078d4",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: "6px",
+                    fontSize: "13px",
+                    cursor: "pointer",
+                    width: "100%",
+                  }}
+                >
+                  Admin Settings &rarr;
+                </button>
+              )}
+              {(n.title?.includes("latency") || n.title?.includes("API error")) && (
+                <button
+                  onClick={() => safeNavigate("/admin/system-guardian", onNavigate)}
+                  style={{
+                    padding: "8px 16px",
+                    background: "#0078d4",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: "6px",
+                    fontSize: "13px",
+                    cursor: "pointer",
+                    width: "100%",
+                  }}
+                >
+                  System Guardian &rarr;
+                </button>
+              )}
+              {(n.title?.includes("Feedback") || n.title?.includes("feedback")) && (
+                <button
+                  onClick={() => {
+                    const ticketMatch = n.content?.match(/Ticket #(\d+)/);
+                    safeNavigate(
+                      ticketMatch?.[1] ? `/admin/feedback-hub?ticketId=${ticketMatch[1]}` : "/admin/feedback-hub",
+                      onNavigate
+                    );
+                  }}
+                  style={{
+                    padding: "8px 16px",
+                    background: "#0078d4",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: "6px",
+                    fontSize: "13px",
+                    cursor: "pointer",
+                    width: "100%",
+                  }}
+                >
+                  View Feedback &rarr;
+                </button>
+              )}
+            </>
+          )}
+        </div>
       )}
     </div>
   );
@@ -645,6 +761,14 @@ function GlobalNotificationBell() {
   });
 
   const count = data?.count || 0;
+  const hasUnread = count > 0;
+  const recentCount = notifications?.length ?? 0;
+  const hasRecentHistory = recentCount > 0;
+  const statusSummary = hasUnread
+    ? `${count} unread notification${count !== 1 ? "s" : ""}`
+    : hasRecentHistory
+      ? `No unread alerts, but ${recentCount} recent item${recentCount !== 1 ? "s" : ""} available`
+      : "No notifications yet";
 
   // Real-time SSE for instant notification updates (with exponential backoff)
   const handleSSEMessage = useCallback(() => {
@@ -673,8 +797,6 @@ function GlobalNotificationBell() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showDropdown]);
 
-  if (count === 0 && !showDropdown) return null;
-
   const formatTimeAgo = (date: string | Date) => {
     const now = Date.now();
     const then = new Date(date).getTime();
@@ -702,23 +824,32 @@ function GlobalNotificationBell() {
     <div ref={dropdownRef} style={{ position: "fixed", top: "12px", right: "12px", zIndex: 9990 }}>
       <button
         onClick={() => setShowDropdown((v) => !v)}
-        title={`${count} unread notification${count !== 1 ? "s" : ""}`}
-        aria-label={`${count} unread notification${count !== 1 ? "s" : ""}`}
+        title={
+          hasUnread
+            ? statusSummary
+            : "No unread notifications, recent history available"
+        }
+        aria-label={
+          hasUnread
+            ? statusSummary
+            : "0 unread notifications, recent history available"
+        }
         style={{
           background: "var(--background, #1e1e1e)",
           border: "1px solid var(--border, #333)",
           borderRadius: "8px",
-          padding: "8px",
+          padding: "8px 10px",
           cursor: "pointer",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
+          gap: "6px",
           boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
           position: "relative",
         }}
       >
         <Bell style={{ width: 18, height: 18, color: "var(--foreground, #e0e0e0)" }} />
-        {count > 0 && (
+        {hasUnread ? (
           <span
             style={{
               position: "absolute",
@@ -738,6 +869,25 @@ function GlobalNotificationBell() {
             }}
           >
             {count > 9 ? "9+" : count}
+          </span>
+        ) : (
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "4px",
+              padding: "0 6px",
+              height: "18px",
+              borderRadius: "9999px",
+              background: "rgba(148, 163, 184, 0.16)",
+              color: "var(--foreground, #e0e0e0)",
+              fontSize: "10px",
+              fontWeight: 600,
+              letterSpacing: "0.02em",
+            }}
+          >
+            <Clock3 style={{ width: 10, height: 10 }} />
+            Recent
           </span>
         )}
       </button>
@@ -806,6 +956,23 @@ function GlobalNotificationBell() {
             </div>
           </div>
 
+          {!hasUnread && (
+            <div
+              style={{
+                margin: "10px 12px 0",
+                padding: "10px 12px",
+                borderRadius: "8px",
+                border: "1px solid rgba(148, 163, 184, 0.2)",
+                background: "rgba(148, 163, 184, 0.08)",
+                color: "var(--foreground, #e0e0e0)",
+                fontSize: "12px",
+                lineHeight: 1.4,
+              }}
+            >
+              {statusSummary}
+            </div>
+          )}
+
           {/* Notification Detail or List */}
           {detailNotification ? (
             <div style={{ overflowY: "auto", flex: 1, maxHeight: "400px" }}>
@@ -832,21 +999,8 @@ function GlobalNotificationBell() {
                   }}
                   onClick={() => {
                     if (!n.isRead) markRead.mutate({ id: n.id });
-                    // Has structured metadata — show detail panel
-                    if ((n as any).actionUrl || (n as any).metadata || (n as any).relatedResourceType) {
-                      setDetailNotification(n);
-                      return;
-                    }
-                    // Legacy: direct navigation for conversations
-                    if (n.conversationId) {
-                      setShowDropdown(false);
-                      setLocation(`/chat?c=${n.conversationId}`);
-                    } else if (n.title?.startsWith("Reply on feedback:")) {
-                      setShowDropdown(false);
-                      setLocation("/my-feedback");
-                    } else {
-                      setExpandedId(expandedId === n.id ? null : n.id);
-                    }
+                    setExpandedId(null);
+                    setDetailNotification(n);
                   }}
                 >
                   {/* Unread dot */}
@@ -979,47 +1133,6 @@ function GlobalNotificationBell() {
                             View Schedule &rarr;
                           </button>
                         )}
-                        {/* Legacy fallback for old notifications without actionUrl */}
-                        {!(n as any).actionUrl && !n.conversationId && !n.scheduledMessageId && n.type === "alert" && (
-                          <>
-                            {n.title?.includes("Media Job") && (
-                              <button
-                                onClick={(e) => { e.stopPropagation(); setShowDropdown(false); setLocation("/media-studio"); }}
-                                style={{ background: "none", border: "none", color: "#0078d4", fontSize: "12px", cursor: "pointer", padding: 0 }}
-                              >
-                                Open Media Studio &rarr;
-                              </button>
-                            )}
-                            {(n.title?.includes("credit") || n.title?.includes("Credit")) && (
-                              <button
-                                onClick={(e) => { e.stopPropagation(); setShowDropdown(false); setLocation("/admin/settings"); }}
-                                style={{ background: "none", border: "none", color: "#0078d4", fontSize: "12px", cursor: "pointer", padding: 0 }}
-                              >
-                                Admin Settings &rarr;
-                              </button>
-                            )}
-                            {(n.title?.includes("latency") || n.title?.includes("API error")) && (
-                              <button
-                                onClick={(e) => { e.stopPropagation(); setShowDropdown(false); setLocation("/admin/system-guardian"); }}
-                                style={{ background: "none", border: "none", color: "#0078d4", fontSize: "12px", cursor: "pointer", padding: 0 }}
-                              >
-                                System Guardian &rarr;
-                              </button>
-                            )}
-                            {(n.title?.includes("Feedback") || n.title?.includes("feedback")) && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation(); setShowDropdown(false);
-                                  const ticketMatch = n.content?.match(/Ticket #(\d+)/);
-                                  setLocation(ticketMatch?.[1] ? `/admin/feedback-hub?ticketId=${ticketMatch[1]}` : "/admin/feedback-hub");
-                                }}
-                                style={{ background: "none", border: "none", color: "#0078d4", fontSize: "12px", cursor: "pointer", padding: 0 }}
-                              >
-                                View Feedback &rarr;
-                              </button>
-                            )}
-                          </>
-                        )}
                         {/* Metadata details badge */}
                         {(n as any).metadata?.errorDetails?.errorMessage && (
                           <span style={{ fontSize: "11px", color: "#d32f2f", background: "#ffeaea", padding: "1px 6px", borderRadius: "4px" }}>
@@ -1032,18 +1145,27 @@ function GlobalNotificationBell() {
 
                   {/* Expand indicator / Mark read */}
                   <div style={{ display: "flex", gap: "4px", flexShrink: 0 }}>
-                    {!n.conversationId && n.content && n.content !== n.title && (
-                      <div
+                    {n.content && n.content !== n.title && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setExpandedId(expandedId === n.id ? null : n.id);
+                        }}
+                        title={expandedId === n.id ? "Collapse quick actions" : "Expand quick actions"}
                         style={{
                           color: "var(--muted-foreground, #666)",
                           padding: "4px",
                           display: "flex",
+                          border: "none",
+                          background: "transparent",
+                          cursor: "pointer",
                           transform: expandedId === n.id ? "rotate(180deg)" : "rotate(0deg)",
                           transition: "transform 0.15s",
                         }}
                       >
                         <ChevronDown style={{ width: 14, height: 14 }} />
-                      </div>
+                      </button>
                     )}
                     {!n.isRead && (
                       <button
@@ -1108,7 +1230,7 @@ function GlobalNotificationBell() {
                 cursor: "pointer",
               }}
             >
-              View All Notifications
+              {hasUnread ? "View All Notifications" : "ดูย้อนหลัง"}
             </button>
             <button
               onClick={() => {

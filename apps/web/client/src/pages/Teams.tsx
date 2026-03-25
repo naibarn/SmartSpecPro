@@ -1537,7 +1537,7 @@ export default function Teams() {
                       ref={workflowPanelRef}
                       className={cn(
                         "flex min-h-0 flex-1 flex-col overflow-hidden",
-                        highlightWorkflowPanel && "ring-2 ring-violet-300 ring-offset-2",
+                        highlightWorkflowPanel && "ring-2 ring-teal-300 ring-offset-2",
                       )}
                     >
                       <RoomWorkflowPanel
@@ -1572,7 +1572,7 @@ export default function Teams() {
                       ref={workflowPanelRef}
                       className={cn(
                         "flex min-h-0 w-[26rem] min-w-[26rem] shrink-0 flex-col overflow-hidden",
-                        highlightWorkflowPanel && "ring-2 ring-violet-300 ring-offset-2",
+                        highlightWorkflowPanel && "ring-2 ring-teal-300 ring-offset-2",
                       )}
                     >
                       <RoomWorkflowPanel

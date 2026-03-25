@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Search, Wrench, AlertTriangle, ArrowLeft, Check, Plus, Pencil, Trash2, FileUp } from "lucide-react";
+import { Search, Wrench, AlertTriangle, ArrowLeft, Check, Plus, Pencil, Trash2, FileUp, Server } from "lucide-react";
 import { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
@@ -21,6 +21,7 @@ interface ToolPickerProps {
   open: boolean;
   onClose: () => void;
   onSelect: (tool: { toolId: string; toolName: string; toolConfig?: Record<string, unknown> }) => void;
+  onManageMcpServers?: () => void;
   excludeToolIds: string[];
 }
 
@@ -37,15 +38,33 @@ const TYPE_LABELS: Record<string, string> = {
   custom: "Custom",
   http_api: "Custom API",
   openapi_import: "OpenAPI",
-  mcp_bridge: "MCP",
+  mcp_bridge: "MCP Server",
 };
 
 const CUSTOM_TOOL_TYPES = new Set(["custom", "http_api", "openapi_import", "mcp_bridge"]);
+
+interface EditToolData {
+  id: string;
+  name?: string;
+  description?: string;
+  icon?: string;
+  category?: string;
+  riskLevel?: string;
+  endpoint?: string;
+  httpMethod?: string;
+  hasHeaders?: boolean;
+  strictSchema?: boolean;
+  oneCallAtATime?: boolean;
+  inputSchema?: Record<string, unknown> | null;
+  outputSchema?: Record<string, unknown> | null;
+  retryPolicy?: { maxRetries?: number; backoffMs?: number } | null;
+}
 
 export function ToolPicker({
   open,
   onClose,
   onSelect,
+  onManageMcpServers,
   excludeToolIds,
 }: ToolPickerProps) {
   const [search, setSearch] = useState("");
@@ -58,7 +77,7 @@ export function ToolPicker({
   const [creatorOpen, setCreatorOpen] = useState(false);
   const [openApiOpen, setOpenApiOpen] = useState(false);
   const [editToolId, setEditToolId] = useState<string | undefined>();
-  const [editToolData, setEditToolData] = useState<Record<string, unknown> | undefined>();
+  const [editToolData, setEditToolData] = useState<EditToolData | undefined>();
 
   const utils = (trpc as any).useUtils?.() ?? (trpc as any).useContext?.();
 
@@ -110,6 +129,15 @@ export function ToolPicker({
     return groups;
   }, [tools]);
 
+  const hasMcpBridgeTools = useMemo(
+    () => tools.some((tool) => tool.toolType === "mcp_bridge"),
+    [tools],
+  );
+  const hasSocialPublishTool = useMemo(
+    () => tools.some((tool) => tool.id === "builtin-social-publish"),
+    [tools],
+  );
+
   const handleClose = () => {
     setSelectedTool(null);
     setToolConfig({});
@@ -147,7 +175,7 @@ export function ToolPicker({
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="flex h-[90vh] flex-col overflow-hidden sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {selectedTool ? (
@@ -163,15 +191,17 @@ export function ToolPicker({
 
         {/* Step 2: Config form */}
         {selectedTool && selectedTool.configSchema && (
-          <div className="space-y-4">
-            <ToolConfigPanel
-              toolId={selectedTool.id}
-              toolName={selectedTool.name}
-              configSchema={selectedTool.configSchema as { fields: unknown[] } & Parameters<typeof ToolConfigPanel>[0]["configSchema"]}
-              value={toolConfig}
-              onChange={setToolConfig}
-            />
-            <div className="flex justify-end gap-2">
+          <div className="flex min-h-0 flex-1 flex-col gap-4">
+            <ScrollArea className="min-h-0 flex-1 pr-4">
+              <ToolConfigPanel
+                toolId={selectedTool.id}
+                toolName={selectedTool.name}
+                configSchema={selectedTool.configSchema as { fields: unknown[] } & Parameters<typeof ToolConfigPanel>[0]["configSchema"]}
+                value={toolConfig}
+                onChange={setToolConfig}
+              />
+            </ScrollArea>
+            <div className="flex shrink-0 justify-end gap-2">
               <Button variant="outline" size="sm" onClick={() => setSelectedTool(null)}>
                 Back
               </Button>
@@ -185,7 +215,7 @@ export function ToolPicker({
 
         {/* Step 1: Tool list */}
         {!selectedTool && (
-          <>
+          <div className="flex min-h-0 flex-1 flex-col gap-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -196,7 +226,32 @@ export function ToolPicker({
               />
             </div>
 
-            <ScrollArea className="max-h-[60vh] pr-4">
+            {(hasMcpBridgeTools || hasSocialPublishTool) && (
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                <div className="flex flex-wrap gap-2">
+                  {hasMcpBridgeTools && (
+                    <Badge className="rounded-full bg-white/90 text-slate-700 hover:bg-white/90">
+                      MCP tools loaded
+                    </Badge>
+                  )}
+                  {hasSocialPublishTool && (
+                    <Badge className="rounded-full bg-white/90 text-slate-700 hover:bg-white/90">
+                      FB auto-post ready
+                    </Badge>
+                  )}
+                </div>
+                <p className="mt-2">
+                  {hasMcpBridgeTools
+                    ? "MCP tools are managed from the agent properties panel."
+                    : "No MCP server tools are loaded yet."}
+                  {hasSocialPublishTool
+                    ? " Facebook auto-post needs a connected Facebook Page with valid Page access and publishing enabled."
+                    : ""}
+                </p>
+              </div>
+            )}
+
+            <ScrollArea className="min-h-0 flex-1 pr-4">
               {tools.length === 0 ? (
                 <p className="py-8 text-center text-sm text-muted-foreground">
                   {toolsData === undefined ? "Loading tools..." : "No tools available."}
@@ -289,35 +344,57 @@ export function ToolPicker({
               )}
             </ScrollArea>
 
-            <div className="flex gap-2 mt-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="flex-1"
-                onClick={() => {
-                  setEditToolId(undefined);
-                  setEditToolData(undefined);
-                  setCreatorOpen(true);
-                }}
-                data-testid="create-custom-tool-btn"
-              >
-                <Plus className="mr-1.5 h-3.5 w-3.5" />
-                Create Tool
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="flex-1"
-                onClick={() => setOpenApiOpen(true)}
-                data-testid="import-openapi-btn"
-              >
-                <FileUp className="mr-1.5 h-3.5 w-3.5" />
-                Import OpenAPI
-              </Button>
+            <div className="shrink-0 space-y-2">
+              {onManageMcpServers && (
+                <p className="text-xs text-muted-foreground">
+                  MCP servers are managed from the agent properties panel.
+                </p>
+              )}
+              <div className="flex flex-wrap gap-2">
+                {onManageMcpServers && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="min-w-[160px] flex-1"
+                    onClick={() => {
+                      onManageMcpServers();
+                      handleClose();
+                    }}
+                  >
+                    <Server className="mr-1.5 h-3.5 w-3.5" />
+                    Connect MCP Server
+                  </Button>
+                )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="min-w-[140px] flex-1"
+                  onClick={() => {
+                    setEditToolId(undefined);
+                    setEditToolData(undefined);
+                    setCreatorOpen(true);
+                  }}
+                  data-testid="create-custom-tool-btn"
+                >
+                  <Plus className="mr-1.5 h-3.5 w-3.5" />
+                  Create Tool
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="min-w-[140px] flex-1"
+                  onClick={() => setOpenApiOpen(true)}
+                  data-testid="import-openapi-btn"
+                >
+                  <FileUp className="mr-1.5 h-3.5 w-3.5" />
+                  Import OpenAPI
+                </Button>
+              </div>
             </div>
-          </>
+          </div>
         )}
 
         <CustomToolCreator

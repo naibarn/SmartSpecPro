@@ -177,19 +177,6 @@ export default function McpServerManager() {
   const removeAssignmentMutation = trpc.mcpServers.removeAssignment.useMutation();
   const utils = trpc.useUtils();
 
-  // FE03: Feature flag gate — after all hooks, before render
-  if (mcpEnabled === false) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px] text-muted-foreground">
-        <div className="text-center">
-          <Server className="mx-auto h-12 w-12 mb-4 opacity-50" />
-          <h2 className="text-lg font-medium mb-2">MCP Server Registry</h2>
-          <p>This feature is not enabled for your organization.</p>
-        </div>
-      </div>
-    );
-  }
-
   const handleOpenAdd = useCallback(() => {
     setEditId(null);
     setForm(DEFAULT_FORM);
@@ -384,6 +371,19 @@ export default function McpServerManager() {
   );
 
   const servers = listQuery.data ?? [];
+
+  // FE03: Feature flag gate — after all hooks, before render
+  if (mcpEnabled === false) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px] text-muted-foreground">
+        <div className="text-center">
+          <Server className="mx-auto h-12 w-12 mb-4 opacity-50" />
+          <h2 className="text-lg font-medium mb-2">MCP Server Registry</h2>
+          <p>This feature is not enabled for your organization.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-6">

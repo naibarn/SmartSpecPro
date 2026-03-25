@@ -10,6 +10,8 @@ import { trpc } from "@/lib/trpc";
 import { HelpButton } from "@/components/help";
 import { pickEnabledModelId } from "@/lib/enabledModelSelection";
 import { useAuth } from "@/contexts/AuthContext";
+import { useI18n } from "@/lib/i18n";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -50,6 +52,10 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  DashboardSectionHeader,
+  DashboardSurface,
+} from "@/components/dashboard";
 import {
   Sparkles,
   Image,
@@ -98,6 +104,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { clearTenantPageCache } from "@/hooks/useTenantPage";
 import ModelSelectorDialog from "@/components/media/ModelSelectorDialog";
 import LibrarySearchPanel from "@/components/media/LibrarySearchPanel";
 import { usePushToTalk } from "@/hooks/usePushToTalk";
@@ -546,10 +553,118 @@ function isUvoiceVoiceSelectionField(
 
 export default function MediaStudio() {
   const { user, isLoading, isAuthenticated } = useAuth();
+  const { t } = useI18n();
+  const { t: tm } = useTranslation('media');
   const [, setLocation] = useLocation();
 
   // Active tab state
   const [activeTab, setActiveTab] = useState<MediaType>("image");
+  const [attachTarget, setAttachTarget] = useState<{ kind: "blog" | "page"; id: string } | null>(null);
+  const [isAttachingContent, setIsAttachingContent] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const requestedType = params.get("type") || params.get("tab");
+    const requestedPrompt = params.get("prompt") || params.get("message");
+    const requestedModel = params.get("model");
+    const requestedReferenceImages = params.getAll("referenceImages");
+    const requestedReferenceNames = params.getAll("referenceNames");
+    const requestedAttachTarget = params.get("attachTarget");
+
+    const resolvedTab: MediaType | null =
+      requestedType === "video" || requestedType === "audio" || requestedType === "image"
+        ? requestedType
+        : null;
+
+    if (resolvedTab) {
+      setActiveTab(resolvedTab);
+    }
+
+    if (requestedPrompt || requestedModel) {
+      const targetTab = resolvedTab || "image";
+      setTabStates((prev) => ({
+        ...prev,
+        [targetTab]: {
+          ...prev[targetTab],
+          ...(requestedPrompt ? { prompt: requestedPrompt } : {}),
+          ...(requestedModel ? { selectedModel: requestedModel } : {}),
+        },
+      }));
+    }
+
+    const normalizeReferenceValue = (value: string | null | undefined) => (value || "").trim();
+    const parseReferenceImagesParam = (): string[] => {
+      if (requestedReferenceImages.length > 0) {
+        return requestedReferenceImages
+          .flatMap((value) => {
+            const trimmed = value.trim();
+            if (!trimmed) return [];
+            if (trimmed.startsWith("[")) {
+              try {
+                const parsed = JSON.parse(trimmed);
+                if (Array.isArray(parsed)) {
+                  return parsed
+                    .map((entry) => (typeof entry === "string" ? entry.trim() : ""))
+                    .filter(Boolean);
+                }
+              } catch {
+                return [trimmed];
+              }
+            }
+            return [trimmed];
+          })
+          .filter(Boolean);
+      }
+
+      const raw = params.get("referenceImages");
+      if (!raw) return [];
+
+      const trimmed = raw.trim();
+      if (!trimmed) return [];
+      if (trimmed.startsWith("[")) {
+        try {
+          const parsed = JSON.parse(trimmed);
+          if (Array.isArray(parsed)) {
+            return parsed
+              .map((entry) => (typeof entry === "string" ? entry.trim() : ""))
+              .filter(Boolean);
+          }
+        } catch {
+          return [trimmed];
+        }
+      }
+
+      return trimmed
+        .split(/[,\n|]+/g)
+        .map((value) => value.trim())
+        .filter(Boolean);
+    };
+
+    const referenceUrls = parseReferenceImagesParam();
+    if (referenceUrls.length > 0) {
+      const normalizedNames = requestedReferenceNames.map(normalizeReferenceValue).filter(Boolean);
+      const referenceImages = referenceUrls.map((url, index) => ({
+        url,
+        name: normalizedNames[index] || `Reference ${index + 1}`,
+      }));
+
+      const targetTab = resolvedTab || "image";
+      setTabStates((prev) => ({
+        ...prev,
+        [targetTab]: {
+          ...prev[targetTab],
+          referenceImages,
+        },
+        }));
+    }
+
+    if (requestedAttachTarget) {
+      const [kind, id] = requestedAttachTarget.split(":", 2);
+      if ((kind === "blog" || kind === "page") && id) {
+        setAttachTarget({ kind, id });
+      }
+    }
+  }, []);
 
   // Per-tab state - each tab has independent controls
   const [tabStates, setTabStates] = useState<Record<MediaType, TabState>>(() => ({
@@ -1017,6 +1132,78 @@ export default function MediaStudio() {
   const generateAudioMutation = trpc.media.generateAudio.useMutation();
   const enhancePromptMutation = trpc.skills.enhancePrompt.useMutation();
   const executeCustomSkillMutation = trpc.skills.executeCustomSkill.useMutation();
+
+  const blobToBase64 = async (blob: Blob) =>
+    new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+
+  const handleAttachCurrentMediaToContent = async () => {
+    if (!attachTarget || !previewUrl || activeTab === "audio") {
+      return;
+    }
+
+    setIsAttachingContent(true);
+    try {
+      const response = await fetch(previewUrl);
+      if (!response.ok) {
+        throw new Error("Could not fetch the generated media");
+      }
+
+      const blob = await response.blob();
+      const mimeType = blob.type || (activeTab === "video" ? "video/mp4" : "image/png");
+      const extension = mimeType.startsWith("video")
+        ? (mimeType.includes("webm") ? "webm" : mimeType.includes("quicktime") ? "mov" : "mp4")
+        : mimeType.includes("jpeg")
+          ? "jpg"
+          : mimeType.includes("gif")
+            ? "gif"
+            : mimeType.includes("webp")
+              ? "webp"
+              : "png";
+      const base64 = await blobToBase64(blob);
+      const uploadResult = await uploadMutation.mutateAsync({
+        fileName: `smartaihub-media-${Date.now()}.${extension}`,
+        fileType: mimeType,
+        fileBase64: base64,
+      });
+
+      const endpoint = attachTarget.kind === "blog"
+        ? `/api/admin/blog/posts/${encodeURIComponent(attachTarget.id)}/attach-media`
+        : `/api/tenant/pages/${encodeURIComponent(attachTarget.id)}/attach-media`;
+
+      const attachResponse = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          mediaUrl: uploadResult.url,
+          mediaType: activeTab,
+        }),
+      });
+
+      const attachData = await attachResponse.json().catch(() => null);
+      if (!attachResponse.ok) {
+        throw new Error(attachData?.error || "Failed to attach media");
+      }
+
+      if (attachTarget.kind === "page") {
+        clearTenantPageCache(attachTarget.id);
+      }
+
+      toast.success("Media uploaded to Library and attached to content");
+    } catch (error) {
+      console.error("Failed to attach media to content:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to attach media to content");
+    } finally {
+      setIsAttachingContent(false);
+    }
+  };
 
   // Auth redirect
   useEffect(() => {
@@ -1842,9 +2029,9 @@ export default function MediaStudio() {
       if (parsed.length > 0) {
         promptsToGenerate = parsed;
         console.log(`[Multi Video] Using ${parsed.length} prompts`);
-        toast.info(`Multi Video Mode: Generating ${parsed.length} separate videos`, { duration: 3000 });
+        toast.info(t('mediaStudio.multiVideoModeGenerating', { count: parsed.length }), { duration: 3000 });
       } else {
-        toast.warning("No multiple prompts detected. Generating single video.", { duration: 3000 });
+        toast.warning(t('mediaStudio.noMultiplePrompts'), { duration: 3000 });
       }
     }
 
@@ -2721,7 +2908,7 @@ export default function MediaStudio() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-purple-500" />
+        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
       </div>
     );
   }
@@ -2731,7 +2918,7 @@ export default function MediaStudio() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/20">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-cyan-50/20">
       {/* Header */}
       <header className="bg-white/70 backdrop-blur-xl border-b sticky top-0 z-10">
         <div className="px-4 sm:px-6 lg:px-8 py-3">
@@ -2743,15 +2930,15 @@ export default function MediaStudio() {
                 onClick={() => setLocation("/dashboard")}
               >
                 <ChevronLeft className="h-4 w-4 mr-1" />
-                Back
+                {t('common.back')}
               </Button>
               <div className="flex items-center gap-2">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
                   <Sparkles className="h-5 w-5 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-lg font-bold">Media Studio</h1>
-                  <p className="text-xs text-muted-foreground">Create AI-powered media</p>
+                  <h1 className="text-lg font-bold">{t('mediaStudio.title')}</h1>
+                  <p className="text-xs text-muted-foreground">{t('mediaStudio.description')}</p>
                 </div>
               </div>
             </div>
@@ -2759,11 +2946,11 @@ export default function MediaStudio() {
               <HelpButton page="/media-studio" variant="ghost" size="sm" />
               <Badge variant="secondary" className="gap-1">
                 <Zap className="h-3 w-3" />
-                {credits?.credits || 0} credits
+                {credits?.credits || 0} {t('credits.unit')}
               </Badge>
               <Button variant="outline" size="sm" onClick={() => setLocation("/media-history")}>
                 <History className="h-4 w-4 mr-1" />
-                History
+                {t('mediaStudio.history')}
               </Button>
             </div>
           </div>
@@ -2782,31 +2969,37 @@ export default function MediaStudio() {
                   className="flex-1 gap-2 data-[state=active]:bg-blue-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all"
                 >
                   <Image className="h-4 w-4" />
-                  Image
+                  {t('mediaStudio.tabs.image')}
                 </TabsTrigger>
                 <TabsTrigger
                   value="video"
-                  className="flex-1 gap-2 data-[state=active]:bg-purple-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all"
+                  className="flex-1 gap-2 data-[state=active]:bg-blue-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all"
                 >
                   <Video className="h-4 w-4" />
-                  Video
+                  {t('mediaStudio.tabs.video')}
                 </TabsTrigger>
                 <TabsTrigger
                   value="audio"
                   className="flex-1 gap-2 data-[state=active]:bg-orange-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all"
                 >
                   <Music className="h-4 w-4" />
-                  Audio
+                  {t('mediaStudio.tabs.audio')}
                 </TabsTrigger>
               </TabsList>
             </Tabs>
 
             {/* Prompt Input */}
-            <div className="bg-white/70 backdrop-blur rounded-xl border p-4 space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="font-semibold">Prompt</h3>
-                <div className="flex items-center gap-2">
+            <DashboardSurface className="space-y-4 p-4">
+              <DashboardSectionHeader
+                eyebrow={t('mediaStudio.prompt.eyebrow')}
+                title={t('mediaStudio.prompt.title')}
+                description={t('mediaStudio.prompt.description')}
+                trailing={(
                   <Badge variant="outline">{getModelCost()} credits</Badge>
+                )}
+              />
+              <div className="flex items-center justify-end gap-2">
+                <div className="flex items-center gap-2">
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -2823,11 +3016,11 @@ export default function MediaStudio() {
                           ) : (
                             <Mic className={cn("h-4 w-4", isPttRecording && "animate-pulse")} />
                           )}
-                          <span className="ml-1">{isPttRecording ? "Recording..." : "Mic"}</span>
+                          <span className="ml-1">{isPttRecording ? t('mediaStudio.recording') : t('mediaStudio.mic')}</span>
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p>Hold to record voice (Speech-to-Text)</p>
+                        <p>{t('mediaStudio.recordHint')}</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -2851,11 +3044,11 @@ export default function MediaStudio() {
                           ) : (
                             <Languages className="h-4 w-4" />
                           )}
-                          <span className="ml-1">Translate</span>
+                          <span className="ml-1">{t('mediaStudio.translate')}</span>
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p>Translate prompt (EN ↔ your language)</p>
+                        <p>{t('mediaStudio.translateHint')}</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -2873,11 +3066,11 @@ export default function MediaStudio() {
                           ) : (
                             <Wand2 className="h-4 w-4" />
                           )}
-                          <span className="ml-1">Auto Prompt</span>
+                          <span className="ml-1">{t('mediaStudio.autoPrompt')}</span>
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p>Enhance your prompt with AI (PromptDepth Pro v8.9)</p>
+                        <p>{t('mediaStudio.autoPromptHint')}</p>
                         <p className="text-xs text-muted-foreground mt-1">
                           Works with text, images, or both
                         </p>
@@ -2901,17 +3094,17 @@ export default function MediaStudio() {
                             className="text-muted-foreground hover:text-destructive"
                           >
                             <X className="h-4 w-4" />
-                            <span className="ml-1">Clear</span>
+                            <span className="ml-1">{t('common.clear')}</span>
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p>Clear prompt</p>
+                          <p>{t('mediaStudio.clearHint')}</p>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
                   )}
                 </div>
-              </div>
+                </div>
 
               <Textarea
                 ref={promptTextareaRef}
@@ -2982,7 +3175,7 @@ export default function MediaStudio() {
               {showTranslation && translatedText && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium text-blue-700">Translation</span>
+                    <span className="text-xs font-medium text-blue-700">{tm('translation')}</span>
                     <div className="flex items-center gap-1">
                       <Button
                         variant="ghost"
@@ -3016,7 +3209,7 @@ export default function MediaStudio() {
                 className={cn(
                   "space-y-2 p-3 rounded-lg border-2 border-dashed transition-all",
                   isDraggingOver
-                    ? "border-purple-500 bg-purple-50"
+                    ? "border-blue-500 bg-blue-50"
                     : "border-gray-200 hover:border-gray-300"
                 )}
                 onDragOver={handleDragOver}
@@ -3046,7 +3239,7 @@ export default function MediaStudio() {
                     ) : (
                       <ImagePlus className="h-4 w-4" />
                     )}
-                    <span className="ml-1">Add Image</span>
+                    <span className="ml-1">{tm('addImage')}</span>
                   </Button>
                 </div>
 
@@ -3077,12 +3270,12 @@ export default function MediaStudio() {
                 ) : (
                   <div className="flex items-center justify-center py-4 text-muted-foreground">
                     <Upload className="h-4 w-4 mr-2" />
-                    <span className="text-sm">Drop images here or click Add Image</span>
+                    <span className="text-sm">{t('mediaStudio.dropReferenceHint')}</span>
                   </div>
                 )}
 
                 <p className="text-xs text-muted-foreground">
-                  Drag from History Gallery below or upload images for style transfer / img2img
+                  {t('mediaStudio.dragHistoryHint')}
                 </p>
               </div>
 
@@ -3097,47 +3290,47 @@ export default function MediaStudio() {
                   credits: credits?.credits || 0,
                   modelCost: getModelCost(),
                 })}
-                className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
+                className="w-full bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white"
                 size="lg"
               >
                 {isGenerating ? (
                   <>
                     <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                    Generating...
+                    {t('mediaStudio.generating')}
                   </>
                 ) : (
                   <>
                     <Sparkles className="h-5 w-5 mr-2" />
-                    Generate {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
+                    {t('mediaStudio.generateTab', { tab: t(`mediaStudio.tabs.${activeTab}`) })}
                   </>
                 )}
               </Button>
 
               {(credits?.credits || 0) < getModelCost() && (
                 <p className="text-sm text-red-500 text-center">
-                  Not enough credits.{" "}
+                  {t('mediaStudio.notEnoughCredits')}{" "}
                   <button onClick={() => setLocation("/credits")} className="underline">
-                    Buy more
+                    {t('mediaStudio.buyMore')}
                   </button>
                 </p>
               )}
-            </div>
+            </DashboardSurface>
 
             {/* Settings */}
             <div className="bg-white/70 backdrop-blur rounded-xl border p-4 space-y-4">
               <div className="flex items-center gap-2">
                 <Settings className="h-4 w-4" />
-                <h3 className="font-semibold">Settings</h3>
+                <h3 className="font-semibold">{t('mediaStudio.settingsTitle')}</h3>
               </div>
 
               <p className="text-xs text-muted-foreground">
-                Select all desired options below before clicking Auto Prompt to generate an enhanced prompt.
+                {t('mediaStudio.settingsHint')}
               </p>
 
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {/* Model Selection */}
                 <div className="space-y-1 col-span-2 md:col-span-1">
-                  <label className="text-sm text-muted-foreground">Model</label>
+                  <label className="text-sm text-muted-foreground">{t('mediaStudio.modelLabel')}</label>
                   <Button
                     variant="outline"
                     className="w-full justify-start h-auto min-h-10 py-2"
@@ -3146,8 +3339,8 @@ export default function MediaStudio() {
                     <Bot className="h-4 w-4 mr-2" />
                     <span className="flex-1 text-left break-words whitespace-normal">
                       {selectedModel
-                        ? mediaModels?.models?.find((m: any) => m.modelId === selectedModel)?.name || "Select model"
-                        : "Select model"}
+                        ? mediaModels?.models?.find((m: any) => m.modelId === selectedModel)?.name || t('mediaStudio.selectModel')
+                        : t('mediaStudio.selectModel')}
                     </span>
                     {selectedModel && mediaModels?.models?.find((m: any) => m.modelId === selectedModel) && (
                       <Badge variant="outline" className="ml-2 text-xs shrink-0">
@@ -3195,9 +3388,9 @@ export default function MediaStudio() {
                   return (
                     <div className="space-y-1">
                       <label className={cn("text-sm text-muted-foreground", isDisabled && "opacity-50")}>
-                        Aspect Ratio
+                        {t('mediaStudio.aspectRatio')}
                         {arField?.affectsPricing && <span className="ml-1 text-xs text-amber-500">($)</span>}
-                        {isDisabled && <span className="ml-1 text-xs text-purple-500">(use Advanced)</span>}
+                        {isDisabled && <span className="ml-1 text-xs text-blue-500">(use Advanced)</span>}
                       </label>
                       <Select
                         value={aspectRatio}
@@ -3222,7 +3415,7 @@ export default function MediaStudio() {
                 {/* Number of Images (for image only) */}
                 {activeTab === "image" && (
                   <div className="space-y-1">
-                    <label className="text-sm text-muted-foreground">Count</label>
+                    <label className="text-sm text-muted-foreground">{t('mediaStudio.count')}</label>
                     <Select value={String(numImages)} onValueChange={(v) => setNumImages(Number(v))}>
                       <SelectTrigger>
                         <SelectValue />
@@ -3248,7 +3441,7 @@ export default function MediaStudio() {
                   return (
                     <div className="space-y-1">
                       <label className="text-sm text-muted-foreground">
-                        Duration
+                        {t('mediaStudio.duration')}
                         {durationField?.affectsPricing && <span className="ml-1 text-xs text-amber-500">($)</span>}
                       </label>
                       <Select
@@ -3287,9 +3480,9 @@ export default function MediaStudio() {
                   const allFields: any[] = config?.inputFields ?? [];
 
                   const SYNC_LABELS: Record<string, string> = {
-                    reference_images: "Reference Images",
-                    prompt: "Prompt",
-                    aspect_ratio: "Aspect Ratio",
+                    reference_images: t('mediaStudio.referenceImagesLabel'),
+                    prompt: t('mediaStudio.promptLabel'),
+                    aspect_ratio: t('mediaStudio.aspectRatioLabel'),
                   };
 
                   // Synced fields: ONLY those with an explicit syncWith target (never guess from type).
@@ -3317,16 +3510,16 @@ export default function MediaStudio() {
                       {/* Synced (read-only) fields */}
                       {syncedFields.map((field: any) => {
                         const sw: string = field.syncWith;
-                        const syncLabel = SYNC_LABELS[sw] ?? "Synced";
+                        const syncLabel = SYNC_LABELS[sw] ?? t('mediaStudio.synced');
 
                         let preview = "—";
                         if (sw === "reference_images") {
                           preview = referenceImages.length === 0
-                            ? "No images selected"
+                            ? t('mediaStudio.noImagesSelected')
                             : `${referenceImages.length} image${referenceImages.length !== 1 ? "s" : ""} synced`;
                         } else if (sw === "prompt") {
                           const src = (enhancedPrompt || prompt).trim();
-                          preview = src.length === 0 ? "No prompt yet" : src.length > 60 ? src.slice(0, 60) + "…" : src;
+                          preview = src.length === 0 ? t('mediaStudio.noPromptYet') : src.length > 60 ? src.slice(0, 60) + "…" : src;
                         } else if (sw === "aspect_ratio") {
                           preview = aspectRatio || "—";
                         }
@@ -3403,18 +3596,18 @@ export default function MediaStudio() {
                                           : currentValue
                                             ? currentValue
                                             : isLoadingOptions
-                                              ? "Loading options..."
-                                              : "Select option"}
+                                              ? t('mediaStudio.loadingOptions')
+                                              : t('mediaStudio.selectOption')}
                                       </span>
                                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                     </Button>
                                   </PopoverTrigger>
                                   <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
                                     <Command>
-                                      <CommandInput placeholder={`Search ${String(field.label || field.key).toLowerCase()}...`} />
+                                      <CommandInput placeholder={t('mediaStudio.searchField', { field: String(field.label || field.key).toLowerCase() })} />
                                       <CommandList>
                                         <CommandEmpty>
-                                          {isLoadingOptions ? "Loading options..." : "No options found."}
+                                          {isLoadingOptions ? t('mediaStudio.loadingOptions') : t('mediaStudio.noOptionsFound')}
                                         </CommandEmpty>
                                         <CommandGroup>
                                           {fieldOptions.map((opt) => (
@@ -3455,7 +3648,7 @@ export default function MediaStudio() {
                                                       e.stopPropagation();
                                                       toggleVoicePreview(field.key, opt);
                                                     }}
-                                                    title={opt.previewUrl ? "Play voice preview" : "No preview available"}
+                                                    title={opt.previewUrl ? t('mediaStudio.playVoicePreview') : t('mediaStudio.noPreviewAvailable')}
                                                   >
                                                     {loadingVoicePreviewKey === `${field.key}:${opt.value}` ? (
                                                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -3484,7 +3677,7 @@ export default function MediaStudio() {
                                       setFieldPickerOpenKey(field.key);
                                       void refetchDynamicFieldOptions();
                                     }}
-                                    title="Refresh option list"
+                                    title={t('mediaStudio.refreshOptions')}
                                   >
                                     <RefreshCw className={cn("h-4 w-4", isLoadingOptions && "animate-spin")} />
                                   </Button>
@@ -3493,14 +3686,14 @@ export default function MediaStudio() {
                               {supportsManualInput && (
                                 <Input
                                   type="text"
-                                  placeholder={`Or enter custom ${field.label || field.key}`}
+                                  placeholder={t('mediaStudio.customValuePlaceholder', { field: String(field.label || field.key) })}
                                   value={currentValue}
                                   onChange={(e) => setModelInputValues((prev: Record<string, any>) => ({ ...prev, [field.key]: e.target.value }))}
                                 />
                               )}
                               {!isLoadingOptions && fieldOptions.length === 0 && supportsManualInput && (
                                 <p className="text-xs text-muted-foreground">
-                                  Option list unavailable right now. You can still enter a value manually.
+                                  {t('mediaStudio.optionListUnavailable')}
                                 </p>
                               )}
                                   </>
@@ -3539,12 +3732,12 @@ export default function MediaStudio() {
                                 checked={!!modelInputValues[field.key]}
                                 onCheckedChange={(v) => setModelInputValues((prev: Record<string, any>) => ({ ...prev, [field.key]: v }))}
                               />
-                              <span className="text-sm">{modelInputValues[field.key] ? "On" : "Off"}</span>
+                              <span className="text-sm">{modelInputValues[field.key] ? t('mediaStudio.on') : t('mediaStudio.off')}</span>
                             </div>
                           ) : field.type === "array" ? (
                             <Textarea
                               rows={4}
-                              placeholder={`Enter JSON array or one item per line for ${field.label}`}
+                              placeholder={t('mediaStudio.arrayPlaceholder', { field: String(field.label) })}
                               value={
                                 typeof modelInputValues[field.key] === "string"
                                   ? modelInputValues[field.key]
@@ -3581,9 +3774,9 @@ export default function MediaStudio() {
                     "text-sm text-muted-foreground",
                     isFieldDisabledByAdvancedMode("style") && "opacity-50"
                   )}>
-                    Style
+                    {t('mediaStudio.style')}
                     {isFieldDisabledByAdvancedMode("style") && (
-                      <span className="ml-1 text-xs text-purple-500">(use Advanced)</span>
+                      <span className="ml-1 text-xs text-blue-500">(use Advanced)</span>
                     )}
                   </label>
                   <Dialog open={showStyleDialog} onOpenChange={setShowStyleDialog}>
@@ -3594,12 +3787,12 @@ export default function MediaStudio() {
                         disabled={isFieldDisabledByAdvancedMode("style")}
                       >
                         <Palette className="h-4 w-4 mr-2" />
-                        {selectedStyle || "Select Style"}
+                        {selectedStyle || t('mediaStudio.selectStyle')}
                       </Button>
                     </DialogTrigger>
                     <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
                       <DialogHeader>
-                        <DialogTitle>Choose Style</DialogTitle>
+                        <DialogTitle>{t('mediaStudio.chooseStyle')}</DialogTitle>
                       </DialogHeader>
                       <div className="space-y-4 mt-4">
                         {styleCategories?.map((category: StyleCategory) => (
@@ -3618,15 +3811,15 @@ export default function MediaStudio() {
                                     // Auto-fill prompt for Upscale style
                                     if (style.name === "Upscale") {
                                       setPrompt(UPSCALE_DEFAULT_PROMPT);
-                                      toast.success("Prompt auto-filled for Upscale", {
-                                        description: "Optimize the prompt for image enhancement",
+                                      toast.success(t('mediaStudio.upscaleAutoFilled'), {
+                                        description: t('mediaStudio.upscaleAutoFilledDesc'),
                                       });
                                     }
                                   }}
                                   className={cn(
                                     "text-left px-3 py-2 rounded-lg border text-sm transition-colors",
                                     selectedStyle === style.name
-                                      ? "border-purple-500 bg-purple-50"
+                                      ? "border-blue-500 bg-blue-50"
                                       : "hover:bg-gray-50"
                                   )}
                                 >
@@ -3649,7 +3842,7 @@ export default function MediaStudio() {
                 {activeTab === "video" && (
                   <div className="space-y-1">
                     <label className="text-sm text-muted-foreground">
-                      Output Type
+                      {t('mediaStudio.outputType')}
                     </label>
                     <Select
                       value={videoOutputType}
@@ -3659,8 +3852,8 @@ export default function MediaStudio() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="multi-shot">Multi Shot (single video, multiple scenes)</SelectItem>
-                        <SelectItem value="multi-video">Multi Video (separate videos per scene)</SelectItem>
+                        <SelectItem value="multi-shot">{t('mediaStudio.multiShot')}</SelectItem>
+                        <SelectItem value="multi-video">{t('mediaStudio.multiVideo')}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -3676,9 +3869,9 @@ export default function MediaStudio() {
                       "text-sm text-muted-foreground",
                       isFieldDisabledByAdvancedMode("vfx") && "opacity-50"
                     )}>
-                      VFX Effect
+                      {t('mediaStudio.vfxEffect')}
                       {isFieldDisabledByAdvancedMode("vfx") && (
-                        <span className="ml-1 text-xs text-purple-500">(use Advanced)</span>
+                        <span className="ml-1 text-xs text-blue-500">(use Advanced)</span>
                       )}
                     </label>
                     <Dialog open={showVfxDialog} onOpenChange={setShowVfxDialog}>
@@ -3689,12 +3882,12 @@ export default function MediaStudio() {
                           disabled={isFieldDisabledByAdvancedMode("vfx")}
                         >
                           <Layers className="h-4 w-4 mr-2" />
-                          {selectedVfxEffect || "Select VFX"}
+                          {selectedVfxEffect || t('mediaStudio.selectVfx')}
                         </Button>
                       </DialogTrigger>
                       <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
                         <DialogHeader>
-                          <DialogTitle>Choose VFX Effect</DialogTitle>
+                          <DialogTitle>{t('mediaStudio.chooseVfx')}</DialogTitle>
                         </DialogHeader>
                         <div className="space-y-4 mt-4">
                           {vfxCategories?.map((category: any) => (
@@ -3738,9 +3931,9 @@ export default function MediaStudio() {
                       "text-sm text-muted-foreground",
                       isFieldDisabledByAdvancedMode("realisticSkin") && "opacity-50"
                     )}>
-                      Realistic Skin
+                      {t('mediaStudio.realisticSkin')}
                       {isFieldDisabledByAdvancedMode("realisticSkin") && (
-                        <span className="ml-1 text-xs text-purple-500">(use Advanced)</span>
+                        <span className="ml-1 text-xs text-blue-500">(use Advanced)</span>
                       )}
                     </label>
                     <div className={cn(
@@ -3755,7 +3948,7 @@ export default function MediaStudio() {
                       />
                       <Label htmlFor="realistic-skin" className="text-sm">
                         <User className="h-4 w-4 inline mr-1" />
-                        {realisticSkin ? "On" : "Off"}
+                        {realisticSkin ? t('mediaStudio.on') : t('mediaStudio.off')}
                       </Label>
                     </div>
                   </div>
@@ -3766,9 +3959,9 @@ export default function MediaStudio() {
                       "text-sm text-muted-foreground",
                       isFieldDisabledByAdvancedMode("faceLock") && "opacity-50"
                     )}>
-                      Face Lock
+                      {t('mediaStudio.faceLock')}
                       {isFieldDisabledByAdvancedMode("faceLock") && (
-                        <span className="ml-1 text-xs text-purple-500">(use Advanced)</span>
+                        <span className="ml-1 text-xs text-blue-500">(use Advanced)</span>
                       )}
                     </label>
                     <div className={cn(
@@ -3783,7 +3976,7 @@ export default function MediaStudio() {
                       />
                       <Label htmlFor="face-lock" className="text-sm">
                         <ScanFace className="h-4 w-4 inline mr-1" />
-                        {faceLock ? "On" : "Off"}
+                        {faceLock ? t('mediaStudio.on') : t('mediaStudio.off')}
                       </Label>
                     </div>
                   </div>
@@ -3791,7 +3984,7 @@ export default function MediaStudio() {
                   {/* Clear Style/VFX */}
                   {(selectedStyle || selectedVfxEffect) && (
                     <div className="space-y-1">
-                      <label className="text-sm text-muted-foreground">Clear</label>
+                      <label className="text-sm text-muted-foreground">{t('mediaStudio.clear')}</label>
                       <Button
                         variant="outline"
                         className="w-full h-10"
@@ -3803,7 +3996,7 @@ export default function MediaStudio() {
                         }}
                       >
                         <X className="h-4 w-4 mr-2" />
-                        Clear Options
+                        {t('mediaStudio.clearOptions')}
                       </Button>
                     </div>
                   )}
@@ -3814,62 +4007,62 @@ export default function MediaStudio() {
               <div className="pt-4 border-t space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Wand2 className="h-4 w-4 text-purple-500" />
-                    <label className="text-sm font-medium">Auto Prompt Skill</label>
+                    <Wand2 className="h-4 w-4 text-blue-500" />
+                    <label className="text-sm font-medium">{t('mediaStudio.autoPromptSkill')}</label>
                   </div>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => setShowSkillDialog(true)}
-                    className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+                    className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                   >
-                    Change Skill
+                    {t('mediaStudio.changeSkill')}
                   </Button>
                 </div>
 
                 {/* Current Skill Display */}
                 <div
-                  className="flex items-center gap-3 p-3 rounded-xl border-2 border-purple-200 bg-purple-50/50 cursor-pointer hover:border-purple-300 transition-colors"
+                  className="flex items-center gap-3 p-3 rounded-xl border-2 border-blue-200 bg-blue-50/50 cursor-pointer hover:border-blue-300 transition-colors"
                   onClick={() => setShowSkillDialog(true)}
                 >
-                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shrink-0">
+                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center shrink-0">
                     <Wand2 className="h-5 w-5 text-white" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="font-medium text-purple-900">
-                        {currentSkill?.name || "No Skill Selected"}
+                      <span className="font-medium text-blue-900">
+                        {currentSkill?.name || t('mediaStudio.noSkillSelected')}
                       </span>
                       {currentSkill && (
-                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-purple-100 text-purple-700">
-                          Active
+                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-blue-100 text-blue-700">
+                          {t('mediaStudio.active')}
                         </Badge>
                       )}
                     </div>
-                    <p className="text-xs text-purple-600/80 truncate">
-                      {currentSkill?.description || `Choose a prompt-creation skill for the ${activeTab} tab`}
+                    <p className="text-xs text-blue-600/80 truncate">
+                      {currentSkill?.description || t('mediaStudio.chooseSkillForTab', { tab: t(`mediaStudio.tabs.${activeTab}`) })}
                     </p>
                   </div>
                 </div>
 
                 <p className="text-xs text-muted-foreground">
-                  {activeTab === "audio"
-                    ? "This skill is used to shape text-to-speech or sound effect prompts before generation."
-                    : `Only prompt-creation skills are shown here so the ${activeTab} tab stays aligned with its output type.`}
+                    {activeTab === "audio"
+                    ? t('mediaStudio.skillUsedForAudio')
+                    : t('mediaStudio.skillsAlignedWithTab', { tab: t(`mediaStudio.tabs.${activeTab}`) })}
                 </p>
 
                 <Dialog open={showSkillDialog} onOpenChange={setShowSkillDialog}>
                   <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
                     <DialogHeader>
                       <DialogTitle className="flex items-center gap-2">
-                        <Sparkles className="h-5 w-5 text-purple-500" />
-                        Select Auto Prompt Skill
+                        <Sparkles className="h-5 w-5 text-blue-500" />
+                        {t('mediaStudio.selectAutoPromptSkill')}
                       </DialogTitle>
                     </DialogHeader>
 
                     {!skillsList ? (
                       <div className="flex items-center justify-center py-12">
-                        <RefreshCw className="h-8 w-8 animate-spin text-purple-500" />
+                        <RefreshCw className="h-8 w-8 animate-spin text-blue-500" />
                       </div>
                     ) : (
                       <div className="space-y-4">
@@ -3877,7 +4070,7 @@ export default function MediaStudio() {
                         <div className="relative">
                           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                           <Input
-                            placeholder="Search skills..."
+                            placeholder={t('mediaStudio.searchSkills')}
                             className="pl-9"
                             onChange={(e) => {
                               const q = e.target.value.toLowerCase();
@@ -3896,7 +4089,7 @@ export default function MediaStudio() {
                             return (
                               <div className="text-center py-12 text-muted-foreground">
                                 <Wand2 className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                                <p>No prompt skills available for {activeTab}</p>
+                                <p>{t('mediaStudio.noPromptSkills', { tab: t(`mediaStudio.tabs.${activeTab}`) })}</p>
                               </div>
                             );
                           }
@@ -3913,15 +4106,15 @@ export default function MediaStudio() {
                                   className={cn(
                                     "w-full text-left p-4 rounded-xl border-2 transition-all duration-200",
                                     skill.id === selectedSkillId
-                                      ? "border-purple-500 bg-purple-50/50 ring-2 ring-purple-200"
-                                      : "border-gray-200 hover:border-purple-300 hover:bg-purple-50/30"
+                                      ? "border-blue-500 bg-blue-50/50 ring-2 ring-blue-200"
+                                      : "border-gray-200 hover:border-blue-300 hover:bg-blue-50/30"
                                   )}
                                 >
                                   <div className="flex items-start gap-3">
                                     <div className={cn(
                                       "w-10 h-10 rounded-lg flex items-center justify-center shrink-0",
                                       skill.id === selectedSkillId
-                                        ? "bg-gradient-to-br from-purple-500 to-pink-500 text-white"
+                                        ? "bg-gradient-to-br from-blue-500 to-cyan-500 text-white"
                                         : "bg-gray-100 text-gray-600"
                                     )}>
                                       <Wand2 className="h-4 w-4" />
@@ -3930,7 +4123,7 @@ export default function MediaStudio() {
                                       <div className="flex items-center gap-2 flex-wrap">
                                         <span className="font-semibold">{skill.name}</span>
                                         {skill.id === selectedSkillId && (
-                                          <Badge className="bg-purple-500 text-white text-[10px] px-1.5 py-0">Selected</Badge>
+                                          <Badge className="bg-blue-500 text-white text-[10px] px-1.5 py-0">{t('mediaStudio.selected')}</Badge>
                                         )}
                                       </div>
                                       {skill.description && (
@@ -3956,7 +4149,7 @@ export default function MediaStudio() {
                   <div className="flex items-center justify-between pt-3 border-t">
                     <div className="flex items-center gap-2">
                       <Settings className="h-4 w-4 text-blue-500" />
-                      <label className="text-sm font-medium">Advanced Mode</label>
+                      <label className="text-sm font-medium">{t('mediaStudio.advancedMode')}</label>
                       <Badge variant="outline" className="text-[10px]">
                         {skillSchema.title}
                       </Badge>
@@ -3975,7 +4168,7 @@ export default function MediaStudio() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Settings className="h-4 w-4 text-blue-500" />
-                      <h3 className="font-semibold">Skill Parameters</h3>
+                      <h3 className="font-semibold">{t('mediaStudio.skillParameters')}</h3>
                     </div>
                     <Badge variant="secondary" className="text-xs">
                       {skillSchema.title}
@@ -3983,14 +4176,14 @@ export default function MediaStudio() {
                   </div>
 
                   <p className="text-xs text-muted-foreground">
-                    {skillSchema.description || "Configure skill parameters for precise control"}
+                    {skillSchema.description || t('mediaStudio.configureSkillParameters')}
                   </p>
 
                   {/* LLM Model Selector for Auto Prompt */}
                   <div className="space-y-1.5 pt-2 border-t">
                     <label className="text-sm font-medium flex items-center gap-2">
-                      <Sparkles className="h-4 w-4 text-purple-500" />
-                      Auto Prompt Model
+                      <Sparkles className="h-4 w-4 text-blue-500" />
+                      {t('mediaStudio.autoPromptModel')}
                       {skillConfig?.defaultModel && (
                         <Badge variant="outline" className="text-[10px] text-muted-foreground">
                           default: {skillConfig.defaultModel.split('/').pop()}
@@ -4006,17 +4199,17 @@ export default function MediaStudio() {
                       }}
                     >
                       <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Auto (skill requirements)">
+                        <SelectValue placeholder={t('mediaStudio.autoSkillRequirements')}>
                           {selectedLlmModel
                             ? (visionModels?.models?.find((m: any) => m.id === selectedLlmModel)?.name
                               ? `${visionModels.models.find((m: any) => m.id === selectedLlmModel)?.name} (${visionModels.models.find((m: any) => m.id === selectedLlmModel)?.providerDisplayName})`
                               : selectedLlmModel)
-                            : "✨ Auto (skill requirements)"}
+                            : t('mediaStudio.autoSkillRequirements')}
                         </SelectValue>
                       </SelectTrigger>
                       <SelectContent className="max-h-[300px]">
                         <SelectItem value="__auto__" className="font-medium">
-                          ✨ Auto (skill requirements)
+                          {t('mediaStudio.autoSkillRequirements')}
                         </SelectItem>
                         <SelectSeparator />
                         {/* Search input */}
@@ -4024,7 +4217,7 @@ export default function MediaStudio() {
                           <div className="relative">
                             <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input
-                              placeholder="Search models..."
+                              placeholder={t('mediaStudio.searchModels')}
                               value={llmModelSearch}
                               onChange={(e) => setLlmModelSearch(e.target.value)}
                               className="pl-8 h-8"
@@ -4059,13 +4252,13 @@ export default function MediaStudio() {
                           );
                         }).length === 0 && (
                           <div className="py-4 text-center text-sm text-muted-foreground">
-                            No models found
+                            {t('mediaStudio.noModelsFound')}
                           </div>
                         )}
                       </SelectContent>
                     </Select>
                     <p className="text-xs text-muted-foreground">
-                      Auto mode selects the best model based on skill requirements. Or pick a specific model manually.
+                      {t('mediaStudio.autoModelHint')}
                     </p>
                   </div>
 
@@ -4112,20 +4305,20 @@ export default function MediaStudio() {
                         <TooltipTrigger asChild>
                           <Button
                             variant="outline"
-                            className="w-full gap-2 border-purple-200 hover:border-purple-400 hover:bg-purple-50"
+                            className="w-full gap-2 border-blue-200 hover:border-blue-400 hover:bg-blue-50"
                             onClick={handleAutoPrompt}
                             disabled={(!prompt.trim() && !dynamicFormValues.request && referenceImages.length === 0) || isEnhancing}
                           >
                             {isEnhancing ? (
                               <Loader2 className="h-4 w-4 animate-spin" />
                             ) : (
-                              <Wand2 className="h-4 w-4 text-purple-500" />
+                              <Wand2 className="h-4 w-4 text-blue-500" />
                             )}
-                            <span>Auto Prompt</span>
+                            <span>{t('mediaStudio.autoPrompt')}</span>
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p>Generate enhanced prompt using Advanced Mode settings</p>
+                          <p>{t('mediaStudio.advancedModeHint')}</p>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
@@ -4138,7 +4331,7 @@ export default function MediaStudio() {
             {generatedMedia.filter((m) => !expiredUrls.has(m.url)).length > 0 && (
               <div className="bg-white/70 backdrop-blur rounded-xl border p-4 space-y-3 overflow-hidden">
                 <div className="flex items-center justify-between">
-                  <h3 className="font-semibold">Generated Media</h3>
+                  <h3 className="font-semibold">{t('mediaStudio.generatedMedia')}</h3>
                   <Badge variant="outline">{generatedMedia.filter((m) => !expiredUrls.has(m.url)).length} items</Badge>
                 </div>
 
@@ -4185,7 +4378,7 @@ export default function MediaStudio() {
                                     <ImagePlus className="h-4 w-4" />
                                   </Button>
                                 </TooltipTrigger>
-                                <TooltipContent>Use as reference</TooltipContent>
+                              <TooltipContent>{tm('useAsReference')}</TooltipContent>
                               </Tooltip>
                             </TooltipProvider>
                           )}
@@ -4204,7 +4397,7 @@ export default function MediaStudio() {
                                   <Download className="h-4 w-4" />
                                 </Button>
                               </TooltipTrigger>
-                              <TooltipContent>Download</TooltipContent>
+                              <TooltipContent>{t('mediaStudio.download')}</TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
                         </div>
@@ -4249,7 +4442,7 @@ export default function MediaStudio() {
 
               {isPreviewCollapsed ? (
                 <p className="text-xs text-muted-foreground">
-                  Preview collapsed. Expand to view latest media.
+                  {t('mediaStudio.previewCollapsed')}
                 </p>
               ) : (
                 <>
@@ -4272,13 +4465,13 @@ export default function MediaStudio() {
                           <div className="w-8 h-8 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center mb-1">
                             <span className="text-xs font-medium">{task.index + 1}</span>
                           </div>
-                          <span className="text-xs">Queued</span>
+                          <span className="text-xs">{t('mediaStudio.queued')}</span>
                         </div>
                       )}
                       {task.status === 'generating' && (
                         <div className="absolute inset-0 flex flex-col items-center justify-center">
-                          <Loader2 className="h-8 w-8 animate-spin text-purple-500 mb-1" />
-                          <span className="text-xs text-muted-foreground">Generating #{task.index + 1}</span>
+                          <Loader2 className="h-8 w-8 animate-spin text-blue-500 mb-1" />
+                          <span className="text-xs text-muted-foreground">{t('mediaStudio.generatingTask', { index: task.index + 1 })}</span>
                         </div>
                       )}
                       {task.status === 'completed' && task.url && !expiredUrls.has(task.url) && (
@@ -4324,7 +4517,7 @@ export default function MediaStudio() {
                       {task.status === 'error' && (
                         <div className="absolute inset-0 flex flex-col items-center justify-center text-destructive">
                           <AlertCircle className="h-8 w-8 mb-1" />
-                          <span className="text-xs">Error</span>
+                          <span className="text-xs">{t('mediaStudio.error')}</span>
                         </div>
                       )}
                     </div>
@@ -4335,8 +4528,8 @@ export default function MediaStudio() {
                 <div className="aspect-square bg-gradient-to-br from-gray-100 to-gray-50 rounded-xl flex items-center justify-center overflow-hidden relative group">
                   {isGenerating ? (
                     <div className="text-center">
-                      <Loader2 className="h-12 w-12 animate-spin text-purple-500 mx-auto mb-4" />
-                      <p className="text-sm text-muted-foreground">Creating your {activeTab}...</p>
+                      <Loader2 className="h-12 w-12 animate-spin text-blue-500 mx-auto mb-4" />
+                      <p className="text-sm text-muted-foreground">{t('mediaStudio.creatingYour', { tab: t(`mediaStudio.tabs.${activeTab}`) })}</p>
                     </div>
                   ) : previewUrl && !expiredUrls.has(previewUrl) ? (
                     activeTab === "image" ? (
@@ -4380,22 +4573,43 @@ export default function MediaStudio() {
                   ) : (
                     <div className="text-center text-muted-foreground">
                       <Sparkles className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">No content generated yet</p>
+                      <p className="text-sm">{t('mediaStudio.noContent')}</p>
                     </div>
                   )}
                 </div>
               )}
 
               {previewUrl && !isGenerating && (
-                <div className="flex gap-2 mt-4">
+                <div className="space-y-3 mt-4">
+                  {attachTarget && (
+                    <div className="rounded-lg border border-cyan-100 bg-cyan-50/70 px-4 py-3 text-sm text-cyan-900">
+                      Attach target: <span className="font-semibold">{attachTarget.kind === "blog" ? "Blog" : "Page"}</span> {attachTarget.id}
+                    </div>
+                  )}
+                  <div className="flex flex-wrap gap-2">
                   <Button
                     variant="outline"
-                    className="flex-1"
+                    className="flex-1 min-w-[160px]"
                     onClick={() => downloadMedia(previewUrl, `generated-${activeTab}.${activeTab === "image" ? "png" : activeTab === "video" ? "mp4" : "mp3"}`)}
                   >
                     <Download className="h-4 w-4 mr-2" />
-                    Download
+                    {t('mediaStudio.download')}
                   </Button>
+                  {attachTarget && activeTab !== "audio" && (
+                    <Button
+                      variant="outline"
+                      className="min-w-[220px] border-cyan-200 text-cyan-700 hover:bg-cyan-50"
+                      onClick={handleAttachCurrentMediaToContent}
+                      disabled={isAttachingContent}
+                    >
+                      {isAttachingContent ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Upload className="h-4 w-4 mr-2" />
+                      )}
+                      Upload to Library & Attach
+                    </Button>
+                  )}
                   {activeTab === "image" && (
                     <>
                       <TooltipProvider>
@@ -4408,7 +4622,7 @@ export default function MediaStudio() {
                               <Grid2X2 className="h-4 w-4" />
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent>Split Grid</TooltipContent>
+                          <TooltipContent>{t('mediaStudio.splitGrid')}</TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
                       <TooltipProvider>
@@ -4421,7 +4635,7 @@ export default function MediaStudio() {
                               <Crop className="h-4 w-4" />
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent>Crop by Ratio</TooltipContent>
+                          <TooltipContent>{t('mediaStudio.cropByRatio')}</TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
                     </>
@@ -4432,6 +4646,7 @@ export default function MediaStudio() {
                   >
                     <ExternalLink className="h-4 w-4" />
                   </Button>
+                  </div>
                 </div>
               )}
                 </>
@@ -4446,11 +4661,11 @@ export default function MediaStudio() {
               <TabsList className="grid w-full grid-cols-2 bg-muted/50 p-1">
                 <TabsTrigger value="history" className="gap-2">
                   <History className="h-4 w-4" />
-                  History Gallery
+                  {t('mediaStudio.historyGallery')}
                 </TabsTrigger>
                 <TabsTrigger value="library" className="gap-2">
                   <Search className="h-4 w-4" />
-                  Search Library
+                  {t('mediaStudio.searchLibrary')}
                 </TabsTrigger>
               </TabsList>
 
@@ -4459,10 +4674,10 @@ export default function MediaStudio() {
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="font-semibold flex items-center gap-2">
                       <History className="h-4 w-4" />
-                      History Gallery
+                      {t('mediaStudio.historyGallery')}
                     </h3>
                     <Badge variant="outline" className="text-xs">
-                      {activeTab === "image" ? "Drag to use as reference" : "Click to preview"}
+                      {activeTab === "image" ? t('mediaStudio.dragToUseAsReference') : t('mediaStudio.clickToPreview')}
                     </Badge>
                   </div>
 
@@ -4527,12 +4742,12 @@ export default function MediaStudio() {
                                     </TooltipTrigger>
                                     <TooltipContent>
                                       {libraryState?.action === "adding"
-                                        ? "Adding to library..."
+                                        ? t('mediaStudio.addingToLibrary')
                                         : libraryState?.action === "added"
-                                          ? "Added to library"
+                                          ? t('mediaStudio.addedToLibrary')
                                           : libraryStatusMeta.retryable
-                                            ? "Retry add to library"
-                                            : "Add to library"}
+                                            ? t('mediaStudio.retryAddToLibrary')
+                                            : t('mediaStudio.addToLibrary')}
                                     </TooltipContent>
                                   </Tooltip>
                                 </TooltipProvider>
@@ -4561,7 +4776,7 @@ export default function MediaStudio() {
                                 <img
                                   src={resultUrl}
                                   alt={task.prompt?.slice(0, 30)}
-                                  className="w-full aspect-square object-cover rounded-lg border hover:border-purple-400 transition-colors"
+                                  className="w-full aspect-square object-cover rounded-lg border hover:border-blue-400 transition-colors"
                                   onError={() => markExpired(resultUrl)}
                                 />
                               )}
@@ -4582,7 +4797,7 @@ export default function MediaStudio() {
                                           <Maximize2 className="h-5 w-5" />
                                         </Button>
                                       </TooltipTrigger>
-                                      <TooltipContent>View & Copy Prompt</TooltipContent>
+                                      <TooltipContent>{tm('viewCopyPrompt')}</TooltipContent>
                                     </Tooltip>
                                   </TooltipProvider>
                                 )}
@@ -4602,7 +4817,7 @@ export default function MediaStudio() {
                                           <ImagePlus className="h-5 w-5" />
                                         </Button>
                                       </TooltipTrigger>
-                                      <TooltipContent>Use as reference</TooltipContent>
+                                      <TooltipContent>{tm('useAsReference')}</TooltipContent>
                                     </Tooltip>
                                   </TooltipProvider>
                                 )}
@@ -4622,7 +4837,7 @@ export default function MediaStudio() {
                                           <Grid2X2 className="h-5 w-5" />
                                         </Button>
                                       </TooltipTrigger>
-                                      <TooltipContent>Split Grid</TooltipContent>
+                                      <TooltipContent>{t('mediaStudio.splitGrid')}</TooltipContent>
                                     </Tooltip>
                                   </TooltipProvider>
                                 )}
@@ -4642,7 +4857,7 @@ export default function MediaStudio() {
                                           <Crop className="h-5 w-5" />
                                         </Button>
                                       </TooltipTrigger>
-                                      <TooltipContent>Crop by Ratio</TooltipContent>
+                                      <TooltipContent>{t('mediaStudio.cropByRatio')}</TooltipContent>
                                     </Tooltip>
                                   </TooltipProvider>
                                 )}
@@ -4662,7 +4877,7 @@ export default function MediaStudio() {
                                         <Download className="h-5 w-5" />
                                       </Button>
                                     </TooltipTrigger>
-                                    <TooltipContent>Download</TooltipContent>
+                                    <TooltipContent>{t('mediaStudio.download')}</TooltipContent>
                                   </Tooltip>
                                 </TooltipProvider>
                               </div>
@@ -4688,13 +4903,13 @@ export default function MediaStudio() {
                           >
                             <div className={cn(
                               "w-10 h-10 rounded-lg flex items-center justify-center shrink-0",
-                              task.mediaType === "image" ? "bg-purple-100" :
+                              task.mediaType === "image" ? "bg-blue-100" :
                               task.mediaType === "video" ? "bg-blue-100" : "bg-orange-100"
                             )}>
                               {task.status === "processing" ? (
                                 <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
                               ) : task.mediaType === "image" ? (
-                                <Image className="h-5 w-5 text-purple-500" />
+                                <Image className="h-5 w-5 text-blue-500" />
                               ) : task.mediaType === "video" ? (
                                 <Video className="h-5 w-5 text-blue-500" />
                               ) : (
@@ -4707,11 +4922,11 @@ export default function MediaStudio() {
                               </p>
                               <p className="text-xs text-muted-foreground">
                                 {task.status === "processing" ? (
-                                  <span className="text-blue-500">Processing...</span>
+                                  <span className="text-blue-500">{t('mediaStudio.processing')}</span>
                                 ) : task.status === "failed" ? (
-                                  <span className="text-red-500">Failed</span>
+                                  <span className="text-red-500">{t('mediaStudio.failed')}</span>
                                 ) : (
-                                  <span className="text-yellow-500">Pending</span>
+                                  <span className="text-yellow-500">{t('mediaStudio.pending')}</span>
                                 )}
                               </p>
                             </div>
@@ -4722,10 +4937,10 @@ export default function MediaStudio() {
                     {(!mediaHistory?.tasks || mediaHistory.tasks.length === 0) && (
                       <p className="text-sm text-muted-foreground text-center py-8">
                         {activeTab === "video"
-                          ? "No history yet. Generate some videos!"
+                          ? t('mediaStudio.noHistoryVideo')
                           : activeTab === "audio"
-                            ? "No history yet. Generate some audio!"
-                            : "No history yet. Generate some images!"}
+                            ? t('mediaStudio.noHistoryAudio')
+                            : t('mediaStudio.noHistoryImage')}
                       </p>
                     )}
                   </div>
@@ -4755,7 +4970,7 @@ export default function MediaStudio() {
       {/* Image Lightbox Dialog */}
       <Dialog open={lightboxOpen} onOpenChange={setLightboxOpen}>
         <DialogContent className="!max-w-[95vw] !w-[95vw] max-h-[95vh] p-0 overflow-hidden">
-          <DialogTitle className="sr-only">Image Preview</DialogTitle>
+          <DialogTitle className="sr-only">{tm('imagePreview')}</DialogTitle>
           <div className="flex flex-col h-full">
             {/* Image - Large preview almost full screen */}
             <div className="flex-1 bg-black/95 flex items-center justify-center p-2 min-h-[60vh]">
@@ -4769,11 +4984,11 @@ export default function MediaStudio() {
                     setLightboxOpen(false);
                   }}
                   onClick={() => window.open(lightboxImage.url, "_blank", "noopener,noreferrer")}
-                  title="Click to open full size in new tab"
+                  title={tm('clickToOpenFullSize')}
                 />
               ) : lightboxImage && (
                 <div className="text-center text-gray-400">
-                  <p className="text-sm">This media is no longer available</p>
+                  <p className="text-sm">{tm('mediaUnavailable')}</p>
                 </div>
               )}
             </div>
@@ -4797,7 +5012,7 @@ export default function MediaStudio() {
               {/* Prompt */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <label className="text-sm font-medium">Prompt</label>
+                  <label className="text-sm font-medium">{tm('promptLabel')}</label>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -4874,15 +5089,15 @@ export default function MediaStudio() {
                 {imageEditorMode === "split" ? (
                   isDetectingGrid ? (
                     <div className="text-center">
-                      <Loader2 className="h-10 w-10 animate-spin text-purple-500 mx-auto mb-2" />
-                      <p className="text-base text-muted-foreground">Detecting grid...</p>
+                      <Loader2 className="h-10 w-10 animate-spin text-blue-500 mx-auto mb-2" />
+                      <p className="text-base text-muted-foreground">{t('mediaStudio.detectingGrid')}</p>
                     </div>
                   ) : splitPreviewUrl ? (
                     <img src={splitPreviewUrl} alt="Split preview" className="max-w-full max-h-full object-contain" />
                   ) : splitImageUrl ? (
                     <img src={splitImageUrl} alt="Original" className="max-w-full max-h-full object-contain" />
                   ) : (
-                    <p className="text-base text-muted-foreground">No image selected</p>
+                    <p className="text-base text-muted-foreground">{t('mediaStudio.noImageSelected')}</p>
                   )
                 ) : splitImageUrl ? (
                   <div className="relative w-full h-full flex items-center justify-center">
@@ -4919,13 +5134,13 @@ export default function MediaStudio() {
                       <div className="absolute inset-0 bg-black/35 flex items-center justify-center">
                         <div className="bg-black/70 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-base">
                           <Loader2 className="h-5 w-5 animate-spin" />
-                          Cropping...
+                          {t('mediaStudio.cropping')}
                         </div>
                       </div>
                     )}
                   </div>
                 ) : (
-                  <p className="text-base text-muted-foreground">No image selected</p>
+                  <p className="text-base text-muted-foreground">{t('mediaStudio.noImageSelected')}</p>
                 )}
               </div>
 
@@ -4951,7 +5166,7 @@ export default function MediaStudio() {
                   className="gap-2"
                 >
                   <Scissors className="h-4 w-4" />
-                  Split Grid
+                  {t('mediaStudio.splitGrid')}
                 </Button>
                 <Button
                   variant={imageEditorMode === "crop" ? "default" : "outline"}
@@ -4964,14 +5179,14 @@ export default function MediaStudio() {
                   className="gap-2"
                 >
                   <Crop className="h-4 w-4" />
-                  Crop Ratio
+                  {t('mediaStudio.cropRatio')}
                 </Button>
               </div>
 
               {imageEditorMode === "split" && (
                 <>
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm">
-                    <p className="font-medium text-blue-800 mb-2">Recommended Grid Sizes by Aspect Ratio</p>
+                    <p className="font-medium text-blue-800 mb-2">{t('mediaStudio.recommendedGridSizes')}</p>
                     <div className="grid grid-cols-4 gap-2 text-blue-700 text-xs">
                       <div>
                         <p className="font-medium">16:9</p>
@@ -4993,7 +5208,7 @@ export default function MediaStudio() {
                   </div>
 
                   <div>
-                    <label className="text-sm font-medium mb-2 block">Grid Size</label>
+                    <label className="text-sm font-medium mb-2 block">{t('mediaStudio.gridSize')}</label>
                     <div className="grid grid-cols-3 gap-1.5">
                       {COMMON_GRIDS.map((grid) => (
                         <Button
@@ -5059,15 +5274,15 @@ export default function MediaStudio() {
                   {splitResults.length > 0 && (
                     <div className="space-y-3 border-t pt-4">
                       <div className="flex items-center justify-between">
-                        <label className="text-sm font-medium">Results ({splitResults.length} images)</label>
+                        <label className="text-sm font-medium">{t('mediaStudio.resultsCount', { count: splitResults.length })}</label>
                         <div className="flex gap-2">
                           <Button variant="outline" size="sm" onClick={addAllSplitsToVideoReference}>
                             <Video className="h-4 w-4 mr-1" />
-                            Add to Video Reference
+                            {t('mediaStudio.addToVideoReference')}
                           </Button>
                           <Button variant="outline" size="sm" onClick={handleDownloadAllSplits}>
                             <Download className="h-4 w-4 mr-1" />
-                            Download All
+                            {t('mediaStudio.downloadAll')}
                           </Button>
                         </div>
                       </div>
@@ -5076,7 +5291,7 @@ export default function MediaStudio() {
                           {splitResults.map((result) => (
                             <div
                               key={result.index}
-                              className="relative group aspect-square rounded-lg overflow-hidden border hover:border-purple-400 transition-colors"
+                              className="relative group aspect-square rounded-lg overflow-hidden border hover:border-blue-400 transition-colors"
                             >
                               <img src={result.dataUrl} alt={`Split ${result.index + 1}`} className="w-full h-full object-cover" />
                               <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
@@ -5216,12 +5431,12 @@ export default function MediaStudio() {
                     {isCropping ? (
                       <>
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Cropping...
+                        {t('mediaStudio.cropping')}
                       </>
                     ) : (
                       <>
                         <Crop className="h-4 w-4 mr-2" />
-                        Crop ({cropAspectRatio})
+                        {t('mediaStudio.cropWithRatio', { ratio: cropAspectRatio })}
                       </>
                     )}
                   </Button>
@@ -5234,12 +5449,12 @@ export default function MediaStudio() {
                       disabled={!cropResult}
                     >
                       <Download className="h-4 w-4 mr-2" />
-                      Download Cropped
+                      {t('mediaStudio.downloadCropped')}
                     </Button>
                     <p className="text-xs text-muted-foreground">
                       {cropResult
-                        ? "Saved to your browser default Downloads folder."
-                        : "Click Crop first, then Download will be available."}
+                        ? t('mediaStudio.savedToDownloads')
+                        : t('mediaStudio.clickCropFirst')}
                     </p>
                   </div>
 

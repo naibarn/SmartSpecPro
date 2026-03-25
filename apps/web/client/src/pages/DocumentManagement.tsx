@@ -99,6 +99,7 @@ const MIN_LIBRARY_PANEL_WIDTH = 320;
 const MIN_EDITOR_PANEL_WIDTH = 420;
 const COLLAPSED_PANEL_WIDTH = 72;
 const RESIZE_HANDLE_WIDTH = 8;
+const MARKDOWN_SYNC_POLL_INTERVAL_MS = 15_000;
 const QUICK_MEDIA_FILTERS = [
   { value: "all", label: "All" },
   { value: "image", label: "Images" },
@@ -357,18 +358,23 @@ export default function DocumentManagement() {
     : selectedItemBase;
   const previewType = selectedItem ? resolveDocumentPreviewType(selectedItem) : "fallback";
   const selectedMarkdownDraft = selectedItem ? markdownDraftByDocId[selectedItem.id] : undefined;
+  const selectedMarkdownDraftIsDirty = Boolean(
+    selectedMarkdownDraft
+    && selectedMarkdownDraft.value !== selectedMarkdownDraft.savedValue,
+  );
   const markdownContentQuery = trpc.library.getMarkdownContent.useQuery(
     { id: selectedItem?.id || 0 },
     {
       enabled: Boolean(selectedItem && previewType === "markdown"),
+      // Poll only when the local draft is clean so we can pick up external
+      // edits without fighting the user's current typing session.
+      refetchInterval: previewType === "markdown" && !selectedMarkdownDraftIsDirty
+        ? MARKDOWN_SYNC_POLL_INTERVAL_MS
+        : false,
       // Prevent window-focus events (e.g. from screen-capture hotkeys) from
       // overwriting the local draft state with potentially stale server data.
       refetchOnWindowFocus: false,
     },
-  );
-  const selectedMarkdownDraftIsDirty = Boolean(
-    selectedMarkdownDraft
-    && selectedMarkdownDraft.value !== selectedMarkdownDraft.savedValue,
   );
   const selectedMarkdownValue =
     selectedMarkdownDraft && (selectedMarkdownDraftIsDirty || selectedMarkdownDraft.value.trim().length > 0)
@@ -936,10 +942,10 @@ export default function DocumentManagement() {
         },
       }));
       setSelectedId(updatedItem.id);
-      void Promise.allSettled([
-        trpcUtils.library.listDocuments.invalidate(),
-        trpcUtils.library.getMarkdownContent.invalidate({ id: selectedItemId }),
-      ]);
+      // The editor already has the newest content locally after autosave, so
+      // we do not refetch the same markdown snapshot here. That avoids a
+      // redundant server round-trip that can re-trigger editor hydration and
+      // disturb the cursor.
     }
 
     try {

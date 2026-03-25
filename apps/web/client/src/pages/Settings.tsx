@@ -12,6 +12,7 @@ import { HelpButton } from "@/components/help";
 import { useI18n } from '@/lib/i18n';
 import i18next from 'i18next';
 import { STORAGE_KEY as LOCALE_STORAGE_KEY } from '@/i18n/languageDetector';
+import { useTranslation } from 'react-i18next';
 import { SUPPORTED_LANGUAGES, LANGUAGE_LABELS, LANGUAGE_LABELS_EN, LANGUAGE_COVERAGE, type SupportedLanguage } from '@shared/i18n';
 import {
   Dialog,
@@ -361,6 +362,7 @@ interface DisplayLanguageDropdownProps {
 }
 
 export function DisplayLanguageDropdown({ defaultValue, onLanguageChange }: DisplayLanguageDropdownProps = {}) {
+  const { t: ts } = useTranslation('settings');
   // Normalize initial value — guard against browser-resolved codes like "en-US"
   const initialLang = (SUPPORTED_LANGUAGES as readonly string[]).find(
     (l) => (defaultValue || i18next.language || 'en').startsWith(l)
@@ -388,11 +390,11 @@ export function DisplayLanguageDropdown({ defaultValue, onLanguageChange }: Disp
     <div>
       <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
         <Globe className="w-5 h-5" />
-        Display Language
+        {ts('displayLanguage.title')}
       </h3>
       <div>
         <label htmlFor="display-language-select" className="block text-sm font-medium text-gray-700 mb-2">
-          Choose the language used for the application interface
+          {ts('displayLanguage.description')}
         </label>
         <select
           id="display-language-select"

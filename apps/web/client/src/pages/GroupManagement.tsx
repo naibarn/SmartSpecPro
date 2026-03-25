@@ -77,7 +77,7 @@ export default function GroupManagement() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-cyan-50/20">
       {/* Sticky Header */}
       <header className="sticky top-0 z-10 border-b bg-white/70 backdrop-blur-xl">
         <div className="px-4 py-3 sm:px-6 lg:px-8">
@@ -92,7 +92,7 @@ export default function GroupManagement() {
                 Back
               </Button>
               <div className="flex items-center gap-2">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500">
                   <Users className="h-5 w-5 text-white" />
                 </div>
                 <div>

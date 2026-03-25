@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
-import { useTenantPage } from '@/hooks/useTenantPage';
+import { Seo } from '@/components/Seo';
 import {
   Mail,
   MessageSquare,
@@ -96,7 +96,6 @@ const contactInfo = [
 ];
 
 export default function Contact() {
-  const { page: tenantPage } = useTenantPage('contact');
   const [selectedType, setSelectedType] = useState<ContactType>('general');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -142,7 +141,20 @@ export default function Contact() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/20">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-cyan-50/20">
+      <Seo
+        title="Contact SmartAIHub | Enterprise Support & Sales"
+        description="Reach the SmartAIHub team for technical support, enterprise pricing, partnership questions, or feature requests."
+        keywords={["contact SmartAIHub", "enterprise support", "sales", "feature request", "technical support"]}
+        canonicalPath="/contact"
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "ContactPage",
+          name: "Contact SmartAIHub",
+          description: "Support and enterprise contact page for SmartAIHub.",
+          url: "/contact",
+        }}
+      />
       <Navbar />
 
       {/* Hero Section */}
@@ -153,13 +165,13 @@ export default function Contact() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
-            <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/60 backdrop-blur-sm border border-purple-100 text-sm text-purple-600 mb-6">
+            <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/60 backdrop-blur-sm border border-blue-100 text-sm text-blue-600 mb-6">
               <MessageSquare className="w-4 h-4" />
               We'd love to hear from you
             </span>
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-6">
               Get in{' '}
-              <span className="bg-gradient-to-r from-purple-600 via-pink-500 to-orange-400 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-blue-600 via-cyan-500 to-teal-400 bg-clip-text text-transparent">
                 Touch
               </span>
             </h1>
@@ -185,9 +197,9 @@ export default function Contact() {
                 {info.link ? (
                   <a
                     href={info.link}
-                    className="block p-6 bg-white/60 backdrop-blur-sm rounded-2xl border border-white/50 shadow-lg shadow-purple-500/5 hover:shadow-xl hover:shadow-purple-500/10 transition-all duration-300 group"
-                  >
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white mb-4 group-hover:scale-110 transition-transform">
+                  className="block p-6 bg-white/60 backdrop-blur-sm rounded-2xl border border-white/50 shadow-lg shadow-blue-500/5 hover:shadow-xl hover:shadow-blue-500/10 transition-all duration-300 group"
+                >
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center text-white mb-4 group-hover:scale-110 transition-transform">
                       {info.icon}
                     </div>
                     <h3 className="font-semibold text-gray-900 mb-1">
@@ -196,8 +208,8 @@ export default function Contact() {
                     <p className="text-gray-600 text-sm">{info.value}</p>
                   </a>
                 ) : (
-                  <div className="p-6 bg-white/60 backdrop-blur-sm rounded-2xl border border-white/50 shadow-lg shadow-purple-500/5">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white mb-4">
+                  <div className="p-6 bg-white/60 backdrop-blur-sm rounded-2xl border border-white/50 shadow-lg shadow-blue-500/5">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center text-white mb-4">
                       {info.icon}
                     </div>
                     <h3 className="font-semibold text-gray-900 mb-1">
@@ -233,8 +245,8 @@ export default function Contact() {
                     onClick={() => setSelectedType(type.id)}
                     className={`w-full p-4 rounded-xl text-left transition-all duration-300 ${
                       selectedType === type.id
-                        ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/30'
-                        : 'bg-white/60 backdrop-blur-sm border border-white/50 hover:border-purple-200 hover:shadow-md'
+                      ? 'bg-gradient-to-r from-blue-500 to-cyan-400 text-white shadow-lg shadow-blue-500/30'
+                        : 'bg-white/60 backdrop-blur-sm border border-white/50 hover:border-blue-200 hover:shadow-md'
                     }`}
                   >
                     <div className="flex items-center gap-3">
@@ -242,7 +254,7 @@ export default function Contact() {
                         className={`${
                           selectedType === type.id
                             ? 'text-white'
-                            : 'text-purple-500'
+                            : 'text-blue-500'
                         }`}
                       >
                         {type.icon}
@@ -280,7 +292,7 @@ export default function Contact() {
               transition={{ duration: 0.6, delay: 0.2 }}
               className="lg:col-span-2"
             >
-              <div className="bg-white/70 backdrop-blur-xl rounded-3xl border border-white/50 shadow-xl shadow-purple-500/10 p-8">
+              <div className="bg-white/70 backdrop-blur-xl rounded-3xl border border-white/50 shadow-xl shadow-blue-500/10 p-8">
                 {isSubmitted ? (
                   <motion.div
                     initial={{ opacity: 0, scale: 0.9 }}
@@ -311,7 +323,7 @@ export default function Contact() {
                           onChange={handleChange}
                           placeholder="John Doe"
                           required
-                          className="bg-white/50 border-gray-200 focus:border-purple-400 focus:ring-purple-400"
+                          className="bg-white/50 border-gray-200 focus:border-blue-400 focus:ring-blue-400"
                         />
                       </div>
                       <div>
@@ -325,7 +337,7 @@ export default function Contact() {
                           onChange={handleChange}
                           placeholder="john@example.com"
                           required
-                          className="bg-white/50 border-gray-200 focus:border-purple-400 focus:ring-purple-400"
+                          className="bg-white/50 border-gray-200 focus:border-blue-400 focus:ring-blue-400"
                         />
                       </div>
                     </div>
@@ -340,7 +352,7 @@ export default function Contact() {
                           value={formData.company}
                           onChange={handleChange}
                           placeholder="Your Company"
-                          className="bg-white/50 border-gray-200 focus:border-purple-400 focus:ring-purple-400"
+                          className="bg-white/50 border-gray-200 focus:border-blue-400 focus:ring-blue-400"
                         />
                       </div>
                       <div>
@@ -353,7 +365,7 @@ export default function Contact() {
                           onChange={handleChange}
                           placeholder="How can we help?"
                           required
-                          className="bg-white/50 border-gray-200 focus:border-purple-400 focus:ring-purple-400"
+                          className="bg-white/50 border-gray-200 focus:border-blue-400 focus:ring-blue-400"
                         />
                       </div>
                     </div>
@@ -369,7 +381,7 @@ export default function Contact() {
                         placeholder="Tell us more about your inquiry..."
                         rows={6}
                         required
-                        className="bg-white/50 border-gray-200 focus:border-purple-400 focus:ring-purple-400 resize-none"
+                        className="bg-white/50 border-gray-200 focus:border-blue-400 focus:ring-blue-400 resize-none"
                       />
                     </div>
 
@@ -380,7 +392,7 @@ export default function Contact() {
                       <Button
                         type="submit"
                         disabled={isSubmitting}
-                        className="bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-700 hover:to-pink-600 text-white px-8 py-3 rounded-xl shadow-lg shadow-purple-500/30 hover:shadow-xl hover:shadow-purple-500/40 transition-all duration-300"
+                    className="bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 text-white px-8 py-3 rounded-xl shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 transition-all duration-300"
                       >
                         {isSubmitting ? (
                           <>

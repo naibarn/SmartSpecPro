@@ -10,6 +10,7 @@
  */
 
 import { useState, useCallback, useRef, useMemo, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useLocation, useRoute } from 'wouter';
 import ReactFlow, {
   ReactFlowProvider,
@@ -30,6 +31,7 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { HelpButton } from '@/components/help';
 import {
   Select,
   SelectContent,
@@ -138,6 +140,7 @@ const nodeTypes: NodeTypes = {
 };
 
 function FlowEditor() {
+  const { t } = useTranslation('workflow');
   const [, setLocation] = useLocation();
   const [, routeParams] = useRoute('/workflows/editor/:id');
   const utils = trpc.useUtils();
@@ -1371,6 +1374,7 @@ function FlowEditor() {
             </div>
 
             <div className="flex items-center gap-2">
+              <HelpButton page="/workflows/editor" variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" />
               <Button
                 variant="outline"
                 size="sm"

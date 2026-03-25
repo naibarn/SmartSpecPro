@@ -643,7 +643,7 @@ export default function PresentationLibrary() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-sky-50/40 to-indigo-50/30">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-sky-50/40 to-cyan-50/30">
       <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/80 backdrop-blur-xl">
         <div className="flex w-full items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
           <div className="flex items-center gap-3">
@@ -652,7 +652,7 @@ export default function PresentationLibrary() {
               Back
             </Button>
             <div className="flex items-center gap-2">
-              <div className="rounded-xl bg-gradient-to-br from-sky-500 to-indigo-500 p-2 text-white">
+              <div className="rounded-xl bg-gradient-to-br from-sky-500 to-cyan-500 p-2 text-white">
                 <Presentation className="h-4 w-4" />
               </div>
               <div>

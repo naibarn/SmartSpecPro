@@ -31,6 +31,7 @@ export interface UnifiedDocumentSurfaceProps {
   documentId?: number;
   documentTitle?: string;
   initialEditorTemplate?: TiptapEditorTemplate;
+  surfaceHeaderActions?: ReactNode;
   editorHeaderActions?: ReactNode;
   editorUploadMetadata?: Record<string, unknown>;
   editorLibraryScope?: "all" | "my_library" | "private_vault";

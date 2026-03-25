@@ -53,11 +53,11 @@ export default function DomainThemeEditor() {
   const [, setLocation] = useLocation();
 
   const [theme, setTheme] = useState<ThemeConfig>({
-    primaryColor: "#9333ea",
-    secondaryColor: "#ec4899",
-    accentColor: "#06b6d4",
+    primaryColor: "#2563eb",
+    secondaryColor: "#06b6d4",
+    accentColor: "#14b8a6",
     backgroundColor: "#ffffff",
-    textColor: "#1f2937",
+    textColor: "#0f172a",
     fontFamily: "Inter, sans-serif",
     headingFont: "Inter, sans-serif",
     layout: "modern",
@@ -198,7 +198,7 @@ export default function DomainThemeEditor() {
   if (authLoading || isLoading || !user || (user.role !== "domain_admin" && user.role !== "admin")) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <RefreshCw className="w-8 h-8 animate-spin text-purple-500" />
+        <RefreshCw className="w-8 h-8 animate-spin text-blue-500" />
       </div>
     );
   }
@@ -220,7 +220,7 @@ export default function DomainThemeEditor() {
                 Back
               </Button>
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 via-cyan-500 to-teal-500 flex items-center justify-center">
                   <Palette className="w-5 h-5 text-white" />
                 </div>
                 <div>
@@ -251,7 +251,7 @@ export default function DomainThemeEditor() {
         {/* Theme Presets Section */}
         <div className="bg-white rounded-xl p-6 shadow-sm border mb-8">
           <div className="flex items-center gap-3 mb-4">
-            <Sparkles className="w-5 h-5 text-purple-500" />
+            <Sparkles className="w-5 h-5 text-cyan-500" />
             <h2 className="text-lg font-semibold text-gray-900">Quick Theme Presets</h2>
           </div>
           <p className="text-sm text-gray-500 mb-4">
@@ -260,7 +260,7 @@ export default function DomainThemeEditor() {
 
           {presetsLoading ? (
             <div className="flex items-center justify-center py-8">
-              <Loader2 className="w-6 h-6 animate-spin text-purple-500" />
+              <Loader2 className="w-6 h-6 animate-spin text-cyan-500" />
             </div>
           ) : presets.length === 0 ? (
             <p className="text-center text-gray-400 py-4">No theme presets available</p>
@@ -271,7 +271,7 @@ export default function DomainThemeEditor() {
                   key={preset.id}
                   onClick={() => handleApplyPreset(preset)}
                   disabled={applyingPreset !== null}
-                  className="group relative p-4 rounded-lg border-2 border-gray-200 hover:border-purple-400 transition-all text-left disabled:opacity-50"
+                  className="group relative p-4 rounded-lg border-2 border-gray-200 hover:border-blue-400 transition-all text-left disabled:opacity-50"
                   style={{ backgroundColor: preset.themeConfig.backgroundColor || '#ffffff' }}
                 >
                   {/* Color Preview Dots */}
@@ -306,7 +306,7 @@ export default function DomainThemeEditor() {
                   )}
 
                   {preset.isDefault && (
-                    <span className="absolute top-2 right-2 text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
+                    <span className="absolute top-2 right-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
                       Default
                     </span>
                   )}
@@ -314,12 +314,12 @@ export default function DomainThemeEditor() {
                   {/* Loading/Applied Overlay */}
                   {applyingPreset === preset.id && (
                     <div className="absolute inset-0 bg-white/80 flex items-center justify-center rounded-lg">
-                      <Loader2 className="w-5 h-5 animate-spin text-purple-500" />
+                      <Loader2 className="w-5 h-5 animate-spin text-cyan-500" />
                     </div>
                   )}
 
                   {/* Hover Effect */}
-                  <div className="absolute inset-0 border-2 border-purple-500 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                  <div className="absolute inset-0 border-2 border-blue-500 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
                 </button>
               ))}
             </div>
@@ -347,7 +347,7 @@ export default function DomainThemeEditor() {
                       type="text"
                       value={theme.primaryColor}
                       onChange={(e) => setTheme({ ...theme, primaryColor: e.target.value })}
-                      placeholder="#9333ea"
+                      placeholder="#2563eb"
                     />
                   </div>
                 </div>
@@ -366,7 +366,7 @@ export default function DomainThemeEditor() {
                       type="text"
                       value={theme.secondaryColor}
                       onChange={(e) => setTheme({ ...theme, secondaryColor: e.target.value })}
-                      placeholder="#ec4899"
+                      placeholder="#06b6d4"
                     />
                   </div>
                 </div>

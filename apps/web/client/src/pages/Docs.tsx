@@ -8,16 +8,18 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'wouter';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
+import { Seo } from '@/components/Seo';
 import {
   Book,
   Code2,
   Rocket,
   Search,
   FileText,
+  Image,
   Video,
   MessageSquare,
   ArrowRight,
@@ -32,31 +34,66 @@ import {
 const quickLinks = [
   {
     icon: Rocket,
-    title: 'Getting Started',
-    description: 'Set up your account and create your first project in minutes.',
-    href: '/docs/getting-started',
-    color: 'from-violet-500 to-purple-500'
+    title: 'Skill Publishing',
+    description: 'Launch reusable skills into the marketplace with governance and versioning.',
+    href: '/docs/marketplace-discovery',
+    color: 'from-blue-500 to-cyan-400'
   },
   {
     icon: Code2,
-    title: 'API Reference',
-    description: 'Complete API documentation with examples and code snippets.',
-    href: '/docs/api',
+    title: 'Workflow Builder',
+    description: 'Turn prompts into repeatable virtual workflows with routing and approvals.',
+    href: '/docs/workflow-builder',
     color: 'from-teal-500 to-emerald-500'
   },
   {
     icon: FileText,
-    title: 'Tutorials',
-    description: 'Step-by-step guides for common use cases and workflows.',
-    href: '/docs/tutorials',
-    color: 'from-orange-500 to-amber-500'
+    title: 'Swarm Execution',
+    description: 'See how coordinated runs produce stronger answers, decks, and videos.',
+    href: '/docs/swarm-execution',
+    color: 'from-sky-500 to-teal-500'
   },
   {
     icon: Video,
-    title: 'Video Guides',
-    description: 'Watch video tutorials to learn SmartAIHub visually.',
-    href: '/docs/videos',
-    color: 'from-pink-500 to-rose-500'
+    title: 'Output Delivery',
+    description: 'Watch guides for chat, presentation, video, and automation outputs.',
+    href: '/docs/chat-outputs',
+    color: 'from-cyan-500 to-teal-500'
+  },
+  {
+    icon: Zap,
+    title: 'Content Factory',
+    description: 'Learn how skill-generated docs, FAQ, and blog pages expand SEO coverage.',
+    href: '/docs/content/factory',
+    color: 'from-blue-500 to-teal-400'
+  },
+  {
+    icon: Search,
+    title: 'AI Search Optimization',
+    description: 'Structure pages so AI search systems can index and answer them better.',
+    href: '/docs/seo/ai-search-optimization',
+    color: 'from-cyan-500 to-sky-400'
+  },
+  {
+    icon: MessageSquare,
+    title: 'Marketplace FAQ',
+    description: 'Answers about skill publishing, discovery, governance, and reuse.',
+    href: '/docs/faq/marketplace',
+    color: 'from-blue-500 to-cyan-500'
+  },
+  {
+    icon: Image,
+    title: 'Image Prompting',
+    description: 'Prompt engineering patterns for brand-safe image generation.',
+    href: '/docs/image/prompt-engineering',
+    color: 'from-teal-500 to-cyan-500'
+  },
+  {
+    icon: Video,
+    title: 'Video Pipeline',
+    description: 'Turn workflow output into scripts, scenes, and production cues.',
+    href: '/docs/video/production-pipeline',
+    color: 'from-cyan-500 to-emerald-500'
   }
 ];
 
@@ -96,6 +133,31 @@ const docSections = [
       { title: 'Audit Logs', href: '/docs/security/audit' },
       { title: 'Best Practices', href: '/docs/security/best-practices' },
     ]
+  },
+  {
+    title: 'Publishing & SEO',
+    items: [
+      { title: 'Marketplace Discovery', href: '/docs/marketplace-discovery' },
+      { title: 'Workflow Builder', href: '/docs/workflow-builder' },
+      { title: 'Swarm Execution', href: '/docs/swarm-execution' },
+      { title: 'AI Search Optimization', href: '/docs/seo/ai-search-optimization' },
+      { title: 'Content Factory', href: '/docs/content/factory' },
+      { title: 'Content Publishing', href: '/docs/content-publishing' },
+      { title: 'Skill Lifecycle', href: '/docs/skill-lifecycle' },
+      { title: 'Brand Consistency', href: '/docs/brand-consistency' },
+      { title: 'Marketplace FAQ', href: '/docs/faq/marketplace' },
+      { title: 'Workflow FAQ', href: '/docs/faq/workflows' },
+      { title: 'Output FAQ', href: '/docs/faq/outputs' },
+    ]
+  },
+  {
+    title: 'Media Ops',
+    items: [
+      { title: 'Image Prompt Engineering', href: '/docs/image/prompt-engineering' },
+      { title: 'Image Workflow Pipeline', href: '/docs/image/workflow-pipeline' },
+      { title: 'Video Prompt Engineering', href: '/docs/video/prompt-engineering' },
+      { title: 'Video Production Pipeline', href: '/docs/video/production-pipeline' },
+    ]
   }
 ];
 
@@ -118,28 +180,67 @@ console.log(result.code);`;
 const popularArticles = [
   {
     icon: Terminal,
-    title: 'CLI Installation Guide',
-    description: 'Install and configure the SmartAIHub CLI tool',
+    title: 'Marketplace Onboarding',
+    description: 'How to discover, publish, and reuse skills across teams',
     readTime: '5 min'
   },
   {
     icon: Zap,
-    title: 'Optimizing Credit Usage',
-    description: 'Tips to get the most out of your credits',
+    title: 'Workflow Orchestration Patterns',
+    description: 'Design triggers, approvals, branching, and handoffs',
     readTime: '8 min'
   },
   {
     icon: Shield,
-    title: 'Security Best Practices',
-    description: 'Keep your API keys and data secure',
+    title: 'Security & Governance',
+    description: 'Protect keys, manage access, and audit every run',
     readTime: '10 min'
   },
   {
     icon: Database,
-    title: 'Database Integration',
-    description: 'Connect SmartAIHub to your database',
+    title: 'Presentation & Video Outputs',
+    description: 'Transform workflow results into slide decks and videos',
     readTime: '12 min'
+  },
+  {
+    icon: MessageSquare,
+    title: 'Marketplace FAQ',
+    description: 'Answer common questions about discovery, publishing, and reuse',
+    readTime: '6 min'
+  },
+  {
+    icon: Image,
+    title: 'Image Prompt Engineering',
+    description: 'Build brand-safe prompts for enterprise image generation',
+    readTime: '7 min'
+  },
+  {
+    icon: Video,
+    title: 'Video Production Pipeline',
+    description: 'Turn workflow output into scripts, scenes, and production cues',
+    readTime: '9 min'
+  },
+  {
+    icon: Search,
+    title: 'AI Search Optimization',
+    description: 'Plan keyword clusters and structured data for discoverability',
+    readTime: '8 min'
   }
+];
+
+const insightClusters = [
+  'Skill marketplace',
+  'Virtual workflow builder',
+  'Swarm execution',
+  'Chat output',
+  'Presentation output',
+  'Video output',
+  'Marketplace FAQ',
+  'Image prompt engineering',
+  'Video production pipeline',
+  'AI search optimization',
+  'Content factory',
+  'Enterprise AI security',
 ];
 
 export default function Docs() {
@@ -147,13 +248,26 @@ export default function Docs() {
 
   return (
     <div className="min-h-screen bg-background">
+      <Seo
+        title="SmartAIHub Docs | Skills, Workflows, Swarms & AI Outputs"
+        description="Learn how to publish skills, orchestrate virtual workflows, run swarms, and package outputs for chat, presentation, and video."
+        keywords={["SmartAIHub docs", "skill marketplace", "workflow builder", "swarm execution", "chat output", "presentation output", "video output", "enterprise AI"]}
+        canonicalPath="/docs"
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "TechArticle",
+          name: "SmartAIHub Documentation",
+          description: "Documentation for building skills, workflows, swarms, and outputs.",
+          url: "/docs",
+        }}
+      />
       <Navbar />
       
       {/* Hero Section */}
       <section className="relative pt-32 pb-16 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-violet-500/5 via-transparent to-transparent" />
-        <div className="absolute top-20 left-1/4 w-96 h-96 bg-violet-500/10 rounded-full blur-3xl" />
-        <div className="absolute top-40 right-1/4 w-96 h-96 bg-teal-500/10 rounded-full blur-3xl" />
+        <div className="absolute inset-0 bg-gradient-to-b from-blue-500/5 via-transparent to-transparent" />
+        <div className="absolute top-20 left-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl" />
+        <div className="absolute top-40 right-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl" />
         
         <div className="container relative mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div 
@@ -169,8 +283,18 @@ export default function Docs() {
               Learn <span className="gradient-text">SmartAIHub</span>
             </h1>
             <p className="text-lg text-muted-foreground mb-8">
-              Everything you need to build amazing applications with AI-powered code generation.
+              Everything you need to build reusable skills, orchestrate governed workflows, and ship outputs across chat, presentation, and video.
             </p>
+            <div className="mt-8 flex flex-wrap justify-center gap-3">
+              {insightClusters.map((cluster) => (
+                <span
+                  key={cluster}
+                  className="rounded-full border border-blue-100 bg-white/70 px-4 py-2 text-sm font-medium text-slate-600 shadow-sm backdrop-blur"
+                >
+                  {cluster}
+                </span>
+              ))}
+            </div>
             
             {/* Search Bar */}
             <div className="relative max-w-xl mx-auto">
@@ -198,21 +322,23 @@ export default function Docs() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
               >
-                <Card className="glass-card h-full hover:shadow-xl transition-all duration-300 group cursor-pointer">
-                  <CardContent className="p-6">
-                    <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${link.color} flex items-center justify-center mb-4`}>
-                      <link.icon className="w-6 h-6 text-white" />
-                    </div>
-                    <h3 className="text-lg font-semibold mb-2 group-hover:text-primary transition-colors">
-                      {link.title}
-                    </h3>
-                    <p className="text-sm text-muted-foreground mb-4">{link.description}</p>
-                    <span className="inline-flex items-center text-sm text-primary font-medium">
-                      Learn more
-                      <ArrowRight className="ml-1 w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                    </span>
-                  </CardContent>
-                </Card>
+                <Link href={link.href} className="block h-full no-underline">
+                  <Card className="glass-card h-full hover:shadow-xl transition-all duration-300 group cursor-pointer">
+                    <CardContent className="p-6">
+                      <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${link.color} flex items-center justify-center mb-4`}>
+                        <link.icon className="w-6 h-6 text-white" />
+                      </div>
+                      <h3 className="text-lg font-semibold mb-2 group-hover:text-primary transition-colors">
+                        {link.title}
+                      </h3>
+                      <p className="text-sm text-muted-foreground mb-4">{link.description}</p>
+                      <span className="inline-flex items-center text-sm text-primary font-medium">
+                        Learn more
+                        <ArrowRight className="ml-1 w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                      </span>
+                    </CardContent>
+                  </Card>
+                </Link>
               </motion.div>
             ))}
           </div>
@@ -222,42 +348,47 @@ export default function Docs() {
       {/* Code Example */}
       <section className="py-16 bg-muted/30">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
+              <div className="grid lg:grid-cols-2 gap-12 items-center">
             <motion.div
               initial={{ opacity: 0, x: -20 }}
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
             >
               <h2 className="text-3xl font-bold mb-4">
-                Simple, Powerful <span className="gradient-text">API</span>
+                Simple, Powerful <span className="gradient-text">Developer Interface</span>
               </h2>
               <p className="text-lg text-muted-foreground mb-6">
-                Get started with just a few lines of code. Our SDK handles authentication, 
-                rate limiting, and error handling automatically.
+                Get started with just a few lines of code. Our SDK handles authentication,
+                rate limiting, and error handling automatically while keeping skills, workflows,
+                and swarm runs easy to orchestrate.
               </p>
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
                     <span className="text-green-600 font-bold text-sm">1</span>
                   </div>
-                  <span>Install the SDK</span>
+                  <span>Install the SDK or use the API</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
                     <span className="text-green-600 font-bold text-sm">2</span>
                   </div>
-                  <span>Initialize with your API key</span>
+                  <span>Connect a skill, workflow, or swarm</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
                     <span className="text-green-600 font-bold text-sm">3</span>
                   </div>
-                  <span>Start generating code</span>
+                  <span>Ship chat, slide, or video outputs</span>
                 </div>
               </div>
-              <Button className="mt-8 bg-gradient-to-r from-violet-500 to-teal-400 text-white">
-                View Full API Reference
-                <ExternalLink className="ml-2 w-4 h-4" />
+              <Button asChild className="mt-8 bg-gradient-to-r from-blue-500 to-cyan-400 text-white">
+                <Link href="/docs/api">
+                  <span className="inline-flex items-center">
+                    View Developer Docs
+                    <ExternalLink className="ml-2 w-4 h-4" />
+                  </span>
+                </Link>
               </Button>
             </motion.div>
 
@@ -291,9 +422,9 @@ export default function Docs() {
             viewport={{ once: true }}
             className="text-center mb-12"
           >
-            <h2 className="text-3xl font-bold mb-4">Browse by Category</h2>
+            <h2 className="text-3xl font-bold mb-4">Browse by Capability</h2>
             <p className="text-muted-foreground">
-              Find what you need in our comprehensive documentation
+              Find what you need in the docs that map directly to how SmartAIHub is used in production.
             </p>
           </motion.div>
 
@@ -334,9 +465,9 @@ export default function Docs() {
             viewport={{ once: true }}
             className="text-center mb-12"
           >
-            <h2 className="text-3xl font-bold mb-4">Popular Articles</h2>
+            <h2 className="text-3xl font-bold mb-4">Popular Guides</h2>
             <p className="text-muted-foreground">
-              Most read guides and tutorials
+              High-intent guides for marketplace, workflow, and output use cases
             </p>
           </motion.div>
 
@@ -382,11 +513,11 @@ export default function Docs() {
               Can't find what you're looking for? Our support team is here to help.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button size="lg" className="bg-gradient-to-r from-violet-500 to-teal-400 text-white">
-                Contact Support
+              <Button asChild size="lg" className="bg-gradient-to-r from-blue-500 to-cyan-400 text-white">
+                <Link href="/contact">Contact Support</Link>
               </Button>
-              <Button size="lg" variant="outline">
-                Join Community
+              <Button asChild size="lg" variant="outline">
+                <Link href="/community">Join Community</Link>
               </Button>
             </div>
           </motion.div>

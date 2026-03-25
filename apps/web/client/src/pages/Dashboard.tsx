@@ -803,7 +803,7 @@ export default function Dashboard() {
 
               {adminMenuItems.length > 0 && (
                 <div className="pt-3 mt-3 border-t border-slate-200">
-                  <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider px-3 mb-2">Admin</div>
+                  <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider px-3 mb-2">{t('common:admin')}</div>
                   {adminMenuItems.map((item) => (
                     <button
                       key={item.id}
@@ -1137,7 +1137,7 @@ export default function Dashboard() {
 
           <div className="mt-4 grid gap-3 md:grid-cols-3">
               <div className="rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Usage momentum</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">{t('dashboard:stats.usageMomentum')}</p>
               <div className="mt-2 flex items-end gap-2">
                 <span className="text-2xl font-semibold text-slate-900">
                   {usageMomentum.delta === null ? '—' : `${usageMomentum.delta > 0 ? '+' : ''}${usageMomentum.delta.toFixed(0)}%`}
@@ -1153,12 +1153,12 @@ export default function Dashboard() {
                 </span>
               </div>
               <p className={`mt-2 ${dashboardCardBodyClass}`}>
-                {analyticsPoints.length > 0 ? `Based on ${analyticsPoints.length} daily datapoints.` : 'No usage datapoints yet.'}
+                {analyticsPoints.length > 0 ? t('dashboard:stats.datapoints', { count: analyticsPoints.length }) : t('dashboard:stats.noDatapoints')}
               </p>
             </div>
 
               <div className="rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Cost per request</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">{t('dashboard:stats.costPerRequest')}</p>
               <div className="mt-2 flex items-end gap-2">
                 <span className="text-2xl font-semibold text-slate-900">
                   ${analyticsAvgCostPerRequest.toFixed(3)}
@@ -1173,7 +1173,7 @@ export default function Dashboard() {
             </div>
 
               <div className="rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Recent media success</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">{t('dashboard:stats.recentMediaSuccess')}</p>
               <div className="mt-2 flex items-end gap-2">
                 <span className="text-2xl font-semibold text-slate-900">
                   {recentTaskStats.total > 0 ? `${recentTaskStats.successRate}%` : '—'}
@@ -1193,7 +1193,7 @@ export default function Dashboard() {
               <div>
                 <p className={dashboardCardTitleClass}>7-day usage sparkline</p>
                 <p className={dashboardCardDescriptionClass}>
-                  Higher bars mean more credit burn on that day.
+                  {t('dashboard:trendHealth.creditBarHint')}
                 </p>
               </div>
               {topProvider && (
@@ -1223,7 +1223,7 @@ export default function Dashboard() {
               </div>
             ) : (
               <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
-                No analytics datapoints available yet.
+                {t('dashboard:trendHealth.noData')}
               </div>
             )}
           </div>
@@ -1263,7 +1263,7 @@ export default function Dashboard() {
             <div className="rounded-[28px] border border-slate-200/80 bg-white/90 p-5 shadow-[0_24px_60px_rgba(15,23,42,0.08)] backdrop-blur-xl">
               <DashboardSectionHeader
                 eyebrow="Agency Review Center"
-                title="Tenant-wide improvement loop"
+                title={t('dashboard:review.improvementLoop')}
                 description="See how many agencies have been reviewed, how fresh the feedback is, and what changed most recently."
                 trailing={(
                   <Badge variant="secondary" className="self-start gap-1 border border-slate-200 bg-slate-50 px-3 py-1 text-slate-700 shadow-sm">
@@ -1279,7 +1279,7 @@ export default function Dashboard() {
               <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white/95 p-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-2 text-sm font-medium text-slate-700">
                   <Filter className="h-4 w-4" />
-                  <label htmlFor="agency-review-filter">Filter by agency</label>
+                  <label htmlFor="agency-review-filter">{t("dashboard:filterByAgency")}</label>
                 </div>
                 <select
                   id="agency-review-filter"
@@ -1287,7 +1287,7 @@ export default function Dashboard() {
                   onChange={(e) => setSelectedReviewAgencyId(e.target.value)}
                   className="min-w-[220px] rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm outline-none ring-0 focus:border-slate-400"
                 >
-                  <option value="all">All agencies</option>
+                  <option value="all">{t("dashboard:allAgencies")}</option>
                   {reviewAgencies.map((agency: any) => (
                     <option key={agency.id} value={agency.id}>
                       {agency.name}
@@ -1329,7 +1329,7 @@ export default function Dashboard() {
               <div className="mt-5">
                 <div className="mb-3 flex items-center justify-between gap-2">
                   <div>
-                    <p className={dashboardCardTitleLgClass}>Recent reviews</p>
+                    <p className={dashboardCardTitleLgClass}>{t("dashboard:review.recentReviews")}</p>
                     <p className={dashboardCardDescriptionClass}>
                       {selectedReviewAgency
                         ? `Latest feedback records for ${selectedReviewAgency.name}.`
@@ -1337,7 +1337,7 @@ export default function Dashboard() {
                     </p>
                   </div>
                   <Button variant="outline" size="sm" onClick={() => setLocation("/agencies")}>
-                    Review Agencies
+                    {t("dashboard:review.agencies")}
                     <ChevronRight className="ml-1 h-4 w-4" />
                   </Button>
                 </div>
@@ -1366,7 +1366,7 @@ export default function Dashboard() {
                           className="h-7 gap-1.5 border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 hover:text-slate-900"
                           onClick={() => setLocation(`/agencies/${review.agencyId}/review`)}
                         >
-                          Open Review
+                          {t("dashboard:review.open")}
                           <ChevronRight className="h-3.5 w-3.5" />
                         </Button>
                       </div>
@@ -1385,7 +1385,7 @@ export default function Dashboard() {
             <div className="rounded-[28px] border border-slate-200/80 bg-white/90 p-5 shadow-[0_24px_60px_rgba(15,23,42,0.08)] backdrop-blur-xl">
               <DashboardSectionHeader
                 eyebrow="Recent Improvements"
-                title="Applied or dismissed changes"
+                title={t("dashboard:review.appliedChanges")}
                 description="The latest improvement history entries across all agencies in this tenant."
                 trailing={(
                   <Badge variant="secondary" className="border-slate-200 bg-slate-50 text-slate-700">
@@ -1414,7 +1414,7 @@ export default function Dashboard() {
                           className="h-7 gap-1.5 px-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                           onClick={() => setLocation(`/agencies/${item.agencyId}/review`)}
                         >
-                          Open Review Center
+                          {t("dashboard:review.center")}
                           <ChevronRight className="h-3.5 w-3.5" />
                         </Button>
                       </div>
@@ -1427,7 +1427,7 @@ export default function Dashboard() {
                   <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-4 text-sm text-slate-500">
                     {selectedReviewAgency
                       ? `No improvement history found for ${selectedReviewAgency.name}.`
-                      : "No improvement history yet. Approve or apply a review suggestion to record one here."}
+                      : t("dashboard:review.noHistory")}
                   </div>
                 )}
               </div>
@@ -1444,17 +1444,17 @@ export default function Dashboard() {
         >
           <DashboardSectionHeader
             eyebrow="Workspace Shortcuts"
-            title="Fast links to the places people open most"
+            title={t("dashboard:quickActions.titleAttr")}
             description="These cards are tuned to feel lightweight and premium while still moving users to the right place quickly."
             trailing={(
               <p className="hidden max-w-md text-right text-sm leading-6 text-slate-500 lg:block">
-                Fast links to the most common places people jump to from this dashboard.
+                {t("dashboard:quickActions.subtitle")}
               </p>
             )}
             titleClassName={`mt-1 ${dashboardCardTitleXlClass}`}
           />
           <p className="mb-4 text-sm leading-6 text-slate-500 lg:hidden">
-            Fast links to the most common places people jump to from this dashboard.
+            {t("dashboard:quickActions.subtitle")}
           </p>
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
             {quickActions.map((action, index) => (
@@ -1485,7 +1485,7 @@ export default function Dashboard() {
           <div className="rounded-[28px] border border-slate-200/80 bg-white/90 p-6 shadow-[0_18px_45px_rgba(15,23,42,0.06)] backdrop-blur-xl">
             <DashboardSectionHeader
               eyebrow="Operations"
-              title="Active Workflows"
+              title={t("dashboard:activeWorkflows.title")}
               description="Live execution threads currently running across the workspace."
               trailing={activeWorkflows?.workflows && activeWorkflows.workflows.length > 0 ? (
                 <Badge variant="secondary" className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 shadow-sm">
@@ -1508,8 +1508,8 @@ export default function Dashboard() {
               ) : (
                 <div className="text-center py-8 text-slate-500">
                   <Clock className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                  <p className={dashboardCardTitleClass}>No active workflows</p>
-                  <p className={`mt-1 ${dashboardCardDescriptionClass}`}>Start a workflow from chat or skills</p>
+                  <p className={dashboardCardTitleClass}>{t("dashboard:activeWorkflows.empty")}</p>
+                  <p className={`mt-1 ${dashboardCardDescriptionClass}`}>{t("dashboard:activeWorkflows.emptyHint")}</p>
                 </div>
               )}
             </div>
@@ -1519,7 +1519,7 @@ export default function Dashboard() {
           <div id="pending-approvals" className="rounded-[28px] border border-slate-200/80 bg-white/90 p-6 shadow-[0_18px_45px_rgba(15,23,42,0.06)] backdrop-blur-xl">
             <DashboardSectionHeader
               eyebrow="Operations"
-              title="Pending Approvals"
+              title={t("dashboard:pendingApprovals.title")}
               description="Decisions that are waiting on your review before they can continue."
               trailing={pendingApprovals?.requests && pendingApprovals.requests.length > 0 ? (
                 <Badge variant="secondary" className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 shadow-sm">
@@ -1573,7 +1573,7 @@ export default function Dashboard() {
                             size="sm"
                             className="bg-green-600 hover:bg-green-700 text-white"
                           >
-                            Approve
+                            {t("dashboard:workflow.approve")}
                           </Button>
                           <Button
                             onClick={() => {
@@ -1585,7 +1585,7 @@ export default function Dashboard() {
                             variant="destructive"
                             size="sm"
                           >
-                            Reject
+                            {t("dashboard:workflow.reject")}
                           </Button>
                         </div>
                       </div>
@@ -1595,8 +1595,8 @@ export default function Dashboard() {
               ) : (
                 <div className="text-center py-8 text-slate-500">
                   <CheckCircle className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                  <p className={dashboardCardTitleClass}>No pending approvals</p>
-                  <p className={`mt-1 ${dashboardCardDescriptionClass}`}>All approval gates cleared</p>
+                  <p className={dashboardCardTitleClass}>{t("dashboard:pendingApprovals.empty")}</p>
+                  <p className={`mt-1 ${dashboardCardDescriptionClass}`}>{t("dashboard:pendingApprovals.emptyHint")}</p>
                 </div>
               )}
             </div>
@@ -1614,11 +1614,11 @@ export default function Dashboard() {
           <div className="lg:col-span-2">
             <DashboardSectionHeader
               eyebrow="Media"
-              title="Recent Media Generations"
+              title={t("dashboard:recentMedia.title")}
               description="The most recent media jobs and their current outcome."
               trailing={(
                 <Button variant="ghost" size="sm" onClick={() => setLocation('/media-history')} className="text-slate-700">
-                  View All <ChevronRight className="w-4 h-4 ml-1" />
+                  {t("dashboard:recentMedia.viewAll")} <ChevronRight className="w-4 h-4 ml-1" />
                 </Button>
               )}
               titleClassName={dashboardCardTitleXlClass}
@@ -1627,9 +1627,9 @@ export default function Dashboard() {
               {tasks.length === 0 ? (
                 <div className="p-6 text-center text-slate-400">
                   <Image className="w-10 h-10 mx-auto mb-3 opacity-50" />
-                  <p className={dashboardCardDescriptionClass}>No media generations yet</p>
+                  <p className={dashboardCardDescriptionClass}>{t("dashboard:recentMedia.empty")}</p>
                   <Button variant="ghost" size="sm" className="mt-2 text-slate-700" onClick={() => setLocation('/media-studio')}>
-                    Go to Media Studio
+                    {t("dashboard:recentMedia.cta")}
                   </Button>
                 </div>
               ) : (
@@ -1687,7 +1687,7 @@ export default function Dashboard() {
           <div>
             <DashboardSectionHeader
               eyebrow="Conversation"
-              title="Recent Chats"
+              title={t("dashboard:recentChats.title")}
               description="The latest discussion threads and their usage footprint."
               trailing={(
                 <div className="flex items-center gap-2">
@@ -1704,7 +1704,7 @@ export default function Dashboard() {
               {(!chatData?.conversations || chatData.conversations.length === 0) ? (
                 <div className="p-6 text-center text-slate-400">
                   <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                  <p className={dashboardCardDescriptionClass}>No conversations yet</p>
+                  <p className={dashboardCardDescriptionClass}>{t("dashboard:recentChats.empty")}</p>
                 </div>
               ) : (
                 chatData.conversations.slice(0, 5).map((conv, index) => (
@@ -1747,11 +1747,11 @@ export default function Dashboard() {
         >
           <DashboardSectionHeader
             eyebrow="Finance"
-            title="Credit Transactions"
+            title={t("dashboard:creditTransactions.title")}
             description="The most recent balance movements and purchases."
             trailing={(
               <Button variant="ghost" size="sm" onClick={() => setLocation('/credits')} className="text-slate-700">
-                View All <ChevronRight className="w-4 h-4 ml-1" />
+                {t("dashboard:recentMedia.viewAll")} <ChevronRight className="w-4 h-4 ml-1" />
               </Button>
             )}
               titleClassName={dashboardCardTitleXlClass}
@@ -1760,7 +1760,7 @@ export default function Dashboard() {
             {(!recentTransactions || recentTransactions.length === 0) ? (
                 <div className="p-6 text-center text-slate-400">
                 <Coins className="w-10 h-10 mx-auto mb-3 opacity-50" />
-                <p className={dashboardCardDescriptionClass}>No transactions yet</p>
+                <p className={dashboardCardDescriptionClass}>{t("dashboard:creditTransactions.empty")}</p>
               </div>
             ) : (
               <div className="divide-y divide-slate-100">

@@ -339,7 +339,7 @@ export default function Gallery() {
         <section className="relative pt-4 pb-12 overflow-hidden">
           {/* Background */}
           <div className="absolute inset-0">
-            <div className="absolute top-0 left-1/4 w-96 h-96 bg-violet-500/20 rounded-full blur-3xl" />
+            <div className="absolute top-0 left-1/4 w-96 h-96 bg-cyan-500/20 rounded-full blur-3xl" />
             <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-teal-500/20 rounded-full blur-3xl" />
           </div>
           
@@ -577,7 +577,7 @@ export default function Gallery() {
                           {/* Author */}
                           {item.authorName && (
                             <div className="flex items-center gap-2 mb-2">
-                              <div className="w-5 h-5 rounded-full bg-gradient-to-br from-violet-500 to-teal-400 flex items-center justify-center text-white text-xs">
+                              <div className="w-5 h-5 rounded-full bg-gradient-to-br from-blue-500 to-teal-400 flex items-center justify-center text-white text-xs">
                                 {item.authorName.charAt(0)}
                               </div>
                               <span className="text-sm text-muted-foreground truncate">

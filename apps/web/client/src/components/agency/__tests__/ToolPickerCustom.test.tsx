@@ -15,6 +15,7 @@ vi.mock("@/components/ui/dialog", () => ({
   DialogHeader: ({ children }: any) => createElement("div", null, children),
   DialogTitle: ({ children }: any) =>
     createElement("h2", null, children),
+  DialogFooter: ({ children }: any) => createElement("div", null, children),
 }));
 
 // ── Radix Select mock ────────────────────────────────────────
@@ -77,6 +78,7 @@ const mockListToolsData = {
       toolType: "http_api",
       riskLevel: "medium",
       isEnabled: true,
+      isOwned: true,
     },
     {
       id: "custom-uuid-2",
@@ -189,7 +191,7 @@ describe("ToolPicker with custom tools", () => {
     );
 
     expect(screen.getByTestId("create-custom-tool-btn")).toBeTruthy();
-    expect(screen.getByText("Create Custom Tool")).toBeTruthy();
+    expect(screen.getByText("Create Tool")).toBeTruthy();
   });
 
   it("disabled custom tools (isEnabled=false) are excluded from the list", async () => {
@@ -234,5 +236,64 @@ describe("ToolPicker with custom tools", () => {
 
     expect(screen.queryByTestId("edit-tool-builtin-web-search")).toBeNull();
     expect(screen.queryByTestId("delete-tool-builtin-web-search")).toBeNull();
+  });
+
+  it("shows a Connect MCP Server action when the callback is provided", async () => {
+    const { ToolPicker } = await import("../ToolPicker");
+    const onManageMcpServers = vi.fn();
+    render(
+      createElement(ToolPicker, {
+        open: true,
+        onClose,
+        onSelect,
+        onManageMcpServers,
+        excludeToolIds: [],
+      }),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /connect mcp server/i }));
+    expect(onManageMcpServers).toHaveBeenCalledOnce();
+  });
+
+  it("shows a guidance banner for MCP tools and social publishing", async () => {
+    const originalTools = [...mockListToolsData.tools];
+    mockListToolsData.tools = [
+      ...originalTools,
+      {
+        id: "builtin-social-publish",
+        name: "Social Publish",
+        description: "Schedule or publish posts to Facebook Pages",
+        toolType: "builtin",
+        riskLevel: "medium",
+        isEnabled: true,
+      },
+      {
+        id: "mcp-tool-1",
+        name: "MCP Analytics",
+        description: "Example MCP tool",
+        toolType: "mcp_bridge",
+        riskLevel: "low",
+        isEnabled: true,
+      },
+    ];
+
+    try {
+      const { ToolPicker } = await import("../ToolPicker");
+      render(
+        createElement(ToolPicker, {
+          open: true,
+          onClose,
+          onSelect,
+          onManageMcpServers: vi.fn(),
+          excludeToolIds: [],
+        }),
+      );
+
+      expect(screen.getByText(/mcp tools loaded/i)).toBeTruthy();
+      expect(screen.getByText(/fb auto-post ready/i)).toBeTruthy();
+      expect(screen.getByText(/facebook page with valid page access/i)).toBeTruthy();
+    } finally {
+      mockListToolsData.tools = originalTools;
+    }
   });
 });

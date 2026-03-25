@@ -193,7 +193,9 @@ export function AgentPropertyPanel({
                       onChange({
                         modelSettings: {
                           ...agent.modelSettings,
-                          reasoningEffort: e.target.value || undefined,
+                          reasoningEffort: e.target.value
+                            ? (e.target.value as "minimal" | "low" | "medium" | "high")
+                            : undefined,
                         },
                       })
                     }

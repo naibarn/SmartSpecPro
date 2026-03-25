@@ -1315,7 +1315,7 @@ export default function AdminMediaModels() {
   const getModelTypeBadgeColor = (type: string) => {
     switch (type) {
       case "image":
-        return "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400";
+        return "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400";
       case "video":
         return "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400";
       case "audio":
@@ -1338,7 +1338,7 @@ export default function AdminMediaModels() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/20 px-4 sm:px-6 lg:px-8 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-cyan-50/20 px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
       <div className="mb-8">
         <Button variant="ghost" className="mb-4" onClick={() => setLocation("/dashboard")}>
@@ -1401,7 +1401,7 @@ export default function AdminMediaModels() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Image</CardTitle>
-              <Image className="h-4 w-4 text-purple-500" />
+              <Image className="h-4 w-4 text-blue-500" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats.byType.image}</div>
@@ -1522,7 +1522,7 @@ export default function AdminMediaModels() {
                     </div>
                   </CardContent>
                 </Card>
-                <Card className="border-violet-200">
+                <Card className="border-teal-200">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm">Provider & Registry</CardTitle>
                   </CardHeader>

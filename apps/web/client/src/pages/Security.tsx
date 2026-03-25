@@ -51,8 +51,8 @@ export default function Security() {
       defaultBody={defaultBody}
       icon={Shield}
       badge="Security"
-      gradientFrom="red-500"
-      gradientTo="rose-500"
+      gradientFrom="blue-500"
+      gradientTo="cyan-500"
     />
   );
 }

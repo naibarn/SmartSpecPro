@@ -34,6 +34,7 @@ import {
   Video,
   Music,
   ArrowRight,
+  Clock,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Link, useLocation } from "wouter";
@@ -454,6 +455,34 @@ export default function AdminQueueDashboard() {
                   {mediaModels.length} models tracked across {mediaLimiters.length} providers
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Scheduled Jobs Card */}
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Clock className="h-5 w-5 text-teal-500" />
+                    Scheduled Jobs
+                  </CardTitle>
+                  <CardDescription>
+                    Celery Beat task execution history
+                  </CardDescription>
+                </div>
+                <Link href="/admin/scheduled-jobs">
+                  <Button variant="outline" size="sm">
+                    Open
+                    <ArrowRight className="h-4 w-4 ml-1" />
+                  </Button>
+                </Link>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                View all scheduled tasks, their execution history, success rates, and performance metrics.
+              </p>
             </CardContent>
           </Card>
         </div>

@@ -399,6 +399,9 @@ export default function AdminLLMProviders() {
         return <Bot className="h-5 w-5 text-green-500" />;
       case "zhipu":
         return <Bot className="h-5 w-5 text-red-500" />;
+      case "knplabai":
+      case "knplabs":
+        return <Cpu className="h-5 w-5 text-indigo-500" />;
       default:
         return <Bot className="h-5 w-5" />;
     }

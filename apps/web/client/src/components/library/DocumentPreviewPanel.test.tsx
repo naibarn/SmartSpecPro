@@ -33,6 +33,12 @@ vi.mock("@/lib/trpc", () => ({
       getItemShares: {
         useQuery: (...args: any[]) => getItemSharesMock(...args),
       },
+      exportMarkdownArtifact: {
+        useMutation: () => ({
+          mutateAsync: vi.fn(),
+          isPending: false,
+        }),
+      },
     },
   },
 }));
@@ -57,6 +63,15 @@ vi.mock("./ShareDialog", () => ({
   ShareDialog: () => null,
 }));
 
+vi.mock("../editor/UnifiedDocumentSurface", () => ({
+  default: ({ surfaceHeaderActions, editorHeaderActions }: { surfaceHeaderActions?: any; editorHeaderActions?: any }) => (
+    <div data-testid="unified-document-surface">
+      {surfaceHeaderActions}
+      {editorHeaderActions}
+    </div>
+  ),
+}));
+
 import DocumentPreviewPanel from "./DocumentPreviewPanel";
 
 function renderPreview(previewType: "image" | "video") {
@@ -72,6 +87,24 @@ function renderPreview(previewType: "image" | "video") {
       } as any}
       previewType={previewType}
       previewText="Preview text"
+      documentId={1}
+    />,
+  );
+}
+
+function renderMarkdownPreview() {
+  return render(
+    <DocumentPreviewPanel
+      item={{
+        id: 1,
+        title: "Notes.md",
+        source_url: "https://example.com/notes.md",
+        status: "ready",
+        item_type: "document",
+        metadata: {},
+      } as any}
+      previewType="markdown"
+      markdownValue="# Notes"
       documentId={1}
     />,
   );
@@ -102,4 +135,12 @@ describe("DocumentPreviewPanel media previews", () => {
       expect(screen.queryByText("Metadata Search")).toBeNull();
     },
   );
+
+  it("renders a markdown download/export heading in the editor header", async () => {
+    renderMarkdownPreview();
+
+    expect(await screen.findByText("ดาวน์โหลด Markdown", { selector: "div" })).toBeTruthy();
+    expect(screen.getByLabelText(/ดาวน์โหลดไฟล์ markdown ต้นฉบับ/i)).toBeTruthy();
+    expect(screen.getByLabelText(/ส่งออก markdown/i)).toBeTruthy();
+  });
 });

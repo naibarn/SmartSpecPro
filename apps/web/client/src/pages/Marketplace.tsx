@@ -9,6 +9,7 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
+import { Seo } from "@/components/Seo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -121,22 +122,35 @@ export default function Marketplace() {
   const skills = data?.skills || [];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/20">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-cyan-50/20">
+      <Seo
+        title="SmartAIHub Marketplace | Enterprise Skill Catalog"
+        description="Browse, search, and reuse enterprise AI skills for chat, presentation, video, automation, translation, and more."
+        keywords={["SmartAIHub marketplace", "AI skills", "enterprise skill catalog", "workflow skills", "automation", "video generation", "chat assistant"]}
+        canonicalPath="/marketplace"
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "CollectionPage",
+          name: "SmartAIHub Marketplace",
+          description: "Marketplace for reusable enterprise AI skills.",
+          url: "/marketplace",
+        }}
+      />
       <Navbar />
 
       {/* Hero */}
       <section className="relative pt-32 pb-16 overflow-hidden">
         <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-20 left-1/4 w-96 h-96 bg-purple-200/30 rounded-full blur-3xl" />
-          <div className="absolute top-40 right-1/4 w-80 h-80 bg-blue-200/30 rounded-full blur-3xl" />
+          <div className="absolute top-20 left-1/4 w-96 h-96 bg-blue-200/30 rounded-full blur-3xl" />
+          <div className="absolute top-40 right-1/4 w-80 h-80 bg-cyan-200/30 rounded-full blur-3xl" />
         </div>
         <div className="px-4 sm:px-6 lg:px-8 relative z-10">
           <motion.div {...fadeInUp} className="text-center max-w-3xl mx-auto">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-100 text-purple-700 text-sm font-medium mb-6">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-100 text-blue-700 text-sm font-medium mb-6">
               <Lightbulb className="h-4 w-4" />
               Agent Skills Marketplace
             </div>
-            <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 bg-clip-text text-transparent mb-4">
+            <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-blue-600 via-cyan-500 to-teal-500 bg-clip-text text-transparent mb-4">
               Discover AI Agent Skills
             </h1>
             <p className="text-lg text-gray-600 mb-8">
@@ -179,7 +193,7 @@ export default function Marketplace() {
       <section className="px-4 sm:px-6 lg:px-8 pb-24">
         {isLoading ? (
           <div className="flex items-center justify-center py-16">
-            <Loader2 className="h-8 w-8 animate-spin text-purple-500" />
+            <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
           </div>
         ) : skills.length === 0 ? (
           <div className="text-center py-16 text-gray-500">
@@ -251,11 +265,11 @@ function SkillCard({ skill, onClick }: { skill: any; onClick: () => void }) {
       >
         <CardContent className="p-5">
           <div className="flex items-start gap-3 mb-3">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-white shrink-0">
+            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center text-white shrink-0">
               <IconComponent className="h-5 w-5" />
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="font-semibold text-gray-900 truncate group-hover:text-purple-600 transition-colors">
+              <h3 className="font-semibold text-gray-900 truncate group-hover:text-blue-600 transition-colors">
                 {skill.name}
               </h3>
               <Badge variant="secondary" className="text-[10px] mt-0.5">
@@ -395,14 +409,14 @@ function SkillDetailDialog({
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col p-0">
         {isLoading || !skill ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 className="h-8 w-8 animate-spin text-purple-500" />
+            <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
           </div>
         ) : (
           <>
             {/* Header */}
             <DialogHeader className="p-6 pb-4 border-b shrink-0">
               <div className="flex items-start gap-4">
-                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-white shrink-0">
+                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center text-white shrink-0">
                   <IconComponent className="h-6 w-6" />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -420,7 +434,7 @@ function SkillDetailDialog({
                 <Button
                   variant={skill.userLiked ? "default" : "outline"}
                   size="sm"
-                  className={skill.userLiked ? "bg-pink-500 hover:bg-pink-600 text-white gap-1.5" : "gap-1.5"}
+                className={skill.userLiked ? "bg-blue-500 hover:bg-blue-600 text-white gap-1.5" : "gap-1.5"}
                   onClick={handleLike}
                   disabled={likeMutation.isPending}
                 >
@@ -513,7 +527,7 @@ function SkillDetailDialog({
                     ) : (
                       comments.map((c: any) => (
                         <div key={c.id} className="flex items-start gap-2 group">
-                          <div className="h-7 w-7 rounded-full bg-gradient-to-br from-purple-400 to-blue-400 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                          <div className="h-7 w-7 rounded-full bg-gradient-to-br from-blue-400 to-cyan-400 flex items-center justify-center text-white text-xs font-bold shrink-0">
                             {(c.userName || "?")[0].toUpperCase()}
                           </div>
                           <div className="flex-1 min-w-0">

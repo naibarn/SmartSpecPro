@@ -41,7 +41,8 @@ const DEFAULT_AGENT_DATA: AgencyNodeData = {
   name: "New Agent",
   description: "",
   instructions: "",
-  model: "",
+  model: undefined,
+  modelRequirements: { strategy: "balanced" },
   modelSettings: {},
   isEntryPoint: false,
   isOptional: false,
@@ -295,6 +296,7 @@ function AgencyCanvas() {
             description: agent.description ?? "",
             instructions: agent.instructions ?? "",
             model: agent.model ?? "",
+            modelRequirements: agent.nodeConfig?.modelRequirements ?? undefined,
             modelSettings: agent.modelSettings ?? {},
             isEntryPoint: agent.isEntryPoint ?? false,
             isOptional: agent.isOptional ?? false,
@@ -480,7 +482,8 @@ function AgencyCanvas() {
         name: templateData.name || "New Agent",
         description: templateData.description || "",
         instructions: templateData.instructions || "",
-        model: templateData.defaultModel || defaultModel || "",
+        model: templateData.defaultModel || undefined,
+        modelRequirements: templateData.defaultModel ? undefined : { strategy: "balanced" },
         modelSettings: {},
         isEntryPoint: templateData.isEntryPoint || false,
         isOptional: false,
@@ -580,12 +583,17 @@ function AgencyCanvas() {
       description: n.data.description || undefined,
       nodeType: n.data.nodeType ?? "agent",
       instructions: n.data.instructions || undefined,
-      model: n.data.model || (["agent", "supervisor"].includes(n.data.nodeType ?? "agent") ? (defaultModel || undefined) : undefined),
+      model: n.data.modelRequirements
+        ? undefined  // Auto mode — let backend resolve model
+        : (n.data.model || (["agent", "supervisor"].includes(n.data.nodeType ?? "agent") ? (defaultModel || undefined) : undefined)),
       modelSettings: n.data.modelSettings,
       isEntryPoint: n.data.isEntryPoint ?? false,
       isOptional: n.data.isOptional ?? false,
       position: n.position,
-      nodeConfig: n.data.nodeConfig || undefined,
+      nodeConfig: {
+        ...(n.data.nodeConfig || {}),
+        ...(n.data.modelRequirements ? { modelRequirements: n.data.modelRequirements } : {}),
+      } as Record<string, unknown>,
       toolIds: (n.data.tools ?? []).map((t) => t.toolId),
       toolConfigs: (n.data.tools ?? []).reduce(
         (acc, t) => {

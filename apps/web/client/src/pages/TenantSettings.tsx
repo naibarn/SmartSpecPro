@@ -106,7 +106,7 @@ export default function TenantSettings() {
   if (authLoading || !user || !hasAccess) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
+        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
       </div>
     );
   }
@@ -153,7 +153,7 @@ export default function TenantSettings() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-purple-50/30">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-cyan-50/30">
       {/* Top Header */}
       <div className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-10">
         <div className="px-4 sm:px-6 lg:px-8 py-4 flex items-center gap-4">
@@ -168,7 +168,7 @@ export default function TenantSettings() {
           </Button>
           <div className="h-5 w-px bg-gray-200" />
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center shadow-md shadow-purple-200/50">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 via-cyan-500 to-teal-500 flex items-center justify-center shadow-md shadow-blue-200/50">
               <Settings className="w-5 h-5 text-white" />
             </div>
             <div>
@@ -201,7 +201,7 @@ export default function TenantSettings() {
                     onClick={() => setActiveTab(item.key)}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all duration-150 ${
                       isActive
-                        ? "bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-md shadow-purple-200/50"
+                        ? "bg-gradient-to-r from-blue-500 via-cyan-500 to-teal-500 text-white shadow-md shadow-blue-200/50"
                         : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                     }`}
                   >
@@ -224,9 +224,9 @@ export default function TenantSettings() {
               {/* Invoice Settings Tab */}
               <TabsContent value="invoice">
                 <Card className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
-                  <CardHeader className="border-b bg-gradient-to-r from-indigo-50/50 to-purple-50/30 pb-5">
+                  <CardHeader className="border-b bg-gradient-to-r from-blue-50/50 to-cyan-50/30 pb-5">
                     <CardTitle className="flex items-center gap-2 text-lg">
-                      <FileText className="w-5 h-5 text-indigo-500" />
+                      <FileText className="w-5 h-5 text-blue-500" />
                       Invoice Configuration
                     </CardTitle>
                     <CardDescription>
@@ -236,7 +236,7 @@ export default function TenantSettings() {
                   <CardContent className="space-y-6 pt-6">
                     {invoiceLoading ? (
                       <div className="py-8 text-center">
-                        <Loader2 className="w-8 h-8 animate-spin text-purple-500 mx-auto" />
+                        <Loader2 className="w-8 h-8 animate-spin text-blue-500 mx-auto" />
                         <p className="text-gray-500 mt-2">Loading invoice settings...</p>
                       </div>
                     ) : (
@@ -395,7 +395,7 @@ export default function TenantSettings() {
                           <Button
                             onClick={handleSaveInvoice}
                             disabled={upsertInvoiceMutation.isPending || !tenant?.id}
-                            className="bg-gradient-to-r from-indigo-600 to-purple-500 hover:from-indigo-700 hover:to-purple-600"
+                            className="bg-gradient-to-r from-blue-600 via-cyan-600 to-teal-500 hover:from-blue-700 hover:via-cyan-700 hover:to-teal-600"
                           >
                             {upsertInvoiceMutation.isPending ? (
                               <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</>

@@ -11,7 +11,7 @@ export const VideoBackground: React.FC<VideoBackgroundProps> = ({
     opacity = 0.5
 }) => {
     return (
-        <div className="absolute inset-0 overflow-hidden bg-black z-0 pointer-events-none">
+        <div className="absolute inset-0 overflow-hidden bg-gradient-to-br from-slate-50 via-white to-blue-50/40 z-0 pointer-events-none">
             <ReactPlayer
                 // @ts-ignore: ReactPlayer type definitions are currently incompatible with React 19 ref attributes
                 url={url}
@@ -31,9 +31,9 @@ export const VideoBackground: React.FC<VideoBackgroundProps> = ({
                     opacity,
                 }}
             />
-            {/* Ethereal Dark Gradient Overlay for optimal text readability */}
-            <div className="absolute inset-0 bg-gradient-to-br from-background/80 via-background/60 to-background/90" />
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.4)_100%)]" />
+            {/* Enterprise Light Overlay for optimal text readability */}
+            <div className="absolute inset-0 bg-gradient-to-br from-background/88 via-background/72 to-background/94" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(255,255,255,0.7)_100%)]" />
         </div>
     );
 };

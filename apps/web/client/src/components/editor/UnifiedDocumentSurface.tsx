@@ -14,7 +14,7 @@ import type {
   UnifiedDocumentSurfaceProps,
 } from "./types";
 
-const AUTO_SAVE_DELAY = 2000;
+const AUTO_SAVE_DELAY = 4000;
 
 export default function UnifiedDocumentSurface({
   initialContent,
@@ -30,6 +30,7 @@ export default function UnifiedDocumentSurface({
   documentTitle,
   documentId,
   initialEditorTemplate = "page",
+  surfaceHeaderActions,
   editorHeaderActions,
   editorUploadMetadata,
   editorLibraryScope = "all",
@@ -88,10 +89,31 @@ export default function UnifiedDocumentSurface({
       return;
     }
 
+    if (!documentChanged && initialContent === latestMarkdownRef.current) {
+      lastHydratedDocumentIdRef.current = currentDocumentId;
+      lastHydratedContentRef.current = initialContent;
+      lastHydratedUpdatedAtRef.current = updatedAt;
+      return;
+    }
+
     const parsed = parse(initialContent);
     setTiptapContent(parsed);
-    // Push new document into live Tiptap instance (it ignores content prop after mount)
-    editorRef.current?.commands?.setContent(parsed);
+    const editor = editorRef.current;
+    if (editor) {
+      const selection = editor.isEditable
+        ? {
+            from: editor.state.selection.from,
+            to: editor.state.selection.to,
+          }
+        : null;
+      // Push the new document into the live Tiptap instance. If we're
+      // re-hydrating the same markdown after an autosave, preserve the cursor
+      // so the user can keep typing without interruption.
+      editor.commands.setContent(parsed);
+      if (selection) {
+        editor.commands.setTextSelection(selection);
+      }
+    }
     setSourceMarkdown(initialContent);
     latestMarkdownRef.current = initialContent;
     setDirty(false);
@@ -338,6 +360,11 @@ export default function UnifiedDocumentSurface({
             </button>
           ))}
         </div>
+        {surfaceHeaderActions ? (
+          <div className="ml-0 flex shrink-0 items-center gap-1.5 whitespace-nowrap sm:ml-2">
+            {surfaceHeaderActions}
+          </div>
+        ) : null}
         {mode === "view" && currentTemplateIsPage ? (
           <div className="ml-0 inline-flex items-center gap-1 rounded-full border border-border bg-background/80 p-1 shadow-sm sm:ml-2">
             <button

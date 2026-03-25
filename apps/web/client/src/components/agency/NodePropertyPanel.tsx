@@ -1211,6 +1211,7 @@ function AgentSupervisorForm({
         open={toolPickerOpen}
         onClose={() => setToolPickerOpen(false)}
         onSelect={handleAddTool}
+        onManageMcpServers={() => setMcpServersOpen(true)}
         excludeToolIds={(node.tools ?? []).map((t) => t.toolId)}
       />
     </>

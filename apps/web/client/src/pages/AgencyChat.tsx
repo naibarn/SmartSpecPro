@@ -5,6 +5,9 @@ import { useAgencyStream } from "@/hooks/useAgencyStream";
 import { useAgencyById } from "@/hooks/useAgencyQuery";
 import { ModelPicker } from "@/components/agency/ModelPicker";
 import AgencyActivityPanel from "@/components/agency/AgencyActivityPanel";
+import { AgencyMemoryPanel } from "@/components/agency/AgencyMemoryPanel";
+import { RunFeedbackCard } from "@/components/agency/RunFeedbackCard";
+import { ImprovementSuggestionPanel } from "@/components/agency/ImprovementSuggestionPanel";
 import { AgencyChatStream } from "@/components/agency/AgencyChatStream";
 import { BrowserSessionSummaryCard } from "@/components/browser-session/BrowserSessionSummaryCard";
 import { BrowserSessionLaunchSuggestionCard } from "@/components/browser-session/BrowserSessionLaunchSuggestionCard";
@@ -37,6 +40,10 @@ import {
   RefreshCw,
   MonitorPlay,
   X,
+  Brain,
+  Activity,
+  Lightbulb,
+  Sparkles,
 } from "lucide-react";
 import {
   Popover,
@@ -70,6 +77,12 @@ import {
   deriveBrowserSkillSelection,
   inferBrowserSkillId,
 } from "@shared/browserSkills";
+import {
+  buildHybridPlanSummary,
+  formatHybridPlanInstructions,
+  type HybridOrchestrationPlan,
+  type HybridPlanPayload,
+} from "@shared/orchestration/hybridOrchestration";
 import type { LiveBrowserCreateSessionRequest } from "@shared/liveBrowser";
 
 
@@ -92,21 +105,30 @@ function getAgentColor(name: string): string {
 export default function AgencyChat() {
   const { isLoading: authLoading, isAuthenticated, user } = useAuth();
   const [, setLocation] = useLocation();
-  const [matched, params] = useRoute("/agencies/:id");
-  const agencyId = (params as Record<string, string>)?.id as
-    | string
-    | undefined;
+  const [reviewMatched, reviewParams] = useRoute("/agencies/:id/review");
+  const [chatMatched, chatParams] = useRoute("/agencies/:id");
+  const matched = reviewMatched || chatMatched;
+  const routeParams = (reviewMatched ? reviewParams : chatParams) as Record<string, string> | undefined;
+  const agencyId = routeParams?.id as string | undefined;
+  const reviewMode = reviewMatched;
 
   const [input, setInput] = useState("");
   const [panelOpen, setPanelOpen] = useState(
-    () => typeof window !== "undefined" && window.innerWidth >= 1024,
+    () => typeof window !== "undefined" && (window.innerWidth >= 1024 || reviewMode),
   );
+  const [panelTab, setPanelTab] = useState<"activity" | "memory" | "improve">(
+    () => (reviewMode ? "improve" : "activity"),
+  );
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [lastRunId, setLastRunId] = useState<string | null>(null);
   const [conversationId] = useState<string | undefined>();
   const [modelOverride, setModelOverride] = useState("");
   const [modelPickerOpen, setModelPickerOpen] = useState(false);
   const [recipientAgent, setRecipientAgent] = useState("");
   const [additionalInstructions, setAdditionalInstructions] = useState("");
   const [runOptionsOpen, setRunOptionsOpen] = useState(false);
+  const [hybridOrchestrationPlan, setHybridOrchestrationPlan] = useState<HybridOrchestrationPlan | null>(null);
+  const [hybridOrchestrationDraft, setHybridOrchestrationDraft] = useState("");
   const [returnBrowserSessionId, setReturnBrowserSessionId] = useState<string | null>(null);
   const [browserSessionSuggestion, setBrowserSessionSuggestion] = useState<BrowserSessionLaunchSuggestion | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -116,6 +138,20 @@ export default function AgencyChat() {
   });
   const createLiveBrowserSessionMutation = trpc.liveBrowser.createSession.useMutation();
   const sendLiveBrowserCommandMutation = trpc.liveBrowser.sendCommand.useMutation();
+  const reviewAgencyMutation = trpc.agency.reviewAgency.useMutation({
+    onSuccess: () => {
+      utils.agency.getImprovementSuggestions.invalidate({ agencyId: agencyId! });
+      utils.agency.getImprovementHistory.invalidate({ agencyId: agencyId! });
+      setPanelTab("improve");
+      setPanelOpen(true);
+      toast.success("Agency review completed");
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to review agency");
+    },
+  });
+  const createHybridPreviewTokenMutation = trpc.hybridOrchestration.createPreviewToken.useMutation();
+  const refreshHybridPreviewTokenMutation = trpc.hybridOrchestration.refreshPreviewToken.useMutation();
   const [browserSessionArtifact, setBrowserSessionArtifact] = useState<BrowserSessionArtifact | null>(null);
   const [browserCommandDraft, setBrowserCommandDraft] = useState("");
   const [browserCommandSkillId, setBrowserCommandSkillId] = useState(() => inferBrowserSkillId(""));
@@ -124,6 +160,7 @@ export default function AgencyChat() {
   const [browserCommandNotice, setBrowserCommandNotice] = useState<string | null>(null);
   const [agencyPreview, setAgencyPreview] = useState<(AgencyPreviewProps & { runId: string }) | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const hybridPreviewRefreshAttemptedRef = useRef<string | null>(null);
 
   // Feature flag is enforced server-side: agency.getById throws NOT_FOUND
   // when AGENCY_SWARM_ENABLED is false, which sets isError=true below.
@@ -134,12 +171,18 @@ export default function AgencyChat() {
   } = useAgencyById(agencyId);
 
   const agencyBrowserSessionEnabled = Boolean(tenantFlags?.agencyBrowserSessionUi);
+  const reviewCenterEnabled = reviewMode;
 
   const browserSessionStorageKey = useMemo(
     () => (agencyId ? `agency-browser-session:${agencyId}` : null),
     [agencyId],
   );
   const stream = useAgencyStream({
+    onRunFinished: (_creditsUsed, runId) => {
+      // Show feedback card after run completes — use actual run UUID
+      if (runId) setLastRunId(runId);
+      setShowFeedback(true);
+    },
     onBrowserSession: (artifact) => {
       storeBrowserSessionArtifact(artifact);
     },
@@ -218,13 +261,113 @@ export default function AgencyChat() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const browserSessionId = params.get("browserSessionId");
-    if (!browserSessionId) {
+    const hybridPreviewToken = params.get("hybridPreviewToken");
+    const draft = params.get("draft");
+    let shouldRewriteUrl = false;
+
+    setHybridOrchestrationPlan(null);
+    setHybridOrchestrationDraft("");
+    setAdditionalInstructions("");
+    setRecipientAgent("");
+    setRunOptionsOpen(false);
+    setInput("");
+
+    if (browserSessionId) {
+      setReturnBrowserSessionId(browserSessionId);
+      shouldRewriteUrl = true;
+    }
+
+    const applyHybridPreview = (parsed: HybridPlanPayload) => {
+      if (parsed?.plan?.mode === "hybrid") {
+        setHybridOrchestrationPlan(parsed.plan);
+        setHybridOrchestrationDraft(parsed.draft || "");
+        setAdditionalInstructions((current) => current || formatHybridPlanInstructions(parsed.plan));
+        setRunOptionsOpen(true);
+        if (parsed.draft) {
+          setInput((current) => current || parsed.draft);
+        }
+      }
+    };
+
+    const loadHybridPreview = async (token: string): Promise<void> => {
+      try {
+        const parsed = await utils.hybridOrchestration.getPreview.fetch({ token });
+        if (parsed?.plan?.mode === "hybrid") {
+          applyHybridPreview(parsed);
+          hybridPreviewRefreshAttemptedRef.current = null;
+          return;
+        }
+      } catch {
+        // Fall through to an automatic refresh attempt below.
+      }
+
+      if (hybridPreviewRefreshAttemptedRef.current === token) {
+        return;
+      }
+
+      hybridPreviewRefreshAttemptedRef.current = token;
+      try {
+        const refreshed = await refreshHybridPreviewTokenMutation.mutateAsync({ previewToken: token });
+        const parsed = await utils.hybridOrchestration.getPreview.fetch({ token: refreshed.token });
+        if (parsed?.plan?.mode === "hybrid") {
+          applyHybridPreview(parsed);
+          hybridPreviewRefreshAttemptedRef.current = null;
+          if (typeof window !== "undefined") {
+            const nextUrl = new URL(window.location.href);
+            nextUrl.searchParams.set("hybridPreviewToken", refreshed.token);
+            nextUrl.searchParams.delete("browserSessionId");
+            nextUrl.searchParams.delete("draft");
+            window.history.replaceState({}, "", nextUrl.toString());
+          }
+        }
+      } catch {
+        hybridPreviewRefreshAttemptedRef.current = null;
+      }
+    };
+
+    if (hybridPreviewToken) {
+      shouldRewriteUrl = true;
+      void loadHybridPreview(hybridPreviewToken);
+    }
+
+    if (draft) {
+      setInput((current) => current || draft);
+      shouldRewriteUrl = true;
+    }
+
+    if (shouldRewriteUrl) {
+      const nextUrl = new URL(window.location.href);
+      nextUrl.searchParams.delete("browserSessionId");
+      nextUrl.searchParams.delete("draft");
+      if (!hybridPreviewToken) {
+        nextUrl.searchParams.delete("hybridPreviewToken");
+      }
+      window.history.replaceState({}, "", nextUrl.toString());
+    }
+  }, [agencyId]);
+
+  const handleOpenHybridPreview = () => {
+    if (!agencyId || !hybridOrchestrationPlan) {
       return;
     }
 
-    setReturnBrowserSessionId(browserSessionId);
-    window.history.replaceState({}, "", agencyId ? `/agencies/${agencyId}` : "/agencies");
-  }, [agencyId]);
+    void (async () => {
+      try {
+        const payload: HybridPlanPayload = {
+          draft: hybridOrchestrationDraft || input.trim(),
+          plan: hybridOrchestrationPlan,
+        };
+        const result = await createHybridPreviewTokenMutation.mutateAsync({
+          agencyId,
+          payload,
+          sourceSurface: "agency-chat",
+        });
+        setLocation(`/agencies/${agencyId}/hybrid-preview?hybridPreviewToken=${encodeURIComponent(result.token)}`);
+      } catch {
+        toast.error("Failed to open hybrid orchestration preview");
+      }
+    })();
+  };
 
   const handleSend = () => {
     const message = input.trim();
@@ -342,6 +485,13 @@ export default function AgencyChat() {
   }, [agencyBrowserSessionEnabled, agencyId]);
 
   useEffect(() => {
+    if (reviewCenterEnabled) {
+      setPanelOpen(true);
+      setPanelTab("improve");
+    }
+  }, [reviewCenterEnabled]);
+
+  useEffect(() => {
     setBrowserCommandDraft("");
     setBrowserCommandSkillId(inferBrowserSkillId(""));
     setBrowserCommandSkillSelectionMode("auto");
@@ -406,6 +556,14 @@ export default function AgencyChat() {
       launch_intent: launchIntent,
     });
     setLocation(buildBrowserSessionPath(created.sessionId, artifact?.launchContext ?? buildAgencyLaunchContext(created.sessionId)));
+  };
+
+  const handleReviewAgency = async () => {
+    if (!agencyId || reviewAgencyMutation.isPending) {
+      return;
+    }
+
+    await reviewAgencyMutation.mutateAsync({ agencyId });
   };
 
   const handleConfirmBrowserSessionSuggestion = async (
@@ -507,15 +665,20 @@ export default function AgencyChat() {
           </Button>
 
           <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <Users className="h-4 w-4 shrink-0 text-muted-foreground" />
-              <h1 className="text-base font-semibold truncate">
-                {agency?.name || "Agency"}
-              </h1>
-              <Badge variant="outline" className="shrink-0 text-[10px] px-1.5 py-0">
-                {agents.length} {agents.length === 1 ? "agent" : "agents"}
-              </Badge>
-            </div>
+              <div className="flex items-center gap-2">
+                <Users className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <h1 className="text-base font-semibold truncate">
+                  {agency?.name || "Agency"}
+                </h1>
+                <Badge variant="outline" className="shrink-0 text-[10px] px-1.5 py-0">
+                  {agents.length} {agents.length === 1 ? "agent" : "agents"}
+                </Badge>
+                {reviewCenterEnabled && (
+                  <Badge className="shrink-0 text-[10px] px-1.5 py-0 bg-amber-100 text-amber-700 border-amber-200">
+                    Review Center
+                  </Badge>
+                )}
+              </div>
 
             {stream.activeAgent ? (
               <div className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -539,11 +702,43 @@ export default function AgencyChat() {
         </div>
 
         <div className="flex items-center gap-1.5 shrink-0">
-          <HelpButton page="/agency" variant="ghost" size="sm" className="h-8 text-muted-foreground hover:text-foreground" />
-          {agencyBrowserSessionEnabled && (
-            <Button
-              variant="ghost"
-              size="sm"
+              <HelpButton page="/agency" variant="ghost" size="sm" className="h-8 text-muted-foreground hover:text-foreground" />
+              {agencyId && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={cn(
+                    "h-8 gap-1.5 text-xs text-muted-foreground hover:text-foreground",
+                    reviewCenterEnabled ? "text-primary" : "",
+                  )}
+                  onClick={() => { void handleReviewAgency(); }}
+                  disabled={reviewAgencyMutation.isPending}
+                  title="Run agency review"
+                >
+                  {reviewAgencyMutation.isPending ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Lightbulb className="h-3.5 w-3.5" />
+                  )}
+                  Review
+                </Button>
+              )}
+              {reviewCenterEnabled && hybridOrchestrationPlan && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+                  onClick={() => { void handleOpenHybridPreview(); }}
+                  title="Regenerate hybrid preview token"
+                >
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  Regenerate Preview Token
+                </Button>
+              )}
+              {agencyBrowserSessionEnabled && (
+                <Button
+                  variant="ghost"
+                  size="sm"
               className="h-8 gap-1.5 text-xs text-muted-foreground hover:text-foreground"
               onClick={() => { void handleOpenBrowserSession(); }}
               disabled={createLiveBrowserSessionMutation.isPending}
@@ -638,7 +833,7 @@ export default function AgencyChat() {
       </div>
 
       {/* Main Content */}
-      <div className="flex flex-1 overflow-hidden">
+          <div className="flex flex-1 overflow-hidden">
         {/* Conversation Thread */}
         <div className="flex flex-1 flex-col min-w-0">
           <div
@@ -646,6 +841,41 @@ export default function AgencyChat() {
             className="flex-1 overflow-y-auto p-4"
           >
             <div className="mx-auto max-w-3xl space-y-4">
+              {hybridOrchestrationPlan && (
+                <div className="rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 text-sm text-violet-900 dark:border-violet-900 dark:bg-violet-950/20 dark:text-violet-100">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Bot className="h-4 w-4" />
+                    <p className="font-semibold">Hybrid orchestration loaded</p>
+                    <Badge variant="secondary" className="ml-auto bg-white/80 text-violet-800">
+                      {hybridOrchestrationPlan.stages.length} stages
+                    </Badge>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 gap-1.5 border-violet-200 bg-white/70 text-violet-800 hover:bg-violet-50"
+                      onClick={handleOpenHybridPreview}
+                    >
+                      <Sparkles className="h-3.5 w-3.5" />
+                      Open Detailed Preview
+                    </Button>
+                    {!reviewCenterEnabled && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 gap-1.5 border-violet-200 bg-white/70 text-violet-800 hover:bg-violet-50"
+                        onClick={handleOpenHybridPreview}
+                      >
+                        <RefreshCw className="h-3.5 w-3.5" />
+                        Regenerate Preview Token
+                      </Button>
+                    )}
+                  </div>
+                  <p className="mt-1 text-xs text-violet-800/80 dark:text-violet-200/80">
+                    {buildHybridPlanSummary(hybridOrchestrationPlan)}
+                  </p>
+                </div>
+              )}
+
               {agencyBrowserSessionEnabled && browserSessionArtifact ? (
                 <BrowserSessionSummaryCard
                   artifact={browserSessionArtifact}
@@ -851,6 +1081,18 @@ export default function AgencyChat() {
             </div>
           </div>
 
+          {/* Run Feedback Card */}
+          {showFeedback && agencyId && !stream.isStreaming && (
+            <div className="px-4 pb-2 max-w-3xl mx-auto w-full">
+              <RunFeedbackCard
+                agencyId={agencyId}
+                runId={lastRunId || `run-${Date.now()}`}
+                onClose={() => setShowFeedback(false)}
+                onSubmitted={() => setShowFeedback(false)}
+              />
+            </div>
+          )}
+
           {/* Input Bar */}
           <div className="border-t px-4 py-3">
             {(agency as any)?.creatorFeeCredits > 0 && (
@@ -960,15 +1202,68 @@ export default function AgencyChat() {
           </div>
         </div>
 
-        {/* Activity Panel */}
+        {/* Side Panel — Activity | Memory tabs */}
         {panelOpen && (
-          <div className="hidden w-80 border-l lg:block">
-            <AgencyActivityPanel
-              activityEvents={stream.activityEvents}
-              activeAgent={stream.activeAgent}
-              isStreaming={stream.isStreaming}
-              onClose={() => setPanelOpen(false)}
-            />
+          <div className="hidden w-80 border-l lg:flex lg:flex-col">
+            {/* Tab bar */}
+            <div className="flex border-b">
+              <button
+                onClick={() => setPanelTab("activity")}
+                className={cn(
+                  "flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium transition-colors",
+                  panelTab === "activity"
+                    ? "border-b-2 border-primary text-primary"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <Activity className="h-3.5 w-3.5" />
+                Activity
+              </button>
+              <button
+                onClick={() => setPanelTab("memory")}
+                className={cn(
+                  "flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium transition-colors",
+                  panelTab === "memory"
+                    ? "border-b-2 border-primary text-primary"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <Brain className="h-3.5 w-3.5" />
+                Memory
+              </button>
+              <button
+                onClick={() => setPanelTab("improve")}
+                className={cn(
+                  "flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium transition-colors",
+                  panelTab === "improve"
+                    ? "border-b-2 border-primary text-primary"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <Lightbulb className="h-3.5 w-3.5" />
+                Improve
+              </button>
+            </div>
+
+            {/* Panel content */}
+            {panelTab === "activity" ? (
+              <AgencyActivityPanel
+                activityEvents={stream.activityEvents}
+                activeAgent={stream.activeAgent}
+                isStreaming={stream.isStreaming}
+                onClose={() => setPanelOpen(false)}
+              />
+            ) : panelTab === "memory" ? (
+              <AgencyMemoryPanel
+                agencyId={agencyId!}
+                agentNodeId={entryAgent?.id ?? ""}
+                onClose={() => setPanelOpen(false)}
+              />
+            ) : (
+              <div className="flex-1 overflow-y-auto p-3">
+                <ImprovementSuggestionPanel agencyId={agencyId!} />
+              </div>
+            )}
           </div>
         )}
       </div>

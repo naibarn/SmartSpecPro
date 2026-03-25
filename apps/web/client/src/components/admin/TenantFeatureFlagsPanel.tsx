@@ -4,7 +4,7 @@
  * Admin panel for toggling feature flags on a per-tenant basis.
  * Used within the tenant edit dialog in AdminTenants.
  *
- * - 42 flags organized in 7 collapsible groups
+ * - 43 flags organized in 7 collapsible groups
  * - Search filter to quickly find flags
  * - Shows "X/Y enabled" summary per group
  * - Optimistic updates with rollback on error
@@ -31,6 +31,7 @@ const FLAG_GROUPS: { title: string; icon: string; flags: FlagInfo[] }[] = [
       { key: "chatWidget", label: "Embeddable Chat Widget", description: "Embed chat on external websites" },
       { key: "channelRouter", label: "Channel Routing Rules", description: "Route messages based on rules" },
       { key: "META_CHANNELS_ENABLED", label: "Meta Channels", description: "Facebook/Instagram Pages — inbox, publishing, comments" },
+      { key: "UPLOAD_POST_GATEWAY_ENABLED", label: "Upload-Post Gateway", description: "Universal upload-post publishing bridge" },
     ],
   },
   {

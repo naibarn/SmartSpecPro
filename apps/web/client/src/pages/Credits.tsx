@@ -3,15 +3,21 @@
  * Credit management and purchase interface
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'wouter';
 import { formatNumber } from '@smartspec/shared';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { trpc } from '@/lib/trpc';
+import { useI18n } from '@/lib/i18n';
 import { Button } from '@/components/ui/button';
 import { TransactionDetailDialog } from '@/components/analytics/TransactionDetailDialog';
 import MyInviteCode from '@/components/user/MyInviteCode';
+import {
+  DashboardSectionHeader,
+  DashboardStatCard,
+  DashboardSurface,
+} from '@/components/dashboard';
 import {
   Zap,
   CreditCard,
@@ -44,28 +50,9 @@ import {
   Bot,
 } from 'lucide-react';
 
-/** Source type display labels and colors */
-const SOURCE_LABELS: Record<string, { label: string; color: string; icon: typeof Zap }> = {
-  chat:        { label: "Chat",       color: "bg-blue-100 text-blue-700",    icon: MessageCircle },
-  skill:       { label: "Skill",      color: "bg-purple-100 text-purple-700", icon: Sparkles },
-  media_image: { label: "Image",      color: "bg-pink-100 text-pink-700",    icon: Image },
-  media_video: { label: "Video",      color: "bg-red-100 text-red-700",      icon: Film },
-  media_audio: { label: "Audio",      color: "bg-orange-100 text-orange-700", icon: Volume2 },
-  indexing:    { label: "Indexing",    color: "bg-green-100 text-green-700",  icon: Database },
-  rag:         { label: "Search",     color: "bg-teal-100 text-teal-700",    icon: Search },
-  stt:         { label: "STT",        color: "bg-indigo-100 text-indigo-700", icon: Mic },
-  translation: { label: "Translate",  color: "bg-cyan-100 text-cyan-700",    icon: Globe },
-  brainstorm:  { label: "Brainstorm", color: "bg-amber-100 text-amber-700",  icon: Lightbulb },
-  scheduler:   { label: "Alert",      color: "bg-yellow-100 text-yellow-700", icon: Bell },
-  admin:       { label: "Admin",      color: "bg-gray-100 text-gray-700",    icon: Shield },
-  agency:      { label: "Agency",     color: "bg-violet-100 text-violet-700", icon: Eye },
-  creator_revenue: { label: "Creator Revenue", color: "bg-amber-100 text-amber-700", icon: Coins },
-  browser_automation: { label: "Automation", color: "bg-sky-100 text-sky-700", icon: Bot },
-  other:       { label: "Other",      color: "bg-slate-100 text-slate-700",  icon: Zap },
-};
-
 export default function Credits() {
   const { user, isLoading, isAuthenticated } = useAuth();
+  const { t, locale } = useI18n();
   const [, setLocation] = useLocation();
   const [selectedPackage, setSelectedPackage] = useState<number | null>(null);
   const [buyCreditsExpanded, setBuyCreditsExpanded] = useState(false);
@@ -83,6 +70,28 @@ export default function Credits() {
   });
   const { data: usageStats } = trpc.credits.stats.useQuery({ days: 30 });
   const { data: packages, isLoading: packagesLoading } = trpc.packages.list.useQuery();
+  const sourceLabels = useMemo(() => ({
+    chat: { label: t('credits.sources.chat'), color: "bg-blue-100 text-blue-700", icon: MessageCircle },
+    skill: { label: t('credits.sources.skill'), color: "bg-blue-100 text-blue-700", icon: Sparkles },
+    media_image: { label: t('credits.sources.mediaImage'), color: "bg-cyan-100 text-cyan-700", icon: Image },
+    media_video: { label: t('credits.sources.mediaVideo'), color: "bg-red-100 text-red-700", icon: Film },
+    media_audio: { label: t('credits.sources.mediaAudio'), color: "bg-orange-100 text-orange-700", icon: Volume2 },
+    indexing: { label: t('credits.sources.indexing'), color: "bg-green-100 text-green-700", icon: Database },
+    rag: { label: t('credits.sources.search'), color: "bg-teal-100 text-teal-700", icon: Search },
+    stt: { label: t('credits.sources.stt'), color: "bg-cyan-100 text-cyan-700", icon: Mic },
+    translation: { label: t('credits.sources.translate'), color: "bg-cyan-100 text-cyan-700", icon: Globe },
+    brainstorm: { label: t('credits.sources.brainstorm'), color: "bg-amber-100 text-amber-700", icon: Lightbulb },
+    scheduler: { label: t('credits.sources.alert'), color: "bg-yellow-100 text-yellow-700", icon: Bell },
+    admin: { label: t('credits.sources.admin'), color: "bg-gray-100 text-gray-700", icon: Shield },
+    agency: { label: t('credits.sources.agency'), color: "bg-teal-100 text-teal-700", icon: Eye },
+    creator_revenue: { label: t('credits.sources.creatorRevenue'), color: "bg-amber-100 text-amber-700", icon: Coins },
+    browser_automation: { label: t('credits.sources.automation'), color: "bg-sky-100 text-sky-700", icon: Bot },
+    other: { label: t('credits.sources.other'), color: "bg-slate-100 text-slate-700", icon: Zap },
+  }), [t]);
+  const getSourceInfo = (sourceType: unknown) => {
+    if (typeof sourceType !== "string") return null;
+    return sourceType in sourceLabels ? sourceLabels[sourceType as keyof typeof sourceLabels] : null;
+  };
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -92,8 +101,8 @@ export default function Credits() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/20 flex items-center justify-center">
-        <div className="animate-spin w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full" />
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-cyan-50/20 flex items-center justify-center">
+        <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full" />
       </div>
     );
   }
@@ -112,49 +121,50 @@ export default function Credits() {
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-    const timeStr = d.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+    const intlLocale = locale === 'th' ? 'th-TH' : 'en-US';
+    const timeStr = d.toLocaleTimeString(intlLocale, { hour: '2-digit', minute: '2-digit' });
 
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins} min ago`;
-    if (diffHours < 24) return `${diffHours}h ago (${timeStr})`;
-    if (diffDays === 1) return `Yesterday ${timeStr}`;
-    if (diffDays < 7) return `${diffDays}d ago ${timeStr}`;
-    return `${d.toLocaleDateString('th-TH')} ${timeStr}`;
+    if (diffMins < 1) return t('credits.time.justNow');
+    if (diffMins < 60) return t('credits.time.minutesAgo', { count: diffMins });
+    if (diffHours < 24) return t('credits.time.hoursAgo', { count: diffHours, time: timeStr });
+    if (diffDays === 1) return t('credits.time.yesterday', { time: timeStr });
+    if (diffDays < 7) return t('credits.time.daysAgo', { count: diffDays, time: timeStr });
+    return `${d.toLocaleDateString(intlLocale)} ${timeStr}`;
   };
 
   const stats = [
     {
-      label: 'Current Balance',
+      label: 'credits.stats.currentBalance',
       value: (balance?.credits ?? user.credits ?? 0).toString(),
       icon: Zap,
       color: 'text-yellow-500',
       bgColor: 'bg-yellow-50',
     },
     {
-      label: 'Total Purchased',
+      label: 'credits.stats.totalPurchased',
       value: (usageStats?.totalPurchased ?? 0).toString(),
       icon: Package,
       color: 'text-blue-500',
       bgColor: 'bg-blue-50',
     },
     {
-      label: 'Transactions',
+      label: 'credits.stats.transactions',
       value: (usageStats?.transactionCount ?? 0).toString(),
       icon: DollarSign,
       color: 'text-green-500',
       bgColor: 'bg-green-50',
     },
     {
-      label: 'Credits Used (30d)',
+      label: 'credits.stats.creditsUsed30d',
       value: (usageStats?.totalUsage ?? 0).toString(),
       icon: TrendingUp,
-      color: 'text-purple-500',
-      bgColor: 'bg-purple-50',
+      color: 'text-blue-500',
+      bgColor: 'bg-blue-50',
     },
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/20">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-cyan-50/20">
       {/* Header */}
       <header className="bg-white/70 backdrop-blur-xl border-b border-gray-200/50 sticky top-0 z-10">
         <div className="px-4 sm:px-6 lg:px-8 py-4">
@@ -167,22 +177,22 @@ export default function Credits() {
                 className="text-gray-600 px-2 sm:px-3"
               >
                 <ChevronLeft className="w-5 h-5 mr-1" />
-                <span className="hidden sm:inline">Back</span>
+                <span className="hidden sm:inline">{t('common.back')}</span>
               </Button>
               <div className="flex items-center gap-2 sm:gap-3">
                 <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center flex-shrink-0">
                   <CreditCard className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-lg sm:text-xl font-bold text-gray-900">Credits</h1>
-                  <p className="text-xs sm:text-sm text-gray-500 hidden sm:block">Manage your credit balance</p>
+                  <h1 className="text-lg sm:text-xl font-bold text-gray-900">{t('credits.title')}</h1>
+                  <p className="text-xs sm:text-sm text-gray-500 hidden sm:block">{t('credits.description')}</p>
                 </div>
               </div>
             </div>
             <div className="flex items-center gap-1.5 sm:gap-2 bg-yellow-50 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg flex-shrink-0">
               <Zap className="w-4 h-4 text-yellow-500" />
               <span className="font-semibold text-gray-900 text-sm sm:text-base">{user.credits ?? 0}</span>
-              <span className="text-xs sm:text-sm text-gray-500">credits</span>
+              <span className="text-xs sm:text-sm text-gray-500">{t('credits.unit')}</span>
             </div>
           </div>
         </div>
@@ -201,16 +211,15 @@ export default function Credits() {
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8"
         >
           {stats.map((stat, index) => (
-            <div
+            <DashboardStatCard
               key={index}
-              className="bg-white/70 backdrop-blur-xl rounded-2xl border border-white/50 p-6 shadow-lg shadow-purple-500/5"
-            >
-              <div className={`w-12 h-12 rounded-xl ${stat.bgColor} flex items-center justify-center mb-4`}>
-                <stat.icon className={`w-6 h-6 ${stat.color}`} />
-              </div>
-              <div className="text-3xl font-bold text-gray-900 mb-1">{stat.value}</div>
-              <div className="text-sm text-gray-500">{stat.label}</div>
-            </div>
+              icon={stat.icon}
+              value={stat.value}
+              label={t(stat.label)}
+              className="p-6"
+              iconContainerClassName={stat.bgColor}
+              iconClassName={stat.color}
+            />
           ))}
         </motion.div>
 
@@ -231,14 +240,12 @@ export default function Credits() {
                 <CreditCard className="w-5 h-5 text-white" />
               </div>
               <div className="text-left">
-                <h2 className="text-2xl font-bold text-gray-900">Buy Credits</h2>
+                <h2 className="text-2xl font-bold text-gray-900">{t('credits.buyCredits.title')}</h2>
                 {!buyCreditsExpanded && (
-                  <p className="text-sm text-gray-500">
-                    {packages?.length ?? 0} packages available &mdash; click to expand
-                  </p>
+                  <p className="text-sm text-gray-500">{t('credits.buyCredits.collapsed', { count: packages?.length ?? 0 })}</p>
                 )}
                 {buyCreditsExpanded && (
-                  <p className="text-sm text-gray-600">Choose a package that fits your needs (15% markup from base rate)</p>
+                  <p className="text-sm text-gray-600">{t('credits.buyCredits.descriptionExpanded')}</p>
                 )}
               </div>
             </div>
@@ -253,15 +260,15 @@ export default function Credits() {
           {/* Collapsed summary card */}
           {!buyCreditsExpanded && (
             <div
-              className="bg-white/70 backdrop-blur-xl rounded-2xl border border-white/50 p-4 cursor-pointer hover:border-purple-200 transition-colors shadow-lg"
+              className="bg-white/70 backdrop-blur-xl rounded-2xl border border-white/50 p-4 cursor-pointer hover:border-blue-200 transition-colors shadow-lg"
               onClick={() => setBuyCreditsExpanded(true)}
             >
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-gray-600">
-                  <Sparkles className="w-4 h-4 text-purple-500" />
-                  <span className="text-sm font-medium">Need more credits? Browse {packages?.length ?? 0} packages</span>
-                </div>
-                <ArrowRight className="w-4 h-4 text-purple-400" />
+                  <div className="flex items-center gap-2 text-gray-600">
+                    <Sparkles className="w-4 h-4 text-blue-500" />
+                    <span className="text-sm font-medium">{t('credits.buyCredits.browse', { count: packages?.length ?? 0 })}</span>
+                  </div>
+                <ArrowRight className="w-4 h-4 text-blue-400" />
               </div>
             </div>
           )}
@@ -278,12 +285,12 @@ export default function Credits() {
           >
           {packagesLoading ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
+              <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
             </div>
           ) : !packages || packages.length === 0 ? (
             <div className="text-center py-12 bg-white/70 backdrop-blur-xl rounded-2xl border border-white/50">
               <Package className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500">No packages available</p>
+              <p className="text-gray-500">{t('credits.buyCredits.noPackages')}</p>
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 pt-2">
@@ -295,16 +302,16 @@ export default function Credits() {
                   transition={{ delay: 0.05 }}
                   className={`relative bg-white/70 backdrop-blur-xl rounded-2xl border-2 p-4 shadow-lg transition-all cursor-pointer ${
                     selectedPackage === pkg.id
-                      ? 'border-purple-500 shadow-purple-500/20'
+                      ? 'border-blue-500 shadow-blue-500/20'
                       : pkg.isFeatured
-                      ? 'border-purple-300'
-                      : 'border-white/50 hover:border-purple-200'
+                      ? 'border-blue-300'
+                      : 'border-white/50 hover:border-blue-200'
                   }`}
                   onClick={() => setSelectedPackage(pkg.id)}
                 >
                   {pkg.isFeatured && (
                     <div className="absolute -top-2.5 left-1/2 -translate-x-1/2">
-                      <span className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-0.5">
+                      <span className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-0.5">
                         <Star className="w-2.5 h-2.5" />
                         BEST
                       </span>
@@ -313,14 +320,14 @@ export default function Credits() {
 
                   <div className="text-center mb-3">
                     <div className={`w-12 h-12 mx-auto rounded-xl bg-gradient-to-br ${
-                      pkg.isFeatured ? 'from-purple-500 to-pink-500' : 'from-green-500 to-emerald-500'
+                      pkg.isFeatured ? 'from-blue-500 to-cyan-500' : 'from-green-500 to-emerald-500'
                     } flex items-center justify-center mb-3`}>
                       <DollarSign className="w-6 h-6 text-white" />
                     </div>
                     <div className="text-2xl font-bold text-gray-900 mb-0.5">
                       ${pkg.priceUsd}
                     </div>
-                    <div className="text-xs text-gray-500">one-time</div>
+                    <div className="text-xs text-gray-500">{t('credits.buyCredits.oneTime')}</div>
                   </div>
 
                   <div className="space-y-2 mb-4">
@@ -337,11 +344,11 @@ export default function Credits() {
                     size="sm"
                     className={`w-full text-xs ${
                       pkg.isFeatured
-                        ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
+                        ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white'
                         : 'bg-gray-900 text-white'
                     }`}
                   >
-                    Buy
+                    {t('credits.buyCredits.cta')}
                     <ArrowRight className="w-3 h-3 ml-1" />
                   </Button>
                 </motion.div>
@@ -360,46 +367,46 @@ export default function Credits() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
         >
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-3">
-            <div className="flex items-center gap-2">
-              <Clock className="w-5 h-5 text-gray-400" />
-              <h2 className="text-xl font-bold text-gray-900">Transaction History</h2>
-            </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              {/* Source type filter */}
-              <select
-                value={sourceFilter}
-                onChange={(e) => { setSourceFilter(e.target.value as CreditSourceType | ""); setPage(0); }}
-                className="flex-1 sm:flex-none text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-400"
-              >
-                <option value="">All Sources</option>
-                {Object.entries(SOURCE_LABELS).map(([key, { label }]) => (
-                  <option key={key} value={key}>{label}</option>
-                ))}
-              </select>
-              <Button variant="outline" size="sm" onClick={() => refetchHistory()}>
-                <RefreshCw className="w-4 h-4 sm:mr-2" />
-                <span className="hidden sm:inline">Refresh</span>
-              </Button>
-            </div>
-          </div>
-
-          <div className="bg-white/70 backdrop-blur-xl rounded-2xl border border-white/50 shadow-lg shadow-purple-500/5 overflow-hidden">
+          <DashboardSectionHeader
+            eyebrow={t('credits.transactionHistory.eyebrow')}
+            title={t('credits.transactionHistory.title')}
+            description={t('credits.transactionHistory.description')}
+            trailing={(
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Source type filter */}
+                <select
+                  value={sourceFilter}
+                  onChange={(e) => { setSourceFilter(e.target.value as CreditSourceType | ""); setPage(0); }}
+                  className="flex-1 sm:flex-none text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                >
+                  <option value="">{t('credits.transactionHistory.allSources')}</option>
+                  {Object.entries(sourceLabels).map(([key, { label }]) => (
+                    <option key={key} value={key}>{label}</option>
+                  ))}
+                </select>
+                <Button variant="outline" size="sm" onClick={() => refetchHistory()}>
+                  <RefreshCw className="w-4 h-4 sm:mr-2" />
+                  <span className="hidden sm:inline">{t('common.refresh')}</span>
+                </Button>
+              </div>
+            )}
+          />
+          <DashboardSurface className="overflow-hidden">
             {historyLoading ? (
               <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-6 h-6 animate-spin text-purple-500" />
+                <Loader2 className="w-6 h-6 animate-spin text-blue-500" />
               </div>
             ) : !history || history.length === 0 ? (
               <div className="text-center py-12">
                 <Clock className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-500">No transactions yet</p>
+                <p className="text-gray-500">{t('credits.transactionHistory.empty')}</p>
               </div>
             ) : (
               <>
                 {/* ── Mobile card list (hidden on sm+) ── */}
                 <div className="sm:hidden divide-y divide-gray-100">
                   {history.map((transaction: any) => {
-                    const srcInfo = transaction.sourceType ? SOURCE_LABELS[transaction.sourceType] : null;
+                    const srcInfo = getSourceInfo(transaction.sourceType);
                     const SrcIcon = srcInfo?.icon ?? Zap;
                     const dateStr = transaction.createdAt
                       ? new Date(transaction.createdAt).toISOString().slice(0, 10)
@@ -464,19 +471,19 @@ export default function Credits() {
                   <table className="w-full">
                     <thead className="bg-gray-50/50 border-b border-gray-100">
                       <tr>
-                        <th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Type</th>
-                        <th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Source</th>
-                        <th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Description</th>
-                        <th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Details</th>
-                        <th className="px-4 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Credits</th>
-                        <th className="px-4 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Balance</th>
-                        <th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Date</th>
-                        <th className="px-4 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Audit</th>
+                        <th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">{t('credits.table.type')}</th>
+                        <th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">{t('credits.table.source')}</th>
+                        <th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">{t('credits.table.description')}</th>
+                        <th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">{t('credits.table.details')}</th>
+                        <th className="px-4 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">{t('credits.table.credits')}</th>
+                        <th className="px-4 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">{t('credits.table.balance')}</th>
+                        <th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">{t('credits.table.date')}</th>
+                        <th className="px-4 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">{t('credits.table.audit')}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
                       {history.map((transaction: any) => {
-                        const srcInfo = transaction.sourceType ? SOURCE_LABELS[transaction.sourceType] : null;
+                        const srcInfo = getSourceInfo(transaction.sourceType);
                         const SrcIcon = srcInfo?.icon ?? Zap;
                         const dateStr = transaction.createdAt
                           ? new Date(transaction.createdAt).toISOString().slice(0, 10)
@@ -490,10 +497,10 @@ export default function Credits() {
                                   : transaction.type === 'refund' ? 'bg-yellow-100 text-yellow-700'
                                   : 'bg-gray-100 text-gray-700'
                               }`}>
-                                {transaction.type === 'purchase' ? <><CreditCard className="w-3 h-3" /> Purchase</>
-                                  : transaction.type === 'usage' ? <><Zap className="w-3 h-3" /> Usage</>
-                                  : transaction.type === 'bonus' ? <><Sparkles className="w-3 h-3" /> Bonus</>
-                                  : <><Package className="w-3 h-3" /> {transaction.type}</>}
+                              {transaction.type === 'purchase' ? <><CreditCard className="w-3 h-3" /> {t('credits.transactionType.purchase')}</>
+                                : transaction.type === 'usage' ? <><Zap className="w-3 h-3" /> {t('credits.transactionType.usage')}</>
+                                : transaction.type === 'bonus' ? <><Sparkles className="w-3 h-3" /> {t('credits.transactionType.bonus')}</>
+                                : <><Package className="w-3 h-3" /> {t('credits.transactionType.other')}</>}
                               </span>
                             </td>
                             <td className="px-4 py-3">
@@ -506,7 +513,7 @@ export default function Credits() {
                             <td className="px-4 py-3 max-w-[280px]">
                               <span className="text-sm font-medium text-gray-900 block truncate">{transaction.description}</span>
                               {transaction.conversationTitle && (
-                                <a href={`/chat/${transaction.conversationId}`} className="text-xs text-purple-600 hover:text-purple-800 mt-0.5 flex items-center gap-1 truncate">
+                                <a href={`/chat/${transaction.conversationId}`} className="text-xs text-blue-600 hover:text-blue-800 mt-0.5 flex items-center gap-1 truncate">
                                   <MessageCircle className="w-3 h-3 flex-shrink-0" />
                                   <span className="truncate">{transaction.conversationTitle}</span>
                                 </a>
@@ -520,17 +527,17 @@ export default function Credits() {
                             <td className="px-4 py-3">
                               {transaction.metadata && (
                                 <div className="text-xs text-gray-500 space-y-0.5">
-                                  {transaction.metadata.provider && <div className="flex items-center gap-1"><span className="font-medium">Provider:</span><span className="text-gray-700 font-semibold">{String(transaction.metadata.provider)}</span></div>}
+                                  {transaction.metadata.provider && <div className="flex items-center gap-1"><span className="font-medium">{t('credits.meta.provider')}:</span><span className="text-gray-700 font-semibold">{String(transaction.metadata.provider)}</span></div>}
                                   {(transaction.metadata.model || transaction.metadata.modelId) && (
                                     <div className="flex items-center gap-1">
-                                      <span className="font-medium">Model:</span>
+                                      <span className="font-medium">{t('credits.meta.model')}:</span>
                                       <span className="text-gray-700">{String(transaction.metadata.model || transaction.metadata.modelId).split('/').pop()}</span>
                                     </div>
                                   )}
-                                  {transaction.metadata.operation && <div className="flex items-center gap-1"><span className="font-medium">Op:</span><span className="text-gray-700">{String(transaction.metadata.operation)}</span></div>}
+                                  {transaction.metadata.operation && <div className="flex items-center gap-1"><span className="font-medium">{t('credits.meta.operation')}:</span><span className="text-gray-700">{String(transaction.metadata.operation)}</span></div>}
                                   {(transaction.metadata.phase || transaction.metadata.stage) && (
                                     <div className="flex items-center gap-1">
-                                      <span className="font-medium">Stage:</span>
+                                      <span className="font-medium">{t('credits.meta.stage')}:</span>
                                       <span className="text-gray-700">
                                         {transaction.metadata.phase ? `P${transaction.metadata.phase}` : ""}
                                         {transaction.metadata.phase && transaction.metadata.stage ? " / " : ""}
@@ -540,7 +547,7 @@ export default function Credits() {
                                   )}
                                   {(transaction.metadata.deckId || transaction.metadata.slideNumber) && (
                                     <div className="flex items-center gap-1">
-                                      <span className="font-medium">Job:</span>
+                                      <span className="font-medium">{t('credits.meta.job')}:</span>
                                       <span className="text-gray-700">
                                         {transaction.metadata.deckId ? `Deck #${transaction.metadata.deckId}` : ""}
                                         {transaction.metadata.slideNumber ? ` • Slide ${transaction.metadata.slideNumber}` : ""}
@@ -548,23 +555,23 @@ export default function Credits() {
                                     </div>
                                   )}
                                   {(transaction.metadata.taskId || transaction.metadata.mediaTaskId) && (
-                                    <div className="flex items-center gap-1"><span className="font-medium">Task:</span><span className="text-gray-700">{String(transaction.metadata.taskId || transaction.metadata.mediaTaskId)}</span></div>
+                                    <div className="flex items-center gap-1"><span className="font-medium">{t('credits.meta.task')}:</span><span className="text-gray-700">{String(transaction.metadata.taskId || transaction.metadata.mediaTaskId)}</span></div>
                                   )}
                                   {(transaction.metadata.inputTokens || transaction.metadata.tokensUsed) && (
                                     <div className="flex items-center gap-1">
-                                      <span className="font-medium">Tokens:</span>
+                                      <span className="font-medium">{t('credits.meta.tokens')}:</span>
                                       <span className="text-gray-700">{transaction.metadata.inputTokens && transaction.metadata.outputTokens ? `${transaction.metadata.inputTokens}\u2192${transaction.metadata.outputTokens}` : transaction.metadata.tokensUsed}</span>
                                     </div>
                                   )}
-                                  {transaction.metadata.skill && <div className="flex items-center gap-1"><span className="font-medium">Skill:</span><span className="text-gray-700">{String(transaction.metadata.skill)}</span></div>}
-                                  {transaction.metadata.referenceImageCount > 0 && <div className="flex items-center gap-1"><span className="font-medium">Images:</span><span className="text-gray-700">{transaction.metadata.referenceImageCount}</span></div>}
-                                  {transaction.metadata.mediaType && <div className="flex items-center gap-1"><span className="font-medium">Media:</span><span className="text-gray-700">{String(transaction.metadata.mediaType)}</span></div>}
+                                  {transaction.metadata.skill && <div className="flex items-center gap-1"><span className="font-medium">{t('credits.meta.skill')}:</span><span className="text-gray-700">{String(transaction.metadata.skill)}</span></div>}
+                                  {transaction.metadata.referenceImageCount > 0 && <div className="flex items-center gap-1"><span className="font-medium">{t('credits.meta.images')}:</span><span className="text-gray-700">{transaction.metadata.referenceImageCount}</span></div>}
+                                  {transaction.metadata.mediaType && <div className="flex items-center gap-1"><span className="font-medium">{t('credits.meta.media')}:</span><span className="text-gray-700">{String(transaction.metadata.mediaType)}</span></div>}
                                   {transaction.metadata.billingBasis && (
-                                    <div className="flex items-center gap-1"><span className="font-medium">Billing:</span><span className="text-gray-700">{String(transaction.metadata.billingBasis)}</span></div>
+                                    <div className="flex items-center gap-1"><span className="font-medium">{t('credits.meta.billing')}:</span><span className="text-gray-700">{String(transaction.metadata.billingBasis)}</span></div>
                                   )}
                                   {transaction.metadata.promptPreview && (
                                     <div className="flex items-start gap-1">
-                                      <span className="font-medium mt-0.5">Prompt:</span>
+                                      <span className="font-medium mt-0.5">{t('credits.meta.prompt')}:</span>
                                       <span className="text-gray-700 line-clamp-2">{String(transaction.metadata.promptPreview)}</span>
                                     </div>
                                   )}
@@ -597,20 +604,20 @@ export default function Credits() {
                 {/* Pagination */}
                 <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-t border-gray-100">
                   <div className="text-sm text-gray-500">
-                    Page {page + 1} • {history?.length || 0} items
+                    {t('credits.pagination.page', { page: page + 1, count: history?.length || 0 })}
                   </div>
                   <div className="flex items-center gap-2">
                     <Button variant="outline" size="sm" onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0}>
-                      Previous
+                      {t('common.previous')}
                     </Button>
                     <Button variant="outline" size="sm" onClick={() => setPage(page + 1)} disabled={!history || history.length < pageSize}>
-                      Next
+                      {t('common.next')}
                     </Button>
                   </div>
                 </div>
               </>
             )}
-          </div>
+          </DashboardSurface>
         </motion.div>
       </main>
     </div>
@@ -618,6 +625,7 @@ export default function Credits() {
 }
 
 function CreatorEarningsSection() {
+  const { t } = useI18n();
   const { data: dashboard, isLoading } = (trpc as any).agency.getCreatorDashboard.useQuery(
     undefined,
     { staleTime: 60_000 },
@@ -636,64 +644,66 @@ function CreatorEarningsSection() {
     >
       <div className="flex items-center gap-2 mb-4">
         <Coins className="w-5 h-5 text-amber-500" />
-        <h2 className="text-xl font-bold text-gray-900">Creator Earnings</h2>
+        <h2 className="text-xl font-bold text-gray-900">{t('credits.creatorEarnings.title')}</h2>
       </div>
       <div className="grid gap-4 sm:grid-cols-3">
-        <div className="rounded-lg border bg-white p-4">
-          <p className="text-sm text-muted-foreground">Total Earned</p>
+        <DashboardSurface className="p-4">
+          <p className="text-sm text-muted-foreground">{t('credits.creatorEarnings.totalEarned')}</p>
           <p className="text-2xl font-bold text-amber-600">
-            {formatNumber(dashboard.totalEarned)} credits
+            {formatNumber(dashboard.totalEarned)} {t('credits.unit')}
           </p>
-        </div>
-        <div className="rounded-lg border bg-white p-4">
-          <p className="text-sm text-muted-foreground">Last 30 Days</p>
+        </DashboardSurface>
+        <DashboardSurface className="p-4">
+          <p className="text-sm text-muted-foreground">{t('credits.creatorEarnings.last30Days')}</p>
           <p className="text-2xl font-bold text-green-600">
-            {formatNumber(dashboard.last30Days.earned)} credits
+            {formatNumber(dashboard.last30Days.earned)} {t('credits.unit')}
           </p>
           <p className="text-xs text-muted-foreground mt-1">
-            {dashboard.last30Days.count} runs
+            {t('credits.creatorEarnings.runs', { count: dashboard.last30Days.count })}
           </p>
-        </div>
-        <div className="rounded-lg border bg-white p-4">
-          <p className="text-sm text-muted-foreground">Total Runs</p>
+        </DashboardSurface>
+        <DashboardSurface className="p-4">
+          <p className="text-sm text-muted-foreground">{t('credits.creatorEarnings.totalRuns')}</p>
           <p className="text-2xl font-bold">
             {formatNumber(dashboard.totalSettlements)}
           </p>
-        </div>
+        </DashboardSurface>
       </div>
       {dashboard.byEntity.length > 0 && (
-        <div className="mt-4 rounded-lg border bg-white">
+        <DashboardSurface className="mt-4 overflow-hidden">
           <div className="border-b px-4 py-2">
-            <p className="text-sm font-medium text-muted-foreground">
-              Earnings by Entity
-            </p>
+            <p className="text-sm font-medium text-muted-foreground">{t('credits.creatorEarnings.breakdownTitle')}</p>
           </div>
           <div className="divide-y">
-            {dashboard.byEntity.slice(0, 5).map((e: any) => (
-              <div
-                key={`${e.entityType}-${e.entityId}`}
-                className="flex items-center justify-between px-4 py-2 text-sm"
-              >
-                <div className="flex items-center gap-2">
-                  <span className="capitalize text-muted-foreground">
-                    {e.entityType}
-                  </span>
-                  <span className="font-mono text-xs text-muted-foreground">
-                    {e.entityId.slice(0, 8)}...
-                  </span>
+            {dashboard.byEntity.slice(0, 5).map((e: any) => {
+              const entityTypeKey = `credits.creatorEarnings.entities.${e.entityType}`;
+              const entityTypeLabel = t(entityTypeKey);
+              return (
+                <div
+                  key={`${e.entityType}-${e.entityId}`}
+                  className="flex items-center justify-between px-4 py-2 text-sm"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="capitalize text-muted-foreground">
+                      {entityTypeLabel === entityTypeKey ? e.entityType : entityTypeLabel}
+                    </span>
+                    <span className="font-mono text-xs text-muted-foreground">
+                      {e.entityId.slice(0, 8)}...
+                    </span>
+                  </div>
+                  <div className="text-right">
+                    <span className="font-medium text-amber-600">
+                      {formatNumber(e.totalEarned)} credits
+                    </span>
+                    <span className="ml-2 text-xs text-muted-foreground">
+                      {t('credits.creatorEarnings.runs', { count: e.runCount })}
+                    </span>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <span className="font-medium text-amber-600">
-                    {formatNumber(e.totalEarned)} credits
-                  </span>
-                  <span className="ml-2 text-xs text-muted-foreground">
-                    ({e.runCount} runs)
-                  </span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
-        </div>
+        </DashboardSurface>
       )}
     </motion.div>
   );

@@ -87,8 +87,8 @@ export default function Profile() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/20 flex items-center justify-center">
-        <div className="animate-spin w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full" />
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-cyan-50/20 flex items-center justify-center">
+        <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full" />
       </div>
     );
   }
@@ -152,12 +152,12 @@ export default function Profile() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/20">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-cyan-50/20">
       {/* Header */}
       <header className="bg-white/70 backdrop-blur-xl border-b border-gray-200/50 sticky top-0 z-50">
         <div className="px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <a href="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
               <Sparkles className="w-5 h-5 text-white" />
             </div>
             <span className="text-xl font-bold text-gray-900">SmartAIHub</span>
@@ -180,12 +180,12 @@ export default function Profile() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white/70 backdrop-blur-xl rounded-3xl border border-white/50 shadow-xl shadow-purple-500/10 p-8 mb-8"
+          className="bg-white/70 backdrop-blur-xl rounded-3xl border border-white/50 shadow-xl shadow-blue-500/10 p-8 mb-8"
         >
           <div className="flex flex-col sm:flex-row items-center gap-6">
             {/* Avatar */}
             <div className="relative group">
-              <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center overflow-hidden">
+              <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center overflow-hidden">
                 {avatar ? (
                   <img src={avatar} alt={name} className="w-full h-full object-cover" />
                 ) : (
@@ -216,7 +216,7 @@ export default function Profile() {
               <div className="flex items-center justify-center sm:justify-start gap-2 mt-2">
                 <span className={`px-3 py-1 text-xs font-medium rounded-full ${
                   user.plan === 'pro' 
-                    ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
+                    ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white'
                     : user.plan === 'enterprise'
                     ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white'
                     : 'bg-gray-100 text-gray-700'
@@ -239,7 +239,7 @@ export default function Profile() {
                   <Button
                     onClick={handleSaveProfile}
                     disabled={isSaving}
-                    className="bg-gradient-to-r from-purple-500 to-pink-500 text-white"
+                    className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white"
                   >
                     {isSaving ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
@@ -264,19 +264,19 @@ export default function Profile() {
         <Tabs defaultValue="profile" className="space-y-6">
           <div className="overflow-x-auto">
           <TabsList className="bg-white/70 backdrop-blur-xl border border-white/50 p-1 rounded-xl min-w-max">
-            <TabsTrigger value="profile" className="rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-pink-500 data-[state=active]:text-white">
+            <TabsTrigger value="profile" className="rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-cyan-500 data-[state=active]:text-white">
               <User className="w-4 h-4 mr-2" />
               Profile
             </TabsTrigger>
-            <TabsTrigger value="security" className="rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-pink-500 data-[state=active]:text-white">
+            <TabsTrigger value="security" className="rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-cyan-500 data-[state=active]:text-white">
               <Shield className="w-4 h-4 mr-2" />
               Security
             </TabsTrigger>
-            <TabsTrigger value="notifications" className="rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-pink-500 data-[state=active]:text-white">
+            <TabsTrigger value="notifications" className="rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-cyan-500 data-[state=active]:text-white">
               <Bell className="w-4 h-4 mr-2" />
               Notifications
             </TabsTrigger>
-            <TabsTrigger value="billing" className="rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-pink-500 data-[state=active]:text-white">
+            <TabsTrigger value="billing" className="rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-cyan-500 data-[state=active]:text-white">
               <CreditCard className="w-4 h-4 mr-2" />
               Billing
             </TabsTrigger>
@@ -288,7 +288,7 @@ export default function Profile() {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-white/70 backdrop-blur-xl rounded-3xl border border-white/50 shadow-xl shadow-purple-500/10 p-8"
+              className="bg-white/70 backdrop-blur-xl rounded-3xl border border-white/50 shadow-xl shadow-blue-500/10 p-8"
             >
               <h2 className="text-xl font-bold text-gray-900 mb-6">Personal Information</h2>
               
@@ -392,7 +392,7 @@ export default function Profile() {
               className="space-y-6"
             >
               {/* Change Password */}
-              <div className="bg-white/70 backdrop-blur-xl rounded-3xl border border-white/50 shadow-xl shadow-purple-500/10 p-8">
+              <div className="bg-white/70 backdrop-blur-xl rounded-3xl border border-white/50 shadow-xl shadow-blue-500/10 p-8">
                 <h2 className="text-xl font-bold text-gray-900 mb-6">Change Password</h2>
                 
                 <form onSubmit={handleChangePassword} className="space-y-4 max-w-md">
@@ -455,7 +455,7 @@ export default function Profile() {
                   <Button
                     type="submit"
                     disabled={isSaving}
-                    className="bg-gradient-to-r from-purple-500 to-pink-500 text-white"
+                    className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white"
                   >
                     {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                     Update Password
@@ -464,11 +464,11 @@ export default function Profile() {
               </div>
 
               {/* Two-Factor Authentication */}
-              <div className="bg-white/70 backdrop-blur-xl rounded-3xl border border-white/50 shadow-xl shadow-purple-500/10 p-8">
+              <div className="bg-white/70 backdrop-blur-xl rounded-3xl border border-white/50 shadow-xl shadow-blue-500/10 p-8">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-purple-100 flex items-center justify-center">
-                      <Smartphone className="w-6 h-6 text-purple-600" />
+                    <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center">
+                      <Smartphone className="w-6 h-6 text-blue-600" />
                     </div>
                     <div>
                       <h2 className="text-xl font-bold text-gray-900">Two-Factor Authentication</h2>
@@ -518,7 +518,7 @@ export default function Profile() {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-white/70 backdrop-blur-xl rounded-3xl border border-white/50 shadow-xl shadow-purple-500/10 p-8"
+              className="bg-white/70 backdrop-blur-xl rounded-3xl border border-white/50 shadow-xl shadow-blue-500/10 p-8"
             >
               <h2 className="text-xl font-bold text-gray-900 mb-6">Notification Preferences</h2>
               
@@ -552,10 +552,10 @@ export default function Profile() {
               className="space-y-6"
             >
               {/* Current Plan */}
-              <div className="bg-white/70 backdrop-blur-xl rounded-3xl border border-white/50 shadow-xl shadow-purple-500/10 p-8">
+              <div className="bg-white/70 backdrop-blur-xl rounded-3xl border border-white/50 shadow-xl shadow-blue-500/10 p-8">
                 <h2 className="text-xl font-bold text-gray-900 mb-6">Current Plan</h2>
                 
-                <div className="flex items-center justify-between p-6 bg-gradient-to-r from-purple-500/10 to-pink-500/10 rounded-2xl border border-purple-200">
+                <div className="flex items-center justify-between p-6 bg-gradient-to-r from-blue-500/10 to-cyan-500/10 rounded-2xl border border-blue-200">
                   <div>
                     <p className="text-2xl font-bold text-gray-900">
                       {user.plan.charAt(0).toUpperCase() + user.plan.slice(1)} Plan
@@ -565,7 +565,7 @@ export default function Profile() {
                     </p>
                   </div>
                   <a href="/pricing">
-                    <Button className="bg-gradient-to-r from-purple-500 to-pink-500 text-white">
+                    <Button className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white">
                       {user.plan === 'free' ? 'Upgrade' : 'Manage Plan'}
                       <ChevronRight className="w-4 h-4 ml-2" />
                     </Button>
@@ -574,12 +574,12 @@ export default function Profile() {
               </div>
 
               {/* Credits */}
-              <div className="bg-white/70 backdrop-blur-xl rounded-3xl border border-white/50 shadow-xl shadow-purple-500/10 p-8">
+              <div className="bg-white/70 backdrop-blur-xl rounded-3xl border border-white/50 shadow-xl shadow-blue-500/10 p-8">
                 <h2 className="text-xl font-bold text-gray-900 mb-6">Credits</h2>
                 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="p-4 bg-gray-50 rounded-xl text-center">
-                    <p className="text-3xl font-bold text-purple-600">{user.credits}</p>
+                    <p className="text-3xl font-bold text-blue-600">{user.credits}</p>
                     <p className="text-sm text-gray-500">Available</p>
                   </div>
                   <div className="p-4 bg-gray-50 rounded-xl text-center">
@@ -599,7 +599,7 @@ export default function Profile() {
               </div>
 
               {/* Payment Method */}
-              <div className="bg-white/70 backdrop-blur-xl rounded-3xl border border-white/50 shadow-xl shadow-purple-500/10 p-8">
+              <div className="bg-white/70 backdrop-blur-xl rounded-3xl border border-white/50 shadow-xl shadow-blue-500/10 p-8">
                 <h2 className="text-xl font-bold text-gray-900 mb-6">Payment Method</h2>
                 
                 <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">

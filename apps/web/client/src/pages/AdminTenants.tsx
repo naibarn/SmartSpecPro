@@ -390,8 +390,8 @@ export default function AdminTenants() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/20 flex items-center justify-center">
-        <div className="animate-spin w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full" />
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-cyan-50/20 flex items-center justify-center">
+        <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full" />
       </div>
     );
   }
@@ -401,7 +401,7 @@ export default function AdminTenants() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/20">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-cyan-50/20">
       {/* Header */}
       <header className="bg-white/70 backdrop-blur-xl border-b border-gray-200/50 sticky top-0 z-10">
         <div className="px-4 sm:px-6 lg:px-8 py-4">
@@ -417,7 +417,7 @@ export default function AdminTenants() {
                 Back
               </Button>
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 via-cyan-500 to-teal-500 flex items-center justify-center">
                   <Building2 className="w-5 h-5 text-white" />
                 </div>
                 <div>
@@ -453,7 +453,7 @@ export default function AdminTenants() {
                       className="w-12 h-12 rounded-lg object-cover"
                     />
                   ) : (
-                    <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center">
+                    <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 via-cyan-500 to-teal-500 flex items-center justify-center">
                       <Building2 className="w-6 h-6 text-white" />
                     </div>
                   )}
@@ -836,13 +836,13 @@ export default function AdminTenants() {
                         onClick={() => applyThemePreset(preset.id)}
                         className={`relative p-3 rounded-lg border-2 transition-all text-left ${
                           isSelected
-                            ? 'border-purple-500 bg-purple-50'
+                            ? 'border-blue-500 bg-blue-50'
                             : 'border-gray-200 hover:border-gray-300 bg-white'
                         }`}
                       >
                         {isSelected && (
                           <div className="absolute top-1 right-1">
-                            <Check className="w-4 h-4 text-purple-500" />
+                            <Check className="w-4 h-4 text-blue-500" />
                           </div>
                         )}
                         <div className="flex gap-1 mb-2">
