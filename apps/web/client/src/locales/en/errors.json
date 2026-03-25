@@ -1,16 +1,23 @@
 {
+  "forbidden.description": "You don't have permission to access this resource.",
   "forbidden.message": "You don't have permission to access this resource.",
   "forbidden.title": "Access Forbidden",
   "generic.somethingWentWrong": "Something went wrong. Please try again.",
   "generic.tryAgain": "Try Again",
+  "network.connectionLost": "Connection lost. Please check your network.",
+  "network.requestFailed": "The request failed. Please try again.",
   "networkError": "Network error. Please check your connection.",
+  "notFound.description": "The page you're looking for doesn't exist.",
   "notFound.message": "The page you're looking for doesn't exist.",
   "notFound.title": "Page Not Found",
   "requestFailed": "The request failed. Please try again.",
+  "serverError.description": "An internal server error occurred.",
   "serverError.message": "An internal server error occurred.",
   "serverError.title": "Server Error",
   "session.expired": "Your session has expired. Please sign in again.",
+  "session.unauthorized": "You are not authorized to perform this action.",
   "validation.invalidEmail": "Please enter a valid email address.",
+  "validation.passwordMismatch": "Passwords do not match.",
   "validation.passwordTooShort": "Password must be at least 8 characters.",
   "validation.required": "This field is required."
 }
