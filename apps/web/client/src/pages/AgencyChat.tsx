@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRoute, useLocation } from "wouter";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAgencyStream } from "@/hooks/useAgencyStream";
 import { useAgencyById } from "@/hooks/useAgencyQuery";
@@ -103,6 +104,7 @@ function getAgentColor(name: string): string {
 }
 
 export default function AgencyChat() {
+  const { t } = useTranslation("agency");
   const { isLoading: authLoading, isAuthenticated, user } = useAuth();
   const [, setLocation] = useLocation();
   const [reviewMatched, reviewParams] = useRoute("/agencies/:id/review");
@@ -659,7 +661,7 @@ export default function AgencyChat() {
             size="icon"
             className="h-8 w-8 shrink-0"
             onClick={() => setLocation("/agencies")}
-            title="Back to Agencies"
+            title={t("chat.backToAgencies")}
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
@@ -682,7 +684,7 @@ export default function AgencyChat() {
 
             {stream.activeAgent ? (
               <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                <span>Active:</span>
+                <span>{t("chat.active")}</span>
                 <Badge
                   variant="secondary"
                   className={cn(
@@ -713,7 +715,7 @@ export default function AgencyChat() {
                   )}
                   onClick={() => { void handleReviewAgency(); }}
                   disabled={reviewAgencyMutation.isPending}
-                  title="Run agency review"
+                  title={t("chat.runAgencyReview")}
                 >
                   {reviewAgencyMutation.isPending ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -729,7 +731,7 @@ export default function AgencyChat() {
                   size="sm"
                   className="h-8 gap-1.5 text-xs text-muted-foreground hover:text-foreground"
                   onClick={() => { void handleOpenHybridPreview(); }}
-                  title="Regenerate hybrid preview token"
+                  title={t("chat.regenerateToken")}
                 >
                   <RefreshCw className="h-3.5 w-3.5" />
                   Regenerate Preview Token
@@ -742,7 +744,7 @@ export default function AgencyChat() {
               className="h-8 gap-1.5 text-xs text-muted-foreground hover:text-foreground"
               onClick={() => { void handleOpenBrowserSession(); }}
               disabled={createLiveBrowserSessionMutation.isPending}
-              title="Open Browser Session"
+              title={t("chat.openBrowserSession")}
             >
               <MonitorPlay className="h-3.5 w-3.5" />
               <span className="max-w-[160px] truncate">
@@ -764,13 +766,13 @@ export default function AgencyChat() {
                 variant="ghost"
                 size="sm"
                 className="h-8 gap-1.5 text-xs text-muted-foreground hover:text-foreground"
-                title="Override model for this conversation"
+                title={t("chat.modelOverride")}
               >
                 <Settings2 className="h-3.5 w-3.5" />
                 {modelOverride ? (
                   <span className="max-w-[120px] truncate">{modelOverride}</span>
                 ) : (
-                  <span>Model</span>
+                  <span>{t("chat.model")}</span>
                 )}
               </Button>
             </PopoverTrigger>
@@ -812,7 +814,7 @@ export default function AgencyChat() {
             size="icon"
             className="h-8 w-8"
             onClick={() => setLocation(`/agencies/${agencyId}/edit`)}
-            title="Edit Agency"
+            title={t("chat.editAgency")}
           >
             <Settings2 className="h-4 w-4" />
           </Button>
@@ -900,7 +902,7 @@ export default function AgencyChat() {
                       onValueChange={(value) => handleBrowserCommandSkillChange(value as typeof browserCommandSkillId)}
                     >
                       <SelectTrigger className="bg-white">
-                        <SelectValue placeholder="Choose a browser skill" />
+                        <SelectValue placeholder={t("chat.browserskillPlaceholder")} />
                       </SelectTrigger>
                       <SelectContent>
                         {BROWSER_SKILL_PRESETS.map((preset) => (
@@ -913,7 +915,7 @@ export default function AgencyChat() {
                     <Textarea
                       value={browserCommandDraft}
                       onChange={(event) => handleBrowserCommandDraftChange(event.target.value)}
-                      placeholder="Example: Find the right site, compare choices, and continue automatically."
+                      placeholder={t("chat.browserskillGoalPlaceholder")}
                       className="min-h-[88px] bg-white"
                     />
                     {browserCommandNotice ? (
@@ -1106,7 +1108,7 @@ export default function AgencyChat() {
             {modelOverride && (
               <div className="mx-auto mb-2 flex max-w-3xl items-center gap-1.5 rounded-md bg-blue-50 px-3 py-1.5 text-xs text-blue-700 dark:bg-blue-950 dark:text-blue-300">
                 <Settings2 className="h-3.5 w-3.5 shrink-0" />
-                <span>Using model override: <strong>{modelOverride}</strong></span>
+                <span>{t("chat.modelOverrideActive", { model: modelOverride })}</span>
                 <button
                   className="ml-auto underline underline-offset-2 hover:no-underline"
                   onClick={() => setModelOverride("")}
@@ -1138,7 +1140,7 @@ export default function AgencyChat() {
                     <label className="text-[10px] text-muted-foreground">Target Agent</label>
                     <Select value={recipientAgent} onValueChange={setRecipientAgent}>
                       <SelectTrigger className="h-7 text-xs">
-                        <SelectValue placeholder="Auto (entry point)" />
+                        <SelectValue placeholder={t("chat.targetAgentPlaceholder")} />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="">Auto (entry point)</SelectItem>
@@ -1158,7 +1160,7 @@ export default function AgencyChat() {
                     onChange={(e) => setAdditionalInstructions(e.target.value)}
                     className="min-h-[32px] max-h-[80px] resize-none text-xs"
                     rows={1}
-                    placeholder="Per-run instruction override (optional)"
+                    placeholder={t("chat.runOverridePlaceholder")}
                   />
                 </div>
               </div>
@@ -1171,7 +1173,7 @@ export default function AgencyChat() {
                     size="icon"
                     className="h-11 w-8 shrink-0 text-muted-foreground hover:text-foreground"
                     onClick={() => setRunOptionsOpen(true)}
-                    title="Run options (target agent, instructions)"
+                    title={t("chat.runOptions")}
                   >
                     <Settings2 className="h-4 w-4" />
                   </Button>
