@@ -494,7 +494,10 @@ const promptEnhancementRequestSchema = z.object({
   identityLock: z.enum(["none", "soft_lock_person", "strict_lock_product"]).optional(),
   aspectRatio: z.string().optional(),
   aspectRatioCustom: z.string().optional(),
-  language: z.enum(["en", "th", "both"]).optional(),
+  // NOTE: This is a skill-content language coverage filter, distinct from SUPPORTED_LANGUAGES (UI display locales).
+  // "en" = English-only skills, "th" = Thai-capable skills, "both" = supports both languages.
+  // Update this enum if new content-language variants are added to the skills system.
+  language: z.enum(["en", "th", "both"] as const).optional(),
   // LLM model selection for Advanced Mode - allows user to choose vision-capable model
   model: z.string().optional(), // e.g., "openai/gpt-4o", "anthropic/claude-3.5-sonnet"
 

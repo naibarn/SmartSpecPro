@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Menu, X, Sparkles, ChevronDown, Zap, Bot } from 'lucide-react';
 import { useTenant } from '@/contexts/TenantContext';
 import { useTranslation } from 'react-i18next';
+import { LocaleToggle } from '@/components/LocaleToggle';
 
 interface NavLink {
   href: string;
@@ -205,6 +206,7 @@ export function Navbar() {
 
           {/* CTA Buttons */}
           <div className="hidden lg:flex items-center gap-3">
+            <LocaleToggle />
             <Link href="/login">
               <Button variant="ghost" size="sm" className="text-muted-foreground">
                 {t('navbar.signIn')}

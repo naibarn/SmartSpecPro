@@ -116,4 +116,33 @@ describe("useLanguageSync", () => {
 
     expect(localStorage.setItem).toHaveBeenCalledWith("smartspec_locale", "th");
   });
+
+  it("prefers displayLocale over translationLanguage when both are set", () => {
+    // User has translationLanguage='th' but displayLocale='ja' — should sync to 'ja'
+    mockPrefs.data = { translationLanguage: "th", displayLocale: "ja" };
+    mockI18n.language = "en";
+
+    renderHook(() => useLanguageSync());
+
+    expect(mockI18n.changeLanguage).toHaveBeenCalledWith("ja");
+  });
+
+  it("falls back to translationLanguage when displayLocale is absent", () => {
+    // Old account without displayLocale — should still sync from translationLanguage
+    mockPrefs.data = { translationLanguage: "th" };
+    mockI18n.language = "en";
+
+    renderHook(() => useLanguageSync());
+
+    expect(mockI18n.changeLanguage).toHaveBeenCalledWith("th");
+  });
+
+  it("syncs displayLocale even when translationLanguage is absent", () => {
+    mockPrefs.data = { displayLocale: "th" };
+    mockI18n.language = "en";
+
+    renderHook(() => useLanguageSync());
+
+    expect(mockI18n.changeLanguage).toHaveBeenCalledWith("th");
+  });
 });

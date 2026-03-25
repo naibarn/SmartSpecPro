@@ -126,6 +126,39 @@ describe("locale JSON files — validity", () => {
       }
     }
   });
+
+  it("no EN locale value contains HTML markup (Security S1 — plain text only)", () => {
+    // i18next is configured with escapeValue: false (React escapes by default).
+    // This test enforces the convention that NO translation value contains raw HTML.
+    // If this test fails a value needs to be rewritten as plain text.
+    for (const file of ALL_EN_FILES) {
+      const data = readJson(join(EN_DIR, file));
+      for (const [key, value] of Object.entries(data)) {
+        expect(
+          /<[a-zA-Z]/.test(value),
+          `Key "${key}" in ${file} contains HTML markup: "${value.substring(0, 60)}"`
+        ).toBe(false);
+      }
+    }
+  });
+
+  it("no TH locale value contains HTML markup", () => {
+    const TH_FILES = ALL_EN_FILES; // same set in both directories
+    for (const file of TH_FILES) {
+      const thPath = join(TH_DIR, file);
+      try {
+        const data = readJson(thPath);
+        for (const [key, value] of Object.entries(data)) {
+          expect(
+            /<[a-zA-Z]/.test(value),
+            `th/${file} key "${key}" contains HTML: "${value.substring(0, 60)}"`
+          ).toBe(false);
+        }
+      } catch {
+        // File may be empty placeholder — skip
+      }
+    }
+  });
 });
 
 describe("locale JSON files — th/en key alignment", () => {

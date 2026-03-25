@@ -5,7 +5,11 @@ import { i18n } from "@/i18n";
 import { SUPPORTED_LANGUAGES } from "@shared/i18n";
 
 /**
- * Syncs the user's DB `translationLanguage` preference to i18next after auth.
+ * Syncs the user's DB language preference to i18next after auth.
+ *
+ * Priority order for language source:
+ *   1. `displayLocale` — the explicit UI display language (set by WelcomeLanguagePicker / Settings)
+ *   2. `translationLanguage` — fallback for accounts created before displayLocale was added
  *
  * The language detector (section-03) handles pre-auth detection from
  * localStorage/browser. This hook handles the post-auth case: once the
@@ -25,7 +29,9 @@ export function useLanguageSync(): void {
     if (isLoading || !user) return;
     if (!prefs) return;
 
-    const dbLang = (prefs as { translationLanguage?: string }).translationLanguage;
+    const p = prefs as { translationLanguage?: string; displayLocale?: string };
+    // Prefer displayLocale (explicit UI preference) over translationLanguage (LLM target, used as fallback)
+    const dbLang = p.displayLocale || p.translationLanguage;
     if (typeof dbLang !== "string" || !dbLang) return;
 
     // Validate: only apply known supported languages
