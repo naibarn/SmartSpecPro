@@ -31,7 +31,7 @@ export interface TeamRunSkillExecutionInput {
   teamId: string;
   objective: string;
   route: {
-    route: "chat" | "skill" | "agency";
+    route: "chat" | "skill" | "agency" | "hybrid";
     reason: string;
     selectedSkillId?: string;
   };

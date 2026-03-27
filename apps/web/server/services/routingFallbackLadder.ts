@@ -13,7 +13,7 @@ import type { PolicyDecision } from "./routingPolicyEngine";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
-export type RoutingStrategy = "single" | "planner" | "swarm" | "create_skill" | "chat";
+export type RoutingStrategy = "single" | "planner" | "swarm" | "hybrid" | "create_skill" | "chat";
 
 export interface FallbackDecision {
   strategy: RoutingStrategy;

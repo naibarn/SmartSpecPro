@@ -712,6 +712,51 @@ export const agencyRouter = router({
           },
         },
         {
+          id: "builtin-social-actions",
+          name: "Social Actions",
+          description: "Provider-neutral background social actions for workflows and agency swarm. Ready for Meta today and future channels later.",
+          toolType: "builtin",
+          riskLevel: "medium",
+          requiresApproval: false,
+          icon: "layers-3",
+          category: "social",
+          configSchema: {
+            fields: [
+              {
+                key: "provider",
+                label: "Provider",
+                type: "select",
+                required: true,
+                options: [
+                  { label: "Meta", value: "meta" },
+                ],
+                default: "meta",
+              },
+              {
+                key: "pageId",
+                label: "Connected Page",
+                type: "select",
+                required: true,
+                optionsEndpoint: "/api/v1/social/connected-pages",
+              },
+              {
+                key: "action",
+                label: "Default Action",
+                type: "select",
+                required: true,
+                options: [
+                  { label: "Read Inbox", value: "read_inbox" },
+                  { label: "Send Reply", value: "send_reply" },
+                  { label: "Publish Post", value: "publish_post" },
+                  { label: "Read Comments", value: "read_comments" },
+                  { label: "Reply to Comments", value: "reply_comment" },
+                ],
+                default: "read_inbox",
+              },
+            ],
+          },
+        },
+        {
           id: "builtin-social-publish",
           name: "Social Publish",
           description: "Schedule or immediately publish posts to connected Facebook Pages. Supports text, image, and link posts.",
@@ -4826,6 +4871,114 @@ export const agencyRouter = router({
       return { success: true };
     }),
 
+  reviewAgency: protectedProcedure
+    .input(z.object({
+      agencyId: z.string().uuid(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const tenantId = resolveTenantId(ctx);
+      const userId = ctx.user?.id;
+      if (!tenantId || !userId) {
+        throw new TRPCError({ code: "UNAUTHORIZED" });
+      }
+
+      const [agency] = await db.select({ id: agencies.id, name: agencies.name })
+        .from(agencies)
+        .where(and(eq(agencies.id, input.agencyId), eq(agencies.tenantId, tenantId)))
+        .limit(1);
+      if (!agency) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Agency not found" });
+      }
+
+      const baseUrl = process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
+      const gatewayToken = process.env.SMARTSPEC_WEB_GATEWAY_TOKEN || "";
+      const response = await fetch(`${baseUrl}/api/v1/agency/review-agency`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(gatewayToken ? { "X-Internal-Token": gatewayToken } : {}),
+        },
+        body: JSON.stringify({
+          agency_id: input.agencyId,
+          tenant_id: tenantId,
+        }),
+      });
+
+      if (!response.ok) {
+        let detail = response.statusText || "Agency review failed";
+        try {
+          const data = await response.json();
+          if (typeof data?.detail === "string") {
+            detail = data.detail;
+          } else if (typeof data?.message === "string") {
+            detail = data.message;
+          }
+        } catch {
+          // Ignore parse errors and fall back to status text.
+        }
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: detail });
+      }
+
+      const payload = (await response.json().catch(() => ({}))) as { status?: string; analysis?: Record<string, unknown> };
+      const analysis = payload.analysis ?? {};
+      const suggestions = Array.isArray(analysis.suggestions) ? analysis.suggestions : [];
+      const objectiveAlignment = typeof analysis.objectiveAlignment === "number" ? analysis.objectiveAlignment : 0.5;
+      const analyzedAt = typeof analysis.analyzedAt === "string" ? analysis.analyzedAt : new Date().toISOString();
+      const overallAssessment = typeof analysis.overallAssessment === "string"
+        ? analysis.overallAssessment
+        : `Manual review completed for ${agency.name}.`;
+
+      const issueSummaries = Array.isArray(analysis.issues)
+        ? analysis.issues
+          .slice(0, 3)
+          .map((issue: any) => issue?.recommendation || issue?.issue || "")
+          .filter((value: string) => value.length > 0)
+        : [];
+
+      const improvementSummaries = suggestions
+        .slice(0, 3)
+        .map((suggestion: any) => suggestion?.suggestion || "")
+        .filter((value: string) => value.length > 0);
+
+      const [reviewRow] = await db.insert(agencyRunFeedback)
+        .values({
+          tenantId,
+          agencyId: input.agencyId,
+          runId: `review-${Date.now().toString(36)}-${crypto.randomUUID().replace(/-/g, "").slice(0, 8)}`.slice(0, 36),
+          conversationId: null,
+          userId,
+          rating: Math.max(1, Math.min(5, Math.round(objectiveAlignment * 5) || 3)),
+          whatWorked: overallAssessment,
+          whatDidntWork: issueSummaries.length > 0 ? issueSummaries.join("\n") : null,
+          improvementRequests: improvementSummaries.length > 0 ? improvementSummaries.join("\n") : null,
+          advisorAnalysis: {
+            ...analysis,
+            suggestions,
+            objectiveAlignment,
+            analyzedAt,
+            overallAssessment,
+            reviewType: "manual_agency_review",
+          },
+          suggestionsApplied: false,
+        })
+        .returning({
+          id: agencyRunFeedback.id,
+          runId: agencyRunFeedback.runId,
+        });
+
+      return {
+        feedbackId: reviewRow.id,
+        runId: reviewRow.runId,
+        analysis: {
+          ...analysis,
+          suggestions,
+          objectiveAlignment,
+          analyzedAt,
+          overallAssessment,
+        },
+      };
+    }),
+
   // ── Run Feedback & Improvement Loop ─────────────────────────────
 
   submitRunFeedback: protectedProcedure
@@ -5042,6 +5195,133 @@ export const agencyRouter = router({
         ))
         .orderBy(desc(agencyImprovementHistory.createdAt))
         .limit(input.limit);
+    }),
+
+  reviewDashboard: protectedProcedure
+    .query(async ({ ctx }) => {
+      const tenantId = resolveTenantId(ctx);
+      if (!tenantId) {
+        throw new TRPCError({ code: "UNAUTHORIZED" });
+      }
+
+      type ReviewDashboardReviewRow = {
+        id: number;
+        agencyId: string;
+        agencyName: string;
+        rating: number | null;
+        createdAt: string;
+        suggestionsApplied: boolean;
+        advisorAnalysis: unknown;
+      };
+      type ReviewDashboardImprovementRow = {
+        id: number;
+        agencyId: string;
+        agencyName: string;
+        changeType: string;
+        description: string;
+        createdAt: string;
+        approvedBy: string | null;
+      };
+
+      const [agencyCountRowRaw, reviewedAgencyRowsRaw, recentReviewRowsRaw, recentImprovementRowsRaw] = await Promise.all([
+        db.select({ count: count() })
+          .from(agencies)
+          .where(eq(agencies.tenantId, tenantId)),
+        db.select({ agencyId: agencyRunFeedback.agencyId })
+          .from(agencyRunFeedback)
+          .where(eq(agencyRunFeedback.tenantId, tenantId))
+          .groupBy(agencyRunFeedback.agencyId),
+        db.select({
+          id: agencyRunFeedback.id,
+          agencyId: agencyRunFeedback.agencyId,
+          agencyName: agencies.name,
+          rating: agencyRunFeedback.rating,
+          createdAt: agencyRunFeedback.createdAt,
+          suggestionsApplied: agencyRunFeedback.suggestionsApplied,
+          advisorAnalysis: agencyRunFeedback.advisorAnalysis,
+        })
+          .from(agencyRunFeedback)
+          .innerJoin(agencies, eq(agencyRunFeedback.agencyId, agencies.id))
+          .where(eq(agencyRunFeedback.tenantId, tenantId))
+          .orderBy(desc(agencyRunFeedback.createdAt))
+          .limit(6),
+        db.select({
+          id: agencyImprovementHistory.id,
+          agencyId: agencyImprovementHistory.agencyId,
+          agencyName: agencies.name,
+          changeType: agencyImprovementHistory.changeType,
+          description: agencyImprovementHistory.description,
+          createdAt: agencyImprovementHistory.createdAt,
+          approvedBy: agencyImprovementHistory.approvedBy,
+        })
+          .from(agencyImprovementHistory)
+          .innerJoin(agencies, eq(agencyImprovementHistory.agencyId, agencies.id))
+          .where(eq(agencyImprovementHistory.tenantId, tenantId))
+          .orderBy(desc(agencyImprovementHistory.createdAt))
+          .limit(6),
+      ]);
+      const agencyCountRow = agencyCountRowRaw as Array<{ count: number | string | bigint }>;
+      const reviewedAgencyRows = reviewedAgencyRowsRaw as Array<{ agencyId: string }>;
+      const recentReviewRows = recentReviewRowsRaw as ReviewDashboardReviewRow[];
+      const recentImprovementRows = recentImprovementRowsRaw as ReviewDashboardImprovementRow[];
+
+      const reviewedAgencyCount = reviewedAgencyRows.length;
+      const totalAgencies = Number(agencyCountRow[0]?.count ?? 0);
+      const reviewCount = recentReviewRows.length;
+      const ratings = recentReviewRows
+        .map((row) => row.rating)
+        .filter((rating): rating is number => Number.isFinite(rating));
+      const alignmentValues = recentReviewRows
+        .map((row) => {
+          const analysis = row.advisorAnalysis as Record<string, unknown> | null | undefined;
+          const alignment = analysis && typeof analysis.objectiveAlignment === "number"
+            ? analysis.objectiveAlignment
+            : null;
+          return alignment;
+        })
+        .filter((value): value is number => typeof value === "number");
+
+      const averageRating = ratings.length > 0
+        ? ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length
+        : 0;
+      const averageObjectiveAlignment = alignmentValues.length > 0
+        ? alignmentValues.reduce((sum, alignment) => sum + alignment, 0) / alignmentValues.length
+        : 0;
+
+      return {
+        overview: {
+          totalAgencies,
+          reviewedAgencies: reviewedAgencyCount,
+          reviewCount,
+          averageRating,
+          averageObjectiveAlignment,
+          reviewCoverage: totalAgencies > 0 ? reviewedAgencyCount / totalAgencies : 0,
+        },
+        recentReviews: recentReviewRows.map((row) => {
+          const analysis = row.advisorAnalysis as Record<string, unknown> | null | undefined;
+          const suggestions = Array.isArray(analysis?.suggestions) ? analysis?.suggestions : [];
+          return {
+            id: row.id,
+            agencyId: row.agencyId,
+            agencyName: row.agencyName,
+            rating: row.rating,
+            suggestionsApplied: row.suggestionsApplied,
+            suggestionsCount: suggestions.length,
+            objectiveAlignment: typeof analysis?.objectiveAlignment === "number" ? analysis.objectiveAlignment : null,
+            overallAssessment: typeof analysis?.overallAssessment === "string" ? analysis.overallAssessment : null,
+            createdAt: row.createdAt,
+          };
+        }),
+        recentImprovements: recentImprovementRows.map((row) => ({
+          id: row.id,
+          agencyId: row.agencyId,
+          agencyName: row.agencyName,
+          changeType: row.changeType,
+          description: row.description,
+          approvedBy: row.approvedBy,
+          createdAt: row.createdAt,
+        })),
+      };
     }),
 
   /**

@@ -3,15 +3,17 @@ Unified LLM Client - SmartSpec Pro
 Combines all providers with intelligent routing and fallbacks
 """
 
-from typing import Optional, List, Dict, Any, Literal
+import asyncio
+from typing import Optional, List, Dict, Any, Literal, IO
 from decimal import Decimal
 import structlog
+import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.llm_proxy.openrouter_wrapper import OpenRouterWrapper, create_openrouter_client
 from app.llm_proxy.models import LLMRequest, LLMResponse, LLMProvider
 from app.core.config import settings
-from app.llm_proxy.providers import KieAIProvider
+from app.llm_proxy.providers import KieAIProvider, KNPLabsProvider
 
 logger = structlog.get_logger()
 
@@ -55,6 +57,7 @@ class UnifiedLLMClient:
         self.default_models: Dict[str, str] = {}  # Default models per provider
         self.model_to_provider: Dict[str, str] = {}  # Map model strings to their provider names
         self.kie_ai_client: Optional[KieAIProvider] = None
+        self.knplabs_client: Optional[KNPLabsProvider] = None
         self._initialized = False
 
         logger.info("unified_llm_client_created")
@@ -194,6 +197,13 @@ class UnifiedLLMClient:
             )
             logger.info("kie_ai_initialized_from_db")
 
+        elif provider_name in {"knplabs", "knplabai"}:
+            self.knplabs_client = KNPLabsProvider(
+                api_key=api_key,
+                base_url=base_url or KNPLabsProvider.BASE_URL,
+            )
+            logger.info("knplabs_initialized_from_db", base_url=base_url)
+
         elif provider_name == "ollama":
             from openai import OpenAI
             self.direct_providers['ollama'] = OpenAI(
@@ -237,6 +247,14 @@ class UnifiedLLMClient:
                 base_url=settings.OPENAI_BASE_URL
             )
             logger.info("direct_openai_initialized")
+
+        if settings.GROQ_API_KEY:
+            from openai import OpenAI
+            self.direct_providers['groq'] = OpenAI(
+                api_key=settings.GROQ_API_KEY,
+                base_url=settings.GROQ_BASE_URL,
+            )
+            logger.info("direct_groq_initialized")
         
         if settings.ANTHROPIC_API_KEY:
             import anthropic
@@ -254,6 +272,15 @@ class UnifiedLLMClient:
         elif settings.KIE_AI_API_KEY:
             # Placeholder env key should not mask DB-backed provider configuration.
             logger.warning("kie_ai_env_key_ignored_placeholder")
+
+        if settings.KNPLABAI_API_KEY and not _is_placeholder_key(settings.KNPLABAI_API_KEY):
+            self.knplabs_client = KNPLabsProvider(
+                api_key=settings.KNPLABAI_API_KEY,
+                base_url=settings.KNPLABAI_BASE_URL or KNPLabsProvider.BASE_URL,
+            )
+            logger.info("knplabs_client_initialized")
+        elif settings.KNPLABAI_API_KEY:
+            logger.warning("knplabs_env_key_ignored_placeholder")
     
     async def chat(
         self,
@@ -724,6 +751,129 @@ class UnifiedLLMClient:
 
         else:
             raise ValueError(f"Unknown response type: {type(response)}")
+
+    async def transcribe(
+        self,
+        audio_file: IO[bytes],
+        provider: str = "groq",
+        language: Optional[str] = None,
+        model: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Transcribe audio using a configured provider."""
+        provider_name = provider.strip().lower()
+        if provider_name not in {"openai", "groq"}:
+            raise ValueError(f"Unsupported transcription provider: {provider}")
+
+        client = self.direct_providers.get(provider_name)
+        if client is None:
+            raise ValueError(f"Provider {provider_name} not available")
+
+        transcription_model = model or ("whisper-large-v3" if provider_name == "groq" else "whisper-1")
+        if hasattr(audio_file, "seek"):
+            try:
+                audio_file.seek(0)
+            except Exception:
+                pass
+
+        def _call():
+            kwargs: Dict[str, Any] = {
+                "model": transcription_model,
+                "file": audio_file,
+            }
+            if language:
+                kwargs["language"] = language
+            return client.audio.transcriptions.create(**kwargs)
+
+        result = await asyncio.to_thread(_call)
+        return {
+            "text": getattr(result, "text", ""),
+            "language": getattr(result, "language", language or "en"),
+            "confidence": float(getattr(result, "confidence", 0.9) or 0.9),
+            "duration": float(getattr(result, "duration", 0.0) or 0.0),
+        }
+
+    async def synthesize_speech(
+        self,
+        text: str,
+        provider: str = "openai",
+        voice: str = "alloy",
+        speed: float = 1.0,
+        format: str = "mp3",
+    ) -> Dict[str, Any]:
+        """Synthesize speech using OpenAI, KNPLabs, or ElevenLabs-compatible routing."""
+        provider_name = provider.strip().lower()
+
+        if provider_name in {"openai"}:
+            client = self.direct_providers.get("openai")
+            if client is None:
+                raise ValueError("OpenAI provider not available")
+
+            def _call():
+                return client.audio.speech.create(
+                    model="gpt-4o-mini-tts",
+                    voice=voice,
+                    input=text,
+                    response_format=format,
+                    speed=speed,
+                )
+
+            result = await asyncio.to_thread(_call)
+            audio_bytes = getattr(result, "content", None)
+            if audio_bytes is None and hasattr(result, "read"):
+                audio_bytes = await asyncio.to_thread(result.read)
+            if audio_bytes is None:
+                raise ValueError("OpenAI TTS response did not contain audio bytes")
+            return {"audio_bytes": audio_bytes}
+
+        if provider_name in {"knplabs", "knplabai"}:
+            if not self.knplabs_client:
+                if not settings.KNPLABAI_API_KEY.strip():
+                    raise ValueError("KNPLabs provider not available")
+                self.knplabs_client = KNPLabsProvider(
+                    api_key=settings.KNPLABAI_API_KEY,
+                    base_url=settings.KNPLABAI_BASE_URL or KNPLabsProvider.BASE_URL,
+                )
+            audio_bytes = await self.knplabs_client.generate_speech(
+                model="gpt-4o-mini-tts",
+                input_text=text,
+                voice=voice,
+                response_format=format,
+            )
+            return {"audio_bytes": audio_bytes}
+
+        if provider_name in {"elevenlabs", "kie_ai", "kie"}:
+            if not self.kie_ai_client:
+                from app.services.media_provider_service import initialize_kie_ai_client
+                self.kie_ai_client = await initialize_kie_ai_client()
+            if not self.kie_ai_client:
+                raise ValueError("ElevenLabs provider not available")
+
+            result = await self.kie_ai_client.generate_audio(
+                model="elevenlabs-tts",
+                text=text,
+                voice=voice,
+                speed=speed,
+                output_format=format,
+                wait_for_completion=True,
+            )
+            url = None
+            if isinstance(result, dict):
+                data = result.get("data")
+                if isinstance(data, list) and data:
+                    first = data[0]
+                    if isinstance(first, dict):
+                        url = first.get("url") or first.get("audio_url")
+                if not url:
+                    url = result.get("audio_url") or result.get("url")
+            if not url:
+                raise ValueError("ElevenLabs provider returned no audio URL")
+
+            async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:
+                response = await client.get(url)
+                response.raise_for_status()
+                return {"audio_bytes": response.content}
+
+        raise ValueError(f"Unsupported TTS provider: {provider}")
     
     def estimate_cost(
         self,
@@ -789,3 +939,4 @@ def get_unified_client() -> UnifiedLLMClient:
     ``main.py`` (which calls ``unified_client.initialize(db=session)``).
     """
     return unified_client
+# mypy: ignore-errors

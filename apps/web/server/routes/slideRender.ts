@@ -40,7 +40,8 @@ function isInternalAddress(address: string | undefined): boolean {
   );
 }
 
-export function createSlideRenderRouter(): Router {
+export function createSlideRenderRouter(options?: { getDb?: typeof getDb }): Router {
+  const getDbImpl = options?.getDb ?? getDb;
   const router = Router();
 
   router.get("/slide-render/:deckId/:slideIndex", async (req, res) => {
@@ -83,7 +84,7 @@ export function createSlideRenderRouter(): Router {
     }
 
     // --- DB query: fetch full slide content (not slideshow metadata) ---
-    const db = await getDb();
+    const db = await getDbImpl();
     if (!db) {
       return res.status(503).json({ error: "Database unavailable" });
     }

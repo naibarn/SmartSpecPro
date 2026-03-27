@@ -66,7 +66,7 @@ class ExpressionResolver:
         if len(parts) > self.MAX_EXPRESSION_DEPTH:
             return f"{{{{{expr}}}}}"
 
-        value = state
+        value: Any = state
 
         try:
             for part in parts:

@@ -1,8 +1,10 @@
+import base64
 from decimal import Decimal
 from typing import Dict, Any, Optional, List, Literal, Union
 import re
 import math
 import httpx
+from uuid import uuid4
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
@@ -118,6 +120,8 @@ class LLMGateway:
             return "kie_ai"
         if normalized in {"uvoice", "u_voice", "uvoice_ai", "uvoiceapp"}:
             return "uvoice"
+        if normalized in {"knplabs", "knplabai", "knplabs_ai", "knplabsai"}:
+            return "knplabai"
         if normalized in {"fal", "fal_ai", "falai", "fal_ai_provider"}:
             return "fal_ai"
         return normalized
@@ -413,6 +417,56 @@ class LLMGateway:
             logger.warning("resolve_media_provider_failed", model=model_id, error=str(e))
 
         return None
+
+    async def _upload_generated_media_bytes(
+        self,
+        *,
+        user_id: int,
+        job_id: str,
+        media_type: str,
+        payload: bytes,
+        content_type: str,
+        ext: str,
+    ) -> str:
+        if not R2_STORAGE_AVAILABLE or get_r2_storage_service is None:
+            raise ImportError("R2 storage not available")
+
+        from app.services.generation.r2_storage import StoragePath
+
+        r2_service = get_r2_storage_service()
+        if media_type == "video":
+            key = StoragePath.video_generated(str(user_id), job_id, ext)
+        elif media_type == "audio":
+            key = StoragePath.audio_generated(str(user_id), job_id, ext)
+        else:
+            key = StoragePath.image_generated(str(user_id), job_id, ext)
+
+        return await r2_service.upload_bytes(key, payload, content_type, db_session=self.db)
+
+    @staticmethod
+    def _extract_first_url_from_payload(payload: Any) -> Optional[str]:
+        if isinstance(payload, dict):
+            for key in ("url", "image_url", "video_url", "audio_url", "result_url"):
+                value = payload.get(key)
+                if isinstance(value, str) and value.startswith("http"):
+                    return value
+            for key in ("data", "result", "output", "response"):
+                nested = payload.get(key)
+                if isinstance(nested, list):
+                    for item in nested:
+                        found = LLMGateway._extract_first_url_from_payload(item)
+                        if found:
+                            return found
+                elif isinstance(nested, dict):
+                    found = LLMGateway._extract_first_url_from_payload(nested)
+                    if found:
+                        return found
+        elif isinstance(payload, list):
+            for item in payload:
+                found = LLMGateway._extract_first_url_from_payload(item)
+                if found:
+                    return found
+        return None
     
     async def invoke(
         self,
@@ -705,6 +759,132 @@ class LLMGateway:
                 if fal_client is not None:
                     await fal_client.aclose()
         # --- End fal.ai image routing ---
+
+        # --- KNPLabs image routing ---
+        from app.llm_proxy.providers.knplabai_provider import KNPLabsProvider
+        knplabs_model_name = request.model.split("/", 1)[-1].strip() if isinstance(request.model, str) else request.model
+        knplabs_model_normalized = self._normalize_model_id(knplabs_model_name)
+        knplabs_image_openai_models = {
+            self._normalize_model_id(model_name)
+            for model_name in KNPLabsProvider.IMAGE_OPENAI_MODELS
+        }
+        knplabs_image_gemini_models = {
+            self._normalize_model_id(model_name)
+            for model_name in KNPLabsProvider.IMAGE_GEMINI_MODELS
+        }
+        route_to_knplabs_image = (
+            resolved_provider in {"knplabs", "knplabai"}
+            or normalized_model in knplabs_image_openai_models
+            or normalized_model in knplabs_image_gemini_models
+            or knplabs_model_normalized in knplabs_image_openai_models
+            or knplabs_model_normalized in knplabs_image_gemini_models
+        )
+        if route_to_knplabs_image:
+            from app.services.media_provider_service import initialize_knplabs_client
+            if not self.unified_client.knplabs_client:
+                self.unified_client.knplabs_client = await initialize_knplabs_client()
+
+            if not self.unified_client.knplabs_client:
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="KNPLabs not configured. Please add API key in Admin > Media Providers.",
+                )
+
+            client = self.unified_client.knplabs_client
+            try:
+                if normalized_model in knplabs_image_gemini_models or knplabs_model_normalized in knplabs_image_gemini_models:
+                    aspect_ratio = (
+                        request.aspect_ratio
+                        or self._get_api_config_string(api_config, "aspect_ratio", "aspectRatio")
+                        or "1:1"
+                    )
+                    image_bytes = await client.generate_image_gemini(
+                        knplabs_model_name,
+                        request.prompt,
+                        aspect_ratio=aspect_ratio,
+                    )
+                    ext = (self._get_api_config_string(api_config, "output_format", "outputFormat") or "png").lower()
+                    uploaded_url = await self._upload_generated_media_bytes(
+                        user_id=user.id,
+                        job_id=f"{request.model}-{uuid4().hex}",
+                        media_type="image",
+                        payload=image_bytes,
+                        content_type="image/png",
+                        ext=ext if ext in {"png", "jpg", "jpeg", "webp"} else "png",
+                    )
+                    response = ImageGenerationResponse(
+                        id=f"knplabs-{uuid4().hex}",
+                        model=request.model,
+                        provider="knplabs",
+                        created=0,
+                        data=[{"url": uploaded_url}],
+                    )
+                else:
+                    result = await client.generate_image_openai(
+                        knplabs_model_name,
+                        request.prompt,
+                        size=request.size or self._get_api_config_string(api_config, "size") or "1024x1024",
+                        n=request.n or 1,
+                    )
+                    result_data = result.get("data") if isinstance(result, dict) else None
+                    uploaded_url = None
+                    response_id = result.get("id") if isinstance(result, dict) and isinstance(result.get("id"), str) else None
+                    if isinstance(result_data, list) and result_data:
+                        first = result_data[0] if isinstance(result_data[0], dict) else {}
+                        if isinstance(first.get("url"), str) and first["url"].startswith("http"):
+                            uploaded_url = first["url"]
+                        elif isinstance(first.get("b64_json"), str):
+                            decoded = base64.b64decode(first["b64_json"])
+                            ext = (self._get_api_config_string(api_config, "output_format", "outputFormat") or "png").lower()
+                            uploaded_url = await self._upload_generated_media_bytes(
+                                user_id=user.id,
+                                job_id=response_id or f"{request.model}-{uuid4().hex}",
+                                media_type="image",
+                                payload=decoded,
+                                content_type="image/png",
+                                ext=ext if ext in {"png", "jpg", "jpeg", "webp"} else "png",
+                            )
+                            result_data = [{"url": uploaded_url}]
+                    if not uploaded_url:
+                        uploaded_url = self._extract_first_url_from_payload(result)
+                    if not uploaded_url:
+                        raise ValueError("KNPLabs image response did not include a public URL or image bytes")
+                    response = ImageGenerationResponse(
+                        id=response_id or f"knplabs-{uuid4().hex}",
+                        model=request.model,
+                        provider="knplabs",
+                        created=0,
+                        data=[{"url": uploaded_url}],
+                    )
+
+                actual_cost = estimated_cost
+                transaction = await self._deduct_credits(user, actual_cost, request, response, estimated_cost, False)
+                response.credits_used = abs(transaction.amount)
+                response.credits_balance = transaction.balance_after
+                write_media_debug_event("image.generate.knplabs.success", {
+                    "trace_id": trace_id,
+                    "user_id": user.id,
+                    "model": request.model,
+                    "provider": "knplabs",
+                    "log_file": log_file,
+                })
+                return response
+            except HTTPException:
+                raise
+            except Exception as e:
+                logger.error("knplabs_image_generation_failed", user_id=user.id, model=request.model, error=str(e))
+                write_media_debug_event("image.generate.knplabs.error", {
+                    "trace_id": trace_id,
+                    "user_id": user.id,
+                    "model": request.model,
+                    "error": str(e),
+                    "log_file": log_file,
+                })
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail=f"KNPLabs image generation failed: {str(e)}",
+                )
+        # --- End KNPLabs image routing ---
 
         write_media_debug_event("image.generate.fallback_to_kie", {
             "trace_id": trace_id,
@@ -1003,6 +1183,86 @@ class LLMGateway:
                     await fal_client.aclose()
         # --- End fal.ai routing ---
 
+        # --- KNPLabs video routing ---
+        from app.llm_proxy.providers.knplabai_provider import KNPLabsProvider
+        knplabs_model_name = request.model.split("/", 1)[-1].strip() if isinstance(request.model, str) else request.model
+        knplabs_model_normalized = self._normalize_model_id(knplabs_model_name)
+        knplabs_video_form_models = {
+            self._normalize_model_id(model_name)
+            for model_name in KNPLabsProvider.VIDEO_FORM_MODELS
+        }
+        knplabs_video_json_models = {
+            self._normalize_model_id(model_name)
+            for model_name in KNPLabsProvider.VIDEO_JSON_MODELS
+        }
+        route_to_knplabs_video = (
+            resolved_provider in {"knplabs", "knplabai"}
+            or normalized_model in knplabs_video_form_models
+            or normalized_model in knplabs_video_json_models
+            or knplabs_model_normalized in knplabs_video_form_models
+            or knplabs_model_normalized in knplabs_video_json_models
+        )
+        if route_to_knplabs_video:
+            from app.services.media_provider_service import initialize_knplabs_client
+            if not self.unified_client.knplabs_client:
+                self.unified_client.knplabs_client = await initialize_knplabs_client()
+
+            if not self.unified_client.knplabs_client:
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="KNPLabs not configured. Please add API key in Admin > Media Providers.",
+                )
+
+            client = self.unified_client.knplabs_client
+            try:
+                extra = request.extra_params or {}
+                if normalized_model in knplabs_video_form_models or knplabs_model_normalized in knplabs_video_form_models:
+                    size = request.resolution or self._get_api_config_string(extra, "size", "resolution") or "1080p"
+                    seconds = request.duration or int(self._get_api_config_string(extra, "seconds", "duration") or 5)
+                    task_id = await client.create_video_veo(
+                        model=knplabs_model_name,
+                        prompt=request.prompt,
+                        size=size,
+                        seconds=seconds,
+                    )
+                else:
+                    images = request.reference_image_urls or []
+                    task_id = await client.create_video_json(
+                        model=knplabs_model_name,
+                        prompt=request.prompt,
+                        images=images or None,
+                        aspect_ratio=request.aspect_ratio or self._get_api_config_string(extra, "aspect_ratio", "aspectRatio") or "16:9",
+                    )
+
+                response = VideoGenerationResponse(
+                    id=task_id,
+                    model=request.model,
+                    provider="knplabs",
+                    created=0,
+                    data=[],
+                )
+
+                if wait_for_completion:
+                    waited_result = await client.wait_for_video(task_id, knplabs_model_name)
+                    result_url = client.extract_result_url(waited_result)
+                    if not result_url:
+                        raise ValueError("KNPLabs video completed without a result URL")
+                    response.data = [{"url": result_url}]
+
+                transaction = await self._deduct_credits(user, estimated_cost, request, response, estimated_cost, False)
+                response.credits_used = abs(transaction.amount)
+                response.credits_balance = transaction.balance_after
+                return response
+            except HTTPException:
+                raise
+            except Exception as e:
+                logger.error("knplabs_video_generation_failed", user_id=user.id, model=request.model, error=str(e))
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail=f"KNPLabs video generation failed: {str(e)}",
+                )
+        # --- End KNPLabs video routing ---
+
         if not self.unified_client.kie_ai_client:
             # Try to initialize from SmartSpecWeb media_providers
             from app.services.media_provider_service import initialize_kie_ai_client
@@ -1296,6 +1556,79 @@ class LLMGateway:
                 if fal_client is not None:
                     await fal_client.aclose()
         # --- End fal.ai audio routing ---
+
+        # --- KNPLabs audio routing ---
+        from app.llm_proxy.providers.knplabai_provider import KNPLabsProvider
+        knplabs_model_name = normalized_request.model.split("/", 1)[-1].strip() if isinstance(normalized_request.model, str) else normalized_request.model
+        knplabs_model_normalized = self._normalize_model_id(knplabs_model_name)
+        knplabs_audio_models = {
+            self._normalize_model_id(model_name)
+            for model_name in KNPLabsProvider.AUDIO_MODELS
+        }
+        route_to_knplabs_audio = (
+            resolved_provider in {"knplabs", "knplabai"}
+            or normalized_model in knplabs_audio_models
+            or knplabs_model_normalized in knplabs_audio_models
+        )
+        if route_to_knplabs_audio:
+            from app.services.media_provider_service import initialize_knplabs_client
+            if not self.unified_client.knplabs_client:
+                self.unified_client.knplabs_client = await initialize_knplabs_client()
+
+            if not self.unified_client.knplabs_client:
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="KNPLabs not configured. Please add API key in Admin > Media Providers.",
+                )
+
+            client = self.unified_client.knplabs_client
+            try:
+                output_format = (
+                    normalized_request.output_format
+                    or self._get_api_config_string(normalized_request.api_config, "output_format", "outputFormat")
+                    or "mp3"
+                )
+                voice = normalized_request.voice or normalized_request.voice_id or "alloy"
+                audio_bytes = await client.generate_speech(
+                    model=knplabs_model_name,
+                    input_text=normalized_request.text,
+                    voice=voice if isinstance(voice, str) else "alloy",
+                    response_format=str(output_format),
+                )
+                ext = str(output_format).lower()
+                if ext == "pcm":
+                    ext = "pcm"
+                elif ext not in {"mp3", "opus", "aac", "flac", "wav", "pcm"}:
+                    ext = "mp3"
+                content_type = "audio/wav" if ext == "wav" else f"audio/{ext}"
+                uploaded_url = await self._upload_generated_media_bytes(
+                    user_id=user.id,
+                    job_id=f"{normalized_request.model}-{uuid4().hex}",
+                    media_type="audio",
+                    payload=audio_bytes,
+                    content_type=content_type,
+                    ext=ext,
+                )
+                response = AudioGenerationResponse(
+                    id=f"knplabs-{uuid4().hex}",
+                    model=normalized_request.model,
+                    provider="knplabs",
+                    created=0,
+                    data=[{"url": uploaded_url}],
+                )
+                transaction = await self._deduct_credits(user, estimated_cost, normalized_request, response, estimated_cost, False)
+                response.credits_used = abs(transaction.amount)
+                response.credits_balance = transaction.balance_after
+                return response
+            except HTTPException:
+                raise
+            except Exception as e:
+                logger.error("knplabs_audio_generation_failed", user_id=user.id, model=normalized_request.model, error=str(e))
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail=f"KNPLabs audio generation failed: {str(e)}",
+                )
+        # --- End KNPLabs audio routing ---
 
         if not self.unified_client.kie_ai_client:
             # Try to initialize from SmartSpecWeb media_providers

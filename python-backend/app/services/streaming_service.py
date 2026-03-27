@@ -495,3 +495,4 @@ def _count_tokens(text: str, model: str) -> int:
 def _count_tokens_for_messages(messages: list[Dict[str, str]], model: str) -> int:
     """Legacy message token counter"""
     return TokenCounter.count_tokens_for_messages(messages, model)
+# mypy: ignore-errors

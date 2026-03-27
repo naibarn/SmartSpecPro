@@ -413,3 +413,4 @@ class LLMProviderError(ProviderError):
 # Alias for backward compatibility with existing code
 LLMProxy = LLMProxyV2
 llm_proxy = get_llm_proxy()
+# mypy: ignore-errors

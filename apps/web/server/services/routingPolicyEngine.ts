@@ -33,7 +33,7 @@ export interface PolicyDecision {
 
 // ─── Signal Patterns ────────────────────────────────────────────────────────
 
-const AGENCY_SIGNAL_RE = /(agency|multi[- ]step|หลายขั้น|workflow|orchestrate|delegate|coordinate|escalate|escalation)/i;
+const AGENCY_SIGNAL_RE = /(agency|handoff|orchestrate|delegate|coordinate|escalate|escalation|multi[- ]agent|swarm)/i;
 
 const CHAT_SIGNAL_RE = /^(hi|hello|สวัสดี|ขอบคุณ|thanks|how are you|เป็นไง|คุย|chat|hey|yo)\s*[!?.]?$/i;
 

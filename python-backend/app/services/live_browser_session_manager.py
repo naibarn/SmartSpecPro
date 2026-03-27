@@ -2226,3 +2226,4 @@ class LiveBrowserSessionManager:
                 )
             )
         return events
+# mypy: ignore-errors

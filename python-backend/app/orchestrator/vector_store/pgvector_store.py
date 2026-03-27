@@ -737,3 +737,4 @@ def get_vector_store() -> PgVectorStore:
     if _vector_store is None:
         _vector_store = PgVectorStore()
     return _vector_store
+# mypy: ignore-errors

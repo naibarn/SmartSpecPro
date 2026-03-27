@@ -1,4 +1,3 @@
-import { useI18n } from "@/lib/i18n";
 import { AlertTriangle } from "lucide-react";
 import {
   AlertDialog,
@@ -9,6 +8,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 
 interface ConflictResolutionDialogProps {
   open: boolean;
@@ -23,7 +23,7 @@ export function ConflictResolutionDialog({
   onOverwrite,
   onReload,
 }: ConflictResolutionDialogProps) {
-  const { t } = useI18n();
+  const { t } = useScopedTranslation('presentation');
 
   return (
     <AlertDialog open={open}>

@@ -45,6 +45,7 @@ const REDIS_SYNCED_FLAGS: ReadonlySet<TenantFeatureFlagKey> = new Set([
   "agencyStreaming",
   "agencyMcpBridge",
   "agencyToolApi",
+  "UPLOAD_POST_GATEWAY_ENABLED",
 ]);
 
 /**

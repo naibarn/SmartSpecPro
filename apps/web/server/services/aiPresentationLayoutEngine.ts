@@ -627,8 +627,14 @@ function fitTitleTypography(
   baseFontSize: number,
   minFontSize: number,
   maxLines: number,
+  opts?: {
+    allowExpansion?: boolean;
+    maxFontSize?: number;
+  },
 ): { fontSize: number; lineCount: number } {
-  let fontSize = Math.max(minFontSize, Math.round(baseFontSize));
+  const maxFontSize = Math.max(minFontSize, Math.round(opts?.maxFontSize ?? baseFontSize));
+  const allowExpansion = opts?.allowExpansion ?? false;
+  let fontSize = allowExpansion ? maxFontSize : Math.max(minFontSize, Math.round(baseFontSize));
   let lineCount = estimateTextLineCount(text, width, fontSize, 12);
   while (lineCount > maxLines && fontSize > minFontSize) {
     fontSize -= 1;
@@ -645,6 +651,7 @@ function fitBodyFontSizeToHeight(opts: {
   lineHeightRatio: number;
   gapPx: number;
   availableHeightPx: number;
+  allowExpansion?: boolean;
 }): number {
   const {
     baseFontSize,
@@ -654,6 +661,7 @@ function fitBodyFontSizeToHeight(opts: {
     lineHeightRatio,
     gapPx,
     availableHeightPx,
+    allowExpansion = false,
   } = opts;
 
   if (lineCount <= 0) {
@@ -664,7 +672,8 @@ function fitBodyFontSizeToHeight(opts: {
   const maxFontByHeight = Math.floor(
     remainingHeight / Math.max(0.8, (lineCount * lineHeightRatio) + TEXT_BLOCK_VERTICAL_PADDING_EM),
   );
-  const fitted = Math.min(baseFontSize, maxFontByHeight);
+  const targetFont = allowExpansion ? maxFontSize : baseFontSize;
+  const fitted = Math.min(targetFont, maxFontByHeight);
   return clamp(Math.round(fitted), minFontSize, maxFontSize);
 }
 
@@ -697,6 +706,7 @@ function fitBodyRowsToHeight(opts: {
   gapPx: number;
   availableHeightPx: number;
   maxLinesPerRow: number;
+  allowExpansion?: boolean;
 }): { fontSize: number; rows: FittedBodyRow[]; totalHeight: number } {
   const {
     lines,
@@ -708,9 +718,12 @@ function fitBodyRowsToHeight(opts: {
     gapPx,
     availableHeightPx,
     maxLinesPerRow,
+    allowExpansion = false,
   } = opts;
 
-  const targetFontSize = clamp(Math.round(baseFontSize), minFontSize, maxFontSize);
+  const targetFontSize = allowExpansion
+    ? clamp(Math.round(maxFontSize), minFontSize, maxFontSize)
+    : clamp(Math.round(baseFontSize), minFontSize, maxFontSize);
   for (let size = targetFontSize; size >= minFontSize; size -= 1) {
     const rows = buildFittedRows(lines, size, width, lineHeightRatio, maxLinesPerRow);
     const totalHeight = computeRowsHeight(rows, gapPx);
@@ -748,6 +761,42 @@ function fitBodyRowsToHeight(opts: {
     rows,
     totalHeight,
   };
+}
+
+function computeSparseTypographyBoost(
+  availableHeightPx: number,
+  occupiedHeightPx: number,
+  maxBoost: number,
+): number {
+  if (availableHeightPx <= 0 || occupiedHeightPx <= 0) {
+    return 1;
+  }
+  const occupancyRatio = clamp(occupiedHeightPx / availableHeightPx, 0.08, 1);
+  // Use a gentler square-root curve so sparse layouts can expand enough to feel
+  // intentional without exploding on denser slides.
+  return clamp(1 / Math.sqrt(occupancyRatio), 1, maxBoost);
+}
+
+function computeSplitTextRatio(opts: {
+  totalTextLen: number;
+  bodyCount: number;
+  sectionCount: number;
+  noteChars: number;
+  portrait: boolean;
+}): number {
+  let ratio = 0.5;
+  if (opts.totalTextLen >= 220) ratio += 0.04;
+  if (opts.totalTextLen >= 360) ratio += 0.05;
+  if (opts.totalTextLen >= 520) ratio += 0.05;
+  if (opts.totalTextLen >= 760) ratio += 0.04;
+  if (opts.bodyCount >= 4) ratio += 0.03;
+  if (opts.bodyCount >= 6) ratio += 0.03;
+  if (opts.sectionCount >= 2) ratio += 0.02;
+  if (opts.sectionCount >= 4) ratio += 0.03;
+  if (opts.noteChars >= 220) ratio += 0.03;
+  if (opts.noteChars >= 420) ratio += 0.03;
+  if (opts.portrait) ratio += 0.03;
+  return clamp(ratio, 0.48, opts.portrait ? 0.72 : 0.68);
 }
 
 function computeContentArea(
@@ -955,57 +1004,170 @@ function buildHeroCenter(ctx: TemplateContext): SlideElement[] {
   );
 
   // 3. Modern text panel for better legibility on rich backgrounds
-  const titleWidth = contentArea.width * (portrait ? 0.88 : 0.82);
-  const titleX = contentArea.x + (contentArea.width - titleWidth) / 2;
+  const totalTextLen = (slideData.title?.length ?? 0)
+    + (subtitle?.length ?? 0)
+    + emphasisLines.join("").length
+    + bodyLines.join("").length;
+  const heroDensityRatio = computeSplitTextRatio({
+    totalTextLen,
+    bodyCount: bodyLines.length,
+    sectionCount: slideData.sections?.length ?? 0,
+    noteChars: slideData.notes?.length ?? 0,
+    portrait,
+  });
+  const textPanelWidthRatio = clamp(
+    0.78 + ((heroDensityRatio - 0.5) * 1.15),
+    portrait ? 0.82 : 0.78,
+    portrait ? 0.96 : 0.9,
+  );
+  const textPanelWidth = Math.round(contentArea.width * textPanelWidthRatio);
+  const textPanelX = contentArea.x + Math.round((contentArea.width - textPanelWidth) / 2);
+  const textPanelPaddingX = Math.round((portrait ? 34 : 56) * scale.scaleX);
+  const titleWidth = Math.max(Math.round(220 * scale.scaleX), textPanelWidth - (textPanelPaddingX * 2));
+  const titleX = textPanelX + textPanelPaddingX;
+  const titleY = contentArea.y + contentArea.height * (portrait ? 0.24 : 0.33);
+  const titleBaseFontSize = scaleFontSize(64, scale);
+  const titleMinFontSize = scaleFontSize(42, scale);
+  const subtitleBaseFontSize = scaleBodyFontSize(portrait ? 34 : 30, scale, canvasWidth, canvasHeight);
+  const subtitleMinFontSize = scaleBodyFontSize(portrait ? 22 : 18, scale, canvasWidth, canvasHeight);
+  const baseBodyFontSize = scaleBodyFontSize(portrait ? 18 : 16, scale, canvasWidth, canvasHeight);
+  const baseEmphasisFontSize = scaleBodyFontSize(portrait ? 28 : 24, scale, canvasWidth, canvasHeight);
+  const bodyGap = Math.round((portrait ? 10 : 8) * scale.scaleY);
+  const emphasisGap = emphasisLines.length > 0 ? Math.round((portrait ? 8 : 6) * scale.scaleY) : 0;
+  const subtitleWidth = titleWidth;
+  const subtitleLineHeight = thaiText ? (portrait ? 1.34 : 1.28) : (portrait ? 1.2 : 1.16);
+  const titleSizingBase = fitTitleTypography(
+    slideData.title,
+    titleWidth,
+    titleBaseFontSize,
+    titleMinFontSize,
+    portrait ? 3 : 2,
+  );
+  const subtitleSizingBase = subtitle
+    ? fitTitleTypography(
+      subtitle,
+      subtitleWidth,
+      subtitleBaseFontSize,
+      subtitleMinFontSize,
+      2,
+    )
+    : null;
+  const titleHeightBase = Math.round(
+    titleSizingBase.fontSize * titleLineHeight * titleSizingBase.lineCount + Math.round(12 * scale.scaleY),
+  );
+  const subtitleHeightBase = subtitleSizingBase
+    ? Math.round(
+      subtitleSizingBase.fontSize * subtitleLineHeight * subtitleSizingBase.lineCount + Math.round(6 * scale.scaleY),
+    )
+    : 0;
+  const bodyBottomLimit = contentArea.y + contentArea.height - Math.round(40 * scale.scaleY);
+  const bodyTopBase = titleY + titleHeightBase + (subtitle ? Math.round(12 * scale.scaleY) : 0) + subtitleHeightBase + Math.round(18 * scale.scaleY);
+  const availableBodyHeightBase = Math.max(
+    Math.round(64 * scale.scaleY),
+    bodyBottomLimit - bodyTopBase,
+  );
+  const emphasisFitBase = emphasisLines.length > 0
+    ? fitBodyRowsToHeight({
+      lines: emphasisLines,
+      width: titleWidth,
+      baseFontSize: baseEmphasisFontSize,
+      minFontSize: portrait ? 16 : 14,
+      maxFontSize: baseEmphasisFontSize,
+      lineHeightRatio: thaiText ? (portrait ? 1.4 : 1.32) : (portrait ? 1.24 : 1.18),
+      gapPx: emphasisGap,
+      availableHeightPx: Math.max(Math.round(42 * scale.scaleY), Math.round(availableBodyHeightBase * 0.4)),
+      maxLinesPerRow: thaiText ? 4 : 3,
+    })
+    : { fontSize: 0, rows: [], totalHeight: 0 };
+  const bodyAvailableHeightBase = Math.max(
+    Math.round(40 * scale.scaleY),
+    availableBodyHeightBase - emphasisFitBase.totalHeight - (emphasisFitBase.rows.length > 0 ? bodyGap : 0),
+  );
+  const bodyFitBase = fitBodyRowsToHeight({
+    lines: bodyLines,
+    width: titleWidth,
+    baseFontSize: baseBodyFontSize,
+    minFontSize: portrait ? 12 : 11,
+    maxFontSize: baseBodyFontSize,
+    lineHeightRatio: bodyLineHeightRatio,
+    gapPx: bodyGap,
+    availableHeightPx: bodyAvailableHeightBase,
+    maxLinesPerRow: thaiText ? 6 : 5,
+  });
+  const titleOccupiedHeightBase =
+    titleHeightBase +
+    (subtitle ? Math.round(12 * scale.scaleY) : 0) +
+    subtitleHeightBase +
+    Math.round(18 * scale.scaleY);
+  const bodyOccupiedHeightBase =
+    emphasisFitBase.totalHeight +
+    (emphasisFitBase.rows.length > 0 ? bodyGap : 0) +
+    bodyFitBase.totalHeight;
+  const textZoneHeight = Math.max(Math.round(120 * scale.scaleY), bodyBottomLimit - titleY);
+  const sparseBoost = computeSparseTypographyBoost(
+    textZoneHeight,
+    titleOccupiedHeightBase + bodyOccupiedHeightBase,
+    portrait ? 1.85 : 1.6,
+  );
+  const titleMaxFontSize = Math.max(titleSizingBase.fontSize, Math.round(titleSizingBase.fontSize * sparseBoost));
+  const subtitleMaxFontSize = Math.max(
+    subtitleSizingBase?.fontSize ?? subtitleBaseFontSize,
+    Math.round((subtitleSizingBase?.fontSize ?? subtitleBaseFontSize) * sparseBoost),
+  );
+  const bodyMaxFontSize = Math.max(baseBodyFontSize, Math.round(baseBodyFontSize * sparseBoost));
+  const emphasisMaxFontSize = Math.max(baseEmphasisFontSize, Math.round(baseEmphasisFontSize * sparseBoost));
   const titleSizing = fitTitleTypography(
     slideData.title,
     titleWidth,
-    scaleFontSize(64, scale),
-    scaleFontSize(42, scale),
+    titleBaseFontSize,
+    titleMinFontSize,
     portrait ? 3 : 2,
+    {
+      allowExpansion: true,
+      maxFontSize: titleMaxFontSize,
+    },
   );
   const titleFontSize = titleSizing.fontSize;
   const titleLineCount = titleSizing.lineCount;
   const titleHeight = Math.round(
     titleFontSize * titleLineHeight * titleLineCount + Math.round(12 * scale.scaleY),
   );
-  const titleY = contentArea.y + contentArea.height * (portrait ? 0.24 : 0.33);
-  const subtitleWidth = titleWidth;
   const subtitleSizing = subtitle
     ? fitTitleTypography(
       subtitle,
       subtitleWidth,
-      scaleBodyFontSize(portrait ? 34 : 30, scale, canvasWidth, canvasHeight),
-      scaleBodyFontSize(portrait ? 22 : 18, scale, canvasWidth, canvasHeight),
+      subtitleBaseFontSize,
+      subtitleMinFontSize,
       2,
+      {
+        allowExpansion: true,
+        maxFontSize: subtitleMaxFontSize,
+      },
     )
     : null;
   const subtitleFontSize = subtitleSizing?.fontSize ?? 0;
-  const subtitleLineHeight = thaiText ? (portrait ? 1.34 : 1.28) : (portrait ? 1.2 : 1.16);
   const subtitleHeight = subtitleSizing
     ? Math.round(subtitleFontSize * subtitleLineHeight * subtitleSizing.lineCount + Math.round(6 * scale.scaleY))
     : 0;
   const subtitleGap = subtitle ? Math.round(12 * scale.scaleY) : 0;
-  const bodyGap = Math.round((portrait ? 10 : 8) * scale.scaleY);
-  const baseBodyFontSize = scaleBodyFontSize(portrait ? 18 : 16, scale, canvasWidth, canvasHeight);
   const bodyTop = titleY + titleHeight + subtitleGap + subtitleHeight + Math.round(18 * scale.scaleY);
-  const bodyBottomLimit = contentArea.y + contentArea.height - Math.round(40 * scale.scaleY);
+  const bodyBottomLimitExpanded = contentArea.y + contentArea.height - Math.round(40 * scale.scaleY);
   const availableBodyHeight = Math.max(
     Math.round(64 * scale.scaleY),
-    bodyBottomLimit - bodyTop,
+    bodyBottomLimitExpanded - bodyTop,
   );
-  const emphasisGap = emphasisLines.length > 0 ? Math.round((portrait ? 8 : 6) * scale.scaleY) : 0;
   const emphasisFit = emphasisLines.length > 0
     ? fitBodyRowsToHeight({
       lines: emphasisLines,
       width: titleWidth,
-      baseFontSize: scaleBodyFontSize(portrait ? 28 : 24, scale, canvasWidth, canvasHeight),
+      baseFontSize: baseEmphasisFontSize,
       minFontSize: portrait ? 16 : 14,
-      maxFontSize: portrait ? 28 : 24,
+      maxFontSize: emphasisMaxFontSize,
       lineHeightRatio: thaiText ? (portrait ? 1.4 : 1.32) : (portrait ? 1.24 : 1.18),
       gapPx: emphasisGap,
       availableHeightPx: Math.max(Math.round(42 * scale.scaleY), Math.round(availableBodyHeight * 0.4)),
       maxLinesPerRow: thaiText ? 4 : 3,
+      allowExpansion: true,
     })
     : { fontSize: 0, rows: [], totalHeight: 0 };
   const bodyAvailableHeight = Math.max(
@@ -1017,16 +1179,16 @@ function buildHeroCenter(ctx: TemplateContext): SlideElement[] {
     width: titleWidth,
     baseFontSize: baseBodyFontSize,
     minFontSize: portrait ? 12 : 11,
-    maxFontSize: portrait ? 18 : 16,
+    maxFontSize: bodyMaxFontSize,
     lineHeightRatio: bodyLineHeightRatio,
     gapPx: bodyGap,
     availableHeightPx: bodyAvailableHeight,
     maxLinesPerRow: thaiText ? 6 : 5,
+    allowExpansion: true,
   });
   const bodyFontSize = bodyFit.fontSize;
   const bodyRows = bodyFit.rows;
   const bodyBlockHeight = bodyFit.totalHeight;
-  const textPanelPaddingX = Math.round((portrait ? 36 : 64) * scale.scaleX);
   const textPanelPaddingY = Math.round((portrait ? 28 : 22) * scale.scaleY);
   const textPanelY = Math.max(contentArea.y, titleY - textPanelPaddingY);
   const textPanelHeight = Math.min(
@@ -1035,9 +1197,9 @@ function buildHeroCenter(ctx: TemplateContext): SlideElement[] {
   );
   elements.push(
     makeRectElement({
-      x: contentArea.x + textPanelPaddingX,
+      x: textPanelX,
       y: textPanelY,
-      width: contentArea.width - (textPanelPaddingX * 2),
+      width: textPanelWidth,
       height: Math.max(Math.round(90 * scale.scaleY), textPanelHeight),
       fill: preset.colors.backgroundAlt,
       opacity: portrait ? 0.56 : 0.42,
@@ -1153,9 +1315,14 @@ function buildSplitRightImage(ctx: TemplateContext): SlideElement[] {
   const elements: SlideElement[] = [];
   const portrait = isPortraitCanvas(canvasWidth, canvasHeight);
   const { subtitle, emphasisLines, bodyLines } = resolveSlideSubtitleAndBodyLines(slideData, portrait ? 10 : 8);
-  // Dynamic split: give text more space when content is heavy
   const totalTextLen = (slideData.title?.length ?? 0) + (subtitle?.length ?? 0) + emphasisLines.join("").length + bodyLines.join("").length;
-  const textRatio = totalTextLen > 300 ? 0.6 : 0.5;
+  const textRatio = computeSplitTextRatio({
+    totalTextLen,
+    bodyCount: bodyLines.length,
+    sectionCount: slideData.sections?.length ?? 0,
+    noteChars: slideData.notes?.length ?? 0,
+    portrait,
+  });
   const halfWidth = Math.round(contentArea.width * textRatio);
   const thaiText = hasThaiCharacters(`${slideData.title}\n${subtitle ?? ""}\n${emphasisLines.join("\n")}\n${bodyLines.join("\n")}`);
   const titleLineHeight = getTitleLineHeight(canvasWidth, canvasHeight, thaiText);
@@ -1395,9 +1562,14 @@ function buildSplitLeftImage(ctx: TemplateContext): SlideElement[] {
   const titleLineHeight = getTitleLineHeight(canvasWidth, canvasHeight, thaiText);
   const bodyLineHeightRatio = getBodyLineHeight(canvasWidth, canvasHeight, thaiText);
   const bodyLetterSpacing = getBodyLetterSpacing(canvasWidth, canvasHeight, thaiText);
-  // Dynamic split: give text more space when content is heavy
   const totalTextLen = (slideData.title?.length ?? 0) + (subtitle?.length ?? 0) + emphasisLines.join("").length + bodyLines.join("").length;
-  const textRatio = totalTextLen > 300 ? 0.6 : 0.5;
+  const textRatio = computeSplitTextRatio({
+    totalTextLen,
+    bodyCount: bodyLines.length,
+    sectionCount: slideData.sections?.length ?? 0,
+    noteChars: slideData.notes?.length ?? 0,
+    portrait,
+  });
   const imageWidth = Math.round(contentArea.width * (1 - textRatio));
   const textWidth = contentArea.width - imageWidth;
 
@@ -1691,12 +1863,91 @@ function buildTopImageTextBottom(ctx: TemplateContext): SlideElement[] {
 
   const titleX = leftPadding + accentWidth + Math.round(12 * scale.scaleX);
   const titleWidth = contentArea.width - (leftPadding * 2) - accentWidth;
+  const titleBaseFontSize = scaleFontSize(42, scale);
+  const titleMinFontSize = scaleFontSize(28, scale);
+  const subtitleBaseFontSize = scaleBodyFontSize(portrait ? 32 : 28, scale, canvasWidth, canvasHeight);
+  const subtitleMinFontSize = scaleBodyFontSize(portrait ? 24 : 20, scale, canvasWidth, canvasHeight);
+  const baseBodyFontSize = scaleBodyFontSize(26, scale, canvasWidth, canvasHeight);
+  const baseEmphasisFontSize = scaleBodyFontSize(30, scale, canvasWidth, canvasHeight);
+  const subtitleLineHeight = thaiText ? (portrait ? 1.36 : 1.3) : (portrait ? 1.2 : 1.16);
+  const titleSizingBase = fitTitleTypography(
+    slideData.title,
+    titleWidth,
+    titleBaseFontSize,
+    titleMinFontSize,
+    portrait ? 3 : 2,
+  );
+  const subtitleSizingBase = subtitle
+    ? fitTitleTypography(
+      subtitle,
+      titleWidth,
+      subtitleBaseFontSize,
+      subtitleMinFontSize,
+      2,
+    )
+    : null;
+  const titleHeightBase = Math.round(
+    titleSizingBase.fontSize * titleLineHeight * titleSizingBase.lineCount + Math.round(8 * scale.scaleY),
+  );
+  const subtitleHeightBase = subtitleSizingBase
+    ? Math.round(subtitleSizingBase.fontSize * subtitleLineHeight * subtitleSizingBase.lineCount + Math.round(4 * scale.scaleY))
+    : 0;
+  const subtitleGap = subtitle ? Math.round(10 * scale.scaleY) : 0;
+  const bodyGap = Math.round((denseTextMode ? 6 : 8) * scale.scaleY);
+  const bodyTopBase = titleY + titleHeightBase + subtitleGap + subtitleHeightBase + Math.round(14 * scale.scaleY);
+  const bodyBottomLimit = contentArea.y + contentArea.height - Math.round(22 * scale.scaleY);
+  const availableBodyHeightBase = Math.max(56, bodyBottomLimit - bodyTopBase);
+  const emphasisGap = emphasisLines.length > 0 ? Math.round((portrait ? 8 : 6) * scale.scaleY) : 0;
+  const emphasisFitBase = emphasisLines.length > 0
+    ? fitBodyRowsToHeight({
+      lines: emphasisLines,
+      width: titleWidth,
+      baseFontSize: baseEmphasisFontSize,
+      minFontSize: portrait ? 16 : 14,
+      maxFontSize: baseEmphasisFontSize,
+      lineHeightRatio: thaiText ? (portrait ? 1.4 : 1.32) : (portrait ? 1.24 : 1.18),
+      gapPx: emphasisGap,
+      availableHeightPx: Math.max(Math.round(36 * scale.scaleY), Math.round(availableBodyHeightBase * 0.35)),
+      maxLinesPerRow: thaiText ? 3 : 2,
+    })
+    : { fontSize: 0, rows: [], totalHeight: 0 };
+  const bodyAvailableHeightBase = Math.max(
+    44,
+    availableBodyHeightBase - emphasisFitBase.totalHeight - (emphasisFitBase.rows.length > 0 ? bodyGap : 0),
+  );
+  const bodyFitBase = fitBodyRowsToHeight({
+    lines: bodyLines,
+    width: titleWidth,
+    baseFontSize: baseBodyFontSize,
+    minFontSize: denseTextMode ? 10 : 12,
+    maxFontSize: baseBodyFontSize,
+    lineHeightRatio: bodyLineHeightRatio,
+    gapPx: bodyGap,
+    availableHeightPx: bodyAvailableHeightBase,
+    maxLinesPerRow: thaiText ? (portrait ? (denseTextMode ? 8 : 6) : 4) : (portrait ? (denseTextMode ? 4 : 3) : 2),
+  });
+  const sparseBoost = computeSparseTypographyBoost(
+    Math.max(Math.round(120 * scale.scaleY), bodyBottomLimit - titleY),
+    titleHeightBase + subtitleGap + subtitleHeightBase + Math.round(14 * scale.scaleY) + emphasisFitBase.totalHeight + (emphasisFitBase.rows.length > 0 ? bodyGap : 0) + bodyFitBase.totalHeight,
+    portrait ? 1.85 : 1.6,
+  );
+  const titleMaxFontSize = Math.max(titleSizingBase.fontSize, Math.round(titleSizingBase.fontSize * sparseBoost));
+  const subtitleMaxFontSize = Math.max(
+    subtitleSizingBase?.fontSize ?? subtitleBaseFontSize,
+    Math.round((subtitleSizingBase?.fontSize ?? subtitleBaseFontSize) * sparseBoost),
+  );
+  const bodyMaxFontSize = Math.max(baseBodyFontSize, Math.round(baseBodyFontSize * sparseBoost));
+  const emphasisMaxFontSize = Math.max(baseEmphasisFontSize, Math.round(baseEmphasisFontSize * sparseBoost));
   const titleSizing = fitTitleTypography(
     slideData.title,
     titleWidth,
-    scaleFontSize(42, scale),
-    scaleFontSize(28, scale),
+    titleBaseFontSize,
+    titleMinFontSize,
     portrait ? 3 : 2,
+    {
+      allowExpansion: true,
+      maxFontSize: titleMaxFontSize,
+    },
   );
   const titleFontSize = titleSizing.fontSize;
   const titleHeight = Math.round(
@@ -1706,17 +1957,19 @@ function buildTopImageTextBottom(ctx: TemplateContext): SlideElement[] {
     ? fitTitleTypography(
       subtitle,
       titleWidth,
-      scaleBodyFontSize(portrait ? 32 : 28, scale, canvasWidth, canvasHeight),
-      scaleBodyFontSize(portrait ? 24 : 20, scale, canvasWidth, canvasHeight),
+      subtitleBaseFontSize,
+      subtitleMinFontSize,
       2,
+      {
+        allowExpansion: true,
+        maxFontSize: subtitleMaxFontSize,
+      },
     )
     : null;
   const subtitleFontSize = subtitleSizing?.fontSize ?? 0;
-  const subtitleLineHeight = thaiText ? (portrait ? 1.36 : 1.3) : (portrait ? 1.2 : 1.16);
   const subtitleHeight = subtitleSizing
     ? Math.round(subtitleFontSize * subtitleLineHeight * subtitleSizing.lineCount + Math.round(4 * scale.scaleY))
     : 0;
-  const subtitleGap = subtitle ? Math.round(10 * scale.scaleY) : 0;
   elements.push(
     makeRectElement({
       x: titleX - Math.round(12 * scale.scaleX),
@@ -1764,22 +2017,20 @@ function buildTopImageTextBottom(ctx: TemplateContext): SlideElement[] {
   }
 
   // Body text — hard-clamp to bottom boundary so rows never overlap
-  const bodyGap = Math.round((denseTextMode ? 6 : 8) * scale.scaleY);
   const bodyTop = titleY + titleHeight + subtitleGap + subtitleHeight + Math.round(14 * scale.scaleY);
-  const bodyBottomLimit = bottomY + bottomHeight - Math.round(26 * scale.scaleY);
   const availableBodyHeight = Math.max(56, bodyBottomLimit - bodyTop);
-  const emphasisGap = emphasisLines.length > 0 ? Math.round((portrait ? 8 : 6) * scale.scaleY) : 0;
   const emphasisFit = emphasisLines.length > 0
     ? fitBodyRowsToHeight({
       lines: emphasisLines,
       width: titleWidth,
-      baseFontSize: scaleBodyFontSize(30, scale, canvasWidth, canvasHeight),
+      baseFontSize: baseEmphasisFontSize,
       minFontSize: portrait ? 16 : 14,
-      maxFontSize: portrait ? 30 : 26,
+      maxFontSize: emphasisMaxFontSize,
       lineHeightRatio: thaiText ? (portrait ? 1.4 : 1.32) : (portrait ? 1.24 : 1.18),
       gapPx: emphasisGap,
       availableHeightPx: Math.max(Math.round(36 * scale.scaleY), Math.round(availableBodyHeight * 0.35)),
       maxLinesPerRow: thaiText ? 3 : 2,
+      allowExpansion: true,
     })
     : { fontSize: 0, rows: [], totalHeight: 0 };
   const bodyAvailableHeight = Math.max(
@@ -1789,13 +2040,14 @@ function buildTopImageTextBottom(ctx: TemplateContext): SlideElement[] {
   const bodyFit = fitBodyRowsToHeight({
     lines: bodyLines,
     width: titleWidth,
-    baseFontSize: scaleBodyFontSize(26, scale, canvasWidth, canvasHeight),
+    baseFontSize: baseBodyFontSize,
     minFontSize: denseTextMode ? 10 : 12,
-    maxFontSize: portrait ? 34 : 24,
+    maxFontSize: bodyMaxFontSize,
     lineHeightRatio: bodyLineHeightRatio,
     gapPx: bodyGap,
     availableHeightPx: bodyAvailableHeight,
     maxLinesPerRow: thaiText ? (portrait ? (denseTextMode ? 8 : 6) : 4) : (portrait ? (denseTextMode ? 4 : 3) : 2),
+    allowExpansion: true,
   });
 
   let bodyY = bodyTop;
@@ -1909,12 +2161,91 @@ function buildBottomImageTextTop(ctx: TemplateContext): SlideElement[] {
 
   const titleX = leftPadding + accentWidth + Math.round(12 * scale.scaleX);
   const titleWidth = contentArea.width - (leftPadding * 2) - accentWidth;
+  const titleBaseFontSize = scaleFontSize(42, scale);
+  const titleMinFontSize = scaleFontSize(28, scale);
+  const subtitleBaseFontSize = scaleBodyFontSize(portrait ? 32 : 28, scale, canvasWidth, canvasHeight);
+  const subtitleMinFontSize = scaleBodyFontSize(portrait ? 24 : 20, scale, canvasWidth, canvasHeight);
+  const baseBodyFontSize = scaleBodyFontSize(26, scale, canvasWidth, canvasHeight);
+  const baseEmphasisFontSize = scaleBodyFontSize(30, scale, canvasWidth, canvasHeight);
+  const subtitleLineHeight = thaiText ? (portrait ? 1.36 : 1.3) : (portrait ? 1.2 : 1.16);
+  const titleSizingBase = fitTitleTypography(
+    slideData.title,
+    titleWidth,
+    titleBaseFontSize,
+    titleMinFontSize,
+    portrait ? 3 : 2,
+  );
+  const subtitleSizingBase = subtitle
+    ? fitTitleTypography(
+      subtitle,
+      titleWidth,
+      subtitleBaseFontSize,
+      subtitleMinFontSize,
+      2,
+    )
+    : null;
+  const titleHeightBase = Math.round(
+    titleSizingBase.fontSize * titleLineHeight * titleSizingBase.lineCount + Math.round(8 * scale.scaleY),
+  );
+  const subtitleHeightBase = subtitleSizingBase
+    ? Math.round(subtitleSizingBase.fontSize * subtitleLineHeight * subtitleSizingBase.lineCount + Math.round(4 * scale.scaleY))
+    : 0;
+  const subtitleGap = subtitle ? Math.round(10 * scale.scaleY) : 0;
+  const bodyGap = Math.round(8 * scale.scaleY);
+  const bodyTopBase = titleY + titleHeightBase + subtitleGap + subtitleHeightBase + Math.round(14 * scale.scaleY);
+  const bodyBottomLimit = contentArea.y + topHeight - Math.round(22 * scale.scaleY);
+  const availableBodyHeightBase = Math.max(56, bodyBottomLimit - bodyTopBase);
+  const emphasisGap = emphasisLines.length > 0 ? Math.round((portrait ? 8 : 6) * scale.scaleY) : 0;
+  const emphasisFitBase = emphasisLines.length > 0
+    ? fitBodyRowsToHeight({
+      lines: emphasisLines,
+      width: titleWidth,
+      baseFontSize: baseEmphasisFontSize,
+      minFontSize: portrait ? 16 : 14,
+      maxFontSize: baseEmphasisFontSize,
+      lineHeightRatio: thaiText ? (portrait ? 1.4 : 1.32) : (portrait ? 1.24 : 1.18),
+      gapPx: emphasisGap,
+      availableHeightPx: Math.max(Math.round(36 * scale.scaleY), Math.round(availableBodyHeightBase * 0.35)),
+      maxLinesPerRow: thaiText ? 3 : 2,
+    })
+    : { fontSize: 0, rows: [], totalHeight: 0 };
+  const bodyAvailableHeightBase = Math.max(
+    44,
+    availableBodyHeightBase - emphasisFitBase.totalHeight - (emphasisFitBase.rows.length > 0 ? bodyGap : 0),
+  );
+  const bodyFitBase = fitBodyRowsToHeight({
+    lines: bodyLines,
+    width: titleWidth,
+    baseFontSize: baseBodyFontSize,
+    minFontSize: denseTextMode ? 10 : 12,
+    maxFontSize: baseBodyFontSize,
+    lineHeightRatio: bodyLineHeightRatio,
+    gapPx: bodyGap,
+    availableHeightPx: bodyAvailableHeightBase,
+    maxLinesPerRow: thaiText ? (portrait ? (denseTextMode ? 8 : 6) : 4) : (portrait ? (denseTextMode ? 4 : 3) : 2),
+  });
+  const sparseBoost = computeSparseTypographyBoost(
+    Math.max(Math.round(120 * scale.scaleY), bodyBottomLimit - titleY),
+    titleHeightBase + subtitleGap + subtitleHeightBase + Math.round(14 * scale.scaleY) + emphasisFitBase.totalHeight + (emphasisFitBase.rows.length > 0 ? bodyGap : 0) + bodyFitBase.totalHeight,
+    portrait ? 1.85 : 1.6,
+  );
+  const titleMaxFontSize = Math.max(titleSizingBase.fontSize, Math.round(titleSizingBase.fontSize * sparseBoost));
+  const subtitleMaxFontSize = Math.max(
+    subtitleSizingBase?.fontSize ?? subtitleBaseFontSize,
+    Math.round((subtitleSizingBase?.fontSize ?? subtitleBaseFontSize) * sparseBoost),
+  );
+  const bodyMaxFontSize = Math.max(baseBodyFontSize, Math.round(baseBodyFontSize * sparseBoost));
+  const emphasisMaxFontSize = Math.max(baseEmphasisFontSize, Math.round(baseEmphasisFontSize * sparseBoost));
   const titleSizing = fitTitleTypography(
     slideData.title,
     titleWidth,
-    scaleFontSize(42, scale),
-    scaleFontSize(28, scale),
+    titleBaseFontSize,
+    titleMinFontSize,
     portrait ? 3 : 2,
+    {
+      allowExpansion: true,
+      maxFontSize: titleMaxFontSize,
+    },
   );
   const titleFontSize = titleSizing.fontSize;
   const titleHeight = Math.round(
@@ -1924,17 +2255,19 @@ function buildBottomImageTextTop(ctx: TemplateContext): SlideElement[] {
     ? fitTitleTypography(
       subtitle,
       titleWidth,
-      scaleBodyFontSize(portrait ? 32 : 28, scale, canvasWidth, canvasHeight),
-      scaleBodyFontSize(portrait ? 24 : 20, scale, canvasWidth, canvasHeight),
+      subtitleBaseFontSize,
+      subtitleMinFontSize,
       2,
+      {
+        allowExpansion: true,
+        maxFontSize: subtitleMaxFontSize,
+      },
     )
     : null;
   const subtitleFontSize = subtitleSizing?.fontSize ?? 0;
-  const subtitleLineHeight = thaiText ? (portrait ? 1.36 : 1.3) : (portrait ? 1.2 : 1.16);
   const subtitleHeight = subtitleSizing
     ? Math.round(subtitleFontSize * subtitleLineHeight * subtitleSizing.lineCount + Math.round(4 * scale.scaleY))
     : 0;
-  const subtitleGap = subtitle ? Math.round(10 * scale.scaleY) : 0;
   elements.push(
     makeRectElement({
       x: titleX - Math.round(12 * scale.scaleX),
@@ -1982,22 +2315,20 @@ function buildBottomImageTextTop(ctx: TemplateContext): SlideElement[] {
   }
 
   // Body text — hard-clamp to top-section boundary so rows never overlap
-  const bodyGap = Math.round((denseTextMode ? 6 : 8) * scale.scaleY);
   const bodyTop = titleY + titleHeight + subtitleGap + subtitleHeight + Math.round(14 * scale.scaleY);
-  const bodyBottomLimit = contentArea.y + topHeight - Math.round(22 * scale.scaleY);
   const availableBodyHeight = Math.max(56, bodyBottomLimit - bodyTop);
-  const emphasisGap = emphasisLines.length > 0 ? Math.round((portrait ? 8 : 6) * scale.scaleY) : 0;
   const emphasisFit = emphasisLines.length > 0
     ? fitBodyRowsToHeight({
       lines: emphasisLines,
       width: titleWidth,
-      baseFontSize: scaleBodyFontSize(30, scale, canvasWidth, canvasHeight),
+      baseFontSize: baseEmphasisFontSize,
       minFontSize: portrait ? 16 : 14,
-      maxFontSize: portrait ? 30 : 26,
+      maxFontSize: emphasisMaxFontSize,
       lineHeightRatio: thaiText ? (portrait ? 1.4 : 1.32) : (portrait ? 1.24 : 1.18),
       gapPx: emphasisGap,
       availableHeightPx: Math.max(Math.round(36 * scale.scaleY), Math.round(availableBodyHeight * 0.35)),
       maxLinesPerRow: thaiText ? 3 : 2,
+      allowExpansion: true,
     })
     : { fontSize: 0, rows: [], totalHeight: 0 };
   const bodyAvailableHeight = Math.max(
@@ -2007,13 +2338,14 @@ function buildBottomImageTextTop(ctx: TemplateContext): SlideElement[] {
   const bodyFit = fitBodyRowsToHeight({
     lines: bodyLines,
     width: titleWidth,
-    baseFontSize: scaleBodyFontSize(26, scale, canvasWidth, canvasHeight),
+    baseFontSize: baseBodyFontSize,
     minFontSize: denseTextMode ? 10 : 12,
-    maxFontSize: portrait ? 34 : 24,
+    maxFontSize: bodyMaxFontSize,
     lineHeightRatio: bodyLineHeightRatio,
     gapPx: bodyGap,
     availableHeightPx: bodyAvailableHeight,
     maxLinesPerRow: thaiText ? (portrait ? (denseTextMode ? 8 : 6) : 4) : (portrait ? (denseTextMode ? 4 : 3) : 2),
+    allowExpansion: true,
   });
 
   let bodyY = bodyTop;
@@ -2096,8 +2428,6 @@ function buildBottomImageTextTop(ctx: TemplateContext): SlideElement[] {
 function buildFeatureBoxesRight(ctx: TemplateContext): SlideElement[] {
   const { contentArea, slideData, preset, scale, canvasWidth, canvasHeight } = ctx;
   const elements: SlideElement[] = [];
-  const leftWidth = contentArea.width * 0.55;
-  const rightWidth = contentArea.width * 0.45;
   const portrait = isPortraitCanvas(canvasWidth, canvasHeight);
   const cards = resolveSlideSections(slideData, portrait ? 7 : 8);
   const fallbackCardLines = compactBodyLines(slideData.body, portrait ? 7 : 8);
@@ -2110,8 +2440,105 @@ function buildFeatureBoxesRight(ctx: TemplateContext): SlideElement[] {
   const titleLineHeight = getTitleLineHeight(canvasWidth, canvasHeight, thaiText);
   const bodyLineHeightRatio = getBodyLineHeight(canvasWidth, canvasHeight, thaiText);
   const bodyLetterSpacing = getBodyLetterSpacing(canvasWidth, canvasHeight, thaiText);
+  const totalTextLen = (slideData.title?.length ?? 0)
+    + normalizedCards.reduce((sum, card) => sum + card.heading.length + card.details.join("").length, 0)
+    + (slideData.notes?.length ?? 0);
+  const textRatio = computeSplitTextRatio({
+    totalTextLen,
+    bodyCount: normalizedCards.length,
+    sectionCount: normalizedCards.length,
+    noteChars: slideData.notes?.length ?? 0,
+    portrait,
+  });
+  const rightWidth = Math.round(contentArea.width * textRatio);
+  const leftWidth = contentArea.width - rightWidth;
+  const titleBaseFontSize = scaleFontSize(40, scale);
+  const titleMinFontSize = scaleFontSize(30, scale);
+  const titleWidth = rightWidth - Math.round(60 * scale.scaleX);
+  const titleSizingBase = fitTitleTypography(
+    slideData.title,
+    titleWidth,
+    titleBaseFontSize,
+    titleMinFontSize,
+    portrait ? 4 : 3,
+  );
+  const cardWidth = rightWidth - Math.round(60 * scale.scaleX);
+  const cardGap = Math.round(12 * scale.scaleY);
+  const cardCount = Math.max(1, normalizedCards.length);
+  const titleY = contentArea.y + Math.round(30 * scale.scaleY);
+  const titleHeightBase = estimateTextBlockHeight(
+    titleSizingBase.fontSize,
+    titleLineHeight,
+    titleSizingBase.lineCount,
+    Math.round(2 * scale.scaleY),
+  );
+  const cardTextWidthBase = cardWidth - Math.round(40 * scale.scaleX);
+  const estimatedCardTextHeight = normalizedCards.map((card) => {
+    const headingText = card.heading || "";
+    const detailText = card.details.join(" ");
+    const headingLineCount = headingText
+      ? estimateTextLineCount(
+        headingText,
+        cardTextWidthBase,
+        scaleBodyFontSize(24, scale, canvasWidth, canvasHeight),
+        3,
+      )
+      : 0;
+    const detailLineCount = detailText
+      ? estimateTextLineCount(
+        detailText,
+        cardTextWidthBase,
+        scaleBodyFontSize(20, scale, canvasWidth, canvasHeight),
+        4,
+      )
+      : 0;
+    const headingHeight = headingText
+      ? estimateTextBlockHeight(
+        scaleBodyFontSize(24, scale, canvasWidth, canvasHeight),
+        thaiText ? 1.34 : 1.2,
+        Math.max(1, headingLineCount),
+      )
+      : 0;
+    const detailHeight = detailText
+      ? estimateTextBlockHeight(
+        scaleBodyFontSize(20, scale, canvasWidth, canvasHeight),
+        bodyLineHeightRatio,
+        Math.max(1, detailLineCount),
+      )
+      : 0;
+    return headingHeight + detailHeight + Math.round(20 * scale.scaleY);
+  });
+  const sparseBoost = computeSparseTypographyBoost(
+    Math.max(Math.round(120 * scale.scaleY), contentArea.height - titleY),
+    titleHeightBase + estimatedCardTextHeight.reduce((sum, height) => sum + height, 0),
+    portrait ? 1.7 : 1.5,
+  );
+  const titleMaxFontSize = Math.max(titleSizingBase.fontSize, Math.round(titleSizingBase.fontSize * sparseBoost));
+  const titleSizing = fitTitleTypography(
+    slideData.title,
+    titleWidth,
+    titleBaseFontSize,
+    titleMinFontSize,
+    portrait ? 4 : 3,
+    {
+      allowExpansion: true,
+      maxFontSize: titleMaxFontSize,
+    },
+  );
+  const titleFontSize = titleSizing.fontSize;
+  const titleLineCount = titleSizing.lineCount;
+  const titleHeight = estimateTextBlockHeight(
+    titleFontSize,
+    titleLineHeight,
+    titleLineCount,
+    Math.round(2 * scale.scaleY),
+  );
+  const headingBaseFontSize = scaleBodyFontSize(24, scale, canvasWidth, canvasHeight);
+  const detailBaseFontSize = scaleBodyFontSize(20, scale, canvasWidth, canvasHeight);
+  const headingMaxFontSize = Math.max(headingBaseFontSize, Math.round(headingBaseFontSize * sparseBoost));
+  const detailMaxFontSize = Math.max(detailBaseFontSize, Math.round(detailBaseFontSize * sparseBoost));
 
-  // 1. Left image (~55% width)
+  // 1. Left image (dynamic width based on text density)
   elements.push(
     makeImageOrPlaceholder(
       ctx,
@@ -2142,23 +2569,6 @@ function buildFeatureBoxesRight(ctx: TemplateContext): SlideElement[] {
   );
 
   // 3. Title on right
-  const titleSizing = fitTitleTypography(
-    slideData.title,
-    rightWidth - Math.round(60 * scale.scaleX),
-    scaleFontSize(40, scale),
-    scaleFontSize(30, scale),
-    portrait ? 4 : 3,
-  );
-  const titleFontSize = titleSizing.fontSize;
-  const titleY = contentArea.y + Math.round(30 * scale.scaleY);
-  const titleWidth = rightWidth - Math.round(60 * scale.scaleX);
-  const titleLineCount = titleSizing.lineCount;
-  const titleHeight = estimateTextBlockHeight(
-    titleFontSize,
-    titleLineHeight,
-    titleLineCount,
-    Math.round(2 * scale.scaleY),
-  );
   elements.push(
     makeTextElement({
       x: contentArea.x + leftWidth + Math.round(30 * scale.scaleX),
@@ -2187,9 +2597,6 @@ function buildFeatureBoxesRight(ctx: TemplateContext): SlideElement[] {
   );
 
   // 4. Flexible feature cards based on body line count
-  const cardWidth = rightWidth - Math.round(60 * scale.scaleX);
-  const cardGap = Math.round(12 * scale.scaleY);
-  const cardCount = Math.max(1, normalizedCards.length);
   const cardHeight = Math.max(
     Math.round(80 * scale.scaleY),
     Math.round(
@@ -2222,17 +2629,18 @@ function buildFeatureBoxesRight(ctx: TemplateContext): SlideElement[] {
       const headingLineCount = estimateTextLineCount(
         headingText,
         cardTextWidth,
-        scaleBodyFontSize(24, scale, canvasWidth, canvasHeight),
+        headingBaseFontSize,
         3,
       );
       const headingFontSize = fitBodyFontSizeToHeight({
-        baseFontSize: scaleBodyFontSize(24, scale, canvasWidth, canvasHeight),
+        baseFontSize: headingBaseFontSize,
         minFontSize: portrait ? 18 : 15,
-        maxFontSize: portrait ? 34 : 28,
+        maxFontSize: portrait ? Math.max(34, headingMaxFontSize) : Math.max(28, headingMaxFontSize),
         lineCount: headingLineCount,
         lineHeightRatio: thaiText ? 1.34 : 1.2,
         gapPx: 0,
         availableHeightPx: detailText ? Math.max(26, cardInnerHeight * 0.45) : Math.max(26, cardInnerHeight),
+        allowExpansion: true,
       });
       const headingHeight = Math.max(
         estimateTextBlockHeight(headingFontSize, thaiText ? 1.34 : 1.2, headingLineCount),
@@ -2267,17 +2675,18 @@ function buildFeatureBoxesRight(ctx: TemplateContext): SlideElement[] {
         const detailLineCount = estimateTextLineCount(
           detailText,
           cardTextWidth,
-          scaleBodyFontSize(20, scale, canvasWidth, canvasHeight),
+          detailBaseFontSize,
           4,
         );
         const detailFontSize = fitBodyFontSizeToHeight({
-          baseFontSize: scaleBodyFontSize(20, scale, canvasWidth, canvasHeight),
+          baseFontSize: detailBaseFontSize,
           minFontSize: portrait ? 16 : 13,
-          maxFontSize: portrait ? 28 : 22,
+          maxFontSize: portrait ? Math.max(28, detailMaxFontSize) : Math.max(22, detailMaxFontSize),
           lineCount: detailLineCount,
           lineHeightRatio: bodyLineHeightRatio,
           gapPx: 0,
           availableHeightPx: detailHeight,
+          allowExpansion: true,
         });
         elements.push(
           makeTextElement({

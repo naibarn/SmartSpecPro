@@ -4,7 +4,7 @@ Phase 0 - Critical Gap Fix #3
 """
 
 import os
-from typing import List, Dict
+from typing import Any, Dict
 import structlog
 
 logger = structlog.get_logger()
@@ -19,7 +19,7 @@ class ConfigValidator:
     """Validate configuration on startup"""
     
     @staticmethod
-    def validate_all() -> Dict[str, any]:
+    def validate_all() -> Dict[str, Any]:
         """
         Validate all configuration
         
@@ -29,7 +29,7 @@ class ConfigValidator:
         Raises:
             ConfigurationError: If critical configuration is missing
         """
-        results = {
+        results: Dict[str, Any] = {
             "valid": True,
             "errors": [],
             "warnings": [],
@@ -64,9 +64,9 @@ class ConfigValidator:
         return results
     
     @staticmethod
-    def _validate_llm_providers() -> Dict[str, any]:
+    def _validate_llm_providers() -> Dict[str, Any]:
         """Validate LLM provider configuration"""
-        providers = {
+        providers: Dict[str, Dict[str, Any]] = {
             "openai": {
                 "configured": bool(os.getenv("OPENAI_API_KEY")),
                 "key_valid": os.getenv("OPENAI_API_KEY", "").startswith("sk-") if os.getenv("OPENAI_API_KEY") else False,

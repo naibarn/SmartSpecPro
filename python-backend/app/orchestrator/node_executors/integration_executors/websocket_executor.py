@@ -40,6 +40,8 @@ class WebSocketClientExecutor:
         if not url.startswith(("ws://", "wss://")):
             raise ValueError("URL must use ws:// or wss:// scheme")
 
+        message_text = "" if message is None else str(message)
+
         try:
             import websockets
         except ImportError:
@@ -56,7 +58,7 @@ class WebSocketClientExecutor:
             url, extra_headers=headers, max_size=self.MAX_MESSAGE_SIZE
         ) as ws:
             if mode == "send":
-                await ws.send(message)
+                await ws.send(message_text)
                 return {
                     "success": True,
                     "sent_at": datetime.now(timezone.utc).isoformat(),
@@ -77,12 +79,12 @@ class WebSocketClientExecutor:
                     }
 
             elif mode == "request_reply":
-                await ws.send(message)
+                await ws.send(message_text)
                 try:
                     reply = await asyncio.wait_for(ws.recv(), timeout=timeout)
                     return {
                         "success": True,
-                        "sent": message,
+                        "sent": message_text,
                         "reply": reply,
                         "received_at": datetime.now(timezone.utc).isoformat(),
                     }

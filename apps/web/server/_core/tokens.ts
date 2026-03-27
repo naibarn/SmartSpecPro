@@ -17,6 +17,7 @@ const JWT_SECRET: string = jwtSecretEnv;
  */
 export interface TokenClaims {
   sub: string;
+  tenantId?: string;
   type?: string; // "access" or "refresh" - required by Python backend
   scopes?: string[];
   jti?: string;
@@ -33,6 +34,21 @@ export interface TokenClaims {
 export async function verifyBearerToken(token: string): Promise<TokenClaims> {
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as TokenClaims;
+    return decoded;
+  } catch (error: any) {
+    throw new Error(`Invalid token: ${error.message}`);
+  }
+}
+
+/**
+ * Verify a bearer JWT token while ignoring expiration.
+ *
+ * Used only for token renewal flows where the signature still matters but the
+ * token may have aged out.
+ */
+export async function verifyBearerTokenIgnoringExpiration(token: string): Promise<TokenClaims> {
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET, { ignoreExpiration: true }) as TokenClaims;
     return decoded;
   } catch (error: any) {
     throw new Error(`Invalid token: ${error.message}`);

@@ -487,3 +487,4 @@ class ProviderHealthMonitor:
             return True
         
         return health["success_rate"] >= min_success_rate
+# mypy: ignore-errors

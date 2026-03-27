@@ -76,6 +76,8 @@ from .sandbox import (
 )
 
 # Agency-Swarm multi-agent orchestration
+from .agency_agent_memories import AgencyAgentMemory, MemoryType as AgencyMemoryType
+from .agency_memory_chunks import AgencyMemoryChunk
 from .agency import AgencyMessage, AgencyRun, AgencyRunStatus
 from .live_browser import (
     LiveBrowserAssistRequest,
@@ -168,6 +170,9 @@ __all__ = [
     "AgencyMessage",
     "AgencyRun",
     "AgencyRunStatus",
+    "AgencyAgentMemory",
+    "AgencyMemoryType",
+    "AgencyMemoryChunk",
     # Live Browser
     "LiveBrowserSession",
     "LiveBrowserEvent",

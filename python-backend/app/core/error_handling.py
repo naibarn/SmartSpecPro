@@ -70,7 +70,7 @@ def retry_with_exponential_backoff(
         @functools.wraps(func)
         async def async_wrapper(*args, **kwargs) -> Any:
             delay = initial_delay
-            last_exception = None
+            last_exception: BaseException | None = None
             
             for attempt in range(max_retries + 1):
                 try:
@@ -115,12 +115,14 @@ def retry_with_exponential_backoff(
                     raise
             
             # Should never reach here
-            raise last_exception
+            if last_exception is not None:
+                raise last_exception
+            raise RuntimeError("retry loop exited without capturing an exception")
         
         @functools.wraps(func)
         def sync_wrapper(*args, **kwargs) -> Any:
             delay = initial_delay
-            last_exception = None
+            last_exception: BaseException | None = None
             
             for attempt in range(max_retries + 1):
                 try:
@@ -162,7 +164,9 @@ def retry_with_exponential_backoff(
                     )
                     raise
             
-            raise last_exception
+            if last_exception is not None:
+                raise last_exception
+            raise RuntimeError("retry loop exited without capturing an exception")
         
         # Return appropriate wrapper based on function type
         if asyncio.iscoroutinefunction(func):
@@ -291,7 +295,7 @@ class ErrorContext:
     
     def __init__(self, operation: str):
         self.operation = operation
-        self.cleanup_functions = []
+        self.cleanup_functions: list[Callable[..., Any]] = []
     
     def add_cleanup(self, cleanup_func: Callable):
         """Add cleanup function to be called on error"""

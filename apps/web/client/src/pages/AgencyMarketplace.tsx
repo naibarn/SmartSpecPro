@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { useTranslation } from "react-i18next";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import {
@@ -18,11 +17,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AgencyMarketplaceCard } from "@/components/agency/AgencyMarketplaceCard";
 import { AgencyMarketplaceDrawer } from "@/components/agency/AgencyMarketplaceDrawer";
+import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 
 const PAGE_SIZE = 24;
 
 export default function AgencyMarketplace() {
-  const { t } = useTranslation("agency");
+  const { t } = useScopedTranslation("agency");
   const [, setLocation] = useLocation();
   const { isAuthenticated } = useAuth();
 

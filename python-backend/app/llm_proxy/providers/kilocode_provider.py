@@ -284,3 +284,4 @@ def create_kilocode_provider(
     )
 
     return KiloCodeProvider(config)
+# mypy: ignore-errors

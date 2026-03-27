@@ -43,6 +43,7 @@ import {
   getVersionSnapshotDownloadUrl,
   updateLibraryItem,
 } from "../services/libraryService";
+import { exportMarkdownArtifact as generateMarkdownExportArtifact } from "../services/markdownExport";
 import { eq } from "drizzle-orm";
 import { users } from "../../drizzle/schema";
 
@@ -427,6 +428,46 @@ export const libraryRouter = router({
       }
 
       return result;
+    }),
+
+  exportMarkdownArtifact: protectedProcedure
+    .input(
+      z.object({
+        markdown: z.string().max(5_000_000),
+        title: z.string().max(255).optional(),
+        format: z.enum(["html", "txt", "docx", "pdf"]),
+      }),
+    )
+    .mutation(async ({ input, ctx }) => {
+      const tenantIdResolved = await resolveLibraryTenantId(ctx);
+      assertLibraryEnabled(tenantIdResolved);
+      await createLibraryActor(ctx, tenantIdResolved);
+
+      const artifact = await generateMarkdownExportArtifact({
+        markdown: input.markdown,
+        title: input.title,
+        format: input.format,
+      });
+
+      auditLogger.log({
+        eventType: "library_mutation",
+        userId: ctx.user.id,
+        endpoint: "library.exportMarkdownArtifact",
+        requestType: "mutation",
+        requestPayload: {
+          tenantId: tenantIdResolved,
+          format: input.format,
+          title: input.title,
+          markdownLength: input.markdown.length,
+        },
+        responsePayload: {
+          fileName: artifact.fileName,
+          mimeType: artifact.mimeType,
+          dataBase64Length: artifact.dataBase64.length,
+        },
+      });
+
+      return artifact;
     }),
 
   saveMarkdown: protectedProcedure

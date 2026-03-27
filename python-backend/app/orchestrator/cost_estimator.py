@@ -29,7 +29,7 @@ class CostEstimator:
         "default": 0.01,
     }
 
-    def estimate(self, workflow_json: dict) -> dict[str, float]:
+    def estimate(self, workflow_json: dict) -> dict[str, float | dict[str, float]]:
         """
         Estimate total cost for workflow execution.
 

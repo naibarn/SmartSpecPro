@@ -19,7 +19,7 @@ vi.mock("i18next", () => ({
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (key: string) => key,
-    i18n: { language: "en", changeLanguage: mockChangeLanguage },
+    i18n: { language: "en", changeLanguage: mockChangeLanguage, exists: vi.fn(() => true) },
   }),
 }));
 

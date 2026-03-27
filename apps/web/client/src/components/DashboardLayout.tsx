@@ -1,5 +1,4 @@
 import { useAuth } from "@/_core/hooks/useAuth";
-import { useTranslation } from 'react-i18next';
 import { useTenant } from "@/contexts/TenantContext";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -28,6 +27,7 @@ import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
+import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 
 const menuItems = [
   { icon: LayoutDashboard, label: "Page 1", path: "/" },
@@ -49,7 +49,7 @@ export default function DashboardLayout({
     return saved ? parseInt(saved, 10) : DEFAULT_WIDTH;
   });
   const { loading, user } = useAuth();
-  const { t } = useTranslation('nav');
+  const { t } = useScopedTranslation('nav');
   const { isLoading: tenantLoading } = useTenant();
 
   useEffect(() => {

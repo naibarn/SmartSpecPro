@@ -1,6 +1,5 @@
 import { useState } from "react";
 import {
-  Globe,
   HelpCircle,
   MonitorPlay,
   ShieldCheck,
@@ -15,8 +14,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useI18n, AVAILABLE_LOCALES, LOCALE_LABELS } from "@/lib/i18n";
-import type { Locale } from "@/lib/i18n";
+import { LocaleToggle } from "@/components/LocaleToggle";
+import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 
 interface BrowserSessionHelpDialogProps {
   buttonClassName?: string;
@@ -32,7 +31,7 @@ export function BrowserSessionHelpDialog({
   buttonVariant = "outline",
 }: BrowserSessionHelpDialogProps) {
   const [open, setOpen] = useState(false);
-  const { t, locale, setLocale } = useI18n();
+  const { t } = useScopedTranslation('help');
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -53,23 +52,7 @@ export function BrowserSessionHelpDialog({
               <MonitorPlay className="h-5 w-5 text-cyan-700" />
               {t("bsHelp.title")}
             </DialogTitle>
-
-            {/* ── Language toggle ── */}
-            <div className="flex items-center gap-1 shrink-0">
-              <Globe className="h-3.5 w-3.5 text-slate-400" />
-              {AVAILABLE_LOCALES.map((loc: Locale) => (
-                <Button
-                  key={loc}
-                  type="button"
-                  variant={locale === loc ? "default" : "outline"}
-                  size="sm"
-                  className="h-7 px-2.5 text-xs"
-                  onClick={() => setLocale(loc)}
-                >
-                  {LOCALE_LABELS[loc]}
-                </Button>
-              ))}
-            </div>
+            <LocaleToggle />
           </div>
           <DialogDescription>{t("bsHelp.description")}</DialogDescription>
         </DialogHeader>

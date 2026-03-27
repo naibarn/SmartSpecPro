@@ -4,10 +4,10 @@ import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { trpc } from "../lib/trpc";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { getModelGenerationModeLabel } from "@/lib/mediaModelInputs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -45,6 +45,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { DashboardCard, DashboardKpiCard } from "@/components/dashboard";
 import {
   Plus,
   Pencil,
@@ -136,7 +137,7 @@ const SEARCH_DEBOUNCE_MS = 900;
 const MIN_SEARCH_LENGTH = 2;
 
 type InputFieldType = "select" | "text" | "number" | "boolean" | "image_urls" | "video_urls" | "audio_urls" | "array" | "library_file";
-type SyncTarget = "none" | "reference_images" | "prompt" | "aspect_ratio";
+type SyncTarget = "none" | "reference_images" | "reference_videos" | "prompt" | "aspect_ratio";
 type MediaOperationType = "t2i" | "i2i" | "t2v" | "i2v" | "v2v" | "upscale" | "t2m" | "s2t" | "t2s" | "a2a" | "chat" | "other";
 
 interface InputFieldOptionDraft {
@@ -212,6 +213,7 @@ const MEDIA_OPERATION_OPTIONS: Array<{ value: MediaOperationType; label: string 
 const SYNC_TARGET_OPTIONS: Array<{ value: SyncTarget; label: string }> = [
   { value: "none", label: "No Sync" },
   { value: "reference_images", label: "Reference Images" },
+  { value: "reference_videos", label: "Reference Videos" },
   { value: "prompt", label: "Prompt" },
   { value: "aspect_ratio", label: "Aspect Ratio" },
 ];
@@ -756,7 +758,9 @@ function inferOperationTypeFromModel(model: Pick<MediaModel, "modelType" | "mode
       && ((config as any).inputFields as Array<any>).some((field) => String(field?.type || "").toLowerCase() === "image_urls");
     const hasVideoInput = Array.isArray((config as any).inputFields)
       && ((config as any).inputFields as Array<any>).some((field) => String(field?.type || "").toLowerCase() === "video_urls");
-    if (hasVideoInput) {
+    const hasReferenceVideoSync = Array.isArray((config as any).inputFields)
+      && ((config as any).inputFields as Array<any>).some((field) => String(field?.syncWith || "").toLowerCase() === "reference_videos");
+    if (hasVideoInput || hasReferenceVideoSync) {
       return "v2v";
     }
     if (hasImageInput) {
@@ -1325,6 +1329,19 @@ export default function AdminMediaModels() {
     }
   };
 
+  const getGenerationModeBadgeColor = (label: string) => {
+    switch (label) {
+      case "Video to Video":
+        return "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300";
+      case "Text to Video":
+        return "border-sky-300 bg-sky-50 text-sky-700 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-300";
+      case "Image to Video":
+        return "border-violet-300 bg-violet-50 text-violet-700 dark:border-violet-800 dark:bg-violet-950/40 dark:text-violet-300";
+      default:
+        return "border-slate-300 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-300";
+    }
+  };
+
   if (authLoading || isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -1380,76 +1397,23 @@ export default function AdminMediaModels() {
       {/* Stats Cards */}
       {stats && (
         <div className="grid gap-4 md:grid-cols-6 mb-8">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Models</CardTitle>
-              <Layers className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.total}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Enabled</CardTitle>
-              <CheckCircle2 className="h-4 w-4 text-green-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.enabled}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Image</CardTitle>
-              <Image className="h-4 w-4 text-blue-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.byType.image}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Video</CardTitle>
-              <Video className="h-4 w-4 text-blue-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.byType.video}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Audio</CardTitle>
-              <Music className="h-4 w-4 text-green-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.byType.audio}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Provider Unavailable</CardTitle>
-              <AlertTriangle className="h-4 w-4 text-amber-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.unavailable}</div>
-            </CardContent>
-          </Card>
+          <DashboardKpiCard icon={Layers} label="Total Models" value={stats.total} />
+          <DashboardKpiCard icon={CheckCircle2} label="Enabled" value={stats.enabled} />
+          <DashboardKpiCard icon={Image} label="Image" value={stats.byType.image} />
+          <DashboardKpiCard icon={Video} label="Video" value={stats.byType.video} />
+          <DashboardKpiCard icon={Music} label="Audio" value={stats.byType.audio} />
+          <DashboardKpiCard icon={AlertTriangle} label="Provider Unavailable" value={stats.unavailable} />
         </div>
       )}
 
       {/* Runtime Counters */}
-      <Card className="mb-6">
-        <CardHeader>
+      <DashboardCard
+        className="mb-6"
+        title="Runtime Counter Observability"
+        description="Live counters for DB default selection and fallback behavior (auto-refresh every 5 seconds)"
+        leading={<Activity className="h-5 w-5 text-emerald-600" />}
+        trailing={
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <Activity className="h-5 w-5 text-emerald-600" />
-                Runtime Counter Observability
-              </CardTitle>
-              <CardDescription>
-                Live counters for DB default selection and fallback behavior (auto-refresh every 5 seconds)
-              </CardDescription>
-            </div>
             <div className="flex items-center gap-2">
               <Button
                 type="button"
@@ -1473,8 +1437,9 @@ export default function AdminMediaModels() {
               </Button>
             </div>
           </div>
-        </CardHeader>
-        <CardContent>
+        }
+      >
+        <div className="space-y-4">
           {!runtimeCounters ? (
             <div className="text-sm text-muted-foreground">Loading runtime counters...</div>
           ) : (
@@ -1484,11 +1449,11 @@ export default function AdminMediaModels() {
                 <span className="font-semibold text-amber-600">{runtimeCounters.fallbackTotal}</span>
               </div>
               <div className="grid gap-4 md:grid-cols-3">
-                <Card className="border-emerald-200">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm">Default Resolution</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-1 text-sm">
+                <DashboardCard
+                  className="border-emerald-200"
+                  title="Default Resolution"
+                >
+                  <div className="space-y-1 text-sm">
                     <div className="flex justify-between">
                       <span>defaultFromDb</span>
                       <span className="font-semibold">{runtimeCounters.mediaLookup.defaultFromDb}</span>
@@ -1501,13 +1466,13 @@ export default function AdminMediaModels() {
                       <span>unknownModelRejected</span>
                       <span className="font-semibold">{runtimeCounters.mediaLookup.unknownModelRejected}</span>
                     </div>
-                  </CardContent>
-                </Card>
-                <Card className="border-blue-200">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm">DB Lookup Fallback</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-1 text-sm">
+                  </div>
+                </DashboardCard>
+                <DashboardCard
+                  className="border-blue-200"
+                  title="DB Lookup Fallback"
+                >
+                  <div className="space-y-1 text-sm">
                     <div className="flex justify-between">
                       <span>pricingDbMissFallback</span>
                       <span className="font-semibold text-amber-600">{runtimeCounters.mediaLookup.pricingDbMissFallback}</span>
@@ -1520,13 +1485,13 @@ export default function AdminMediaModels() {
                       <span>providerDefaultFallback</span>
                       <span className="font-semibold text-amber-600">{runtimeCounters.mediaResolution.providerDefaultFallback}</span>
                     </div>
-                  </CardContent>
-                </Card>
-                <Card className="border-teal-200">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm">Provider & Registry</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-1 text-sm">
+                  </div>
+                </DashboardCard>
+                <DashboardCard
+                  className="border-teal-200"
+                  title="Provider & Registry"
+                >
+                  <div className="space-y-1 text-sm">
                     <div className="flex justify-between">
                       <span>providerFromApiConfig</span>
                       <span className="font-semibold">{runtimeCounters.mediaResolution.providerFromApiConfig}</span>
@@ -1547,17 +1512,17 @@ export default function AdminMediaModels() {
                       <span>registry.cacheHits</span>
                       <span className="font-semibold">{runtimeCounters.modelRegistry.cacheHits}</span>
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </DashboardCard>
               </div>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </DashboardCard>
 
       {/* Filters */}
-      <Card className="mb-6">
-        <CardContent className="pt-6">
+      <DashboardCard className="mb-6" title="Filters" description="Search and narrow the configured model catalog">
+        <div className="space-y-4">
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -1598,19 +1563,15 @@ export default function AdminMediaModels() {
               </SelectContent>
             </Select>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </DashboardCard>
 
       {/* Models List */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Configured Models</CardTitle>
-          <CardDescription>
-            These models are available for image, video, and audio generation skills. Users can
-            specify model names in their prompts (e.g., "generate image with flux 2.0").
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+      <DashboardCard
+        title="Configured Models"
+        description='These models are available for image, video, and audio generation skills. Users can specify model names in their prompts (e.g., "generate image with flux 2.0").'
+      >
+        <div className="space-y-4">
           {visibleModels.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <Sparkles className="h-12 w-12 mx-auto mb-4 opacity-50" />
@@ -1638,7 +1599,9 @@ export default function AdminMediaModels() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {visibleModels.map((model: any, index: number) => (
+                {visibleModels.map((model: any, index: number) => {
+                  const generationModeLabel = getModelGenerationModeLabel(model);
+                  return (
                   <TableRow key={model.id}>
                     <TableCell className="font-mono text-muted-foreground">
                       {index + 1}
@@ -1649,7 +1612,17 @@ export default function AdminMediaModels() {
                           {getModelTypeIcon(model.modelType)}
                         </div>
                         <div>
-                          <div className="font-medium">{model.name}</div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <div className="font-medium">{model.name}</div>
+                            {generationModeLabel && (
+                              <Badge
+                                variant="outline"
+                                className={`text-[10px] px-1.5 py-0 ${getGenerationModeBadgeColor(generationModeLabel)}`}
+                              >
+                                {generationModeLabel}
+                              </Badge>
+                            )}
+                          </div>
                           <div className="text-xs text-muted-foreground font-mono">
                             {model.modelId}
                           </div>
@@ -1774,12 +1747,13 @@ export default function AdminMediaModels() {
                       </div>
                     </TableCell>
                   </TableRow>
-                ))}
+                  );
+                })}
               </TableBody>
             </Table>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </DashboardCard>
 
       {/* Create Model Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
@@ -1818,7 +1792,17 @@ export default function AdminMediaModels() {
       <Dialog open={!!editingModel} onOpenChange={(open) => !open && setEditingModel(null)}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Edit Model - {editingModel?.name}</DialogTitle>
+            <DialogTitle className="flex flex-wrap items-center gap-2">
+              <span>Edit Model - {editingModel?.name}</span>
+              {editingModel && getModelGenerationModeLabel(editingModel) && (
+                <Badge
+                  variant="outline"
+                  className={`text-[10px] px-1.5 py-0 ${getGenerationModeBadgeColor(getModelGenerationModeLabel(editingModel)!)}`}
+                >
+                  {getModelGenerationModeLabel(editingModel)}
+                </Badge>
+              )}
+            </DialogTitle>
             <DialogDescription>Update model configuration and aliases</DialogDescription>
           </DialogHeader>
 
@@ -1882,6 +1866,13 @@ function ModelForm({
   const [dragOverFieldId, setDragOverFieldId] = useState<string | null>(null);
   const [bulkOptionsByField, setBulkOptionsByField] = useState<Record<string, string>>({});
   const previewFieldOptionsMutation = trpc.mediaModels.previewFieldOptions.useMutation();
+  const formGenerationModeLabel = useMemo(() => {
+    const previewConfig = {
+      generateType: formData.generateType || undefined,
+      inputFields: serializeInputFieldDrafts(formData.inputFieldDrafts).fields,
+    };
+    return getModelGenerationModeLabel({ configJson: previewConfig });
+  }, [formData.generateType, formData.inputFieldDrafts]);
 
   const applyApiConfigPreset = () => {
     if (selectedPresetId === "none") {
@@ -2414,19 +2405,16 @@ function ModelForm({
             </p>
           </div>
 
-          <Card className="bg-muted/50">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm">Example Usage</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-muted-foreground">
+          <DashboardCard className="bg-muted/50" title="Example Usage">
+            <div className="text-sm text-muted-foreground">
               <p className="mb-2">With these aliases, users can say:</p>
               <ul className="list-disc list-inside space-y-1">
                 <li>"Generate image of a cat with <strong>nano banana pro</strong>"</li>
                 <li>"Create a video using <strong>veo 3</strong>"</li>
                 <li>"Create an image with <strong>flux 2.0</strong>"</li>
               </ul>
-            </CardContent>
-          </Card>
+            </div>
+          </DashboardCard>
         </div>
       </TabsContent>
 
@@ -2578,7 +2566,14 @@ function ModelForm({
               </p>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="generateType">Generate Type</Label>
+              <div className="flex items-center justify-between gap-2">
+                <Label htmlFor="generateType">Generate Type</Label>
+                {formGenerationModeLabel && (
+                  <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                    {formGenerationModeLabel}
+                  </Badge>
+                )}
+              </div>
               <Input
                 id="generateType"
                 value={formData.generateType}
@@ -3240,14 +3235,8 @@ function ModelForm({
             </p>
           </div>
 
-          <Card className="bg-slate-50">
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-sm">
-                <Code className="h-4 w-4" />
-                Generated JSON Preview (read-only)
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
+          <DashboardCard className="bg-slate-50" title="Generated JSON Preview (read-only)" leading={<Code className="h-4 w-4 text-slate-500" />}>
+            <div className="space-y-3">
               <div className="grid gap-1">
                 <Label className="text-xs text-muted-foreground">pricingTiers</Label>
                 <Textarea value={pricingTierPreview} readOnly rows={4} className="font-mono text-xs bg-white" />
@@ -3256,8 +3245,8 @@ function ModelForm({
                 <Label className="text-xs text-muted-foreground">inputFields</Label>
                 <Textarea value={inputFieldPreview} readOnly rows={8} className="font-mono text-xs bg-white" />
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </DashboardCard>
         </div>
       </TabsContent>
     </Tabs>

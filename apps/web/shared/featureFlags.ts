@@ -2,7 +2,8 @@
  * Tenant-scoped feature flags for gating Claw features.
  *
  * Stored in tenants.featureFlags (JSON column).
- * All flags default to true — features are enabled by default.
+ * Most flags default to true — features are enabled by default unless
+ * explicitly gated off for rollout or safety.
  */
 export interface TenantFeatureFlags {
   multiChannel: boolean; // F01 — Multi-channel adapters
@@ -47,6 +48,7 @@ export interface TenantFeatureFlags {
   mcpServerRegistry: boolean; // F40 — MCP Server Registry (centralized management)
   mcpStdio: boolean; // F41 — MCP stdio transport (subprocess-based servers)
   mcpOAuth: boolean; // F42 — MCP OAuth 2.1 authentication
+  UPLOAD_POST_GATEWAY_ENABLED: boolean; // F43 — Upload-Post Universal Gateway
 }
 
 export type TenantFeatureFlagKey = keyof TenantFeatureFlags;
@@ -98,6 +100,7 @@ export const ALLOWED_FEATURE_FLAGS: ReadonlySet<string> = new Set<TenantFeatureF
   "mcpServerRegistry",
   "mcpStdio",
   "mcpOAuth",
+  "UPLOAD_POST_GATEWAY_ENABLED",
 ]);
 
 /**
@@ -148,4 +151,5 @@ export const FEATURE_FLAG_DEFAULTS: Readonly<TenantFeatureFlags> = {
   mcpServerRegistry: true,
   mcpStdio: false,  // Requires OpenSandbox — keep disabled by default
   mcpOAuth: false,  // Requires Express callback route — keep disabled until wired
+  UPLOAD_POST_GATEWAY_ENABLED: false, // Requires Upload-Post connection + consent flow
 };

@@ -357,7 +357,7 @@ export async function deliverWebhook(
               priority: "high",
               relatedResourceType: "system_health",
               relatedResourceId: String(webhookId),
-              actionUrl: "/settings/notifications",
+              actionUrl: "/settings?tab=notifications",
               actionLabel: "Manage Webhooks",
               groupKey: `webhook_disabled_${webhookId}`,
             });

@@ -68,6 +68,7 @@ async function getOrCreateAgencyApiConversation(
     id,
     agencyId,
     userId: auth.userId,
+    tenantId: auth.tenantId,
     title: "API Conversation",
     source: "api",
     apiKeyId: auth.apiKeyId,

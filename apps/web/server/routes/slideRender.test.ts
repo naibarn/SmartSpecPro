@@ -74,6 +74,116 @@ function makeSlide(index: number) {
   };
 }
 
+function makeVisualRegressionSlide() {
+  return {
+    ...makeSlide(SLIDE_INDEX),
+    slideContent: {
+      canvas: { width: 960, height: 1200 },
+      background: { type: "color", value: "#f4f7f2" },
+      elements: [
+        {
+          id: "title-block",
+          type: "text",
+          x: 72,
+          y: 84,
+          width: 720,
+          height: 116,
+          text: "พัฒนาการเด็กหนึ่งขวบกับการฝึกเดิน",
+          color: "#1f4d41",
+          fontSize: 52,
+          fontWeight: "700",
+          lineHeight: 1.08,
+          textAlign: "left",
+        },
+        {
+          id: "body-block",
+          type: "text",
+          x: 72,
+          y: 224,
+          width: 732,
+          height: 286,
+          text: "• จับมือเดินได้ไม่เกร็ง\n• ชอบยืนเกาะโต๊ะ\n• เริ่มก้าวเองเป็นช่วงสั้น ๆ",
+          color: "#557a70",
+          fontSize: 28,
+          fontWeight: "600",
+          lineHeight: 1.28,
+          textAlign: "left",
+        },
+        {
+          id: "hero-visual",
+          type: "image",
+          x: 72,
+          y: 548,
+          width: 816,
+          height: 508,
+          svgContent:
+            "<svg viewBox='0 0 816 508' xmlns='http://www.w3.org/2000/svg'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0%' stop-color='#fce7c3'/><stop offset='100%' stop-color='#d6b58a'/></linearGradient></defs><rect width='816' height='508' rx='28' fill='url(#g)' /><circle cx='612' cy='146' r='88' fill='#f3d8b3' opacity='0.95'/><rect x='146' y='242' width='466' height='122' rx='20' fill='#fff7ed' opacity='0.92'/></svg>",
+          svgColor: "#f59e0b",
+          mediaShape: "rounded",
+          mediaCornerRadius: 28,
+        },
+      ],
+    },
+    audioTrack: null,
+    version: 1,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+}
+
+function serializeVisualRegressionFingerprint(dom: JSDOM) {
+  const canvas = dom.window.document.getElementById("slide-canvas") as HTMLDivElement | null;
+  if (!canvas) {
+    throw new Error("slide canvas missing in rendered HTML");
+  }
+
+  return {
+    canvas: {
+      width: canvas.style.width,
+      height: canvas.style.height,
+      transform: canvas.style.transform,
+      childCount: canvas.children.length,
+    },
+    elements: Array.from(canvas.children).map((child) => {
+      const node = child as HTMLElement;
+      const textNode = node.querySelector("p") as HTMLParagraphElement | null;
+      const mediaNode = node.querySelector("[data-slide-media-id]") as HTMLElement | null;
+      return {
+        tag: node.tagName.toLowerCase(),
+        mediaId: node.getAttribute("data-slide-media-id") ?? mediaNode?.getAttribute("data-slide-media-id") ?? null,
+        left: node.style.left,
+        top: node.style.top,
+        width: node.style.width,
+        height: node.style.height,
+        overflow: node.style.overflow || null,
+        borderRadius: node.style.borderRadius || null,
+        clipPath: node.style.clipPath || null,
+        background: node.style.background || null,
+        transform: node.style.transform || null,
+        text: textNode?.textContent ?? null,
+        textStyle: textNode
+          ? {
+              fontSize: textNode.style.fontSize,
+              lineHeight: textNode.style.lineHeight,
+              color: textNode.style.color,
+              fontFamily: textNode.style.fontFamily,
+              fontWeight: textNode.style.fontWeight,
+              textAlign: textNode.style.textAlign,
+            }
+          : null,
+        mediaStyle: mediaNode
+          ? {
+              width: mediaNode.style.width,
+              height: mediaNode.style.height,
+              color: mediaNode.style.color || null,
+              objectFit: (mediaNode as HTMLImageElement).style.objectFit || null,
+            }
+          : null,
+      };
+    }),
+  };
+}
+
 function buildApp(remoteAddress: string = "127.0.0.1") {
   const app = express();
   // Simulate a specific remote address by patching socket before route
@@ -580,6 +690,33 @@ describe("GET /internal/slide-render/:deckId/:slideIndex", () => {
     const translateMatch = imageNode?.style.transform.match(/translate\(([-0-9.]+)%\,\s*0%\)/);
     expect(translateMatch).not.toBeNull();
     expect(Number(translateMatch?.[1] ?? "0")).toBeLessThan(-5.5);
+  });
+
+  it("keeps a stable layout fingerprint for a representative export slide", async () => {
+    dbMocks.getDb.mockResolvedValue(dbMocks.makeChain([
+      makeSlide(0),
+      makeSlide(1),
+      makeVisualRegressionSlide(),
+      makeSlide(3),
+    ]));
+
+    const app = await buildApp();
+    const token = makeValidToken();
+    const res = await request(app)
+      .get(`/internal/slide-render/${DECK_ID}/${SLIDE_INDEX}`)
+      .set("X-Internal-Token", token);
+
+    const dom = new JSDOM(res.text, {
+      url: `http://127.0.0.1/internal/slide-render/${DECK_ID}/${SLIDE_INDEX}`,
+      runScripts: "dangerously",
+      beforeParse(window) {
+        window.requestAnimationFrame = ((_: FrameRequestCallback) => 1) as typeof window.requestAnimationFrame;
+        window.cancelAnimationFrame = vi.fn() as any;
+      },
+    });
+
+    const fingerprint = serializeVisualRegressionFingerprint(dom);
+    expect(fingerprint).toMatchSnapshot();
   });
 
   it("HTML response includes svg validation and bounded placeholder fallback paths", async () => {

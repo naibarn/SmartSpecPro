@@ -20,6 +20,9 @@ interface TenantPageData {
   metadata?: {
     description?: string;
     keywords?: string[];
+    author?: string;
+    ogImage?: string;
+    customMeta?: Record<string, string>;
   };
   isPublished: boolean;
 }

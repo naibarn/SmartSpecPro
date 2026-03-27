@@ -84,6 +84,66 @@ function mergeApiConfigObject(apiConfig: Record<string, string>, value: unknown)
   }
 }
 
+function addReferenceImageInputMetadata(
+  apiConfig: Record<string, string>,
+  configJson?: Record<string, unknown>,
+): void {
+  if (!configJson || typeof configJson !== "object") {
+    return;
+  }
+
+  const inputFields = Array.isArray(configJson.inputFields) ? configJson.inputFields : [];
+  for (const rawField of inputFields) {
+    if (!rawField || typeof rawField !== "object") {
+      continue;
+    }
+    const field = rawField as Record<string, unknown>;
+    const rawKey = typeof field.key === "string" ? field.key.trim() : "";
+    if (!rawKey) {
+      continue;
+    }
+
+    const normalizedKey = rawKey.replace(/[^a-z0-9]/gi, "").toLowerCase();
+    const inferredLabel = normalizedKey.includes("video")
+      ? "Reference Videos"
+      : normalizedKey.includes("audio")
+        ? "Reference Audio"
+        : "Reference Images";
+    const rawSyncWith = typeof field.syncWith === "string" ? field.syncWith.trim() : "";
+    const rawLabel = typeof field.label === "string" ? field.label.trim() : "";
+    const isReferenceImageField = (
+      rawSyncWith === "reference_images"
+      || normalizedKey === "imageinput"
+      || normalizedKey === "referenceimages"
+      || normalizedKey.includes("referenceimage")
+      || normalizedKey.includes("imageurl")
+    );
+    if (!isReferenceImageField) {
+      continue;
+    }
+
+    const rawType = typeof field.type === "string" ? field.type.trim().toLowerCase() : "";
+    const referenceImageType = (
+      rawType === "array"
+      || rawType === "image_urls"
+      || rawType === "video_urls"
+      || rawType === "audio_urls"
+    ) ? "array" : (
+      rawType === "url"
+      || rawType === "text"
+      || rawType === "string"
+    ) ? "url" : null;
+    if (!referenceImageType) {
+      continue;
+    }
+
+    apiConfig.reference_image_input_key = rawKey;
+    apiConfig.reference_image_input_label = rawLabel || inferredLabel;
+    apiConfig.reference_image_input_type = referenceImageType;
+    break;
+  }
+}
+
 function buildMediaApiConfig(configJson?: Record<string, unknown>): Record<string, string> {
   const apiConfig: Record<string, string> = {};
   if (!configJson || typeof configJson !== "object") {
@@ -94,6 +154,7 @@ function buildMediaApiConfig(configJson?: Record<string, unknown>): Record<strin
   setApiConfigValue(apiConfig, "payload_format", configJson.apiPayloadFormat);
   setApiConfigValue(apiConfig, "kie_model_id", configJson.kieModelId);
   mergeApiConfigObject(apiConfig, configJson.apiConfig);
+  addReferenceImageInputMetadata(apiConfig, configJson);
   return apiConfig;
 }
 

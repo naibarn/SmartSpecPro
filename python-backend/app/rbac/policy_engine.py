@@ -77,7 +77,7 @@ class PolicyCondition:
     def _get_field_value(self, path: str, context: Dict[str, Any]) -> Any:
         """Get value from context using dot notation path."""
         parts = path.split(".")
-        value = context
+        value: Any = context
         
         for part in parts:
             if isinstance(value, dict):

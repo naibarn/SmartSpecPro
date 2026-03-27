@@ -15,6 +15,18 @@ function requireTenantId(ctx: { tenantId: string | null; user?: { currentTenantI
 }
 
 export const scopedMemoryRouter = router({
+  list: protectedProcedure
+    .input(z.object({ limit: z.number().int().min(1).max(200).optional() }).optional())
+    .query(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx);
+      return memoryService.listMemories(
+        tenantId,
+        "user",
+        String(ctx.user!.id),
+        input?.limit ?? 50,
+      );
+    }),
+
   create: protectedProcedure
     .input(z.object({
       ownerType: z.enum(["user", "agent", "team", "room", "project", "run"]),
@@ -87,6 +99,16 @@ export const scopedMemoryRouter = router({
       const deleted = await memoryService.deleteMemory(input.memoryId, tenantId);
       if (!deleted) throw new TRPCError({ code: "NOT_FOUND", message: "Memory not found" });
       return { success: true };
+    }),
+
+  bulkDelete: protectedProcedure
+    .input(z.object({
+      memoryIds: z.array(z.string().min(1)).min(1).max(100),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const tenantId = requireTenantId(ctx);
+      const deletedCount = await memoryService.deleteMemories(input.memoryIds, tenantId);
+      return { success: true, deletedCount };
     }),
 
   promote: protectedProcedure

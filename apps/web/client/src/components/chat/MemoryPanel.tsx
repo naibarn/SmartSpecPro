@@ -1,5 +1,4 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
-import { useTranslation } from "react-i18next";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -8,13 +7,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Slider } from "@/components/ui/slider";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -31,6 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { DashboardCard } from "@/components/dashboard";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -80,6 +73,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 
 const entityTypeConfig = {
   // General
@@ -284,7 +278,7 @@ function mergeMemoryDisplays(
 }
 
 export function MemoryPanel({ onClose, conversationId, onNewChatFromProject }: MemoryPanelProps) {
-  const { t } = useTranslation("chat");
+  const { t } = useScopedTranslation("chat");
   const { user } = useAuth();
   const [selectedType, setSelectedType] = useState<EntityType | "all">("all");
   const [addDialogOpen, setAddDialogOpen] = useState(false);
@@ -738,438 +732,433 @@ export function MemoryPanel({ onClose, conversationId, onNewChatFromProject }: M
   const currentMemoryMode = (conversation as any)?.memoryMode || "full";
 
   return (
-    <Card className="h-full flex flex-col">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Brain className="h-5 w-5 text-primary" />
-            <CardTitle className="text-lg">{t("memory.title")}</CardTitle>
-            {currentMemoryMode !== "full" && (
-              <Badge variant="outline" className="text-xs">
-                {memoryModeLabels[currentMemoryMode]?.label || currentMemoryMode}
-              </Badge>
-            )}
-          </div>
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={() => {
-                utils.memory.getEntityMemories.invalidate();
-                utils.scopedMemory.list.invalidate();
-              }}
-            >
-              <RefreshCw className="h-3.5 w-3.5" />
-            </Button>
-            <Dialog open={addDialogOpen} onOpenChange={handleOpenAddDialog}>
-              <DialogTrigger asChild>
-                <Button size="sm" className="gap-1 h-7 text-xs">
-                  <Plus className="h-3.5 w-3.5" />
-                  {t("memory.addMemory")}
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>{t("memory.addMemory")}</DialogTitle>
-                  <DialogDescription>
-                    {t("memory.addMemoryDesc")}
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">{t("memory.typeLabel")}</label>
-                    <Select
-                      value={newMemory.entityType}
-                      onValueChange={(v) =>
-                        setNewMemory({ ...newMemory, entityType: v as EntityType })
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Object.entries(entityTypeConfig).map(([type, config]) => (
-                          <SelectItem key={type} value={type}>
-                            <div className="flex items-center gap-2">
-                              <config.icon className="h-4 w-4" />
-                              {config.label}
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">{t("memory.nameLabel")}</label>
-                    <Input
-                      placeholder={t("memory.namePlaceholder")}
-                      value={newMemory.entityName}
-                      onChange={(e) =>
-                        setNewMemory({ ...newMemory, entityName: e.target.value })
-                      }
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">{t("memory.contentLabel")}</label>
-                    <Textarea
-                      placeholder={t("memory.contentPlaceholder")}
-                      value={newMemory.fact}
-                      onChange={(e) =>
-                        setNewMemory({ ...newMemory, fact: e.target.value })
-                      }
-                      rows={3}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">
-                      {t("memory.importanceLabel", { value: newMemory.importance })}
-                    </label>
-                    <Slider
-                      value={[newMemory.importance]}
-                      onValueChange={([v]) => setNewMemory({ ...newMemory, importance: v })}
-                      min={1}
-                      max={10}
-                      step={1}
-                    />
-                    <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>{t("memory.importanceLow")}</span>
-                      <span>{t("memory.importanceHigh")}</span>
-                    </div>
+    <DashboardCard
+      className="h-full flex flex-col"
+      bodyClassName="!p-0 flex-1 min-h-0"
+      title={t("memory.title")}
+      description="Facts the AI remembers about you and your projects"
+      leading={<Brain className="h-5 w-5 text-primary" />}
+      trailing={
+        <div className="flex items-center gap-1">
+          {currentMemoryMode !== "full" && (
+            <Badge variant="outline" className="text-xs">
+              {memoryModeLabels[currentMemoryMode]?.label || currentMemoryMode}
+            </Badge>
+          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            onClick={() => {
+              utils.memory.getEntityMemories.invalidate();
+              utils.scopedMemory.list.invalidate();
+            }}
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+          </Button>
+          <Dialog open={addDialogOpen} onOpenChange={handleOpenAddDialog}>
+            <DialogTrigger asChild>
+              <Button size="sm" className="gap-1 h-7 text-xs">
+                <Plus className="h-3.5 w-3.5" />
+                {t("memory.addMemory")}
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{t("memory.addMemory")}</DialogTitle>
+                <DialogDescription>{t("memory.addMemoryDesc")}</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">{t("memory.typeLabel")}</label>
+                  <Select
+                    value={newMemory.entityType}
+                    onValueChange={(v) =>
+                      setNewMemory({ ...newMemory, entityType: v as EntityType })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(entityTypeConfig).map(([type, config]) => (
+                        <SelectItem key={type} value={type}>
+                          <div className="flex items-center gap-2">
+                            <config.icon className="h-4 w-4" />
+                            {config.label}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">{t("memory.nameLabel")}</label>
+                  <Input
+                    placeholder={t("memory.namePlaceholder")}
+                    value={newMemory.entityName}
+                    onChange={(e) =>
+                      setNewMemory({ ...newMemory, entityName: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">{t("memory.contentLabel")}</label>
+                  <Textarea
+                    placeholder={t("memory.contentPlaceholder")}
+                    value={newMemory.fact}
+                    onChange={(e) =>
+                      setNewMemory({ ...newMemory, fact: e.target.value })
+                    }
+                    rows={3}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">
+                    {t("memory.importanceLabel", { value: newMemory.importance })}
+                  </label>
+                  <Slider
+                    value={[newMemory.importance]}
+                    onValueChange={([v]) => setNewMemory({ ...newMemory, importance: v })}
+                    min={1}
+                    max={10}
+                    step={1}
+                  />
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>{t("memory.importanceLow")}</span>
+                    <span>{t("memory.importanceHigh")}</span>
                   </div>
                 </div>
-                <DialogFooter>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setAddDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleAddMemory}
+                  disabled={
+                    addMemoryMutation.isPending ||
+                    !newMemory.entityName.trim() ||
+                    !newMemory.fact.trim()
+                  }
+                >
+                  {addMemoryMutation.isPending && (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  )}
+                  Add Memory
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
+      }
+    >
+      <div className="flex min-h-0 flex-1 flex-col">
+        {/* Collapsible Controls Toggle */}
+        {conversationId && (
+          <div className="px-4 pb-1">
+            <button
+              className="flex w-full items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+              onClick={() => setControlsCollapsed(!controlsCollapsed)}
+            >
+              {controlsCollapsed ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
+              {controlsCollapsed ? "Show controls" : "Hide controls"}
+            </button>
+          </div>
+        )}
+
+        {/* Project & Controls Section */}
+        {conversationId && !controlsCollapsed && (
+          <div className="space-y-3 px-4 pb-3">
+            {/* Project ID */}
+            <div className="space-y-2 rounded-lg border p-2.5">
+              <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                <Package className="h-3.5 w-3.5" />
+                Project
+              </div>
+              {editingProjectId ? (
+                <div className="flex gap-1.5">
+                  <Input
+                    value={projectIdInput}
+                    onChange={(e) => setProjectIdInput(e.target.value)}
+                    placeholder="Project name or ID"
+                    className="h-7 text-xs"
+                  />
+                  <Button size="sm" className="h-7 px-2 text-xs" onClick={handleSaveProjectId}>
+                    Save
+                  </Button>
                   <Button
-                    variant="outline"
-                    onClick={() => setAddDialogOpen(false)}
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 px-2 text-xs"
+                    onClick={() => setEditingProjectId(false)}
                   >
                     Cancel
                   </Button>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between">
+                  <span className="text-xs">
+                    {currentProjectId || <span className="italic text-muted-foreground">{t("memory.projectNotSet")}</span>}
+                  </span>
                   <Button
-                    onClick={handleAddMemory}
-                    disabled={
-                      addMemoryMutation.isPending ||
-                      !newMemory.entityName.trim() ||
-                      !newMemory.fact.trim()
-                    }
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-xs"
+                    onClick={() => {
+                      setProjectIdInput(currentProjectId);
+                      setEditingProjectId(true);
+                    }}
                   >
-                    {addMemoryMutation.isPending && (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    )}
-                    Add Memory
+                    Edit
                   </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </div>
-        </div>
-        <CardDescription>
-          Facts the AI remembers about you and your projects
-        </CardDescription>
-      </CardHeader>
-
-      {/* Collapsible Controls Toggle */}
-      {conversationId && (
-        <div className="px-4 pb-1">
-          <button
-            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground w-full"
-            onClick={() => setControlsCollapsed(!controlsCollapsed)}
-          >
-            {controlsCollapsed ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
-            {controlsCollapsed ? "Show controls" : "Hide controls"}
-          </button>
-        </div>
-      )}
-
-      {/* Project & Controls Section */}
-      {conversationId && !controlsCollapsed && (
-        <div className="px-4 pb-3 space-y-3">
-          {/* Project ID */}
-          <div className="rounded-lg border p-2.5 space-y-2">
-            <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-              <Package className="h-3.5 w-3.5" />
-              Project
+                </div>
+              )}
+              {currentProjectId && onNewChatFromProject && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-2 h-7 w-full gap-1 text-xs"
+                  onClick={handleNewChatFromProject}
+                >
+                  <MessageSquarePlus className="h-3 w-3" />
+                  New Chat in "{currentProjectId}"
+                </Button>
+              )}
             </div>
-            {editingProjectId ? (
+
+            {/* Memory Mode Toggle */}
+            <div className="space-y-2 rounded-lg border p-2.5">
+              <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                <ToggleLeft className="h-3.5 w-3.5" />
+                Memory Mode
+              </div>
+              <div className="flex gap-1">
+                {Object.entries(memoryModeLabels).map(([mode, { label }]) => (
+                  <Button
+                    key={mode}
+                    variant={currentMemoryMode === mode ? "secondary" : "ghost"}
+                    size="sm"
+                    className="h-7 flex-1 text-xs"
+                    onClick={() => handleMemoryModeChange(mode)}
+                    disabled={updateConversationMutation.isPending}
+                  >
+                    {label.replace(" Memory", "")}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            {/* Memory Search */}
+            <div className="space-y-2 rounded-lg border p-2.5">
+              <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                <Search className="h-3.5 w-3.5" />
+                Search Context
+              </div>
               <div className="flex gap-1.5">
                 <Input
-                  value={projectIdInput}
-                  onChange={(e) => setProjectIdInput(e.target.value)}
-                  placeholder="Project name or ID"
+                  value={memorySearchQuery}
+                  onChange={(e) => setMemorySearchQuery(e.target.value)}
+                  placeholder="Search memories or recent chat chunks"
                   className="h-7 text-xs"
-                />
-                <Button size="sm" className="h-7 text-xs px-2" onClick={handleSaveProjectId}>
-                  Save
-                </Button>
-                <Button size="sm" variant="ghost" className="h-7 text-xs px-2" onClick={() => setEditingProjectId(false)}>
-                  Cancel
-                </Button>
-              </div>
-            ) : (
-              <div className="flex items-center justify-between">
-                <span className="text-xs">
-                  {currentProjectId || <span className="text-muted-foreground italic">{t("memory.projectNotSet")}</span>}
-                </span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 text-xs px-2"
-                  onClick={() => {
-                    setProjectIdInput(currentProjectId);
-                    setEditingProjectId(true);
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      void handleSearchMemoryContext();
+                    }
                   }}
+                />
+                <Button
+                  size="sm"
+                  className="h-7 gap-1 px-3 text-xs"
+                  onClick={() => void handleSearchMemoryContext()}
+                  disabled={
+                    searchMemoryContextQuery.isFetching ||
+                    !conversationId ||
+                    !memorySearchQuery.trim()
+                  }
                 >
-                  Edit
+                  {searchMemoryContextQuery.isFetching ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <Search className="h-3 w-3" />
+                  )}
+                  Search
                 </Button>
               </div>
-            )}
-            {currentProjectId && onNewChatFromProject && (
+              <p className="text-[11px] text-muted-foreground">
+                Searches scoped memories first, then falls back to recent message chunks when needed.
+              </p>
+              {memorySearchError && (
+                <div className="text-[11px] text-destructive">{memorySearchError}</div>
+              )}
+              {memorySearchTouched && memorySearchResult && (
+                <div className="space-y-2 text-[11px]">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <span>{memorySearchResult.l1Count} memory matches</span>
+                    {memorySearchResult.l2Triggered && <span>• chunk fallback enabled</span>}
+                  </div>
+                  {memorySearchResult.l1Results.length === 0 && memorySearchResult.l2Results.length === 0 ? (
+                    <div className="text-muted-foreground">{t("memory.noSearchResults")}</div>
+                  ) : (
+                    <div className="max-h-48 space-y-2 overflow-y-auto pr-1">
+                      {memorySearchResult.l1Results.map((result) => (
+                        <div key={`l1-${result.memory.id}`} className="rounded border bg-muted/40 p-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-medium text-foreground">{result.memory.title}</span>
+                            <Badge variant="outline" className="text-[10px]">
+                              L1 {result.matchType}
+                            </Badge>
+                          </div>
+                          <div className="mt-1 text-muted-foreground">{result.memory.content}</div>
+                          <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
+                            <span>score {result.score.toFixed(2)}</span>
+                            <span>kind {result.memory.memoryKind}</span>
+                            {result.memory.sourceType && <span>source {result.memory.sourceType}</span>}
+                          </div>
+                        </div>
+                      ))}
+                      {memorySearchResult.l2Results.map((result) => (
+                        <div key={`l2-${result.chunk.id}`} className="rounded border bg-muted/30 p-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-medium text-foreground">Chunk {result.chunk.id}</span>
+                            <Badge variant="outline" className="text-[10px]">
+                              L2 {result.matchType}
+                            </Badge>
+                          </div>
+                          <div className="mt-1 whitespace-pre-wrap text-muted-foreground">
+                            {result.chunk.content}
+                          </div>
+                          <div className="mt-1 flex items-center gap-2 text-[10px] text-muted-foreground">
+                            <span>score {result.score.toFixed(2)}</span>
+                            {typeof result.chunk.tokenCount === "number" && (
+                              <span>tokens {result.chunk.tokenCount}</span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Actions row */}
+            <div className="flex gap-1.5">
               <Button
                 variant="outline"
                 size="sm"
-                className="w-full h-7 text-xs gap-1 mt-2"
-                onClick={handleNewChatFromProject}
+                className="h-7 flex-1 gap-1 text-xs"
+                onClick={handleCompact}
+                disabled={compactMutation.isPending}
               >
-                <MessageSquarePlus className="h-3 w-3" />
-                New Chat in "{currentProjectId}"
-              </Button>
-            )}
-          </div>
-
-          {/* Memory Mode Toggle */}
-          <div className="rounded-lg border p-2.5 space-y-2">
-            <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-              <ToggleLeft className="h-3.5 w-3.5" />
-              Memory Mode
-            </div>
-            <div className="flex gap-1">
-              {Object.entries(memoryModeLabels).map(([mode, { label }]) => (
-                <Button
-                  key={mode}
-                  variant={currentMemoryMode === mode ? "secondary" : "ghost"}
-                  size="sm"
-                  className="h-7 text-xs flex-1"
-                  onClick={() => handleMemoryModeChange(mode)}
-                  disabled={updateConversationMutation.isPending}
-                >
-                  {label.replace(" Memory", "")}
-                </Button>
-              ))}
-            </div>
-          </div>
-
-          {/* Memory Search */}
-          <div className="rounded-lg border p-2.5 space-y-2">
-            <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-              <Search className="h-3.5 w-3.5" />
-              Search Context
-            </div>
-            <div className="flex gap-1.5">
-              <Input
-                value={memorySearchQuery}
-                onChange={(e) => setMemorySearchQuery(e.target.value)}
-                placeholder="Search memories or recent chat chunks"
-                className="h-7 text-xs"
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    event.preventDefault();
-                    void handleSearchMemoryContext();
-                  }
-                }}
-              />
-              <Button
-                size="sm"
-                className="h-7 text-xs px-3 gap-1"
-                onClick={() => void handleSearchMemoryContext()}
-                disabled={
-                  searchMemoryContextQuery.isFetching ||
-                  !conversationId ||
-                  !memorySearchQuery.trim()
-                }
-              >
-                {searchMemoryContextQuery.isFetching ? (
+                {compactMutation.isPending ? (
                   <Loader2 className="h-3 w-3 animate-spin" />
                 ) : (
-                  <Search className="h-3 w-3" />
+                  <Archive className="h-3 w-3" />
                 )}
-                Search
+                Compact
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 flex-1 gap-1 text-xs text-destructive hover:text-destructive"
+                onClick={() => setClearDialogOpen(true)}
+              >
+                <Trash2 className="h-3 w-3" />
+                Clear Old
               </Button>
             </div>
-            <p className="text-[11px] text-muted-foreground">
-              Searches scoped memories first, then falls back to recent message chunks when needed.
-            </p>
-            {memorySearchError && (
-              <div className="text-[11px] text-destructive">{memorySearchError}</div>
-            )}
-            {memorySearchTouched && memorySearchResult && (
-              <div className="space-y-2 text-[11px]">
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <span>{memorySearchResult.l1Count} memory matches</span>
-                  {memorySearchResult.l2Triggered && <span>• chunk fallback enabled</span>}
-                </div>
-                {memorySearchResult.l1Results.length === 0 && memorySearchResult.l2Results.length === 0 ? (
-                  <div className="text-muted-foreground">{t("memory.noSearchResults")}</div>
-                ) : (
-                  <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                    {memorySearchResult.l1Results.map((result) => (
-                      <div key={`l1-${result.memory.id}`} className="rounded border bg-muted/40 p-2">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="font-medium text-foreground">{result.memory.title}</span>
-                          <Badge variant="outline" className="text-[10px]">
-                            L1 {result.matchType}
-                          </Badge>
-                        </div>
-                        <div className="mt-1 text-muted-foreground">
-                          {result.memory.content}
-                        </div>
-                        <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
-                          <span>score {result.score.toFixed(2)}</span>
-                          <span>kind {result.memory.memoryKind}</span>
-                          {result.memory.sourceType && <span>source {result.memory.sourceType}</span>}
-                        </div>
-                      </div>
-                    ))}
-                    {memorySearchResult.l2Results.map((result) => (
-                      <div key={`l2-${result.chunk.id}`} className="rounded border bg-muted/30 p-2">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="font-medium text-foreground">Chunk {result.chunk.id}</span>
-                          <Badge variant="outline" className="text-[10px]">
-                            L2 {result.matchType}
-                          </Badge>
-                        </div>
-                        <div className="mt-1 whitespace-pre-wrap text-muted-foreground">
-                          {result.chunk.content}
-                        </div>
-                        <div className="mt-1 flex items-center gap-2 text-[10px] text-muted-foreground">
-                          <span>score {result.score.toFixed(2)}</span>
-                          {typeof result.chunk.tokenCount === "number" && (
-                            <span>tokens {result.chunk.tokenCount}</span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+            {scopedMemories && scopedMemories.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                <Button
+                  variant={scopedSelectionMode ? "secondary" : "outline"}
+                  size="sm"
+                  className="h-7 gap-1 text-xs"
+                  onClick={toggleScopedSelectionMode}
+                >
+                  {scopedSelectionMode ? "Exit Select" : "Select Scoped"}
+                </Button>
+                {scopedSelectionMode && (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 gap-1 text-xs"
+                      onClick={toggleSelectVisibleScopedMemories}
+                    >
+                      {allVisibleScopedSelected ? "Clear All Visible" : "Select All Visible"}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 gap-1 text-xs"
+                      onClick={() => updateSelectedScopedMemoryImportance(1)}
+                      disabled={selectedScopedMemoryCount === 0 || bulkImportanceInProgress}
+                    >
+                      <ArrowUp className="h-3 w-3" />
+                      Promote Selected
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 gap-1 text-xs"
+                      onClick={() => updateSelectedScopedMemoryImportance(-1)}
+                      disabled={selectedScopedMemoryCount === 0 || bulkImportanceInProgress}
+                    >
+                      <ArrowDown className="h-3 w-3" />
+                      Demote Selected
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 gap-1 text-xs"
+                      onClick={() => updateVisibleScopedMemoryImportance(1)}
+                      disabled={visibleScopedMemoryIds.length === 0 || bulkImportanceInProgress}
+                    >
+                      <ArrowUp className="h-3 w-3" />
+                      Promote All Visible
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 gap-1 text-xs"
+                      onClick={() => updateVisibleScopedMemoryImportance(-1)}
+                      disabled={visibleScopedMemoryIds.length === 0 || bulkImportanceInProgress}
+                    >
+                      <ArrowDown className="h-3 w-3" />
+                      Demote All Visible
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 gap-1 text-xs text-destructive hover:text-destructive"
+                      onClick={bulkDeleteSelectedScopedMemories}
+                      disabled={selectedScopedMemoryCount === 0 || bulkDeleteScopedMemoryMutation.isPending}
+                    >
+                      {bulkDeleteScopedMemoryMutation.isPending ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-3 w-3" />
+                      )}
+                      Delete Selected ({selectedScopedMemoryCount})
+                    </Button>
+                  </>
                 )}
               </div>
             )}
           </div>
+        )}
 
-          {/* Actions row */}
-          <div className="flex gap-1.5">
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 text-xs flex-1 gap-1"
-              onClick={handleCompact}
-              disabled={compactMutation.isPending}
-            >
-              {compactMutation.isPending ? (
-                <Loader2 className="h-3 w-3 animate-spin" />
-              ) : (
-                <Archive className="h-3 w-3" />
-              )}
-              Compact
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 text-xs flex-1 gap-1 text-destructive hover:text-destructive"
-              onClick={() => setClearDialogOpen(true)}
-            >
-              <Trash2 className="h-3 w-3" />
-              Clear Old
-            </Button>
-          </div>
-          {scopedMemories && scopedMemories.length > 0 && (
-            <div className="flex gap-1.5 flex-wrap">
-              <Button
-                variant={scopedSelectionMode ? "secondary" : "outline"}
-                size="sm"
-                className="h-7 text-xs gap-1"
-                onClick={toggleScopedSelectionMode}
-              >
-                {scopedSelectionMode ? "Exit Select" : "Select Scoped"}
-              </Button>
-              {scopedSelectionMode && (
-                <>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-7 text-xs gap-1"
-                    onClick={toggleSelectVisibleScopedMemories}
-                  >
-                    {allVisibleScopedSelected ? "Clear All Visible" : "Select All Visible"}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-7 text-xs gap-1"
-                    onClick={() => updateSelectedScopedMemoryImportance(1)}
-                    disabled={selectedScopedMemoryCount === 0 || bulkImportanceInProgress}
-                  >
-                    <ArrowUp className="h-3 w-3" />
-                    Promote Selected
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-7 text-xs gap-1"
-                    onClick={() => updateSelectedScopedMemoryImportance(-1)}
-                    disabled={selectedScopedMemoryCount === 0 || bulkImportanceInProgress}
-                  >
-                    <ArrowDown className="h-3 w-3" />
-                    Demote Selected
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-7 text-xs gap-1"
-                    onClick={() => updateVisibleScopedMemoryImportance(1)}
-                    disabled={visibleScopedMemoryIds.length === 0 || bulkImportanceInProgress}
-                  >
-                    <ArrowUp className="h-3 w-3" />
-                    Promote All Visible
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-7 text-xs gap-1"
-                    onClick={() => updateVisibleScopedMemoryImportance(-1)}
-                    disabled={visibleScopedMemoryIds.length === 0 || bulkImportanceInProgress}
-                  >
-                    <ArrowDown className="h-3 w-3" />
-                    Demote All Visible
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-7 text-xs gap-1 text-destructive hover:text-destructive"
-                    onClick={bulkDeleteSelectedScopedMemories}
-                    disabled={selectedScopedMemoryCount === 0 || bulkDeleteScopedMemoryMutation.isPending}
-                  >
-                    {bulkDeleteScopedMemoryMutation.isPending ? (
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                    ) : (
-                      <Trash2 className="h-3 w-3" />
-                    )}
-                    Delete Selected ({selectedScopedMemoryCount})
-                  </Button>
-                </>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Summaries Section */}
-      {conversationId && !controlsCollapsed && summaries && summaries.length > 0 && (
-        <div className="px-4 pb-3">
-          <div className="rounded-lg border p-2.5 space-y-2">
-            <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-              <FileText className="h-3.5 w-3.5" />
-              Summaries ({summaries.length})
-            </div>
-              <div className="space-y-1.5 max-h-48 overflow-y-auto">
+        {/* Summaries Section */}
+        {conversationId && !controlsCollapsed && summaries && summaries.length > 0 && (
+          <div className="px-4 pb-3">
+            <div className="space-y-2 rounded-lg border p-2.5">
+              <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                <FileText className="h-3.5 w-3.5" />
+                Summaries ({summaries.length})
+              </div>
+              <div className="max-h-48 space-y-1.5 overflow-y-auto">
                 {summaries.map((s) => (
                   <SummaryItem
                     key={s.id}
@@ -1186,187 +1175,186 @@ export function MemoryPanel({ onClose, conversationId, onNewChatFromProject }: M
               </div>
             </div>
           </div>
-      )}
+        )}
 
-      <div className="px-4 pb-3">
-        <div className="flex gap-1.5 flex-wrap">
-          <Button
-            variant={selectedType === "all" ? "secondary" : "ghost"}
-            size="sm"
-            onClick={() => setSelectedType("all")}
-            className="h-7 text-xs"
-          >
-            All
-          </Button>
-          {Object.entries(entityTypeConfig).map(([type, config]) => {
-            const Icon = config.icon;
-            return (
-              <Button
-                key={type}
-                variant={selectedType === type ? "secondary" : "ghost"}
-                size="sm"
-                onClick={() => setSelectedType(type as EntityType)}
-                className="gap-1 h-7 text-xs"
-              >
-                <Icon className="h-3 w-3" />
-                {config.label}
-              </Button>
-            );
-          })}
+        <div className="px-4 pb-3">
+          <div className="flex flex-wrap gap-1.5">
+            <Button
+              variant={selectedType === "all" ? "secondary" : "ghost"}
+              size="sm"
+              onClick={() => setSelectedType("all")}
+              className="h-7 text-xs"
+            >
+              All
+            </Button>
+            {Object.entries(entityTypeConfig).map(([type, config]) => {
+              const Icon = config.icon;
+              return (
+                <Button
+                  key={type}
+                  variant={selectedType === type ? "secondary" : "ghost"}
+                  size="sm"
+                  onClick={() => setSelectedType(type as EntityType)}
+                  className="h-7 gap-1 text-xs"
+                >
+                  <Icon className="h-3 w-3" />
+                  {config.label}
+                </Button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="flex-1 min-h-0 overflow-hidden">
+          <ScrollArea className="h-full px-4 pb-4">
+            {isLoading || scopedLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : mergedMemories.length === 0 ? (
+              <div className="py-8 text-center text-sm text-muted-foreground">
+                No memories yet. The AI will learn about you as you chat.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {mergedMemories.map((memory) => {
+                  const config = entityTypeConfig[memory.typeKey as keyof typeof entityTypeConfig];
+                  const Icon = config?.icon || Brain;
+                  const isScopedSelected = selectedScopedMemoryIds.includes(String(memory.rawId));
+                  return (
+                    <div
+                      key={memory.displayId}
+                      className="group rounded-lg border p-3 transition-colors hover:bg-muted/50"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          {memory.source === "scoped" && scopedSelectionMode && (
+                            <Checkbox
+                              checked={isScopedSelected}
+                              onCheckedChange={() => toggleScopedMemorySelection(String(memory.rawId))}
+                              aria-label={`Select ${memory.title}`}
+                            />
+                          )}
+                          <div
+                            className={cn(
+                              "rounded-full p-1",
+                              config?.color || "bg-gray-500",
+                            )}
+                          >
+                            <Icon className="h-3 w-3 text-white" />
+                          </div>
+                          <span className="text-sm font-medium">{memory.title}</span>
+                          {importanceBadge(memory.importance)}
+                          <Badge variant="outline" className="text-[10px]">
+                            {memory.originBadge}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          {memory.source === "scoped" && (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 opacity-0 transition-opacity group-hover:opacity-100"
+                                title="Increase importance"
+                                onClick={() =>
+                                  updateScopedMemoryMutation.mutate({
+                                    memoryId: String(memory.rawId),
+                                    importance: Math.min(10, memory.importance + 1),
+                                  })
+                                }
+                              >
+                                <ArrowUp className="h-3 w-3" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 opacity-0 transition-opacity group-hover:opacity-100"
+                                title="Decrease importance"
+                                onClick={() =>
+                                  updateScopedMemoryMutation.mutate({
+                                    memoryId: String(memory.rawId),
+                                    importance: Math.max(1, memory.importance - 1),
+                                  })
+                                }
+                              >
+                                <ArrowDown className="h-3 w-3" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 opacity-0 transition-opacity group-hover:opacity-100"
+                                title="Edit scoped memory"
+                                onClick={() => openEditScopedMemory(memory)}
+                              >
+                                <Edit2 className="h-3 w-3" />
+                              </Button>
+                            </>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 opacity-0 transition-opacity group-hover:opacity-100"
+                            title={memory.source === "scoped" ? "Delete scoped memory" : "Delete memory"}
+                            onClick={() =>
+                              memory.source === "scoped"
+                                ? deleteScopedMemoryMutation.mutate({ memoryId: String(memory.rawId) })
+                                : handleDeleteMemory(Number(memory.rawId))
+                            }
+                          >
+                            <Trash2 className="h-3 w-3 text-destructive" />
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="mt-2 space-y-1">
+                        {(expandedMemoryId === memory.displayId
+                          ? memory.contentLines
+                          : memory.contentLines.slice(0, 3)
+                        ).map((fact, i) => (
+                          <p key={i} className="text-sm text-muted-foreground">
+                            • {fact}
+                          </p>
+                        ))}
+                        {memory.contentLines.length > 3 && (
+                          <button
+                            className="text-xs text-primary hover:underline"
+                            onClick={() =>
+                              setExpandedMemoryId(
+                                expandedMemoryId === memory.displayId ? null : memory.displayId,
+                              )
+                            }
+                          >
+                            {expandedMemoryId === memory.displayId
+                              ? "Show less"
+                              : `+${memory.contentLines.length - 3} more facts`}
+                          </button>
+                        )}
+                      </div>
+                      <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+                        <Badge variant="outline" className="text-xs">
+                          {memory.typeLabel}
+                        </Badge>
+                        {memory.kind === "rule" && (
+                          <Badge className="bg-amber-600 text-xs text-white">
+                            Always Active
+                          </Badge>
+                        )}
+                        {memory.sourceType && memory.sourceType !== "auto" && (
+                          <Badge variant="outline" className="text-xs">
+                            {memory.sourceType}
+                          </Badge>
+                        )}
+                        <span>•</span>
+                        <span>Reinforced {memory.reinforcementCount}x</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </ScrollArea>
         </div>
       </div>
-
-      <CardContent className="flex-1 overflow-hidden p-0">
-        <ScrollArea className="h-full px-4 pb-4">
-          {isLoading || scopedLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
-          ) : mergedMemories.length === 0 ? (
-            <div className="py-8 text-center text-sm text-muted-foreground">
-              No memories yet. The AI will learn about you as you chat.
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {mergedMemories.map((memory) => {
-                const config = entityTypeConfig[memory.typeKey as keyof typeof entityTypeConfig];
-                const Icon = config?.icon || Brain;
-                const isScopedSelected = selectedScopedMemoryIds.includes(String(memory.rawId));
-                return (
-                  <div
-                    key={memory.displayId}
-                    className="group rounded-lg border p-3 hover:bg-muted/50 transition-colors"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        {memory.source === "scoped" && scopedSelectionMode && (
-                          <Checkbox
-                            checked={isScopedSelected}
-                            onCheckedChange={() => toggleScopedMemorySelection(String(memory.rawId))}
-                            aria-label={`Select ${memory.title}`}
-                          />
-                        )}
-                        <div
-                          className={cn(
-                            "rounded-full p-1",
-                            config?.color || "bg-gray-500"
-                          )}
-                        >
-                          <Icon className="h-3 w-3 text-white" />
-                        </div>
-                        <span className="font-medium text-sm">
-                          {memory.title}
-                        </span>
-                        {importanceBadge(memory.importance)}
-                        <Badge variant="outline" className="text-[10px]">
-                          {memory.originBadge}
-                        </Badge>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        {memory.source === "scoped" && (
-                          <>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                              title="Increase importance"
-                              onClick={() =>
-                                updateScopedMemoryMutation.mutate({
-                                  memoryId: String(memory.rawId),
-                                  importance: Math.min(10, memory.importance + 1),
-                                })
-                              }
-                            >
-                              <ArrowUp className="h-3 w-3" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                              title="Decrease importance"
-                              onClick={() =>
-                                updateScopedMemoryMutation.mutate({
-                                  memoryId: String(memory.rawId),
-                                  importance: Math.max(1, memory.importance - 1),
-                                })
-                              }
-                            >
-                              <ArrowDown className="h-3 w-3" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                              title="Edit scoped memory"
-                              onClick={() => openEditScopedMemory(memory)}
-                            >
-                              <Edit2 className="h-3 w-3" />
-                            </Button>
-                          </>
-                        )}
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                          title={memory.source === "scoped" ? "Delete scoped memory" : "Delete memory"}
-                          onClick={() =>
-                            memory.source === "scoped"
-                              ? deleteScopedMemoryMutation.mutate({ memoryId: String(memory.rawId) })
-                              : handleDeleteMemory(Number(memory.rawId))
-                          }
-                        >
-                          <Trash2 className="h-3 w-3 text-destructive" />
-                        </Button>
-                      </div>
-                    </div>
-                    <div className="mt-2 space-y-1">
-                      {(expandedMemoryId === memory.displayId
-                        ? memory.contentLines
-                        : memory.contentLines.slice(0, 3)
-                      ).map((fact, i) => (
-                        <p key={i} className="text-sm text-muted-foreground">
-                          • {fact}
-                        </p>
-                      ))}
-                      {memory.contentLines.length > 3 && (
-                        <button
-                          className="text-xs text-primary hover:underline"
-                          onClick={() => setExpandedMemoryId(
-                            expandedMemoryId === memory.displayId ? null : memory.displayId
-                          )}
-                        >
-                          {expandedMemoryId === memory.displayId
-                            ? "Show less"
-                            : `+${memory.contentLines.length - 3} more facts`}
-                        </button>
-                      )}
-                    </div>
-                    <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-                      <Badge variant="outline" className="text-xs">
-                        {memory.typeLabel}
-                      </Badge>
-                      {memory.kind === "rule" && (
-                        <Badge className="text-xs bg-amber-600 text-white">
-                          Always Active
-                        </Badge>
-                      )}
-                      {memory.sourceType && memory.sourceType !== "auto" && (
-                        <Badge variant="outline" className="text-xs">
-                          {memory.sourceType}
-                        </Badge>
-                      )}
-                      <span>•</span>
-                      <span>
-                        Reinforced {memory.reinforcementCount}x
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </ScrollArea>
-      </CardContent>
 
       {/* Delete Confirmation */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
@@ -1511,6 +1499,6 @@ export function MemoryPanel({ onClose, conversationId, onNewChatFromProject }: M
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </Card>
+    </DashboardCard>
   );
 }

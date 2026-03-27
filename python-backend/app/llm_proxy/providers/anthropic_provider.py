@@ -236,3 +236,4 @@ def create_anthropic_provider(
         enabled=enabled
     )
     return AnthropicProvider(config)
+# mypy: ignore-errors

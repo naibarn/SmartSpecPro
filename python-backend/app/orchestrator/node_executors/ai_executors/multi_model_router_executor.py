@@ -2,6 +2,7 @@
 
 import logging
 from typing import Any
+from collections.abc import Sequence
 
 from app.orchestrator.node_executors.base import ExecutionContext, NodeExecutionData
 
@@ -19,7 +20,7 @@ class MultiModelRouterExecutor:
     - fallback: Try primary, fallback on failure
     """
 
-    MODELS = {
+    MODELS: dict[str, dict[str, float | int | str]] = {
         "gpt-4": {
             "cost_per_1k": 0.03,
             "max_tokens": 8192,
@@ -46,11 +47,19 @@ class MultiModelRouterExecutor:
         self, data: NodeExecutionData, context: ExecutionContext
     ) -> dict[str, Any]:
         """Select model based on routing strategy."""
-        prompt = data.inputs.get("prompt", "")
-        strategy = data.inputs.get("strategy", "cost")
+        prompt = str(data.inputs.get("prompt", ""))
+        strategy = str(data.inputs.get("strategy", "cost"))
         preferred_model = data.inputs.get("preferred_model")
+        if preferred_model is not None:
+            preferred_model = str(preferred_model)
         fallback_models = data.inputs.get("fallback_models", [])
-        max_cost = data.inputs.get("max_cost")
+        fallback_models_list = (
+            [str(model) for model in fallback_models]
+            if isinstance(fallback_models, Sequence) and not isinstance(fallback_models, (str, bytes))
+            else []
+        )
+        max_cost_value = data.inputs.get("max_cost")
+        max_cost = float(max_cost_value) if isinstance(max_cost_value, (int, float)) else None
 
         # Estimate token count
         est_tokens = len(prompt.split()) * 1.3
@@ -63,7 +72,7 @@ class MultiModelRouterExecutor:
         elif strategy == "quality":
             selected = self._select_by_quality()
         elif strategy == "fallback":
-            selected = preferred_model or (fallback_models[0] if fallback_models else "gpt-3.5-turbo")
+            selected = preferred_model or (fallback_models_list[0] if fallback_models_list else "gpt-3.5-turbo")
         else:
             selected = preferred_model or "gpt-3.5-turbo"
 
@@ -74,14 +83,12 @@ class MultiModelRouterExecutor:
             "strategy": strategy,
         }
 
-    def _select_by_cost(self, tokens: float, max_cost: float = None) -> str:
+    def _select_by_cost(self, tokens: float, max_cost: float | None = None) -> str:
         """Select cheapest model."""
-        sorted_models = sorted(
-            self.MODELS.items(), key=lambda x: x[1]["cost_per_1k"]
-        )
+        sorted_models = sorted(self.MODELS.items(), key=lambda x: float(x[1]["cost_per_1k"]))
 
         for model, config in sorted_models:
-            cost = (tokens / 1000) * config["cost_per_1k"]
+            cost = (tokens / 1000) * float(config["cost_per_1k"])
             if max_cost is None or cost <= max_cost:
                 return model
 
@@ -103,5 +110,5 @@ class MultiModelRouterExecutor:
     def _estimate_cost(self, model: str, tokens: float) -> float:
         """Estimate API cost."""
         if model in self.MODELS:
-            return (tokens / 1000) * self.MODELS[model]["cost_per_1k"]
+            return (tokens / 1000) * float(self.MODELS[model]["cost_per_1k"])
         return 0.0

@@ -8,7 +8,7 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import { tenants, tenantPages } from "../drizzle/schema";
 import { eq, and } from "drizzle-orm";
 
-const DATABASE_URL = process.env.DATABASE_URL || "postgresql://smartspec:smartspec_dev@localhost:5432/smartspec";
+const DATABASE_URL = process.env.DATABASE_URL || "postgresql://smartspec:smartspec123@localhost:5432/smartspec";
 
 const pages = [
   {
@@ -16,31 +16,35 @@ const pages = [
     title: "About Us",
     slug: "about",
     sortOrder: 5,
+    metadata: {
+      description: "About SmartAIHub: a skill marketplace with virtual workflows, swarm execution, and enterprise-grade output delivery.",
+      keywords: ["About SmartAIHub", "skill marketplace", "virtual workflows", "swarm execution", "enterprise AI"],
+    },
     content: `<section class="doc-content">
   <h1>About Smart AI Hub</h1>
-  <p>Smart AI Hub is your all-in-one AI creative platform, providing cutting-edge tools for image generation, video creation, music composition, and code generation.</p>
+  <p>SmartAIHub is a skill marketplace for enterprise teams. We help organizations publish reusable skills, connect them into virtual workflows, and run swarms that deliver chat, presentation, and video outputs.</p>
 
   <h2>Our Mission</h2>
-  <p>We're on a mission to make AI-powered creative tools accessible to everyone. Our platform curates the best AI models — from FLUX and Stable Diffusion for images, to Wan 2.6 and Kling for video, to Suno AI for music — all in a single, easy-to-use dashboard.</p>
+  <p>Our mission is to make AI capabilities reusable, governed, and easy to deploy across teams and tenants.</p>
 
   <h2>What Makes Us Different</h2>
   <ul>
-    <li><strong>Curated AI Models</strong> — We hand-pick the best models for each creative task</li>
-    <li><strong>Unified Platform</strong> — One dashboard for images, videos, audio, and code</li>
-    <li><strong>Credit-Based Pricing</strong> — Pay only for what you use, no monthly minimums required</li>
+    <li><strong>Skill Marketplace</strong> — Publish and discover reusable skills in a governed catalog</li>
+    <li><strong>Virtual Workflow Builder</strong> — Turn prompts into repeatable enterprise processes</li>
+    <li><strong>Swarm Execution</strong> — Coordinate multiple skills to reach a better outcome</li>
     <li><strong>Enterprise Security</strong> — Bank-grade encryption, MFA, and comprehensive audit logs</li>
     <li><strong>API Access</strong> — Integrate AI generation into your own applications</li>
   </ul>
 
   <h2>Our Values</h2>
   <h3>Innovation</h3>
-  <p>We continuously integrate the latest AI models and techniques, ensuring our users always have access to state-of-the-art creative tools.</p>
+  <p>We continuously improve the platform so teams can ship faster without rebuilding workflows from scratch.</p>
 
   <h3>Accessibility</h3>
-  <p>We design our tools for everyone — from first-time creators to professional studios. No AI expertise required.</p>
+  <p>We design for operators, creators, and approvers alike. No custom plumbing required to get value.</p>
 
   <h3>Quality</h3>
-  <p>Every model on our platform is tested and optimized for the best possible output quality.</p>
+  <p>Every published skill and workflow should be predictable, reusable, and easy to measure.</p>
 
   <h2>Contact Us</h2>
   <p>Have questions or want to learn more? Visit our <a href="/contact">contact page</a>.</p>
@@ -51,30 +55,34 @@ const pages = [
     title: "Changelog",
     slug: "changelog",
     sortOrder: 20,
+    metadata: {
+      description: "Latest SmartAIHub product updates, documentation improvements, and enterprise feature releases.",
+      keywords: ["SmartAIHub changelog", "product updates", "documentation hub", "enterprise features", "workflow execution"],
+    },
     content: `<section class="doc-content">
   <h1>Smart AI Hub Changelog</h1>
-  <p>Stay up to date with the latest features and improvements.</p>
+  <p>Stay up to date with the latest platform, workflow, and enterprise improvements.</p>
 
   <h2>January 2026</h2>
   <ul>
-    <li><strong>Documentation Hub</strong> — Comprehensive docs covering all platform features</li>
-    <li><strong>Theme Presets</strong> — One-click theme customization for domain admins</li>
+    <li><strong>Documentation Hub</strong> — SmartAIHub docs now cover skills, workflows, and swarms</li>
+    <li><strong>Theme Presets</strong> — Enterprise color presets for tenant branding</li>
     <li><strong>Content Editor</strong> — Improved editing experience with instant preview</li>
   </ul>
 
   <h2>December 2025</h2>
   <ul>
-    <li><strong>Media Studio</strong> — Unified workspace for all AI generation tools</li>
+    <li><strong>Marketplace</strong> — Skill publishing, discovery, and reuse workflows</li>
     <li><strong>Multi-Tenant System</strong> — Custom domains, branding, and user management</li>
-    <li><strong>Skill Auto-Sync</strong> — Automatic detection of available media generation capabilities</li>
+    <li><strong>Swarm Execution</strong> — Coordinated run support for enterprise outputs</li>
   </ul>
 
   <h2>November 2025</h2>
   <ul>
     <li><strong>Flexible Pricing</strong> — Subscription, agency, and one-time credit packages</li>
-    <li><strong>New Video Models</strong> — Added Wan 2.6, Kling, and Veo 3.1 support</li>
-    <li><strong>Gallery System</strong> — Share and discover AI-generated content</li>
-    <li><strong>Suno AI Integration</strong> — Full music generation with vocals and instruments</li>
+    <li><strong>Output Surfaces</strong> — Chat, presentation, and video delivery lanes</li>
+    <li><strong>Gallery System</strong> — Share and discover outputs across tenants</li>
+    <li><strong>Skill Library</strong> — Reusable capabilities for teams and agencies</li>
   </ul>
 
   <p>Follow our <a href="/blog">blog</a> for detailed release notes.</p>
@@ -85,14 +93,18 @@ const pages = [
     title: "Careers",
     slug: "careers",
     sortOrder: 21,
+    metadata: {
+      description: "Careers at SmartAIHub for engineers, designers, and product builders working on AI orchestration.",
+      keywords: ["SmartAIHub careers", "AI orchestration jobs", "enterprise AI", "product design", "full stack engineering"],
+    },
     content: `<section class="doc-content">
   <h1>Careers at Smart AI Hub</h1>
-  <p>We're building the future of AI-powered creative tools. Join us!</p>
+  <p>We're building the future of enterprise skill orchestration. Join us if you want to shape how teams package and run AI capabilities.</p>
 
   <h2>Why Smart AI Hub?</h2>
   <ul>
-    <li><strong>Cutting-Edge AI</strong> — Work with the latest generative AI models</li>
-    <li><strong>Real Impact</strong> — Your work helps thousands of creators worldwide</li>
+    <li><strong>Cutting-Edge AI</strong> — Work on skills, workflows, and swarm execution</li>
+    <li><strong>Real Impact</strong> — Your work helps teams ship repeatable outcomes</li>
     <li><strong>Growth</strong> — Continuous learning and career development</li>
     <li><strong>Remote-Friendly</strong> — Flexible working hours and locations</li>
   </ul>
@@ -120,9 +132,13 @@ const pages = [
     title: "Community",
     slug: "community",
     sortOrder: 22,
+    metadata: {
+      description: "Join the SmartAIHub community for skill sharing, workflow patterns, and output inspiration.",
+      keywords: ["SmartAIHub community", "skill sharing", "workflow patterns", "output inspiration", "enterprise builders"],
+    },
     content: `<section class="doc-content">
   <h1>Smart AI Hub Community</h1>
-  <p>Join a growing community of AI creators, artists, and developers.</p>
+  <p>Join a growing community of operators, builders, and creators who are turning skills into reusable enterprise workflows.</p>
 
   <h2>Get Involved</h2>
   <h3>Gallery</h3>
@@ -130,9 +146,9 @@ const pages = [
 
   <h3>Learn & Share</h3>
   <ul>
-    <li>Share prompt engineering tips and techniques</li>
-    <li>Discover new creative workflows</li>
-    <li>Get feedback on your AI-generated content</li>
+    <li>Share skill and workflow patterns</li>
+    <li>Discover reusable automation ideas</li>
+    <li>Get feedback on outputs and orchestration</li>
   </ul>
 
   <h2>Community Guidelines</h2>
@@ -148,9 +164,13 @@ const pages = [
     title: "Support",
     slug: "support",
     sortOrder: 23,
+    metadata: {
+      description: "Support resources for SmartAIHub covering docs, billing, keys, workflows, and output troubleshooting.",
+      keywords: ["SmartAIHub support", "workflow troubleshooting", "billing help", "API keys", "enterprise support"],
+    },
     content: `<section class="doc-content">
   <h1>Smart AI Hub Support</h1>
-  <p>We're here to help you get the most out of the platform.</p>
+  <p>We're here to help you get the most out of the platform, from publishing skills to running enterprise workflows.</p>
 
   <h2>Support Options</h2>
   <h3>Documentation</h3>
@@ -165,7 +185,7 @@ const pages = [
     <li><strong>API Access</strong> — Generate keys at Settings → API Keys</li>
     <li><strong>Image Generation</strong> — See <a href="/docs/image-generation">Image Generation docs</a></li>
     <li><strong>Video Generation</strong> — See <a href="/docs/video-generation">Video Generation docs</a></li>
-    <li><strong>Music with Suno AI</strong> — See <a href="/docs/audio">Audio docs</a></li>
+    <li><strong>Workflows</strong> — Learn how to package reusable skills</li>
   </ul>
 
   <h2>System Status</h2>
@@ -177,6 +197,10 @@ const pages = [
     title: "System Status",
     slug: "status",
     sortOrder: 24,
+    metadata: {
+      description: "Real-time SmartAIHub system status for web, API, marketplace, workflows, and swarm orchestration.",
+      keywords: ["SmartAIHub status", "platform health", "workflow execution", "swarm orchestration", "API status"],
+    },
     content: `<section class="doc-content">
   <h1>Smart AI Hub — System Status</h1>
   <p>All systems are currently <strong>operational</strong>.</p>
@@ -185,9 +209,9 @@ const pages = [
   <ul>
     <li><strong>Web Application</strong> — Operational</li>
     <li><strong>API</strong> — Operational</li>
-    <li><strong>Image Generation (FLUX, SD)</strong> — Operational</li>
-    <li><strong>Video Generation (Wan 2.6, Kling)</strong> — Operational</li>
-    <li><strong>Music Generation (Suno AI)</strong> — Operational</li>
+    <li><strong>Marketplace</strong> — Operational</li>
+    <li><strong>Workflow Execution</strong> — Operational</li>
+    <li><strong>Swarm Orchestration</strong> — Operational</li>
     <li><strong>Authentication</strong> — Operational</li>
   </ul>
 
@@ -203,9 +227,13 @@ const pages = [
     title: "Security",
     slug: "security",
     sortOrder: 25,
+    metadata: {
+      description: "Security overview for SmartAIHub enterprise encryption, MFA, access control, and audit readiness.",
+      keywords: ["SmartAIHub security", "enterprise encryption", "MFA", "access control", "audit readiness"],
+    },
     content: `<section class="doc-content">
   <h1>Security at Smart AI Hub</h1>
-  <p>Your data and creations are protected with enterprise-grade security measures.</p>
+  <p>Your data, skills, and workflow outputs are protected with enterprise-grade security measures.</p>
 
   <h2>Data Protection</h2>
   <ul>
@@ -276,6 +304,7 @@ async function seed() {
           .set({
             title: page.title,
             content: page.content,
+            metadata: page.metadata,
             isPublished: true,
             updatedAt: new Date(),
           })
@@ -288,6 +317,7 @@ async function seed() {
           title: page.title,
           slug: page.slug,
           content: page.content,
+          metadata: page.metadata,
           isPublished: true,
           showInMenu: true,
           sortOrder: page.sortOrder,

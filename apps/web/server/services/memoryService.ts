@@ -33,6 +33,8 @@ import { sanitizeEntityForStorage, filterEntityFacts } from "./piiFilter";
 import { resolveEnabledLlmModelId } from "./enabledLlmModels";
 import { buildModelProviderMapLookupCondition } from "./modelLookup";
 import { auditLogger } from "./auditLogger";
+import { getRuleMemories, searchMemories } from "./scopedMemoryService";
+import { CHAT_MEMORY_FLAG_DEFAULTS, getAllChatMemoryFlags, getChatMemoryFlag } from "./chatMemoryFlags";
 
 // ==================== Multimodal Types ====================
 
@@ -235,6 +237,117 @@ function buildPersonaWorkResponseDirective(message?: string | null): string | nu
     "- Lead with the most relevant current status or backlog update for this persona.",
     "- If a next step or human action is needed, include the most relevant Markdown action link exactly as written in the work context.",
   ].join("\n");
+}
+
+type RetrievalMode = "full" | "light" | "minimal";
+
+interface RetrievalProfile {
+  query: string | null;
+  mode: RetrievalMode;
+  reason: string | null;
+  charCount: number;
+  wordCount: number;
+}
+
+function analyzeRetrievalQuery(message?: string | null): RetrievalProfile {
+  const text = message?.trim();
+  if (!text) {
+    return { query: null, mode: "minimal", reason: "empty", charCount: 0, wordCount: 0 };
+  }
+
+  const marker = "\n\nLibrary context:";
+  const markerIndex = text.indexOf(marker);
+  const baseText = markerIndex >= 0 ? text.slice(0, markerIndex).trim() : text;
+  if (!baseText || baseText === "Use these library items as context.") {
+    return { query: null, mode: "minimal", reason: "library-only", charCount: 0, wordCount: 0 };
+  }
+
+  const normalized = baseText.toLowerCase();
+  const wordCount = baseText.split(/\s+/).filter(Boolean).length;
+  const charCount = baseText.length;
+
+  const acknowledgementOnlyPatterns = [
+    "thanks",
+    "thank you",
+    "thx",
+    "ok",
+    "okay",
+    "got it",
+    "รับทราบ",
+    "ขอบคุณ",
+    "โอเค",
+    "เยี่ยม",
+    "great",
+    "nice",
+    "cool",
+    "สวัสดี",
+    "หวัดดี",
+    "hello",
+    "hi",
+    "hey",
+    "bye",
+  ];
+  const isAcknowledgementOnly = acknowledgementOnlyPatterns.some((keyword) => {
+    if (!normalized.includes(keyword)) return false;
+    return !/[?？]/.test(baseText) && wordCount <= 4 && charCount <= 32;
+  });
+
+  if (isAcknowledgementOnly) {
+    return {
+      query: baseText,
+      mode: "minimal",
+      reason: "acknowledgement_or_small_talk",
+      charCount,
+      wordCount,
+    };
+  }
+
+  const yesNoPatterns = [
+    "ไหม",
+    "มั้ย",
+    "หรือเปล่า",
+    "ใช่ไหม",
+    "right",
+    "correct",
+    "should",
+    "would",
+    "can",
+    "could",
+    "will",
+    "is it",
+    "do i",
+    "do we",
+    "shall",
+    "yes or no",
+    "?",
+  ];
+  const isShortDecisionQuery =
+    wordCount <= 8 &&
+    charCount <= 48 &&
+    yesNoPatterns.some((keyword) => normalized.includes(keyword));
+
+  if (isShortDecisionQuery) {
+    return {
+      query: baseText,
+      mode: "light",
+      reason: "short_decision_or_yes_no",
+      charCount,
+      wordCount,
+    };
+  }
+
+  const veryShortQuery = wordCount <= 3 && charCount <= 24;
+  if (veryShortQuery) {
+    return {
+      query: baseText,
+      mode: "light",
+      reason: "very_short_query",
+      charCount,
+      wordCount,
+    };
+  }
+
+  return { query: baseText, mode: "full", reason: null, charCount, wordCount };
 }
 
 function toStoredPersonaId(persona: PersonaTemplate | null): string | null {
@@ -717,7 +830,9 @@ async function getModelContextLength(modelId: string): Promise<number> {
 export type EntityType =
   | "user" | "project" | "preference" | "technical"
   | "decision" | "plan" | "architecture" | "component" | "task" | "code_knowledge"
-  | "rule";
+  | "rule" | "fact" | "goal" | "insight" | "context" | "relationship"
+  | "process" | "constraint" | "reference" | "note" | "checklist"
+  | "artifact_note" | "handoff_note" | "episode";
 
 // Default importance by type
 export const IMPORTANCE_BY_TYPE: Record<string, number> = {
@@ -903,7 +1018,13 @@ export async function saveSummary(
   messageRangeStart: number,
   messageRangeEnd: number,
   messageCount: number,
-  tokensUsed?: number
+  tokensUsed?: number,
+  metadata?: {
+    skippedRiskyCount?: number;
+    extractedFactIds?: string[];
+    hasRawArchive?: boolean;
+    classificationStats?: Record<string, unknown> | null;
+  },
 ): Promise<ConversationSummary> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -917,6 +1038,10 @@ export async function saveSummary(
       messageRangeEnd,
       messageCount,
       tokensUsed,
+      skippedRiskyCount: metadata?.skippedRiskyCount,
+      extractedFactIds: metadata?.extractedFactIds,
+      hasRawArchive: metadata?.hasRawArchive,
+      classificationStats: metadata?.classificationStats ?? null,
     })
     .returning();
 
@@ -942,6 +1067,30 @@ export async function getSummaries(
 }
 
 /**
+ * Delete a summary from a conversation.
+ * Used by the chat memory panel when the user removes a bad summary.
+ */
+export async function deleteSummary(
+  conversationId: number,
+  summaryId: number,
+): Promise<boolean> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const result = await db
+    .delete(conversationSummaries)
+    .where(
+      and(
+        eq(conversationSummaries.id, summaryId),
+        eq(conversationSummaries.conversationId, conversationId),
+      ),
+    )
+    .returning({ id: conversationSummaries.id });
+
+  return result.length > 0;
+}
+
+/**
  * Get summaries across all conversations in a project
  */
 export async function getProjectSummaries(
@@ -952,25 +1101,24 @@ export async function getProjectSummaries(
   const db = await getDb();
   if (!db) return [];
 
+  const conversationIds = await db
+    .select({ id: conversations.id })
+    .from(conversations)
+    .where(and(eq(conversations.userId, userId), eq(conversations.projectId, projectId)));
+
+  if (conversationIds.length === 0) return [];
+
   return await db
-    .select({
-      id: conversationSummaries.id,
-      conversationId: conversationSummaries.conversationId,
-      summary: conversationSummaries.summary,
-      messageRangeStart: conversationSummaries.messageRangeStart,
-      messageRangeEnd: conversationSummaries.messageRangeEnd,
-      messageCount: conversationSummaries.messageCount,
-      tokensUsed: conversationSummaries.tokensUsed,
-      projectId: conversationSummaries.projectId,
-      createdAt: conversationSummaries.createdAt,
-    })
+    .select()
     .from(conversationSummaries)
-    .innerJoin(conversations, eq(conversationSummaries.conversationId, conversations.id))
     .where(
       and(
-        eq(conversations.userId, userId),
-        eq(conversationSummaries.projectId, projectId)
-      )
+        eq(conversationSummaries.projectId, projectId),
+        inArray(
+          conversationSummaries.conversationId,
+          conversationIds.map((conversation) => conversation.id),
+        ),
+      ),
     )
     .orderBy(desc(conversationSummaries.createdAt))
     .limit(limit);
@@ -1656,6 +1804,7 @@ async function buildPersonaWorkContext(params: {
 
 export interface ChatContext {
   systemPrompt?: string;
+  retrievalContext: string | null;
   entityContext: string | null;
   summaryContext: string | null;
   bufferMessages: Array<{ role: "user" | "assistant" | "system"; content: MessageContent }>;
@@ -1703,6 +1852,12 @@ export async function buildChatContext(
   };
 
   let used = 0;
+  let retrievalContext: string | null = null;
+  let retrievalTokenEstimate = 0;
+  let entityTokenEstimate = 0;
+  let summaryTokenEstimate = 0;
+  let bufferTokenEstimate = 0;
+  let retrievalHitCount = 0;
   let includedEntityCount = 0;
   let rulesCount = 0;
   let includedSummaryCount = 0;
@@ -1711,6 +1866,8 @@ export async function buildChatContext(
   let effectiveSystemPrompt = systemPrompt;
   let activePersonaId: string | null = null;
   let activeTenantId: string | null = options?.tenantId || null;
+  const retrievalProfile = analyzeRetrievalQuery(options?.currentUserMessage);
+  const retrievalQuery = retrievalProfile.query;
   const personaStart = Date.now();
   try {
     const db = await getDb();
@@ -1721,7 +1878,7 @@ export async function buildChatContext(
         conversationId,
         userId,
         tenantId: options?.tenantId,
-        currentUserMessage: options?.currentUserMessage,
+        currentUserMessage: retrievalQuery,
       });
       activeTenantId = personaContext.tenantId;
       activePersonaId = personaContext.storedPersonaId;
@@ -1736,14 +1893,14 @@ export async function buildChatContext(
         if (
           activeTenantId &&
           activePersonaId &&
-          shouldIncludePersonaWorkContext(options?.currentUserMessage)
+          shouldIncludePersonaWorkContext(retrievalQuery)
         ) {
           const workContext = await buildPersonaWorkContext({
             tenantId: activeTenantId,
             personaId: activePersonaId,
           });
           if (workContext) parts.push(workContext);
-          const responseDirective = buildPersonaWorkResponseDirective(options?.currentUserMessage);
+          const responseDirective = buildPersonaWorkResponseDirective(retrievalQuery);
           if (responseDirective) parts.push(responseDirective);
         }
         effectiveSystemPrompt = parts.join("\n\n");
@@ -1778,6 +1935,7 @@ export async function buildChatContext(
   // Adaptive budget percentages based on visual context presence
   const entityPct = hasVisualContext ? 0.20 : 0.40;
   const summaryPct = hasVisualContext ? 0.25 : 0.60;
+  const summaryLimit = retrievalProfile.mode === "minimal" ? 0 : retrievalProfile.mode === "light" ? 2 : MAX_SUMMARIES_IN_CONTEXT;
 
   let entityContext: string | null = null;
 
@@ -1785,62 +1943,184 @@ export async function buildChatContext(
   const entityStart = Date.now();
   if (memoryMode !== "off") {
     // 1. Get entity memories (only in "full" mode)
-    if (memoryMode === "full") {
-      const allEntities = await getEntityMemoriesForContext(
-        userId,
-        50,
-        options?.projectId || null,
-        activePersonaId,
-      );
+    if (memoryMode === "full" && retrievalProfile.mode !== "minimal") {
+      const tenantIdForMemory = activeTenantId || options?.tenantId || null;
+      const vectorEnabled = tenantIdForMemory
+        ? await getChatMemoryFlag("chat_vector_memory_enabled", tenantIdForMemory).catch(() => false)
+        : false;
 
-      // Separate rules from other entities
-      const rules = allEntities.filter((e) => e.entityType === "rule");
-      const nonRuleEntities = allEntities.filter((e) => e.entityType !== "rule");
-      rulesCount = rules.length;
+      const useVectorSearch = Boolean(vectorEnabled && tenantIdForMemory && retrievalQuery && retrievalProfile.mode === "full");
+      const useLightSearch = Boolean(tenantIdForMemory && retrievalQuery && retrievalProfile.mode === "light");
 
-      // Rules section (never trimmed — always included)
-      const ruleLines = rules.map((r) => `[RULE] ${r.facts.join("; ")}`);
-      const rulesText = ruleLines.length > 0 ? ruleLines.join("\n") : null;
-      if (rulesText) used += estimateTokens(rulesText);
+      if (useVectorSearch || useLightSearch) {
+        const activeRetrievalQuery = retrievalQuery ?? "";
+        const [{ generateQueryEmbedding }, { searchMessageChunks }, { mergeAndDedup }] = await Promise.all([
+          import("./queryEmbeddingService"),
+          import("./messageChunkSearchService"),
+          import("./memoryMerger"),
+        ]);
 
-      // Rank non-rule entities by relevance to current message
-      let rankedEntities: typeof nonRuleEntities;
-      if (options?.currentUserMessage) {
-        const { rankMemories } = await import("./relevanceScorer");
-        rankedEntities = rankMemories(options.currentUserMessage, nonRuleEntities).map((r) => r.memory);
-      } else {
-        rankedEntities = nonRuleEntities;
-      }
-
-      // Include relevant entities (cap at entityPct of budget)
-      const entityBudget = budget * entityPct;
-      const includedEntities: typeof rankedEntities = [];
-      for (const entity of rankedEntities) {
-        const entityText = `[${entity.entityType}:${entity.entityName}] ${entity.facts.slice(0, 3).join("; ")}`;
-        const cost = estimateTokens(entityText);
-        if (used + cost > entityBudget + (effectiveSystemPrompt ? estimateTokens(effectiveSystemPrompt) : 0)) break;
-        includedEntities.push(entity);
-        used += cost;
-      }
-      includedEntityCount = includedEntities.length;
-
-      // Build entity context string
-      const sections: string[] = [];
-      if (rulesText) sections.push("[RULES]\n" + rulesText);
-      if (includedEntities.length > 0) {
-        const entityLines = includedEntities.map((e) => {
-          const factsStr = e.facts.slice(0, 3).join("; ");
-          return `[${e.entityType}:${e.entityName}] ${factsStr}`;
+        const queryEmbedding = useVectorSearch ? await generateQueryEmbedding(activeRetrievalQuery) : null;
+        const rules = await getRuleMemories(tenantIdForMemory!, userId, activePersonaId);
+        const l1Results = await searchMemories({
+          tenantId: tenantIdForMemory!,
+          scopes: [{ type: "user", id: String(userId) }],
+          query: activeRetrievalQuery,
+          topK: useVectorSearch ? 10 : 5,
+          embedding: queryEmbedding ?? undefined,
         });
-        sections.push("[MEMORY]\n" + entityLines.join("\n"));
-      }
-      if (sections.length > 0) {
-        entityContext = `[MEMORY_START]\n${sections.join("\n\n")}\n[MEMORY_END]`;
-      }
 
-      // Touch accessed entities
-      const touchIds = [...rules, ...includedEntities].map((e) => e.id);
-      if (touchIds.length > 0) await touchEntityMemories(touchIds);
+        let l2Results: Array<{ chunk: { id: string; content: string; tokenCount: number } }> = [];
+        if (useVectorSearch && l1Results.length < 3) {
+          l2Results = await searchMessageChunks({
+            tenantId: tenantIdForMemory!,
+            userId,
+            query: activeRetrievalQuery,
+            topK: 5,
+            projectId: options?.projectId || null,
+            embedding: queryEmbedding,
+          });
+        }
+
+        const legacyEntities = await getEntityMemoriesForContext(
+          userId,
+          useLightSearch ? 8 : 20,
+          options?.projectId || null,
+          activePersonaId,
+        );
+
+        const merged = mergeAndDedup(
+          rules.map((rule) => ({
+            id: String(rule.id),
+            source: "rule" as const,
+            content: `${rule.title}: ${rule.content}`,
+            tokenCount: estimateTokens(`${rule.title} ${rule.content}`),
+          })),
+          l1Results.map((result) => ({
+            id: result.memory.id,
+            source: "fact" as const,
+            content: `${result.memory.title}: ${result.memory.content}`,
+            tokenCount: estimateTokens(`${result.memory.title} ${result.memory.content}`),
+          })),
+          l2Results.map((result) => ({
+            id: result.chunk.id,
+            source: "chunk" as const,
+            content: result.chunk.content,
+            tokenCount: result.chunk.tokenCount,
+          })),
+          legacyEntities.map((entity) => ({
+            id: String(entity.id),
+            source: "legacy" as const,
+            content: `${entity.entityType}:${entity.entityName} ${entity.facts.slice(0, 3).join("; ")}`,
+            tokenCount: estimateTokens(entity.entityName + entity.facts.join(" ")),
+          })),
+          { totalBudget: budget * entityPct },
+        );
+
+        const retrievalLines = merged.items
+          .filter((item) => item.source === "rule" || item.source === "l1_fact" || item.source === "l2_chunk")
+          .map((item) => {
+            if (item.source === "rule") return `[RULE] ${item.content}`;
+            if (item.source === "l1_fact") return `[FACT] ${item.content}`;
+            return `[CHUNK] ${item.content}`;
+          });
+        const legacyLines = merged.items
+          .filter((item) => item.source === "legacy_entity")
+          .map((item) => `[LEGACY] ${item.content}`);
+
+        retrievalContext = retrievalLines.length > 0
+          ? [
+              "[RETRIEVAL_START]",
+              "Use the retrieved evidence below first. Treat it as the strongest available context for this turn.",
+              retrievalLines.join("\n\n"),
+              "[RETRIEVAL_END]",
+            ].join("\n")
+          : null;
+        entityContext = legacyLines.length > 0
+          ? `[MEMORY_START]\n${legacyLines.join("\n")}\n[MEMORY_END]`
+          : null;
+        rulesCount = merged.rulesCount;
+        includedEntityCount = merged.items.length;
+        retrievalHitCount = retrievalLines.length;
+        used += merged.tokenEstimate;
+        if (retrievalContext) {
+          retrievalTokenEstimate = estimateTokens(retrievalContext);
+          const retrievalContentTokens = merged.items
+            .filter((item) => item.source === "rule" || item.source === "l1_fact" || item.source === "l2_chunk")
+            .reduce((sum, item) => sum + (item.tokenEstimate ?? estimateTokens(item.content)), 0);
+          used += Math.max(0, retrievalTokenEstimate - retrievalContentTokens);
+        }
+        if (entityContext) {
+          entityTokenEstimate = estimateTokens(entityContext);
+          const legacyContentTokens = merged.items
+            .filter((item) => item.source === "legacy_entity")
+            .reduce((sum, item) => sum + (item.tokenEstimate ?? estimateTokens(item.content)), 0);
+          used += Math.max(0, entityTokenEstimate - legacyContentTokens);
+        }
+
+        const touchIds = legacyEntities.map((entity) => entity.id);
+        if (touchIds.length > 0) await touchEntityMemories(touchIds);
+      } else if (retrievalProfile.mode === "full") {
+        const allEntities = await getEntityMemoriesForContext(
+          userId,
+          50,
+          options?.projectId || null,
+          activePersonaId,
+        );
+
+        // Separate rules from other entities
+        const rules = allEntities.filter((e) => e.entityType === "rule");
+        const nonRuleEntities = allEntities.filter((e) => e.entityType !== "rule");
+        rulesCount = rules.length;
+
+        // Rules section (never trimmed — always included)
+        const ruleLines = rules.map((r) => `[RULE] ${r.facts.join("; ")}`);
+        const rulesText = ruleLines.length > 0 ? ruleLines.join("\n") : null;
+        if (rulesText) used += estimateTokens(rulesText);
+        if (rulesText) {
+          entityTokenEstimate += estimateTokens(rulesText);
+        }
+
+        // Rank non-rule entities by relevance to current message
+        let rankedEntities: typeof nonRuleEntities;
+        if (retrievalQuery) {
+          const { rankMemories } = await import("./relevanceScorer");
+          rankedEntities = rankMemories(retrievalQuery, nonRuleEntities).map((r) => r.memory);
+        } else {
+          rankedEntities = nonRuleEntities;
+        }
+
+        // Include relevant entities (cap at entityPct of budget)
+        const entityBudget = budget * entityPct;
+        const includedEntities: typeof rankedEntities = [];
+        for (const entity of rankedEntities) {
+          const entityText = `[${entity.entityType}:${entity.entityName}] ${entity.facts.slice(0, 3).join("; ")}`;
+          const cost = estimateTokens(entityText);
+          if (used + cost > entityBudget + (effectiveSystemPrompt ? estimateTokens(effectiveSystemPrompt) : 0)) break;
+          includedEntities.push(entity);
+          used += cost;
+        }
+        includedEntityCount = includedEntities.length;
+
+        // Build entity context string
+        const sections: string[] = [];
+        if (rulesText) sections.push("[RULES]\n" + rulesText);
+        if (includedEntities.length > 0) {
+          const entityLines = includedEntities.map((e) => {
+            const factsStr = e.facts.slice(0, 3).join("; ");
+            return `[${e.entityType}:${e.entityName}] ${factsStr}`;
+          });
+          sections.push("[MEMORY]\n" + entityLines.join("\n"));
+        }
+        if (sections.length > 0) {
+          entityContext = `[MEMORY_START]\n${sections.join("\n\n")}\n[MEMORY_END]`;
+          entityTokenEstimate += estimateTokens(entityContext);
+        }
+
+        // Touch accessed entities
+        const touchIds = [...rules, ...includedEntities].map((e) => e.id);
+        if (touchIds.length > 0) await touchEntityMemories(touchIds);
+      }
     }
   }
   stageTimings.entityMemoryMs = Date.now() - entityStart;
@@ -1849,8 +2129,8 @@ export async function buildChatContext(
   // Also fetch project summaries if projectId is set
   let allSummaries: ConversationSummary[] = [];
   const summaryStart = Date.now();
-  if (memoryMode !== "off") {
-    allSummaries = await getSummaries(conversationId, 10);
+  if (memoryMode !== "off" && summaryLimit > 0) {
+    allSummaries = await getSummaries(conversationId, retrievalProfile.mode === "light" ? summaryLimit : 10);
     // Add project summaries from other conversations
     if (options?.projectId) {
       const projectSummaries = await getProjectSummaries(options.projectId, userId, 5);
@@ -1864,6 +2144,7 @@ export async function buildChatContext(
   let summaryContext: string | null = null;
   const summaryBudget = budget * summaryPct;
   const includedSummaries: string[] = [];
+  const summaryBudgetUsedBefore = used;
   for (const s of allSummaries.reverse()) {
     const cost = estimateTokens(s.summary);
     if (used + cost > summaryBudget + (effectiveSystemPrompt ? estimateTokens(effectiveSystemPrompt) : 0)) break;
@@ -1873,6 +2154,7 @@ export async function buildChatContext(
   includedSummaryCount = includedSummaries.length;
   if (includedSummaries.length > 0) {
     summaryContext = `Previous conversation context:\n${includedSummaries.join("\n\n")}`;
+    summaryTokenEstimate = used - summaryBudgetUsedBefore;
   }
   stageTimings.summaryMs = Date.now() - summaryStart;
 
@@ -1887,12 +2169,14 @@ export async function buildChatContext(
     }));
 
   const bufferMessages: typeof filtered = [];
+  const bufferBudgetUsedBefore = used;
   for (let i = filtered.length - 1; i >= 0; i--) {
     const cost = estimateTokens(getTextContent(filtered[i].content));
     if (used + cost > budget) break;
     bufferMessages.unshift(filtered[i]);
     used += cost;
   }
+  bufferTokenEstimate = used - bufferBudgetUsedBefore;
   stageTimings.bufferMs = Date.now() - bufferStart;
 
   // 4.5. Visual Memory Assembly (section 07 / 09)
@@ -1918,7 +2202,7 @@ export async function buildChatContext(
   stageTimings.featureFlagMs = Date.now() - featureFlagStart;
 
   const visualRetrievalStart = Date.now();
-  if (multimodalEnabled && hasVisualContext && options?.currentUserMessage) {
+  if (multimodalEnabled && hasVisualContext && retrievalQuery) {
     try {
       const {
         hasImageReferenceKeywords,
@@ -1927,13 +2211,13 @@ export async function buildChatContext(
         buildImageContext,
       } = await import("./multimodalRetrievalService");
 
-      const userMsg = options.currentUserMessage;
+      const userMsg = retrievalQuery;
       if (hasImageReferenceKeywords(userMsg)) {
         const explicitRefs = await resolveVisualReferences(
           userMsg,
           conversationId,
           userId,
-          options?.tenantId ?? ""
+          options?.tenantId
         );
 
         const resolvedAssets = explicitRefs.length > 0
@@ -1989,6 +2273,15 @@ export async function buildChatContext(
       conversationId,
       budget,
       memoryMode,
+      retrievalMode: retrievalProfile.mode,
+      retrievalReason: retrievalProfile.reason,
+      retrievalQueryLength: retrievalProfile.charCount,
+      retrievalQueryWordCount: retrievalProfile.wordCount,
+      retrievalHitCount,
+      retrievalTokenEstimate,
+      entityTokenEstimate,
+      summaryTokenEstimate,
+      bufferTokenEstimate,
       projectId: options?.projectId || null,
       tenantId: activeTenantId,
       currentUserMessageLength: options?.currentUserMessage?.length ?? 0,
@@ -2007,6 +2300,7 @@ export async function buildChatContext(
 
   return {
     systemPrompt: effectiveSystemPrompt,
+    retrievalContext,
     entityContext,
     summaryContext,
     bufferMessages,
@@ -2029,6 +2323,9 @@ export function contextToMessages(
   const systemParts: string[] = [];
   if (context.systemPrompt) {
     systemParts.push(context.systemPrompt);
+  }
+  if (context.retrievalContext) {
+    systemParts.push(context.retrievalContext);
   }
   if (context.entityContext) {
     systemParts.push(context.entityContext);
@@ -2100,6 +2397,207 @@ export async function processConversationMemory(
   let compacted = false;
   let compactedMessageCount = 0;
   const suggestedMemories: SuggestedMemory[] = [];
+
+  const db = await getDb();
+  let conversationTenantId: string | null = null;
+  let conversationProjectId: string | null = null;
+  let activePersonaId: string | null = null;
+
+  if (db) {
+    try {
+      const [conversation] = await db
+        .select({
+          projectId: conversations.projectId,
+          tenantId: conversations.tenantId,
+          personaId: conversations.personaId,
+        })
+        .from(conversations)
+        .where(eq(conversations.id, conversationId))
+        .limit(1);
+
+      conversationTenantId = conversation?.tenantId ?? null;
+      conversationProjectId = conversation?.projectId ?? null;
+
+      if (conversationTenantId) {
+        try {
+          const personaContext = await resolveActivePersonaContext({
+            db,
+            conversationId,
+            userId,
+            tenantId: conversationTenantId,
+            persistNicknameSelection: false,
+          });
+          activePersonaId = personaContext.storedPersonaId;
+        } catch {
+          activePersonaId = conversation?.personaId ?? null;
+        }
+      }
+    } catch {
+      conversationTenantId = null;
+    }
+  }
+
+  if (conversationTenantId) {
+    try {
+      const chatFlags = db
+        ? await getAllChatMemoryFlags(conversationTenantId).catch(() => CHAT_MEMORY_FLAG_DEFAULTS)
+        : CHAT_MEMORY_FLAG_DEFAULTS;
+
+      if (db) {
+        const [{ archiveMessages }, { chunkConversationMessages }, { extractFacts }, { buildSmartSummary }] = await Promise.all([
+          import("./memoryArchiveService"),
+          import("./messageChunkerService"),
+          import("./factExtractor"),
+          import("./smartSummarizer"),
+        ]);
+
+        const conversationMessages = await db
+          .select({
+            id: messages.id,
+            role: messages.role,
+            content: messages.content,
+            createdAt: messages.createdAt,
+          })
+          .from(messages)
+          .where(eq(messages.conversationId, conversationId))
+          .orderBy(asc(messages.id));
+
+        if (conversationMessages.length > 0) {
+          let extractedFactIds: string[] = [];
+
+          if (chatFlags.chat_archive_enabled) {
+            const archivePayload = conversationMessages.map((message) => ({
+              tenantId: conversationTenantId || "",
+              userId,
+              conversationId,
+              messageId: message.id,
+              role: message.role,
+              content: message.content,
+              createdAt: message.createdAt ?? new Date(),
+              projectId: conversationProjectId,
+              personaId: activePersonaId,
+            }));
+
+            await archiveMessages(archivePayload);
+          }
+
+          if (chatFlags.chat_chunk_index_enabled) {
+            await chunkConversationMessages({
+              tenantId: conversationTenantId,
+              userId,
+              conversationId,
+              projectId: conversationProjectId,
+              personaId: activePersonaId,
+              messages: conversationMessages,
+            });
+          }
+
+          if (chatFlags.chat_fact_extraction_enabled) {
+            const factResult = await extractFacts(
+              conversationMessages
+                .filter(
+                  (message): message is typeof message & { role: "user" | "assistant" } =>
+                    message.role === "user" || message.role === "assistant",
+                )
+                .map((message) => ({
+                  role: message.role,
+                  content: message.content,
+                })),
+              conversationTenantId,
+              userId,
+            );
+            entitiesExtracted += factResult.inserted + factResult.reinforced;
+            extractedFactIds = factResult.factIds;
+          }
+
+          if (chatFlags.chat_smart_summarize_enabled) {
+            const messagesToSummarize = await getMessagesToSummarize(conversationId);
+            if (messagesToSummarize.length > 0) {
+              const summarizableMessages = messagesToSummarize.filter(
+                (message): message is typeof message & { role: "user" | "assistant" } =>
+                  message.role === "user" || message.role === "assistant",
+              );
+              const summaryResult = await buildSmartSummary({
+                messages: summarizableMessages.map((message) => ({
+                  id: message.id,
+                  role: message.role as "user" | "assistant",
+                  content: message.content,
+                })),
+                userId,
+                tenantId: conversationTenantId,
+                extractedFactIds,
+              });
+
+              if (summaryResult.summary.trim().length > 0) {
+                await saveSummary(
+                  conversationId,
+                  summaryResult.summary,
+                  messagesToSummarize[0].id,
+                  messagesToSummarize[messagesToSummarize.length - 1].id,
+                  messagesToSummarize.length,
+                  undefined,
+                  {
+                    skippedRiskyCount: summaryResult.skippedRiskyCount,
+                    extractedFactIds: summaryResult.extractedFactIds,
+                    hasRawArchive: true,
+                    classificationStats: summaryResult.classificationStats,
+                  },
+                );
+                summarized = true;
+                compacted = true;
+                compactedMessageCount = messagesToSummarize.length;
+              }
+            }
+
+            const recentMessages = await getBufferMessages(conversationId, 5);
+            for (const msg of recentMessages) {
+              if (msg.role === "user" || msg.role === "assistant") {
+                const extracted = extractEntitiesFromMessage(msg.content);
+                for (const entity of extracted) {
+                  if (entity.importance < 8) {
+                    await upsertEntityMemory(
+                      userId,
+                      entity.type,
+                      entity.name,
+                      [entity.fact],
+                      conversationId,
+                      entity.importance,
+                      "auto",
+                      conversationProjectId,
+                      activePersonaId,
+                    );
+                    entitiesExtracted++;
+                  } else {
+                    suggestedMemories.push(entity);
+                  }
+                }
+              }
+            }
+
+            const messageCount = await getMessageCount(conversationId);
+            if (messageCount > 0 && messageCount % 50 === 0) {
+              const deleted = await cleanupExpiredMemories(userId);
+              if (deleted > 0) {
+                console.log(`[Memory] Cleaned up ${deleted} expired memories for user ${userId}`);
+              }
+            }
+
+            let consolidated = false;
+            try {
+              const consolidationResult = await checkAndConsolidate(conversationId, userId);
+              consolidated = consolidationResult.consolidated;
+            } catch (err) {
+              console.error("[Memory] Consolidation check failed:", err);
+            }
+
+            return { summarized, entitiesExtracted, suggestedMemories, compacted, compactedMessageCount, consolidated };
+          }
+        }
+      }
+    } catch (error) {
+      console.warn("[Memory] Smart memory pipeline failed, falling back to legacy processing:", error);
+    }
+  }
 
   // Check if summarization is needed (auto-compact)
   const shouldSummarize = await needsSummarization(conversationId);
@@ -2225,28 +2723,31 @@ export async function processConversationMemory(
   }
 
   // Look up conversation scope for persona-aware long memory
-  let conversationProjectId: string | null = null;
-  let conversationTenantId: string | null = null;
-  let activePersonaId: string | null = null;
   try {
-    const db = await getDb();
-    if (db) {
+    if (db && (!conversationProjectId || !conversationTenantId || !activePersonaId)) {
       const [conv] = await db
-        .select({ projectId: conversations.projectId, tenantId: conversations.tenantId })
+        .select({
+          projectId: conversations.projectId,
+          tenantId: conversations.tenantId,
+          personaId: conversations.personaId,
+        })
         .from(conversations)
         .where(eq(conversations.id, conversationId))
         .limit(1);
-      conversationProjectId = conv?.projectId ?? null;
-      conversationTenantId = conv?.tenantId ?? null;
 
-      const personaContext = await resolveActivePersonaContext({
-        db,
-        conversationId,
-        userId,
-        tenantId: conversationTenantId,
-        persistNicknameSelection: false,
-      });
-      activePersonaId = personaContext.storedPersonaId;
+      conversationProjectId ||= conv?.projectId ?? null;
+      conversationTenantId ||= conv?.tenantId ?? null;
+
+      if (conversationTenantId) {
+        const personaContext = await resolveActivePersonaContext({
+          db,
+          conversationId,
+          userId,
+          tenantId: conversationTenantId,
+          persistNicknameSelection: false,
+        });
+        activePersonaId ||= personaContext.storedPersonaId ?? conv?.personaId ?? null;
+      }
     }
   } catch {}
 

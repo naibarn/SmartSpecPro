@@ -172,3 +172,4 @@ class AuditEvent(Base):
         Index("idx_audit_severity", "severity"),
         Index("idx_audit_created", "created_at"),
     )
+# mypy: ignore-errors

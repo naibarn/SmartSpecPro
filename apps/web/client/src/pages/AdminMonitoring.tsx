@@ -9,13 +9,7 @@ import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { DashboardCard, DashboardKpiCard } from "@/components/dashboard";
 import { Badge } from "@/components/ui/badge";
 import {
   ArrowLeft,
@@ -152,60 +146,38 @@ function StatusCards({
   return (
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
       {services.map((svc) => (
-        <Card key={svc.name}>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Server className="h-4 w-4 text-muted-foreground" />
-              {svc.name}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
-              {statusIcon(String(svc.status))}
-              <span
-                className={cn(
-                  "text-sm font-semibold capitalize",
-                  statusColor[String(svc.status).toLowerCase()]?.split(" ")[0] ?? "text-gray-500",
-                )}
-              >
-                {String(svc.status)}
-              </span>
-            </div>
-          </CardContent>
-        </Card>
+        <DashboardKpiCard
+          key={svc.name}
+          icon={Server}
+          label={svc.name}
+          value={String(svc.status)}
+          valueClassName={cn(
+            "capitalize",
+            statusColor[String(svc.status).toLowerCase()]?.split(" ")[0] ?? "text-gray-500",
+          )}
+          subLabel={<div className="flex items-center gap-2">{statusIcon(String(svc.status))}</div>}
+        />
       ))}
 
       {/* Critical alerts card */}
-      <Card className={criticalCount > 0 ? "border-red-300 bg-red-50/40" : ""}>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium flex items-center gap-2">
-            <XCircle className={cn("h-4 w-4", criticalCount > 0 ? "text-red-500" : "text-gray-400")} />
-            Critical
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold text-red-600">{criticalCount}</div>
-          <p className="text-xs text-muted-foreground">unacknowledged</p>
-        </CardContent>
-      </Card>
+      <DashboardKpiCard
+        icon={XCircle}
+        label="Critical"
+        value={criticalCount}
+        subLabel="unacknowledged"
+        valueClassName="text-red-600"
+        iconContainerClassName={criticalCount > 0 ? "bg-red-50 text-red-600" : undefined}
+      />
 
       {/* Warning alerts card */}
-      <Card className={warningCount > 0 ? "border-yellow-300 bg-yellow-50/40" : ""}>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium flex items-center gap-2">
-            <AlertTriangle
-              className={cn("h-4 w-4", warningCount > 0 ? "text-yellow-500" : "text-gray-400")}
-            />
-            Warnings
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold text-yellow-600">{warningCount}</div>
-          <p className="text-xs text-muted-foreground">
-            last check: {timeAgo(lastCheck)}
-          </p>
-        </CardContent>
-      </Card>
+      <DashboardKpiCard
+        icon={AlertTriangle}
+        label="Warnings"
+        value={warningCount}
+        subLabel={`last check: ${timeAgo(lastCheck)}`}
+        valueClassName="text-yellow-600"
+        iconContainerClassName={warningCount > 0 ? "bg-yellow-50 text-yellow-600" : undefined}
+      />
     </div>
   );
 }
@@ -589,149 +561,56 @@ function MetricsTab() {
 
       {/* Current snapshot cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <MemoryStick className="h-4 w-4 text-blue-500" />
-              RAM Usage
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <div className="flex items-end justify-between">
-              <span
-                className={cn(
-                  "text-2xl font-bold",
-                  latestMemory >= 90
-                    ? "text-red-600"
-                    : latestMemory >= 70
-                      ? "text-yellow-600"
-                      : "text-green-600",
-                )}
-              >
-                {latestMemory.toFixed(1)}%
-              </span>
-              {latestMetric && (
-                <span className="text-xs text-muted-foreground">
-                  {latestMetric.memoryUsedMb.toFixed(0)} / {latestMetric.memoryTotalMb.toFixed(0)} MB
-                </span>
-              )}
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2.5">
-              <div
-                className={cn(
-                  "h-2.5 rounded-full transition-all",
-                  latestMemory >= 90
-                    ? "bg-red-500"
-                    : latestMemory >= 70
-                      ? "bg-yellow-500"
-                      : "bg-blue-500",
-                )}
-                style={{ width: `${Math.min(100, latestMemory)}%` }}
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Cpu className="h-4 w-4 text-purple-500" />
-              CPU Usage
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <div className="flex items-end justify-between">
-              <span
-                className={cn(
-                  "text-2xl font-bold",
-                  latestCpu === null
-                    ? "text-gray-400"
-                    : latestCpu >= 90
-                      ? "text-red-600"
-                      : latestCpu >= 70
-                        ? "text-yellow-600"
-                        : "text-green-600",
-                )}
-              >
-                {latestCpu !== null ? `${latestCpu.toFixed(1)}%` : "N/A"}
-              </span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2.5">
-              <div
-                className={cn(
-                  "h-2.5 rounded-full transition-all",
-                  latestCpu === null
-                    ? "bg-gray-300"
-                    : latestCpu >= 90
-                      ? "bg-red-500"
-                      : latestCpu >= 70
-                        ? "bg-yellow-500"
-                        : "bg-purple-500",
-                )}
-                style={{ width: `${Math.min(100, latestCpu ?? 0)}%` }}
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Server className="h-4 w-4 text-orange-500" />
-              Disk Usage
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <div className="flex items-end justify-between">
-              <span
-                className={cn(
-                  "text-2xl font-bold",
-                  diskPercent === null
-                    ? "text-gray-400"
-                    : diskPercent >= 90
-                      ? "text-red-600"
-                      : diskPercent >= 70
-                        ? "text-yellow-600"
-                        : "text-green-600",
-                )}
-              >
-                {diskPercent !== null ? `${diskPercent.toFixed(1)}%` : "N/A"}
-              </span>
-              {latestMetric?.diskUsedGb !== null && latestMetric?.diskTotalGb !== null && (
-                <span className="text-xs text-muted-foreground">
-                  {latestMetric?.diskUsedGb?.toFixed(1)} / {latestMetric?.diskTotalGb?.toFixed(1)} GB
-                </span>
-              )}
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2.5">
-              <div
-                className={cn(
-                  "h-2.5 rounded-full transition-all",
-                  diskPercent === null
-                    ? "bg-gray-300"
-                    : diskPercent >= 90
-                      ? "bg-red-500"
-                      : diskPercent >= 70
-                        ? "bg-yellow-500"
-                        : "bg-orange-500",
-                )}
-                style={{ width: `${Math.min(100, diskPercent ?? 0)}%` }}
-              />
-            </div>
-          </CardContent>
-        </Card>
+        <DashboardKpiCard
+          icon={MemoryStick}
+          label="RAM Usage"
+          value={`${latestMemory.toFixed(1)}%`}
+          subLabel={latestMetric ? `${latestMetric.memoryUsedMb.toFixed(0)} / ${latestMetric.memoryTotalMb.toFixed(0)} MB` : undefined}
+          valueClassName={
+            latestMemory >= 90
+              ? "text-red-600"
+              : latestMemory >= 70
+                ? "text-yellow-600"
+                : "text-green-600"
+          }
+        />
+        <DashboardKpiCard
+          icon={Cpu}
+          label="CPU Usage"
+          value={latestCpu !== null ? `${latestCpu.toFixed(1)}%` : "N/A"}
+          valueClassName={
+            latestCpu === null
+              ? "text-gray-400"
+              : latestCpu >= 90
+                ? "text-red-600"
+                : latestCpu >= 70
+                  ? "text-yellow-600"
+                  : "text-green-600"
+          }
+        />
+        <DashboardKpiCard
+          icon={Server}
+          label="Disk Usage"
+          value={diskPercent !== null ? `${diskPercent.toFixed(1)}%` : "N/A"}
+          subLabel={latestMetric?.diskUsedGb !== null && latestMetric?.diskTotalGb !== null ? `${latestMetric?.diskUsedGb?.toFixed(1)} / ${latestMetric?.diskTotalGb?.toFixed(1)} GB` : undefined}
+          valueClassName={
+            diskPercent === null
+              ? "text-gray-400"
+              : diskPercent >= 90
+                ? "text-red-600"
+                : diskPercent >= 70
+                  ? "text-yellow-600"
+                  : "text-green-600"
+          }
+        />
       </div>
 
       {/* Time series chart */}
       {chartData.length > 0 ? (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium">Resource Usage Over Time</CardTitle>
-            <CardDescription>
-              Last {hours} hour{hours !== 1 ? "s" : ""} — {chartData.length} data points
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+        <DashboardCard
+          title="Resource Usage Over Time"
+          description={`Last ${hours} hour${hours !== 1 ? "s" : ""} — ${chartData.length} data points`}
+        >
             <ResponsiveContainer width="100%" height={280}>
               <AreaChart data={chartData} margin={{ top: 4, right: 16, left: 0, bottom: 0 }}>
                 <defs>
@@ -802,8 +681,7 @@ function MetricsTab() {
                 />
               </AreaChart>
             </ResponsiveContainer>
-          </CardContent>
-        </Card>
+        </DashboardCard>
       ) : (
         !metricsQuery.isLoading && (
           <div className="py-12 text-center text-muted-foreground">
@@ -842,12 +720,11 @@ export default function AdminMonitoring() {
   if (!user || user.role !== "admin") {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <Card className="w-96">
-          <CardHeader>
-            <CardTitle>Access Denied</CardTitle>
-            <CardDescription>You need admin privileges to access this page.</CardDescription>
-          </CardHeader>
-        </Card>
+        <DashboardCard
+          className="w-96"
+          title="Access Denied"
+          description="You need admin privileges to access this page."
+        />
       </div>
     );
   }

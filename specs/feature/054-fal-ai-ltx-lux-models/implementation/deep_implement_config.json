@@ -1,0 +1,67 @@
+{
+  "plugin_root": "/home/dev/.claude/plugins/cache/piercelamb-plugins/deep-implement/0.2.0",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/054-fal-ai-ltx-lux-models/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/054-fal-ai-ltx-lux-models/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-provider-template",
+    "section-02-seed-script",
+    "section-03-python-provider",
+    "section-04-gateway-routing",
+    "section-05-celery-polling",
+    "section-06-security-ssrf",
+    "section-07-rate-limiting",
+    "section-08-credit-reconciliation",
+    "section-09-tests"
+  ],
+  "sections_state": {
+    "section-01-provider-template": {
+      "status": "complete",
+      "commit_hash": "18d5fd14"
+    },
+    "section-02-seed-script": {
+      "status": "complete",
+      "commit_hash": "5cf59718"
+    },
+    "section-03-python-provider": {
+      "status": "complete",
+      "commit_hash": "7fb436e0"
+    },
+    "section-04-gateway-routing": {
+      "status": "complete",
+      "commit_hash": "c54fbe0b"
+    },
+    "section-05-celery-polling": {
+      "status": "complete",
+      "commit_hash": "7ef79b0d"
+    },
+    "section-06-security-ssrf": {
+      "status": "complete",
+      "commit_hash": "c0ce630e"
+    },
+    "section-07-rate-limiting": {
+      "status": "complete",
+      "commit_hash": "8310ed30"
+    },
+    "section-08-credit-reconciliation": {
+      "status": "complete",
+      "commit_hash": "99042236"
+    },
+    "section-09-tests": {
+      "status": "complete",
+      "commit_hash": "3ad5d18d"
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-03-22T09:45:35.042878+00:00"
+}

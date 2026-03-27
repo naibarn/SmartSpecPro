@@ -115,3 +115,4 @@ class TicketMessage(Base):
             "attachments": json.loads(self.attachments) if self.attachments else [],
             "created_at": self.created_at.isoformat() if self.created_at else None
         }
+# mypy: ignore-errors

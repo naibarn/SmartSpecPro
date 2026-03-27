@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRoute, useLocation } from "wouter";
-import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAgencyStream } from "@/hooks/useAgencyStream";
 import { useAgencyById } from "@/hooks/useAgencyQuery";
@@ -85,6 +84,7 @@ import {
   type HybridPlanPayload,
 } from "@shared/orchestration/hybridOrchestration";
 import type { LiveBrowserCreateSessionRequest } from "@shared/liveBrowser";
+import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 
 
 const AGENT_COLORS = [
@@ -104,7 +104,7 @@ function getAgentColor(name: string): string {
 }
 
 export default function AgencyChat() {
-  const { t } = useTranslation("agency");
+  const { t } = useScopedTranslation("agency");
   const { isLoading: authLoading, isAuthenticated, user } = useAuth();
   const [, setLocation] = useLocation();
   const [reviewMatched, reviewParams] = useRoute("/agencies/:id/review");

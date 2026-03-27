@@ -209,6 +209,13 @@ const PROVIDER_TEMPLATES = [
     baseUrl: "https://api.fireworks.ai/inference/v1",
     defaultModel: "accounts/fireworks/models/llama-v3p3-70b-instruct",
   },
+  {
+    providerName: "knplabai",
+    displayName: "KNPLabs AI",
+    description: "Multi-provider AI gateway for chat model routing, media generation, speech, and embeddings",
+    baseUrl: "https://api.knplabai.com/ai/v1",
+    defaultModel: "deepseek-v3.2",
+  },
 ];
 
 export const llmProvidersRouter = router({

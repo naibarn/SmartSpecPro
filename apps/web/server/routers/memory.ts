@@ -15,19 +15,135 @@ import {
   getMessagesToSummarize,
   generateSummaryPrompt,
   saveSummary,
+  deleteSummary,
   processConversationMemory,
   cleanupExpiredMemories,
 } from "../services/memoryService";
+import { searchArchive, readArchive } from "../services/memoryArchiveService";
+import { searchMessageChunks } from "../services/messageChunkSearchService";
+import { generateQueryEmbedding } from "../services/queryEmbeddingService";
 import { getConversationById } from "../services/chatService";
 import { TRPCError } from "@trpc/server";
 
 const entityTypeSchema = z.enum([
   "user", "project", "preference", "technical",
   "decision", "plan", "architecture", "component", "task", "code_knowledge",
-  "rule",
+  "rule", "fact", "goal", "insight", "context", "relationship", "process",
+  "constraint", "reference", "note", "checklist", "artifact_note", "handoff_note", "episode",
 ]);
 
 export const memoryRouter = router({
+  /**
+   * Read preserved raw archive rows for a conversation.
+   */
+  getArchive: protectedProcedure
+    .input(
+      z.object({
+        conversationId: z.number(),
+        dateFrom: z.string().datetime(),
+        dateTo: z.string().datetime(),
+      }).refine(
+        (input) => new Date(input.dateFrom).getTime() <= new Date(input.dateTo).getTime(),
+        {
+          message: "dateFrom must be before dateTo",
+          path: ["dateFrom"],
+        },
+      ),
+    )
+    .query(async ({ ctx, input }) => {
+      const conversation = await getConversationById(input.conversationId, ctx.user.id);
+      if (!conversation) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Conversation not found" });
+      }
+
+      const tenantId = (ctx.user as any).tenantId || ctx.tenantId || "";
+      return readArchive({
+        tenantId,
+        userId: ctx.user.id,
+        conversationId: input.conversationId,
+        dateFrom: input.dateFrom,
+        dateTo: input.dateTo,
+      });
+    }),
+
+  /**
+   * Search preserved raw archive rows for a conversation.
+   */
+  searchArchive: protectedProcedure
+    .input(
+      z.object({
+        conversationId: z.number(),
+        query: z.string().min(1).max(500),
+        limit: z.number().int().min(1).max(50).default(20),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const conversation = await getConversationById(input.conversationId, ctx.user.id);
+      if (!conversation) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Conversation not found" });
+      }
+
+      const tenantId = (ctx.user as any).tenantId || ctx.tenantId || "";
+      return searchArchive({
+        tenantId,
+        userId: ctx.user.id,
+        conversationId: input.conversationId,
+        query: input.query,
+        limit: input.limit,
+      });
+    }),
+
+  /**
+   * Merge entity memories, scoped memories, and chunk hits into one context list.
+   */
+  searchMemoryContext: protectedProcedure
+    .input(
+      z.object({
+        query: z.string().min(1).max(500),
+        conversationId: z.number().optional(),
+        topK: z.number().int().min(1).max(20).default(10),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const conversation = typeof input.conversationId === "number"
+        ? await getConversationById(input.conversationId, ctx.user.id)
+        : null;
+      if (input.conversationId !== undefined && !conversation) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Conversation not found" });
+      }
+
+      const tenantId = (conversation as any)?.tenantId || (ctx.user as any).tenantId || ctx.tenantId || "";
+      const projectId = (conversation as any)?.projectId || null;
+      const embedding = await generateQueryEmbedding(input.query);
+      const scopedMemoryService = await import("../services/scopedMemoryService");
+      const l1Results = await scopedMemoryService.searchMemories({
+        tenantId,
+        scopes: [{ type: "user", id: String(ctx.user.id) }],
+        query: input.query,
+        topK: input.topK,
+        embedding: embedding ?? undefined,
+      });
+
+      const l2Triggered = typeof input.conversationId === "number" && l1Results.length < 3;
+      const l2Results = l2Triggered && conversation
+        ? await searchMessageChunks({
+            tenantId,
+            userId: ctx.user.id,
+            query: input.query,
+            topK: 5,
+            projectId,
+            embedding,
+          })
+        : [];
+
+      return {
+        l1Results,
+        l2Results,
+        l1Count: l1Results.length,
+        l2Triggered,
+      };
+    }),
+
   /**
    * Get user's entity memories
    */
@@ -145,8 +261,34 @@ export const memoryRouter = router({
         messageRangeEnd: s.messageRangeEnd,
         messageCount: s.messageCount,
         tokensUsed: s.tokensUsed,
+        skippedRiskyCount: s.skippedRiskyCount ?? 0,
+        extractedFactIds: s.extractedFactIds ?? [],
+        hasRawArchive: s.hasRawArchive ?? false,
+        classificationStats: s.classificationStats ?? null,
         createdAt: s.createdAt,
       }));
+    }),
+
+  /**
+   * Delete a conversation summary.
+   */
+  deleteSummary: protectedProcedure
+    .input(z.object({
+      conversationId: z.number(),
+      summaryId: z.number(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const conversation = await getConversationById(input.conversationId, ctx.user.id);
+      if (!conversation) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Conversation not found" });
+      }
+
+      const deleted = await deleteSummary(input.conversationId, input.summaryId);
+      if (!deleted) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Summary not found" });
+      }
+
+      return { success: true };
     }),
 
   /**

@@ -10,7 +10,7 @@ import base64
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Callable
 import uuid
 import hashlib
 
@@ -178,7 +178,7 @@ class SecretsManager:
         self._logger = logger.bind(component="secrets_manager")
         
         # Initialize encryption
-        self._cipher = None
+        self._cipher: Any | None = None
         self._initialize_encryption()
     
     def _initialize_encryption(self) -> None:
@@ -195,8 +195,10 @@ class SecretsManager:
                 salt=b"smartspec-salt",  # Use proper salt in production
                 iterations=100000,
             )
+            encryption_key = self._encryption_key
+            assert encryption_key is not None
             key = base64.urlsafe_b64encode(
-                kdf.derive(self._encryption_key.encode())
+                kdf.derive(encryption_key.encode())
             )
             self._cipher = Fernet(key)
             
@@ -553,7 +555,7 @@ class SecretsManager:
     async def auto_rotate(
         self,
         secret_id: str,
-        generator: Optional[callable] = None,
+        generator: Optional[Callable[[], str]] = None,
     ) -> Optional[Secret]:
         """
         Automatically rotate a secret.

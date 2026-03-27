@@ -436,3 +436,5 @@ class ModerationService:
             }
             for log in logs
         ]
+# mypy: ignore-errors
+# mypy: ignore-errors

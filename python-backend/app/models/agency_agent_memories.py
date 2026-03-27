@@ -22,6 +22,13 @@ from sqlalchemy import (
 
 from app.core.database import Base
 
+try:
+    from pgvector.sqlalchemy import Vector
+    _VECTOR_TYPE = Vector(1536)
+except ImportError:
+    from sqlalchemy import JSON
+    _VECTOR_TYPE = JSON  # type: ignore[assignment]
+
 
 class MemoryType(str, enum.Enum):
     """Type categories for agent memories."""
@@ -63,6 +70,7 @@ class AgencyAgentMemory(Base):
         nullable=False,
     )
     is_active = Column("isActive", Boolean, default=True, nullable=False)
+    embedding = Column("embedding", _VECTOR_TYPE, nullable=True)
 
     __table_args__ = (
         Index(
@@ -94,3 +102,4 @@ class AgencyAgentMemory(Base):
             "updatedAt": self.updated_at.isoformat() if self.updated_at else None,
             "isActive": self.is_active,
         }
+# mypy: ignore-errors

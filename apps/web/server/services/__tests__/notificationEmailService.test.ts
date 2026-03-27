@@ -109,7 +109,7 @@ describe("sendNotificationEmail", () => {
       },
     });
     const html = mockSendMail.mock.calls[0][0].html as string;
-    expect(html).toContain("/settings/notifications");
+    expect(html).toContain("/settings?tab=notifications");
   });
 
   it("includes action URL when actionUrl is present", async () => {

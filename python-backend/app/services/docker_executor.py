@@ -351,6 +351,7 @@ class DockerExecutor:
             cwd=cwd,
         )
         
+        process: asyncio.subprocess.Process | None = None
         try:
             if capture_output:
                 process = await asyncio.create_subprocess_exec(
@@ -364,7 +365,7 @@ class DockerExecutor:
                     process.communicate(),
                     timeout=exec_timeout,
                 )
-                return process.returncode, stdout.decode(), stderr.decode()
+                return (process.returncode or 0), stdout.decode(), stderr.decode()
             else:
                 process = await asyncio.create_subprocess_exec(
                     *command,
@@ -372,7 +373,7 @@ class DockerExecutor:
                     env=exec_env,
                 )
                 await asyncio.wait_for(process.wait(), timeout=exec_timeout)
-                return process.returncode, "", ""
+                return (process.returncode or 0), "", ""
         except asyncio.TimeoutError:
             if process:
                 process.kill()
@@ -430,6 +431,7 @@ class DockerExecutor:
             cwd=exec_cwd,
         )
         
+        process: asyncio.subprocess.Process | None = None
         try:
             if capture_output:
                 process = await asyncio.create_subprocess_exec(
@@ -441,11 +443,11 @@ class DockerExecutor:
                     process.communicate(),
                     timeout=exec_timeout,
                 )
-                return process.returncode, stdout.decode(), stderr.decode()
+                return (process.returncode or 0), stdout.decode(), stderr.decode()
             else:
                 process = await asyncio.create_subprocess_exec(*docker_cmd)
                 await asyncio.wait_for(process.wait(), timeout=exec_timeout)
-                return process.returncode, "", ""
+                return (process.returncode or 0), "", ""
         except asyncio.TimeoutError:
             if process:
                 process.kill()

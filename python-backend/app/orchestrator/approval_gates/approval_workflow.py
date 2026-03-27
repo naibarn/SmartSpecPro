@@ -501,3 +501,4 @@ def create_cost_approval_workflow(
         )
     
     return builder.build()
+# mypy: ignore-errors

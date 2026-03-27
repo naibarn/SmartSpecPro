@@ -64,7 +64,7 @@ class Memory:
     updated_at: datetime
     expires_at: Optional[datetime]
     is_active: bool
-    tags: List[str] = None
+    tags: Optional[List[str]] = None
     relevance_score: float = 0.0  # Set during retrieval
     
     def __post_init__(self):
@@ -243,7 +243,7 @@ class MemoryStore:
     - Automatic cleanup and consolidation
     """
     
-    def __init__(self, db_path: str = None):
+    def __init__(self, db_path: Optional[str] = None):
         """
         Initialize the memory store.
         
@@ -418,7 +418,7 @@ class MemoryStore:
     
     # ==================== Project Operations ====================
     
-    def create_project(self, name: str, workspace_path: str = None) -> str:
+    def create_project(self, name: str, workspace_path: Optional[str] = None) -> str:
         """Create a new project"""
         project_id = str(uuid.uuid4())
         
@@ -443,7 +443,7 @@ class MemoryStore:
                 return dict(row)
             return None
     
-    def get_or_create_project(self, name: str, workspace_path: str = None) -> str:
+    def get_or_create_project(self, name: str, workspace_path: Optional[str] = None) -> str:
         """Get existing project by name/path or create new one"""
         # First try to find existing (read operation)
         with self._read_connection() as conn:
@@ -476,11 +476,11 @@ class MemoryStore:
         type: MemoryType,
         title: str,
         content: str,
-        metadata: Dict = None,
+        metadata: Optional[Dict[str, Any]] = None,
         importance: int = 5,
-        source: str = None,
-        tags: List[str] = None,
-        expires_at: datetime = None
+        source: Optional[str] = None,
+        tags: Optional[List[str]] = None,
+        expires_at: Optional[datetime] = None
     ) -> Memory:
         """
         Save a new memory or update existing one with same content hash.
@@ -549,7 +549,10 @@ class MemoryStore:
             return actual_id
         
         saved_id = self._execute_write(save)
-        return self.get_memory(saved_id)
+        saved_memory = self.get_memory(saved_id)
+        if saved_memory is None:
+            raise RuntimeError(f"Saved memory {saved_id} could not be reloaded")
+        return saved_memory
     
     def get_memory(self, memory_id: str) -> Optional[Memory]:
         """Get a memory by ID (thread-safe read)"""
@@ -589,11 +592,11 @@ class MemoryStore:
     def update_memory(
         self,
         memory_id: str,
-        title: str = None,
-        content: str = None,
-        metadata: Dict = None,
-        importance: int = None,
-        is_active: bool = None
+        title: Optional[str] = None,
+        content: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+        importance: Optional[int] = None,
+        is_active: Optional[bool] = None
     ) -> Optional[Memory]:
         """Update an existing memory (thread-safe write)"""
         def update(conn):
@@ -655,7 +658,7 @@ class MemoryStore:
     def get_project_memories(
         self,
         project_id: str,
-        type: MemoryType = None,
+        type: Optional[MemoryType] = None,
         active_only: bool = True,
         limit: int = 100
     ) -> List[Memory]:
@@ -664,7 +667,7 @@ class MemoryStore:
             cursor = conn.cursor()
             
             query = "SELECT * FROM memories WHERE project_id = ?"
-            params = [project_id]
+            params: list[Any] = [project_id]
             
             if active_only:
                 query += " AND is_active = 1"
@@ -678,7 +681,7 @@ class MemoryStore:
             cursor.execute(query, params)
             rows = cursor.fetchall()
             
-            memories = []
+            memories: list[Memory] = []
             for row in rows:
                 memory = Memory(
                     id=row['id'],
@@ -703,9 +706,9 @@ class MemoryStore:
         self,
         project_id: str,
         query: str,
-        types: List[MemoryType] = None,
-        tags: List[str] = None,
-        min_importance: int = None,
+        types: Optional[List[MemoryType]] = None,
+        tags: Optional[List[str]] = None,
+        min_importance: Optional[int] = None,
         limit: int = 20
     ) -> List[Memory]:
         """
@@ -721,7 +724,7 @@ class MemoryStore:
                 JOIN memories_fts fts ON m.rowid = fts.rowid
                 WHERE memories_fts MATCH ? AND m.project_id = ? AND m.is_active = 1
             """
-            params = [query, project_id]
+            params: list[Any] = [query, project_id]
             
             if types:
                 placeholders = ','.join(['?' for _ in types])
@@ -763,7 +766,7 @@ class MemoryStore:
                 cursor.execute(sql, params)
                 rows = cursor.fetchall()
             
-            memories = []
+            memories: list[Memory] = []
             for row in rows:
                 memory = Memory(
                     id=row['id'],
@@ -785,7 +788,7 @@ class MemoryStore:
             
             # Filter by tags if specified
             if tags:
-                memories = [m for m in memories if any(t in m.tags for t in tags)]
+                memories = [m for m in memories if any(t in (m.tags or []) for t in tags)]
             
             return memories
     
@@ -898,8 +901,8 @@ class MemoryStore:
                 return []
             
             # Calculate similarities
-            results = []
-            query_vec = np.array(query_embedding) if HAS_NUMPY else query_embedding
+            results: list[tuple[str, float]] = []
+            query_vec: Any = np.array(query_embedding) if HAS_NUMPY else query_embedding
             
             for row in rows:
                 if row['embedding']:
@@ -916,8 +919,8 @@ class MemoryStore:
                         # Simple dot product fallback
                         import struct
                         num_floats = len(row['embedding']) // 4
-                        stored_vec = list(struct.unpack(f'{num_floats}f', row['embedding']))
-                        similarity = sum(a * b for a, b in zip(query_embedding, stored_vec))
+                        stored_vec_fallback: Any = list(struct.unpack(f'{num_floats}f', row['embedding']))
+                        similarity = sum(a * b for a, b in zip(query_embedding, stored_vec_fallback))
                     
                     results.append((row['memory_id'], float(similarity)))
             
@@ -926,7 +929,7 @@ class MemoryStore:
             results = results[:limit]
             
             # Fetch full memories
-            memories_with_scores = []
+            memories_with_scores: list[tuple[Memory, float]] = []
             for memory_id, score in results:
                 memory = self.get_memory(memory_id)
                 if memory:
@@ -957,7 +960,7 @@ class MemoryStore:
     def get_related_memories(
         self,
         memory_id: str,
-        relation_type: RelationType = None
+        relation_type: Optional[RelationType] = None
     ) -> List[Tuple[Memory, str]]:
         """Get memories related to a given memory (thread-safe read)"""
         with self._read_connection() as conn:
@@ -969,7 +972,7 @@ class MemoryStore:
                 JOIN memory_relations mr ON m.id = mr.target_id
                 WHERE mr.source_id = ? AND m.is_active = 1
             """
-            params = [memory_id]
+            params: list[Any] = [memory_id]
             
             if relation_type:
                 query += " AND mr.relation_type = ?"
@@ -978,7 +981,7 @@ class MemoryStore:
             cursor.execute(query, params)
             rows = cursor.fetchall()
             
-            results = []
+            results: list[tuple[Memory, str]] = []
             for row in rows:
                 memory = Memory(
                     id=row['id'],
@@ -1001,7 +1004,7 @@ class MemoryStore:
     
     # ==================== Cleanup Operations ====================
     
-    def cleanup_expired(self, project_id: str = None):
+    def cleanup_expired(self, project_id: Optional[str] = None):
         """Remove expired memories (thread-safe write)"""
         def cleanup(conn):
             cursor = conn.cursor()

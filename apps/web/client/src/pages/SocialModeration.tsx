@@ -5,9 +5,9 @@ import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { SocialPageShell } from "@/components/social/SocialPageShell";
+import { DashboardCard } from "@/components/dashboard";
 import {
   formatCommentStatus,
   formatRelativeTime,
@@ -249,17 +249,13 @@ export default function SocialModeration() {
       }
       hero={hero}
     >
-        <Card className="border-slate-200/80 bg-white/85 shadow-lg shadow-slate-200/60 backdrop-blur">
-          <CardHeader className="space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div>
-                <CardTitle className="text-lg text-slate-900">Moderated Pages</CardTitle>
-                <p className="mt-1 text-sm text-slate-500">
-                  Select a page with moderation enabled to review comments in that lane.
-                </p>
-              </div>
-              <ShieldAlert className="h-5 w-5 text-slate-400" />
-            </div>
+        <DashboardCard
+          className="border-slate-200/80 bg-white/85 shadow-lg shadow-slate-200/60 backdrop-blur"
+          title="Moderated Pages"
+          description="Select a page with moderation enabled to review comments in that lane."
+          trailing={<ShieldAlert className="h-5 w-5 text-slate-400" />}
+        >
+          <div className="space-y-3">
 
             <div className="grid gap-3 md:grid-cols-[1.2fr_0.8fr]">
               <label className="space-y-2">
@@ -295,25 +291,16 @@ export default function SocialModeration() {
                 </div>
               </div>
             </div>
-          </CardHeader>
-        </Card>
+          </div>
+        </DashboardCard>
 
-        <Card className="border-slate-200/80 bg-white/85 shadow-lg shadow-slate-200/60 backdrop-blur">
-          <CardHeader className="space-y-3">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <CardTitle className="text-lg text-slate-900">Comments</CardTitle>
-                <p className="mt-1 text-sm text-slate-500">
-                  Reply, hide, or delete comments as they come in.
-                </p>
-              </div>
-              <Badge className="rounded-full bg-slate-100 text-slate-700 hover:bg-slate-100">
-                {comments.length} shown
-              </Badge>
-            </div>
-          </CardHeader>
-
-          <CardContent className="space-y-4 border-t border-slate-100 pt-5">
+        <DashboardCard
+          className="border-slate-200/80 bg-white/85 shadow-lg shadow-slate-200/60 backdrop-blur"
+          title="Comments"
+          description="Reply, hide, or delete comments as they come in."
+          trailing={<Badge className="rounded-full bg-slate-100 text-slate-700 hover:bg-slate-100">{comments.length} shown</Badge>}
+          bodyClassName="space-y-4"
+        >
             {comments.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 p-8 text-center text-sm text-slate-500">
                 No comments yet for this page.
@@ -409,8 +396,7 @@ export default function SocialModeration() {
                 </Button>
               </div>
             ) : null}
-          </CardContent>
-        </Card>
+        </DashboardCard>
       {replyTarget ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4 backdrop-blur-sm">
           <div className="w-full max-w-2xl rounded-3xl border border-slate-200 bg-white p-5 shadow-2xl">

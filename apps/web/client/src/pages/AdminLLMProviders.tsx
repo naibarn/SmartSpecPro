@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { HelpButton } from "@/components/help";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { DashboardCard, DashboardKpiCard } from "@/components/dashboard";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -464,36 +464,11 @@ export default function AdminLLMProviders() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Total Providers</CardDescription>
-            <CardTitle className="text-2xl">{stats?.total || providers.length}</CardTitle>
-          </CardHeader>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Configured</CardDescription>
-            <CardTitle className="text-2xl">{stats?.configured || 0}</CardTitle>
-          </CardHeader>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Enabled</CardDescription>
-            <CardTitle className="text-2xl text-green-600">{stats?.enabled || 0}</CardTitle>
-          </CardHeader>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Ready</CardDescription>
-            <CardTitle className="text-2xl text-blue-600">{stats?.ready || 0}</CardTitle>
-          </CardHeader>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Total Models</CardDescription>
-            <CardTitle className="text-2xl text-purple-600">{totalModels}</CardTitle>
-          </CardHeader>
-        </Card>
+        <DashboardKpiCard icon={Settings} label="Total Providers" value={stats?.total || providers.length} />
+        <DashboardKpiCard icon={Key} label="Configured" value={stats?.configured || 0} />
+        <DashboardKpiCard icon={Check} label="Enabled" value={stats?.enabled || 0} valueClassName="text-green-600" />
+        <DashboardKpiCard icon={CheckCircle2} label="Ready" value={stats?.ready || 0} valueClassName="text-blue-600" />
+        <DashboardKpiCard icon={Cpu} label="Total Models" value={totalModels} valueClassName="text-purple-600" />
       </div>
 
       {/* Sync Result Notification */}
@@ -584,123 +559,116 @@ export default function AdminLLMProviders() {
           </div>
         </div>
         {providers.length === 0 ? (
-          <Card>
-            <CardContent className="py-8 text-center text-muted-foreground">
+          <DashboardCard>
+            <div className="py-8 text-center text-muted-foreground">
               No providers configured yet. Add one from the templates below.
-            </CardContent>
-          </Card>
+            </div>
+          </DashboardCard>
         ) : (
           <div className="space-y-4">
             {providers.map((provider: any) => (
-              <Card key={provider.id} className={provider.isEnabled ? "border-green-200" : ""}>
-                <CardContent className="py-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-start gap-3">
-                      <div className="p-2 rounded-lg bg-muted">
-                        {getProviderIcon(provider.providerName)}
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-semibold">{provider.displayName}</h3>
-                          {provider.isEnabled ? (
-                            <Badge variant="default" className="bg-green-600">Enabled</Badge>
-                          ) : (
-                            <Badge variant="secondary">Disabled</Badge>
-                          )}
-                          {provider.hasApiKey && (
-                            <Badge variant="outline" className="text-blue-600 border-blue-600">
-                              <Key className="h-3 w-3 mr-1" />
-                              API Key Set
-                            </Badge>
-                          )}
-                          {(provider.routedModelCount ?? 0) > 0 && (
-                            <Badge variant="outline" className="text-purple-600 border-purple-600">
-                              <Cpu className="h-3 w-3 mr-1" />
-                              {provider.routedModelCount} Routed Models
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-sm text-muted-foreground">{provider.description}</p>
-                        <div className="flex flex-wrap gap-4 mt-2 text-xs text-muted-foreground">
-                          <span><strong>Provider:</strong> {provider.providerName}</span>
-                          {provider.baseUrl && <span><strong>Base URL:</strong> {provider.baseUrl}</span>}
-                          {provider.defaultModel && <span><strong>Default Model:</strong> {provider.defaultModel}</span>}
-                        </div>
-                        
-                        {/* Show routed models info */}
-                        {(provider.routedModelCount ?? 0) > 0 && (
-                          <div className="mt-3 text-xs text-muted-foreground">
-                            <span>{provider.routedModelCount} models routed via Multi-Provider Routing.</span>
-                            {provider.availableModels && provider.availableModels.length > 0 && (
-                              <span className="ml-2">
-                                ({provider.availableModels.length} in provider config)
-                              </span>
-                            )}
-                          </div>
-                        )}
-                        
-                        {/* Test result */}
-                        {testResult && testResult.id === provider.id && (
-                          <div className={`mt-2 text-sm ${testResult.success ? "text-green-600" : "text-red-600"}`}>
-                            {testResult.success ? <Check className="inline h-4 w-4 mr-1" /> : <X className="inline h-4 w-4 mr-1" />}
-                            {testResult.message}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Switch
-                        checked={provider.isEnabled}
-                        onCheckedChange={() => toggleMutation.mutate({ id: provider.id })}
-                        disabled={toggleMutation.isPending}
-                      />
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => syncProviderMutation.mutate({ id: provider.id })}
-                        disabled={syncProviderMutation.isPending}
-                        title="Sync Models"
-                      >
-                        {syncProviderMutation.isPending && syncProviderMutation.variables?.id === provider.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <RefreshCw className="h-4 w-4" />
-                        )}
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => testMutation.mutate({ id: provider.id })}
-                        disabled={!provider.hasApiKey || testMutation.isPending}
-                        title="Test Connection"
-                      >
-                        {testMutation.isPending && testMutation.variables?.id === provider.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <TestTube className="h-4 w-4" />
-                        )}
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleEdit(provider)}
-                        title="Edit Provider"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-red-600 hover:text-red-700"
-                        onClick={() => setDeleteConfirm(provider)}
-                        title="Delete Provider"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
+              <DashboardCard
+                key={provider.id}
+                className={provider.isEnabled ? "border-green-200" : ""}
+                title={provider.displayName}
+                description={provider.description}
+                leading={<div className="rounded-lg bg-muted p-2">{getProviderIcon(provider.providerName)}</div>}
+                trailing={
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={provider.isEnabled}
+                      onCheckedChange={() => toggleMutation.mutate({ id: provider.id })}
+                      disabled={toggleMutation.isPending}
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => syncProviderMutation.mutate({ id: provider.id })}
+                      disabled={syncProviderMutation.isPending}
+                      title="Sync Models"
+                    >
+                      {syncProviderMutation.isPending && syncProviderMutation.variables?.id === provider.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-4 w-4" />
+                      )}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => testMutation.mutate({ id: provider.id })}
+                      disabled={!provider.hasApiKey || testMutation.isPending}
+                      title="Test Connection"
+                    >
+                      {testMutation.isPending && testMutation.variables?.id === provider.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <TestTube className="h-4 w-4" />
+                      )}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleEdit(provider)}
+                      title="Edit Provider"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-red-600 hover:text-red-700"
+                      onClick={() => setDeleteConfirm(provider)}
+                      title="Delete Provider"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
-                </CardContent>
-              </Card>
+                }
+              >
+                <div className="space-y-3">
+                  <div className="flex flex-wrap gap-2">
+                    {provider.isEnabled ? (
+                      <Badge variant="default" className="bg-green-600">Enabled</Badge>
+                    ) : (
+                      <Badge variant="secondary">Disabled</Badge>
+                    )}
+                    {provider.hasApiKey && (
+                      <Badge variant="outline" className="text-blue-600 border-blue-600">
+                        <Key className="mr-1 h-3 w-3" />
+                        API Key Set
+                      </Badge>
+                    )}
+                    {(provider.routedModelCount ?? 0) > 0 && (
+                      <Badge variant="outline" className="text-purple-600 border-purple-600">
+                        <Cpu className="mr-1 h-3 w-3" />
+                        {provider.routedModelCount} Routed Models
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
+                    <span><strong>Provider:</strong> {provider.providerName}</span>
+                    {provider.baseUrl && <span><strong>Base URL:</strong> {provider.baseUrl}</span>}
+                    {provider.defaultModel && <span><strong>Default Model:</strong> {provider.defaultModel}</span>}
+                  </div>
+                  {(provider.routedModelCount ?? 0) > 0 && (
+                    <div className="text-xs text-muted-foreground">
+                      <span>{provider.routedModelCount} models routed via Multi-Provider Routing.</span>
+                      {provider.availableModels && provider.availableModels.length > 0 && (
+                        <span className="ml-2">
+                          ({provider.availableModels.length} in provider config)
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  {testResult && testResult.id === provider.id && (
+                    <div className={`text-sm ${testResult.success ? "text-green-600" : "text-red-600"}`}>
+                      {testResult.success ? <Check className="mr-1 inline h-4 w-4" /> : <X className="mr-1 inline h-4 w-4" />}
+                      {testResult.message}
+                    </div>
+                  )}
+                </div>
+              </DashboardCard>
             ))}
           </div>
         )}
@@ -712,44 +680,34 @@ export default function AdminLLMProviders() {
           <h2 className="text-xl font-semibold mb-4">Add New Provider</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {availableTemplates.map((template) => (
-              <Card
+              <button
                 key={template.providerName}
-                className="cursor-pointer hover:border-primary transition-colors"
+                type="button"
+                className="text-left"
                 onClick={() => handleCreateFromTemplate(template)}
               >
-                <CardContent className="py-4">
-                  <div className="flex items-start gap-3">
-                    <div className="p-2 rounded-lg bg-muted">
-                      {getProviderIcon(template.providerName)}
-                    </div>
-                    <div>
-                      <h3 className="font-semibold">{template.displayName}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        {template.description}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                <DashboardCard
+                  className="cursor-pointer transition-colors hover:border-primary"
+                  title={template.displayName}
+                  description={template.description}
+                  leading={<div className="rounded-lg bg-muted p-2">{getProviderIcon(template.providerName)}</div>}
+                />
+              </button>
             ))}
           </div>
         </div>
       )}
 
-      <Card className="mt-8 border-dashed">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg">LLM Model Availability</CardTitle>
-          <CardDescription>
-            เปิดหรือปิดแต่ละ LLM model แยกจาก provider page และรองรับ bulk enable/disable ได้ที่หน้า dedicated models admin
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+      <DashboardCard
+        className="mt-8 border-dashed"
+        title="LLM Model Availability"
+        description="เปิดหรือปิดแต่ละ LLM model แยกจาก provider page และรองรับ bulk enable/disable ได้ที่หน้า dedicated models admin"
+      >
           <Button variant="outline" onClick={() => setLocation("/admin/llm-models")}>
             <Cpu className="h-4 w-4 mr-2" />
             Open LLM Models Page
           </Button>
-        </CardContent>
-      </Card>
+      </DashboardCard>
 
       {/* Multi-Provider Routing */}
       <div className="mt-8">
@@ -895,11 +853,7 @@ export default function AdminLLMProviders() {
                 )}
                 
                 {/* Add new model form */}
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm">Add New Model</CardTitle>
-                  </CardHeader>
-                  <CardContent>
+                <DashboardCard title="Add New Model" titleClassName="text-sm font-semibold text-slate-900" bodyClassName="!p-4">
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                       <div className="space-y-1">
                         <Label className="text-xs">Model ID *</Label>
@@ -933,8 +887,7 @@ export default function AdminLLMProviders() {
                         </Button>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
+                </DashboardCard>
                 
                 {/* Models table */}
                 {editingModels.length > 0 ? (
@@ -1056,13 +1009,13 @@ export default function AdminLLMProviders() {
                     )}
                   </div>
                 ) : (
-                  <Card>
-                    <CardContent className="py-8 text-center text-muted-foreground">
+                  <DashboardCard>
+                    <div className="py-8 text-center text-muted-foreground">
                       <Cpu className="h-12 w-12 mx-auto mb-4 opacity-50" />
                       <p>No models defined yet.</p>
                       <p className="text-sm">Add models to make them available for selection in the app.</p>
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </DashboardCard>
                 )}
               </div>
             </TabsContent>
@@ -1372,22 +1325,18 @@ export default function AdminLLMProviders() {
             ) : cleanupPreview ? (
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardDescription>Models to Remove</CardDescription>
-                      <CardTitle className="text-2xl text-orange-600">
-                        {cleanupPreview.totalToRemove}
-                      </CardTitle>
-                    </CardHeader>
-                  </Card>
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardDescription>Models to Keep</CardDescription>
-                      <CardTitle className="text-2xl text-green-600">
-                        {cleanupPreview.totalToKeep}
-                      </CardTitle>
-                    </CardHeader>
-                  </Card>
+                  <DashboardKpiCard
+                    icon={Trash2}
+                    label="Models to Remove"
+                    value={cleanupPreview.totalToRemove}
+                    valueClassName="text-orange-600"
+                  />
+                  <DashboardKpiCard
+                    icon={CheckCircle2}
+                    label="Models to Keep"
+                    value={cleanupPreview.totalToKeep}
+                    valueClassName="text-green-600"
+                  />
                 </div>
 
                 {cleanupPreview.totalToRemove > 0 ? (

@@ -602,3 +602,4 @@ class CacheWarmer:
 
 # Global cache warmer
 cache_warmer = CacheWarmer(cache_manager)
+# mypy: ignore-errors

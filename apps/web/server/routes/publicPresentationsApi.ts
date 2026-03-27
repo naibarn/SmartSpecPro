@@ -18,6 +18,7 @@ import { deductCredits, getCreditBalance } from "../services/creditService";
 import { incrementDailyCredits } from "../services/apiKeyRateLimiter";
 import { getRedisClient } from "../services/redis";
 import { createInternalTokenFromAuth } from "../_core/tokens";
+import { resolveExportDownloadTarget } from "./exportDownloadTarget";
 
 // ---------------------------------------------------------------------------
 // Schemas
@@ -210,6 +211,12 @@ export function createPresentationPublicRouter(): Router {
         }
 
         const outputUrl = (status as any).outputUrl ?? (status as any).downloadUrl;
+        const downloadTarget = resolveExportDownloadTarget(outputUrl);
+        if (!downloadTarget) {
+          sendApiError(res, 404, "not_found", "Export file not available");
+          return;
+        }
+
         const format = (status as any).format ?? "pptx";
         const mimeType =
           format === "pdf" ? "application/pdf" : "application/vnd.openxmlformats-officedocument.presentationml.presentation";
@@ -220,16 +227,22 @@ export function createPresentationPublicRouter(): Router {
           `attachment; filename="presentation-${deckId}.${format}"`,
         );
 
-        if (outputUrl && (outputUrl.startsWith("/") || outputUrl.startsWith("."))) {
-          // Local file
-          const fs = await import("fs");
-          const stream = fs.createReadStream(outputUrl);
+        if (downloadTarget.kind === "file") {
+          const fs = await import("node:fs");
+          const stream = fs.createReadStream(downloadTarget.path);
+          stream.on("error", (error) => {
+            console.error("[PresentationsApi] export file stream error", error);
+            if (!res.headersSent) {
+              sendApiError(res, 404, "not_found", "Export file not available");
+            } else {
+              res.destroy(error as Error);
+            }
+          });
           stream.pipe(res);
-        } else if (outputUrl) {
-          res.redirect(302, outputUrl);
-        } else {
-          sendApiError(res, 404, "not_found", "Export file not available");
+          return;
         }
+
+        res.redirect(302, downloadTarget.url);
       } catch (err: any) {
         console.error("[PresentationsApi] download error", err);
         if (!res.headersSent) {

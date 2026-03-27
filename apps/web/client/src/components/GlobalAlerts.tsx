@@ -4,13 +4,85 @@
  * Replaces per-page UrgentMessageAlert and NotificationBell from Chat.tsx.
  */
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, type PointerEvent as ReactPointerEvent } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSSEReconnect } from "@/lib/useSSEReconnect";
 import { Bell, AlarmClock, X, Check, ChevronDown, Clock3 } from "lucide-react";
 import { toast } from "sonner";
+
+const BELL_STORAGE_KEY = "global-notification-bell-position";
+const BELL_MARGIN = 12;
+const BELL_DEFAULT_WIDTH = 60;
+const BELL_DEFAULT_HEIGHT = 44;
+const BELL_DRAG_THRESHOLD = 4;
+
+type BellPosition = {
+  x: number;
+  y: number;
+};
+
+type BellDragState = {
+  pointerId: number;
+  startX: number;
+  startY: number;
+  originX: number;
+  originY: number;
+  width: number;
+  height: number;
+  moved: boolean;
+};
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function getInitialBellPosition(): BellPosition {
+  if (typeof window === "undefined") {
+    return { x: BELL_MARGIN, y: BELL_MARGIN };
+  }
+
+  try {
+    const saved = window.localStorage.getItem(BELL_STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved) as Partial<BellPosition>;
+      if (typeof parsed.x === "number" && typeof parsed.y === "number") {
+        return clampBellPosition(parsed, window.innerWidth, window.innerHeight);
+      }
+    }
+  } catch {
+    // Ignore malformed storage and fall back to the default docked position.
+  }
+
+  return {
+    x: Math.max(BELL_MARGIN, window.innerWidth - BELL_DEFAULT_WIDTH - BELL_MARGIN),
+    y: BELL_MARGIN,
+  };
+}
+
+function clampBellPosition(
+  position: BellPosition,
+  viewportWidth: number,
+  viewportHeight: number,
+  size: { width: number; height: number } = {
+    width: BELL_DEFAULT_WIDTH,
+    height: BELL_DEFAULT_HEIGHT,
+  },
+) {
+  return {
+    x: clamp(position.x, BELL_MARGIN, Math.max(BELL_MARGIN, viewportWidth - size.width - BELL_MARGIN)),
+    y: clamp(position.y, BELL_MARGIN, Math.max(BELL_MARGIN, viewportHeight - size.height - BELL_MARGIN)),
+  };
+}
+
+function persistBellPosition(position: BellPosition) {
+  try {
+    window.localStorage.setItem(BELL_STORAGE_KEY, JSON.stringify(position));
+  } catch {
+    // Ignore storage failures in private mode / restricted environments.
+  }
+}
 
 /** Safe navigation — blocks javascript:, data:, vbscript: protocol URLs */
 function safeNavigate(url: string, setLocation: (url: string) => void) {
@@ -732,6 +804,78 @@ function GlobalNotificationBell() {
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [detailNotification, setDetailNotification] = useState<any>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const bellRootRef = useRef<HTMLDivElement>(null);
+  const dragStateRef = useRef<BellDragState | null>(null);
+  const suppressNextClickRef = useRef(false);
+  const [bellPosition, setBellPosition] = useState<BellPosition>(() => getInitialBellPosition());
+  const [isBellDragging, setIsBellDragging] = useState(false);
+
+  useEffect(() => {
+    const handlePointerMove = (event: PointerEvent) => {
+      const dragState = dragStateRef.current;
+      if (!dragState || dragState.pointerId !== event.pointerId) {
+        return;
+      }
+
+      const deltaX = event.clientX - dragState.startX;
+      const deltaY = event.clientY - dragState.startY;
+
+      if (!dragState.moved) {
+        if (Math.abs(deltaX) + Math.abs(deltaY) < BELL_DRAG_THRESHOLD) {
+          return;
+        }
+        dragState.moved = true;
+      }
+
+      event.preventDefault();
+      setBellPosition(
+        clampBellPosition(
+          {
+            x: dragState.originX + deltaX,
+            y: dragState.originY + deltaY,
+          },
+          window.innerWidth,
+          window.innerHeight,
+          {
+            width: dragState.width,
+            height: dragState.height,
+          },
+        ),
+      );
+    };
+
+    const handlePointerUp = (event: PointerEvent) => {
+      const dragState = dragStateRef.current;
+      if (!dragState || dragState.pointerId !== event.pointerId) {
+        return;
+      }
+
+      suppressNextClickRef.current = dragState.moved;
+      dragStateRef.current = null;
+      setIsBellDragging(false);
+    };
+
+    document.addEventListener("pointermove", handlePointerMove);
+    document.addEventListener("pointerup", handlePointerUp);
+    document.addEventListener("pointercancel", handlePointerUp);
+    return () => {
+      document.removeEventListener("pointermove", handlePointerMove);
+      document.removeEventListener("pointerup", handlePointerUp);
+      document.removeEventListener("pointercancel", handlePointerUp);
+    };
+  }, []);
+
+  useEffect(() => {
+    persistBellPosition(bellPosition);
+  }, [bellPosition]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setBellPosition((current) => clampBellPosition(current, window.innerWidth, window.innerHeight));
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const { data } = trpc.scheduledMessages.getNotificationCount.useQuery(
     undefined,
@@ -820,14 +964,55 @@ function GlobalNotificationBell() {
     }
   };
 
+  const handleBellPointerDown = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (event.button !== 0) {
+      return;
+    }
+
+    suppressNextClickRef.current = false;
+    setIsBellDragging(true);
+    const rect = bellRootRef.current?.getBoundingClientRect();
+    dragStateRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      originX: bellPosition.x,
+      originY: bellPosition.y,
+      width: rect?.width ?? BELL_DEFAULT_WIDTH,
+      height: rect?.height ?? BELL_DEFAULT_HEIGHT,
+      moved: false,
+    };
+  };
+
+  const handleBellClick = () => {
+    if (suppressNextClickRef.current) {
+      suppressNextClickRef.current = false;
+      return;
+    }
+    setShowDropdown((v) => !v);
+  };
+
   return (
-    <div ref={dropdownRef} style={{ position: "fixed", top: "12px", right: "12px", zIndex: 9990 }}>
+    <div
+      ref={(node) => {
+        dropdownRef.current = node;
+        bellRootRef.current = node;
+      }}
+      data-testid="global-notification-bell"
+      style={{
+        position: "fixed",
+        left: `${bellPosition.x}px`,
+        top: `${bellPosition.y}px`,
+        zIndex: 9990,
+      }}
+    >
       <button
-        onClick={() => setShowDropdown((v) => !v)}
+        onClick={handleBellClick}
+        onPointerDown={handleBellPointerDown}
         title={
           hasUnread
             ? statusSummary
-            : "No unread notifications, recent history available"
+            : "No unread notifications, recent history available. Drag to move."
         }
         aria-label={
           hasUnread
@@ -839,13 +1024,14 @@ function GlobalNotificationBell() {
           border: "1px solid var(--border, #333)",
           borderRadius: "8px",
           padding: "8px 10px",
-          cursor: "pointer",
+          cursor: isBellDragging ? "grabbing" : "grab",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           gap: "6px",
           boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
           position: "relative",
+          touchAction: "none",
         }}
       >
         <Bell style={{ width: 18, height: 18, color: "var(--foreground, #e0e0e0)" }} />

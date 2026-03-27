@@ -478,6 +478,7 @@ export const presentationPendingMediaJobSchema = z.object({
   mediaType: z.enum(["image", "video"]),
   mediaTaskId: z.string().min(1).max(256),
   providerTaskId: z.string().max(256).optional(),
+  billingStage: z.enum(["submit", "poll"]).optional(),
   targetElementId: z.string().max(128).optional(),
   targetSlotId: z.string().max(64).optional(),
   targetX: presentationElementCoordinateSchema,

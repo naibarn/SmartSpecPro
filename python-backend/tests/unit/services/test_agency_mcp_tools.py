@@ -61,7 +61,7 @@ class TestDiscoverTools:
                 )
             )
             mock_client.return_value.__aexit__ = AsyncMock(return_value=False)
-            result = await discover_tools("https://unreachable.example.com")
+            result = await discover_tools("https://unreachable.example.com", tenant_id="tenant-1")
             assert result == []
 
     @pytest.mark.asyncio
@@ -89,7 +89,7 @@ class TestDiscoverTools:
             mock_client.return_value.__aenter__ = AsyncMock(return_value=mock_client_instance)
             mock_client.return_value.__aexit__ = AsyncMock(return_value=False)
 
-            tools = await discover_tools("https://mcp.example.com")
+            tools = await discover_tools("https://mcp.example.com", tenant_id="tenant-1")
 
         assert len(tools) == 3
         assert tools[0].name == "search"
@@ -110,7 +110,7 @@ class TestDiscoverTools:
             mock_client.return_value.__aenter__ = AsyncMock(return_value=mock_client_instance)
             mock_client.return_value.__aexit__ = AsyncMock(return_value=False)
 
-            await discover_tools("https://mcp.example.com", token="secret-token")
+            await discover_tools("https://mcp.example.com", token="secret-token", tenant_id="tenant-1")
 
         call_kwargs = mock_client_instance.post.call_args
         assert call_kwargs.kwargs["headers"]["Authorization"] == "Bearer secret-token"
@@ -134,14 +134,53 @@ class TestDiscoverTools:
             mock_client.return_value.__aexit__ = AsyncMock(return_value=False)
 
             # First call
-            tools1 = await discover_tools("https://mcp.example.com")
+            tools1 = await discover_tools("https://mcp.example.com", tenant_id="tenant-1")
             # Second call (should use cache)
-            tools2 = await discover_tools("https://mcp.example.com")
+            tools2 = await discover_tools("https://mcp.example.com", tenant_id="tenant-1")
 
         # httpx should only be called once due to caching
         assert mock_client_instance.post.call_count == 1
         assert len(tools1) == 1
         assert len(tools2) == 1
+
+    @pytest.mark.asyncio
+    async def test_cache_isolated_per_tenant(self):
+        """discover_tools cache keys include tenant_id."""
+        mock_response = MagicMock()
+        mock_response.raise_for_status = MagicMock()
+        mock_response.json.return_value = {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "result": {"tools": [{"name": "cached_tool", "description": "cached"}]},
+        }
+
+        mock_client_instance = MagicMock()
+        mock_client_instance.post = AsyncMock(return_value=mock_response)
+
+        with patch("app.services.mcp_client.httpx.AsyncClient") as mock_client:
+            mock_client.return_value.__aenter__ = AsyncMock(return_value=mock_client_instance)
+            mock_client.return_value.__aexit__ = AsyncMock(return_value=False)
+
+            await discover_tools("https://mcp.example.com", tenant_id="tenant-1")
+            await discover_tools("https://mcp.example.com", tenant_id="tenant-1")
+            await discover_tools("https://mcp.example.com", tenant_id="tenant-2")
+
+        assert mock_client_instance.post.call_count == 2
+
+    @pytest.mark.asyncio
+    async def test_requires_tenant_id(self):
+        """discover_tools fails closed when tenant_id is missing."""
+        with pytest.raises(ValueError):
+            await discover_tools("https://mcp.example.com", tenant_id=None)
+
+    @pytest.mark.asyncio
+    async def test_rejects_blocked_url_before_network_call(self):
+        """discover_tools rejects SSRF-blocked URLs before hitting network."""
+        with patch("app.services.mcp_client.httpx.AsyncClient") as mock_client:
+            result = await discover_tools("http://10.0.0.1/rpc", tenant_id="tenant-1")
+
+        assert result == []
+        mock_client.assert_not_called()
 
 
 class TestCallTool:
@@ -165,7 +204,12 @@ class TestCallTool:
             mock_client.return_value.__aenter__ = AsyncMock(return_value=mock_client_instance)
             mock_client.return_value.__aexit__ = AsyncMock(return_value=False)
 
-            result = await call_tool("https://mcp.example.com", "search", {"query": "test"})
+            result = await call_tool(
+                "https://mcp.example.com",
+                "search",
+                {"query": "test"},
+                tenant_id="tenant-1",
+            )
 
         assert result == "Search results: found 5 documents"
 
@@ -187,7 +231,12 @@ class TestCallTool:
             mock_client.return_value.__aenter__ = AsyncMock(return_value=mock_client_instance)
             mock_client.return_value.__aexit__ = AsyncMock(return_value=False)
 
-            result = await call_tool("https://mcp.example.com", "search", {"query": "test"})
+            result = await call_tool(
+                "https://mcp.example.com",
+                "search",
+                {"query": "test"},
+                tenant_id="tenant-1",
+            )
 
         assert "not found" in result
 
@@ -202,10 +251,28 @@ class TestCallTool:
             mock_client.return_value.__aexit__ = AsyncMock(return_value=False)
 
             result = await call_tool(
-                "https://mcp.example.com", "search", {"query": "test"}, timeout=0.1,
+                "https://mcp.example.com",
+                "search",
+                {"query": "test"},
+                timeout=0.1,
+                tenant_id="tenant-1",
             )
 
         assert "timed out" in result
+
+    @pytest.mark.asyncio
+    async def test_rejects_blocked_url_before_network_call(self):
+        """call_tool rejects SSRF-blocked URLs before hitting network."""
+        with patch("app.services.mcp_client.httpx.AsyncClient") as mock_client:
+            result = await call_tool(
+                "http://169.254.169.254/latest",
+                "search",
+                {"query": "test"},
+                tenant_id="tenant-1",
+            )
+
+        assert "blocked" in result.lower()
+        mock_client.assert_not_called()
 
 
 class TestResolveMcpToolsForAgent:
@@ -239,5 +306,35 @@ class TestResolveMcpToolsForAgent:
 
             result = await resolve_mcp_tools_for_agent({
                 "mcpServers": [{"url": "http://10.0.0.1/rpc", "name": "internal"}],
-            })
+            }, tenant_id="tenant-1")
             assert result == []
+
+    @pytest.mark.asyncio
+    async def test_resolves_tools_with_tenant_scope(self):
+        """resolve_mcp_tools_for_agent passes tenant_id through to MCP discovery."""
+        mock_response = [
+            McpToolInfo(name="search", description="Search docs", input_schema={"type": "object"}),
+        ]
+        with patch.dict("os.environ", {"AGENCY_MCP_BRIDGE_ENABLED": "true"}), patch(
+            "app.services.mcp_client.discover_tools", AsyncMock(return_value=mock_response)
+        ) as mock_discover:
+            from app.services.agency_tools import resolve_mcp_tools_for_agent
+
+            tools = await resolve_mcp_tools_for_agent(
+                {"mcpServers": [{"url": "https://mcp.example.com", "name": "ext"}]},
+                tenant_id="tenant-1",
+            )
+
+        assert len(tools) == 1
+        assert mock_discover.await_args.kwargs["tenant_id"] == "tenant-1"
+
+    @pytest.mark.asyncio
+    async def test_resolve_mcp_tools_requires_tenant_id(self):
+        """resolve_mcp_tools_for_agent fails closed without tenant_id."""
+        with patch.dict("os.environ", {"AGENCY_MCP_BRIDGE_ENABLED": "true"}):
+            from app.services.agency_tools import resolve_mcp_tools_for_agent
+
+            with pytest.raises(ValueError):
+                await resolve_mcp_tools_for_agent(
+                    {"mcpServers": [{"url": "https://mcp.example.com", "name": "ext"}]},
+                )

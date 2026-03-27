@@ -11,6 +11,7 @@ import {
 } from './llmRateLimiter';
 import { normalizeMediaPrompt } from "./mediaPromptNormalization";
 import { auditLogger } from "./auditLogger";
+import { getModelById, mapToApiModelId } from "./modelRegistry";
 
 // ==================== Types ====================
 
@@ -146,6 +147,25 @@ export const MEDIA_MODELS: Record<string, ModelMetadata> = {
     supportsAspectRatios: ["1:1", "16:9", "9:16"],
     creditCost: 12,
   },
+  "gpt-image-1.5-all": {
+    id: "gpt-image-1.5-all",
+    type: "image",
+    name: "GPT Image 1.5 All",
+    provider: "knplabai",
+    description: "OpenAI-compatible image generation via KNPLabs",
+    supportsSizes: ["1024x1024", "1536x1536"],
+    supportsAspectRatios: ["1:1", "16:9", "9:16"],
+    creditCost: 12,
+  },
+  "gemini-3.1-flash-image-preview": {
+    id: "gemini-3.1-flash-image-preview",
+    type: "image",
+    name: "Gemini 3.1 Flash Image",
+    provider: "knplabai",
+    description: "Gemini native image generation via KNPLabs",
+    supportsAspectRatios: ["1:1", "16:9", "9:16"],
+    creditCost: 14,
+  },
   // Video models
   "veo-3-1": {
     id: "veo-3-1",
@@ -176,6 +196,26 @@ export const MEDIA_MODELS: Record<string, ModelMetadata> = {
     supportsDurations: [5, 10],
     supportsAspectRatios: ["16:9", "9:16"],
     creditCost: 40,
+  },
+  "veo_3_1-fast": {
+    id: "veo_3_1-fast",
+    type: "video",
+    name: "Veo 3.1 Fast",
+    provider: "knplabai",
+    description: "KNPLabs fast form-data video generation",
+    supportsDurations: [5, 10, 15],
+    supportsAspectRatios: ["16:9", "9:16", "1:1"],
+    creditCost: 35,
+  },
+  "grok-video-3": {
+    id: "grok-video-3",
+    type: "video",
+    name: "Grok Video 3",
+    provider: "knplabai",
+    description: "KNPLabs JSON video generation",
+    supportsDurations: [5, 10, 15],
+    supportsAspectRatios: ["16:9", "9:16", "1:1"],
+    creditCost: 36,
   },
   // ========== BytePlus ModelArk — Seedream Image Models ==========
   "seedream-4-5-251128": {
@@ -255,6 +295,24 @@ export const MEDIA_MODELS: Record<string, ModelMetadata> = {
     description: "Sound effects generation",
     creditCost: 3,
   },
+  "gpt-4o-mini-tts": {
+    id: "gpt-4o-mini-tts",
+    type: "audio",
+    name: "GPT-4o Mini TTS",
+    provider: "knplabai",
+    description: "KNPLabs OpenAI-compatible text-to-speech",
+    supportsVoices: ["alloy", "echo", "fable", "onyx", "nova", "shimmer"],
+    creditCost: 4,
+  },
+  "tts-1": {
+    id: "tts-1",
+    type: "audio",
+    name: "TTS-1",
+    provider: "knplabai",
+    description: "KNPLabs OpenAI-compatible text-to-speech",
+    supportsVoices: ["alloy", "echo", "fable", "onyx", "nova", "shimmer"],
+    creditCost: 3,
+  },
   "uvoice/tts-standard": {
     id: "uvoice/tts-standard",
     type: "audio",
@@ -331,7 +389,9 @@ export interface VideoGenerationRequest {
   publicUrl?: string;
   /** Reference images for video generation (img2vid) */
   referenceImageUrls?: string[];
-  /** Reference video URL for vid2vid */
+  /** Reference video URLs for vid2vid */
+  referenceVideoUrls?: string[];
+  /** Legacy single reference video URL for vid2vid */
   referenceVideoUrl?: string;
   /** Optional audit metadata for end-to-end traceability */
   auditContext?: MediaAuditContext;
@@ -433,18 +493,37 @@ const NODE_SERVER_INTERNAL_URL =
  * @param url The URL to resolve
  * @param publicUrl Optional public URL from request context (tenant domain, e.g., https://smartaihub.app)
  */
-function resolveReferenceUrl(url: string, publicUrl?: string | null): string {
+export function resolveReferenceUrl(url: string, publicUrl?: string | null): string {
   if (!url) return url;
 
-  // If already a full URL, return as-is
+  // If already a full URL, keep public URLs as-is.
+  // Loopback/private hosts are rewritten to the internal Node URL so the
+  // Python backend can fetch them and re-host them on R2 for Kie.ai.
   if (url.startsWith("http://") || url.startsWith("https://")) {
-    return url;
+    try {
+      const parsed = new URL(url);
+      if (!isLoopbackOrPrivateHost(parsed.hostname)) {
+        return url;
+      }
+
+      const internalBase = new URL(NODE_SERVER_INTERNAL_URL);
+      internalBase.pathname = parsed.pathname;
+      internalBase.search = parsed.search;
+      internalBase.hash = parsed.hash;
+      return internalBase.toString();
+    } catch {
+      return url;
+    }
   }
 
   // Convert relative path to full URL
-  // Priority: 1) Request's publicUrl (tenant domain), 2) Env PUBLIC_URL, 3) Internal URL
+  // Priority: 1) Request's publicUrl (tenant domain) if public, 2) Env PUBLIC_URL if public, 3) Internal URL
   if (url.startsWith("/uploads/") || url.startsWith("/")) {
-    const baseUrl = publicUrl || PUBLIC_URL || NODE_SERVER_INTERNAL_URL;
+    const baseUrl = isPublicHttpUrl(publicUrl || "")
+      ? publicUrl!
+      : isPublicHttpUrl(PUBLIC_URL || "")
+        ? PUBLIC_URL!
+        : NODE_SERVER_INTERNAL_URL;
     return `${baseUrl}${url}`;
   }
 
@@ -473,6 +552,106 @@ function resolveExtraParamsUrls(extraParams: Record<string, any>, publicUrl?: st
     }
   }
   return resolved;
+}
+
+type ReferenceImageInputType = "array" | "url";
+
+function inferReferenceImageInputLabel(rawKey: string): string {
+  const normalizedKey = rawKey.replace(/[^a-z0-9]/gi, "").toLowerCase();
+  if (normalizedKey.includes("video")) {
+    return "Reference Videos";
+  }
+  if (normalizedKey.includes("audio")) {
+    return "Reference Audio";
+  }
+  return "Reference Images";
+}
+
+function normalizeReferenceImageInputType(rawType: unknown): ReferenceImageInputType | null {
+  if (typeof rawType !== "string") {
+    return null;
+  }
+
+  const type = rawType.trim().toLowerCase();
+  if (!type) {
+    return null;
+  }
+
+  if (type === "array" || type === "image_urls" || type === "video_urls" || type === "audio_urls") {
+    return "array";
+  }
+
+  if (type === "url" || type === "text" || type === "string") {
+    return "url";
+  }
+
+  return null;
+}
+
+function inferReferenceImageInputConfig(modelId: string): { key: string; label?: string; type: ReferenceImageInputType } | undefined {
+  const normalizedModelId = mapToApiModelId(modelId);
+  const model = getModelById(normalizedModelId) || getModelById(modelId);
+  const inputFields = Array.isArray((model?.configJson as { inputFields?: unknown } | undefined)?.inputFields)
+    ? ((model?.configJson as { inputFields?: unknown } | undefined)?.inputFields as unknown[])
+    : [];
+
+  for (const field of inputFields) {
+    if (!field || typeof field !== "object") {
+      continue;
+    }
+
+    const record = field as Record<string, unknown>;
+    const rawKey = typeof record.key === "string" ? record.key.trim() : "";
+    if (!rawKey) {
+      continue;
+    }
+
+    const normalizedKey = rawKey.replace(/[^a-z0-9]/gi, "").toLowerCase();
+    const rawSyncWith = typeof record.syncWith === "string" ? record.syncWith.trim() : "";
+    const rawLabel = typeof record.label === "string" ? record.label.trim() : "";
+    const looksLikeReferenceImageField = (
+      rawSyncWith === "reference_images"
+      || normalizedKey === "imageinput"
+      || normalizedKey === "referenceimages"
+      || normalizedKey.includes("referenceimage")
+      || normalizedKey.includes("imageurl")
+    );
+    if (!looksLikeReferenceImageField) {
+      continue;
+    }
+
+    const type = normalizeReferenceImageInputType(record.type);
+    if (!type) {
+      continue;
+    }
+
+    return { key: rawKey, label: rawLabel || inferReferenceImageInputLabel(rawKey), type };
+  }
+
+  return undefined;
+}
+
+function buildApiConfigWithReferenceImageConfig(
+  modelId: string,
+  apiConfig: Record<string, string> | undefined,
+  referenceImageUrls?: string[],
+): Record<string, string> | undefined {
+  const baseConfig = apiConfig ? { ...apiConfig } : undefined;
+  if (!referenceImageUrls || referenceImageUrls.length === 0) {
+    return baseConfig;
+  }
+
+  const referenceImageConfig = inferReferenceImageInputConfig(modelId);
+  if (!referenceImageConfig) {
+    return baseConfig;
+  }
+
+  return {
+    ...(baseConfig ?? {}),
+    reference_image_input_key: referenceImageConfig.key,
+    ...(referenceImageConfig.label ? { reference_image_input_label: referenceImageConfig.label } : {}),
+    reference_image_input_type: referenceImageConfig.type,
+  };
 }
 
 /**
@@ -505,6 +684,42 @@ function validateBackendUrl(url: string): string {
   }
 
   return url;
+}
+
+function isLoopbackOrPrivateHost(hostname: string): boolean {
+  const lower = hostname.trim().toLowerCase();
+  if (!lower) return false;
+
+  if (
+    lower === "localhost" ||
+    lower === "host.docker.internal" ||
+    lower === "smartspec-web" ||
+    lower === "0.0.0.0" ||
+    lower === "::1" ||
+    lower === "[::1]"
+  ) {
+    return true;
+  }
+
+  if (/^127(?:\.\d{1,3}){3}$/.test(lower)) return true;
+  if (/^10(?:\.\d{1,3}){3}$/.test(lower)) return true;
+  if (/^192\.168(?:\.\d{1,3}){2}$/.test(lower)) return true;
+  if (/^172\.(1[6-9]|2\d|3[0-1])(?:\.\d{1,3}){2}$/.test(lower)) return true;
+  if (/^169\.254(?:\.\d{1,3}){2}$/.test(lower)) return true;
+
+  return false;
+}
+
+function isPublicHttpUrl(value: string): boolean {
+  try {
+    const parsed = new URL(value);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return false;
+    }
+    return !isLoopbackOrPrivateHost(parsed.hostname);
+  } catch {
+    return false;
+  }
 }
 
 class MediaRequestError extends Error {
@@ -821,11 +1036,6 @@ export class MediaGenerationService {
       payload.output_format = (request as any).outputFormat;
     }
 
-    // Add per-model API config from configJson
-    if ((request as any).apiConfig) {
-      payload.api_config = (request as any).apiConfig;
-    }
-
     // Get publicUrl from request for resolving relative URLs to tenant domain
     const publicUrl = (request as any).publicUrl as string | undefined;
 
@@ -841,6 +1051,15 @@ export class MediaGenerationService {
       payload.reference_image_urls = request.referenceImageUrls
         .slice(0, 5)
         .map(url => resolveReferenceUrl(url, publicUrl));
+    }
+
+    const apiConfig = buildApiConfigWithReferenceImageConfig(
+      modelId,
+      (request as any).apiConfig,
+      request.referenceImageUrls,
+    );
+    if (apiConfig) {
+      payload.api_config = apiConfig;
     }
 
     // Add reference style if provided
@@ -933,11 +1152,6 @@ export class MediaGenerationService {
       payload.resolution = request.resolution;
     }
 
-    // Add per-model API config from configJson
-    if ((request as any).apiConfig) {
-      payload.api_config = (request as any).apiConfig;
-    }
-
     // Get publicUrl from request for resolving relative URLs to tenant domain
     const publicUrl = (request as any).publicUrl as string | undefined;
 
@@ -955,9 +1169,23 @@ export class MediaGenerationService {
         .map(url => resolveReferenceUrl(url, publicUrl));
     }
 
-    // Add reference video for vid2vid
-    if (request.referenceVideoUrl) {
-      payload.reference_video_url = resolveReferenceUrl(request.referenceVideoUrl, publicUrl);
+    const apiConfig = buildApiConfigWithReferenceImageConfig(
+      modelId,
+      (request as any).apiConfig,
+      request.referenceImageUrls,
+    );
+    if (apiConfig) {
+      payload.api_config = apiConfig;
+    }
+
+    // Add reference video(s) for vid2vid
+    const referenceVideoUrls = (request.referenceVideoUrls && request.referenceVideoUrls.length > 0)
+      ? request.referenceVideoUrls
+      : (request.referenceVideoUrl ? [request.referenceVideoUrl] : []);
+    if (referenceVideoUrls.length > 0) {
+      const resolvedVideoUrls = referenceVideoUrls.map((url) => resolveReferenceUrl(url, publicUrl));
+      payload.reference_video_urls = resolvedVideoUrls;
+      payload.reference_video_url = resolvedVideoUrls[0];
     }
 
     this.logMediaRequest({
@@ -1128,11 +1356,6 @@ export class MediaGenerationService {
     // Get publicUrl from request for resolving relative URLs to tenant domain
     const publicUrl = request.publicUrl;
 
-    // Add apiConfig for model-specific endpoints and payload formats
-    if (request.apiConfig) {
-      payload.api_config = request.apiConfig;
-    }
-
     // Add extraParams for model-specific fields
     if (request.extraParams) {
       payload.extra_params = resolveExtraParamsUrls(request.extraParams, publicUrl);
@@ -1143,6 +1366,15 @@ export class MediaGenerationService {
       payload.reference_image_urls = request.referenceImageUrls
         .slice(0, 5)
         .map(url => resolveReferenceUrl(url, publicUrl));
+    }
+
+    const apiConfig = buildApiConfigWithReferenceImageConfig(
+      modelId,
+      request.apiConfig,
+      request.referenceImageUrls,
+    );
+    if (apiConfig) {
+      payload.api_config = apiConfig;
     }
 
     // Add reference style if provided
@@ -1246,9 +1478,14 @@ export class MediaGenerationService {
         .map(url => resolveReferenceUrl(url, publicUrl));
     }
 
-    // Add reference video for vid2vid
-    if (request.referenceVideoUrl) {
-      payload.reference_video_url = resolveReferenceUrl(request.referenceVideoUrl, publicUrl);
+    // Add reference video(s) for vid2vid
+    const referenceVideoUrls = (request.referenceVideoUrls && request.referenceVideoUrls.length > 0)
+      ? request.referenceVideoUrls
+      : (request.referenceVideoUrl ? [request.referenceVideoUrl] : []);
+    if (referenceVideoUrls.length > 0) {
+      const resolvedVideoUrls = referenceVideoUrls.map((url) => resolveReferenceUrl(url, publicUrl));
+      payload.reference_video_urls = resolvedVideoUrls;
+      payload.reference_video_url = resolvedVideoUrls[0];
     }
 
     // Add apiConfig for model-specific endpoints and payload formats (e.g., Veo 3)

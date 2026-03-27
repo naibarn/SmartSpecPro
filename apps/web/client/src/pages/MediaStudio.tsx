@@ -8,10 +8,10 @@ import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { HelpButton } from "@/components/help";
+import { LocaleToggle } from "@/components/LocaleToggle";
 import { pickEnabledModelId } from "@/lib/enabledModelSelection";
 import { useAuth } from "@/contexts/AuthContext";
-import { useI18n } from "@/lib/i18n";
-import { useTranslation } from "react-i18next";
+import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -53,6 +53,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import {
+  DashboardCard,
   DashboardSectionHeader,
   DashboardSurface,
 } from "@/components/dashboard";
@@ -104,6 +105,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { GenerationProgress, type GenerationTask as QueueGenerationTask } from "@/components/chat/media/GenerationProgress";
 import { clearTenantPageCache } from "@/hooks/useTenantPage";
 import ModelSelectorDialog from "@/components/media/ModelSelectorDialog";
 import LibrarySearchPanel from "@/components/media/LibrarySearchPanel";
@@ -126,6 +128,12 @@ import {
   canGenerateInMediaStudio,
   pickMediaStudioSkillForTab,
 } from "@/lib/mediaStudioSelection";
+import {
+  getAllowedLibraryExtensionsForField,
+  getModelGenerationModeLabel,
+  getModelReferenceInputSupport,
+} from "@/lib/mediaModelInputs";
+import { buildMediaStudioCommonPayload } from "@/lib/mediaStudioPayload";
 
 import DynamicSkillForm, { type SkillInputSchema, type StyleAction } from "@/components/media/DynamicSkillForm";
 import { LibraryFilePicker } from "@/components/library/LibraryFilePicker";
@@ -155,6 +163,11 @@ interface ReferenceImage {
   name: string;
 }
 
+interface ReferenceVideo {
+  url: string;
+  name: string;
+}
+
 interface GeneratedMedia {
   id: string;
   type: MediaType;
@@ -170,8 +183,16 @@ interface GenerationTask {
   id: string;
   index: number;
   status: 'queued' | 'generating' | 'completed' | 'error';
+  type: MediaType;
+  prompt: string;
+  model: string;
+  createdAt: number;
+  updatedAt: number;
   url?: string;
   error?: string;
+  backendTaskId?: string;
+  providerTaskId?: string;
+  statusDetail?: string;
 }
 
 interface StyleOption {
@@ -197,6 +218,7 @@ interface TabState {
   prompt: string;
   enhancedPrompt: string;
   referenceImages: ReferenceImage[];
+  referenceVideos: ReferenceVideo[];
   selectedSkillId: string;
   useAdvancedMode: boolean;
   dynamicFormValues: Record<string, any>;
@@ -221,6 +243,7 @@ const createDefaultTabState = (mediaType: MediaType): TabState => ({
   prompt: "",
   enhancedPrompt: "",
   referenceImages: [],
+  referenceVideos: [],
   selectedSkillId: "",
   useAdvancedMode: false,
   dynamicFormValues: {},
@@ -551,30 +574,170 @@ function isUvoiceVoiceSelectionField(
   return String(providerName ?? "").trim().toLowerCase() === "uvoice" && isVoiceSelectionField(field);
 }
 
+function inferModelInputSyncTarget(field: Record<string, any> | null | undefined): string {
+  if (!field || typeof field !== "object") {
+    return "none";
+  }
+
+  const rawSyncWith = String(field.syncWith ?? "").trim();
+  if (rawSyncWith && rawSyncWith !== "none") {
+    return rawSyncWith;
+  }
+
+  const type = String(field.type ?? "").trim().toLowerCase();
+  if (type === "image_urls" || type === "audio_urls") {
+    return "reference_images";
+  }
+  if (type === "video_urls") {
+    return "reference_videos";
+  }
+
+  const normalizedKey = String(field.key ?? "").replace(/[^a-z0-9]/gi, "").toLowerCase();
+  if (normalizedKey === "prompt" || normalizedKey.endsWith("prompt")) {
+    return "prompt";
+  }
+  if (normalizedKey.includes("aspect") && normalizedKey.includes("ratio")) {
+    return "aspect_ratio";
+  }
+  if (
+    normalizedKey.includes("imageurls")
+    || normalizedKey.includes("imageurl")
+    || normalizedKey.includes("referenceimages")
+    || normalizedKey.includes("referenceimage")
+  ) {
+    return "reference_images";
+  }
+  if (
+    normalizedKey.includes("videourls")
+    || normalizedKey.includes("videourl")
+    || normalizedKey.includes("referencevideos")
+    || normalizedKey.includes("referencevideo")
+  ) {
+    return "reference_videos";
+  }
+
+  return "none";
+}
+
+type MediaHistoryTaskLite = {
+  id: string;
+  taskId?: string | null;
+  status?: string | null;
+  mediaType?: MediaType | null;
+  prompt?: string | null;
+  model?: string | null;
+  resultUrl?: string | null;
+  errorMessage?: string | null;
+  createdAt?: string | null;
+  startedAt?: string | null;
+  completedAt?: string | null;
+  updatedAt?: string | null;
+};
+
+function parseTimestampMs(value?: string | null): number {
+  if (!value) return 0;
+  const parsed = Date.parse(value);
+  return Number.isNaN(parsed) ? 0 : parsed;
+}
+
+function normalizeQueueStatus(status: string | undefined | null): QueueGenerationTask["status"] {
+  switch ((status || "").toLowerCase()) {
+    case "queued":
+      return "queued";
+    case "pending":
+      return "pending";
+    case "processing":
+      return "processing";
+    case "completed":
+      return "completed";
+    case "failed":
+      return "failed";
+    case "cancelled":
+      return "cancelled";
+    case "generating":
+      return "processing";
+    case "error":
+      return "failed";
+    default:
+      return "pending";
+  }
+}
+
+function getQueueProgress(status: QueueGenerationTask["status"]): number {
+  switch (status) {
+    case "queued":
+      return 10;
+    case "pending":
+      return 25;
+    case "processing":
+      return 60;
+    case "completed":
+      return 100;
+    case "failed":
+    case "cancelled":
+      return 100;
+    default:
+      return 0;
+  }
+}
+
 export default function MediaStudio() {
   const { user, isLoading, isAuthenticated } = useAuth();
-  const { t } = useI18n();
-  const { t: tm } = useTranslation('media');
+  const { t: tNs } = useScopedTranslation(["media", "common", "billing"]);
   const [, setLocation] = useLocation();
+  const t = (key: string, params?: Record<string, string | number>) => {
+    if (key.startsWith("mediaStudio.")) {
+      return tNs(key.slice("mediaStudio.".length), params);
+    }
+    if (key.startsWith("common.")) {
+      return tNs(key.slice("common.".length), params);
+    }
+    if (key.startsWith("credits.")) {
+      return tNs(key.slice("credits.".length), params);
+    }
+    return tNs(key, params);
+  };
 
   // Active tab state
   const [activeTab, setActiveTab] = useState<MediaType>("image");
   const [attachTarget, setAttachTarget] = useState<{ kind: "blog" | "page"; id: string } | null>(null);
   const [isAttachingContent, setIsAttachingContent] = useState(false);
+  const autoGenerateRequestRef = useRef<{ tab: MediaType; prompt: string; model?: string } | null>(null);
+  const autoGenerateTriggeredRef = useRef(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const requestedType = params.get("type") || params.get("tab");
     const requestedPrompt = params.get("prompt") || params.get("message");
     const requestedModel = params.get("model");
+    const requestedAutoStart = params.get("autostart") === "1" || params.get("autostart") === "true";
     const requestedReferenceImages = params.getAll("referenceImages");
     const requestedReferenceNames = params.getAll("referenceNames");
+    const requestedAspectRatio = params.get("aspectRatio") || params.get("aspect_ratio");
+    const requestedResolution = params.get("resolution");
+    const requestedOutputFormat = params.get("outputFormat") || params.get("output_format");
+    const requestedDuration = params.get("duration");
+    const requestedReferenceVideoUrl = params.get("referenceVideoUrl") || params.get("reference_video_url");
+    const requestedReferenceVideoUrls = params.getAll("referenceVideoUrls");
+    const requestedReferenceStyleUrl = params.get("referenceStyleUrl") || params.get("reference_style_url");
+    const requestedExtraParamsRaw = params.get("extraParams") || params.get("extra_params");
     const requestedAttachTarget = params.get("attachTarget");
 
     const resolvedTab: MediaType | null =
       requestedType === "video" || requestedType === "audio" || requestedType === "image"
         ? requestedType
         : null;
+
+    const parseJsonObject = (value: string | null): Record<string, any> | null => {
+      if (!value) return null;
+      try {
+        const parsed = JSON.parse(value);
+        return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : null;
+      } catch {
+        return null;
+      }
+    };
+    const requestedExtraParams = parseJsonObject(requestedExtraParamsRaw);
 
     if (resolvedTab) {
       setActiveTab(resolvedTab);
@@ -588,8 +751,31 @@ export default function MediaStudio() {
           ...prev[targetTab],
           ...(requestedPrompt ? { prompt: requestedPrompt } : {}),
           ...(requestedModel ? { selectedModel: requestedModel } : {}),
+          ...(requestedAspectRatio ? { aspectRatio: requestedAspectRatio } : {}),
+          ...(requestedResolution || requestedOutputFormat || requestedDuration || requestedReferenceVideoUrl || requestedReferenceStyleUrl || requestedExtraParams
+            ? {
+                modelInputValues: {
+                  ...prev[targetTab].modelInputValues,
+                  ...(requestedResolution ? { resolution: requestedResolution } : {}),
+                  ...(requestedOutputFormat ? { outputFormat: requestedOutputFormat, output_format: requestedOutputFormat } : {}),
+                  ...(requestedDuration ? { duration: Number(requestedDuration) } : {}),
+                  ...(requestedReferenceVideoUrl ? { referenceVideoUrl: requestedReferenceVideoUrl, reference_video_url: requestedReferenceVideoUrl } : {}),
+                  ...(requestedReferenceStyleUrl ? { referenceStyleUrl: requestedReferenceStyleUrl, reference_style_url: requestedReferenceStyleUrl } : {}),
+                  ...(requestedExtraParams ?? {}),
+                },
+              }
+            : {}),
         },
       }));
+
+      if (requestedAutoStart) {
+        autoGenerateRequestRef.current = {
+          tab: targetTab,
+          prompt: requestedPrompt || "",
+          model: requestedModel || undefined,
+        };
+        autoGenerateTriggeredRef.current = false;
+      }
     }
 
     const normalizeReferenceValue = (value: string | null | undefined) => (value || "").trim();
@@ -658,6 +844,74 @@ export default function MediaStudio() {
         }));
     }
 
+    const parseReferenceVideoUrlsParam = (): string[] => {
+      if (requestedReferenceVideoUrl) {
+        return [requestedReferenceVideoUrl.trim()].filter(Boolean);
+      }
+
+      if (requestedReferenceVideoUrls.length > 0) {
+        return requestedReferenceVideoUrls
+          .flatMap((value) => {
+            const trimmed = value.trim();
+            if (!trimmed) return [];
+            if (trimmed.startsWith("[")) {
+              try {
+                const parsed = JSON.parse(trimmed);
+                if (Array.isArray(parsed)) {
+                  return parsed
+                    .map((entry) => (typeof entry === "string" ? entry.trim() : ""))
+                    .filter(Boolean);
+                }
+              } catch {
+                return [trimmed];
+              }
+            }
+            return [trimmed];
+          })
+          .filter(Boolean);
+      }
+
+      const raw = params.get("referenceVideoUrls") || params.get("referenceVideos");
+      if (!raw) return [];
+
+      const trimmed = raw.trim();
+      if (!trimmed) return [];
+      if (trimmed.startsWith("[")) {
+        try {
+          const parsed = JSON.parse(trimmed);
+          if (Array.isArray(parsed)) {
+            return parsed
+              .map((entry) => (typeof entry === "string" ? entry.trim() : ""))
+              .filter(Boolean);
+          }
+        } catch {
+          return [trimmed];
+        }
+      }
+
+      return trimmed
+        .split(/[,\n|]+/g)
+        .map((value) => value.trim())
+        .filter(Boolean);
+    };
+
+    const referenceVideoUrls = parseReferenceVideoUrlsParam();
+    if (referenceVideoUrls.length > 0) {
+      const referenceVideos = referenceVideoUrls.map((url, index) => ({
+        url,
+        name: `Reference Video ${index + 1}`,
+      }));
+
+      const targetTab = resolvedTab || "video";
+      setTabStates((prev) => ({
+        ...prev,
+        [targetTab]: {
+          ...prev[targetTab],
+          referenceVideos,
+        },
+      }));
+    }
+
     if (requestedAttachTarget) {
       const [kind, id] = requestedAttachTarget.split(":", 2);
       if ((kind === "blog" || kind === "page") && id) {
@@ -694,6 +948,7 @@ export default function MediaStudio() {
   const prompt = currentTabState.prompt;
   const enhancedPrompt = currentTabState.enhancedPrompt;
   const referenceImages = currentTabState.referenceImages;
+  const referenceVideos = currentTabState.referenceVideos;
   const selectedSkillId = currentTabState.selectedSkillId;
   const useAdvancedMode = currentTabState.useAdvancedMode;
   const dynamicFormValues = currentTabState.dynamicFormValues;
@@ -743,6 +998,16 @@ export default function MediaStudio() {
     }));
   }, [activeTab]);
 
+  const setReferenceVideos = useCallback((value: ReferenceVideo[] | ((prev: ReferenceVideo[]) => ReferenceVideo[])) => {
+    setTabStates(prev => ({
+      ...prev,
+      [activeTab]: {
+        ...prev[activeTab],
+        referenceVideos: typeof value === 'function' ? value(prev[activeTab].referenceVideos) : value
+      }
+    }));
+  }, [activeTab]);
+
   const setSelectedSkillId = useCallback((value: string) => updateTabState('selectedSkillId', value), [updateTabState]);
   const setUseAdvancedMode = useCallback((value: boolean) => updateTabState('useAdvancedMode', value), [updateTabState]);
   const setDynamicFormValues = useCallback((value: Record<string, any>) => updateTabState('dynamicFormValues', value), [updateTabState]);
@@ -783,6 +1048,7 @@ export default function MediaStudio() {
   });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const videoFileInputRef = useRef<HTMLInputElement>(null);
 
   // Ref to track current prompt textarea value (for reliable history storage)
   const promptTextareaRef = useRef<HTMLTextAreaElement>(null);
@@ -791,9 +1057,12 @@ export default function MediaStudio() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedMedia, setGeneratedMedia] = useState<GeneratedMedia[]>([]);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [isPreviewCollapsed, setIsPreviewCollapsed] = useState(false);
+  const [isPreviewCollapsed, setIsPreviewCollapsed] = useState(true);
   // Track multiple generation tasks for progressive preview (when count > 1)
   const [generationTasks, setGenerationTasks] = useState<GenerationTask[]>([]);
+  const [isGenerationQueueCollapsed, setIsGenerationQueueCollapsed] = useState(false);
+  const [focusedGenerationTaskId, setFocusedGenerationTaskId] = useState<string | null>(null);
+  const [previewContextTab, setPreviewContextTab] = useState<MediaType | null>(null);
   const autoPreviewSessionStartRef = useRef<number>(0);
   const autoPreviewWindowUntilRef = useRef<number>(0);
   const autoPreviewSeenTaskIdsRef = useRef<Set<string>>(new Set());
@@ -814,6 +1083,13 @@ export default function MediaStudio() {
   const [libraryRecentDays, setLibraryRecentDays] = useState<LibraryRecentDaysFilter>(7);
   const [selectedLibraryItemId, setSelectedLibraryItemId] = useState<number | null>(null);
   const [activeSidebarTab, setActiveSidebarTab] = useState<StudioSidebarTab>("history");
+
+  const openPreview = useCallback((url: string | null | undefined, contextTab: MediaType | null = activeTab) => {
+    if (!url) return;
+    setPreviewUrl(url);
+    setPreviewContextTab(contextTab);
+    setIsPreviewCollapsed(false);
+  }, [activeTab]);
 
   // Dialog states (global)
   const [showStyleDialog, setShowStyleDialog] = useState(false);
@@ -942,6 +1218,14 @@ export default function MediaStudio() {
     }
     return null;
   }, [selectedMediaModel?.configJson]);
+  const selectedMediaModelReferenceSupport = useMemo(
+    () => getModelReferenceInputSupport(selectedMediaModel as any),
+    [selectedMediaModel],
+  );
+  const selectedMediaModelGenerationModeLabel = useMemo(
+    () => getModelGenerationModeLabel(selectedMediaModel as any),
+    [selectedMediaModel],
+  );
   const selectedModelInputFields = useMemo(() => {
     const inputFields = Array.isArray(selectedMediaModelConfig?.inputFields)
       ? selectedMediaModelConfig.inputFields as any[]
@@ -1035,7 +1319,7 @@ export default function MediaStudio() {
       if (voicePreviewAudioRef.current === audio) {
         setPlayingVoicePreviewKey(null);
         setLoadingVoicePreviewKey(null);
-        toast.error("Unable to play voice preview");
+        toast.error(t('mediaStudio.unableToPlayVoicePreview'));
       }
     };
 
@@ -1049,7 +1333,7 @@ export default function MediaStudio() {
         if (voicePreviewAudioRef.current === audio) {
           setPlayingVoicePreviewKey(null);
           setLoadingVoicePreviewKey(null);
-          toast.error("Unable to play voice preview");
+          toast.error(t('mediaStudio.unableToPlayVoicePreview'));
         }
       });
   }, [playingVoicePreviewKey, stopVoicePreview]);
@@ -1142,7 +1426,7 @@ export default function MediaStudio() {
     });
 
   const handleAttachCurrentMediaToContent = async () => {
-    if (!attachTarget || !previewUrl || activeTab === "audio") {
+    if (!attachTarget || !previewUrl || previewContextTab !== activeTab || activeTab === "audio") {
       return;
     }
 
@@ -1196,7 +1480,7 @@ export default function MediaStudio() {
         clearTenantPageCache(attachTarget.id);
       }
 
-      toast.success("Media uploaded to Library and attached to content");
+      toast.success(t('mediaStudio.mediaUploadedToLibraryAndAttachedToContent'));
     } catch (error) {
       console.error("Failed to attach media to content:", error);
       toast.error(error instanceof Error ? error.message : "Failed to attach media to content");
@@ -1267,15 +1551,13 @@ export default function MediaStudio() {
         defaults[field.key] = field.default;
       }
       // Synced fields get their initial value from the current runtime state.
-      // Legacy fallback: fields that pre-date syncWith use type to detect reference-image sync,
-      // but ONLY when syncWith is completely absent (undefined) — an explicit "none" means no sync.
-      const syncWith: string = field.syncWith ?? "none";
-      const isLegacyRefImg = field.syncWith === undefined &&
-        (field.type === "image_urls" || field.type === "video_urls" || field.type === "audio_urls");
+      const syncWith = inferModelInputSyncTarget(field);
       if (syncWith === "prompt") {
         defaults[field.key] = prompt;
-      } else if (syncWith === "reference_images" || isLegacyRefImg) {
+      } else if (syncWith === "reference_images") {
         defaults[field.key] = referenceImages.map((r: any) => r.url);
+      } else if (syncWith === "reference_videos") {
+        defaults[field.key] = referenceVideos.map((r: any) => r.url);
       } else if (syncWith === "aspect_ratio") {
         defaults[field.key] = aspectRatio;
       }
@@ -1305,13 +1587,13 @@ export default function MediaStudio() {
 
     const syncedValues: Record<string, any> = {};
     for (const field of (config.inputFields as any[])) {
-      const syncWith: string = field.syncWith ?? "none";
-      const isLegacyRefImg = field.syncWith === undefined &&
-        (field.type === "image_urls" || field.type === "video_urls" || field.type === "audio_urls");
+      const syncWith = inferModelInputSyncTarget(field);
       if (syncWith === "prompt") {
         syncedValues[field.key] = prompt;
-      } else if (syncWith === "reference_images" || isLegacyRefImg) {
+      } else if (syncWith === "reference_images") {
         syncedValues[field.key] = referenceImages.map((r: any) => r.url);
+      } else if (syncWith === "reference_videos") {
+        syncedValues[field.key] = referenceVideos.map((r: any) => r.url);
       } else if (syncWith === "aspect_ratio") {
         syncedValues[field.key] = aspectRatio;
       }
@@ -1320,7 +1602,7 @@ export default function MediaStudio() {
       setModelInputValues((prev: Record<string, any>) => ({ ...prev, ...syncedValues }));
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [prompt, referenceImages, aspectRatio, selectedModel, mediaModels]);
+  }, [prompt, referenceImages, referenceVideos, aspectRatio, selectedModel, mediaModels]);
 
   // Save aspect ratio to localStorage when changed (per-tab)
   useEffect(() => {
@@ -1427,6 +1709,7 @@ export default function MediaStudio() {
 
   // Reference image limits per tab (video allows more for storyboards)
   const maxReferenceImages = activeTab === "video" ? 25 : 5;
+  const maxReferenceVideos = activeTab === "video" ? 5 : 0;
 
   // Handle file upload for reference images
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1468,9 +1751,59 @@ export default function MediaStudio() {
     }
   };
 
+  // Handle file upload for reference videos
+  const handleVideoFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    if (maxReferenceVideos === 0) {
+      if (videoFileInputRef.current) {
+        videoFileInputRef.current.value = "";
+      }
+      return;
+    }
+
+    const remainingSlots = maxReferenceVideos - referenceVideos.length;
+    const filesToUpload = Array.from(files).slice(0, remainingSlots);
+
+    for (const file of filesToUpload) {
+      if (!file.type.startsWith("video/")) {
+        continue;
+      }
+
+      try {
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result));
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+
+        const result = await uploadMutation.mutateAsync({
+          fileName: file.name,
+          fileType: file.type,
+          fileBase64: base64,
+        });
+
+        setReferenceVideos((prev) => [...prev, { url: result.url, name: file.name }]);
+      } catch (error) {
+        console.error("Video upload failed:", error);
+      }
+    }
+
+    if (videoFileInputRef.current) {
+      videoFileInputRef.current.value = "";
+    }
+  };
+
   // Remove reference image
   const removeReferenceImage = (index: number) => {
     setReferenceImages(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // Remove reference video
+  const removeReferenceVideo = (index: number) => {
+    setReferenceVideos(prev => prev.filter((_, i) => i !== index));
   };
 
   // Add generated media as reference
@@ -1515,7 +1848,7 @@ export default function MediaStudio() {
     resultUrl?: string;
   }) => {
     if (!isMediaTaskEligibleForLibraryAdd(task)) {
-      toast.error("Only completed tasks with results can be added to library.");
+      toast.error(t('mediaStudio.onlyCompletedTasksWithResultsCanBeAddedToLibrary'));
       return;
     }
 
@@ -1552,14 +1885,14 @@ export default function MediaStudio() {
     setSelectedLibraryItemId(item.item_id);
     const previewSource = item.thumbnail_url || item.source_url;
     if (previewSource) {
-      setPreviewUrl(previewSource);
+      openPreview(previewSource);
     }
     if (item.status.toLowerCase() !== "ready") {
-      toast.info(`Selected "${item.title}" (${item.status})`);
+      toast.info(t('mediaStudio.selectedItemInfo', { title: item.title, status: item.status }));
       return;
     }
-    toast.success(`Selected "${item.title}" from library`);
-  }, []);
+    toast.success(t('mediaStudio.selectedItemFromLibrary', { title: item.title }));
+  }, [openPreview, t]);
 
   useEffect(() => {
     const tracking = Object.entries(taskLibraryState).filter(
@@ -1660,7 +1993,7 @@ export default function MediaStudio() {
 
     if (!userIdea && referenceImages.length === 0) return;
     if (!currentSkill) {
-      toast.error("No compatible prompt skill selected", {
+      toast.error(t('mediaStudio.noCompatiblePromptSkillSelected'), {
         description: `Choose a prompt skill for the ${activeTab} tab before using Auto Prompt.`,
       });
       return;
@@ -1819,7 +2152,7 @@ export default function MediaStudio() {
                 setEnhancedPrompt(result.content);
               }
 
-              toast.success(`Skill "${result.skillName}" executed successfully`, {
+              toast.success(t('mediaStudio.skillExecutedSuccessfully', { skillName: result.skillName }), {
                 description: `Credits: ${result.creditsUsed}. Prompts split for Image and Video tabs.`,
               });
             } else {
@@ -1827,7 +2160,7 @@ export default function MediaStudio() {
               setEnhancedPrompt(result.content);
               setImageTabPrompt(null);
               setVideoTabPrompt(null);
-              toast.success(`Skill "${result.skillName}" executed successfully`, {
+              toast.success(t('mediaStudio.skillExecutedSuccessfully', { skillName: result.skillName }), {
                 description: `Credits used: ${result.creditsUsed}`,
               });
             }
@@ -1836,13 +2169,13 @@ export default function MediaStudio() {
             setEnhancedPrompt(result.content);
             setImageTabPrompt(null);
             setVideoTabPrompt(null);
-            toast.success(`Skill "${result.skillName}" executed successfully`, {
+            toast.success(t('mediaStudio.skillExecutedSuccessfully', { skillName: result.skillName }), {
               description: `Credits used: ${result.creditsUsed}`,
             });
           }
         } else {
-          toast.error("Skill execution returned empty", {
-            description: "The LLM did not generate content. Try different inputs.",
+          toast.error(t('mediaStudio.skillExecutionReturnedEmpty'), {
+            description: t('mediaStudio.skillExecutionReturnedEmptyDesc'),
           });
         }
       } else {
@@ -1919,9 +2252,9 @@ export default function MediaStudio() {
           const description =
             "error" in result && typeof result.error === "string"
               ? result.error
-              : "The LLM did not generate a prompt. Try a different input.";
+              : t('mediaStudio.autoPromptReturnedEmptyDesc');
           // Handle case where result is returned but no prompt generated
-          toast.error("Auto Prompt returned empty", {
+          toast.error(t('mediaStudio.autoPromptReturnedEmpty'), {
             description,
           });
         }
@@ -1929,13 +2262,13 @@ export default function MediaStudio() {
     } catch (error: any) {
       console.error("Auto prompt failed:", error);
       // Show user-friendly error message
-      const errorMessage = error?.message || error?.data?.message || "Failed to generate prompt";
+      const errorMessage = error?.message || error?.data?.message || t('mediaStudio.failedToGeneratePrompt');
       if (errorMessage.includes("Unable to generate") || errorMessage.includes("different text")) {
-        toast.error("Auto Prompt could not generate a prompt", {
-          description: "Please try changing the text or image and try again",
+        toast.error(t('mediaStudio.autoPromptCouldNotGeneratePrompt'), {
+          description: t('mediaStudio.autoPromptCouldNotGeneratePromptDesc'),
         });
       } else {
-        toast.error("Auto Prompt failed", {
+        toast.error(t('mediaStudio.autoPromptFailed'), {
           description: errorMessage,
         });
       }
@@ -1956,8 +2289,8 @@ export default function MediaStudio() {
       } else {
         setPrompt(UPSCALE_DEFAULT_PROMPT);
       }
-      toast.success("Prompt auto-filled for Upscale", {
-        description: "Optimize the prompt for image enhancement",
+      toast.success(t('mediaStudio.promptAutoFilledForUpscale'), {
+        description: t('mediaStudio.promptAutoFilledForUpscaleDesc'),
       });
     }
   }, [useAdvancedMode]);
@@ -2044,8 +2377,15 @@ export default function MediaStudio() {
       id: `task-${Date.now()}-${i}`,
       index: i,
       status: 'queued' as const,
+      type: activeTab,
+      prompt: isMultiVideo ? promptsToGenerate[i] : finalPrompt,
+      model: selectedModel,
+      createdAt: nowMs,
+      updatedAt: nowMs,
     }));
     setGenerationTasks(initialTasks);
+    setIsGenerationQueueCollapsed(false);
+    setFocusedGenerationTaskId(initialTasks[0]?.id ?? null);
     setIsGenerating(true);
 
     // Generate media via model-driven gateway for all tabs.
@@ -2066,8 +2406,6 @@ export default function MediaStudio() {
     const apiConfig: Record<string, string> = buildApiConfigFromModelConfig(
       (modelConfig as Record<string, unknown>) ?? null,
     );
-    let usedModelSpecificImageKey = false; // Track if we used model-specific key for images
-
     const templateBaseContext = {
       prompt: finalPrompt,
       aspectRatio: finalAspectRatio,
@@ -2086,16 +2424,18 @@ export default function MediaStudio() {
       // Populate extraParams — syncWith fields get their value from the live runtime state;
       // unsynchronised fields get the value from modelInputValues (user's direct input).
       for (const field of (modelConfig.inputFields as any[] | undefined ?? [])) {
-        const syncWith: string = field.syncWith ?? "none";
-
-        // Legacy reference-image sync: only when syncWith is absent entirely, not when explicitly "none"
-        const isLegacyRefImg = field.syncWith === undefined &&
-          (field.type === "image_urls" || field.type === "video_urls" || field.type === "audio_urls");
-        if (syncWith === "reference_images" || isLegacyRefImg) {
-          // Route reference images to this field's key instead of the standard referenceImageUrls param
+        const syncWith = inferModelInputSyncTarget(field);
+        if (syncWith === "reference_images") {
+          // Keep the model-specific field populated, but also send standard referenceImageUrls below.
           if (referenceImages.length > 0) {
             extraParams[field.key] = referenceImages.map((r: any) => r.url);
-            usedModelSpecificImageKey = true;
+          }
+          continue;
+        }
+
+        if (syncWith === "reference_videos") {
+          if (referenceVideos.length > 0) {
+            extraParams[field.key] = referenceVideos.map((r: any) => r.url);
           }
           continue;
         }
@@ -2130,13 +2470,19 @@ export default function MediaStudio() {
     const outputFormatValue = modelInputValues.outputFormat ?? modelInputValues.output_format;
     const referenceStyleUrl = (modelInputValues.referenceStyleUrl ?? modelInputValues.reference_style_url) as string | undefined;
     const referenceVideoUrl = (modelInputValues.referenceVideoUrl ?? modelInputValues.reference_video_url) as string | undefined;
+    const effectiveReferenceImages = selectedMediaModelReferenceSupport.imageUrls
+      ? referenceImages
+      : [];
+    const effectiveReferenceVideos = selectedMediaModelReferenceSupport.videoUrls
+      ? referenceVideos
+      : [];
 
     // Loop through each image generation with delay
     let successCount = 0;
     for (let i = 0; i < imageCount; i++) {
       // Update task status to 'generating'
       setGenerationTasks(prev =>
-        prev.map((t, idx) => idx === i ? { ...t, status: 'generating' as const } : t)
+        prev.map((t, idx) => idx === i ? { ...t, status: 'generating' as const, updatedAt: Date.now() } : t)
       );
 
       // Get the appropriate prompt for this iteration
@@ -2149,19 +2495,18 @@ export default function MediaStudio() {
         let resultUrl: string | undefined;
         let creditsUsed: number | undefined;
         let startedAsyncTask = false;
+        let asyncTask: any | null = null;
 
-        const commonPayload = {
+        const commonPayload = buildMediaStudioCommonPayload({
           prompt: currentPrompt,
           model: selectedModel || undefined,
           aspectRatio: finalAspectRatio,
-          // Only use referenceImageUrls as fallback when model doesn't define specific image_urls field
-          referenceImageUrls: (!usedModelSpecificImageKey && referenceImages.length > 0)
-            ? referenceImages.map((r: any) => r.url)
-            : undefined,
-          ...(Object.keys(extraParams).length > 0 ? { extraParams } : {}),
-          ...(Object.keys(apiConfig).length > 0 ? { apiConfig } : {}),
-          ...(modelInputValues.resolution ? { resolution: modelInputValues.resolution } : {}),
-        } as any;
+          referenceImages: effectiveReferenceImages,
+          referenceVideos: activeTab === "video" ? effectiveReferenceVideos : [],
+          extraParams: Object.keys(extraParams).length > 0 ? extraParams : undefined,
+          apiConfig: Object.keys(apiConfig).length > 0 ? apiConfig : undefined,
+          resolution: modelInputValues.resolution || undefined,
+        });
 
         if (shouldUseDirectMediaGateway && activeTab === "image") {
           const task = await generateImageAsyncMutation.mutateAsync({
@@ -2169,7 +2514,8 @@ export default function MediaStudio() {
             numImages: 1, // Keep progressive UI behavior
             ...(outputFormatValue ? { outputFormat: String(outputFormatValue) } : {}),
             ...(referenceStyleUrl ? { referenceStyleUrl } : {}),
-          });
+          } as any);
+          asyncTask = task;
           resultUrl = task.resultUrl || extractTaskResultUrl(task as any) || undefined;
           creditsUsed = task.creditsUsed;
           startedAsyncTask = !!task.id || !!task.taskId;
@@ -2177,8 +2523,11 @@ export default function MediaStudio() {
           const task = await generateVideoAsyncMutation.mutateAsync({
             ...commonPayload,
             duration: modelInputValues.duration ? Number(modelInputValues.duration) : duration,
-            ...(referenceVideoUrl ? { referenceVideoUrl } : {}),
-          });
+            ...(selectedMediaModelReferenceSupport.videoUrls && effectiveReferenceVideos.length === 0 && referenceVideoUrl
+              ? { referenceVideoUrl }
+              : {}),
+          } as any);
+          asyncTask = task;
           resultUrl = task.resultUrl || extractTaskResultUrl(task as any) || undefined;
           creditsUsed = task.creditsUsed;
           startedAsyncTask = !!task.id || !!task.taskId;
@@ -2200,7 +2549,15 @@ export default function MediaStudio() {
         if (resultUrl) {
           // Update task with completed status and URL
           setGenerationTasks(prev =>
-            prev.map((t, idx) => idx === i ? { ...t, status: 'completed' as const, url: resultUrl } : t)
+            prev.map((t, idx) => idx === i ? {
+              ...t,
+              status: 'completed' as const,
+              url: resultUrl,
+              backendTaskId: t.backendTaskId,
+              providerTaskId: t.providerTaskId,
+              statusDetail: "Completed",
+              updatedAt: Date.now(),
+            } : t)
           );
 
           // Add to generated media
@@ -2217,7 +2574,7 @@ export default function MediaStudio() {
 
           // Set first completed image as preview
           if (successCount === 0) {
-            setPreviewUrl(resultUrl);
+            openPreview(resultUrl);
           }
           successCount++;
 
@@ -2244,20 +2601,39 @@ export default function MediaStudio() {
         } else if (startedAsyncTask) {
           // Async task created successfully; output will appear in history.
           setGenerationTasks(prev =>
-            prev.map((t, idx) => idx === i ? { ...t, status: 'queued' as const } : t)
+            prev.map((t, idx) => idx === i ? {
+              ...t,
+              status: asyncTask?.status === "processing"
+                ? "generating"
+                : asyncTask?.status === "completed"
+                  ? "completed"
+                  : asyncTask?.status === "failed" || asyncTask?.status === "cancelled"
+                    ? "error"
+                    : "queued",
+              url: resultUrl ?? t.url,
+              backendTaskId: asyncTask?.id || t.backendTaskId,
+              providerTaskId: asyncTask?.taskId || t.providerTaskId,
+              statusDetail:
+                asyncTask?.status === "processing" ? "Provider is processing this job" :
+                asyncTask?.status === "pending" ? "Waiting for provider pickup" :
+                asyncTask?.status === "completed" ? "Task completed" :
+                asyncTask?.status === "failed" ? (asyncTask?.errorMessage || "Task failed") :
+                "Queued for submission",
+              updatedAt: Date.now(),
+            } : t)
           );
           successCount++;
           if (i === 0) {
-            toast.info("Generation task started. Check Media History for progress.");
+            toast.info(t('mediaStudio.generationTaskStarted'));
           }
           void refetchMediaHistory();
         } else {
-          const errorMessage = "Generation completed but no media output URL was returned.";
+          const errorMessage = t('mediaStudio.generationCompletedButNoMediaOutputUrlWasReturned');
           console.error(`[Generate] Missing output URL for iteration ${i + 1}:`, errorMessage);
           setGenerationTasks(prev =>
             prev.map((t, idx) => idx === i ? { ...t, status: 'error' as const, error: errorMessage } : t)
           );
-          toast.error("Generation failed", { description: errorMessage });
+          toast.error(t('mediaStudio.generationFailed'), { description: errorMessage });
         }
       } catch (error: any) {
         console.error(`[Generate] Exception in iteration ${i + 1}:`, error);
@@ -2266,9 +2642,15 @@ export default function MediaStudio() {
         console.error(`[Generate] Full error object:`, JSON.stringify(error, null, 2));
         const errorMessage = error?.message || 'Unknown error';
         setGenerationTasks(prev =>
-          prev.map((t, idx) => idx === i ? { ...t, status: 'error' as const, error: errorMessage } : t)
+          prev.map((t, idx) => idx === i ? {
+            ...t,
+            status: 'error' as const,
+            error: errorMessage,
+            statusDetail: errorMessage,
+            updatedAt: Date.now(),
+          } : t)
         );
-        toast.error("Generation failed", { description: errorMessage });
+        toast.error(t('mediaStudio.generationFailed'), { description: errorMessage });
       }
 
       // Add delay between generations (except for last one)
@@ -2284,6 +2666,32 @@ export default function MediaStudio() {
 
     setIsGenerating(false);
   };
+
+  useEffect(() => {
+    const request = autoGenerateRequestRef.current;
+    if (!request || autoGenerateTriggeredRef.current) {
+      return;
+    }
+
+    const currentState = tabStates[request.tab];
+    if (!currentState) {
+      return;
+    }
+
+    if (activeTab !== request.tab) {
+      return;
+    }
+
+    const promptMatches = currentState.prompt.trim() === request.prompt.trim();
+    const modelMatches = !request.model || currentState.selectedModel === request.model;
+    if (!promptMatches || !modelMatches) {
+      return;
+    }
+
+    autoGenerateTriggeredRef.current = true;
+    autoGenerateRequestRef.current = null;
+    void handleGenerate();
+  }, [activeTab, handleGenerate, tabStates]);
 
   // Download media (with CORS fallback)
   const downloadMedia = async (url: string, filename: string) => {
@@ -2421,6 +2829,389 @@ export default function MediaStudio() {
     return null;
   };
 
+  const generationQueueTasks = useMemo<QueueGenerationTask[]>(() => {
+    const merged = new Map<string, QueueGenerationTask>();
+    const sessionStartMs = sessionStartTime.getTime();
+
+    const upsert = (task: QueueGenerationTask) => {
+      const existing = merged.get(task.id);
+      if (!existing) {
+        if (task.status === "completed" && task.result) {
+          const duplicate = Array.from(merged.values()).find(
+            (candidate) => candidate.status === "completed" && candidate.result && candidate.result === task.result,
+          );
+          if (duplicate) {
+            merged.set(duplicate.id, {
+              ...duplicate,
+              ...task,
+              id: duplicate.id,
+              prompt: task.prompt || duplicate.prompt,
+              result: task.result || duplicate.result,
+              error: task.error || duplicate.error,
+              statusDetail: task.statusDetail || duplicate.statusDetail,
+              progress: task.progress ?? duplicate.progress,
+            });
+            return;
+          }
+        }
+        merged.set(task.id, task);
+        return;
+      }
+
+      merged.set(task.id, {
+        ...existing,
+        ...task,
+        prompt: task.prompt || existing.prompt,
+        result: task.result || existing.result,
+        error: task.error || existing.error,
+        statusDetail: task.statusDetail || existing.statusDetail,
+        progress: task.progress ?? existing.progress,
+      });
+    };
+
+    for (const task of generationTasks) {
+      const normalizedStatus = task.status === "generating"
+        ? "processing"
+        : task.status === "queued"
+          ? "queued"
+          : task.status === "completed"
+            ? "completed"
+            : "failed";
+
+      const queueTask: QueueGenerationTask = {
+        id: task.backendTaskId || task.providerTaskId || task.id,
+        type: task.type,
+        prompt: task.prompt,
+        model: task.model,
+        status: normalizedStatus,
+        progress: getQueueProgress(normalizedStatus),
+        result: task.url,
+        error: task.error,
+        createdAt: task.createdAt,
+        updatedAt: task.updatedAt,
+        backendTaskId: task.backendTaskId,
+        providerTaskId: task.providerTaskId,
+        statusDetail: task.statusDetail,
+      };
+      upsert(queueTask);
+    }
+
+    for (const rawTask of (mediaHistory?.tasks ?? []) as MediaHistoryTaskLite[]) {
+      const task = rawTask;
+      const taskType = task.mediaType || activeTab;
+      const createdMs = parseTimestampMs(task.createdAt);
+      const startedMs = parseTimestampMs(task.startedAt);
+      const completedMs = parseTimestampMs(task.completedAt);
+      const updatedMs = parseTimestampMs(task.updatedAt);
+      const taskTimestampMs = Math.max(createdMs, startedMs, completedMs, updatedMs);
+      const isRecent = taskTimestampMs >= sessionStartMs - 5 * 60 * 1000;
+      const isActive = task.status === "pending" || task.status === "processing";
+      if (!isRecent && !isActive) {
+        continue;
+      }
+
+      const status = normalizeQueueStatus(task.status);
+      const resultUrl = task.resultUrl || extractTaskResultUrl(task as any) || undefined;
+      const queueTask: QueueGenerationTask = {
+        id: task.taskId || task.id,
+        type: taskType,
+        prompt: task.prompt || "",
+        model: task.model || undefined,
+        status,
+        progress: getQueueProgress(status),
+        result: resultUrl,
+        error: task.errorMessage || undefined,
+        createdAt: task.createdAt || task.startedAt || task.completedAt || task.updatedAt || new Date().toISOString(),
+        updatedAt: task.updatedAt || task.completedAt || task.startedAt || task.createdAt || new Date().toISOString(),
+        backendTaskId: task.id,
+        providerTaskId: task.taskId || undefined,
+        statusDetail:
+          status === "pending" ? "Waiting for provider" :
+          status === "processing" ? "Provider is processing this job" :
+          status === "completed" ? "Completed" :
+          status === "failed" ? (task.errorMessage || "Failed") :
+          status === "cancelled" ? "Cancelled" :
+          "Queued",
+      };
+
+      upsert(queueTask);
+    }
+
+    return Array.from(merged.values()).sort((a, b) => {
+      const aTime = a.updatedAt instanceof Date ? a.updatedAt.getTime() : Date.parse(String(a.updatedAt)) || 0;
+      const bTime = b.updatedAt instanceof Date ? b.updatedAt.getTime() : Date.parse(String(b.updatedAt)) || 0;
+      return bTime - aTime;
+    });
+  }, [activeTab, generationTasks, mediaHistory?.tasks, sessionStartTime]);
+
+  const retryGenerationTask = useCallback(async (task: QueueGenerationTask) => {
+    const targetTab = task.type === "image" || task.type === "video" || task.type === "audio"
+      ? task.type
+      : null;
+
+    if (!targetTab) {
+      toast.error(t('mediaStudio.thisTaskTypeCannotBeRetried'));
+      return;
+    }
+
+    const retryPrompt = task.prompt.trim();
+    if (!retryPrompt) {
+      toast.error(t('mediaStudio.cannotRetryWithoutPrompt'));
+      return;
+    }
+
+    const tabState = tabStates[targetTab];
+    const retryModel = task.model || tabState.selectedModel || selectedModel || "";
+    const nowMs = Date.now();
+    const retryTaskId = `task-${nowMs}-${Math.random().toString(36).slice(2, 11)}`;
+
+    setIsGenerationQueueCollapsed(false);
+    setIsGenerating(true);
+    setFocusedGenerationTaskId(retryTaskId);
+    setGenerationTasks((prev) => [
+      {
+        id: retryTaskId,
+        index: 0,
+        status: "queued",
+        type: targetTab,
+        prompt: retryPrompt,
+        model: retryModel,
+        createdAt: nowMs,
+        updatedAt: nowMs,
+        statusDetail: "Queued for retry",
+      },
+      ...prev,
+    ]);
+
+    const updateRetryTask = (updates: Partial<GenerationTask>) => {
+      setGenerationTasks((prev) =>
+        prev.map((item) =>
+          item.id === retryTaskId
+            ? { ...item, ...updates, updatedAt: Date.now() }
+            : item
+        )
+      );
+    };
+
+    try {
+      updateRetryTask({ status: "generating", statusDetail: "Retry in progress" });
+
+      const selectedModelData = mediaModels?.models?.find((m: any) => m.modelId === retryModel);
+      const rawConfig = selectedModelData?.configJson;
+      const modelConfig = (typeof rawConfig === "string" ? (() => { try { return JSON.parse(rawConfig); } catch { return null; } })() : rawConfig) as any;
+      const extraParams: Record<string, any> = {};
+      const apiConfig: Record<string, string> = buildApiConfigFromModelConfig(
+        (modelConfig as Record<string, unknown>) ?? null,
+      );
+      const templateBaseContext = {
+        prompt: retryPrompt,
+        aspectRatio: tabState.aspectRatio,
+        activeTab: targetTab,
+        fields: tabState.modelInputValues,
+      } as Record<string, unknown>;
+
+      if (modelConfig) {
+        const resolveFieldValue = (field: any, value: unknown): unknown => {
+          if (field.type === "array") {
+            return resolveArrayFieldRuntimeValue(field, value, templateBaseContext);
+          }
+          return value;
+        };
+
+        for (const field of (modelConfig.inputFields as any[] | undefined ?? [])) {
+          const syncWith = inferModelInputSyncTarget(field);
+          if (syncWith === "reference_images") {
+            if (tabState.referenceImages.length > 0) {
+              extraParams[field.key] = tabState.referenceImages.map((r) => r.url);
+            }
+            continue;
+          }
+
+          if (syncWith === "reference_videos") {
+            if (tabState.referenceVideos.length > 0) {
+              extraParams[field.key] = tabState.referenceVideos.map((r) => r.url);
+            }
+            continue;
+          }
+
+          if (syncWith === "prompt") {
+            extraParams[field.key] = resolveFieldValue(field, retryPrompt);
+            continue;
+          }
+
+          if (syncWith === "aspect_ratio") {
+            extraParams[field.key] = resolveFieldValue(field, tabState.aspectRatio);
+            continue;
+          }
+
+          if (field.key === "aspect_ratio" || field.key === "aspect.ratio") continue;
+          if (field.key === "duration" && targetTab === "video") continue;
+
+          const rawVal = tabState.modelInputValues[field.key];
+          const val = resolveFieldValue(field, rawVal);
+          if (
+            val !== undefined
+            && val !== null
+            && val !== ""
+            && !(Array.isArray(val) && val.length === 0)
+          ) {
+            extraParams[field.key] = val;
+          }
+        }
+      }
+
+      const outputFormatValue = tabState.modelInputValues.outputFormat ?? tabState.modelInputValues.output_format;
+      const referenceStyleUrl = (tabState.modelInputValues.referenceStyleUrl ?? tabState.modelInputValues.reference_style_url) as string | undefined;
+      const referenceVideoUrl = (tabState.modelInputValues.referenceVideoUrl ?? tabState.modelInputValues.reference_video_url) as string | undefined;
+      const effectiveReferenceImages = selectedMediaModelReferenceSupport.imageUrls
+        ? tabState.referenceImages
+        : [];
+      const effectiveReferenceVideos = selectedMediaModelReferenceSupport.videoUrls
+        ? tabState.referenceVideos
+        : [];
+      const finalAspectRatio = tabState.useAdvancedMode && tabState.dynamicFormValues.aspectRatio
+        ? tabState.dynamicFormValues.aspectRatio
+        : tabState.aspectRatio;
+      const commonPayload = buildMediaStudioCommonPayload({
+        prompt: retryPrompt,
+        model: retryModel || undefined,
+        aspectRatio: finalAspectRatio,
+        referenceImages: effectiveReferenceImages,
+        referenceVideos: targetTab === "video" ? effectiveReferenceVideos : [],
+        extraParams: Object.keys(extraParams).length > 0 ? extraParams : undefined,
+        apiConfig: Object.keys(apiConfig).length > 0 ? apiConfig : undefined,
+        resolution: tabState.modelInputValues.resolution || undefined,
+      });
+
+      let resultUrl: string | undefined;
+      let creditsUsed: number | undefined;
+      let startedAsyncTask = false;
+      let asyncTask: any | null = null;
+
+      if (targetTab === "image") {
+        const taskResult = await generateImageAsyncMutation.mutateAsync({
+          ...commonPayload,
+          numImages: 1,
+          ...(outputFormatValue ? { outputFormat: String(outputFormatValue) } : {}),
+          ...(referenceStyleUrl ? { referenceStyleUrl } : {}),
+        } as any);
+        asyncTask = taskResult;
+        resultUrl = taskResult.resultUrl || extractTaskResultUrl(taskResult as any) || undefined;
+        creditsUsed = taskResult.creditsUsed;
+        startedAsyncTask = !!taskResult.id || !!taskResult.taskId;
+      } else if (targetTab === "video") {
+        const taskResult = await generateVideoAsyncMutation.mutateAsync({
+          ...commonPayload,
+          duration: tabState.modelInputValues.duration ? Number(tabState.modelInputValues.duration) : tabState.duration,
+          ...(selectedMediaModelReferenceSupport.videoUrls && effectiveReferenceVideos.length === 0 && referenceVideoUrl
+            ? { referenceVideoUrl }
+            : {}),
+        } as any);
+        asyncTask = taskResult;
+        resultUrl = taskResult.resultUrl || extractTaskResultUrl(taskResult as any) || undefined;
+        creditsUsed = taskResult.creditsUsed;
+        startedAsyncTask = !!taskResult.id || !!taskResult.taskId;
+      } else {
+        const result = await generateAudioMutation.mutateAsync({
+          text: retryPrompt,
+          model: retryModel || undefined,
+          ...(Object.keys(extraParams).length > 0 ? { extraParams } : {}),
+          ...(Object.keys(apiConfig).length > 0 ? { apiConfig } : {}),
+        });
+
+        resultUrl = extractTaskResultUrl(result as any) || undefined;
+        creditsUsed = result.creditsUsed;
+        startedAsyncTask = false;
+      }
+
+      if (resultUrl) {
+        updateRetryTask({
+          status: "completed",
+          url: resultUrl,
+          statusDetail: "Completed",
+        });
+        setGeneratedMedia((prev) => [
+          {
+            id: `${Date.now()}-${Math.random()}`,
+            type: targetTab,
+            url: resultUrl,
+            prompt: retryPrompt,
+            model: retryModel,
+            createdAt: new Date().toISOString(),
+            creditsUsed,
+          },
+          ...prev,
+        ]);
+        openPreview(resultUrl);
+        void refetchMediaHistory();
+      } else if (startedAsyncTask) {
+        updateRetryTask({
+          status: asyncTask?.status === "processing"
+            ? "generating"
+            : asyncTask?.status === "completed"
+              ? "completed"
+              : asyncTask?.status === "failed" || asyncTask?.status === "cancelled"
+                ? "error"
+                : "queued",
+          url: resultUrl,
+          backendTaskId: asyncTask?.id,
+          providerTaskId: asyncTask?.taskId,
+          statusDetail:
+            asyncTask?.status === "processing" ? "Provider is processing this job" :
+            asyncTask?.status === "pending" ? "Waiting for provider pickup" :
+            asyncTask?.status === "completed" ? "Task completed" :
+            asyncTask?.status === "failed" ? (asyncTask?.errorMessage || "Task failed") :
+            "Queued for submission",
+        });
+        void refetchMediaHistory();
+      } else {
+        updateRetryTask({
+          status: "error",
+          error: t('mediaStudio.generationCompletedButNoMediaOutputUrlWasReturned'),
+          statusDetail: "No media output URL was returned",
+        });
+      toast.error(t('mediaStudio.generationFailed'), {
+        description: t('mediaStudio.generationCompletedButNoMediaOutputUrlWasReturned'),
+      });
+      }
+    } catch (error: any) {
+      const errorMessage = error?.message || "Unknown error";
+      updateRetryTask({
+        status: "error",
+        error: errorMessage,
+        statusDetail: errorMessage,
+      });
+      toast.error(t('mediaStudio.generationFailed'), { description: errorMessage });
+    } finally {
+      setIsGenerating(false);
+    }
+  }, [
+    buildApiConfigFromModelConfig,
+    extractTaskResultUrl,
+    generateAudioMutation,
+    generateImageAsyncMutation,
+    generateVideoAsyncMutation,
+    mediaModels?.models,
+    refetchMediaHistory,
+    resolveArrayFieldRuntimeValue,
+    selectedModel,
+    setGenerationTasks,
+    setIsGenerationQueueCollapsed,
+    setIsGenerating,
+    openPreview,
+    tabStates,
+  ]);
+
+  const clearCompletedGenerationTasks = useCallback(() => {
+    setGenerationTasks((prev) => prev.filter((task) => task.status !== "completed" && task.status !== "error"));
+  }, []);
+
+  const handleGenerationQueueTaskClick = useCallback((task: QueueGenerationTask) => {
+    if (task.result) {
+      openPreview(task.result);
+    }
+  }, [openPreview]);
+
   const getTaskTimestampMs = (task: any): number => {
     const candidates = [task?.completedAt, task?.updatedAt, task?.startedAt, task?.createdAt];
     for (const value of candidates) {
@@ -2464,9 +3255,17 @@ export default function MediaStudio() {
       (a, b) => b.timestampMs - a.timestampMs
     )[0];
     if (latestEntry?.url) {
-      setPreviewUrl(latestEntry.url);
+      openPreview(latestEntry.url);
     }
-  }, [mediaHistory?.tasks]);
+  }, [mediaHistory?.tasks, openPreview]);
+
+  useEffect(() => {
+    if (previewUrl && previewContextTab === activeTab) {
+      setIsPreviewCollapsed(false);
+      return;
+    }
+    setIsPreviewCollapsed(true);
+  }, [activeTab, previewContextTab, previewUrl]);
 
   const toCanvasSafeImageUrl = (imageUrl: string): string => {
     if (!imageUrl) return imageUrl;
@@ -2533,7 +3332,7 @@ export default function MediaStudio() {
       });
     } catch (error) {
       console.error("Image tools initialization failed:", error);
-      toast.error("Cannot process this image (source may block cross-origin access). Try Download then Upload.");
+      toast.error(t('mediaStudio.cannotProcessImage'));
       setDetectedGrid(null);
     } finally {
       setIsDetectingGrid(false);
@@ -2672,10 +3471,10 @@ export default function MediaStudio() {
     try {
       const results = await splitImage(splitImageUrl, splitGridRows, splitGridCols);
       setSplitResults(results);
-      toast.success(`Split into ${results.length} images`);
+      toast.success(t('mediaStudio.splitIntoImages', { count: results.length }));
     } catch (error) {
       console.error("Split failed:", error);
-      toast.error("Failed to split image");
+      toast.error(t('mediaStudio.failedToSplitImage'));
     } finally {
       setIsSplitting(false);
     }
@@ -2694,10 +3493,10 @@ export default function MediaStudio() {
         { focusX: cropFocus.x, focusY: cropFocus.y, scale: cropScale }
       );
       setCropResult(result);
-      toast.success(`Cropped to ${cropAspectRatio} (${result.width}x${result.height})`);
+      toast.success(t('mediaStudio.croppedTo', { ratio: cropAspectRatio, width: result.width, height: result.height }));
     } catch (error) {
       console.error("Crop failed:", error);
-      toast.error("Failed to crop image");
+      toast.error(t('mediaStudio.failedToCropImage'));
     } finally {
       setIsCropping(false);
     }
@@ -2711,7 +3510,7 @@ export default function MediaStudio() {
   // Download all split images
   const handleDownloadAllSplits = async () => {
     if (splitResults.length === 0) return;
-    toast.info(`Downloading ${splitResults.length} images...`);
+    toast.info(t('mediaStudio.downloadingImages', { count: splitResults.length }));
     await downloadAllSplitImages(splitResults, `split-image`);
   };
 
@@ -2724,7 +3523,7 @@ export default function MediaStudio() {
   // Add split image as reference
   const addSplitAsReference = async (result: SplitResult) => {
     if (referenceImages.length >= maxReferenceImages) {
-      toast.error(`Maximum ${maxReferenceImages} reference images`);
+      toast.error(t('mediaStudio.maxReferenceImagesError', { max: maxReferenceImages }));
       return;
     }
     try {
@@ -2738,10 +3537,10 @@ export default function MediaStudio() {
         ...prev,
         { url: uploadResult.url, name: `Split ${result.index + 1}` },
       ]);
-      toast.success("Added as reference image");
+      toast.success(t('mediaStudio.addedAsReferenceImage'));
     } catch (error) {
       console.error("Failed to upload split image:", error);
-      toast.error("Failed to add as reference");
+      toast.error(t('mediaStudio.failedToAddAsReference'));
     }
   };
 
@@ -2749,7 +3548,7 @@ export default function MediaStudio() {
   const addCropAsReference = async () => {
     if (!cropResult) return;
     if (referenceImages.length >= maxReferenceImages) {
-      toast.error(`Maximum ${maxReferenceImages} reference images`);
+      toast.error(t('mediaStudio.maxReferenceImagesError', { max: maxReferenceImages }));
       return;
     }
     try {
@@ -2762,10 +3561,10 @@ export default function MediaStudio() {
         ...prev,
         { url: uploadResult.url, name: `Crop ${cropAspectRatio}` },
       ]);
-      toast.success("Added cropped image as reference");
+      toast.success(t('mediaStudio.addedCroppedImageAsReference'));
     } catch (error) {
       console.error("Failed to upload cropped image:", error);
-      toast.error("Failed to add as reference");
+      toast.error(t('mediaStudio.failedToAddAsReference'));
     }
   };
 
@@ -2779,12 +3578,12 @@ export default function MediaStudio() {
     const availableSlots = videoMaxImages - videoReferenceCount;
 
     if (availableSlots <= 0) {
-      toast.error("Video tab reference images is full (max 25)");
+      toast.error(t('mediaStudio.videoReferenceFull'));
       return;
     }
 
     const imagesToAdd = splitResults.slice(0, availableSlots);
-    toast.info(`Adding ${imagesToAdd.length} images to Video reference...`);
+    toast.info(t('mediaStudio.addingToVideoReference', { count: imagesToAdd.length }));
 
     try {
       const uploadedImages: ReferenceImage[] = [];
@@ -2807,10 +3606,10 @@ export default function MediaStudio() {
         }
       }));
 
-      toast.success(`Added ${uploadedImages.length} images to Video reference`);
+      toast.success(t('mediaStudio.addedImagesToVideoReference', { count: uploadedImages.length }));
     } catch (error) {
       console.error("Failed to upload split images:", error);
-      toast.error("Failed to add images to Video reference");
+      toast.error(t('mediaStudio.failedToAddImagesToVideoReference'));
     }
   };
 
@@ -2943,6 +3742,7 @@ export default function MediaStudio() {
               </div>
             </div>
             <div className="flex items-center gap-3">
+              <LocaleToggle className="hidden sm:inline-flex" />
               <HelpButton page="/media-studio" variant="ghost" size="sm" />
               <Badge variant="secondary" className="gap-1">
                 <Zap className="h-3 w-3" />
@@ -2989,7 +3789,7 @@ export default function MediaStudio() {
             </Tabs>
 
             {/* Prompt Input */}
-            <DashboardSurface className="space-y-4 p-4">
+            <DashboardCard className="space-y-4" bodyClassName="p-4">
               <DashboardSectionHeader
                 eyebrow={t('mediaStudio.prompt.eyebrow')}
                 title={t('mediaStudio.prompt.title')}
@@ -3156,7 +3956,11 @@ export default function MediaStudio() {
               {enhancedPrompt && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Check className="h-4 w-4 text-green-500" />
-                  <span>Prompt enhanced{(imageTabPrompt || videoTabPrompt) ? " (split for tabs)" : ""}</span>
+                  <span>
+                    {imageTabPrompt || videoTabPrompt
+                      ? t('mediaStudio.promptEnhancedSplit')
+                      : t('mediaStudio.promptEnhanced')}
+                  </span>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -3166,7 +3970,7 @@ export default function MediaStudio() {
                       setVideoTabPrompt(null);
                     }}
                   >
-                    Clear
+                    {t('common.clear')}
                   </Button>
                 </div>
               )}
@@ -3175,7 +3979,7 @@ export default function MediaStudio() {
               {showTranslation && translatedText && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium text-blue-700">{tm('translation')}</span>
+                    <span className="text-xs font-medium text-blue-700">{t('translation')}</span>
                     <div className="flex items-center gap-1">
                       <Button
                         variant="ghost"
@@ -3188,7 +3992,9 @@ export default function MediaStudio() {
                         }}
                       >
                         {translationCopied ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
-                        <span className="ml-1">{translationCopied ? 'Copied' : 'Copy'}</span>
+                        <span className="ml-1">
+                          {translationCopied ? t('mediaStudio.copiedShort') : t('common.copy')}
+                        </span>
                       </Button>
                       <Button
                         variant="ghost"
@@ -3205,79 +4011,174 @@ export default function MediaStudio() {
               )}
 
               {/* Reference Images with Drop Zone */}
-              <div
-                className={cn(
-                  "space-y-2 p-3 rounded-lg border-2 border-dashed transition-all",
-                  isDraggingOver
-                    ? "border-blue-500 bg-blue-50"
-                    : "border-gray-200 hover:border-gray-300"
-                )}
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-              >
-                <div className="flex items-center justify-between">
-                  <label className="text-sm font-medium">
-                    Reference Images ({referenceImages.length}/{maxReferenceImages})
-                  </label>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    className="hidden"
-                    onChange={handleFileUpload}
-                  />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={referenceImages.length >= 5 || uploadMutation.isPending}
-                  >
-                    {uploadMutation.isPending ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <ImagePlus className="h-4 w-4" />
-                    )}
-                    <span className="ml-1">{tm('addImage')}</span>
-                  </Button>
-                </div>
+              {activeTab !== "audio" && (
+                <div
+                  className={cn(
+                    "space-y-2 p-3 rounded-lg border-2 border-dashed transition-all",
+                    isDraggingOver
+                      ? "border-blue-500 bg-blue-50"
+                      : "border-gray-200 hover:border-gray-300",
+                    selectedModel && !selectedMediaModelReferenceSupport.imageUrls && "opacity-60",
+                  )}
+                  onDragOver={selectedModel && selectedMediaModelReferenceSupport.imageUrls ? handleDragOver : undefined}
+                  onDragLeave={selectedModel && selectedMediaModelReferenceSupport.imageUrls ? handleDragLeave : undefined}
+                  onDrop={selectedModel && selectedMediaModelReferenceSupport.imageUrls ? handleDrop : undefined}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <label className="text-sm font-medium">
+                      {t('mediaStudio.referenceImages', { count: referenceImages.length, max: maxReferenceImages })}
+                    </label>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="hidden"
+                      onChange={handleFileUpload}
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={Boolean(selectedModel && !selectedMediaModelReferenceSupport.imageUrls) || referenceImages.length >= maxReferenceImages || uploadMutation.isPending}
+                    >
+                      {uploadMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <ImagePlus className="h-4 w-4" />
+                      )}
+                      <span className="ml-1">{t('addImage')}</span>
+                    </Button>
+                  </div>
 
-                {referenceImages.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
-                    {referenceImages.map((img, idx) => (
-                      <div key={idx} className="relative group">
-                        <img
-                          src={img.url}
-                          alt={img.name}
-                          className="h-16 w-16 rounded-lg object-cover border"
-                        />
-                        <button
-                          onClick={() => removeReferenceImage(idx)}
-                          className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                        <Badge
-                          variant="secondary"
-                          className="absolute bottom-0 left-0 text-[10px] px-1"
-                        >
-                          {idx + 1}
-                        </Badge>
+                  {!selectedModel || selectedMediaModelReferenceSupport.imageUrls ? (
+                    referenceImages.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {referenceImages.map((img, idx) => (
+                          <div key={idx} className="relative group">
+                            <img
+                              src={img.url}
+                              alt={img.name}
+                              className="h-16 w-16 rounded-lg object-cover border"
+                            />
+                            <button
+                              onClick={() => removeReferenceImage(idx)}
+                              className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                            <Badge
+                              variant="secondary"
+                              className="absolute bottom-0 left-0 text-[10px] px-1"
+                            >
+                              {idx + 1}
+                            </Badge>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-center py-4 text-muted-foreground">
-                    <Upload className="h-4 w-4 mr-2" />
-                    <span className="text-sm">{t('mediaStudio.dropReferenceHint')}</span>
-                  </div>
-                )}
+                    ) : (
+                      <div className="flex items-center justify-center py-4 text-muted-foreground">
+                        <Upload className="h-4 w-4 mr-2" />
+                        <span className="text-sm">{t('mediaStudio.dropReferenceHint')}</span>
+                      </div>
+                    )
+                  ) : (
+                    <div className="rounded-md border border-dashed border-amber-300 bg-amber-50 px-3 py-3 text-sm text-amber-800">
+                      This model does not accept image references.
+                    </div>
+                  )}
 
-                <p className="text-xs text-muted-foreground">
-                  {t('mediaStudio.dragHistoryHint')}
-                </p>
-              </div>
+                  <p className="text-xs text-muted-foreground">
+                    {selectedModel && !selectedMediaModelReferenceSupport.imageUrls
+                      ? "Image references are disabled for the selected model."
+                      : t('mediaStudio.dragHistoryHint')}
+                  </p>
+                </div>
+              )}
+
+              {/* Reference Videos with Drop Zone */}
+              {activeTab === "video" && (
+                <div
+                  className={cn(
+                    "space-y-2 p-3 rounded-lg border-2 border-dashed transition-all",
+                    selectedModel && !selectedMediaModelReferenceSupport.videoUrls
+                      ? "border-gray-200 bg-gray-50 opacity-70"
+                      : "border-gray-200 hover:border-gray-300",
+                  )}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <label className="text-sm font-medium">
+                      Reference Videos ({referenceVideos.length}{maxReferenceVideos > 0 ? `/${maxReferenceVideos}` : ""})
+                    </label>
+                    <input
+                      ref={videoFileInputRef}
+                      type="file"
+                      accept="video/*"
+                      multiple
+                      className="hidden"
+                      onChange={handleVideoFileUpload}
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => videoFileInputRef.current?.click()}
+                      disabled={Boolean(selectedModel && !selectedMediaModelReferenceSupport.videoUrls) || referenceVideos.length >= maxReferenceVideos || uploadMutation.isPending}
+                    >
+                      {uploadMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Video className="h-4 w-4" />
+                      )}
+                      <span className="ml-1">Add Video</span>
+                    </Button>
+                  </div>
+
+                  {!selectedModel || selectedMediaModelReferenceSupport.videoUrls ? (
+                    referenceVideos.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {referenceVideos.map((video, idx) => (
+                          <div key={idx} className="relative group">
+                            <video
+                              src={video.url}
+                              className="h-16 w-28 rounded-lg object-cover border bg-black"
+                              controls
+                              muted
+                              playsInline
+                            />
+                            <button
+                              onClick={() => removeReferenceVideo(idx)}
+                              className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                            <Badge
+                              variant="secondary"
+                              className="absolute bottom-0 left-0 text-[10px] px-1"
+                            >
+                              {idx + 1}
+                            </Badge>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center py-4 text-muted-foreground">
+                        <Upload className="h-4 w-4 mr-2" />
+                        <span className="text-sm">Drop or add reference videos here.</span>
+                      </div>
+                    )
+                  ) : (
+                    <div className="rounded-md border border-dashed border-amber-300 bg-amber-50 px-3 py-3 text-sm text-amber-800">
+                      This model does not accept video references.
+                    </div>
+                  )}
+
+                  <p className="text-xs text-muted-foreground">
+                    {selectedModel && !selectedMediaModelReferenceSupport.videoUrls
+                      ? "Video references are disabled for the selected model."
+                      : "Use one or more reference videos when the selected model supports vid2vid."}
+                  </p>
+                </div>
+              )}
 
               {/* Generate Button - Primary location under Prompt */}
               <Button
@@ -3314,7 +4215,7 @@ export default function MediaStudio() {
                   </button>
                 </p>
               )}
-            </DashboardSurface>
+            </DashboardCard>
 
             {/* Settings */}
             <div className="bg-white/70 backdrop-blur rounded-xl border p-4 space-y-4">
@@ -3342,6 +4243,21 @@ export default function MediaStudio() {
                         ? mediaModels?.models?.find((m: any) => m.modelId === selectedModel)?.name || t('mediaStudio.selectModel')
                         : t('mediaStudio.selectModel')}
                     </span>
+                    {selectedMediaModelGenerationModeLabel && (
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          "ml-2 text-[10px] shrink-0",
+                          selectedMediaModelGenerationModeLabel === "Video to Video"
+                            ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+                            : selectedMediaModelGenerationModeLabel === "Text to Video"
+                              ? "border-sky-300 bg-sky-50 text-sky-700"
+                              : "border-slate-300 bg-slate-50 text-slate-700",
+                        )}
+                      >
+                        {selectedMediaModelGenerationModeLabel}
+                      </Badge>
+                    )}
                     {selectedModel && mediaModels?.models?.find((m: any) => m.modelId === selectedModel) && (
                       <Badge variant="outline" className="ml-2 text-xs shrink-0">
                         {getModelCost()}c
@@ -3481,23 +4397,21 @@ export default function MediaStudio() {
 
                   const SYNC_LABELS: Record<string, string> = {
                     reference_images: t('mediaStudio.referenceImagesLabel'),
+                    reference_videos: "Reference Videos",
                     prompt: t('mediaStudio.promptLabel'),
                     aspect_ratio: t('mediaStudio.aspectRatioLabel'),
                   };
 
                   // Synced fields: ONLY those with an explicit syncWith target (never guess from type).
                   const syncedFields = allFields.filter((f) => {
-                    const sw: string = f.syncWith ?? "none";
+                    const sw: string = inferModelInputSyncTarget(f);
                     return sw !== "none";
                   });
 
-                  // Editable fields: no explicit sync AND not a URL-array type AND not a standard-param key.
-                  // URL-array types (image_urls, video_urls, audio_urls) without explicit syncWith are hidden —
-                  // they're handled automatically in the payload builder (legacy compat) but not shown to the user.
+                  // Editable fields: unsynced model-specific inputs.
                   const editableFields = allFields.filter((f) => {
-                    const sw: string = f.syncWith ?? "none";
+                    const sw: string = inferModelInputSyncTarget(f);
                     if (sw !== "none") return false;
-                    if (f.type === "image_urls" || f.type === "video_urls" || f.type === "audio_urls") return false;
                     if (f.key === "aspect_ratio" || f.key === "aspect.ratio") return false;
                     if (f.key === "duration" && activeTab === "video") return false;
                     return true;
@@ -3509,7 +4423,7 @@ export default function MediaStudio() {
                     <>
                       {/* Synced (read-only) fields */}
                       {syncedFields.map((field: any) => {
-                        const sw: string = field.syncWith;
+                        const sw: string = inferModelInputSyncTarget(field);
                         const syncLabel = SYNC_LABELS[sw] ?? t('mediaStudio.synced');
 
                         let preview = "—";
@@ -3517,6 +4431,10 @@ export default function MediaStudio() {
                           preview = referenceImages.length === 0
                             ? t('mediaStudio.noImagesSelected')
                             : `${referenceImages.length} image${referenceImages.length !== 1 ? "s" : ""} synced`;
+                        } else if (sw === "reference_videos") {
+                          preview = referenceVideos.length === 0
+                            ? "No videos selected"
+                            : `${referenceVideos.length} video${referenceVideos.length !== 1 ? "s" : ""} synced`;
                         } else if (sw === "prompt") {
                           const src = (enhancedPrompt || prompt).trim();
                           preview = src.length === 0 ? t('mediaStudio.noPromptYet') : src.length > 60 ? src.slice(0, 60) + "…" : src;
@@ -3710,6 +4628,44 @@ export default function MediaStudio() {
                                   : undefined
                               }
                             />
+                          ) : field.type === "image_urls" || field.type === "video_urls" || field.type === "audio_urls" ? (
+                            <div className="space-y-2">
+                              <Textarea
+                                rows={4}
+                                placeholder={t('mediaStudio.arrayPlaceholder', { field: String(field.label) })}
+                                value={
+                                  Array.isArray(modelInputValues[field.key])
+                                    ? modelInputValues[field.key].join("\n")
+                                    : typeof modelInputValues[field.key] === "string"
+                                      ? modelInputValues[field.key]
+                                      : ""
+                                }
+                                onChange={(e) => {
+                                  const urls = e.target.value
+                                    .split(/\r?\n/)
+                                    .map((value) => value.trim())
+                                    .filter(Boolean);
+                                  setModelInputValues((prev: Record<string, any>) => ({ ...prev, [field.key]: urls }));
+                                }}
+                              />
+                              <LibraryFilePicker
+                                value=""
+                                onValueChange={(url) => {
+                                  const normalized = String(url || "").trim();
+                                  if (!normalized) {
+                                    return;
+                                  }
+                                  const currentUrls = Array.isArray(modelInputValues[field.key])
+                                    ? modelInputValues[field.key].filter((entry: unknown): entry is string => typeof entry === "string")
+                                    : typeof modelInputValues[field.key] === "string"
+                                      ? String(modelInputValues[field.key]).split(/\r?\n/).map((entry) => entry.trim()).filter(Boolean)
+                                      : [];
+                                  const deduped = Array.from(new Set([...currentUrls, normalized]));
+                                  setModelInputValues((prev: Record<string, any>) => ({ ...prev, [field.key]: deduped }));
+                                }}
+                                allowedExtensions={getAllowedLibraryExtensionsForField(field)}
+                              />
+                            </div>
                           ) : field.type === "select" && field.options ? (
                             <Select
                               value={String(modelInputValues[field.key] ?? field.default ?? field.options?.[0]?.value ?? "")}
@@ -4332,7 +5288,9 @@ export default function MediaStudio() {
               <div className="bg-white/70 backdrop-blur rounded-xl border p-4 space-y-3 overflow-hidden">
                 <div className="flex items-center justify-between">
                   <h3 className="font-semibold">{t('mediaStudio.generatedMedia')}</h3>
-                  <Badge variant="outline">{generatedMedia.filter((m) => !expiredUrls.has(m.url)).length} items</Badge>
+                  <Badge variant="outline">
+                    {t('mediaStudio.items', { count: generatedMedia.filter((m) => !expiredUrls.has(m.url)).length })}
+                  </Badge>
                 </div>
 
                 <ScrollArea className="h-[200px] overflow-hidden">
@@ -4341,7 +5299,7 @@ export default function MediaStudio() {
                       <div
                         key={media.id}
                         className="relative group cursor-pointer"
-                        onClick={() => setPreviewUrl(media.url)}
+                        onClick={() => openPreview(media.url)}
                       >
                         {media.type === "image" ? (
                           <img
@@ -4378,7 +5336,7 @@ export default function MediaStudio() {
                                     <ImagePlus className="h-4 w-4" />
                                   </Button>
                                 </TooltipTrigger>
-                              <TooltipContent>{tm('useAsReference')}</TooltipContent>
+                              <TooltipContent>{t('useAsReference')}</TooltipContent>
                               </Tooltip>
                             </TooltipProvider>
                           )}
@@ -4417,7 +5375,7 @@ export default function MediaStudio() {
             )}>
               <div className="mb-3 flex items-center justify-between gap-2">
                 <h3 className="font-semibold flex items-center gap-2">
-                  Preview
+                  {t('mediaStudio.preview')}
                   {isGenerating && generationTasks.length > 1 && !isPreviewCollapsed && (
                     <Badge variant="secondary" className="text-xs">
                       {generationTasks.filter(t => t.status === 'completed').length}/{generationTasks.length}
@@ -4430,7 +5388,7 @@ export default function MediaStudio() {
                   size="icon"
                   className="h-8 w-8 rounded-full"
                   onClick={() => setIsPreviewCollapsed((prev) => !prev)}
-                  title={isPreviewCollapsed ? "Expand preview" : "Collapse preview"}
+                  title={isPreviewCollapsed ? t('mediaStudio.expandPreview') : t('mediaStudio.collapsePreview')}
                 >
                   {isPreviewCollapsed ? (
                     <ChevronDown className="h-4 w-4" />
@@ -4442,7 +5400,9 @@ export default function MediaStudio() {
 
               {isPreviewCollapsed ? (
                 <p className="text-xs text-muted-foreground">
-                  {t('mediaStudio.previewCollapsed')}
+                  {previewUrl && previewContextTab === activeTab
+                    ? t('mediaStudio.previewCollapsed')
+                    : t('mediaStudio.previewEmptyForTab')}
                 </p>
               ) : (
                 <>
@@ -4531,7 +5491,7 @@ export default function MediaStudio() {
                       <Loader2 className="h-12 w-12 animate-spin text-blue-500 mx-auto mb-4" />
                       <p className="text-sm text-muted-foreground">{t('mediaStudio.creatingYour', { tab: t(`mediaStudio.tabs.${activeTab}`) })}</p>
                     </div>
-                  ) : previewUrl && !expiredUrls.has(previewUrl) ? (
+                  ) : previewUrl && previewContextTab === activeTab && !expiredUrls.has(previewUrl) ? (
                     activeTab === "image" ? (
                       <>
                         <img
@@ -4579,11 +5539,15 @@ export default function MediaStudio() {
                 </div>
               )}
 
-              {previewUrl && !isGenerating && (
+              {previewUrl && previewContextTab === activeTab && !isGenerating && (
                 <div className="space-y-3 mt-4">
                   {attachTarget && (
                     <div className="rounded-lg border border-cyan-100 bg-cyan-50/70 px-4 py-3 text-sm text-cyan-900">
-                      Attach target: <span className="font-semibold">{attachTarget.kind === "blog" ? "Blog" : "Page"}</span> {attachTarget.id}
+                      {t('mediaStudio.attachTarget')}{" "}
+                      <span className="font-semibold">
+                        {attachTarget.kind === "blog" ? t('mediaStudio.blog') : t('mediaStudio.page')}
+                      </span>{" "}
+                      {attachTarget.id}
                     </div>
                   )}
                   <div className="flex flex-wrap gap-2">
@@ -4607,7 +5571,7 @@ export default function MediaStudio() {
                       ) : (
                         <Upload className="h-4 w-4 mr-2" />
                       )}
-                      Upload to Library & Attach
+                      {t('mediaStudio.uploadToLibraryAndAttach')}
                     </Button>
                   )}
                   {activeTab === "image" && (
@@ -4705,7 +5669,7 @@ export default function MediaStudio() {
                               )}
                               draggable={task.mediaType === "image"}
                               onDragStart={task.mediaType === "image" ? (e) => handleHistoryDragStart(e, resultUrl) : undefined}
-                              onClick={() => setPreviewUrl(resultUrl)}
+                              onClick={() => openPreview(resultUrl)}
                             >
                               {canAddToLibrary && (
                                 <TooltipProvider>
@@ -4797,7 +5761,7 @@ export default function MediaStudio() {
                                           <Maximize2 className="h-5 w-5" />
                                         </Button>
                                       </TooltipTrigger>
-                                      <TooltipContent>{tm('viewCopyPrompt')}</TooltipContent>
+                                      <TooltipContent>{t('viewCopyPrompt')}</TooltipContent>
                                     </Tooltip>
                                   </TooltipProvider>
                                 )}
@@ -4817,7 +5781,7 @@ export default function MediaStudio() {
                                           <ImagePlus className="h-5 w-5" />
                                         </Button>
                                       </TooltipTrigger>
-                                      <TooltipContent>{tm('useAsReference')}</TooltipContent>
+                                      <TooltipContent>{t('useAsReference')}</TooltipContent>
                                     </Tooltip>
                                   </TooltipProvider>
                                 )}
@@ -4970,7 +5934,7 @@ export default function MediaStudio() {
       {/* Image Lightbox Dialog */}
       <Dialog open={lightboxOpen} onOpenChange={setLightboxOpen}>
         <DialogContent className="!max-w-[95vw] !w-[95vw] max-h-[95vh] p-0 overflow-hidden">
-          <DialogTitle className="sr-only">{tm('imagePreview')}</DialogTitle>
+          <DialogTitle className="sr-only">{t('imagePreview')}</DialogTitle>
           <div className="flex flex-col h-full">
             {/* Image - Large preview almost full screen */}
             <div className="flex-1 bg-black/95 flex items-center justify-center p-2 min-h-[60vh]">
@@ -4984,11 +5948,11 @@ export default function MediaStudio() {
                     setLightboxOpen(false);
                   }}
                   onClick={() => window.open(lightboxImage.url, "_blank", "noopener,noreferrer")}
-                  title={tm('clickToOpenFullSize')}
+                  title={t('clickToOpenFullSize')}
                 />
               ) : lightboxImage && (
                 <div className="text-center text-gray-400">
-                  <p className="text-sm">{tm('mediaUnavailable')}</p>
+                  <p className="text-sm">{t('mediaUnavailable')}</p>
                 </div>
               )}
             </div>
@@ -4999,7 +5963,7 @@ export default function MediaStudio() {
               <div className="flex items-center justify-between text-sm text-muted-foreground">
                 <div className="flex items-center gap-2">
                   <Bot className="h-4 w-4" />
-                  <span>{lightboxImage?.model || "Unknown model"}</span>
+                  <span>{lightboxImage?.model || t('mediaStudio.unknownModel')}</span>
                 </div>
                 {lightboxImage?.createdAt && (
                   <div className="flex items-center gap-2">
@@ -5012,7 +5976,7 @@ export default function MediaStudio() {
               {/* Prompt */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <label className="text-sm font-medium">{tm('promptLabel')}</label>
+                  <label className="text-sm font-medium">{t('promptLabel')}</label>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -5022,18 +5986,18 @@ export default function MediaStudio() {
                     {copiedPrompt ? (
                       <>
                         <CheckCircle className="h-4 w-4 text-green-500" />
-                        <span className="text-green-600">Copied!</span>
+                        <span className="text-green-600">{t('mediaStudio.copiedShort')}</span>
                       </>
                     ) : (
                       <>
                         <Copy className="h-4 w-4" />
-                        <span>Copy</span>
+                        <span>{t('common.copy')}</span>
                       </>
                     )}
                   </Button>
                 </div>
                 <div className="bg-gray-50 rounded-lg p-3 text-sm max-h-[120px] overflow-y-auto">
-                  {lightboxImage?.prompt || "No prompt available"}
+                  {lightboxImage?.prompt || t('mediaStudio.noPromptAvailable')}
                 </div>
               </div>
 
@@ -5045,7 +6009,7 @@ export default function MediaStudio() {
                   onClick={usePromptFromLightbox}
                 >
                   <Wand2 className="h-4 w-4 mr-2" />
-                  Use This Prompt
+                  {t('mediaStudio.useThisPrompt')}
                 </Button>
                 <Button
                   variant="outline"
@@ -5053,7 +6017,7 @@ export default function MediaStudio() {
                   onClick={() => lightboxImage && downloadMedia(lightboxImage.url, `generated-image-${Date.now()}.png`)}
                 >
                   <Download className="h-4 w-4 mr-2" />
-                  Download
+                  {t('mediaStudio.download')}
                 </Button>
                 <Button
                   variant="outline"
@@ -5073,14 +6037,14 @@ export default function MediaStudio() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Scissors className="h-5 w-5" />
-              Image Split & Crop Tools
+              {t('mediaStudio.imageSplitCropTitle')}
             </DialogTitle>
           </DialogHeader>
 
           <div className="grid grid-cols-1 xl:grid-cols-[1.6fr_1fr] gap-6">
             {/* Left: Preview */}
             <div className="min-w-0 space-y-3">
-              <label className="text-base font-semibold">Preview</label>
+              <label className="text-base font-semibold">{t('mediaStudio.preview')}</label>
               <div
                 ref={cropPreviewContainerRef}
                 className="w-full h-[60vh] min-h-[460px] max-h-[720px] bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center relative"
@@ -5124,7 +6088,7 @@ export default function MediaStudio() {
                           onMouseDown={handleCropSelectionMouseDown}
                         >
                           <div className="absolute top-2 left-2 bg-black/65 text-white text-sm font-semibold px-2 py-1 rounded">
-                            {cropAspectRatio} • {Math.round(cropScale * 100)}% • Drag to move
+                            {cropAspectRatio} • {Math.round(cropScale * 100)}% • {t('mediaStudio.dragToMove')}
                           </div>
                         </div>
                       </div>
@@ -5148,9 +6112,13 @@ export default function MediaStudio() {
                 <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-base">
                   <div className="flex items-center gap-2 text-green-700">
                     <Check className="h-4 w-4" />
-                    <span>
-                      Auto-detected: {detectedGrid.rows}x{detectedGrid.cols} grid
-                      ({detectedGrid.cellWidth}x{detectedGrid.cellHeight}px cells)
+                      <span>
+                      {t('mediaStudio.autoDetected', {
+                        rows: detectedGrid.rows,
+                        cols: detectedGrid.cols,
+                        cellWidth: detectedGrid.cellWidth,
+                        cellHeight: detectedGrid.cellHeight,
+                      })}
                     </span>
                   </div>
                 </div>
@@ -5226,7 +6194,7 @@ export default function MediaStudio() {
 
                   <div className="flex items-center gap-3">
                     <div className="w-20">
-                      <label className="text-xs text-muted-foreground mb-1 block">Rows</label>
+                      <label className="text-xs text-muted-foreground mb-1 block">{t('mediaStudio.rows')}</label>
                       <Input
                         type="number"
                         min={1}
@@ -5241,7 +6209,7 @@ export default function MediaStudio() {
                     </div>
                     <span className="text-muted-foreground pt-5">x</span>
                     <div className="w-20">
-                      <label className="text-xs text-muted-foreground mb-1 block">Cols</label>
+                      <label className="text-xs text-muted-foreground mb-1 block">{t('mediaStudio.cols')}</label>
                       <Input
                         type="number"
                         min={1}
@@ -5259,12 +6227,12 @@ export default function MediaStudio() {
                         {isSplitting ? (
                           <>
                             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            Splitting...
+                            {t('mediaStudio.splitting')}
                           </>
                         ) : (
                           <>
                             <Scissors className="h-4 w-4 mr-2" />
-                            Split ({splitGridRows * splitGridCols})
+                            {t('mediaStudio.splitCount', { count: splitGridRows * splitGridCols })}
                           </>
                         )}
                       </Button>
@@ -5307,7 +6275,7 @@ export default function MediaStudio() {
                                         <Download className="h-4 w-4" />
                                       </Button>
                                     </TooltipTrigger>
-                                    <TooltipContent>Download</TooltipContent>
+                                    <TooltipContent>{t('mediaStudio.download')}</TooltipContent>
                                   </Tooltip>
                                 </TooltipProvider>
                                 {referenceImages.length < maxReferenceImages && (
@@ -5323,7 +6291,7 @@ export default function MediaStudio() {
                                           <ImagePlus className="h-4 w-4" />
                                         </Button>
                                       </TooltipTrigger>
-                                      <TooltipContent>Use as Reference</TooltipContent>
+                                      <TooltipContent>{t('mediaStudio.useAsReference')}</TooltipContent>
                                     </Tooltip>
                                   </TooltipProvider>
                                 )}
@@ -5343,13 +6311,13 @@ export default function MediaStudio() {
               {imageEditorMode === "crop" && (
                 <>
                   <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-base">
-                    <p className="font-semibold text-emerald-800">Crop by popular aspect ratios.</p>
-                    <p className="text-emerald-700 text-sm mt-1">Drag crop frame to move, and adjust Crop Size or mouse wheel to resize the selected area.</p>
-                    <p className="text-emerald-700 text-sm">Ratios: 1:1, 9:16, 16:9, 3:4, 4:3, 4:5, 5:4.</p>
+                    <p className="font-semibold text-emerald-800">{t('mediaStudio.cropByPopularRatios')}</p>
+                    <p className="text-emerald-700 text-sm mt-1">{t('mediaStudio.cropDragHint')}</p>
+                    <p className="text-emerald-700 text-sm">{t('mediaStudio.cropHintRatios')}</p>
                   </div>
 
                   <div>
-                    <label className="text-base font-semibold mb-2 block">Aspect Ratio</label>
+                    <label className="text-base font-semibold mb-2 block">{t('mediaStudio.aspectRatio')}</label>
                     <div className="grid grid-cols-4 gap-2">
                       {COMMON_CROP_RATIOS.map((ratio) => (
                         <Button
@@ -5370,7 +6338,7 @@ export default function MediaStudio() {
                   <div className="space-y-3 rounded-lg border p-3">
                     <div>
                       <div className="flex items-center justify-between text-sm font-medium mb-1">
-                        <span>Crop Size</span>
+                        <span>{t('mediaStudio.cropSize')}</span>
                         <span>{Math.round(cropScale * 100)}%</span>
                       </div>
                       <Input
@@ -5386,12 +6354,12 @@ export default function MediaStudio() {
                         className="h-9"
                       />
                       <p className="text-xs text-muted-foreground mt-1">
-                        Smaller value = crop only a smaller area. You can also use mouse wheel on preview.
+                        {t('mediaStudio.smallerValueHint')}
                       </p>
                     </div>
                     <div>
                       <div className="flex items-center justify-between text-sm font-medium mb-1">
-                        <span>Horizontal</span>
+                        <span>{t('mediaStudio.horizontal')}</span>
                         <span>{Math.round(cropFocus.x * 100)}%</span>
                       </div>
                       <Input
@@ -5409,7 +6377,7 @@ export default function MediaStudio() {
                     </div>
                     <div>
                       <div className="flex items-center justify-between text-sm font-medium mb-1">
-                        <span>Vertical</span>
+                        <span>{t('mediaStudio.vertical')}</span>
                         <span>{Math.round(cropFocus.y * 100)}%</span>
                       </div>
                       <Input
@@ -5461,7 +6429,7 @@ export default function MediaStudio() {
                   {cropResult && (
                     <div className="space-y-3 border-t pt-4">
                       <div className="text-base">
-                        <p className="font-semibold">Cropped Result</p>
+                        <p className="font-semibold">{t('mediaStudio.cropResult')}</p>
                         <p className="text-muted-foreground text-sm">
                           {cropResult.width}x{cropResult.height} ({cropResult.ratio})
                         </p>
@@ -5477,7 +6445,7 @@ export default function MediaStudio() {
                         {referenceImages.length < maxReferenceImages && (
                           <Button variant="outline" size="sm" onClick={addCropAsReference}>
                             <ImagePlus className="h-4 w-4 mr-1" />
-                            Use as Reference
+                            {t('mediaStudio.useAsReference')}
                           </Button>
                         )}
                       </div>
@@ -5489,6 +6457,22 @@ export default function MediaStudio() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {generationQueueTasks.length > 0 && (
+        <GenerationProgress
+          tasks={generationQueueTasks}
+          title={t('mediaStudio.generationQueueTitle')}
+          subtitle={t('mediaStudio.generationQueueSubtitle')}
+          maxVisible={6}
+          expanded={!isGenerationQueueCollapsed}
+          onExpandedChange={(expanded) => setIsGenerationQueueCollapsed(!expanded)}
+          onTaskClick={handleGenerationQueueTaskClick}
+          onTaskRetry={retryGenerationTask}
+          onClearCompleted={clearCompletedGenerationTasks}
+          focusTaskId={focusedGenerationTaskId}
+          className="left-3 right-3 bottom-3 sm:left-auto sm:right-4 sm:w-[24rem]"
+        />
+      )}
     </div>
   );
 }

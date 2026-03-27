@@ -46,7 +46,7 @@ class ControlPlaneClient:
         )
         resp.raise_for_status()
         data = resp.json()
-        self._token = data["token"]
+        self._token = str(data["token"])
         self._token_exp = time.time() + (data.get("expiresInSeconds", ttl) - 30)
         return self._token
 

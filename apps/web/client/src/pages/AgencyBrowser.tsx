@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useTranslation } from "react-i18next";
 import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAgencyList } from "@/hooks/useAgencyQuery";
@@ -58,6 +57,7 @@ import { cn } from "@/lib/utils";
 import { AgencyTemplateModal } from "@/components/agency/AgencyTemplateModal";
 import { formatPublishingReadiness, type SocialPublishingPageOption } from "@/types/social";
 import type { HybridOrchestrationPlan, HybridPlanPayload } from "@shared/orchestration/hybridOrchestration";
+import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 
 interface AgencyItem {
   id: string;
@@ -192,7 +192,7 @@ function AgencyShareDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const { t } = useTranslation("agency");
+  const { t } = useScopedTranslation("agency");
   const [groupSearch, setGroupSearch] = useState("");
   const [selectedGroupIds, setSelectedGroupIds] = useState<number[]>([]);
 
@@ -351,7 +351,7 @@ function AgencyShareDialog({
 }
 
 export default function AgencyBrowser() {
-  const { t } = useTranslation("agency");
+  const { t } = useScopedTranslation("agency");
   const { isLoading: authLoading, isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
   const [search, setSearch] = useState("");

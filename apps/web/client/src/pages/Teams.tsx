@@ -42,8 +42,8 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { useI18n } from "@/lib/i18n";
 import { LocaleToggle } from "@/components/LocaleToggle";
+import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import { PersonaEditorFields } from "@/components/settings/PersonaEditorFields";
 import {
   buildPersonaMutationFields,
@@ -219,7 +219,7 @@ function getDefaultRoleForKind(
 
 export default function Teams() {
   const { isLoading: authLoading, isAuthenticated } = useAuth();
-  const { t } = useI18n();
+  const { t } = useScopedTranslation('agency');
   const [location, setLocation] = useLocation();
   const [, routeParams] = useRoute("/teams/:teamId");
   const [search, setSearch] = useState("");

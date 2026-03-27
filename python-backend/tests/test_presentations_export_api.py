@@ -8,12 +8,19 @@ Uses httpx.AsyncClient + ASGITransport (async). Celery tasks and AsyncResult
 are mocked. Auth is bypassed via FastAPI's app.dependency_overrides.
 """
 
+import os
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
 import pytest
 from unittest.mock import MagicMock, patch
 from httpx import AsyncClient, ASGITransport
+from jose import jwt
+from fastapi import HTTPException
 
 from app.main import app
 from app.core.auth import get_current_user
+from app.core.config import settings
+from app.api.v1.presentations_export import download_local_export_file
 
 
 def _mock_user() -> MagicMock:
@@ -67,16 +74,16 @@ class TestPresentationExportPost:
         assert data["celery_task_id"] == "test-celery-task-id-123"
         assert data["status"] == "queued"
 
-    async def test_returns_403_without_auth_header(self):
-        """Unauthenticated request is rejected (HTTPBearer returns 403)."""
-        # No dependency override — real HTTPBearer rejects missing Authorization header
+    async def test_returns_401_without_auth_header(self):
+        """Unauthenticated request is rejected by the app auth layer."""
+        # No dependency override — the app returns 401 for missing auth in this setup
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.post(
                 "/api/v1/presentations/export",
                 json=_VALID_PAYLOAD,
             )
-        assert response.status_code == 403
+        assert response.status_code == 401
 
     async def test_returns_422_for_invalid_format(self):
         """Request with format not in (png, jpg, pdf, mp4) returns 422 validation error."""
@@ -316,9 +323,98 @@ class TestPresentationExportGetStatus:
         assert response.status_code == 200
         assert response.json()["state"] == "queued"
 
-    async def test_returns_403_without_auth_header(self):
-        """Unauthenticated status poll is rejected (HTTPBearer returns 403)."""
+    async def test_returns_401_without_auth_header(self):
+        """Unauthenticated status poll is rejected by the app auth layer."""
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.get("/api/v1/presentations/export/some-task-id")
-        assert response.status_code == 403
+        assert response.status_code == 401
+
+
+@pytest.mark.integration
+class TestPresentationExportDownloadFile:
+    """GET /api/v1/presentations/export/files/{deck_id}/{filename}"""
+
+    def _make_token(self, deck_id: int, filename: str, exp_seconds: int = 300) -> str:
+        now = datetime.now(timezone.utc)
+        return jwt.encode(
+            {
+                "sub": "presentation-export-download",
+                "deck_id": deck_id,
+                "filename": filename,
+                "iat": int(now.timestamp()),
+                "exp": int((now + timedelta(seconds=exp_seconds)).timestamp()),
+            },
+            settings.JWT_SECRET,
+            algorithm="HS256",
+        )
+
+    async def test_serves_locally_stored_export_file(self, tmp_path: Path):
+        media_root = tmp_path / "media"
+        export_dir = media_root / "presentation_exports" / "42"
+        export_dir.mkdir(parents=True)
+        export_file = export_dir / "deck-export.pdf"
+        export_file.write_bytes(b"%PDF-1.4 fake pdf")
+
+        old_media_storage = os.environ.get("MEDIA_STORAGE_PATH")
+        old_jwt_secret = settings.JWT_SECRET
+        try:
+            os.environ["MEDIA_STORAGE_PATH"] = str(media_root)
+            settings.JWT_SECRET = "test-secret-key-for-presentations-export-tests"
+            token = self._make_token(42, "deck-export.pdf")
+            response = await download_local_export_file(42, "deck-export.pdf", token)
+        finally:
+            if old_media_storage is None:
+                os.environ.pop("MEDIA_STORAGE_PATH", None)
+            else:
+                os.environ["MEDIA_STORAGE_PATH"] = old_media_storage
+            settings.JWT_SECRET = old_jwt_secret
+
+        assert response.status_code == 200
+        assert response.media_type == "application/pdf"
+        assert response.path == str(export_file)
+        assert response.filename == "deck-export.pdf"
+
+    async def test_rejects_path_traversal_filename(self, tmp_path: Path):
+        media_root = tmp_path / "media"
+        media_root.mkdir()
+
+        old_media_storage = os.environ.get("MEDIA_STORAGE_PATH")
+        old_jwt_secret = settings.JWT_SECRET
+        try:
+            os.environ["MEDIA_STORAGE_PATH"] = str(media_root)
+            settings.JWT_SECRET = "test-secret-key-for-presentations-export-tests"
+            token = self._make_token(42, "deck..export.pdf")
+            with pytest.raises(HTTPException) as exc_info:
+                await download_local_export_file(42, "deck..export.pdf", token)
+        finally:
+            if old_media_storage is None:
+                os.environ.pop("MEDIA_STORAGE_PATH", None)
+            else:
+                os.environ["MEDIA_STORAGE_PATH"] = old_media_storage
+            settings.JWT_SECRET = old_jwt_secret
+
+        assert exc_info.value.status_code == 400
+
+    async def test_rejects_token_filename_mismatch(self, tmp_path: Path):
+        media_root = tmp_path / "media"
+        export_dir = media_root / "presentation_exports" / "42"
+        export_dir.mkdir(parents=True)
+        (export_dir / "deck-export.pdf").write_bytes(b"%PDF-1.4 fake pdf")
+
+        old_media_storage = os.environ.get("MEDIA_STORAGE_PATH")
+        old_jwt_secret = settings.JWT_SECRET
+        try:
+            os.environ["MEDIA_STORAGE_PATH"] = str(media_root)
+            settings.JWT_SECRET = "test-secret-key-for-presentations-export-tests"
+            token = self._make_token(42, "other-name.pdf")
+            with pytest.raises(HTTPException) as exc_info:
+                await download_local_export_file(42, "deck-export.pdf", token)
+        finally:
+            if old_media_storage is None:
+                os.environ.pop("MEDIA_STORAGE_PATH", None)
+            else:
+                os.environ["MEDIA_STORAGE_PATH"] = old_media_storage
+            settings.JWT_SECRET = old_jwt_secret
+
+        assert exc_info.value.status_code == 401

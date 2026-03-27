@@ -66,6 +66,8 @@ from app.api import (
     meta_posts,  # Meta internal publishing API
     meta_comments,  # Meta internal comment moderation API
     meta_webhooks,  # Meta webhook ingestion
+    social_publish,  # Provider-aware social publishing API
+    agency_review,  # On-demand agency review analysis
     internal_mcp,  # Internal MCP tools API (Google Drive)
     internal_embeddings,  # Internal embeddings API for chat memory vectors
      internal_gdrive,  # Internal Google Drive sync API
@@ -424,6 +426,8 @@ app.include_router(meta_pages.router, tags=["Meta Pages"])
 app.include_router(meta_webhooks.router, tags=["Meta Webhooks"])
 app.include_router(meta_posts.router, tags=["Meta Posts"])
 app.include_router(meta_comments.router, tags=["Meta Comments"])
+app.include_router(social_publish.router, tags=["Social Publishing"])
+app.include_router(agency_review.router, tags=["Agency Review"])
 app.include_router(prompt_enhancement.router, prefix="/api/v1/prompt", tags=["Prompt Enhancement"])
 app.include_router(skill_customization.router, prefix="/api/v1", tags=["Skill Customization"])
 app.include_router(assets.router, prefix="/api/v1/assets", tags=["Asset Management"])

@@ -556,10 +556,11 @@ def background_task(
             )
         
         # Keep original function accessible
-        wrapper.direct = func
-        wrapper.__name__ = func.__name__
+        wrapper_any: Any = wrapper
+        wrapper_any.direct = func
+        wrapper_any.__name__ = func.__name__
         
-        return wrapper
+        return wrapper_any
     return decorator
 
 

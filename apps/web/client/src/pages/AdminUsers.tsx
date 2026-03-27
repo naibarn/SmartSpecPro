@@ -14,8 +14,6 @@ import {
   Users,
   Search,
   CreditCard,
-  Plus,
-  Minus,
   RefreshCw,
   ChevronLeft,
   ChevronRight,
@@ -27,6 +25,7 @@ import {
   ArrowDownRight,
   Globe,
   Edit,
+  ArrowUpDown,
 } from "lucide-react";
 
 interface UserData {
@@ -194,7 +193,7 @@ export default function AdminUsers() {
     }
   };
 
-  const openCreditModal = (user: UserData, action: "add" | "deduct") => {
+  const openCreditModal = (user: UserData, action: "add" | "deduct" = "add") => {
     setSelectedUser(user);
     setCreditAction(action);
     setShowCreditModal(true);
@@ -384,6 +383,19 @@ export default function AdminUsers() {
                         <div className="text-right">
                           <p className="font-semibold text-gray-900">{u.credits.toLocaleString()} credits</p>
                           <p className="text-xs text-gray-500 capitalize">{u.plan} plan</p>
+                          {selectedUser?.id === u.id && (
+                            <Button
+                              size="sm"
+                              className="mt-2 h-8 w-full bg-purple-600 hover:bg-purple-700 text-white justify-center"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openCreditModal(u as UserData);
+                              }}
+                            >
+                              <ArrowUpDown className="w-4 h-4 mr-2" />
+                              Adjust Credits
+                            </Button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -427,6 +439,20 @@ export default function AdminUsers() {
             {selectedUser && selectedUserData ? (
               <>
                 <div className="p-4 border-b">
+                  <div className="flex items-center justify-between gap-3 mb-3">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setLocation('/dashboard')}
+                      className="text-gray-600 px-2"
+                    >
+                      <ChevronLeft className="w-4 h-4 mr-1" />
+                      Back to Dashboard
+                    </Button>
+                    <span className="text-xs font-medium uppercase tracking-[0.2em] text-gray-400">
+                      User Details
+                    </span>
+                  </div>
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center text-white text-xl font-medium">
                       {(selectedUserData.user.name || selectedUserData.user.email || "U")[0].toUpperCase()}
@@ -445,22 +471,15 @@ export default function AdminUsers() {
                   <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg p-4 text-white">
                     <p className="text-sm opacity-80">Credit Balance</p>
                     <p className="text-3xl font-bold">{selectedUserData.user.credits.toLocaleString()}</p>
-                    <div className="flex gap-2 mt-3">
+                    <div className="mt-3">
                       <Button
                         size="sm"
                         variant="secondary"
-                        className="bg-white/20 hover:bg-white/30 text-white"
-                        onClick={() => openCreditModal(selectedUserData.user as UserData, "add")}
+                        className="w-full bg-white text-purple-700 hover:bg-purple-50 justify-center font-semibold shadow-sm"
+                        onClick={() => openCreditModal(selectedUserData.user as UserData)}
                       >
-                        <Plus className="w-4 h-4 mr-1" /> Add
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        className="bg-white/20 hover:bg-white/30 text-white"
-                        onClick={() => openCreditModal(selectedUserData.user as UserData, "deduct")}
-                      >
-                        <Minus className="w-4 h-4 mr-1" /> Deduct
+                        <ArrowUpDown className="w-4 h-4 mr-2" />
+                        Adjust Credits
                       </Button>
                     </div>
                   </div>
@@ -601,14 +620,26 @@ export default function AdminUsers() {
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
             <div className="bg-white rounded-xl p-6 w-full max-w-md mx-4">
               <h3 className="text-lg font-semibold mb-4">
-                {creditAction === "add" ? "Add Credits" : "Deduct Credits"}
+                Adjust Credits
               </h3>
               <p className="text-sm text-gray-500 mb-4">
-                {creditAction === "add" ? "Adding credits to" : "Deducting credits from"}{" "}
+                Adjusting credits for{" "}
                 <strong>{selectedUser.name || selectedUser.email}</strong>
               </p>
 
               <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Operation</label>
+                  <select
+                    className="w-full border rounded-lg p-2"
+                    value={creditAction}
+                    onChange={(e) => setCreditAction(e.target.value as any)}
+                  >
+                    <option value="add">Add credits</option>
+                    <option value="deduct">Deduct credits</option>
+                  </select>
+                </div>
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Amount</label>
                   <Input
@@ -664,9 +695,7 @@ export default function AdminUsers() {
                 >
                   {addCreditsMutation.isPending || deductCreditsMutation.isPending
                     ? "Processing..."
-                    : creditAction === "add"
-                    ? "Add Credits"
-                    : "Deduct Credits"}
+                    : "Apply Adjustment"}
                 </Button>
               </div>
             </div>

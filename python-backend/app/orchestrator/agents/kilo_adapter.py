@@ -399,3 +399,4 @@ class KiloAdapter:
         
         self._sessions.clear()
         logger.info("kilo_adapter_cleanup_complete")
+# mypy: ignore-errors

@@ -10,8 +10,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Menu, X, Sparkles, ChevronDown, Zap, Bot } from 'lucide-react';
 import { useTenant } from '@/contexts/TenantContext';
-import { useTranslation } from 'react-i18next';
 import { LocaleToggle } from '@/components/LocaleToggle';
+import { useScopedTranslation } from '@/i18n/useScopedTranslation';
 
 interface NavLink {
   href: string;
@@ -36,7 +36,7 @@ export function Navbar() {
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { tenant } = useTenant();
-  const { t } = useTranslation('nav');
+  const { t } = useScopedTranslation('nav');
 
   const navItems: NavItem[] = [
     { href: '/', label: t('navbar.home') },
@@ -263,6 +263,9 @@ export function Navbar() {
                 </Link>
               ))}
               <div className="pt-4 space-y-2">
+                <div className="flex justify-center pb-2">
+                  <LocaleToggle />
+                </div>
                 <Link href="/login">
                   <Button variant="outline" className="w-full" onClick={() => setIsMobileMenuOpen(false)}>
                     {t('navbar.signIn')}

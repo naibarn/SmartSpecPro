@@ -10,7 +10,6 @@
  */
 
 import { useState, useCallback, useRef, useMemo, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useLocation, useRoute } from 'wouter';
 import ReactFlow, {
   ReactFlowProvider,
@@ -32,6 +31,7 @@ import 'reactflow/dist/style.css';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { HelpButton } from '@/components/help';
+import { useScopedTranslation } from '@/i18n/useScopedTranslation';
 import {
   Select,
   SelectContent,
@@ -140,7 +140,7 @@ const nodeTypes: NodeTypes = {
 };
 
 function FlowEditor() {
-  const { t } = useTranslation('workflow');
+  const { t } = useScopedTranslation('workflow');
   const [, setLocation] = useLocation();
   const [, routeParams] = useRoute('/workflows/editor/:id');
   const utils = trpc.useUtils();

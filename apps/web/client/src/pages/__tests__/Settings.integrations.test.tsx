@@ -84,11 +84,15 @@ vi.mock("@/lib/trpc", () => ({
   trpc: trpcRoot,
 }));
 
-vi.mock("@/lib/i18n", () => ({
-  useI18n: () => ({
+vi.mock("react-i18next", () => ({
+  useTranslation: () => ({
     t: (key: string) => key,
-    locale: "en",
-    setLocale: vi.fn(),
+    i18n: {
+      language: "en",
+      resolvedLanguage: "en",
+      changeLanguage: vi.fn(),
+      exists: vi.fn(() => true),
+    },
   }),
 }));
 

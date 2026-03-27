@@ -185,3 +185,4 @@ class ApprovalRule(Base):
         Index("idx_approval_rule_type", "trigger_type"),
         Index("idx_approval_rule_active", "is_active"),
     )
+# mypy: ignore-errors

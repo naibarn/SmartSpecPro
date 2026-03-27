@@ -9,10 +9,7 @@ import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { HelpButton } from "@/components/help";
-import { useI18n } from '@/lib/i18n';
-import i18next from 'i18next';
 import { STORAGE_KEY as LOCALE_STORAGE_KEY } from '@/i18n/languageDetector';
-import { useTranslation } from 'react-i18next';
 import { SUPPORTED_LANGUAGES, LANGUAGE_LABELS, LANGUAGE_LABELS_EN, LANGUAGE_COVERAGE, type SupportedLanguage } from '@shared/i18n';
 import {
   Dialog,
@@ -27,7 +24,7 @@ import { toast } from 'sonner';
 import { pickEnabledModelId } from '@/lib/enabledModelSelection';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { DashboardSectionHeader } from '@/components/dashboard';
+import { DashboardCard, DashboardSectionHeader } from '@/components/dashboard';
 import {
   Settings as SettingsIcon,
   User,
@@ -74,13 +71,15 @@ import { PersonasPanel } from '@/components/settings/PersonasPanel';
 import { UserAutomationPreferencesPanel } from '@/components/settings/UserAutomationPreferencesPanel';
 import { NotificationPreferencesPanel } from '@/components/settings/NotificationPreferencesPanel';
 import { clearPrivateVaultAccessToken, getPrivateVaultAccessToken, setPrivateVaultAccessToken } from '@/lib/privateVault';
+import { LocaleToggle } from '@/components/LocaleToggle';
+import { useScopedTranslation } from '@/i18n/useScopedTranslation';
 
 type SettingsTab = 'profile' | 'account' | 'security' | 'privateVault' | 'preferences' | 'notifications' | 'automation' | 'api' | 'billing' | 'integrations' | 'personas';
 
 type TwoFAStep = 'idle' | 'setup' | 'verify' | 'done' | 'disable' | 'regen';
 
 function TwoFactorSection() {
-  const { t } = useI18n();
+  const { t } = useScopedTranslation('settings');
   const [step, setStep] = useState<TwoFAStep>('idle');
   const [setupData, setSetupData] = useState<{ secret: string; uri: string; recoveryCodes: string[] } | null>(null);
   const [code, setCode] = useState('');
@@ -362,10 +361,10 @@ interface DisplayLanguageDropdownProps {
 }
 
 export function DisplayLanguageDropdown({ defaultValue, onLanguageChange }: DisplayLanguageDropdownProps = {}) {
-  const { t: ts } = useTranslation('settings');
+  const { t: ts, i18n } = useScopedTranslation('settings');
   // Normalize initial value — guard against browser-resolved codes like "en-US"
   const initialLang = (SUPPORTED_LANGUAGES as readonly string[]).find(
-    (l) => (defaultValue || i18next.language || 'en').startsWith(l)
+    (l) => (defaultValue || i18n.language || 'en').startsWith(l)
   ) ?? 'en';
   const [displayLanguage, setDisplayLanguage] = useState(initialLang);
   const { mutate: updatePrefs, isPending } = trpc.users.updatePreferences.useMutation({
@@ -379,7 +378,7 @@ export function DisplayLanguageDropdown({ defaultValue, onLanguageChange }: Disp
   function handleDisplayLangChange(newLng: string) {
     if (!(SUPPORTED_LANGUAGES as readonly string[]).includes(newLng)) return;
     if (isPending) return;
-    void i18next.changeLanguage(newLng);
+    void i18n.changeLanguage(newLng);
     try { localStorage.setItem(LOCALE_STORAGE_KEY, newLng); } catch { /* quota/private mode */ }
     setDisplayLanguage(newLng);
     onLanguageChange?.(newLng);
@@ -407,7 +406,11 @@ export function DisplayLanguageDropdown({ defaultValue, onLanguageChange }: Disp
             const coverage = LANGUAGE_COVERAGE[lng as SupportedLanguage] ?? 0;
             const nativeName = LANGUAGE_LABELS[lng as SupportedLanguage];
             const englishName = lng !== 'en' ? LANGUAGE_LABELS_EN[lng as SupportedLanguage] : '';
-            const coverageLabel = lng === 'en' ? '' : coverage >= 90 ? '' : ` — ${coverage}% translated`;
+            const coverageLabel = lng === 'en'
+              ? ''
+              : coverage >= 90
+                ? ''
+                : ts('displayLanguage.coverageNote', { coverage });
             return (
               <option key={lng} value={lng}>
                 {nativeName}{englishName ? ` (${englishName})` : ''}{coverageLabel}
@@ -416,7 +419,7 @@ export function DisplayLanguageDropdown({ defaultValue, onLanguageChange }: Disp
           })}
         </select>
         <p className="text-xs text-gray-500 mt-1">
-          English is always available as fallback. Languages below 100% may have untranslated sections.
+          {ts('displayLanguage.fallbackNote')}
         </p>
       </div>
     </div>
@@ -425,7 +428,7 @@ export function DisplayLanguageDropdown({ defaultValue, onLanguageChange }: Disp
 
 export default function Settings() {
   const { user, isLoading, isAuthenticated, logout } = useAuth();
-  const { t } = useI18n();
+  const { t, i18n } = useScopedTranslation(['settings', 'common']);
   const [, setLocation] = useLocation();
   const search = useSearch();
   const initialTab = (new URLSearchParams(search).get('tab') as SettingsTab) || 'profile';
@@ -617,7 +620,7 @@ export default function Settings() {
 
   const unlinkMutation = trpc.telegram.unlinkTelegram.useMutation({
     onSuccess: () => {
-      toast.success('Telegram account unlinked');
+      toast.success(t('settings.preferences.telegramUnlinked'));
       setTelegramState('idle');
       telegramStatus.refetch();
     },
@@ -625,7 +628,7 @@ export default function Settings() {
   });
 
   const updateTelegramPrefsMutation = trpc.telegram.updateTelegramPreferences.useMutation({
-    onSuccess: () => toast.success('Telegram preferences updated'),
+    onSuccess: () => toast.success(t('settings.preferences.telegramPreferencesUpdated')),
     onError: (err: any) => toast.error(err.message),
   });
 
@@ -705,6 +708,11 @@ export default function Settings() {
     return null;
   }
 
+  const currentUiLanguage = (SUPPORTED_LANGUAGES as readonly string[]).find(
+    (lng) => (i18n.resolvedLanguage || i18n.language || 'en').startsWith(lng),
+  ) ?? 'en';
+  const currentUiLanguageLabel = LANGUAGE_LABELS[currentUiLanguage];
+
   const tabs: Array<{ id: SettingsTab; label: string; icon: any }> = [
     { id: 'profile', label: t('settings.tabs.profile'), icon: User },
     { id: 'account', label: t('settings.tabs.account'), icon: Mail },
@@ -751,17 +759,20 @@ export default function Settings() {
                 <HelpButton page="/settings" variant="ghost" size="sm" />
               </div>
             </div>
-            {saveSuccess && (
-              <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0 }}
-                className="flex items-center gap-2 bg-green-50 text-green-700 px-4 py-2 rounded-lg"
-              >
-                <Check className="w-4 h-4" />
-                <span className="text-sm font-medium">{t('settings.saved')}</span>
-              </motion.div>
-            )}
+            <div className="flex items-center gap-2 sm:gap-3">
+              <LocaleToggle className="hidden sm:inline-flex" />
+              {saveSuccess && (
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0 }}
+                  className="flex items-center gap-2 bg-green-50 text-green-700 px-4 py-2 rounded-lg"
+                >
+                  <Check className="w-4 h-4" />
+                  <span className="text-sm font-medium">{t('settings.saved')}</span>
+                </motion.div>
+              )}
+            </div>
           </div>
         </div>
       </header>
@@ -809,7 +820,7 @@ export default function Settings() {
             transition={{ delay: 0.1 }}
             className="lg:col-span-3"
           >
-            <div className="bg-white/70 backdrop-blur-xl rounded-2xl border border-white/50 shadow-lg shadow-blue-500/5 p-6">
+            <DashboardCard className="rounded-2xl border border-white/50 bg-white/70 shadow-lg shadow-blue-500/5 backdrop-blur-xl" bodyClassName="p-6">
               {/* Profile Tab */}
               {activeTab === 'profile' && (
                 <div className="space-y-6">
@@ -919,25 +930,25 @@ export default function Settings() {
                         </div>
                         <div>
                           <div className="font-medium text-gray-900">{t('settings.account.language')}</div>
-                          <div className="text-sm text-gray-500">{t('settings.account.languageValue')}</div>
+                          <div className="text-sm text-gray-500">{t('settings.account.languageValue', { language: currentUiLanguageLabel })}</div>
                         </div>
                       </div>
-                      <Button variant="outline" size="sm">{t('common.change')}</Button>
+                      <LocaleToggle />
                     </div>
                   </div>
 
                   <div className="pt-6 border-t border-gray-200">
                     <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-                      <div className="flex items-start gap-3">
-                        <AlertCircle className="w-5 h-5 text-red-600 mt-0.5" />
-                        <div className="flex-1">
-                          <h3 className="font-semibold text-red-900 mb-1">{t('settings.account.deleteAccount')}</h3>
-                          <p className="text-sm text-red-700 mb-3">
-                            Permanently delete your account and all associated data. This action cannot be undone.
-                          </p>
-                          <Button
-                            variant="destructive"
-                            size="sm"
+                        <div className="flex items-start gap-3">
+                          <AlertCircle className="w-5 h-5 text-red-600 mt-0.5" />
+                          <div className="flex-1">
+                            <h3 className="font-semibold text-red-900 mb-1">{t('settings.account.deleteAccount')}</h3>
+                            <p className="text-sm text-red-700 mb-3">
+                              {t('settings.account.deleteAccountDescription')}
+                            </p>
+                            <Button
+                              variant="destructive"
+                              size="sm"
                             onClick={() => {
                               setDeleteConfirmEmail('');
                               setDeleteError('');
@@ -998,7 +1009,7 @@ export default function Settings() {
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Confirm New Password
+                        {t('settings.security.confirmNewPassword')}
                       </label>
                       <input
                         type="password"
@@ -1201,11 +1212,11 @@ export default function Settings() {
                       </div>
 
                       <div className="mt-4 space-y-2 text-sm text-gray-600">
-                        <p>• Files stay inside the same library/RAG pipeline, but are hidden behind a PIN.</p>
-                        <p>• Use this space for receipts, bills, scans, and private personal documents.</p>
-                        <p>• Supported file types follow the same broad upload support as the rest of Document Management.</p>
+                        <p>• {t('settings.privateVault.filesStayInside')}</p>
+                        <p>• {t('settings.privateVault.useThisSpace')}</p>
+                        <p>• {t('settings.privateVault.supportedFileTypes')}</p>
                         {privateVaultPrefs?.pinUpdatedAt ? (
-                          <p>• Last updated: {new Date(privateVaultPrefs.pinUpdatedAt).toLocaleString()}</p>
+                          <p>• {t('settings.privateVault.lastUpdated', { date: new Date(privateVaultPrefs.pinUpdatedAt).toLocaleString() })}</p>
                         ) : null}
                       </div>
 
@@ -1544,8 +1555,8 @@ export default function Settings() {
 
                     <div>
                       <h3 className="font-semibold text-gray-900 mb-4">{t('settings.preferences.appearance')}</h3>
-                      <div className="grid grid-cols-3 gap-3">
-                        {(['light', 'dark', 'system'] as const).map((themeOption) => (
+                  <div className="grid grid-cols-3 gap-3">
+                    {(['light', 'dark', 'system'] as const).map((themeOption) => (
                           <button
                             key={themeOption}
                             onClick={() => setTheme(themeOption)}
@@ -1564,7 +1575,7 @@ export default function Settings() {
 
                   {/* Display Language */}
                   <DisplayLanguageDropdown
-                    defaultValue={prefsData?.displayLocale || prefsData?.translationLanguage || i18next.language}
+                    defaultValue={prefsData?.displayLocale || prefsData?.translationLanguage || i18n.language}
                     onLanguageChange={(lng) => setTranslationLanguage(lng)}
                   />
 
@@ -1572,7 +1583,7 @@ export default function Settings() {
                   <div>
                     <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
                       <Languages className="w-5 h-5" />
-                      Translation
+                      {t('settings.translation.title')}
                     </h3>
                     <div className="space-y-4">
                       <div>
@@ -1604,7 +1615,7 @@ export default function Settings() {
                             className="w-full px-4 py-3 border border-gray-200 rounded-xl text-left flex items-center justify-between bg-white hover:border-gray-300 transition-colors"
                           >
                             <span className={translationModel ? 'text-gray-900' : 'text-gray-400'}>
-                              {translationModel || 'Select model...'}
+                              {translationModel || t('settings.translation.selectModel')}
                             </span>
                             <Bot className="w-4 h-4 text-gray-400" />
                           </button>
@@ -1866,7 +1877,7 @@ export default function Settings() {
 
               {/* Personas Tab */}
               {activeTab === 'personas' && <PersonasPanel />}
-            </div>
+            </DashboardCard>
           </motion.div>
         </div>
       </main>
@@ -1877,18 +1888,17 @@ export default function Settings() {
           <DialogHeader>
             <DialogTitle className="text-red-600 flex items-center gap-2">
               <AlertCircle className="w-5 h-5" />
-              Delete Account
+              {t('settings.account.deleteTitle')}
             </DialogTitle>
             <DialogDescription>
-              This action is permanent and cannot be undone. All your data including conversations,
-              credits, and settings will be permanently deleted.
+              {t('settings.account.deleteAccountDescription')}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                To confirm, type your email address: <strong>{user?.email}</strong>
+                {t('settings.account.deleteConfirmLabel')} <strong>{user?.email}</strong>
               </label>
               <input
                 type="email"
@@ -1897,7 +1907,7 @@ export default function Settings() {
                   setDeleteConfirmEmail(e.target.value);
                   setDeleteError('');
                 }}
-                placeholder="Enter your email to confirm"
+                placeholder={t('settings.account.deleteConfirmPlaceholder')}
                 className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
               />
             </div>

@@ -5,10 +5,11 @@ Phase 0 - Critical Gap Fix #2
 
 from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.orm import DeclarativeBase, sessionmaker
 from sqlalchemy.pool import NullPool
 import os
 import re
+from typing import AsyncGenerator
 
 import structlog
 
@@ -16,8 +17,9 @@ from app.core.config import settings
 
 logger = structlog.get_logger()
 
-# Create declarative base for models
-Base = declarative_base()
+class Base(DeclarativeBase):
+    """Declarative base for all SQLAlchemy models."""
+
 
 # Track whether we're in a Celery worker child process.
 # Set to True by reinit_engine_for_celery_worker() called from worker_process_init.
@@ -111,7 +113,7 @@ def reinit_engine_for_celery_worker():
     logger.info("celery_worker_engine_reinitialized", poolclass="NullPool")
 
 
-async def get_db() -> AsyncSession:
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """
     Dependency for getting async database session
     """

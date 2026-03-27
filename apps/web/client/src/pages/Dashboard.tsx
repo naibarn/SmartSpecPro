@@ -5,11 +5,11 @@
 
 import { useEffect, useState, useMemo, type ReactNode } from 'react';
 import { useLocation } from 'wouter';
-import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { formatRelativeTime } from '@smartspec/shared';
 import { HelpButton } from "@/components/help";
 import { LocaleToggle } from "@/components/LocaleToggle";
+import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import type { UserRole } from '@smartspec/shared';
 import { detectPlatform } from '@smartspec/shared';
 import { motion } from 'framer-motion';
@@ -173,9 +173,9 @@ type DashboardShortcut = {
 };
 
 export default function Dashboard() {
-  const { t } = useTranslation(['dashboard', 'common']);
+  const { t } = useScopedTranslation(['dashboard', 'common']);
   // Subscribe to nav namespace so sidebar labels re-render on language change
-  useTranslation('nav');
+  useScopedTranslation('nav');
   const { user, isLoading, isAuthenticated, logout } = useAuth();
   const { tenant, isLoading: tenantLoading } = useTenant();
   const [, setLocation] = useLocation();

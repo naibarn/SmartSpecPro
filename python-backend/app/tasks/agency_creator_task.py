@@ -145,6 +145,67 @@ def create_task_id() -> str:
     return f"agcreate-{uuid.uuid4().hex[:12]}"
 
 
+AUTO_SOCIAL_PUBLISH_KEYWORDS = (
+    "auto post",
+    "auto-post",
+    "autopost",
+    "automatic post",
+    "post automatically",
+    "publish automatically",
+    "immediate publish",
+    "publish immediately",
+    "direct publish",
+    "โพสอัตโนมัติ",
+    "โพสต์อัตโนมัติ",
+    "โพสต์ออโต้",
+    "โพสออโต้",
+    "โพสต์ทันที",
+    "ลงโพสต์อัตโนมัติ",
+)
+
+
+def _wants_immediate_social_publish(requirement: str, answers: dict | None = None) -> bool:
+    """Detect whether the agency should auto-publish social posts immediately."""
+    haystack_parts = [requirement or ""]
+    if answers:
+        haystack_parts.extend(str(value) for value in answers.values())
+    haystack = " ".join(haystack_parts).lower()
+    normalized = re.sub(r"\s+", " ", haystack)
+    return any(keyword in normalized for keyword in AUTO_SOCIAL_PUBLISH_KEYWORDS)
+
+
+def _normalize_social_publish_tool_configs(spec: dict, requirement: str, answers: dict | None = None) -> dict:
+    """Ensure social publish tools are configured for direct publishing when requested."""
+    if not isinstance(spec, dict):
+        return spec
+
+    if not _wants_immediate_social_publish(requirement, answers):
+        return spec
+
+    for node in spec.get("nodes", []):
+        if not isinstance(node, dict):
+            continue
+
+        tool_ids = node.get("toolIds", node.get("tools", []))
+        if not isinstance(tool_ids, list) or "builtin-social-publish" not in tool_ids:
+            continue
+
+        tool_configs = node.get("toolConfigs")
+        if not isinstance(tool_configs, dict):
+            tool_configs = {}
+            node["toolConfigs"] = tool_configs
+
+        social_publish_config = tool_configs.get("builtin-social-publish")
+        if not isinstance(social_publish_config, dict):
+            social_publish_config = {}
+            tool_configs["builtin-social-publish"] = social_publish_config
+
+        social_publish_config["publishMode"] = "immediate"
+        social_publish_config["requireApproval"] = False
+
+    return spec
+
+
 async def _fetch_relevant_memories(
     tenant_id: str, *, user_id: int = 0, limit: int = 10
 ) -> str:
@@ -475,6 +536,7 @@ async def _design_async(task_id: str, user_id: int, payload: dict) -> dict:
         "_user_id": user_id,
     })
     spec = _validate_spec(spec)
+    spec = _normalize_social_publish_tool_configs(spec, requirement, answers)
 
     # Re-enable computer_use if the discover phase recommended it AND the tenant flag allows it.
     # _validate_spec strips it synchronously; this async check re-enables selectively.
@@ -1004,6 +1066,13 @@ Return JSON with this exact structure:
       "instructions": "Detailed, specific instructions for this agent",
       "isEntryPoint": true,
       "toolIds": [],
+      "toolConfigs": {
+        "builtin-social-publish": {
+          "pageId": 123,
+          "publishMode": "immediate",
+          "requireApproval": false
+        }
+      },
       "modelRequirements": {
         "strategy": "balanced",
         "supportsVision": false,
@@ -1079,10 +1148,22 @@ Model strategy:
 - "builtin-slack-message"     → Post to Slack
 - "builtin-document-search"   → Search document collections
 - "builtin-meta-channels"     → Full Meta/Facebook page integration (messages, posts, comments)
+- "builtin-social-actions"    → Provider-neutral background social actions for workflows and swarm
 - "builtin-social-publish"    → Schedule or publish posts to Facebook Pages
 - "builtin-social-moderate"   → Monitor and moderate comments on Facebook Pages
 - "builtin-social-inbox"      → Read and reply to direct messages on Facebook Pages
 - "builtin-agency-call"       → Call another agency for subtasks (cross-agency)
+
+TOOL CONFIG RULES
+- Use "toolConfigs" as a map from toolId to per-tool configuration object.
+- For "builtin-social-publish", set toolConfigs["builtin-social-publish"] when the requirement involves Facebook auto-posting.
+- If the requirement says auto-post, direct publish, publish immediately, or similar, set:
+  - publishMode: "immediate"
+  - requireApproval: false
+- If the connected Facebook Page is known, include pageId; otherwise leave page selection for the user to finish in the UI.
+- Only design an auto-post flow for a Facebook Page that already has valid Page access and publishing enabled.
+- If Page access is not confirmed yet, keep pageId empty and instruct the UI step to reconnect before publishing.
+- Do not use draft-only config for requirements that explicitly ask for automatic Facebook posting.
 
 ═══ DESIGN PRINCIPLES ═══
 1. ALWAYS set objective — this is critical for the agency's self-improvement loop
@@ -1349,8 +1430,8 @@ def _validate_spec(spec: dict) -> dict:
         "builtin-file-writer", "builtin-rag-knowledge", "builtin-skill-executor",
         "builtin-cmd-executor", "builtin-http-request", "builtin-email-notify",
         "builtin-webhook", "builtin-slack-message", "builtin-document-search",
-        "builtin-meta-channels", "builtin-social-publish", "builtin-social-moderate",
-        "builtin-social-inbox", "builtin-agency-call",
+        "builtin-meta-channels", "builtin-social-actions", "builtin-social-publish",
+        "builtin-social-moderate", "builtin-social-inbox", "builtin-agency-call",
     }
     for node in nodes:
         if node.get("nodeType") not in non_tool_node_types:
@@ -1393,6 +1474,17 @@ async def _implement_agency(spec: dict, user_id: int, tenant_id: str = "") -> st
             else:
                 tool_ids = []
 
+            raw_tool_configs = node.get("toolConfigs", {})
+            normalized_tool_configs: dict[str, dict[str, Any]] = {}
+            if isinstance(raw_tool_configs, dict):
+                for tool_id, tool_config in raw_tool_configs.items():
+                    if (
+                        isinstance(tool_id, str)
+                        and tool_id in tool_ids
+                        and isinstance(tool_config, dict)
+                    ):
+                        normalized_tool_configs[tool_id] = tool_config
+
             agent_data: dict = {
                 "id": node.get("id", ""),
                 "name": node.get("name", "Agent"),
@@ -1404,7 +1496,7 @@ async def _implement_agency(spec: dict, user_id: int, tenant_id: str = "") -> st
                 "isOptional": node.get("isOptional", False),
                 "position": {"x": 400, "y": 80 + idx * 200},
                 "toolIds": tool_ids,
-                "toolConfigs": {},
+                "toolConfigs": normalized_tool_configs,
             }
 
             # Model: use auto-selection (modelRequirements) if available, else manual

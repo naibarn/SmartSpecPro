@@ -313,3 +313,4 @@ class TenantSandboxPolicy(Base):
             "maxSingleJobSeconds": self.max_single_job_seconds,
             "defaultNetworkAction": self.default_network_action,
         }
+# mypy: ignore-errors

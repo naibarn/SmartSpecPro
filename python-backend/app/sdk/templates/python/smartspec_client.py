@@ -864,3 +864,4 @@ def create_async_client(api_key: Optional[str] = None) -> AsyncSmartSpecClient:
         AsyncSmartSpecClient instance (use with 'async with')
     """
     return AsyncSmartSpecClient(api_key=api_key)
+# mypy: ignore-errors

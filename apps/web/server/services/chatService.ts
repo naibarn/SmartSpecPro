@@ -10,7 +10,7 @@ import {
   entityMemories,
   skillPreferences,
   users,
-  llmModels,
+  modelProviderMap,
   Conversation,
   InsertConversation,
   Message,
@@ -21,6 +21,7 @@ import {
   InsertEntityMemory,
   tenants,
 } from "../../drizzle/schema";
+import { buildModelProviderMapLookupCondition } from "./modelLookup";
 import { resolveEnabledLlmModelId } from "./enabledLlmModels";
 import { estimateTokens, estimateMessages } from "../utils/tokenEstimator";
 
@@ -835,9 +836,9 @@ Use 'react' for interactive React components, 'chart' for data visualizations (J
         .limit(1);
       if (conv?.model) {
         const [modelRow] = await db
-          .select({ contextLength: llmModels.contextLength })
-          .from(llmModels)
-          .where(eq(llmModels.modelId, conv.model))
+          .select({ contextLength: modelProviderMap.contextLength })
+          .from(modelProviderMap)
+          .where(buildModelProviderMapLookupCondition(conv.model))
           .limit(1);
         if (modelRow?.contextLength != null && modelRow.contextLength > 0) {
           inputBudget = modelRow.contextLength - OUTPUT_RESERVE;

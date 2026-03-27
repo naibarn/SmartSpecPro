@@ -13,6 +13,10 @@ import { getLoginUrl } from "./const";
 import "./index.css";
 import { i18nReady } from "@/i18n";
 
+if (typeof document !== "undefined") {
+  document.documentElement.classList.add("enterprise-theme");
+}
+
 const CHUNK_RELOAD_MARKER = "__smartspec_chunk_reload_at__";
 const CHUNK_RELOAD_WINDOW_MS = 30_000;
 const SENTRY_EVENT_DEDUPE_WINDOW_MS = 30_000;

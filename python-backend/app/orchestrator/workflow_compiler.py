@@ -34,7 +34,14 @@ class CompileResult:
 CONDITIONAL_NODE_TYPES = {"conditional", "switch", "if"}
 
 # Node types that are triggers (entry points)
-TRIGGER_NODE_TYPES = {"manual_trigger", "event_trigger", "webhook_trigger", "schedule_trigger", "file_upload_trigger"}
+TRIGGER_NODE_TYPES = {
+    "manual_trigger",
+    "event_trigger",
+    "webhook_trigger",
+    "schedule_trigger",
+    "file_upload_trigger",
+    "incoming_meta_message",
+}
 
 
 class WorkflowCompiler:

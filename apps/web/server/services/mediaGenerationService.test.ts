@@ -12,9 +12,15 @@ vi.mock("./auditLogger", () => ({
   },
 }));
 
+vi.mock("./modelRegistry", () => ({
+  getModelById: vi.fn(),
+  mapToApiModelId: vi.fn((modelId: string) => modelId),
+}));
+
 import { scheduleMediaWithLimiter } from "./llmRateLimiter";
 import { auditLogger } from "./auditLogger";
-import { MEDIA_MODELS, MediaGenerationService } from "./mediaGenerationService";
+import { getModelById } from "./modelRegistry";
+import { MEDIA_MODELS, MediaGenerationService, resolveReferenceUrl } from "./mediaGenerationService";
 
 const fetchMock = vi.fn();
 global.fetch = fetchMock as typeof fetch;
@@ -132,6 +138,7 @@ describe("MediaGenerationService retry behavior", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(scheduleMediaWithLimiter).mockImplementation(async (_provider, _mediaType, fn) => fn());
+    vi.mocked(getModelById).mockReturnValue(undefined);
   });
 
   it("retries async audio submission once for SETTINGS_KEY_NOT_FOUND and succeeds", async () => {
@@ -176,5 +183,71 @@ describe("MediaGenerationService retry behavior", () => {
     )).rejects.toThrow("ERR SETTINGS_KEY_NOT_FOUND [endpoint=/api/v1/media/async/image]");
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("adds reference image config metadata from the model configJson", async () => {
+    vi.mocked(getModelById).mockReturnValue({
+      id: "google-banana-2",
+      type: "image",
+      name: "Google Banana 2",
+      provider: "kie.ai",
+      description: "Test model",
+      aliases: [],
+      creditCost: 40,
+      configJson: {
+        inputFields: [
+          {
+            key: "reference_image",
+            label: "Reference Images",
+            type: "array",
+            syncWith: "reference_images",
+          },
+        ],
+      },
+    } as never);
+
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ code: 200, data: { taskId: "task-42" } }), { status: 200 }),
+    );
+
+    const service = new MediaGenerationService("http://localhost:8000");
+    await service.generateImageAsync(
+      {
+        prompt: "test image prompt",
+        model: "google-banana-2",
+        apiConfig: { provider: "kie.ai" },
+        referenceImageUrls: ["https://cdn.example.com/ref.png"],
+      },
+      "test-token",
+    );
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const requestInit = fetchMock.mock.calls[0]?.[1];
+    expect(requestInit).toBeDefined();
+    const payload = JSON.parse(String(requestInit?.body));
+    expect(payload.reference_image_urls).toEqual(["https://cdn.example.com/ref.png"]);
+    expect(payload.api_config).toMatchObject({
+      provider: "kie.ai",
+      reference_image_input_key: "reference_image",
+      reference_image_input_label: "Reference Images",
+      reference_image_input_type: "array",
+    });
+  });
+});
+
+describe("resolveReferenceUrl", () => {
+  it("keeps public HTTPS URLs as-is", () => {
+    expect(resolveReferenceUrl("https://cdn.example.com/ref.png", "https://tenant.example.com"))
+      .toBe("https://cdn.example.com/ref.png");
+  });
+
+  it("rewrites localhost URLs to the internal node server base", () => {
+    expect(resolveReferenceUrl("https://localhost:3000/uploads/ref.png", "https://tenant.example.com"))
+      .toBe("http://smartspec-web:3000/uploads/ref.png");
+  });
+
+  it("uses the internal node server base when the request publicUrl is localhost", () => {
+    expect(resolveReferenceUrl("/uploads/ref.png", "https://localhost:3000"))
+      .toBe("http://smartspec-web:3000/uploads/ref.png");
   });
 });

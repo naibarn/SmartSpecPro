@@ -1292,6 +1292,46 @@ async def get_rag_collections(
     }
 
 
+@router.get("/social/connected-pages")
+async def get_connected_pages(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Return connected social pages for workflow node selects."""
+    tenant_id = current_user.currentTenantId
+    if not tenant_id:
+        return {"pages": []}
+
+    from sqlalchemy import text as sa_text
+
+    result = await db.execute(
+        sa_text(
+            """
+            SELECT sp.id, sp."pageName", sp."providerPageId", sp.status
+            FROM social_pages sp
+            WHERE sp."tenantId" = :tenant_id
+              AND sp.status = 'active'
+            ORDER BY sp."pageName" ASC, sp.id ASC
+            """
+        ),
+        {"tenant_id": tenant_id},
+    )
+    rows = result.fetchall()
+
+    pages = []
+    for row in rows:
+        page_id = row[0]
+        page_name = row[1] or row[2] or f"Page {page_id}"
+        pages.append(
+            {
+                "label": page_name,
+                "value": str(page_id),
+            }
+        )
+
+    return {"pages": pages}
+
+
 @router.get("/available-approvers")
 async def get_available_approvers(
     current_user: User = Depends(get_current_user),

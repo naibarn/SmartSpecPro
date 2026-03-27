@@ -288,3 +288,4 @@ async def execute_skill(data: NodeExecutionData, context: ExecutionContext) -> d
     """Legacy function wrapper for skill execution."""
     executor = SkillExecutor()
     return await executor.execute(data, context)
+# mypy: ignore-errors

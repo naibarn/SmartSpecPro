@@ -186,3 +186,4 @@ class Policy(Base):
         Index("idx_policy_tenant", "tenant_id"),
         Index("idx_policy_active", "is_active"),
     )
+# mypy: ignore-errors

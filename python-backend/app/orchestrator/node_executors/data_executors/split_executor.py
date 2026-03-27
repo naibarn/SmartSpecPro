@@ -83,9 +83,10 @@ class SplitExecutor:
             ValueError: If input type is wrong for the selected mode,
                        configuration is invalid, or output exceeds limits.
         """
-        split_mode = data.inputs.get("splitMode", "string_split")
+        split_mode = str(data.inputs.get("splitMode", "string_split"))
         input_value = data.inputs.get("input")
         max_splits = data.inputs.get("maxSplits", 0)
+        parts: list[Any]
 
         # Validate maxSplits
         if max_splits is not None and not isinstance(max_splits, (int, float)):

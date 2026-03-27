@@ -10,8 +10,8 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRunStream, type RunStreamEvent } from "@/hooks/useRunStream";
 import { Badge } from "@/components/ui/badge";
-import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import {
   ArrowRight,
   CheckCircle2,
@@ -315,7 +315,7 @@ export function TeamRoomView({
 }: TeamRoomViewProps) {
   const utils = trpc.useUtils();
   const { user } = useAuth();
-  const { t } = useI18n();
+  const { t } = useScopedTranslation('agency');
   const hasControllableRun = Boolean(runId && (runStatus === "running" || runStatus === "paused"));
   const canStartRun = Boolean(onStartRun) && (!runId || runStatus === "completed" || runStatus === "stopped" || runStatus === "failed");
   const streamEnabled = Boolean(runId && hasControllableRun);

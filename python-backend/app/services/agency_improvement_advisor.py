@@ -18,7 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services.agentic_sanitizer import sanitize_llm_input
 
-logger = logging.getLogger(__name__)
+logger: Any = logging.getLogger(__name__)
 
 
 # ── 1. Feedback Analyzer ─────────────────────────────────────────
@@ -59,7 +59,7 @@ async def analyze_feedback(
         {"id": feedback_id, "aid": agency_id, "tid": tenant_id},
     )
     fb = fb_row.fetchone()
-    if not fb:
+    if fb is None:
         return None
 
     rating, what_worked, what_didnt, improvements = fb[0], fb[1], fb[2], fb[3]
@@ -209,10 +209,10 @@ async def _auto_enrich_instructions(
             {"nid": node_id, "aid": agency_id, "tid": tenant_id},
         )
         row = result.fetchone()
-        if not row:
+        if row is None:
             return False
 
-        current = row[0] or ""
+        current = str(row[0] or "")
         enrichment = f"\n\n[Auto-learned from user feedback]: {sanitize_llm_input(suggestion, max_length=500)}"
 
         # Don't duplicate
@@ -277,7 +277,7 @@ async def check_agency_health(
         {"id": agency_id, "tid": tenant_id},
     )
     agency = agency_row.fetchone()
-    if not agency:
+    if agency is None:
         return None
 
     agency_name, objective, default_model = agency[0], agency[1] or "", agency[2] or ""
@@ -292,6 +292,8 @@ async def check_agency_health(
         {"aid": agency_id},
     )
     stats = stats_row.fetchone()
+    if stats is None:
+        return None
     run_count = stats[0] or 0
     avg_rating = float(stats[1] or 0)
     min_rating = stats[2] or 0

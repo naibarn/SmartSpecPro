@@ -19,4 +19,3 @@ describe("mapToApiModelId", () => {
     expect(mapToApiModelId("custom-db-model")).toBe("custom-db-model");
   });
 });
-

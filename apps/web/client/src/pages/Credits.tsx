@@ -9,15 +9,16 @@ import { formatNumber } from '@smartspec/shared';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { trpc } from '@/lib/trpc';
-import { useI18n } from '@/lib/i18n';
 import { Button } from '@/components/ui/button';
 import { TransactionDetailDialog } from '@/components/analytics/TransactionDetailDialog';
 import MyInviteCode from '@/components/user/MyInviteCode';
+import { LocaleToggle } from '@/components/LocaleToggle';
 import {
-  DashboardSectionHeader,
-  DashboardStatCard,
+  DashboardCard,
+  DashboardKpiCard,
   DashboardSurface,
 } from '@/components/dashboard';
+import { useScopedTranslation } from '@/i18n/useScopedTranslation';
 import {
   Zap,
   CreditCard,
@@ -52,7 +53,7 @@ import {
 
 export default function Credits() {
   const { user, isLoading, isAuthenticated } = useAuth();
-  const { t, locale } = useI18n();
+  const { t, i18n } = useScopedTranslation('billing');
   const [, setLocation] = useLocation();
   const [selectedPackage, setSelectedPackage] = useState<number | null>(null);
   const [buyCreditsExpanded, setBuyCreditsExpanded] = useState(false);
@@ -121,7 +122,7 @@ export default function Credits() {
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-    const intlLocale = locale === 'th' ? 'th-TH' : 'en-US';
+    const intlLocale = (i18n.language || 'en').startsWith('th') ? 'th-TH' : 'en-US';
     const timeStr = d.toLocaleTimeString(intlLocale, { hour: '2-digit', minute: '2-digit' });
 
     if (diffMins < 1) return t('credits.time.justNow');
@@ -189,10 +190,13 @@ export default function Credits() {
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-1.5 sm:gap-2 bg-yellow-50 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg flex-shrink-0">
-              <Zap className="w-4 h-4 text-yellow-500" />
-              <span className="font-semibold text-gray-900 text-sm sm:text-base">{user.credits ?? 0}</span>
-              <span className="text-xs sm:text-sm text-gray-500">{t('credits.unit')}</span>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <LocaleToggle className="hidden sm:inline-flex" />
+              <div className="flex items-center gap-1.5 sm:gap-2 bg-yellow-50 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg">
+                <Zap className="w-4 h-4 text-yellow-500" />
+                <span className="font-semibold text-gray-900 text-sm sm:text-base">{user.credits ?? 0}</span>
+                <span className="text-xs sm:text-sm text-gray-500">{t('credits.unit')}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -211,7 +215,7 @@ export default function Credits() {
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8"
         >
           {stats.map((stat, index) => (
-            <DashboardStatCard
+            <DashboardKpiCard
               key={index}
               icon={stat.icon}
               value={stat.value}
@@ -309,14 +313,14 @@ export default function Credits() {
                   }`}
                   onClick={() => setSelectedPackage(pkg.id)}
                 >
-                  {pkg.isFeatured && (
-                    <div className="absolute -top-2.5 left-1/2 -translate-x-1/2">
-                      <span className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-0.5">
-                        <Star className="w-2.5 h-2.5" />
-                        BEST
-                      </span>
-                    </div>
-                  )}
+                {pkg.isFeatured && (
+                  <div className="absolute -top-2.5 left-1/2 -translate-x-1/2">
+                    <span className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-0.5">
+                      <Star className="w-2.5 h-2.5" />
+                      {t('credits.buyCredits.best')}
+                    </span>
+                  </div>
+                )}
 
                   <div className="text-center mb-3">
                     <div className={`w-12 h-12 mx-auto rounded-xl bg-gradient-to-br ${
@@ -336,7 +340,7 @@ export default function Credits() {
                       <span className="text-sm font-bold">{formatNumber(pkg.credits)}</span>
                     </div>
                     <div className="text-xs text-center text-gray-500">
-                      ${((pkg.pricePerCredit ?? 0) * 1000).toFixed(2)}/1K credits
+                      {t('credits.buyCredits.perThousand', { amount: ((pkg.pricePerCredit ?? 0) * 1000).toFixed(2) })}
                     </div>
                   </div>
 
@@ -367,13 +371,12 @@ export default function Credits() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
         >
-          <DashboardSectionHeader
+          <DashboardCard
             eyebrow={t('credits.transactionHistory.eyebrow')}
             title={t('credits.transactionHistory.title')}
             description={t('credits.transactionHistory.description')}
             trailing={(
               <div className="flex items-center gap-2 flex-wrap">
-                {/* Source type filter */}
                 <select
                   value={sourceFilter}
                   onChange={(e) => { setSourceFilter(e.target.value as CreditSourceType | ""); setPage(0); }}
@@ -390,8 +393,8 @@ export default function Credits() {
                 </Button>
               </div>
             )}
-          />
-          <DashboardSurface className="overflow-hidden">
+            bodyClassName="p-0"
+          >
             {historyLoading ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="w-6 h-6 animate-spin text-blue-500" />
@@ -450,7 +453,7 @@ export default function Credits() {
                           <span>{formatDateTime(transaction.createdAt)}</span>
                           <div className="flex items-center gap-2">
                             {transaction.balanceAfter != null && (
-                              <span>bal: {transaction.balanceAfter}</span>
+                              <span>{t('credits.transactionHistory.balanceAfter', { balance: transaction.balanceAfter })}</span>
                             )}
                             {transaction.traceId ? (
                               <TransactionDetailDialog
@@ -549,8 +552,8 @@ export default function Credits() {
                                     <div className="flex items-center gap-1">
                                       <span className="font-medium">{t('credits.meta.job')}:</span>
                                       <span className="text-gray-700">
-                                        {transaction.metadata.deckId ? `Deck #${transaction.metadata.deckId}` : ""}
-                                        {transaction.metadata.slideNumber ? ` • Slide ${transaction.metadata.slideNumber}` : ""}
+                                        {transaction.metadata.deckId ? `${t('credits.meta.deck')} #${transaction.metadata.deckId}` : ""}
+                                        {transaction.metadata.slideNumber ? ` • ${t('credits.meta.slide')} ${transaction.metadata.slideNumber}` : ""}
                                       </span>
                                     </div>
                                   )}
@@ -617,7 +620,7 @@ export default function Credits() {
                 </div>
               </>
             )}
-          </DashboardSurface>
+          </DashboardCard>
         </motion.div>
       </main>
     </div>
@@ -625,7 +628,7 @@ export default function Credits() {
 }
 
 function CreatorEarningsSection() {
-  const { t } = useI18n();
+  const { t } = useScopedTranslation('billing');
   const { data: dashboard, isLoading } = (trpc as any).agency.getCreatorDashboard.useQuery(
     undefined,
     { staleTime: 60_000 },

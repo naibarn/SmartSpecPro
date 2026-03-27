@@ -110,13 +110,15 @@ export async function resolveVisualReferences(
   userMessage: string,
   conversationId: number,
   userId: number,
-  tenantId: string,
+  tenantId?: string,
   projectId?: string
 ): Promise<ResolvedReference[]> {
+  const resolvedTenantId = tenantId ?? "";
+
   // Gate 3 (section 09): honour multimodalMemory feature flag
   try {
     const { getTenantFeatureFlags } = await import("./tenantFeatureFlagService");
-    const flags = await getTenantFeatureFlags(tenantId);
+    const flags = await getTenantFeatureFlags(resolvedTenantId);
     if (!flags.multimodalMemory) return [];
   } catch {
     return [];
@@ -147,7 +149,7 @@ export async function resolveVisualReferences(
     .where(
       and(
         inArray(mediaAssets.id, recentIds),
-        eq(mediaAssets.tenantId, tenantId)
+        eq(mediaAssets.tenantId, resolvedTenantId)
       )
     )
     .limit(12);
@@ -191,7 +193,7 @@ Return JSON array of resolved references.`;
       userMessage: userPromptText,
       zodSchema: ResolvedRefSchema,
       userId,
-      tenantId,
+      tenantId: resolvedTenantId,
       billingDescription: "vision_reference_resolution",
     });
 

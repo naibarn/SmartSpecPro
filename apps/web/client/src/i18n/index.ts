@@ -35,3 +35,4 @@ export const i18nReady: Promise<void> = Promise.race([
 
 export { i18next as i18n };
 export default i18next;
+export { useScopedTranslation } from "./useScopedTranslation";

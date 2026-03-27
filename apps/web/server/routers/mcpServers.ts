@@ -38,6 +38,11 @@ export const mcpToolNameRegex = /^[a-zA-Z0-9_-]+$/;
 const MAX_TOOLS_PER_SERVER = 100;
 const MAX_DESCRIPTION_LENGTH = 500;
 
+function resolveTenantId(ctx: { tenantId?: unknown; user?: { currentTenantId?: unknown } | null }): string {
+  const tenantId = ctx.tenantId ?? ctx.user?.currentTenantId;
+  return tenantId == null ? "" : String(tenantId);
+}
+
 // ────────────────────────────────────────────────────────────
 // Helpers
 // ────────────────────────────────────────────────────────────
@@ -193,9 +198,6 @@ export const updateMcpServerSchema = z.object({
   maxToolsExposed: z.number().int().min(1).max(200).optional(),
 });
 
-const UUID_FORMAT = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-// M04: UUID format validated for agent/agency targets
 export const assignToAgencySchema = z
   .object({
     mcpServerId: z.number().int().positive(),
@@ -203,17 +205,6 @@ export const assignToAgencySchema = z
     targetId: z.string().min(1).max(36),
     enabledToolNames: z.array(z.string().max(100)).max(200).optional(),
     disabledToolNames: z.array(z.string().max(100)).max(200).optional(),
-  })
-  .superRefine((val, ctx) => {
-    if (val.targetType === "agent" || val.targetType === "agency") {
-      if (!UUID_FORMAT.test(val.targetId)) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["targetId"],
-          message: "targetId must be a valid UUID for agent or agency targets",
-        });
-      }
-    }
   });
 
 // ────────────────────────────────────────────────────────────
@@ -223,7 +214,7 @@ export const assignToAgencySchema = z
 export const mcpServersRouter = router({
   /** List all MCP servers for the current tenant */
   list: adminProcedure.query(async ({ ctx }) => {
-    const tenantId = ctx.user.tenantId;
+    const tenantId = resolveTenantId(ctx);
     const rows = await getDb()
       .select()
       .from(mcpServers)
@@ -243,7 +234,7 @@ export const mcpServersRouter = router({
         .where(
           and(
             eq(mcpServers.id, input.id),
-            eq(mcpServers.tenantId, ctx.user.tenantId),
+            eq(mcpServers.tenantId, resolveTenantId(ctx)),
           ),
         );
 
@@ -278,7 +269,7 @@ export const mcpServersRouter = router({
       const configHash = computeConfigHash(input.config);
 
       const insertData: Record<string, unknown> = {
-        tenantId: ctx.user.tenantId,
+        tenantId: resolveTenantId(ctx),
         name: input.name,
         slug: input.slug,
         description,
@@ -322,7 +313,7 @@ export const mcpServersRouter = router({
         .where(
           and(
             eq(mcpServers.id, input.id),
-            eq(mcpServers.tenantId, ctx.user.tenantId),
+            eq(mcpServers.tenantId, resolveTenantId(ctx)),
           ),
         );
 
@@ -384,7 +375,7 @@ export const mcpServersRouter = router({
       const [updated] = await getDb()
         .update(mcpServers)
         .set(updates)
-        .where(and(eq(mcpServers.id, input.id), eq(mcpServers.tenantId, ctx.user.tenantId)))
+        .where(and(eq(mcpServers.id, input.id), eq(mcpServers.tenantId, resolveTenantId(ctx))))
         .returning();
 
       return toResponse(updated);
@@ -400,7 +391,7 @@ export const mcpServersRouter = router({
         .where(
           and(
             eq(mcpServers.id, input.id),
-            eq(mcpServers.tenantId, ctx.user.tenantId),
+            eq(mcpServers.tenantId, resolveTenantId(ctx)),
           ),
         );
 
@@ -409,7 +400,7 @@ export const mcpServersRouter = router({
       }
 
       // Cascade delete handles assignments via FK
-      await getDb().delete(mcpServers).where(and(eq(mcpServers.id, input.id), eq(mcpServers.tenantId, ctx.user.tenantId)));
+      await getDb().delete(mcpServers).where(and(eq(mcpServers.id, input.id), eq(mcpServers.tenantId, resolveTenantId(ctx))));
 
       return { success: true };
     }),
@@ -424,7 +415,7 @@ export const mcpServersRouter = router({
         .where(
           and(
             eq(mcpServers.id, input.id),
-            eq(mcpServers.tenantId, ctx.user.tenantId),
+            eq(mcpServers.tenantId, resolveTenantId(ctx)),
           ),
         );
 
@@ -489,7 +480,7 @@ export const mcpServersRouter = router({
               healthStatus: "healthy",
               lastHealthCheck: new Date(),
             })
-            .where(and(eq(mcpServers.id, input.id), eq(mcpServers.tenantId, ctx.user.tenantId)));
+            .where(and(eq(mcpServers.id, input.id), eq(mcpServers.tenantId, resolveTenantId(ctx))));
 
           return {
             reachable: true,
@@ -503,11 +494,11 @@ export const mcpServersRouter = router({
         // Update health status on failure
         await getDb()
           .update(mcpServers)
-          .set({
-            healthStatus: "unhealthy",
-            lastHealthCheck: new Date(),
-          })
-          .where(and(eq(mcpServers.id, input.id), eq(mcpServers.tenantId, ctx.user.tenantId)));
+            .set({
+              healthStatus: "unhealthy",
+              lastHealthCheck: new Date(),
+            })
+            .where(and(eq(mcpServers.id, input.id), eq(mcpServers.tenantId, resolveTenantId(ctx))));
 
         // Never expose error details (SSRF oracle prevention)
         return { reachable: false, toolCount: 0, latencyMs: 0 };
@@ -524,7 +515,7 @@ export const mcpServersRouter = router({
         .where(
           and(
             eq(mcpServers.id, input.id),
-            eq(mcpServers.tenantId, ctx.user.tenantId),
+            eq(mcpServers.tenantId, resolveTenantId(ctx)),
           ),
         );
 
@@ -622,7 +613,7 @@ export const mcpServersRouter = router({
         .where(
           and(
             eq(mcpServers.id, input.mcpServerId),
-            eq(mcpServers.tenantId, ctx.user.tenantId),
+            eq(mcpServers.tenantId, resolveTenantId(ctx)),
           ),
         );
 
@@ -631,14 +622,14 @@ export const mcpServersRouter = router({
       }
 
       // Verify targetId belongs to the caller's tenant (prevent cross-tenant assignment)
-      if (input.targetType === "tenant" && input.targetId !== ctx.user.tenantId) {
+      if (input.targetType === "tenant" && input.targetId !== resolveTenantId(ctx)) {
         throw new TRPCError({ code: "FORBIDDEN", message: "Cannot assign to another tenant" });
       }
       if (input.targetType === "agency") {
         const [agency] = await getDb()
           .select({ id: agencies.id })
           .from(agencies)
-          .where(and(eq(agencies.id, input.targetId), eq(agencies.tenantId, ctx.user.tenantId)));
+          .where(and(eq(agencies.id, input.targetId), eq(agencies.tenantId, resolveTenantId(ctx))));
         if (!agency) {
           throw new TRPCError({ code: "NOT_FOUND", message: "Agency not found in your tenant" });
         }
@@ -648,7 +639,7 @@ export const mcpServersRouter = router({
           .select({ id: agencyAgents.id })
           .from(agencyAgents)
           .innerJoin(agencies, eq(agencyAgents.agencyId, agencies.id))
-          .where(and(eq(agencyAgents.id, input.targetId), eq(agencies.tenantId, ctx.user.tenantId)));
+          .where(and(eq(agencyAgents.id, input.targetId), eq(agencies.tenantId, resolveTenantId(ctx))));
         if (!agent) {
           throw new TRPCError({ code: "NOT_FOUND", message: "Agent not found in your tenant" });
         }
@@ -695,7 +686,7 @@ export const mcpServersRouter = router({
         .where(
           and(
             eq(mcpServerAssignments.id, input.id),
-            eq(mcpServers.tenantId, ctx.user.tenantId),
+            eq(mcpServers.tenantId, resolveTenantId(ctx)),
           ),
         );
 
@@ -735,7 +726,7 @@ export const mcpServersRouter = router({
           and(
             eq(mcpServerAssignments.targetType, input.targetType),
             eq(mcpServerAssignments.targetId, input.targetId),
-            eq(mcpServers.tenantId, ctx.user.tenantId),
+            eq(mcpServers.tenantId, resolveTenantId(ctx)),
           ),
         );
 

@@ -7,12 +7,12 @@
 
 import { useState } from 'react';
 import { Link } from 'wouter';
-import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+import { useScopedTranslation } from '@/i18n/useScopedTranslation';
 import {
   Sparkles,
   Mail,
@@ -29,7 +29,7 @@ type Channel = 'email' | 'backup_email' | 'sms';
 type Step = 'choose' | 'input' | 'sent' | 'reset' | 'success';
 
 export default function ForgotPassword() {
-  const { t } = useTranslation('auth');
+  const { t } = useScopedTranslation('auth');
   const [step, setStep] = useState<Step>('choose');
   const [channel, setChannel] = useState<Channel>('email');
   const [email, setEmail] = useState('');

@@ -15,12 +15,12 @@
 
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DashboardCard } from "@/components/dashboard";
 import {
   Dialog,
   DialogContent,
@@ -123,12 +123,11 @@ export default function AdminAPIKeys() {
 
         {/* All keys tab */}
         <TabsContent value="keys">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">All Tenant API Keys</CardTitle>
-              <CardDescription>Read-only view. Suspend or revoke suspicious keys below.</CardDescription>
-            </CardHeader>
-            <CardContent>
+          <DashboardCard
+            title="All Tenant API Keys"
+            description="Read-only view. Suspend or revoke suspicious keys below."
+          >
+            <div className="space-y-4">
               {keysQuery.isLoading && <p className="text-sm text-muted-foreground py-4">Loading...</p>}
               {keysQuery.data && keysQuery.data.length === 0 && (
                 <p className="text-sm text-muted-foreground py-6 text-center">No API keys in this tenant.</p>
@@ -222,20 +221,18 @@ export default function AdminAPIKeys() {
                   </TableBody>
                 </Table>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </DashboardCard>
         </TabsContent>
 
         {/* Webhooks tab */}
         <TabsContent value="webhooks">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Webhook className="h-4 w-4" /> All Webhooks
-              </CardTitle>
-              <CardDescription>Read-only overview of all tenant webhook endpoints.</CardDescription>
-            </CardHeader>
-            <CardContent>
+          <DashboardCard
+            title="All Webhooks"
+            description="Read-only overview of all tenant webhook endpoints."
+            leading={<Webhook className="h-4 w-4 text-slate-500" />}
+          >
+            <div className="space-y-4">
               {webhooksQuery.isLoading && <p className="text-sm text-muted-foreground">Loading...</p>}
               {webhooksQuery.data && webhooksQuery.data.length === 0 && (
                 <p className="text-sm text-muted-foreground py-6 text-center">No webhooks registered.</p>
@@ -286,20 +283,18 @@ export default function AdminAPIKeys() {
                   </TableBody>
                 </Table>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </DashboardCard>
         </TabsContent>
 
         {/* Audit log tab */}
         <TabsContent value="audit">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Activity className="h-4 w-4" /> API Audit Log (last 7 days)
-              </CardTitle>
-              <CardDescription>Last 500 requests across all keys. Use for anomaly detection.</CardDescription>
-            </CardHeader>
-            <CardContent>
+          <DashboardCard
+            title="API Audit Log (last 7 days)"
+            description="Last 500 requests across all keys. Use for anomaly detection."
+            leading={<Activity className="h-4 w-4 text-slate-500" />}
+          >
+            <div className="space-y-4">
               {auditQuery.isLoading && <p className="text-sm text-muted-foreground">Loading...</p>}
               {auditQuery.data && auditQuery.data.length === 0 && (
                 <p className="text-sm text-muted-foreground py-6 text-center">No API activity in the last 7 days.</p>
@@ -353,8 +348,8 @@ export default function AdminAPIKeys() {
                   </TableBody>
                 </Table>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </DashboardCard>
         </TabsContent>
       </Tabs>
 

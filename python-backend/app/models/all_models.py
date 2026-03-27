@@ -17,3 +17,4 @@ from .gallery import GalleryItem, GalleryLike, GalleryComment, GalleryCollection
 from .api_key_v2 import APIKeyV2, APIKeyVersion, KeyAuditLog, KeyMFAVerification, KeyRotationSchedule, KeyStatus, KeyVersionStatus, KeyAuditEventType
 from .credits import CreditsBalance, CreditTransaction as CreditTransactionV2, UsageRecord, SubscriptionPlan, TransactionType, UsageType
 from .agency_agent_memories import AgencyAgentMemory
+from .agency_memory_chunks import AgencyMemoryChunk

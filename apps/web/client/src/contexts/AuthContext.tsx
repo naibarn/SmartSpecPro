@@ -18,6 +18,7 @@ export interface User {
   plan: 'free' | 'pro' | 'enterprise';
   credits?: number;
   role?: string;
+  currentTenantId?: string | null;
 }
 
 interface AuthContextType {
@@ -78,6 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             plan: userData.role === 'admin' ? 'enterprise' : 'free',
             credits: userData.credits ?? 100,
             role: userData.role,
+            currentTenantId: userData.currentTenantId ?? null,
           });
         } else {
           // No valid session
@@ -130,6 +132,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${result.user.email}`,
           plan: 'free',
           credits: 100,
+          currentTenantId: result.user.currentTenantId ?? null,
         });
       } else {
         const errorMessage = result?.message || data.error?.json?.message || 'Login failed';
@@ -236,15 +239,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const userData = data.result?.data?.json;
         
         if (userData && userData.id) {
-          setUser({
-            id: String(userData.id),
-            email: userData.email || '',
-            name: userData.name || userData.email?.split('@')[0] || 'User',
-            avatar: userData.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userData.email}`,
-            plan: userData.role === 'admin' ? 'enterprise' : 'free',
-            credits: userData.credits ?? 100,
-            role: userData.role,
-          });
+        setUser({
+          id: String(userData.id),
+          email: userData.email || '',
+          name: userData.name || userData.email?.split('@')[0] || 'User',
+          avatar: userData.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userData.email}`,
+          plan: userData.role === 'admin' ? 'enterprise' : 'free',
+          credits: userData.credits ?? 100,
+          role: userData.role,
+          currentTenantId: userData.currentTenantId ?? null,
+        });
         }
       }
     } catch (error) {

@@ -38,8 +38,10 @@ import {
   Moon,
   Sun,
 } from 'lucide-react';
+import { useScopedTranslation } from '@/i18n/useScopedTranslation';
 
 export default function Profile() {
+  const { t } = useScopedTranslation('profile');
   const { user, isLoading: authLoading, isAuthenticated, logout } = useAuth();
   const [, setLocation] = useLocation();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -107,7 +109,7 @@ export default function Profile() {
       const reader = new FileReader();
       reader.onloadend = () => {
         setAvatar(reader.result as string);
-        toast.success('Avatar updated');
+        toast.success(t('toast.avatarUpdated'));
       };
       reader.readAsDataURL(file);
     }
@@ -118,19 +120,19 @@ export default function Profile() {
     await new Promise(resolve => setTimeout(resolve, 1000));
     setIsSaving(false);
     setIsEditing(false);
-    toast.success('Profile updated successfully');
+    toast.success(t('toast.profileSaved'));
   };
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (newPassword.length < 8) {
-      toast.error('Password must be at least 8 characters');
+      toast.error(t('security.passwordMinLength'));
       return;
     }
-    
+
     if (newPassword !== confirmPassword) {
-      toast.error('Passwords do not match');
+      toast.error(t('security.passwordMismatch'));
       return;
     }
 
@@ -140,15 +142,15 @@ export default function Profile() {
     setCurrentPassword('');
     setNewPassword('');
     setConfirmPassword('');
-    toast.success('Password changed successfully');
+    toast.success(t('security.passwordChanged'));
   };
 
   const handleDeleteAccount = () => {
-    toast.error('Account deletion requires confirmation via email');
+    toast.error(t('security.deleteRequiresEmail'));
   };
 
   const handleExportData = () => {
-    toast.success('Data export started. You will receive an email shortly.');
+    toast.success(t('toast.dataExportStarted'));
   };
 
   return (

@@ -6,16 +6,18 @@
 import { useState } from 'react';
 import { useLocation } from 'wouter';
 import { trpc } from '@/lib/trpc';
-import { useI18n } from '@/lib/i18n';
 import { Button } from '@/components/ui/button';
 import { HelpButton } from '@/components/help';
 import { JobCard } from '@/components/chat/JobCard';
 import { GalleryTemplateCard } from '@/components/workflow/GalleryTemplateCard';
 import { GalleryDetailDrawer } from '@/components/workflow/GalleryDetailDrawer';
 import {
+  DashboardCard,
   DashboardSectionHeader,
   DashboardSurface,
 } from '@/components/dashboard';
+import { LocaleToggle } from '@/components/LocaleToggle';
+import { useScopedTranslation } from '@/i18n/useScopedTranslation';
 import {
   Dialog,
   DialogContent,
@@ -77,7 +79,7 @@ const STATUS_CONFIG: Record<string, { icon: typeof Clock; label: string; color: 
 };
 
 export default function Workflows() {
-  const { t } = useI18n();
+  const { t, i18n } = useScopedTranslation('workflow');
   const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTemplateId, setSelectedTemplateId] = useState<number | null>(null);
@@ -151,7 +153,8 @@ export default function Workflows() {
     if (hours < 24) return t('workflows.time.hoursAgo', { count: hours });
     const days = Math.floor(hours / 24);
     if (days < 7) return t('workflows.time.daysAgo', { count: days });
-    return d.toLocaleDateString();
+    const intlLocale = (i18n.language || 'en').startsWith('th') ? 'th-TH' : 'en-US';
+    return d.toLocaleDateString(intlLocale);
   };
 
   return (
@@ -180,6 +183,7 @@ export default function Workflows() {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <LocaleToggle className="hidden sm:inline-flex" />
               <HelpButton page="/workflows" variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" />
               <Button
                 variant="outline"
@@ -385,22 +389,24 @@ export default function Workflows() {
         {/* Recent Executions */}
         {executions.length > 0 && (
           <section className="mb-8">
-            <DashboardSectionHeader
+            <DashboardCard
               eyebrow={t('workflows.executions.eyebrow')}
               title={t('workflows.executions.title')}
               description={t('workflows.executions.description')}
-            />
-            <div className="grid grid-cols-1 gap-3">
-              {executions.slice(0, 5).map((exec: Execution) => (
-                <DashboardSurface key={exec.execution_id} className="overflow-hidden">
-                  <JobCard
-                    executionId={exec.execution_id}
-                    workflowName={exec.workflow_name}
-                    initialStatus={exec.status}
-                  />
-                </DashboardSurface>
-              ))}
-            </div>
+              bodyClassName="p-0"
+            >
+              <div className="grid grid-cols-1 gap-3 p-5 sm:p-6">
+                {executions.slice(0, 5).map((exec: Execution) => (
+                  <DashboardSurface key={exec.execution_id} className="overflow-hidden">
+                    <JobCard
+                      executionId={exec.execution_id}
+                      workflowName={exec.workflow_name}
+                      initialStatus={exec.status}
+                    />
+                  </DashboardSurface>
+                ))}
+              </div>
+            </DashboardCard>
           </section>
         )}
 

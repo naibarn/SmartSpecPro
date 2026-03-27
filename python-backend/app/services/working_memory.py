@@ -135,11 +135,11 @@ class WorkingMemory:
             sections.append(f"## Failed Approaches\n{lines}")
 
         if self.observations:
-            lines = []
+            observation_lines: list[str] = []
             for o in self.observations[-10:]:  # Last 10
                 useful_tag = "useful" if o.get("useful") else "not useful"
-                lines.append(f"- [{o['tool']}] {o['result'][:100]} ({useful_tag})")
-            sections.append(f"## Key Observations\n" + "\n".join(lines))
+                observation_lines.append(f"- [{o['tool']}] {o['result'][:100]} ({useful_tag})")
+            sections.append(f"## Key Observations\n" + "\n".join(observation_lines))
 
         if self.artifacts:
             lines = "\n".join(f"- {k}: {v[:100]}" for k, v in self.artifacts.items())
@@ -197,10 +197,17 @@ class WorkingMemory:
         try:
             raw = await self._redis.get(self._key)
             if raw:
-                data = json.loads(raw)
-                self.observations = data.get("observations", [])
-                self.constraints = data.get("constraints", [])
-                self.failed_approaches = data.get("failed_approaches", [])
-                self.artifacts = data.get("artifacts", {})
+                data: dict[str, Any] = json.loads(raw)
+                observations = data.get("observations", [])
+                constraints = data.get("constraints", [])
+                failed_approaches = data.get("failed_approaches", [])
+                artifacts = data.get("artifacts", {})
+
+                self.observations = observations if isinstance(observations, list) else []
+                self.constraints = [str(item) for item in constraints] if isinstance(constraints, list) else []
+                self.failed_approaches = (
+                    [str(item) for item in failed_approaches] if isinstance(failed_approaches, list) else []
+                )
+                self.artifacts = artifacts if isinstance(artifacts, dict) else {}
         except Exception as e:
             logger.warning("working_memory_load_failed", extra={"error": str(e)})

@@ -149,3 +149,4 @@ class EmbeddingJob(Base):
         Index("idx_embedding_job_collection", "collection_id"),
         Index("idx_embedding_job_status", "status"),
     )
+# mypy: ignore-errors

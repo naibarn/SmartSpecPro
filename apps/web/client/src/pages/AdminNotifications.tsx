@@ -3,17 +3,12 @@ import { useLocation } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useTenantFeatureFlag } from "@/hooks/useTenantFeatureFlag";
 import { trpc } from "@/lib/trpc";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { HelpButton } from "@/components/help";
+import { DashboardCard, DashboardKpiCard } from "@/components/dashboard";
 import {
   Select,
   SelectContent,
@@ -136,15 +131,15 @@ export default function AdminNotifications() {
   if (!featureEnabled) {
     return (
       <div className="mx-auto max-w-7xl p-6">
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
+        <DashboardCard>
+          <div className="flex flex-col items-center justify-center py-12">
             <Bell className="mb-4 h-12 w-12 text-muted-foreground" />
             <h2 className="text-lg font-semibold">Feature Not Enabled</h2>
             <p className="text-muted-foreground">
               The Notification Center is not enabled for this tenant.
             </p>
-          </CardContent>
-        </Card>
+          </div>
+        </DashboardCard>
       </div>
     );
   }
@@ -185,57 +180,45 @@ export default function AdminNotifications() {
       {statsQuery.isLoading ? (
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <Card key={i}>
-              <CardContent className="p-4">
-                <div className="animate-pulse space-y-2">
-                  <div className="h-4 w-20 rounded bg-muted" />
-                  <div className="h-8 w-12 rounded bg-muted" />
-                </div>
-              </CardContent>
-            </Card>
+            <DashboardCard key={i}>
+              <div className="animate-pulse space-y-2 p-4">
+                <div className="h-4 w-20 rounded bg-muted" />
+                <div className="h-8 w-12 rounded bg-muted" />
+              </div>
+            </DashboardCard>
           ))}
         </div>
       ) : statsQuery.isError ? (
-        <Card>
-          <CardContent className="flex items-center gap-2 p-4 text-destructive">
+        <DashboardCard>
+          <div className="flex items-center gap-2 p-4 text-destructive">
             <AlertTriangle className="h-5 w-5" />
             Failed to load statistics
-          </CardContent>
-        </Card>
+          </div>
+        </DashboardCard>
       ) : (
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <Card>
-            <CardContent className="p-4">
-              <p className="text-sm text-muted-foreground">Total</p>
-              <p className="text-2xl font-bold">{stats?.total ?? 0}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <p className="text-sm text-muted-foreground">Unread</p>
-              <p
-                className={`text-2xl font-bold ${(stats?.unread ?? 0) > 0 ? "text-blue-600" : ""}`}
-              >
-                {stats?.unread ?? 0}
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <p className="text-sm text-muted-foreground">Critical</p>
-              <p
-                className={`text-2xl font-bold ${(stats?.critical ?? 0) > 0 ? "text-red-600" : ""}`}
-              >
-                {stats?.critical ?? 0}
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <p className="text-sm text-muted-foreground">Today</p>
-              <p className="text-2xl font-bold">{stats?.today ?? 0}</p>
-            </CardContent>
-          </Card>
+          <DashboardKpiCard
+            icon={Bell}
+            label="Total"
+            value={stats?.total ?? 0}
+          />
+          <DashboardKpiCard
+            icon={Bell}
+            label="Unread"
+            value={stats?.unread ?? 0}
+            valueClassName={`${(stats?.unread ?? 0) > 0 ? "text-blue-600" : ""}`}
+          />
+          <DashboardKpiCard
+            icon={AlertTriangle}
+            label="Critical"
+            value={stats?.critical ?? 0}
+            valueClassName={`${(stats?.critical ?? 0) > 0 ? "text-red-600" : ""}`}
+          />
+          <DashboardKpiCard
+            icon={RefreshCw}
+            label="Today"
+            value={stats?.today ?? 0}
+          />
         </div>
       )}
 
@@ -243,13 +226,8 @@ export default function AdminNotifications() {
       {stats && (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {/* Source Breakdown */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">
-                By Source
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
+          <DashboardCard title="By Source" titleClassName="text-sm font-medium text-slate-900">
+            <div className="space-y-2">
               {stats.bySource.map(
                 (s: { source: string; count: number }) => {
                   const max = Math.max(
@@ -281,17 +259,12 @@ export default function AdminNotifications() {
                   );
                 },
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </DashboardCard>
 
           {/* Severity Distribution */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">
-                By Severity
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
+          <DashboardCard title="By Severity" titleClassName="text-sm font-medium text-slate-900">
+            <div className="space-y-2">
               {stats.bySeverity.map(
                 (s: { severity: string; count: number }) => {
                   const max = Math.max(
@@ -334,14 +307,14 @@ export default function AdminNotifications() {
                   );
                 },
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </DashboardCard>
         </div>
       )}
 
       {/* Filter Bar */}
-      <Card>
-        <CardContent className="flex flex-wrap items-end gap-4 p-4">
+      <DashboardCard bodyClassName="!p-4">
+        <div className="flex flex-wrap items-end gap-4">
           <div className="space-y-1">
             <Label htmlFor="source-filter">Source</Label>
             <Select
@@ -422,28 +395,28 @@ export default function AdminNotifications() {
               aria-label="To"
             />
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </DashboardCard>
 
       {/* Main content: list + detail */}
       <div className="flex gap-4">
         {/* Notification List */}
         <div className="min-w-0 flex-1">
           {listQuery.isLoading ? (
-            <Card>
-              <CardContent className="flex items-center justify-center py-12">
+            <DashboardCard>
+              <div className="flex items-center justify-center py-12">
                 <Loader2 className="h-6 w-6 animate-spin" />
-              </CardContent>
-            </Card>
+              </div>
+            </DashboardCard>
           ) : items.length === 0 ? (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+            <DashboardCard>
+              <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                 <Bell className="mb-2 h-8 w-8" />
                 No notifications found
-              </CardContent>
-            </Card>
+              </div>
+            </DashboardCard>
           ) : (
-            <Card>
+            <DashboardCard bodyClassName="!p-0">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -518,51 +491,42 @@ export default function AdminNotifications() {
                   <ChevronRight className="ml-1 h-4 w-4" />
                 </Button>
               </div>
-            </Card>
+            </DashboardCard>
           )}
         </div>
 
         {/* Detail Panel */}
         {selectedNotification && (
-          <Card
+          <DashboardCard
             className="w-96 shrink-0"
-            aria-label="Notification detail"
+            bodyClassName="space-y-4"
+            title={selectedNotification.title}
           >
-            <CardHeader className="flex flex-row items-start justify-between pb-2">
-              <div className="space-y-1">
-                <CardTitle className="text-lg">
-                  {selectedNotification.title}
-                </CardTitle>
-                <div className="flex gap-2">
-                  <Badge
-                    variant="secondary"
-                    className={
-                      SOURCE_COLORS[selectedNotification.source] ?? ""
-                    }
-                  >
-                    {selectedNotification.source}
-                  </Badge>
-                  <Badge
-                    variant="secondary"
-                    className={
-                      SEVERITY_COLORS[selectedNotification.priority] ?? ""
-                    }
-                  >
-                    {SEVERITY_LABELS[selectedNotification.priority] ??
-                      selectedNotification.priority}
-                  </Badge>
-                </div>
-              </div>
+            <div className="flex gap-2">
+              <Badge
+                variant="secondary"
+                className={SOURCE_COLORS[selectedNotification.source] ?? ""}
+              >
+                {selectedNotification.source}
+              </Badge>
+              <Badge
+                variant="secondary"
+                className={SEVERITY_COLORS[selectedNotification.priority] ?? ""}
+              >
+                {SEVERITY_LABELS[selectedNotification.priority] ??
+                  selectedNotification.priority}
+              </Badge>
               <Button
                 variant="ghost"
                 size="icon"
+                className="ml-auto"
                 onClick={() => setSelectedNotification(null)}
                 aria-label="Close detail panel"
               >
                 <X className="h-4 w-4" />
               </Button>
-            </CardHeader>
-            <CardContent className="space-y-4">
+            </div>
+            <div className="space-y-4">
               {/* Content */}
               {selectedNotification.content && (
                 <p className="text-sm">
@@ -621,8 +585,8 @@ export default function AdminNotifications() {
                   </p>
                 )}
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </DashboardCard>
         )}
       </div>
     </div>

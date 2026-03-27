@@ -109,7 +109,7 @@ class TenantSettings:
     @classmethod
     def from_plan(cls, plan: TenantPlan) -> "TenantSettings":
         """Create settings based on plan."""
-        plan_configs = {
+        plan_configs: dict[TenantPlan, dict[str, Any]] = {
             TenantPlan.FREE: {
                 "max_users": 1,
                 "max_projects": 3,
@@ -174,8 +174,8 @@ class TenantSettings:
                 "memory_retention_days": 365,
             },
         }
-        
-        config = plan_configs.get(plan, plan_configs[TenantPlan.FREE])
+
+        config: dict[str, Any] = plan_configs.get(plan, plan_configs[TenantPlan.FREE])
         return cls(**config)
 
 

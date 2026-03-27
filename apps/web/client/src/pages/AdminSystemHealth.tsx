@@ -1,10 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { formatBytes } from "@smartspec/shared";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { DashboardCard, DashboardKpiCard } from "@/components/dashboard";
 import {
-  Database,
   Server,
   Cpu,
   HardDrive,
@@ -117,80 +116,69 @@ export default function AdminSystemHealth() {
       </div>
 
       {/* Overall Status */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            Overall System Status
-            {healthData && getStatusIcon(healthData.overall_status)}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-4">
-            {isLoading ? (
-              <RefreshCw className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
-            ) : (
-              <>
-                <div className="text-4xl font-bold mb-2">
-                  {healthData?.overall_status.toUpperCase()}
-                </div>
-                {getStatusBadge(healthData?.overall_status || "unknown")}
-              </>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+      <DashboardCard
+        eyebrow="Health"
+        title="Overall System Status"
+        description="Current health across services and infrastructure"
+        leading={healthData ? getStatusIcon(healthData.overall_status) : null}
+      >
+        <div className="text-center py-4">
+          {isLoading ? (
+            <RefreshCw className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
+          ) : (
+            <>
+              <div className="text-4xl font-bold mb-2">
+                {healthData?.overall_status.toUpperCase()}
+              </div>
+              {getStatusBadge(healthData?.overall_status || "unknown")}
+            </>
+          )}
+        </div>
+      </DashboardCard>
 
       {/* Service Status */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Service Status</CardTitle>
-          <CardDescription>Health check for all system services</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {healthData?.services.map((service) => (
-              <Card key={service.service}>
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-sm font-medium">
-                      {service.service}
-                    </CardTitle>
-                    {getStatusIcon(service.status)}
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {getStatusBadge(service.status)}
-                  {service.responseTime && (
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Response: {service.responseTime}ms
-                    </p>
-                  )}
-                  {service.message && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {service.message}
-                    </p>
-                  )}
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Last checked: {new Date(service.lastChecked).toLocaleTimeString()}
+      <DashboardCard title="Service Status" description="Health check for all system services">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {healthData?.services.map((service) => (
+            <DashboardCard key={service.service} className="bg-white/80">
+              <div className="px-5 pt-5 sm:px-6 sm:pt-6">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-slate-900">
+                    {service.service}
+                  </h3>
+                  {getStatusIcon(service.status)}
+                </div>
+              </div>
+              <div className="px-5 pb-5 pt-4 sm:px-6 sm:pb-6">
+                {getStatusBadge(service.status)}
+                {service.responseTime && (
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Response: {service.responseTime}ms
                   </p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+                )}
+                {service.message && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {service.message}
+                  </p>
+                )}
+                <p className="text-xs text-muted-foreground mt-1">
+                  Last checked: {new Date(service.lastChecked).toLocaleTimeString()}
+                </p>
+              </div>
+            </DashboardCard>
+          ))}
+        </div>
+      </DashboardCard>
 
       {/* System Metrics */}
       {metrics && (
         <>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">CPU Usage</CardTitle>
-                <Cpu className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{metrics.cpu_usage.toFixed(1)}%</div>
+            <DashboardKpiCard
+              icon={Cpu}
+              label="CPU Usage"
+              value={`${metrics.cpu_usage.toFixed(1)}%`}
+              subLabel={
                 <div className="w-full bg-secondary rounded-full h-2 mt-2">
                   <div
                     className={`h-2 rounded-full ${
@@ -203,67 +191,26 @@ export default function AdminSystemHealth() {
                     style={{ width: `${metrics.cpu_usage}%` }}
                   />
                 </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Memory</CardTitle>
-                <Activity className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {formatBytes(metrics.memory_used)}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  of {formatBytes(metrics.memory_total)}
-                </p>
-                <div className="w-full bg-secondary rounded-full h-2 mt-2">
-                  <div
-                    className="h-2 rounded-full bg-primary"
-                    style={{
-                      width: `${(metrics.memory_used / metrics.memory_total) * 100}%`,
-                    }}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Disk Space</CardTitle>
-                <HardDrive className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {formatBytes(metrics.disk_used)}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  of {formatBytes(metrics.disk_total)}
-                </p>
-                <div className="w-full bg-secondary rounded-full h-2 mt-2">
-                  <div
-                    className="h-2 rounded-full bg-primary"
-                    style={{
-                      width: `${(metrics.disk_used / metrics.disk_total) * 100}%`,
-                    }}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Uptime</CardTitle>
-                <Server className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {formatUptime(metrics.uptime)}
-                </div>
-                <p className="text-xs text-muted-foreground mt-2">System running</p>
-              </CardContent>
-            </Card>
+              }
+            />
+            <DashboardKpiCard
+              icon={Activity}
+              label="Memory"
+              value={formatBytes(metrics.memory_used)}
+              subLabel={`of ${formatBytes(metrics.memory_total)}`}
+            />
+            <DashboardKpiCard
+              icon={HardDrive}
+              label="Disk Space"
+              value={formatBytes(metrics.disk_used)}
+              subLabel={`of ${formatBytes(metrics.disk_total)}`}
+            />
+            <DashboardKpiCard
+              icon={Server}
+              label="Uptime"
+              value={formatUptime(metrics.uptime)}
+              subLabel="System running"
+            />
           </div>
         </>
       )}

@@ -25,6 +25,7 @@ from app.llm_proxy.models import (
 from datetime import datetime, timedelta
 from sqlalchemy import select, text
 from typing import Any, Optional
+import re
 import structlog
 import asyncio
 import json
@@ -1321,6 +1322,9 @@ async def _recover_stuck_tasks_async():
 
             for task in stuck_tasks:
                 try:
+                    raw_task_model = str(task.model or "").strip().lower()
+                    task_model_name = raw_task_model.split("/", 1)[-1]
+                    normalized_task_model = re.sub(r"[^a-z0-9]+", "-", task_model_name).strip("-")
                     logger.info(
                         "recover_stuck_task_polling",
                         task_id=task.id,
@@ -1330,6 +1334,7 @@ async def _recover_stuck_tasks_async():
                     )
 
                     from app.llm_proxy.providers.byteplus_modelark_provider import BytePlusModelArkProvider
+                    from app.llm_proxy.providers.knplabai_provider import KNPLabsProvider
                     from app.llm_proxy.providers.fal_ai_provider import FalAIProvider
                     import httpx
 
@@ -1413,6 +1418,87 @@ async def _recover_stuck_tasks_async():
                         finally:
                             if byteplus_client is not None:
                                 await byteplus_client.aclose()
+
+                    elif normalized_task_model in {
+                        re.sub(r"[^a-z0-9]+", "-", model_name.strip().lower()).strip("-")
+                        for model_name in KNPLabsProvider.VIDEO_MODELS
+                    }:
+                        # --- KNPLabs polling branch ---
+                        from app.services.media_provider_service import get_media_provider_key
+                        provider_config = await get_media_provider_key("knplabai")
+                        if not provider_config or not provider_config.get("apiKey"):
+                            provider_config = await get_media_provider_key("knplabs")
+
+                        if not provider_config or not provider_config.get("apiKey"):
+                            logger.warning(
+                                "recover_stuck_task_knplabs_not_configured",
+                                task_id=task.id,
+                            )
+                            continue
+
+                        knplabs_client = None
+                        try:
+                            knplabs_client = KNPLabsProvider(
+                                api_key=provider_config["apiKey"],
+                                base_url=provider_config.get("baseUrl"),
+                            )
+
+                            status_response = await knplabs_client.poll_video_status(task.task_id, task.model)
+                            task_state = str(status_response.get("status") or status_response.get("state") or "").lower()
+                            logger.info(
+                                "recover_stuck_task_knplabs_status",
+                                task_id=task.id,
+                                task_state=task_state,
+                                raw_state=status_response.get("status") or status_response.get("state"),
+                            )
+
+                            if task_state in {"completed", "complete", "success", "succeeded"}:
+                                result_url = knplabs_client.extract_result_url(status_response)
+                                if result_url:
+                                    task.status = TaskStatus.COMPLETED
+                                    task.result_url = result_url
+                                    task.result_data = status_response
+                                    task.completed_at = datetime.now(timezone.utc)
+                                    recovered_count += 1
+                                    logger.info(
+                                        "recover_stuck_task_knplabs_completed",
+                                        task_id=task.id,
+                                        result_url=result_url,
+                                    )
+                                else:
+                                    logger.warning(
+                                        "recover_stuck_task_knplabs_success_no_url",
+                                        task_id=task.id,
+                                    )
+                            elif task_state in {"failed", "fail", "error", "cancelled", "canceled"}:
+                                error_msg = (
+                                    status_response.get("error")
+                                    or status_response.get("message")
+                                    or "Task failed"
+                                )
+                                task.status = TaskStatus.FAILED
+                                task.error_message = f"KNPLabs failed: {str(error_msg)[:200]}"
+                                task.result_data = status_response
+                                task.completed_at = datetime.now(timezone.utc)
+                                failed_count += 1
+                                logger.warning(
+                                    "recover_stuck_task_knplabs_failed",
+                                    task_id=task.id,
+                                    error=str(error_msg)[:200],
+                                )
+
+                        except httpx.HTTPStatusError as http_err:
+                            if http_err.response.status_code == 429:
+                                logger.warning(
+                                    "recover_stuck_task_knplabs_rate_limited",
+                                    task_id=task.id,
+                                    external_task_id=task.task_id,
+                                )
+                                continue
+                            raise
+                        finally:
+                            if knplabs_client is not None:
+                                await knplabs_client.aclose()
 
                     elif task.model in FalAIProvider.VIDEO_MODELS or task.model in FalAIProvider.AUDIO_MODELS:
                         # --- fal.ai polling branch ---

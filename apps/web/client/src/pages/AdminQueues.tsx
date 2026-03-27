@@ -8,14 +8,14 @@
  * - Queue statistics and health
  */
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
+import { DashboardCard, DashboardKpiCard } from "@/components/dashboard";
 import {
   Table,
   TableBody,
@@ -130,14 +130,12 @@ export default function AdminQueues() {
   if (!user || user.role !== "admin") {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <Card className="w-96">
-          <CardHeader>
-            <CardTitle>Access Denied</CardTitle>
-            <CardDescription>
-              You need admin privileges to access this page.
-            </CardDescription>
-          </CardHeader>
-        </Card>
+        <DashboardCard
+          className="w-96"
+          eyebrow="Access"
+          title="Access Denied"
+          description="You need admin privileges to access this page."
+        />
       </div>
     );
   }
@@ -209,85 +207,39 @@ export default function AdminQueues() {
       <div className="container mx-auto px-4 py-6 space-y-6">
         {/* System Overview */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {/* Redis Status */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Database className="h-4 w-4" />
-                Redis
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-2">
-                {redis?.connected ? (
-                  <>
-                    <CheckCircle className="h-5 w-5 text-green-500" />
-                    <span className="font-semibold text-green-600">Connected</span>
-                  </>
-                ) : (
-                  <>
-                    <XCircle className="h-5 w-5 text-red-500" />
-                    <span className="font-semibold text-red-600">Disconnected</span>
-                  </>
-                )}
-              </div>
-              {redis?.error && (
-                <p className="text-xs text-muted-foreground mt-1 truncate" title={redis.error}>
+          <DashboardKpiCard
+            icon={Database}
+            label="Redis"
+            value={redis?.connected ? "Connected" : "Disconnected"}
+            subLabel={
+              redis?.error ? (
+                <span className="text-xs text-slate-500" title={redis.error}>
                   {redis.error}
-                </p>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Active Requests */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Activity className="h-4 w-4" />
-                Active Requests
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {systemStatus.data?.limiters.totalRunning || 0}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {systemStatus.data?.limiters.totalQueued || 0} queued
-              </p>
-            </CardContent>
-          </Card>
-
-          {/* Completed Jobs */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <CheckCircle className="h-4 w-4" />
-                Completed
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">
-                {systemStatus.data?.queues.totalCompleted || 0}
-              </div>
-              <p className="text-xs text-muted-foreground">background jobs</p>
-            </CardContent>
-          </Card>
-
-          {/* Failed Jobs */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4" />
-                Failed
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-red-600">
-                {systemStatus.data?.queues.totalFailed || 0}
-              </div>
-              <p className="text-xs text-muted-foreground">requires attention</p>
-            </CardContent>
-          </Card>
+                </span>
+              ) : undefined
+            }
+            iconContainerClassName={redis?.connected ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600"}
+          />
+          <DashboardKpiCard
+            icon={Activity}
+            label="Active Requests"
+            value={systemStatus.data?.limiters.totalRunning || 0}
+            subLabel={`${systemStatus.data?.limiters.totalQueued || 0} queued`}
+          />
+          <DashboardKpiCard
+            icon={CheckCircle}
+            label="Completed"
+            value={systemStatus.data?.queues.totalCompleted || 0}
+            subLabel="background jobs"
+            valueClassName="text-emerald-600"
+          />
+          <DashboardKpiCard
+            icon={AlertTriangle}
+            label="Failed"
+            value={systemStatus.data?.queues.totalFailed || 0}
+            subLabel="requires attention"
+            valueClassName="text-rose-600"
+          />
         </div>
 
         {/* Main Content */}
@@ -321,14 +273,11 @@ export default function AdminQueues() {
 
           {/* Rate Limiters Tab */}
           <TabsContent value="limiters" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Provider Rate Limiters</CardTitle>
-                <CardDescription>
-                  Real-time status of rate limiting per LLM provider
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
+            <DashboardCard
+              title="Provider Rate Limiters"
+              description="Real-time status of rate limiting per LLM provider"
+            >
+              <div className="space-y-4">
                 {!limiterStatus.data?.available && (
                   <div className="text-center py-8 text-muted-foreground">
                     <Database className="h-12 w-12 mx-auto mb-2 opacity-50" />
@@ -431,24 +380,21 @@ export default function AdminQueues() {
                             </div>
                           </div>
                         </div>
-                      );
+                          );
                     })}
                   </div>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </DashboardCard>
           </TabsContent>
 
           {/* Background Queues Tab */}
           <TabsContent value="queues" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Background Job Queues</CardTitle>
-                <CardDescription>
-                  Cloud Tasks queues for async processing
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
+            <DashboardCard
+              title="Background Job Queues"
+              description="Cloud Tasks queues for async processing"
+            >
+              <div className="space-y-4">
                 {!queueStatus.data?.available && (
                   <div className="text-center py-8 text-muted-foreground">
                     <Database className="h-12 w-12 mx-auto mb-2 opacity-50" />
@@ -488,23 +434,20 @@ export default function AdminQueues() {
                           </TableCell>
                         </TableRow>
                       ))}
-                    </TableBody>
+                      </TableBody>
                   </Table>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </DashboardCard>
           </TabsContent>
 
           {/* Configuration Tab */}
           <TabsContent value="config" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Provider Rate Limit Configurations</CardTitle>
-                <CardDescription>
-                  Default rate limiting settings per provider
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
+            <DashboardCard
+              title="Provider Rate Limit Configurations"
+              description="Default rate limiting settings per provider"
+            >
+              <div className="space-y-6">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -537,76 +480,66 @@ export default function AdminQueues() {
                     ))}
                   </TableBody>
                 </Table>
-              </CardContent>
-            </Card>
+              </div>
+            </DashboardCard>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Environment Configuration</CardTitle>
-                <CardDescription>
-                  Required environment variables for queue system
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2 text-sm font-mono">
-                  <div className="flex items-center gap-2">
-                    <span className="text-muted-foreground">REDIS_URL=</span>
-                    <span>{redis?.url || "redis://localhost:6379"}</span>
-                    {redis?.connected ? (
-                      <CheckCircle className="h-4 w-4 text-green-500" />
-                    ) : (
-                      <XCircle className="h-4 w-4 text-red-500" />
-                    )}
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-4">
-                    Set REDIS_URL to enable distributed rate limiting and background job queues.
-                    Without Redis, the system falls back to in-memory limiters.
-                  </p>
+            <DashboardCard
+              title="Environment Configuration"
+              description="Required environment variables for queue system"
+            >
+              <div className="space-y-2 text-sm font-mono">
+                <div className="flex items-center gap-2">
+                  <span className="text-muted-foreground">REDIS_URL=</span>
+                  <span>{redis?.url || "redis://localhost:6379"}</span>
+                  {redis?.connected ? (
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                  ) : (
+                    <XCircle className="h-4 w-4 text-red-500" />
+                  )}
                 </div>
-              </CardContent>
-            </Card>
+                <p className="text-xs text-muted-foreground mt-4">
+                  Set REDIS_URL to enable distributed rate limiting and background job queues.
+                  Without Redis, the system falls back to in-memory limiters.
+                </p>
+              </div>
+            </DashboardCard>
           </TabsContent>
 
           {/* History Tab */}
           <TabsContent value="history" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle>Queue History</CardTitle>
-                    <CardDescription>
-                      Usage patterns over time
-                    </CardDescription>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <select
-                      className="px-3 py-1 border rounded-md text-sm"
-                      value={historyMinutes}
-                      onChange={(e) => setHistoryMinutes(Number(e.target.value))}
-                    >
-                      <option value={30}>Last 30 minutes</option>
-                      <option value={60}>Last 1 hour</option>
-                      <option value={180}>Last 3 hours</option>
-                      <option value={360}>Last 6 hours</option>
-                      <option value={720}>Last 12 hours</option>
-                      <option value={1440}>Last 24 hours</option>
-                    </select>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => historyData.refetch()}
-                      disabled={historyData.isLoading}
-                    >
-                      {historyData.isLoading ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <RefreshCw className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </div>
+            <DashboardCard
+              title="Queue History"
+              description="Usage patterns over time"
+              trailing={
+                <div className="flex items-center gap-2">
+                  <select
+                    className="px-3 py-1 border rounded-md text-sm"
+                    value={historyMinutes}
+                    onChange={(e) => setHistoryMinutes(Number(e.target.value))}
+                  >
+                    <option value={30}>Last 30 minutes</option>
+                    <option value={60}>Last 1 hour</option>
+                    <option value={180}>Last 3 hours</option>
+                    <option value={360}>Last 6 hours</option>
+                    <option value={720}>Last 12 hours</option>
+                    <option value={1440}>Last 24 hours</option>
+                  </select>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => historyData.refetch()}
+                    disabled={historyData.isLoading}
+                  >
+                    {historyData.isLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-4 w-4" />
+                    )}
+                  </Button>
                 </div>
-              </CardHeader>
-              <CardContent>
+              }
+            >
+              <div className="space-y-6">
                 {historyData.isLoading ? (
                   <div className="flex items-center justify-center py-8">
                     <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -757,20 +690,17 @@ export default function AdminQueues() {
                     </div>
                   </div>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </DashboardCard>
           </TabsContent>
 
           {/* Models Tab */}
           <TabsContent value="models" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Model Usage Statistics</CardTitle>
-                <CardDescription>
-                  Usage breakdown by LLM provider and model
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
+            <DashboardCard
+              title="Model Usage Statistics"
+              description="Usage breakdown by LLM provider and model"
+            >
+              <div className="space-y-6">
                 {modelStats.isLoading ? (
                   <div className="flex items-center justify-center py-8">
                     <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -877,20 +807,17 @@ export default function AdminQueues() {
                     </div>
                   </div>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </DashboardCard>
           </TabsContent>
 
           {/* Media Tab */}
           <TabsContent value="media" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Media Generation Statistics</CardTitle>
-                <CardDescription>
-                  Usage breakdown by media provider, model, and type (image/video/audio)
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
+            <DashboardCard
+              title="Media Generation Statistics"
+              description="Usage breakdown by media provider, model, and type (image/video/audio)"
+            >
+              <div className="space-y-6">
                 {mediaStats.isLoading ? (
                   <div className="flex items-center justify-center py-8">
                     <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -1075,8 +1002,8 @@ export default function AdminQueues() {
                     </div>
                   </div>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </DashboardCard>
           </TabsContent>
         </Tabs>
       </div>

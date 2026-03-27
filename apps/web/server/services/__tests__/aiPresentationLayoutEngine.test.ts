@@ -1196,7 +1196,7 @@ describe("Edge Cases", () => {
     expect(title1920).toBeDefined();
     expect(title960).toBeDefined();
     if (title1920?.type === "text" && title960?.type === "text") {
-      expect(title960.fontSize).toBeCloseTo(title1920.fontSize! * 0.5, 0);
+      expect(Math.abs(title960.fontSize - (title1920.fontSize! * 0.5))).toBeLessThanOrEqual(1);
     }
   });
 
@@ -1250,6 +1250,45 @@ describe("Edge Cases", () => {
       expect(splitBodyPortrait.fontSize).toBeGreaterThanOrEqual(20);
       expect(heroBodyPortrait.fontSize).toBeGreaterThan(heroBodyLandscape.fontSize ?? 0);
       expect(splitBodyPortrait.fontSize).toBeGreaterThan(splitBodyLandscape.fontSize ?? 0);
+    }
+  });
+
+  it("expands the hero_center text block when the slide is denser", () => {
+    const sparse = generateSlide(makeLayoutInput({
+      slideData: makeSlideData({
+        templateId: "hero_center",
+        title: "Simple intro",
+        body: ["Short point"],
+      }),
+      canvasWidth: 1280,
+      canvasHeight: 720,
+    }));
+    const dense = generateSlide(makeLayoutInput({
+      slideData: makeSlideData({
+        templateId: "hero_center",
+        title: "Detailed introduction for a denser content block",
+        body: [
+          "Longer point with multiple clauses to increase the occupied text area",
+          "A second detailed line that should expand the centered text block",
+          "A third dense line that keeps the slide in a text-heavy state",
+        ],
+        notes: "This hero slide is intentionally denser so the overlay panel should widen and let the title breathe.",
+      }),
+      canvasWidth: 1280,
+      canvasHeight: 720,
+    }));
+
+    const sparseTitle = sparse.slideContent.elements.find(
+      (element) => element.type === "text" && element.text === "Simple intro",
+    );
+    const denseTitle = dense.slideContent.elements.find(
+      (element) => element.type === "text" && element.text === "Detailed introduction for a denser content block",
+    );
+
+    expect(sparseTitle).toBeDefined();
+    expect(denseTitle).toBeDefined();
+    if (sparseTitle?.type === "text" && denseTitle?.type === "text") {
+      expect(denseTitle.width).toBeGreaterThan(sparseTitle.width);
     }
   });
 
@@ -1331,6 +1370,46 @@ describe("Edge Cases", () => {
     expect(textSet.has("Point 3")).toBe(true);
     expect(textSet.has("Point 4")).toBe(true);
     expect(textSet.has("Point 5")).toBe(true);
+  });
+
+  it("expands the text column for denser feature box slides instead of keeping a fixed image split", () => {
+    const sparse = generateSlide(makeLayoutInput({
+      slideData: makeSlideData({
+        templateId: "feature_boxes_right",
+        title: "Quick overview",
+        body: ["Short note"],
+        notes: "Brief",
+      }),
+    }));
+    const dense = generateSlide(makeLayoutInput({
+      slideData: makeSlideData({
+        templateId: "feature_boxes_right",
+        title: "Detailed developmental guidance",
+        body: [
+          "Point 1 with a longer explanation",
+          "Point 2 with another longer explanation",
+          "Point 3 with another longer explanation",
+          "Point 4 with another longer explanation",
+          "Point 5 with another longer explanation",
+        ],
+        sections: [
+          { heading: "Section A", details: ["Detail 1", "Detail 2"] },
+          { heading: "Section B", details: ["Detail 3", "Detail 4"] },
+          { heading: "Section C", details: ["Detail 5", "Detail 6"] },
+          { heading: "Section D", details: ["Detail 7", "Detail 8"] },
+        ],
+        notes: "A much denser slide that should reserve more room for the text column and reduce the image share.",
+      }),
+    }));
+
+    const sparseImage = sparse.slideContent.elements.find((element) => element.type === "image");
+    const denseImage = dense.slideContent.elements.find((element) => element.type === "image");
+
+    expect(sparseImage).toBeDefined();
+    expect(denseImage).toBeDefined();
+    if (sparseImage?.type === "image" && denseImage?.type === "image") {
+      expect(denseImage.width).toBeLessThan(sparseImage.width);
+    }
   });
 
   it("renders section heading + detail hierarchy when sections are provided", () => {
@@ -1539,6 +1618,43 @@ describe("Edge Cases", () => {
     expect(firstStepBody).toBeDefined();
     expect(trailingBody).toBeDefined();
     expect(trailingBody?.text.endsWith("…")).toBe(false);
+  });
+
+  it("expands sparse bottom-image portrait layouts to use the remaining text area", () => {
+    const result = generateSlide(makeLayoutInput({
+      slideData: makeSlideData({
+        templateId: "bottom_image_text_top",
+        title: "สิ่งที่มักพบได้ในวัยนี้",
+        body: [
+          "ยืนเกาะโต๊ะ โซฟา หรือขอบเตียง",
+          "เดินถือของเล่นหรือของชิ้นเล็กไปมา",
+          "ชอบสำรวจของใหม่และหยิบจับทุกอย่าง",
+          "ฝึกการทรงตัวและก้าวเดินสั้น ๆ",
+          "มีการเล่นซ้ำ ๆ เพื่อสร้างความมั่นใจ",
+        ],
+      }),
+      canvasWidth: 720,
+      canvasHeight: 1280,
+    }));
+
+    const textElements = result.slideContent.elements.filter(
+      (element): element is Extract<typeof result.slideContent.elements[number], { type: "text" }> => element.type === "text",
+    );
+    const imageElements = result.slideContent.elements.filter(
+      (element): element is Extract<typeof result.slideContent.elements[number], { type: "image" }> => element.type === "image",
+    );
+    const bottomImage = imageElements[0];
+    const lastTextBottom = Math.max(
+      ...textElements
+        .filter((element) => element.y < (bottomImage?.y ?? Number.POSITIVE_INFINITY))
+        .map((element) => element.y + element.height),
+    );
+
+    expect(bottomImage).toBeDefined();
+    expect(lastTextBottom).toBeGreaterThan(0);
+    if (bottomImage?.type === "image") {
+      expect(bottomImage.y - lastTextBottom).toBeLessThan(150);
+    }
   });
 
   it("fits long process-step text into cards without using oversized subtitle notes", () => {

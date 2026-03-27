@@ -1327,6 +1327,72 @@ describe("agencyRouter", () => {
     });
   });
 
+  it("includes the Meta Channels builtin tool in listTools", async () => {
+    const chain = {
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      orderBy: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockReturnThis(),
+      offset: vi.fn().mockResolvedValue([]),
+    };
+    mockDbSelect.mockReturnValue(chain);
+
+    const handler = agencyRouter.listTools;
+    const result = await handler({
+      ctx: makeCtx(),
+      input: { limit: 50, offset: 0 },
+    });
+
+    const metaTool = result.tools.find((tool: any) => tool.id === "builtin-meta-channels");
+    expect(metaTool).toMatchObject({
+      id: "builtin-meta-channels",
+      name: "Meta Channels",
+      riskLevel: "medium",
+      requiresApproval: false,
+      category: "social",
+    });
+    expect(metaTool?.configSchema?.fields).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ key: "pageId" }),
+        expect.objectContaining({ key: "allowedActions" }),
+        expect.objectContaining({ key: "requireApproval" }),
+      ]),
+    );
+  });
+
+  it("includes the provider-neutral Social Actions builtin tool in listTools", async () => {
+    const chain = {
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      orderBy: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockReturnThis(),
+      offset: vi.fn().mockResolvedValue([]),
+    };
+    mockDbSelect.mockReturnValue(chain);
+
+    const handler = agencyRouter.listTools;
+    const result = await handler({
+      ctx: makeCtx(),
+      input: { limit: 50, offset: 0 },
+    });
+
+    const socialTool = result.tools.find((tool: any) => tool.id === "builtin-social-actions");
+    expect(socialTool).toMatchObject({
+      id: "builtin-social-actions",
+      name: "Social Actions",
+      riskLevel: "medium",
+      requiresApproval: false,
+      category: "social",
+    });
+    expect(socialTool?.configSchema?.fields).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ key: "provider" }),
+        expect.objectContaining({ key: "pageId" }),
+        expect.objectContaining({ key: "action" }),
+      ]),
+    );
+  });
+
   describe("saveAsTemplate", () => {
     it("creates a template from an agency owned by user", async () => {
       const mockAgency = {

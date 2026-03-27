@@ -131,6 +131,7 @@ export interface AddPresentationSlideInput {
   slideContent?: Record<string, unknown>;
   audioTrack?: AudioTrackInput | null;
   notes?: string | null;
+  preserveInternalPendingMediaBilling?: boolean;
 }
 
 export interface DuplicatePresentationSlideInput {
@@ -148,6 +149,7 @@ export interface UpdatePresentationSlideInput {
   title?: string;
   slideContent?: Record<string, unknown>;
   notes?: string | null;
+  preserveInternalPendingMediaBilling?: boolean;
 }
 
 export interface DeletePresentationSlideInput {
@@ -661,7 +663,36 @@ function collectUnsupportedLegacyElementTypes(slideContent: Record<string, unkno
   return [...unsupported].sort();
 }
 
-function validateSlideContentPayload(slideContent: Record<string, unknown>): Record<string, unknown> {
+function sanitizePendingMediaJobs(
+  slideContent: Record<string, unknown>,
+  preserveInternalPendingMediaBilling: boolean,
+): Record<string, unknown> {
+  if (preserveInternalPendingMediaBilling) {
+    return slideContent;
+  }
+
+  const pendingMediaJobs = Array.isArray((slideContent as { pendingMediaJobs?: unknown }).pendingMediaJobs)
+    ? (slideContent as { pendingMediaJobs?: Array<Record<string, unknown>> }).pendingMediaJobs
+    : null;
+  if (!pendingMediaJobs?.length) {
+    return slideContent;
+  }
+
+  const sanitizedPendingMediaJobs = pendingMediaJobs.map((job) => {
+    const { billingStage: _billingStage, ...rest } = job;
+    return rest;
+  });
+
+  return {
+    ...slideContent,
+    pendingMediaJobs: sanitizedPendingMediaJobs,
+  };
+}
+
+function validateSlideContentPayload(
+  slideContent: Record<string, unknown>,
+  options?: { preserveInternalPendingMediaBilling?: boolean },
+): Record<string, unknown> {
   const parsed = presentationSlideContentSchema.safeParse(slideContent);
   if (!parsed.success) {
     const unsupportedLegacyTypes = collectUnsupportedLegacyElementTypes(slideContent);
@@ -686,7 +717,11 @@ function validateSlideContentPayload(slideContent: Record<string, unknown>): Rec
     );
   }
 
-  const byteSize = computeSlideContentBytes(parsed.data);
+  const normalized = sanitizePendingMediaJobs(
+    parsed.data as Record<string, unknown>,
+    options?.preserveInternalPendingMediaBilling === true,
+  );
+  const byteSize = computeSlideContentBytes(normalized);
   if (byteSize > PRESENTATION_LIMITS.maxSlideContentBytes) {
     throw new PresentationServiceError(
       PRESENTATION_ERROR_CODE.VALIDATION_FAILED,
@@ -698,7 +733,7 @@ function validateSlideContentPayload(slideContent: Record<string, unknown>): Rec
     );
   }
 
-  return parsed.data;
+  return normalized;
 }
 
 function parsePresentationSlideSnapshotContent(content: string): PresentationSlideSnapshotPayload | null {
@@ -1304,7 +1339,9 @@ export async function addSlideToDeck(
   const validatedSlideContent =
     input.slideContent === undefined
       ? undefined
-      : validateSlideContentPayload(input.slideContent);
+      : validateSlideContentPayload(input.slideContent, {
+        preserveInternalPendingMediaBilling: input.preserveInternalPendingMediaBilling === true,
+      });
 
   return createPresentationSlide(
     {
@@ -1373,7 +1410,9 @@ export async function updateSlideInDeck(
   const validatedSlideContent =
     input.slideContent === undefined
       ? undefined
-      : validateSlideContentPayload(input.slideContent);
+      : validateSlideContentPayload(input.slideContent, {
+        preserveInternalPendingMediaBilling: input.preserveInternalPendingMediaBilling === true,
+      });
   const currentSlide = await getSlideById(input.slideId, input.deckId, db);
   if (!currentSlide) {
     throw new PresentationServiceError(

@@ -77,7 +77,78 @@ export function DashboardSurface<T extends ElementType = 'div'>({
   return <Component className={cn(dashboardSurfaceClass, className)}>{children}</Component>;
 }
 
-type DashboardStatCardProps = {
+type DashboardCardProps<T extends ElementType = 'div'> = {
+  as?: T;
+  className?: string;
+  headerClassName?: string;
+  bodyClassName?: string;
+  footerClassName?: string;
+  eyebrow?: ReactNode;
+  title?: ReactNode;
+  description?: ReactNode;
+  leading?: ReactNode;
+  trailing?: ReactNode;
+  children?: ReactNode;
+  footer?: ReactNode;
+  titleClassName?: string;
+  descriptionClassName?: string;
+};
+
+export function DashboardCard<T extends ElementType = 'div'>({
+  as,
+  className,
+  headerClassName,
+  bodyClassName,
+  footerClassName,
+  eyebrow,
+  title,
+  description,
+  leading,
+  trailing,
+  children,
+  footer,
+  titleClassName = dashboardCardTitleLgClass,
+  descriptionClassName = dashboardCardDescriptionClass,
+}: DashboardCardProps<T>) {
+  const Component = as ?? 'div';
+  const hasHeader = Boolean(eyebrow || title || description || leading || trailing);
+
+  return (
+    <DashboardSurface as={Component} className={cn('overflow-hidden', className)}>
+      {hasHeader ? (
+        <div className={cn('flex items-start justify-between gap-4 px-5 pt-5 sm:px-6 sm:pt-6', headerClassName)}>
+          <div className="min-w-0 flex-1">
+            {eyebrow ? <p className={dashboardSectionEyebrowClass}>{eyebrow}</p> : null}
+            {(title || description || leading) ? (
+              <div className={cn('mt-1', leading ? 'flex items-start gap-3' : 'block')}>
+                {leading ? <div className="shrink-0 pt-0.5">{leading}</div> : null}
+                <div className="min-w-0 flex-1">
+                  {title ? <h3 className={cn(titleClassName)}>{title}</h3> : null}
+                  {description ? <p className={cn('mt-1', descriptionClassName)}>{description}</p> : null}
+                </div>
+              </div>
+            ) : null}
+          </div>
+          {trailing ? <div className="shrink-0">{trailing}</div> : null}
+        </div>
+      ) : null}
+
+      {children ? (
+        <div className={cn(hasHeader ? 'px-5 pb-5 pt-4 sm:px-6 sm:pb-6' : 'p-5 sm:p-6', bodyClassName)}>
+          {children}
+        </div>
+      ) : null}
+
+      {footer ? (
+        <div className={cn('border-t border-slate-200/80 px-5 py-4 sm:px-6', footerClassName)}>
+          {footer}
+        </div>
+      ) : null}
+    </DashboardSurface>
+  );
+}
+
+type DashboardKpiCardProps = {
   icon: DashboardIconComponent;
   label: ReactNode;
   value: ReactNode;
@@ -90,7 +161,7 @@ type DashboardStatCardProps = {
   labelClassName?: string;
 };
 
-export function DashboardStatCard({
+export function DashboardKpiCard({
   icon: Icon,
   label,
   value,
@@ -101,7 +172,7 @@ export function DashboardStatCard({
   iconClassName,
   valueClassName,
   labelClassName,
-}: DashboardStatCardProps) {
+}: DashboardKpiCardProps) {
   return (
     <div className={cn(
       'group rounded-2xl border border-slate-200/80 bg-white/90 p-4 shadow-[0_18px_45px_rgba(15,23,42,0.06)] backdrop-blur-xl transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_26px_60px_rgba(15,23,42,0.10)]',
@@ -125,4 +196,8 @@ export function DashboardStatCard({
       </div>
     </div>
   );
+}
+
+export function DashboardStatCard(props: DashboardKpiCardProps) {
+  return <DashboardKpiCard {...props} />;
 }

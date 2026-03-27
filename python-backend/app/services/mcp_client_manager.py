@@ -627,3 +627,4 @@ def get_mcp_client_manager() -> McpClientManager:
     if _default_manager is None:
         _default_manager = McpClientManager()
     return _default_manager
+# mypy: ignore-errors

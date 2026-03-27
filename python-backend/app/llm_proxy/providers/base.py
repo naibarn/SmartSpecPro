@@ -334,7 +334,7 @@ class ProviderError(Exception):
         message: str,
         provider: str,
         model: str,
-        original_error: Exception = None
+        original_error: Exception | None = None
     ):
         self.message = message
         self.provider = provider

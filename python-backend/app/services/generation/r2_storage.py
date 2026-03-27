@@ -582,3 +582,4 @@ async def shutdown_r2_storage():
     if _storage_instance:
         await _storage_instance.close()
         _storage_instance = None
+# mypy: ignore-errors

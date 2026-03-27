@@ -31,12 +31,12 @@ class CSVParserExecutor:
         self, data: NodeExecutionData, context: ExecutionContext
     ) -> dict[str, Any]:
         """Parse CSV with auto-detection and validation."""
-        csv_input = data.inputs.get("csv_input")
+        csv_input = str(data.inputs.get("csv_input") or "")
         delimiter = data.inputs.get("delimiter")
         has_header = data.inputs.get("has_header", True)
         skip_rows = data.inputs.get("skip_rows", 0)
-        max_rows = min(data.inputs.get("max_rows", self.MAX_ROWS), self.MAX_ROWS)
-        encoding = data.inputs.get("encoding", "utf-8")
+        max_rows = min(int(data.inputs.get("max_rows", self.MAX_ROWS)), self.MAX_ROWS)
+        encoding = str(data.inputs.get("encoding", "utf-8"))
 
         # Load CSV content
         if csv_input.startswith("/") or csv_input.startswith("./"):
@@ -92,7 +92,7 @@ class CSVParserExecutor:
         first_line = content.split("\n")[0] if content else ""
 
         counts = {d: first_line.count(d) for d in delimiters}
-        best = max(counts, key=counts.get)
+        best = max(counts, key=lambda key: counts[key])
         return best if counts[best] > 0 else ","
 
     def _generate_fieldnames(self, content: str, delimiter: str) -> List[str]:

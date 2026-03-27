@@ -12,9 +12,9 @@
  */
 
 import { useState } from "react";
-import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 import { trpc } from "@/lib/trpc";
+import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -120,7 +120,7 @@ function StatusBadge({ status }: { status: string }) {
 // ── Delivery Logs panel ────────────────────────────────────────────────────────
 
 function DeliveryLogs({ triggerId }: { triggerId: string }) {
-  const { t } = useTranslation("common");
+  const { t } = useScopedTranslation("common");
   const logsQuery = trpc.webhookTriggers.getLogs.useQuery({ triggerId, limit: 20, offset: 0 });
   const logs = (logsQuery.data ?? []) as LogRow[];
 
@@ -193,7 +193,7 @@ function TriggerFormDialog({
   onClose: () => void;
   editTrigger?: TriggerRow | null;
 }) {
-  const { t } = useTranslation("common");
+  const { t } = useScopedTranslation("common");
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const isEdit = Boolean(editTrigger);
@@ -411,7 +411,7 @@ function TestTriggerModal({
   trigger: TriggerRow;
   onClose: () => void;
 }) {
-  const { t } = useTranslation("common");
+  const { t } = useScopedTranslation("common");
   const { toast } = useToast();
   const [sampleJson, setSampleJson] = useState('{\n  "type": "test",\n  "message": "Hello from test"\n}');
   const [result, setResult] = useState<{ ok: boolean; dispatchedMessage?: string; detail?: string; executionId?: string } | null>(null);
@@ -545,7 +545,7 @@ function SecretRevealDialog({
 // ── Main page component ────────────────────────────────────────────────────────
 
 export default function WebhookTriggers() {
-  const { t } = useTranslation("common");
+  const { t } = useScopedTranslation("common");
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [formOpen, setFormOpen] = useState(false);

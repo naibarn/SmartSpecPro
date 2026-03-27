@@ -7,12 +7,12 @@ import { useEffect, useState } from 'react';
 import { useLocation, useRoute } from 'wouter';
 import { Sparkles, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { trpc } from '@/lib/trpc';
-import { useTranslation } from 'react-i18next';
+import { useScopedTranslation } from '@/i18n/useScopedTranslation';
 
 export default function AuthCallback() {
   const [, params] = useRoute('/auth/callback/:provider');
   const [, setLocation] = useLocation();
-  const { t } = useTranslation('auth');
+  const { t } = useScopedTranslation('auth');
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState(t('callback.processing'));
   const metaCompleteOAuth = trpc.metaChannels.completeOAuth.useMutation({

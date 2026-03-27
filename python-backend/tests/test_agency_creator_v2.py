@@ -10,10 +10,12 @@ from app.tasks.agency_creator_task import (
     _fallback_plan,
     _filter_goal_questions,
     _llm_discover,
+    _llm_design,
     _llm_plan,
     _llm_review_plan,
     _llm_review_design,
     _llm_suggest_improvements,
+    _normalize_social_publish_tool_configs,
     _validate_spec,
     _safe_json_parse,
     check_rate_limit,
@@ -287,6 +289,65 @@ class TestValidateSpecComputerUseGuardrail:
         result = _validate_spec(spec)
         agent = result["nodes"][0]
         assert agent["modelRequirements"].get("supportsComputerUse") is None
+
+
+@pytest.mark.unit
+@pytest.mark.agency
+class TestSocialPublishToolConfigNormalization:
+    def test_auto_post_requirement_forces_immediate_publish(self):
+        spec = {
+            "nodes": [
+                {
+                    "id": "n1",
+                    "nodeType": "agent",
+                    "isEntryPoint": True,
+                    "name": "Publisher",
+                    "toolIds": ["builtin-social-publish"],
+                    "nodeConfig": {},
+                },
+            ],
+            "edges": [],
+        }
+
+        result = _normalize_social_publish_tool_configs(spec, "ช่วยโพสอัตโนมัติลง FB ทุกเช้า")
+        config = result["nodes"][0]["toolConfigs"]["builtin-social-publish"]
+
+        assert config["publishMode"] == "immediate"
+        assert config["requireApproval"] is False
+
+
+@pytest.mark.unit
+@pytest.mark.agency
+class TestLlmDesignPrompt:
+    @pytest.mark.asyncio
+    async def test_design_prompt_mentions_social_publish_configs(self):
+        with patch("app.tasks.agency_creator_task._llm_call", new_callable=AsyncMock) as mock_call:
+            mock_call.return_value = json.dumps({
+                "name": "Agency",
+                "description": "Demo",
+                "objective": "Demo",
+                "sharedInstructions": "",
+                "nodes": [],
+                "edges": [],
+                "rationale": "",
+            })
+            await _llm_design(
+                "Build an agency to auto-post to Facebook",
+                {"is_clear": True},
+                {},
+                "gpt-4o",
+                1,
+            )
+
+        first_call = mock_call.call_args_list[0]
+        system_prompt = first_call.kwargs.get(
+            "system_prompt", first_call.args[0] if first_call.args else ""
+        )
+        assert "toolConfigs" in system_prompt
+        assert "builtin-social-publish" in system_prompt
+        assert "publishMode" in system_prompt
+        assert "requireApproval" in system_prompt
+        assert "valid Page access" in system_prompt
 
 
 @pytest.mark.unit

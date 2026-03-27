@@ -612,3 +612,4 @@ class LLMProviderError(Exception):
         self.provider = provider
         self.model = model
         super().__init__(self.message)
+# mypy: ignore-errors

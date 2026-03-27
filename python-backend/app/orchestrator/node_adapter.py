@@ -61,6 +61,17 @@ def make_langgraph_node(
                 "user_token": configurable.get("user_token", ""),
                 "workspace_root": configurable.get("workspace_root"),
                 "workspace": configurable.get("workspace"),
+                # Trigger payload passthrough. The runtime merges initial
+                # input state into the graph state, and trigger executors read
+                # these values from extra_data for compatibility.
+                "trigger_event": state.get("trigger_event"),
+                "queue_messages": state.get("queue_messages"),
+                "webhook_request": state.get("webhook_request"),
+                "trigger_params": state.get("trigger_params"),
+                "uploaded_file": state.get("uploaded_file"),
+                "trigger_error": state.get("trigger_error"),
+                "social_message": state.get("social_message"),
+                "social_messages": state.get("social_messages"),
             },
         )
 

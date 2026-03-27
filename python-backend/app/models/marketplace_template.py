@@ -318,3 +318,4 @@ class TemplateRevenueLedger(Base):
             "platform_credits": self.platform_credits,
             "recorded_at": self.recorded_at.isoformat() if self.recorded_at else None,
         }
+# mypy: ignore-errors

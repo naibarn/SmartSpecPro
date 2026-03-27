@@ -12,14 +12,13 @@ import * as LucideIcons from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { useI18n, AVAILABLE_LOCALES, LOCALE_LABELS } from "@/lib/i18n";
-import type { Locale } from "@/lib/i18n";
 import { trpc } from "@/lib/trpc";
-import { useTranslation } from "react-i18next";
+import { LocaleToggle } from "@/components/LocaleToggle";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { HelpTopicRenderer } from "./HelpTopicRenderer";
 import { useHelpSearch } from "./useHelpSearch";
+import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 
 type LucideIcon = React.ComponentType<{ className?: string; size?: number }>;
 
@@ -34,8 +33,7 @@ interface HelpPanelProps {
 }
 
 export function HelpPanel({ initialPage, initialTopic }: HelpPanelProps) {
-  const { locale, setLocale } = useI18n();
-  const { t } = useTranslation('help');
+  const { t, locale } = useScopedTranslation('help');
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
   const [activeTopic, setActiveTopic] = useState<string | null>(
@@ -76,23 +74,6 @@ export function HelpPanel({ initialPage, initialTopic }: HelpPanelProps) {
   const handleBack = useCallback(() => {
     setActiveTopic(null);
   }, []);
-
-  // ── Shared: Language toggle ──
-  const langToggle = (
-    <div className="flex gap-1">
-      {AVAILABLE_LOCALES.map((loc) => (
-        <Button
-          key={loc}
-          variant={locale === loc ? "default" : "ghost"}
-          size="sm"
-          className="h-7 px-2 text-xs"
-          onClick={() => setLocale(loc as Locale)}
-        >
-          {LOCALE_LABELS[loc as Locale]}
-        </Button>
-      ))}
-    </div>
-  );
 
   // ── Shared: Search bar ──
   const searchBar = (
@@ -156,7 +137,7 @@ export function HelpPanel({ initialPage, initialTopic }: HelpPanelProps) {
           <h2 className="flex-1 truncate text-sm font-semibold">
             {topicData.title}
           </h2>
-          {langToggle}
+          <LocaleToggle />
         </div>
 
         {/* Search (always visible) */}
@@ -267,7 +248,7 @@ export function HelpPanel({ initialPage, initialTopic }: HelpPanelProps) {
         <h2 className="text-sm font-semibold">
           {t('center.title')}
         </h2>
-        {langToggle}
+        <LocaleToggle />
       </div>
 
       {/* Search */}

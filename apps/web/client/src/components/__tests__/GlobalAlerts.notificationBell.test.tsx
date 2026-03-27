@@ -48,6 +48,7 @@ import { GlobalAlerts } from "../GlobalAlerts";
 describe("GlobalNotificationBell occurrence badge", () => {
   beforeEach(() => {
     cleanup();
+    localStorage.clear();
     notificationCountData = { count: 3 };
     notificationsData = [];
   });
@@ -187,5 +188,40 @@ describe("GlobalNotificationBell occurrence badge", () => {
     });
 
     expect(screen.getByText("No notifications yet")).toBeTruthy();
+  });
+
+  it("moves the bell when dragged", async () => {
+    notificationCountData = { count: 2 };
+    notificationsData = [];
+
+    render(<GlobalAlerts />);
+
+    const bellRoot = screen.getByTestId("global-notification-bell");
+    const bellButton = screen.getByLabelText(/unread notification/i);
+    const startLeft = Number.parseFloat(bellRoot.style.left);
+    const startTop = Number.parseFloat(bellRoot.style.top);
+
+    await act(async () => {
+      fireEvent.pointerDown(bellButton, {
+        pointerId: 1,
+        clientX: startLeft + 8,
+        clientY: startTop + 8,
+        buttons: 1,
+      });
+      fireEvent.pointerMove(document, {
+        pointerId: 1,
+        clientX: startLeft + 84,
+        clientY: startTop + 36,
+        buttons: 1,
+      });
+      fireEvent.pointerUp(document, {
+        pointerId: 1,
+        clientX: startLeft + 84,
+        clientY: startTop + 36,
+      });
+    });
+
+    expect(Number.parseFloat(bellRoot.style.left)).toBeGreaterThan(startLeft);
+    expect(Number.parseFloat(bellRoot.style.top)).toBeGreaterThan(startTop);
   });
 });

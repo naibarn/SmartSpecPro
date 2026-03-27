@@ -7,6 +7,7 @@ import { retrieveAndScoreCandidates, type ScoredCandidate } from "./skillCandida
 import { applyFallbackLadder, type RoutingStrategy } from "./routingFallbackLadder";
 import { getSkillCatalogSummary } from "./skillCatalog";
 import { recordRoutingDecision } from "./routingTelemetry";
+import { buildHybridOrchestrationPlan } from "./hybridOrchestrationService";
 
 /** Fallback skill for assistant/system turns when detection confidence is too low.
  * Must be a real skill in the registry. See also: teamRunSkillExecutor.ts (section-03 ensures eligibility). */
@@ -14,7 +15,7 @@ export const FALLBACK_CONTENT_SKILL_ID = "general-article-writer";
 
 export type RoomIntentOrigin = "human_user" | "assistant" | "system";
 export type RoomIntentContext = "room_message" | "run_turn" | "work_item";
-export type RoomExecutionRoute = "chat" | "skill" | "agency";
+export type RoomExecutionRoute = "chat" | "skill" | "agency" | "hybrid";
 
 export interface RoomIntentRouterInput {
   message: string;
@@ -41,6 +42,7 @@ export interface RoomIntentDecision {
   candidateSkills?: Array<{ skillId: string; score: number }>;
   taskProfile?: TaskProfile;
   policyReasons?: string[];
+  hybridPlan?: import("@shared/orchestration/hybridOrchestration").HybridOrchestrationPlan | null;
 }
 
 const TASK_SIGNAL_RE = /\b(ทำ|ช่วย|สร้าง|เขียน|สรุป|วิเคราะห์|รีวิว|review|draft|plan|research|generate|compose|design|build|fix|analyze|compare|evaluate|outline)\b/i;
@@ -200,36 +202,48 @@ async function routeWithAdvancedPipeline(
     profile.modalities.length > 1 ||
     profile.domainHints.length > 0;
   const fallback = applyFallbackLadder(candidates, profile, policy, hasTaskSignal);
+  const hybridDecision = buildHybridOrchestrationPlan({
+    message: normalized,
+    profile,
+    policy,
+    fallbackStrategy: fallback.strategy,
+    confidence: fallback.confidence,
+    selectedSkillId: fallback.primarySkillId,
+    candidateSkills: candidates,
+  });
 
   // Step 10: Map to RoomIntentDecision
   const strategyToRoute = (s: RoutingStrategy): RoomExecutionRoute => {
     switch (s) {
       case "swarm": return "agency";
+      case "hybrid": return "hybrid";
       case "chat": return "chat";
       default: return "skill";
     }
   };
+  const resolvedRoute = hybridDecision.shouldUseHybrid ? "hybrid" : strategyToRoute(fallback.strategy);
   const decision: RoomIntentDecision = {
-    route: strategyToRoute(fallback.strategy),
-    reason: `scored:${fallback.reason}`,
+    route: resolvedRoute,
+    reason: hybridDecision.shouldUseHybrid ? hybridDecision.reason : `scored:${fallback.reason}`,
     selectedSkillId: fallback.primarySkillId ?? FALLBACK_CONTENT_SKILL_ID,
     confidence: fallback.confidence,
     source: "scorer",
-    agencyEscalation: fallback.strategy === "swarm",
-    routingStrategy: fallback.strategy,
+    agencyEscalation: fallback.strategy === "swarm" || hybridDecision.shouldUseHybrid,
+    routingStrategy: hybridDecision.shouldUseHybrid ? "hybrid" : fallback.strategy,
     candidateSkills: candidates.slice(0, 5).map((c) => ({
       skillId: c.skillId,
       score: Math.round(c.compositeScore * 100) / 100,
     })),
     taskProfile: profile,
     policyReasons: policy.policyReasons,
+    hybridPlan: hybridDecision.plan,
   };
 
   recordRoutingDecision({
     timestamp: new Date().toISOString(), tenantId: input.tenantId, userId: input.userId,
     roomId: input.roomId, message: normalized, taskProfile: profile,
     policyReasons: policy.policyReasons, candidateCount: candidates.length,
-    topCandidateScore: candidates[0]?.compositeScore ?? 0, strategy: fallback.strategy,
+    topCandidateScore: candidates[0]?.compositeScore ?? 0, strategy: hybridDecision.shouldUseHybrid ? "hybrid" : fallback.strategy,
     selectedSkillId: decision.selectedSkillId, routingLatencyMs: Date.now() - startMs,
     llmClassifierUsed,
   });

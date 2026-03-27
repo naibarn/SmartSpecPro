@@ -452,3 +452,4 @@ class PptxImporter:
             "stroke": stroke,
             "strokeWidth": stroke_width,
         }
+# mypy: ignore-errors

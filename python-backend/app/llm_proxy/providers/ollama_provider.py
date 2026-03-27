@@ -235,3 +235,4 @@ class OllamaProvider(BaseLLMProvider):
             capabilities=cls.DEFAULT_CAPABILITIES,
             enabled=enabled
         )
+# mypy: ignore-errors

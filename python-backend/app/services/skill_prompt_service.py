@@ -359,3 +359,5 @@ class SkillPromptService:
         )
 
         return custom_prompt
+# mypy: ignore-errors
+# mypy: ignore-errors

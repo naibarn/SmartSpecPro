@@ -8,6 +8,8 @@ import { signBearerToken } from "../_core/tokens";
 import {
   PRESENTATION_EDITOR_ROUTE_BASE,
   PRESENTATION_ERROR_CODE,
+  PRESENTATION_EXPORT_MAX_HEIGHT,
+  PRESENTATION_EXPORT_MAX_WIDTH,
   isPresentationFeatureEnabled,
   isPresentationExportWriteEnabled,
   isPresentationAIGenerationEnabled,
@@ -1240,9 +1242,15 @@ export const presentationRouter = router({
       format: z.enum(["png", "jpg", "pdf", "mp4"]),
       quality: z.enum(["draft", "standard", "high"]).optional().default("standard"),
       idempotencyKey: z.string().min(1).max(128),
-      width: z.number().int().positive().optional(),
-      height: z.number().int().positive().optional(),
-    }))
+      width: z.number().int().positive().max(PRESENTATION_EXPORT_MAX_WIDTH).optional(),
+      height: z.number().int().positive().max(PRESENTATION_EXPORT_MAX_HEIGHT).optional(),
+    }).refine(
+      (data) => (data.width === undefined) === (data.height === undefined),
+      {
+        message: "width and height must be provided together",
+        path: ["width"],
+      },
+    ))
     .mutation(async ({ input, ctx }) => {
       try {
         ensureFeatureEnabled();

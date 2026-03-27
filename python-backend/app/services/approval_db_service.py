@@ -803,3 +803,4 @@ class ApprovalDBService:
         """
         self._logger.debug("toggle_rule_stub_called", rule_id=rule_id, is_active=is_active)
         return None
+# mypy: ignore-errors

@@ -83,6 +83,9 @@ class Settings(BaseSettings):
     KIE_AI_BASE_URL: str = "https://api.kie.ai/api/v1"
     KIE_AI_CALLBACK_URL: str = ""  # Optional webhook for async task completion
 
+    KNPLABAI_API_KEY: str = ""
+    KNPLABAI_BASE_URL: str = "https://api.knplabai.com/ai/v1"
+
     # Stripe Payment
     STRIPE_PUBLISHABLE_KEY: str = ""
     STRIPE_SECRET_KEY: str = ""

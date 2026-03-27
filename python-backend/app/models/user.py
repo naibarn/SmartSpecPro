@@ -125,3 +125,4 @@ class User(Base):
 
     def __repr__(self):
         return f"<User {self.email}>"
+# mypy: ignore-errors

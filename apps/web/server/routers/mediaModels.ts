@@ -123,6 +123,9 @@ function normalizeMediaProviderName(providerName: string | null | undefined): st
   ) {
     return "byteplus_modelark";
   }
+  if (normalized === "knplabs" || normalized === "knplabai" || normalized === "knplabs_ai") {
+    return "knplabai";
+  }
   return normalized;
 }
 

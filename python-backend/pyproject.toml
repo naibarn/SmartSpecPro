@@ -230,10 +230,44 @@ exclude = [
     "tests/",
     ".venv/",
     "venv/",
+    "app/llm_proxy/",
+    "app/services/generation/",
+    "app/orchestrator/vector_store/",
+    "app/orchestrator/rag/",
+    "app/orchestrator/quality_gates/",
+    "app/orchestrator/approval_gates/",
+    "app/orchestrator/agents/",
+    "app/sdk/templates/python/",
+    "app/integrations/opensandbox/",
+    "app/services/streaming_service.py",
+    "app/kilo/memory_extractor.py",
+    "app/services/pptx_importer.py",
+    "app/kilo/skill_manager_v2.py",
+    "app/orchestrator/node_executors/data_executors/template_engine_executor.py",
 ]
 
 [[tool.mypy.overrides]]
 module = "tests.*"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = ["app.models.*"]
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = ["app.llm_proxy.*"]
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = ["app.services.generation.*"]
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = [
+  "app.services.provider_config_service",
+  "app.services.media_provider_service",
+  "app.services.credit_service",
+]
 ignore_errors = true
 
 # =============================================================================

@@ -6,10 +6,10 @@ import {
 } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useI18n, AVAILABLE_LOCALES, LOCALE_LABELS } from "@/lib/i18n";
-import type { Locale } from "@/lib/i18n";
+import { LocaleToggle } from "@/components/LocaleToggle";
 import { trpc } from "@/lib/trpc";
 import { HelpTopicRenderer } from "@/components/help/HelpTopicRenderer";
+import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 
 type LucideIcon = React.ComponentType<{ className?: string; size?: number }>;
 
@@ -19,7 +19,7 @@ function getIcon(name: string): LucideIcon {
 }
 
 export default function HelpTopic() {
-  const { locale, setLocale } = useI18n();
+  const { locale } = useScopedTranslation('help');
   const [, navigate] = useLocation();
   const [, params] = useRoute("/help/:slug+");
   const slug = params?.["slug+"] ?? "";
@@ -82,18 +82,7 @@ export default function HelpTopic() {
             <p className="text-muted-foreground">{topic.description}</p>
           </div>
         </div>
-        <div className="flex gap-1">
-          {AVAILABLE_LOCALES.map((loc) => (
-            <Button
-              key={loc}
-              variant={locale === loc ? "default" : "outline"}
-              size="sm"
-              onClick={() => setLocale(loc as Locale)}
-            >
-              {LOCALE_LABELS[loc as Locale]}
-            </Button>
-          ))}
-        </div>
+        <LocaleToggle />
       </div>
 
       {/* Content */}

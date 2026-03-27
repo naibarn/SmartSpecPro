@@ -2,8 +2,8 @@ import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
-import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import {
   ArrowRight,
   CheckCircle2,
@@ -300,7 +300,7 @@ export function RoomWorkflowPanel({
 }: RoomWorkflowPanelProps) {
   const [activeFilter, setActiveFilter] = useState<WorkflowBoardFilter>("all");
   const utils = trpc.useUtils();
-  const { t } = useI18n();
+  const { t } = useScopedTranslation('agency');
   const coordinatorMemberId = selectCoordinatorMemberId(teamMembers);
   const memberNameById = new Map(
     teamMembers.map((member) => [member.id, member.displayName?.trim() || member.id]),

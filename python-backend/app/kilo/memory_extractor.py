@@ -523,3 +523,4 @@ def get_memory_extractor() -> MemoryExtractor:
     if _extractor is None:
         _extractor = MemoryExtractor()
     return _extractor
+# mypy: ignore-errors

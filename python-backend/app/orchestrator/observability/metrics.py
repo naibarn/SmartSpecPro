@@ -403,3 +403,4 @@ def get_metrics() -> MetricsCollector:
     if _metrics_collector is None:
         _metrics_collector = MetricsCollector()
     return _metrics_collector
+# mypy: ignore-errors

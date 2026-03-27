@@ -6,6 +6,7 @@ import { sendApiError } from "../middleware/publicApiHeaders";
 import { mediaGenerationService } from "../services/mediaGenerationService";
 import { deductCredits } from "../services/creditService";
 import { createInternalTokenFromAuth } from "../_core/tokens";
+import { resolveExportDownloadTarget } from "./exportDownloadTarget";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -159,19 +160,34 @@ export function createPublicVideoRouter(): Router {
       }
 
       const resultUrl = task.resultUrl;
+      const downloadTarget = resolveExportDownloadTarget(resultUrl);
+      if (!downloadTarget) {
+        sendApiError(res, 404, "not_found", "Export file not available");
+        return;
+      }
+
       const ext = resultUrl.split(".").pop()?.toLowerCase() ?? "mp4";
       const mimeType = ext === "mp4" ? "video/mp4" : "application/octet-stream";
 
       res.setHeader("Content-Type", mimeType);
       res.setHeader("Content-Disposition", `attachment; filename="video-${id}.${ext}"`);
 
-      if (resultUrl.startsWith("/") || resultUrl.startsWith(".")) {
-        const fs = await import("fs");
-        const stream = fs.createReadStream(resultUrl);
+      if (downloadTarget.kind === "file") {
+        const fs = await import("node:fs");
+        const stream = fs.createReadStream(downloadTarget.path);
+        stream.on("error", (error) => {
+          console.error("[PublicVideoApi] export file stream error", error);
+          if (!res.headersSent) {
+            sendApiError(res, 404, "not_found", "Export file not available");
+          } else {
+            res.destroy(error as Error);
+          }
+        });
         stream.pipe(res);
-      } else {
-        res.redirect(302, resultUrl);
+        return;
       }
+
+      res.redirect(302, downloadTarget.url);
     } catch (err: any) {
       console.error("[PublicVideoApi] download error", err);
       if (!res.headersSent) {

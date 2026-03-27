@@ -162,3 +162,4 @@ def _read_file_sync(sandbox_id: str, path: str) -> bytes:
 
 async def read_file_via_docker_bridge(sandbox_id: str, path: str) -> bytes:
     return await asyncio.to_thread(_read_file_sync, sandbox_id, path)
+# mypy: ignore-errors

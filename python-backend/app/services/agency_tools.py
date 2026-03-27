@@ -67,6 +67,7 @@ _BUILTIN_ENDPOINTS: dict[str, str] = {
     "builtin-voice": "/api/internal/tools/voice",
     "builtin-browser": "/api/internal/tools/browser",
     "builtin-meta-channels": "/api/internal/tools/meta-channels",
+    "builtin-social-actions": "/api/internal/tools/social-actions",
     "builtin-code-interpreter": None,  # Dispatched to OpenSandbox (not HTTP) — see _execute_code_interpreter()
     "builtin-agency-call": None,  # No HTTP endpoint -- handled internally via execute_agency_call()
     "builtin-auto-draft": "/api/internal/tools/auto-draft",
@@ -89,6 +90,7 @@ _BUILTIN_RISK_LEVELS: dict[str, str] = {
     "builtin-voice": "medium",
     "builtin-browser": "high",
     "builtin-meta-channels": "medium",
+    "builtin-social-actions": "medium",
     "builtin-code-interpreter": "high",  # Must run in OpenSandbox
     "builtin-agency-call": "high",
     "builtin-auto-draft": "medium",
@@ -188,6 +190,24 @@ def _build_agent_headers(tool_id: str, config: dict[str, Any] | None = None) -> 
         if agent_id is not None:
             headers["X-Agent-Id"] = str(agent_id)
     return headers
+
+
+def _resolve_run_context_tenant_id(run_context: Any | None) -> str | None:
+    """Best-effort tenant resolution from the current agency run context."""
+    if run_context is None:
+        return None
+
+    tenant_id = None
+    try:
+        tenant_id = run_context.get_sync("tenant_id") or run_context.get_sync("tenantId")
+    except Exception:
+        return None
+
+    if tenant_id is None:
+        return None
+
+    tenant_value = str(tenant_id).strip()
+    return tenant_value or None
 
 
 def _validate_custom_tool_input(
@@ -619,6 +639,7 @@ async def resolve_tools_for_agent(
 
     result = await db.execute(query, {"agent_id": agent_id})
     rows = result.all()
+    tenant_id = _resolve_run_context_tenant_id(run_context)
 
     tool_classes: list[type] = []
     blocked_tool_ids = _RETRIEVAL_SCOPE_BLOCKED_TOOL_IDS.get(retrieval_scope_mode or "", set())
@@ -644,6 +665,8 @@ async def resolve_tools_for_agent(
         instance_config: dict[str, Any] = row.instance_config if isinstance(row.instance_config, dict) else {}
         merged_config = {**base_config, **instance_config}
         merged_config.setdefault("agentId", agent_id)
+        if tenant_id:
+            merged_config.setdefault("tenantId", tenant_id)
 
         # endpoint_url may live in config or be derived from the builtin tool ID
         endpoint_url: str | None = merged_config.pop("endpoint_url", None)
@@ -738,6 +761,7 @@ async def resolve_shared_tools_for_agency(
 
     result = await db.execute(query, {"agency_id": agency_id})
     rows = result.all()
+    tenant_id = _resolve_run_context_tenant_id(run_context)
 
     tool_classes: list[type] = []
     _native_tool_map: dict[str, type | None] = {}
@@ -746,6 +770,8 @@ async def resolve_shared_tools_for_agency(
         tool_id: str = row.tool_id
 
         base_config: dict[str, Any] = row.base_config if isinstance(row.base_config, dict) else {}
+        if tenant_id:
+            base_config.setdefault("tenantId", tenant_id)
         endpoint_url: str | None = base_config.pop("endpoint_url", None)
         if endpoint_url is None and tool_id in _BUILTIN_ENDPOINTS:
             endpoint_url = _INTERNAL_SERVICE_URL + _BUILTIN_ENDPOINTS[tool_id]

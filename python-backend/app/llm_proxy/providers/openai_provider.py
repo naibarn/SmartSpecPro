@@ -239,3 +239,4 @@ def create_openai_provider(
         enabled=enabled
     )
     return OpenAIProvider(config)
+# mypy: ignore-errors

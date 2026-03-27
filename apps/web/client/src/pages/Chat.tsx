@@ -2,8 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/AuthContext";
-import { useI18n } from "@/lib/i18n";
-import { useTranslation } from "react-i18next";
 import { ChatSidebar, ChatView, MemoryPanel, SkillSettings, ArtifactPanel, SchedulePanel, type Artifact } from "@/components/chat";
 import { CanvasPane } from "@/components/chat/canvas/CanvasPane";
 import { HelpButton } from "@/components/help";
@@ -52,6 +50,8 @@ import {
   inferBrowserSkillId,
 } from "@shared/browserSkills";
 import type { LiveBrowserCreateSessionRequest } from "@shared/liveBrowser";
+import { LocaleToggle } from "@/components/LocaleToggle";
+import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 
 
 type RightPanel = "none" | "memory" | "skills" | "artifacts" | "schedule" | "canvas";
@@ -59,8 +59,7 @@ type AgencyRunPhase = "idle" | "connecting" | "running" | "completed" | "failed"
 
 export default function Chat() {
   const { isLoading, isAuthenticated, user } = useAuth();
-  const { t } = useI18n();
-  const { t: tc } = useTranslation('chat');
+  const { t } = useScopedTranslation('chat');
   const [, setLocation] = useLocation();
 
   const [selectedConversationId, setSelectedConversationId] = useState<number | null>(null);
@@ -575,11 +574,11 @@ export default function Chat() {
 
   const agencyStatusLabel = (() => {
     switch (agencyRunPhase) {
-      case "connecting": return tc('agency.status.connecting');
-      case "running":    return tc('agency.status.running');
-      case "completed":  return tc('agency.status.completed');
-      case "failed":     return tc('agency.status.failed');
-      default:           return tc('agency.status.ready');
+      case "connecting": return t('agency.status.connecting');
+      case "running":    return t('agency.status.running');
+      case "completed":  return t('agency.status.completed');
+      case "failed":     return t('agency.status.failed');
+      default:           return t('agency.status.ready');
     }
   })();
 
@@ -612,7 +611,7 @@ export default function Chat() {
             className="gap-1"
           >
             <ChevronLeft className="h-4 w-4" />
-            Back
+            {t('common.back')}
           </Button>
           <Button
             variant="outline"
@@ -629,6 +628,7 @@ export default function Chat() {
           <h1 className="text-lg font-semibold hidden sm:block">{t('chat.title')}</h1>
         </div>
         <div className="flex items-center gap-1">
+          <LocaleToggle className="hidden xl:inline-flex" />
           <HelpButton page="/chat" variant="ghost" size="sm" />
           <Button
             variant={rightPanel === "skills" ? "secondary" : "ghost"}

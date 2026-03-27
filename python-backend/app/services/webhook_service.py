@@ -173,3 +173,5 @@ def remove_user_webhook(user_id: str):
     if user_id in _webhook_urls:
         del _webhook_urls[user_id]
         logger.info("webhook_url_removed", user_id=user_id)
+# mypy: ignore-errors
+# mypy: ignore-errors

@@ -41,9 +41,9 @@ class FileWriteExecutor:
         self, data: NodeExecutionData, context: ExecutionContext
     ) -> dict[str, Any]:
         """Write file with security checks."""
-        file_path = data.inputs.get("file_path")
+        file_path = str(data.inputs.get("file_path") or "")
         content = data.inputs.get("content", "")
-        encoding = data.inputs.get("encoding", "utf-8")
+        encoding = str(data.inputs.get("encoding", "utf-8"))
         append = data.inputs.get("append", False)
 
         # Validate content size
@@ -54,7 +54,7 @@ class FileWriteExecutor:
             )
 
         # Sanitize path
-        safe_path = self._sanitize_path(file_path, context.tenant_id)
+        safe_path = self._sanitize_path(file_path, str(context.tenant_id or ""))
 
         # Check extension
         if safe_path.suffix.lower() not in self.ALLOWED_EXTENSIONS:

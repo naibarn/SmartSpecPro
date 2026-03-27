@@ -7,7 +7,7 @@ integration for MCP tool calls.
 
 import logging
 import re
-from typing import Optional
+from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -161,12 +161,12 @@ def check_tool_chain_depth(
     return None
 
 
-def scrub_params(params: dict, secret_patterns: list[re.Pattern]) -> dict:
+def scrub_params(params: dict[str, Any], secret_patterns: list[re.Pattern[str]]) -> dict[str, Any]:
     """Scrub sensitive values from MCP tool parameters before sending.
 
     Recurses into dicts and lists to catch nested secrets.
     """
-    scrubbed = {}
+    scrubbed: dict[str, Any] = {}
     for key, value in params.items():
         if isinstance(value, str):
             scrubbed_val = value
@@ -183,9 +183,9 @@ def scrub_params(params: dict, secret_patterns: list[re.Pattern]) -> dict:
     return scrubbed
 
 
-def _scrub_list(items: list, secret_patterns: list[re.Pattern]) -> list:
+def _scrub_list(items: list[Any], secret_patterns: list[re.Pattern[str]]) -> list[Any]:
     """Scrub sensitive values from list elements."""
-    result = []
+    result: list[Any] = []
     for item in items:
         if isinstance(item, str):
             scrubbed = item

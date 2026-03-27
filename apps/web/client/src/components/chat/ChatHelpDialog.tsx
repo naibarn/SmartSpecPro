@@ -7,7 +7,6 @@ import {
   FileText,
   Film,
   FolderOpen,
-  Globe,
   HelpCircle,
   ImagePlus,
   Lightbulb,
@@ -32,8 +31,8 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { useI18n, AVAILABLE_LOCALES, LOCALE_LABELS } from "@/lib/i18n";
-import type { Locale } from "@/lib/i18n";
+import { LocaleToggle } from "@/components/LocaleToggle";
+import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 
 /* ─── Static data (not translatable — icons, colors, keys) ───── */
 
@@ -91,7 +90,7 @@ export function ChatHelpDialog({
   buttonVariant = "ghost",
 }: ChatHelpDialogProps) {
   const [open, setOpen] = useState(false);
-  const { t, locale, setLocale } = useI18n();
+  const { t } = useScopedTranslation('help');
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -112,23 +111,7 @@ export function ChatHelpDialog({
               <Bot className="h-5 w-5 text-primary" />
               {t("help.title")}
             </DialogTitle>
-
-            {/* ── Language toggle ── */}
-            <div className="flex items-center gap-1 shrink-0">
-              <Globe className="h-3.5 w-3.5 text-slate-400" />
-              {AVAILABLE_LOCALES.map((loc: Locale) => (
-                <Button
-                  key={loc}
-                  type="button"
-                  variant={locale === loc ? "default" : "outline"}
-                  size="sm"
-                  className="h-7 px-2.5 text-xs"
-                  onClick={() => setLocale(loc)}
-                >
-                  {LOCALE_LABELS[loc]}
-                </Button>
-              ))}
-            </div>
+            <LocaleToggle />
           </div>
           <DialogDescription>{t("help.description")}</DialogDescription>
         </DialogHeader>

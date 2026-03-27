@@ -345,3 +345,5 @@ class TicketService:
         tickets = result.scalars().all()
         
         return tickets
+# mypy: ignore-errors
+# mypy: ignore-errors

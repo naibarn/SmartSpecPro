@@ -1,0 +1,83 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`GET /internal/slide-render/:deckId/:slideIndex > keeps a stable layout fingerprint for a representative export slide 1`] = `
+{
+  "canvas": {
+    "childCount": 3,
+    "height": "1200px",
+    "transform": "translate(204.8px,0px) scale(0.64)",
+    "width": "960px",
+  },
+  "elements": [
+    {
+      "background": null,
+      "borderRadius": null,
+      "clipPath": null,
+      "height": "116px",
+      "left": "72px",
+      "mediaId": null,
+      "mediaStyle": null,
+      "overflow": "visible",
+      "tag": "div",
+      "text": "พัฒนาการเด็กหนึ่งขวบกับการฝึกเดิน",
+      "textStyle": {
+        "color": "rgb(31, 77, 65)",
+        "fontFamily": ""Inter", "Sarabun", "Prompt", "Kanit", "Noto Sans Thai", "Noto Sans", system-ui, sans-serif",
+        "fontSize": "52px",
+        "fontWeight": "700",
+        "lineHeight": "1.5",
+        "textAlign": "left",
+      },
+      "top": "84px",
+      "transform": null,
+      "width": "720px",
+    },
+    {
+      "background": null,
+      "borderRadius": null,
+      "clipPath": null,
+      "height": "286px",
+      "left": "72px",
+      "mediaId": null,
+      "mediaStyle": null,
+      "overflow": "visible",
+      "tag": "div",
+      "text": "• จับมือเดินได้ไม่เกร็ง
+• ชอบยืนเกาะโต๊ะ
+• เริ่มก้าวเองเป็นช่วงสั้น ๆ",
+      "textStyle": {
+        "color": "rgb(85, 122, 112)",
+        "fontFamily": ""Inter", "Sarabun", "Prompt", "Kanit", "Noto Sans Thai", "Noto Sans", system-ui, sans-serif",
+        "fontSize": "28px",
+        "fontWeight": "600",
+        "lineHeight": "1.5",
+        "textAlign": "left",
+      },
+      "top": "224px",
+      "transform": null,
+      "width": "732px",
+    },
+    {
+      "background": null,
+      "borderRadius": "28px",
+      "clipPath": null,
+      "height": "508px",
+      "left": "72px",
+      "mediaId": "hero-visual",
+      "mediaStyle": {
+        "color": "rgb(245, 158, 11)",
+        "height": "100%",
+        "objectFit": null,
+        "width": "100%",
+      },
+      "overflow": "hidden",
+      "tag": "div",
+      "text": null,
+      "textStyle": null,
+      "top": "548px",
+      "transform": null,
+      "width": "816px",
+    },
+  ],
+}
+`;
