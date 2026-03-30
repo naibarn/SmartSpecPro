@@ -79,8 +79,8 @@ else
 
 GLITCHTIP_SECRET_KEY=${SECRET_KEY}
 
-DATABASE_URL=postgres://${PG_USER}:${PG_PASS}@host.docker.internal:${PG_PORT}/glitchtip
-REDIS_URL=redis://host.docker.internal:6379/5
+DATABASE_URL=postgres://${PG_USER}:${PG_PASS}@smartspec-postgres:5432/glitchtip
+REDIS_URL=redis://smartspec-redis:6379/5
 
 GLITCHTIP_DOMAIN=https://glitchtip.smartaihub.app
 PORT=8000
@@ -106,7 +106,7 @@ sleep 20
 
 # Quick health check
 if docker exec smartspec-glitchtip-web \
-    curl -sf http://localhost:8000/api/0/health/ &>/dev/null; then
+    python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/0/health/', timeout=5)" &>/dev/null; then
   echo "   ✓ GlitchTip is healthy"
 else
   echo "   ⚠ Health check not ready yet — migrations may still be running."

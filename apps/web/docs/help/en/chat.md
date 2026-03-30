@@ -94,5 +94,5 @@ Chat is the fastest place to ask for answers, drafts, brainstorming, prompt buil
 | Image concept with refined prompt | Type rough idea → prompt-enhance → Generate Image |
 | Live website data needed | Switch to Browser Session |
 | Compare two approaches | Use AI Teams |
-| Research report or slide deck | Use Agencies |
+| Research report or slide deck | Click **Run Agency** in the header or type `/run-agency` — runs inline without leaving Chat |
 | Check a persona's work status or draft | Ask in Chat, then use the action card to open Team Room / Workflow Board |

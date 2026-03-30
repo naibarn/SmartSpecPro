@@ -5,10 +5,10 @@
  */
 
 import { trpc } from "@/lib/trpc";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, CheckCircle, XCircle, Clock, AlertTriangle } from "lucide-react";
+import { Loader2, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { DashboardCard, DashboardKpiCard } from "@/components/dashboard";
 
 interface JobsHealthPanelProps {
   refreshInterval: number | null;
@@ -37,11 +37,11 @@ export default function JobsHealthPanel({ refreshInterval }: JobsHealthPanelProp
 
   if (error) {
     return (
-      <Card>
-        <CardContent className="py-6">
+      <DashboardCard>
+        <div>
           <p className="text-destructive">Failed to load jobs health: {error.message}</p>
-        </CardContent>
-      </Card>
+        </div>
+      </DashboardCard>
     );
   }
 
@@ -55,46 +55,41 @@ export default function JobsHealthPanel({ refreshInterval }: JobsHealthPanelProp
       {/* Status Summary */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         {Object.entries(counts).map(([status, count]) => (
-          <Card key={status}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium capitalize">{status.replace('_', ' ')}</CardTitle>
-              <div className={cn("h-2 w-2 rounded-full", STATUS_COLORS[status] || "bg-gray-400")} />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{count}</div>
-            </CardContent>
-          </Card>
+          <DashboardKpiCard
+            key={status}
+            icon={CheckCircle}
+            label={status.replace('_', ' ')}
+            value={count}
+            iconClassName={cn("text-muted-foreground")}
+            badge={<div className={cn("h-2 w-2 rounded-full mt-1", STATUS_COLORS[status] || "bg-gray-400")} />}
+          />
         ))}
       </div>
 
       {/* Total Summary */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-sm font-medium">Overview</CardTitle>
+      <DashboardCard title="Overview">
+        <div className="flex items-center justify-between">
           {hasFailures && (
             <Badge variant="destructive">
               <AlertTriangle className="h-3 w-3 mr-1" />
               {failedCount} failed
             </Badge>
           )}
-        </CardHeader>
-        <CardContent>
+        </div>
+        <div>
           <div className="text-sm text-muted-foreground">
             Total task events: {totalJobs}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </DashboardCard>
 
       {/* Recent Failures */}
       {data?.recentFailures && data.recentFailures.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <XCircle className="h-4 w-4 text-destructive" />
-              Recent Failures
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+        <DashboardCard
+          title="Recent Failures"
+          leading={<XCircle className="h-4 w-4 text-destructive" />}
+        >
+          <div>
             <div className="space-y-3">
               {data.recentFailures.slice(0, 10).map((failure) => (
                 <div key={failure.id} className="border rounded-md p-3 space-y-1">
@@ -112,8 +107,8 @@ export default function JobsHealthPanel({ refreshInterval }: JobsHealthPanelProp
                 </div>
               ))}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </DashboardCard>
       )}
     </div>
   );

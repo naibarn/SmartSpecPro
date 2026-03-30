@@ -3,7 +3,7 @@ import { z } from "zod";
 import { PRESENTATION_ITEM_TYPE } from "@shared/presentation/constants";
 import { isPresentationTemplateItem } from "@shared/presentation/template";
 
-import { protectedProcedure, router } from "../_core/trpc";
+import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
 import { shouldUseSandbox, dispatchToSandbox } from "../services/sandbox/dispatchService";
 import { auditLogger } from "../services/auditLogger";
@@ -23,6 +23,7 @@ import {
   getLibraryItemById,
   getLibraryItemShares,
   getLibraryUploadStatuses,
+  getPublicShareLinkState,
   getUserEffectivePermission,
   LibraryMarkdownVersionConflictError,
   listLibraryDocuments,
@@ -34,6 +35,9 @@ import {
   saveLibraryMarkdown,
   searchLibraryItems,
   shareLibraryItem,
+  createPublicShareLink,
+  revokePublicShareLink,
+  resolvePublicShareLink,
   shareLibraryToGroup,
   softDeleteLibraryItem,
   batchSoftDeleteLibraryItems,
@@ -43,6 +47,7 @@ import {
   getVersionSnapshotDownloadUrl,
   updateLibraryItem,
 } from "../services/libraryService";
+import { exportMarkdownArtifact as generateMarkdownExportArtifact } from "../services/markdownExport";
 import { eq } from "drizzle-orm";
 import { users } from "../../drizzle/schema";
 
@@ -63,6 +68,7 @@ const itemStatusSchema = z.enum(["draft", "ready", "indexing", "archived", "fail
 const permissionLevelSchema = z.enum(["read", "write", "delete", "owner"]);
 const sharePermissionLevelSchema = z.enum(["read", "write", "delete"]);
 const subjectTypeSchema = z.enum(["user", "tenant_role", "group"]);
+const publicShareTokenSchema = z.string().min(1).max(512);
 
 const sourceLinkSchema = z.object({
   linkType: z.string().min(1).max(64),
@@ -429,6 +435,46 @@ export const libraryRouter = router({
       return result;
     }),
 
+  exportMarkdownArtifact: protectedProcedure
+    .input(
+      z.object({
+        markdown: z.string().max(5_000_000),
+        title: z.string().max(255).optional(),
+        format: z.enum(["html", "txt", "docx", "pdf"]),
+      }),
+    )
+    .mutation(async ({ input, ctx }) => {
+      const tenantIdResolved = await resolveLibraryTenantId(ctx);
+      assertLibraryEnabled(tenantIdResolved);
+      await createLibraryActor(ctx, tenantIdResolved);
+
+      const artifact = await generateMarkdownExportArtifact({
+        markdown: input.markdown,
+        title: input.title,
+        format: input.format,
+      });
+
+      auditLogger.log({
+        eventType: "library_mutation",
+        userId: ctx.user.id,
+        endpoint: "library.exportMarkdownArtifact",
+        requestType: "mutation",
+        requestPayload: {
+          tenantId: tenantIdResolved,
+          format: input.format,
+          title: input.title,
+          markdownLength: input.markdown.length,
+        },
+        responsePayload: {
+          fileName: artifact.fileName,
+          mimeType: artifact.mimeType,
+          dataBase64Length: artifact.dataBase64.length,
+        },
+      });
+
+      return artifact;
+    }),
+
   saveMarkdown: protectedProcedure
     .input(
       z.object({
@@ -738,6 +784,72 @@ export const libraryRouter = router({
       });
 
       return { success: true };
+    }),
+
+  getPublicShareLink: protectedProcedure
+    .input(z.object({ itemId: z.number().int().positive() }))
+    .query(async ({ input, ctx }) => {
+      const tenantIdResolved = await resolveLibraryTenantId(ctx);
+      assertLibraryEnabled(tenantIdResolved);
+      const actor = await createLibraryActor(ctx, tenantIdResolved);
+
+      return getPublicShareLinkState(input, actor);
+    }),
+
+  createPublicShareLink: protectedProcedure
+    .input(z.object({ itemId: z.number().int().positive() }))
+    .mutation(async ({ input, ctx }) => {
+      const tenantIdResolved = await resolveLibraryTenantId(ctx);
+      assertLibraryEnabled(tenantIdResolved);
+      const actor = await createLibraryActor(ctx, tenantIdResolved);
+
+      const link = await createPublicShareLink(input, actor);
+      auditLogger.log({
+        eventType: "library_mutation",
+        userId: ctx.user.id,
+        endpoint: "library.createPublicShareLink",
+        requestType: "mutation",
+        requestPayload: {
+          tenantId: tenantIdResolved,
+          itemId: input.itemId,
+        },
+        responsePayload: {
+          success: true,
+        },
+      });
+
+      return { success: true, link };
+    }),
+
+  revokePublicShareLink: protectedProcedure
+    .input(z.object({ itemId: z.number().int().positive() }))
+    .mutation(async ({ input, ctx }) => {
+      const tenantIdResolved = await resolveLibraryTenantId(ctx);
+      assertLibraryEnabled(tenantIdResolved);
+      const actor = await createLibraryActor(ctx, tenantIdResolved);
+
+      const link = await revokePublicShareLink(input, actor);
+      auditLogger.log({
+        eventType: "library_mutation",
+        userId: ctx.user.id,
+        endpoint: "library.revokePublicShareLink",
+        requestType: "mutation",
+        requestPayload: {
+          tenantId: tenantIdResolved,
+          itemId: input.itemId,
+        },
+        responsePayload: {
+          success: true,
+        },
+      });
+
+      return { success: true, link };
+    }),
+
+  resolvePublicShareLink: publicProcedure
+    .input(z.object({ token: publicShareTokenSchema }))
+    .query(async ({ input }) => {
+      return resolvePublicShareLink(input.token);
     }),
 
   // ── New procedures for ShareFile feature ──

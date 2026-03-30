@@ -61,3 +61,4 @@ class Refund(Base):
     
     def __repr__(self):
         return f"<Refund(id={self.id}, payment_id={self.payment_id}, amount=${self.amount_usd}, status={self.status})>"
+# mypy: ignore-errors

@@ -5,7 +5,7 @@ import { trpc } from "../lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { DashboardCard } from "@/components/dashboard";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -365,54 +365,54 @@ export default function AdminMediaProviders() {
       {/* Stats Cards */}
       {stats && (
         <div className="grid gap-4 md:grid-cols-4 mb-8">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Providers</CardTitle>
+          <DashboardCard>
+            <div className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <h3 className="text-sm font-medium">Total Providers</h3>
               <Layers className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
+            </div>
+            <div>
               <div className="text-2xl font-bold">{stats.total}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Enabled</CardTitle>
+            </div>
+          </DashboardCard>
+          <DashboardCard>
+            <div className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <h3 className="text-sm font-medium">Enabled</h3>
               <CheckCircle2 className="h-4 w-4 text-green-500" />
-            </CardHeader>
-            <CardContent>
+            </div>
+            <div>
               <div className="text-2xl font-bold">{stats.enabled}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">With API Key</CardTitle>
+            </div>
+          </DashboardCard>
+          <DashboardCard>
+            <div className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <h3 className="text-sm font-medium">With API Key</h3>
               <Key className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
+            </div>
+            <div>
               <div className="text-2xl font-bold">{stats.withApiKey}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Multimodal</CardTitle>
+            </div>
+          </DashboardCard>
+          <DashboardCard>
+            <div className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <h3 className="text-sm font-medium">Multimodal</h3>
               <Zap className="h-4 w-4 text-orange-500" />
-            </CardHeader>
-            <CardContent>
+            </div>
+            <div>
               <div className="text-2xl font-bold">{stats.byType.multimodal}</div>
-            </CardContent>
-          </Card>
+            </div>
+          </DashboardCard>
         </div>
       )}
 
       {/* Providers List */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Configured Providers</CardTitle>
-          <CardDescription>
+      <DashboardCard>
+        <div>
+          <h3>Configured Providers</h3>
+          <p>
             Manage your media generation API providers. Primary providers are used first, with fallback to others based on priority.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+          </p>
+        </div>
+        <div>
           {providers.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <Sparkles className="h-12 w-12 mx-auto mb-4 opacity-50" />
@@ -541,8 +541,8 @@ export default function AdminMediaProviders() {
               </TableBody>
             </Table>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </DashboardCard>
 
       {/* Create Provider Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
@@ -557,30 +557,30 @@ export default function AdminMediaProviders() {
           {!selectedTemplate ? (
             <div className="grid gap-4 py-4">
               {templates.map((template) => (
-                <Card
+                <DashboardCard
                   key={template.providerName}
                   className="cursor-pointer hover:border-primary transition-colors"
                   onClick={() => handleSelectTemplate(template)}
                 >
-                  <CardHeader className="pb-2">
+                  <div className="pb-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
                           {getProviderTypeIcon(template.providerType)}
                         </div>
                         <div>
-                          <CardTitle className="text-lg">{template.displayName}</CardTitle>
+                          <h3 className="text-lg">{template.displayName}</h3>
                           <Badge className={getProviderTypeBadgeColor(template.providerType)}>
                             {template.providerType}
                           </Badge>
                         </div>
                       </div>
                     </div>
-                  </CardHeader>
-                  <CardContent>
+                  </div>
+                  <div>
                     <p className="text-sm text-muted-foreground">{template.description}</p>
-                  </CardContent>
-                </Card>
+                  </div>
+                </DashboardCard>
               ))}
             </div>
           ) : (
@@ -699,8 +699,8 @@ export default function AdminMediaProviders() {
       {/* Test Result Toast */}
       {testResult && (
         <div className="fixed bottom-4 right-4 z-50">
-          <Card className={testResult.success ? "border-green-500" : "border-red-500"}>
-            <CardContent className="flex items-center gap-3 p-4">
+          <DashboardCard className={testResult.success ? "border-green-500" : "border-red-500"}>
+            <div className="flex items-center gap-3 p-4">
               {testResult.success ? (
                 <CheckCircle2 className="h-5 w-5 text-green-500" />
               ) : (
@@ -715,8 +715,8 @@ export default function AdminMediaProviders() {
               <Button variant="ghost" size="sm" onClick={() => setTestResult(null)}>
                 <X className="h-4 w-4" />
               </Button>
-            </CardContent>
-          </Card>
+            </div>
+          </DashboardCard>
         </div>
       )}
     </div>
@@ -966,11 +966,11 @@ function ProviderForm({
       <TabsContent value="models" className="mt-4 max-h-[50vh] overflow-y-auto pr-2">
         <div className="space-y-4">
           {/* Add new model */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm">Add Model</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
+          <DashboardCard>
+            <div className="pb-3">
+              <h3 className="text-sm">Add Model</h3>
+            </div>
+            <div className="space-y-3">
               <div className="grid grid-cols-3 gap-2">
                 <Input
                   placeholder="Model ID"
@@ -1007,14 +1007,14 @@ function ProviderForm({
                 <Plus className="mr-2 h-4 w-4" />
                 Add Model
               </Button>
-            </CardContent>
-          </Card>
+            </div>
+          </DashboardCard>
 
           {/* Models list */}
           <div className="space-y-2">
             {editingModels.map((model) => (
-            <Card key={model.id}>
-              <CardContent className="flex items-center justify-between p-3">
+            <DashboardCard key={model.id}>
+              <div className="flex items-center justify-between p-3">
                 <div className="flex items-center gap-3">
                   <div className="flex h-8 w-8 items-center justify-center rounded bg-muted">
                     {model.type === "image" && <Image className="h-4 w-4" />}
@@ -1036,8 +1036,8 @@ function ProviderForm({
                     <Trash2 className="h-4 w-4 text-destructive" />
                   </Button>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </DashboardCard>
           ))}
           </div>
         </div>

@@ -10,7 +10,7 @@ import { useState, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DashboardCard } from "@/components/dashboard";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -228,14 +228,14 @@ export default function TaskQueueMonitor() {
   if (!user) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <Card className="w-full max-w-md bg-card/50 backdrop-blur border-border/50">
-          <CardContent className="pt-6 text-center">
+        <DashboardCard className="w-full max-w-md bg-card/50 backdrop-blur border-border/50">
+          <div className="pt-6 text-center">
             <p className="text-muted-foreground">Please log in to view your task queue.</p>
             <Link href="/login">
               <Button className="mt-4">Log In</Button>
             </Link>
-          </CardContent>
-        </Card>
+          </div>
+        </DashboardCard>
       </div>
     );
   }
@@ -278,35 +278,35 @@ export default function TaskQueueMonitor() {
       <div className="flex-1 overflow-auto px-4 py-6 space-y-6">
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Card className="bg-card/50 backdrop-blur border-border/50">
-          <CardContent className="pt-4 pb-3 px-4">
+        <DashboardCard className="bg-card/50 backdrop-blur border-border/50">
+          <div className="pt-4 pb-3 px-4">
             <div className="text-2xl font-bold">{stats.total}</div>
             <div className="text-xs text-muted-foreground">Total Tasks</div>
-          </CardContent>
-        </Card>
-        <Card className="bg-card/50 backdrop-blur border-border/50">
-          <CardContent className="pt-4 pb-3 px-4">
+          </div>
+        </DashboardCard>
+        <DashboardCard className="bg-card/50 backdrop-blur border-border/50">
+          <div className="pt-4 pb-3 px-4">
             <div className="text-2xl font-bold text-blue-400">{stats.active}</div>
             <div className="text-xs text-muted-foreground">Active</div>
-          </CardContent>
-        </Card>
-        <Card className="bg-card/50 backdrop-blur border-border/50">
-          <CardContent className="pt-4 pb-3 px-4">
+          </div>
+        </DashboardCard>
+        <DashboardCard className="bg-card/50 backdrop-blur border-border/50">
+          <div className="pt-4 pb-3 px-4">
             <div className="text-2xl font-bold text-green-400">{stats.completed}</div>
             <div className="text-xs text-muted-foreground">Completed</div>
-          </CardContent>
-        </Card>
-        <Card className="bg-card/50 backdrop-blur border-border/50">
-          <CardContent className="pt-4 pb-3 px-4">
+          </div>
+        </DashboardCard>
+        <DashboardCard className="bg-card/50 backdrop-blur border-border/50">
+          <div className="pt-4 pb-3 px-4">
             <div className="text-2xl font-bold text-red-400">{stats.failed}</div>
             <div className="text-xs text-muted-foreground">Failed</div>
-          </CardContent>
-        </Card>
+          </div>
+        </DashboardCard>
       </div>
 
       {/* Filters */}
-      <Card className="bg-card/50 backdrop-blur border-border/50">
-        <CardContent className="pt-4 pb-3 px-4">
+      <DashboardCard className="bg-card/50 backdrop-blur border-border/50">
+        <div className="pt-4 pb-3 px-4">
           <div className="flex flex-wrap gap-3 items-center">
             <div className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground">Status:</span>
@@ -341,17 +341,17 @@ export default function TaskQueueMonitor() {
               </div>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </DashboardCard>
 
       {/* Tasks Table */}
-      <Card className="bg-card/50 backdrop-blur border-border/50">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg">
+      <DashboardCard className="bg-card/50 backdrop-blur border-border/50">
+        <div className="pb-3">
+          <h3 className="text-lg">
             Tasks ({tasks.length})
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+          </h3>
+        </div>
+        <div>
           {(activeQuery.isLoading && mediaJobsQuery.isLoading) ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -536,8 +536,8 @@ export default function TaskQueueMonitor() {
               )}
             </>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </DashboardCard>
       </div>
     </div>
   );

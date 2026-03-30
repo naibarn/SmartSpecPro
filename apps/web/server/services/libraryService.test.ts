@@ -63,6 +63,7 @@ import {
   LibraryUrlValidationError,
   canReadLibraryItem,
   createLibraryItem,
+  getPublicShareLinkState,
   getLibraryItemById,
   listLibraryDocuments,
   normalizeLibraryMetadata,
@@ -74,14 +75,16 @@ import {
 
 function makeSelectChain(rows: any[], withJoin = false) {
   const limitMock = vi.fn().mockResolvedValue(rows);
-  const whereMock = vi.fn().mockReturnValue({ limit: limitMock });
+  const orderByMock = vi.fn().mockReturnValue({ limit: limitMock });
+  const whereMock = vi.fn().mockReturnValue({ orderBy: orderByMock, limit: limitMock });
 
   const fromResult: any = {
     where: whereMock,
+    orderBy: orderByMock,
   };
 
   if (withJoin) {
-    fromResult.innerJoin = vi.fn().mockReturnValue({ where: whereMock });
+    fromResult.innerJoin = vi.fn().mockReturnValue({ where: whereMock, orderBy: orderByMock });
   }
 
   return {
@@ -628,6 +631,44 @@ describe("uploadLibraryFile", () => {
 
     expect(mockStoragePut).not.toHaveBeenCalled();
     expect(creditServiceMocks.deductCredits).not.toHaveBeenCalled();
+  });
+});
+
+describe("public share link management", () => {
+  it("allows a matching upload metadata owner to manage a public link", async () => {
+    const now = new Date("2026-03-27T00:00:00.000Z");
+    const item = {
+      id: 501,
+      tenantId: "t1",
+      ownerUserId: 99,
+      itemType: "document",
+      source: "document_upload",
+      title: "Report.md",
+      description: null,
+      status: "ready",
+      visibility: "private",
+      metadata: {
+        uploaded_by_user_id: 7,
+        file_name: "Report.md",
+      },
+      sourceUrl: "https://example.com/report.md",
+      thumbnailUrl: null,
+      deletedAt: null,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    mockDb.select
+      .mockReturnValueOnce(makeSelectChain([item]))
+      .mockReturnValueOnce(makeSelectChain([]));
+
+    const result = await getPublicShareLinkState(
+      { itemId: 501 },
+      { userId: 7, tenantId: "t1", role: "user" },
+    );
+
+    expect(result.canManage).toBe(true);
+    expect(result.link).toBeNull();
   });
 });
 

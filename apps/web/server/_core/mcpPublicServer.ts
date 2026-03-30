@@ -1,7 +1,6 @@
 import { Express, Request, Response } from "express";
 import { randomUUID } from "crypto";
 import { requireScopes } from "../middleware/requireScopes";
-import { apiKeyAuthMiddleware } from "../middleware/apiKeyAuth";
 import { getRedisClient } from "../services/redis";
 
 // ---------------------------------------------------------------------------
@@ -43,9 +42,13 @@ interface McpToolDef {
 // Constants
 // ---------------------------------------------------------------------------
 
-const SESSION_TTL_SECONDS = 1800; // 30 minutes
+// M14: Configurable session TTL, default 900s (15 minutes)
+const SESSION_TTL_SECONDS = parseInt(process.env.MCP_SESSION_TTL_SECONDS || "900", 10);
 const TOOL_TIMEOUT_MS = 60_000;
 const MAX_RESULT_BYTES = 100 * 1024; // 100KB
+const MAX_BATCH_SIZE = 100; // DoS protection: max items per batch request
+const SUPPORTED_PROTOCOL_VERSIONS = ["2025-03-26"];
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 // ---------------------------------------------------------------------------
 // Tool Registry (28 tools)
@@ -680,11 +683,26 @@ async function dispatchToolCall(
     if (!mcpOn) {
       throw { code: -32603, message: "MCP integration is not enabled for this tenant" };
     }
-    // Proxy to Python backend tool execution
+    // M10: Verify agency belongs to session tenant before proxying
+    const { db: db2 } = await import("../db");
+    const { agencies: agTable2 } = await import("../../drizzle/schema");
+    const { eq: eq2, and: and2 } = await import("drizzle-orm");
+    const [ownedAgency] = await db2
+      .select({ id: agTable2.id })
+      .from(agTable2)
+      .where(and2(eq2(agTable2.id, agencyId), eq2(agTable2.tenantId, session.tenantId)))
+      .limit(1);
+    if (!ownedAgency) {
+      throw { code: -32602, message: "Agency not found or access denied" };
+    }
+    // M07: Proxy to Python backend with proxy auth token
     const pythonUrl = process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
     const response = await fetch(`${pythonUrl}/api/internal/agency/tool/execute`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "x-proxy-token": process.env.SMARTSPEC_PROXY_TOKEN || "",
+      },
       body: JSON.stringify({
         agency_id: agencyId,
         tool_name: toolCallName,
@@ -695,7 +713,13 @@ async function dispatchToolCall(
     if (!response.ok) {
       throw { code: -32603, message: `Tool execution failed: ${response.status}` };
     }
-    const result = await response.json() as Record<string, unknown>;
+    // M24: Handle malformed JSON gracefully
+    let result: Record<string, unknown>;
+    try {
+      result = await response.json() as Record<string, unknown>;
+    } catch {
+      throw { code: -32603, message: "Tool returned invalid response" };
+    }
     // Wrap in MCP content format per spec
     const text = String(result.output ?? result.text ?? JSON.stringify(result));
     return { content: [{ type: "text", text }] };
@@ -828,8 +852,8 @@ async function dispatchToolCall(
     });
   }
 
-  // Files / Drive / Browser
-  return { message: `Tool ${toolName} executed successfully`, args };
+  // M11: No fallthrough — unimplemented tools must return an error, not raw args
+  throw { code: -32601, message: "Tool not implemented" };
 }
 
 // ---------------------------------------------------------------------------
@@ -852,8 +876,14 @@ async function handleInitialize(
 
   const sessionId = await createSession(session);
 
+  // Protocol version negotiation per MCP spec 2025-03-26
+  const clientVersion = params?.protocolVersion as string | undefined;
+  const negotiatedVersion = clientVersion && SUPPORTED_PROTOCOL_VERSIONS.includes(clientVersion)
+    ? clientVersion
+    : SUPPORTED_PROTOCOL_VERSIONS[0];
+
   const result = {
-    protocolVersion: "2025-03-26",
+    protocolVersion: negotiatedVersion,
     serverInfo: { name: "SmartSpecPro", version: "1.0.0" },
     capabilities: { tools: { listChanged: false } },
   };
@@ -861,10 +891,15 @@ async function handleInitialize(
   return { result, sessionId };
 }
 
-async function handleToolsList(session: McpSession): Promise<unknown> {
+async function handleToolsList(
+  session: McpSession,
+  params?: Record<string, unknown>,
+): Promise<unknown> {
+  const PAGE_SIZE = 50;
+
   // Only expose tools the session can actually invoke:
   // must have requiredScope AND (read tool OR mcp:write for write tools)
-  const tools = TOOL_REGISTRY
+  const allTools = TOOL_REGISTRY
     .filter((t) => {
       const hasScope = session.scopes.includes(t.requiredScope);
       const hasWriteAccess = t.readWrite === "Read" || session.scopes.includes("mcp:write");
@@ -874,8 +909,31 @@ async function handleToolsList(session: McpSession): Promise<unknown> {
       name: t.name,
       description: t.description,
       inputSchema: t.inputSchema,
+      annotations: {
+        readOnlyHint: t.readWrite === "Read",
+        destructiveHint: false,
+        idempotentHint: t.readWrite === "Read",
+      },
     }));
-  return { tools };
+
+  // Cursor-based pagination (NEW-08)
+  const rawCursor = params?.cursor;
+  if (rawCursor !== undefined && !/^\d+$/.test(String(rawCursor))) {
+    throw { code: -32602, message: "Invalid cursor value" };
+  }
+  const cursor = rawCursor !== undefined ? Number(rawCursor) : 0;
+  // Validate cursor is a safe integer — prevents NaN/Infinity bypass
+  if (!Number.isInteger(cursor) || cursor < 0 || cursor > 100000) {
+    throw { code: -32602, message: "Invalid cursor value" };
+  }
+
+  const page = allTools.slice(cursor, cursor + PAGE_SIZE);
+  const nextCursor =
+    cursor + PAGE_SIZE < allTools.length
+      ? String(cursor + PAGE_SIZE)
+      : undefined;
+
+  return { tools: page, nextCursor };
 }
 
 async function handleToolsCall(
@@ -891,7 +949,8 @@ async function handleToolsCall(
 
   const tool = TOOL_REGISTRY.find((t) => t.name === toolName);
   if (!tool) {
-    throw { code: -32601, message: `Tool not found: ${toolName}` };
+    console.error("[MCP] tool not found:", toolName);
+    throw { code: -32601, message: "Tool not found" };
   }
 
   // Scope check: must have requiredScope AND (read tool OR mcp:write for write tools)
@@ -930,39 +989,44 @@ async function handleToolsCall(
 }
 
 // ---------------------------------------------------------------------------
-// Main MCP handler
+// Main MCP handler — processes a single JSON-RPC request object
 // ---------------------------------------------------------------------------
 
-async function mcpHandler(req: Request, res: Response): Promise<void> {
-  const body = req.body as Partial<JsonRpcRequest>;
-
+async function processSingleRequest(
+  body: Partial<JsonRpcRequest>,
+  req: Request,
+  auth: any,
+): Promise<JsonRpcResponse | null> {
   // Validate JSON-RPC format
   if (!body || body.jsonrpc !== "2.0" || !body.method) {
-    res.json(jsonRpcError(body?.id ?? null, -32600, "Invalid Request"));
-    return;
+    return jsonRpcError(body?.id ?? null, -32600, "Invalid Request");
   }
 
   const { method, params = {}, id } = body as JsonRpcRequest;
-  const auth = (req as any).auth;
+
+  // notifications/initialized — accepted as no-op per MCP spec
+  if (method === "notifications/initialized") {
+    return null; // No response for notifications
+  }
 
   // initialize method creates a new session
   if (method === "initialize") {
     try {
-      const { result, sessionId } = await handleInitialize(req, params, auth);
-      res.setHeader("Mcp-Session-Id", sessionId);
-      res.json(jsonRpcResult(id, result));
+      const { result, sessionId } = await handleInitialize(req, params as Record<string, unknown>, auth);
+      // NOTE: Mcp-Session-Id header is set by the outer handler for single requests
+      // For batches, the session ID from the first initialize in the batch wins
+      (req as any)._mcpNewSessionId = sessionId;
+      return jsonRpcResult(id, result);
     } catch (err: any) {
       console.error("[MCP] initialize error", err);
-      res.json(jsonRpcError(id, -32603, "Internal error"));
+      return jsonRpcError(id, -32603, "Internal error");
     }
-    return;
   }
 
   // All other methods require a session
   const sessionId = req.headers["mcp-session-id"] as string | undefined;
   if (!sessionId) {
-    res.json(jsonRpcError(id, -32603, "Session required. Call initialize first."));
-    return;
+    return jsonRpcError(id, -32603, "Session required. Call initialize first.");
   }
 
   let session: McpSession | null;
@@ -970,33 +1034,126 @@ async function mcpHandler(req: Request, res: Response): Promise<void> {
     session = await loadSession(sessionId);
   } catch (err) {
     console.error("[MCP] session load error", err);
-    res.json(jsonRpcError(id, -32603, "Internal error"));
-    return;
+    return jsonRpcError(id, -32603, "Internal error");
   }
 
   if (!session) {
-    res.json(jsonRpcError(id, -32603, "Session expired or invalid"));
-    return;
+    // Signal to outer handler that session is expired → HTTP 404
+    (req as any)._mcpSessionExpired = true;
+    return jsonRpcError(id, -32603, "Session expired or invalid");
   }
 
   try {
-    if (method === "tools/list") {
-      const result = await handleToolsList(session);
-      res.json(jsonRpcResult(id, result));
+    if (method === "ping") {
+      return jsonRpcResult(id, {});
+    } else if (method === "tools/list") {
+      const result = await handleToolsList(session, params as Record<string, unknown>);
+      return jsonRpcResult(id, result);
     } else if (method === "tools/call") {
-      const result = await handleToolsCall(session, params);
-      res.json(jsonRpcResult(id, result));
+      const result = await handleToolsCall(session, params as Record<string, unknown>);
+      return jsonRpcResult(id, result);
     } else {
-      res.json(jsonRpcError(id, -32601, `Method not found: ${method}`));
+      // M28: Do not reflect method name in error (prevents XSS/injection)
+      return jsonRpcError(id, -32601, "Method not found");
     }
   } catch (err: any) {
     if (err?.code && typeof err.code === "number") {
-      res.json(jsonRpcError(id, err.code, err.message));
+      // M08: For internal error code (-32603), use a generic message to avoid
+      // leaking implementation details (e.g. upstream HTTP status codes, internal
+      // service URLs). Log the original message server-side for diagnostics.
+      // -32601 (method/tool not found) and -32602 (invalid params) are safe to
+      // forward verbatim because they reflect user-input errors, not internals.
+      if (err.code === -32603) {
+        console.error("[MCP] internal error (original):", err.message);
+        return jsonRpcError(id, -32603, "Internal error");
+      }
+      return jsonRpcError(id, err.code, err.message);
     } else {
       console.error("[MCP] handler error", err);
-      res.json(jsonRpcError(id, -32603, "Internal error"));
+      return jsonRpcError(id, -32603, "Internal error");
     }
   }
+}
+
+// ---------------------------------------------------------------------------
+// Top-level MCP handler — supports batch and single requests
+// ---------------------------------------------------------------------------
+
+async function mcpHandler(req: Request, res: Response): Promise<void> {
+  const body = req.body;
+  const auth = (req as any).auth;
+
+  // Batch request support per MCP spec 2025-03-26
+  if (Array.isArray(body)) {
+    // DoS protection: limit batch size
+    // JSON-RPC 2.0 §5 requires error responses as 200 OK, not HTTP 4xx
+    if (body.length > MAX_BATCH_SIZE) {
+      res.json(jsonRpcError(null, -32600, `Batch too large: ${body.length} items exceeds limit of ${MAX_BATCH_SIZE}`));
+      return;
+    }
+
+    // Reject batches with multiple initialize calls (at most one allowed)
+    const initCount = body.filter((item: any) => item?.method === "initialize").length;
+    if (initCount > 1) {
+      res.json(jsonRpcError(null, -32600, "Batch may contain at most one initialize request"));
+      return;
+    }
+
+    const results = await Promise.all(
+      body.map((item: Partial<JsonRpcRequest>) => processSingleRequest(item, req, auth)),
+    );
+    // Filter out null responses (notifications don't produce a response)
+    const responses = results.filter((r): r is JsonRpcResponse => r !== null);
+
+    // If new session was created in the batch, set the header
+    if ((req as any)._mcpNewSessionId) {
+      res.setHeader("Mcp-Session-Id", (req as any)._mcpNewSessionId);
+    }
+
+    // HTTP 404 for expired sessions in batch mode
+    if ((req as any)._mcpSessionExpired) {
+      res.status(404).json(responses);
+      return;
+    }
+
+    res.json(responses);
+    return;
+  }
+
+  // Single request
+  const result = await processSingleRequest(body, req, auth);
+
+  // Set session ID header if a new session was created
+  if ((req as any)._mcpNewSessionId) {
+    res.setHeader("Mcp-Session-Id", (req as any)._mcpNewSessionId);
+  }
+
+  // Notification: no id means no response
+  if (result === null) {
+    res.status(204).end();
+    return;
+  }
+
+  // HTTP 404 for expired/invalid session per MCP spec
+  if ((req as any)._mcpSessionExpired) {
+    res.status(404).json(result);
+    return;
+  }
+
+  res.json(result);
+}
+
+// ---------------------------------------------------------------------------
+// Session termination handler (DELETE /v1/mcp)
+// ---------------------------------------------------------------------------
+
+async function mcpDeleteHandler(req: Request, res: Response): Promise<void> {
+  const sessionId = req.headers["mcp-session-id"] as string | undefined;
+  if (sessionId && UUID_RE.test(sessionId)) {
+    const redis = getRedisClient();
+    await redis.del(sessionKey(sessionId));
+  }
+  res.status(204).end();
 }
 
 // ---------------------------------------------------------------------------
@@ -1018,6 +1175,19 @@ function mcpDiscoveryHandler(_req: Request, res: Response): void {
 // ---------------------------------------------------------------------------
 
 export function registerMcpPublicRoutes(app: Express): void {
+  // M07: Warn at startup if required backend env vars are not set.
+  // These are needed for agency tool proxying and inter-service auth.
+  if (!process.env.PYTHON_BACKEND_URL) {
+    console.warn(
+      "[MCP] PYTHON_BACKEND_URL is not set — agency tool calls will fall back to http://localhost:8000",
+    );
+  }
+  if (!process.env.SMARTSPEC_PROXY_TOKEN) {
+    console.warn(
+      "[MCP] SMARTSPEC_PROXY_TOKEN is not set — inter-service requests to Python backend will be unauthenticated",
+    );
+  }
+
   // NOTE: /v1/mcp relies on the shared app.use("/v1", ...) middleware chain for
   // CORS, headers, auth, feature guard, rate limiting, idempotency, and audit.
   // The duplicate apiKeyAuthMiddleware that was previously here is removed —
@@ -1027,5 +1197,13 @@ export function registerMcpPublicRoutes(app: Express): void {
     requireScopes("mcp:read"),
     mcpHandler,
   );
+
+  // Session termination per MCP spec 2025-03-26
+  app.delete(
+    "/v1/mcp",
+    requireScopes("mcp:read"),
+    mcpDeleteHandler,
+  );
+
   app.get("/.well-known/mcp.json", mcpDiscoveryHandler);
 }

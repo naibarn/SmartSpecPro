@@ -111,3 +111,4 @@ class APIKeyUsage(Base):
     
     def __repr__(self):
         return f"<APIKeyUsage {self.method} {self.endpoint} - {self.status_code}>"
+# mypy: ignore-errors

@@ -8,12 +8,30 @@ vi.mock("../skillIntentClassifier", () => ({
   classifyIntent: vi.fn(),
 }));
 
+vi.mock("../featureFlags", () => ({
+  getTenantFeatureFlag: vi.fn(),
+}));
+
+vi.mock("../skillCatalog", () => ({
+  getSkillCatalogSummary: vi.fn(),
+}));
+
+vi.mock("../skillCandidateScorer", () => ({
+  retrieveAndScoreCandidates: vi.fn(),
+}));
+
 import { detectSkill } from "../skillDetector";
 import { classifyIntent } from "../skillIntentClassifier";
+import { getTenantFeatureFlag } from "../featureFlags";
+import { getSkillCatalogSummary } from "../skillCatalog";
+import { retrieveAndScoreCandidates } from "../skillCandidateScorer";
 import { routeRoomIntent, FALLBACK_CONTENT_SKILL_ID } from "../roomIntentRouter";
 
 const mockDetectSkill = vi.mocked(detectSkill);
 const mockClassifyIntent = vi.mocked(classifyIntent);
+const mockGetTenantFeatureFlag = vi.mocked(getTenantFeatureFlag);
+const mockGetSkillCatalogSummary = vi.mocked(getSkillCatalogSummary);
+const mockRetrieveAndScoreCandidates = vi.mocked(retrieveAndScoreCandidates);
 
 const baseInput = {
   context: "run_turn" as const,
@@ -34,6 +52,9 @@ const noDetection = {
 describe("routeRoomIntent -- assistant origin skill detection", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetTenantFeatureFlag.mockResolvedValue(false);
+    mockGetSkillCatalogSummary.mockResolvedValue([]);
+    mockRetrieveAndScoreCandidates.mockReturnValue([]);
   });
 
   it("should call detectSkill for assistant origin messages", async () => {
@@ -183,6 +204,87 @@ describe("routeRoomIntent -- assistant origin skill detection", () => {
     expect(mockDetectSkill).toHaveBeenCalledTimes(1);
     expect(decision.selectedSkillId).toBe("brainstorm");
     expect(decision.source).toBe("skill-detect");
+  });
+
+  it("should route cooperative multi-step work to hybrid when workflow and swarm should cooperate", async () => {
+    mockGetTenantFeatureFlag.mockResolvedValue(true);
+    mockDetectSkill.mockResolvedValue(noDetection);
+    mockClassifyIntent.mockResolvedValue({
+      level: "complex",
+      strategy: "agent",
+      skills: [
+        {
+          skillId: "workflow-planner",
+          confidence: 0.87,
+          reason: "multi-step plan",
+          extractedParams: {},
+          missingRequiredParams: [],
+        },
+      ],
+      reasoning: "Needs a workflow spine plus collaborative exploration",
+    } as any);
+    mockGetSkillCatalogSummary.mockResolvedValue([
+      {
+        id: "workflow-planner",
+        name: "Workflow Planner",
+        category: "chat_assistant",
+        description: "Plans workflows",
+        inputTypes: ["text"],
+        outputTypes: ["text"],
+        hasInputSchema: false,
+        requiredFields: [],
+      },
+      {
+        id: "swarm-critic",
+        name: "Swarm Critic",
+        category: "brainstorm",
+        description: "Critiques plans",
+        inputTypes: ["text"],
+        outputTypes: ["text"],
+        hasInputSchema: false,
+        requiredFields: [],
+      },
+    ] as any);
+    mockRetrieveAndScoreCandidates.mockReturnValue([
+      {
+        skillId: "workflow-planner",
+        scores: {
+          semantic: 0.9,
+          domain: 0.6,
+          freshness: 0.5,
+          modality: 0.8,
+          complexity: 0.7,
+          historical: 0.5,
+        },
+        compositeScore: 0.81,
+        source: "catalog",
+      },
+      {
+        skillId: "swarm-critic",
+        scores: {
+          semantic: 0.7,
+          domain: 0.6,
+          freshness: 0.5,
+          modality: 0.8,
+          complexity: 0.7,
+          historical: 0.5,
+        },
+        compositeScore: 0.79,
+        source: "catalog",
+      },
+    ] as any);
+
+    const decision = await routeRoomIntent({
+      ...baseInput,
+      origin: "human_user",
+      message: "ช่วยวาง workflow แล้วให้ทีมช่วยแตกไอเดียต่อเนื่อง",
+    });
+
+    expect(decision.route).toBe("hybrid");
+    expect(decision.agencyEscalation).toBe(true);
+    expect(decision.routingStrategy).toBe("hybrid");
+    expect(decision.hybridPlan?.mode).toBe("hybrid");
+    expect(decision.hybridPlan?.stages.length).toBeGreaterThanOrEqual(4);
   });
 
   it("should use 0.6 threshold for assistant vs 0.7 for human_user", async () => {

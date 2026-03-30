@@ -7,20 +7,18 @@
 import { motion } from 'framer-motion';
 import { Link } from 'wouter';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { DashboardCard } from '@/components/dashboard';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
+import { Seo } from '@/components/Seo';
 import { useTenantPage } from '@/hooks/useTenantPage';
 import {
   Code2,
   Sparkles,
   Zap,
   Shield,
-  Layers,
   GitBranch,
-  Image,
   Video,
-  Mic,
   Database,
   Lock,
   Users,
@@ -28,6 +26,8 @@ import {
   Brain,
   Globe,
   Cpu,
+  MessageSquareText,
+  Presentation,
   ArrowRight,
   CheckCircle2
 } from 'lucide-react';
@@ -35,37 +35,37 @@ import {
 const mainFeatures = [
   {
     icon: Code2,
-    title: 'AI Code Generation',
-    description: 'Transform natural language descriptions into clean, production-ready code. Our AI understands context, follows best practices, and generates code that actually works.',
+    title: 'Skill Marketplace',
+    description: 'Discover, publish, and version reusable skills in a shared enterprise catalog so every team builds from the same capability layer.',
     benefits: [
-      'Support for 20+ programming languages',
-      'Framework-aware code generation',
-      'Automatic error handling',
-      'Clean, documented code output'
+      'Curated skill catalog',
+      'Versioned skill packages',
+      'Usage and ownership metadata',
+      'Marketplace publishing workflow'
     ],
     image: '/images/ai-code-generation.png'
   },
   {
     icon: Workflow,
-    title: 'Workflow Automation',
-    description: 'Automate repetitive development tasks with intelligent workflows. From code reviews to deployment, let AI handle the mundane while you focus on innovation.',
+    title: 'Virtual Workflow Builder',
+    description: 'Compose triggers, approvals, routing, and context into repeatable workflows that turn a prompt into a governed process.',
     benefits: [
-      'Custom workflow templates',
-      'CI/CD integration',
-      'Automated testing',
-      'Smart task scheduling'
+      'Trigger and branch orchestration',
+      'Approval and review gates',
+      'Reusable execution graphs',
+      'Context-aware routing'
     ],
     image: '/images/workflow-automation.png'
   },
   {
     icon: Shield,
-    title: 'Enterprise Security',
-    description: 'Bank-grade security for your code and data. Multi-factor authentication, encrypted storage, and comprehensive audit logs keep your projects safe.',
+    title: 'Swarm Governance',
+    description: 'Run coordinated skill swarms with clear auditability, access control, and policy guardrails for enterprise deployment.',
     benefits: [
-      'End-to-end encryption',
-      'MFA with TOTP support',
       'Role-based access control',
-      'SOC 2 compliance ready'
+      'Audit-ready execution logs',
+      'Approval checkpoints',
+      'Policy-based execution'
     ],
     image: '/images/security-shield.png'
   }
@@ -73,61 +73,61 @@ const mainFeatures = [
 
 const additionalFeatures = [
   {
-    icon: Image,
-    title: 'Image Generation',
-    description: 'Generate stunning visuals for your applications with AI-powered image creation.'
+    icon: MessageSquareText,
+    title: 'Chat Output',
+    description: 'Deliver skill-aware answers that keep the conversation grounded in live workflow context.'
+  },
+  {
+    icon: Presentation,
+    title: 'Presentation Output',
+    description: 'Turn swarm results into slide-ready decks with structured narrative flow.'
   },
   {
     icon: Video,
-    title: 'Video Generation',
-    description: 'Create promotional videos, tutorials, and demos with automated video generation.'
-  },
-  {
-    icon: Mic,
-    title: 'Audio & Speech',
-    description: 'Text-to-speech and audio generation for podcasts, voiceovers, and more.'
+    title: 'Video Output',
+    description: 'Convert workflows into scripts, scene plans, and production cues for video generation.'
   },
   {
     icon: Database,
-    title: 'Smart Database',
-    description: 'AI-assisted database design with automatic schema optimization.'
+    title: 'Skill Library',
+    description: 'Store and reuse prompts, templates, and skill metadata across teams.'
   },
   {
     icon: Lock,
-    title: 'Secure Key Management',
-    description: 'Enterprise-grade API key management with rotation and audit trails.'
+    title: 'Governance',
+    description: 'Control who can publish, run, and approve skills with enterprise-grade policy management.'
   },
   {
     icon: Users,
     title: 'Team Collaboration',
-    description: 'Real-time collaboration features for teams of any size.'
+    description: 'Shared workspace for operators, creators, and approvers across the same capability stack.'
   },
   {
     icon: Brain,
     title: 'Memory System',
-    description: 'AI remembers your preferences and project context for better suggestions.'
+    description: 'Persist user preferences, skill context, and workflow state for better reuse.'
   },
   {
     icon: Globe,
-    title: 'Multi-language Support',
-    description: 'Generate code in 20+ programming languages and frameworks.'
+    title: 'Multi-tenant Support',
+    description: 'Serve multiple branded domains with tenant-specific themes, pages, and permissions.'
   },
   {
     icon: Cpu,
     title: 'Multiple AI Models',
-    description: 'Access to GPT-4, Claude, Gemini, and other cutting-edge models.'
+    description: 'Connect the best models for chat, planning, execution, and media generation.'
   }
 ];
 
 const integrations = [
-  { name: 'GitHub', logo: '🐙' },
-  { name: 'GitLab', logo: '🦊' },
-  { name: 'VS Code', logo: '💻' },
-  { name: 'Slack', logo: '💬' },
-  { name: 'Jira', logo: '📋' },
-  { name: 'Notion', logo: '📝' },
-  { name: 'Discord', logo: '🎮' },
-  { name: 'Vercel', logo: '▲' },
+  { name: 'Chat', logo: '💬' },
+  { name: 'Presentation', logo: '📊' },
+  { name: 'Video', logo: '🎬' },
+  { name: 'Workflow', logo: '🔁' },
+  { name: 'Marketplace', logo: '🛒' },
+  { name: 'Gallery', logo: '🖼️' },
+  { name: 'Docs', logo: '📚' },
+  { name: 'Automation', logo: '⚙️' },
 ];
 
 export default function Features() {
@@ -247,13 +247,28 @@ export default function Features() {
 
   return (
     <div className="min-h-screen bg-background">
+      <Seo
+        title="SmartAIHub Features | Skill Marketplace, Workflows & Swarms"
+        description="Explore the SmartAIHub feature set: skill marketplace publishing, virtual workflow builder, swarm governance, and multi-output delivery."
+        keywords={["SmartAIHub features", "skill marketplace", "workflow builder", "swarm governance", "chat output", "presentation output", "video output"]}
+        canonicalPath="/features"
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "SoftwareApplication",
+          name: "SmartAIHub",
+          applicationCategory: "BusinessApplication",
+          operatingSystem: "Web",
+          url: "/features",
+          description: "Enterprise skill marketplace and workflow orchestration platform.",
+        }}
+      />
       <Navbar />
 
       {/* Hero Section */}
       <section className="relative pt-32 pb-16 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-violet-500/5 via-transparent to-transparent" />
-        <div className="absolute top-20 left-1/4 w-96 h-96 bg-violet-500/10 rounded-full blur-3xl" />
-        <div className="absolute top-40 right-1/4 w-96 h-96 bg-teal-500/10 rounded-full blur-3xl" />
+        <div className="absolute inset-0 bg-gradient-to-b from-blue-500/5 via-transparent to-transparent" />
+        <div className="absolute top-20 left-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl" />
+        <div className="absolute top-40 right-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl" />
         
         <div className="container relative mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div 
@@ -263,18 +278,18 @@ export default function Features() {
           >
             <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-4">
               <Sparkles className="w-4 h-4" />
-              Powerful Features
+              Enterprise Capabilities
             </span>
             <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold mb-6">
-              {heroSection?.title || parsed?.heroTitle || (<>Everything You Need to{' '}<span className="gradient-text">Build Faster</span></>)}
+              {heroSection?.title || parsed?.heroTitle || (<>Everything You Need to{' '}<span className="gradient-text">Ship Skills</span></>)}
             </h1>
             <p className="text-lg text-muted-foreground mb-8">
-              {heroSection?.subtitle || heroSection?.content || parsed?.heroDesc || 'SmartAIHub combines cutting-edge AI with developer-friendly tools to supercharge your productivity.'}
+              {heroSection?.subtitle || heroSection?.content || parsed?.heroDesc || 'SmartAIHub combines a skill marketplace, workflow orchestration, and swarm execution to supercharge enterprise output.'}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button 
                 size="lg" 
-                className="bg-gradient-to-r from-violet-500 to-teal-400 text-white"
+                className="bg-gradient-to-r from-blue-500 to-cyan-400 text-white"
               >
                 Start Free Trial
                 <ArrowRight className="ml-2 w-5 h-5" />
@@ -314,7 +329,7 @@ export default function Features() {
               
               {/* Content */}
               <div className="flex-1">
-                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-violet-500 to-teal-400 flex items-center justify-center mb-6">
+                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center mb-6">
                   <feature.icon className="w-7 h-7 text-white" />
                 </div>
                 <h2 className="text-3xl sm:text-4xl font-bold mb-4">{feature.title}</h2>
@@ -350,7 +365,7 @@ export default function Features() {
               {featuresSection?.title || parsed?.addTitle || (<>Packed with <span className="gradient-text">Powerful Tools</span></>)}
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Every feature is designed to help you build better software, faster.
+              Every feature is designed to help you turn reusable skills into repeatable business outcomes.
             </p>
           </motion.div>
 
@@ -363,15 +378,15 @@ export default function Features() {
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.05 }}
               >
-                <Card className="glass-card h-full hover:shadow-xl transition-all duration-300 group">
-                  <CardContent className="p-6">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500/20 to-teal-400/20 flex items-center justify-center mb-4 group-hover:from-violet-500 group-hover:to-teal-400 transition-all duration-300">
+                <DashboardCard className="glass-card h-full hover:shadow-xl transition-all duration-300 group">
+                  <div className="p-6">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500/20 to-teal-400/20 flex items-center justify-center mb-4 group-hover:from-blue-500 group-hover:to-teal-400 transition-all duration-300">
                       <feature.icon className="w-6 h-6 text-primary group-hover:text-white transition-colors" />
                     </div>
                     <h3 className="text-lg font-semibold mb-2">{feature.title}</h3>
                     <p className="text-muted-foreground text-sm">{feature.description}</p>
-                  </CardContent>
-                </Card>
+                  </div>
+                </DashboardCard>
               </motion.div>
             ))}
           </div>
@@ -389,13 +404,13 @@ export default function Features() {
           >
             <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-4">
               <GitBranch className="w-4 h-4" />
-              Integrations
+              Delivery Surfaces
             </span>
             <h2 className="text-3xl sm:text-4xl font-bold mb-4">
-              Works with Your <span className="gradient-text">Favorite Tools</span>
+              Ships to the Right <span className="gradient-text">Output Surface</span>
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Seamlessly integrate with the tools you already use and love.
+              Publish the same skill to chat, presentation, and video workflows without rewriting the core logic.
             </p>
           </motion.div>
 
@@ -428,15 +443,15 @@ export default function Features() {
           >
             <Sparkles className="w-16 h-16 mx-auto mb-6 text-primary" />
             <h2 className="text-3xl sm:text-4xl font-bold mb-4">
-              {ctaSection?.title || parsed?.ctaTitle || 'Ready to Experience the Future of Development?'}
+              {ctaSection?.title || parsed?.ctaTitle || 'Ready to Build an Enterprise Skill Platform?'}
             </h2>
             <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
-              {ctaSection?.subtitle || ctaSection?.content || parsed?.ctaDesc || 'Join thousands of developers who are already building faster with SmartAIHub.'}
+              {ctaSection?.subtitle || ctaSection?.content || parsed?.ctaDesc || 'Join teams that are packaging skills, orchestrating workflows, and launching swarms with SmartAIHub.'}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button 
                 size="lg" 
-                className="bg-gradient-to-r from-violet-500 to-teal-400 text-white"
+                className="bg-gradient-to-r from-blue-500 to-teal-400 text-white"
               >
                 Start Free Trial
                 <ArrowRight className="ml-2 w-5 h-5" />

@@ -4,41 +4,168 @@
  * Replaces per-page UrgentMessageAlert and NotificationBell from Chat.tsx.
  */
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, type PointerEvent as ReactPointerEvent } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSSEReconnect } from "@/lib/useSSEReconnect";
-import { Bell, AlarmClock, X, Check, ChevronDown } from "lucide-react";
+import { useScopedTranslation } from "@/i18n/useScopedTranslation";
+import { getOpsIncidentGuidance } from "@/lib/opsMonitoringGuidance";
+import { Bell, AlarmClock, X, Check, ChevronDown, Clock3 } from "lucide-react";
 import { toast } from "sonner";
 
+const BELL_STORAGE_KEY = "global-notification-bell-position";
+const BELL_MARGIN = 12;
+const BELL_DEFAULT_WIDTH = 60;
+const BELL_DEFAULT_HEIGHT = 44;
+const BELL_DRAG_THRESHOLD = 4;
+
+type BellPosition = {
+  x: number;
+  y: number;
+};
+
+type BellDragState = {
+  pointerId: number;
+  startX: number;
+  startY: number;
+  originX: number;
+  originY: number;
+  width: number;
+  height: number;
+  moved: boolean;
+};
+
+type UrgentSurface = "message" | "reminder";
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function getInitialBellPosition(): BellPosition {
+  if (typeof window === "undefined") {
+    return { x: BELL_MARGIN, y: BELL_MARGIN };
+  }
+
+  try {
+    const saved = window.localStorage.getItem(BELL_STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved) as Partial<BellPosition>;
+      if (typeof parsed.x === "number" && typeof parsed.y === "number") {
+        return clampBellPosition({ x: parsed.x, y: parsed.y }, window.innerWidth, window.innerHeight);
+      }
+    }
+  } catch {
+    // Ignore malformed storage and fall back to the default docked position.
+  }
+
+  return {
+    x: Math.max(BELL_MARGIN, window.innerWidth - BELL_DEFAULT_WIDTH - BELL_MARGIN),
+    y: BELL_MARGIN,
+  };
+}
+
+function clampBellPosition(
+  position: BellPosition,
+  viewportWidth: number,
+  viewportHeight: number,
+  size: { width: number; height: number } = {
+    width: BELL_DEFAULT_WIDTH,
+    height: BELL_DEFAULT_HEIGHT,
+  },
+) {
+  return {
+    x: clamp(position.x, BELL_MARGIN, Math.max(BELL_MARGIN, viewportWidth - size.width - BELL_MARGIN)),
+    y: clamp(position.y, BELL_MARGIN, Math.max(BELL_MARGIN, viewportHeight - size.height - BELL_MARGIN)),
+  };
+}
+
+function persistBellPosition(position: BellPosition) {
+  try {
+    window.localStorage.setItem(BELL_STORAGE_KEY, JSON.stringify(position));
+  } catch {
+    // Ignore storage failures in private mode / restricted environments.
+  }
+}
+
 /** Safe navigation — blocks javascript:, data:, vbscript: protocol URLs */
-function safeNavigate(url: string, setLocation: (url: string) => void) {
+function isSafeNavigationUrl(url: string) {
   if (!url || typeof url !== "string") return;
   const lower = url.toLowerCase().trim();
   if (lower.startsWith("javascript:") || lower.startsWith("data:") || lower.startsWith("vbscript:") || lower.startsWith("blob:")) {
     console.warn("[Security] Blocked unsafe actionUrl:", url.slice(0, 50));
+    return false;
+  }
+  return true;
+}
+
+function safeOpenInNewTab(url: string) {
+  if (!isSafeNavigationUrl(url) || typeof window === "undefined") {
     return;
   }
-  setLocation(url);
+
+  const openedWindow = window.open(url, "_blank", "noopener,noreferrer");
+  if (openedWindow) {
+    openedWindow.opener = null;
+  }
 }
 
 export function GlobalAlerts() {
   const { user } = useAuth();
+  const { locale } = useScopedTranslation("admin");
+  const activeUrgentSurfaceRef = useRef<UrgentSurface | null>(null);
+  const [activeUrgentSurface, setActiveUrgentSurface] = useState<UrgentSurface | null>(null);
+
+  const claimUrgentSurface = useCallback((surface: UrgentSurface) => {
+    const current = activeUrgentSurfaceRef.current;
+    if (current && current !== surface) {
+      return false;
+    }
+    activeUrgentSurfaceRef.current = surface;
+    setActiveUrgentSurface(surface);
+    return true;
+  }, []);
+
+  const releaseUrgentSurface = useCallback((surface: UrgentSurface) => {
+    if (activeUrgentSurfaceRef.current !== surface) {
+      return;
+    }
+    activeUrgentSurfaceRef.current = null;
+    setActiveUrgentSurface(null);
+  }, []);
 
   if (!user) return null;
 
   return (
     <>
-      <GlobalUrgentAlerts />
-      <GlobalUrgentReminders />
+      <GlobalUrgentAlerts
+        locale={locale}
+        activeUrgentSurface={activeUrgentSurface}
+        claimUrgentSurface={claimUrgentSurface}
+        releaseUrgentSurface={releaseUrgentSurface}
+      />
+      <GlobalUrgentReminders
+        locale={locale}
+        activeUrgentSurface={activeUrgentSurface}
+        claimUrgentSurface={claimUrgentSurface}
+        releaseUrgentSurface={releaseUrgentSurface}
+      />
       <GlobalNotificationBell />
     </>
   );
 }
 
-function GlobalUrgentAlerts() {
-  const [, setLocation] = useLocation();
+function GlobalUrgentAlerts({
+  locale,
+  activeUrgentSurface,
+  claimUrgentSurface,
+  releaseUrgentSurface,
+}: {
+  locale: "en" | "th";
+  activeUrgentSurface: UrgentSurface | null;
+  claimUrgentSurface: (surface: UrgentSurface) => boolean;
+  releaseUrgentSurface: (surface: UrgentSurface) => void;
+}) {
   const [shownIds, setShownIds] = useState<Set<number>>(new Set());
   const [dismissedModal, setDismissedModal] = useState<number | null>(null);
   const [modalMessage, setModalMessage] = useState<{
@@ -59,11 +186,17 @@ function GlobalUrgentAlerts() {
   );
 
   useEffect(() => {
+    if (modalMessage || (activeUrgentSurface && activeUrgentSurface !== "message")) {
+      return;
+    }
     if (!urgentMessages?.length) return;
     const newMessages = urgentMessages.filter(
       (m: any) => !shownIds.has(m.id) && m.id !== dismissedModal
     );
     if (newMessages.length === 0) return;
+    if (!claimUrgentSurface("message")) {
+      return;
+    }
 
     setShownIds((prev) => {
       const next = new Set(prev);
@@ -92,33 +225,41 @@ function GlobalUrgentAlerts() {
             duration: 10000,
             action: {
               label: "View",
-              onClick: () => setLocation(`/chat?dm=${m.senderId}&dmName=${dmName}`),
+              onClick: () => safeOpenInNewTab(`/chat?dm=${m.senderId}&dmName=${dmName}`),
             },
           }
         );
       });
     }
-  }, [urgentMessages, shownIds, dismissedModal, setLocation]);
+  }, [urgentMessages, shownIds, dismissedModal, modalMessage, activeUrgentSurface, claimUrgentSurface]);
 
   const handleDismiss = useCallback(() => {
     if (modalMessage) {
       setDismissedModal(modalMessage.id);
     }
     setModalMessage(null);
-  }, [modalMessage]);
+    releaseUrgentSurface("message");
+  }, [modalMessage, releaseUrgentSurface]);
 
   const handleViewChat = useCallback(() => {
     const senderId = modalMessage?.senderId;
     const name = encodeURIComponent(modalMessage?.senderName || "");
     setModalMessage(null);
-    setLocation(`/chat?dm=${senderId}&dmName=${name}`);
-  }, [setLocation, modalMessage]);
+    releaseUrgentSurface("message");
+    safeOpenInNewTab(`/chat?dm=${senderId}&dmName=${name}`);
+  }, [modalMessage, releaseUrgentSurface]);
 
   const alertModalRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     alertModalRef.current?.focus();
-  }, []);
+  }, [modalMessage?.id]);
+
+  useEffect(() => {
+    return () => {
+      releaseUrgentSurface("message");
+    };
+  }, [releaseUrgentSurface]);
 
   if (!modalMessage) return null;
 
@@ -140,12 +281,14 @@ function GlobalUrgentAlerts() {
         alignItems: "center",
         justifyContent: "center",
         zIndex: 9999,
+        pointerEvents: "auto",
       }}
       onClick={handleDismiss}
       onKeyDown={(e) => { if (e.key === "Escape") handleDismiss(); }}
     >
       <div
         onClick={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
         style={{
           background: "var(--background, #1e1e1e)",
           border: "2px solid #ef4444",
@@ -154,6 +297,7 @@ function GlobalUrgentAlerts() {
           maxWidth: "440px",
           width: "90vw",
           boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
+          pointerEvents: "auto",
         }}
       >
         <div
@@ -203,6 +347,7 @@ function GlobalUrgentAlerts() {
 
         <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
           <button
+            type="button"
             onClick={handleDismiss}
             style={{
               padding: "8px 16px",
@@ -214,9 +359,10 @@ function GlobalUrgentAlerts() {
               fontSize: "13px",
             }}
           >
-            Dismiss
+            {locale === "th" ? "ปิด" : "Dismiss"}
           </button>
           <button
+            type="button"
             onClick={handleViewChat}
             style={{
               padding: "8px 16px",
@@ -229,7 +375,7 @@ function GlobalUrgentAlerts() {
               fontWeight: 600,
             }}
           >
-            Open Chat
+            {locale === "th" ? "เปิดแชท" : "Open Chat"}
           </button>
         </div>
       </div>
@@ -241,8 +387,17 @@ function GlobalUrgentAlerts() {
  * Full-screen modal for high/critical priority reminders.
  * Polls getUrgentReminders every 10s, shows the most recent unread one as a modal.
  */
-function GlobalUrgentReminders() {
-  const [, setLocation] = useLocation();
+function GlobalUrgentReminders({
+  locale,
+  activeUrgentSurface,
+  claimUrgentSurface,
+  releaseUrgentSurface,
+}: {
+  locale: "en" | "th";
+  activeUrgentSurface: UrgentSurface | null;
+  claimUrgentSurface: (surface: UrgentSurface) => boolean;
+  releaseUrgentSurface: (surface: UrgentSurface) => void;
+}) {
   const utils = trpc.useUtils();
   const [shownIds, setShownIds] = useState<Set<number>>(new Set());
   const [dismissedId, setDismissedId] = useState<number | null>(null);
@@ -253,6 +408,12 @@ function GlobalUrgentReminders() {
     priority: string;
     scheduledMessageId: number | null;
     conversationId?: number | null;
+    actionUrl?: string | null;
+    actionLabel?: string | null;
+    relatedResourceType?: string | null;
+    relatedResourceId?: string | null;
+    groupKey?: string | null;
+    metadata?: Record<string, any> | null;
   } | null>(null);
 
   const { data: urgentReminders } = trpc.scheduledMessages.getUrgentReminders.useQuery(
@@ -271,11 +432,17 @@ function GlobalUrgentReminders() {
   });
 
   useEffect(() => {
+    if (modalReminder || (activeUrgentSurface && activeUrgentSurface !== "reminder")) {
+      return;
+    }
     if (!urgentReminders?.length) return;
     const newReminders = urgentReminders.filter(
       (r: any) => !shownIds.has(r.id) && r.id !== dismissedId
     );
     if (newReminders.length === 0) return;
+    if (!claimUrgentSurface("reminder")) {
+      return;
+    }
 
     setShownIds((prev) => {
       const next = new Set(prev);
@@ -292,6 +459,12 @@ function GlobalUrgentReminders() {
       priority: latest.priority,
       scheduledMessageId: latest.scheduledMessageId,
       conversationId: latest.conversationId,
+      actionUrl: latest.actionUrl ?? null,
+      actionLabel: latest.actionLabel ?? null,
+      relatedResourceType: latest.relatedResourceType ?? null,
+      relatedResourceId: latest.relatedResourceId ?? null,
+      groupKey: latest.groupKey ?? null,
+      metadata: latest.metadata ?? null,
     });
 
     // Toast any others
@@ -302,13 +475,23 @@ function GlobalUrgentReminders() {
           description: (r.content || "").slice(0, 100),
           duration: 15000,
           action: {
-            label: "View",
-            onClick: () => setLocation(`/chat?panel=schedule${aid}`),
+            label: r.actionLabel || "View",
+            onClick: () => {
+              if (r.actionUrl) {
+                safeOpenInNewTab(r.actionUrl);
+                return;
+              }
+              if (r.conversationId) {
+                safeOpenInNewTab(`/chat?c=${r.conversationId}`);
+                return;
+              }
+              safeOpenInNewTab(`/chat?panel=schedule${aid}`);
+            },
           },
         });
       });
     }
-  }, [urgentReminders, shownIds, dismissedId, setLocation]);
+  }, [urgentReminders, shownIds, dismissedId, modalReminder, activeUrgentSurface, claimUrgentSurface]);
 
   const handleDismiss = useCallback(() => {
     if (modalReminder) {
@@ -316,7 +499,8 @@ function GlobalUrgentReminders() {
       markRead.mutate({ id: modalReminder.id });
     }
     setModalReminder(null);
-  }, [modalReminder, markRead]);
+    releaseUrgentSurface("reminder");
+  }, [modalReminder, markRead, releaseUrgentSurface]);
 
   const handleViewAlerts = useCallback(() => {
     if (modalReminder) {
@@ -324,26 +508,64 @@ function GlobalUrgentReminders() {
     }
     const alertId = modalReminder?.scheduledMessageId;
     const conversationId = modalReminder?.conversationId;
+    const actionUrl = modalReminder?.actionUrl;
     setModalReminder(null);
-    if (conversationId) {
-      setLocation(`/chat?c=${conversationId}`);
+    releaseUrgentSurface("reminder");
+    if (actionUrl) {
+      safeOpenInNewTab(actionUrl);
+    } else if (conversationId) {
+      safeOpenInNewTab(`/chat?c=${conversationId}`);
     } else {
-      setLocation(`/chat?panel=schedule${alertId ? `&alertId=${alertId}` : ""}`);
+      safeOpenInNewTab(`/chat?panel=schedule${alertId ? `&alertId=${alertId}` : ""}`);
     }
-  }, [setLocation, modalReminder, markRead]);
+  }, [modalReminder, markRead, releaseUrgentSurface]);
 
   const reminderModalRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     reminderModalRef.current?.focus();
-  }, []);
+  }, [modalReminder?.id]);
+
+  useEffect(() => {
+    return () => {
+      releaseUrgentSurface("reminder");
+    };
+  }, [releaseUrgentSurface]);
 
   if (!modalReminder) return null;
 
+  const isOpsIncidentReminder =
+    typeof modalReminder.groupKey === "string" ||
+    typeof modalReminder.metadata?.source === "string" ||
+    typeof modalReminder.metadata?.relatedItems?.category === "string";
   const isCritical = modalReminder.priority === "critical";
   const borderColor = isCritical ? "#ef4444" : "#f59e0b";
   const badgeColor = isCritical ? "#ef4444" : "#f59e0b";
   const badgeText = isCritical ? "Critical" : "Important";
+  const metadata = modalReminder.metadata ?? null;
+  const detailRows = [
+    metadata?.source ? { label: "Source", value: String(metadata.source) } : null,
+    metadata?.relatedItems?.category ? { label: "Category", value: String(metadata.relatedItems.category) } : null,
+    modalReminder.relatedResourceType ? { label: "Resource", value: String(modalReminder.relatedResourceType).replace(/_/g, " ") } : null,
+    modalReminder.groupKey ? { label: "Incident", value: modalReminder.groupKey } : null,
+  ].filter(Boolean) as Array<{ label: string; value: string }>;
+  const recommendation = typeof metadata?.recommendation === "string" ? metadata.recommendation : null;
+  const signal = typeof metadata?.signal === "string" ? metadata.signal : null;
+  const observedAt = typeof metadata?.observedAt === "string" ? metadata.observedAt : null;
+  const guidance = getOpsIncidentGuidance({
+    locale,
+    title: modalReminder.title,
+    message: modalReminder.content,
+    category: typeof metadata?.relatedItems?.category === "string" ? metadata.relatedItems.category : null,
+    signal,
+    recommendation,
+    groupKey: modalReminder.groupKey,
+    severity: modalReminder.priority,
+  });
+  const technicalTitle = modalReminder.title.trim() !== guidance.headline.trim() ? modalReminder.title : null;
+  const openHelpGuide = () => {
+    safeOpenInNewTab(guidance.helpHref);
+  };
 
   return (
     <div
@@ -363,12 +585,14 @@ function GlobalUrgentReminders() {
         alignItems: "center",
         justifyContent: "center",
         zIndex: 9998,
+        pointerEvents: "auto",
       }}
       onClick={handleDismiss}
       onKeyDown={(e) => { if (e.key === "Escape") handleDismiss(); }}
     >
       <div
         onClick={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
         style={{
           background: "var(--background, #1e1e1e)",
           border: `2px solid ${borderColor}`,
@@ -378,6 +602,7 @@ function GlobalUrgentReminders() {
           width: "90vw",
           boxShadow: `0 20px 60px rgba(0,0,0,0.5), 0 0 ${isCritical ? "40px" : "20px"} ${borderColor}40`,
           animation: isCritical ? "pulse-border 2s ease-in-out infinite" : undefined,
+          pointerEvents: "auto",
         }}
       >
         <style>{`
@@ -404,10 +629,14 @@ function GlobalUrgentReminders() {
             }}
           >
             <AlarmClock style={{ width: 14, height: 14 }} />
-            {badgeText}
+            {locale === "th"
+              ? isCritical
+                ? "วิกฤต"
+                : "สำคัญ"
+              : badgeText}
           </span>
           <span style={{ fontSize: "13px", color: "var(--muted-foreground, #888)" }}>
-            Reminder
+            {guidance.reminderLabel}
           </span>
         </div>
 
@@ -420,10 +649,23 @@ function GlobalUrgentReminders() {
             marginBottom: "8px",
           }}
         >
-          {modalReminder.title}
+          {isOpsIncidentReminder ? guidance.headline : modalReminder.title}
         </h3>
 
-        {modalReminder.content && modalReminder.content !== modalReminder.title && (
+        {isOpsIncidentReminder ? (
+          <p
+            style={{
+              fontSize: "14px",
+              lineHeight: 1.5,
+              color: "var(--foreground, #e0e0e0)",
+              marginBottom: "20px",
+              wordBreak: "break-word",
+              opacity: 0.85,
+            }}
+          >
+            {guidance.summary}
+          </p>
+        ) : modalReminder.content && modalReminder.content !== modalReminder.title ? (
           <p
             style={{
               fontSize: "14px",
@@ -436,10 +678,100 @@ function GlobalUrgentReminders() {
           >
             {modalReminder.content}
           </p>
+        ) : null}
+
+        {isOpsIncidentReminder && technicalTitle ? (
+          <div
+            style={{
+              marginBottom: "12px",
+              fontSize: "12px",
+              color: "var(--muted-foreground, #888)",
+            }}
+          >
+            <strong style={{ color: "var(--foreground, #d4d4d4)" }}>{guidance.technicalLabel}:</strong> {technicalTitle}
+          </div>
+        ) : null}
+
+        {(signal || recommendation || observedAt || detailRows.length > 0) && (
+          <div
+            style={{
+              marginBottom: "16px",
+              padding: "12px 14px",
+              borderRadius: "10px",
+              background: "rgba(15, 23, 42, 0.04)",
+              border: "1px solid var(--border, #444)",
+            }}
+          >
+            {signal && (
+              <div style={{ fontSize: "12px", color: "var(--foreground, #d4d4d4)", marginBottom: "6px" }}>
+                <strong>Signal:</strong> {signal}
+              </div>
+            )}
+            {recommendation && (
+              <div style={{ fontSize: "12px", color: "var(--foreground, #d4d4d4)", marginBottom: "6px" }}>
+                <strong>Recommended action:</strong> {recommendation}
+              </div>
+            )}
+            {observedAt && (
+              <div style={{ fontSize: "12px", color: "var(--muted-foreground, #888)", marginBottom: detailRows.length > 0 ? "8px" : 0 }}>
+                Observed: {new Date(observedAt).toLocaleString()}
+              </div>
+            )}
+            {detailRows.length > 0 && (
+              <div style={{ display: "grid", gap: "6px" }}>
+                {detailRows.map((detail) => (
+                  <div key={detail.label} style={{ fontSize: "11px", color: "var(--muted-foreground, #888)" }}>
+                    <strong style={{ color: "var(--foreground, #d4d4d4)" }}>{detail.label}:</strong> {detail.value}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {isOpsIncidentReminder && (
+          <div
+            style={{
+              marginBottom: "16px",
+              padding: "12px 14px",
+              borderRadius: "10px",
+              background: "rgba(239, 68, 68, 0.05)",
+              border: "1px solid rgba(239, 68, 68, 0.18)",
+            }}
+          >
+            <div style={{ fontSize: "12px", fontWeight: 700, color: "var(--foreground, #d4d4d4)", marginBottom: "6px" }}>
+              {guidance.checkNowLabel}
+            </div>
+            <div style={{ display: "grid", gap: "6px" }}>
+              {guidance.checkNow.slice(0, 2).map((step) => (
+                <div key={step} style={{ fontSize: "12px", color: "var(--foreground, #d4d4d4)", lineHeight: 1.5 }}>
+                  • {step}
+                </div>
+              ))}
+            </div>
+          </div>
         )}
 
         <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end", marginTop: "16px" }}>
+          {isOpsIncidentReminder && (
+            <button
+              type="button"
+              onClick={openHelpGuide}
+              style={{
+                padding: "8px 16px",
+                background: "transparent",
+                border: "1px solid var(--border, #444)",
+                borderRadius: "6px",
+                color: "var(--foreground, #e0e0e0)",
+                cursor: "pointer",
+                fontSize: "13px",
+              }}
+            >
+              {guidance.helpLabel}
+            </button>
+          )}
           <button
+            type="button"
             onClick={handleDismiss}
             style={{
               padding: "8px 16px",
@@ -451,9 +783,10 @@ function GlobalUrgentReminders() {
               fontSize: "13px",
             }}
           >
-            Dismiss
+            {guidance.dismissLabel}
           </button>
           <button
+            type="button"
             onClick={handleViewAlerts}
             style={{
               padding: "8px 16px",
@@ -466,7 +799,7 @@ function GlobalUrgentReminders() {
               fontWeight: 600,
             }}
           >
-            View Alerts
+            {modalReminder.actionLabel || guidance.monitoringActionLabel}
           </button>
         </div>
       </div>
@@ -474,8 +807,9 @@ function GlobalUrgentReminders() {
   );
 }
 
-function NotificationDetailPanel({ notification: n, onBack, onNavigate }: { notification: any; onBack: () => void; onNavigate: (url: string) => void }) {
+function NotificationDetailPanel({ notification: n, onBack, onOpenInNewTab }: { notification: any; onBack: () => void; onOpenInNewTab: (url: string) => void }) {
   const meta = n.metadata as any;
+  const hasLegacyActions = !n.actionUrl && !n.conversationId && !n.scheduledMessageId && n.type === "alert";
   return (
     <div style={{ padding: "12px 16px" }}>
       {/* Header */}
@@ -586,36 +920,222 @@ function NotificationDetailPanel({ notification: n, onBack, onNavigate }: { noti
         </div>
       )}
 
-      {/* Action Button */}
-      {n.actionUrl && (
-        <button
-          onClick={() => safeNavigate(n.actionUrl, onNavigate)}
-          style={{
-            marginTop: "12px",
-            padding: "8px 16px",
-            background: "#0078d4",
-            color: "#fff",
-            border: "none",
-            borderRadius: "6px",
-            fontSize: "13px",
-            cursor: "pointer",
-            width: "100%",
-          }}
-        >
-          {n.actionLabel || "View Details"} &rarr;
-        </button>
+      {/* Actions */}
+      {(n.actionUrl || n.conversationId || n.scheduledMessageId || hasLegacyActions) && (
+        <div style={{ display: "grid", gap: "8px", marginTop: "12px" }}>
+          {n.actionUrl && (
+            <button
+              onClick={() => onOpenInNewTab(n.actionUrl)}
+              style={{
+                padding: "8px 16px",
+                background: "#0078d4",
+                color: "#fff",
+                border: "none",
+                borderRadius: "6px",
+                fontSize: "13px",
+                cursor: "pointer",
+                width: "100%",
+              }}
+            >
+              {n.actionLabel || "View Details"} &rarr;
+            </button>
+          )}
+          {n.conversationId && !n.actionUrl && (
+            <button
+              onClick={() => onOpenInNewTab(`/chat?conversationId=${n.conversationId}`)}
+              style={{
+                padding: "8px 16px",
+                background: "#0078d4",
+                color: "#fff",
+                border: "none",
+                borderRadius: "6px",
+                fontSize: "13px",
+                cursor: "pointer",
+                width: "100%",
+              }}
+            >
+              Open Chat &rarr;
+            </button>
+          )}
+          {n.scheduledMessageId && !n.actionUrl && (
+            <button
+              onClick={() => onOpenInNewTab(`/chat?panel=schedule&alertId=${n.scheduledMessageId}`)}
+              style={{
+                padding: "8px 16px",
+                background: "#0078d4",
+                color: "#fff",
+                border: "none",
+                borderRadius: "6px",
+                fontSize: "13px",
+                cursor: "pointer",
+                width: "100%",
+              }}
+            >
+              View Schedule &rarr;
+            </button>
+          )}
+          {hasLegacyActions && (
+            <>
+              {n.title?.includes("Media Job") && (
+                <button
+                  onClick={() => onOpenInNewTab("/media-studio")}
+                  style={{
+                    padding: "8px 16px",
+                    background: "#0078d4",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: "6px",
+                    fontSize: "13px",
+                    cursor: "pointer",
+                    width: "100%",
+                  }}
+                >
+                  Open Media Studio &rarr;
+                </button>
+              )}
+              {(n.title?.includes("credit") || n.title?.includes("Credit")) && (
+                <button
+                  onClick={() => onOpenInNewTab("/admin/settings")}
+                  style={{
+                    padding: "8px 16px",
+                    background: "#0078d4",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: "6px",
+                    fontSize: "13px",
+                    cursor: "pointer",
+                    width: "100%",
+                  }}
+                >
+                  Admin Settings &rarr;
+                </button>
+              )}
+              {(n.title?.includes("latency") || n.title?.includes("API error")) && (
+                <button
+                  onClick={() => onOpenInNewTab("/admin/system-guardian")}
+                  style={{
+                    padding: "8px 16px",
+                    background: "#0078d4",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: "6px",
+                    fontSize: "13px",
+                    cursor: "pointer",
+                    width: "100%",
+                  }}
+                >
+                  System Guardian &rarr;
+                </button>
+              )}
+              {(n.title?.includes("Feedback") || n.title?.includes("feedback")) && (
+                <button
+                  onClick={() => {
+                    const ticketMatch = n.content?.match(/Ticket #(\d+)/);
+                    onOpenInNewTab(
+                      ticketMatch?.[1] ? `/admin/feedback-hub?ticketId=${ticketMatch[1]}` : "/admin/feedback-hub",
+                    );
+                  }}
+                  style={{
+                    padding: "8px 16px",
+                    background: "#0078d4",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: "6px",
+                    fontSize: "13px",
+                    cursor: "pointer",
+                    width: "100%",
+                  }}
+                >
+                  View Feedback &rarr;
+                </button>
+              )}
+            </>
+          )}
+        </div>
       )}
     </div>
   );
 }
 
 function GlobalNotificationBell() {
-  const [, setLocation] = useLocation();
+  const [location] = useLocation();
   const utils = trpc.useUtils();
   const [showDropdown, setShowDropdown] = useState(false);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [detailNotification, setDetailNotification] = useState<any>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const bellRootRef = useRef<HTMLDivElement>(null);
+  const dragStateRef = useRef<BellDragState | null>(null);
+  const suppressNextClickRef = useRef(false);
+  const [bellPosition, setBellPosition] = useState<BellPosition>(() => getInitialBellPosition());
+  const [isBellDragging, setIsBellDragging] = useState(false);
+
+  useEffect(() => {
+    const handlePointerMove = (event: PointerEvent) => {
+      const dragState = dragStateRef.current;
+      if (!dragState || dragState.pointerId !== event.pointerId) {
+        return;
+      }
+
+      const deltaX = event.clientX - dragState.startX;
+      const deltaY = event.clientY - dragState.startY;
+
+      if (!dragState.moved) {
+        if (Math.abs(deltaX) + Math.abs(deltaY) < BELL_DRAG_THRESHOLD) {
+          return;
+        }
+        dragState.moved = true;
+      }
+
+      event.preventDefault();
+      setBellPosition(
+        clampBellPosition(
+          {
+            x: dragState.originX + deltaX,
+            y: dragState.originY + deltaY,
+          },
+          window.innerWidth,
+          window.innerHeight,
+          {
+            width: dragState.width,
+            height: dragState.height,
+          },
+        ),
+      );
+    };
+
+    const handlePointerUp = (event: PointerEvent) => {
+      const dragState = dragStateRef.current;
+      if (!dragState || dragState.pointerId !== event.pointerId) {
+        return;
+      }
+
+      suppressNextClickRef.current = dragState.moved;
+      dragStateRef.current = null;
+      setIsBellDragging(false);
+    };
+
+    document.addEventListener("pointermove", handlePointerMove);
+    document.addEventListener("pointerup", handlePointerUp);
+    document.addEventListener("pointercancel", handlePointerUp);
+    return () => {
+      document.removeEventListener("pointermove", handlePointerMove);
+      document.removeEventListener("pointerup", handlePointerUp);
+      document.removeEventListener("pointercancel", handlePointerUp);
+    };
+  }, []);
+
+  useEffect(() => {
+    persistBellPosition(bellPosition);
+  }, [bellPosition]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setBellPosition((current) => clampBellPosition(current, window.innerWidth, window.innerHeight));
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const { data } = trpc.scheduledMessages.getNotificationCount.useQuery(
     undefined,
@@ -645,6 +1165,15 @@ function GlobalNotificationBell() {
   });
 
   const count = data?.count || 0;
+  const hasUnread = count > 0;
+  const shouldShowWithoutUnread = /^\/(?:admin\/)?dashboard(?:$|[/?])/.test(location);
+  const recentCount = notifications?.length ?? 0;
+  const hasRecentHistory = recentCount > 0;
+  const statusSummary = hasUnread
+    ? `${count} unread notification${count !== 1 ? "s" : ""}`
+    : hasRecentHistory
+      ? `No unread alerts, but ${recentCount} recent item${recentCount !== 1 ? "s" : ""} available`
+      : "No notifications yet";
 
   // Real-time SSE for instant notification updates (with exponential backoff)
   const handleSSEMessage = useCallback(() => {
@@ -673,8 +1202,6 @@ function GlobalNotificationBell() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showDropdown]);
 
-  if (count === 0 && !showDropdown) return null;
-
   const formatTimeAgo = (date: string | Date) => {
     const now = Date.now();
     const then = new Date(date).getTime();
@@ -698,27 +1225,88 @@ function GlobalNotificationBell() {
     }
   };
 
+  const handleBellPointerDown = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (event.button !== 0) {
+      return;
+    }
+
+    suppressNextClickRef.current = false;
+    setIsBellDragging(true);
+    const rect = bellRootRef.current?.getBoundingClientRect();
+    dragStateRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      originX: bellPosition.x,
+      originY: bellPosition.y,
+      width: rect?.width ?? BELL_DEFAULT_WIDTH,
+      height: rect?.height ?? BELL_DEFAULT_HEIGHT,
+      moved: false,
+    };
+  };
+
+  const handleBellClick = () => {
+    if (suppressNextClickRef.current) {
+      suppressNextClickRef.current = false;
+      return;
+    }
+    setShowDropdown((v) => !v);
+  };
+
+  const handleOpenInNewTab = useCallback((url: string) => {
+    setShowDropdown(false);
+    setDetailNotification(null);
+    safeOpenInNewTab(url);
+  }, []);
+
+  if (!hasUnread && !shouldShowWithoutUnread) {
+    return null;
+  }
+
   return (
-    <div ref={dropdownRef} style={{ position: "fixed", top: "12px", right: "12px", zIndex: 9990 }}>
+    <div
+      ref={(node) => {
+        dropdownRef.current = node;
+        bellRootRef.current = node;
+      }}
+      data-testid="global-notification-bell"
+      style={{
+        position: "fixed",
+        left: `${bellPosition.x}px`,
+        top: `${bellPosition.y}px`,
+        zIndex: 9990,
+      }}
+    >
       <button
-        onClick={() => setShowDropdown((v) => !v)}
-        title={`${count} unread notification${count !== 1 ? "s" : ""}`}
-        aria-label={`${count} unread notification${count !== 1 ? "s" : ""}`}
+        onClick={handleBellClick}
+        onPointerDown={handleBellPointerDown}
+        title={
+          hasUnread
+            ? statusSummary
+            : "No unread notifications, recent history available. Drag to move."
+        }
+        aria-label={
+          hasUnread
+            ? statusSummary
+            : "0 unread notifications, recent history available"
+        }
         style={{
           background: "var(--background, #1e1e1e)",
           border: "1px solid var(--border, #333)",
           borderRadius: "8px",
-          padding: "8px",
-          cursor: "pointer",
+          padding: "8px 10px",
+          cursor: isBellDragging ? "grabbing" : "grab",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
+          gap: "6px",
           boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
           position: "relative",
+          touchAction: "none",
         }}
       >
         <Bell style={{ width: 18, height: 18, color: "var(--foreground, #e0e0e0)" }} />
-        {count > 0 && (
+        {hasUnread ? (
           <span
             style={{
               position: "absolute",
@@ -738,6 +1326,25 @@ function GlobalNotificationBell() {
             }}
           >
             {count > 9 ? "9+" : count}
+          </span>
+        ) : (
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "4px",
+              padding: "0 6px",
+              height: "18px",
+              borderRadius: "9999px",
+              background: "rgba(148, 163, 184, 0.16)",
+              color: "var(--foreground, #e0e0e0)",
+              fontSize: "10px",
+              fontWeight: 600,
+              letterSpacing: "0.02em",
+            }}
+          >
+            <Clock3 style={{ width: 10, height: 10 }} />
+            Recent
           </span>
         )}
       </button>
@@ -806,13 +1413,30 @@ function GlobalNotificationBell() {
             </div>
           </div>
 
+          {!hasUnread && (
+            <div
+              style={{
+                margin: "10px 12px 0",
+                padding: "10px 12px",
+                borderRadius: "8px",
+                border: "1px solid rgba(148, 163, 184, 0.2)",
+                background: "rgba(148, 163, 184, 0.08)",
+                color: "var(--foreground, #e0e0e0)",
+                fontSize: "12px",
+                lineHeight: 1.4,
+              }}
+            >
+              {statusSummary}
+            </div>
+          )}
+
           {/* Notification Detail or List */}
           {detailNotification ? (
             <div style={{ overflowY: "auto", flex: 1, maxHeight: "400px" }}>
               <NotificationDetailPanel
                 notification={detailNotification}
                 onBack={() => setDetailNotification(null)}
-                onNavigate={(url) => { setShowDropdown(false); setDetailNotification(null); setLocation(url); }}
+                onOpenInNewTab={handleOpenInNewTab}
               />
             </div>
           ) : (
@@ -832,21 +1456,8 @@ function GlobalNotificationBell() {
                   }}
                   onClick={() => {
                     if (!n.isRead) markRead.mutate({ id: n.id });
-                    // Has structured metadata — show detail panel
-                    if ((n as any).actionUrl || (n as any).metadata || (n as any).relatedResourceType) {
-                      setDetailNotification(n);
-                      return;
-                    }
-                    // Legacy: direct navigation for conversations
-                    if (n.conversationId) {
-                      setShowDropdown(false);
-                      setLocation(`/chat?c=${n.conversationId}`);
-                    } else if (n.title?.startsWith("Reply on feedback:")) {
-                      setShowDropdown(false);
-                      setLocation("/my-feedback");
-                    } else {
-                      setExpandedId(expandedId === n.id ? null : n.id);
-                    }
+                    setExpandedId(null);
+                    setDetailNotification(n);
                   }}
                 >
                   {/* Unread dot */}
@@ -924,8 +1535,7 @@ function GlobalNotificationBell() {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              setShowDropdown(false);
-                              safeNavigate((n as any).actionUrl, setLocation);
+                              handleOpenInNewTab((n as any).actionUrl);
                             }}
                             style={{
                               background: "none",
@@ -944,8 +1554,7 @@ function GlobalNotificationBell() {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              setShowDropdown(false);
-                              setLocation(`/chat?conversationId=${n.conversationId}`);
+                              handleOpenInNewTab(`/chat?conversationId=${n.conversationId}`);
                             }}
                             style={{
                               background: "none",
@@ -964,8 +1573,7 @@ function GlobalNotificationBell() {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              setShowDropdown(false);
-                              setLocation(`/chat?panel=schedule&alertId=${n.scheduledMessageId}`);
+                              handleOpenInNewTab(`/chat?panel=schedule&alertId=${n.scheduledMessageId}`);
                             }}
                             style={{
                               background: "none",
@@ -979,47 +1587,6 @@ function GlobalNotificationBell() {
                             View Schedule &rarr;
                           </button>
                         )}
-                        {/* Legacy fallback for old notifications without actionUrl */}
-                        {!(n as any).actionUrl && !n.conversationId && !n.scheduledMessageId && n.type === "alert" && (
-                          <>
-                            {n.title?.includes("Media Job") && (
-                              <button
-                                onClick={(e) => { e.stopPropagation(); setShowDropdown(false); setLocation("/media-studio"); }}
-                                style={{ background: "none", border: "none", color: "#0078d4", fontSize: "12px", cursor: "pointer", padding: 0 }}
-                              >
-                                Open Media Studio &rarr;
-                              </button>
-                            )}
-                            {(n.title?.includes("credit") || n.title?.includes("Credit")) && (
-                              <button
-                                onClick={(e) => { e.stopPropagation(); setShowDropdown(false); setLocation("/admin/settings"); }}
-                                style={{ background: "none", border: "none", color: "#0078d4", fontSize: "12px", cursor: "pointer", padding: 0 }}
-                              >
-                                Admin Settings &rarr;
-                              </button>
-                            )}
-                            {(n.title?.includes("latency") || n.title?.includes("API error")) && (
-                              <button
-                                onClick={(e) => { e.stopPropagation(); setShowDropdown(false); setLocation("/admin/system-guardian"); }}
-                                style={{ background: "none", border: "none", color: "#0078d4", fontSize: "12px", cursor: "pointer", padding: 0 }}
-                              >
-                                System Guardian &rarr;
-                              </button>
-                            )}
-                            {(n.title?.includes("Feedback") || n.title?.includes("feedback")) && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation(); setShowDropdown(false);
-                                  const ticketMatch = n.content?.match(/Ticket #(\d+)/);
-                                  setLocation(ticketMatch?.[1] ? `/admin/feedback-hub?ticketId=${ticketMatch[1]}` : "/admin/feedback-hub");
-                                }}
-                                style={{ background: "none", border: "none", color: "#0078d4", fontSize: "12px", cursor: "pointer", padding: 0 }}
-                              >
-                                View Feedback &rarr;
-                              </button>
-                            )}
-                          </>
-                        )}
                         {/* Metadata details badge */}
                         {(n as any).metadata?.errorDetails?.errorMessage && (
                           <span style={{ fontSize: "11px", color: "#d32f2f", background: "#ffeaea", padding: "1px 6px", borderRadius: "4px" }}>
@@ -1032,18 +1599,27 @@ function GlobalNotificationBell() {
 
                   {/* Expand indicator / Mark read */}
                   <div style={{ display: "flex", gap: "4px", flexShrink: 0 }}>
-                    {!n.conversationId && n.content && n.content !== n.title && (
-                      <div
+                    {n.content && n.content !== n.title && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setExpandedId(expandedId === n.id ? null : n.id);
+                        }}
+                        title={expandedId === n.id ? "Collapse quick actions" : "Expand quick actions"}
                         style={{
                           color: "var(--muted-foreground, #666)",
                           padding: "4px",
                           display: "flex",
+                          border: "none",
+                          background: "transparent",
+                          cursor: "pointer",
                           transform: expandedId === n.id ? "rotate(180deg)" : "rotate(0deg)",
                           transition: "transform 0.15s",
                         }}
                       >
                         <ChevronDown style={{ width: 14, height: 14 }} />
-                      </div>
+                      </button>
                     )}
                     {!n.isRead && (
                       <button
@@ -1096,9 +1672,7 @@ function GlobalNotificationBell() {
           >
             <button
               onClick={() => {
-                setShowDropdown(false);
-                setDetailNotification(null);
-                setLocation("/notifications");
+                handleOpenInNewTab("/notifications");
               }}
               style={{
                 background: "none",
@@ -1108,13 +1682,11 @@ function GlobalNotificationBell() {
                 cursor: "pointer",
               }}
             >
-              View All Notifications
+              {hasUnread ? "View All Notifications" : "ดูย้อนหลัง"}
             </button>
             <button
               onClick={() => {
-                setShowDropdown(false);
-                setDetailNotification(null);
-                setLocation("/chat?panel=schedule");
+                handleOpenInNewTab("/chat?panel=schedule");
               }}
               style={{
                 background: "none",
@@ -1128,9 +1700,7 @@ function GlobalNotificationBell() {
             </button>
             <button
               onClick={() => {
-                setShowDropdown(false);
-                setDetailNotification(null);
-                setLocation("/settings?tab=notifications");
+                handleOpenInNewTab("/settings?tab=notifications");
               }}
               style={{
                 background: "none",

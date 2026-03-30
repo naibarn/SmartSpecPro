@@ -8,13 +8,10 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useLocation } from "wouter";
-import {
-  Card,
-  CardContent,
-} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { DashboardCard } from "@/components/dashboard";
 import {
   Search,
   PenTool,
@@ -60,15 +57,15 @@ export default function AgencyTemplates() {
         <h1 className="text-2xl font-bold mb-6">Agency Templates</h1>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {[1, 2, 3, 4].map((i) => (
-            <Card key={i} className="animate-pulse">
-              <CardContent className="pt-6 space-y-4">
+            <DashboardCard key={i} className="animate-pulse">
+              <div className="pt-6 space-y-4">
                 <div className="h-10 w-10 bg-gray-200 rounded-lg" />
                 <div className="h-5 bg-gray-200 rounded w-3/4" />
                 <div className="h-4 bg-gray-100 rounded w-full" />
                 <div className="h-4 bg-gray-100 rounded w-2/3" />
                 <div className="h-8 bg-gray-200 rounded w-1/3" />
-              </CardContent>
-            </Card>
+              </div>
+            </DashboardCard>
           ))}
         </div>
       </div>
@@ -79,8 +76,8 @@ export default function AgencyTemplates() {
     return (
       <div className="p-6">
         <h1 className="text-2xl font-bold mb-6">Agency Templates</h1>
-        <Card>
-          <CardContent className="pt-6 text-center">
+        <DashboardCard>
+          <div className="pt-6 text-center">
             <p className="text-gray-500 mb-4">
               {templatesQuery.error?.message === "Not found"
                 ? "Agency templates are not available yet."
@@ -92,8 +89,8 @@ export default function AgencyTemplates() {
             >
               Retry
             </Button>
-          </CardContent>
-        </Card>
+          </div>
+        </DashboardCard>
       </div>
     );
   }
@@ -115,14 +112,14 @@ export default function AgencyTemplates() {
           const isCreating = creatingId === template.id;
 
           return (
-            <Card
+            <DashboardCard
               key={template.id}
               className="group hover:shadow-md transition-shadow"
             >
-              <CardContent className="pt-6 flex flex-col h-full">
+              <div className="pt-6 flex flex-col h-full">
                 <div className="mb-4">
-                  <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center mb-3">
-                    <IconComponent className="w-5 h-5 text-purple-600" />
+                  <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center mb-3">
+                    <IconComponent className="w-5 h-5 text-blue-600" />
                   </div>
                   <h3 className="font-semibold text-lg">{template.name}</h3>
                   <p className="text-sm text-gray-500 mt-1 line-clamp-2">
@@ -152,8 +149,8 @@ export default function AgencyTemplates() {
                   )}
                   Use Template
                 </Button>
-              </CardContent>
-            </Card>
+              </div>
+            </DashboardCard>
           );
         })}
       </div>

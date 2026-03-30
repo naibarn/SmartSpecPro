@@ -477,6 +477,47 @@ export async function storageResolveUrl(relKey: string): Promise<string | null> 
   }
 }
 
+export async function storageReadText(relKey: string): Promise<string | null> {
+  const config = await getActiveStorageConfig();
+  const key = normalizeKey(relKey);
+
+  switch (config.provider) {
+    case "local": {
+      try {
+        return fs.readFileSync(path.join(UPLOADS_DIR, key), "utf8");
+      } catch {
+        return null;
+      }
+    }
+    case "s3": {
+      try {
+        const response = await config.client.send(new GetObjectCommand({
+          Bucket: config.bucket,
+          Key: key,
+        }));
+        if (!response.Body || typeof (response.Body as any).transformToString !== "function") {
+          return null;
+        }
+        return await (response.Body as any).transformToString("utf8");
+      } catch {
+        return null;
+      }
+    }
+    case "forge": {
+      try {
+        const resolved = await forgeStorageGet(config, key);
+        const response = await fetch(resolved.url);
+        if (!response.ok) {
+          return null;
+        }
+        return await response.text();
+      } catch {
+        return null;
+      }
+    }
+  }
+}
+
 /**
  * Stream a file from S3/R2 storage. Returns null if not using S3 provider.
  * Used by the storage proxy endpoint. Supports range requests for video seeking.

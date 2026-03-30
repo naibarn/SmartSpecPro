@@ -1,0 +1,31 @@
+{
+  "plugin_root": "/home/dev/projects/SmartSpecPro/.claude/worktrees/agent-ac343bcd/deep_plan",
+  "context": {
+    "check_enabled": true
+  },
+  "vertex_ai": {
+    "project": null,
+    "location": null
+  },
+  "external_review": {
+    "alert_if_missing": true,
+    "feedback_iterations": 1
+  },
+  "models": {
+    "gemini": "gemini-3-pro-preview",
+    "chatgpt": "gpt-5.2"
+  },
+  "llm_client": {
+    "timeout_seconds": 120,
+    "max_retries": 3,
+    "retry_codes": [
+      429,
+      500,
+      503
+    ]
+  },
+  "planning_dir": "/home/dev/projects/SmartSpecPro/specs/feature/059-knplabai-multi-provider-expansion",
+  "initial_file": "/home/dev/projects/SmartSpecPro/specs/feature/059-knplabai-multi-provider-expansion/spec.md",
+  "review_mode": "self_review",
+  "workflow_backend": "compatible"
+}

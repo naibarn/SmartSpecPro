@@ -14,6 +14,16 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { clearTenantPageCache } from "@/hooks/useTenantPage";
+import { LibraryFilePicker } from "@/components/library/LibraryFilePicker";
+import {
+  buildSmartAiHubAutoContentManifest,
+  buildSmartAiHubContentMediaPrompts,
+  getSmartAiHubAutoContentPresetPacks,
+  getSmartAiHubDefaultAutoKeywords,
+  renderSmartAiHubAutoContentSummary,
+  parseSmartAiHubAutoKeywords,
+} from "../../../shared/smartaihubAutoContent";
+import type { SmartAiHubContentManifest } from "../../../shared/smartaihubContentManifest";
 import {
   ChevronLeft,
   Save,
@@ -25,14 +35,13 @@ import {
   Globe,
   Layout,
   RefreshCw,
+  Upload,
+  Sparkles,
+  ExternalLink,
+  Image,
+  Video,
 } from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { DashboardCard } from "@/components/dashboard";
 import {
   Select,
   SelectContent,
@@ -101,12 +110,27 @@ export default function DomainAdminContent() {
   const { user, isLoading: authLoading } = useAuth();
   const { tenant } = useTenant();
   const [, setLocation] = useLocation();
+  const autoContentPresetPacks = getSmartAiHubAutoContentPresetPacks();
+  const initialPageKey = typeof window !== "undefined"
+    ? new URLSearchParams(window.location.search).get("pageKey") || "home"
+    : "home";
 
-  const [selectedPageKey, setSelectedPageKey] = useState<string>("home");
+  const [selectedPageKey, setSelectedPageKey] = useState<string>(initialPageKey);
   const [pages, setPages] = useState<Record<string, TenantPage>>({});
   const [currentPage, setCurrentPage] = useState<TenantPage | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isImportingManifest, setIsImportingManifest] = useState(false);
+  const [isGeneratingAutoManifest, setIsGeneratingAutoManifest] = useState(false);
   const [previewMode, setPreviewMode] = useState(false);
+  const [showImportHtmlPreview, setShowImportHtmlPreview] = useState(false);
+  const [manifestJson, setManifestJson] = useState("");
+  const [generatedAutoManifest, setGeneratedAutoManifest] = useState<SmartAiHubContentManifest | null>(null);
+  const [autoKeywordsText, setAutoKeywordsText] = useState(getSmartAiHubDefaultAutoKeywords().join("\n"));
+  const [autoTopicCount, setAutoTopicCount] = useState(3);
+  const [autoContentMode, setAutoContentMode] = useState<"standard" | "news" | "mixed" | "auto">("auto");
+  const [autoFreshnessDays, setAutoFreshnessDays] = useState(3);
+  const [autoManifestSummary, setAutoManifestSummary] = useState("");
+  const [previewGlobalReferenceImages, setPreviewGlobalReferenceImages] = useState<string[]>([]);
 
   // Redirect if not domain admin
   useEffect(() => {
@@ -151,33 +175,55 @@ export default function DomainAdminContent() {
     const name = tenant?.name || "Our Platform";
     const contentMap: Record<string, string> = {
       home: `<section class="hero">
-  <h1>Welcome to ${name}</h1>
-  <p>Build amazing things with our powerful AI tools. Generate images, videos, and more with cutting-edge models.</p>
-  <a href="/signup">Get Started Free</a>
+  <p class="eyebrow">Skill Marketplace + Virtual Workflow Swarms</p>
+  <h1>Ship Skills into Outcomes.</h1>
+  <p>${name} connects a skill marketplace, virtual workflows, and swarm execution so teams can produce chat answers, presentations, and videos from one platform.</p>
+  <div class="hero-actions">
+    <a href="/marketplace">Explore Marketplace</a>
+    <a href="/signup">Start Free</a>
+  </div>
 </section>
 
 <section class="features">
-  <h2>Why Choose ${name}?</h2>
+  <h2>Three layers that turn a prompt into a repeatable system.</h2>
   <div class="feature-grid">
     <div class="feature">
-      <h3>AI-Powered Generation</h3>
-      <p>Access the latest AI models for image, video, and audio generation.</p>
+      <h3>Skill Marketplace</h3>
+      <p>Discover, publish, and version reusable skills from a shared catalog.</p>
     </div>
     <div class="feature">
-      <h3>Enterprise Security</h3>
-      <p>Bank-grade encryption and comprehensive audit logs for your peace of mind.</p>
+      <h3>Virtual Workflow Builder</h3>
+      <p>Compose triggers, approvals, routing, and context into a repeatable process.</p>
     </div>
     <div class="feature">
-      <h3>Easy Integration</h3>
-      <p>Simple API and SDK to integrate AI capabilities into your workflow.</p>
+      <h3>Swarm Execution</h3>
+      <p>Run specialist skills in parallel and merge them into a final deliverable.</p>
+    </div>
+  </div>
+</section>
+
+<section class="features">
+  <h2>Same workflow, multiple outputs.</h2>
+  <div class="feature-grid">
+    <div class="feature">
+      <h3>Chat</h3>
+      <p>Use skill-aware chat to keep answers grounded in live context.</p>
+    </div>
+    <div class="feature">
+      <h3>Presentation</h3>
+      <p>Convert swarm output into slide-ready narrative and reusable blocks.</p>
+    </div>
+    <div class="feature">
+      <h3>Video</h3>
+      <p>Turn the same workflow into scripts, scenes, and production cues.</p>
     </div>
   </div>
 </section>
 
 <section class="cta">
-  <h2>Ready to Get Started?</h2>
-  <p>Join thousands of creators using ${name} to bring their ideas to life.</p>
-  <a href="/signup">Create Free Account</a>
+  <h2>Build once. Reuse everywhere.</h2>
+  <p>Package capabilities as skills, connect them into workflows, and launch swarms that deliver the exact format you need.</p>
+  <a href="/marketplace">Browse Marketplace</a>
 </section>`,
 
       about: `<section class="about-hero">
@@ -437,28 +483,46 @@ export default function DomainAdminContent() {
         {
           id: "hero-1",
           type: "hero",
-          title: "Welcome to " + name,
-          subtitle: "Build amazing things with our powerful AI tools",
-          content: "Generate images, videos, and music with cutting-edge AI models.",
+          title: "Ship Skills into Outcomes.",
+          subtitle: "Skill Marketplace + Virtual Workflow Swarms",
+          content: `${name} connects a skill marketplace, virtual workflows, and swarm execution so teams can produce chat answers, presentations, and videos from one platform.`,
+          buttons: [
+            { text: "Explore Marketplace", link: "/marketplace" },
+            { text: "Start Free", link: "/signup", style: "outline" },
+          ],
         },
         {
           id: "features-1",
           type: "features",
-          title: "Why Choose Us",
-          subtitle: "Everything you need to succeed",
+          title: "Three layers that turn a prompt into a repeatable system.",
+          subtitle: "From discovery to orchestration to execution",
           items: [
-            { title: "AI-Powered Generation", description: "Access the latest AI models for image, video, and audio generation.", icon: "sparkles" },
-            { title: "Enterprise Security", description: "Bank-grade encryption and comprehensive audit logs.", icon: "shield" },
-            { title: "Easy Integration", description: "Simple API and SDK to integrate AI into your workflow.", icon: "zap" },
+            { title: "Skill Marketplace", description: "Discover, publish, and version reusable skills from a shared catalog.", icon: "store" },
+            { title: "Virtual Workflow Builder", description: "Compose triggers, approvals, routing, and context into a repeatable process.", icon: "workflow" },
+            { title: "Swarm Execution", description: "Run specialist skills in parallel and merge them into a final deliverable.", icon: "bot" },
+          ],
+        },
+        {
+          id: "surfaces-1",
+          type: "features",
+          title: "Same workflow, multiple outputs.",
+          subtitle: "Chat, presentation, and video are all first-class delivery surfaces",
+          items: [
+            { title: "Chat", description: "Use skill-aware chat to keep answers grounded in live context.", icon: "message-square-text" },
+            { title: "Presentation", description: "Convert swarm output into slide-ready narrative and reusable blocks.", icon: "presentation" },
+            { title: "Video", description: "Turn the same workflow into scripts, scenes, and production cues.", icon: "video" },
           ],
         },
         {
           id: "cta-1",
           type: "cta",
-          title: "Ready to Get Started?",
-          subtitle: "Join thousands of creators using " + name,
+          title: "Build once. Reuse everywhere.",
+          subtitle: "Package capabilities as skills, connect them into workflows, and launch swarms.",
           content: "",
-          buttons: [{ text: "Create Free Account", link: "/signup" }],
+          buttons: [
+            { text: "Browse Marketplace", link: "/marketplace" },
+            { text: "Start Free", link: "/signup", style: "outline" },
+          ],
         },
       ];
     }
@@ -525,6 +589,272 @@ export default function DomainAdminContent() {
     }
   };
 
+  const handleImportManifest = async () => {
+    if (!manifestJson.trim()) {
+      toast.error("Paste a JSON manifest first");
+      return;
+    }
+
+    setIsImportingManifest(true);
+    try {
+      const manifest = JSON.parse(manifestJson);
+      setGeneratedAutoManifest(manifest);
+      setShowImportHtmlPreview(true);
+      const response = await fetch("/api/tenant/content-manifest/import", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify(manifest),
+      });
+
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.error || "Failed to import manifest");
+      }
+
+      toast.success("Content manifest imported");
+      fetchPages();
+    } catch (error) {
+      console.error("Failed to import manifest:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to import manifest");
+    } finally {
+      setIsImportingManifest(false);
+    }
+  };
+
+  const handleGenerateAutoManifest = async (shouldImport: boolean) => {
+    const keywords = parseSmartAiHubAutoKeywords(autoKeywordsText.split(/[\n,;]+/g));
+    if (keywords.length === 0) {
+      toast.error("Add at least one keyword");
+      return;
+    }
+
+    setIsGeneratingAutoManifest(true);
+    try {
+      const manifest = buildSmartAiHubAutoContentManifest(keywords, tenant?.primaryDomain || "smartaihub.app", {
+        topicCount: autoTopicCount,
+        mode: autoContentMode,
+        freshnessDays: autoFreshnessDays,
+      });
+      const manifestText = JSON.stringify(manifest, null, 2);
+      setGeneratedAutoManifest(manifest);
+      setManifestJson(manifestText);
+      setAutoManifestSummary(renderSmartAiHubAutoContentSummary(manifest));
+      setShowImportHtmlPreview(true);
+      toast.success(`Generated ${manifest.docs?.length || 0} docs and ${manifest.blog?.length || 0} blog posts`);
+
+      if (shouldImport) {
+        setIsImportingManifest(true);
+        try {
+          const response = await fetch("/api/tenant/content-manifest/import", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            credentials: "include",
+            body: manifestText,
+          });
+
+          const data = await response.json().catch(() => null);
+          if (!response.ok) {
+            throw new Error(data?.error || "Failed to import manifest");
+          }
+
+          toast.success("Auto content imported");
+          fetchPages();
+        } finally {
+          setIsImportingManifest(false);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to generate auto manifest:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to generate auto manifest");
+    } finally {
+      setIsGeneratingAutoManifest(false);
+    }
+  };
+
+  const handlePreviewHtml = async () => {
+    if (generatedAutoManifest) {
+      setShowImportHtmlPreview(true);
+      return;
+    }
+
+    if (manifestJson.trim()) {
+      try {
+        const parsed = JSON.parse(manifestJson) as SmartAiHubContentManifest;
+        setGeneratedAutoManifest(parsed);
+        setShowImportHtmlPreview(true);
+        return;
+      } catch {
+        toast.error("The JSON preview is invalid. Generate a new preview or fix the manifest.");
+        return;
+      }
+    }
+
+    await handleGenerateAutoManifest(false);
+    setShowImportHtmlPreview(true);
+  };
+
+  const applyAutoKeywordPreset = (
+    pack: {
+      keywords: string[];
+      defaultMode?: "standard" | "news" | "mixed" | "auto";
+      defaultTopicCount?: number;
+      defaultFreshnessDays?: number;
+    },
+    mode: "replace" | "append",
+  ) => {
+    const mergedKeywords =
+      mode === "append"
+        ? parseSmartAiHubAutoKeywords([...autoKeywordsText.split(/[\n,;]+/g), ...pack.keywords])
+        : parseSmartAiHubAutoKeywords(pack.keywords);
+
+    setAutoKeywordsText(mergedKeywords.join("\n"));
+    if (mode === "replace") {
+      setAutoContentMode(pack.defaultMode || "auto");
+      setAutoTopicCount(pack.defaultTopicCount || 3);
+      setAutoFreshnessDays(pack.defaultFreshnessDays || 3);
+    }
+    setAutoManifestSummary("");
+    setGeneratedAutoManifest(null);
+    setShowImportHtmlPreview(false);
+    toast.success(mode === "append" ? "Preset appended" : "Preset loaded");
+  };
+
+  const autoSelectionSummary = generatedAutoManifest?.generation
+    ? `Topics ${generatedAutoManifest.generation.topicCount} • ${generatedAutoManifest.generation.mode} • ${generatedAutoManifest.docs?.[0]?.generation?.skillLabel || generatedAutoManifest.docs?.[0]?.generation?.skillId || "General Article Writer"}`
+    : `Topics ${autoTopicCount} • ${autoContentMode}`;
+
+  const updateGlobalPreviewReferenceImage = (slotIndex: number, url: string) => {
+    setPreviewGlobalReferenceImages((prev) => {
+      const next = [...prev];
+      next[slotIndex] = url;
+      return next.map((value) => value.trim()).filter(Boolean);
+    });
+  };
+
+  const clearGlobalPreviewReferenceImages = () => {
+    setPreviewGlobalReferenceImages([]);
+  };
+
+  const inferAutoContentCluster = (value: string) => {
+    const lower = value.toLowerCase();
+    if (/(marketplace|skill|publish|discover|reuse)/.test(lower)) return "marketplace";
+    if (/(workflow|swarm|orchestr|pipeline|automation)/.test(lower)) return "workflow";
+    if (/(seo|search|crawl|index|keyword|intent)/.test(lower)) return "seo";
+    if (/(image|visual|illustration|graphic|design)/.test(lower)) return "image";
+    if (/(video|presentation|deck|slide|script|scene)/.test(lower)) return "video";
+    if (/(security|mfa|audit|key|governance|access)/.test(lower)) return "security";
+    if (/(support|ticket|triage|helpdesk|inbox)/.test(lower)) return "support";
+    if (/(publish|content|blog|doc|documentation|library)/.test(lower)) return "publishing";
+    if (/(faq|question|answer|how to|what is)/.test(lower)) return "faq";
+    return "general";
+  };
+
+  const buildMediaStudioLink = (
+    mediaType: "image" | "video",
+    title: string,
+    description: string,
+    keywords: string[],
+    referenceUrls: string[] = previewGlobalReferenceImages,
+    attachTarget?: string,
+  ) => {
+    const cluster = inferAutoContentCluster(`${title} ${description} ${keywords.join(" ")}`);
+    const prompts = buildSmartAiHubContentMediaPrompts(title, description, keywords, cluster as any);
+    const params = new URLSearchParams();
+    params.set("type", mediaType);
+    params.set("prompt", mediaType === "image" ? prompts.imagePrompt : prompts.videoPrompt);
+    if (attachTarget) {
+      params.set("attachTarget", attachTarget);
+    }
+    referenceUrls.filter(Boolean).forEach((url) => params.append("referenceImages", url));
+    return `/media-studio?${params.toString()}`;
+  };
+
+  const buildManifestPreviewHtml = (title: string, content: string, description: string) => {
+    return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>${title}</title>
+  <style>
+    :root { color-scheme: light; }
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: linear-gradient(135deg, #f8fbff, #eef7ff 55%, #f8feff);
+      color: #10223a;
+    }
+    .shell {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 32px 24px 48px;
+    }
+    .hero {
+      background: rgba(255,255,255,0.86);
+      border: 1px solid rgba(96,165,250,0.22);
+      border-radius: 28px;
+      box-shadow: 0 22px 60px rgba(15,23,42,0.08);
+      padding: 28px;
+      backdrop-filter: blur(12px);
+    }
+    .eyebrow {
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .12em;
+      color: #0284c7;
+      font-weight: 700;
+      margin: 0 0 12px;
+    }
+    h1 { margin: 0 0 14px; font-size: 38px; line-height: 1.06; }
+    p { line-height: 1.75; color: #334155; font-size: 16px; }
+    .content { margin-top: 20px; }
+    .content h2, .content h3 { color: #0f172a; margin-top: 22px; }
+    .content a { color: #0284c7; }
+    .content img { max-width: 100%; border-radius: 18px; }
+    .preview-card {
+      margin-top: 18px;
+      border-radius: 22px;
+      border: 1px solid rgba(148,163,184,0.2);
+      overflow: hidden;
+      background: #fff;
+    }
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 16px;
+      font-size: 12px;
+      color: #475569;
+    }
+    .pill {
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <article class="hero">
+      <div class="eyebrow">SmartAIHub Preview</div>
+      <h1>${title}</h1>
+      <p>${description}</p>
+      <div class="content">${content}</div>
+    </article>
+  </div>
+</body>
+</html>`;
+  };
+
   const addSection = () => {
     if (!currentPage) return;
 
@@ -565,7 +895,7 @@ export default function DomainAdminContent() {
   if (authLoading || !user || (user.role !== "domain_admin" && user.role !== "admin")) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <RefreshCw className="w-8 h-8 animate-spin text-purple-500" />
+        <RefreshCw className="w-8 h-8 animate-spin text-blue-500" />
       </div>
     );
   }
@@ -587,7 +917,7 @@ export default function DomainAdminContent() {
               </Button>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                  <FileText className="w-6 h-6 text-purple-500" />
+                  <FileText className="w-6 h-6 text-cyan-500" />
                   Content Editor
                 </h1>
                 <p className="text-sm text-gray-600">
@@ -607,7 +937,7 @@ export default function DomainAdminContent() {
               <Button
                 onClick={handleSave}
                 disabled={isSaving}
-                className="bg-purple-600 hover:bg-purple-700"
+                className="bg-blue-600 hover:bg-blue-700"
               >
                 {isSaving ? (
                   <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
@@ -625,19 +955,15 @@ export default function DomainAdminContent() {
         <div className="grid grid-cols-12 gap-6">
           {/* Sidebar - Page Selector */}
           <div className="col-span-3">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Pages</CardTitle>
-                <CardDescription>Select a page to edit</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-2">
+            <DashboardCard title="Pages" description="Select a page to edit" titleClassName="text-lg">
+              <div className="space-y-2">
                 {DEFAULT_PAGES.map((page) => (
                   <button
                     key={page.key}
                     onClick={() => setSelectedPageKey(page.key)}
                     className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
                       selectedPageKey === page.key
-                        ? "bg-purple-100 text-purple-900 font-medium"
+                        ? "bg-blue-100 text-blue-900 font-medium"
                         : "hover:bg-gray-100 text-gray-700"
                     }`}
                   >
@@ -650,19 +976,19 @@ export default function DomainAdminContent() {
                     </div>
                   </button>
                 ))}
-              </CardContent>
-            </Card>
+              </div>
+            </DashboardCard>
           </div>
 
           {/* Main Content Editor */}
           <div className="col-span-9">
             {currentPage && (
-              <Card>
-                <CardHeader>
+              <DashboardCard>
+                <div className="px-5 pt-5 sm:px-6 sm:pt-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <CardTitle>{currentPage.title}</CardTitle>
-                      <CardDescription>Edit page content and settings</CardDescription>
+                      <h3 className="text-lg font-semibold text-slate-900">{currentPage.title}</h3>
+                      <p className="mt-1 text-sm leading-6 text-slate-500">Edit page content and settings</p>
                     </div>
                     <div className="flex items-center gap-4">
                       <Label className="flex items-center gap-2">
@@ -676,13 +1002,14 @@ export default function DomainAdminContent() {
                       </Label>
                     </div>
                   </div>
-                </CardHeader>
-                <CardContent>
+                </div>
+                <div className="px-5 pb-5 pt-4 sm:px-6 sm:pb-6">
                   <Tabs defaultValue="content">
                     <TabsList>
                       <TabsTrigger value="content">Content</TabsTrigger>
                       <TabsTrigger value="sections">Sections</TabsTrigger>
                       <TabsTrigger value="settings">Settings</TabsTrigger>
+                      <TabsTrigger value="import">Import</TabsTrigger>
                     </TabsList>
 
                     <TabsContent value="content" className="space-y-4">
@@ -723,8 +1050,8 @@ export default function DomainAdminContent() {
                       {currentPage.sections && currentPage.sections.length > 0 ? (
                         <div className="space-y-4">
                           {currentPage.sections.map((section, index) => (
-                            <Card key={section.id}>
-                              <CardHeader className="pb-3">
+                            <DashboardCard key={section.id} bodyClassName="space-y-3">
+                              <div className="px-5 pt-5 sm:px-6 sm:pt-6">
                                 <div className="flex items-center justify-between">
                                   <Select
                                     value={section.type}
@@ -752,8 +1079,8 @@ export default function DomainAdminContent() {
                                     <Trash2 className="w-4 h-4 text-red-500" />
                                   </Button>
                                 </div>
-                              </CardHeader>
-                              <CardContent className="space-y-3">
+                              </div>
+                              <div className="space-y-3 px-5 pb-5 pt-4 sm:px-6 sm:pb-6">
                                 <Input
                                   placeholder="Section Title"
                                   value={section.title || ""}
@@ -776,8 +1103,8 @@ export default function DomainAdminContent() {
                                   }
                                   rows={4}
                                 />
-                              </CardContent>
-                            </Card>
+                              </div>
+                            </DashboardCard>
                           ))}
                         </div>
                       ) : (
@@ -845,9 +1172,511 @@ export default function DomainAdminContent() {
                         />
                       </div>
                     </TabsContent>
+
+                    <TabsContent value="import" className="space-y-4">
+                      <div className="rounded-xl border border-cyan-100 bg-cyan-50/60 p-4 space-y-3">
+                        <div className="flex items-start justify-between gap-3 flex-wrap">
+                          <div>
+                            <h3 className="font-semibold text-gray-900">Auto Content Launcher</h3>
+                            <p className="text-sm text-gray-600">
+                              Paste keyword clusters, generate docs/FAQ/blog pages, and import them into the tenant in one step.
+                            </p>
+                          </div>
+                          {autoManifestSummary && (
+                            <p className="text-sm font-medium text-cyan-700">{autoManifestSummary}</p>
+                          )}
+                        </div>
+
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between gap-3 flex-wrap">
+                            <Label>Preset Packs</Label>
+                            <p className="text-xs text-gray-500">
+                              เลือกชุด keyword ตาม intent แล้วกดสร้างต่อได้ทันที
+                            </p>
+                          </div>
+                          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                            {autoContentPresetPacks.map((pack) => (
+                              <DashboardCard key={pack.id} className="border-cyan-100 bg-white/80 shadow-sm">
+                                <div className="px-5 pt-5 sm:px-6 sm:pt-6">
+                                  <h3 className="text-base font-semibold text-gray-900">{pack.label}</h3>
+                                  <p className="mt-1 text-sm leading-6 text-slate-500">{pack.description}</p>
+                                  <div className="flex flex-wrap gap-2 pt-2">
+                                    <span className="rounded-full border border-cyan-100 bg-cyan-50 px-2.5 py-1 text-[11px] font-medium text-cyan-700">
+                                      mode: {pack.defaultMode || "auto"}
+                                    </span>
+                                    <span className="rounded-full border border-cyan-100 bg-cyan-50 px-2.5 py-1 text-[11px] font-medium text-cyan-700">
+                                      topics: {pack.defaultTopicCount || 3}
+                                    </span>
+                                    {typeof pack.defaultFreshnessDays === "number" && (
+                                      <span className="rounded-full border border-cyan-100 bg-cyan-50 px-2.5 py-1 text-[11px] font-medium text-cyan-700">
+                                        freshness: {pack.defaultFreshnessDays}d
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="space-y-3 px-5 pb-5 pt-4 sm:px-6 sm:pb-6">
+                                  <div className="flex flex-wrap gap-2">
+                                    {pack.keywords.slice(0, 3).map((keyword) => (
+                                      <span
+                                        key={keyword}
+                                        className="rounded-full border border-cyan-100 bg-cyan-50 px-2.5 py-1 text-[11px] font-medium text-cyan-700"
+                                      >
+                                        {keyword}
+                                      </span>
+                                    ))}
+                                  </div>
+                                  <div className="flex flex-wrap gap-2">
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => applyAutoKeywordPreset(pack, "replace")}
+                                    >
+                                      Load Pack
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      className="text-cyan-700 hover:text-cyan-800 hover:bg-cyan-50"
+                                      onClick={() => applyAutoKeywordPreset(pack, "append")}
+                                    >
+                                      Append
+                                    </Button>
+                                  </div>
+                                </div>
+                              </DashboardCard>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="grid gap-3 md:grid-cols-3">
+                          <div className="space-y-2">
+                            <Label htmlFor="auto-topic-count">Number of Topics</Label>
+                            <Input
+                              id="auto-topic-count"
+                              type="number"
+                              min={1}
+                              max={20}
+                              value={autoTopicCount}
+                              onChange={(e) => setAutoTopicCount(Math.max(1, parseInt(e.target.value, 10) || 3))}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="auto-mode">Generation Mode</Label>
+                            <Select value={autoContentMode} onValueChange={(value) => setAutoContentMode(value as typeof autoContentMode)}>
+                              <SelectTrigger id="auto-mode">
+                                <SelectValue placeholder="Select mode" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="auto">Auto detect</SelectItem>
+                                <SelectItem value="standard">Standard</SelectItem>
+                                <SelectItem value="mixed">Mixed</SelectItem>
+                                <SelectItem value="news">News / Current</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="auto-freshness-days">Freshness Window</Label>
+                            <Input
+                              id="auto-freshness-days"
+                              type="number"
+                              min={0}
+                              max={3650}
+                              value={autoFreshnessDays}
+                              onChange={(e) => setAutoFreshnessDays(Math.max(0, parseInt(e.target.value, 10) || 3))}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="rounded-lg border border-cyan-100 bg-white/70 px-3 py-2 text-sm text-cyan-900">
+                          {autoSelectionSummary}
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="auto-keywords">Keyword Clusters</Label>
+                          <Textarea
+                            id="auto-keywords"
+                            value={autoKeywordsText}
+                            onChange={(e) => setAutoKeywordsText(e.target.value)}
+                            rows={8}
+                            className="font-mono text-sm"
+                            placeholder={`skill marketplace discovery\nAI search optimization\nFAQ SEO strategy\nimage prompt engineering`}
+                          />
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-3">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => handleGenerateAutoManifest(false)}
+                            disabled={isGeneratingAutoManifest || isImportingManifest}
+                          >
+                            {isGeneratingAutoManifest ? (
+                              <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                            ) : (
+                              <Sparkles className="w-4 h-4 mr-2" />
+                            )}
+                            Generate Preview
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={handlePreviewHtml}
+                            disabled={isGeneratingAutoManifest || isImportingManifest}
+                          >
+                            <Eye className="w-4 h-4 mr-2" />
+                            HTML Preview
+                          </Button>
+                          <Button
+                            type="button"
+                            onClick={() => handleGenerateAutoManifest(true)}
+                            disabled={isGeneratingAutoManifest || isImportingManifest}
+                            className="bg-cyan-600 hover:bg-cyan-700"
+                          >
+                            {isImportingManifest ? (
+                              <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                            ) : (
+                              <Upload className="w-4 h-4 mr-2" />
+                            )}
+                            Generate & Import
+                          </Button>
+                        </div>
+
+                        {showImportHtmlPreview && generatedAutoManifest && (
+                          <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-4">
+                            <div className="flex items-start justify-between gap-3 flex-wrap">
+                              <div>
+                                <h4 className="font-semibold text-gray-900">HTML Preview</h4>
+                                <p className="text-sm text-gray-500">
+                                  ดูหน้าที่จะถูกสร้างก่อน import จริง แล้วเปิดไปดู live page หรือ Media Studio ต่อได้
+                                </p>
+                              </div>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setShowImportHtmlPreview(false)}
+                              >
+                                Hide Preview
+                              </Button>
+                            </div>
+
+                            {(() => {
+                              const docs = (generatedAutoManifest.docs || []).filter((doc) => !doc.slug.startsWith("faq/"));
+                              const faqDocs = (generatedAutoManifest.docs || []).filter((doc) => doc.slug.startsWith("faq/"));
+                              const blogPosts = generatedAutoManifest.blog || [];
+
+                              const renderPreviewCard = (
+                                kind: "docs" | "faq" | "blog",
+                                item: {
+                                  title: string;
+                                  description?: string;
+                                  content?: string;
+                                  excerpt?: string;
+                                  slug: string;
+                                  keywords?: string[];
+                                  mediaPrompts?: { imagePrompt?: string; videoPrompt?: string };
+                                },
+                              ) => {
+                              const href = kind === "blog" ? `/blog/${item.slug}` : `/docs/${item.slug}`;
+                              const bodyHtml = item.content || `<section><h1>${item.title}</h1><p>${item.description || item.excerpt || ""}</p></section>`;
+                              const mediaDescription = item.description || item.excerpt || "";
+                              const mediaKeywords = item.keywords || [];
+                              const selectedReferences = previewGlobalReferenceImages;
+                              const attachTarget = kind === "blog"
+                                ? `blog:${item.slug}`
+                                : `page:docs-${item.slug.replace(/\//g, "-")}`;
+                              const imageLink = buildMediaStudioLink("image", item.title, mediaDescription, mediaKeywords, selectedReferences, attachTarget);
+                              const videoLink = buildMediaStudioLink("video", item.title, mediaDescription, mediaKeywords, selectedReferences, attachTarget);
+                              const primaryStudioLink = item.mediaPrompts?.imagePrompt ? imageLink : videoLink;
+                                const openPreviewAndStudio = () => {
+                                  window.open(href, "_blank", "noopener,noreferrer");
+                                  window.open(primaryStudioLink, "_blank", "noopener,noreferrer");
+                                };
+
+                              return (
+                                <DashboardCard key={`${kind}-${item.slug}`} className="border-slate-200">
+                                  <div className="px-5 pt-5 sm:px-6 sm:pt-6">
+                                    <div className="flex items-start justify-between gap-3">
+                                      <div>
+                                        <h3 className="text-base font-semibold text-gray-900">{item.title}</h3>
+                                        <p className="mt-1 text-sm leading-6 text-slate-500">{href}</p>
+                                      </div>
+                                      <div className="flex flex-wrap gap-2">
+                                        <Button
+                                          type="button"
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => window.open(href, "_blank", "noopener,noreferrer")}
+                                        >
+                                          <ExternalLink className="w-4 h-4 mr-2" />
+                                          Open Page
+                                        </Button>
+                                        <Button
+                                          type="button"
+                                          variant="outline"
+                                          size="sm"
+                                          className="border-cyan-200 text-cyan-700 hover:bg-cyan-50"
+                                          onClick={openPreviewAndStudio}
+                                        >
+                                          <Sparkles className="w-4 h-4 mr-2" />
+                                          Preview + Studio
+                                        </Button>
+                                        <Button
+                                          type="button"
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => window.open(imageLink, "_blank", "noopener,noreferrer")}
+                                        >
+                                          <Image className="w-4 h-4 mr-2" />
+                                          Image Studio
+                                        </Button>
+                                        <Button
+                                          type="button"
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => window.open(videoLink, "_blank", "noopener,noreferrer")}
+                                        >
+                                          <Video className="w-4 h-4 mr-2" />
+                                          Video Studio
+                                        </Button>
+                                      </div>
+                                      <p className="text-xs text-gray-500">
+                                        Open Media Studio to generate the image/video prompt and attach reference assets from Library.
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <div className="space-y-3 px-5 pb-5 pt-4 sm:px-6 sm:pb-6">
+                                    <div className="rounded-xl border bg-gradient-to-br from-slate-50 via-sky-50 to-cyan-50 p-2">
+                                      <iframe
+                                        title={`${item.title} preview`}
+                                        srcDoc={buildManifestPreviewHtml(item.title, bodyHtml, mediaDescription)}
+                                        className="h-[360px] w-full rounded-lg border-0 bg-white"
+                                        sandbox=""
+                                      />
+                                    </div>
+                                    <div className="flex flex-wrap gap-2">
+                                      {item.mediaPrompts?.imagePrompt && (
+                                        <span className="rounded-full border border-cyan-100 bg-cyan-50 px-3 py-1 text-xs font-medium text-cyan-700">
+                                          Image prompt ready
+                                        </span>
+                                      )}
+                                      {item.mediaPrompts?.videoPrompt && (
+                                        <span className="rounded-full border border-sky-100 bg-sky-50 px-3 py-1 text-xs font-medium text-sky-700">
+                                          Video prompt ready
+                                        </span>
+                                      )}
+                                      {mediaKeywords.slice(0, 5).map((keyword) => (
+                                        <span
+                                          key={keyword}
+                                          className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-600"
+                                        >
+                                          {keyword}
+                                        </span>
+                                      ))}
+                                    </div>
+                                    {item.mediaPrompts?.imagePrompt && (
+                                      <div className="rounded-xl border border-cyan-100 bg-cyan-50/60 p-3 text-sm text-gray-700">
+                                        <p className="mb-1 font-semibold text-cyan-800">Image prompt</p>
+                                        <p className="whitespace-pre-wrap">{item.mediaPrompts.imagePrompt}</p>
+                                      </div>
+                                    )}
+                                    {item.mediaPrompts?.videoPrompt && (
+                                      <div className="rounded-xl border border-sky-100 bg-sky-50/60 p-3 text-sm text-gray-700">
+                                        <p className="mb-1 font-semibold text-sky-800">Video prompt</p>
+                                        <p className="whitespace-pre-wrap">{item.mediaPrompts.videoPrompt}</p>
+                                      </div>
+                                    )}
+                                  </div>
+                                </DashboardCard>
+                              );
+                              };
+
+                              return (
+                                <div className="space-y-4">
+                                  <DashboardCard className="border-cyan-100 bg-cyan-50/50">
+                                    <div className="px-5 pt-5 sm:px-6 sm:pt-6">
+                                      <h3 className="text-base font-semibold text-gray-900">Imported Pages</h3>
+                                      <p className="mt-1 text-sm leading-6 text-slate-500">
+                                        Quick links to open the generated pages after import.
+                                      </p>
+                                    </div>
+                                    <div className="space-y-4 px-5 pb-5 pt-4 sm:px-6 sm:pb-6">
+                                      <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3 space-y-3">
+                                        <div className="flex items-center justify-between gap-3 flex-wrap">
+                                          <div>
+                                            <p className="text-sm font-semibold text-slate-900">Reference Images for All Pages</p>
+                                            <p className="text-xs text-slate-500">เลือกครั้งเดียวแล้วใช้ร่วมกับทุกหน้า preview และส่งเข้า Media Studio ได้ทันที</p>
+                                          </div>
+                                          {previewGlobalReferenceImages.length > 0 && (
+                                            <Button
+                                              type="button"
+                                              variant="ghost"
+                                              size="sm"
+                                              onClick={clearGlobalPreviewReferenceImages}
+                                            >
+                                              Clear All
+                                            </Button>
+                                          )}
+                                        </div>
+                                        <div className="grid gap-2 md:grid-cols-3">
+                                          {Array.from({ length: 3 }).map((_, index) => (
+                                            <div key={`global-ref-${index}`} className="space-y-1.5">
+                                              <div className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
+                                                Slot {index + 1}
+                                              </div>
+                                              <LibraryFilePicker
+                                                value={previewGlobalReferenceImages[index] || ""}
+                                                onValueChange={(url) => updateGlobalPreviewReferenceImage(index, url)}
+                                                allowedExtensions={["png", "jpg", "jpeg", "webp", "gif"]}
+                                              />
+                                            </div>
+                                          ))}
+                                        </div>
+                                        {previewGlobalReferenceImages.length > 0 && (
+                                          <div className="flex flex-wrap gap-2">
+                                            {previewGlobalReferenceImages.map((url) => (
+                                              <span
+                                                key={url}
+                                                className="inline-flex items-center gap-1 rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-xs text-cyan-700"
+                                              >
+                                                {url.split("/").pop() || url}
+                                              </span>
+                                            ))}
+                                          </div>
+                                        )}
+                                      </div>
+
+                                      <div className="flex flex-wrap gap-2">
+                                        <Button
+                                          type="button"
+                                          variant="outline"
+                                          onClick={() => {
+                                            [...docs, ...faqDocs].forEach((item) => window.open(`/docs/${item.slug}`, "_blank", "noopener,noreferrer"));
+                                            blogPosts.forEach((item) => window.open(`/blog/${item.slug}`, "_blank", "noopener,noreferrer"));
+                                          }}
+                                        >
+                                          <ExternalLink className="w-4 h-4 mr-2" />
+                                          Open All Imported Pages
+                                        </Button>
+                                      </div>
+                                      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                                        {[...docs, ...faqDocs].map((item) => (
+                                          <Button
+                                            key={`${item.slug}-link`}
+                                            type="button"
+                                            variant="outline"
+                                            className="h-auto justify-start whitespace-normal text-left"
+                                            onClick={() => window.open(`/docs/${item.slug}`, "_blank", "noopener,noreferrer")}
+                                          >
+                                            <ExternalLink className="w-4 h-4 mr-2 shrink-0" />
+                                            <span className="flex min-w-0 flex-col items-start">
+                                              <span className="truncate font-medium">{item.title}</span>
+                                              <span className="text-xs text-gray-500">{`/docs/${item.slug}`}</span>
+                                            </span>
+                                          </Button>
+                                        ))}
+                                        {blogPosts.map((item) => (
+                                          <Button
+                                            key={`${item.slug}-blog-link`}
+                                            type="button"
+                                            variant="outline"
+                                            className="h-auto justify-start whitespace-normal text-left"
+                                            onClick={() => window.open(`/blog/${item.slug}`, "_blank", "noopener,noreferrer")}
+                                          >
+                                            <ExternalLink className="w-4 h-4 mr-2 shrink-0" />
+                                            <span className="flex min-w-0 flex-col items-start">
+                                              <span className="truncate font-medium">{item.title}</span>
+                                              <span className="text-xs text-gray-500">{`/blog/${item.slug}`}</span>
+                                            </span>
+                                          </Button>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  </DashboardCard>
+
+                                  <Tabs defaultValue="docs" className="space-y-3">
+                                    <TabsList className="bg-slate-100">
+                                      <TabsTrigger value="docs">Docs ({docs.length})</TabsTrigger>
+                                      <TabsTrigger value="faq">FAQ ({faqDocs.length})</TabsTrigger>
+                                      <TabsTrigger value="blog">Blog ({blogPosts.length})</TabsTrigger>
+                                    </TabsList>
+                                    <TabsContent value="docs" className="space-y-4">
+                                      {docs.slice(0, 3).map((item) => renderPreviewCard("docs", item))}
+                                    </TabsContent>
+                                    <TabsContent value="faq" className="space-y-4">
+                                      {faqDocs.slice(0, 3).map((item) => renderPreviewCard("faq", item))}
+                                    </TabsContent>
+                                    <TabsContent value="blog" className="space-y-4">
+                                      {blogPosts.slice(0, 3).map((item) => renderPreviewCard("blog", item))}
+                                    </TabsContent>
+                                  </Tabs>
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="content-manifest">Content Manifest JSON</Label>
+                        <Textarea
+                          id="content-manifest"
+                          value={manifestJson}
+                          onChange={(e) => setManifestJson(e.target.value)}
+                          rows={18}
+                          className="font-mono text-sm"
+                          placeholder={`{
+  "tenantDomain": "${tenant?.primaryDomain || "smartaihub.app"}",
+  "pages": [
+    {
+      "pageKey": "faq-marketplace",
+      "path": "/docs/faq/marketplace",
+      "slug": "faq/marketplace",
+      "title": "Marketplace FAQ",
+      "description": "Answers to common marketplace questions",
+      "keywords": ["skill marketplace", "faq", "smartaihub"],
+      "aiContext": "Use this page to answer common questions about marketplace discovery and publishing.",
+      "keyFacts": ["The marketplace supports reusable skills.", "Skills can be versioned and reused across workflows."],
+      "content": "<section><h1>Marketplace FAQ</h1></section>"
+    }
+  ]
+}`}
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between gap-3 flex-wrap">
+                        <p className="text-sm text-gray-500">
+                          Import docs, blog, FAQ, and future public pages from a skill-generated manifest.
+                        </p>
+                        <div className="flex items-center gap-3">
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              setAutoKeywordsText(getSmartAiHubDefaultAutoKeywords().join("\n"));
+                              setAutoManifestSummary("");
+                              setGeneratedAutoManifest(null);
+                              setShowImportHtmlPreview(false);
+                            }}
+                            disabled={isGeneratingAutoManifest || isImportingManifest}
+                          >
+                            Reset Keywords
+                          </Button>
+                          <Button onClick={handleImportManifest} disabled={isImportingManifest} className="bg-cyan-600 hover:bg-cyan-700">
+                          {isImportingManifest ? (
+                            <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                          ) : (
+                            <Upload className="w-4 h-4 mr-2" />
+                          )}
+                          Import Manifest
+                        </Button>
+                        </div>
+                      </div>
+                    </TabsContent>
                   </Tabs>
-                </CardContent>
-              </Card>
+                </div>
+              </DashboardCard>
             )}
           </div>
         </div>

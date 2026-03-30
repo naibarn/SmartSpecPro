@@ -98,6 +98,14 @@ export default defineConfig({
           if (id.includes("node_modules/xlsx/")) {
             return "vendor-xlsx";
           }
+          // i18n runtime
+          if (
+            id.includes("node_modules/i18next/") ||
+            id.includes("node_modules/react-i18next/") ||
+            id.includes("node_modules/i18next-resources-to-backend/")
+          ) {
+            return "vendor-i18n";
+          }
         },
       },
     },

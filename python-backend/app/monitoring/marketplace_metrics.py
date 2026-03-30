@@ -46,23 +46,23 @@ class MarketplaceMetrics:
         self.revenue_total = 0
         self.revenue_creator = 0
         self.revenue_platform = 0
-        self.unique_buyers = set()
-        self.unique_creators = set()
+        self.unique_buyers: set[int] = set()
+        self.unique_creators: set[int] = set()
 
         # Performance metrics
-        self.response_times = deque(maxlen=1000)
+        self.response_times: deque[float] = deque(maxlen=1000)
         self.concurrent_purchases = 0
 
         # Error tracking
         self.failed_purchases = 0
-        self.error_counts = defaultdict(int)
-        self.security_events = deque(maxlen=100)
+        self.error_counts: Dict[str, int] = defaultdict(int)
+        self.security_events: deque[Dict[str, Any]] = deque(maxlen=100)
 
         # Rate limiting tracking
-        self.purchase_attempts = deque(maxlen=10000)
+        self.purchase_attempts: deque[tuple[float, int]] = deque(maxlen=10000)
 
         # Historical snapshots
-        self.snapshots = deque(maxlen=1440)  # 24 hours at 1-minute intervals
+        self.snapshots: deque[MetricSnapshot] = deque(maxlen=1440)  # 24 hours at 1-minute intervals
 
     def record_purchase(
         self,
@@ -266,7 +266,7 @@ class MarketplaceMetrics:
         with self._lock:
             # Check for duplicate purchase attempts (race condition attempts)
             recent_purchases = list(self.purchase_attempts)[-100:]
-            user_frequency = defaultdict(int)
+            user_frequency: Dict[int, int] = defaultdict(int)
 
             for _, user_id in recent_purchases:
                 user_frequency[user_id] += 1

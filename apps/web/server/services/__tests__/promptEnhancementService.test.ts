@@ -66,11 +66,16 @@ describe("promptEnhancementService", () => {
       language: "en",
       aspectRatio: "9:16",
       targetPlatform: "veo",
+      referenceImages: ["https://example.com/ref.png"],
+      referenceNotes: "The attached image shows a small yellow dog with a blue collar and a red bandana.",
     });
 
     expect(prompt).toContain("expert AI video prompt generator");
     expect(prompt).toContain("Optimize the prompt for veo");
     expect(prompt).toContain("Honor the requested aspect ratio: 9:16");
+    expect(prompt).toContain("continuity anchors for character identity, wardrobe, props, and scene layout");
+    expect(prompt).toContain("preserve the same face, hairstyle, body shape, outfit colors, accessories, pose language, and signature props");
+    expect(prompt).toContain("Reference notes: The attached image shows a small yellow dog with a blue collar and a red bandana.");
   });
 
   it("keeps image prompt behavior for image prompt skills", () => {
@@ -78,10 +83,14 @@ describe("promptEnhancementService", () => {
       skillId: "image_prompt_engineer",
       userInput: "Luxury skincare bottle on reflective marble",
       language: "en",
+      referenceImages: ["https://example.com/ref.png"],
+      referenceNotes: "The attached image shows a small yellow dog with a blue collar and a red bandana.",
     });
 
     expect(prompt).toContain("expert AI image prompt generator");
     expect(prompt).toContain("Prompt Structure Rules");
+    expect(prompt).toContain("If any reference image is a character reference, preserve the same face, hairstyle, body shape, outfit colors, accessories, pose language, and signature props.");
+    expect(prompt).toContain("Reference notes: The attached image shows a small yellow dog with a blue collar and a red bandana.");
   });
 
   it("uses the selected media type when only reference images are provided", () => {

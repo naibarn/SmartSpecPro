@@ -4,7 +4,7 @@
 # Usage: ./run-services.sh [start|stop|status|restart|attach|logs]
 #
 # Web and Backend are managed by systemd (auto-restart on crash).
-# Docker Status UI runs in a screen session.
+# Docker Status UI prefers systemd and falls back to a screen session.
 # Infrastructure and media workers run in Docker.
 
 set -e
@@ -31,6 +31,79 @@ log_info() { echo -e "${GREEN}[INFO]${NC} $1"; }
 log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 log_step() { echo -e "${BLUE}[STEP]${NC} $1"; }
+
+localhost_http_code() {
+    local code
+    code="$(curl -sS -o /dev/null -w "%{http_code}" "$1" 2>/dev/null)" || code="000"
+    echo "${code:-000}"
+}
+
+localhost_json_status() {
+    local body
+    body="$(curl -sS "$1" 2>/dev/null)" || {
+        echo "unreachable"
+        return 0
+    }
+
+    local status
+    status="$(printf '%s' "$body" | jq -r '.status // empty' 2>/dev/null || true)"
+    echo "${status:-unreachable}"
+}
+
+systemd_available() {
+    systemctl show smartspec-web.service -p LoadState > /dev/null 2>&1
+}
+
+systemd_is_active() {
+    local unit=$1
+    if systemd_available; then
+        systemctl is-active "$unit" 2>/dev/null || echo "inactive"
+    else
+        echo "unknown"
+    fi
+}
+
+systemd_restart_count() {
+    local unit=$1
+    if systemd_available; then
+        systemctl show "$unit" -p NRestarts --value 2>/dev/null || echo "?"
+    else
+        echo "?"
+    fi
+}
+
+docker_status_unit_installed() {
+    [ -f /etc/systemd/system/smartspec-docker-status.service ] \
+        || [ -f /lib/systemd/system/smartspec-docker-status.service ] \
+        || [ -f /usr/lib/systemd/system/smartspec-docker-status.service ]
+}
+
+docker_status_screen_running() {
+    screen -list 2>/dev/null | grep -q "\.smartspec-docker-status"
+}
+
+docker_status_health_code() {
+    localhost_http_code "http://127.0.0.1:3001/health"
+}
+
+start_docker_status() {
+    if docker_status_unit_installed && systemd_available; then
+        log_step "Starting Docker Status UI (systemd)..."
+        sudo systemctl start smartspec-docker-status.service
+        return $?
+    fi
+
+    start_screen_service "smartspec-docker-status" "cd docker-status && npm run dev"
+}
+
+stop_docker_status() {
+    if docker_status_unit_installed && systemd_available; then
+        log_step "Stopping Docker Status UI (systemd)..."
+        sudo systemctl stop smartspec-docker-status.service 2>/dev/null || true
+    fi
+
+    stop_screen_service "smartspec-docker-status"
+}
 
 print_banner() {
     echo -e "${CYAN}"
@@ -115,7 +188,7 @@ wait_for_backend() {
 
     log_step "Waiting for Python Backend to be ready..."
     while [ $attempt -le $max_attempts ]; do
-        local status=$(curl -s http://localhost:8000/health 2>/dev/null | jq -r '.status' 2>/dev/null || echo "unreachable")
+        local status=$(localhost_json_status "http://127.0.0.1:8000/health")
         if [[ "$status" == "healthy" ]] || [[ "$status" == "degraded" ]]; then
             log_info "Python Backend is ready (status: $status, ${attempt}s)"
             return 0
@@ -135,7 +208,7 @@ wait_for_web() {
 
     log_step "Waiting for Web Application to be ready..."
     while [ $attempt -le $max_attempts ]; do
-        local status_code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000 2>/dev/null || echo "000")
+        local status_code=$(localhost_http_code "http://127.0.0.1:3000")
         if [ "$status_code" = "200" ] || [ "$status_code" = "304" ]; then
             log_info "Web Application is ready (HTTP $status_code, ${attempt}s)"
             return 0
@@ -156,7 +229,7 @@ wait_for_docker_status() {
     log_step "Waiting for Docker Status to be ready..."
     while [ $attempt -le $max_attempts ]; do
         local status_code
-        status_code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3001/health 2>/dev/null || echo "000")
+        status_code=$(docker_status_health_code)
         if [ "$status_code" = "200" ]; then
             log_info "Docker Status is ready (${attempt}s)"
             return 0
@@ -264,7 +337,7 @@ wait_for_sandbox() {
 
     log_step "Waiting for OpenSandbox to be ready..."
     while [ $attempt -le $max_attempts ]; do
-        if curl -sf http://localhost:8080/health > /dev/null 2>&1; then
+        if curl -sf http://127.0.0.1:8080/health > /dev/null 2>&1; then
             log_info "OpenSandbox is ready ($((attempt * 2))s)"
             return 0
         fi
@@ -436,9 +509,9 @@ cmd_start() {
         exit 1
     fi
 
-    # Step 5: Docker Status (screen — no systemd unit)
+    # Step 5: Docker Status (systemd preferred, screen fallback)
     echo ""
-    if ! start_screen_service "smartspec-docker-status" "cd docker-status && npm run dev"; then
+    if ! start_docker_status; then
         log_error "Failed to start docker status service"
         exit 1
     fi
@@ -520,8 +593,8 @@ cmd_stop() {
     sudo systemctl stop smartspec-backend.service 2>/dev/null || true
     log_info "Backend stopped"
 
-    # Stop screen services
-    stop_screen_service "smartspec-docker-status"
+    # Stop Docker Status UI
+    stop_docker_status
 
     # Clean up any orphan screen sessions
     cleanup_screen_conflicts
@@ -603,38 +676,54 @@ cmd_status() {
 
     echo ""
     # 2. Application Layer (systemd managed)
-    echo -e "${BLUE}--- Application Services (systemd) ---${NC}"
+    echo -e "${BLUE}--- Application Services ---${NC}"
 
     # Backend (systemd)
-    local backend_active=$(systemctl is-active smartspec-backend.service 2>/dev/null || echo "inactive")
-    local backend_restarts=$(systemctl show smartspec-backend.service -p NRestarts --value 2>/dev/null || echo "?")
+    local backend_active=$(systemd_is_active smartspec-backend.service)
+    local backend_restarts=$(systemd_restart_count smartspec-backend.service)
     if [ "$backend_active" = "active" ]; then
-        local backend_health=$(curl -s http://localhost:8000/health 2>/dev/null | jq -r '.status' 2>/dev/null || echo "unreachable")
+        local backend_health=$(localhost_json_status "http://127.0.0.1:8000/health")
         echo -e "  ${GREEN}✓${NC} Python Backend   Running ($backend_health) [systemd, restarts: $backend_restarts]"
+    elif [[ "$(localhost_json_status "http://127.0.0.1:8000/health")" =~ ^(healthy|degraded)$ ]]; then
+        local backend_health=$(localhost_json_status "http://127.0.0.1:8000/health")
+        echo -e "  ${GREEN}✓${NC} Python Backend   Running ($backend_health) [health endpoint]"
     else
         echo -e "  ${RED}x${NC} Python Backend   $backend_active [systemd, restarts: $backend_restarts]"
     fi
 
     # Web (systemd)
-    local web_active=$(systemctl is-active smartspec-web.service 2>/dev/null || echo "inactive")
-    local web_restarts=$(systemctl show smartspec-web.service -p NRestarts --value 2>/dev/null || echo "?")
+    local web_active=$(systemd_is_active smartspec-web.service)
+    local web_restarts=$(systemd_restart_count smartspec-web.service)
     if [ "$web_active" = "active" ]; then
-        local web_responding=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000 2>/dev/null || echo "000")
+        local web_responding=$(localhost_http_code "http://127.0.0.1:3000")
         echo -e "  ${GREEN}✓${NC} Web Application  Running (HTTP $web_responding) [systemd, restarts: $web_restarts]"
+    elif [ "$(localhost_http_code "http://127.0.0.1:3000")" = "200" ] || [ "$(localhost_http_code "http://127.0.0.1:3000")" = "304" ]; then
+        local web_responding=$(localhost_http_code "http://127.0.0.1:3000")
+        echo -e "  ${GREEN}✓${NC} Web Application  Running (HTTP $web_responding) [health endpoint]"
     else
         echo -e "  ${RED}x${NC} Web Application  $web_active [systemd, restarts: $web_restarts]"
     fi
 
-    # Docker Status (screen)
-    if screen -list 2>/dev/null | grep -q "\.smartspec-docker-status"; then
-        local ds_responding=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3001/health 2>/dev/null || echo "000")
+    # Docker Status (systemd or screen)
+    local docker_status_active=$(systemd_is_active smartspec-docker-status.service)
+    if [ "$docker_status_active" = "active" ]; then
+        local ds_responding=$(docker_status_health_code)
+        if [ "$ds_responding" = "200" ]; then
+            echo -e "  ${GREEN}✓${NC} Docker Status    Running (HTTP $ds_responding) [systemd]"
+        else
+            echo -e "  ${YELLOW}!${NC} Docker Status    Running but not healthy [systemd]"
+        fi
+    elif docker_status_screen_running; then
+        local ds_responding=$(docker_status_health_code)
         if [ "$ds_responding" = "200" ]; then
             echo -e "  ${GREEN}✓${NC} Docker Status    Running (HTTP $ds_responding) [screen]"
         else
             echo -e "  ${YELLOW}!${NC} Docker Status    Running but not healthy [screen]"
         fi
+    elif [ "$(docker_status_health_code)" = "200" ]; then
+        echo -e "  ${GREEN}✓${NC} Docker Status    Running (HTTP 200) [health endpoint]"
     else
-        echo -e "  ${RED}x${NC} Docker Status    Not running [screen]"
+        echo -e "  ${RED}x${NC} Docker Status    Not running"
     fi
 
     echo ""
@@ -661,9 +750,9 @@ cmd_status() {
     docker ps --format '{{.Names}}' | grep -q '^smartspec-postgres$' && ((running_count++)) || true
     docker ps --format '{{.Names}}' | grep -q '^smartspec-redis$' && ((running_count++)) || true
     docker ps --format '{{.Names}}' | grep -q '^smartspec-nginx-dev$' && ((running_count++)) || true
-    [ "$(systemctl is-active smartspec-backend.service 2>/dev/null)" = "active" ] && ((running_count++)) || true
-    [ "$(systemctl is-active smartspec-web.service 2>/dev/null)" = "active" ] && ((running_count++)) || true
-    screen -list 2>/dev/null | grep -q "\.smartspec-docker-status" && ((running_count++)) || true
+    [ "$(systemd_is_active smartspec-backend.service)" = "active" ] || [[ "$(localhost_json_status "http://127.0.0.1:8000/health")" =~ ^(healthy|degraded)$ ]] && ((running_count++)) || true
+    [ "$(systemd_is_active smartspec-web.service)" = "active" ] || [ "$(localhost_http_code "http://127.0.0.1:3000")" = "200" ] || [ "$(localhost_http_code "http://127.0.0.1:3000")" = "304" ] && ((running_count++)) || true
+    [ "$(systemd_is_active smartspec-docker-status.service)" = "active" ] || docker_status_screen_running || [ "$(docker_status_health_code)" = "200" ] && ((running_count++)) || true
     docker ps --format '{{.Names}}' | grep -q '^smartspec-celery-media$' && ((running_count++)) || true
     docker ps --format '{{.Names}}' | grep -q '^smartspec-celery-import$' && ((running_count++)) || true
     docker ps --format '{{.Names}}' | grep -q '^smartspec-celery-presentation$' && ((running_count++)) || true
@@ -709,7 +798,10 @@ cmd_attach() {
             sudo journalctl -u smartspec-backend.service -f --no-pager
             ;;
         docker)
-            if screen -list | grep -q "\.smartspec-docker-status"; then
+            if docker_status_unit_installed && systemd_available; then
+                log_info "Docker Status is managed by systemd. Showing live logs (Ctrl+C to exit)..."
+                sudo journalctl -u smartspec-docker-status.service -f --no-pager
+            elif docker_status_screen_running; then
                 log_info "Attaching to smartspec-docker-status... (Press Ctrl+A then D to detach)"
                 sleep 1
                 screen -r smartspec-docker-status
@@ -756,7 +848,12 @@ cmd_logs() {
             log_info "For live logs: ./run-services.sh attach backend"
             ;;
         docker)
-            if screen -list | grep -q "\.smartspec-docker-status"; then
+            if docker_status_unit_installed && systemd_available; then
+                log_info "Showing recent logs for Docker Status (systemd)..."
+                sudo journalctl -u smartspec-docker-status.service --since "30 min ago" --no-pager
+                echo ""
+                log_info "For live logs: ./run-services.sh attach docker"
+            elif docker_status_screen_running; then
                 log_info "Showing logs for smartspec-docker-status..."
                 screen -S smartspec-docker-status -X hardcopy /tmp/smartspec-docker-status.log
                 cat /tmp/smartspec-docker-status.log
@@ -820,9 +917,10 @@ cmd_restart() {
                 wait_for_backend
                 ;;
             docker)
-                stop_screen_service "smartspec-docker-status"
+                stop_docker_status
                 sleep 1
-                start_screen_service "smartspec-docker-status" "cd docker-status && npm run dev"
+                start_docker_status
+                wait_for_docker_status
                 ;;
             media)
                 log_step "Recreating Docker media workers (apply latest compose config)..."

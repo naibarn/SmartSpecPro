@@ -414,6 +414,7 @@ class KiloSessionManager:
             use_docker=self._docker_executor is not None,
         )
         
+        error: Optional[str] = None
         try:
             # Execute command - either via Docker or directly
             if self._docker_executor:
@@ -452,7 +453,7 @@ class KiloSessionManager:
                     )
                     output = stdout_bytes.decode()
                     error = stderr_bytes.decode() if stderr_bytes else None
-                    exit_code = process.returncode
+                    exit_code = process.returncode if process.returncode is not None else KiloExitCode.ERROR
                 except asyncio.TimeoutError:
                     process.kill()
                     await process.wait()
@@ -477,7 +478,7 @@ class KiloSessionManager:
                     pass
             
             # Determine success
-            exit_code = process.returncode
+            exit_code = process.returncode if process.returncode is not None else KiloExitCode.ERROR
             success = exit_code == KiloExitCode.SUCCESS
             
             # Extract metrics from JSON if available
@@ -582,6 +583,9 @@ class KiloSessionManager:
             session.process = process
             
             # Stream stdout
+            if process.stdout is None:
+                raise RuntimeError("Process stdout is unavailable")
+
             while True:
                 line = await asyncio.wait_for(
                     process.stdout.readline(),

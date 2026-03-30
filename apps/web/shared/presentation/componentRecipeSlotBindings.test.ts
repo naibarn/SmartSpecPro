@@ -120,6 +120,63 @@ describe("buildPresentationComponentRecipeSlotBindings", () => {
     expect(hero!.type).toBe("image");
   });
 
+  it("sectioned-explainer intro prefers structured slide copy over the full raw note", () => {
+    const result = buildPresentationComponentRecipeSlotBindings("sectioned-explainer", makeInput({
+      body: [
+        "เริ่มจากสร้างกิจวัตรเดิมทุกคืน",
+        "รักษาเวลาเข้านอนให้คงที่",
+      ],
+      notes: "เริ่มจากสร้างกิจวัตรเดิมทุกคืน รักษาเวลาเข้านอนให้คงที่ และอธิบายรายละเอียดเต็มที่ไม่ควรถูกยกทั้งก้อนมาเป็น intro",
+    }));
+    const intro = result.find((binding) => binding.slotId === "intro" && binding.type === "text");
+    expect(intro?.type).toBe("text");
+    if (intro?.type === "text") {
+      expect(intro.text).toContain("เริ่มจากสร้างกิจวัตรเดิมทุกคืน");
+      expect(intro.text).not.toContain("อธิบายรายละเอียดเต็มที่ไม่ควรถูกยกทั้งก้อนมาเป็น intro");
+    }
+  });
+
+  it("article-focus lead prefers visible body copy over the full slide note blob", () => {
+    const result = buildPresentationComponentRecipeSlotBindings("article-focus", makeInput({
+      body: [
+        "เริ่มจากประเมิน pattern การนอนของลูกในแต่ละคืน",
+        "จดข้อมูลช่วงเวลาที่ตื่นและวิธีที่ช่วยให้กลับมาสงบได้",
+      ],
+      notes: "เริ่มจากประเมิน pattern การนอนของลูกในแต่ละคืน จดข้อมูลช่วงเวลาที่ตื่นและวิธีที่ช่วยให้กลับมาสงบได้ พร้อมรายละเอียดขยายยาวที่ไม่ควรถูกยกมาทั้งหมดใน lead",
+    }));
+    const lead = result.find((binding) => binding.slotId === "lead" && binding.type === "text");
+    expect(lead?.type).toBe("text");
+    if (lead?.type === "text") {
+      expect(lead.text).toContain("เริ่มจากประเมิน pattern การนอนของลูก");
+      expect(lead.text).not.toContain("รายละเอียดขยายยาวที่ไม่ควรถูกยกมาทั้งหมดใน lead");
+    }
+  });
+
+  it("article-focus does not duplicate the same paragraph into both lead and body on single-thread slides", () => {
+    const repeatedParagraph = "คู่มือการฝึกทารกวัยหกเดือนให้นอนหลับยาวตลอดคืน เมื่อลูกมีอายุหกเดือน ร่างกายของเขามักจะพร้อมสำหรับการนอนยาวตลอดคืนเนื่องจากขนาดกระเพาะอาหารที่ใหญ่ขึ้นและไม่จำเป็นต้องตื่นมาดื่มนมมื้อดึกบ่อยเหมือนช่วงแรกเกิด";
+    const result = buildPresentationComponentRecipeSlotBindings("article-focus", makeInput({
+      title: "คู่มือการฝึกทารกวัยหกเดือนให้นอนหลับยาวตลอดคืน",
+      body: [repeatedParagraph],
+      notes: repeatedParagraph,
+      sections: [],
+      graphicCategory: "Communication",
+    }));
+
+    const lead = result.find((binding) => binding.slotId === "lead" && binding.type === "text");
+    const body = result.find((binding) => binding.slotId === "body" && binding.type === "text");
+    const eyebrow = result.find((binding) => binding.slotId === "eyebrow" && binding.type === "text");
+
+    expect(lead?.type).toBe("text");
+    expect(body?.type).toBe("text");
+    expect(eyebrow?.type).toBe("text");
+    if (lead?.type === "text" && body?.type === "text" && eyebrow?.type === "text") {
+      expect(lead.text).not.toContain("คู่มือการฝึกทารกวัยหกเดือนให้นอนหลับยาวตลอดคืน ");
+      expect(body.text).not.toBe(lead.text);
+      expect(body.text).not.toContain("คู่มือการฝึกทารกวัยหกเดือนให้นอนหลับยาวตลอดคืน");
+      expect(eyebrow.text).toBe("Article");
+    }
+  });
+
   it("article-focus includes hero image slot", () => {
     const result = buildPresentationComponentRecipeSlotBindings("article-focus", makeInput());
     const hero = result.find((b) => b.slotId === "hero");

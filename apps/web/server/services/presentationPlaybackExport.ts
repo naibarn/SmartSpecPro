@@ -2,6 +2,8 @@ import crypto from "crypto";
 
 import {
   PRESENTATION_ERROR_CODE,
+  PRESENTATION_EXPORT_MAX_HEIGHT,
+  PRESENTATION_EXPORT_MAX_WIDTH,
   PRESENTATION_EXPORT_SCHEMA_VERSION,
   PRESENTATION_RENDER_SCHEMA_VERSION,
   PRESENTATION_SLIDESHOW_SCHEMA_VERSION,
@@ -377,7 +379,41 @@ async function resolveAudioSourceUrl(sourceUrl: string | null): Promise<string |
 }
 
 function resolveRenderDimensions(input: BuildRenderSpecInput): { width: number; height: number } {
-  if (input.width && input.height) {
+  const hasExplicitWidth = input.width !== undefined;
+  const hasExplicitHeight = input.height !== undefined;
+
+  if (hasExplicitWidth !== hasExplicitHeight) {
+    throw new PresentationServiceError(
+      PRESENTATION_ERROR_CODE.VALIDATION_FAILED,
+      `${PRESENTATION_ERROR_CODE.VALIDATION_FAILED}: export width and height must be provided together`,
+      {
+        maxWidth: PRESENTATION_EXPORT_MAX_WIDTH,
+        maxHeight: PRESENTATION_EXPORT_MAX_HEIGHT,
+      },
+    );
+  }
+
+  if (hasExplicitWidth && hasExplicitHeight) {
+    if (
+      !Number.isFinite(input.width)
+      || !Number.isFinite(input.height)
+      || input.width <= 0
+      || input.height <= 0
+      || input.width > PRESENTATION_EXPORT_MAX_WIDTH
+      || input.height > PRESENTATION_EXPORT_MAX_HEIGHT
+    ) {
+      throw new PresentationServiceError(
+        PRESENTATION_ERROR_CODE.VALIDATION_FAILED,
+        `${PRESENTATION_ERROR_CODE.VALIDATION_FAILED}: export dimensions exceed allowed bounds`,
+        {
+          maxWidth: PRESENTATION_EXPORT_MAX_WIDTH,
+          maxHeight: PRESENTATION_EXPORT_MAX_HEIGHT,
+          width: input.width,
+          height: input.height,
+        },
+      );
+    }
+
     return { width: input.width, height: input.height };
   }
 
@@ -1096,6 +1132,13 @@ export async function triggerPresentationExport(
   dependencies?: TriggerPresentationExportDependencies,
 ): Promise<PresentationExportResult> {
   const resolved = resolveDependencies(dependencies);
+  resolveRenderDimensions({
+    deck: { id: input.deckId },
+    slides: [],
+    format: input.format,
+    width: input.width,
+    height: input.height,
+  });
   const nowMs = resolved.now();
   compactExportState(nowMs, {
     dedupeWindowMs: resolved.dedupeWindowMs,

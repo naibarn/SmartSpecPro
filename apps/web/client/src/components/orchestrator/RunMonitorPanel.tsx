@@ -7,8 +7,8 @@
 
 import React, { useState, useMemo, useCallback } from "react";
 import { useRunStream, type RunStreamEvent } from "@/hooks/useRunStream";
-import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 
 interface AgentStatus {
   id: string;
@@ -48,7 +48,7 @@ export function RunMonitorPanel({
   controlsBusy = false,
   className,
 }: RunMonitorPanelProps) {
-  const { t } = useI18n();
+  const { t } = useScopedTranslation('agency');
   const [timeline, setTimeline] = useState<RunStreamEvent[]>([]);
   const [agentStats, setAgentStats] = useState<Map<string, { turns: number; tokens: number }>>(new Map());
 

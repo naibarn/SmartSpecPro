@@ -97,3 +97,22 @@ export function appendLibraryContextToMessage(
 
   return `${text}\n\n${contextBlock}`;
 }
+
+/**
+ * Extract the retrieval query from a message that may contain appended library context.
+ * The retrieval query should stay focused on the user's actual question.
+ */
+export function extractRetrievalQueryText(message: string, fallback = ""): string {
+  const text = message.trim();
+  if (!text) return fallback.trim();
+
+  const marker = "\n\nLibrary context:";
+  const markerIndex = text.indexOf(marker);
+  const baseText = markerIndex >= 0 ? text.slice(0, markerIndex).trim() : text;
+
+  if (!baseText || baseText === "Use these library items as context.") {
+    return fallback.trim();
+  }
+
+  return baseText;
+}

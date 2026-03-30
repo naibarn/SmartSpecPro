@@ -186,6 +186,9 @@ export function normalizePresentationSlideContent(input: unknown): PresentationS
           : undefined,
         sourceTrace: parsed.aiDesign.sourceTrace?.map((entry) => ({ ...entry })),
         fallbackHistory: parsed.aiDesign.fallbackHistory?.map((entry) => ({ ...entry })),
+        layoutExecution: parsed.aiDesign.layoutExecution
+          ? { ...parsed.aiDesign.layoutExecution }
+          : undefined,
         mediaModeMetadata: parsed.aiDesign.mediaModeMetadata
           ? { ...parsed.aiDesign.mediaModeMetadata }
           : undefined,

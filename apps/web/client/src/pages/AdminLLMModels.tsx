@@ -5,8 +5,8 @@ import { ChevronLeft, Cpu, Layers, ToggleLeft } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { MultiProviderAdmin } from "@/components/admin/MultiProviderAdmin";
+import { DashboardCard, DashboardKpiCard } from "@/components/dashboard";
 
 export default function AdminLLMModels() {
   const { user, isLoading: authLoading } = useAuth();
@@ -73,47 +73,36 @@ export default function AdminLLMModels() {
       </div>
 
       <div className="mb-8 grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Unique Models</CardDescription>
-            <CardTitle className="flex items-center gap-2 text-2xl">
-              <Layers className="h-5 w-5" />
-              {summary.modelGroups}
-            </CardTitle>
-          </CardHeader>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Manageable Models</CardDescription>
-            <CardTitle className="text-2xl">{summary.mappings}</CardTitle>
-          </CardHeader>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Enabled Mappings</CardDescription>
-            <CardTitle className="flex items-center gap-2 text-2xl text-green-600">
-              <ToggleLeft className="h-5 w-5" />
-              {summary.enabled}
-            </CardTitle>
-          </CardHeader>
-        </Card>
+        <DashboardKpiCard
+          icon={Layers}
+          label="Unique Models"
+          value={summary.modelGroups}
+        />
+        <DashboardKpiCard
+          icon={Cpu}
+          label="Manageable Models"
+          value={summary.mappings}
+        />
+        <DashboardKpiCard
+          icon={ToggleLeft}
+          label="Enabled Mappings"
+          value={summary.enabled}
+          valueClassName="text-green-600"
+          iconContainerClassName="bg-green-50 text-green-600 ring-green-100"
+          iconClassName="text-green-600"
+        />
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Model Availability</CardTitle>
-          <CardDescription>
-            Start with the full model list, then switch to group controls when you need to enable or disable entire sets at once.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="py-8 text-sm text-muted-foreground">Loading model mappings...</div>
-          ) : (
-            <MultiProviderAdmin tabs={["mappings"]} defaultTab="mappings" />
-          )}
-        </CardContent>
-      </Card>
+      <DashboardCard
+        title="Model Availability"
+        description="Start with the full model list, then switch to group controls when you need to enable or disable entire sets at once."
+      >
+        {isLoading ? (
+          <div className="py-8 text-sm text-muted-foreground">Loading model mappings...</div>
+        ) : (
+          <MultiProviderAdmin tabs={["mappings"]} defaultTab="mappings" />
+        )}
+      </DashboardCard>
     </div>
   );
 }

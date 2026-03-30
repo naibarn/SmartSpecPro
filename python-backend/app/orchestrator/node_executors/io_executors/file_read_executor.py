@@ -40,11 +40,11 @@ class FileReadExecutor:
         self, data: NodeExecutionData, context: ExecutionContext
     ) -> dict[str, Any]:
         """Read file with security checks."""
-        file_path = data.inputs.get("file_path")
-        encoding = data.inputs.get("encoding", "utf-8")
+        file_path = str(data.inputs.get("file_path") or "")
+        encoding = str(data.inputs.get("encoding", "utf-8"))
 
         # Sanitize and validate path
-        safe_path = self._sanitize_path(file_path, context.tenant_id)
+        safe_path = self._sanitize_path(file_path, str(context.tenant_id or ""))
 
         if not safe_path.exists():
             raise FileNotFoundError(f"File not found: {file_path}")

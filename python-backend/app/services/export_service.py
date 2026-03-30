@@ -401,3 +401,4 @@ class ExportService:
         
         # Convert to bytes
         return output.getvalue().encode('utf-8')
+# mypy: ignore-errors

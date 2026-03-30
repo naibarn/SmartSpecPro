@@ -5,6 +5,7 @@
 
 import { z } from "zod";
 import { router, protectedProcedure } from "../_core/trpc";
+import { SUPPORTED_LANGUAGES, LANGUAGE_LABELS_EN, type SupportedLanguage } from "../../shared/i18n";
 import { getDb } from "../db";
 import { users } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
@@ -12,14 +13,6 @@ import { deductCredits, calculateCreditsForLLM } from "../services/creditService
 import { resolveEnabledLlmModelId } from "../services/enabledLlmModels";
 import { getProviderForModel } from "../services/llmRouter";
 import { runPlanner, recordStepAttempt } from "../services/taskPlannerMiddleware";
-
-const LANGUAGE_NAMES: Record<string, string> = {
-  th: "Thai", zh: "Chinese (Simplified)", "zh-TW": "Chinese (Traditional)",
-  ja: "Japanese", ko: "Korean", fr: "French", es: "Spanish",
-  de: "German", pt: "Portuguese", ar: "Arabic", ru: "Russian",
-  hi: "Hindi", vi: "Vietnamese", id: "Indonesian", it: "Italian",
-  nl: "Dutch", pl: "Polish", tr: "Turkish", sv: "Swedish",
-};
 
 function isLikelyEnglish(text: string): boolean {
   // Check first 300 chars: if >70% ASCII letters, likely English
@@ -39,7 +32,7 @@ export const translationRouter = router({
   translate: protectedProcedure
     .input(z.object({
       text: z.string().min(1).max(10000),
-      targetLanguage: z.string().max(10).optional(),
+      targetLanguage: z.enum(SUPPORTED_LANGUAGES).optional(),
     }))
     .mutation(async ({ input, ctx }) => {
       const db = await getDb();
@@ -53,8 +46,9 @@ export const translationRouter = router({
         .limit(1);
 
       const prefs = (user?.userPreferences as Record<string, any>) || {};
-      const targetLang = input.targetLanguage || prefs.translationLanguage || "th";
-      const langName = LANGUAGE_NAMES[targetLang] || targetLang;
+      const rawLang = input.targetLanguage || prefs.translationLanguage || "th";
+      const targetLang = (SUPPORTED_LANGUAGES as readonly string[]).includes(rawLang) ? rawLang : "en";
+      const langName = LANGUAGE_LABELS_EN[targetLang as SupportedLanguage] ?? targetLang;
 
       // Run planner (returns null if disabled — zero overhead)
       const plannerResult = await runPlanner({
@@ -103,8 +97,8 @@ export const translationRouter = router({
       });
 
       if (!response.ok) {
-        const err = await response.text();
-        console.error("[Translation] LLM error:", err);
+        // Log only HTTP status — never log raw provider error body (may contain key fragments)
+        console.error("[Translation] LLM error: HTTP", response.status);
         throw new Error("Translation failed");
       }
 
@@ -122,7 +116,7 @@ export const translationRouter = router({
       await deductCredits({
         userId: ctx.user.id,
         amount: credits,
-        description: `Translation (${textIsEnglish ? "EN→" + targetLang.toUpperCase() : "→EN"})`,
+        description: `Translation (${textIsEnglish ? "EN→" + (LANGUAGE_LABELS_EN[targetLang as SupportedLanguage] ?? targetLang) : "→EN"})`,
         sourceType: "translation",
         metadata: { model, provider: provider.providerName, tokens: usage },
       });

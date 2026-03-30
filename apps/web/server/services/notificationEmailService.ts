@@ -10,6 +10,7 @@ import { renderNotification } from "./notificationTemplateService";
 
 const PUBLIC_URL =
   process.env.PUBLIC_URL || "https://smartaihub.app";
+const NOTIFICATION_SETTINGS_PATH = "/settings?tab=notifications";
 
 // ─── HTML Escaping ────────────────────────────────────────────────────────────
 
@@ -95,7 +96,7 @@ export async function sendNotificationEmail(params: {
   ${actionButton}
   <div style="margin-top:32px;padding-top:16px;border-top:1px solid #e5e7eb;font-size:12px;color:#6b7280;">
     <p>SmartAIHub — ${escapeHtml(userName || "User")}</p>
-    <p><a href="${escapeHtml(PUBLIC_URL + "/settings/notifications")}" style="color:#6b7280;">Unsubscribe from notification emails</a></p>
+    <p><a href="${escapeHtml(PUBLIC_URL + NOTIFICATION_SETTINGS_PATH)}" style="color:#6b7280;">Unsubscribe from notification emails</a></p>
   </div>
 </body>
 </html>`;
@@ -193,7 +194,7 @@ export async function sendNotificationDigest(params: {
   </div>
   <div style="margin-top:32px;padding-top:16px;border-top:1px solid #e5e7eb;font-size:12px;color:#6b7280;">
     <p>SmartAIHub — ${escapeHtml(userName || "User")}</p>
-    <p><a href="${escapeHtml(PUBLIC_URL + "/settings/notifications")}" style="color:#6b7280;">Unsubscribe from notification emails</a></p>
+    <p><a href="${escapeHtml(PUBLIC_URL + NOTIFICATION_SETTINGS_PATH)}" style="color:#6b7280;">Unsubscribe from notification emails</a></p>
   </div>
 </body>
 </html>`;

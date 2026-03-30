@@ -12,7 +12,8 @@ export type AgencyNodeType =
   | "loop_retry"
   | "skill_discovery"
   | "data_transform"
-  | "error_handler";
+  | "error_handler"
+  | "autonomous_agent";
 
 export interface AgencyNodeData {
   nodeType: AgencyNodeType;
@@ -21,6 +22,17 @@ export interface AgencyNodeData {
   instructions?: string;
   model?: string;
   modelSettings?: { maxTokens?: number; temperature?: number; topP?: number; reasoningEffort?: "minimal" | "low" | "medium" | "high" };
+  modelRequirements?: {
+    supportsVision?: boolean;
+    supportsThinking?: boolean;
+    supportsFunctionTools?: boolean;
+    supportsStructuredOutputs?: boolean;
+    supportsWebSearch?: boolean;
+    supportsCodeExecution?: boolean;
+    supportsComputerUse?: boolean;
+    contextLength?: number;
+    strategy?: "cheapest" | "balanced" | "best";
+  };
   parallelToolCalls?: boolean;
   maxTurns?: number;
   isEntryPoint?: boolean;

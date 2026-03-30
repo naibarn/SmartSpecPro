@@ -55,7 +55,7 @@ class BrowserExecutor(NodeExecutor):
             - outputs.pages_loaded: int
     """
 
-    async def execute(
+    async def execute(  # type: ignore[override]
         self,
         node_id: str,
         node_type: str,

@@ -66,6 +66,9 @@ _BUILTIN_ENDPOINTS: dict[str, str] = {
     "builtin-document-search": "/api/internal/tools/document-search",
     "builtin-voice": "/api/internal/tools/voice",
     "builtin-browser": "/api/internal/tools/browser",
+    "builtin-meta-channels": "/api/internal/tools/meta-channels",
+    "builtin-social-actions": "/api/internal/tools/social-actions",
+    "builtin-code-interpreter": None,  # Dispatched to OpenSandbox (not HTTP) — see _execute_code_interpreter()
     "builtin-agency-call": None,  # No HTTP endpoint -- handled internally via execute_agency_call()
     "builtin-auto-draft": "/api/internal/tools/auto-draft",
     "builtin-model-suggest": "/api/internal/tools/model-suggest",
@@ -86,6 +89,9 @@ _BUILTIN_RISK_LEVELS: dict[str, str] = {
     "builtin-document-search": "low",
     "builtin-voice": "medium",
     "builtin-browser": "high",
+    "builtin-meta-channels": "medium",
+    "builtin-social-actions": "medium",
+    "builtin-code-interpreter": "high",  # Must run in OpenSandbox
     "builtin-agency-call": "high",
     "builtin-auto-draft": "medium",
     "builtin-model-suggest": "low",
@@ -176,6 +182,34 @@ import threading
 _TOOL_LOCKS: dict[str, threading.Lock] = {}
 
 
+def _build_agent_headers(tool_id: str, config: dict[str, Any] | None = None) -> dict[str, str]:
+    """Build headers for internal tool bridge calls."""
+    headers = {"Content-Type": "application/json", "X-Agent-Tool-Id": tool_id}
+    if config:
+        agent_id = config.get("agentId") or config.get("agent_id")
+        if agent_id is not None:
+            headers["X-Agent-Id"] = str(agent_id)
+    return headers
+
+
+def _resolve_run_context_tenant_id(run_context: Any | None) -> str | None:
+    """Best-effort tenant resolution from the current agency run context."""
+    if run_context is None:
+        return None
+
+    tenant_id = None
+    try:
+        tenant_id = run_context.get_sync("tenant_id") or run_context.get_sync("tenantId")
+    except Exception:
+        return None
+
+    if tenant_id is None:
+        return None
+
+    tenant_value = str(tenant_id).strip()
+    return tenant_value or None
+
+
 def _validate_custom_tool_input(
     tool_input: dict[str, Any],
     input_schema: dict,
@@ -220,7 +254,7 @@ def _execute_custom_tool_sync(custom_config: CustomToolConfig, tool_input: dict[
             return err
 
     # Prepare headers
-    headers = {"Content-Type": "application/json"}
+    headers = _build_agent_headers(custom_config.tool_id, custom_config.config)
     if custom_config.headers:
         headers.update(custom_config.headers)
 
@@ -341,8 +375,11 @@ def _make_run_func(
         if config.tool_id in _tool_progress_before:
             _emit_progress_sync(_tool_progress_before[config.tool_id])
 
-        # Route based on risk level
-        if config.tool_id == "builtin-agency-call":
+        # Route based on tool type and risk level
+        if config.tool_id == "builtin-code-interpreter":
+            # Code interpreter dispatched to OpenSandbox for safe execution
+            result = _execute_code_interpreter(query, config)
+        elif config.tool_id == "builtin-agency-call":
             # Cross-agency calls are handled internally — not via HTTP sandbox.
             # execute_agency_call() requires async context; this sync wrapper
             # runs it via asyncio.run() since agency-swarm calls run() synchronously.
@@ -420,8 +457,11 @@ def _execute_http(config: ToolConfig, query: str) -> str:
 
     try:
         with httpx.Client(timeout=30.0) as client:
-            resp = client.post(
+            headers = _build_agent_headers(config.tool_id, config.config)
+            resp = client.request(
+                "POST",
                 config.endpoint_url,
+                headers=headers,
                 json={"query": query, **config.config},
             )
             if resp.status_code == 200:
@@ -434,6 +474,46 @@ def _execute_http(config: ToolConfig, query: str) -> str:
             error=str(exc),
         )
         return f"Tool execution failed: {str(exc)[:200]}"
+
+
+def _execute_code_interpreter(query: str, config: ToolConfig) -> str:
+    """Execute code via OpenSandbox code interpreter (isolated container).
+
+    SECURITY: User-generated code MUST run in sandbox, never in the main process.
+    Falls back to a safe error message if sandbox is unavailable.
+    """
+    try:
+        import asyncio as _asyncio
+        from app.integrations.opensandbox.config import get_sandbox_config
+        from app.integrations.opensandbox.client import OpenSandboxClient
+        from app.integrations.opensandbox.execution import run_code
+
+        sandbox_cfg = get_sandbox_config()
+        if not sandbox_cfg.enabled:
+            return (
+                "Code interpreter is not available. "
+                "OpenSandbox is not enabled on this instance. "
+                "Please contact your administrator."
+            )
+
+        async def _run():
+            async with OpenSandboxClient(sandbox_cfg) as client:
+                sandbox = await client.create_sandbox(
+                    image="python:3.12-slim",
+                    timeout_seconds=30,
+                    memory_mb=256,
+                    network_enabled=False,
+                )
+                result = await run_code(client, sandbox.sandbox_id, query, language="python")
+                await client.destroy_sandbox(sandbox.sandbox_id)
+                if result.exit_code != 0:
+                    return f"Code execution error (exit {result.exit_code}):\n{result.stderr[:2000]}"
+                return result.stdout[:10000] if result.stdout else "(no output)"
+
+        return _asyncio.run(_run())
+    except Exception as exc:
+        logger.error("agency_code_interpreter_error", error=str(exc)[:200])
+        return f"Code interpreter error: {str(exc)[:200]}"
 
 
 def _execute_sandbox(config: ToolConfig, query: str) -> str:
@@ -449,8 +529,10 @@ def _execute_sandbox(config: ToolConfig, query: str) -> str:
 
     try:
         with httpx.Client(timeout=60.0) as client:
+            headers = _build_agent_headers(config.tool_id, config.config)
             resp = client.post(
                 config.endpoint_url,
+                headers=headers,
                 json={
                     "tool_id": config.tool_id,
                     "input": query,
@@ -557,6 +639,7 @@ async def resolve_tools_for_agent(
 
     result = await db.execute(query, {"agent_id": agent_id})
     rows = result.all()
+    tenant_id = _resolve_run_context_tenant_id(run_context)
 
     tool_classes: list[type] = []
     blocked_tool_ids = _RETRIEVAL_SCOPE_BLOCKED_TOOL_IDS.get(retrieval_scope_mode or "", set())
@@ -581,6 +664,9 @@ async def resolve_tools_for_agent(
         base_config: dict[str, Any] = row.base_config if isinstance(row.base_config, dict) else {}
         instance_config: dict[str, Any] = row.instance_config if isinstance(row.instance_config, dict) else {}
         merged_config = {**base_config, **instance_config}
+        merged_config.setdefault("agentId", agent_id)
+        if tenant_id:
+            merged_config.setdefault("tenantId", tenant_id)
 
         # endpoint_url may live in config or be derived from the builtin tool ID
         endpoint_url: str | None = merged_config.pop("endpoint_url", None)
@@ -626,7 +712,14 @@ async def resolve_tools_for_agent(
             "mcpServers": mcp_row.mcpServers,
             "mcpServerTokensEncrypted": mcp_row.mcpServerTokensEncrypted,
         }
-        mcp_tools = await resolve_mcp_tools_for_agent(agent_config, adapter=adapter)
+        tenant_id = None
+        if run_context is not None:
+            tenant_id = run_context.get_sync("tenant_id") or run_context.get_sync("tenantId")
+        mcp_tools = await resolve_mcp_tools_for_agent(
+            agent_config,
+            tenant_id=tenant_id,
+            adapter=adapter,
+        )
         tool_classes.extend(mcp_tools)
 
     logger.info(
@@ -668,6 +761,7 @@ async def resolve_shared_tools_for_agency(
 
     result = await db.execute(query, {"agency_id": agency_id})
     rows = result.all()
+    tenant_id = _resolve_run_context_tenant_id(run_context)
 
     tool_classes: list[type] = []
     _native_tool_map: dict[str, type | None] = {}
@@ -676,6 +770,8 @@ async def resolve_shared_tools_for_agency(
         tool_id: str = row.tool_id
 
         base_config: dict[str, Any] = row.base_config if isinstance(row.base_config, dict) else {}
+        if tenant_id:
+            base_config.setdefault("tenantId", tenant_id)
         endpoint_url: str | None = base_config.pop("endpoint_url", None)
         if endpoint_url is None and tool_id in _BUILTIN_ENDPOINTS:
             endpoint_url = _INTERNAL_SERVICE_URL + _BUILTIN_ENDPOINTS[tool_id]
@@ -715,6 +811,7 @@ async def resolve_shared_tools_for_agency(
 
 async def resolve_mcp_tools_for_agent(
     agent_config: dict,
+    tenant_id: str | int | None = None,
     adapter=None,
 ) -> list[type]:
     """Resolve MCP tools from external servers configured on an agent.
@@ -731,6 +828,10 @@ async def resolve_mcp_tools_for_agent(
     mcp_servers = agent_config.get("mcpServers")
     if not mcp_servers or not isinstance(mcp_servers, list):
         return []
+
+    tenant_id = tenant_id or agent_config.get("tenantId") or agent_config.get("tenant_id")
+    if tenant_id is None or not str(tenant_id).strip():
+        raise ValueError("tenant_id is required for MCP tool resolution")
 
     from app.services.mcp_client import discover_tools, call_tool, _validate_mcp_url
 
@@ -758,7 +859,7 @@ async def resolve_mcp_tools_for_agent(
             continue
 
         token = tokens.get(server_url)
-        tools = await discover_tools(server_url, token)
+        tools = await discover_tools(server_url, token, tenant_id=tenant_id)
 
         for tool_info in tools:
             # Sanitize tool name for use as Python class name
@@ -768,7 +869,7 @@ async def resolve_mcp_tools_for_agent(
             # Create a run function that calls the external MCP server
             def _make_run_func(url: str, tname: str, tok: str | None):
                 async def _run(**kwargs: str) -> str:
-                    return await call_tool(url, tname, kwargs, token=tok)
+                    return await call_tool(url, tname, kwargs, token=tok, tenant_id=tenant_id)
                 # Sync wrapper for agency-swarm
                 def run_sync(**kwargs: str) -> str:
                     import asyncio
@@ -782,7 +883,19 @@ async def resolve_mcp_tools_for_agent(
                         # No running loop — safe to use asyncio.run
                         return asyncio.run(_run(**kwargs))
                 return run_sync
-            run_func = _make_run_func(server_url, tool_info.name, token)
+            # Wire rate limiter protections around MCP tool calls
+            run_func_raw = _make_run_func(server_url, tool_info.name, token)
+
+            def _make_protected_func(raw_fn, sname, tname):
+                def protected_run(**kwargs):
+                    from app.services.mcp_rate_limiter import wrap_mcp_response, truncate_response
+                    result = raw_fn(**kwargs)
+                    result = truncate_response(result)
+                    result = wrap_mcp_response(result, sname, tname)
+                    return result
+                return protected_run
+
+            run_func = _make_protected_func(run_func_raw, server_name, tool_info.name)
 
             if adapter is not None:
                 # Create a tool class via the adapter

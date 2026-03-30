@@ -10,8 +10,11 @@ import math
 import re
 import time
 from typing import Any, Optional
+from urllib.parse import quote
 
 import httpx
+
+from app.services.mcp_client import _validate_mcp_url
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +22,9 @@ GRAPH_BASE = "https://graph.microsoft.com/v1.0"
 
 # Drive item ID validation: alphanumeric, hyphens, dots, exclamation marks, max 256 chars
 _ITEM_ID_RE = re.compile(r"^[a-zA-Z0-9_.!-]{1,256}$")
+
+# Safe fields for file info response (filter out owner emails, parent references)
+_SAFE_FILE_INFO_FIELDS = {"id", "name", "file", "folder", "size", "lastModifiedDateTime", "createdDateTime", "webUrl"}
 
 
 # ── Exceptions ──────────────────────────────────────────────────────────────
@@ -100,7 +106,7 @@ async def search_onedrive_files(
     try:
         access_token = await _get_access_token(user_id, token_service)
 
-        search_url = f"{GRAPH_BASE}/me/drive/root/search(q='{query}')"
+        search_url = f"{GRAPH_BASE}/me/drive/root/search(q='{quote(query, safe='')}')"
         params = {
             "$select": "id,name,file,folder,size,lastModifiedDateTime,webUrl",
             "$top": str(max_results),
@@ -139,7 +145,7 @@ async def search_onedrive_files(
     except ToolError:
         raise
     except Exception as e:
-        logger.error("onedrive_search_error: %s", str(e))
+        logger.error("onedrive_search_error: %s", type(e).__name__)
         raise
 
 
@@ -181,14 +187,20 @@ async def read_onedrive_file(
         file_name = meta.get("name", "")
         mime_type = meta.get("file", {}).get("mimeType", "")
 
-        # Download content
+        # Download content — validate redirect targets to prevent SSRF
         download_url = f"{GRAPH_BASE}/me/drive/items/{item_id}/content"
-        async with httpx.AsyncClient(follow_redirects=True) as client:
+        async with httpx.AsyncClient(follow_redirects=False) as client:
             dl_resp = await client.get(
                 download_url,
                 headers={"Authorization": f"Bearer {access_token}"},
                 timeout=30.0,
             )
+            if dl_resp.status_code in (301, 302, 307, 308):
+                location = dl_resp.headers.get("location", "")
+                ssrf_err = _validate_mcp_url(location)
+                if ssrf_err:
+                    raise ToolError("ssrf_blocked", "Download redirect blocked: target URL failed SSRF validation")
+                dl_resp = await client.get(location, headers={"Authorization": f"Bearer {access_token}"}, timeout=30.0)
 
         if dl_resp.status_code != 200:
             _handle_graph_error(dl_resp.status_code, dl_resp.text)
@@ -237,7 +249,7 @@ async def read_onedrive_file(
     except ToolError:
         raise
     except Exception as e:
-        logger.error("onedrive_read_error: %s", str(e))
+        logger.error("onedrive_read_error: %s", type(e).__name__)
         raise
 
 
@@ -265,12 +277,14 @@ async def read_excel_data(
     try:
         access_token = await _get_access_token(user_id, token_service)
 
-        # Build range URL
+        # Build range URL — URL-encode user-supplied worksheet/range to prevent injection
         worksheet = sheet_name or "Sheet1"
+        worksheet_enc = quote(worksheet, safe="")
         if cell_range:
-            range_url = f"{GRAPH_BASE}/me/drive/items/{item_id}/workbook/worksheets('{worksheet}')/range(address='{cell_range}')"
+            cell_range_enc = quote(cell_range, safe="")
+            range_url = f"{GRAPH_BASE}/me/drive/items/{item_id}/workbook/worksheets('{worksheet_enc}')/range(address='{cell_range_enc}')"
         else:
-            range_url = f"{GRAPH_BASE}/me/drive/items/{item_id}/workbook/worksheets('{worksheet}')/usedRange"
+            range_url = f"{GRAPH_BASE}/me/drive/items/{item_id}/workbook/worksheets('{worksheet_enc}')/usedRange"
 
         async with httpx.AsyncClient() as client:
             resp = await client.get(
@@ -326,7 +340,7 @@ async def read_excel_data(
     except ToolError:
         raise
     except Exception as e:
-        logger.error("onedrive_excel_error: %s", str(e))
+        logger.error("onedrive_excel_error: %s", type(e).__name__)
         raise
 
 
@@ -396,7 +410,7 @@ async def list_onedrive_folder(
     except ToolError:
         raise
     except Exception as e:
-        logger.error("onedrive_list_error: %s", str(e))
+        logger.error("onedrive_list_error: %s", type(e).__name__)
         raise
 
 
@@ -433,14 +447,15 @@ async def get_onedrive_file_info(
             _handle_graph_error(resp.status_code, resp.text)
             raise ToolError("api_error", f"Failed to get file info (HTTP {resp.status_code})")
 
-        return resp.json()
+        raw = resp.json()
+        return {k: v for k, v in raw.items() if k in _SAFE_FILE_INFO_FIELDS}
 
     except InvalidGrantError:
         raise ToolError("token_expired", "Microsoft account token has expired. Please reconnect.")
     except ToolError:
         raise
     except Exception as e:
-        logger.error("onedrive_info_error: %s", str(e))
+        logger.error("onedrive_info_error: %s", type(e).__name__)
         raise
 
 

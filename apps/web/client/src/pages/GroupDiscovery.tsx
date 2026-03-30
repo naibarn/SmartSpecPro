@@ -12,7 +12,7 @@ import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DashboardCard } from "@/components/dashboard";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -151,15 +151,15 @@ export default function GroupDiscovery() {
       {isLoading ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
-            <Card key={i}>
-              <CardHeader className="pb-2">
+            <DashboardCard key={i}>
+              <div className="pb-2">
                 <Skeleton className="h-5 w-32" />
-              </CardHeader>
-              <CardContent>
+              </div>
+              <div>
                 <Skeleton className="mb-3 h-4 w-full" />
                 <Skeleton className="h-8 w-20" />
-              </CardContent>
-            </Card>
+              </div>
+            </DashboardCard>
           ))}
         </div>
       ) : sortedGroups.length === 0 ? (
@@ -180,14 +180,14 @@ export default function GroupDiscovery() {
               const policy = settings.joinPolicy ?? "invite_only";
 
               return (
-                <Card key={group.id}>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="flex items-center gap-2 text-base">
+                <DashboardCard key={group.id}>
+                  <div className="pb-2">
+                    <h3 className="flex items-center gap-2 text-base">
                       <Users className="h-4 w-4 shrink-0 text-muted-foreground" />
                       <span className="truncate">{group.name}</span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
+                    </h3>
+                  </div>
+                  <div>
                     <p className="mb-3 line-clamp-2 text-sm text-muted-foreground">
                       {group.description || "No description"}
                     </p>
@@ -210,8 +210,8 @@ export default function GroupDiscovery() {
                         }
                       />
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </DashboardCard>
               );
             })}
           </div>

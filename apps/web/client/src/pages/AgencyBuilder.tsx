@@ -35,18 +35,7 @@ import { useAgencyValidation } from "@/hooks/useAgencyValidation";
 import { useAgencyHistory } from "@/hooks/useAgencyHistory";
 import { Loader2, Network, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-
-const DEFAULT_AGENT_DATA: AgencyNodeData = {
-  nodeType: "agent",
-  name: "New Agent",
-  description: "",
-  instructions: "",
-  model: "",
-  modelSettings: {},
-  isEntryPoint: false,
-  isOptional: false,
-  tools: [],
-};
+import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 
 function autoLayout(nodes: Node<AgencyNodeData>[], edges: Edge[]): Node<AgencyNodeData>[] {
   if (nodes.length === 0) return nodes;
@@ -135,6 +124,7 @@ function autoLayout(nodes: Node<AgencyNodeData>[], edges: Edge[]): Node<AgencyNo
 }
 
 function AgencyCanvas() {
+  const { t } = useScopedTranslation("agency");
   const [, setLocation] = useLocation();
   const [matched, params] = useRoute("/agencies/:id/edit");
   const agencyId = (params as Record<string, string>)?.id as string | undefined;
@@ -184,9 +174,9 @@ function AgencyCanvas() {
         }),
       );
     },
-    [onEdgesChangeBase, edges, setNodes],
+    [onEdgesChangeBase, edges, setNodes, t],
   );
-  const [agencyName, setAgencyName] = useState("Untitled Agency");
+  const [agencyName, setAgencyName] = useState("");
   const [agencyStatus, setAgencyStatus] = useState<"draft" | "published" | "archived">("draft");
   const [defaultModel, setDefaultModel] = useState("");
   const [creatorFeeCredits, setCreatorFeeCredits] = useState(0);
@@ -266,7 +256,7 @@ function AgencyCanvas() {
     if (!agencyData || canvasInitRef.current) return;
     canvasInitRef.current = true;
 
-    setAgencyName(agencyData.name ?? "Untitled Agency");
+    setAgencyName(agencyData.name ?? "");
     setAgencyStatus(agencyData.status ?? "draft");
     setDefaultModel(agencyData.defaultModel ?? "");
     setCreatorFeeCredits(agencyData.creatorFeeCredits ?? 0);
@@ -295,6 +285,7 @@ function AgencyCanvas() {
             description: agent.description ?? "",
             instructions: agent.instructions ?? "",
             model: agent.model ?? "",
+            modelRequirements: agent.nodeConfig?.modelRequirements ?? undefined,
             modelSettings: agent.modelSettings ?? {},
             isEntryPoint: agent.isEntryPoint ?? false,
             isOptional: agent.isOptional ?? false,
@@ -395,13 +386,13 @@ function AgencyCanvas() {
             let autoCondition = "";
             let autoLabel = "";
             if (handleId === "true") {
-              autoLabel = "True";
+              autoLabel = t("builder.defaults.trueLabel");
               autoCondition = "true";
             } else if (handleId === "false") {
-              autoLabel = "False";
+              autoLabel = t("builder.defaults.falseLabel");
               autoCondition = "false";
             } else {
-              autoLabel = "Default";
+              autoLabel = t("builder.defaults.defaultLabel");
             }
 
             // If "default" handle → also set as defaultTarget
@@ -426,7 +417,7 @@ function AgencyCanvas() {
         );
       }
     },
-    [setEdges, setNodes],
+    [setEdges, setNodes, t],
   );
 
   const onNodeClick = useCallback((_: any, node: Node) => {
@@ -477,10 +468,11 @@ function AgencyCanvas() {
       position: { x: posX, y: posY },
       data: {
         nodeType: (templateData.nodeType as AgencyNodeData["nodeType"]) ?? "agent",
-        name: templateData.name || "New Agent",
+        name: templateData.name || t("builder.defaults.newAgent"),
         description: templateData.description || "",
         instructions: templateData.instructions || "",
-        model: templateData.defaultModel || defaultModel || "",
+        model: templateData.defaultModel || undefined,
+        modelRequirements: templateData.defaultModel ? undefined : { strategy: "balanced" },
         modelSettings: {},
         isEntryPoint: templateData.isEntryPoint || false,
         isOptional: false,
@@ -508,7 +500,7 @@ function AgencyCanvas() {
         duration: 300,
       });
     }, 50);
-  }, [setNodes, defaultModel, rfInstance]);
+  }, [setNodes, defaultModel, rfInstance, t]);
 
   // Drag & drop — React props on <ReactFlow> matching WorkflowEditor pattern
   const onDragOver = useCallback((event: React.DragEvent) => {
@@ -533,8 +525,8 @@ function AgencyCanvas() {
   );
 
   const handleAddAgent = useCallback(() => {
-    addNodeFromTemplate({ nodeType: "agent", name: "New Agent" });
-  }, [addNodeFromTemplate]);
+    addNodeFromTemplate({ nodeType: "agent", name: t("builder.defaults.newAgent") });
+  }, [addNodeFromTemplate, t]);
 
   const handleNodeDataChange = useCallback(
     (nodeId: string, updates: Partial<AgencyNodeData>) => {
@@ -580,12 +572,17 @@ function AgencyCanvas() {
       description: n.data.description || undefined,
       nodeType: n.data.nodeType ?? "agent",
       instructions: n.data.instructions || undefined,
-      model: n.data.model || (["agent", "supervisor"].includes(n.data.nodeType ?? "agent") ? (defaultModel || undefined) : undefined),
+      model: n.data.modelRequirements
+        ? undefined  // Auto mode — let backend resolve model
+        : (n.data.model || (["agent", "supervisor"].includes(n.data.nodeType ?? "agent") ? (defaultModel || undefined) : undefined)),
       modelSettings: n.data.modelSettings,
       isEntryPoint: n.data.isEntryPoint ?? false,
       isOptional: n.data.isOptional ?? false,
       position: n.position,
-      nodeConfig: n.data.nodeConfig || undefined,
+      nodeConfig: {
+        ...(n.data.nodeConfig || {}),
+        ...(n.data.modelRequirements ? { modelRequirements: n.data.modelRequirements } : {}),
+      } as Record<string, unknown>,
       toolIds: (n.data.tools ?? []).map((t) => t.toolId),
       toolConfigs: (n.data.tools ?? []).reduce(
         (acc, t) => {
@@ -607,34 +604,35 @@ function AgencyCanvas() {
     }));
 
     return { agents, communicationFlows };
-  }, [nodes, edges, defaultModel]);
+  }, [nodes, edges, defaultModel, t]);
 
   const handleSave = useCallback(async () => {
     try {
       const { agents, communicationFlows } = serializeGraph();
 
       if (isNew) {
-        const slug = agencyName
+        const effectiveName = agencyName || t("builder.defaults.untitledAgency");
+        const slug = effectiveName
           .toLowerCase()
           .replace(/[^a-z0-9]+/g, "-")
           .replace(/^-|-$/g, "")
           || `agency-${Date.now()}`;
 
         const result = await createMutation.mutateAsync({
-          name: agencyName,
+          name: effectiveName,
           slug,
           agents,
           communicationFlows,
           creatorFeeCredits,
         });
 
-        toast.success("Agency created");
+        toast.success(t("builder.toast.created"));
         setLocation(`/agencies/${result.id}/edit`);
       } else {
         // Use saveBuilder to persist the full graph
         await saveBuilderMutation.mutateAsync({
           id: agencyId,
-          name: agencyName,
+          name: agencyName || t("builder.defaults.untitledAgency"),
           defaultModel: defaultModel || null,
           agents,
           communicationFlows,
@@ -647,10 +645,10 @@ function AgencyCanvas() {
         // Invalidate caches so reload shows fresh data
         (utils as any).agency.getById.invalidate({ id: agencyId });
         (utils as any).agency.list.invalidate();
-        toast.success("Agency saved");
+        toast.success(t("builder.toast.saved"));
       }
     } catch (err: any) {
-      toast.error(err?.message ?? "Failed to save agency");
+      toast.error(err?.message ?? t("builder.toast.saveFailed"));
     }
   }, [
     serializeGraph,
@@ -664,17 +662,18 @@ function AgencyCanvas() {
     updateMutation,
     setLocation,
     utils,
+    t,
   ]);
 
   const handlePublish = useCallback(async () => {
     // Validation
     const entryPoints = nodes.filter((n) => n.data.isEntryPoint);
     if (entryPoints.length === 0) {
-      toast.error("At least one agent must be the entry point");
+      toast.error(t("builder.toast.entryPointRequired"));
       return;
     }
     if (edges.length === 0 && nodes.length > 1) {
-      toast.error("Add communication flows between agents");
+      toast.error(t("builder.toast.addFlows"));
       return;
     }
     const agentSupervisorNodes = nodes.filter((n) =>
@@ -682,18 +681,18 @@ function AgencyCanvas() {
     );
     const missingModel = agentSupervisorNodes.find((n) => !n.data.model);
     if (missingModel) {
-      toast.error(`"${missingModel.data.name}" needs a model`);
+      toast.error(t("builder.toast.needsModel", { name: missingModel.data.name }));
       return;
     }
     const missingInstructions = agentSupervisorNodes.find((n) => !n.data.instructions);
     if (missingInstructions) {
-      toast.error(`"${missingInstructions.data.name}" needs instructions`);
+      toast.error(t("builder.toast.needsInstructions", { name: missingInstructions.data.name }));
       return;
     }
 
     try {
       if (isNew) {
-        toast.error("Save the agency first before publishing");
+        toast.error(t("builder.toast.saveBeforePublishing"));
         return;
       }
       await updateMutation.mutateAsync({
@@ -701,24 +700,24 @@ function AgencyCanvas() {
         status: "published",
       });
       setAgencyStatus("published");
-      toast.success("Agency published");
+      toast.success(t("builder.toast.published"));
     } catch (err: any) {
-      toast.error(err?.message ?? "Failed to publish agency");
+      toast.error(err?.message ?? t("builder.toast.publishFailed"));
     }
-  }, [nodes, edges, isNew, agencyId, updateMutation]);
+  }, [nodes, edges, isNew, agencyId, updateMutation, t]);
 
   const handleAutoLayout = useCallback(() => {
     const layouted = autoLayout(nodes, edges);
     setNodes(layouted);
     setTimeout(() => rfInstance.fitView({ padding: 0.2 }), 50);
-    toast.success("Layout applied");
-  }, [nodes, edges, setNodes, rfInstance.fitView]);
+    toast.success(t("builder.toast.layoutApplied"));
+  }, [nodes, edges, setNodes, rfInstance.fitView, t]);
 
   const handleTest = useCallback(() => {
     if (agencyId && !isNew) {
       setLocation(`/agencies/${agencyId}`);
     } else {
-      toast.error("Save the agency first to test it");
+      toast.error(t("builder.toast.saveBeforeTesting"));
     }
   }, [agencyId, isNew, setLocation]);
 
@@ -880,9 +879,9 @@ function AgencyCanvas() {
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
               <div className="text-center">
                 <Network className="mx-auto h-12 w-12 text-slate-300 mb-4" />
-                <h3 className="text-lg font-semibold text-slate-600 mb-1">Build your Agent Network</h3>
+                <h3 className="text-lg font-semibold text-slate-600 mb-1">{t("builder.empty.title")}</h3>
                 <p className="text-sm text-slate-400 mb-6">
-                  Drag nodes from the left panel — or let AI design it for you
+                  {t("builder.empty.description")}
                 </p>
                 <div className="flex items-center justify-center gap-3 pointer-events-auto">
                   <Button
@@ -890,10 +889,10 @@ function AgencyCanvas() {
                     onClick={() => setAutoCreateOpen(true)}
                   >
                     <Sparkles className="h-4 w-4" />
-                    AI Agency Creator
+                    {t("builder.empty.aiCreator")}
                   </Button>
                   <Button variant="outline" onClick={handleAddAgent}>
-                    + Add First Agent
+                    {t("builder.empty.addFirstAgent")}
                   </Button>
                 </div>
               </div>
@@ -909,7 +908,7 @@ function AgencyCanvas() {
             className="absolute bottom-6 left-1/2 z-10 -translate-x-1/2 rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-lg transition-transform hover:scale-105"
             data-testid="add-agent-btn"
           >
-            + Add Agent
+            {t("builder.empty.addAgent")}
           </button>
         )}
 

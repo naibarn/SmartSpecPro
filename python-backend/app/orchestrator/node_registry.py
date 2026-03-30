@@ -4063,6 +4063,324 @@ class NodeRegistry:
             )
         )
 
+        # Social workflow nodes
+        self.register_node_type(
+            NodeTypeSpec(
+                type="incoming_meta_message",
+                display_name="Incoming Meta Message",
+                description="Trigger a workflow when a Meta message arrives.",
+                icon="message-square",
+                color="indigo",
+                category="social",
+                inputs=[
+                    InputSpec(
+                        name="pageId",
+                        display_name="Page",
+                        data_type="text",
+                        ui_type="select",
+                        required=True,
+                        accepts_connection=False,
+                        options_endpoint="/api/v1/social/connected-pages",
+                    ),
+                    InputSpec(
+                        name="triggerMode",
+                        display_name="Trigger Mode",
+                        data_type="text",
+                        ui_type="select",
+                        required=False,
+                        accepts_connection=False,
+                        default="batch",
+                        options=[
+                            {"label": "Batch", "value": "batch"},
+                            {"label": "Realtime", "value": "realtime"},
+                        ],
+                    ),
+                    InputSpec(
+                        name="filterKeywords",
+                        display_name="Filter Keywords",
+                        data_type="text",
+                        ui_type="text",
+                        required=False,
+                        accepts_connection=False,
+                        placeholder="comma-separated keywords",
+                    ),
+                ],
+                outputs=[
+                    OutputSpec(name="conversationId", display_name="Conversation ID", data_type="text"),
+                    OutputSpec(name="messageBody", display_name="Message Body", data_type="text"),
+                    OutputSpec(name="senderName", display_name="Sender Name", data_type="text"),
+                    OutputSpec(name="senderExternalId", display_name="Sender External ID", data_type="text"),
+                    OutputSpec(name="messagePayload", display_name="Message Payload", data_type="json"),
+                ],
+                executor="app.orchestrator.node_executors.social.meta_message_trigger.MetaMessageTriggerExecutor",
+            )
+        )
+
+        self.register_node_type(
+            NodeTypeSpec(
+                type="classify_social_intent",
+                display_name="Classify Social Intent",
+                description="Classify the customer's intent and risk level.",
+                icon="brain",
+                color="indigo",
+                category="social",
+                inputs=[
+                    InputSpec(
+                        name="messageBody",
+                        display_name="Message Body",
+                        data_type="text",
+                        ui_type="textarea",
+                        required=True,
+                        accepts_connection=True,
+                        placeholder="Message text to classify...",
+                    ),
+                    InputSpec(
+                        name="conversationHistory",
+                        display_name="Conversation History",
+                        data_type="json",
+                        ui_type="json_editor",
+                        required=False,
+                        accepts_connection=True,
+                    ),
+                    InputSpec(
+                        name="model",
+                        display_name="Model",
+                        data_type="text",
+                        ui_type="select",
+                        required=False,
+                        accepts_connection=False,
+                        options_endpoint="/api/v1/workflows/available-models",
+                    ),
+                ],
+                outputs=[
+                    OutputSpec(name="intent", display_name="Intent", data_type="text"),
+                    OutputSpec(name="confidence", display_name="Confidence", data_type="number"),
+                    OutputSpec(name="category", display_name="Category", data_type="text"),
+                    OutputSpec(name="requiresHuman", display_name="Requires Human", data_type="boolean"),
+                ],
+                executor="app.orchestrator.node_executors.social.classify_intent_executor.ClassifyIntentExecutor",
+            )
+        )
+
+        self.register_node_type(
+            NodeTypeSpec(
+                type="draft_social_reply",
+                display_name="Draft Social Reply",
+                description="Draft a helpful reply grounded in conversation context.",
+                icon="pen-line",
+                color="indigo",
+                category="social",
+                inputs=[
+                    InputSpec(
+                        name="messageBody",
+                        display_name="Message Body",
+                        data_type="text",
+                        ui_type="textarea",
+                        required=True,
+                        accepts_connection=True,
+                    ),
+                    InputSpec(
+                        name="intent",
+                        display_name="Intent",
+                        data_type="text",
+                        ui_type="text",
+                        required=False,
+                        accepts_connection=True,
+                    ),
+                    InputSpec(
+                        name="ragCollectionId",
+                        display_name="RAG Collection",
+                        data_type="text",
+                        ui_type="select",
+                        required=False,
+                        accepts_connection=False,
+                        options_endpoint="/api/v1/workflows/rag-collections",
+                    ),
+                    InputSpec(
+                        name="toneGuide",
+                        display_name="Tone Guide",
+                        data_type="text",
+                        ui_type="textarea",
+                        required=False,
+                        accepts_connection=False,
+                        placeholder="Professional, friendly, helpful",
+                    ),
+                    InputSpec(
+                        name="model",
+                        display_name="Model",
+                        data_type="text",
+                        ui_type="select",
+                        required=False,
+                        accepts_connection=False,
+                        options_endpoint="/api/v1/workflows/available-models",
+                    ),
+                ],
+                outputs=[
+                    OutputSpec(name="draftReply", display_name="Draft Reply", data_type="text"),
+                    OutputSpec(name="confidence", display_name="Confidence", data_type="number"),
+                    OutputSpec(name="sourceDocuments", display_name="Source Documents", data_type="array"),
+                ],
+                executor="app.orchestrator.node_executors.social.draft_reply_executor.DraftReplyExecutor",
+            )
+        )
+
+        self.register_node_type(
+            NodeTypeSpec(
+                type="send_meta_reply",
+                display_name="Send Meta Reply",
+                description="Send an outbound reply through the connected Meta page.",
+                icon="send",
+                color="indigo",
+                category="social",
+                inputs=[
+                    InputSpec(
+                        name="conversationId",
+                        display_name="Conversation ID",
+                        data_type="text",
+                        ui_type="text",
+                        required=True,
+                        accepts_connection=True,
+                    ),
+                    InputSpec(
+                        name="messageBody",
+                        display_name="Message Body",
+                        data_type="text",
+                        ui_type="textarea",
+                        required=True,
+                        accepts_connection=True,
+                    ),
+                    InputSpec(
+                        name="pageId",
+                        display_name="Page",
+                        data_type="text",
+                        ui_type="select",
+                        required=True,
+                        accepts_connection=True,
+                        options_endpoint="/api/v1/social/connected-pages",
+                    ),
+                ],
+                outputs=[
+                    OutputSpec(name="providerMessageId", display_name="Provider Message ID", data_type="text"),
+                    OutputSpec(name="deliveryStatus", display_name="Delivery Status", data_type="text"),
+                    OutputSpec(name="error", display_name="Error", data_type="text"),
+                ],
+                executor="app.orchestrator.node_executors.social.send_reply_executor.SendReplyExecutor",
+            )
+        )
+
+        self.register_node_type(
+            NodeTypeSpec(
+                type="publish_meta_post",
+                display_name="Publish Meta Post",
+                description="Publish or schedule a Meta page post.",
+                icon="megaphone",
+                color="indigo",
+                category="social",
+                inputs=[
+                    InputSpec(
+                        name="pageId",
+                        display_name="Page",
+                        data_type="text",
+                        ui_type="select",
+                        required=True,
+                        accepts_connection=True,
+                        options_endpoint="/api/v1/social/connected-pages",
+                    ),
+                    InputSpec(
+                        name="contentText",
+                        display_name="Content",
+                        data_type="text",
+                        ui_type="textarea",
+                        required=True,
+                        accepts_connection=True,
+                    ),
+                    InputSpec(
+                        name="contentLink",
+                        display_name="Content Link",
+                        data_type="text",
+                        ui_type="text",
+                        required=False,
+                        accepts_connection=True,
+                    ),
+                    InputSpec(
+                        name="scheduledAt",
+                        display_name="Scheduled At",
+                        data_type="text",
+                        ui_type="text",
+                        required=False,
+                        accepts_connection=False,
+                    ),
+                ],
+                outputs=[
+                    OutputSpec(name="postId", display_name="Post ID", data_type="text"),
+                    OutputSpec(name="providerPostId", display_name="Provider Post ID", data_type="text"),
+                    OutputSpec(name="status", display_name="Status", data_type="text"),
+                    OutputSpec(name="error", display_name="Error", data_type="text"),
+                ],
+                executor="app.orchestrator.node_executors.social.publish_post_executor.PublishPostExecutor",
+            )
+        )
+
+        self.register_node_type(
+            NodeTypeSpec(
+                type="approve_social_action",
+                display_name="Approve Social Action",
+                description="Pause for human approval when the model confidence is too low.",
+                icon="shield-check",
+                color="indigo",
+                category="social",
+                inputs=[
+                    InputSpec(
+                        name="actionType",
+                        display_name="Action Type",
+                        data_type="text",
+                        ui_type="select",
+                        required=True,
+                        accepts_connection=False,
+                        default="reply",
+                        options=[
+                            {"label": "Reply", "value": "reply"},
+                            {"label": "Post", "value": "post"},
+                            {"label": "Comment Action", "value": "comment_action"},
+                        ],
+                    ),
+                    InputSpec(
+                        name="content",
+                        display_name="Content",
+                        data_type="text",
+                        ui_type="textarea",
+                        required=True,
+                        accepts_connection=True,
+                    ),
+                    InputSpec(
+                        name="confidence",
+                        display_name="Confidence",
+                        data_type="number",
+                        ui_type="number",
+                        required=False,
+                        accepts_connection=True,
+                        default=0.0,
+                    ),
+                    InputSpec(
+                        name="autoApproveThreshold",
+                        display_name="Auto Approve Threshold",
+                        data_type="number",
+                        ui_type="slider",
+                        required=False,
+                        accepts_connection=False,
+                        default=0.95,
+                        validation={"min": 0, "max": 1, "step": 0.01},
+                    ),
+                ],
+                outputs=[
+                    OutputSpec(name="approved", display_name="Approved", data_type="boolean"),
+                    OutputSpec(name="content", display_name="Content", data_type="text"),
+                    OutputSpec(name="reviewerNote", display_name="Reviewer Note", data_type="text"),
+                ],
+                executor="app.orchestrator.node_executors.social.approval_gate_executor.SocialApprovalGateExecutor",
+            )
+        )
+
         # Web Automation node
         self.register_node_type(
             NodeTypeSpec(
@@ -4151,6 +4469,12 @@ def get_executor(node_type: str):
     from app.orchestrator.node_executors.approval_executor import ApprovalExecutor
     from app.orchestrator.node_executors.browser_session_executor import BrowserSessionExecutor
     from app.orchestrator.node_executors.loop_executor import LoopExecutor
+    from app.orchestrator.node_executors.social.approval_gate_executor import SocialApprovalGateExecutor
+    from app.orchestrator.node_executors.social.classify_intent_executor import ClassifyIntentExecutor
+    from app.orchestrator.node_executors.social.draft_reply_executor import DraftReplyExecutor
+    from app.orchestrator.node_executors.social.meta_message_trigger import MetaMessageTriggerExecutor
+    from app.orchestrator.node_executors.social.publish_post_executor import PublishPostExecutor
+    from app.orchestrator.node_executors.social.send_reply_executor import SendReplyExecutor
 
     executor_map = {
         # Integration
@@ -4191,6 +4515,13 @@ def get_executor(node_type: str):
         "browser_session_instruction": BrowserSessionExecutor,
         "browser_session_wait_for_user": BrowserSessionExecutor,
         "browser_session_review_gate": BrowserSessionExecutor,
+        # Social
+        "incoming_meta_message": MetaMessageTriggerExecutor,
+        "classify_social_intent": ClassifyIntentExecutor,
+        "draft_social_reply": DraftReplyExecutor,
+        "send_meta_reply": SendReplyExecutor,
+        "publish_meta_post": PublishPostExecutor,
+        "approve_social_action": SocialApprovalGateExecutor,
         "loop": LoopExecutor,
     }
     

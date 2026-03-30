@@ -10,6 +10,7 @@ import * as monitoringService from "../services/monitoringService";
 import * as notificationService from "../services/orchestratorNotificationService";
 import * as unifiedNotificationService from "../services/unifiedNotificationService";
 import { checkNotificationHealth } from "../services/notificationHealthChecks";
+import { collectServiceRuntimeSnapshot } from "./services";
 
 function requireTenantId(ctx: { tenantId: string | null; user?: { currentTenantId?: number | null } | null }): string {
   const tid = resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId);
@@ -103,4 +104,195 @@ export const monitoringRouter = router({
   notificationHealth: adminProcedure.query(async () => {
     return checkNotificationHealth();
   }),
+
+  // ─── System Monitoring (Celery Push) ────────────────────────────────────
+
+  /**
+   * List health checks pushed by Celery tasks, with pagination and filters.
+   */
+  getChecks: adminProcedure
+    .input(
+      z.object({
+        page: z.number().int().min(1).default(1),
+        limit: z.number().int().min(1).max(200).default(50),
+        status: z.string().optional(),
+        checkType: z.string().optional(),
+        since: z.string().datetime().optional(),
+      }),
+    )
+    .query(async ({ input }) => {
+      return monitoringService.getChecks(input);
+    }),
+
+  /**
+   * List monitoring alerts with pagination and optional severity / ack filters.
+   */
+  getAlerts: adminProcedure
+    .input(
+      z.object({
+        page: z.number().int().min(1).default(1),
+        limit: z.number().int().min(1).max(200).default(50),
+        severity: z.enum(["info", "warning", "error", "critical"]).optional(),
+        acknowledged: z.boolean().optional(),
+        groupKey: z.string().min(1).optional(),
+      }),
+    )
+    .query(async ({ input }) => {
+      return monitoringService.getAlerts(input);
+    }),
+
+  /**
+   * Acknowledge a monitoring alert by ID.
+   */
+  acknowledgeAlert: adminProcedure
+    .input(z.object({
+      alertId: z.number().int().positive(),
+      note: z.string().trim().max(1000).optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      await monitoringService.acknowledgeAlert({
+        alertId: input.alertId,
+        acknowledgedBy: ctx.user!.id,
+        actorName: ctx.user!.name ?? null,
+        actorEmail: ctx.user!.email ?? null,
+        note: input.note,
+      });
+      return { success: true };
+    }),
+
+  recordIncidentAction: adminProcedure
+    .input(z.object({
+      groupKey: z.string().min(1),
+      action: z.enum(["note", "handoff", "resolved", "reopened"]),
+      note: z.string().trim().max(1000).optional(),
+      ownerUserId: z.number().int().positive().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      await monitoringService.recordIncidentAction({
+        groupKey: input.groupKey,
+        action: input.action,
+        actorId: ctx.user!.id,
+        actorName: ctx.user!.name ?? null,
+        actorEmail: ctx.user!.email ?? null,
+        note: input.note,
+        ownerUserId: input.ownerUserId,
+      });
+      return { success: true };
+    }),
+
+  forceFreshCheck: adminProcedure
+    .mutation(async () => {
+      const snapshot = await collectServiceRuntimeSnapshot();
+      const services = Object.fromEntries(
+        snapshot.services.map((service) => {
+          const alias = service.id === "smartspec-web"
+            ? "web"
+            : service.id === "smartspec-backend"
+              ? "backend"
+              : service.name;
+
+          return [alias, {
+            status: service.status,
+            displayName: service.displayName,
+            uptime: service.uptime,
+            type: service.type,
+            healthCheck: service.healthCheck ?? null,
+            cpu: service.cpu ?? null,
+            memory: service.memory ?? null,
+            restarts: service.restarts ?? null,
+          }];
+        }),
+      );
+
+      const criticalStates = new Set(["stopped", "unhealthy"]);
+      const warningStates = new Set(["starting", "unknown"]);
+      const overallStatus = snapshot.services.some((service) => criticalStates.has(service.status))
+        ? "critical"
+        : snapshot.services.some((service) => warningStates.has(service.status))
+          ? "warning"
+          : "ok";
+
+      const result = await monitoringService.pushMetrics({
+        checkType: "manual_refresh",
+        status: overallStatus,
+        source: "admin.force_fresh_check",
+        details: {
+          memoryUsedMb: snapshot.system.memory?.used ?? 0,
+          memoryTotalMb: snapshot.system.memory?.total ?? 0,
+          memoryPercent: snapshot.system.memory?.usedPercent ?? 0,
+          cpuPercent: null,
+          diskUsedGb: snapshot.system.disk?.used ?? null,
+          diskTotalGb: snapshot.system.disk?.total ?? null,
+          services,
+        },
+      });
+
+      return {
+        success: true,
+        checkId: result.checkId,
+        status: overallStatus,
+      };
+    }),
+
+  /**
+   * Return system_metrics_history rows from the last N hours for chart display.
+   */
+  getMetricsHistory: adminProcedure
+    .input(z.object({ hours: z.number().int().min(1).max(720).default(24) }))
+    .query(async ({ input }) => {
+      return monitoringService.getMetricsHistory(input.hours);
+    }),
+
+  /**
+   * Aggregate current status: services, unacknowledged alert counts, last check time.
+   */
+  getCurrentStatus: adminProcedure.query(async () => {
+    return monitoringService.getCurrentStatus();
+  }),
+
+  /**
+   * Unified early-warning summary for admin monitoring surfaces.
+   */
+  getOpsOverview: adminProcedure
+    .input(
+      z.object({
+        metricsHours: z.number().int().min(1).max(48).default(6),
+        auditHours: z.number().int().min(1).max(48).default(6),
+        orchestrationHours: z.number().int().min(1).max(48).default(6),
+      }).optional(),
+    )
+    .query(async ({ input }) => {
+      return monitoringService.getOpsOverview({
+        metricsHours: input?.metricsHours,
+        auditHours: input?.auditHours,
+        orchestrationHours: input?.orchestrationHours,
+      });
+    }),
+
+  getOpsIncidentTimeline: adminProcedure
+    .input(
+      z.object({
+        limit: z.number().int().min(1).max(20).default(6),
+        groupKey: z.string().min(1).optional(),
+      }).optional(),
+    )
+    .query(async ({ input, ctx }) => {
+      const tenantId = requireTenantId(ctx);
+      return monitoringService.getOpsIncidentTimeline(tenantId, {
+        limit: input?.limit ?? 6,
+        groupKey: input?.groupKey,
+      });
+    }),
+
+  syncOpsAlerts: adminProcedure
+    .input(
+      z.object({
+        includeWarnings: z.boolean().default(true),
+      }).optional(),
+    )
+    .mutation(async ({ input }) => {
+      return monitoringService.syncOpsAlerts({
+        includeWarnings: input?.includeWarnings ?? true,
+      });
+    }),
 });

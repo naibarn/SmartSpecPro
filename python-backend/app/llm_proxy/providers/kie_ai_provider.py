@@ -87,6 +87,42 @@ def _get_api_config_value(api_config: Optional[Dict[str, Any]], *keys: str) -> O
     return None
 
 
+def _normalize_reference_image_input_type(raw_type: Optional[str]) -> Optional[str]:
+    if not raw_type:
+        return None
+
+    normalized = raw_type.strip().lower()
+    if normalized in {"array", "image_urls", "video_urls", "audio_urls"}:
+        return "array"
+    if normalized in {"url", "text", "string"}:
+        return "url"
+    return None
+
+
+def _resolve_reference_image_input_config(
+    api_config: Optional[Dict[str, Any]],
+    *,
+    default_key: str,
+) -> tuple[str, str]:
+    key = _get_api_config_value(
+        api_config,
+        "reference_image_input_key",
+        "referenceImageInputKey",
+        "reference_image_key",
+        "referenceImageKey",
+    ) or default_key
+    input_type = _normalize_reference_image_input_type(
+        _get_api_config_value(
+            api_config,
+            "reference_image_input_type",
+            "referenceImageInputType",
+            "reference_image_type",
+            "referenceImageType",
+        )
+    ) or "array"
+    return key, input_type
+
+
 def resolve_api_model(model: str, api_config: Optional[Dict[str, Any]] = None) -> str:
     """
     Resolve Kie model ID from api_config first, then fallback alias mapping.
@@ -178,7 +214,7 @@ class KieAIProvider:
         normalized = urlunparse((scheme, netloc, normalized_path, "", "", ""))
         return normalized.rstrip("/")
 
-    def __init__(self, api_key: str, base_url: str = None, callback_url: str = None):
+    def __init__(self, api_key: str, base_url: str | None = None, callback_url: str | None = None):
         self.api_key = api_key
         raw_base_url = base_url or self.BASE_URL
         self.base_url = self.normalize_base_url(raw_base_url)
@@ -277,6 +313,70 @@ class KieAIProvider:
             "internal server error",
         ))
 
+    @classmethod
+    def _is_retryable_submission_exception(cls, error: Exception) -> bool:
+        """Detect transient HTTP/client failures during task submission."""
+        if isinstance(error, httpx.RequestError):
+            return True
+
+        if not isinstance(error, httpx.HTTPStatusError):
+            return False
+
+        status_code = error.response.status_code
+        if status_code in {408, 429, 500, 502, 503, 504}:
+            return True
+
+        body = ""
+        try:
+            body = error.response.text
+        except Exception:
+            body = ""
+
+        body = body.lower()
+        return any(fragment in body for fragment in (
+            "server exception",
+            "please try again later",
+            "contact customer service",
+            "temporarily unavailable",
+            "system busy",
+            "internal server error",
+            "service unavailable",
+        ))
+
+    @classmethod
+    def _format_submission_exception_message(cls, error: Exception) -> str:
+        """Turn a submission exception into a concise provider-facing message."""
+        if isinstance(error, httpx.HTTPStatusError):
+            try:
+                payload = error.response.json()
+            except Exception:
+                payload = None
+
+            if isinstance(payload, dict):
+                message = cls._extract_submission_error_message(payload)
+                if message:
+                    return message
+
+                detail = payload.get("detail")
+                if isinstance(detail, str) and detail.strip():
+                    return detail.strip()
+
+            try:
+                body = error.response.text.strip()
+            except Exception:
+                body = ""
+
+            if body:
+                return body[:500]
+            return f"HTTP {error.response.status_code}"
+
+        return str(error).strip() or error.__class__.__name__
+
+    @staticmethod
+    def _submission_backoff_seconds(attempt: int) -> float:
+        """Exponential backoff for transient submission failures."""
+        return min(float(2 ** max(attempt - 1, 0)), 8.0)
+
     async def _submit_generation_task(
         self,
         request_factory,
@@ -289,7 +389,36 @@ class KieAIProvider:
         last_result: Optional[Dict[str, Any]] = None
 
         for attempt in range(1, max_attempts + 1):
-            result = await request_factory()
+            try:
+                result = await request_factory()
+            except Exception as exc:  # noqa: BLE001
+                retryable = self._is_retryable_submission_exception(exc)
+                logger.warning(
+                    "kie_ai_submission_request_failed",
+                    operation=operation,
+                    attempt=attempt,
+                    max_attempts=max_attempts,
+                    retryable=retryable,
+                    error=str(exc),
+                    error_type=type(exc).__name__,
+                )
+
+                if retryable and attempt < max_attempts:
+                    delay_seconds = self._submission_backoff_seconds(attempt)
+                    logger.warning(
+                        "kie_ai_task_submission_retrying",
+                        operation=operation,
+                        attempt=attempt,
+                        max_attempts=max_attempts,
+                        delay_seconds=delay_seconds,
+                        error=str(exc),
+                    )
+                    await asyncio.sleep(delay_seconds)
+                    continue
+
+                provider_message = self._format_submission_exception_message(exc)
+                raise Exception(f"Kie.ai task submission failed: {provider_message}") from exc
+
             last_result = result
             task_id = self._extract_task_id(result, include_record_id=include_record_id)
             if task_id:
@@ -308,7 +437,7 @@ class KieAIProvider:
             )
 
             if retryable and attempt < max_attempts:
-                delay_seconds = float(attempt)
+                delay_seconds = self._submission_backoff_seconds(attempt)
                 logger.warning(
                     "kie_ai_task_submission_retrying",
                     operation=operation,
@@ -356,7 +485,12 @@ class KieAIProvider:
             logger.error("kie_ai_json_error", error=str(e))
             raise
 
-    async def create_task(self, model: str, input_params: Dict[str, Any], callback_url: str = None) -> Dict:
+    async def create_task(
+        self,
+        model: str,
+        input_params: Dict[str, Any],
+        callback_url: str | None = None,
+    ) -> Dict:
         """
         Create a generation task
 
@@ -829,14 +963,25 @@ class KieAIProvider:
                     input_params[key] = value
 
         # Add reference images for style transfer / img2img
-        # Kie.ai uses "image_input" field for reference images
+        # The target field is driven by model config metadata passed through api_config.
         if kwargs.get("reference_image_urls"):
             ref_urls = kwargs["reference_image_urls"]
             if isinstance(ref_urls, list) and len(ref_urls) > 0:
-                # Some models accept array, some accept single URL
-                # Use first image for models that only support single reference
-                input_params["image_input"] = ref_urls if len(ref_urls) > 1 else ref_urls[0]
-                logger.info("kie_ai_reference_images", count=len(ref_urls), urls=ref_urls[:2])  # Log first 2 for debug
+                reference_image_input_key, reference_image_input_type = _resolve_reference_image_input_config(
+                    api_config,
+                    default_key="image_input",
+                )
+                if reference_image_input_type == "url":
+                    input_params[reference_image_input_key] = ref_urls[0]
+                else:
+                    input_params[reference_image_input_key] = ref_urls
+                logger.info(
+                    "kie_ai_reference_images",
+                    count=len(ref_urls),
+                    field_key=reference_image_input_key,
+                    field_type=reference_image_input_type,
+                    urls=ref_urls[:2],
+                )  # Log first 2 for debug
 
         # Add reference style URL if provided
         if kwargs.get("reference_style_url"):
@@ -845,9 +990,12 @@ class KieAIProvider:
 
         # Use provided callback_url if explicitly passed, otherwise fall back to stored callback_url
         # Empty string ("") means "no callback" - use polling mode
-        callback_url = kwargs.get("callback_url")
-        if callback_url is None:  # Only fall back if not explicitly passed
+        callback_url_raw = kwargs.get("callback_url")
+        callback_url: str | None
+        if callback_url_raw is None:  # Only fall back if not explicitly passed
             callback_url = self.callback_url
+        else:
+            callback_url = str(callback_url_raw)
         if callback_url == "":  # Empty string means explicitly disable callback
             callback_url = None
 
@@ -934,13 +1082,23 @@ class KieAIProvider:
         if kwargs.get("reference_image_urls"):
             ref_urls = kwargs["reference_image_urls"]
             if isinstance(ref_urls, list) and len(ref_urls) > 0:
-                input_params["image_urls"] = ref_urls
+                reference_image_input_key, reference_image_input_type = _resolve_reference_image_input_config(
+                    api_config,
+                    default_key="image_urls",
+                )
+                if reference_image_input_type == "url":
+                    input_params[reference_image_input_key] = ref_urls[0]
+                else:
+                    input_params[reference_image_input_key] = ref_urls
 
         # Use provided callback_url if explicitly passed, otherwise fall back to stored callback_url
         # Empty string ("") means "no callback" - use polling mode
-        callback_url = kwargs.get("callback_url")
-        if callback_url is None:  # Only fall back if not explicitly passed
+        callback_url_raw = kwargs.get("callback_url")
+        callback_url: str | None
+        if callback_url_raw is None:  # Only fall back if not explicitly passed
             callback_url = self.callback_url
+        else:
+            callback_url = str(callback_url_raw)
         if callback_url == "":  # Empty string means explicitly disable callback
             callback_url = None
 
@@ -1045,9 +1203,12 @@ class KieAIProvider:
 
         # Use provided callback_url if explicitly passed, otherwise fall back to stored callback_url
         # Empty string ("") means "no callback" - use polling mode
-        callback_url = kwargs.get("callback_url")
-        if callback_url is None:  # Only fall back if not explicitly passed
+        callback_url_raw = kwargs.get("callback_url")
+        callback_url: str | None
+        if callback_url_raw is None:  # Only fall back if not explicitly passed
             callback_url = self.callback_url
+        else:
+            callback_url = str(callback_url_raw)
         if callback_url == "":  # Empty string means explicitly disable callback
             callback_url = None
 

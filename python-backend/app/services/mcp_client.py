@@ -6,7 +6,6 @@ Includes SSRF protection and response caching.
 """
 
 import ipaddress
-import os
 import time
 from dataclasses import dataclass, field
 from urllib.parse import urlparse
@@ -63,22 +62,33 @@ class McpToolInfo:
     input_schema: dict = field(default_factory=dict)
 
 
-# In-memory discovery cache: (url, token_hash) -> (tools, timestamp)
+# In-memory discovery cache: (tenant_id, url, token_hash) -> (tools, timestamp)
 _discovery_cache: dict[str, tuple[list[McpToolInfo], float]] = {}
 _CACHE_TTL_SECONDS = 60
 
 
-def _cache_key(url: str, token: str | None) -> str:
-    """Generate cache key from URL and token hash."""
+def _normalize_tenant_id(tenant_id: str | int | None) -> str:
+    """Normalize tenant_id for cache scoping."""
+    if tenant_id is None:
+        raise ValueError("tenant_id is required")
+    normalized = str(tenant_id).strip()
+    if not normalized:
+        raise ValueError("tenant_id is required")
+    return normalized
+
+
+def _cache_key(tenant_id: str, url: str, token: str | None) -> str:
+    """Generate cache key from tenant, URL, and token hash."""
     import hashlib
     token_hash = hashlib.sha256((token or "").encode()).hexdigest()[:16]
-    return f"{url}|{token_hash}"
+    return f"{tenant_id}|{url}|{token_hash}"
 
 
 async def discover_tools(
     server_url: str,
     token: str | None = None,
     timeout: float = 10.0,
+    tenant_id: str | int | None = None,
 ) -> list[McpToolInfo]:
     """Discover tools from an external MCP server via JSON-RPC tools/list.
 
@@ -90,15 +100,42 @@ async def discover_tools(
     Returns:
         List of tool definitions. Empty list on connection error.
     """
+    normalized_tenant_id = _normalize_tenant_id(tenant_id)
+    normalized_url = server_url.strip().rstrip("/")
+
+    validation_error = _validate_mcp_url(normalized_url)
+    if validation_error:
+        logger.warning(
+            "mcp_discover_blocked",
+            tenant_id=normalized_tenant_id,
+            url=normalized_url,
+            error=validation_error,
+        )
+        return []
+
+    # F11: DNS resolution SSRF check — catch hostnames resolving to private IPs
+    try:
+        from app.services.mcp_client_manager import _resolve_and_validate_dns
+        parsed_hostname = urlparse(normalized_url).hostname or ""
+        await _resolve_and_validate_dns(parsed_hostname)
+    except Exception as dns_exc:
+        logger.warning(
+            "mcp_discover_dns_blocked",
+            tenant_id=normalized_tenant_id,
+            url=normalized_url,
+            error=str(dns_exc),
+        )
+        return []
+
     # Check cache
-    key = _cache_key(server_url, token)
+    key = _cache_key(normalized_tenant_id, normalized_url, token)
     cached = _discovery_cache.get(key)
     if cached:
         tools, ts = cached
         if time.time() - ts < _CACHE_TTL_SECONDS:
             return tools
 
-    rpc_url = server_url.rstrip("/")
+    rpc_url = normalized_url
     if not rpc_url.endswith("/rpc"):
         rpc_url = f"{rpc_url}/rpc"
 
@@ -122,7 +159,12 @@ async def discover_tools(
             data = resp.json()
 
         if "error" in data:
-            logger.warning("mcp_discover_error", url=server_url, error=data["error"])
+            logger.warning(
+                "mcp_discover_error",
+                tenant_id=normalized_tenant_id,
+                url=normalized_url,
+                error=data["error"],
+            )
             return []
 
         raw_tools = data.get("result", {}).get("tools", [])
@@ -140,7 +182,12 @@ async def discover_tools(
         return tools
 
     except Exception as exc:
-        logger.warning("mcp_discover_failed", url=server_url, error=str(exc))
+        logger.warning(
+            "mcp_discover_failed",
+            tenant_id=normalized_tenant_id,
+            url=normalized_url,
+            error=str(exc),
+        )
         return []
 
 
@@ -150,6 +197,7 @@ async def call_tool(
     arguments: dict,
     token: str | None = None,
     timeout: float = 30.0,
+    tenant_id: str | int | None = None,
 ) -> str:
     """Call a tool on an external MCP server via JSON-RPC tools/call.
 
@@ -163,7 +211,39 @@ async def call_tool(
     Returns:
         Tool result as a string. Returns error description on failure.
     """
-    rpc_url = server_url.rstrip("/")
+    if tenant_id is None or not str(tenant_id).strip():
+        return "MCP tool call blocked: tenant_id is required"
+
+    normalized_tenant_id = str(tenant_id).strip()
+    normalized_url = server_url.strip().rstrip("/")
+
+    validation_error = _validate_mcp_url(normalized_url)
+    if validation_error:
+        logger.warning(
+            "mcp_call_blocked",
+            tenant_id=normalized_tenant_id,
+            url=normalized_url,
+            tool_name=tool_name,
+            error=validation_error,
+        )
+        return f"MCP tool call blocked: {validation_error}"
+
+    # F11: DNS resolution SSRF check
+    try:
+        from app.services.mcp_client_manager import _resolve_and_validate_dns
+        parsed_hostname = urlparse(normalized_url).hostname or ""
+        await _resolve_and_validate_dns(parsed_hostname)
+    except Exception as dns_exc:
+        logger.warning(
+            "mcp_call_dns_blocked",
+            tenant_id=normalized_tenant_id,
+            url=normalized_url,
+            tool_name=tool_name,
+            error=str(dns_exc),
+        )
+        return f"MCP tool call blocked: DNS validation failed"
+
+    rpc_url = normalized_url
     if not rpc_url.endswith("/rpc"):
         rpc_url = f"{rpc_url}/rpc"
 
@@ -191,18 +271,42 @@ async def call_tool(
             return f"MCP tool error: {err_msg}"
 
         result = data.get("result", {})
-        # Extract text content from MCP response format
-        content_list = result.get("content", [])
-        if isinstance(content_list, list):
-            texts = [c.get("text", "") for c in content_list if isinstance(c, dict)]
-            return "\n".join(texts) if texts else str(result)
-
-        return str(result)
+        return _extract_content(result)
 
     except httpx.TimeoutException:
         return f"MCP tool call timed out after {timeout}s"
     except Exception as exc:
         return f"MCP tool call failed: {exc}"
+
+
+def _extract_content(result: dict) -> str:
+    """Extract content from MCP response, handling text, image, and audio types.
+
+    - text: returns the text directly
+    - image: returns [image:{mimeType}] placeholder (base64 data too large for string)
+    - audio: returns [audio:{mimeType}] placeholder
+    """
+    content_list = result.get("content", [])
+    if not isinstance(content_list, list):
+        return str(result)
+
+    parts: list[str] = []
+    for item in content_list:
+        if not isinstance(item, dict):
+            continue
+        content_type = item.get("type", "text")
+        if content_type == "text":
+            parts.append(item.get("text", ""))
+        elif content_type == "image":
+            mime = item.get("mimeType", "image/png")
+            parts.append(f"[image:{mime}]")
+        elif content_type == "audio":
+            mime = item.get("mimeType", "audio/wav")
+            parts.append(f"[audio:{mime}]")
+        else:
+            parts.append(str(item))
+
+    return "\n".join(parts) if parts else str(result)
 
 
 def clear_discovery_cache() -> None:

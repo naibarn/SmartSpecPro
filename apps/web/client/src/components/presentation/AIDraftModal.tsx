@@ -2811,7 +2811,12 @@ export function AIDraftModal({
       {progress?.error && (
         <Alert className="border-red-500">
           <X className="h-4 w-4 text-red-500" />
-          <AlertDescription>{progress.error.message}</AlertDescription>
+          <AlertDescription>
+            <div>{progress.error.message}</div>
+            {progress.phaseDetail ? (
+              <div className="mt-2 text-xs text-muted-foreground">{progress.phaseDetail}</div>
+            ) : null}
+          </AlertDescription>
         </Alert>
       )}
 

@@ -352,6 +352,117 @@ describe("presentationService", () => {
     });
   });
 
+  it("strips internal pending-media billing metadata from public slide writes", async () => {
+    persistenceMocks.getPresentationDeckById.mockResolvedValue({
+      id: 101,
+      tenantId: actor.tenantId,
+      libraryItemId: 44,
+      title: "Deck",
+      description: null,
+      version: 1,
+      slideCount: 1,
+      totalAssetBytes: 0,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    libraryServiceMocks.getLibraryItemById.mockResolvedValue(buildPresentationLibraryItem());
+    persistenceMocks.createPresentationSlide.mockResolvedValue({
+      id: 201,
+      deckId: 101,
+      orderIndex: 1,
+      version: 1,
+      title: "Public slide",
+      slideContent: { elements: [] },
+      notes: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    await addSlideToDeck(
+      {
+        deckId: 101,
+        expectedVersion: 1,
+        title: "Public slide",
+        slideContent: {
+          elements: [],
+          pendingMediaJobs: [
+            {
+              id: "job-1",
+              mediaType: "image",
+              mediaTaskId: "task-1",
+              billingStage: "submit",
+              targetX: 10,
+              targetY: 20,
+              targetWidth: 300,
+              targetHeight: 200,
+              createdAt: "2026-03-26T00:00:00.000Z",
+            },
+          ],
+        },
+      },
+      actor,
+    );
+
+    const payload = persistenceMocks.createPresentationSlide.mock.calls[0]?.[0] as { slideContent?: { pendingMediaJobs?: Array<Record<string, unknown>> } };
+    expect(payload?.slideContent?.pendingMediaJobs?.[0]?.billingStage).toBeUndefined();
+  });
+
+  it("preserves internal pending-media billing metadata for server-side writes", async () => {
+    persistenceMocks.getPresentationDeckById.mockResolvedValue({
+      id: 101,
+      tenantId: actor.tenantId,
+      libraryItemId: 44,
+      title: "Deck",
+      description: null,
+      version: 1,
+      slideCount: 1,
+      totalAssetBytes: 0,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    libraryServiceMocks.getLibraryItemById.mockResolvedValue(buildPresentationLibraryItem());
+    persistenceMocks.createPresentationSlide.mockResolvedValue({
+      id: 201,
+      deckId: 101,
+      orderIndex: 1,
+      version: 1,
+      title: "Internal slide",
+      slideContent: { elements: [] },
+      notes: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    await addSlideToDeck(
+      {
+        deckId: 101,
+        expectedVersion: 1,
+        title: "Internal slide",
+        preserveInternalPendingMediaBilling: true,
+        slideContent: {
+          elements: [],
+          pendingMediaJobs: [
+            {
+              id: "job-1",
+              mediaType: "image",
+              mediaTaskId: "task-1",
+              billingStage: "submit",
+              targetX: 10,
+              targetY: 20,
+              targetWidth: 300,
+              targetHeight: 200,
+              createdAt: "2026-03-26T00:00:00.000Z",
+            },
+          ],
+        },
+      },
+      actor,
+    );
+
+    const payload = persistenceMocks.createPresentationSlide.mock.calls[0]?.[0] as { slideContent?: { pendingMediaJobs?: Array<Record<string, unknown>> } };
+    expect(payload?.slideContent?.pendingMediaJobs?.[0]?.billingStage).toBe("submit");
+  });
+
   it("returns deterministic legacy-payload guidance for unsupported editable payload types", async () => {
     persistenceMocks.getPresentationDeckById.mockResolvedValue({
       id: 101,

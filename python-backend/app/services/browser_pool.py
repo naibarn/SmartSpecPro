@@ -56,11 +56,44 @@ class BrowserPool:
 
     async def stop(self) -> None:
         if self._browser is not None:
-            await self._browser.close()
+            try:
+                await self._browser.close()
+            except Exception:
+                logger.warning("Error closing browser, killing child processes", exc_info=True)
+                self._kill_child_chrome_processes()
         if self._playwright is not None:
-            await self._playwright.stop()
+            try:
+                await self._playwright.stop()
+            except Exception:
+                logger.warning("Error stopping playwright", exc_info=True)
         self._started = False
         logger.info("BrowserPool stopped")
+
+    @staticmethod
+    def _kill_child_chrome_processes() -> None:
+        """Kill any orphaned chrome child processes spawned by this worker."""
+        import os
+        import signal
+
+        my_pid = os.getpid()
+        try:
+            import subprocess
+
+            result = subprocess.run(
+                ["pgrep", "-P", str(my_pid), "-f", "chrom"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            for line in result.stdout.strip().splitlines():
+                pid = int(line.strip())
+                try:
+                    os.kill(pid, signal.SIGKILL)
+                    logger.info("Killed orphaned chrome child PID=%d", pid)
+                except OSError:
+                    pass
+        except Exception:
+            logger.warning("Failed to enumerate chrome children", exc_info=True)
 
     @asynccontextmanager
     async def session(self, tenant_id: str) -> AsyncGenerator[BrowserContext, None]:
@@ -90,6 +123,7 @@ class BrowserPool:
                     details={"tenant_id": tenant_id, "tenant_max": TENANT_MAX_BROWSERS},
                 )
 
+            assert self._browser is not None
             context = await self._browser.new_context(
                 viewport={"width": 1280, "height": 800},
                 user_agent=_USER_AGENT,
@@ -200,8 +234,23 @@ def shutdown_browser_pool_sync() -> None:
         loop.run_until_complete(asyncio.wait_for(_pool.stop(), timeout=5.0))
     except Exception:
         logger.warning("BrowserPool shutdown error (timeout or exception)", exc_info=True)
+        # Last resort: kill chrome children directly
+        BrowserPool._kill_child_chrome_processes()
     finally:
         _pool = None
         if _worker_loop is not None:
             _worker_loop.close()
             _worker_loop = None
+
+
+def _atexit_cleanup() -> None:
+    """Emergency cleanup when process exits without graceful Celery shutdown."""
+    try:
+        shutdown_browser_pool_sync()
+    except Exception:
+        pass
+
+
+import atexit as _atexit
+
+_atexit.register(_atexit_cleanup)

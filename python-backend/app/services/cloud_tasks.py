@@ -7,6 +7,7 @@ import asyncio
 import json
 import os
 from datetime import datetime, timedelta, timezone
+from typing import Any
 
 import structlog
 
@@ -67,7 +68,7 @@ async def enqueue_task(
     client = get_tasks_client()
     parent = client.queue_path(project_id, region, queue_name)
 
-    task = {
+    task: dict[str, Any] = {
         "http_request": {
             "http_method": "POST",
             "url": f"{python_url}{handler_path}",

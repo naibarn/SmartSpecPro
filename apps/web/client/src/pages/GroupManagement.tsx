@@ -4,11 +4,11 @@ import { ChevronLeft, Globe, Loader2, Plus, Search, Users } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CreateGroupDialog } from "@/components/groups/CreateGroupDialog";
+import { DashboardCard } from "@/components/dashboard";
 import { useAuth } from "@/contexts/AuthContext";
 import { trpc } from "@/lib/trpc";
 
@@ -77,7 +77,7 @@ export default function GroupManagement() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-cyan-50/20">
       {/* Sticky Header */}
       <header className="sticky top-0 z-10 border-b bg-white/70 backdrop-blur-xl">
         <div className="px-4 py-3 sm:px-6 lg:px-8">
@@ -92,7 +92,7 @@ export default function GroupManagement() {
                 Back
               </Button>
               <div className="flex items-center gap-2">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500">
                   <Users className="h-5 w-5 text-white" />
                 </div>
                 <div>
@@ -192,32 +192,29 @@ function GroupCard({
   };
 
   return (
-    <Card
-      className="cursor-pointer transition-shadow hover:shadow-md"
-      onClick={onClick}
-    >
-      <CardHeader className="pb-2">
-        <CardTitle className="flex items-center gap-2 text-base">
-          <Users className="h-4 w-4 shrink-0 text-muted-foreground" />
-          <span className="truncate">{group.name}</span>
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <p className="mb-3 line-clamp-2 text-sm text-muted-foreground">
-          {group.description || "No description"}
-        </p>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">
-            {group.memberCount} members
+    <button type="button" className="w-full text-left" onClick={onClick}>
+      <DashboardCard
+        className="h-full cursor-pointer transition-transform duration-200 hover:-translate-y-0.5"
+        title={
+          <span className="flex items-center gap-2">
+            <Users className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <span className="truncate">{group.name}</span>
           </span>
-          {settings.visibility === "public" && (
+        }
+        description={group.description || "No description"}
+        trailing={
+          settings.visibility === "public" ? (
             <Badge variant="secondary" className="text-xs">
               Public
             </Badge>
-          )}
+          ) : null
+        }
+      >
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <span>{group.memberCount} members</span>
         </div>
-      </CardContent>
-    </Card>
+      </DashboardCard>
+    </button>
   );
 }
 
@@ -236,15 +233,10 @@ function GroupGridSkeleton() {
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {Array.from({ length: 6 }).map((_, i) => (
-        <Card key={i}>
-          <CardHeader className="pb-2">
-            <Skeleton className="h-5 w-32" />
-          </CardHeader>
-          <CardContent>
-            <Skeleton className="mb-3 h-4 w-full" />
-            <Skeleton className="h-3 w-20" />
-          </CardContent>
-        </Card>
+        <DashboardCard key={i} title={<Skeleton className="h-5 w-32" />}>
+          <Skeleton className="mb-3 h-4 w-full" />
+          <Skeleton className="h-3 w-20" />
+        </DashboardCard>
       ))}
     </div>
   );

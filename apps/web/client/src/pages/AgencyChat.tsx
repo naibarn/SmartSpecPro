@@ -5,11 +5,15 @@ import { useAgencyStream } from "@/hooks/useAgencyStream";
 import { useAgencyById } from "@/hooks/useAgencyQuery";
 import { ModelPicker } from "@/components/agency/ModelPicker";
 import AgencyActivityPanel from "@/components/agency/AgencyActivityPanel";
+import { AgencyMemoryPanel } from "@/components/agency/AgencyMemoryPanel";
+import { RunFeedbackCard } from "@/components/agency/RunFeedbackCard";
+import { ImprovementSuggestionPanel } from "@/components/agency/ImprovementSuggestionPanel";
 import { AgencyChatStream } from "@/components/agency/AgencyChatStream";
 import { BrowserSessionSummaryCard } from "@/components/browser-session/BrowserSessionSummaryCard";
 import { BrowserSessionLaunchSuggestionCard } from "@/components/browser-session/BrowserSessionLaunchSuggestionCard";
 import { AgencyPreviewCard, type AgencyPreviewProps } from "@/components/agency/preview";
 import { HelpButton } from "@/components/help";
+import { LocaleToggle } from "@/components/LocaleToggle";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -37,6 +41,10 @@ import {
   RefreshCw,
   MonitorPlay,
   X,
+  Brain,
+  Activity,
+  Lightbulb,
+  Sparkles,
 } from "lucide-react";
 import {
   Popover,
@@ -70,7 +78,14 @@ import {
   deriveBrowserSkillSelection,
   inferBrowserSkillId,
 } from "@shared/browserSkills";
+import {
+  buildHybridPlanSummary,
+  formatHybridPlanInstructions,
+  type HybridOrchestrationPlan,
+  type HybridPlanPayload,
+} from "@shared/orchestration/hybridOrchestration";
 import type { LiveBrowserCreateSessionRequest } from "@shared/liveBrowser";
+import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 
 
 const AGENT_COLORS = [
@@ -90,23 +105,33 @@ function getAgentColor(name: string): string {
 }
 
 export default function AgencyChat() {
+  const { t } = useScopedTranslation("agency");
   const { isLoading: authLoading, isAuthenticated, user } = useAuth();
   const [, setLocation] = useLocation();
-  const [matched, params] = useRoute("/agencies/:id");
-  const agencyId = (params as Record<string, string>)?.id as
-    | string
-    | undefined;
+  const [reviewMatched, reviewParams] = useRoute("/agencies/:id/review");
+  const [chatMatched, chatParams] = useRoute("/agencies/:id");
+  const matched = reviewMatched || chatMatched;
+  const routeParams = (reviewMatched ? reviewParams : chatParams) as Record<string, string> | undefined;
+  const agencyId = routeParams?.id as string | undefined;
+  const reviewMode = reviewMatched;
 
   const [input, setInput] = useState("");
   const [panelOpen, setPanelOpen] = useState(
-    () => typeof window !== "undefined" && window.innerWidth >= 1024,
+    () => typeof window !== "undefined" && (window.innerWidth >= 1024 || reviewMode),
   );
+  const [panelTab, setPanelTab] = useState<"activity" | "memory" | "improve">(
+    () => (reviewMode ? "improve" : "activity"),
+  );
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [lastRunId, setLastRunId] = useState<string | null>(null);
   const [conversationId] = useState<string | undefined>();
   const [modelOverride, setModelOverride] = useState("");
   const [modelPickerOpen, setModelPickerOpen] = useState(false);
   const [recipientAgent, setRecipientAgent] = useState("");
   const [additionalInstructions, setAdditionalInstructions] = useState("");
   const [runOptionsOpen, setRunOptionsOpen] = useState(false);
+  const [hybridOrchestrationPlan, setHybridOrchestrationPlan] = useState<HybridOrchestrationPlan | null>(null);
+  const [hybridOrchestrationDraft, setHybridOrchestrationDraft] = useState("");
   const [returnBrowserSessionId, setReturnBrowserSessionId] = useState<string | null>(null);
   const [browserSessionSuggestion, setBrowserSessionSuggestion] = useState<BrowserSessionLaunchSuggestion | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -116,6 +141,20 @@ export default function AgencyChat() {
   });
   const createLiveBrowserSessionMutation = trpc.liveBrowser.createSession.useMutation();
   const sendLiveBrowserCommandMutation = trpc.liveBrowser.sendCommand.useMutation();
+  const reviewAgencyMutation = trpc.agency.reviewAgency.useMutation({
+    onSuccess: () => {
+      utils.agency.getImprovementSuggestions.invalidate({ agencyId: agencyId! });
+      utils.agency.getImprovementHistory.invalidate({ agencyId: agencyId! });
+      setPanelTab("improve");
+      setPanelOpen(true);
+      toast.success(t("chat.toast.reviewCompleted"));
+    },
+    onError: (error) => {
+      toast.error(error.message || t("chat.toast.reviewFailed"));
+    },
+  });
+  const createHybridPreviewTokenMutation = trpc.hybridOrchestration.createPreviewToken.useMutation();
+  const refreshHybridPreviewTokenMutation = trpc.hybridOrchestration.refreshPreviewToken.useMutation();
   const [browserSessionArtifact, setBrowserSessionArtifact] = useState<BrowserSessionArtifact | null>(null);
   const [browserCommandDraft, setBrowserCommandDraft] = useState("");
   const [browserCommandSkillId, setBrowserCommandSkillId] = useState(() => inferBrowserSkillId(""));
@@ -124,6 +163,7 @@ export default function AgencyChat() {
   const [browserCommandNotice, setBrowserCommandNotice] = useState<string | null>(null);
   const [agencyPreview, setAgencyPreview] = useState<(AgencyPreviewProps & { runId: string }) | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const hybridPreviewRefreshAttemptedRef = useRef<string | null>(null);
 
   // Feature flag is enforced server-side: agency.getById throws NOT_FOUND
   // when AGENCY_SWARM_ENABLED is false, which sets isError=true below.
@@ -134,12 +174,18 @@ export default function AgencyChat() {
   } = useAgencyById(agencyId);
 
   const agencyBrowserSessionEnabled = Boolean(tenantFlags?.agencyBrowserSessionUi);
+  const reviewCenterEnabled = reviewMode;
 
   const browserSessionStorageKey = useMemo(
     () => (agencyId ? `agency-browser-session:${agencyId}` : null),
     [agencyId],
   );
   const stream = useAgencyStream({
+    onRunFinished: (_creditsUsed, runId) => {
+      // Show feedback card after run completes — use actual run UUID
+      if (runId) setLastRunId(runId);
+      setShowFeedback(true);
+    },
     onBrowserSession: (artifact) => {
       storeBrowserSessionArtifact(artifact);
     },
@@ -171,7 +217,7 @@ export default function AgencyChat() {
         })
         .catch((error) => {
           console.error("[AgencyChat] failed to load preview", error);
-          toast.error("Failed to load preview. Please try again.");
+          toast.error(t("chat.toast.previewLoadFailed"));
         })
         .finally(() => setPreviewLoading(false));
     },
@@ -218,13 +264,113 @@ export default function AgencyChat() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const browserSessionId = params.get("browserSessionId");
-    if (!browserSessionId) {
+    const hybridPreviewToken = params.get("hybridPreviewToken");
+    const draft = params.get("draft");
+    let shouldRewriteUrl = false;
+
+    setHybridOrchestrationPlan(null);
+    setHybridOrchestrationDraft("");
+    setAdditionalInstructions("");
+    setRecipientAgent("");
+    setRunOptionsOpen(false);
+    setInput("");
+
+    if (browserSessionId) {
+      setReturnBrowserSessionId(browserSessionId);
+      shouldRewriteUrl = true;
+    }
+
+    const applyHybridPreview = (parsed: HybridPlanPayload) => {
+      if (parsed?.plan?.mode === "hybrid") {
+        setHybridOrchestrationPlan(parsed.plan);
+        setHybridOrchestrationDraft(parsed.draft || "");
+        setAdditionalInstructions((current) => current || formatHybridPlanInstructions(parsed.plan));
+        setRunOptionsOpen(true);
+        if (parsed.draft) {
+          setInput((current) => current || parsed.draft);
+        }
+      }
+    };
+
+    const loadHybridPreview = async (token: string): Promise<void> => {
+      try {
+        const parsed = await utils.hybridOrchestration.getPreview.fetch({ token });
+        if (parsed?.plan?.mode === "hybrid") {
+          applyHybridPreview(parsed);
+          hybridPreviewRefreshAttemptedRef.current = null;
+          return;
+        }
+      } catch {
+        // Fall through to an automatic refresh attempt below.
+      }
+
+      if (hybridPreviewRefreshAttemptedRef.current === token) {
+        return;
+      }
+
+      hybridPreviewRefreshAttemptedRef.current = token;
+      try {
+        const refreshed = await refreshHybridPreviewTokenMutation.mutateAsync({ previewToken: token });
+        const parsed = await utils.hybridOrchestration.getPreview.fetch({ token: refreshed.token });
+        if (parsed?.plan?.mode === "hybrid") {
+          applyHybridPreview(parsed);
+          hybridPreviewRefreshAttemptedRef.current = null;
+          if (typeof window !== "undefined") {
+            const nextUrl = new URL(window.location.href);
+            nextUrl.searchParams.set("hybridPreviewToken", refreshed.token);
+            nextUrl.searchParams.delete("browserSessionId");
+            nextUrl.searchParams.delete("draft");
+            window.history.replaceState({}, "", nextUrl.toString());
+          }
+        }
+      } catch {
+        hybridPreviewRefreshAttemptedRef.current = null;
+      }
+    };
+
+    if (hybridPreviewToken) {
+      shouldRewriteUrl = true;
+      void loadHybridPreview(hybridPreviewToken);
+    }
+
+    if (draft) {
+      setInput((current) => current || draft);
+      shouldRewriteUrl = true;
+    }
+
+    if (shouldRewriteUrl) {
+      const nextUrl = new URL(window.location.href);
+      nextUrl.searchParams.delete("browserSessionId");
+      nextUrl.searchParams.delete("draft");
+      if (!hybridPreviewToken) {
+        nextUrl.searchParams.delete("hybridPreviewToken");
+      }
+      window.history.replaceState({}, "", nextUrl.toString());
+    }
+  }, [agencyId]);
+
+  const handleOpenHybridPreview = () => {
+    if (!agencyId || !hybridOrchestrationPlan) {
       return;
     }
 
-    setReturnBrowserSessionId(browserSessionId);
-    window.history.replaceState({}, "", agencyId ? `/agencies/${agencyId}` : "/agencies");
-  }, [agencyId]);
+    void (async () => {
+      try {
+        const payload: HybridPlanPayload = {
+          draft: hybridOrchestrationDraft || input.trim(),
+          plan: hybridOrchestrationPlan,
+        };
+        const result = await createHybridPreviewTokenMutation.mutateAsync({
+          agencyId,
+          payload,
+          sourceSurface: "agency-chat",
+        });
+        setLocation(`/agencies/${agencyId}/hybrid-preview?hybridPreviewToken=${encodeURIComponent(result.token)}`);
+      } catch {
+        toast.error(t("chat.toast.previewFailed"));
+      }
+    })();
+  };
 
   const handleSend = () => {
     const message = input.trim();
@@ -282,11 +428,11 @@ export default function AgencyChat() {
 
     return {
       originSurface: "agency",
-      originLabel: "Agency",
+      originLabel: t("chat.agency"),
       sourceId: agencyId,
       returnContext: {
         path: `/agencies/${agencyId}?browserSessionId=${encodeURIComponent(sessionId)}`,
-        label: "Return to Agency",
+        label: t("chat.returnToAgency"),
       },
     };
   };
@@ -340,6 +486,13 @@ export default function AgencyChat() {
       setBrowserSessionSuggestion(null);
     }
   }, [agencyBrowserSessionEnabled, agencyId]);
+
+  useEffect(() => {
+    if (reviewCenterEnabled) {
+      setPanelOpen(true);
+      setPanelTab("improve");
+    }
+  }, [reviewCenterEnabled]);
 
   useEffect(() => {
     setBrowserCommandDraft("");
@@ -408,6 +561,14 @@ export default function AgencyChat() {
     setLocation(buildBrowserSessionPath(created.sessionId, artifact?.launchContext ?? buildAgencyLaunchContext(created.sessionId)));
   };
 
+  const handleReviewAgency = async () => {
+    if (!agencyId || reviewAgencyMutation.isPending) {
+      return;
+    }
+
+    await reviewAgencyMutation.mutateAsync({ agencyId });
+  };
+
   const handleConfirmBrowserSessionSuggestion = async (
     suggestion: BrowserSessionLaunchSuggestion,
   ) => {
@@ -461,10 +622,10 @@ export default function AgencyChat() {
       setBrowserCommandDraft("");
       setBrowserCommandSkillId(inferBrowserSkillId(""));
       setBrowserCommandSkillSelectionMode("auto");
-      setBrowserCommandNotice("Instruction queued for this Browser Session.");
+      setBrowserCommandNotice(t("chat.browserCommandQueued"));
     } catch (error) {
       setBrowserCommandNotice(
-        error instanceof Error ? error.message : "Failed to queue Browser Session instruction.",
+        error instanceof Error ? error.message : t("chat.browserCommandFailed"),
       );
     } finally {
       setBrowserCommandBusy(false);
@@ -482,7 +643,7 @@ export default function AgencyChat() {
   if (!matched || !agencyId) {
     return (
       <div className="flex h-full items-center justify-center">
-        <p className="text-muted-foreground">Agency not found</p>
+        <p className="text-muted-foreground">{t("chat.agencyNotFound")}</p>
       </div>
     );
   }
@@ -501,7 +662,7 @@ export default function AgencyChat() {
             size="icon"
             className="h-8 w-8 shrink-0"
             onClick={() => setLocation("/agencies")}
-            title="Back to Agencies"
+            title={t("chat.backToAgencies")}
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
@@ -510,16 +671,21 @@ export default function AgencyChat() {
             <div className="flex items-center gap-2">
               <Users className="h-4 w-4 shrink-0 text-muted-foreground" />
               <h1 className="text-base font-semibold truncate">
-                {agency?.name || "Agency"}
+                {agency?.name || t("chat.agency")}
               </h1>
               <Badge variant="outline" className="shrink-0 text-[10px] px-1.5 py-0">
-                {agents.length} {agents.length === 1 ? "agent" : "agents"}
+                {t("chat.agentsCount", { count: agents.length })}
               </Badge>
+              {reviewCenterEnabled && (
+                <Badge className="shrink-0 text-[10px] px-1.5 py-0 bg-amber-100 text-amber-700 border-amber-200">
+                  {t("chat.reviewCenter")}
+                </Badge>
+              )}
             </div>
 
             {stream.activeAgent ? (
               <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                <span>Active:</span>
+                <span>{t("chat.active")}</span>
                 <Badge
                   variant="secondary"
                   className={cn(
@@ -539,7 +705,40 @@ export default function AgencyChat() {
         </div>
 
         <div className="flex items-center gap-1.5 shrink-0">
+          <LocaleToggle className="hidden lg:inline-flex" />
           <HelpButton page="/agency" variant="ghost" size="sm" className="h-8 text-muted-foreground hover:text-foreground" />
+          {agencyId && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className={cn(
+                "h-8 gap-1.5 text-xs text-muted-foreground hover:text-foreground",
+                reviewCenterEnabled ? "text-primary" : "",
+              )}
+              onClick={() => { void handleReviewAgency(); }}
+              disabled={reviewAgencyMutation.isPending}
+              title={t("chat.runAgencyReview")}
+            >
+              {reviewAgencyMutation.isPending ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Lightbulb className="h-3.5 w-3.5" />
+              )}
+              {t("chat.review")}
+            </Button>
+          )}
+          {reviewCenterEnabled && hybridOrchestrationPlan && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+              onClick={() => { void handleOpenHybridPreview(); }}
+              title={t("chat.regenerateToken")}
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              {t("chat.regeneratePreviewToken")}
+            </Button>
+          )}
           {agencyBrowserSessionEnabled && (
             <Button
               variant="ghost"
@@ -547,18 +746,20 @@ export default function AgencyChat() {
               className="h-8 gap-1.5 text-xs text-muted-foreground hover:text-foreground"
               onClick={() => { void handleOpenBrowserSession(); }}
               disabled={createLiveBrowserSessionMutation.isPending}
-              title="Open Browser Session"
+              title={t("chat.openBrowserSession")}
             >
               <MonitorPlay className="h-3.5 w-3.5" />
               <span className="max-w-[160px] truncate">
-                {browserSessionArtifact?.summary.primaryActionLabel ?? "Open Browser Session"}
+                {browserSessionArtifact?.summary.primaryActionLabel ?? t("chat.openBrowserSession")}
               </span>
             </Button>
           )}
           {stream.creditsUsed > 0 && (
-            <div className="flex items-center gap-1 text-xs text-muted-foreground px-2">
+            <div className="flex items-center gap-1 px-2 text-xs text-muted-foreground">
               <CreditCard className="h-3 w-3" />
-              <span>{stream.creditsUsed} credits</span>
+              <span>
+                {stream.creditsUsed} {t("chat.credits")}
+              </span>
             </div>
           )}
 
@@ -569,23 +770,20 @@ export default function AgencyChat() {
                 variant="ghost"
                 size="sm"
                 className="h-8 gap-1.5 text-xs text-muted-foreground hover:text-foreground"
-                title="Override model for this conversation"
+                title={t("chat.modelOverride")}
               >
                 <Settings2 className="h-3.5 w-3.5" />
                 {modelOverride ? (
                   <span className="max-w-[120px] truncate">{modelOverride}</span>
                 ) : (
-                  <span>Model</span>
+                  <span>{t("chat.model")}</span>
                 )}
               </Button>
             </PopoverTrigger>
             <PopoverContent align="end" className="w-80 p-3">
               <div className="space-y-2">
-                <p className="text-xs font-medium">Override Model</p>
-                <p className="text-[11px] text-muted-foreground">
-                  Use a different model for this conversation. Leave empty to use
-                  each agent's configured model.
-                </p>
+                <p className="text-xs font-medium">{t("chat.overrideModel")}</p>
+                <p className="text-[11px] text-muted-foreground">{t("chat.overrideModelHint")}</p>
                 <ModelPicker
                   value={modelOverride}
                   onChange={(v) => {
@@ -604,7 +802,7 @@ export default function AgencyChat() {
                     }}
                   >
                     <RefreshCw className="mr-1.5 h-3 w-3" />
-                    Reset to agent defaults
+                    {t("chat.resetModel")}
                   </Button>
                 )}
               </div>
@@ -617,7 +815,7 @@ export default function AgencyChat() {
             size="icon"
             className="h-8 w-8"
             onClick={() => setLocation(`/agencies/${agencyId}/edit`)}
-            title="Edit Agency"
+            title={t("chat.editAgency")}
           >
             <Settings2 className="h-4 w-4" />
           </Button>
@@ -638,7 +836,7 @@ export default function AgencyChat() {
       </div>
 
       {/* Main Content */}
-      <div className="flex flex-1 overflow-hidden">
+          <div className="flex flex-1 overflow-hidden">
         {/* Conversation Thread */}
         <div className="flex flex-1 flex-col min-w-0">
           <div
@@ -646,6 +844,41 @@ export default function AgencyChat() {
             className="flex-1 overflow-y-auto p-4"
           >
             <div className="mx-auto max-w-3xl space-y-4">
+              {hybridOrchestrationPlan && (
+                <div className="rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 text-sm text-violet-900 dark:border-violet-900 dark:bg-violet-950/20 dark:text-violet-100">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Bot className="h-4 w-4" />
+                    <p className="font-semibold">{t("chat.hybridLoaded")}</p>
+                    <Badge variant="secondary" className="ml-auto bg-white/80 text-violet-800">
+                      {t("chat.stages", { count: hybridOrchestrationPlan.stages.length })}
+                    </Badge>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 gap-1.5 border-violet-200 bg-white/70 text-violet-800 hover:bg-violet-50"
+                      onClick={handleOpenHybridPreview}
+                    >
+                      <Sparkles className="h-3.5 w-3.5" />
+                      {t("chat.openDetailedPreview")}
+                    </Button>
+                    {!reviewCenterEnabled && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 gap-1.5 border-violet-200 bg-white/70 text-violet-800 hover:bg-violet-50"
+                        onClick={handleOpenHybridPreview}
+                      >
+                        <RefreshCw className="h-3.5 w-3.5" />
+                        {t("chat.regeneratePreviewToken")}
+                      </Button>
+                    )}
+                  </div>
+                  <p className="mt-1 text-xs text-violet-800/80 dark:text-violet-200/80">
+                    {buildHybridPlanSummary(hybridOrchestrationPlan)}
+                  </p>
+                </div>
+              )}
+
               {agencyBrowserSessionEnabled && browserSessionArtifact ? (
                 <BrowserSessionSummaryCard
                   artifact={browserSessionArtifact}
@@ -659,10 +892,10 @@ export default function AgencyChat() {
                   <div className="space-y-3">
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-900/70">
-                        Quick Browser Instruction
+                        {t("chat.quickBrowserInstruction")}
                       </p>
                       <p className="mt-1 text-xs text-slate-600">
-                        Describe the outcome you want or the next browser step without leaving Agency Chat.
+                        {t("chat.quickBrowserInstructionHint")}
                       </p>
                     </div>
                     <Select
@@ -670,7 +903,7 @@ export default function AgencyChat() {
                       onValueChange={(value) => handleBrowserCommandSkillChange(value as typeof browserCommandSkillId)}
                     >
                       <SelectTrigger className="bg-white">
-                        <SelectValue placeholder="Choose a browser skill" />
+                        <SelectValue placeholder={t("chat.browserskillPlaceholder")} />
                       </SelectTrigger>
                       <SelectContent>
                         {BROWSER_SKILL_PRESETS.map((preset) => (
@@ -683,7 +916,7 @@ export default function AgencyChat() {
                     <Textarea
                       value={browserCommandDraft}
                       onChange={(event) => handleBrowserCommandDraftChange(event.target.value)}
-                      placeholder="Example: Find the right site, compare choices, and continue automatically."
+                      placeholder={t("chat.browserskillGoalPlaceholder")}
                       className="min-h-[88px] bg-white"
                     />
                     {browserCommandNotice ? (
@@ -697,7 +930,7 @@ export default function AgencyChat() {
                       disabled={!browserCommandDraft.trim() || browserCommandBusy}
                     >
                       {browserCommandBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                      {browserCommandBusy ? "Queuing Instruction..." : "Send Browser Instruction"}
+                      {browserCommandBusy ? t("chat.queuingInstruction") : t("chat.sendBrowserInstruction")}
                     </Button>
                   </div>
                 </BrowserSessionSummaryCard>
@@ -752,7 +985,7 @@ export default function AgencyChat() {
                     <Users className="h-7 w-7 text-primary" />
                   </div>
                   <h2 className="text-xl font-semibold">
-                    {agency?.name || "Agency"}
+                    {agency?.name || t("chat.agency")}
                   </h2>
                   {agency?.description && (
                     <p className="mx-auto mt-1.5 max-w-sm text-sm text-muted-foreground">
@@ -763,7 +996,7 @@ export default function AgencyChat() {
                   {agents.length > 0 && (
                     <div className="mt-6">
                       <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                        Team Members
+                        {t("chat.teamMembers")}
                       </p>
                       <div className="flex flex-wrap justify-center gap-2">
                         {agents.map((a: any) => (
@@ -781,7 +1014,7 @@ export default function AgencyChat() {
                             )}
                             {a.name}
                             {a.isEntryPoint && (
-                              <span className="ml-0.5 opacity-60">(entry)</span>
+                              <span className="ml-0.5 opacity-60">{t("chat.entry")}</span>
                             )}
                           </div>
                         ))}
@@ -790,7 +1023,7 @@ export default function AgencyChat() {
                   )}
 
                   <p className="mt-6 text-sm text-muted-foreground">
-                    Send a message to start the conversation
+                    {t("chat.sendMessage")}
                   </p>
                 </div>
               )}
@@ -830,7 +1063,7 @@ export default function AgencyChat() {
                     <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-destructive">
-                        Error
+                        {t("chat.errorTitle")}
                       </p>
                       <p className="mt-0.5 text-sm text-destructive/80">
                         {stream.error}
@@ -843,7 +1076,7 @@ export default function AgencyChat() {
                       onClick={handleRetry}
                       disabled={stream.isStreaming || stream.messages.length === 0}
                     >
-                      Retry
+                      {t("chat.retry")}
                     </Button>
                   </div>
                 </div>
@@ -851,25 +1084,37 @@ export default function AgencyChat() {
             </div>
           </div>
 
+          {/* Run Feedback Card */}
+          {showFeedback && agencyId && !stream.isStreaming && (
+            <div className="px-4 pb-2 max-w-3xl mx-auto w-full">
+              <RunFeedbackCard
+                agencyId={agencyId}
+                runId={lastRunId || `run-${Date.now()}`}
+                onClose={() => setShowFeedback(false)}
+                onSubmitted={() => setShowFeedback(false)}
+              />
+            </div>
+          )}
+
           {/* Input Bar */}
           <div className="border-t px-4 py-3">
             {(agency as any)?.creatorFeeCredits > 0 && (
               <div className="mx-auto mb-2 flex max-w-3xl items-center gap-1.5 rounded-md bg-amber-50 px-3 py-1.5 text-xs text-amber-700 dark:bg-amber-950 dark:text-amber-300">
                 <CreditCard className="h-3.5 w-3.5 shrink-0" />
                 <span>
-                  Creator fee: {(agency as any).creatorFeeCredits} credits per successful run
+                  {t("chat.creatorFee", { fee: (agency as any).creatorFeeCredits })}
                 </span>
               </div>
             )}
             {modelOverride && (
               <div className="mx-auto mb-2 flex max-w-3xl items-center gap-1.5 rounded-md bg-blue-50 px-3 py-1.5 text-xs text-blue-700 dark:bg-blue-950 dark:text-blue-300">
                 <Settings2 className="h-3.5 w-3.5 shrink-0" />
-                <span>Using model override: <strong>{modelOverride}</strong></span>
+                <span>{t("chat.modelOverrideActive", { model: modelOverride })}</span>
                 <button
                   className="ml-auto underline underline-offset-2 hover:no-underline"
                   onClick={() => setModelOverride("")}
                 >
-                  Clear
+                  {t("chat.clear")}
                 </button>
               </div>
             )}
@@ -877,7 +1122,7 @@ export default function AgencyChat() {
             {(recipientAgent || additionalInstructions || runOptionsOpen) && (
               <div className="mx-auto mb-2 max-w-3xl space-y-2 rounded-md border bg-muted/30 px-3 py-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-medium text-muted-foreground">Run Options</span>
+                  <span className="text-[11px] font-medium text-muted-foreground">{t("chat.runOptions")}</span>
                   <Button
                     variant="ghost"
                     size="icon"
@@ -893,13 +1138,13 @@ export default function AgencyChat() {
                 </div>
                 {agency && (agency as any).agents?.length > 1 && (
                   <div className="space-y-1">
-                    <label className="text-[10px] text-muted-foreground">Target Agent</label>
+                    <label className="text-[10px] text-muted-foreground">{t("chat.targetAgent")}</label>
                     <Select value={recipientAgent} onValueChange={setRecipientAgent}>
                       <SelectTrigger className="h-7 text-xs">
-                        <SelectValue placeholder="Auto (entry point)" />
+                        <SelectValue placeholder={t("chat.targetAgentPlaceholder")} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Auto (entry point)</SelectItem>
+                        <SelectItem value="">{t("chat.autoEntryPoint")}</SelectItem>
                         {((agency as any).agents ?? []).map((a: any) => (
                           <SelectItem key={a.id || a.name} value={a.name}>
                             {a.name}
@@ -910,13 +1155,13 @@ export default function AgencyChat() {
                   </div>
                 )}
                 <div className="space-y-1">
-                  <label className="text-[10px] text-muted-foreground">Additional Instructions</label>
+                  <label className="text-[10px] text-muted-foreground">{t("chat.additionalInstructions")}</label>
                   <Textarea
                     value={additionalInstructions}
                     onChange={(e) => setAdditionalInstructions(e.target.value)}
                     className="min-h-[32px] max-h-[80px] resize-none text-xs"
                     rows={1}
-                    placeholder="Per-run instruction override (optional)"
+                    placeholder={t("chat.runOverridePlaceholder")}
                   />
                 </div>
               </div>
@@ -929,7 +1174,7 @@ export default function AgencyChat() {
                     size="icon"
                     className="h-11 w-8 shrink-0 text-muted-foreground hover:text-foreground"
                     onClick={() => setRunOptionsOpen(true)}
-                    title="Run options (target agent, instructions)"
+                    title={t("chat.runOptions")}
                   >
                     <Settings2 className="h-4 w-4" />
                   </Button>
@@ -938,7 +1183,7 @@ export default function AgencyChat() {
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder={`Message ${agency?.name ?? "agency"}… (Enter to send, Shift+Enter for new line)`}
+                  placeholder={t("chat.messagePlaceholder", { name: agency?.name ?? t("chat.agency") })}
                   className="min-h-[44px] max-h-[160px] resize-none flex-1"
                   rows={1}
                   disabled={stream.isStreaming}
@@ -960,15 +1205,68 @@ export default function AgencyChat() {
           </div>
         </div>
 
-        {/* Activity Panel */}
+        {/* Side Panel — Activity | Memory tabs */}
         {panelOpen && (
-          <div className="hidden w-80 border-l lg:block">
-            <AgencyActivityPanel
-              activityEvents={stream.activityEvents}
-              activeAgent={stream.activeAgent}
-              isStreaming={stream.isStreaming}
-              onClose={() => setPanelOpen(false)}
-            />
+          <div className="hidden w-80 border-l lg:flex lg:flex-col">
+            {/* Tab bar */}
+            <div className="flex border-b">
+              <button
+                onClick={() => setPanelTab("activity")}
+                className={cn(
+                  "flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium transition-colors",
+                  panelTab === "activity"
+                    ? "border-b-2 border-primary text-primary"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <Activity className="h-3.5 w-3.5" />
+                {t("chat.panelActivity")}
+              </button>
+              <button
+                onClick={() => setPanelTab("memory")}
+                className={cn(
+                  "flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium transition-colors",
+                  panelTab === "memory"
+                    ? "border-b-2 border-primary text-primary"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <Brain className="h-3.5 w-3.5" />
+                {t("chat.panelMemory")}
+              </button>
+              <button
+                onClick={() => setPanelTab("improve")}
+                className={cn(
+                  "flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium transition-colors",
+                  panelTab === "improve"
+                    ? "border-b-2 border-primary text-primary"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <Lightbulb className="h-3.5 w-3.5" />
+                {t("chat.panelImprove")}
+              </button>
+            </div>
+
+            {/* Panel content */}
+            {panelTab === "activity" ? (
+              <AgencyActivityPanel
+                activityEvents={stream.activityEvents}
+                activeAgent={stream.activeAgent}
+                isStreaming={stream.isStreaming}
+                onClose={() => setPanelOpen(false)}
+              />
+            ) : panelTab === "memory" ? (
+              <AgencyMemoryPanel
+                agencyId={agencyId!}
+                agentNodeId={entryAgent?.id ?? ""}
+                onClose={() => setPanelOpen(false)}
+              />
+            ) : (
+              <div className="flex-1 overflow-y-auto p-3">
+                <ImprovementSuggestionPanel agencyId={agencyId!} />
+              </div>
+            )}
           </div>
         )}
       </div>

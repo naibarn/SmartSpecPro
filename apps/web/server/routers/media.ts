@@ -1302,6 +1302,9 @@ export const mediaRouter = router({
         resolution: z.string().optional(),
         apiConfig: z.record(z.string()).optional(),
         extraParams: extraParamsSchema,
+        referenceImageUrls: z.array(referenceMediaUrlSchema).max(5).optional(),
+        referenceVideoUrls: z.array(referenceMediaUrlSchema).max(5).optional(),
+        referenceVideoUrl: referenceMediaUrlSchema.optional(),
       })
     )
     .mutation(async ({ input, ctx }) => {
@@ -1363,6 +1366,9 @@ export const mediaRouter = router({
             aspectRatio: input.aspectRatio,
             fps: input.fps,
             resolution: input.resolution,
+            referenceImageUrls: input.referenceImageUrls,
+            referenceVideoUrls: input.referenceVideoUrls,
+            referenceVideoUrl: input.referenceVideoUrl,
             apiConfig: apiConfigWithProvider,
             extraParams: input.extraParams,
             publicUrl: ctx.publicUrl ?? undefined,
@@ -1808,6 +1814,7 @@ export const mediaRouter = router({
         fps: z.number().min(15).max(60).optional(),
         resolution: z.string().optional(),
         referenceImageUrls: z.array(referenceMediaUrlSchema).max(5).optional(),
+        referenceVideoUrls: z.array(referenceMediaUrlSchema).max(5).optional(),
         referenceVideoUrl: referenceMediaUrlSchema.optional(),
         apiConfig: z.record(z.string()).optional(),
         extraParams: extraParamsSchema,
@@ -1891,6 +1898,7 @@ export const mediaRouter = router({
             fps: input.fps,
             resolution: input.resolution,
             referenceImageUrls: input.referenceImageUrls,
+            referenceVideoUrls: input.referenceVideoUrls,
             referenceVideoUrl: input.referenceVideoUrl,
             apiConfig: apiConfigWithProvider,
             extraParams: {

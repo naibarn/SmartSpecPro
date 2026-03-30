@@ -5,7 +5,6 @@ import { pickEnabledModelId } from "@/lib/enabledModelSelection";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -18,6 +17,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Bot, Loader2, Plus, Save, X } from "lucide-react";
+import { DashboardCard } from "@/components/dashboard";
 
 interface TenantAutomationPolicyPanelProps {
   title?: string;
@@ -217,15 +217,13 @@ export function TenantAutomationPolicyPanel({
   };
 
   return (
-    <Card className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
-      <CardHeader className="border-b bg-gradient-to-r from-purple-50/50 to-pink-50/30 pb-5">
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <Bot className="h-5 w-5 text-purple-500" />
-          {title}
-        </CardTitle>
-        <CardDescription>{description}</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6 pt-6">
+    <DashboardCard
+      title={title}
+      description={description}
+      leading={<Bot className="h-5 w-5 text-sky-500" />}
+      bodyClassName="p-0"
+    >
+      <div className="space-y-6 pt-6">
         {policyStatusQuery.isError && (
           <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
             Tenant-wide policy status could not be loaded. Saving stays disabled until browser-policy storage is available.
@@ -484,7 +482,7 @@ export function TenantAutomationPolicyPanel({
           )}
           Save Tenant Baseline
         </Button>
-      </CardContent>
-    </Card>
+      </div>
+    </DashboardCard>
   );
 }

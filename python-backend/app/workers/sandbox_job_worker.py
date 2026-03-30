@@ -11,6 +11,8 @@ This task is dispatched by SandboxDispatcher and handles:
 """
 
 import asyncio
+import json
+import os
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Optional
@@ -32,6 +34,7 @@ from app.integrations.opensandbox.lifecycle import SandboxLifecycleManager
 from app.integrations.opensandbox.models import SandboxConfig
 from app.integrations.opensandbox.docker_command_bridge import run_command_via_docker_bridge
 from app.models.sandbox import SandboxJob, SandboxJobStatus, SandboxProfile
+from app.services.r2_storage_service import get_r2_storage_service
 from app.services.sandbox_artifacts import SandboxArtifactService
 from app.services.sandbox_audit import SandboxAuditService
 from app.services.sandbox_costs import SandboxCostService
@@ -49,6 +52,80 @@ TERMINAL_STATUSES = {"completed", "failed", "timed_out", "canceled"}
 # Reuse one event loop per Celery worker process to avoid asyncpg objects
 # crossing different loops when tasks are executed sequentially.
 _WORKER_EVENT_LOOP: asyncio.AbstractEventLoop | None = None
+_SANDBOX_TRACE_FILE = "/tmp/smartspec-debug/sandbox-job-trace.jsonl"
+
+
+def _write_sandbox_trace(event: str, **payload) -> None:
+    """Write a lightweight debug trace for sandbox artifact flow investigation."""
+    try:
+        os.makedirs(os.path.dirname(_SANDBOX_TRACE_FILE), exist_ok=True)
+        with open(_SANDBOX_TRACE_FILE, "a", encoding="utf-8") as handle:
+            handle.write(json.dumps({
+                "ts": datetime.now(timezone.utc).isoformat(),
+                "event": event,
+                **payload,
+            }, ensure_ascii=True) + "\n")
+    except Exception:
+        logger.warning("sandbox_trace_write_failed", event=event, exc_info=True)
+
+
+class _SandboxArtifactStorageAdapter:
+    """Adapter exposing collect_outputs()'s storage interface via R2 storage."""
+
+    def __init__(self, db_session):
+        self._db = db_session
+        self._storage = get_r2_storage_service()
+
+    async def upload_object(self, object_key: str, file_bytes: bytes, bucket: str | None = None) -> None:
+        content_type = SandboxArtifactService.guess_mime_type(object_key)
+        _write_sandbox_trace(
+            "artifact_upload_begin",
+            object_key=object_key,
+            size_bytes=len(file_bytes),
+            content_type=content_type,
+        )
+        await self._storage.upload_bytes(
+            key=object_key,
+            data=file_bytes,
+            content_type=content_type,
+            db_session=self._db,
+        )
+        _write_sandbox_trace(
+            "artifact_upload_complete",
+            object_key=object_key,
+            size_bytes=len(file_bytes),
+            content_type=content_type,
+        )
+
+
+def _classify_artifact(sandbox_path: str) -> tuple[str, bool]:
+    """Map sandbox output paths to artifact type and primary flag."""
+    filename = os.path.basename(sandbox_path).lower()
+    if filename == "manifest.json":
+        return ("debug", False)
+    if filename.endswith(".log"):
+        return ("log", False)
+    if filename.endswith((".png", ".jpg", ".jpeg", ".webp")):
+        return ("screenshot", False)
+    return ("primary", True)
+
+
+def _resolve_runtime_timeout_seconds(manifest: dict, profile) -> int:
+    """Return the effective timeout for this job, capped by the profile limit."""
+    metadata = manifest.get("metadata") if isinstance(manifest, dict) else {}
+    runtime_overrides = metadata.get("runtimeOverrides") if isinstance(metadata, dict) else {}
+    timeout_value = runtime_overrides.get("timeoutSeconds") if isinstance(runtime_overrides, dict) else None
+    if timeout_value is None:
+        return profile.timeout_seconds
+
+    try:
+        requested = int(timeout_value)
+    except (TypeError, ValueError):
+        return profile.timeout_seconds
+
+    if requested <= 0:
+        return profile.timeout_seconds
+    return min(requested, profile.timeout_seconds)
 
 
 @asynccontextmanager
@@ -96,6 +173,13 @@ async def _update_job_status(
     if reason:
         values["status_reason"] = reason
     values.update(kwargs)
+    _write_sandbox_trace(
+        "job_status_update",
+        job_id=job_id,
+        status=status,
+        reason=reason,
+        extra_keys=sorted(kwargs.keys()),
+    )
 
     stmt = update(SandboxJob).where(SandboxJob.id == job_id).values(**values)
     await db.execute(stmt)
@@ -145,6 +229,7 @@ async def _execute_sandbox_job_async(task, job_id: str) -> dict:
 
     async with _get_db_session() as db:
         try:
+            _write_sandbox_trace("job_begin", job_id=job_id)
             # Load job from DB
             job = await _load_job(db, job_id)
             if job is None:
@@ -165,7 +250,10 @@ async def _execute_sandbox_job_async(task, job_id: str) -> dict:
             client = OpenSandboxClient(opensandbox_settings)
             lifecycle = SandboxLifecycleManager(client)
             cost_service = SandboxCostService(db)
+            artifact_storage = _SandboxArtifactStorageAdapter(db)
             artifact_service = SandboxArtifactService(db)
+            manifest = job.input_manifest_json or {}
+            effective_timeout_seconds = _resolve_runtime_timeout_seconds(manifest, profile)
 
             # Status: queued -> provisioning
             await _update_job_status(db, job_id, "queued")
@@ -182,7 +270,7 @@ async def _execute_sandbox_job_async(task, job_id: str) -> dict:
                 cpu_limit=profile.cpu_limit,
                 memory_limit_mb=profile.memory_limit_mb,
                 disk_limit_mb=profile.ephemeral_disk_mb,
-                timeout_seconds=profile.timeout_seconds,
+                timeout_seconds=effective_timeout_seconds,
                 network_default_action=profile.network_default_action,
             )
             try:
@@ -210,7 +298,6 @@ async def _execute_sandbox_job_async(task, job_id: str) -> dict:
             )
 
             # Stage inputs
-            manifest = job.input_manifest_json or {}
             input_files = manifest.get("input_files", [])
             if input_files:
                 await stage_inputs(client, sandbox_id, input_files, storage_service=None)
@@ -237,15 +324,15 @@ async def _execute_sandbox_job_async(task, job_id: str) -> dict:
 
             for cmd_index, cmd in enumerate(commands):
                 if docker_bridge_execution:
-                    result = await run_command_via_docker_bridge(
-                        sandbox_id=sandbox_id,
-                        command=cmd,
-                        timeout_seconds=profile.timeout_seconds,
-                    )
+                        result = await run_command_via_docker_bridge(
+                            sandbox_id=sandbox_id,
+                            command=cmd,
+                            timeout_seconds=effective_timeout_seconds,
+                        )
                 else:
                     try:
                         result = await run_command(
-                            client, sandbox_id, cmd, timeout=profile.timeout_seconds
+                            client, sandbox_id, cmd, timeout=effective_timeout_seconds
                         )
                     except Exception as exc:
                         if not _is_lifecycle_only_error(exc):
@@ -260,7 +347,7 @@ async def _execute_sandbox_job_async(task, job_id: str) -> dict:
                         result = await run_command_via_docker_bridge(
                             sandbox_id=sandbox_id,
                             command=cmd,
-                            timeout_seconds=profile.timeout_seconds,
+                            timeout_seconds=effective_timeout_seconds,
                         )
 
                 all_stdout.append(result.stdout)
@@ -273,6 +360,12 @@ async def _execute_sandbox_job_async(task, job_id: str) -> dict:
                         command=cmd[:100],
                         exit_code=result.exit_code,
                     )
+                    stderr_excerpt = (result.stderr or "").strip()
+                    stdout_excerpt = (result.stdout or "").strip()
+                    detail = stderr_excerpt or stdout_excerpt or "No stderr/stdout captured"
+                    raise RuntimeError(
+                        f"Sandbox command failed (exit {result.exit_code}) at step {cmd_index + 1}: {detail[:500]}"
+                    )
 
             # Collect outputs
             await _update_job_status(db, job_id, "collecting_outputs")
@@ -280,17 +373,48 @@ async def _execute_sandbox_job_async(task, job_id: str) -> dict:
             output_paths = manifest.get("output_paths", [])
             collected = []
             if output_paths:
+                _write_sandbox_trace("collect_outputs_begin", job_id=job_id, output_paths=output_paths)
                 collected = await collect_outputs(
                     client,
                     sandbox_id,
                     output_paths,
-                    storage_service=None,
+                    storage_service=artifact_storage,
                     artifact_bucket="",
                     job_id=job_id,
                 )
+                _write_sandbox_trace("collect_outputs_complete", job_id=job_id, collected=collected)
 
             # Persist results
             await _update_job_status(db, job_id, "persisting")
+
+            for artifact in collected:
+                artifact_type, is_primary = _classify_artifact(artifact.get("sandbox_path", ""))
+                _write_sandbox_trace(
+                    "artifact_record_begin",
+                    job_id=job_id,
+                    object_key=artifact.get("object_key"),
+                    artifact_type=artifact_type,
+                    is_primary=is_primary,
+                    sandbox_path=artifact.get("sandbox_path"),
+                )
+                await artifact_service.record_existing(
+                    sandbox_job_id=job_id,
+                    object_key=artifact["object_key"],
+                    artifact_type=artifact_type,
+                    mime_type=SandboxArtifactService.guess_mime_type(artifact["object_key"]),
+                    size_bytes=artifact.get("size_bytes"),
+                    sha256=artifact.get("sha256"),
+                    is_primary=is_primary,
+                    metadata={
+                        "sandboxPath": artifact.get("sandbox_path"),
+                        "stored": artifact.get("stored", False),
+                    },
+                )
+                _write_sandbox_trace(
+                    "artifact_record_complete",
+                    job_id=job_id,
+                    object_key=artifact.get("object_key"),
+                )
 
             stdout_excerpt = "\n---\n".join(all_stdout)[:10000]
             stderr_excerpt = "\n---\n".join(all_stderr)[:10000]
@@ -330,6 +454,7 @@ async def _execute_sandbox_job_async(task, job_id: str) -> dict:
             )
 
             logger.info("sandbox_job_completed", job_id=job_id)
+            _write_sandbox_trace("job_complete", job_id=job_id)
             return {"status": "completed", "job_id": job_id}
 
         except SoftTimeLimitExceeded:
@@ -366,6 +491,12 @@ async def _execute_sandbox_job_async(task, job_id: str) -> dict:
 
         except Exception as e:
             logger.error("sandbox_job_failed", job_id=job_id, error=str(e), exc_info=True)
+            _write_sandbox_trace("job_failed", job_id=job_id, error=str(e))
+
+            try:
+                await db.rollback()
+            except Exception:
+                logger.warning("sandbox_job_rollback_failed", job_id=job_id, exc_info=True)
 
             try:
                 await _update_job_status(

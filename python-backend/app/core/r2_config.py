@@ -5,7 +5,7 @@ Configuration and utilities for Cloudflare R2 storage.
 
 import os
 from dataclasses import dataclass
-from typing import Optional
+from typing import Any, Optional
 
 import boto3
 from botocore.config import Config
@@ -130,7 +130,7 @@ class R2Client:
         Returns:
             Public URL of uploaded file
         """
-        extra_args = {}
+        extra_args: dict[str, Any] = {}
         
         if content_type:
             extra_args["ContentType"] = content_type
@@ -171,7 +171,7 @@ class R2Client:
         Returns:
             Public URL of uploaded file
         """
-        extra_args = {}
+        extra_args: dict[str, Any] = {}
         
         if content_type:
             extra_args["ContentType"] = content_type
@@ -199,7 +199,7 @@ class R2Client:
         """Delete a file from R2."""
         self.client.delete_object(Bucket=self.bucket, Key=key)
     
-    def delete_files(self, keys: list):
+    def delete_files(self, keys: list[str]):
         """Delete multiple files from R2."""
         if not keys:
             return
@@ -218,7 +218,7 @@ class R2Client:
         except:
             return False
     
-    def get_file_info(self, key: str) -> Optional[dict]:
+    def get_file_info(self, key: str) -> Optional[dict[str, Any]]:
         """Get file metadata."""
         try:
             response = self.client.head_object(Bucket=self.bucket, Key=key)
@@ -237,7 +237,7 @@ class R2Client:
         prefix: str = "",
         max_keys: int = 1000,
         continuation_token: Optional[str] = None,
-    ) -> dict:
+    ) -> dict[str, Any]:
         """
         List files in R2.
         
@@ -257,7 +257,7 @@ class R2Client:
         
         response = self.client.list_objects_v2(**params)
         
-        files = []
+        files: list[dict[str, Any]] = []
         for obj in response.get("Contents", []):
             files.append({
                 "key": obj["Key"],
@@ -294,7 +294,7 @@ class R2Client:
             ExpiresIn=expires_in,
         )
     
-    def get_bucket_size(self) -> dict:
+    def get_bucket_size(self) -> dict[str, Any]:
         """
         Calculate total bucket size.
         

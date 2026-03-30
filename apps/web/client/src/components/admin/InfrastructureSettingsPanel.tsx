@@ -12,13 +12,7 @@ import { trpc } from "../../lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { DashboardCard } from "@/components/dashboard";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -510,17 +504,17 @@ export default function InfrastructureSettingsPanel() {
       {/* ============================================ */}
       {/* CARD 1: GCP Configuration                   */}
       {/* ============================================ */}
-      <Card className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
-        <CardHeader className="border-b bg-gradient-to-r from-purple-50/50 to-pink-50/30 pb-5">
-          <CardTitle className="flex items-center gap-2 text-lg">
+      <DashboardCard className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
+        <div className="border-b bg-gradient-to-r from-purple-50/50 to-pink-50/30 pb-5">
+          <h3 className="flex items-center gap-2 text-lg">
             <Cloud className="w-5 h-5 text-purple-500" />
             GCP Configuration
-          </CardTitle>
-          <CardDescription>
+          </h3>
+          <p>
             Google Cloud Platform project settings for Cloud Run and Cloud Tasks.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-5 pt-6">
+          </p>
+        </div>
+        <div className="space-y-5 pt-6">
           {/* Setup Guide (collapsible) */}
           <div className="rounded-xl border border-blue-200 bg-blue-50/50 overflow-hidden">
             <button
@@ -769,25 +763,25 @@ done`}
             )}
             Save GCP Configuration
           </Button>
-        </CardContent>
-      </Card>
+        </div>
+      </DashboardCard>
         </TabsContent>
 
         <TabsContent value="tasks">
       {/* ============================================ */}
       {/* CARD 2: Task Processing Backend              */}
       {/* ============================================ */}
-      <Card className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
-        <CardHeader className="border-b bg-gradient-to-r from-purple-50/50 to-pink-50/30 pb-5">
-          <CardTitle className="flex items-center gap-2 text-lg">
+      <DashboardCard className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
+        <div className="border-b bg-gradient-to-r from-purple-50/50 to-pink-50/30 pb-5">
+          <h3 className="flex items-center gap-2 text-lg">
             <Server className="w-5 h-5 text-purple-500" />
             Task Processing Backend
-          </CardTitle>
-          <CardDescription>
+          </h3>
+          <p>
             Choose which system processes background tasks (media generation, workflows, periodic jobs).
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-5 pt-6">
+          </p>
+        </div>
+        <div className="space-y-5 pt-6">
           {/* Mode selector */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Celery option */}
@@ -868,25 +862,25 @@ done`}
               ? "No changes"
               : `Switch to ${selectedMode === "cloud_tasks" ? "Cloud Tasks" : "Celery"}`}
           </Button>
-        </CardContent>
-      </Card>
+        </div>
+      </DashboardCard>
         </TabsContent>
 
         <TabsContent value="queues">
       {/* ============================================ */}
       {/* CARD 3: Queue Status Dashboard               */}
       {/* ============================================ */}
-      <Card className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
-        <CardHeader className="border-b bg-gradient-to-r from-purple-50/50 to-pink-50/30 pb-5">
+      <DashboardCard className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
+        <div className="border-b bg-gradient-to-r from-purple-50/50 to-pink-50/30 pb-5">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="flex items-center gap-2 text-lg">
+              <h3 className="flex items-center gap-2 text-lg">
                 <Activity className="w-5 h-5 text-purple-500" />
                 Queue Status
-              </CardTitle>
-              <CardDescription className="mt-1">
+              </h3>
+              <p className="mt-1">
                 Cloud Tasks queue metrics (auto-refreshes every 30s).
-              </CardDescription>
+              </p>
             </div>
             <Button
               variant="outline"
@@ -900,8 +894,8 @@ done`}
               Refresh
             </Button>
           </div>
-        </CardHeader>
-        <CardContent className="pt-6">
+        </div>
+        <div className="pt-6">
           {dashboardLoading && !dashboard ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -1054,25 +1048,25 @@ done`}
               </div>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </DashboardCard>
         </TabsContent>
 
         <TabsContent value="redis">
       {/* ============================================ */}
       {/* CARD 4: Cache / Redis Configuration          */}
       {/* ============================================ */}
-      <Card className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
-        <CardHeader className="border-b bg-gradient-to-r from-purple-50/50 to-pink-50/30 pb-5">
+      <DashboardCard className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
+        <div className="border-b bg-gradient-to-r from-purple-50/50 to-pink-50/30 pb-5">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="flex items-center gap-2 text-lg">
+              <h3 className="flex items-center gap-2 text-lg">
                 <Database className="w-5 h-5 text-purple-500" />
                 Cache / Redis
-              </CardTitle>
-              <CardDescription className="mt-1">
+              </h3>
+              <p className="mt-1">
                 Configure Redis provider for caching, rate limiting, feature flags, and pub/sub.
-              </CardDescription>
+              </p>
             </div>
             <Button
               variant="outline"
@@ -1084,8 +1078,8 @@ done`}
               Refresh
             </Button>
           </div>
-        </CardHeader>
-        <CardContent className="space-y-5 pt-6">
+        </div>
+        <div className="space-y-5 pt-6">
           {/* Health Status */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="rounded-xl border border-gray-200 p-3 space-y-1">
@@ -1562,25 +1556,25 @@ REDIS_URL=redis://10.0.0.3:6379`}
             )}
             Save Redis Configuration
           </Button>
-        </CardContent>
-      </Card>
+        </div>
+      </DashboardCard>
         </TabsContent>
 
         <TabsContent value="monitoring">
       {/* ============================================ */}
       {/* CARD 5: Monitoring & Observability           */}
       {/* ============================================ */}
-      <Card className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
-        <CardHeader className="border-b bg-gradient-to-r from-purple-50/50 to-pink-50/30 pb-5">
+      <DashboardCard className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
+        <div className="border-b bg-gradient-to-r from-purple-50/50 to-pink-50/30 pb-5">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="flex items-center gap-2 text-lg">
+              <h3 className="flex items-center gap-2 text-lg">
                 <Shield className="w-5 h-5 text-purple-500" />
                 Monitoring & Observability
-              </CardTitle>
-              <CardDescription className="mt-1">
+              </h3>
+              <p className="mt-1">
                 Sentry error tracking, analytics (PostHog / GA4), Firebase Remote Config, system health, and logging.
-              </CardDescription>
+              </p>
             </div>
             <Button
               variant="outline"
@@ -1592,8 +1586,8 @@ REDIS_URL=redis://10.0.0.3:6379`}
               Refresh
             </Button>
           </div>
-        </CardHeader>
-        <CardContent className="space-y-5 pt-6">
+        </div>
+        <div className="space-y-5 pt-6">
           {/* Status Overview */}
           <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             <div className="rounded-xl border border-gray-200 p-3 space-y-1">
@@ -2280,25 +2274,25 @@ FIREBASE_PROJECT_ID=your-project-id`}
             )}
             Save Monitoring Configuration
           </Button>
-        </CardContent>
-      </Card>
+        </div>
+      </DashboardCard>
         </TabsContent>
 
         <TabsContent value="scale-tier">
       {/* ============================================ */}
       {/* CARD 6: Scale Tier Configuration             */}
       {/* ============================================ */}
-      <Card className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
-        <CardHeader className="border-b bg-gradient-to-r from-purple-50/50 to-pink-50/30 pb-5">
-          <CardTitle className="flex items-center gap-2 text-lg">
+      <DashboardCard className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
+        <div className="border-b bg-gradient-to-r from-purple-50/50 to-pink-50/30 pb-5">
+          <h3 className="flex items-center gap-2 text-lg">
             <Gauge className="w-5 h-5 text-purple-500" />
             Scale Tier Configuration
-          </CardTitle>
-          <CardDescription>
+          </h3>
+          <p>
             Select a scaling preset to configure connection pools, rate limits, worker counts, and resource allocations across all services.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-5 pt-6">
+          </p>
+        </div>
+        <div className="space-y-5 pt-6">
           {/* Current tier indicator */}
           {scaleTierData?.tier && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -2675,8 +2669,8 @@ FIREBASE_PROJECT_ID=your-project-id`}
               </div>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </DashboardCard>
         </TabsContent>
       </Tabs>
 

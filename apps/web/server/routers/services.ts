@@ -104,7 +104,7 @@ const SERVICE_CONFIGS: ServiceConfig[] = [
   },
 ];
 
-interface ServiceStatus {
+export interface ServiceStatus {
   id: string;
   name: string;
   displayName: string;
@@ -621,50 +621,69 @@ async function getGPUInfo(): Promise<Array<{
   }
 }
 
+export async function collectServiceRuntimeSnapshot(): Promise<{
+  services: ServiceStatus[];
+  system: {
+    memory: Awaited<ReturnType<typeof getSystemMemory>>;
+    disk: Awaited<ReturnType<typeof getSystemDisk>>;
+    gpu: Awaited<ReturnType<typeof getGPUInfo>>;
+    docker: {
+      volumesSize: number;
+      imagesSize: number;
+      totalUsed: number;
+    } | null;
+  };
+}> {
+  const services = await Promise.all(
+    SERVICE_CONFIGS.map(config => getServiceStatus(config.id))
+  );
+
+  const [memoryInfo, diskInfo, gpuInfo] = await Promise.all([
+    getSystemMemory(),
+    getSystemDisk(),
+    getGPUInfo(),
+  ]);
+
+  let dockerDiskInfo = null;
+  try {
+    if (docker) {
+      const dfResult = await docker.df();
+      const volumes = dfResult.Volumes || [];
+      const images = dfResult.Images || [];
+
+      const volumesSize = volumes.reduce((sum: number, v: any) => sum + (v.UsageData?.Size || 0), 0);
+      const imagesSize = images.reduce((sum: number, img: any) => sum + (img.Size || 0), 0);
+
+      dockerDiskInfo = {
+        volumesSize: Math.round(volumesSize / (1024 * 1024 * 1024) * 100) / 100,
+        imagesSize: Math.round(imagesSize / (1024 * 1024 * 1024) * 100) / 100,
+        totalUsed: Math.round((volumesSize + imagesSize) / (1024 * 1024 * 1024) * 100) / 100,
+      };
+    }
+  } catch (dockerError) {
+    console.error('Error fetching Docker disk info:', dockerError);
+  }
+
+  return {
+    services,
+    system: {
+      memory: memoryInfo,
+      disk: diskInfo,
+      gpu: gpuInfo,
+      docker: dockerDiskInfo,
+    },
+  };
+}
+
 export function registerServicesRoutes(app: Express) {
   // Get all services status
   app.get('/api/admin/services/status', requireAdmin, async (req, res) => {
     try {
-      const statuses = await Promise.all(
-        SERVICE_CONFIGS.map(config => getServiceStatus(config.id))
-      );
-
-      // Get system resources
-      const [memoryInfo, diskInfo, gpuInfo] = await Promise.all([
-        getSystemMemory(),
-        getSystemDisk(),
-        getGPUInfo(),
-      ]);
-
-      // Get Docker disk usage (optional, for additional details)
-      let dockerDiskInfo = null;
-      try {
-        if (docker) {
-          const dfResult = await docker.df();
-          const volumes = dfResult.Volumes || [];
-          const images = dfResult.Images || [];
-
-          const volumesSize = volumes.reduce((sum: number, v: any) => sum + (v.UsageData?.Size || 0), 0);
-          const imagesSize = images.reduce((sum: number, img: any) => sum + (img.Size || 0), 0);
-
-          dockerDiskInfo = {
-            volumesSize: Math.round(volumesSize / (1024 * 1024 * 1024) * 100) / 100,
-            imagesSize: Math.round(imagesSize / (1024 * 1024 * 1024) * 100) / 100,
-            totalUsed: Math.round((volumesSize + imagesSize) / (1024 * 1024 * 1024) * 100) / 100,
-          };
-        }
-      } catch (dockerError) {
-        console.error('Error fetching Docker disk info:', dockerError);
-      }
+      const snapshot = await collectServiceRuntimeSnapshot();
 
       res.json({
-        services: statuses,
-        system: {
-          memory: memoryInfo,
-          disk: diskInfo,
-          gpu: gpuInfo,
-          docker: dockerDiskInfo,
-        }
+        services: snapshot.services,
+        system: snapshot.system,
       });
     } catch (error) {
       console.error('Error fetching services status:', error);

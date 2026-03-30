@@ -233,6 +233,29 @@ class RAGConfig:
             self.query_strategy = _QS.PASSTHROUGH
 
 
+# ==================== DEDUPLICATION ====================
+
+
+def deduplicate_chunks(chunks: list[Document]) -> list[Document]:
+    """Remove near-duplicate chunks based on content hash.
+
+    Sorts by ``final_score`` descending first so the highest-scored duplicate
+    is always kept. Uses MD5 on normalized (strip + lowercase) content.
+    MD5 is not used for cryptographic purposes here — collision resistance
+    is not a concern for deduplication of natural-language text chunks.
+    """
+    sorted_chunks = sorted(chunks, key=lambda c: c.final_score, reverse=True)
+    seen_hashes: set[str] = set()
+    deduped: list[Document] = []
+    for chunk in sorted_chunks:
+        content = chunk.content.strip().lower()
+        content_hash = hashlib.md5(content.encode()).hexdigest()
+        if content_hash not in seen_hashes:
+            seen_hashes.add(content_hash)
+            deduped.append(chunk)
+    return deduped
+
+
 # ==================== HYBRID RAG ENGINE ====================
 
 class HybridRAGEngine:
@@ -530,10 +553,10 @@ class HybridRAGEngine:
                     (rerank_end - rerank_start).total_seconds() * 1000
                 )
                 
-                result.documents = reranked_docs[:top_k]
+                result.documents = deduplicate_chunks(reranked_docs)[:top_k]
             else:
-                result.documents = combined_docs[:top_k]
-            
+                result.documents = deduplicate_chunks(combined_docs)[:top_k]
+
             result.final_count = len(result.documents)
             
             # Calculate total time

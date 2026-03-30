@@ -11,7 +11,7 @@ import { getRedisClient } from "./redis";
  *
  * Checks Redis key `feature-flag:{flagName}` first.
  * Falls back to process.env[flagName] if Redis is unavailable.
- * Returns false by default.
+ * Returns true by default — features are enabled unless explicitly disabled.
  */
 export async function getFeatureFlag(flagName: string): Promise<boolean> {
   try {
@@ -26,11 +26,11 @@ export async function getFeatureFlag(flagName: string): Promise<boolean> {
 
   // Fallback to environment variable
   const envValue = process.env[flagName];
-  if (envValue) {
-    return envValue === "true";
+  if (envValue !== undefined) {
+    return envValue !== "false";
   }
 
-  return false;
+  return true;
 }
 
 /**

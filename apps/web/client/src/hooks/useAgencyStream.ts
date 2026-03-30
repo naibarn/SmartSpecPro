@@ -48,7 +48,7 @@ export interface ApprovalRequest {
 }
 
 export interface UseAgencyStreamOptions {
-  onRunFinished?: (creditsUsed: number) => void;
+  onRunFinished?: (creditsUsed: number, runId: string | null) => void;
   onError?: (error: string) => void;
   onBrowserSession?: (artifact: BrowserSessionArtifact) => void;
   onPreviewReady?: (preview: {
@@ -687,7 +687,7 @@ export function useAgencyStream(
         );
         streamingMsgRef.current = "";
         streamingAgentRef.current = "";
-        onRunFinishedRef.current?.(credits);
+        onRunFinishedRef.current?.(credits, runIdRef.current);
         break;
       }
 

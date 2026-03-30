@@ -61,6 +61,24 @@ class ArtifactValidationTests(unittest.TestCase):
 
         self.assertTrue(result.ok)
 
+    def test_validate_skill_markdown_allows_slide_generation_sandbox_command(self) -> None:
+        skill_md = "\n".join(
+            [
+                "---",
+                'name: "Deck Builder"',
+                'description: "Example"',
+                "category: slide_generation",
+                "execution_mode: sandbox-command",
+                "triggerPatterns:",
+                '  - "deck builder"',
+                "---",
+            ]
+        )
+
+        result = validate_skill_markdown(skill_md, language="javascript")
+
+        self.assertTrue(result.ok)
+
     def test_validate_ui_schema_document_rejects_missing_output_mapping(self) -> None:
         ui_schema = {
             "version": "1.0",

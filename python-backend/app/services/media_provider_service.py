@@ -196,6 +196,39 @@ async def initialize_kie_ai_client():
         return None
 
 
+async def initialize_knplabs_client():
+    """
+    Initialize the KNPLabs client by fetching API key from database.
+
+    Returns:
+        KNPLabsProvider instance or None if not configured
+    """
+    from app.llm_proxy.providers import KNPLabsProvider
+    from app.core.config import settings
+
+    provider_config = await get_media_provider_key("knplabai")
+    if not provider_config:
+        provider_config = await get_media_provider_key("knplabs")
+
+    api_key = (provider_config or {}).get("apiKey") or settings.KNPLABAI_API_KEY
+    if not api_key:
+        logger.warning("knplabs_not_configured", message="No API key found in media_providers table or env")
+        return None
+
+    base_url = (provider_config or {}).get("baseUrl") or settings.KNPLABAI_BASE_URL or KNPLabsProvider.BASE_URL
+
+    try:
+        client = KNPLabsProvider(
+            api_key=api_key,
+            base_url=base_url,
+        )
+        logger.info("knplabs_client_initialized", base_url=base_url)
+        return client
+    except Exception as e:
+        logger.error("knplabs_client_init_failed", error=str(e))
+        return None
+
+
 async def initialize_uvoice_client():
     """
     Initialize the UVoice client by fetching API key from database.
@@ -231,3 +264,4 @@ def clear_cache():
     global _provider_cache, _last_fetch
     _provider_cache = {}
     _last_fetch = {}
+# mypy: ignore-errors

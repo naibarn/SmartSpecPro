@@ -11,6 +11,23 @@ const { toastMocks } = vi.hoisted(() => ({
   },
 }));
 
+vi.mock("react-i18next", async () => {
+  const actual = await vi.importActual<typeof import("react-i18next")>("react-i18next");
+  return {
+    ...actual,
+    useTranslation: (...args: Parameters<typeof actual.useTranslation>) => {
+      const result = actual.useTranslation(...args);
+      return {
+        ...result,
+        i18n: {
+          ...result.i18n,
+          exists: result.i18n.exists ?? vi.fn(() => true),
+        },
+      };
+    },
+  };
+});
+
 const mutationMocks = {
   updateItem: vi.fn(),
   updateDeck: vi.fn(),
@@ -29,6 +46,11 @@ const mutationMocks = {
   generateSlideAudioFromNote: vi.fn(),
   relayoutSlide: vi.fn(),
   repairSlideFromNote: vi.fn(),
+  generateLayoutFromNote: vi.fn(),
+  generateLayoutFromDeckNote: vi.fn(),
+  generateArticle: vi.fn(),
+  prepareSlideBundle: vi.fn(),
+  generateSlideDraft: vi.fn(),
   resolvePendingMedia: vi.fn(),
   saveCustomBlock: vi.fn(),
   deleteCustomBlock: vi.fn(),
@@ -237,6 +259,25 @@ const mediaModelState = {
   videoModels: buildVideoModelList(),
 };
 
+function buildSkillCatalog() {
+  return [
+    {
+      id: 101,
+      slug: "article-writer",
+      name: "Article Writer",
+      category: "article_generation",
+      executionMode: "llm-only",
+    },
+    {
+      id: 202,
+      slug: "modern-editorial-slide",
+      name: "Modern Editorial Slide",
+      category: "slide_generation",
+      executionMode: "llm-only",
+    },
+  ];
+}
+
 const queryState = {
   libraryItem: {
     id: 42,
@@ -265,6 +306,8 @@ const queryState = {
     generatedAt: "2026-03-13T00:00:00.000Z",
     svg: "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1280 720\"><rect width=\"1280\" height=\"720\" fill=\"#ffffff\" /><text x=\"120\" y=\"180\" font-size=\"52\" fill=\"#111827\">Canonical Preview</text></svg>",
   } as any,
+  sandboxJobStatus: null as any,
+  skillCatalog: buildSkillCatalog(),
 };
 
 vi.mock("wouter", () => ({
@@ -303,6 +346,15 @@ vi.mock("@/lib/trpc", () => ({
         },
       },
     }),
+    sandbox: {
+      getJobStatus: {
+        useQuery: vi.fn(() => ({
+          data: queryState.sandboxJobStatus,
+          isLoading: false,
+          error: null,
+        })),
+      },
+    },
     library: {
       getItem: {
         useQuery: vi.fn(() => ({
@@ -472,6 +524,36 @@ vi.mock("@/lib/trpc", () => ({
         repairSlideFromNote: {
           useMutation: vi.fn(() => ({
             mutateAsync: mutationMocks.repairSlideFromNote,
+            isPending: false,
+          })),
+        },
+        generateLayoutFromNote: {
+          useMutation: vi.fn(() => ({
+            mutateAsync: mutationMocks.generateLayoutFromNote,
+            isPending: false,
+          })),
+        },
+        generateLayoutFromDeckNote: {
+          useMutation: vi.fn(() => ({
+            mutateAsync: mutationMocks.generateLayoutFromDeckNote,
+            isPending: false,
+          })),
+        },
+        generateArticle: {
+          useMutation: vi.fn(() => ({
+            mutateAsync: mutationMocks.generateArticle,
+            isPending: false,
+          })),
+        },
+        prepareSlideBundle: {
+          useMutation: vi.fn(() => ({
+            mutateAsync: mutationMocks.prepareSlideBundle,
+            isPending: false,
+          })),
+        },
+        generateSlideDraft: {
+          useMutation: vi.fn(() => ({
+            mutateAsync: mutationMocks.generateSlideDraft,
             isPending: false,
           })),
         },
@@ -651,10 +733,24 @@ vi.mock("@/lib/trpc", () => ({
           };
         }),
       },
+      listModelFieldOptions: {
+        useQuery: vi.fn(() => ({
+          data: { options: [] },
+          isLoading: false,
+          error: null,
+        })),
+      },
     },
     skills: {
       list: {
         useQuery: vi.fn(() => ({ data: [], isLoading: false, error: null })),
+      },
+      listFromDb: {
+        useQuery: vi.fn(() => ({
+          data: queryState.skillCatalog,
+          isLoading: false,
+          error: null,
+        })),
       },
     },
     chat: {
@@ -695,9 +791,11 @@ import PresentationEditor, { mergeResolvedPendingMediaIntoCachedDraft } from "./
 describe("PresentationEditor", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.unstubAllGlobals();
     vi.useRealTimers();
     localStorage.clear();
     sessionStorage.clear();
+    queryState.sandboxJobStatus = null;
     mediaModelState.imageModels = buildImageModelList();
     mediaModelState.videoModels = buildVideoModelList();
     Object.defineProperty(window, "innerWidth", { configurable: true, writable: true, value: 1200 });
@@ -762,6 +860,43 @@ describe("PresentationEditor", () => {
         graphicCategory: "Business",
         regeneratedImage: true,
       },
+    });
+    mutationMocks.generateArticle.mockResolvedValue({
+      article: "Generated presentation article",
+      sourceLabel: "Article Writer",
+      modelId: "gpt-5.4",
+    });
+    mutationMocks.prepareSlideBundle.mockResolvedValue({
+      maxPages: 6,
+      plannedImageCount: 8,
+      slideSkillLabel: "Modern Editorial Slide",
+      imagePrompts: [
+        {
+          id: "img-1-1",
+          pageNumber: 1,
+          imageIndex: 1,
+          placementRole: "hero",
+          shortLabel: "cover hero",
+          prompt: "Cover image prompt",
+        },
+        {
+          id: "img-2-1",
+          pageNumber: 2,
+          imageIndex: 1,
+          placementRole: "supporting",
+          shortLabel: "section visual",
+          prompt: "Section image prompt",
+        },
+      ],
+      slidePayloadJson: "{\"request\":{\"projectTitle\":\"Product Pitch\"}}",
+      modelId: "gpt-5.4",
+    });
+    mutationMocks.generateSlideDraft.mockResolvedValue({
+      maxPages: 6,
+      slideSkillLabel: "Modern Editorial Slide",
+      slidePayloadJson: "{\"request\":{\"projectTitle\":\"Product Pitch\"}}",
+      slideJson: "{\"slides\":[]}",
+      modelId: "gpt-5.4",
     });
     mutationMocks.resolvePendingMedia.mockResolvedValue({
       slide: { id: 71, version: 4 },
@@ -881,6 +1016,7 @@ describe("PresentationEditor", () => {
     queryState.deckError = null;
     queryState.presentationVersions = buildPresentationVersions();
     queryState.customBlocks = [];
+    queryState.skillCatalog = buildSkillCatalog();
     queryState.customBlockPreview = {
       artifactKey: "",
       artifactUrl: "",
@@ -1035,47 +1171,31 @@ describe("PresentationEditor", () => {
     expect(screen.getByTestId("slide-preview-inline-svg-1")).toBeInTheDocument();
   });
 
-  it("merges resolved pending media from persisted slide content into cached drafts", () => {
+  it("syncs resolved media from persisted slide content even when cached jobs are already gone", () => {
     const cached = {
       elements: [
-        { id: "img-slot", type: "rect", x: 0, y: 0, width: 640, height: 360, fill: "#d1d5db" },
-        { id: "caption", type: "text", x: 24, y: 300, width: 400, height: 40, text: "Slide preview", color: "#111827" },
-      ],
-      pendingMediaJobs: [
-        {
-          id: "pmj-1",
-          mediaType: "image",
-          mediaTaskId: "task-1",
-          targetElementId: "img-slot",
-          targetX: 0,
-          targetY: 0,
-          targetWidth: 640,
-          targetHeight: 360,
-          status: "pending",
-          createdAt: "2026-03-06T00:00:00.000Z",
-          lastCheckedAt: "2026-03-06T00:00:00.000Z",
-        },
+        { id: "hero-slot", type: "rect", x: 0, y: 0, width: 960, height: 1200, fill: "#d1d5db" },
+        { id: "headline", type: "text", x: 80, y: 180, width: 540, height: 120, text: "Headline", color: "#111827" },
       ],
     } as any;
     const persisted = {
       elements: [
-        { id: "img-slot", type: "image", x: 0, y: 0, width: 640, height: 360, src: "https://cdn.example.com/resolved.png", alt: "Resolved" },
-        { id: "caption", type: "text", x: 24, y: 300, width: 400, height: 40, text: "Slide preview", color: "#111827" },
+        { id: "hero-slot", type: "image", x: 0, y: 0, width: 960, height: 1200, src: "https://cdn.example.com/hero.png", alt: "Hero" },
+        { id: "headline", type: "text", x: 80, y: 180, width: 540, height: 120, text: "Headline", color: "#111827" },
       ],
     } as any;
 
     const merged = mergeResolvedPendingMediaIntoCachedDraft(cached, persisted);
 
-    expect((merged as any).pendingMediaJobs).toBeUndefined();
     expect((merged as any).elements[0]).toMatchObject({
-      id: "img-slot",
+      id: "hero-slot",
       type: "image",
-      src: "https://cdn.example.com/resolved.png",
+      src: "https://cdn.example.com/hero.png",
     });
     expect((merged as any).elements[1]).toMatchObject({
-      id: "caption",
+      id: "headline",
       type: "text",
-      text: "Slide preview",
+      text: "Headline",
     });
   });
 
@@ -3820,6 +3940,788 @@ describe("PresentationEditor", () => {
     });
   });
 
+  it("generates an article in the separate article builder flow and inserts it into presentation note", async () => {
+    render(<PresentationEditor />);
+
+    expect(screen.queryByRole("button", { name: "dialog.articleBuilder.generate" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "header.articleBuilder" }));
+    fireEvent.click(screen.getByRole("button", { name: "dialog.articleBuilder.generate" }));
+
+    await waitFor(() => {
+      expect(mutationMocks.generateArticle).toHaveBeenCalledWith(expect.objectContaining({
+        deckId: 7,
+        topic: "Product Pitch",
+        preferredLanguage: "en",
+        executionSource: "skill",
+        skillId: "article-writer",
+      }));
+    });
+
+    expect(screen.getByDisplayValue("Generated presentation article")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "dialog.articleBuilder.useAsPresentationNote" }));
+
+    const noteDialog = await screen.findByRole("dialog", { name: /presentation note|dialog\.presentationNote\.title/i });
+    const noteTextarea = within(noteDialog).getByDisplayValue("Generated presentation article");
+    expect(noteTextarea).toHaveValue("Generated presentation article");
+
+    fireEvent.click(within(noteDialog).getByRole("button", { name: /save note|dialog\.presentationNote\.save/i }));
+
+    await waitFor(() => {
+      expect(mutationMocks.updateDeck).toHaveBeenCalledWith({
+        deckId: 7,
+        expectedVersion: 5,
+        notes: "Generated presentation article",
+      });
+    });
+  });
+
+  it("restores article builder progress after closing and reopening the dialog", async () => {
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: "header.articleBuilder" }));
+    fireEvent.change(screen.getByDisplayValue("Product Pitch"), {
+      target: { value: "Resume Sleep Guide" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "dialog.articleBuilder.generate" }));
+
+    await screen.findByDisplayValue("Generated presentation article");
+
+    fireEvent.click(screen.getByRole("button", { name: "dialog.articleBuilder.close" }));
+    fireEvent.click(screen.getByRole("button", { name: "header.articleBuilder" }));
+
+    expect(screen.getByDisplayValue("Resume Sleep Guide")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Generated presentation article")).toBeInTheDocument();
+  });
+
+  it("does not restore stale PPTX preparation jobs after reloading the article builder", async () => {
+    localStorage.setItem(
+      "presentation-article-builder-draft:7",
+      JSON.stringify({
+        topic: "Product Pitch",
+        article: "Generated presentation article",
+        executionSource: "skill",
+        skillId: "article-writer",
+        agencyId: "",
+        agencyName: "",
+        requiresWebSearch: false,
+        requiresThinking: false,
+        targetImageCount: 8,
+        imageModel: "flux-2.0",
+        canvasRatio: "16:9",
+        advancedMediaOptionsEnabled: false,
+        mediaModelExtraParams: {},
+        imagePromptContext: "",
+        slideSkillId: "modern-editorial-slide",
+        slideOutputFormat: "pptx",
+        preparedBundle: {
+          maxPages: 1,
+          plannedImageCount: 1,
+          slideSkillLabel: "Modern Editorial Slide",
+          imagePrompts: [],
+          slidePayloadJson: "{\"request\":{\"projectTitle\":\"Product Pitch\"}}",
+          modelId: "gpt-5.4",
+        },
+        generatedImages: [
+          {
+            id: "img-1-1",
+            pageNumber: 1,
+            imageIndex: 1,
+            placementRole: "hero",
+            shortLabel: "cover hero",
+            prompt: "Cover image prompt",
+            url: "https://cdn.example.com/generated-asset.png",
+          },
+        ],
+        generatedSlideDraft: {
+          slideJson: JSON.stringify({
+            canvas: { ratio: "16:9" },
+            slides: [{ elements: [{ kind: "text", text: "Persisted slide" }] }],
+          }),
+          slidePayloadJson: "{\"request\":{\"projectTitle\":\"Product Pitch\"}}",
+          modelId: "gpt-5.4",
+          artifactJobId: "job-stale-pptx",
+          artifacts: [],
+          downloadUrl: null,
+        },
+      }),
+    );
+
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: "header.articleBuilder" }));
+
+    expect(screen.queryByRole("button", { name: "Preparing PPTX..." })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "dialog.articleBuilder.generateSlideJson" })).toBeInTheDocument();
+  });
+
+  it("clears failed PPTX polling state so the dialog does not stay stuck on preparing", async () => {
+    localStorage.setItem(
+      "presentation-article-builder-draft:7",
+      JSON.stringify({
+        topic: "Product Pitch",
+        article: "Generated presentation article",
+        executionSource: "skill",
+        skillId: "article-writer",
+        agencyId: "",
+        agencyName: "",
+        requiresWebSearch: false,
+        requiresThinking: false,
+        targetImageCount: 8,
+        imageModel: "flux-2.0",
+        canvasRatio: "16:9",
+        advancedMediaOptionsEnabled: false,
+        mediaModelExtraParams: {},
+        imagePromptContext: "",
+        slideSkillId: "modern-editorial-slide",
+        slideOutputFormat: "pptx",
+        preparedBundle: {
+          maxPages: 1,
+          plannedImageCount: 1,
+          slideSkillLabel: "Modern Editorial Slide",
+          imagePrompts: [],
+          slidePayloadJson: "{\"request\":{\"projectTitle\":\"Product Pitch\"}}",
+          modelId: "gpt-5.4",
+        },
+        generatedImages: [
+          {
+            id: "img-1-1",
+            pageNumber: 1,
+            imageIndex: 1,
+            placementRole: "hero",
+            shortLabel: "cover hero",
+            prompt: "Cover image prompt",
+            url: "https://cdn.example.com/generated-asset.png",
+          },
+        ],
+        generatedSlideDraft: null,
+      }),
+    );
+    queryState.sandboxJobStatus = {
+      jobId: "job-pptx-failed",
+      status: "failed",
+      artifacts: [],
+    };
+    mutationMocks.generateSlideDraft.mockResolvedValue({
+      maxPages: 1,
+      slideSkillLabel: "Sandbox Slide Builder",
+      slidePayloadJson: "{\"request\":{\"projectTitle\":\"Product Pitch\"}}",
+      slideJson: JSON.stringify({
+        canvas: { ratio: "16:9" },
+        slides: [
+          {
+            elements: [
+              {
+                kind: "text",
+                role: "title",
+                text: "Imported PPTX Slide",
+                xPct: 10,
+                yPct: 10,
+                wPct: 60,
+                hPct: 12,
+                fontFace: "Inter",
+                fontSize: 28,
+                color: "#111827",
+                align: "left",
+                bold: true,
+              },
+            ],
+          },
+        ],
+      }),
+      modelId: "gpt-5.4",
+      artifactJobId: "job-pptx-failed",
+      downloadUrl: null,
+      artifacts: [],
+    });
+    mutationMocks.addSlide.mockResolvedValueOnce({ id: 990 });
+
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: "header.articleBuilder" }));
+    fireEvent.click(screen.getByRole("button", { name: "dialog.articleBuilder.generateSlideJson" }));
+
+    await waitFor(() => {
+      expect(mutationMocks.generateSlideDraft).toHaveBeenCalledTimes(1);
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByRole("button", { name: "Preparing PPTX..." })).not.toBeInTheDocument();
+    });
+  });
+
+  it("prepares slide prompts, generates supporting images, and requests slide json from the selected slide skill", async () => {
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: "header.articleBuilder" }));
+    fireEvent.click(screen.getByRole("button", { name: "dialog.articleBuilder.generate" }));
+
+    await waitFor(() => {
+      expect(mutationMocks.prepareSlideBundle).toHaveBeenCalledWith(expect.objectContaining({
+        deckId: 7,
+        topic: "Product Pitch",
+        slideSkillId: "modern-editorial-slide",
+      }));
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "dialog.articleBuilder.generateImages" }));
+
+    await waitFor(() => {
+      expect(mutationMocks.generateImageAsync).toHaveBeenCalledWith(expect.objectContaining({
+        prompt: "Cover image prompt",
+      }));
+    });
+
+    await waitFor(() => {
+      expect(mutationMocks.generateSlideDraft).toHaveBeenCalledWith(expect.objectContaining({
+        deckId: 7,
+        slideSkillId: "modern-editorial-slide",
+        imageAssets: expect.arrayContaining([
+          expect.objectContaining({
+            prompt: "Cover image prompt",
+            url: "https://cdn.example.com/generated-asset.png",
+          }),
+        ]),
+      }));
+    });
+
+    expect(screen.getByDisplayValue("{\"slides\":[]}")).toBeInTheDocument();
+  });
+
+  it("switches to an artifact-capable slide skill for PPTX output and imports the generated slides", async () => {
+    queryState.skillCatalog = [
+      ...buildSkillCatalog(),
+      {
+        id: 303,
+        slug: "sandbox-slide-builder",
+        name: "Sandbox Slide Builder",
+        category: "slide_generation",
+        executionMode: "sandbox-command",
+      },
+    ];
+    localStorage.setItem(
+      "presentation-article-builder-draft:7",
+      JSON.stringify({
+        topic: "Product Pitch",
+        article: "Generated presentation article",
+        executionSource: "skill",
+        skillId: "article-writer",
+        agencyId: "",
+        agencyName: "",
+        requiresWebSearch: false,
+        requiresThinking: false,
+        targetImageCount: 8,
+        imageModel: "flux-2.0",
+        canvasRatio: "16:9",
+        advancedMediaOptionsEnabled: false,
+        mediaModelExtraParams: {},
+        imagePromptContext: "",
+        slideSkillId: "modern-editorial-slide",
+        slideOutputFormat: "pptx",
+        preparedBundle: {
+          maxPages: 1,
+          plannedImageCount: 1,
+          slideSkillLabel: "Modern Editorial Slide",
+          imagePrompts: [],
+          slidePayloadJson: "{\"request\":{\"projectTitle\":\"Product Pitch\"}}",
+          modelId: "gpt-5.4",
+        },
+        generatedImages: [
+          {
+            id: "img-1-1",
+            pageNumber: 1,
+            imageIndex: 1,
+            placementRole: "hero",
+            shortLabel: "cover hero",
+            prompt: "Cover image prompt",
+            url: "https://cdn.example.com/generated-asset.png",
+          },
+        ],
+        generatedSlideDraft: null,
+      }),
+    );
+    mutationMocks.generateSlideDraft.mockResolvedValue({
+      maxPages: 1,
+      slideSkillLabel: "Sandbox Slide Builder",
+      slidePayloadJson: "{\"request\":{\"projectTitle\":\"Product Pitch\"}}",
+      slideJson: JSON.stringify({
+        canvas: { ratio: "16:9" },
+        theme: { background: "#ffffff" },
+        slides: [
+          {
+            background: "#ffffff",
+            elements: [
+              {
+                kind: "text",
+                role: "title",
+                text: "Imported PPTX Slide",
+                xPct: 10,
+                yPct: 10,
+                wPct: 60,
+                hPct: 12,
+                fontFace: "Inter",
+                fontSize: 28,
+                color: "#111827",
+                align: "left",
+                bold: true,
+              },
+            ],
+          },
+        ],
+      }),
+      modelId: "gpt-5.4",
+      artifactJobId: "job-pptx-1",
+      downloadUrl: "https://cdn.example.com/generated-deck.pptx",
+      artifacts: [
+        {
+          format: "pptx",
+          url: "https://cdn.example.com/generated-deck.pptx",
+          key: "generated-deck.pptx",
+          mimeType: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+          isPrimary: true,
+        },
+      ],
+    });
+    mutationMocks.addSlide.mockResolvedValueOnce({ id: 901 });
+
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: "header.articleBuilder" }));
+    fireEvent.click(screen.getByRole("button", { name: "dialog.articleBuilder.generateSlideJson" }));
+
+    await waitFor(() => {
+      expect(mutationMocks.generateSlideDraft).toHaveBeenCalledWith(expect.objectContaining({
+        deckId: 7,
+        slideSkillId: "sandbox-slide-builder",
+      }));
+    });
+
+    await waitFor(() => {
+      expect(mutationMocks.addSlide).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it("falls back to JSON import when PPTX is requested but no sandbox slide skill is available", async () => {
+    localStorage.setItem(
+      "presentation-article-builder-draft:7",
+      JSON.stringify({
+        topic: "Product Pitch",
+        article: "Generated presentation article",
+        executionSource: "skill",
+        skillId: "article-writer",
+        agencyId: "",
+        agencyName: "",
+        requiresWebSearch: false,
+        requiresThinking: false,
+        targetImageCount: 8,
+        imageModel: "flux-2.0",
+        canvasRatio: "16:9",
+        advancedMediaOptionsEnabled: false,
+        mediaModelExtraParams: {},
+        imagePromptContext: "",
+        slideSkillId: "modern-editorial-slide",
+        slideOutputFormat: "pptx",
+        preparedBundle: {
+          maxPages: 1,
+          plannedImageCount: 1,
+          slideSkillLabel: "Modern Editorial Slide",
+          imagePrompts: [],
+          slidePayloadJson: "{\"request\":{\"projectTitle\":\"Product Pitch\"}}",
+          modelId: "gpt-5.4",
+        },
+        generatedImages: [
+          {
+            id: "img-1-1",
+            pageNumber: 1,
+            imageIndex: 1,
+            placementRole: "hero",
+            shortLabel: "cover hero",
+            prompt: "Cover image prompt",
+            url: "https://cdn.example.com/generated-asset.png",
+          },
+        ],
+        generatedSlideDraft: null,
+      }),
+    );
+    mutationMocks.generateSlideDraft.mockResolvedValue({
+      maxPages: 1,
+      slideSkillLabel: "Modern Editorial Slide",
+      slidePayloadJson: "{\"request\":{\"projectTitle\":\"Product Pitch\"}}",
+      slideJson: JSON.stringify({
+        canvas: { ratio: "16:9" },
+        slides: [
+          {
+            elements: [
+              {
+                kind: "text",
+                role: "title",
+                text: "Fallback JSON Slide",
+                xPct: 10,
+                yPct: 10,
+                wPct: 60,
+                hPct: 12,
+                fontFace: "Inter",
+                fontSize: 28,
+                color: "#111827",
+                align: "left",
+                bold: true,
+              },
+            ],
+          },
+        ],
+      }),
+      modelId: "gpt-5.4",
+    });
+    mutationMocks.addSlide.mockResolvedValueOnce({ id: 902 });
+
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: "header.articleBuilder" }));
+    fireEvent.click(screen.getByRole("button", { name: "dialog.articleBuilder.generateSlideJson" }));
+
+    await waitFor(() => {
+      expect(mutationMocks.generateSlideDraft).toHaveBeenCalledWith(expect.objectContaining({
+        deckId: 7,
+        slideSkillId: "modern-editorial-slide",
+        outputFormats: ["json"],
+      }));
+    });
+
+    await waitFor(() => {
+      expect(mutationMocks.addSlide).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it("automatically imports generated slide json into the current presentation as real slides", async () => {
+    mutationMocks.generateSlideDraft.mockResolvedValue({
+      maxPages: 2,
+      slideSkillLabel: "Modern Editorial Slide",
+      slidePayloadJson: "{\"request\":{\"projectTitle\":\"Product Pitch\"}}",
+      slideJson: JSON.stringify({
+        canvas: { ratio: "16:9" },
+        theme: { background: "#ffffff" },
+        slides: [
+          {
+            background: "#f8fafc",
+            notes: "Sleep Training Basics\n\nStart with the bedtime routine note.",
+            elements: [
+              {
+                kind: "text",
+                role: "title",
+                text: "Sleep Training Basics",
+                xPct: 10,
+                yPct: 8,
+                wPct: 50,
+                hPct: 10,
+                fontFace: "Libre Baskerville",
+                fontSize: 28,
+                color: "#0f172a",
+                align: "left",
+                bold: true,
+              },
+              {
+                kind: "image",
+                role: "hero",
+                source: "https://cdn.example.com/hero.png",
+                xPct: 62,
+                yPct: 10,
+                wPct: 24,
+                hPct: 30,
+                fit: "cover",
+                cornerRadius: 16,
+              },
+            ],
+          },
+          {
+            background: "FFFFFF",
+            notes: "Slide 2\n\nKeep the divider slide note with the generated content.",
+            elements: [
+              {
+                kind: "shape",
+                role: "divider",
+                shape: "line",
+                xPct: 8,
+                yPct: 18,
+                wPct: 40,
+                hPct: 0.2,
+                line: "CBD5E1",
+              },
+            ],
+          },
+        ],
+      }),
+      modelId: "gpt-5.4",
+    });
+    mutationMocks.addSlide
+      .mockResolvedValueOnce({ id: 801 })
+      .mockResolvedValueOnce({ id: 802 });
+
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: "header.articleBuilder" }));
+    fireEvent.click(screen.getByRole("button", { name: "dialog.articleBuilder.generate" }));
+
+    await waitFor(() => {
+      expect(mutationMocks.prepareSlideBundle).toHaveBeenCalledWith(expect.objectContaining({
+        deckId: 7,
+        topic: "Product Pitch",
+        slideSkillId: "modern-editorial-slide",
+      }));
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "dialog.articleBuilder.generateImages" }));
+
+    await waitFor(() => {
+      expect(mutationMocks.generateSlideDraft).toHaveBeenCalledTimes(1);
+    });
+
+    await waitFor(() => {
+      expect(mutationMocks.addSlide).toHaveBeenCalledTimes(2);
+    });
+
+    expect(mutationMocks.addSlide).toHaveBeenNthCalledWith(1, expect.objectContaining({
+      deckId: 7,
+      expectedVersion: 5,
+      title: "Sleep Training Basics",
+      notes: "Sleep Training Basics\n\nStart with the bedtime routine note.",
+      slideContent: expect.objectContaining({
+        background: { type: "color", value: "#f8fafc" },
+        canvas: expect.objectContaining({
+          preset: "16:9",
+          width: 1280,
+          height: 720,
+        }),
+        elements: expect.arrayContaining([
+          expect.objectContaining({
+            type: "text",
+            text: "Sleep Training Basics",
+            fontFamily: "Libre Baskerville",
+          }),
+          expect.objectContaining({
+            type: "image",
+            src: "https://cdn.example.com/hero.png",
+            imageFit: "cover",
+            mediaCornerRadius: 16,
+          }),
+        ]),
+      }),
+    }));
+    expect(mutationMocks.addSlide).toHaveBeenNthCalledWith(2, expect.objectContaining({
+      deckId: 7,
+      expectedVersion: 6,
+      title: "Slide 2",
+      notes: "Slide 2\n\nKeep the divider slide note with the generated content.",
+      slideContent: expect.objectContaining({
+        background: { type: "color", value: "#FFFFFF" },
+        elements: expect.arrayContaining([
+          expect.objectContaining({
+            type: "line",
+            stroke: "#CBD5E1",
+          }),
+        ]),
+      }),
+    }));
+  });
+
+  it("falls back to the sandbox JSON artifact when the immediate slide json would import as empty slides", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      text: async () => JSON.stringify({
+        canvas: { ratio: "16:9" },
+        theme: { background: "#ffffff" },
+        slides: [
+          {
+            background: "#ffffff",
+            elements: [
+              {
+                kind: "text",
+                role: "title",
+                text: "Artifact-backed Slide",
+                xPct: 10,
+                yPct: 10,
+                wPct: 60,
+                hPct: 12,
+                fontFace: "Inter",
+                fontSize: 28,
+                color: "#111827",
+                align: "left",
+                bold: true,
+              },
+            ],
+          },
+        ],
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock as typeof fetch);
+
+    mutationMocks.generateSlideDraft.mockResolvedValue({
+      maxPages: 1,
+      slideSkillLabel: "Sandbox Slide Builder",
+      slidePayloadJson: "{\"request\":{\"projectTitle\":\"Product Pitch\"}}",
+      slideJson: JSON.stringify({
+        slides: [
+          {
+            title: "Empty Draft Slide",
+            elements: [],
+          },
+        ],
+      }),
+      modelId: "gpt-5.4",
+      artifactJobId: "job-json-artifact-1",
+      downloadUrl: "https://cdn.example.com/generated-deck.pptx",
+      artifacts: [
+        {
+          format: "json",
+          url: "https://cdn.example.com/manifest.json",
+          key: "manifest.json",
+          mimeType: "application/json",
+          isPrimary: false,
+        },
+        {
+          format: "json",
+          url: "https://cdn.example.com/layout-spec.json",
+          key: "layout-spec.json",
+          mimeType: "application/json",
+          isPrimary: false,
+        },
+        {
+          format: "pptx",
+          url: "https://cdn.example.com/generated-deck.pptx",
+          key: "generated-deck.pptx",
+          mimeType: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+          isPrimary: true,
+        },
+      ],
+    });
+    mutationMocks.addSlide.mockResolvedValueOnce({ id: 903 });
+
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: "header.articleBuilder" }));
+    fireEvent.click(screen.getByRole("button", { name: "dialog.articleBuilder.generate" }));
+
+    await waitFor(() => {
+      expect(mutationMocks.generateSlideDraft).toHaveBeenCalledTimes(1);
+    });
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith("https://cdn.example.com/manifest.json", { credentials: "omit" });
+    });
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith("https://cdn.example.com/layout-spec.json", { credentials: "omit" });
+    });
+
+    await waitFor(() => {
+      expect(mutationMocks.addSlide).toHaveBeenCalledWith(expect.objectContaining({
+        title: "Artifact-backed Slide",
+      }));
+    });
+  });
+
+  it("imports wrapped layoutSpec slide json returned by newer GenJS-style skills", async () => {
+    localStorage.setItem(
+      "presentation-article-builder-draft:7",
+      JSON.stringify({
+        topic: "Product Pitch",
+        article: "Generated presentation article",
+        executionSource: "skill",
+        skillId: "article-writer",
+        agencyId: "",
+        agencyName: "",
+        requiresWebSearch: false,
+        requiresThinking: false,
+        targetImageCount: 8,
+        imageModel: "flux-2.0",
+        canvasRatio: "16:9",
+        advancedMediaOptionsEnabled: false,
+        mediaModelExtraParams: {},
+        imagePromptContext: "",
+        slideSkillId: "modern-editorial-slide",
+        slideOutputFormat: "json",
+        preparedBundle: {
+          maxPages: 1,
+          plannedImageCount: 1,
+          slideSkillLabel: "GenJS Slide Bundle",
+          imagePrompts: [],
+          slidePayloadJson: "{\"request\":{\"projectTitle\":\"Product Pitch\"}}",
+          modelId: "gpt-5.4",
+        },
+        generatedImages: [
+          {
+            id: "img-1-1",
+            pageNumber: 1,
+            imageIndex: 1,
+            placementRole: "hero",
+            shortLabel: "cover hero",
+            prompt: "Cover image prompt",
+            url: "https://cdn.example.com/generated-asset.png",
+          },
+        ],
+        generatedSlideDraft: null,
+      }),
+    );
+
+    mutationMocks.generateSlideDraft.mockResolvedValue({
+      maxPages: 1,
+      slideSkillLabel: "GenJS Slide Bundle",
+      slidePayloadJson: "{\"request\":{\"projectTitle\":\"Product Pitch\"}}",
+      slideJson: JSON.stringify({
+        normalizedContent: {
+          topic: "Product Pitch",
+        },
+        slidePlan: [
+          {
+            title: "Wrapped Layout Slide",
+          },
+        ],
+        layoutSpec: {
+          canvas: { ratio: "16:9" },
+          theme: { background: "#ffffff" },
+          slides: [
+            {
+              background: "#ffffff",
+              notes: "Wrapped notes",
+              elements: [
+                {
+                  kind: "text",
+                  role: "title",
+                  text: "Wrapped Layout Slide",
+                  xPct: 10,
+                  yPct: 10,
+                  wPct: 60,
+                  hPct: 12,
+                  fontFace: "Inter",
+                  fontSize: 28,
+                  color: "#111827",
+                  align: "left",
+                  bold: true,
+                },
+              ],
+            },
+          ],
+        },
+      }),
+      modelId: "gpt-5.4",
+    });
+    mutationMocks.addSlide.mockResolvedValueOnce({ id: 903 });
+
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: "header.articleBuilder" }));
+    fireEvent.click(screen.getByRole("button", { name: "dialog.articleBuilder.generateSlideJson" }));
+
+    await waitFor(() => {
+      expect(mutationMocks.addSlide).toHaveBeenCalledTimes(1);
+    });
+
+    expect(mutationMocks.addSlide).toHaveBeenCalledWith(expect.objectContaining({
+      title: "Wrapped Layout Slide",
+      notes: "Wrapped notes",
+    }));
+  });
+
   it("allows dragging the presentation note dialog by its header", async () => {
     render(<PresentationEditor />);
 
@@ -4705,6 +5607,53 @@ describe("PresentationEditor", () => {
     expect(mutationMocks.updateSlide).toHaveBeenCalledWith(expect.objectContaining({
       saveMode: "autosave",
     }));
+  });
+
+  it("does not overwrite the source slide with an empty draft when switching slides quickly", async () => {
+    vi.useFakeTimers();
+    try {
+      let version = 3;
+      mutationMocks.updateSlide.mockImplementation(async (input: any) => {
+        const nextVersion = ++version;
+        queryState.deckByItem = {
+          ...queryState.deckByItem,
+          slides: queryState.deckByItem.slides.map((slide: any) => (
+            slide.id === input.slideId
+              ? {
+                ...slide,
+                version: nextVersion,
+                notes: input.notes,
+                slideContent: input.slideContent,
+              }
+              : slide
+          )),
+        };
+        return { version: nextVersion };
+      });
+
+      render(<PresentationEditor />);
+      expect(screen.getAllByText("Hello").length).toBeGreaterThan(0);
+
+      fireEvent.click(screen.getByRole("button", { name: /select slide 2/i }));
+      fireEvent.click(screen.getByRole("button", { name: /select slide 1/i }));
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1000);
+        await Promise.resolve();
+      });
+
+      expect(screen.getAllByText("Hello").length).toBeGreaterThan(0);
+
+      const overwrittenSourceSlide = mutationMocks.updateSlide.mock.calls.some((call) => {
+        const input = call[0] as any;
+        return input?.slideId === 71
+          && Array.isArray(input?.slideContent?.elements)
+          && input.slideContent.elements.length === 0;
+      });
+      expect(overwrittenSourceSlide).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("applies cooldown after autosave conflict and suppresses immediate retry", async () => {

@@ -90,8 +90,62 @@ class RegistryTests(RegistryRootMixin, unittest.TestCase):
 
         self.assertTrue(files.is_legacy)
         self.assertEqual(files.skill_dir, registry.LEGACY_SKILLS_DIR / "legacy-only")
+        self.assertEqual(files.bundle_dir, registry.LEGACY_SKILLS_DIR / "legacy-only")
         self.assertEqual(files.code_path, registry.LEGACY_SKILLS_DIR / "legacy-only" / "python" / "skill.py")
         self.assertEqual(files.tests_path, registry.LEGACY_SKILLS_DIR / "legacy-only" / "tests" / "tests.json")
+
+    def test_resolve_skill_files_prefers_mjs_entrypoint(self) -> None:
+        skill_dir = registry.CANONICAL_SKILLS_DIR / "genjs-demo"
+        (skill_dir / "js").mkdir(parents=True, exist_ok=True)
+        (skill_dir / "tests").mkdir(parents=True, exist_ok=True)
+        (skill_dir / "skill.md").write_text(
+            "---\nname: GenJS Demo\ndescription: Demo\ncategory: automation\nexecution_mode: sandbox-command\n---\n",
+            encoding="utf-8",
+        )
+        (skill_dir / "js" / "skill.mjs").write_text(
+            "export async function respond(input, context = null) { return JSON.stringify({ success: true, output: 'ok' }); }\n",
+            encoding="utf-8",
+        )
+        (skill_dir / "tests" / "tests.json").write_text(
+            json.dumps({"tests": [{"id": "smoke", "input": {}, "expected_contains": ["ok"]}]}),
+            encoding="utf-8",
+        )
+
+        files = registry.resolve_skill_files("genjs-demo")
+        manifest = registry.load_manifest("genjs-demo")
+
+        self.assertEqual(files.code_path, skill_dir / "js" / "skill.mjs")
+        self.assertEqual(manifest.entrypoint, "js/skill.mjs")
+
+    def test_resolve_skill_files_supports_nested_genjs_bundle(self) -> None:
+        skill_dir = registry.CANONICAL_SKILLS_DIR / "bundle-demo"
+        bundle_dir = skill_dir / "bundle"
+        (bundle_dir / "src").mkdir(parents=True, exist_ok=True)
+        (bundle_dir / "tests").mkdir(parents=True, exist_ok=True)
+        (bundle_dir / "skill.md").write_text(
+            "---\nname: Bundle Demo\ndescription: Demo\ncategory: slide_generation\nexecution_mode: sandbox-command\n---\n",
+            encoding="utf-8",
+        )
+        (bundle_dir / "skill.manifest.json").write_text(
+            json.dumps({"name": "bundle-demo", "entry": "src/index.mjs"}),
+            encoding="utf-8",
+        )
+        (bundle_dir / "src" / "index.mjs").write_text(
+            "export async function respond(input, context = null) { return JSON.stringify({ success: true, output: 'bundle ok' }); }\n",
+            encoding="utf-8",
+        )
+        (bundle_dir / "tests" / "tests.json").write_text(
+            json.dumps({"tests": [{"id": "smoke", "input": {}, "expected_contains": ["bundle ok"]}]}),
+            encoding="utf-8",
+        )
+
+        files = registry.resolve_skill_files("bundle-demo")
+        manifest = registry.load_manifest("bundle-demo")
+
+        self.assertEqual(files.skill_dir, skill_dir)
+        self.assertEqual(files.bundle_dir, bundle_dir)
+        self.assertEqual(files.code_path, bundle_dir / "src" / "index.mjs")
+        self.assertEqual(manifest.entrypoint, "src/index.mjs")
 
 
 class ProposalTests(unittest.TestCase):

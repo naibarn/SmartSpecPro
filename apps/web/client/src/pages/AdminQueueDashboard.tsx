@@ -12,9 +12,9 @@ import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { DashboardCard, DashboardKpiCard } from "@/components/dashboard";
 import {
   ArrowLeft,
   RefreshCw,
@@ -34,6 +34,7 @@ import {
   Video,
   Music,
   ArrowRight,
+  Clock,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Link, useLocation } from "wouter";
@@ -83,14 +84,11 @@ export default function AdminQueueDashboard() {
   if (!user || user.role !== "admin") {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <Card className="w-96">
-          <CardHeader>
-            <CardTitle>Access Denied</CardTitle>
-            <CardDescription>
-              You need admin privileges to access this page.
-            </CardDescription>
-          </CardHeader>
-        </Card>
+        <DashboardCard
+          className="w-96"
+          title="Access Denied"
+          description="You need admin privileges to access this page."
+        />
       </div>
     );
   }
@@ -210,14 +208,8 @@ export default function AdminQueueDashboard() {
         {/* System Status Overview */}
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           {/* Redis Status */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Database className="h-4 w-4" />
-                Redis
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
+          <DashboardCard title="Redis" leading={<Database className="h-4 w-4 text-slate-500" />}>
+            <div className="space-y-1">
               <div className="flex items-center gap-2">
                 {redis?.connected ? (
                   <>
@@ -236,102 +228,32 @@ export default function AdminQueueDashboard() {
                   {redis.error}
                 </p>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </DashboardCard>
 
           {/* Active Requests */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Activity className="h-4 w-4" />
-                Active Requests
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {systemStatus.data?.limiters.totalRunning || 0}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {systemStatus.data?.limiters.totalQueued || 0} queued
-              </p>
-            </CardContent>
-          </Card>
+          <DashboardKpiCard icon={Activity} label="Active Requests" value={systemStatus.data?.limiters.totalRunning || 0} subLabel={<span className="text-xs text-muted-foreground">{systemStatus.data?.limiters.totalQueued || 0} queued</span>} />
 
           {/* Total Completed */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <CheckCircle className="h-4 w-4" />
-                Completed
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">
-                {systemStatus.data?.queues.totalCompleted || 0}
-              </div>
-              <p className="text-xs text-muted-foreground">background jobs</p>
-            </CardContent>
-          </Card>
+          <DashboardKpiCard icon={CheckCircle} label="Completed" value={systemStatus.data?.queues.totalCompleted || 0} valueClassName="text-green-600" subLabel={<span className="text-xs text-muted-foreground">background jobs</span>} />
 
           {/* Total Failed */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4" />
-                Failed
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-red-600">
-                {systemStatus.data?.queues.totalFailed || 0}
-              </div>
-              <p className="text-xs text-muted-foreground">requires attention</p>
-            </CardContent>
-          </Card>
+          <DashboardKpiCard icon={AlertTriangle} label="Failed" value={systemStatus.data?.queues.totalFailed || 0} valueClassName="text-red-600" subLabel={<span className="text-xs text-muted-foreground">requires attention</span>} />
 
           {/* Providers Count */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Gauge className="h-4 w-4" />
-                Limiters
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {limiters.length + mediaLimiters.length}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {limiters.length} LLM, {mediaLimiters.length} Media
-              </p>
-            </CardContent>
-          </Card>
+          <DashboardKpiCard icon={Gauge} label="Limiters" value={limiters.length + mediaLimiters.length} subLabel={<span className="text-xs text-muted-foreground">{limiters.length} LLM, {mediaLimiters.length} Media</span>} />
         </div>
 
         {/* Monitor Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* LLM Monitor Card */}
-          <Card className="hover:shadow-lg transition-shadow">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <Brain className="h-5 w-5 text-blue-500" />
-                    LLM Monitor
-                  </CardTitle>
-                  <CardDescription>
-                    Rate limiters, queues, and model usage
-                  </CardDescription>
-                </div>
-                <Link href="/admin/queues/llm">
-                  <Button variant="outline" size="sm">
-                    Open
-                    <ArrowRight className="h-4 w-4 ml-1" />
-                  </Button>
-                </Link>
-              </div>
-            </CardHeader>
-            <CardContent>
+          <DashboardCard
+            className="hover:shadow-lg transition-shadow"
+            title="LLM Monitor"
+            description="Rate limiters, queues, and model usage"
+            leading={<Brain className="h-5 w-5 text-blue-500" />}
+            trailing={<Link href="/admin/queues/llm"><Button variant="outline" size="sm">Open<ArrowRight className="h-4 w-4 ml-1" /></Button></Link>}
+          >
               <div className="space-y-4">
                 {/* LLM Stats Summary */}
                 <div className="grid grid-cols-3 gap-3">
@@ -382,31 +304,16 @@ export default function AdminQueueDashboard() {
                   {llmModels.length} models tracked across {limiters.length} providers
                 </div>
               </div>
-            </CardContent>
-          </Card>
+          </DashboardCard>
 
           {/* Media Monitor Card */}
-          <Card className="hover:shadow-lg transition-shadow">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <PlayCircle className="h-5 w-5 text-purple-500" />
-                    Media Monitor
-                  </CardTitle>
-                  <CardDescription>
-                    Image, video, and audio generation
-                  </CardDescription>
-                </div>
-                <Link href="/admin/queues/media">
-                  <Button variant="outline" size="sm">
-                    Open
-                    <ArrowRight className="h-4 w-4 ml-1" />
-                  </Button>
-                </Link>
-              </div>
-            </CardHeader>
-            <CardContent>
+          <DashboardCard
+            className="hover:shadow-lg transition-shadow"
+            title="Media Monitor"
+            description="Image, video, and audio generation"
+            leading={<PlayCircle className="h-5 w-5 text-purple-500" />}
+            trailing={<Link href="/admin/queues/media"><Button variant="outline" size="sm">Open<ArrowRight className="h-4 w-4 ml-1" /></Button></Link>}
+          >
               <div className="space-y-4">
                 {/* Media Stats Summary */}
                 <div className="grid grid-cols-3 gap-3">
@@ -454,22 +361,28 @@ export default function AdminQueueDashboard() {
                   {mediaModels.length} models tracked across {mediaLimiters.length} providers
                 </div>
               </div>
-            </CardContent>
-          </Card>
+          </DashboardCard>
+
+          {/* Scheduled Jobs Card */}
+          <DashboardCard
+            className="hover:shadow-lg transition-shadow"
+            title="Scheduled Jobs"
+            description="Celery Beat task execution history"
+            leading={<Clock className="h-5 w-5 text-teal-500" />}
+            trailing={<Link href="/admin/scheduled-jobs"><Button variant="outline" size="sm">Open<ArrowRight className="h-4 w-4 ml-1" /></Button></Link>}
+          >
+              <p className="text-sm text-muted-foreground">
+                View all scheduled tasks, their execution history, success rates, and performance metrics.
+              </p>
+          </DashboardCard>
         </div>
 
         {/* Background Queues Overview */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Server className="h-5 w-5" />
-              Background Queues
-            </CardTitle>
-            <CardDescription>
-              Cloud Tasks queues for async processing
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+        <DashboardCard
+          title="Background Queues"
+          description="Cloud Tasks queues for async processing"
+          leading={<Server className="h-5 w-5 text-slate-500" />}
+        >
             {!queueStatus.data?.available ? (
               <div className="text-center py-8 text-muted-foreground">
                 <Database className="h-12 w-12 mx-auto mb-2 opacity-50" />
@@ -517,8 +430,7 @@ export default function AdminQueueDashboard() {
                 ))}
               </div>
             )}
-          </CardContent>
-        </Card>
+        </DashboardCard>
 
         {/* Quick Links */}
         <div className="flex items-center justify-center gap-4 pt-4">

@@ -10,6 +10,7 @@ import { z } from "zod";
 import { router, protectedProcedure, adminProcedure, publicProcedure } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { createRateLimitMiddleware } from "../_core/rateLimitedProcedure";
+import { requireFeatureFlag } from "../middleware/requireFeatureFlag";
 import { db } from "../db";
 import {
   agencies,
@@ -25,6 +26,11 @@ import {
   agencyAgentGuardrails,
   agencySharedTools,
   agencyRunTraces,
+  agencyAgentMemories,
+  agencyRunFeedback,
+  agencyImprovementHistory,
+  agencyTemplates,
+  mcpServers,
   userGroups,
   users,
   systemSettings,
@@ -57,11 +63,29 @@ import { invalidateStarterCache } from "../services/conversationStarterCache";
 import { generateAgencySvg } from "../lib/agencySvgGenerator";
 import { createNotification } from "../services/notificationService";
 
+/**
+ * Safely resolve tenantId from tRPC context.
+ * Returns empty string "" ONLY when genuinely no tenant context exists.
+ * The key difference from the old pattern: this returns "" for null/undefined
+ * currentTenantId so callers can check `tenantId.length > 0` before using it
+ * in SQL queries.
+ */
+function resolveTenantId(ctx: { tenantId?: string | null; user?: { currentTenantId?: string | number | null } | null }): string {
+  if (ctx.tenantId && ctx.tenantId.length > 0) return ctx.tenantId;
+  const ct = ctx.user?.currentTenantId;
+  if (ct != null && String(ct).length > 0 && String(ct) !== "null") return String(ct);
+  return "";
+}
+
 // Feature flag guard (tenant-scoped)
 async function assertAgencyEnabled(tenantId: string): Promise<void> {
   // Always enable in non-production environments for local development
   // OR if explicitly enabled via environment variable
   if (process.env.NODE_ENV !== "production" || process.env.AGENCY_SWARM_ENABLED === "true") {
+    return;
+  }
+  // Skip tenant flag check when no tenant context (admin/system users)
+  if (!tenantId || tenantId.length === 0) {
     return;
   }
 
@@ -90,6 +114,69 @@ export const customToolInputSchema = z.object({
     backoffMs: z.number().int().min(100).max(30000),
   }).optional(),
 });
+
+/**
+ * Auto-generate trigger phrases from agency metadata.
+ * Creates regex-friendly phrases from the agency name, description, and agent names
+ * so that the chat can detect when a user's message should invoke this agency.
+ */
+function generateTriggerPhrases(
+  name: string,
+  description: string,
+  agentNames: string[],
+): string[] {
+  const phrases: string[] = [];
+
+  // 1. Agency name as exact phrase (case-insensitive via regex later)
+  const cleanName = name.trim();
+  if (cleanName) {
+    phrases.push(cleanName);
+  }
+
+  // 2. Extract meaningful keywords from description (words ≥ 3 chars, skip stopwords)
+  const stopwords = new Set([
+    "the", "and", "for", "with", "that", "this", "from", "your", "are", "was",
+    "will", "can", "has", "had", "have", "been", "being", "does", "did", "not",
+    "but", "all", "any", "each", "every", "both", "few", "more", "most", "other",
+    "some", "such", "than", "too", "very", "just", "about", "into", "over", "also",
+    "การ", "ที่", "ของ", "ใน", "และ", "เป็น", "ได้", "จะ", "ให้", "ไม่", "มี",
+    "กับ", "อยู่", "จาก", "แล้ว", "ทำ", "ต้อง", "เพื่อ", "หรือ", "อัน", "แต่",
+    "agent", "agents", "team", "system", "custom", "instructions", "model",
+  ]);
+
+  if (description) {
+    const descWords = description
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}\s]/gu, " ")
+      .split(/\s+/)
+      .filter((w) => w.length >= 3 && !stopwords.has(w));
+
+    // Take top unique keywords (max 10)
+    const uniqueWords = [...new Set(descWords)].slice(0, 10);
+
+    // Create 2-word keyword pairs from consecutive unique words
+    for (let i = 0; i < uniqueWords.length - 1 && phrases.length < 15; i++) {
+      phrases.push(`${uniqueWords[i]}\\s+${uniqueWords[i + 1]}`);
+    }
+
+    // Add individual strong keywords (≥ 4 chars)
+    for (const w of uniqueWords) {
+      if (w.length >= 4 && phrases.length < 20) {
+        phrases.push(w);
+      }
+    }
+  }
+
+  // 3. Add agent role names (e.g. "Researcher", "SEO Writer") as triggers
+  for (const agentName of agentNames) {
+    const clean = agentName.trim();
+    if (clean && clean.length >= 3 && phrases.length < 25) {
+      phrases.push(clean);
+    }
+  }
+
+  return [...new Set(phrases)].slice(0, 25);
+}
 
 // Q-1: Detect cycles in communication flows using DFS
 function detectFlowCycle(
@@ -146,7 +233,7 @@ export const agencyRouter = router({
       }),
     )
     .query(async ({ ctx, input }) => {
-      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      const tenantId = resolveTenantId(ctx);
       await assertAgencyEnabled(tenantId);
 
       // Include user's tenant agencies + system template agencies
@@ -160,6 +247,11 @@ export const agencyRouter = router({
       const conditions: any[] = [tenantCondition];
       if (input.status) {
         conditions.push(eq(agencies.status, input.status));
+      } else {
+        // Default view should hide archived agencies so "Delete" actually removes
+        // items from the active list. Archived agencies remain accessible when the
+        // caller explicitly filters for that status.
+        conditions.push(sql`${agencies.status} != 'archived'`);
       }
 
       const userId = ctx.user!.id;
@@ -188,12 +280,35 @@ export const agencyRouter = router({
       };
     }),
 
+  /** Lightweight list for trigger detection in chat — returns only agencies with triggerPhrases */
+  listTriggers: protectedProcedure.query(async ({ ctx }) => {
+    const tenantId = resolveTenantId(ctx);
+    await assertAgencyEnabled(tenantId);
+
+    const result = await db
+      .select({
+        id: agencies.id,
+        name: agencies.name,
+        description: agencies.description,
+        triggerPhrases: agencies.triggerPhrases,
+      })
+      .from(agencies)
+      .where(
+        and(
+          eq(agencies.tenantId, tenantId),
+          sql`${agencies.triggerPhrases} IS NOT NULL AND jsonb_array_length(${agencies.triggerPhrases}) > 0`,
+        ),
+      );
+
+    return { agencies: result };
+  }),
+
   // --- Sharing / Permissions ---
 
   listAgencyGroups: protectedProcedure
     .input(z.object({ agencyId: z.string() }))
     .query(async ({ ctx, input }) => {
-      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      const tenantId = resolveTenantId(ctx);
       await assertAgencyEnabled(tenantId);
 
       const userId = ctx.user!.id;
@@ -232,7 +347,7 @@ export const agencyRouter = router({
       groupIds: z.array(z.number()).min(1).max(50),
     }))
     .mutation(async ({ ctx, input }) => {
-      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      const tenantId = resolveTenantId(ctx);
       await assertAgencyEnabled(tenantId);
 
       const userId = ctx.user!.id;
@@ -292,7 +407,7 @@ export const agencyRouter = router({
       groupId: z.number(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      const tenantId = resolveTenantId(ctx);
       await assertAgencyEnabled(tenantId);
 
       const userId = ctx.user!.id;
@@ -337,7 +452,7 @@ export const agencyRouter = router({
 
   listTemplates: protectedProcedure
     .query(async ({ ctx }) => {
-      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      const tenantId = resolveTenantId(ctx);
       await assertAgencyEnabled(tenantId);
       const templateExposureEnabled = await getTenantFeatureFlag("AGENCY_TEMPLATE_EXPERIENCES_ENABLED", tenantId);
       if (templateExposureEnabled) {
@@ -358,7 +473,7 @@ export const agencyRouter = router({
   listAgentTemplates: protectedProcedure
     .input(z.object({ agencyTemplateId: z.string().optional() }).optional())
     .query(async ({ ctx, input }) => {
-      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      const tenantId = resolveTenantId(ctx);
       await assertAgencyEnabled(tenantId);
 
       const { agentTemplates } = await import("../../drizzle/schema");
@@ -387,7 +502,7 @@ export const agencyRouter = router({
       }).optional().default({ limit: 50, offset: 0 })
     )
     .query(async ({ ctx, input }) => {
-      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      const tenantId = resolveTenantId(ctx);
       await assertAgencyEnabled(tenantId);
 
       // Default built-in tools that Agency Swarm agents can use
@@ -556,6 +671,216 @@ export const agencyRouter = router({
           },
         },
         {
+          id: "builtin-meta-channels",
+          name: "Meta Channels",
+          description: "Send messages, publish posts, read inbox, and manage comments on connected Facebook Pages",
+          toolType: "builtin",
+          riskLevel: "medium",
+          requiresApproval: false,
+          icon: "share-2",
+          category: "social",
+          configSchema: {
+            fields: [
+              {
+                key: "pageId",
+                label: "Connected Page",
+                type: "select",
+                required: true,
+                optionsEndpoint: "/api/v1/social/connected-pages",
+              },
+              {
+                key: "allowedActions",
+                label: "Allowed Actions",
+                type: "multiselect",
+                required: true,
+                options: [
+                  { label: "Read Inbox", value: "read_inbox" },
+                  { label: "Send Reply", value: "send_reply" },
+                  { label: "Publish Post", value: "publish_post" },
+                  { label: "Read Comments", value: "read_comments" },
+                  { label: "Reply to Comments", value: "reply_comment" },
+                ],
+                default: ["read_inbox"],
+              },
+              {
+                key: "requireApproval",
+                label: "Require Approval for Outbound",
+                type: "toggle",
+                default: true,
+              },
+            ],
+          },
+        },
+        {
+          id: "builtin-social-actions",
+          name: "Social Actions",
+          description: "Provider-neutral background social actions for workflows and agency swarm. Ready for Meta today and future channels later.",
+          toolType: "builtin",
+          riskLevel: "medium",
+          requiresApproval: false,
+          icon: "layers-3",
+          category: "social",
+          configSchema: {
+            fields: [
+              {
+                key: "provider",
+                label: "Provider",
+                type: "select",
+                required: true,
+                options: [
+                  { label: "Meta", value: "meta" },
+                ],
+                default: "meta",
+              },
+              {
+                key: "pageId",
+                label: "Connected Page",
+                type: "select",
+                required: true,
+                optionsEndpoint: "/api/v1/social/connected-pages",
+              },
+              {
+                key: "action",
+                label: "Default Action",
+                type: "select",
+                required: true,
+                options: [
+                  { label: "Read Inbox", value: "read_inbox" },
+                  { label: "Send Reply", value: "send_reply" },
+                  { label: "Publish Post", value: "publish_post" },
+                  { label: "Read Comments", value: "read_comments" },
+                  { label: "Reply to Comments", value: "reply_comment" },
+                ],
+                default: "read_inbox",
+              },
+            ],
+          },
+        },
+        {
+          id: "builtin-social-publish",
+          name: "Social Publish",
+          description: "Schedule or immediately publish posts to connected Facebook Pages. Supports text, image, and link posts.",
+          toolType: "builtin",
+          riskLevel: "medium",
+          requiresApproval: false,
+          icon: "send",
+          category: "social",
+          configSchema: {
+            fields: [
+              {
+                key: "pageId",
+                label: "Connected Page",
+                type: "select",
+                required: true,
+                optionsEndpoint: "/api/v1/social/connected-pages",
+              },
+              {
+                key: "publishMode",
+                label: "Publish Mode",
+                type: "select",
+                required: true,
+                options: [
+                  { label: "Immediate", value: "immediate" },
+                  { label: "Schedule", value: "schedule" },
+                  { label: "Draft Only", value: "draft" },
+                ],
+                default: "draft",
+              },
+              {
+                key: "requireApproval",
+                label: "Require Approval Before Publishing",
+                type: "toggle",
+                default: true,
+              },
+            ],
+          },
+        },
+        {
+          id: "builtin-social-moderate",
+          name: "Social Moderate",
+          description: "Monitor and moderate comments on connected Facebook Pages. Auto-hide, reply, or escalate based on rules.",
+          toolType: "builtin",
+          riskLevel: "medium",
+          requiresApproval: false,
+          icon: "shield",
+          category: "social",
+          configSchema: {
+            fields: [
+              {
+                key: "pageId",
+                label: "Connected Page",
+                type: "select",
+                required: true,
+                optionsEndpoint: "/api/v1/social/connected-pages",
+              },
+              {
+                key: "allowedActions",
+                label: "Allowed Moderation Actions",
+                type: "multiselect",
+                required: true,
+                options: [
+                  { label: "Reply to Comment", value: "reply" },
+                  { label: "Hide Comment", value: "hide" },
+                  { label: "Delete Comment", value: "delete" },
+                  { label: "Escalate to Admin", value: "escalate" },
+                ],
+                default: ["reply"],
+              },
+              {
+                key: "autoModerationMode",
+                label: "Auto-Moderation Mode",
+                type: "select",
+                options: [
+                  { label: "Off", value: "off" },
+                  { label: "Draft Only", value: "draft_only" },
+                  { label: "Require Approval", value: "approval_required" },
+                  { label: "Auto (caution)", value: "auto_send" },
+                ],
+                default: "draft_only",
+              },
+            ],
+          },
+        },
+        {
+          id: "builtin-social-inbox",
+          name: "Social Inbox",
+          description: "Read and reply to direct messages on connected Facebook Pages. AI-assisted draft responses with human approval.",
+          toolType: "builtin",
+          riskLevel: "medium",
+          requiresApproval: false,
+          icon: "inbox",
+          category: "social",
+          configSchema: {
+            fields: [
+              {
+                key: "pageId",
+                label: "Connected Page",
+                type: "select",
+                required: true,
+                optionsEndpoint: "/api/v1/social/connected-pages",
+              },
+              {
+                key: "replyMode",
+                label: "Reply Mode",
+                type: "select",
+                required: true,
+                options: [
+                  { label: "Draft Only", value: "draft_only" },
+                  { label: "Require Approval", value: "approval_required" },
+                  { label: "Auto-Reply", value: "auto_send" },
+                ],
+                default: "draft_only",
+              },
+              {
+                key: "maxResponseLength",
+                label: "Max Response Length (chars)",
+                type: "number",
+                default: 500,
+              },
+            ],
+          },
+        },
+        {
           id: "builtin-agency-call",
           name: "Agency Call",
           description:
@@ -648,12 +973,40 @@ export const agencyRouter = router({
         name: t.name,
         description: t.description ?? undefined,
         toolType: t.toolType ?? "custom",
-        riskLevel: "low", // Custom tools default to low unless specified otherwise
-        requiresApproval: false,
+        riskLevel: t.riskLevel ?? "low",
+        requiresApproval: t.requiresApproval ?? false,
+        isEnabled: t.isEnabled,
+        isOwned: true,  // Custom tools belong to this tenant — can be edited/deleted
       }));
 
+      // MCP server tools from registry (dynamic, per-tenant)
+      let mcpTools: typeof builtinTools = [];
+      try {
+        const mcpRows = await db
+          .select()
+          .from(mcpServers)
+          .where(and(eq(mcpServers.tenantId, tenantId), eq(mcpServers.enabled, true)));
+        mcpTools = mcpRows.map((s: any) => ({
+          id: `builtin-mcp-${s.slug}`,
+          name: `MCP: ${s.name}`,
+          description: `External tools from MCP server "${s.name}" (${s.transportType})`,
+          toolType: "mcp_bridge" as const,
+          riskLevel: (s.riskLevel ?? "high") as "low" | "medium" | "high",
+          requiresApproval: false,
+          configSchema: {
+            fields: [
+              { key: "mcpServerId", label: "MCP Server", type: "hidden", default: s.id },
+              { key: "mcpServerSlug", label: "Server", type: "text", readonly: true, default: s.slug },
+              { key: "mcpServerUrl", label: "URL", type: "text", readonly: true, default: (s.config as any)?.url ?? "" },
+            ],
+          },
+        }));
+      } catch {
+        // MCP registry table may not exist yet — gracefully degrade
+      }
+
       // Combine and filter if searching or paginating (simple combined array)
-      const combined = [...builtinTools, ...dbToolsFormatted];
+      const combined = [...builtinTools, ...mcpTools, ...dbToolsFormatted];
 
       return { tools: combined };
     }),
@@ -661,24 +1014,38 @@ export const agencyRouter = router({
   getById: protectedProcedure
     .input(z.object({ id: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
-      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      const tenantId = resolveTenantId(ctx);
       await assertAgencyEnabled(tenantId);
 
       const userId = ctx.user!.id;
       const isAdmin = ctx.user!.role === "admin";
 
-      // Lookup by ID first, then verify tenant access
-      const [agency] = await db
-        .select()
-        .from(agencies)
-        .where(eq(agencies.id, input.id))
-        .limit(1);
+      // SECURITY: Filter by tenantId in SQL (defense-in-depth)
+      // tenantId can be "" when user has no currentTenantId — treat as no tenant
+      const hasTenant = tenantId && tenantId.length > 0;
+
+      let agency: any;
+
+      if (hasTenant) {
+        const [found] = await db
+          .select()
+          .from(agencies)
+          .where(and(eq(agencies.id, input.id), eq(agencies.tenantId, tenantId)))
+          .limit(1);
+        agency = found;
+      }
+
+      // Admin or no-tenant fallback: allow cross-tenant lookup
+      if (!agency && (isAdmin || !hasTenant)) {
+        const [found] = await db.select().from(agencies).where(eq(agencies.id, input.id)).limit(1);
+        agency = found;
+      }
 
       if (!agency) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Agency not found" });
       }
-      // Allow same-tenant users or admins
-      if (agency.tenantId !== tenantId && !isAdmin) {
+      // Non-admin with different tenant → deny
+      if (hasTenant && agency.tenantId !== tenantId && !isAdmin) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Agency not found" });
       }
 
@@ -711,10 +1078,17 @@ export const agencyRouter = router({
         .from(agencySharedTools)
         .where(eq(agencySharedTools.agencyId, input.id));
 
+      // SECURITY: Strip encrypted MCP tokens from response — return boolean flag only
+      const safeAgents = agents.map((a: any) => ({
+        ...a,
+        mcpServerTokensEncrypted: undefined,
+        hasMcpTokens: !!a.mcpServerTokensEncrypted,
+      }));
+
       return {
         ...agency,
         canEdit,
-        agents,
+        agents: safeAgents,
         communicationFlows: flows,
         agentToolAssignments: toolAssignments,
         sharedToolAssignments: sharedTools,
@@ -724,7 +1098,7 @@ export const agencyRouter = router({
   createFromTemplate: agencyCreateProcedure
     .input(z.object({ agencyTemplateId: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      const tenantId = resolveTenantId(ctx);
       const userId = ctx.user!.id;
       await assertAgencyEnabled(tenantId);
       const templateExposureEnabled = await getTenantFeatureFlag("AGENCY_TEMPLATE_EXPERIENCES_ENABLED", tenantId);
@@ -808,7 +1182,7 @@ export const agencyRouter = router({
               description: z.string().optional(),
               nodeType: z.enum([
                 "agent", "supervisor", "router", "aggregator",
-                "knowledge_base", "skill_call", "human_approval", "browser_session", "conditional_branch", "parallel_fan_out", "loop_retry", "skill_discovery", "data_transform", "error_handler",
+                "knowledge_base", "skill_call", "human_approval", "browser_session", "conditional_branch", "parallel_fan_out", "loop_retry", "skill_discovery", "data_transform", "error_handler", "autonomous_agent",
               ]).default("agent"),
               instructions: z.string().max(50000).optional(),
               model: z.string().max(100).regex(/^[a-zA-Z0-9._\/-]+$/, "Invalid model identifier").optional(),
@@ -820,12 +1194,23 @@ export const agencyRouter = router({
                   reasoningEffort: z.enum(["minimal", "low", "medium", "high"]).optional(),
                 })
                 .optional(),
+              modelRequirements: z.object({
+                supportsVision: z.boolean().optional(),
+                supportsThinking: z.boolean().optional(),
+                supportsFunctionTools: z.boolean().optional(),
+                supportsStructuredOutputs: z.boolean().optional(),
+                supportsWebSearch: z.boolean().optional(),
+                supportsCodeExecution: z.boolean().optional(),
+                supportsComputerUse: z.boolean().optional(),
+                contextLength: z.number().int().min(0).max(2000000).optional(),
+                strategy: z.enum(["cheapest", "balanced", "best"]).optional(),
+              }).optional(),
               parallelToolCalls: z.boolean().default(true),
               maxTurns: z.number().int().min(1).max(100).default(25),
               isEntryPoint: z.boolean().default(false),
               isOptional: z.boolean().default(false),
-              position: z.object({ x: z.number(), y: z.number() }).optional(),
-              toolIds: z.array(z.string().min(1).max(100)).optional(),
+              position: z.object({ x: z.number().finite(), y: z.number().finite() }).optional(),
+              toolIds: z.array(z.string().min(1).max(100)).max(50).optional(),
               toolConfigs: z.record(z.string(), z.record(z.unknown())).optional(),
               nodeConfig: z.record(z.unknown()).optional(),
               outputSchema: z.record(z.unknown()).nullable().optional(),
@@ -851,7 +1236,7 @@ export const agencyRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      const tenantId = resolveTenantId(ctx);
       await assertAgencyEnabled(tenantId);
       const userId = ctx.user!.id;
 
@@ -933,6 +1318,7 @@ export const agencyRouter = router({
             instructions: agent.instructions ?? null,
             model: agent.model ?? null,
             modelSettings: agent.modelSettings ?? null,
+            modelRequirements: (agent as any).modelRequirements ?? null,
             parallelToolCalls: agent.parallelToolCalls,
             maxTurns: agent.maxTurns,
             isEntryPoint: agent.isEntryPoint,
@@ -997,7 +1383,7 @@ export const agencyRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      const tenantId = resolveTenantId(ctx);
       await assertAgencyEnabled(tenantId);
       const userId = ctx.user!.id;
       const isAdmin = ctx.user!.role === "admin";
@@ -1062,7 +1448,7 @@ export const agencyRouter = router({
             description: z.string().optional(),
             nodeType: z.enum([
               "agent", "supervisor", "router", "aggregator",
-              "knowledge_base", "skill_call", "human_approval", "browser_session", "conditional_branch", "parallel_fan_out", "loop_retry", "skill_discovery", "data_transform", "error_handler",
+              "knowledge_base", "skill_call", "human_approval", "browser_session", "conditional_branch", "parallel_fan_out", "loop_retry", "skill_discovery", "data_transform", "error_handler", "autonomous_agent",
             ]).default("agent"),
             instructions: z.string().max(50000).optional(),
             model: z.string().max(100).regex(/^[a-zA-Z0-9._\/-]+$/, "Invalid model identifier").optional(),
@@ -1078,8 +1464,8 @@ export const agencyRouter = router({
             maxTurns: z.number().int().min(1).max(100).default(25),
             isEntryPoint: z.boolean().default(false),
             isOptional: z.boolean().default(false),
-            position: z.object({ x: z.number(), y: z.number() }).optional(),
-            toolIds: z.array(z.string().min(1).max(100)).optional(),
+            position: z.object({ x: z.number().finite(), y: z.number().finite() }).optional(),
+            toolIds: z.array(z.string().min(1).max(100)).max(50).optional(),
             toolConfigs: z.record(z.string(), z.record(z.unknown())).optional(),
             nodeConfig: z.record(z.unknown()).optional(),
             outputSchema: z.record(z.unknown()).nullable().optional(),
@@ -1093,8 +1479,30 @@ export const agencyRouter = router({
             ).max(10).optional(),
           }).superRefine((data, ctx) => {
             if (["agent", "supervisor"].includes(data.nodeType)) {
-              if (!data.model) ctx.addIssue({ code: "custom", path: ["model"], message: "model is required for agent/supervisor" });
+              const hasAutoModel = !!(data.nodeConfig as Record<string, unknown> | undefined)?.modelRequirements;
+              if (!data.model && !hasAutoModel) ctx.addIssue({ code: "custom", path: ["model"], message: "model is required for agent/supervisor" });
               if (!data.instructions) ctx.addIssue({ code: "custom", path: ["instructions"], message: "instructions are required for agent/supervisor" });
+              // Validate agentic nodeConfig fields
+              const nc = data.nodeConfig as Record<string, unknown> | undefined;
+              const executionMode = nc?.executionMode;
+              if (executionMode !== undefined && executionMode !== "single_shot" && executionMode !== "agentic") {
+                ctx.addIssue({ code: "custom", path: ["nodeConfig", "executionMode"], message: "executionMode must be 'single_shot' or 'agentic'" });
+              }
+              const maxCycles = nc?.maxReflectionCycles;
+              if (maxCycles !== undefined) {
+                const n = Number(maxCycles);
+                if (!Number.isInteger(n) || n < 1 || n > 10) {
+                  ctx.addIssue({ code: "custom", path: ["nodeConfig", "maxReflectionCycles"], message: "maxReflectionCycles must be an integer between 1 and 10" });
+                }
+              }
+              const strategy = nc?.planningStrategy;
+              if (strategy !== undefined && !["basic", "cot", "react"].includes(String(strategy))) {
+                ctx.addIssue({ code: "custom", path: ["nodeConfig", "planningStrategy"], message: "planningStrategy must be 'basic', 'cot', or 'react'" });
+              }
+              const showReasoning = nc?.showReasoning;
+              if (showReasoning !== undefined && typeof showReasoning !== "boolean") {
+                ctx.addIssue({ code: "custom", path: ["nodeConfig", "showReasoning"], message: "showReasoning must be a boolean" });
+              }
             }
             if (data.nodeType === "router" && !(data.nodeConfig as any)?.routes?.length) {
               ctx.addIssue({ code: "custom", path: ["nodeConfig"], message: "router requires at least 1 route" });
@@ -1113,8 +1521,8 @@ export const agencyRouter = router({
                 ctx.addIssue({ code: "custom", path: ["nodeConfig", "handoffSummary"], message: "browser_session requires a handoff summary for review or user input states" });
               }
             }
-            if (data.isEntryPoint && !["agent", "supervisor"].includes(data.nodeType)) {
-              ctx.addIssue({ code: "custom", path: ["isEntryPoint"], message: `Only agent/supervisor nodes can be entry points, not ${data.nodeType}` });
+            if (data.isEntryPoint && !["agent", "supervisor", "autonomous_agent"].includes(data.nodeType)) {
+              ctx.addIssue({ code: "custom", path: ["isEntryPoint"], message: `Only agent/supervisor/autonomous_agent nodes can be entry points, not ${data.nodeType}` });
             }
             // Validate conditional_branch config
             if (data.nodeType === "conditional_branch") {
@@ -1290,6 +1698,48 @@ export const agencyRouter = router({
                 }
               }
             }
+            // Validate autonomous_agent config
+            if (data.nodeType === "autonomous_agent") {
+              if (!data.model) ctx.addIssue({ code: "custom", path: ["model"], message: "model is required for autonomous_agent" });
+              if (!data.instructions) ctx.addIssue({ code: "custom", path: ["instructions"], message: "instructions are required for autonomous_agent" });
+              const nc = data.nodeConfig as Record<string, unknown> | undefined;
+              const maxPlanDepth = nc?.maxPlanDepth;
+              if (maxPlanDepth !== undefined) {
+                const n = Number(maxPlanDepth);
+                if (!Number.isInteger(n) || n < 1 || n > 5) ctx.addIssue({ code: "custom", path: ["nodeConfig", "maxPlanDepth"], message: "maxPlanDepth must be 1-5" });
+              }
+              const maxTotalIterations = nc?.maxTotalIterations;
+              if (maxTotalIterations !== undefined) {
+                const n = Number(maxTotalIterations);
+                if (!Number.isInteger(n) || n < 1 || n > 50) ctx.addIssue({ code: "custom", path: ["nodeConfig", "maxTotalIterations"], message: "maxTotalIterations must be 1-50" });
+              }
+              const delegationMode = nc?.delegationMode;
+              if (delegationMode !== undefined && !["self_only", "delegate_to_agents", "auto"].includes(String(delegationMode))) {
+                ctx.addIssue({ code: "custom", path: ["nodeConfig", "delegationMode"], message: "delegationMode must be 'self_only', 'delegate_to_agents', or 'auto'" });
+              }
+              const qualityThreshold = nc?.qualityThreshold;
+              if (qualityThreshold !== undefined) {
+                const n = Number(qualityThreshold);
+                if (isNaN(n) || n < 0 || n > 1) ctx.addIssue({ code: "custom", path: ["nodeConfig", "qualityThreshold"], message: "qualityThreshold must be 0-1" });
+              }
+              const decompositionStrategy = nc?.decompositionStrategy;
+              if (decompositionStrategy !== undefined && !["sequential", "parallel", "adaptive"].includes(String(decompositionStrategy))) {
+                ctx.addIssue({ code: "custom", path: ["nodeConfig", "decompositionStrategy"], message: "decompositionStrategy must be 'sequential', 'parallel', or 'adaptive'" });
+              }
+              const reflectAfterSteps = nc?.reflectAfterSteps;
+              if (reflectAfterSteps !== undefined) {
+                const n = Number(reflectAfterSteps);
+                if (!Number.isInteger(n) || n < 1 || n > 10) ctx.addIssue({ code: "custom", path: ["nodeConfig", "reflectAfterSteps"], message: "reflectAfterSteps must be 1-10" });
+              }
+              const budgetAllocation = nc?.budgetAllocation;
+              if (budgetAllocation !== undefined && !["equal", "proportional", "dynamic"].includes(String(budgetAllocation))) {
+                ctx.addIssue({ code: "custom", path: ["nodeConfig", "budgetAllocation"], message: "budgetAllocation must be 'equal', 'proportional', or 'dynamic'" });
+              }
+              const enableLongTermMemory = nc?.enableLongTermMemory;
+              if (enableLongTermMemory !== undefined && typeof enableLongTermMemory !== "boolean") {
+                ctx.addIssue({ code: "custom", path: ["nodeConfig", "enableLongTermMemory"], message: "enableLongTermMemory must be a boolean" });
+              }
+            }
             // Validate knowledgeBase config
             const kb = (data.nodeConfig as any)?.knowledgeBase;
             if (kb && ["agent", "supervisor"].includes(data.nodeType)) {
@@ -1331,10 +1781,27 @@ export const agencyRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      const tenantId = resolveTenantId(ctx);
       await assertAgencyEnabled(tenantId);
       const userId = ctx.user!.id;
       const isAdmin = ctx.user!.role === "admin";
+
+      // Feature flag gates for agentic node types
+      const hasAutonomous = input.agents.some((a) => a.nodeType === "autonomous_agent");
+      const hasAgentic = input.agents.some((a) => (a.nodeConfig as Record<string, unknown>)?.executionMode === "agentic");
+
+      if (hasAutonomous) {
+        const flagEnabled = await getTenantFeatureFlag("agencyAutonomousAgentEnabled", tenantId);
+        if (!flagEnabled) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Autonomous agent is not enabled for this tenant" });
+        }
+      }
+      if (hasAgentic) {
+        const flagEnabled = await getTenantFeatureFlag("agencyAgenticModeEnabled", tenantId);
+        if (!flagEnabled) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Agentic execution mode is not enabled for this tenant" });
+        }
+      }
 
       // Look up agency by ID first, then verify tenant access
       const [agency] = await db
@@ -1451,6 +1918,7 @@ export const agencyRouter = router({
             instructions: agent.instructions ?? null,
             model: agent.model ?? null,
             modelSettings: agent.modelSettings ?? null,
+            modelRequirements: (agent as any).modelRequirements ?? null,
             parallelToolCalls: agent.parallelToolCalls,
             maxTurns: agent.maxTurns,
             isEntryPoint: agent.isEntryPoint,
@@ -1545,7 +2013,15 @@ export const agencyRouter = router({
           .where(eq(agencyCommunicationFlows.agencyId, input.id));
 
         const previewSvg = generateAgencySvg(svgAgents, svgFlows);
-        await tx.update(agencies).set({ previewSvg, updatedAt: new Date() }).where(eq(agencies.id, input.id));
+
+        // Auto-generate trigger phrases from agency name, description, and agent names
+        const triggerPhrases = generateTriggerPhrases(
+          input.name ?? agency.name,
+          input.description ?? agency.description ?? "",
+          input.agents.map((a) => a.name),
+        );
+
+        await tx.update(agencies).set({ previewSvg, triggerPhrases, updatedAt: new Date() }).where(eq(agencies.id, input.id));
       });
 
       return { success: true };
@@ -1554,7 +2030,7 @@ export const agencyRouter = router({
   delete: protectedProcedure
     .input(z.object({ id: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
-      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      const tenantId = resolveTenantId(ctx);
       await assertAgencyEnabled(tenantId);
       const userId = ctx.user!.id;
       const isAdmin = ctx.user!.role === "admin";
@@ -1595,7 +2071,7 @@ export const agencyRouter = router({
       }),
     )
     .query(async ({ ctx, input }) => {
-      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      const tenantId = resolveTenantId(ctx);
       await assertAgencyEnabled(tenantId);
       const userId = ctx.user!.id;
 
@@ -1634,7 +2110,7 @@ export const agencyRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      const tenantId = resolveTenantId(ctx);
       await assertAgencyEnabled(tenantId);
       const userId = ctx.user!.id;
 
@@ -1692,7 +2168,7 @@ export const agencyRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      const tenantId = resolveTenantId(ctx);
       await assertAgencyEnabled(tenantId);
       const userId = ctx.user!.id;
       const userToken = ctx.userToken ?? "";
@@ -1819,7 +2295,7 @@ export const agencyRouter = router({
       }),
     )
     .query(async ({ ctx, input }) => {
-      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      const tenantId = resolveTenantId(ctx);
       await assertAgencyEnabled(tenantId);
       const userId = ctx.user!.id;
       const userToken = ctx.userToken ?? "";
@@ -1880,7 +2356,7 @@ export const agencyRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      const tenantId = resolveTenantId(ctx);
       await assertAgencyEnabled(tenantId);
       const userId = ctx.user!.id;
       const userToken = ctx.userToken ?? "";
@@ -2189,7 +2665,7 @@ export const agencyRouter = router({
   listVersions: protectedProcedure
     .input(z.object({ agencyId: z.string().uuid(), limit: z.number().min(1).max(50).default(30) }))
     .query(async ({ ctx, input }) => {
-      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      const tenantId = resolveTenantId(ctx);
       await assertAgencyEnabled(tenantId);
 
       const [agency] = await db
@@ -2219,7 +2695,7 @@ export const agencyRouter = router({
   restoreVersion: protectedProcedure
     .input(z.object({ versionId: z.number().int().positive() }))
     .mutation(async ({ ctx, input }) => {
-      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      const tenantId = resolveTenantId(ctx);
       await assertAgencyEnabled(tenantId);
       const userId = ctx.user!.id;
       const isAdmin = ctx.user!.role === "admin";
@@ -2243,8 +2719,22 @@ export const agencyRouter = router({
       }
 
       const snapshot = version.snapshotJson as any;
-      // Reconstruct saveBuilder input from snapshot and call the builder save logic
-      // This is done by directly applying the snapshot to the DB
+      // SECURITY: Validate snapshot nodeTypes against current allowlist before restoring
+      const VALID_NODE_TYPES = new Set([
+        "agent", "supervisor", "router", "aggregator",
+        "knowledge_base", "skill_call", "human_approval", "browser_session",
+        "conditional_branch", "parallel_fan_out", "loop_retry", "skill_discovery",
+        "data_transform", "error_handler",
+      ]);
+      for (const node of (snapshot.nodes ?? [])) {
+        if (node.nodeType && !VALID_NODE_TYPES.has(node.nodeType)) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: `Invalid node type '${node.nodeType}' in snapshot` });
+        }
+        // Sanitize nodeConfig size
+        if (node.nodeConfig && JSON.stringify(node.nodeConfig).length > 32768) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: `nodeConfig too large for node '${node.name}'` });
+        }
+      }
       await db.transaction(async (tx) => {
         const existingAgents = await tx
           .select({ id: agencyAgents.id })
@@ -2567,6 +3057,9 @@ export const agencyRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      const tenantId = resolveTenantId(ctx);
+      await assertAgencyEnabled(tenantId);
+
       const { ENV } = await import("../_core/env");
       const pythonBackendUrl = (ENV.pythonBackendUrl || "http://localhost:8000").replace(/\/+$/, "");
 
@@ -2582,7 +3075,7 @@ export const agencyRouter = router({
           model: input.model,
           skip_interview: input.skipInterview,
           user_id: ctx.user!.id,
-          tenant_id: ctx.tenantId ?? String(ctx.user!.currentTenantId ?? ""),
+          tenant_id: resolveTenantId(ctx),
         }),
       });
 
@@ -2616,7 +3109,13 @@ export const agencyRouter = router({
       }
 
       const data = await response.json();
-      return data as {
+
+      // SECURITY: Ownership is enforced by the Python backend's get_status(user_id=...)
+      // which returns None (→ 404) if the task belongs to a different user.
+      // The _user_id field is stripped by Python before it reaches this layer,
+      // so this destructure is a no-op safety net.
+      const { _user_id, ...safeData } = data;
+      return safeData as {
         status: "queued" | "processing" | "awaiting_answers" | "completed" | "failed";
         phase?: string;
         message?: string;
@@ -2625,6 +3124,49 @@ export const agencyRouter = router({
         agencyId?: string;
         guide?: string;
         error?: string;
+        hasSuggestions?: boolean;
+        suggestions?: Array<{
+          category: string;
+          title: string;
+          description: string;
+          impact: string;
+          targetNodeId?: string;
+          suggestedValue?: string;
+        }>;
+      };
+    }),
+
+  /**
+   * Resolve the best LLM model for given capability requirements.
+   * Used by the frontend to preview which model will be selected.
+   */
+  resolveModel: protectedProcedure
+    .input(z.object({
+      requirements: z.object({
+        supportsVision: z.boolean().optional(),
+        supportsThinking: z.boolean().optional(),
+        supportsFunctionTools: z.boolean().optional(),
+        supportsStructuredOutputs: z.boolean().optional(),
+        supportsWebSearch: z.boolean().optional(),
+        supportsCodeExecution: z.boolean().optional(),
+        supportsComputerUse: z.boolean().optional(),
+        contextLength: z.number().int().min(0).max(2000000).optional(),
+        strategy: z.enum(["cheapest", "balanced", "best"]).optional(),
+      }),
+    }))
+    .query(async ({ input }) => {
+      const { loadEnabledLlmModelRows } = await import("../services/enabledLlmModels");
+      const { selectBestLlmModel } = await import("../services/intelligentModelSelector");
+      const rows = await loadEnabledLlmModelRows();
+      const modelId = selectBestLlmModel(input.requirements, rows);
+      if (!modelId) {
+        return { modelId: null, modelName: null, provider: null };
+      }
+      const matched = rows.find((r) => r.modelId === modelId);
+      return {
+        modelId,
+        modelName: matched?.providerModelId ?? modelId,
+        provider: matched?.providerName ?? "unknown",
       };
     }),
 
@@ -2635,7 +3177,10 @@ export const agencyRouter = router({
     .input(
       z.object({
         taskId: z.string().regex(/^agcreate-[a-f0-9]{12}$/),
-        answers: z.record(z.string(), z.string()),
+        answers: z.record(z.string().max(100), z.string().max(5000)).refine(
+          (obj) => Object.keys(obj).length <= 20,
+          { message: "Too many answers (max 20)" },
+        ),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -2688,7 +3233,7 @@ export const agencyRouter = router({
         .where(
           and(
             eq(agencyTools.id, input.toolId),
-            eq(agencyTools.tenantId, ctx.tenantId),
+            eq(agencyTools.tenantId, resolveTenantId(ctx)),
           ),
         )
         .returning({ id: agencyTools.id });
@@ -2820,7 +3365,7 @@ export const agencyRouter = router({
   useMarketplaceAgency: protectedProcedure
     .input(z.object({ agencyId: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      const tenantId = resolveTenantId(ctx);
       const userId = ctx.user!.id;
 
       // Verify source agency is published + public
@@ -2938,7 +3483,7 @@ export const agencyRouter = router({
   requestPublish: protectedProcedure
     .input(z.object({ agencyId: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      const tenantId = resolveTenantId(ctx);
       const userId = ctx.user!.id;
       const isAdmin = ctx.user!.role === "admin";
 
@@ -2993,7 +3538,7 @@ export const agencyRouter = router({
   cancelPublishRequest: protectedProcedure
     .input(z.object({ agencyId: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      const tenantId = resolveTenantId(ctx);
       const userId = ctx.user!.id;
 
       const [agency] = await db
@@ -3159,6 +3704,7 @@ export const agencyRouter = router({
   // ─── Custom Tool CRUD ────────────────────────────────────────────────
 
   createCustomTool: protectedProcedure
+    .use(requireFeatureFlag("agencyCustomTools"))
     .use(createRateLimitMiddleware({ namespace: "agency-tool-create", limit: 10, windowMs: 60_000 }))
     .input(customToolInputSchema)
     .mutation(async ({ ctx, input }) => {
@@ -3230,6 +3776,7 @@ export const agencyRouter = router({
     }),
 
   updateCustomTool: protectedProcedure
+    .use(requireFeatureFlag("agencyCustomTools"))
     .input(z.object({ toolId: z.string().uuid() }).merge(customToolInputSchema.partial()))
     .mutation(async ({ ctx, input }) => {
       const tenantId = ctx.tenantId!;
@@ -3282,6 +3829,7 @@ export const agencyRouter = router({
     }),
 
   deleteCustomTool: protectedProcedure
+    .use(requireFeatureFlag("agencyCustomTools"))
     .input(z.object({ toolId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
       const tenantId = ctx.tenantId!;
@@ -3317,6 +3865,7 @@ export const agencyRouter = router({
     }),
 
   listCustomTools: protectedProcedure
+    .use(requireFeatureFlag("agencyCustomTools"))
     .input(z.object({
       search: z.string().optional(),
       page: z.number().int().min(1).default(1),
@@ -3374,6 +3923,7 @@ export const agencyRouter = router({
     }),
 
   testCustomTool: protectedProcedure
+    .use(requireFeatureFlag("agencyCustomTools"))
     .use(createRateLimitMiddleware({ namespace: "agency-tool-test", limit: 20, windowMs: 60_000 }))
     .input(z.object({
       toolId: z.string().uuid(),
@@ -3459,6 +4009,7 @@ export const agencyRouter = router({
   // ─── OpenAPI Import ─────────────────────────────────────────────────
 
   importOpenAPITools: protectedProcedure
+    .use(requireFeatureFlag("agencyCustomTools"))
     .use(createRateLimitMiddleware({ namespace: "agency-openapi-import", limit: 5, windowMs: 60_000 }))
     .input(z.object({
       specContent: z.string().min(1).max(500_000),
@@ -3495,6 +4046,7 @@ export const agencyRouter = router({
     }),
 
   confirmOpenAPIImport: protectedProcedure
+    .use(requireFeatureFlag("agencyCustomTools"))
     .use(createRateLimitMiddleware({ namespace: "agency-openapi-confirm", limit: 5, windowMs: 60_000 }))
     .input(z.object({
       selectedTools: z.array(z.object({
@@ -3571,6 +4123,7 @@ export const agencyRouter = router({
   // ─── Guardrails CRUD ────────────────────────────────────────────────────
 
   createGuardrail: protectedProcedure
+    .use(requireFeatureFlag("agencyGuardrails"))
     .use(createRateLimitMiddleware({ namespace: "agency-guardrail", limit: 30, windowMs: 60_000 }))
     .input(z.object({
       agencyId: z.string().uuid(),
@@ -3666,6 +4219,7 @@ export const agencyRouter = router({
     }),
 
   updateGuardrail: protectedProcedure
+    .use(requireFeatureFlag("agencyGuardrails"))
     .use(createRateLimitMiddleware({ namespace: "agency-guardrail", limit: 30, windowMs: 60_000 }))
     .input(z.object({
       guardrailId: z.string().uuid(),
@@ -3713,6 +4267,7 @@ export const agencyRouter = router({
     }),
 
   deleteGuardrail: protectedProcedure
+    .use(requireFeatureFlag("agencyGuardrails"))
     .use(createRateLimitMiddleware({ namespace: "agency-guardrail", limit: 30, windowMs: 60_000 }))
     .input(z.object({ guardrailId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
@@ -3733,6 +4288,7 @@ export const agencyRouter = router({
     }),
 
   listGuardrails: protectedProcedure
+    .use(requireFeatureFlag("agencyGuardrails"))
     .use(createRateLimitMiddleware({ namespace: "agency-guardrail", limit: 30, windowMs: 60_000 }))
     .input(z.object({
       agencyId: z.string().uuid(),
@@ -3771,6 +4327,7 @@ export const agencyRouter = router({
     }),
 
   testGuardrail: protectedProcedure
+    .use(requireFeatureFlag("agencyGuardrails"))
     .use(createRateLimitMiddleware({ namespace: "agency-guardrail-test", limit: 10, windowMs: 60_000 }))
     .input(z.object({
       guardrailId: z.string().uuid(),
@@ -3817,6 +4374,7 @@ export const agencyRouter = router({
     }),
 
   assignGuardrailToAgent: protectedProcedure
+    .use(requireFeatureFlag("agencyGuardrails"))
     .use(createRateLimitMiddleware({ namespace: "agency-guardrail", limit: 30, windowMs: 60_000 }))
     .input(z.object({
       guardrailId: z.string().uuid(),
@@ -3862,6 +4420,7 @@ export const agencyRouter = router({
     }),
 
   removeGuardrailFromAgent: protectedProcedure
+    .use(requireFeatureFlag("agencyGuardrails"))
     .use(createRateLimitMiddleware({ namespace: "agency-guardrail", limit: 30, windowMs: 60_000 }))
     .input(z.object({
       guardrailId: z.string().uuid(),
@@ -3903,11 +4462,12 @@ export const agencyRouter = router({
       const userId = ctx.user!.id;
       const userRole = ctx.user!.role;
 
-      // 1. Look up the conversation/run (ownership verified via userId)
+      const tenantId = resolveTenantId(ctx);
+      // 1. Look up the conversation/run — SECURITY: scope to tenant to prevent cross-tenant approval
       const [conv] = await db
         .select()
         .from(agencyConversations)
-        .where(eq(agencyConversations.id, input.runId));
+        .where(and(eq(agencyConversations.id, input.runId), eq(agencyConversations.tenantId, tenantId)));
       if (!conv) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Run not found" });
       }
@@ -3940,7 +4500,7 @@ export const agencyRouter = router({
   // ── MCP Integration (section-14) ──────────────────────────────────────
 
   saveMcpServers: protectedProcedure
-    .use(createRateLimitMiddleware({ windowMs: 60_000, maxRequests: 20, keyPrefix: "mcp-save" }))
+    .use(createRateLimitMiddleware({ namespace: "mcp-save", limit: 20, windowMs: 60_000 }))
     .input(
       z.object({
         agentId: z.string().uuid(),
@@ -3953,7 +4513,7 @@ export const agencyRouter = router({
       }),
     )
     .mutation(async ({ input, ctx }) => {
-      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      const tenantId = resolveTenantId(ctx);
       await assertAgencyEnabled(tenantId);
 
       // Feature flag guard
@@ -3967,7 +4527,7 @@ export const agencyRouter = router({
         "../services/agencyMcpService"
       );
       for (const server of input.mcpServers) {
-        const result = validateMcpServerUrl(server.url);
+        const result = await validateMcpServerUrl(server.url);
         if (!result.valid) {
           throw new TRPCError({
             code: "BAD_REQUEST",
@@ -4017,7 +4577,7 @@ export const agencyRouter = router({
     }),
 
   discoverMcpTools: protectedProcedure
-    .use(createRateLimitMiddleware({ windowMs: 60_000, maxRequests: 10, keyPrefix: "mcp-discover" }))
+    .use(createRateLimitMiddleware({ namespace: "mcp-discover", limit: 10, windowMs: 60_000 }))
     .input(
       z.object({
         serverUrl: z.string().url(),
@@ -4025,7 +4585,7 @@ export const agencyRouter = router({
       }),
     )
     .query(async ({ input, ctx }) => {
-      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      const tenantId = resolveTenantId(ctx);
       await assertAgencyEnabled(tenantId);
 
       // Feature flag guard
@@ -4038,7 +4598,7 @@ export const agencyRouter = router({
         "../services/agencyMcpService"
       );
 
-      const urlResult = validateMcpServerUrl(input.serverUrl);
+      const urlResult = await validateMcpServerUrl(input.serverUrl);
       if (!urlResult.valid) {
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -4075,7 +4635,7 @@ export const agencyRouter = router({
       }),
     )
     .query(async ({ input, ctx }) => {
-      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      const tenantId = resolveTenantId(ctx);
       await assertAgencyEnabled(tenantId);
 
       // Verify agency ownership
@@ -4107,7 +4667,7 @@ export const agencyRouter = router({
       }),
     )
     .query(async ({ input, ctx }) => {
-      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      const tenantId = resolveTenantId(ctx);
       await assertAgencyEnabled(tenantId);
 
       const { getRunTrace } = await import("../services/agencyTraceService");
@@ -4116,5 +4676,852 @@ export const agencyRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "Trace not found" });
       }
       return trace;
+    }),
+
+  // ── Agent Memory CRUD ──────────────────────────────────────────
+
+  // Expanded memory types: general-purpose + technical
+  // DB column is text so no migration needed — just expand validation
+  addAgentMemory: protectedProcedure
+    .input(z.object({
+      agencyId: z.string().uuid(),
+      agentNodeId: z.string().min(1).max(200),
+      memoryType: z.enum([
+        "fact", "preference", "rule", "goal", "insight",
+        "user_info", "relationship", "context",
+        "process", "constraint", "skill", "reference",
+      ]),
+      content: z.string().min(1).max(5000),
+      confidence: z.number().min(0).max(1).default(1.0),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const tenantId = resolveTenantId(ctx);
+      const userId = ctx.user!.id;
+
+      // Verify agency exists and belongs to tenant
+      const [agency] = await db.select({ id: agencies.id, createdBy: agencies.createdBy })
+        .from(agencies)
+        .where(and(eq(agencies.id, input.agencyId), eq(agencies.tenantId, tenantId)))
+        .limit(1);
+      if (!agency) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Agency not found" });
+      }
+
+      // Content hash for dedup
+      const contentHash = crypto.createHash("sha256")
+        .update(input.content.trim().toLowerCase())
+        .digest("hex");
+
+      // Duplicate check
+      const existing = await db.select({ id: agencyAgentMemories.id })
+        .from(agencyAgentMemories)
+        .where(and(
+          eq(agencyAgentMemories.tenantId, tenantId),
+          eq(agencyAgentMemories.agencyId, input.agencyId),
+          eq(agencyAgentMemories.agentNodeId, input.agentNodeId),
+          eq(agencyAgentMemories.userId, userId),
+          eq(agencyAgentMemories.contentHash, contentHash),
+          eq(agencyAgentMemories.isActive, true),
+        ))
+        .limit(1);
+      if (existing.length > 0) {
+        throw new TRPCError({ code: "CONFLICT", message: "Duplicate memory already exists" });
+      }
+
+      // Capacity check (max 100 per agent)
+      const [countResult] = await db.select({ count: count() })
+        .from(agencyAgentMemories)
+        .where(and(
+          eq(agencyAgentMemories.tenantId, tenantId),
+          eq(agencyAgentMemories.agencyId, input.agencyId),
+          eq(agencyAgentMemories.agentNodeId, input.agentNodeId),
+          eq(agencyAgentMemories.userId, userId),
+          eq(agencyAgentMemories.isActive, true),
+        ));
+      if ((countResult?.count ?? 0) >= 100) {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Maximum 100 memories per agent reached" });
+      }
+
+      const [inserted] = await db.insert(agencyAgentMemories)
+        .values({
+          tenantId,
+          agencyId: input.agencyId,
+          agentNodeId: input.agentNodeId,
+          userId,
+          memoryType: input.memoryType,
+          content: input.content.trim(),
+          contentHash,
+          confidence: String(input.confidence),
+          isActive: true,
+        })
+        .returning();
+
+      return inserted;
+    }),
+
+  listAgentMemories: protectedProcedure
+    .input(z.object({
+      agencyId: z.string().uuid(),
+      agentNodeId: z.string().min(1).max(200),
+      memoryType: z.string().max(50).optional(),
+      page: z.number().int().min(1).max(1000).default(1),
+      pageSize: z.number().int().min(1).max(100).default(20),
+    }))
+    .query(async ({ input, ctx }) => {
+      const tenantId = resolveTenantId(ctx);
+      const userId = ctx.user!.id;
+      const isDomainAdmin = ctx.user!.role === "domain_admin";
+      const offset = (input.page - 1) * input.pageSize;
+
+      const conditions = [
+        eq(agencyAgentMemories.tenantId, tenantId),
+        eq(agencyAgentMemories.agencyId, input.agencyId),
+        eq(agencyAgentMemories.agentNodeId, input.agentNodeId),
+        eq(agencyAgentMemories.isActive, true),
+      ];
+      if (!isDomainAdmin) {
+        conditions.push(eq(agencyAgentMemories.userId, userId));
+      }
+      if (input.memoryType) {
+        conditions.push(eq(agencyAgentMemories.memoryType, input.memoryType));
+      }
+
+      const [items, totalResult] = await Promise.all([
+        db.select()
+          .from(agencyAgentMemories)
+          .where(and(...conditions))
+          .orderBy(desc(agencyAgentMemories.confidence), desc(agencyAgentMemories.useCount))
+          .limit(input.pageSize)
+          .offset(offset),
+        db.select({ count: count() })
+          .from(agencyAgentMemories)
+          .where(and(...conditions)),
+      ]);
+
+      return {
+        items,
+        total: totalResult[0]?.count ?? 0,
+        page: input.page,
+      };
+    }),
+
+  deleteAgentMemory: protectedProcedure
+    .input(z.object({
+      memoryId: z.number().int().positive(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const tenantId = resolveTenantId(ctx);
+      const userId = ctx.user!.id;
+      const isDomainAdmin = ctx.user!.role === "domain_admin";
+
+      const conditions = [
+        eq(agencyAgentMemories.id, input.memoryId),
+        eq(agencyAgentMemories.tenantId, tenantId),
+        eq(agencyAgentMemories.isActive, true),
+      ];
+      if (!isDomainAdmin) {
+        conditions.push(eq(agencyAgentMemories.userId, userId));
+      }
+
+      const updated = await db.update(agencyAgentMemories)
+        .set({ isActive: false, updatedAt: new Date() })
+        .where(and(...conditions))
+        .returning({ id: agencyAgentMemories.id });
+
+      return { success: updated.length > 0 };
+    }),
+
+  resetAgentMemories: protectedProcedure
+    .input(z.object({
+      agencyId: z.string().uuid(),
+      agentNodeId: z.string().min(1).max(200),
+      userId: z.number().int().positive().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const tenantId = resolveTenantId(ctx);
+      const isDomainAdmin = ctx.user!.role === "domain_admin";
+      const targetUserId = isDomainAdmin && input.userId ? input.userId : ctx.user!.id;
+
+      const updated = await db.update(agencyAgentMemories)
+        .set({ isActive: false, updatedAt: new Date() })
+        .where(and(
+          eq(agencyAgentMemories.tenantId, tenantId),
+          eq(agencyAgentMemories.agencyId, input.agencyId),
+          eq(agencyAgentMemories.agentNodeId, input.agentNodeId),
+          eq(agencyAgentMemories.userId, targetUserId),
+          eq(agencyAgentMemories.isActive, true),
+        ))
+        .returning({ id: agencyAgentMemories.id });
+
+      return { deletedCount: updated.length };
+    }),
+
+  // ── Agency Objective ────────────────────────────────────────────
+
+  updateObjective: protectedProcedure
+    .input(z.object({
+      agencyId: z.string().uuid(),
+      objective: z.string().max(2000),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const tenantId = resolveTenantId(ctx);
+      await db.update(agencies)
+        .set({ objective: input.objective, updatedAt: new Date() })
+        .where(and(eq(agencies.id, input.agencyId), eq(agencies.tenantId, tenantId)));
+      return { success: true };
+    }),
+
+  reviewAgency: protectedProcedure
+    .input(z.object({
+      agencyId: z.string().uuid(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const tenantId = resolveTenantId(ctx);
+      const userId = ctx.user?.id;
+      if (!tenantId || !userId) {
+        throw new TRPCError({ code: "UNAUTHORIZED" });
+      }
+
+      const [agency] = await db.select({ id: agencies.id, name: agencies.name })
+        .from(agencies)
+        .where(and(eq(agencies.id, input.agencyId), eq(agencies.tenantId, tenantId)))
+        .limit(1);
+      if (!agency) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Agency not found" });
+      }
+
+      const baseUrl = process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
+      const gatewayToken = process.env.SMARTSPEC_WEB_GATEWAY_TOKEN || "";
+      const response = await fetch(`${baseUrl}/api/v1/agency/review-agency`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(gatewayToken ? { "X-Internal-Token": gatewayToken } : {}),
+        },
+        body: JSON.stringify({
+          agency_id: input.agencyId,
+          tenant_id: tenantId,
+        }),
+      });
+
+      if (!response.ok) {
+        let detail = response.statusText || "Agency review failed";
+        try {
+          const data = await response.json();
+          if (typeof data?.detail === "string") {
+            detail = data.detail;
+          } else if (typeof data?.message === "string") {
+            detail = data.message;
+          }
+        } catch {
+          // Ignore parse errors and fall back to status text.
+        }
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: detail });
+      }
+
+      const payload = (await response.json().catch(() => ({}))) as { status?: string; analysis?: Record<string, unknown> };
+      const analysis = payload.analysis ?? {};
+      const suggestions = Array.isArray(analysis.suggestions) ? analysis.suggestions : [];
+      const objectiveAlignment = typeof analysis.objectiveAlignment === "number" ? analysis.objectiveAlignment : 0.5;
+      const analyzedAt = typeof analysis.analyzedAt === "string" ? analysis.analyzedAt : new Date().toISOString();
+      const overallAssessment = typeof analysis.overallAssessment === "string"
+        ? analysis.overallAssessment
+        : `Manual review completed for ${agency.name}.`;
+
+      const issueSummaries = Array.isArray(analysis.issues)
+        ? analysis.issues
+          .slice(0, 3)
+          .map((issue: any) => issue?.recommendation || issue?.issue || "")
+          .filter((value: string) => value.length > 0)
+        : [];
+
+      const improvementSummaries = suggestions
+        .slice(0, 3)
+        .map((suggestion: any) => suggestion?.suggestion || "")
+        .filter((value: string) => value.length > 0);
+
+      const [reviewRow] = await db.insert(agencyRunFeedback)
+        .values({
+          tenantId,
+          agencyId: input.agencyId,
+          runId: `review-${Date.now().toString(36)}-${crypto.randomUUID().replace(/-/g, "").slice(0, 8)}`.slice(0, 36),
+          conversationId: null,
+          userId,
+          rating: Math.max(1, Math.min(5, Math.round(objectiveAlignment * 5) || 3)),
+          whatWorked: overallAssessment,
+          whatDidntWork: issueSummaries.length > 0 ? issueSummaries.join("\n") : null,
+          improvementRequests: improvementSummaries.length > 0 ? improvementSummaries.join("\n") : null,
+          advisorAnalysis: {
+            ...analysis,
+            suggestions,
+            objectiveAlignment,
+            analyzedAt,
+            overallAssessment,
+            reviewType: "manual_agency_review",
+          },
+          suggestionsApplied: false,
+        })
+        .returning({
+          id: agencyRunFeedback.id,
+          runId: agencyRunFeedback.runId,
+        });
+
+      return {
+        feedbackId: reviewRow.id,
+        runId: reviewRow.runId,
+        analysis: {
+          ...analysis,
+          suggestions,
+          objectiveAlignment,
+          analyzedAt,
+          overallAssessment,
+        },
+      };
+    }),
+
+  // ── Run Feedback & Improvement Loop ─────────────────────────────
+
+  submitRunFeedback: protectedProcedure
+    .input(z.object({
+      agencyId: z.string().uuid(),
+      runId: z.string().min(1).max(100),
+      conversationId: z.string().optional(),
+      rating: z.number().int().min(1).max(5),
+      whatWorked: z.string().max(2000).optional(),
+      whatDidntWork: z.string().max(2000).optional(),
+      improvementRequests: z.string().max(2000).optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const tenantId = resolveTenantId(ctx);
+      const userId = ctx.user!.id;
+
+      // Verify agency belongs to tenant
+      const [agency] = await db.select({ id: agencies.id })
+        .from(agencies)
+        .where(and(eq(agencies.id, input.agencyId), eq(agencies.tenantId, tenantId)))
+        .limit(1);
+      if (!agency) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Agency not found" });
+      }
+
+      // Upsert feedback
+      const existing = await db.select({ id: agencyRunFeedback.id })
+        .from(agencyRunFeedback)
+        .where(and(
+          eq(agencyRunFeedback.runId, input.runId),
+          eq(agencyRunFeedback.userId, userId),
+        ))
+        .limit(1);
+
+      let feedbackId: number;
+      if (existing.length > 0) {
+        feedbackId = existing[0].id;
+        await db.update(agencyRunFeedback)
+          .set({
+            rating: input.rating,
+            whatWorked: input.whatWorked,
+            whatDidntWork: input.whatDidntWork,
+            improvementRequests: input.improvementRequests,
+          })
+          .where(eq(agencyRunFeedback.id, feedbackId));
+      } else {
+        const [inserted] = await db.insert(agencyRunFeedback)
+          .values({
+            tenantId,
+            agencyId: input.agencyId,
+            runId: input.runId,
+            conversationId: input.conversationId,
+            userId,
+            rating: input.rating,
+            whatWorked: input.whatWorked,
+            whatDidntWork: input.whatDidntWork,
+            improvementRequests: input.improvementRequests,
+          })
+          .returning({ id: agencyRunFeedback.id });
+        feedbackId = Number(inserted.id);
+      }
+
+      // Trigger async LLM advisor analysis via Python backend
+      try {
+        const baseUrl = process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
+        const gatewayToken = process.env.SMARTSPEC_WEB_GATEWAY_TOKEN || "";
+        await fetch(`${baseUrl}/api/v1/agency/analyze-feedback`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Internal-Token": gatewayToken,
+          },
+          body: JSON.stringify({
+            feedback_id: feedbackId,
+            agency_id: input.agencyId,
+            tenant_id: tenantId,
+          }),
+        });
+      } catch {
+        // Non-blocking — advisor runs async
+      }
+
+      return { feedbackId, rating: input.rating };
+    }),
+
+  getRunFeedback: protectedProcedure
+    .input(z.object({
+      runId: z.string().min(1),
+    }))
+    .query(async ({ input, ctx }) => {
+      const tenantId = resolveTenantId(ctx);
+      const userId = ctx.user!.id;
+      const [feedback] = await db.select()
+        .from(agencyRunFeedback)
+        .where(and(
+          eq(agencyRunFeedback.runId, input.runId),
+          eq(agencyRunFeedback.userId, userId),
+          eq(agencyRunFeedback.tenantId, tenantId),
+        ))
+        .limit(1);
+      return feedback ?? null;
+    }),
+
+  getImprovementSuggestions: protectedProcedure
+    .input(z.object({
+      agencyId: z.string().uuid(),
+    }))
+    .query(async ({ input, ctx }) => {
+      const tenantId = resolveTenantId(ctx);
+
+      // Get latest unapplied feedback with suggestions
+      const feedbacks = (await db.select()
+        .from(agencyRunFeedback)
+        .where(and(
+          eq(agencyRunFeedback.agencyId, input.agencyId),
+          eq(agencyRunFeedback.tenantId, tenantId),
+          eq(agencyRunFeedback.suggestionsApplied, false),
+        ))
+        .orderBy(desc(agencyRunFeedback.createdAt))
+        .limit(5)) as Array<typeof agencyRunFeedback.$inferSelect>;
+
+      // Only return unresolved LLM-generated suggestions — strip raw feedback text
+      const suggestions = feedbacks
+        .filter((f) => f.advisorAnalysis?.suggestions?.length)
+        .flatMap((f) => (f.advisorAnalysis?.suggestions ?? [])
+          .map((s: any, idx: number) => ({ ...s, _idx: idx, _fid: f.id, _rating: f.rating, _createdAt: f.createdAt }))
+          .filter((s: any) => !s.resolved)
+          .map((s: any) => ({
+            category: s.category,
+            suggestion: s.suggestion,
+            priority: s.priority,
+            autoApplyable: s.autoApplyable,
+            feedbackId: s._fid,
+            suggestionIndex: s._idx,
+            rating: s._rating,
+            createdAt: s._createdAt,
+          })),
+        );
+
+      return suggestions;
+    }),
+
+  applyImprovement: protectedProcedure
+    .input(z.object({
+      agencyId: z.string().uuid(),
+      feedbackId: z.number().int(),
+      suggestionIndex: z.number().int().min(0),
+      approved: z.boolean(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const tenantId = resolveTenantId(ctx);
+      const userId = ctx.user!.id;
+
+      // Record the decision in improvement history
+      // Verify feedback belongs to this agency + tenant (prevent IDOR)
+      const [feedback] = await db.select()
+        .from(agencyRunFeedback)
+        .where(and(
+          eq(agencyRunFeedback.id, input.feedbackId),
+          eq(agencyRunFeedback.agencyId, input.agencyId),
+          eq(agencyRunFeedback.tenantId, tenantId),
+        ))
+        .limit(1);
+
+      if (!feedback?.advisorAnalysis?.suggestions?.[input.suggestionIndex]) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Suggestion not found" });
+      }
+
+      const suggestion = feedback.advisorAnalysis.suggestions[input.suggestionIndex];
+
+      await db.insert(agencyImprovementHistory).values({
+        tenantId,
+        agencyId: input.agencyId,
+        triggerType: "user_feedback",
+        triggerRef: `feedback:${input.feedbackId}`,
+        changeType: suggestion.category,
+        description: `${input.approved ? "Applied" : "Dismissed"}: ${suggestion.suggestion}`,
+        approvedBy: input.approved ? userId : null,
+      });
+
+      // Mark this specific suggestion as processed (not the whole feedback)
+      const updatedSuggestions = [...feedback.advisorAnalysis.suggestions];
+      updatedSuggestions[input.suggestionIndex] = {
+        ...updatedSuggestions[input.suggestionIndex],
+        resolved: true,
+        resolvedAction: input.approved ? "applied" : "dismissed",
+      };
+      const allResolved = updatedSuggestions.every((s: any) => s.resolved);
+      await db.update(agencyRunFeedback)
+        .set({
+          advisorAnalysis: {
+            ...feedback.advisorAnalysis,
+            suggestions: updatedSuggestions,
+          },
+          suggestionsApplied: allResolved,
+        })
+        .where(eq(agencyRunFeedback.id, input.feedbackId));
+
+      return { applied: input.approved, category: suggestion.category };
+    }),
+
+  getImprovementHistory: protectedProcedure
+    .input(z.object({
+      agencyId: z.string().uuid(),
+      limit: z.number().int().min(1).max(50).default(20),
+    }))
+    .query(async ({ input, ctx }) => {
+      const tenantId = resolveTenantId(ctx);
+      return db.select()
+        .from(agencyImprovementHistory)
+        .where(and(
+          eq(agencyImprovementHistory.agencyId, input.agencyId),
+          eq(agencyImprovementHistory.tenantId, tenantId),
+        ))
+        .orderBy(desc(agencyImprovementHistory.createdAt))
+        .limit(input.limit);
+    }),
+
+  reviewDashboard: protectedProcedure
+    .query(async ({ ctx }) => {
+      const tenantId = resolveTenantId(ctx);
+      if (!tenantId) {
+        throw new TRPCError({ code: "UNAUTHORIZED" });
+      }
+
+      type ReviewDashboardReviewRow = {
+        id: number;
+        agencyId: string;
+        agencyName: string;
+        rating: number | null;
+        createdAt: string;
+        suggestionsApplied: boolean;
+        advisorAnalysis: unknown;
+      };
+      type ReviewDashboardImprovementRow = {
+        id: number;
+        agencyId: string;
+        agencyName: string;
+        changeType: string;
+        description: string;
+        createdAt: string;
+        approvedBy: string | null;
+      };
+
+      const [agencyCountRowRaw, reviewedAgencyRowsRaw, recentReviewRowsRaw, recentImprovementRowsRaw] = await Promise.all([
+        db.select({ count: count() })
+          .from(agencies)
+          .where(eq(agencies.tenantId, tenantId)),
+        db.select({ agencyId: agencyRunFeedback.agencyId })
+          .from(agencyRunFeedback)
+          .where(eq(agencyRunFeedback.tenantId, tenantId))
+          .groupBy(agencyRunFeedback.agencyId),
+        db.select({
+          id: agencyRunFeedback.id,
+          agencyId: agencyRunFeedback.agencyId,
+          agencyName: agencies.name,
+          rating: agencyRunFeedback.rating,
+          createdAt: agencyRunFeedback.createdAt,
+          suggestionsApplied: agencyRunFeedback.suggestionsApplied,
+          advisorAnalysis: agencyRunFeedback.advisorAnalysis,
+        })
+          .from(agencyRunFeedback)
+          .innerJoin(agencies, eq(agencyRunFeedback.agencyId, agencies.id))
+          .where(eq(agencyRunFeedback.tenantId, tenantId))
+          .orderBy(desc(agencyRunFeedback.createdAt))
+          .limit(6),
+        db.select({
+          id: agencyImprovementHistory.id,
+          agencyId: agencyImprovementHistory.agencyId,
+          agencyName: agencies.name,
+          changeType: agencyImprovementHistory.changeType,
+          description: agencyImprovementHistory.description,
+          createdAt: agencyImprovementHistory.createdAt,
+          approvedBy: agencyImprovementHistory.approvedBy,
+        })
+          .from(agencyImprovementHistory)
+          .innerJoin(agencies, eq(agencyImprovementHistory.agencyId, agencies.id))
+          .where(eq(agencyImprovementHistory.tenantId, tenantId))
+          .orderBy(desc(agencyImprovementHistory.createdAt))
+          .limit(6),
+      ]);
+      const agencyCountRow = agencyCountRowRaw as Array<{ count: number | string | bigint }>;
+      const reviewedAgencyRows = reviewedAgencyRowsRaw as Array<{ agencyId: string }>;
+      const recentReviewRows = recentReviewRowsRaw as ReviewDashboardReviewRow[];
+      const recentImprovementRows = recentImprovementRowsRaw as ReviewDashboardImprovementRow[];
+
+      const reviewedAgencyCount = reviewedAgencyRows.length;
+      const totalAgencies = Number(agencyCountRow[0]?.count ?? 0);
+      const reviewCount = recentReviewRows.length;
+      const ratings = recentReviewRows
+        .map((row) => row.rating)
+        .filter((rating): rating is number => Number.isFinite(rating));
+      const alignmentValues = recentReviewRows
+        .map((row) => {
+          const analysis = row.advisorAnalysis as Record<string, unknown> | null | undefined;
+          const alignment = analysis && typeof analysis.objectiveAlignment === "number"
+            ? analysis.objectiveAlignment
+            : null;
+          return alignment;
+        })
+        .filter((value): value is number => typeof value === "number");
+
+      const averageRating = ratings.length > 0
+        ? ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length
+        : 0;
+      const averageObjectiveAlignment = alignmentValues.length > 0
+        ? alignmentValues.reduce((sum, alignment) => sum + alignment, 0) / alignmentValues.length
+        : 0;
+
+      return {
+        overview: {
+          totalAgencies,
+          reviewedAgencies: reviewedAgencyCount,
+          reviewCount,
+          averageRating,
+          averageObjectiveAlignment,
+          reviewCoverage: totalAgencies > 0 ? reviewedAgencyCount / totalAgencies : 0,
+        },
+        recentReviews: recentReviewRows.map((row) => {
+          const analysis = row.advisorAnalysis as Record<string, unknown> | null | undefined;
+          const suggestions = Array.isArray(analysis?.suggestions) ? analysis?.suggestions : [];
+          return {
+            id: row.id,
+            agencyId: row.agencyId,
+            agencyName: row.agencyName,
+            rating: row.rating,
+            suggestionsApplied: row.suggestionsApplied,
+            suggestionsCount: suggestions.length,
+            objectiveAlignment: typeof analysis?.objectiveAlignment === "number" ? analysis.objectiveAlignment : null,
+            overallAssessment: typeof analysis?.overallAssessment === "string" ? analysis.overallAssessment : null,
+            createdAt: row.createdAt,
+          };
+        }),
+        recentImprovements: recentImprovementRows.map((row) => ({
+          id: row.id,
+          agencyId: row.agencyId,
+          agencyName: row.agencyName,
+          changeType: row.changeType,
+          description: row.description,
+          approvedBy: row.approvedBy,
+          createdAt: row.createdAt,
+        })),
+      };
+    }),
+
+  /**
+   * Apply a whitelisted improvement suggestion to an agency node.
+   * Only supports: add_capability, upgrade_mode, add_tool.
+   * add_node and improve_flow are informational-only (user applies manually).
+   */
+  applySuggestion: protectedProcedure
+    .input(z.object({
+      agencyId: z.string().uuid(),
+      targetNodeId: z.string().uuid(),
+      category: z.enum(["add_capability", "upgrade_mode", "add_tool"]),
+      value: z.string().min(1).max(100),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = resolveTenantId(ctx);
+      const userId = ctx.user?.id;
+      if (!tenantId || !userId) {
+        throw new TRPCError({ code: "UNAUTHORIZED" });
+      }
+
+      // Verify agency ownership + tenant isolation
+      const [agency] = await db.select()
+        .from(agencies)
+        .where(and(eq(agencies.id, input.agencyId), eq(agencies.tenantId, tenantId)));
+      if (!agency) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Agency not found" });
+      }
+      if (agency.createdBy !== userId && ctx.user?.role !== "admin" && ctx.user?.role !== "domain_admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Only the owner or admin can apply suggestions" });
+      }
+
+      // Fetch the target agent node (verify it belongs to this agency)
+      const [agent] = await db.select()
+        .from(agencyAgents)
+        .where(and(eq(agencyAgents.id, input.targetNodeId), eq(agencyAgents.agencyId, input.agencyId)));
+      if (!agent) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Agent node not found" });
+      }
+
+      // Whitelisted mutations only — no arbitrary JSON patches
+      const VALID_CAPABILITIES = new Set([
+        "supportsVision", "supportsThinking", "supportsFunctionTools",
+        "supportsStructuredOutputs", "supportsWebSearch", "supportsCodeExecution",
+      ]);
+      const VALID_MODES = new Set(["single_shot", "agentic"]);
+      const VALID_TOOLS_PREFIX = "builtin-";
+
+      if (input.category === "add_capability") {
+        if (!VALID_CAPABILITIES.has(input.value)) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: `Invalid capability: ${input.value}` });
+        }
+        const current = (agent.modelRequirements as Record<string, unknown>) ?? {};
+        await db.update(agencyAgents)
+          .set({ modelRequirements: { ...current, [input.value]: true } })
+          .where(eq(agencyAgents.id, input.targetNodeId));
+
+      } else if (input.category === "upgrade_mode") {
+        if (!VALID_MODES.has(input.value)) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: `Invalid mode: ${input.value}` });
+        }
+        const current = (agent.nodeConfig as Record<string, unknown>) ?? {};
+        await db.update(agencyAgents)
+          .set({ nodeConfig: { ...current, executionMode: input.value } })
+          .where(eq(agencyAgents.id, input.targetNodeId));
+
+      } else if (input.category === "add_tool") {
+        if (!input.value.startsWith(VALID_TOOLS_PREFIX)) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Only builtin tools can be added via suggestions" });
+        }
+        // Check tool not already assigned
+        const existing = await db.select()
+          .from(agencyAgentTools)
+          .where(and(
+            eq(agencyAgentTools.agentId, input.targetNodeId),
+            eq(agencyAgentTools.toolId, input.value),
+          ));
+        if (existing.length === 0) {
+          await db.insert(agencyAgentTools).values({
+            id: crypto.randomUUID(),
+            agentId: input.targetNodeId,
+            toolId: input.value,
+            toolConfig: {},
+          });
+        }
+      }
+
+      return { applied: true, category: input.category, value: input.value };
+    }),
+
+  saveAsTemplate: protectedProcedure
+    .input(z.object({
+      agencyId: z.string().uuid(),
+      name: z.string().min(1).max(255),
+      description: z.string().max(2000).optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const tenantId = resolveTenantId(ctx);
+      const userId = ctx.user?.id;
+      if (!tenantId || !userId) {
+        throw new TRPCError({ code: "UNAUTHORIZED", message: "Authentication required" });
+      }
+
+      // 1. Verify agency exists + belongs to tenant + user is owner or admin
+      const [agency] = await db.select()
+        .from(agencies)
+        .where(and(
+          eq(agencies.id, input.agencyId),
+          eq(agencies.tenantId, tenantId),
+        ));
+
+      if (!agency) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Agency not found" });
+      }
+
+      const userRole = ctx.user?.role ?? "user";
+      const isOwnerOrAdmin = agency.createdBy === userId
+        || userRole === "admin"
+        || userRole === "domain_admin";
+      if (!isOwnerOrAdmin) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Only the agency owner or admin can save as template" });
+      }
+
+      // 2. Read agents and communication flows
+      const agents = (await db.select()
+        .from(agencyAgents)
+        .where(eq(agencyAgents.agencyId, input.agencyId))) as Array<typeof agencyAgents.$inferSelect>;
+
+      const flows = (await db.select()
+        .from(agencyCommunicationFlows)
+        .where(eq(agencyCommunicationFlows.agencyId, input.agencyId))) as Array<typeof agencyCommunicationFlows.$inferSelect>;
+
+      // Read tool assignments for all agents
+      const agentIds = agents.map((a) => a.id);
+      const tools = agentIds.length > 0
+        ? await db.select()
+            .from(agencyAgentTools)
+            .where(inArray(agencyAgentTools.agentId, agentIds))
+        : [];
+
+      // agencyAgentTools has no tenantId — isolation is guaranteed by agentIds being scoped
+      // to the agency which is already verified to belong to the tenant above.
+      // Build tool lookup: agentId → toolId[]
+      const toolsByAgent: Record<string, string[]> = {};
+      for (const t of tools) {
+        if (!toolsByAgent[t.agentId]) toolsByAgent[t.agentId] = [];
+        toolsByAgent[t.agentId].push(t.toolId);
+      }
+
+      // Build agent index map: agentId → array index
+      const agentIndexMap: Record<string, number> = {};
+      agents.forEach((a, i) => { agentIndexMap[a.id] = i; });
+
+      // First agent position as reference point for relative positions
+      const firstPos = agents[0]?.position as { x: number; y: number } | null;
+      const refX = firstPos?.x ?? 0;
+      const refY = firstPos?.y ?? 0;
+
+      // 3. Build portable agent definitions (strip UUIDs)
+      // SECURITY: Only include whitelisted fields below. NEVER spread the full agent row —
+      // it may contain mcpServers (URLs) and mcpServerTokensEncrypted (AES ciphertext).
+      const agentDefinitions = agents.map((a) => {
+        const pos = a.position as { x: number; y: number } | null;
+        return {
+          name: a.name,
+          nodeType: a.nodeType,
+          instructions: a.instructions ?? undefined,
+          modelRequirements: a.modelRequirements as Record<string, unknown> | undefined,
+          nodeConfig: a.nodeConfig as Record<string, unknown> | undefined,
+          toolIds: toolsByAgent[a.id] ?? [],
+          isEntryPoint: a.isEntryPoint,
+          relativePosition: pos ? { x: pos.x - refX, y: pos.y - refY } : { x: 0, y: 0 },
+        };
+      });
+
+      // 4. Build portable communication flows (use array indices instead of UUIDs)
+      const communicationFlows = flows
+        .filter((f) => agentIndexMap[f.fromAgentId] !== undefined && agentIndexMap[f.toAgentId] !== undefined)
+        .map((f) => ({
+          fromIndex: agentIndexMap[f.fromAgentId],
+          toIndex: agentIndexMap[f.toAgentId],
+          flowType: f.flowType,
+          flowConfig: f.flowConfig as Record<string, unknown> | undefined,
+        }));
+
+      // 5. Insert template
+      const templateId = crypto.randomUUID();
+      await db.insert(agencyTemplates).values({
+        id: templateId,
+        name: input.name,
+        description: input.description ?? agency.description ?? "",
+        category: "user_created",
+        tenantId,
+        createdBy: userId,
+        sourceAgencyId: input.agencyId,
+        status: "draft",
+        agentDefinitions,
+        communicationFlows,
+      });
+
+      return { templateId };
     }),
 });

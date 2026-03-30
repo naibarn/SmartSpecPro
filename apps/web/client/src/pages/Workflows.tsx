@@ -7,9 +7,17 @@ import { useState } from 'react';
 import { useLocation } from 'wouter';
 import { trpc } from '@/lib/trpc';
 import { Button } from '@/components/ui/button';
+import { HelpButton } from '@/components/help';
 import { JobCard } from '@/components/chat/JobCard';
 import { GalleryTemplateCard } from '@/components/workflow/GalleryTemplateCard';
 import { GalleryDetailDrawer } from '@/components/workflow/GalleryDetailDrawer';
+import {
+  DashboardCard,
+  DashboardSectionHeader,
+  DashboardSurface,
+} from '@/components/dashboard';
+import { LocaleToggle } from '@/components/LocaleToggle';
+import { useScopedTranslation } from '@/i18n/useScopedTranslation';
 import {
   Dialog,
   DialogContent,
@@ -31,7 +39,6 @@ import {
   LayoutGrid,
   ArrowRight,
   Edit,
-  FileCode,
   Layers,
   Play,
   Globe,
@@ -64,14 +71,15 @@ interface SavedWorkflow {
 }
 
 const STATUS_CONFIG: Record<string, { icon: typeof Clock; label: string; color: string; bg: string }> = {
-  draft: { icon: Edit, label: 'Draft', color: 'text-gray-600', bg: 'bg-gray-100' },
-  compiled: { icon: CheckCircle, label: 'Compiled', color: 'text-blue-600', bg: 'bg-blue-100' },
-  running: { icon: Play, label: 'Running', color: 'text-amber-600', bg: 'bg-amber-100' },
-  completed: { icon: CheckCircle, label: 'Completed', color: 'text-green-600', bg: 'bg-green-100' },
-  failed: { icon: XCircle, label: 'Failed', color: 'text-red-600', bg: 'bg-red-100' },
+  draft: { icon: Edit, label: 'workflows.status.draft', color: 'text-gray-600', bg: 'bg-gray-100' },
+  compiled: { icon: CheckCircle, label: 'workflows.status.compiled', color: 'text-blue-600', bg: 'bg-blue-100' },
+  running: { icon: Play, label: 'workflows.status.running', color: 'text-amber-600', bg: 'bg-amber-100' },
+  completed: { icon: CheckCircle, label: 'workflows.status.completed', color: 'text-green-600', bg: 'bg-green-100' },
+  failed: { icon: XCircle, label: 'workflows.status.failed', color: 'text-red-600', bg: 'bg-red-100' },
 };
 
 export default function Workflows() {
+  const { t, i18n } = useScopedTranslation('workflow');
   const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTemplateId, setSelectedTemplateId] = useState<number | null>(null);
@@ -81,7 +89,7 @@ export default function Workflows() {
 
   const requestPublishMut = trpc.workflow.requestPublishTemplate.useMutation({
     onSuccess: () => {
-      toast.success('Your workflow has been submitted for review');
+      toast.success(t('workflows.toast.submitted'));
       setPublishTarget(null);
       utils.workflow.getMyTemplateSubmissions.invalidate();
     },
@@ -92,7 +100,7 @@ export default function Workflows() {
 
   const cancelPublishMut = trpc.workflow.cancelPublishRequest.useMutation({
     onSuccess: () => {
-      toast.success('Publish request cancelled');
+      toast.success(t('workflows.toast.cancelled'));
       utils.workflow.getMyTemplateSubmissions.invalidate();
     },
     onError: (err) => {
@@ -139,17 +147,18 @@ export default function Workflows() {
     const now = new Date();
     const diff = now.getTime() - d.getTime();
     const mins = Math.floor(diff / 60000);
-    if (mins < 1) return 'Just now';
-    if (mins < 60) return `${mins}m ago`;
+    if (mins < 1) return t('workflows.time.justNow');
+    if (mins < 60) return t('workflows.time.minutesAgo', { count: mins });
     const hours = Math.floor(mins / 60);
-    if (hours < 24) return `${hours}h ago`;
+    if (hours < 24) return t('workflows.time.hoursAgo', { count: hours });
     const days = Math.floor(hours / 24);
-    if (days < 7) return `${days}d ago`;
-    return d.toLocaleDateString();
+    if (days < 7) return t('workflows.time.daysAgo', { count: days });
+    const intlLocale = (i18n.language || 'en').startsWith('th') ? 'th-TH' : 'en-US';
+    return d.toLocaleDateString(intlLocale);
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/20">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-cyan-50/20">
       {/* Header */}
       <header className="bg-white/70 backdrop-blur-xl border-b sticky top-0 z-10">
         <div className="px-4 sm:px-6 lg:px-8 py-3">
@@ -161,26 +170,28 @@ export default function Workflows() {
                 onClick={() => setLocation('/dashboard')}
               >
                 <ChevronLeft className="h-4 w-4 mr-1" />
-                Back
+                {t('common.back')}
               </Button>
               <div className="flex items-center gap-2">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
                   <GitBranch className="h-5 w-5 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-lg font-bold">Workflows</h1>
-                  <p className="text-xs text-muted-foreground">Create and manage automated workflows</p>
+                  <h1 className="text-lg font-bold">{t('workflows.title')}</h1>
+                  <p className="text-xs text-muted-foreground">{t('workflows.description')}</p>
                 </div>
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <LocaleToggle className="hidden sm:inline-flex" />
+              <HelpButton page="/workflows" variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" />
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setLocation('/workflows/gallery')}
               >
                 <LayoutGrid className="h-4 w-4 mr-1" />
-                Gallery
+                {t('workflows.gallery')}
               </Button>
               <Button
                 size="sm"
@@ -188,7 +199,7 @@ export default function Workflows() {
                 className="bg-blue-600 hover:bg-blue-700 text-white"
               >
                 <Plus className="h-4 w-4 mr-1" />
-                New Workflow
+                {t('workflows.newWorkflow')}
               </Button>
             </div>
           </div>
@@ -200,23 +211,23 @@ export default function Workflows() {
 
         {/* My Workflows Section */}
         <section className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold flex items-center gap-2">
-              <FileCode className="h-5 w-5 text-blue-600" />
-              My Workflows
-            </h2>
-            {/* Search */}
-            <div className="relative w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="Search..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-3 py-1.5 text-sm border rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-          </div>
+          <DashboardSectionHeader
+            eyebrow={t('workflows.library.eyebrow')}
+            title={t('workflows.library.title')}
+            description={t('workflows.library.description')}
+            trailing={(
+              <div className="relative w-64">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <input
+                  type="text"
+                  placeholder={t('common.search')}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-3 py-1.5 text-sm border rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+            )}
+          />
 
           {filteredSaved.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -249,28 +260,28 @@ export default function Workflows() {
                         {tplStatus?.status === 'pending_review' && (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 text-amber-700">
                             <Clock className="h-2.5 w-2.5" />
-                            Pending
+                            {t('workflows.status.pending')}
                           </span>
                         )}
                         {tplStatus?.status === 'published' && (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-green-100 text-green-700">
                             <Globe className="h-2.5 w-2.5" />
-                            In Gallery
+                            {t('workflows.status.inGallery')}
                           </span>
                         )}
                         {tplStatus?.status === 'rejected' && (
                           <span
                             className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-red-100 text-red-700"
-                            title={tplStatus.rejectionReason ? `Rejected: ${tplStatus.rejectionReason}` : 'Rejected'}
+                            title={tplStatus.rejectionReason ? t('workflows.status.rejectedWithReason', { reason: tplStatus.rejectionReason }) : t('workflows.status.rejected')}
                           >
                             <XCircle className="h-2.5 w-2.5" />
-                            Rejected
+                            {t('workflows.status.rejected')}
                           </span>
                         )}
                         {/* Workflow build status */}
                         <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${cfg.bg} ${cfg.color}`}>
                           <StatusIcon className="h-3 w-3" />
-                          {cfg.label}
+                          {t(cfg.label)}
                         </span>
                       </div>
                     </div>
@@ -292,13 +303,13 @@ export default function Workflows() {
                     <div className="mt-auto flex items-center justify-between text-xs text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <Layers className="h-3 w-3" />
-                        {nodeCount} nodes
+                        {t('workflows.nodesCount', { count: nodeCount })}
                       </span>
                       <div className="flex items-center gap-2">
                         {/* Pending → cancel button */}
                         {tplStatus?.status === 'pending_review' && (
                           <button
-                            title="Cancel publish request"
+                            title={t('workflows.publish.cancel')}
                             className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-red-100 text-red-500"
                             disabled={cancelPublishMut.isPending}
                             onClick={(e) => {
@@ -312,7 +323,7 @@ export default function Workflows() {
                         {/* No pending template + has nodes → publish button */}
                         {nodeCount > 0 && tplStatus?.status !== 'pending_review' && tplStatus?.status !== 'published' && (
                           <button
-                            title={tplStatus?.status === 'rejected' ? 'Re-submit for Review' : 'Publish to Gallery'}
+                            title={tplStatus?.status === 'rejected' ? t('workflows.publish.resubmit') : t('workflows.publish.toGallery')}
                             className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-blue-100 text-blue-600"
                             onClick={(e) => {
                               e.stopPropagation();
@@ -343,34 +354,32 @@ export default function Workflows() {
                 }}
               >
                 <Plus className="h-8 w-8 text-gray-400 mb-2" />
-                <span className="text-sm font-medium text-gray-500">New Workflow</span>
+                <span className="text-sm font-medium text-gray-500">{t('workflows.newWorkflow')}</span>
               </article>
             </div>
           ) : (
             <div className="bg-white/70 backdrop-blur rounded-xl border p-12 text-center">
               <GitBranch className="h-14 w-14 text-gray-300 mx-auto mb-3" />
               <h3 className="text-lg font-semibold mb-1">
-                {searchQuery ? 'No Workflows Found' : 'No Workflows Yet'}
+                {searchQuery ? t('workflows.empty.filtered') : t('workflows.empty.saved')}
               </h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                {searchQuery
-                  ? 'Try adjusting your search'
-                  : 'Create your first workflow or start from a template'}
-              </p>
+                <p className="text-sm text-muted-foreground mb-4">
+                  {searchQuery ? t('workflows.empty.adjustSearch') : t('workflows.empty.createFirst')}
+                </p>
               <div className="flex items-center justify-center gap-3">
                 <Button
                   onClick={() => setLocation('/workflows/editor')}
                   className="bg-blue-600 hover:bg-blue-700 text-white"
                 >
                   <Plus className="h-4 w-4 mr-1" />
-                  New Workflow
+                  {t('workflows.newWorkflow')}
                 </Button>
                 <Button
                   variant="outline"
                   onClick={() => setLocation('/workflows/gallery')}
                 >
                   <LayoutGrid className="h-4 w-4 mr-1" />
-                  Browse Templates
+                  {t('workflows.gallery')}
                 </Button>
               </div>
             </div>
@@ -380,45 +389,46 @@ export default function Workflows() {
         {/* Recent Executions */}
         {executions.length > 0 && (
           <section className="mb-8">
-            <h2 className="text-lg font-semibold flex items-center gap-2 mb-4">
-              <Clock className="h-5 w-5 text-purple-600" />
-              Recent Executions
-            </h2>
-            <div className="grid grid-cols-1 gap-3">
-              {executions.slice(0, 5).map((exec: Execution) => (
-                <div
-                  key={exec.execution_id}
-                  className="bg-white/70 backdrop-blur rounded-xl border hover:shadow-md transition-shadow"
-                >
-                  <JobCard
-                    executionId={exec.execution_id}
-                    workflowName={exec.workflow_name}
-                    initialStatus={exec.status}
-                  />
-                </div>
-              ))}
-            </div>
+            <DashboardCard
+              eyebrow={t('workflows.executions.eyebrow')}
+              title={t('workflows.executions.title')}
+              description={t('workflows.executions.description')}
+              bodyClassName="p-0"
+            >
+              <div className="grid grid-cols-1 gap-3 p-5 sm:p-6">
+                {executions.slice(0, 5).map((exec: Execution) => (
+                  <DashboardSurface key={exec.execution_id} className="overflow-hidden">
+                    <JobCard
+                      executionId={exec.execution_id}
+                      workflowName={exec.workflow_name}
+                      initialStatus={exec.status}
+                    />
+                  </DashboardSurface>
+                ))}
+              </div>
+            </DashboardCard>
           </section>
         )}
 
         {/* Popular Templates */}
         {templatesData && templatesData.items.length > 0 && (
           <section>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold flex items-center gap-2">
-                <LayoutGrid className="h-5 w-5 text-green-600" />
-                Popular Templates
-              </h2>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setLocation('/workflows/gallery')}
-                className="text-blue-600 hover:text-blue-700"
-              >
-                Browse All
-                <ArrowRight className="h-4 w-4 ml-1" />
-              </Button>
-            </div>
+            <DashboardSectionHeader
+                eyebrow={t('workflows.templates.eyebrow')}
+              title={t('workflows.templates.title')}
+              description={t('workflows.templates.description')}
+              trailing={(
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setLocation('/workflows/gallery')}
+                  className="text-blue-600 hover:text-blue-700"
+                >
+                  {t('workflows.galleryBrowseAll')}
+                  <ArrowRight className="h-4 w-4 ml-1" />
+                </Button>
+              )}
+            />
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {templatesData.items.map((t: any) => (
                 <GalleryTemplateCard
@@ -445,24 +455,23 @@ export default function Workflows() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Globe className="h-5 w-5 text-blue-600" />
-              Publish to Gallery
+              {t('workflows.publish.title')}
             </DialogTitle>
             <DialogDescription>
-              Submit <strong>{publishTarget?.name}</strong> for admin review. Once approved,
-              it will be available in the public Workflow Gallery for all users.
+              {t('workflows.publish.dialogPrefix')} <strong>{publishTarget?.name}</strong> {t('workflows.publish.dialogSuffix')}
             </DialogDescription>
           </DialogHeader>
           <div className="rounded-lg border bg-blue-50/50 p-3 text-sm text-blue-800">
-            <p className="font-medium mb-1">What happens next:</p>
+            <p className="font-medium mb-1">{t('workflows.publish.nextTitle')}</p>
             <ul className="list-disc list-inside space-y-0.5 text-xs">
-              <li>Your workflow will be submitted as a template</li>
-              <li>An admin will review it for quality and safety</li>
-              <li>You'll be notified when it's approved or if changes are needed</li>
+              <li>{t('workflows.publish.next.step1')}</li>
+              <li>{t('workflows.publish.next.step2')}</li>
+              <li>{t('workflows.publish.next.step3')}</li>
             </ul>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setPublishTarget(null)}>
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button
               className="bg-blue-600 hover:bg-blue-700 text-white"
@@ -478,7 +487,7 @@ export default function Workflows() {
               ) : (
                 <Send className="mr-1.5 h-4 w-4" />
               )}
-              Submit for Review
+              {t('workflows.publish.submit')}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -6,28 +6,60 @@
 import type { Express } from "express";
 import type { TenantRequest } from "../_core/tenant";
 import { db } from "../db";
-import { blogPosts } from "../../drizzle/schema";
-import { eq, and, desc, asc } from "drizzle-orm";
+import { blogPosts, seoMetadata } from "../../drizzle/schema";
+import { eq, and, desc, asc, inArray } from "drizzle-orm";
 import { sdk } from "../_core/sdk";
 import sanitizeHtml from "sanitize-html";
 import { sanitizeBrandingDeep } from "../services/brandingSanitizer";
+import { clearTenantCache } from "../_core/tenant";
 
 /** Server-side HTML sanitization for blog content using sanitize-html */
 function sanitizeBlogHtml(html: string): string {
   return sanitizeHtml(html, {
     allowedTags: sanitizeHtml.defaults.allowedTags.concat([
       "img", "figure", "figcaption", "details", "summary",
-      "mark", "del", "ins", "sub", "sup", "hr",
+      "mark", "del", "ins", "sub", "sup", "hr", "video", "source",
     ]),
     allowedAttributes: {
       ...sanitizeHtml.defaults.allowedAttributes,
       img: ["src", "alt", "title", "width", "height", "loading"],
+      video: ["src", "controls", "autoplay", "loop", "muted", "playsinline", "poster", "width", "height"],
+      source: ["src", "type"],
       a: ["href", "target", "rel", "title"],
       "*": ["class", "id"],
     },
     allowedSchemes: ["http", "https", "mailto", "tel"],
     disallowedTagsMode: "discard",
   });
+}
+
+function isVideoMediaUrl(url: string): boolean {
+  const value = url.trim().toLowerCase();
+  return /\.(mp4|webm|mov|m4v|ogg)(\?.*)?$/.test(value) || value.includes("video");
+}
+
+function buildBlogPath(slug: string): string {
+  return `/blog/${slug}`;
+}
+
+async function deleteBlogSeoMetadata(dbInstance: any, tenantId: number, slugs: string[]) {
+  const normalizedPaths = slugs
+    .map((slug) => slug.trim())
+    .filter(Boolean)
+    .map((slug) => buildBlogPath(slug));
+
+  if (!normalizedPaths.length) {
+    return;
+  }
+
+  await dbInstance
+    .delete(seoMetadata)
+    .where(
+      and(
+        eq(seoMetadata.tenantId, tenantId),
+        inArray(seoMetadata.path, normalizedPaths)
+      )
+    );
 }
 
 export function registerBlogRoutes(app: Express) {
@@ -54,6 +86,8 @@ export function registerBlogRoutes(app: Express) {
           tags: blogPosts.tags,
           readTime: blogPosts.readTime,
           isFeatured: blogPosts.isFeatured,
+          metaDescription: blogPosts.metaDescription,
+          metaKeywords: blogPosts.metaKeywords,
           publishedAt: blogPosts.publishedAt,
           createdAt: blogPosts.createdAt,
         })
@@ -83,7 +117,26 @@ export function registerBlogRoutes(app: Express) {
       const { slug } = req.params;
       const dbInstance = await db.instance;
       const [post] = await dbInstance
-        .select()
+        .select({
+          id: blogPosts.id,
+          slug: blogPosts.slug,
+          title: blogPosts.title,
+          excerpt: blogPosts.excerpt,
+          content: blogPosts.content,
+          coverImage: blogPosts.coverImage,
+          author: blogPosts.author,
+          authorAvatar: blogPosts.authorAvatar,
+          category: blogPosts.category,
+          tags: blogPosts.tags,
+          readTime: blogPosts.readTime,
+          isPublished: blogPosts.isPublished,
+          isFeatured: blogPosts.isFeatured,
+          metaDescription: blogPosts.metaDescription,
+          metaKeywords: blogPosts.metaKeywords,
+          publishedAt: blogPosts.publishedAt,
+          createdAt: blogPosts.createdAt,
+          updatedAt: blogPosts.updatedAt,
+        })
         .from(blogPosts)
         .where(
           and(
@@ -306,6 +359,88 @@ export function registerBlogRoutes(app: Express) {
     }
   });
 
+  // Attach generated media to a blog post (admin/domain admin only)
+  app.post("/api/admin/blog/posts/:slug/attach-media", async (req: TenantRequest, res) => {
+    try {
+      const user = await sdk.authenticateRequest(req).catch(() => null);
+      if (!user || (user.role !== "domain_admin" && user.role !== "admin")) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+
+      if (!req.tenant) {
+        return res.status(404).json({ error: "Tenant not found" });
+      }
+
+      if (user.role === "domain_admin" && user.registeredDomain !== req.tenant.primaryDomain) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      const { slug } = req.params;
+      const { mediaUrl } = req.body as { mediaUrl?: string; mediaType?: string };
+      if (!mediaUrl || !mediaUrl.trim()) {
+        return res.status(400).json({ error: "mediaUrl is required" });
+      }
+
+      const normalizedUrl = mediaUrl.trim();
+      const dbInstance = await db.instance;
+      const [existing] = await dbInstance
+        .select()
+        .from(blogPosts)
+        .where(and(eq(blogPosts.tenantId, req.tenant.id), eq(blogPosts.slug, slug)))
+        .limit(1);
+
+      if (!existing) {
+        return res.status(404).json({ error: "Post not found" });
+      }
+
+      await dbInstance
+        .update(blogPosts)
+        .set({
+          coverImage: normalizedUrl,
+          content: isVideoMediaUrl(normalizedUrl)
+            ? `<figure><video controls src="${normalizedUrl}" style="width:100%;max-width:100%;border-radius:1rem;"></video></figure>${existing.content || ""}`
+            : existing.content,
+          updatedAt: new Date(),
+        })
+        .where(eq(blogPosts.id, existing.id));
+
+      const blogPath = `/blog/${existing.slug}`;
+      const tenantId = Number(req.tenant.id);
+      const [existingSeo] = await dbInstance
+        .select()
+        .from(seoMetadata)
+        .where(and(eq(seoMetadata.tenantId, tenantId), eq(seoMetadata.path, blogPath)))
+        .limit(1);
+
+      if (existingSeo && !isVideoMediaUrl(normalizedUrl)) {
+        await dbInstance
+          .update(seoMetadata)
+          .set({
+            ogMetadata: {
+              ...(existingSeo.ogMetadata || {}),
+              image: normalizedUrl,
+            },
+            twitterMetadata: {
+              ...(existingSeo.twitterMetadata || {}),
+              image: normalizedUrl,
+            },
+            updatedAt: new Date(),
+          })
+          .where(eq(seoMetadata.id, existingSeo.id));
+      }
+
+      clearTenantCache();
+      res.json({
+        success: true,
+        message: "Media attached to blog post",
+        post: { id: existing.id, slug: existing.slug, coverImage: normalizedUrl },
+      });
+    } catch (error) {
+      console.error("Error attaching media to blog post:", error);
+      res.status(500).json({ error: "Failed to attach media to blog post" });
+    }
+  });
+
   // Delete blog post
   app.delete("/api/admin/blog/posts/:id", async (req: TenantRequest, res) => {
     try {
@@ -324,6 +459,20 @@ export function registerBlogRoutes(app: Express) {
 
       const { id } = req.params;
       const dbInstance = await db.instance;
+      const [existing] = await dbInstance
+        .select({ slug: blogPosts.slug })
+        .from(blogPosts)
+        .where(
+          and(
+            eq(blogPosts.id, parseInt(id)),
+            eq(blogPosts.tenantId, req.tenant.id)
+          )
+        )
+        .limit(1);
+
+      if (existing?.slug) {
+        await deleteBlogSeoMetadata(dbInstance, Number(req.tenant.id), [existing.slug]);
+      }
 
       await dbInstance
         .delete(blogPosts)
@@ -334,10 +483,71 @@ export function registerBlogRoutes(app: Express) {
           )
         );
 
+      clearTenantCache();
       res.json({ message: "Post deleted successfully" });
     } catch (error) {
       console.error("Error deleting blog post:", error);
       res.status(500).json({ error: "Failed to delete blog post" });
+    }
+  });
+
+  // Bulk delete blog posts
+  app.delete("/api/admin/blog/posts/bulk-delete", async (req: TenantRequest, res) => {
+    try {
+      const user = await sdk.authenticateRequest(req).catch(() => null);
+      if (!user || (user.role !== "domain_admin" && user.role !== "admin")) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+
+      if (!req.tenant) {
+        return res.status(404).json({ error: "Tenant not found" });
+      }
+
+      if (user.role === "domain_admin" && user.registeredDomain !== req.tenant.primaryDomain) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      const ids = Array.isArray(req.body?.ids)
+        ? req.body.ids
+            .map((value: unknown) => Number.parseInt(String(value), 10))
+            .filter((value: number) => Number.isInteger(value) && value > 0)
+        : [];
+
+      if (ids.length === 0) {
+        return res.status(400).json({ error: "ids is required" });
+      }
+
+      const dbInstance = await db.instance;
+      const rows = await dbInstance
+        .select({ id: blogPosts.id, slug: blogPosts.slug })
+        .from(blogPosts)
+        .where(
+          and(
+            eq(blogPosts.tenantId, req.tenant.id),
+            inArray(blogPosts.id, ids)
+          )
+        );
+
+      await deleteBlogSeoMetadata(dbInstance, Number(req.tenant.id), rows.map((row) => row.slug));
+
+      await dbInstance
+        .delete(blogPosts)
+        .where(
+          and(
+            eq(blogPosts.tenantId, req.tenant.id),
+            inArray(blogPosts.id, rows.map((row) => row.id))
+          )
+        );
+
+      clearTenantCache();
+      res.json({
+        success: true,
+        message: "Posts deleted successfully",
+        deletedIds: rows.map((row) => row.id),
+      });
+    } catch (error) {
+      console.error("Error bulk deleting blog posts:", error);
+      res.status(500).json({ error: "Failed to delete blog posts" });
     }
   });
 }

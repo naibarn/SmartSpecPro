@@ -13,7 +13,12 @@ const {
   mockUpdateLibraryItem,
   mockSoftDeleteLibraryItem,
   mockShareLibraryItem,
+  mockGetPublicShareLinkState,
+  mockCreatePublicShareLink,
+  mockRevokePublicShareLink,
+  mockResolvePublicShareLink,
   mockAuditLog,
+  mockGetDb,
 } = vi.hoisted(() => ({
   mockCreateLibraryItem: vi.fn(),
   mockGetLibraryItemById: vi.fn(),
@@ -27,7 +32,24 @@ const {
   mockUpdateLibraryItem: vi.fn(),
   mockSoftDeleteLibraryItem: vi.fn(),
   mockShareLibraryItem: vi.fn(),
+  mockGetPublicShareLinkState: vi.fn(),
+  mockCreatePublicShareLink: vi.fn(),
+  mockRevokePublicShareLink: vi.fn(),
+  mockResolvePublicShareLink: vi.fn(),
   mockAuditLog: vi.fn(),
+  mockGetDb: vi.fn().mockResolvedValue({
+    select: vi.fn().mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockReturnValue({
+          limit: vi.fn().mockResolvedValue([]),
+        }),
+      }),
+    }),
+  }),
+}));
+
+vi.mock("../db", () => ({
+  getDb: mockGetDb,
 }));
 
 vi.mock("../services/libraryService", () => ({
@@ -43,6 +65,10 @@ vi.mock("../services/libraryService", () => ({
   updateLibraryItem: mockUpdateLibraryItem,
   softDeleteLibraryItem: mockSoftDeleteLibraryItem,
   shareLibraryItem: mockShareLibraryItem,
+  getPublicShareLinkState: mockGetPublicShareLinkState,
+  createPublicShareLink: mockCreatePublicShareLink,
+  revokePublicShareLink: mockRevokePublicShareLink,
+  resolvePublicShareLink: mockResolvePublicShareLink,
   LibraryMarkdownVersionConflictError: class extends Error {
     currentUpdatedAt: Date;
     constructor(msg: string, currentUpdatedAt: Date) {
@@ -72,6 +98,7 @@ vi.mock("../_core/trpc", () => {
   return {
     router: (routes: any) => routes,
     protectedProcedure: createProcedure(),
+    publicProcedure: createProcedure(),
   };
 });
 

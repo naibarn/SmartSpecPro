@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { LocaleToggle } from "@/components/LocaleToggle";
 import {
   ArrowLeft,
   Save,
@@ -17,6 +18,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ModelPicker } from "./ModelPicker";
+import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 
 interface AgencyToolbarProps {
   agencyName: string;
@@ -71,6 +73,7 @@ export function AgencyToolbar({
   onAutoCreate,
   readOnly = false,
 }: AgencyToolbarProps) {
+  const { t } = useScopedTranslation("agency");
   return (
     <div className="flex h-12 items-center justify-between border-b bg-background px-4 gap-2">
       {/* Left side */}
@@ -84,10 +87,10 @@ export function AgencyToolbar({
             value={agencyName}
             onChange={(e) => onNameChange(e.target.value)}
             className="border-none bg-transparent text-sm font-semibold outline-none focus:ring-1 focus:ring-primary rounded px-1 min-w-0 max-w-48"
-            placeholder="Untitled Agency"
+            placeholder={t("builder.toolbar.untitledAgency")}
           />
         ) : (
-          <span className="text-sm font-semibold">{agencyName || "Untitled Agency"}</span>
+          <span className="text-sm font-semibold">{agencyName || t("builder.toolbar.untitledAgency")}</span>
         )}
         <Badge
           variant="secondary"
@@ -97,7 +100,7 @@ export function AgencyToolbar({
         </Badge>
         {readOnly && (
           <Badge variant="outline" className="text-xs shrink-0 text-orange-600 border-orange-300">
-            Read Only
+            {t("builder.toolbar.readOnly")}
           </Badge>
         )}
       </div>
@@ -111,7 +114,7 @@ export function AgencyToolbar({
             className="h-7 w-7"
             onClick={onUndo}
             disabled={!canUndo}
-            title="Undo (Ctrl+Z)"
+            title={t("builder.toolbar.undo")}
           >
             <Undo2 className="h-3.5 w-3.5" />
           </Button>
@@ -121,7 +124,7 @@ export function AgencyToolbar({
             className="h-7 w-7"
             onClick={onRedo}
             disabled={!canRedo}
-            title="Redo (Ctrl+Y)"
+            title={t("builder.toolbar.redo")}
           >
             <Redo2 className="h-3.5 w-3.5" />
           </Button>
@@ -132,7 +135,7 @@ export function AgencyToolbar({
       {onDefaultModelChange && (
         <div className="flex items-center gap-1.5 rounded-md border bg-muted/50 px-2 py-1">
           <Brain className="h-3.5 w-3.5 text-indigo-500 shrink-0" />
-          <span className="text-xs text-muted-foreground shrink-0">Model:</span>
+          <span className="text-xs text-muted-foreground shrink-0">{t("builder.toolbar.model")}</span>
           <div className="w-40">
             <ModelPicker
               value={defaultModel}
@@ -147,7 +150,7 @@ export function AgencyToolbar({
       {onCreatorFeeChange && (
         <div className="flex items-center gap-1.5 rounded-md border bg-muted/50 px-2 py-1">
           <Coins className="h-3.5 w-3.5 text-amber-500" />
-          <span className="text-xs text-muted-foreground">Fee:</span>
+          <span className="text-xs text-muted-foreground">{t("builder.toolbar.fee")}</span>
           <input
             type="number"
             min={0}
@@ -156,35 +159,36 @@ export function AgencyToolbar({
             onChange={(e) => onCreatorFeeChange(Math.max(0, Math.min(1000, parseInt(e.target.value) || 0)))}
             className="w-14 border-none bg-transparent text-xs font-medium outline-none text-right"
           />
-          <span className="text-xs text-muted-foreground">credits/run</span>
+          <span className="text-xs text-muted-foreground">{t("builder.toolbar.creditsPerRun")}</span>
         </div>
       )}
 
       {/* Right side */}
       <div className="flex items-center gap-1.5 ml-auto">
+        <LocaleToggle className="hidden xl:inline-flex" />
         {onAutoCreate && (
-          <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-purple-600 hover:text-purple-700 hover:bg-purple-50" onClick={onAutoCreate} title="AI Agency Creator">
+          <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-purple-600 hover:text-purple-700 hover:bg-purple-50" onClick={onAutoCreate} title={t("builder.toolbar.aiCreator")}>
             <Sparkles className="h-3.5 w-3.5" />
-            AI Creator
+            {t("builder.toolbar.aiCreator")}
           </Button>
         )}
         {onRunHistory && (
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onRunHistory} title="Run history">
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onRunHistory} title={t("builder.toolbar.runHistory")}>
             <Activity className="h-4 w-4" />
           </Button>
         )}
         {onHistory && (
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onHistory} title="Version history">
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onHistory} title={t("builder.toolbar.versionHistory")}>
             <History className="h-4 w-4" />
           </Button>
         )}
         <Button variant="outline" size="sm" onClick={onAutoLayout}>
           <LayoutGrid className="mr-1.5 h-3.5 w-3.5" />
-          Layout
+          {t("builder.toolbar.layout")}
         </Button>
         <Button variant="outline" size="sm" onClick={onTest}>
           <Play className="mr-1.5 h-3.5 w-3.5" />
-          Test
+          {t("builder.toolbar.test")}
         </Button>
         {!readOnly && (
           <>
@@ -194,11 +198,11 @@ export function AgencyToolbar({
               ) : (
                 <Save className="mr-1.5 h-3.5 w-3.5" />
               )}
-              Save
+              {t("builder.toolbar.save")}
             </Button>
             <Button size="sm" onClick={onPublish} disabled={isSaving}>
               <Upload className="mr-1.5 h-3.5 w-3.5" />
-              Publish
+              {t("builder.toolbar.publish")}
             </Button>
           </>
         )}

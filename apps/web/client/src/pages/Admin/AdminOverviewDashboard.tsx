@@ -10,11 +10,11 @@ import { useState, useMemo } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import type { ChartConfig } from "@/components/ui/chart";
+import { DashboardCard, DashboardKpiCard } from "@/components/dashboard";
 import {
   AreaChart,
   Area,
@@ -227,14 +227,11 @@ export default function AdminOverviewDashboard() {
   if (!user || (user.role !== "admin" && user.role !== "domain_admin")) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <Card className="w-96">
-          <CardHeader>
-            <CardTitle>Access Denied</CardTitle>
-          </CardHeader>
-          <CardContent>
+        <DashboardCard className="w-96" title="Access Denied">
+          <div>
             <p className="text-sm text-muted-foreground">You need admin privileges to access this page.</p>
-          </CardContent>
-        </Card>
+          </div>
+        </DashboardCard>
       </div>
     );
   }
@@ -371,20 +368,20 @@ export default function AdminOverviewDashboard() {
         {/* Section A: KPI Summary Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
           {kpiCards.map(({ label, value, icon: Icon, color }) => (
-            <Card key={label} className="p-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground truncate">{label}</span>
-                <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-              </div>
-              <div className={`text-xl font-bold mt-1 ${color ?? ""}`}>{value}</div>
-            </Card>
+            <DashboardKpiCard
+              key={label}
+              icon={Icon}
+              label={label}
+              value={value}
+              valueClassName={color}
+            />
           ))}
         </div>
 
         {/* Pending Approvals Banner */}
         {(pendingApprovals.data?.total ?? 0) > 0 && (
-          <Card className="border-amber-300 bg-amber-50/60 dark:bg-amber-950/20 dark:border-amber-700">
-            <CardContent className="py-3 px-4 flex items-center justify-between gap-4 flex-wrap">
+          <DashboardCard className="border-amber-300 bg-amber-50/60 dark:bg-amber-950/20 dark:border-amber-700">
+            <div className="py-3 px-4 flex items-center justify-between gap-4 flex-wrap">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-lg bg-amber-100 dark:bg-amber-900 flex items-center justify-center shrink-0">
                   <Clock className="h-4.5 w-4.5 text-amber-600" />
@@ -414,18 +411,18 @@ export default function AdminOverviewDashboard() {
                 Review All
                 <ExternalLink className="ml-1.5 h-3 w-3" />
               </Button>
-            </CardContent>
-          </Card>
+            </div>
+          </DashboardCard>
         )}
 
         {/* Section B: Charts Row */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Chart 1: Daily Active Users */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Daily Active Users (7d)</CardTitle>
-            </CardHeader>
-            <CardContent>
+          <DashboardCard>
+            <div className="pb-2">
+              <h3 className="text-sm font-medium">Daily Active Users (7d)</h3>
+            </div>
+            <div>
               {dailyUsers.length > 0 ? (
                 <ChartContainer config={dailyUsersConfig} className="h-[200px] w-full aspect-auto">
                   <AreaChart data={dailyUsers}>
@@ -447,15 +444,15 @@ export default function AdminOverviewDashboard() {
                   {trafficStats.isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : "No data"}
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </DashboardCard>
 
           {/* Chart 2: API Requests per Day */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">API Requests per Day (7d)</CardTitle>
-            </CardHeader>
-            <CardContent>
+          <DashboardCard>
+            <div className="pb-2">
+              <h3 className="text-sm font-medium">API Requests per Day (7d)</h3>
+            </div>
+            <div>
               {requestsPerDay.length > 0 ? (
                 <ChartContainer config={requestsConfig} className="h-[200px] w-full aspect-auto">
                   <BarChart data={requestsPerDay}>
@@ -472,15 +469,15 @@ export default function AdminOverviewDashboard() {
                   {auditStats.isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : "No data"}
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </DashboardCard>
 
           {/* Chart 3: Job Status Distribution */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Job Status Distribution</CardTitle>
-            </CardHeader>
-            <CardContent>
+          <DashboardCard>
+            <div className="pb-2">
+              <h3 className="text-sm font-medium">Job Status Distribution</h3>
+            </div>
+            <div>
               {jobStatusData.length > 0 ? (
                 <ChartContainer config={jobsPieConfig} className="h-[200px] w-full aspect-auto">
                   <PieChart>
@@ -517,21 +514,21 @@ export default function AdminOverviewDashboard() {
                   ))}
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </DashboardCard>
         </div>
 
         {/* Section B2: LLM & Media Usage Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* Chart 4: LLM Usage per Day */}
-          <Card>
-            <CardHeader className="pb-2 flex flex-row items-center justify-between">
-              <CardTitle className="text-sm font-medium">LLM Usage per Day (7d)</CardTitle>
+          <DashboardCard>
+            <div className="pb-2 flex flex-row items-center justify-between">
+              <h3 className="text-sm font-medium">LLM Usage per Day (7d)</h3>
               <Button variant="ghost" size="sm" className="text-xs h-auto p-1" onClick={() => setLocation("/admin/queues/llm")}>
                 View all <ExternalLink className="h-3 w-3 ml-1" />
               </Button>
-            </CardHeader>
-            <CardContent>
+            </div>
+            <div>
               {llmChartData.length > 0 ? (
                 <ChartContainer config={llmChartConfig} className="h-[200px] w-full aspect-auto">
                   <BarChart data={llmChartData}>
@@ -562,18 +559,18 @@ export default function AdminOverviewDashboard() {
                   ))}
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </DashboardCard>
 
           {/* Chart 5: Media Usage per Day */}
-          <Card>
-            <CardHeader className="pb-2 flex flex-row items-center justify-between">
-              <CardTitle className="text-sm font-medium">Media Usage per Day (7d)</CardTitle>
+          <DashboardCard>
+            <div className="pb-2 flex flex-row items-center justify-between">
+              <h3 className="text-sm font-medium">Media Usage per Day (7d)</h3>
               <Button variant="ghost" size="sm" className="text-xs h-auto p-1" onClick={() => setLocation("/admin/queues/media")}>
                 View all <ExternalLink className="h-3 w-3 ml-1" />
               </Button>
-            </CardHeader>
-            <CardContent>
+            </div>
+            <div>
               {mediaChartData.length > 0 ? (
                 <ChartContainer config={mediaUsageConfig} className="h-[200px] w-full aspect-auto">
                   <BarChart data={mediaChartData}>
@@ -601,12 +598,12 @@ export default function AdminOverviewDashboard() {
                   ))}
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </DashboardCard>
         </div>
 
         {/* Section C: System Health Strip */}
-        <Card className="p-4">
+        <DashboardCard className="p-4">
           <div className="flex items-center gap-2 mb-3">
             <Activity className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm font-medium">System Health</span>
@@ -623,19 +620,19 @@ export default function AdminOverviewDashboard() {
                 : <span className="text-xs text-muted-foreground">Health data unavailable</span>
             )}
           </div>
-        </Card>
+        </DashboardCard>
 
         {/* Section D: Quick Insights */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Recent Failures */}
-          <Card>
-            <CardHeader className="pb-2 flex flex-row items-center justify-between">
-              <CardTitle className="text-sm font-medium">Recent Failures</CardTitle>
+          <DashboardCard>
+            <div className="pb-2 flex flex-row items-center justify-between">
+              <h3 className="text-sm font-medium">Recent Failures</h3>
               <Button variant="ghost" size="sm" className="text-xs h-auto p-1" onClick={() => setLocation("/admin/ops")}>
                 View all <ExternalLink className="h-3 w-3 ml-1" />
               </Button>
-            </CardHeader>
-            <CardContent>
+            </div>
+            <div>
               {jobsHealth.isLoading ? (
                 <Loader2 className="h-5 w-5 animate-spin text-muted-foreground mx-auto" />
               ) : jobsHealth.data?.recentFailures?.length ? (
@@ -653,18 +650,18 @@ export default function AdminOverviewDashboard() {
               ) : (
                 <p className="text-xs text-green-600">No recent failures</p>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </DashboardCard>
 
           {/* Storage Breakdown */}
-          <Card>
-            <CardHeader className="pb-2 flex flex-row items-center justify-between">
-              <CardTitle className="text-sm font-medium">Storage Breakdown</CardTitle>
+          <DashboardCard>
+            <div className="pb-2 flex flex-row items-center justify-between">
+              <h3 className="text-sm font-medium">Storage Breakdown</h3>
               <Button variant="ghost" size="sm" className="text-xs h-auto p-1" onClick={() => setLocation("/admin/ops")}>
                 View all <ExternalLink className="h-3 w-3 ml-1" />
               </Button>
-            </CardHeader>
-            <CardContent>
+            </div>
+            <div>
               {storageStats.isLoading ? (
                 <Loader2 className="h-5 w-5 animate-spin text-muted-foreground mx-auto" />
               ) : storageStats.data?.prefixes?.length ? (
@@ -688,12 +685,12 @@ export default function AdminOverviewDashboard() {
               ) : (
                 <p className="text-xs text-muted-foreground">No storage data</p>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </DashboardCard>
         </div>
 
         {/* Section E: Quick Links */}
-        <Card className="p-4">
+        <DashboardCard className="p-4">
           <div className="flex items-center gap-2 mb-3">
             <ExternalLink className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm font-medium">Quick Links</span>
@@ -711,7 +708,7 @@ export default function AdminOverviewDashboard() {
               </Button>
             ))}
           </div>
-        </Card>
+        </DashboardCard>
       </main>
     </div>
   );

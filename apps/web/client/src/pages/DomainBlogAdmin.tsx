@@ -9,6 +9,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useTenant } from "@/contexts/TenantContext";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -40,14 +41,9 @@ import {
   Undo,
   Redo,
   Code2,
+  CheckSquare,
+  Square,
 } from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -56,6 +52,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { DashboardCard } from "@/components/dashboard";
 
 interface BlogPost {
   id?: number;
@@ -267,7 +264,7 @@ function HtmlEditor({
       <div
         ref={editorRef}
         contentEditable
-        className="min-h-[400px] p-4 border border-gray-200 rounded-b-lg bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 prose prose-sm max-w-none"
+        className="min-h-[400px] p-4 border border-gray-200 rounded-b-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 prose prose-sm max-w-none"
         onInput={() => {
           if (editorRef.current) {
             onChange(editorRef.current.innerHTML);
@@ -289,7 +286,11 @@ export default function DomainBlogAdmin() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
+  const [selectedPostIds, setSelectedPostIds] = useState<Set<number>>(new Set());
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  const [bulkDeleteConfirmOpen, setBulkDeleteConfirmOpen] = useState(false);
   const [tagsInput, setTagsInput] = useState("");
+  const allPostsSelected = posts.length > 0 && posts.every((post) => !!post.id && selectedPostIds.has(post.id));
 
   useEffect(() => {
     if (!authLoading && (!user || (user.role !== "domain_admin" && user.role !== "admin"))) {
@@ -308,6 +309,7 @@ export default function DomainBlogAdmin() {
       if (res.ok) {
         const data = await res.json();
         setPosts(data.posts || []);
+        setSelectedPostIds(new Set());
       }
     } catch (error) {
       console.error("Failed to fetch posts:", error);
@@ -362,10 +364,68 @@ export default function DomainBlogAdmin() {
       if (res.ok) {
         toast.success("Post deleted");
         setDeleteConfirmId(null);
+        setSelectedPostIds((prev) => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
         fetchPosts();
       }
     } catch (error) {
       toast.error("Failed to delete post");
+    }
+  };
+
+  const togglePostSelection = (postId: number, checked: boolean) => {
+    setSelectedPostIds((prev) => {
+      const next = new Set(prev);
+      if (checked) {
+        next.add(postId);
+      } else {
+        next.delete(postId);
+      }
+      return next;
+    });
+  };
+
+  const toggleAllPosts = (checked: boolean) => {
+    setSelectedPostIds(() => {
+      if (!checked) {
+        return new Set();
+      }
+      return new Set(posts.map((post) => post.id!).filter(Boolean));
+    });
+  };
+
+  const handleBulkDelete = async () => {
+    const ids = Array.from(selectedPostIds);
+    if (!ids.length) {
+      toast.error("Select at least one post");
+      return;
+    }
+
+    setIsBulkDeleting(true);
+    try {
+      const res = await fetch("/api/admin/blog/posts/bulk-delete", {
+        method: "DELETE",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids }),
+      });
+
+      if (res.ok) {
+        toast.success(`Deleted ${ids.length} post${ids.length === 1 ? "" : "s"}`);
+        setSelectedPostIds(new Set());
+        setBulkDeleteConfirmOpen(false);
+        fetchPosts();
+      } else {
+        const err = await res.json().catch(() => null);
+        toast.error(err?.error || "Failed to delete posts");
+      }
+    } catch (error) {
+      toast.error("Failed to delete posts");
+    } finally {
+      setIsBulkDeleting(false);
     }
   };
 
@@ -387,7 +447,7 @@ export default function DomainBlogAdmin() {
   if (authLoading || !user || (user.role !== "domain_admin" && user.role !== "admin")) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <RefreshCw className="w-8 h-8 animate-spin text-purple-500" />
+        <RefreshCw className="w-8 h-8 animate-spin text-blue-500" />
       </div>
     );
   }
@@ -428,7 +488,7 @@ export default function DomainBlogAdmin() {
                   />
                   <span className="text-sm">Featured</span>
                 </Label>
-                <Button onClick={handleSave} disabled={isSaving} className="bg-purple-600 hover:bg-purple-700">
+                <Button onClick={handleSave} disabled={isSaving} className="bg-blue-600 hover:bg-blue-700">
                   {isSaving ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
                   Save
                 </Button>
@@ -479,11 +539,8 @@ export default function DomainBlogAdmin() {
 
             {/* Sidebar settings */}
             <div className="col-span-4 space-y-4">
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm">Post Settings</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
+              <DashboardCard title="Post Settings">
+                <div className="space-y-4">
                   <div className="space-y-2">
                     <Label>Slug</Label>
                     <Input
@@ -558,14 +615,11 @@ export default function DomainBlogAdmin() {
                       />
                     )}
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </DashboardCard>
 
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm">SEO</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
+              <DashboardCard title="SEO">
+                <div className="space-y-4">
                   <div className="space-y-2">
                     <Label>Meta Description</Label>
                     <Textarea
@@ -583,8 +637,8 @@ export default function DomainBlogAdmin() {
                       placeholder="keyword1, keyword2"
                     />
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </DashboardCard>
             </div>
           </div>
         </div>
@@ -605,7 +659,7 @@ export default function DomainBlogAdmin() {
               </Button>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                  <PenLine className="w-6 h-6 text-purple-500" />
+                  <PenLine className="w-6 h-6 text-cyan-500" />
                   Blog Manager
                 </h1>
                 <p className="text-sm text-gray-600">
@@ -613,10 +667,33 @@ export default function DomainBlogAdmin() {
                 </p>
               </div>
             </div>
-            <Button onClick={handleNewPost} className="bg-purple-600 hover:bg-purple-700">
-              <Plus className="w-4 h-4 mr-2" />
-              New Post
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                disabled={posts.length === 0}
+                onClick={() => toggleAllPosts(!allPostsSelected)}
+              >
+                {allPostsSelected ? (
+                  <CheckSquare className="w-4 h-4 mr-2" />
+                ) : (
+                  <Square className="w-4 h-4 mr-2" />
+                )}
+                {allPostsSelected ? "Clear Selection" : "Select All"}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setBulkDeleteConfirmOpen(true)}
+                disabled={selectedPostIds.size === 0}
+                className="border-red-200 text-red-700 hover:bg-red-50"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete Selected {selectedPostIds.size > 0 ? `(${selectedPostIds.size})` : ""}
+              </Button>
+              <Button onClick={handleNewPost} className="bg-blue-600 hover:bg-blue-700">
+                <Plus className="w-4 h-4 mr-2" />
+                New Post
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -624,26 +701,34 @@ export default function DomainBlogAdmin() {
       <div className="px-4 sm:px-6 lg:px-8 py-8">
         {isLoading ? (
           <div className="flex items-center justify-center py-20">
-            <RefreshCw className="w-8 h-8 animate-spin text-purple-500" />
+            <RefreshCw className="w-8 h-8 animate-spin text-blue-500" />
           </div>
         ) : posts.length === 0 ? (
-          <Card>
-            <CardContent className="text-center py-16">
+          <DashboardCard>
+            <div className="text-center py-16">
               <FileText className="w-16 h-16 mx-auto mb-4 text-gray-300" />
               <h3 className="text-lg font-semibold text-gray-700 mb-2">No blog posts yet</h3>
               <p className="text-gray-500 mb-6">Create your first blog post to get started.</p>
-              <Button onClick={handleNewPost} className="bg-purple-600 hover:bg-purple-700">
+              <Button onClick={handleNewPost} className="bg-blue-600 hover:bg-blue-700">
                 <Plus className="w-4 h-4 mr-2" />
                 Create First Post
               </Button>
-            </CardContent>
-          </Card>
+            </div>
+          </DashboardCard>
         ) : (
           <div className="space-y-3">
             {posts.map((post) => (
-              <Card key={post.id} className="hover:shadow-md transition-shadow">
-                <CardContent className="p-4">
+              <DashboardCard
+                key={post.id}
+                className={`transition-shadow ${post.id && selectedPostIds.has(post.id) ? "border-cyan-200 bg-cyan-50/40 shadow-md" : "hover:shadow-md"}`}
+              >
+                <div className="p-4">
                   <div className="flex items-center gap-4">
+                    <Checkbox
+                      checked={!!post.id && selectedPostIds.has(post.id)}
+                      onCheckedChange={(checked) => togglePostSelection(post.id!, checked === true)}
+                      aria-label={`Select ${post.title}`}
+                    />
                     {post.coverImage && (
                       <img
                         src={post.coverImage}
@@ -709,8 +794,8 @@ export default function DomainBlogAdmin() {
                       </Button>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </DashboardCard>
             ))}
           </div>
         )}
@@ -734,6 +819,32 @@ export default function DomainBlogAdmin() {
               onClick={() => deleteConfirmId && handleDelete(deleteConfirmId)}
             >
               Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={bulkDeleteConfirmOpen} onOpenChange={setBulkDeleteConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Selected Posts</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete {selectedPostIds.size} selected post{selectedPostIds.size === 1 ? "" : "s"}? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBulkDeleteConfirmOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => void handleBulkDelete()}
+              disabled={isBulkDeleting}
+            >
+              {isBulkDeleting ? (
+                <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+              ) : null}
+              Delete Selected
             </Button>
           </DialogFooter>
         </DialogContent>

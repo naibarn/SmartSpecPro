@@ -18,8 +18,8 @@
 import { Router, type Request, type Response } from "express";
 import { z } from "zod";
 import { sdk } from "../_core/sdk";
-import { getFeatureFlag } from "../services/featureFlags";
 import { resolveTenantIdVarchar } from "../services/tenantContext";
+import { isFeatureEnabled } from "../services/tenantFeatureFlagService";
 import type { TenantRequest } from "../_core/tenant";
 import { persistRunTrace } from "../services/agencyTraceService";
 
@@ -84,13 +84,7 @@ async function authenticateSSE(req: Request, res: Response) {
 agencyStreamRouter.post(
   "/api/agency/:agencyId/stream",
   async (req: Request, res: Response) => {
-    // 1. Feature flag check
-    const enabled = await getFeatureFlag("AGENCY_STREAMING_ENABLED");
-    if (!enabled) {
-      return res.status(404).json({ error: "Agency streaming not enabled" });
-    }
-
-    // 2. Authenticate
+    // 1. Authenticate first (need tenantId for feature flag check)
     const user = await authenticateSSE(req, res);
     if (!user) return;
 
@@ -101,6 +95,20 @@ agencyStreamRouter.post(
     );
     if (!tenantId) {
       return res.status(403).json({ error: "Tenant context required" });
+    }
+
+    // 2. Tenant-scoped feature flag check
+    const { db: flagDb } = await import("../db");
+    const { tenants } = await import("../../drizzle/schema");
+    const { eq } = await import("drizzle-orm");
+    const [tenantRow] = await flagDb
+      .select({ featureFlags: tenants.featureFlags })
+      .from(tenants)
+      .where(eq(tenants.id, tenantId))
+      .limit(1);
+    const storedFlags = (tenantRow?.featureFlags as Record<string, boolean>) ?? null;
+    if (!isFeatureEnabled(storedFlags, "agencyStreaming")) {
+      return res.status(403).json({ error: "Agency streaming not enabled for this tenant" });
     }
 
     // 3. Validate agencyId
@@ -294,20 +302,50 @@ agencyStreamRouter.post(
 agencyStreamRouter.post(
   "/api/agency/:agencyId/cancel",
   async (req: Request, res: Response) => {
-    // 1. Feature flag check
-    const enabled = await getFeatureFlag("AGENCY_STREAMING_ENABLED");
-    if (!enabled) {
-      return res.status(404).json({ error: "Agency streaming not enabled" });
-    }
-
-    // 2. Authenticate
+    // 1. Authenticate
     const user = await authenticateSSE(req, res);
     if (!user) return;
+
+    // 2. Tenant-scoped feature flag check
+    const tenantReq = req as TenantRequest;
+    const cancelTenantId = resolveTenantIdVarchar(
+      tenantReq.tenant?.id ?? null,
+      user.currentTenantId,
+    );
+    if (cancelTenantId) {
+      const { db: flagDb } = await import("../db");
+      const { tenants } = await import("../../drizzle/schema");
+      const { eq } = await import("drizzle-orm");
+      const [tenantRow] = await flagDb
+        .select({ featureFlags: tenants.featureFlags })
+        .from(tenants)
+        .where(eq(tenants.id, cancelTenantId))
+        .limit(1);
+      const storedFlags = (tenantRow?.featureFlags as Record<string, boolean>) ?? null;
+      if (!isFeatureEnabled(storedFlags, "agencyStreaming")) {
+        return res.status(403).json({ error: "Agency streaming not enabled for this tenant" });
+      }
+    }
 
     // 3. Validate agencyId
     const { agencyId } = req.params;
     if (!agencyId || !AGENCY_ID_PATTERN.test(agencyId)) {
       return res.status(400).json({ error: "Invalid agencyId format" });
+    }
+
+    // 3b. SECURITY: Verify agency belongs to user's tenant (prevent cross-tenant cancel)
+    if (cancelTenantId) {
+      const { db: ownerDb } = await import("../db");
+      const { agencies: agenciesTable } = await import("../../drizzle/schema");
+      const { eq, and } = await import("drizzle-orm");
+      const [agencyRow] = await ownerDb
+        .select({ id: agenciesTable.id })
+        .from(agenciesTable)
+        .where(and(eq(agenciesTable.id, agencyId), eq(agenciesTable.tenantId, cancelTenantId)))
+        .limit(1);
+      if (!agencyRow) {
+        return res.status(404).json({ error: "Agency not found" });
+      }
     }
 
     // 4. Validate body

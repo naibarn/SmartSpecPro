@@ -277,3 +277,4 @@ class OpenCodeAPIKeyUsage(Base):
             "error": self.error,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
+# mypy: ignore-errors

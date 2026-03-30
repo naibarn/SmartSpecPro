@@ -9,8 +9,8 @@ import io
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from fastapi.testclient import TestClient
-from httpx import AsyncClient
+from fastapi import FastAPI
+from httpx import ASGITransport, AsyncClient
 
 
 @pytest.fixture
@@ -41,31 +41,34 @@ def mock_unified_client():
 
 
 @pytest.fixture
-def stt_client(mock_settings):
-    """FastAPI test client for STT router."""
-    from fastapi import FastAPI
+async def stt_client(mock_settings):
+    """Async HTTP client for the STT/TTS router."""
     from app.api.stt import router
 
     app = FastAPI()
     app.include_router(router)
-    return TestClient(app)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as test_client:
+        yield test_client
 
 
 class TestSTTEndpoint:
     """Tests for POST /api/internal/stt"""
 
-    def test_stt_requires_internal_auth(self, stt_client):
+    @pytest.mark.asyncio
+    async def test_stt_requires_internal_auth(self, stt_client):
         """Endpoint requires X-Internal-Token header."""
-        response = stt_client.post(
+        response = await stt_client.post(
             "/api/internal/stt",
             files={"audio": ("audio.pcm", io.BytesIO(bytes(1024)), "application/octet-stream")},
             data={"provider": "groq", "format": "pcm16"},
         )
         assert response.status_code == 401
 
-    def test_stt_rejects_invalid_token(self, stt_client):
+    @pytest.mark.asyncio
+    async def test_stt_rejects_invalid_token(self, stt_client):
         """Invalid token returns 401."""
-        response = stt_client.post(
+        response = await stt_client.post(
             "/api/internal/stt",
             headers={"X-Internal-Token": "wrong-token"},
             files={"audio": ("audio.pcm", io.BytesIO(bytes(1024)), "application/octet-stream")},
@@ -73,9 +76,10 @@ class TestSTTEndpoint:
         )
         assert response.status_code == 401
 
-    def test_stt_returns_transcript_with_metadata(self, stt_client, mock_unified_client):
+    @pytest.mark.asyncio
+    async def test_stt_returns_transcript_with_metadata(self, stt_client, mock_unified_client):
         """Response includes text, language, confidence, duration."""
-        response = stt_client.post(
+        response = await stt_client.post(
             "/api/internal/stt",
             headers={"X-Internal-Token": "test-internal-token"},
             files={"audio": ("audio.pcm", io.BytesIO(bytes(1024)), "application/octet-stream")},
@@ -90,9 +94,10 @@ class TestSTTEndpoint:
             assert "confidence" in data
             assert "duration" in data
 
-    def test_stt_rejects_unsupported_provider(self, stt_client):
+    @pytest.mark.asyncio
+    async def test_stt_rejects_unsupported_provider(self, stt_client):
         """Unknown provider returns 400."""
-        response = stt_client.post(
+        response = await stt_client.post(
             "/api/internal/stt",
             headers={"X-Internal-Token": "test-internal-token"},
             files={"audio": ("audio.pcm", io.BytesIO(bytes(1024)), "application/octet-stream")},
@@ -100,11 +105,13 @@ class TestSTTEndpoint:
         )
         assert response.status_code == 400
 
-    def test_stt_rejects_oversized_audio(self, stt_client):
+    @pytest.mark.asyncio
+    async def test_stt_rejects_oversized_audio(self, stt_client, monkeypatch):
         """Audio files > MAX_AUDIO_BYTES rejected with 413."""
         from app.api.stt import MAX_AUDIO_BYTES
-        oversized = bytes(MAX_AUDIO_BYTES + 1)
-        response = stt_client.post(
+        monkeypatch.setattr("app.api.stt.MAX_AUDIO_BYTES", 1024, raising=False)
+        oversized = bytes(1025)
+        response = await stt_client.post(
             "/api/internal/stt",
             headers={"X-Internal-Token": "test-internal-token"},
             files={"audio": ("audio.pcm", io.BytesIO(oversized), "application/octet-stream")},
@@ -116,37 +123,41 @@ class TestSTTEndpoint:
 class TestTTSEndpoint:
     """Tests for POST /api/internal/tts"""
 
-    def test_tts_requires_internal_auth(self, stt_client):
+    @pytest.mark.asyncio
+    async def test_tts_requires_internal_auth(self, stt_client):
         """Endpoint requires X-Internal-Token header."""
-        response = stt_client.post(
+        response = await stt_client.post(
             "/api/internal/tts",
             json={"text": "Hello", "provider": "openai"},
         )
         assert response.status_code == 401
 
-    def test_tts_rejects_unsupported_provider(self, stt_client):
+    @pytest.mark.asyncio
+    async def test_tts_rejects_unsupported_provider(self, stt_client):
         """Unknown provider returns 400."""
-        response = stt_client.post(
+        response = await stt_client.post(
             "/api/internal/tts",
             headers={"X-Internal-Token": "test-internal-token"},
             json={"text": "Hello", "provider": "unknown"},
         )
         assert response.status_code == 400
 
-    def test_tts_rejects_text_exceeding_max_chars(self, stt_client):
+    @pytest.mark.asyncio
+    async def test_tts_rejects_text_exceeding_max_chars(self, stt_client):
         """Text > MAX_TTS_CHARS rejected with 413."""
         from app.api.stt import MAX_TTS_CHARS
         long_text = "x" * (MAX_TTS_CHARS + 1)
-        response = stt_client.post(
+        response = await stt_client.post(
             "/api/internal/tts",
             headers={"X-Internal-Token": "test-internal-token"},
             json={"text": long_text, "provider": "openai"},
         )
         assert response.status_code == 413
 
-    def test_tts_returns_audio_response(self, stt_client, mock_unified_client):
+    @pytest.mark.asyncio
+    async def test_tts_returns_audio_response(self, stt_client, mock_unified_client):
         """Returns binary audio with correct content type."""
-        response = stt_client.post(
+        response = await stt_client.post(
             "/api/internal/tts",
             headers={"X-Internal-Token": "test-internal-token"},
             json={"text": "Hello world", "provider": "openai"},

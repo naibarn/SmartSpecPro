@@ -1,10 +1,9 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { DashboardCard, DashboardKpiCard } from "@/components/dashboard";
 import {
   Table,
   TableBody,
@@ -103,67 +102,39 @@ export default function AdminRateLimits() {
 
       {/* Global Stats */}
       <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Requests</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {statsLoading ? "..." : globalStats?.total_requests?.toLocaleString()}
-            </div>
-            <p className="text-xs text-muted-foreground">Last 24 hours</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Users</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {statsLoading ? "..." : globalStats?.total_users?.toLocaleString()}
-            </div>
-            <p className="text-xs text-muted-foreground">With active requests</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Rate Limited</CardTitle>
-            <AlertCircle className="h-4 w-4 text-destructive" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {statsLoading ? "..." : globalStats?.rate_limited_requests?.toLocaleString()}
-            </div>
-            <p className="text-xs text-muted-foreground">Blocked requests</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg Requests/User</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {statsLoading
-                ? "..."
-                : globalStats?.average_requests_per_user?.toFixed(1)}
-            </div>
-            <p className="text-xs text-muted-foreground">Per time window</p>
-          </CardContent>
-        </Card>
+        <DashboardKpiCard
+          icon={Activity}
+          label="Total Requests"
+          value={statsLoading ? "..." : globalStats?.total_requests?.toLocaleString()}
+          subLabel="Last 24 hours"
+        />
+        <DashboardKpiCard
+          icon={Users}
+          label="Active Users"
+          value={statsLoading ? "..." : globalStats?.total_users?.toLocaleString()}
+          subLabel="With active requests"
+        />
+        <DashboardKpiCard
+          icon={AlertCircle}
+          label="Rate Limited"
+          value={statsLoading ? "..." : globalStats?.rate_limited_requests?.toLocaleString()}
+          subLabel="Blocked requests"
+          valueClassName="text-rose-600"
+        />
+        <DashboardKpiCard
+          icon={TrendingUp}
+          label="Avg Requests/User"
+          value={statsLoading ? "..." : globalStats?.average_requests_per_user?.toFixed(1)}
+          subLabel="Per time window"
+        />
       </div>
 
       {/* Current Status */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Current Rate Limit Status</CardTitle>
-          <CardDescription>Active rate limits by user and API key</CardDescription>
-          <div className="flex items-center gap-2 mt-4">
+      <DashboardCard
+        title="Current Rate Limit Status"
+        description="Active rate limits by user and API key"
+        trailing={
+          <div className="flex items-center gap-2">
             <Search className="h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search by user ID or API key..."
@@ -172,8 +143,9 @@ export default function AdminRateLimits() {
               className="max-w-sm"
             />
           </div>
-        </CardHeader>
-        <CardContent>
+        }
+      >
+        <div className="space-y-4">
           {statusLoading ? (
             <div className="flex items-center justify-center py-8">
               <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -259,16 +231,12 @@ export default function AdminRateLimits() {
               </TableBody>
             </Table>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </DashboardCard>
 
       {/* Recent History */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Rate Limit Events</CardTitle>
-          <CardDescription>History of rate-limited requests</CardDescription>
-        </CardHeader>
-        <CardContent>
+      <DashboardCard title="Recent Rate Limit Events" description="History of rate-limited requests">
+        <div className="space-y-4">
           {historyLoading ? (
             <div className="flex items-center justify-center py-8">
               <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -302,8 +270,8 @@ export default function AdminRateLimits() {
               ))}
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </DashboardCard>
     </div>
   );
 }

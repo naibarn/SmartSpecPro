@@ -60,16 +60,27 @@ function isPortraitContentArea(contentArea: ContentArea): boolean {
 }
 
 function getPortraitDocumentFrame(contentArea: ContentArea): LayoutFrame {
-  // Width-based uniform scale keeps font and element proportions correct.
-  // yStretch maps the 1414-high design coordinates to fill the taller 9:16 canvas
-  // (e.g. 720×1280 → scale 0.72, yStretch ≈1.257 so 1414*1.257*0.72 = 1280).
-  const scale = contentArea.width / PORTRAIT_LAYOUT_WIDTH;
-  const yStretch = contentArea.height / (PORTRAIT_LAYOUT_HEIGHT * scale);
+  // For tall portrait canvases like 9:16 we can preserve the full-width editorial feel
+  // and stretch vertically to consume the extra height.
+  const widthScale = contentArea.width / PORTRAIT_LAYOUT_WIDTH;
+  const widthDrivenStretch = contentArea.height / (PORTRAIT_LAYOUT_HEIGHT * widthScale);
+  if (widthDrivenStretch >= 1) {
+    return {
+      scale: widthScale,
+      offsetX: Math.round(contentArea.x),
+      offsetY: Math.round(contentArea.y),
+      yStretch: widthDrivenStretch,
+    };
+  }
+
+  // Shorter portrait boards like 4:5 cannot safely compress only the y-axis:
+  // the text boxes shrink but font sizes stay width-driven, which causes overlap.
+  // In that case, scale uniformly to height and center the page instead.
+  const scale = Math.min(widthScale, contentArea.height / PORTRAIT_LAYOUT_HEIGHT);
   return {
     scale,
-    offsetX: Math.round(contentArea.x),
-    offsetY: Math.round(contentArea.y),
-    yStretch,
+    offsetX: Math.round(contentArea.x + ((contentArea.width - (PORTRAIT_LAYOUT_WIDTH * scale)) / 2)),
+    offsetY: Math.round(contentArea.y + ((contentArea.height - (PORTRAIT_LAYOUT_HEIGHT * scale)) / 2)),
   };
 }
 
@@ -254,12 +265,17 @@ function fitTextBox(config: {
   minFontSize: number;
   lineHeight: number;
   maxLines: number;
+  allowExpansion?: boolean;
+  maxFontSize?: number;
 }): { text: string; fontSize: number } {
   const cleanedText = config.text.trim();
   if (!cleanedText) {
     return { text: "", fontSize: config.baseFontSize };
   }
-  for (let size = config.baseFontSize; size >= config.minFontSize; size -= 1) {
+  const targetMaxFontSize = config.allowExpansion
+    ? Math.max(config.baseFontSize, config.maxFontSize ?? config.baseFontSize)
+    : config.baseFontSize;
+  for (let size = targetMaxFontSize; size >= config.minFontSize; size -= 1) {
     const nextText = trimTextToLineLimit(cleanedText, config.width, size, config.maxLines);
     const lineCount = estimateComponentTextLineCount(nextText, config.width, size);
     const height = estimateComponentTextHeight(size, config.lineHeight, lineCount);
@@ -282,6 +298,8 @@ function fitListTextBox(config: {
   lineHeight: number;
   maxLines: number;
   bulletPrefix?: string;
+  allowExpansion?: boolean;
+  maxFontSize?: number;
 }): { text: string; fontSize: number } {
   const bulletPrefix = config.bulletPrefix ?? "• ";
   const text = config.items
@@ -297,6 +315,8 @@ function fitListTextBox(config: {
     minFontSize: config.minFontSize,
     lineHeight: config.lineHeight,
     maxLines: config.maxLines,
+    allowExpansion: config.allowExpansion,
+    maxFontSize: config.maxFontSize,
   });
 }
 
@@ -724,38 +744,125 @@ function buildSectionedExplainerFallback(
     const frame = getPortraitDocumentFrame(contentArea);
     const hero = componentImageSlot(slotBindings, "hero", { src: "", alt: "Hero visual" });
     const heroFrameStyle = PRESENTATION_COMPONENT_MEDIA_FRAME_STYLES["sectioned-explainer"]?.hero;
+    const canvasBottom = PORTRAIT_LAYOUT_HEIGHT;
+    const heroY = 54;
+    const heroH = 370;
+    const heroBottom = heroY + heroH;
+    const eyebrowY = heroBottom + 30;
+    const eyebrowH = 42;
+    const eyebrowBottom = eyebrowY + eyebrowH;
+    const titleY = eyebrowBottom + 20;
+    const titleH = 80;
     const titleFit = fitTextBox({
       text: componentTextSlot(slotBindings, "title", ""),
-      width: 888, height: 108, baseFontSize: 48, minFontSize: 30, lineHeight: 1.08, maxLines: 3,
+      width: 888,
+      height: titleH,
+      baseFontSize: 42,
+      minFontSize: 28,
+      lineHeight: 1.08,
+      maxLines: 2,
     });
+    const titleBottom = titleY + titleH;
+    const introY = titleBottom + 12;
+    const introH = 100;
     const introFit = fitTextBox({
       text: componentTextSlot(slotBindings, "intro", ""),
-      width: 888, height: 110, baseFontSize: 22, minFontSize: 14, lineHeight: 1.36, maxLines: 5,
+      width: 888,
+      height: introH,
+      baseFontSize: 18,
+      minFontSize: 12,
+      lineHeight: 1.36,
+      maxLines: 6,
     });
+    const introBottom = introY + introH;
+    const sectionWidth = 258;
+    const sectionHeadingY = introBottom + 16;
+    const section1HeadingText = componentTextSlot(slotBindings, "section1-heading", "");
+    const section2HeadingText = componentTextSlot(slotBindings, "section2-heading", "");
+    const section3HeadingText = componentTextSlot(slotBindings, "section3-heading", "");
+    const computeHeadingHeight = (text: string) => {
+      if (!text.trim()) {
+        return 30;
+      }
+      const lines = estimateComponentTextLineCount(text.trim(), sectionWidth, 20);
+      return Math.max(30, estimateComponentTextHeight(20, 1.2, lines));
+    };
+    const sectionHeadingHeight = Math.min(100, Math.max(
+      computeHeadingHeight(section1HeadingText),
+      computeHeadingHeight(section2HeadingText),
+      computeHeadingHeight(section3HeadingText),
+    ));
+    const sectionBodyY = sectionHeadingY + sectionHeadingHeight + 4;
+    const sectionLineHeight = 1.38;
+    const sectionMinFont = 11;
+    const sectionGapToTakeaways = 20;
+    const takeawaysPaddingTop = 32;
+    const takeawaysPaddingBottom = 20;
+    const takeawaysTitleHeight = 28;
+    const takeawaysGap = 8;
+    const availableHeight = canvasBottom - sectionBodyY - sectionGapToTakeaways;
+    const sectionBodyHeight = Math.max(200, Math.round(availableHeight * 0.75));
+    const takeawaysCardHeight = Math.max(100, availableHeight - sectionBodyHeight);
+    const takeawaysTextHeight = Math.max(
+      40,
+      takeawaysCardHeight - takeawaysPaddingTop - takeawaysTitleHeight - takeawaysGap - takeawaysPaddingBottom,
+    );
+    const sectionMaxLines = Math.max(
+      20,
+      Math.floor((sectionBodyHeight - sectionMinFont * 0.24) / (sectionMinFont * sectionLineHeight)),
+    );
     const s1Body = fitTextBox({
       text: componentTextSlot(slotBindings, "section1-body", ""),
-      width: 258, height: 234, baseFontSize: 18, minFontSize: 12, lineHeight: 1.42, maxLines: 12,
+      width: sectionWidth,
+      height: sectionBodyHeight,
+      baseFontSize: 18,
+      minFontSize: sectionMinFont,
+      lineHeight: sectionLineHeight,
+      maxLines: sectionMaxLines,
     });
     const s2Body = fitTextBox({
       text: componentTextSlot(slotBindings, "section2-body", ""),
-      width: 258, height: 234, baseFontSize: 18, minFontSize: 12, lineHeight: 1.42, maxLines: 12,
+      width: sectionWidth,
+      height: sectionBodyHeight,
+      baseFontSize: 18,
+      minFontSize: sectionMinFont,
+      lineHeight: sectionLineHeight,
+      maxLines: sectionMaxLines,
     });
     const s3Body = fitTextBox({
       text: componentTextSlot(slotBindings, "section3-body", ""),
-      width: 258, height: 234, baseFontSize: 18, minFontSize: 12, lineHeight: 1.42, maxLines: 12,
+      width: sectionWidth,
+      height: sectionBodyHeight,
+      baseFontSize: 18,
+      minFontSize: sectionMinFont,
+      lineHeight: sectionLineHeight,
+      maxLines: sectionMaxLines,
     });
+    const takeawaysCardY = sectionBodyY + sectionBodyHeight + sectionGapToTakeaways;
+    const takeawaysTitleY = takeawaysCardY + takeawaysPaddingTop;
+    const takeawaysTextY = takeawaysTitleY + takeawaysTitleHeight + takeawaysGap;
+    const takeawaysFitMaxLines = Math.max(
+      3,
+      Math.floor((takeawaysTextHeight - 12 * 0.24) / (12 * 1.42)),
+    );
     const takeawaysFit = fitListTextBox({
       items: componentListSlot(slotBindings, "takeaways", []),
-      width: 816, height: 108, baseFontSize: 18, minFontSize: 12, lineHeight: 1.42, maxLines: 6, bulletPrefix: "• ",
+      width: 816,
+      height: takeawaysTextHeight,
+      baseFontSize: 18,
+      minFontSize: 11,
+      lineHeight: 1.42,
+      maxLines: takeawaysFitMaxLines,
+      bulletPrefix: "• ",
     });
     const heroElements = hero.src.trim()
       ? [
         makeImage(frame, componentId, {
           suffix: "hero-image",
           x: 56,
-          y: 54,
+          y: heroY,
           width: 888,
-          height: 370,
+          height: heroH,
           src: hero.src,
           alt: hero.alt,
           mediaShape: heroFrameStyle?.mediaShape,
@@ -766,9 +873,9 @@ function buildSectionedExplainerFallback(
         makeRect(frame, componentId, {
           suffix: "hero-frame",
           x: 56,
-          y: 54,
+          y: heroY,
           width: 888,
-          height: 370,
+          height: heroH,
           fill: "#DBEAFE",
         }),
         makeText(frame, componentId, {
@@ -799,15 +906,15 @@ function buildSectionedExplainerFallback(
       makeRect(frame, componentId, {
         suffix: "eyebrow-bg",
         x: 56,
-        y: 454,
+        y: eyebrowY,
         width: 230,
-        height: 42,
+        height: eyebrowH,
         fill: "#DBEAFE",
       }),
       makeText(frame, componentId, {
         suffix: "eyebrow",
         x: 86,
-        y: 466,
+        y: eyebrowY + 12,
         width: 170,
         height: 16,
         text: componentTextSlot(slotBindings, "eyebrow", ""),
@@ -820,9 +927,9 @@ function buildSectionedExplainerFallback(
       makeText(frame, componentId, {
         suffix: "title",
         x: 56,
-        y: 520,
+        y: titleY,
         width: 888,
-        height: 108,
+        height: titleH,
         text: titleFit.text,
         color: "#0F172A",
         fontSize: titleFit.fontSize,
@@ -833,9 +940,9 @@ function buildSectionedExplainerFallback(
       makeText(frame, componentId, {
         suffix: "intro",
         x: 56,
-        y: 652,
+        y: introY,
         width: 888,
-        height: 110,
+        height: introH,
         text: introFit.text,
         color: "#475569",
         fontSize: introFit.fontSize,
@@ -846,86 +953,89 @@ function buildSectionedExplainerFallback(
       makeText(frame, componentId, {
         suffix: "section-1-heading",
         x: 56,
-        y: 794,
-        width: 258,
-        height: 30,
-        text: componentTextSlot(slotBindings, "section1-heading", ""),
+        y: sectionHeadingY,
+        width: sectionWidth,
+        height: sectionHeadingHeight,
+        text: section1HeadingText,
         color: "#0F172A",
-        fontSize: 24,
+        fontSize: 20,
         fontWeight: "700",
+        lineHeight: 1.2,
       }),
       makeText(frame, componentId, {
         suffix: "section-1-body",
         x: 56,
-        y: 836,
-        width: 258,
-        height: 234,
+        y: sectionBodyY,
+        width: sectionWidth,
+        height: sectionBodyHeight,
         text: s1Body.text,
         color: "#334155",
         fontSize: s1Body.fontSize,
         fontFamily: stylePreset.typography.bodyFontFamily,
-        lineHeight: 1.42,
+        lineHeight: sectionLineHeight,
       }),
       makeText(frame, componentId, {
         suffix: "section-2-heading",
         x: 370,
-        y: 794,
-        width: 258,
-        height: 30,
-        text: componentTextSlot(slotBindings, "section2-heading", ""),
+        y: sectionHeadingY,
+        width: sectionWidth,
+        height: sectionHeadingHeight,
+        text: section2HeadingText,
         color: "#0F172A",
-        fontSize: 24,
+        fontSize: 20,
         fontWeight: "700",
+        lineHeight: 1.2,
       }),
       makeText(frame, componentId, {
         suffix: "section-2-body",
         x: 370,
-        y: 836,
-        width: 258,
-        height: 234,
+        y: sectionBodyY,
+        width: sectionWidth,
+        height: sectionBodyHeight,
         text: s2Body.text,
         color: "#334155",
         fontSize: s2Body.fontSize,
         fontFamily: stylePreset.typography.bodyFontFamily,
-        lineHeight: 1.42,
+        lineHeight: sectionLineHeight,
       }),
       makeText(frame, componentId, {
         suffix: "section-3-heading",
         x: 686,
-        y: 794,
-        width: 258,
-        height: 30,
-        text: componentTextSlot(slotBindings, "section3-heading", ""),
+        y: sectionHeadingY,
+        width: sectionWidth,
+        height: sectionHeadingHeight,
+        text: section3HeadingText,
         color: "#0F172A",
-        fontSize: 24,
+        fontSize: 20,
         fontWeight: "700",
+        lineHeight: 1.2,
       }),
       makeText(frame, componentId, {
         suffix: "section-3-body",
         x: 686,
-        y: 836,
-        width: 258,
-        height: 234,
+        y: sectionBodyY,
+        width: sectionWidth,
+        height: sectionBodyHeight,
         text: s3Body.text,
         color: "#334155",
         fontSize: s3Body.fontSize,
         fontFamily: stylePreset.typography.bodyFontFamily,
-        lineHeight: 1.42,
+        lineHeight: sectionLineHeight,
       }),
       makeRect(frame, componentId, {
         suffix: "takeaways-card",
         x: 56,
-        y: 1124,
+        y: takeawaysCardY,
         width: 888,
-        height: 220,
+        height: takeawaysCardHeight,
         fill: "#EEF2FF",
       }),
       makeText(frame, componentId, {
         suffix: "takeaways-title",
         x: 92,
-        y: 1160,
+        y: takeawaysTitleY,
         width: 220,
-        height: 28,
+        height: takeawaysTitleHeight,
         text: componentTextSlot(slotBindings, "takeaways-title", "Key Takeaways"),
         color: "#4338CA",
         fontSize: 22,
@@ -934,9 +1044,9 @@ function buildSectionedExplainerFallback(
       makeText(frame, componentId, {
         suffix: "takeaways",
         x: 92,
-        y: 1208,
+        y: takeawaysTextY,
         width: 816,
-        height: 108,
+        height: takeawaysTextHeight,
         text: takeawaysFit.text,
         color: "#334155",
         fontSize: takeawaysFit.fontSize,
@@ -965,6 +1075,8 @@ function buildSectionedExplainerFallback(
     minFontSize: hero.src.trim() ? 13 : 15,
     lineHeight: 1.5,
     maxLines: hero.src.trim() ? 6 : 10,
+    allowExpansion: true,
+    maxFontSize: hero.src.trim() ? 22 : 24,
   });
   const section1Body = fitTextBox({
     text: componentTextSlot(slotBindings, "section1-body", ""),
@@ -974,6 +1086,8 @@ function buildSectionedExplainerFallback(
     minFontSize: 12,
     lineHeight: 1.46,
     maxLines: hero.src.trim() ? 2 : 6,
+    allowExpansion: true,
+    maxFontSize: hero.src.trim() ? 18 : 22,
   });
   const section2Body = fitTextBox({
     text: componentTextSlot(slotBindings, "section2-body", ""),
@@ -983,6 +1097,8 @@ function buildSectionedExplainerFallback(
     minFontSize: 12,
     lineHeight: 1.46,
     maxLines: hero.src.trim() ? 2 : 6,
+    allowExpansion: true,
+    maxFontSize: hero.src.trim() ? 18 : 22,
   });
   const section3Body = fitTextBox({
     text: componentTextSlot(slotBindings, "section3-body", ""),
@@ -992,6 +1108,8 @@ function buildSectionedExplainerFallback(
     minFontSize: 12,
     lineHeight: 1.46,
     maxLines: hero.src.trim() ? 2 : 5,
+    allowExpansion: true,
+    maxFontSize: hero.src.trim() ? 18 : 22,
   });
   const takeaways = fitListTextBox({
     items: componentListSlot(slotBindings, "takeaways", []),
@@ -1002,6 +1120,8 @@ function buildSectionedExplainerFallback(
     lineHeight: 1.42,
     maxLines: hero.src.trim() ? 8 : 7,
     bulletPrefix: "• ",
+    allowExpansion: true,
+    maxFontSize: hero.src.trim() ? 19 : 20,
   });
 
   if (hero.src.trim()) {
@@ -2025,6 +2145,8 @@ function buildTwoColumnArticleFallback(
     minFontSize: 13,
     lineHeight: 1.4,
     maxLines: hero.src.trim() ? 4 : 3,
+    allowExpansion: true,
+    maxFontSize: hero.src.trim() ? 21 : 19,
   });
   const leftBody = fitTextBox({
     text: componentTextSlot(slotBindings, "left-body", ""),
@@ -2034,6 +2156,8 @@ function buildTwoColumnArticleFallback(
     minFontSize: 11,
     lineHeight: 1.42,
     maxLines: hero.src.trim() ? 6 : 8,
+    allowExpansion: true,
+    maxFontSize: hero.src.trim() ? 18 : 20,
   });
   const rightBody = fitTextBox({
     text: componentTextSlot(slotBindings, "right-body", ""),
@@ -2043,6 +2167,8 @@ function buildTwoColumnArticleFallback(
     minFontSize: 11,
     lineHeight: 1.42,
     maxLines: hero.src.trim() ? 6 : 8,
+    allowExpansion: true,
+    maxFontSize: hero.src.trim() ? 18 : 20,
   });
   const takeawaysText = fitListTextBox({
     items: takeaways,
@@ -2053,6 +2179,8 @@ function buildTwoColumnArticleFallback(
     lineHeight: 1.3,
     maxLines: 4,
     bulletPrefix: "• ",
+    allowExpansion: true,
+    maxFontSize: 16,
   });
 
   if (hero.src.trim()) {

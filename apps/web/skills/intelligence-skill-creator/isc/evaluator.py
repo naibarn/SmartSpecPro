@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any, List
 
 from .models import TestCase, TestResult, EvaluationReport
-from .registry import resolve_skill_files, resolve_skill_dir
+from .registry import resolve_skill_bundle_dir, resolve_skill_files, resolve_skill_dir
 
 try:
     import jsonschema
@@ -180,11 +180,12 @@ def evaluate(skill_name: str) -> EvaluationReport:
 
 
 def evaluate_from_path(skill_dir: Path) -> EvaluationReport:
+    bundle_dir = resolve_skill_bundle_dir(skill_dir) or skill_dir
     skill_name = skill_dir.name
 
-    tests_file = skill_dir / "tests" / "tests.json"
+    tests_file = bundle_dir / "tests" / "tests.json"
     if not tests_file.exists():
-        tests_file = skill_dir / "tests.json"
+        tests_file = bundle_dir / "tests.json"
 
     if not tests_file.exists():
         return EvaluationReport(
@@ -194,19 +195,22 @@ def evaluate_from_path(skill_dir: Path) -> EvaluationReport:
     data = json.loads(tests_file.read_text(encoding="utf-8"))
     raw_tests = data if isinstance(data, list) else data.get("tests", [])
     tests = [_load_test_case(t) for t in raw_tests]
-    output_schema = _load_output_schema(skill_dir)
+    output_schema = _load_output_schema(bundle_dir)
 
     js_candidates = [
-        skill_dir / "js" / "skill.js",
-        skill_dir / "skill.js",
+        bundle_dir / "js" / "skill.mjs",
+        bundle_dir / "js" / "skill.js",
+        bundle_dir / "src" / "index.mjs",
+        bundle_dir / "skill.mjs",
+        bundle_dir / "skill.js",
     ]
     js_path = next((candidate for candidate in js_candidates if candidate.exists()), None)
     if js_path is not None:
-        return _evaluate_javascript(skill_name, js_path, tests, skill_dir, output_schema)
+        return _evaluate_javascript(skill_name, js_path, tests, bundle_dir, output_schema)
 
     py_candidates = [
-        skill_dir / "python" / "skill.py",
-        skill_dir / "skill.py",
+        bundle_dir / "python" / "skill.py",
+        bundle_dir / "skill.py",
     ]
     py_path = next((candidate for candidate in py_candidates if candidate.exists()), None)
     if py_path is None:
@@ -214,7 +218,7 @@ def evaluate_from_path(skill_dir: Path) -> EvaluationReport:
             TestResult(
                 test_id=t.id,
                 passed=False,
-                output="Skill code not found (neither python/skill.py nor js/skill.js)",
+                output="Skill code not found (expected python/skill.py, js/skill.js, js/skill.mjs, or src/index.mjs)",
                 missing=t.expected_contains,
                 reasons=["skill entrypoint missing"],
                 categories=["runtime/missing-entrypoint"],
@@ -300,6 +304,8 @@ def _evaluate_javascript(
     skill_dir: Path,
     output_schema: dict | None,
 ) -> EvaluationReport:
+    is_esm = js_path.suffix == ".mjs"
+    stderr = ""
     test_data = [
         {
             "id": t.id,
@@ -314,14 +320,24 @@ def _evaluate_javascript(
         for t in tests
     ]
 
+    module_loader = (
+        f"const {{ pathToFileURL }} = require('url');\n"
+        f"const skill = await import(pathToFileURL({json.dumps(str(js_path))}).href);"
+        if is_esm
+        else f"const skill = require({json.dumps(str(js_path))});"
+    )
+
     runner_code = f"""
-const skill = require({json.dumps(str(js_path))});
 const tests = {json.dumps(test_data)};
 
 async function run() {{
+  {module_loader}
   const results = [];
   for (const test of tests) {{
     try {{
+      if (!skill || typeof skill.respond !== "function") {{
+        throw new Error("respond export missing");
+      }}
       const output = await skill.respond(test.input, test.context || {{}});
       results.push({{ test_id: test.id, output: typeof output === "string" ? output : JSON.stringify(output) }});
     }} catch (e) {{

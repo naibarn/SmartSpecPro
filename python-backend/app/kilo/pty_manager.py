@@ -1,5 +1,6 @@
 from __future__ import annotations
 import asyncio
+import importlib
 import os
 import time
 import uuid
@@ -14,16 +15,20 @@ import subprocess
 logger = logging.getLogger(__name__)
 
 IS_WINDOWS = os.name == "nt"
+pty_mod: Any = None
+fcntl_mod: Any = None
+struct_mod: Any = None
+termios_mod: Any = None
 try:
-    import pty  # POSIX only
-    import fcntl
-    import struct
-    import termios
+    pty_mod = importlib.import_module("pty")  # POSIX only
+    fcntl_mod = importlib.import_module("fcntl")
+    struct_mod = importlib.import_module("struct")
+    termios_mod = importlib.import_module("termios")
 except Exception:
-    pty = None  # type: ignore
-    fcntl = None
-    struct = None
-    termios = None
+    pty_mod = None
+    fcntl_mod = None
+    struct_mod = None
+    termios_mod = None
 
 
 @dataclass
@@ -125,10 +130,10 @@ class PtyManager:
 
     def _set_nonblocking(self, fd: int):
         """Set file descriptor to non-blocking mode"""
-        if fcntl is None:
+        if fcntl_mod is None:
             return
-        flags = fcntl.fcntl(fd, fcntl.F_GETFL)
-        fcntl.fcntl(fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)
+        flags = fcntl_mod.fcntl(fd, fcntl_mod.F_GETFL)
+        fcntl_mod.fcntl(fd, fcntl_mod.F_SETFL, flags | os.O_NONBLOCK)
 
     async def create(self, workspace: str, command: str) -> PtySession:
         """Create a new PTY session."""
@@ -160,21 +165,21 @@ class PtyManager:
         # Force PS1 for bash
         env["PS1"] = r"\u@\h:\w\$ "
 
-        if (not IS_WINDOWS) and pty is not None:
+        if (not IS_WINDOWS) and pty_mod is not None:
             logger.info("Creating PTY with pty.openpty()")
-            master_fd, slave_fd = pty.openpty()
+            master_fd, slave_fd = pty_mod.openpty()
             
             # Set terminal size
-            if termios and struct and fcntl:
+            if termios_mod and struct_mod and fcntl_mod:
                 try:
-                    winsize = struct.pack("HHHH", 30, 120, 0, 0)
-                    fcntl.ioctl(slave_fd, termios.TIOCSWINSZ, winsize)
+                    winsize = struct_mod.pack("HHHH", 30, 120, 0, 0)
+                    fcntl_mod.ioctl(slave_fd, termios_mod.TIOCSWINSZ, winsize)
                     logger.info("Set terminal size to 30x120")
                 except Exception as e:
                     logger.warning(f"Failed to set terminal size: {e}")
             
             try:
-                proc = subprocess.Popen(
+                proc: subprocess.Popen[Any] = subprocess.Popen(
                     argv,
                     cwd=workspace,
                     env=env,
@@ -291,12 +296,12 @@ class PtyManager:
         if not s or s.master_fd is None:
             return False
         
-        if IS_WINDOWS or termios is None or struct is None or fcntl is None:
+        if IS_WINDOWS or termios_mod is None or struct_mod is None or fcntl_mod is None:
             return False
         
         try:
-            winsize = struct.pack("HHHH", rows, cols, 0, 0)
-            fcntl.ioctl(s.master_fd, termios.TIOCSWINSZ, winsize)
+            winsize = struct_mod.pack("HHHH", rows, cols, 0, 0)
+            fcntl_mod.ioctl(s.master_fd, termios_mod.TIOCSWINSZ, winsize)
             logger.debug(f"Resized PTY {sid} to {rows}x{cols}")
             return True
         except Exception:

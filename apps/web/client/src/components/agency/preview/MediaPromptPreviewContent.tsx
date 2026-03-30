@@ -36,6 +36,9 @@ export function MediaPromptPreviewContent({
     params.set("prompt", data.prompt);
     params.set("type", data.mediaType);
     if (data.model) params.set("model", data.model);
+    data.referenceImageUrls.forEach((url) => {
+      params.append("referenceImages", url);
+    });
     setLocation(`/media-studio?${params.toString()}`);
   };
 

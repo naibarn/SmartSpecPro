@@ -107,7 +107,7 @@ export async function getMemory(memoryId: string, tenantId: string): Promise<Sco
 export async function updateMemory(
   memoryId: string,
   tenantId: string,
-  updates: Partial<Pick<InsertScopedMemory, "title" | "content" | "summary" | "tags" | "metadataJson" | "embedding" | "confidence" | "importance" | "visibility" | "expiresAt">>,
+  updates: Partial<Pick<InsertScopedMemory, "title" | "content" | "summary" | "tags" | "metadataJson" | "embedding" | "confidence" | "importance" | "reinforcementCount" | "visibility" | "expiresAt">>,
 ): Promise<ScopedMemory | null> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -131,6 +131,55 @@ export async function deleteMemory(memoryId: string, tenantId: string): Promise<
     .returning({ id: scopedMemories.id });
 
   return result.length > 0;
+}
+
+/**
+ * Delete multiple memories for the same tenant in one operation.
+ * Used by the chat memory panel for bulk cleanup of scoped memories.
+ */
+export async function deleteMemories(memoryIds: string[], tenantId: string): Promise<number> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  if (memoryIds.length === 0) return 0;
+
+  const result = await db
+    .delete(scopedMemories)
+    .where(
+      and(
+        eq(scopedMemories.tenantId, tenantId),
+        inArray(scopedMemories.id, memoryIds),
+      ),
+    )
+    .returning({ id: scopedMemories.id });
+
+  return result.length;
+}
+
+/**
+ * List memories for a specific owner scope.
+ * Used by the chat memory panel to render the current user's scoped memories.
+ */
+export async function listMemories(
+  tenantId: string,
+  ownerType: MemoryScope["type"],
+  ownerId: string,
+  limit = 50,
+): Promise<ScopedMemory[]> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  return await db
+    .select()
+    .from(scopedMemories)
+    .where(
+      and(
+        eq(scopedMemories.tenantId, tenantId),
+        eq(scopedMemories.ownerType, ownerType),
+        eq(scopedMemories.ownerId, ownerId),
+      ),
+    )
+    .orderBy(desc(scopedMemories.updatedAt), desc(scopedMemories.createdAt))
+    .limit(limit);
 }
 
 // ─── Promotion ──────────────────────────────────────────────────────────────
@@ -269,6 +318,33 @@ export async function searchMemories(
   return [...seen.values()]
     .sort((a, b) => b.score - a.score)
     .slice(0, topK);
+}
+
+/**
+ * Retrieve rule memories for prompt injection and context assembly.
+ * Rules are always user-scoped and kept separate from ranked facts.
+ */
+export async function getRuleMemories(
+  tenantId: string,
+  userId: number,
+  _personaId?: string | null,
+): Promise<ScopedMemory[]> {
+  const db = await getDb();
+  if (!db) return [];
+
+  const conditions = [
+    eq(scopedMemories.tenantId, tenantId),
+    eq(scopedMemories.ownerType, "user"),
+    eq(scopedMemories.ownerId, String(userId)),
+    eq(scopedMemories.memoryKind, "rule"),
+  ];
+
+  return await db
+    .select()
+    .from(scopedMemories)
+    .where(and(...conditions))
+    .orderBy(desc(scopedMemories.importance), desc(scopedMemories.reinforcementCount), desc(scopedMemories.lastAccessedAt))
+    .limit(20);
 }
 
 // ─── Prompt Retrieval Convenience ───────────────────────────────────────────

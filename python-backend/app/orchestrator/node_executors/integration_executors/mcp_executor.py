@@ -8,12 +8,78 @@ Supports:
 - Calling tools on MCP servers
 """
 
-import logging
 from typing import Any, Dict
+
 import httpx
+import structlog
+from sqlalchemy import select
+
+from app.core.database import AsyncSessionLocal
+from app.models.workflow import Workflow
+from app.services.mcp_client import _validate_mcp_url
+
 from ..base import NodeExecutor, NodeExecutionResult
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
+
+MAX_TIMEOUT_SECONDS = 120.0
+
+
+def _normalize_timeout(raw_timeout: Any) -> float:
+    try:
+        timeout = float(raw_timeout)
+    except (TypeError, ValueError):
+        timeout = 30.0
+    return max(1.0, min(timeout, MAX_TIMEOUT_SECONDS))
+
+
+async def _verify_workflow_ownership(context: Dict[str, Any]) -> str | None:
+    """Return None when the workflow belongs to the caller, else an error message."""
+    workflow_id = context.get("workflow_id") or context.get("workflowId")
+    user_id = context.get("user_id") or context.get("userId")
+    tenant_id = context.get("tenant_id") or context.get("tenantId")
+
+    if workflow_id is None:
+        return "workflow_id is required"
+    if user_id is None:
+        return "user_id is required"
+
+    try:
+        workflow_pk = int(str(workflow_id))
+    except (TypeError, ValueError):
+        return "Invalid workflow_id"
+
+    try:
+        caller_user_id = int(str(user_id))
+    except (TypeError, ValueError):
+        return "Invalid user_id"
+
+    try:
+        async with AsyncSessionLocal() as session:
+            result = await session.execute(
+                select(Workflow).where(Workflow.id == workflow_pk)
+            )
+            workflow = result.scalar_one_or_none()
+    except Exception as exc:
+        logger.warning(
+            "mcp_workflow_ownership_lookup_failed",
+            workflow_id=workflow_id,
+            user_id=user_id,
+            tenant_id=tenant_id,
+            error=str(exc),
+        )
+        return "Failed to verify workflow ownership"
+
+    if workflow is None:
+        return "Workflow not found"
+
+    if workflow.userId != caller_user_id:
+        return "Unauthorized workflow access"
+
+    if tenant_id is not None and workflow.tenantId not in (None, str(tenant_id)):
+        return "Unauthorized workflow access"
+
+    return None
 
 
 class MCPExecutor(NodeExecutor):
@@ -55,11 +121,41 @@ class MCPExecutor(NodeExecutor):
                     outputs={},
                 )
 
+            validation_error = _validate_mcp_url(server_url)
+            if validation_error:
+                logger.warning(
+                    "mcp_executor_ssrf_blocked",
+                    node_id=node_id,
+                    method=config.get("method", "read_resource"),
+                    error=validation_error,
+                )
+                return NodeExecutionResult(
+                    success=False,
+                    error="MCP server URL blocked by SSRF protection",
+                    outputs={},
+                )
+
+            ownership_error = await _verify_workflow_ownership(context)
+            if ownership_error:
+                logger.warning(
+                    "mcp_executor_workflow_unauthorized",
+                    node_id=node_id,
+                    workflow_id=context.get("workflow_id") or context.get("workflowId"),
+                    user_id=context.get("user_id") or context.get("userId"),
+                    tenant_id=context.get("tenant_id") or context.get("tenantId"),
+                    error=ownership_error,
+                )
+                return NodeExecutionResult(
+                    success=False,
+                    error=ownership_error,
+                    outputs={},
+                )
+
             method = config.get("method", "read_resource")
             resource_uri = config.get("resource_uri", "")
             tool_name = config.get("tool_name", "")
             parameters = config.get("parameters", {})
-            timeout = config.get("timeout", 30)
+            timeout = _normalize_timeout(config.get("timeout", 30))
 
             # Ensure server URL ends with /rpc if not already specified
             if not server_url.endswith("/rpc"):
@@ -120,12 +216,10 @@ class MCPExecutor(NodeExecutor):
             # Make request to MCP server
             async with httpx.AsyncClient(timeout=timeout) as client:
                 logger.info(
-                    f"[MCP] Calling {method} on {server_url}",
-                    extra={
-                        "node_id": node_id,
-                        "server_url": server_url,
-                        "method": method,
-                    },
+                    "mcp_executor_request",
+                    node_id=node_id,
+                    method=method,
+                    timeout=timeout,
                 )
 
                 response = await client.post(
@@ -142,7 +236,7 @@ class MCPExecutor(NodeExecutor):
                 error_info = response_data["error"]
                 return NodeExecutionResult(
                     success=False,
-                    error=f"MCP server error: {error_info.get('message', 'Unknown error')}",
+                    error="MCP server returned an error",
                     outputs={
                         "error_code": error_info.get("code"),
                         "error_message": error_info.get("message"),
@@ -182,7 +276,6 @@ class MCPExecutor(NodeExecutor):
                 outputs={
                     "data": output_data,
                     "metadata": {
-                        "server_url": server_url,
                         "method": method,
                         "status": "success",
                     },
@@ -190,25 +283,25 @@ class MCPExecutor(NodeExecutor):
             )
 
         except httpx.TimeoutException:
-            logger.error(f"[MCP] Timeout connecting to {server_url}", exc_info=True)
+            logger.error("mcp_executor_timeout", exc_info=True)
             return NodeExecutionResult(
                 success=False,
-                error=f"Timeout connecting to MCP server: {server_url}",
+                error="MCP server request timed out",
                 outputs={},
             )
 
         except httpx.HTTPError as e:
-            logger.error(f"[MCP] HTTP error: {str(e)}", exc_info=True)
+            logger.error("mcp_executor_http_error", error=str(e), exc_info=True)
             return NodeExecutionResult(
                 success=False,
-                error=f"HTTP error connecting to MCP server: {str(e)}",
+                error="MCP server request failed",
                 outputs={},
             )
 
         except Exception as e:
-            logger.error(f"[MCP] Execution error: {str(e)}", exc_info=True)
+            logger.error("mcp_executor_failed", error=str(e), exc_info=True)
             return NodeExecutionResult(
                 success=False,
-                error=f"MCP execution error: {str(e)}",
+                error="MCP execution failed",
                 outputs={},
             )

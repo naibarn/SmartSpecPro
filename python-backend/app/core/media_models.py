@@ -167,7 +167,7 @@ def get_model_metadata(model_id: str) -> Dict[str, Any] | None:
     return MODEL_METADATA.get(model_id)
 
 
-def is_valid_model(model_id: str, model_type: str = None) -> bool:
+def is_valid_model(model_id: str, model_type: str | None = None) -> bool:
     """Check if a model ID is valid"""
     metadata = MODEL_METADATA.get(model_id)
     if not metadata:

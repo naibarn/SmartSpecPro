@@ -1,5 +1,6 @@
 services:
   browser-sandbox:
+    image: smartspec/browser-sandbox:local
     build:
       context: ./browser-sandbox
     init: true

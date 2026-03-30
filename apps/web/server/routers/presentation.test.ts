@@ -3,6 +3,10 @@ import fs from "fs";
 import path from "path";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
+import {
+  PRESENTATION_EXPORT_MAX_HEIGHT,
+  PRESENTATION_EXPORT_MAX_WIDTH,
+} from "@shared/presentation/constants";
 
 vi.mock("../_core/trpc", () => {
   const createProcedure = () => {
@@ -1447,8 +1451,11 @@ describe("presentationRouter", () => {
       format: z.enum(["png", "jpg", "pdf", "mp4"]),
       quality: z.enum(["draft", "standard", "high"]).optional().default("standard"),
       idempotencyKey: z.string().min(1).max(128),
-      width: z.number().int().positive().optional(),
-      height: z.number().int().positive().optional(),
+      width: z.number().int().positive().max(PRESENTATION_EXPORT_MAX_WIDTH).optional(),
+      height: z.number().int().positive().max(PRESENTATION_EXPORT_MAX_HEIGHT).optional(),
+    }).refine((data) => (data.width === undefined) === (data.height === undefined), {
+      message: "width and height must be provided together",
+      path: ["width"],
     });
 
     const result = schema.safeParse({ deckId: 1, format: "mp4" });

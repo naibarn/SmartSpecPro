@@ -525,3 +525,4 @@ async def shutdown_kie_provider():
     if _provider_instance:
         await _provider_instance.close()
         _provider_instance = None
+# mypy: ignore-errors

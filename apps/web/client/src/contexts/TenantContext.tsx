@@ -28,6 +28,7 @@ export interface TenantSeo {
   twitterCard: "summary" | "summary_large_image" | "app" | "player";
   aiContext?: string;
   aiKeyFacts?: string[];
+  structuredData?: Record<string, unknown>;
   geoTargeting?: {
     country?: string;
     region?: string;
@@ -101,11 +102,11 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const defaultTheme: TenantTheme = {
-    primaryColor: "#6366f1",
-    secondaryColor: "#8b5cf6",
-    accentColor: "#ec4899",
+    primaryColor: "#2563eb",
+    secondaryColor: "#06b6d4",
+    accentColor: "#14b8a6",
     backgroundColor: "#ffffff",
-    textColor: "#1f2937",
+    textColor: "#0f172a",
     fontFamily: "Inter, system-ui, sans-serif",
     headingFont: "Inter, system-ui, sans-serif",
     layout: "modern",

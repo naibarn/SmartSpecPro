@@ -2,12 +2,13 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { DashboardCard, DashboardKpiCard } from "@/components/dashboard";
+import { OpsEarlyWarningPanel } from "@/components/admin/OpsEarlyWarningPanel";
 import {
   Select,
   SelectContent,
@@ -36,6 +37,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import {
+  Activity,
   AlertTriangle,
   ArrowLeft,
   CheckCircle,
@@ -45,6 +47,7 @@ import {
   Download,
   Filter,
   Loader2,
+  Play,
   RefreshCw,
   Search,
   User,
@@ -220,6 +223,11 @@ export default function AdminAuditLogs() {
   }, {
     staleTime: 10_000,
     refetchOnWindowFocus: false,
+  });
+  const opsOverviewQuery = trpc.monitoring.getOpsOverview.useQuery(undefined, {
+    staleTime: 10_000,
+    refetchOnWindowFocus: false,
+    refetchInterval: 30_000,
   });
 
   const exportRows = useMemo<AuditRow[]>(() => {
@@ -500,14 +508,11 @@ export default function AdminAuditLogs() {
   if (!user || user.role !== "admin") {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <Card className="w-96">
-          <CardHeader>
-            <CardTitle>Access Denied</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">You need admin privileges to access audit logs.</p>
-          </CardContent>
-        </Card>
+        <DashboardCard
+          className="w-96"
+          title="Access Denied"
+          description="You need admin privileges to access audit logs."
+        />
       </div>
     );
   }
@@ -528,7 +533,7 @@ export default function AdminAuditLogs() {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => searchQuery.refetch()}>
+          <Button variant="outline" size="sm" onClick={() => void Promise.all([searchQuery.refetch(), opsOverviewQuery.refetch()])}>
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
@@ -540,95 +545,44 @@ export default function AdminAuditLogs() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total Rows</CardTitle>
-          </CardHeader>
-          <CardContent className="text-2xl font-bold">{totalRows}</CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Errors</CardTitle>
-          </CardHeader>
-          <CardContent className="text-2xl font-bold text-red-600">{errorCount}</CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Unique Traces</CardTitle>
-          </CardHeader>
-          <CardContent className="text-2xl font-bold">{uniqueTraces}</CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Users</CardTitle>
-          </CardHeader>
-          <CardContent className="text-2xl font-bold">{uniqueUsers}</CardContent>
-        </Card>
+        <DashboardKpiCard icon={Clock} label="Total Rows" value={totalRows} />
+        <DashboardKpiCard icon={XCircle} label="Errors" value={errorCount} valueClassName="text-red-600" />
+        <DashboardKpiCard icon={CheckCircle} label="Unique Traces" value={uniqueTraces} />
+        <DashboardKpiCard icon={User} label="Users" value={uniqueUsers} />
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Routing Telemetry Summary</CardTitle>
-          <CardDescription>
-            สรุป rollout telemetry ของ presentation AI จาก `rollout_gate` events ในผลลัพธ์ชุดปัจจุบัน
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <OpsEarlyWarningPanel
+        overview={opsOverviewQuery.data}
+        isLoading={opsOverviewQuery.isLoading}
+        showMonitoringLink
+        description="Shared warning layer for infra pressure, alert backlog, audit error spikes, and orchestration drift so audit traces stay tied to runtime risk."
+      />
+
+      <DashboardCard
+        title="Routing Telemetry Summary"
+        description="สรุป rollout telemetry ของ presentation AI จาก `rollout_gate` events ในผลลัพธ์ชุดปัจจุบัน"
+      >
+        <div className="space-y-4">
           <div className="grid gap-4 md:grid-cols-4">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Telemetry Events</CardTitle>
-              </CardHeader>
-              <CardContent className="text-2xl font-bold">{rolloutSummary.totalEvents}</CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Modes Seen</CardTitle>
-              </CardHeader>
-              <CardContent className="text-2xl font-bold">{rolloutSummary.modeCounts.length}</CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Fallback Types</CardTitle>
-              </CardHeader>
-              <CardContent className="text-2xl font-bold">{rolloutSummary.fallbackCounts.length}</CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Quality Verdicts</CardTitle>
-              </CardHeader>
-              <CardContent className="text-2xl font-bold">{rolloutSummary.qualityVerdicts.length}</CardContent>
-            </Card>
+            <DashboardKpiCard icon={Activity} label="Telemetry Events" value={rolloutSummary.totalEvents} />
+            <DashboardKpiCard icon={Play} label="Modes Seen" value={rolloutSummary.modeCounts.length} />
+            <DashboardKpiCard icon={AlertTriangle} label="Fallback Types" value={rolloutSummary.fallbackCounts.length} />
+            <DashboardKpiCard icon={CheckCircle} label="Quality Verdicts" value={rolloutSummary.qualityVerdicts.length} />
           </div>
 
           <div className="grid gap-4 md:grid-cols-3">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Fallback Rate</CardTitle>
-              </CardHeader>
-              <CardContent>
+            <DashboardCard title="Fallback Rate" titleClassName="text-sm font-medium text-slate-900">
                 <div className="text-2xl font-bold">{fallbackRate}</div>
                 <p className="text-xs text-muted-foreground">fallback-triggered events / mode-selected events</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Quality Risk Rate</CardTitle>
-              </CardHeader>
-              <CardContent>
+            </DashboardCard>
+            <DashboardCard title="Quality Risk Rate" titleClassName="text-sm font-medium text-slate-900">
                 <div className="text-2xl font-bold">{qualityRiskRate}</div>
                 <p className="text-xs text-muted-foreground">warn + reject quality verdicts / quality events</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Top Recipe</CardTitle>
-              </CardHeader>
-              <CardContent>
+            </DashboardCard>
+            <DashboardCard title="Top Recipe" titleClassName="text-sm font-medium text-slate-900">
                 <div className="text-lg font-semibold">{topRecipeLabel}</div>
                 <p className="text-xs text-muted-foreground">Most common selected recipe in current result set</p>
-              </CardContent>
-            </Card>
+            </DashboardCard>
           </div>
 
           {rolloutSummary.totalEvents === 0 ? (
@@ -679,18 +633,15 @@ export default function AdminAuditLogs() {
               </div>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </DashboardCard>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Filter className="h-4 w-4" />
-            Filters
-          </CardTitle>
-          <CardDescription>กรองข้อมูลเพื่อระบุปัญหาเป็นราย trace หรือราย provider/model</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <DashboardCard
+        title="Filters"
+        description="กรองข้อมูลเพื่อระบุปัญหาเป็นราย trace หรือราย provider/model"
+        leading={<Filter className="h-4 w-4 text-slate-500" />}
+      >
+        <div className="space-y-4">
           <div className="grid gap-4 md:grid-cols-4">
             <div className="space-y-2">
               <Label htmlFor="traceId">Trace ID</Label>
@@ -798,19 +749,17 @@ export default function AdminAuditLogs() {
               System audit events default to the last {searchQuery.data.systemEventsMeta.searchedDayCount} days when no explicit date range is selected.
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </DashboardCard>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Timeline</CardTitle>
-          <CardDescription>
-            {totalRows > 0
-              ? `Showing ${page * pageSize + 1}-${Math.min(page * pageSize + visibleRows.length, totalRows)} of ${totalRows}`
-              : "No records found"}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+      <DashboardCard
+        title="Timeline"
+        description={
+          totalRows > 0
+            ? `Showing ${page * pageSize + 1}-${Math.min(page * pageSize + visibleRows.length, totalRows)} of ${totalRows}`
+            : "No records found"
+        }
+      >
           {searchQuery.isLoading ? (
             <div className="flex items-center justify-center py-10">
               <Loader2 className="h-7 w-7 animate-spin text-muted-foreground" />
@@ -939,17 +888,13 @@ export default function AdminAuditLogs() {
               </div>
             </>
           )}
-        </CardContent>
-      </Card>
+      </DashboardCard>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Presentation Governance Audit</CardTitle>
-          <CardDescription>
-            แยกดู feature / ownership / visibility / pin activity ของ reusable presentation blocks โดยตรง
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <DashboardCard
+        title="Presentation Governance Audit"
+        description="แยกดู feature / ownership / visibility / pin activity ของ reusable presentation blocks โดยตรง"
+      >
+        <div className="space-y-4">
           <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_220px]">
             <div className="space-y-2">
               <Label htmlFor="governanceSearch">Search blocks or details</Label>
@@ -1026,8 +971,8 @@ export default function AdminAuditLogs() {
               </TableBody>
             </Table>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </DashboardCard>
 
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
         <DialogContent className="max-w-5xl max-h-[88vh] overflow-y-auto">
@@ -1048,22 +993,18 @@ export default function AdminAuditLogs() {
           ) : (
             <div className="space-y-4">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <Card className="p-3">
-                  <div className="text-[10px] text-muted-foreground uppercase">Provider</div>
+                <DashboardCard title="Provider" titleClassName="text-[10px] uppercase tracking-[0.18em] text-muted-foreground" bodyClassName="!p-3">
                   <div className="text-sm font-medium">{selectedRow.provider || "-"}</div>
-                </Card>
-                <Card className="p-3">
-                  <div className="text-[10px] text-muted-foreground uppercase">Model</div>
+                </DashboardCard>
+                <DashboardCard title="Model" titleClassName="text-[10px] uppercase tracking-[0.18em] text-muted-foreground" bodyClassName="!p-3">
                   <div className="text-sm font-mono">{selectedRow.model || "-"}</div>
-                </Card>
-                <Card className="p-3">
-                  <div className="text-[10px] text-muted-foreground uppercase">Request</div>
+                </DashboardCard>
+                <DashboardCard title="Request" titleClassName="text-[10px] uppercase tracking-[0.18em] text-muted-foreground" bodyClassName="!p-3">
                   <div className="text-sm">{selectedRow.requestType || selectedRow.eventType || "-"}</div>
-                </Card>
-                <Card className="p-3">
-                  <div className="text-[10px] text-muted-foreground uppercase">Status</div>
+                </DashboardCard>
+                <DashboardCard title="Status" titleClassName="text-[10px] uppercase tracking-[0.18em] text-muted-foreground" bodyClassName="!p-3">
                   <div className="text-sm">{selectedRow.statusCode ?? "-"}</div>
-                </Card>
+                </DashboardCard>
               </div>
 
               {selectedRow.errorMessage && (

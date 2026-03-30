@@ -5,9 +5,9 @@
  */
 
 import { trpc } from "@/lib/trpc";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Users, UserCheck } from "lucide-react";
+import { DashboardCard, DashboardKpiCard } from "@/components/dashboard";
 
 interface TrafficPanelProps {
   refreshInterval: number | null;
@@ -29,11 +29,11 @@ export default function TrafficPanel({ refreshInterval }: TrafficPanelProps) {
 
   if (error) {
     return (
-      <Card>
-        <CardContent className="py-6">
+      <DashboardCard>
+        <div>
           <p className="text-destructive">Failed to load traffic stats: {error.message}</p>
-        </CardContent>
-      </Card>
+        </div>
+      </DashboardCard>
     );
   }
 
@@ -41,32 +41,12 @@ export default function TrafficPanel({ refreshInterval }: TrafficPanelProps) {
     <div className="space-y-4">
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{data?.totals.totalUsers ?? 0}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Today</CardTitle>
-            <UserCheck className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{data?.totals.activeToday ?? 0}</div>
-          </CardContent>
-        </Card>
+        <DashboardKpiCard icon={Users} label="Total Users" value={data?.totals.totalUsers ?? 0} />
+        <DashboardKpiCard icon={UserCheck} label="Active Today" value={data?.totals.activeToday ?? 0} />
       </div>
 
       {/* Daily Activity Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm font-medium">Daily Active Users (Last 7 Days)</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <DashboardCard title="Daily Active Users (Last 7 Days)">
           {data?.daily && data.daily.length > 0 ? (
             <div className="space-y-2">
               {data.daily.map((day) => (
@@ -79,8 +59,7 @@ export default function TrafficPanel({ refreshInterval }: TrafficPanelProps) {
           ) : (
             <p className="text-sm text-muted-foreground">No activity data available.</p>
           )}
-        </CardContent>
-      </Card>
+      </DashboardCard>
     </div>
   );
 }

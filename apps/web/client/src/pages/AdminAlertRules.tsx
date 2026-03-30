@@ -16,13 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { DashboardCard } from "@/components/dashboard";
 import {
   Table,
   TableBody,
@@ -192,8 +186,8 @@ function AlertRulesTab() {
           <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
         </div>
       ) : rules.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+        <DashboardCard>
+          <div className="flex flex-col items-center justify-center py-12 text-center">
             <BellRing className="w-12 h-12 text-gray-300 mb-4" />
             <h3 className="text-lg font-semibold text-gray-700 mb-2">
               No alert rules yet
@@ -205,8 +199,8 @@ function AlertRulesTab() {
               <Plus className="w-4 h-4 mr-1" />
               Create your first alert rule
             </Button>
-          </CardContent>
-        </Card>
+          </div>
+        </DashboardCard>
       ) : (
         <div className="border rounded-lg overflow-hidden">
           <Table>
@@ -694,8 +688,8 @@ function EscalationPoliciesTab() {
           <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
         </div>
       ) : policies.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+        <DashboardCard>
+          <div className="flex flex-col items-center justify-center py-12 text-center">
             <Shield className="w-12 h-12 text-gray-300 mb-4" />
             <h3 className="text-lg font-semibold text-gray-700 mb-2">
               No escalation policies yet
@@ -708,8 +702,8 @@ function EscalationPoliciesTab() {
               <Plus className="w-4 h-4 mr-1" />
               Create your first policy
             </Button>
-          </CardContent>
-        </Card>
+          </div>
+        </DashboardCard>
       ) : (
         <div className="border rounded-lg overflow-hidden">
           <Table>
@@ -1107,15 +1101,15 @@ export default function AdminAlertRules() {
   if (!featureEnabled) {
     return (
       <div className="mx-auto max-w-7xl p-6">
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
+        <DashboardCard>
+          <div className="flex flex-col items-center justify-center py-12">
             <BellRing className="mb-4 h-12 w-12 text-muted-foreground" />
             <h2 className="text-lg font-semibold">Feature Not Enabled</h2>
             <p className="text-muted-foreground">
               Alert Rules & Escalation is not enabled for this tenant.
             </p>
-          </CardContent>
-        </Card>
+          </div>
+        </DashboardCard>
       </div>
     );
   }
@@ -1161,33 +1155,33 @@ export default function AdminAlertRules() {
           </TabsList>
 
           <TabsContent value="rules">
-            <Card>
-              <CardHeader>
-                <CardTitle>Alert Rules</CardTitle>
-                <CardDescription>
+            <DashboardCard>
+              <div>
+                <h3>Alert Rules</h3>
+                <p>
                   Define conditions that trigger notifications when system
                   metrics exceed thresholds.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
+                </p>
+              </div>
+              <div>
                 <AlertRulesTab />
-              </CardContent>
-            </Card>
+              </div>
+            </DashboardCard>
           </TabsContent>
 
           <TabsContent value="escalation">
-            <Card>
-              <CardHeader>
-                <CardTitle>Escalation Policies</CardTitle>
-                <CardDescription>
+            <DashboardCard>
+              <div>
+                <h3>Escalation Policies</h3>
+                <p>
                   Configure automatic escalation for unacknowledged
                   notifications.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
+                </p>
+              </div>
+              <div>
                 <EscalationPoliciesTab />
-              </CardContent>
-            </Card>
+              </div>
+            </DashboardCard>
           </TabsContent>
         </Tabs>
       </main>

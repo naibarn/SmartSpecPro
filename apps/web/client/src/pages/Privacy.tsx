@@ -270,7 +270,7 @@ We aim to respond to all privacy-related inquiries within 30 days.`
 
 export default function Privacy() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/20">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-cyan-50/20">
       <Navbar />
       
       <main className="pt-24 pb-20">
@@ -281,7 +281,7 @@ export default function Privacy() {
             animate={{ opacity: 1, y: 0 }}
             className="mb-12"
           >
-            <Link href="/" className="inline-flex items-center gap-2 text-gray-600 hover:text-purple-600 mb-6 transition-colors">
+            <Link href="/" className="inline-flex items-center gap-2 text-gray-600 hover:text-blue-600 mb-6 transition-colors">
               <ArrowLeft className="w-4 h-4" />
               Back to Home
             </Link>
@@ -309,7 +309,7 @@ export default function Privacy() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="bg-gradient-to-br from-teal-50 to-emerald-50 rounded-2xl p-6 border border-teal-100 mb-8"
+            className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-2xl p-6 border border-blue-100 mb-8"
           >
             <h2 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
               <Eye className="w-5 h-5 text-teal-600" />
@@ -348,7 +348,7 @@ export default function Privacy() {
                 <a
                   key={section.id}
                   href={`#${section.id}`}
-                  className="text-gray-600 hover:text-teal-600 transition-colors text-sm py-1"
+                  className="text-gray-600 hover:text-blue-600 transition-colors text-sm py-1"
                 >
                   {section.title}
                 </a>
@@ -368,8 +368,8 @@ export default function Privacy() {
                 className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 md:p-8 border border-gray-100"
               >
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 rounded-lg bg-teal-100 flex items-center justify-center">
-                    <section.icon className="w-5 h-5 text-teal-600" />
+                  <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                    <section.icon className="w-5 h-5 text-blue-600" />
                   </div>
                   <h2 className="text-xl font-semibold text-gray-900">{section.title}</h2>
                 </div>
@@ -395,11 +395,11 @@ export default function Privacy() {
               By using SmartAIHub, you acknowledge that you have read and understood this Privacy Policy.
             </p>
             <div className="flex justify-center gap-4 mt-4">
-              <Link href="/terms" className="text-teal-600 hover:text-teal-700 font-medium">
+              <Link href="/terms" className="text-blue-600 hover:text-blue-700 font-medium">
                 Terms of Service
               </Link>
               <span className="text-gray-300">|</span>
-              <Link href="/contact" className="text-teal-600 hover:text-teal-700 font-medium">
+              <Link href="/contact" className="text-blue-600 hover:text-blue-700 font-medium">
                 Contact Us
               </Link>
             </div>

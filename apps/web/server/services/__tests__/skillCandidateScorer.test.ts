@@ -55,6 +55,10 @@ describe("getCatalogFamily", () => {
     expect(getCatalogFamily("article_generation")).toBe("article_writing");
   });
 
+  it("maps slide generation to content_tools", () => {
+    expect(getCatalogFamily("slide_generation")).toBe("content_tools");
+  });
+
   it("maps review to product_review", () => {
     expect(getCatalogFamily("product_review")).toBe("product_review");
   });

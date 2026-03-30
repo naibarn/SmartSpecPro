@@ -1,4 +1,9 @@
-export type ModelInputSyncTarget = "none" | "reference_images" | "prompt" | "aspect_ratio";
+export type ModelInputSyncTarget =
+  | "none"
+  | "reference_images"
+  | "reference_videos"
+  | "prompt"
+  | "aspect_ratio";
 
 export interface MediaModelOption {
   id: string;
@@ -28,6 +33,12 @@ export interface ModelInputField {
   };
 }
 
+export interface ModelReferenceInputSupport {
+  imageUrls: boolean;
+  videoUrls: boolean;
+  audioUrls: boolean;
+}
+
 export const LIBRARY_IMAGE_EXTENSIONS = ["png", "jpg", "jpeg", "webp", "gif", "bmp", "svg"];
 export const LIBRARY_VIDEO_EXTENSIONS = ["mp4", "webm", "mov", "m4v", "avi", "mkv"];
 export const LIBRARY_AUDIO_EXTENSIONS = ["mp3", "wav", "m4a", "aac", "flac", "ogg"];
@@ -42,6 +53,88 @@ function normalizeGenerateType(configJson: unknown): string | null {
   }
   const normalized = raw.trim().toLowerCase();
   return normalized.length > 0 ? normalized : null;
+}
+
+function readBooleanFlag(source: Record<string, unknown> | null | undefined, keys: string[]): boolean | null {
+  if (!source) {
+    return null;
+  }
+  for (const key of keys) {
+    const value = source[key];
+    if (typeof value === "boolean") {
+      return value;
+    }
+  }
+  return null;
+}
+
+function readReferenceInputOverrides(configJson: Record<string, unknown>): Partial<ModelReferenceInputSupport> {
+  const overrides: Partial<ModelReferenceInputSupport> = {};
+  const nested = configJson.referenceInputs;
+  const nestedObject = nested && typeof nested === "object" ? nested as Record<string, unknown> : null;
+
+  const imageOverride =
+    readBooleanFlag(configJson, ["supportsReferenceImages", "supportsImageReferences", "supportsImageInput"]) ??
+    readBooleanFlag(nestedObject, ["image", "images"]);
+  const videoOverride =
+    readBooleanFlag(configJson, ["supportsReferenceVideos", "supportsVideoReferences", "supportsVideoInput"]) ??
+    readBooleanFlag(nestedObject, ["video", "videos"]);
+  const audioOverride =
+    readBooleanFlag(configJson, ["supportsReferenceAudio", "supportsAudioReferences", "supportsAudioInput"]) ??
+    readBooleanFlag(nestedObject, ["audio", "audios"]);
+
+  if (imageOverride !== null) overrides.imageUrls = imageOverride;
+  if (videoOverride !== null) overrides.videoUrls = videoOverride;
+  if (audioOverride !== null) overrides.audioUrls = audioOverride;
+
+  return overrides;
+}
+
+export function getModelReferenceInputSupport(model: MediaModelOption | undefined): ModelReferenceInputSupport {
+  const support: ModelReferenceInputSupport = {
+    imageUrls: false,
+    videoUrls: false,
+    audioUrls: false,
+  };
+
+  if (!model?.configJson || typeof model.configJson !== "object") {
+    return support;
+  }
+
+  const configJson = model.configJson as Record<string, unknown>;
+  const rawFields = Array.isArray(configJson.inputFields) ? (configJson.inputFields as unknown[]) : [];
+  const generateType = normalizeGenerateType(configJson);
+
+  for (const field of rawFields) {
+    if (!field || typeof field !== "object") continue;
+    const record = field as Record<string, unknown>;
+    const type = String(record.type ?? "").trim().toLowerCase();
+    const syncWith = String(record.syncWith ?? "").trim().toLowerCase();
+    if (syncWith === "reference_images") support.imageUrls = true;
+    if (syncWith === "reference_videos") support.videoUrls = true;
+    if (type === "image_urls") support.imageUrls = true;
+    if (type === "video_urls") support.videoUrls = true;
+    if (type === "audio_urls") support.audioUrls = true;
+  }
+
+  // Preserve legacy video-tab behavior for models that do not explicitly declare
+  // attachment support yet still act like video generators.
+  if (
+    !support.imageUrls
+    && !support.videoUrls
+    && !support.audioUrls
+    && generateType
+    && /video|extend|upscale|edit|avatar|reframe|motion/.test(generateType)
+  ) {
+    support.imageUrls = true;
+  }
+
+  const overrides = readReferenceInputOverrides(configJson);
+  return {
+    imageUrls: overrides.imageUrls ?? support.imageUrls,
+    videoUrls: overrides.videoUrls ?? support.videoUrls,
+    audioUrls: overrides.audioUrls ?? support.audioUrls,
+  };
 }
 
 export function isTextToImageModel(model: MediaModelOption): boolean {
@@ -60,6 +153,70 @@ export function isTextToVideoModel(model: MediaModelOption): boolean {
   return ["text-to-video", "text2video", "txt2video", "txt2vid", "t2v"].includes(generateType);
 }
 
+type ModelGenerationModeSource = {
+  configJson?: unknown;
+} | undefined;
+
+export function getModelGenerationModeLabel(model: ModelGenerationModeSource): string | null {
+  if (!model?.configJson || typeof model.configJson !== "object") {
+    return null;
+  }
+
+  const configJson = model.configJson as Record<string, unknown>;
+  const generateType = normalizeGenerateType(configJson);
+  const rawFields = Array.isArray(configJson.inputFields) ? (configJson.inputFields as unknown[]) : [];
+  const hasImageInput = rawFields.some((field) => {
+    if (!field || typeof field !== "object") return false;
+    const record = field as Record<string, unknown>;
+    const type = String(record.type ?? "").trim().toLowerCase();
+    return type === "image_urls";
+  });
+  const hasVideoInput = rawFields.some((field) => {
+    if (!field || typeof field !== "object") return false;
+    const record = field as Record<string, unknown>;
+    const type = String(record.type ?? "").trim().toLowerCase();
+    const syncWith = String(record.syncWith ?? "").trim().toLowerCase();
+    return type === "video_urls" || syncWith === "reference_videos";
+  });
+
+  if (!generateType) {
+    if (hasVideoInput) {
+      return "Video to Video";
+    }
+    if (hasImageInput) {
+      return "Image to Video";
+    }
+    return null;
+  }
+
+  if (["text-to-video", "text2video", "txt2video", "txt2vid", "t2v"].includes(generateType)) {
+    return "Text to Video";
+  }
+  if (["image-to-video", "image2video", "img2vid", "i2v"].includes(generateType)) {
+    return "Image to Video";
+  }
+  if (["video-to-video", "video2video", "v2v"].includes(generateType) || generateType.includes("motion")) {
+    return "Video to Video";
+  }
+  if (generateType.includes("extend")) {
+    return "Video Extend";
+  }
+  if (generateType.includes("upscale")) {
+    return "Video Upscale";
+  }
+  if (generateType.includes("avatar")) {
+    return "Avatar Video";
+  }
+
+  if (hasVideoInput) {
+    return "Video to Video";
+  }
+  if (hasImageInput) {
+    return "Image to Video";
+  }
+  return null;
+}
+
 export function parseModelInputFields(model: MediaModelOption | undefined): ModelInputField[] {
   if (!model?.configJson || typeof model.configJson !== "object") {
     return [];
@@ -76,8 +233,11 @@ export function parseModelInputFields(model: MediaModelOption | undefined): Mode
     if (explicit) {
       return explicit;
     }
-    if (type === "image_urls" || type === "video_urls" || type === "audio_urls") {
+    if (type === "image_urls" || type === "audio_urls") {
       return "reference_images";
+    }
+    if (type === "video_urls") {
+      return "reference_videos";
     }
     const normalizedKey = key.replace(/[^a-z0-9]/gi, "").toLowerCase();
     if (normalizedKey === "prompt" || normalizedKey.endsWith("prompt")) {
@@ -124,6 +284,7 @@ export function parseModelInputFields(model: MediaModelOption | undefined): Mode
     const explicitSyncWith: ModelInputSyncTarget | null = (
       rawSyncWith === "none"
       || rawSyncWith === "reference_images"
+      || rawSyncWith === "reference_videos"
       || rawSyncWith === "prompt"
       || rawSyncWith === "aspect_ratio"
     )
@@ -233,6 +394,7 @@ export function applyModelSyncTargets(
     prompt?: string;
     aspectRatio?: string;
     referenceImageUrls?: string[];
+    referenceVideoUrls?: string[];
   },
 ): Record<string, unknown> | undefined {
   const fields = parseModelInputFields(model);
@@ -256,6 +418,14 @@ export function applyModelSyncTargets(
       && syncValues.referenceImageUrls.length > 0
     ) {
       next[field.key] = syncValues.referenceImageUrls;
+      continue;
+    }
+    if (
+      syncWith === "reference_videos"
+      && syncValues.referenceVideoUrls
+      && syncValues.referenceVideoUrls.length > 0
+    ) {
+      next[field.key] = syncValues.referenceVideoUrls;
     }
   }
   return Object.keys(next).length > 0 ? next : undefined;
@@ -263,6 +433,10 @@ export function applyModelSyncTargets(
 
 export function hasReferenceImageSyncField(model: MediaModelOption | undefined): boolean {
   return parseModelInputFields(model).some((field) => field.syncWith === "reference_images");
+}
+
+export function hasReferenceVideoSyncField(model: MediaModelOption | undefined): boolean {
+  return parseModelInputFields(model).some((field) => field.syncWith === "reference_videos");
 }
 
 export function isMissingRequiredInputValue(value: unknown): boolean {
@@ -285,6 +459,7 @@ export function getMissingRequiredModelFields(
     prompt?: string;
     aspectRatio?: string;
     referenceImageUrls?: string[];
+    referenceVideoUrls?: string[];
   },
   options?: {
     treatPromptSyncAsAuto?: boolean;
@@ -303,6 +478,8 @@ export function getMissingRequiredModelFields(
       value = values.aspectRatio;
     } else if (syncWith === "reference_images") {
       value = values.referenceImageUrls;
+    } else if (syncWith === "reference_videos") {
+      value = values.referenceVideoUrls;
     } else {
       value = values.extraParams?.[field.key];
       if (value === undefined) {

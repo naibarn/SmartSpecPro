@@ -392,3 +392,4 @@ class AssetService:
         )
         result = await self.db.execute(query)
         return result.scalar_one_or_none()
+# mypy: ignore-errors

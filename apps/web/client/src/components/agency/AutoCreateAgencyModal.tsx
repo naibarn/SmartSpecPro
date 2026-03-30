@@ -35,7 +35,10 @@ import {
   X,
   ArrowRight,
   Bot,
+  Lightbulb,
+  Archive,
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -45,14 +48,13 @@ const MAX_POLL_WAIT_MS = 5 * 60 * 1000; // 5 minutes
 
 const PHASES = [
   { id: "discover", label: "Discover" },
-  { id: "interview", label: "Interview" },
   { id: "plan", label: "Plan" },
   { id: "review_plan", label: "Review Plan" },
   { id: "design", label: "Design" },
   { id: "review_design", label: "Review Design" },
   { id: "validate", label: "Validate" },
   { id: "implement", label: "Implement" },
-  { id: "verify", label: "Verify" },
+  { id: "suggest", label: "Suggest" },
   { id: "document", label: "Document" },
   { id: "done", label: "Done" },
 ];
@@ -85,6 +87,19 @@ export function AutoCreateAgencyModal({ open, onOpenChange, onCreated, defaultMo
   const [errorMsg, setErrorMsg] = useState("");
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [guide, setGuide] = useState("");
+  const [suggestions, setSuggestions] = useState<Array<{
+    category: string;
+    title: string;
+    description: string;
+    impact: string;
+    targetNodeId?: string;
+    suggestedValue?: string;
+  }>>([]);
+  const [dismissedSuggestions, setDismissedSuggestions] = useState<Set<number>>(new Set());
+  const [showTemplateDialog, setShowTemplateDialog] = useState(false);
+  const [templateName, setTemplateName] = useState("");
+  const [templateDesc, setTemplateDesc] = useState("");
+  const [createdAgencyId, setCreatedAgencyId] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -94,6 +109,8 @@ export function AutoCreateAgencyModal({ open, onOpenChange, onCreated, defaultMo
   const trpcUtils = (trpc as any).useUtils();
   const autoCreateMutation = (trpc as any).agency?.autoCreate?.useMutation?.() ?? { mutateAsync: null };
   const autoCreateAnswerMutation = (trpc as any).agency?.autoCreateAnswer?.useMutation?.() ?? { mutateAsync: null };
+  const saveAsTemplateMutation = (trpc as any).agency?.saveAsTemplate?.useMutation?.() ?? { mutateAsync: null };
+  const applySuggestionMutation = (trpc as any).agency?.applySuggestion?.useMutation?.() ?? { mutateAsync: null };
 
   const isProcessing =
     taskStatus === "queued" || taskStatus === "processing";
@@ -140,12 +157,15 @@ export function AutoCreateAgencyModal({ open, onOpenChange, onCreated, defaultMo
           if (pollRef.current) clearInterval(pollRef.current);
         } else if (status.status === "completed") {
           setTaskStatus("completed");
-          setGuide(status.guide ?? "");
+          setGuide((status.guide ?? "").slice(0, 2000));
           if (pollRef.current) clearInterval(pollRef.current);
+          if (status.suggestions && Array.isArray(status.suggestions)) {
+            setSuggestions(status.suggestions);
+          }
           if (status.agencyId) {
+            setCreatedAgencyId(status.agencyId);
             toast.success("Agency created successfully!");
-            onCreated(status.agencyId);
-            handleClose();
+            // Don't auto-close — show suggestions first, let user navigate manually
           }
         } else if (status.status === "failed") {
           setTaskStatus("failed");
@@ -251,6 +271,12 @@ export function AutoCreateAgencyModal({ open, onOpenChange, onCreated, defaultMo
     setErrorMsg("");
     setElapsedSeconds(0);
     setGuide("");
+    setSuggestions([]);
+    setDismissedSuggestions(new Set());
+    setShowTemplateDialog(false);
+    setTemplateName("");
+    setTemplateDesc("");
+    setCreatedAgencyId(null);
   };
 
   const formatElapsed = (s: number) => {
@@ -436,12 +462,166 @@ export function AutoCreateAgencyModal({ open, onOpenChange, onCreated, defaultMo
 
           {/* Done */}
           {taskStatus === "completed" && (
-            <div className="border border-green-200 rounded-lg bg-green-50 p-4 flex items-start gap-3">
-              <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0 mt-0.5" />
-              <div>
-                <p className="text-sm font-medium text-green-800">Agency created!</p>
-                {guide && <p className="text-xs text-green-700 mt-1">{guide.slice(0, 200)}...</p>}
+            <div className="space-y-4">
+              <div className="border border-green-200 rounded-lg bg-green-50 p-4 flex items-start gap-3">
+                <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-green-800">Agency created!</p>
+                  {guide && <p className="text-xs text-green-700 mt-1">{guide.slice(0, 200)}...</p>}
+                </div>
               </div>
+
+              {/* Suggestion cards */}
+              {suggestions.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="text-sm font-medium flex items-center gap-1.5">
+                    <Lightbulb className="h-4 w-4 text-amber-500" />
+                    Recommended Improvements
+                  </h4>
+                  {suggestions.map((s, i) => (
+                    <div key={i} className="border rounded-md p-2.5 text-xs space-y-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <Badge variant={s.impact === "high" ? "destructive" : "secondary"}>
+                          {s.impact}
+                        </Badge>
+                        <Badge variant="outline">{s.category}</Badge>
+                        <span className="font-medium">{s.title}</span>
+                      </div>
+                      <p className="text-muted-foreground">{s.description}</p>
+                      <div className="flex gap-1.5">
+                        {!dismissedSuggestions.has(i) ? (
+                          <>
+                            {s.suggestedValue && s.targetNodeId && createdAgencyId &&
+                             ["add_capability", "upgrade_mode", "add_tool"].includes(s.category) &&
+                             applySuggestionMutation.mutateAsync && (
+                              <Button
+                                size="sm"
+                                className="h-6 text-[10px]"
+                                onClick={async () => {
+                                  try {
+                                    await applySuggestionMutation.mutateAsync({
+                                      agencyId: createdAgencyId,
+                                      targetNodeId: s.targetNodeId,
+                                      category: s.category,
+                                      value: s.suggestedValue,
+                                    });
+                                    setDismissedSuggestions(prev => new Set(prev).add(i));
+                                    toast.success(`Applied: ${s.title}`);
+                                  } catch {
+                                    toast.error("Failed to apply suggestion");
+                                  }
+                                }}
+                              >
+                                Apply
+                              </Button>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 text-[10px]"
+                              onClick={() => setDismissedSuggestions(prev => new Set(prev).add(i))}
+                            >
+                              Skip
+                            </Button>
+                          </>
+                        ) : (
+                          <span className="text-[10px] text-green-600">Applied</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Save as Template */}
+              {!showTemplateDialog ? (
+                <div className="border-t pt-3 flex items-center justify-between">
+                  <p className="text-xs text-muted-foreground">
+                    Save this agency design as a reusable template
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-xs gap-1"
+                    onClick={() => setShowTemplateDialog(true)}
+                  >
+                    <Archive className="h-3.5 w-3.5" />
+                    Save as Template
+                  </Button>
+                </div>
+              ) : (
+                <div className="border rounded-lg p-3 space-y-2">
+                  <h4 className="text-sm font-medium">Save as Template</h4>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="tpl-name" className="text-xs">Template Name</Label>
+                    <Input
+                      id="tpl-name"
+                      value={templateName}
+                      onChange={(e) => setTemplateName(e.target.value)}
+                      placeholder="e.g. Research Team"
+                      maxLength={255}
+                      className="h-8 text-xs"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="tpl-desc" className="text-xs">Description (optional)</Label>
+                    <Input
+                      id="tpl-desc"
+                      value={templateDesc}
+                      onChange={(e) => setTemplateDesc(e.target.value)}
+                      placeholder="Brief description..."
+                      maxLength={2000}
+                      className="h-8 text-xs"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      className="h-7 text-xs"
+                      disabled={!templateName.trim() || !createdAgencyId || !saveAsTemplateMutation.mutateAsync}
+                      onClick={async () => {
+                        if (!createdAgencyId || !saveAsTemplateMutation.mutateAsync) return;
+                        try {
+                          await saveAsTemplateMutation.mutateAsync({
+                            agencyId: createdAgencyId,
+                            name: templateName.trim(),
+                            description: templateDesc.trim() || undefined,
+                          });
+                          toast.success("Template saved!");
+                          setShowTemplateDialog(false);
+                        } catch (e: any) {
+                          console.warn("saveAsTemplate failed", e?.message);
+                          toast.error("Failed to save template");
+                        }
+                      }}
+                    >
+                      Save
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-xs"
+                      onClick={() => setShowTemplateDialog(false)}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Navigate to editor */}
+              {createdAgencyId && (
+                <Button
+                  className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+                  onClick={() => {
+                    onCreated(createdAgencyId);
+                    handleClose();
+                  }}
+                >
+                  Open in Agency Editor
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </Button>
+              )}
             </div>
           )}
         </div>

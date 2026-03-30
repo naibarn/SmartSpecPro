@@ -1,4 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import express from "express";
 import request from "supertest";
 import { createPresentationPublicRouter } from "../publicPresentationsApi";
@@ -333,6 +336,41 @@ describe("GET /v1/presentations/decks/:deckId/export/download", () => {
     const res = await request(makeApp()).get(
       "/v1/presentations/decks/100/export/download",
     );
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe("not_found");
+  });
+
+  it("streams local export files from safe paths", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "presentation-export-"));
+    const filePath = path.join(tempDir, "export.pptx");
+    fs.writeFileSync(filePath, "pptx-bytes");
+
+    mockGetExportStatus.mockResolvedValue({
+      status: "done",
+      format: "pptx",
+      outputUrl: filePath,
+    } as any);
+
+    const res = await request(makeApp()).get(
+      "/v1/presentations/decks/100/export/download",
+    );
+
+    expect(res.status).toBe(200);
+    expect(res.headers["content-type"]).toMatch(/presentationml\.presentation/);
+    expect(res.text).toBe("pptx-bytes");
+  });
+
+  it("rejects unsafe export download targets", async () => {
+    mockGetExportStatus.mockResolvedValue({
+      status: "done",
+      format: "pptx",
+      outputUrl: "javascript:alert(1)",
+    } as any);
+
+    const res = await request(makeApp()).get(
+      "/v1/presentations/decks/100/export/download",
+    );
+
     expect(res.status).toBe(404);
     expect(res.body.error.code).toBe("not_found");
   });

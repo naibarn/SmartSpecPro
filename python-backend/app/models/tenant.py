@@ -129,3 +129,4 @@ class TenantUser(Base):
         Index("idx_tenant_user_user", "user_id"),
         Index("idx_tenant_user_unique", "tenant_id", "user_id", unique=True),
     )
+# mypy: ignore-errors

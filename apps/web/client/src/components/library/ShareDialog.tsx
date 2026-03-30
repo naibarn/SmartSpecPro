@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Loader2, Search, Users, X } from "lucide-react";
+import { ExternalLink, Loader2, Search, Users, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -21,8 +21,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc";
+import { CopyLinkButton } from "./CopyLinkButton";
 import { PermissionBadge } from "./PermissionBadge";
 import type { PermissionLevel } from "./PermissionBadge";
+import { buildPublicDocumentShareUrl } from "@/lib/documentManagementUi";
 
 interface ShareDialogProps {
   itemId: number;
@@ -49,6 +51,10 @@ export function ShareDialog({
   const [selectedPermission, setSelectedPermission] =
     useState<SharePermission>("read");
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const publicShareQuery = trpc.library.getPublicShareLink.useQuery(
+    { itemId },
+    { enabled: isOpen && itemId > 0 },
+  );
 
   // Reset state when dialog closes
   useEffect(() => {
@@ -129,12 +135,42 @@ export function ShareDialog({
       },
     });
 
+  const createPublicShareMutation = trpc.library.createPublicShareLink.useMutation({
+    onSuccess: async () => {
+      toast.success("Public link created");
+      await trpcUtils.library.getPublicShareLink.invalidate({ itemId });
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to create public link");
+    },
+  });
+
+  const revokePublicShareMutation = trpc.library.revokePublicShareLink.useMutation({
+    onSuccess: async () => {
+      toast.success("Public link revoked");
+      await trpcUtils.library.getPublicShareLink.invalidate({ itemId });
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to revoke public link");
+    },
+  });
+
   const shares = sharesData?.shares ?? [];
   const hasError = Boolean(sharesError);
   const isMutating =
     shareItemMutation.isPending ||
     removeShareMutation.isPending ||
-    updatePermissionMutation.isPending;
+    updatePermissionMutation.isPending ||
+    createPublicShareMutation.isPending ||
+    revokePublicShareMutation.isPending;
+  const publicShareUrl = publicShareQuery.data?.link?.token && publicShareQuery.data.link.itemId === itemId
+    ? buildPublicDocumentShareUrl(
+        publicShareQuery.data.link.token,
+        typeof window !== "undefined" ? window.location.origin : "",
+      )
+    : "";
+  const canManagePublicShare = publicShareQuery.data?.canManage ?? false;
+  const hasPublicShare = Boolean(publicShareQuery.data?.link?.token && publicShareQuery.data.link.itemId === itemId);
 
   function handleAddShare() {
     if (selectedGroupId) {
@@ -227,6 +263,62 @@ export function ShareDialog({
         </DialogHeader>
 
         <div className="space-y-4">
+          <div className="rounded-xl border border-sky-200 bg-sky-50/80 p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-sky-700">Public link</p>
+                <p className="mt-1 text-sm text-sky-900/80">
+                  {canManagePublicShare
+                    ? "Create a read-only link that opens the file without requiring sign-in."
+                    : "Only users who can manage this file can create or revoke a public link."}
+                </p>
+              </div>
+              <div className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-sky-700 shadow-sm">
+                {hasPublicShare ? "Active" : "Inactive"}
+              </div>
+            </div>
+
+            {hasPublicShare ? (
+              <div className="mt-4 space-y-3">
+                <Input value={publicShareUrl} readOnly aria-label="Public share link" />
+                {publicShareQuery.data?.link?.expiresAt ? (
+                  <p className="text-xs text-sky-800/80">
+                    Expires {new Date(publicShareQuery.data.link.expiresAt).toLocaleString()}
+                  </p>
+                ) : null}
+                <div className="flex flex-wrap gap-2">
+                  <CopyLinkButton shareUrl={publicShareUrl} />
+                  <Button asChild variant="outline" className="gap-2">
+                    <a href={publicShareUrl} target="_blank" rel="noreferrer">
+                      <ExternalLink className="h-4 w-4" />
+                      Open
+                    </a>
+                  </Button>
+                  {canManagePublicShare ? (
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      onClick={() => revokePublicShareMutation.mutate({ itemId })}
+                      disabled={revokePublicShareMutation.isPending}
+                    >
+                      Revoke
+                    </Button>
+                  ) : null}
+                </div>
+              </div>
+            ) : canManagePublicShare ? (
+              <div className="mt-4">
+                <Button
+                  type="button"
+                  onClick={() => createPublicShareMutation.mutate({ itemId })}
+                  disabled={createPublicShareMutation.isPending}
+                >
+                  Create public link
+                </Button>
+              </div>
+            ) : null}
+          </div>
+
           {hasError && (
             <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
               Failed to load shares. Please try again.

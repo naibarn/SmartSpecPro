@@ -5,9 +5,9 @@
  */
 
 import { trpc } from "@/lib/trpc";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Shield, AlertTriangle, Lock } from "lucide-react";
+import { DashboardCard, DashboardKpiCard } from "@/components/dashboard";
 
 interface SecurityPanelProps {
   refreshInterval: number | null;
@@ -28,37 +28,26 @@ export default function SecurityPanel({ refreshInterval }: SecurityPanelProps) {
 
   if (error) {
     return (
-      <Card>
-        <CardContent className="py-6">
+      <DashboardCard>
+        <div className="py-6">
           <p className="text-destructive">Failed to load security stats: {error.message}</p>
-        </CardContent>
-      </Card>
+        </div>
+      </DashboardCard>
     );
   }
 
   return (
     <div className="space-y-4">
       {/* Summary */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Rate Limit Keys Active</CardTitle>
-          <Lock className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{data?.totalRateLimitKeys ?? 0}</div>
-          <p className="text-xs text-muted-foreground">Active rate limit entries in Redis</p>
-        </CardContent>
-      </Card>
+      <DashboardKpiCard icon={Lock} label="Rate Limit Keys Active" value={data?.totalRateLimitKeys ?? 0} subLabel={<span className="text-xs text-muted-foreground">Active rate limit entries in Redis</span>} />
 
       {/* Rate Limit by Endpoint */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm font-medium flex items-center gap-2">
+      <DashboardCard title="Rate Limit Keys by Namespace">
+        <div>
+          <h3 className="text-sm font-medium flex items-center gap-2">
             <Shield className="h-4 w-4" />
             Rate Limit Keys by Namespace
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+          </h3>
           {data?.rateLimitKeys && data.rateLimitKeys.length > 0 ? (
             <div className="space-y-2">
               {data.rateLimitKeys.map((item) => (
@@ -71,18 +60,16 @@ export default function SecurityPanel({ refreshInterval }: SecurityPanelProps) {
           ) : (
             <p className="text-sm text-muted-foreground">No rate limit data available.</p>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </DashboardCard>
 
       {/* Recent Error Types */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm font-medium flex items-center gap-2">
+      <DashboardCard title="API Error Types (Last 24h)">
+        <div>
+          <h3 className="text-sm font-medium flex items-center gap-2">
             <AlertTriangle className="h-4 w-4" />
             API Error Types (Last 24h)
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+          </h3>
           {data?.recentErrors && data.recentErrors.length > 0 ? (
             <div className="space-y-2">
               {data.recentErrors.map((err) => (
@@ -95,8 +82,8 @@ export default function SecurityPanel({ refreshInterval }: SecurityPanelProps) {
           ) : (
             <p className="text-sm text-muted-foreground">No API errors in the last 24 hours.</p>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </DashboardCard>
     </div>
   );
 }

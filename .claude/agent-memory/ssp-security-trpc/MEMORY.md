@@ -1,10 +1,14 @@
 # CMD-6 tRPC Security Auditor — Persistent Memory
 
 ## Index of Topic Files
+- `feature_058_agency_creator_audit.md` — Feature 058 agency creator intelligence upgrade audit (autoCreate, autoCreateStatus, autoCreateAnswer, saveAsTemplate, internal/agency/create) — 2026-03-24
+- `feature_057_mcp_trpc_router_audit.md` — Feature 057 section-13 mcpServers.ts tRPC router audit — 2026-03-24
 - `feature_unified_skill_execution_audit.md` — Unified skill execution system (executors/, unifiedOrchestrator.ts) — 2026-03-21
 - `feature_049_notification_reaudit.md` — Notification system re-audit
 - `feature_049_notification_system_audit.md` — Notification system initial audit
 - `feature_api_key_systems_audit.md` — API key systems audit
+- `feature_052_agency_round2_audit.md` — Agency Swarm Round 2 deep audit (agency.ts, agencyStream.ts, agencyToolsApi.ts, agencyStreamProxy.ts) — 2026-03-23
+- `feature_053_agentic_intelligence_audit.md` — Feature 053 memory CRUD + saveBuilder agentic validation audit — 2026-03-23
 
 ## Project Security Conventions
 

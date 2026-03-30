@@ -234,6 +234,27 @@ describe("PROVIDER_TEMPLATES — UVoice entry", () => {
   });
 });
 
+describe("PROVIDER_TEMPLATES — KNPLabs AI entry", () => {
+  const knplabsTemplate = PROVIDER_TEMPLATES.find(
+    (t) => t.providerName === "knplabai"
+  );
+
+  it("includes an entry with providerName 'knplabai'", () => {
+    expect(knplabsTemplate).toBeDefined();
+  });
+
+  it("has providerType 'multimodal'", () => {
+    expect(knplabsTemplate?.providerType).toBe("multimodal");
+  });
+
+  it("includes image, video, and audio models", () => {
+    const types = new Set(knplabsTemplate?.availableModels?.map((m) => m.type));
+    expect(types.has("image")).toBe(true);
+    expect(types.has("video")).toBe(true);
+    expect(types.has("audio")).toBe(true);
+  });
+});
+
 describe("testUVoice", () => {
   beforeEach(() => {
     vi.restoreAllMocks();

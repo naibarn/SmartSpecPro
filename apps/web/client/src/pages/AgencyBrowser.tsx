@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAgencyList } from "@/hooks/useAgencyQuery";
+import { useTenantFeatureFlags } from "@/hooks/useTenantFeatureFlag";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,9 +49,16 @@ import {
   XCircle,
   Send,
   AlertTriangle,
+  Sparkles,
+  ChevronRight,
+  RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AgencyTemplateModal } from "@/components/agency/AgencyTemplateModal";
+import { type SocialPublishingPageOption } from "@/types/social";
+import type { HybridOrchestrationPlan, HybridPlanPayload } from "@shared/orchestration/hybridOrchestration";
+import { useScopedTranslation } from "@/i18n/useScopedTranslation";
+import { LocaleToggle } from "@/components/LocaleToggle";
 
 interface AgencyItem {
   id: string;
@@ -69,36 +77,157 @@ interface AgencyItem {
   rejectionReason?: string | null;
 }
 
+function buildAgencyHybridPreviewPayload(
+  agency: AgencyItem,
+  t: (key: string, params?: Record<string, string | number>) => string,
+): HybridPlanPayload {
+  const description = agency.description?.trim();
+  const draft = [
+    t("browser.hybridDraft.intro", { name: agency.name }),
+    description ? t("browser.hybridDraft.context", { description }) : null,
+    t("browser.hybridDraft.cooperative"),
+  ]
+    .filter((part): part is string => Boolean(part))
+    .join(" ");
+
+  const plan: HybridOrchestrationPlan = {
+    mode: "hybrid",
+    blendMode: "balanced-mixed",
+    summary: t("browser.hybridDraft.summary", { name: agency.name }),
+    workflowAnchor: "workflow-planner",
+    swarmRoles: ["explorer", "critic", "synthesizer"],
+    requiresApproval: true,
+    reason: "agency_overview_shortcut",
+    stages: [
+      {
+        id: "workflow-intake",
+        type: "intake",
+        owner: "workflow",
+        title: t("browser.hybridDraft.stages.workflowIntake.title"),
+        description: t("browser.hybridDraft.stages.workflowIntake.description"),
+        inputs: [
+          t("browser.hybridDraft.values.userMessage"),
+          t("browser.hybridDraft.values.agencyContext"),
+        ],
+        outputs: [
+          t("browser.hybridDraft.values.orchestrationBrief"),
+          t("browser.hybridDraft.values.acceptanceCriteria"),
+        ],
+      },
+      {
+        id: "swarm-explore",
+        type: "explore",
+        owner: "swarm",
+        title: t("browser.hybridDraft.stages.swarmExplore.title"),
+        description: t("browser.hybridDraft.stages.swarmExplore.description"),
+        inputs: [t("browser.hybridDraft.values.orchestrationBrief")],
+        outputs: [
+          t("browser.hybridDraft.values.optionSet"),
+          t("browser.hybridDraft.values.risks"),
+          t("browser.hybridDraft.values.recommendedPath"),
+        ],
+      },
+      {
+        id: "workflow-validate",
+        type: "validate",
+        owner: "workflow",
+        title: t("browser.hybridDraft.stages.workflowValidate.title"),
+        description: t("browser.hybridDraft.stages.workflowValidate.description"),
+        inputs: [
+          t("browser.hybridDraft.values.optionSet"),
+          t("browser.hybridDraft.values.risks"),
+          t("browser.hybridDraft.values.recommendedPath"),
+        ],
+        outputs: [
+          t("browser.hybridDraft.values.validatedExecutionPlan"),
+          t("browser.hybridDraft.values.guardrailChecks"),
+        ],
+      },
+      {
+        id: "human-approval",
+        type: "approval",
+        owner: "human",
+        title: t("browser.hybridDraft.stages.humanApproval.title"),
+        description: t("browser.hybridDraft.stages.humanApproval.description"),
+        inputs: [
+          t("browser.hybridDraft.values.validatedExecutionPlan"),
+          t("browser.hybridDraft.values.guardrailChecks"),
+        ],
+        outputs: [t("browser.hybridDraft.values.approvalDecision")],
+        gate: "required",
+      },
+      {
+        id: "workflow-commit",
+        type: "commit",
+        owner: "workflow",
+        title: t("browser.hybridDraft.stages.workflowCommit.title"),
+        description: t("browser.hybridDraft.stages.workflowCommit.description"),
+        inputs: [t("browser.hybridDraft.values.approvalDecision")],
+        outputs: [
+          t("browser.hybridDraft.values.publishedResult"),
+          t("browser.hybridDraft.values.auditRecord"),
+        ],
+      },
+    ],
+  };
+
+  return { draft, plan };
+}
+
+function formatPublishingReadinessLabel(
+  code: SocialPublishingPageOption["publishingIssueCode"] | null | undefined,
+  t: (key: string, params?: Record<string, string | number>) => string,
+): string {
+  switch (code) {
+    case "ready":
+      return t("browser.social.readiness.ready");
+    case "page_inactive":
+      return t("browser.social.readiness.pageInactive");
+    case "publishing_disabled":
+      return t("browser.social.readiness.publishingDisabled");
+    case "missing_page_access":
+      return t("browser.social.readiness.pageAccessMissing");
+    case "expired_page_access":
+      return t("browser.social.readiness.pageAccessExpired");
+    case "missing_provider_access":
+      return t("browser.social.readiness.providerAccessMissing");
+    case "expired_provider_access":
+      return t("browser.social.readiness.providerAccessExpired");
+    default:
+      return t("browser.social.readiness.notReady");
+  }
+}
+
 const STATUS_STYLES: Record<string, string> = {
   draft: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
   published: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
   archived: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200",
 };
 
-const VISIBILITY_CONFIG: Record<string, { icon: typeof Lock; label: string; style: string }> = {
+const VISIBILITY_CONFIG: Record<string, { icon: typeof Lock; labelKey: string; style: string }> = {
   private: {
     icon: Lock,
-    label: "Private",
+    labelKey: "browser.visibility.private",
     style: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300",
   },
   shared: {
     icon: Users,
-    label: "Shared",
+    labelKey: "browser.visibility.shared",
     style: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200",
   },
   public: {
     icon: Globe,
-    label: "Public",
+    labelKey: "browser.visibility.public",
     style: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-200",
   },
   pending_approval: {
     icon: Clock,
-    label: "Pending Approval",
+    labelKey: "browser.visibility.pendingApproval",
     style: "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-200",
   },
   rejected: {
     icon: XCircle,
-    label: "Rejected",
+    labelKey: "browser.visibility.rejected",
     style: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-200",
   },
 };
@@ -114,6 +243,7 @@ function AgencyShareDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const { t } = useScopedTranslation("agency");
   const [groupSearch, setGroupSearch] = useState("");
   const [selectedGroupIds, setSelectedGroupIds] = useState<number[]>([]);
 
@@ -174,20 +304,20 @@ function AgencyShareDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Share Agency</DialogTitle>
+          <DialogTitle>{t("browser.shareDialog.title")}</DialogTitle>
           <DialogDescription>
-            Share <strong>{agencyName}</strong> with groups so their members can use it.
+            {t("browser.shareDialog.description", { name: agencyName })}
           </DialogDescription>
         </DialogHeader>
 
         {/* Currently shared groups */}
         {loadingShared ? (
           <div className="flex items-center gap-2 py-3 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" /> Loading...
+            <Loader2 className="h-4 w-4 animate-spin" /> {t("browser.loading")}
           </div>
         ) : sharedGroups.length > 0 ? (
           <div className="space-y-1.5">
-            <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Shared with</p>
+            <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{t("browser.shareDialog.sharedWith")}</p>
             <div className="flex flex-wrap gap-2 max-h-28 overflow-y-auto">
               {sharedGroups.map((g) => (
                 <Badge
@@ -208,29 +338,29 @@ function AgencyShareDialog({
             </div>
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground py-1">Not shared with any groups yet.</p>
+          <p className="text-sm text-muted-foreground py-1">{t("browser.shareDialog.notShared")}</p>
         )}
 
         {/* Add groups */}
         <div className="space-y-2 border-t pt-3">
-          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Add groups</p>
+          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{t("browser.shareDialog.addGroups")}</p>
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={groupSearch}
               onChange={(e) => setGroupSearch(e.target.value)}
-              placeholder="Search groups..."
+              placeholder={t("browser.shareDialog.searchGroups")}
               className="pl-8 h-8 text-sm"
             />
           </div>
 
           {loadingGroups ? (
             <div className="flex items-center gap-2 py-3 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" /> Loading groups...
+              <Loader2 className="h-4 w-4 animate-spin" /> {t("browser.shareDialog.loadingGroups")}
             </div>
           ) : availableGroups.length === 0 ? (
             <p className="text-sm text-muted-foreground py-2">
-              {allGroups.length === 0 ? "No groups available." : "No matching groups."}
+              {allGroups.length === 0 ? t("browser.shareDialog.noGroupsAvailable") : t("browser.shareDialog.noMatchingGroups")}
             </p>
           ) : (
             <div className="max-h-40 overflow-y-auto space-y-1 rounded-md border p-1">
@@ -255,7 +385,7 @@ function AgencyShareDialog({
 
         <DialogFooter>
           <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
-            Close
+            {t("browser.shareDialog.close")}
           </Button>
           <Button
             size="sm"
@@ -263,7 +393,7 @@ function AgencyShareDialog({
             onClick={handleShare}
           >
             {shareMutation.isPending && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
-            Share with {selectedGroupIds.length} group{selectedGroupIds.length !== 1 ? "s" : ""}
+            {t("browser.shareDialog.shareWith", { count: selectedGroupIds.length })}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -272,6 +402,7 @@ function AgencyShareDialog({
 }
 
 export default function AgencyBrowser() {
+  const { t } = useScopedTranslation("agency");
   const { isLoading: authLoading, isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
   const [search, setSearch] = useState("");
@@ -283,6 +414,14 @@ export default function AgencyBrowser() {
   // Feature flag is enforced server-side: agency.list throws NOT_FOUND
   // when AGENCY_SWARM_ENABLED is false
   const { data: agencies, isLoading, isError } = useAgencyList();
+  const tenantFlags = useTenantFeatureFlags();
+  const metaChannelsEnabled = tenantFlags.META_CHANNELS_ENABLED;
+  const { data: publishingPages = [], isLoading: publishingPagesLoading } = trpc.socialPublishing.listPages.useQuery(
+    undefined,
+    {
+      enabled: metaChannelsEnabled && isAuthenticated && !authLoading && !isLoading && !isError,
+    },
+  );
   const utils = trpc.useUtils();
   const deleteMutation = trpc.agency.delete.useMutation({
     onSuccess: () => {
@@ -303,6 +442,7 @@ export default function AgencyBrowser() {
       utils.agency.list.invalidate();
     },
   });
+  const createHybridPreviewTokenMutation = trpc.hybridOrchestration.createPreviewToken.useMutation();
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -316,6 +456,22 @@ export default function AgencyBrowser() {
       setLocation("/dashboard");
     }
   }, [isLoading, isError, setLocation]);
+
+  const handleOpenHybridPreview = (agency: AgencyItem) => {
+    void (async () => {
+      try {
+        const payload = buildAgencyHybridPreviewPayload(agency, t);
+        const result = await createHybridPreviewTokenMutation.mutateAsync({
+          agencyId: agency.id,
+          payload,
+          sourceSurface: "agency-browser",
+        });
+        setLocation(`/agencies/${agency.id}/hybrid-preview?hybridPreviewToken=${encodeURIComponent(result.token)}`);
+      } catch {
+        // Toasts are handled by the surrounding mutation UI; keep the flow quiet here.
+      }
+    })();
+  };
 
   if (authLoading || isLoading) {
     return (
@@ -332,6 +488,52 @@ export default function AgencyBrowser() {
       a.name?.toLowerCase().includes(search.toLowerCase()) ||
       a.description?.toLowerCase().includes(search.toLowerCase()),
   );
+  const socialPublishingSummary = (() => {
+    if (!metaChannelsEnabled) {
+      return null;
+    }
+
+    const pages = publishingPages as SocialPublishingPageOption[];
+    const total = pages.length;
+    const readyCount = pages.filter((page) => page.publishingReady !== false).length;
+    const blockedPages = pages.filter((page) => page.publishingReady === false);
+
+    if (publishingPagesLoading) {
+      return {
+        label: t("browser.social.checkingReadiness"),
+        detail: t("browser.social.loadingPages"),
+        tone: "bg-slate-100 text-slate-600 border-slate-200",
+        title: t("browser.social.loadingTitle"),
+      };
+    }
+
+    if (total === 0) {
+      return {
+        label: t("browser.social.notConnected"),
+        detail: t("browser.social.connectPage"),
+        tone: "bg-slate-100 text-slate-600 border-slate-200",
+        title: t("browser.social.notConnectedTitle"),
+      };
+    }
+
+    if (blockedPages.length === 0) {
+      return {
+        label: t("browser.social.readyToPublish"),
+        detail: t("browser.social.pagesReady", { count: total }),
+        tone: "bg-emerald-100 text-emerald-700 border-emerald-200",
+        title: t("browser.social.pagesReadyTitle", { count: total }),
+      };
+    }
+
+    return {
+      label: t("browser.social.partialReady", { ready: readyCount, total }),
+      detail: t("browser.social.pagesNeedAccess", { count: blockedPages.length }),
+      tone: "bg-amber-100 text-amber-700 border-amber-200",
+      title: blockedPages
+        .map((page) => `${page.label}: ${formatPublishingReadinessLabel(page.publishingIssueCode, t)}`)
+        .join(" • "),
+    };
+  })();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/30 to-purple-50/20">
@@ -349,15 +551,15 @@ export default function AgencyBrowser() {
                 onClick={() => setLocation("/dashboard")}
               >
                 <ChevronLeft className="h-4 w-4 mr-1" />
-                Back
+                {t("browser.back")}
               </Button>
               <div className="flex items-center gap-2">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center shadow-lg shadow-indigo-200/50">
                   <Users className="h-5 w-5 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-lg font-bold">Agencies</h1>
-                  <p className="text-xs text-muted-foreground">Manage AI agent teams</p>
+                  <h1 className="text-lg font-bold">{t("browser.header.title")}</h1>
+                  <p className="text-xs text-muted-foreground">{t("browser.header.subtitle")}</p>
                 </div>
               </div>
             </div>
@@ -366,18 +568,19 @@ export default function AgencyBrowser() {
             <div className="flex items-center gap-3">
               <Badge variant="secondary" className="gap-1 hidden sm:flex">
                 <Users className="h-3 w-3" />
-                {agencyList.length} teams
+                {t("browser.header.teamsCount", { count: agencyList.length })}
               </Badge>
+              <LocaleToggle className="hidden lg:inline-flex" />
               <Button
                 variant="outline"
                 onClick={() => setLocation("/agencies/marketplace")}
               >
                 <Globe className="mr-2 h-4 w-4" />
-                Marketplace
+                {t("browser.header.marketplace")}
               </Button>
               <Button onClick={() => setIsModalOpen(true)}>
                 <Plus className="mr-2 h-4 w-4" />
-                Create Agency
+                {t("browser.header.createAgency")}
               </Button>
             </div>
           </div>
@@ -392,24 +595,46 @@ export default function AgencyBrowser() {
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search agencies..."
+            placeholder={t("browser.searchPlaceholder")}
             className="pl-9 bg-white/80"
           />
         </div>
+
+        {socialPublishingSummary && (
+          <div className="mb-6 flex flex-col gap-3 rounded-xl border border-slate-200 bg-white/75 px-4 py-3 shadow-sm backdrop-blur sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-slate-800">{t("browser.social.facebookAutoPost")}</p>
+              <p className="text-xs text-slate-500">{socialPublishingSummary.detail}</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge
+                variant="secondary"
+                className={cn("gap-1", socialPublishingSummary.tone)}
+                title={socialPublishingSummary.title}
+              >
+                <Send className="h-3 w-3" />
+                {socialPublishingSummary.label}
+              </Badge>
+              <Button variant="outline" size="sm" onClick={() => setLocation("/social/publishing")}>
+                {t("browser.social.openPublishing")}
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* Grid */}
         {filtered.length === 0 ? (
           <div className="py-16 text-center text-muted-foreground border-2 border-dashed border-slate-200 rounded-xl bg-white/50">
             <Users className="mx-auto mb-4 h-12 w-12 text-slate-300" />
-            <p className="text-lg font-medium text-slate-600">No agencies found</p>
+            <p className="text-lg font-medium text-slate-600">{t("browser.empty.title")}</p>
             <p className="text-sm mt-1 text-slate-500">
               {search
-                ? "Try adjusting your search terms."
-                : "Create your first agency team to get started."}
+                ? t("browser.empty.searchHint")
+                : t("browser.empty.createHint")}
             </p>
             {!search && (
               <Button className="mt-6" variant="outline" onClick={() => setIsModalOpen(true)}>
-                Browse Templates
+                {t("browser.empty.browseTemplates")}
               </Button>
             )}
           </div>
@@ -435,7 +660,7 @@ export default function AgencyBrowser() {
                         STATUS_STYLES[agency.status || ""] || "",
                       )}
                     >
-                      {agency.status || "draft"}
+                      {t(`browser.status.${agency.status || "draft"}`)}
                     </Badge>
                   </div>
 
@@ -444,10 +669,10 @@ export default function AgencyBrowser() {
                     {agency.canEdit ? (
                       <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700">
                         <Edit className="h-2.5 w-2.5" />
-                        Owner
+                        {t("browser.card.owner")}
                       </span>
                     ) : agency.ownerName ? (
-                      <span className="text-xs text-slate-400">By {agency.ownerName}</span>
+                      <span className="text-xs text-slate-400">{t("browser.card.by", { name: agency.ownerName })}</span>
                     ) : null}
                   </div>
 
@@ -465,9 +690,9 @@ export default function AgencyBrowser() {
                       className={cn("text-[10px] gap-1 font-medium", vis.style)}
                     >
                       <VisIcon className="h-3 w-3" />
-                      {vis.label}
+                      {t(vis.labelKey)}
                       {agency.visibility === "shared" && (agency.sharedGroupCount ?? 0) > 0 && (
-                        <span className="ml-0.5">{agency.sharedGroupCount} group{(agency.sharedGroupCount ?? 0) !== 1 ? "s" : ""}</span>
+                        <span className="ml-0.5">{agency.sharedGroupCount}</span>
                       )}
                     </Badge>
                     {agency.visibility === "rejected" && agency.rejectionReason && (
@@ -476,7 +701,7 @@ export default function AgencyBrowser() {
                           <TooltipTrigger asChild>
                             <span className="inline-flex items-center gap-1 text-[10px] text-red-600 cursor-help">
                               <AlertTriangle className="h-3 w-3" />
-                              View reason
+                              {t("browser.card.viewReason")}
                             </span>
                           </TooltipTrigger>
                           <TooltipContent side="bottom" className="max-w-xs">
@@ -501,9 +726,9 @@ export default function AgencyBrowser() {
                       </div>
                       <div className="min-w-0">
                         <p className="text-xs font-semibold text-amber-800">
-                          {agency.visibility === "rejected" ? "Re-submit for Approval" : "Request Public Publish"}
+                          {agency.visibility === "rejected" ? t("browser.card.reSubmit") : t("browser.card.requestPublish")}
                         </p>
-                        <p className="text-[10px] text-amber-600 leading-tight">Submit to Marketplace for admin review</p>
+                        <p className="text-[10px] text-amber-600 leading-tight">{t("browser.card.submitToMarketplace")}</p>
                       </div>
                     </button>
                   )}
@@ -513,7 +738,7 @@ export default function AgencyBrowser() {
                     <div className="flex items-center justify-between mb-3 px-3 py-2 rounded-lg border border-amber-200 bg-amber-50/80">
                       <div className="flex items-center gap-2">
                         <Loader2 className="h-3.5 w-3.5 text-amber-600 animate-spin" />
-                        <span className="text-xs font-medium text-amber-700">Awaiting admin review...</span>
+                        <span className="text-xs font-medium text-amber-700">{t("browser.card.awaitingReview")}</span>
                       </div>
                       <button
                         className="text-[10px] font-medium text-amber-600 hover:text-amber-800 underline"
@@ -523,9 +748,65 @@ export default function AgencyBrowser() {
                           cancelPublishMutation.mutate({ agencyId: agency.id });
                         }}
                       >
-                        Cancel
+                        {t("browser.card.cancel")}
                       </button>
                     </div>
+                  )}
+
+                  {agency.canEdit && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mb-3 w-full justify-between border-indigo-200 bg-indigo-50/70 text-indigo-700 hover:bg-indigo-100 hover:text-indigo-800"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setLocation(`/agencies/${agency.id}/review`);
+                      }}
+                    >
+                      <span className="flex items-center gap-2">
+                        <Sparkles className="h-3.5 w-3.5" />
+                        {t("browser.card.evaluateAgency")}
+                      </span>
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  )}
+
+                  {agency.canEdit && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mb-3 w-full justify-between border-violet-200 bg-violet-50/70 text-violet-700 hover:bg-violet-100 hover:text-violet-800"
+                      disabled={createHybridPreviewTokenMutation.isPending}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleOpenHybridPreview(agency);
+                      }}
+                    >
+                      <span className="flex items-center gap-2">
+                        <Sparkles className="h-3.5 w-3.5" />
+                        {t("browser.card.hybridOrchestrate")}
+                      </span>
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  )}
+
+                  {agency.canEdit && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mb-3 w-full justify-between border-cyan-200 bg-cyan-50/70 text-cyan-700 hover:bg-cyan-100 hover:text-cyan-800"
+                      disabled={createHybridPreviewTokenMutation.isPending}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleOpenHybridPreview(agency);
+                      }}
+                    >
+                      <span className="flex items-center gap-2">
+                        <RefreshCw className="h-3.5 w-3.5" />
+                        {t("browser.card.regeneratePreviewToken")}
+                      </span>
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
                   )}
 
                   {/* Footer: agent count + actions */}
@@ -533,7 +814,7 @@ export default function AgencyBrowser() {
                     <div className="flex items-center gap-3 text-xs font-medium text-slate-500 bg-slate-50 px-2 py-1.5 rounded-md">
                       <span className="flex items-center gap-1.5">
                         <Users className="h-3.5 w-3.5" />
-                        {agency.agentCount ?? 0} agents
+                        {t("browser.card.agentsCount", { count: agency.agentCount ?? 0 })}
                       </span>
                     </div>
 
@@ -547,7 +828,7 @@ export default function AgencyBrowser() {
                             e.stopPropagation();
                             setLocation(`/agencies/${agency.id}`);
                           }}
-                          title="Chat with agency"
+                          title={t("browser.card.chatTitle")}
                         >
                           <MessageSquare className="h-3.5 w-3.5" />
                         </Button>
@@ -557,12 +838,24 @@ export default function AgencyBrowser() {
                           <Button
                             variant="secondary"
                             size="icon"
+                            className="h-8 w-8 bg-amber-50 hover:bg-amber-100 text-amber-700 hover:text-amber-800"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setLocation(`/agencies/${agency.id}/review`);
+                            }}
+                            title={t("browser.card.reviewTitle")}
+                          >
+                            <Sparkles className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="secondary"
+                            size="icon"
                             className="h-8 w-8 bg-blue-50 hover:bg-blue-100 text-blue-600 hover:text-blue-700"
                             onClick={(e) => {
                               e.stopPropagation();
                               setShareTarget({ id: agency.id, name: agency.name });
                             }}
-                            title="Share agency"
+                            title={t("browser.card.shareTitle")}
                           >
                             <Share2 className="h-3.5 w-3.5" />
                           </Button>
@@ -574,7 +867,7 @@ export default function AgencyBrowser() {
                               e.stopPropagation();
                               setLocation(`/agencies/${agency.id}/edit`);
                             }}
-                            title="Edit agency"
+                            title={t("browser.card.editTitle")}
                           >
                             <Edit className="h-3.5 w-3.5" />
                           </Button>
@@ -586,7 +879,7 @@ export default function AgencyBrowser() {
                               e.stopPropagation();
                               setDeleteTarget({ id: agency.id, name: agency.name });
                             }}
-                            title="Delete agency"
+                            title={t("browser.card.deleteTitle")}
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>
@@ -615,13 +908,13 @@ export default function AgencyBrowser() {
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Agency</AlertDialogTitle>
+            <AlertDialogTitle>{t("browser.delete.title")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete <strong>{deleteTarget?.name}</strong>? This will archive the agency and it will no longer appear in your list.
+              {t("browser.delete.description", { name: deleteTarget?.name })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleteMutation.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleteMutation.isPending}>{t("browser.card.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-red-600 hover:bg-red-700 text-white"
               disabled={deleteMutation.isPending}
@@ -636,7 +929,7 @@ export default function AgencyBrowser() {
               ) : (
                 <Trash2 className="mr-2 h-4 w-4" />
               )}
-              Delete
+              {t("browser.delete.confirm")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -646,29 +939,29 @@ export default function AgencyBrowser() {
       <AlertDialog open={!!publishTarget} onOpenChange={(open) => { if (!open) setPublishTarget(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Request Public Publishing</AlertDialogTitle>
+            <AlertDialogTitle>{t("browser.publish.title")}</AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-3">
                 <p>
-                  Submit <strong>{publishTarget?.name}</strong> for admin review to be published on the public marketplace.
+                  {t("browser.publish.submitName", { name: publishTarget?.name })}
                 </p>
                 <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800 space-y-1.5">
                   <p className="font-medium flex items-center gap-1.5">
                     <AlertTriangle className="h-4 w-4" />
-                    What happens next:
+                    {t("browser.publish.whatNext")}
                   </p>
                   <ul className="list-disc pl-5 space-y-0.5 text-xs">
-                    <li>An admin will review your agency for quality and compliance</li>
-                    <li>If approved, it will appear on the public Agencies Marketplace</li>
-                    <li>Creator fee: <strong>{publishTarget?.creatorFee ?? 0} credits</strong> per use</li>
-                    <li>You&apos;ll be notified of the decision</li>
+                    <li>{t("browser.publish.reviewNote")}</li>
+                    <li>{t("browser.publish.approvedNote")}</li>
+                    <li>{t("browser.publish.creatorFee", { fee: publishTarget?.creatorFee ?? 0 })}</li>
+                    <li>{t("browser.publish.notifiedNote")}</li>
                   </ul>
                 </div>
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={requestPublishMutation.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={requestPublishMutation.isPending}>{t("browser.card.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-amber-600 hover:bg-amber-700 text-white"
               disabled={requestPublishMutation.isPending}
@@ -683,7 +976,7 @@ export default function AgencyBrowser() {
               ) : (
                 <Send className="mr-2 h-4 w-4" />
               )}
-              Submit for Review
+              {t("browser.publish.confirm")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

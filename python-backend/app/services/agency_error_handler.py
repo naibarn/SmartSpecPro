@@ -26,11 +26,19 @@ SCRUB_PATTERNS: list[re.Pattern] = [
     re.compile(r"redis://[^\s\"']+"),                     # Redis strings
     re.compile(r"sk-[a-zA-Z0-9]{10,}"),                  # API keys (OpenAI-style)
     re.compile(r"key-[a-zA-Z0-9]{10,}"),                 # Generic API keys
+    re.compile(r"AKIA[A-Z0-9]{16}"),                     # AWS access key IDs
+    re.compile(r"eyJ[a-zA-Z0-9_-]{20,}\.eyJ[a-zA-Z0-9_-]+"),  # JWT fragments
+    re.compile(r"fal-[a-zA-Z0-9]{10,}"),                 # fal.ai API keys
+    re.compile(r"password=[^\s&\"']+", re.IGNORECASE),   # Password query params
     re.compile(r"Bearer\s+[^\s\"']+", re.IGNORECASE),    # Bearer tokens
     re.compile(r"Authorization:\s*[^\s\"']+", re.IGNORECASE),  # Auth headers
     re.compile(r'File "[^"]+",\s*line \d+'),             # Stack trace frames
     re.compile(r"at\s+[\w.]+\s+\([^)]+\)"),              # JS-style stack frames
 ]
+
+# Upper bounds for retry config to prevent DoS
+MAX_BACKOFF_MS = 10_000  # 10 seconds max per backoff
+MAX_BACKOFF_MULTIPLIER = 3.0
 
 MAX_SCRUBBED_LENGTH = 500
 
@@ -46,7 +54,11 @@ def scrub_error_payload(raw: str) -> str:
 
     Returns a safe summary truncated to MAX_SCRUBBED_LENGTH chars.
     """
-    result = raw
+    import unicodedata
+
+    # SECURITY: Normalize unicode to NFKD to defeat homoglyph bypass
+    # (e.g. Cyrillic "р" normalizes to Latin "p" for pattern matching)
+    result = unicodedata.normalize("NFKD", raw)
     for pattern in SCRUB_PATTERNS:
         result = pattern.sub("[REDACTED]", result)
     if len(result) > MAX_SCRUBBED_LENGTH:
@@ -68,8 +80,8 @@ async def execute_retry(
     per attempt if emitter is provided.
     """
     max_retries = min(int(retry_config.get("maxRetries", 3)), MAX_RETRIES_CAP)
-    backoff_ms = float(retry_config.get("backoffMs", 100))
-    backoff_multiplier = float(retry_config.get("backoffMultiplier", 2))
+    backoff_ms = min(float(retry_config.get("backoffMs", 100)), MAX_BACKOFF_MS)
+    backoff_multiplier = min(float(retry_config.get("backoffMultiplier", 2)), MAX_BACKOFF_MULTIPLIER)
     node_name = node.get("name", node.get("id", "unknown"))
 
     last_error: Exception | None = None
@@ -84,6 +96,8 @@ async def execute_retry(
                     "errorSummary": f"Succeeded on attempt {attempt + 1}",
                 })
             return result
+        except RunTerminatedError:
+            raise  # SECURITY: Never swallow terminate — propagate immediately
         except Exception as exc:
             last_error = exc
             if emitter:

@@ -12,7 +12,7 @@ import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { DashboardCard } from "@/components/dashboard";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -87,12 +87,12 @@ export default function UsageAnalytics() {
   if (!user) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <Card className="w-96">
-          <CardHeader>
-            <CardTitle>Authentication Required</CardTitle>
-            <CardDescription>Please log in to view your usage analytics.</CardDescription>
-          </CardHeader>
-        </Card>
+        <DashboardCard className="w-96">
+          <div>
+            <h3>Authentication Required</h3>
+            <p>Please log in to view your usage analytics.</p>
+          </div>
+        </DashboardCard>
       </div>
     );
   }
@@ -192,11 +192,11 @@ export default function UsageAnalytics() {
 
             {/* Provider + Model Breakdowns */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Provider Breakdown</CardTitle>
-                </CardHeader>
-                <CardContent>
+              <DashboardCard>
+                <div>
+                  <h3 className="text-base">Provider Breakdown</h3>
+                </div>
+                <div>
                   <BreakdownTable
                     columns={[
                       { header: "Provider", accessor: (r: any) => r.providerName },
@@ -206,14 +206,14 @@ export default function UsageAnalytics() {
                     data={data.providerBreakdown}
                     emptyMessage="No provider data for this period."
                   />
-                </CardContent>
-              </Card>
+                </div>
+              </DashboardCard>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Model Breakdown</CardTitle>
-                </CardHeader>
-                <CardContent>
+              <DashboardCard>
+                <div>
+                  <h3 className="text-base">Model Breakdown</h3>
+                </div>
+                <div>
                   <BreakdownTable
                     columns={[
                       { header: "Model", accessor: (r: any) => {
@@ -226,23 +226,23 @@ export default function UsageAnalytics() {
                     data={data.modelBreakdown}
                     emptyMessage="No model data for this period."
                   />
-                </CardContent>
-              </Card>
+                </div>
+              </DashboardCard>
             </div>
           </>
         ) : null}
 
         {/* Transaction History */}
-        <Card>
-          <CardHeader>
+        <DashboardCard>
+          <div>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle>Transaction History</CardTitle>
-                <CardDescription>
+                <h3>Transaction History</h3>
+                <p>
                   {totalTxns > 0
                     ? `Showing ${page * pageSize + 1}-${Math.min((page + 1) * pageSize, totalTxns)} of ${totalTxns}`
                     : "No transactions for this period"}
-                </CardDescription>
+                </p>
               </div>
               {totalPages > 1 && (
                 <div className="flex items-center gap-2">
@@ -268,8 +268,8 @@ export default function UsageAnalytics() {
                 </div>
               )}
             </div>
-          </CardHeader>
-          <CardContent>
+          </div>
+          <div>
             {transactions.isLoading ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -443,8 +443,8 @@ export default function UsageAnalytics() {
               </div>
               </>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </DashboardCard>
       </div>
     </div>
   );

@@ -23,7 +23,10 @@ Agencies are multi-agent teams that work together to complete complex, structure
 
 1. Click **Agencies** in the Chat toolbar (or **Explore Agencies** on the welcome screen).
 2. Browse available agency templates or create a custom one.
-3. Open an agency and type your request in the Agency Chat.
+3. Run the agency using one of these methods:
+   - **Open the agency** and type your request in the dedicated Agency Chat page.
+   - **From AI Chat**: click **Run Agency** in the header, select an agency, type your message, and press Enter — the agency runs inline without leaving the chat.
+   - **From AI Chat**: type `/run-agency` in the chat input and select from the list.
 4. The agents work together automatically. When finished, a **Preview Card** appears.
 5. Review the preview and click **Save** to commit it to your Library or Presentation Editor.
 
@@ -93,3 +96,57 @@ Visit **Agencies → Marketplace** to discover community-created agencies:
 - One-click **Install Agency** adds it to your Agencies list immediately.
 
 For building entirely custom agencies from scratch, see the [Agency Builder](/help/agency-builder) guide.
+
+## AI Agency Creator
+
+The **AI Agency Creator** lets you describe what you want in plain language and AI will design and build the entire agency for you automatically.
+
+### How to use
+
+1. Open the **Agency Builder** and click the **AI Agency Creator** button (sparkle icon).
+2. Describe what you want the agency to do. Be as specific as possible — mention the agents you need, what they should do, and what output you expect.
+3. Optionally attach a **spec file** (PDF, DOCX, TXT, or MD, up to 7.5 MB) with detailed requirements.
+4. Click **Create Agency** — the AI processes your request through multiple phases.
+
+### Creation phases
+
+The AI Creator follows a multi-phase pipeline:
+
+| Phase | What happens |
+|-------|-------------|
+| **Discover** | Analyzes your requirement, determines complexity, and recommends capabilities |
+| **Plan** | Creates an architecture plan informed by past agency designs and learnings |
+| **Review Plan** | Self-reviews the plan for completeness, fixing issues automatically |
+| **Design** | Produces the full agency specification with agents, tools, and workflows |
+| **Review Design** | Self-reviews the design for production readiness |
+| **Validate** | Checks structural correctness (connectivity, entry points, edge types) |
+| **Implement** | Creates the agency in the database with all agents and flows |
+| **Suggest** | Generates optional improvement recommendations |
+| **Document** | Writes a brief usage guide for the new agency |
+
+### Improvement suggestions
+
+After creation, you may see **Recommended Improvements** — these are optional suggestions from the AI about how to make your agency better. Each suggestion has:
+
+- **Impact** (high / medium / low) — how much the change would improve the agency
+- **Category** — what type of change (add capability, upgrade mode, add tool, etc.)
+- **Description** — what the improvement would do
+
+Review these suggestions and apply them manually in the Agency Builder if desired.
+
+### Save as Template
+
+After creating an agency, you can save it as a **reusable template**:
+
+1. Click **Save as Template** at the bottom of the completion panel.
+2. Enter a name and optional description.
+3. Click **Save** — the template appears in your Templates library.
+
+Templates preserve the agent definitions, node configurations, model requirements, and communication flows — but strip unique IDs so each new instance gets fresh ones.
+
+### Tips for better results
+
+- **Be specific**: "Create a research team with a web researcher, data analyst, and report writer" works better than "Make something for research".
+- **Mention capabilities**: If you need web search, vision, or code execution, say so explicitly.
+- **Describe the output**: "The final agent should produce a structured markdown report with sections" helps the AI design the right workflow.
+- **Attach specs**: For complex requirements, attach a document with detailed specifications.

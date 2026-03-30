@@ -90,11 +90,33 @@ export function registerAgencyStreamRoutes(app: Express): void {
       return res.status(400).json({ error: "Invalid conversationId format" });
     }
 
-    // Step 4: Credit pre-check
+    // Step 3b: Verify agency belongs to user's tenant (IDOR protection)
     const userId = Number(auth.sub);
     if (!Number.isFinite(userId) || userId <= 0) {
       return res.status(403).json({ error: "Invalid user context" });
     }
+    try {
+      const { getDb } = await import("../db");
+      const { agencies: agencyTable, users: usersTable } = await import("../../drizzle/schema");
+      const { eq, and } = await import("drizzle-orm");
+      const ownerDb = await getDb();
+      if (ownerDb) {
+        const [userRow] = await ownerDb.select({ tenantId: usersTable.currentTenantId }).from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+        if (userRow?.tenantId) {
+          const [agencyRow] = await ownerDb.select({ id: agencyTable.id }).from(agencyTable)
+            .where(and(eq(agencyTable.id, agencyId), eq(agencyTable.tenantId, String(userRow.tenantId))))
+            .limit(1);
+          if (!agencyRow) {
+            return res.status(404).json({ error: "Agency not found" });
+          }
+        }
+      }
+    } catch (e) {
+      // Fail-closed: if DB unavailable, deny access
+      return res.status(503).json({ error: "Service unavailable" });
+    }
+
+    // Step 4: Credit pre-check
 
     const sufficient = await hasEnoughCredits(
       userId,

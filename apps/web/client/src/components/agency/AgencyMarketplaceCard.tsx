@@ -22,6 +22,12 @@ const NODE_TYPE_COLORS: Record<string, string> = {
   skill_call: "bg-amber-100 text-amber-800",
   human_approval: "bg-red-100 text-red-800",
   browser_session: "bg-cyan-100 text-cyan-800",
+  conditional_branch: "bg-amber-100 text-amber-800",
+  parallel_fan_out: "bg-violet-100 text-violet-800",
+  loop_retry: "bg-emerald-100 text-emerald-800",
+  skill_discovery: "bg-pink-100 text-pink-800",
+  data_transform: "bg-slate-100 text-slate-800",
+  error_handler: "bg-red-100 text-red-800",
 };
 
 export function AgencyMarketplaceCard({

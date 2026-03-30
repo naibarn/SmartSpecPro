@@ -1,18 +1,16 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { DashboardCard, DashboardKpiCard } from "@/components/dashboard";
 import {
-  BarChart,
   TrendingUp,
   DollarSign,
   Activity,
   Download,
   Calendar,
-  RefreshCw,
   Zap,
 } from "lucide-react";
 
@@ -135,198 +133,143 @@ export default function AdminAnalytics() {
       </div>
 
       {/* Date Range Filter */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
-            Date Range
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-2 max-w-md">
-            <div className="space-y-2">
-              <Label htmlFor="dateFrom">From</Label>
-              <Input
-                id="dateFrom"
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="dateTo">To</Label>
-              <Input
-                id="dateTo"
-                type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-              />
-            </div>
+      <DashboardCard
+        title="Date Range"
+        leading={<Calendar className="h-5 w-5 text-slate-500" />}
+      >
+        <div className="grid gap-4 md:grid-cols-2 max-w-md">
+          <div className="space-y-2">
+            <Label htmlFor="dateFrom">From</Label>
+            <Input
+              id="dateFrom"
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+            />
           </div>
-        </CardContent>
-      </Card>
+          <div className="space-y-2">
+            <Label htmlFor="dateTo">To</Label>
+            <Input
+              id="dateTo"
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+            />
+          </div>
+        </div>
+      </DashboardCard>
 
       {/* Summary Stats */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Requests</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {summaryLoading ? "..." : summary?.total_requests?.toLocaleString()}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {summary?.unique_users} unique users
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Tokens</CardTitle>
-            <Zap className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {summaryLoading ? "..." : (summary?.total_tokens || 0).toLocaleString()}
-            </div>
-            <p className="text-xs text-muted-foreground">Processed</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Cost</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              ${summaryLoading ? "..." : summary?.total_cost?.toFixed(2)}
-            </div>
-            <p className="text-xs text-muted-foreground">USD</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Error Rate</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {summaryLoading ? "..." : summary?.error_rate?.toFixed(2)}%
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Avg response: {summary?.average_response_time?.toFixed(0)}ms
-            </p>
-          </CardContent>
-        </Card>
+        <DashboardKpiCard
+          icon={Activity}
+          label="Total Requests"
+          value={summaryLoading ? "..." : summary?.total_requests?.toLocaleString()}
+          subLabel={`${summary?.unique_users ?? 0} unique users`}
+        />
+        <DashboardKpiCard
+          icon={Zap}
+          label="Total Tokens"
+          value={summaryLoading ? "..." : (summary?.total_tokens || 0).toLocaleString()}
+          subLabel="Processed"
+        />
+        <DashboardKpiCard
+          icon={DollarSign}
+          label="Total Cost"
+          value={`$${summaryLoading ? "..." : summary?.total_cost?.toFixed(2)}`}
+          subLabel="USD"
+        />
+        <DashboardKpiCard
+          icon={TrendingUp}
+          label="Error Rate"
+          value={summaryLoading ? "..." : `${summary?.error_rate?.toFixed(2)}%`}
+          subLabel={`Avg response: ${summary?.average_response_time?.toFixed(0) ?? 0}ms`}
+        />
       </div>
 
       {/* Time Series Chart Placeholder */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Usage Over Time</CardTitle>
-          <CardDescription>
-            Request and cost trends for the selected period
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {timeSeries && timeSeries.length > 0 ? (
-            <div className="space-y-4">
-              {timeSeries.map((point, idx) => (
-                <div key={idx} className="flex items-center justify-between border-b pb-2">
-                  <div className="flex items-center gap-3">
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="text-sm font-medium">
-                        {new Date(point.timestamp).toLocaleDateString()}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {point.requests} requests, {point.tokens.toLocaleString()} tokens
-                      </p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-medium">${point.cost.toFixed(2)}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {point.errors} errors
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center text-muted-foreground py-8">
-              No data available for the selected period
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Provider Stats */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Provider Usage</CardTitle>
-          <CardDescription>
-            Breakdown by LLM provider
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+      <DashboardCard
+        title="Usage Over Time"
+        description="Request and cost trends for the selected period"
+      >
+        {timeSeries && timeSeries.length > 0 ? (
           <div className="space-y-4">
-            {providers?.map((provider) => (
-              <div key={provider.provider} className="flex items-center justify-between">
+            {timeSeries.map((point, idx) => (
+              <div key={idx} className="flex items-center justify-between border-b pb-2">
                 <div className="flex items-center gap-3">
-                  <Badge variant="outline">{provider.provider}</Badge>
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
                   <div>
                     <p className="text-sm font-medium">
-                      {provider.requests.toLocaleString()} requests
+                      {new Date(point.timestamp).toLocaleDateString()}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {provider.tokens.toLocaleString()} tokens · Avg latency:{" "}
-                      {provider.average_latency.toFixed(0)}ms
+                      {point.requests} requests, {point.tokens.toLocaleString()} tokens
                     </p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm font-medium">${provider.cost.toFixed(2)}</p>
+                  <p className="text-sm font-medium">${point.cost.toFixed(2)}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {point.errors} errors
+                  </p>
                 </div>
               </div>
             ))}
           </div>
-        </CardContent>
-      </Card>
+        ) : (
+          <div className="text-center text-muted-foreground py-8">
+            No data available for the selected period
+          </div>
+        )}
+      </DashboardCard>
+
+      {/* Provider Stats */}
+      <DashboardCard title="Provider Usage" description="Breakdown by LLM provider">
+        <div className="space-y-4">
+          {providers?.map((provider) => (
+            <div key={provider.provider} className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Badge variant="outline">{provider.provider}</Badge>
+                <div>
+                  <p className="text-sm font-medium">
+                    {provider.requests.toLocaleString()} requests
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {provider.tokens.toLocaleString()} tokens · Avg latency:{" "}
+                    {provider.average_latency.toFixed(0)}ms
+                  </p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-sm font-medium">${provider.cost.toFixed(2)}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </DashboardCard>
 
       {/* Top Models */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Top Models</CardTitle>
-          <CardDescription>Most used AI models</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {models?.map((model, idx) => (
-              <div key={model.model} className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Badge variant="secondary">#{idx + 1}</Badge>
-                  <div>
-                    <p className="text-sm font-medium">{model.model}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {model.requests.toLocaleString()} requests ·{" "}
-                      {model.tokens.toLocaleString()} tokens
-                    </p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-medium">${model.cost.toFixed(2)}</p>
+      <DashboardCard title="Top Models" description="Most used AI models">
+        <div className="space-y-4">
+          {models?.map((model, idx) => (
+            <div key={model.model} className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Badge variant="secondary">#{idx + 1}</Badge>
+                <div>
+                  <p className="text-sm font-medium">{model.model}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {model.requests.toLocaleString()} requests ·{" "}
+                    {model.tokens.toLocaleString()} tokens
+                  </p>
                 </div>
               </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+              <div className="text-right">
+                <p className="text-sm font-medium">${model.cost.toFixed(2)}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </DashboardCard>
     </div>
   );
 }

@@ -76,7 +76,7 @@ class Skill:
         Returns:
             SKILL.md content with YAML frontmatter
         """
-        frontmatter = {
+        frontmatter: Dict[str, Any] = {
             "name": self.name,
             "description": self.description,
             "version": self.version,
@@ -111,7 +111,7 @@ class Skill:
             parts = content.split("---", 2)
             if len(parts) >= 3:
                 try:
-                    frontmatter = yaml.safe_load(parts[1])
+                    frontmatter = yaml.safe_load(parts[1]) or {}
                     body = parts[2].strip()
                 except yaml.YAMLError:
                     frontmatter = {}

@@ -22,7 +22,7 @@ from typing import Optional, Any, Dict
 
 import httpx
 import structlog
-from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -65,6 +65,10 @@ VISION_PROMPT = """Analyze this media frame and return a JSON object with EXACTL
   "safetyLabels": []
 }
 Return ONLY valid JSON, no markdown or explanation."""
+
+
+class RenderPdfRequest(BaseModel):
+    html: str = Field(min_length=1, max_length=2_000_000)
 
 
 def _require_localhost(request: Request, *, force: bool = False) -> None:
@@ -218,6 +222,42 @@ async def _verify_proxy_token(
         raise HTTPException(status_code=500, detail="SMARTSPEC_PROXY_TOKEN not configured")
     if not secrets.compare_digest(x_proxy_token, proxy_token):
         raise HTTPException(status_code=401, detail="Invalid proxy token")
+
+
+@router.post("/render-pdf")
+async def render_markdown_pdf_internal(
+    payload: RenderPdfRequest,
+    request: Request,
+    x_proxy_token: Optional[str] = Header(None),
+):
+    """Render printable HTML to a PDF binary for the web library export flow."""
+    _require_localhost(request)
+    await _verify_proxy_token(request, x_proxy_token)
+
+    from playwright.async_api import async_playwright
+
+    async with async_playwright() as playwright:
+        browser = await playwright.chromium.launch(
+            headless=True,
+            args=[
+                "--no-sandbox",
+                "--disable-dev-shm-usage",
+                "--disable-gpu",
+            ],
+        )
+        try:
+            page = await browser.new_page(viewport={"width": 1280, "height": 1600})
+            await page.set_content(payload.html, wait_until="load")
+            await page.emulate_media(media="print")
+            pdf_bytes = await page.pdf(
+                format="A4",
+                print_background=True,
+                margin={"top": "18mm", "right": "16mm", "bottom": "18mm", "left": "16mm"},
+            )
+        finally:
+            await browser.close()
+
+    return Response(content=pdf_bytes, media_type="application/pdf")
 
 
 async def _verify_reindex_auth(

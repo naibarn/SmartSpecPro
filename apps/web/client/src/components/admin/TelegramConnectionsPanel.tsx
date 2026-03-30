@@ -2,7 +2,6 @@ import { useState } from "react";
 import { trpc } from "../../lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -23,6 +22,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Loader2, Users, ChevronLeft, ChevronRight, ShieldX } from "lucide-react";
 import { toast } from "sonner";
+import { DashboardCard } from "@/components/dashboard";
 
 const STATUS_BADGE: Record<string, { className: string; label: string }> = {
   active: { className: "bg-green-100 text-green-700 border-green-200", label: "Active" },
@@ -56,48 +56,44 @@ export default function TelegramConnectionsPanel() {
   const totalPages = Math.ceil((data?.total ?? 0) / LIMIT);
 
   return (
-    <Card className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
-      <CardHeader className="border-b bg-gradient-to-r from-purple-50/50 to-pink-50/30 pb-5">
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <Users className="w-5 h-5 text-purple-500" />
-          Telegram Connections
-        </CardTitle>
-        <CardDescription>
-          Manage linked Telegram accounts across all users in this tenant.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="p-0">
-        {/* Filters */}
-        <div className="flex items-center gap-3 p-4 border-b">
-          <label className="text-sm font-medium text-gray-600">Status:</label>
-          <select
-            value={statusFilter}
-            onChange={(e) => {
-              setStatusFilter(e.target.value as typeof statusFilter);
-              setPage(0);
-            }}
-            className="text-sm border rounded-md px-2 py-1.5"
-          >
-            <option value="">All</option>
-            <option value="active">Active</option>
-            <option value="revoked">Revoked</option>
-            <option value="pending">Pending</option>
-            <option value="blocked">Blocked</option>
-          </select>
-          {data && (
-            <span className="text-xs text-muted-foreground ml-auto">
-              {data.total} connection{data.total !== 1 ? "s" : ""}
-            </span>
-          )}
-        </div>
+    <DashboardCard
+      title="Telegram Connections"
+      description="Manage linked Telegram accounts across all users in this tenant."
+      leading={<Users className="h-5 w-5 text-sky-500" />}
+      trailing={data ? (
+        <Badge variant="outline" className="rounded-full border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-700">
+          {data.total} connection{data.total !== 1 ? "s" : ""}
+        </Badge>
+      ) : null}
+      bodyClassName="p-0"
+    >
+      {/* Filters */}
+      <div className="flex items-center gap-3 border-b border-slate-200/80 px-5 py-4 sm:px-6">
+        <label className="text-sm font-medium text-slate-600">Status:</label>
+        <select
+          value={statusFilter}
+          onChange={(e) => {
+            setStatusFilter(e.target.value as typeof statusFilter);
+            setPage(0);
+          }}
+          className="rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-700 shadow-sm outline-none transition focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
+        >
+          <option value="">All</option>
+          <option value="active">Active</option>
+          <option value="revoked">Revoked</option>
+          <option value="pending">Pending</option>
+          <option value="blocked">Blocked</option>
+        </select>
+      </div>
 
-        {/* Table */}
+      {/* Table */}
+      <div className="px-5 pb-5 pt-0 sm:px-6 sm:pb-6">
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         ) : !data?.connections.length ? (
-          <div className="text-center py-12 text-muted-foreground text-sm">
+          <div className="py-12 text-center text-sm text-muted-foreground">
             No Telegram connections found.
           </div>
         ) : (
@@ -136,7 +132,7 @@ export default function TelegramConnectionsPanel() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          className="text-red-600 hover:bg-red-50 hover:text-red-700"
                           onClick={() => setRevokeTarget({ id: conn.id, username: conn.telegramUsername })}
                         >
                           <ShieldX className="h-4 w-4" />
@@ -152,7 +148,7 @@ export default function TelegramConnectionsPanel() {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between p-4 border-t">
+          <div className="flex items-center justify-between border-t border-slate-200/80 pt-4">
             <p className="text-xs text-muted-foreground">
               Page {page + 1} of {totalPages}
             </p>
@@ -176,7 +172,7 @@ export default function TelegramConnectionsPanel() {
             </div>
           </div>
         )}
-      </CardContent>
+      </div>
 
       {/* Revoke Confirmation Dialog */}
       <AlertDialog open={!!revokeTarget} onOpenChange={(open) => !open && setRevokeTarget(null)}>
@@ -205,6 +201,6 @@ export default function TelegramConnectionsPanel() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </Card>
+    </DashboardCard>
   );
 }

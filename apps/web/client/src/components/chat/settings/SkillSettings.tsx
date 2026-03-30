@@ -3,13 +3,7 @@ import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { DashboardCard } from "@/components/dashboard";
 import {
   Select,
   SelectContent,
@@ -201,20 +195,20 @@ export function SkillSettings({ conversationId, onClose }: SkillSettingsProps) {
   const isSaving = saveStatus === "saving";
 
   return (
-    <Card className="flex h-full min-h-0 flex-col overflow-hidden">
-      <CardHeader className="shrink-0 pb-3">
+    <DashboardCard className="flex h-full min-h-0 flex-col overflow-hidden">
+      <div className="shrink-0 pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Settings2 className="h-5 w-5 text-primary" />
-            <CardTitle className="text-lg">Skill Settings</CardTitle>
+            <h3 className="text-lg">Skill Settings</h3>
           </div>
         </div>
-        <CardDescription>
+        <p>
           Configure which AI skills are enabled for this conversation
-        </CardDescription>
-      </CardHeader>
+        </p>
+      </div>
 
-      <CardContent
+      <div
         data-testid="skill-settings-scroll"
         className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-0"
       >
@@ -376,7 +370,7 @@ export function SkillSettings({ conversationId, onClose }: SkillSettingsProps) {
             </div>
           </div>
         )}
-      </CardContent>
+      </div>
 
       {/* Auto-save status */}
       {saveStatus !== "idle" && (
@@ -395,6 +389,6 @@ export function SkillSettings({ conversationId, onClose }: SkillSettingsProps) {
           )}
         </div>
       )}
-    </Card>
+    </DashboardCard>
   );
 }

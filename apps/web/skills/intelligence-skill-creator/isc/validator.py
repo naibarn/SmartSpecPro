@@ -58,5 +58,8 @@ def validate_patch(
         if require_respond_signature and p.endswith("skill.py"):
             if not re.search(r"def\s+respond\s*\(", content):
                 errors.append("respond() signature missing; it must still match the required API.")
+        if require_respond_signature and (p.endswith("skill.js") or p.endswith("skill.mjs") or p.endswith("index.mjs")):
+            if not re.search(r"(async\s+function\s+respond\s*\(|export\s+async\s+function\s+respond\s*\(|module\.exports\s*=\s*\{\s*respond\s*\})", content):
+                errors.append("respond() signature missing in JavaScript skill; expected async respond export.")
 
     return ValidationResult(len(errors)==0, errors, warnings)

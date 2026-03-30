@@ -301,7 +301,7 @@ export default function AdminPackages() {
   if (authLoading || !user || user.role !== "admin") {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <RefreshCw className="w-8 h-8 animate-spin text-purple-500" />
+        <RefreshCw className="w-8 h-8 animate-spin text-blue-500" />
       </div>
     );
   }
@@ -311,7 +311,7 @@ export default function AdminPackages() {
     : "0";
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/20 px-4 sm:px-6 lg:px-8 py-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-cyan-50/20 px-4 sm:px-6 lg:px-8 py-6">
       <div className="">
         {/* Header */}
         <Button
@@ -326,12 +326,12 @@ export default function AdminPackages() {
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-              <Package className="w-8 h-8 text-purple-500" />
+              <Package className="w-8 h-8 text-blue-500" />
               Admin: Credit Packages
             </h1>
             <p className="text-gray-600 mt-2">Manage credit packages and pricing</p>
           </div>
-          <Button onClick={openCreateModal} className="bg-purple-600 hover:bg-purple-700">
+          <Button onClick={openCreateModal} className="bg-blue-600 hover:bg-blue-700">
             <Plus className="w-4 h-4 mr-2" />
             New Package
           </Button>
@@ -342,8 +342,8 @@ export default function AdminPackages() {
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
             <div className="bg-white rounded-xl p-6 shadow-sm border">
               <div className="flex items-center gap-3">
-                <div className="p-3 bg-purple-100 rounded-lg">
-                  <Package className="w-6 h-6 text-purple-600" />
+                <div className="p-3 bg-blue-100 rounded-lg">
+                  <Package className="w-6 h-6 text-blue-600" />
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Total</p>
@@ -375,8 +375,8 @@ export default function AdminPackages() {
             </div>
             <div className="bg-white rounded-xl p-6 shadow-sm border">
               <div className="flex items-center gap-3">
-                <div className="p-3 bg-indigo-100 rounded-lg">
-                  <Repeat className="w-6 h-6 text-indigo-600" />
+                <div className="p-3 bg-cyan-100 rounded-lg">
+                  <Repeat className="w-6 h-6 text-cyan-600" />
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Subscription</p>
@@ -422,7 +422,7 @@ export default function AdminPackages() {
 
           {isLoading ? (
             <div className="p-8 text-center">
-              <RefreshCw className="w-8 h-8 animate-spin text-purple-500 mx-auto" />
+              <RefreshCw className="w-8 h-8 animate-spin text-blue-500 mx-auto" />
             </div>
           ) : packages && packages.length > 0 ? (
             <div className="overflow-x-auto">
@@ -468,8 +468,8 @@ export default function AdminPackages() {
                                 pkg.isFeatured
                                   ? "bg-gradient-to-br from-yellow-400 to-orange-500"
                                   : isSubscription
-                                  ? "bg-gradient-to-br from-indigo-400 to-purple-500"
-                                  : "bg-gradient-to-br from-purple-400 to-pink-500"
+                                  ? "bg-gradient-to-br from-blue-400 to-cyan-500"
+                                  : "bg-gradient-to-br from-cyan-400 to-teal-500"
                               }`}
                             >
                               {pkg.isFeatured ? (
@@ -503,7 +503,7 @@ export default function AdminPackages() {
                             <span
                               className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${
                                 isSubscription
-                                  ? "bg-indigo-100 text-indigo-700"
+                                  ? "bg-cyan-100 text-cyan-700"
                                   : "bg-orange-100 text-orange-700"
                               }`}
                             >
@@ -599,7 +599,7 @@ export default function AdminPackages() {
                               onClick={() => duplicateMutation.mutate({ id: pkg.id })}
                               title="Duplicate"
                             >
-                              <Copy className="w-4 h-4 text-purple-500" />
+                              <Copy className="w-4 h-4 text-blue-500" />
                             </Button>
                             <Button
                               variant="ghost"
@@ -704,13 +704,13 @@ export default function AdminPackages() {
                       onClick={() => setFormData({ ...formData, packageType: "subscription" })}
                       className={`flex items-center gap-2 p-3 rounded-lg border-2 transition-all ${
                         formData.packageType === "subscription"
-                          ? "border-indigo-500 bg-indigo-50"
+                          ? "border-cyan-500 bg-cyan-50"
                           : "border-gray-200 hover:border-gray-300"
                       }`}
                     >
-                      <Repeat className={`w-5 h-5 ${formData.packageType === "subscription" ? "text-indigo-500" : "text-gray-400"}`} />
+                      <Repeat className={`w-5 h-5 ${formData.packageType === "subscription" ? "text-cyan-500" : "text-gray-400"}`} />
                       <div className="text-left">
-                        <p className={`text-sm font-medium ${formData.packageType === "subscription" ? "text-indigo-700" : "text-gray-700"}`}>
+                        <p className={`text-sm font-medium ${formData.packageType === "subscription" ? "text-cyan-700" : "text-gray-700"}`}>
                           Subscription
                         </p>
                         <p className="text-xs text-gray-500">Recurring billing</p>
@@ -733,7 +733,7 @@ export default function AdminPackages() {
                           onClick={() => setFormData({ ...formData, billingPeriod: period })}
                           className={`flex items-center justify-between p-2 rounded-lg border text-sm transition-all ${
                             formData.billingPeriod === period
-                              ? "border-indigo-500 bg-indigo-50 text-indigo-700"
+                              ? "border-cyan-500 bg-cyan-50 text-cyan-700"
                               : "border-gray-200 hover:border-gray-300 text-gray-700"
                           }`}
                         >
@@ -741,7 +741,7 @@ export default function AdminPackages() {
                           {BILLING_DISCOUNTS[period] > 0 && (
                             <span className={`text-xs px-1.5 py-0.5 rounded ${
                               formData.billingPeriod === period
-                                ? "bg-indigo-100 text-indigo-600"
+                                ? "bg-cyan-100 text-cyan-600"
                                 : "bg-gray-100 text-gray-500"
                             }`}>
                               -{BILLING_DISCOUNTS[period]}%
@@ -783,9 +783,9 @@ export default function AdminPackages() {
 
                 {/* Price per credit preview */}
                 {formData.credits && formData.priceUsd && (
-                  <div className="bg-purple-50 rounded-lg p-3 flex items-center gap-2">
-                    <TrendingUp className="w-4 h-4 text-purple-600" />
-                    <span className="text-sm text-purple-700">
+                  <div className="bg-blue-50 rounded-lg p-3 flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-blue-600" />
+                    <span className="text-sm text-blue-700">
                       Price per credit: <strong>${pricePerCredit}</strong>
                     </span>
                   </div>
@@ -793,15 +793,15 @@ export default function AdminPackages() {
 
                 {/* Billing Period Pricing Preview for Subscriptions */}
                 {formData.packageType === "subscription" && formData.priceUsd && (
-                  <div className="bg-indigo-50 rounded-lg p-3">
-                    <p className="text-sm font-medium text-indigo-700 mb-2">Billing Period Pricing:</p>
+                  <div className="bg-cyan-50 rounded-lg p-3">
+                    <p className="text-sm font-medium text-cyan-700 mb-2">Billing Period Pricing:</p>
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       {(Object.entries(BILLING_DISCOUNTS) as [BillingPeriod, number][]).map(([period, discount]) => {
                         const basePrice = parseFloat(formData.priceUsd) || 0;
                         const months = period === "monthly" ? 1 : period === "quarterly" ? 3 : period === "semi_annual" ? 6 : 12;
                         const totalPrice = basePrice * months * (1 - discount / 100);
                         return (
-                          <div key={period} className="flex justify-between text-indigo-600">
+                          <div key={period} className="flex justify-between text-cyan-600">
                             <span>{BILLING_LABELS[period].split(" ")[0]}:</span>
                             <span className="font-medium">${totalPrice.toFixed(2)}</span>
                           </div>
@@ -939,7 +939,7 @@ export default function AdminPackages() {
                       type="checkbox"
                       checked={formData.isActive}
                       onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-                      className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                      className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                     />
                     <span className="text-sm text-gray-700">Active</span>
                   </label>
@@ -967,7 +967,7 @@ export default function AdminPackages() {
                   Cancel
                 </Button>
                 <Button
-                  className="flex-1 bg-purple-600 hover:bg-purple-700"
+                  className="flex-1 bg-blue-600 hover:bg-blue-700"
                   onClick={handleSubmit}
                   disabled={createMutation.isPending || updateMutation.isPending}
                 >

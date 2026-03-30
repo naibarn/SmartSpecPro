@@ -61,7 +61,7 @@ export interface TeamContext {
 
 export interface RouteHint {
   selectedSkillId?: string;
-  route: "chat" | "skill" | "agency";
+  route: "chat" | "skill" | "agency" | "hybrid";
   reason: string;
   confidence?: number;
 }

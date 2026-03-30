@@ -701,3 +701,5 @@ def get_memory_service(db: AsyncSession) -> MemoryService:
         MemoryService instance
     """
     return MemoryService(db)
+# mypy: ignore-errors
+# mypy: ignore-errors

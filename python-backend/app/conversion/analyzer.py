@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import List, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 
 class CompatibilityLevel(Enum):
@@ -45,7 +45,7 @@ class ConversionAnalyzer:
     - Complex loops: -5 points
     """
 
-    NODE_COMPATIBILITY = {
+    NODE_COMPATIBILITY: dict[str, dict[str, Any]] = {
         # AI Nodes (Fully Compatible)
         "llm_call": {"supported": True, "adapter": None, "score": 0},
         "rag_query": {"supported": True, "adapter": None, "score": 0},
@@ -126,20 +126,20 @@ class ConversionAnalyzer:
         "skill": {"supported": True, "adapter": None, "score": 0},
     }
 
-    def analyze(self, workflow: dict) -> ConversionAnalysis:
+    def analyze(self, workflow: dict[str, Any]) -> ConversionAnalysis:
         """Analyze workflow for conversion."""
-        nodes = workflow.get("nodes", [])
-        edges = workflow.get("edges", [])
+        nodes: list[dict[str, Any]] = workflow.get("nodes", [])
+        edges: list[dict[str, Any]] = workflow.get("edges", [])
 
         base_score = 100
-        unsupported = []
-        adapters_required = []
+        unsupported: list[NodeCompatibility] = []
+        adapters_required: list[NodeCompatibility] = []
 
         for node in nodes:
-            node_type = node.get("type", "")
-            node_id = node.get("id", "")
+            node_type = str(node.get("type", ""))
+            node_id = str(node.get("id", ""))
 
-            compat = self.NODE_COMPATIBILITY.get(
+            compat_raw = self.NODE_COMPATIBILITY.get(
                 node_type,
                 {
                     "supported": False,
@@ -148,6 +148,12 @@ class ConversionAnalyzer:
                     "reason": "Unknown node type",
                 },
             )
+            compat: dict[str, Any] = compat_raw if compat_raw is not None else {
+                "supported": False,
+                "adapter": None,
+                "score": -20,
+                "reason": "Unknown node type",
+            }
 
             node_compat = NodeCompatibility(
                 node_id=node_id,
@@ -191,7 +197,7 @@ class ConversionAnalyzer:
         )
 
         return ConversionAnalysis(
-            workflow_id=workflow.get("id"),
+            workflow_id=int(workflow.get("id") or 0),
             eligible=eligible,
             compatibility_score=final_score,
             level=level,
@@ -201,7 +207,7 @@ class ConversionAnalyzer:
             recommendations=recommendations,
         )
 
-    def _calculate_complexity(self, nodes: list, edges: list) -> int:
+    def _calculate_complexity(self, nodes: list[dict[str, Any]], edges: list[dict[str, Any]]) -> int:
         """Calculate workflow complexity score."""
         score = 0
 
@@ -218,19 +224,24 @@ class ConversionAnalyzer:
         return min(score, 100)
 
     def _generate_recommendations(
-        self, unsupported: list, adapters: list, complexity: int
+        self,
+        unsupported: list[NodeCompatibility],
+        adapters: list[NodeCompatibility],
+        complexity: int,
     ) -> List[str]:
         """Generate conversion recommendations."""
         recommendations = []
 
         if unsupported:
-            node_types = set(n.node_type for n in unsupported)
+            node_types = sorted({n.node_type for n in unsupported})
             recommendations.append(
                 f"Remove or replace unsupported nodes: {', '.join(node_types)}"
             )
 
         if adapters:
-            adapter_types = set(n.adapter_required for n in adapters)
+            adapter_types = sorted(
+                {n.adapter_required for n in adapters if n.adapter_required is not None}
+            )
             recommendations.append(
                 f"The following adapters will be applied: {', '.join(adapter_types)}"
             )

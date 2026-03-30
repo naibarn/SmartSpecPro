@@ -27,7 +27,8 @@ const footerLinks = {
   resources: [
     { label: 'Community', href: '/community' },
     { label: 'Support', href: '/support' },
-    { label: 'API Reference', href: '/docs/api' },
+    { label: 'Site Index', href: '/resources' },
+    { label: 'Developer Docs', href: '/docs/api' },
     { label: 'Status', href: '/status' },
   ],
   legal: [
@@ -91,7 +92,7 @@ export function Footer() {
                   <img src={tenant.websiteLogoUrl || tenant.logoUrl} alt={tenant.name || "Logo"} className="h-10 w-auto object-contain" />
                 ) : (
                   <>
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 via-coral-400 to-teal-400 flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 via-cyan-400 to-teal-400 flex items-center justify-center">
                       <Sparkles className="w-5 h-5 text-white" />
                     </div>
                     <span className="text-xl font-bold gradient-text">SmartAIHub</span>
@@ -100,7 +101,7 @@ export function Footer() {
               </div>
             </Link>
             <p className="text-muted-foreground mb-6 max-w-sm">
-              Transform your ideas into production-ready applications with AI-powered code generation.
+              Discover reusable skills, orchestrate virtual workflows, and ship enterprise outputs through a shared marketplace.
             </p>
             <div className="flex gap-3">
               {socialLinks.map((social) => (

@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Optional, Protocol, Dict, Any
 
 from .models import EvaluationReport, PatchProposal
-from .registry import read_text
+from .registry import read_text, resolve_skill_files
 from .llm import load_llm_config_from_env, merge_llm_config, OpenAICompatibleClient
 from .proposals import apply_patch_payload
 from .validator import validate_patch
@@ -18,16 +18,13 @@ class BaseImprover(Protocol):
 @dataclass
 class HeuristicImprover:
     def propose_patch(self, skill_name: str, report: EvaluationReport) -> PatchProposal:
-        try:
-            original = read_text(skill_name, "python/skill.py")
-            rel_path = "python/skill.py"
-        except FileNotFoundError:
-            try:
-                original = read_text(skill_name, "js/skill.js")
-                rel_path = "js/skill.js"
-            except FileNotFoundError:
-                original = read_text(skill_name, "skill.py")
-                rel_path = "skill.py"
+        files = resolve_skill_files(skill_name)
+        if files.code_path is None:
+            original = read_text(skill_name, "skill.py")
+            rel_path = "skill.py"
+        else:
+            original = files.code_path.read_text(encoding="utf-8")
+            rel_path = files.code_path.relative_to(files.bundle_dir).as_posix()
 
         failed = [r for r in report.results if not r.passed]
         if not failed:

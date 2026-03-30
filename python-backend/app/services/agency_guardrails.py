@@ -87,10 +87,18 @@ async def execute_guardrails(
                 "guardrail_execution_error",
                 guardrail_id=guardrail.id,
                 strategy=guardrail.strategy,
+                mode=guardrail.mode,
                 error=str(exc)[:200],
             )
-            # Fail-open on unexpected errors
-            result = GuardrailResult(passed=True, action="allow")
+            # SECURITY: Fail-closed for strict guardrails, fail-open for advisory
+            if guardrail.mode == "strict":
+                result = GuardrailResult(
+                    passed=False,
+                    action="block",
+                    message="Guardrail check failed (internal error)",
+                )
+            else:
+                result = GuardrailResult(passed=True, action="allow")
 
         if not result.passed:
             if guardrail.mode == "strict":
@@ -186,13 +194,13 @@ async def _strategy_regex_match(message: str, config: dict[str, Any]) -> Guardra
     if action == "block" and match:
         return GuardrailResult(
             passed=False,
-            message=f"Blocked: message matches pattern '{pattern}'",
+            message="Blocked by content guardrail",
             action="block",
         )
     elif action == "require" and not match:
         return GuardrailResult(
             passed=False,
-            message=f"Required pattern '{pattern}' not found in message",
+            message="Message does not meet content requirements",
             action="block",
         )
 
@@ -208,15 +216,23 @@ async def _strategy_llm_classify(
         logger.warning("guardrail_llm_classify_no_client")
         return GuardrailResult(passed=True, action="allow")
 
-    prompt_template = config.get("prompt", "Classify this message: {message}")
+    prompt_template = config.get("prompt", "Classify this message.")
     block_if = config.get("blockIf", "").lower().strip()
     model = config.get("model")
 
-    prompt = prompt_template.replace("{message}", message)
+    # SECURITY: Use role separation to prevent prompt injection.
+    # System prompt contains the classification instructions;
+    # user message contains the untrusted content to classify.
+    system_prompt = prompt_template.replace("{message}", "").strip()
+    if not system_prompt:
+        system_prompt = "Classify the following message."
 
     try:
         response = await llm_client.chat(
-            messages=[{"role": "user", "content": prompt}],
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": message[:5000]},
+            ],
             model=model,
         )
         content = ""
@@ -327,7 +343,7 @@ async def _strategy_pii_detection(message: str, config: dict[str, Any]) -> Guard
 
 async def _strategy_custom_endpoint(message: str, config: dict[str, Any]) -> GuardrailResult:
     endpoint = config.get("endpoint", "")
-    timeout_ms = config.get("timeout", 5000)
+    timeout_ms = min(config.get("timeout", 5000), 30000)  # Cap at 30s
 
     # SSRF validation
     try:

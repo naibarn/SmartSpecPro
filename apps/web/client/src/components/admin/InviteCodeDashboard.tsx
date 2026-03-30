@@ -4,7 +4,8 @@
  */
 
 import { trpc } from "@/lib/trpc";
-import { useI18n } from "@/lib/i18n";
+import { useScopedTranslation } from "@/i18n/useScopedTranslation";
+import { DashboardCard, DashboardKpiCard } from "@/components/dashboard";
 import {
   BarChart,
   Bar,
@@ -40,7 +41,7 @@ const topCodesChartConfig: ChartConfig = {
 };
 
 export default function InviteCodeDashboard() {
-  const { t } = useI18n();
+  const { t, locale } = useScopedTranslation('admin');
   const { data, isLoading } = trpc.inviteCode.getStats.useQuery();
 
   if (isLoading) {
@@ -58,11 +59,12 @@ export default function InviteCodeDashboard() {
   const conversionRate = summary.activeCodes > 0
     ? Math.round((summary.totalRegistrations / Math.max(summary.activeCodes, 1)) * 100) / 100
     : 0;
+  const dateFormatter = new Intl.DateTimeFormat(locale, { month: "short", day: "numeric" });
 
   return (
     <div className="space-y-6">
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         <StatCard
           icon={Ticket}
           label={t("invite.stats.totalCodes")}
@@ -94,7 +96,7 @@ export default function InviteCodeDashboard() {
       </div>
 
       {/* Disabled Users + Fraud Detection */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         <StatCard
           icon={Ban}
           label={t("invite.stats.disabledUsers")}
@@ -127,17 +129,17 @@ export default function InviteCodeDashboard() {
 
       {/* Registration Trend Chart */}
       {dailyTrend.length > 0 && (
-        <div className="bg-white rounded-xl border p-4">
-          <h4 className="font-semibold text-sm mb-4 flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-purple-500" />
-            {t("invite.stats.registrationTrend")}
-          </h4>
+        <DashboardCard
+          title={t("invite.stats.registrationTrend")}
+          leading={<TrendingUp className="h-5 w-5 text-slate-500" />}
+          bodyClassName="pt-2"
+        >
           <ChartContainer config={trendChartConfig} className="h-[250px] w-full">
             <AreaChart data={dailyTrend}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis
                 dataKey="date"
-                tickFormatter={(v) => new Date(v).toLocaleDateString("en", { month: "short", day: "numeric" })}
+                tickFormatter={(v) => dateFormatter.format(new Date(v))}
                 fontSize={11}
               />
               <YAxis fontSize={11} />
@@ -160,17 +162,17 @@ export default function InviteCodeDashboard() {
               />
             </AreaChart>
           </ChartContainer>
-        </div>
+        </DashboardCard>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Top Codes by Usage */}
         {topCodes.length > 0 && (
-          <div className="bg-white rounded-xl border p-4">
-            <h4 className="font-semibold text-sm mb-4 flex items-center gap-2">
-              <Trophy className="w-4 h-4 text-amber-500" />
-              {t("invite.stats.topCodes")}
-            </h4>
+          <DashboardCard
+            title={t("invite.stats.topCodes")}
+            leading={<Trophy className="h-5 w-5 text-slate-500" />}
+            bodyClassName="pt-2"
+          >
             <ChartContainer config={topCodesChartConfig} className="h-[220px] w-full">
               <BarChart
                 data={topCodes.map((c) => ({
@@ -192,16 +194,15 @@ export default function InviteCodeDashboard() {
                 <Bar dataKey="currentUses" fill="var(--color-currentUses)" radius={[0, 4, 4, 0]} />
               </BarChart>
             </ChartContainer>
-          </div>
+          </DashboardCard>
         )}
 
         {/* Top Referrers */}
         {topReferrers.length > 0 && (
-          <div className="bg-white rounded-xl border p-4">
-            <h4 className="font-semibold text-sm mb-4 flex items-center gap-2">
-              <UserCheck className="w-4 h-4 text-green-500" />
-              {t("invite.stats.topReferrers")}
-            </h4>
+          <DashboardCard
+            title={t("invite.stats.topReferrers")}
+            leading={<UserCheck className="h-5 w-5 text-slate-500" />}
+          >
             <div className="space-y-3">
               {topReferrers.map((r, i) => (
                 <div key={r.ownerId} className="flex items-center justify-between text-sm">
@@ -230,17 +231,19 @@ export default function InviteCodeDashboard() {
                 </div>
               ))}
             </div>
-          </div>
+          </DashboardCard>
         )}
       </div>
 
       {/* Empty state */}
       {summary.totalCodes === 0 && (
-        <div className="text-center py-12 text-gray-500">
-          <Ticket className="w-12 h-12 mx-auto mb-3 opacity-30" />
-          <p className="font-medium">{t("invite.stats.noCodesYet")}</p>
-          <p className="text-sm">{t("invite.stats.createFirst")}</p>
-        </div>
+        <DashboardCard
+          title={t("invite.stats.noCodesYet")}
+          description={t("invite.stats.createFirst")}
+          bodyClassName="flex flex-col items-center gap-2 py-6 text-center text-slate-500"
+        >
+          <Ticket className="w-12 h-12 opacity-30" />
+        </DashboardCard>
       )}
     </div>
   );
@@ -261,23 +264,21 @@ function StatCard({
 }) {
   const colors = {
     purple: "bg-purple-50 text-purple-600",
-    green: "bg-green-50 text-green-600",
-    blue: "bg-blue-50 text-blue-600",
+    green: "bg-emerald-50 text-emerald-600",
+    blue: "bg-sky-50 text-sky-600",
     amber: "bg-amber-50 text-amber-600",
-    red: "bg-red-50 text-red-600",
+    red: "bg-rose-50 text-rose-600",
     orange: "bg-orange-50 text-orange-600",
   };
 
   return (
-    <div className="bg-white rounded-xl border p-4">
-      <div className="flex items-center gap-3 mb-2">
-        <div className={`p-2 rounded-lg ${colors[color]}`}>
-          <Icon className="w-4 h-4" />
-        </div>
-        <span className="text-xs text-gray-500 font-medium">{label}</span>
-      </div>
-      <p className="text-2xl font-bold text-gray-900">{value}</p>
-      <p className="text-xs text-gray-500 mt-1">{sub}</p>
-    </div>
+    <DashboardKpiCard
+      icon={Icon}
+      label={label}
+      value={value}
+      subLabel={sub}
+      iconContainerClassName={colors[color]}
+      valueClassName="text-2xl"
+    />
   );
 }

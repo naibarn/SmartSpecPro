@@ -4,6 +4,7 @@ import { and, count, desc, eq, gt, inArray, isNotNull, isNull, ne, or, sql } fro
 
 import { getDb } from "../db";
 import { storagePut, storageGet, storageDelete } from "../storage";
+import { encrypt as encryptSecret, decrypt as decryptSecret } from "./crypto";
 import {
   validateLibraryUrl,
   type LibraryUrlRejectReason,
@@ -23,6 +24,7 @@ import {
   libraryItems,
   libraryLinks,
   libraryPermissions,
+  libraryPublicShareLinks,
   presentationAssetLinks,
   presentationDecks,
   userGroups,
@@ -106,6 +108,46 @@ export interface ShareLibraryItemInput {
   subjectId: string;
   permissionLevel: LibraryPermissionLevel;
   expiresAt?: Date | null;
+}
+
+export interface PublicShareLinkInput {
+  itemId: number;
+}
+
+export interface PublicShareLinkDto {
+  id: number;
+  itemId: number;
+  token: string;
+  expiresAt: Date | null;
+  revokedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface PublicShareLinkState {
+  canManage: boolean;
+  link: PublicShareLinkDto | null;
+}
+
+export interface PublicShareDocumentResult {
+  item: {
+    id: number;
+    tenantId: string;
+    ownerUserId: number;
+    itemType: string;
+    source: string;
+    title: string;
+    description: string | null;
+    status: LibraryItemStatus;
+    visibility: LibraryVisibility;
+    metadata: Record<string, unknown>;
+    sourceUrl: string | null;
+    thumbnailUrl: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+  };
+  markdownContent: string | null;
+  downloadUrl: string | null;
 }
 
 export interface LibraryItemDto {
@@ -443,6 +485,10 @@ export interface LibraryEnqueueResult {
 
 type DbClient = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 type LibraryItemRow = typeof libraryItems.$inferSelect;
+type LibraryPublicShareLinkRow = typeof libraryPublicShareLinks.$inferSelect;
+
+const PUBLIC_SHARE_TOKEN_BYTES = 32;
+const PUBLIC_SHARE_DEFAULT_TTL_DAYS = 7;
 
 function normalizeLibraryTenantId(tenantId: LibraryTenantId): string {
   const normalized = String(tenantId).trim();
@@ -450,6 +496,136 @@ function normalizeLibraryTenantId(tenantId: LibraryTenantId): string {
     throw new Error("Invalid tenant ID");
   }
   return normalized;
+}
+
+function hashPublicShareToken(token: string): string {
+  return crypto.createHash("sha256").update(token).digest("hex");
+}
+
+function isPublicShareLinkActive(row: Pick<LibraryPublicShareLinkRow, "expiresAt" | "revokedAt">): boolean {
+  if (row.revokedAt) {
+    return false;
+  }
+  if (!row.expiresAt) {
+    return true;
+  }
+  return row.expiresAt > new Date();
+}
+
+function serializePublicShareLink(row: LibraryPublicShareLinkRow): PublicShareLinkDto {
+  const token = decryptSecret(row.tokenEncrypted);
+  return {
+    id: row.id,
+    itemId: row.libraryItemId,
+    token,
+    expiresAt: row.expiresAt ?? null,
+    revokedAt: row.revokedAt ?? null,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+
+async function getActivePublicShareLinkRow(
+  db: DbClient,
+  itemId: number,
+  tenantId: string,
+): Promise<LibraryPublicShareLinkRow | null> {
+  const rows = await db
+    .select()
+    .from(libraryPublicShareLinks)
+    .where(
+      and(
+        eq(libraryPublicShareLinks.tenantId, tenantId),
+        eq(libraryPublicShareLinks.libraryItemId, itemId),
+        isNull(libraryPublicShareLinks.revokedAt),
+        or(
+          isNull(libraryPublicShareLinks.expiresAt),
+          gt(libraryPublicShareLinks.expiresAt, new Date()),
+        ),
+      ),
+    )
+    .orderBy(desc(libraryPublicShareLinks.createdAt))
+    .limit(1);
+
+  return rows[0] ?? null;
+}
+
+function getPublicShareOwnerUserId(
+  item: Pick<LibraryItemRow, "ownerUserId" | "metadata">,
+): number | null {
+  const metadata = normalizeLibraryMetadata(item.metadata as Record<string, unknown>);
+  const candidates = [
+    metadata.uploaded_by_user_id,
+    metadata.uploadedByUserId,
+    metadata.created_by_user_id,
+    metadata.createdByUserId,
+    metadata.owner_user_id,
+    metadata.ownerUserId,
+  ];
+
+  for (const candidate of candidates) {
+    if (typeof candidate === "number" && Number.isFinite(candidate) && candidate > 0) {
+      return candidate;
+    }
+    if (typeof candidate === "string" && candidate.trim()) {
+      const parsed = Number(candidate);
+      if (Number.isFinite(parsed) && parsed > 0) {
+        return parsed;
+      }
+    }
+  }
+
+  return item.ownerUserId;
+}
+
+async function assertCanManagePublicShare(
+  item: Pick<LibraryItemRow, "id" | "ownerUserId" | "tenantId" | "metadata">,
+  actor: LibraryActor,
+  dbClient?: DbClient,
+): Promise<void> {
+  if (normalizeLibraryTenantId(item.tenantId) !== normalizeLibraryTenantId(actor.tenantId)) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "You do not have access to this item",
+    });
+  }
+
+  if (isPrivateVaultLibraryItem(item)) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Private vault items cannot be shared publicly",
+    });
+  }
+
+  if (getPublicShareOwnerUserId(item) === actor.userId) {
+    return;
+  }
+
+  const db = await resolveDb(dbClient);
+  const permissionLevel = await getUserPermissionLevel(db, item.id, actor);
+  if (!canManageLibraryItem(item, actor, permissionLevel)) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Only users who can manage this file can create public share links",
+    });
+  }
+}
+
+async function resolvePublicShareDownloadUrl(item: LibraryItemRow): Promise<string | null> {
+  const metadata = normalizeLibraryMetadata(item.metadata as Record<string, unknown>);
+  const sourceKey = typeof metadata.source_key === "string" ? metadata.source_key : null;
+  if (sourceKey) {
+    try {
+      const resolved = await storageGet(sourceKey);
+      if (resolved.url) {
+        return resolved.url;
+      }
+    } catch {
+      // fall back to stored source URL
+    }
+  }
+
+  return item.sourceUrl ?? null;
 }
 
 function isPrivateVaultLibraryItem(item: Pick<LibraryItemRow, "metadata">): boolean {
@@ -1595,6 +1771,7 @@ export async function uploadLibraryFile(
           svgSanitized: svgUpload,
           extraMetadata: enrichment.extraMetadata,
         }),
+        uploaded_by_user_id: actor.userId,
         source_key: storage.key,
       },
       sourceUrl: storage.url,
@@ -1869,6 +2046,7 @@ export async function replaceLibraryFile(
               svgSanitized: svgUpload,
               extraMetadata: enrichment.extraMetadata,
             }),
+            uploaded_by_user_id: actor.userId,
             source_key: storage.key,
           },
           updatedAt: now,
@@ -2518,6 +2696,195 @@ export async function shareLibraryItem(
   await recomputeAndPropagateScopes(input.itemId, actorTenantId, db);
 
   return true;
+}
+
+export async function getPublicShareLinkState(
+  input: PublicShareLinkInput,
+  actor: LibraryActor,
+  dbClient?: DbClient,
+): Promise<PublicShareLinkState> {
+  const db = await resolveDb(dbClient);
+  const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
+  const item = await getLibraryItemRowById(db, input.itemId, actorTenantId);
+
+  if (!item) {
+    return { canManage: false, link: null };
+  }
+
+  if (isPrivateVaultLibraryItem(item)) {
+    return { canManage: false, link: null };
+  }
+
+  if (getPublicShareOwnerUserId(item) === actor.userId) {
+    const active = await getActivePublicShareLinkRow(db, item.id, actorTenantId);
+    return {
+      canManage: true,
+      link: active ? serializePublicShareLink(active) : null,
+    };
+  }
+
+  const permissionLevel = await getUserPermissionLevel(db, item.id, actor);
+  if (!canManageLibraryItem(item, actor, permissionLevel)) {
+    return { canManage: false, link: null };
+  }
+
+  const active = await getActivePublicShareLinkRow(db, item.id, actorTenantId);
+  return {
+    canManage: true,
+    link: active ? serializePublicShareLink(active) : null,
+  };
+}
+
+export async function createPublicShareLink(
+  input: PublicShareLinkInput,
+  actor: LibraryActor,
+  dbClient?: DbClient,
+): Promise<PublicShareLinkDto> {
+  const db = await resolveDb(dbClient);
+  const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
+  const item = await getLibraryItemRowById(db, input.itemId, actorTenantId);
+
+  if (!item) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Library item not found",
+    });
+  }
+
+  await assertCanManagePublicShare(item, actor, db);
+
+  const active = await getActivePublicShareLinkRow(db, item.id, actorTenantId);
+  if (active) {
+    return serializePublicShareLink(active);
+  }
+
+  const token = crypto.randomBytes(PUBLIC_SHARE_TOKEN_BYTES).toString("base64url");
+  const now = new Date();
+  const expiresAt = new Date(now);
+  expiresAt.setDate(expiresAt.getDate() + PUBLIC_SHARE_DEFAULT_TTL_DAYS);
+
+  const [row] = await db
+    .insert(libraryPublicShareLinks)
+    .values({
+      tenantId: actorTenantId,
+      libraryItemId: item.id,
+      tokenHash: hashPublicShareToken(token),
+      tokenEncrypted: encryptSecret(token),
+      createdByUserId: actor.userId,
+      expiresAt,
+      revokedAt: null,
+      createdAt: now,
+      updatedAt: now,
+    })
+    .returning();
+
+  if (!row) {
+    throw new Error("Failed to create public share link");
+  }
+
+  return serializePublicShareLink(row);
+}
+
+export async function revokePublicShareLink(
+  input: PublicShareLinkInput,
+  actor: LibraryActor,
+  dbClient?: DbClient,
+): Promise<PublicShareLinkDto | null> {
+  const db = await resolveDb(dbClient);
+  const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
+  const item = await getLibraryItemRowById(db, input.itemId, actorTenantId);
+
+  if (!item) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Library item not found",
+    });
+  }
+
+  await assertCanManagePublicShare(item, actor, db);
+
+  const active = await getActivePublicShareLinkRow(db, item.id, actorTenantId);
+  if (!active) {
+    return null;
+  }
+
+  const now = new Date();
+  const [row] = await db
+    .update(libraryPublicShareLinks)
+    .set({
+      revokedAt: now,
+      updatedAt: now,
+    })
+    .where(eq(libraryPublicShareLinks.id, active.id))
+    .returning();
+
+  return row ? serializePublicShareLink(row) : null;
+}
+
+function isMarkdownLikeLibraryItemForPublicShare(item: Pick<LibraryItemRow, "itemType" | "sourceUrl" | "metadata">): boolean {
+  const metadata = normalizeLibraryMetadata(item.metadata as Record<string, unknown>);
+  const metadataExtension = typeof metadata.extension === "string" ? metadata.extension.toLowerCase().replace(/^\./, "") : "";
+  const sourceUrl = item.sourceUrl || "";
+  const extFromUrl = sourceUrl ? sourceUrl.split("?")[0].split(".").pop()?.toLowerCase() || "" : "";
+  const ext = metadataExtension || extFromUrl || item.itemType.toLowerCase();
+  return ext === "md" || ext === "markdown" || item.itemType.toLowerCase() === "markdown";
+}
+
+export async function resolvePublicShareLink(
+  token: string,
+  dbClient?: DbClient,
+): Promise<PublicShareDocumentResult | null> {
+  const db = await resolveDb(dbClient);
+  const normalizedToken = token.trim();
+  if (!normalizedToken) {
+    return null;
+  }
+
+  const tokenHash = hashPublicShareToken(normalizedToken);
+  const [linkRow] = await db
+    .select()
+    .from(libraryPublicShareLinks)
+    .where(eq(libraryPublicShareLinks.tokenHash, tokenHash))
+    .limit(1);
+
+  if (!linkRow || !isPublicShareLinkActive(linkRow)) {
+    return null;
+  }
+
+  const item = await getLibraryItemRowById(db, linkRow.libraryItemId, linkRow.tenantId);
+  if (!item || isPrivateVaultLibraryItem(item)) {
+    return null;
+  }
+
+  const downloadUrl = await resolvePublicShareDownloadUrl(item);
+  const markdownContent = isMarkdownLikeLibraryItemForPublicShare(item)
+    ? (await getLibraryMarkdownContent(item.id, {
+        userId: item.ownerUserId,
+        tenantId: item.tenantId,
+        role: "user",
+      }, db))?.content ?? null
+    : null;
+
+  return {
+    item: {
+      id: item.id,
+      tenantId: item.tenantId,
+      ownerUserId: item.ownerUserId,
+      itemType: item.itemType,
+      source: item.source,
+      title: item.title,
+      description: item.description,
+      status: item.status,
+      visibility: item.visibility,
+      metadata: normalizeLibraryMetadata(item.metadata as Record<string, unknown>),
+      sourceUrl: downloadUrl,
+      thumbnailUrl: item.thumbnailUrl,
+      createdAt: item.createdAt,
+      updatedAt: item.updatedAt,
+    },
+    markdownContent,
+    downloadUrl,
+  };
 }
 
 export async function enqueueLibraryIndexJob(

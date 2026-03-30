@@ -3,7 +3,6 @@ import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import { trpc } from "@/lib/trpc";
 import { pickEnabledModelId } from "@/lib/enabledModelSelection";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DashboardCard } from "@/components/dashboard";
 import {
   Dialog,
   DialogContent,
@@ -75,6 +75,7 @@ import {
   getMediaModelTypeForSkillCategory,
   getRecommendedExecutionModeForSkillCategory,
   isExecutionModeCompatibleWithSkillCategory,
+  type SkillExecutionMode,
 } from "@shared/skills/skillCategoryMetadata";
 
 // Skill interface matching database schema
@@ -105,7 +106,12 @@ interface Skill {
   skillContent: string | null;
   knowledgebase: string | null;
   configJson: Record<string, unknown> | null;
-  executionMode: "llm-only" | "media-generate" | "enhance-prompt" | "python" | null;
+  executionMode: SkillExecutionMode | null;
+  sandboxProfileSlug: string | null;
+  requiresNetwork: boolean | null;
+  requiresBrowser: boolean | null;
+  maxRuntimeSeconds: number | null;
+  maxInputMb: number | null;
   marketplaceContent?: string | null;
   importSource: string | null;
   importedFromZip: string | null;
@@ -135,6 +141,58 @@ interface FolderInfo {
   existsInDb: boolean;
 }
 
+interface MaintenanceRecommendation {
+  id: number;
+  skillId: number;
+  recommendationType: string;
+  title: string;
+  summary: string | null;
+  status: "pending_review" | "approved" | "dismissed" | "applied" | "blocked" | "failed";
+  riskLevel: "low" | "medium" | "high" | "critical";
+  compatibilityStatus: "unknown" | "compatible" | "warning" | "blocked";
+  qualityScore: number | null;
+  currentRuntime: string | null;
+  proposedRuntime: string | null;
+  proposedAction: string | null;
+  isAutoApplySafe: boolean;
+  isGenjsCandidate: boolean;
+  recommendationJson: Record<string, any>;
+  analyzedAt: Date;
+  updatedAt: Date;
+  skill?: {
+    id: number;
+    slug: string;
+    name: string;
+    category: string;
+    executionMode: string | null;
+    sandboxProfileSlug: string | null;
+  } | null;
+}
+
+interface MaintenanceSchedule {
+  id: number;
+  name: string;
+  description: string | null;
+  status: "active" | "paused" | "disabled";
+  cronExpression: string | null;
+  timezone: string;
+  scopeType: string;
+  scopeJson?: Record<string, any>;
+  policyJson?: Record<string, any>;
+  nextRunAt?: Date | null;
+  runningAt?: Date | null;
+  lockExpiresAt?: Date | null;
+  updatedAt: Date;
+}
+
+interface PendingMaintenanceApply {
+  recommendationId: number;
+  skillName: string;
+  recommendationTitle: string;
+  isAutoApplySafe: boolean;
+  hasProposalReady: boolean;
+}
+
 // Category icon mapping
 const categoryIcons: Record<string, typeof Sparkles> = {
   image_generation: Image,
@@ -144,6 +202,7 @@ const categoryIcons: Record<string, typeof Sparkles> = {
   image_video_generation: Video,
   audio_generation: Music,
   article_generation: FileText,
+  slide_generation: FileText,
   product_review: Star,
   sound_effects: Music,
   prompt_enhancement: Sparkles,
@@ -164,6 +223,7 @@ const categoryLabels: Record<string, string> = {
   image_video_generation: "Image/Video Generation",
   audio_generation: "Audio Generation",
   article_generation: "Article Generation",
+  slide_generation: "Slide Generation",
   product_review: "Product Review",
   sound_effects: "Sound Effects",
   prompt_enhancement: "Prompt Enhancement",
@@ -179,19 +239,154 @@ const categoryLabels: Record<string, string> = {
 };
 
 const executionModeLabels: Record<
-  "llm-only" | "media-generate" | "enhance-prompt" | "python",
+  SkillExecutionMode,
   string
 > = {
   "llm-only": "LLM Only (uses skill manifest markdown as system prompt)",
   "enhance-prompt": "Enhance Prompt (specialized prompt enhancement endpoint)",
   "media-generate": "Media Generate (LLM prompt + media API)",
   python: "Python (runs python/skill.py via subprocess)",
+  "sandbox-code": "Sandbox Code (isolated code execution container)",
+  "sandbox-command": "Sandbox Command (stages skill files and runs entry commands)",
+  "sandbox-browser": "Sandbox Browser (browser automation container)",
+  "sandbox-file": "Sandbox File (isolated document/file processing)",
+  "sandbox-media": "Sandbox Media (isolated media processing container)",
 };
+
+function isSandboxExecutionMode(
+  executionMode: SkillExecutionMode | null | undefined,
+): executionMode is Extract<SkillExecutionMode, `sandbox-${string}`> {
+  return typeof executionMode === "string" && executionMode.startsWith("sandbox-");
+}
+
+function getDefaultSandboxSettings(
+  category: string,
+  executionMode: SkillExecutionMode | null | undefined,
+): Pick<Skill, "sandboxProfileSlug" | "requiresNetwork" | "requiresBrowser" | "maxRuntimeSeconds" | "maxInputMb"> {
+  if (executionMode === "sandbox-browser") {
+    return {
+      sandboxProfileSlug: "browser-default",
+      requiresNetwork: true,
+      requiresBrowser: true,
+      maxRuntimeSeconds: 600,
+      maxInputMb: 50,
+    };
+  }
+  if (executionMode === "sandbox-file") {
+    return {
+      sandboxProfileSlug: "file-parser",
+      requiresNetwork: false,
+      requiresBrowser: false,
+      maxRuntimeSeconds: 300,
+      maxInputMb: 100,
+    };
+  }
+  if (executionMode === "sandbox-media") {
+    return {
+      sandboxProfileSlug: "media-processing",
+      requiresNetwork: false,
+      requiresBrowser: false,
+      maxRuntimeSeconds: 1800,
+      maxInputMb: 500,
+    };
+  }
+  if (executionMode === "sandbox-command") {
+    return {
+      sandboxProfileSlug: "browser-default",
+      requiresNetwork: category === "slide_generation",
+      requiresBrowser: false,
+      maxRuntimeSeconds: category === "slide_generation" ? 600 : 300,
+      maxInputMb: category === "slide_generation" ? 50 : 25,
+    };
+  }
+  if (executionMode === "sandbox-code") {
+    return {
+      sandboxProfileSlug: "code-default",
+      requiresNetwork: false,
+      requiresBrowser: false,
+      maxRuntimeSeconds: 300,
+      maxInputMb: 25,
+    };
+  }
+  return {
+    sandboxProfileSlug: null,
+    requiresNetwork: null,
+    requiresBrowser: null,
+    maxRuntimeSeconds: null,
+    maxInputMb: null,
+  };
+}
+
+function applySandboxDefaults(skill: Skill, executionMode: SkillExecutionMode | null | undefined): Skill {
+  if (!isSandboxExecutionMode(executionMode)) {
+    return {
+      ...skill,
+      executionMode: executionMode ?? null,
+      sandboxProfileSlug: null,
+      requiresNetwork: null,
+      requiresBrowser: null,
+      maxRuntimeSeconds: null,
+      maxInputMb: null,
+    };
+  }
+  const defaults = getDefaultSandboxSettings(skill.category, executionMode);
+  const executionModeChanged = skill.executionMode !== executionMode;
+  return {
+    ...skill,
+    executionMode: executionMode ?? null,
+    sandboxProfileSlug: executionModeChanged ? defaults.sandboxProfileSlug : (skill.sandboxProfileSlug ?? defaults.sandboxProfileSlug),
+    requiresNetwork: executionModeChanged ? defaults.requiresNetwork : (skill.requiresNetwork ?? defaults.requiresNetwork),
+    requiresBrowser: executionModeChanged ? defaults.requiresBrowser : (skill.requiresBrowser ?? defaults.requiresBrowser),
+    maxRuntimeSeconds: executionModeChanged ? defaults.maxRuntimeSeconds : (skill.maxRuntimeSeconds ?? defaults.maxRuntimeSeconds),
+    maxInputMb: executionModeChanged ? defaults.maxInputMb : (skill.maxInputMb ?? defaults.maxInputMb),
+  };
+}
+
+function applySandboxDefaultsToNewSkill<
+  T extends {
+    category: string;
+    executionMode: SkillExecutionMode;
+    sandboxProfileSlug: string | null;
+    requiresNetwork: boolean | null;
+    requiresBrowser: boolean | null;
+    maxRuntimeSeconds: number | null;
+    maxInputMb: number | null;
+  },
+>(draft: T, executionMode: SkillExecutionMode): T {
+  if (!isSandboxExecutionMode(executionMode)) {
+    return {
+      ...draft,
+      executionMode,
+      sandboxProfileSlug: null,
+      requiresNetwork: null,
+      requiresBrowser: null,
+      maxRuntimeSeconds: null,
+      maxInputMb: null,
+    };
+  }
+  const defaults = getDefaultSandboxSettings(draft.category, executionMode);
+  const executionModeChanged = draft.executionMode !== executionMode;
+  return {
+    ...draft,
+    executionMode,
+    sandboxProfileSlug: executionModeChanged ? defaults.sandboxProfileSlug : (draft.sandboxProfileSlug ?? defaults.sandboxProfileSlug),
+    requiresNetwork: executionModeChanged ? defaults.requiresNetwork : (draft.requiresNetwork ?? defaults.requiresNetwork),
+    requiresBrowser: executionModeChanged ? defaults.requiresBrowser : (draft.requiresBrowser ?? defaults.requiresBrowser),
+    maxRuntimeSeconds: executionModeChanged ? defaults.maxRuntimeSeconds : (draft.maxRuntimeSeconds ?? defaults.maxRuntimeSeconds),
+    maxInputMb: executionModeChanged ? defaults.maxInputMb : (draft.maxInputMb ?? defaults.maxInputMb),
+  };
+}
 
 function getExecutionModeHelperText(
   category: string,
-  executionMode: "llm-only" | "media-generate" | "enhance-prompt" | "python" | null | undefined,
+  executionMode: SkillExecutionMode | null | undefined,
 ): string {
+  if (category === "slide_generation" && executionMode === "sandbox-command") {
+    return "Recommended for Node/MJS slide skills such as modern-editorial-slide. Stages the skill bundle in sandbox, installs package.json dependencies, then runs the declared entry command.";
+  }
+  if (category === "slide_generation" && executionMode === "llm-only") {
+    return "Uses the skill markdown as a slide-layout planning prompt only. This does not execute src/*.mjs renderers.";
+  }
   if (executionMode === "media-generate") {
     const mediaType = getMediaModelTypeForSkillCategory(category);
     if (mediaType === "audio") {
@@ -207,6 +402,21 @@ function getExecutionModeHelperText(
   }
   if (executionMode === "python") {
     return "Runs python/skill.py as subprocess. Input: JSON stdin. Output: JSON stdout {success, output}.";
+  }
+  if (executionMode === "sandbox-command") {
+    return "Stages the skill bundle into an isolated sandbox, runs shell commands, and collects declared output artifacts.";
+  }
+  if (executionMode === "sandbox-code") {
+    return "Runs code inside an isolated sandbox profile without falling back to the local server process.";
+  }
+  if (executionMode === "sandbox-browser") {
+    return "Runs browser-enabled automation inside a Playwright-capable sandbox profile.";
+  }
+  if (executionMode === "sandbox-file") {
+    return "Processes files inside an isolated sandbox profile for document/file workflows.";
+  }
+  if (executionMode === "sandbox-media") {
+    return "Processes media inside an isolated sandbox profile for heavy render/transcode tasks.";
   }
   return "Uses the skill manifest markdown as system prompt for LLM (default).";
 }
@@ -225,6 +435,72 @@ function getMediaModelsForCategory(
     return [...(imageModels?.models || []), ...(videoModels?.models || [])];
   }
   return [];
+}
+
+function getOrchestrationConfig(configJson: Record<string, unknown> | null | undefined) {
+  const orchestration = configJson && typeof configJson === "object"
+    ? (configJson as Record<string, any>).orchestration
+    : null;
+  if (!orchestration || typeof orchestration !== "object") {
+    return {
+      mode: "local",
+      endpoint: "",
+      skillTargets: "",
+      parallel: false,
+      fallback: "local",
+    };
+  }
+
+  return {
+    mode: typeof orchestration.mode === "string" ? orchestration.mode : "local",
+    endpoint: typeof orchestration.endpoint === "string" ? orchestration.endpoint : "",
+    skillTargets: Array.isArray(orchestration.skillTargets)
+      ? orchestration.skillTargets.filter((value: unknown): value is string => typeof value === "string").join(", ")
+      : "",
+    parallel: orchestration.parallel === true,
+    fallback: typeof orchestration.fallback === "string" ? orchestration.fallback : "local",
+  };
+}
+
+function buildScheduleScopeJson(draft: {
+  scopeCategory: string;
+  scopeExecutionMode: string;
+  genjsCandidatesOnly: boolean;
+  limit: string;
+}) {
+  const scopeJson: Record<string, unknown> = {};
+  const parsedLimit = Number.parseInt(draft.limit, 10);
+  if (Number.isFinite(parsedLimit)) {
+    scopeJson.limit = parsedLimit;
+  }
+  if (draft.scopeCategory.trim()) {
+    scopeJson.category = draft.scopeCategory.trim();
+  }
+  if (draft.scopeExecutionMode.trim()) {
+    scopeJson.executionMode = draft.scopeExecutionMode.trim();
+  }
+  if (draft.genjsCandidatesOnly) {
+    scopeJson.genjsCandidatesOnly = true;
+  }
+  return scopeJson;
+}
+
+function buildScheduleDraftFromExisting(schedule: MaintenanceSchedule) {
+  const scopeJson = (schedule.scopeJson ?? {}) as Record<string, unknown>;
+  return {
+    id: schedule.id,
+    name: schedule.name,
+    description: schedule.description ?? "",
+    cronExpression: schedule.cronExpression ?? "0 9 * * 1",
+    timezone: schedule.timezone || "Asia/Bangkok",
+    status: schedule.status,
+    scopeType: schedule.scopeType || "all_skills",
+    scopeCategory: typeof scopeJson.category === "string" ? scopeJson.category : "",
+    scopeExecutionMode: typeof scopeJson.executionMode === "string" ? scopeJson.executionMode : "",
+    genjsCandidatesOnly: scopeJson.genjsCandidatesOnly === true || schedule.scopeType === "genjs_candidates",
+    limit: typeof scopeJson.limit === "number" ? String(scopeJson.limit) : "100",
+    policyJsonText: JSON.stringify(schedule.policyJson ?? {}, null, 2),
+  };
 }
 
 export default function AdminSkills() {
@@ -248,7 +524,25 @@ export default function AdminSkills() {
   const [isStudioDialogOpen, setIsStudioDialogOpen] = useState(false);
   const [studioMode, setStudioMode] = useState<"create" | "improve">("create");
   const [studioTargetSkillId, setStudioTargetSkillId] = useState<number | null>(null);
-  const [previewProposal, setPreviewProposal] = useState<{ skillName: string; diffFile: string } | null>(null);
+  const [previewProposal, setPreviewProposal] = useState<{ skillName: string; diffFile: string; recommendationId?: number } | null>(null);
+  const [maintenanceSkillFilter, setMaintenanceSkillFilter] = useState<number | null>(null);
+  const [maintenanceStatusFilter, setMaintenanceStatusFilter] = useState<string>("pending_review");
+  const [selectedRecommendationId, setSelectedRecommendationId] = useState<number | null>(null);
+  const [pendingMaintenanceApply, setPendingMaintenanceApply] = useState<PendingMaintenanceApply | null>(null);
+  const [scheduleDraft, setScheduleDraft] = useState({
+    id: null as number | null,
+    name: "",
+    description: "",
+    cronExpression: "0 9 * * 1",
+    timezone: "Asia/Bangkok",
+    status: "active" as "active" | "paused" | "disabled",
+    scopeType: "all_skills",
+    scopeCategory: "",
+    scopeExecutionMode: "",
+    genjsCandidatesOnly: false,
+    limit: "100",
+    policyJsonText: "{}",
+  });
 
   // ZIP import state
   const [zipFile, setZipFile] = useState<File | null>(null);
@@ -271,6 +565,12 @@ export default function AdminSkills() {
     visibleByDefault: true,
     creditMultiplier: 1.0,
     priority: 50,
+    executionMode: "llm-only" as SkillExecutionMode,
+    sandboxProfileSlug: null as string | null,
+    requiresNetwork: null as boolean | null,
+    requiresBrowser: null as boolean | null,
+    maxRuntimeSeconds: null as number | null,
+    maxInputMb: null as number | null,
     systemPrompt: "",
     skillContent: "",
     marketplaceContent: "",
@@ -314,6 +614,7 @@ export default function AdminSkills() {
   const { data: imageModels } = trpc.mediaModels.list.useQuery({ type: "image" });
   const { data: videoModels } = trpc.mediaModels.list.useQuery({ type: "video" });
   const { data: audioModels } = trpc.mediaModels.list.useQuery({ type: "audio" });
+  const { data: sandboxProfiles } = trpc.sandbox.getProfiles.useQuery();
 
   useEffect(() => {
     if (!editingSkill) {
@@ -377,6 +678,93 @@ export default function AdminSkills() {
     previewProposal || { skillName: "__placeholder__", diffFile: "placeholder.diff" },
     { enabled: !!previewProposal && !!isAdmin },
   );
+  const { data: maintenanceRecommendations, refetch: refetchMaintenanceRecommendations } =
+    trpc.skills.getUpgradeRecommendations.useQuery(
+      {
+        skillId: maintenanceSkillFilter ?? undefined,
+        status: maintenanceStatusFilter !== "all" ? maintenanceStatusFilter as any : undefined,
+        includeDismissed: maintenanceStatusFilter === "all",
+        limit: 200,
+      },
+      { enabled: !!isAdmin },
+    );
+  const { data: selectedRecommendationDetail } = trpc.skills.getUpgradeRecommendationDetail.useQuery(
+    selectedRecommendationId ? { recommendationId: selectedRecommendationId } : { recommendationId: 0 },
+    { enabled: !!selectedRecommendationId && !!isAdmin },
+  );
+  const { data: maintenanceSchedules } = trpc.skills.listMaintenanceSchedules.useQuery(undefined, {
+    enabled: !!isAdmin,
+  });
+  const latestProposalBySkillName = new Map<string, { skillName: string; diffFile: string; createdAt: string }>();
+  for (const proposal of (iscProposals?.proposals || [])) {
+    if (!latestProposalBySkillName.has(proposal.skillName)) {
+      latestProposalBySkillName.set(proposal.skillName, {
+        skillName: proposal.skillName,
+        diffFile: proposal.diffFile,
+        createdAt: proposal.createdAt,
+      });
+    }
+  }
+  const latestRecommendationBySkillId = new Map<number, MaintenanceRecommendation>();
+  for (const item of ((maintenanceRecommendations || []) as MaintenanceRecommendation[])) {
+    if (!latestRecommendationBySkillId.has(item.skillId)) {
+      latestRecommendationBySkillId.set(item.skillId, item);
+    }
+  }
+
+  function requestRecommendationApply(recommendation: MaintenanceRecommendation, skillName: string) {
+    const proposalReady = Boolean(
+      recommendation.skill?.slug && latestProposalBySkillName.has(recommendation.skill.slug),
+    );
+
+    if (recommendation.isAutoApplySafe) {
+      applyUpgradeMutation.mutate({ recommendationId: recommendation.id });
+      return;
+    }
+
+    setPendingMaintenanceApply({
+      recommendationId: recommendation.id,
+      skillName,
+      recommendationTitle: recommendation.title,
+      isAutoApplySafe: false,
+      hasProposalReady: proposalReady,
+    });
+  }
+
+  function saveMaintenanceSchedule() {
+    let policyJson: Record<string, unknown>;
+    try {
+      policyJson = JSON.parse(scheduleDraft.policyJsonText || "{}");
+    } catch {
+      toast({
+        title: "Invalid Policy JSON",
+        description: "Policy JSON must be valid JSON before saving the schedule.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const payload = {
+      name: scheduleDraft.name,
+      description: scheduleDraft.description || undefined,
+      cronExpression: scheduleDraft.cronExpression,
+      timezone: scheduleDraft.timezone,
+      status: scheduleDraft.status,
+      scopeType: scheduleDraft.scopeType,
+      scopeJson: buildScheduleScopeJson(scheduleDraft),
+      policyJson,
+    };
+
+    if (scheduleDraft.id) {
+      updateMaintenanceScheduleMutation.mutate({
+        id: scheduleDraft.id,
+        ...payload,
+      });
+      return;
+    }
+
+    createMaintenanceScheduleMutation.mutate(payload);
+  }
 
   // Fetch groups for sharing (used in edit dialog)
   const { data: userGroups } = trpc.groups.list.useQuery(
@@ -562,6 +950,10 @@ export default function AdminSkills() {
     onSuccess: () => {
       utils.skills.listFromDb.invalidate();
       utils.skills.listIscProposals.invalidate();
+      utils.skills.getUpgradeRecommendations.invalidate();
+      if (selectedRecommendationId) {
+        utils.skills.getUpgradeRecommendationDetail.invalidate({ recommendationId: selectedRecommendationId });
+      }
       toast({
         title: "Proposal Applied",
         description: "The ISC proposal has been applied and synced.",
@@ -572,6 +964,148 @@ export default function AdminSkills() {
       toast({
         title: "Error",
         description: error.message || "Failed to apply proposal",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const analyzeUpgradeMutation = trpc.skills.analyzeUpgrade.useMutation({
+    onSuccess: (data) => {
+      utils.skills.getUpgradeRecommendations.invalidate();
+      if (data.recommendations?.length > 0) {
+        setSelectedRecommendationId(data.recommendations[0].id);
+        setMaintenanceSkillFilter(data.skillId);
+      }
+      setActiveTab("maintenance");
+      toast({
+        title: "Skill Analysis Complete",
+        description: `${data.skillSlug} analyzed with ${data.recommendations.length} recommendation(s).`,
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Analysis Failed",
+        description: error.message || "Failed to analyze skill",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const dismissRecommendationMutation = trpc.skills.dismissUpgradeRecommendation.useMutation({
+    onSuccess: () => {
+      utils.skills.getUpgradeRecommendations.invalidate();
+      if (selectedRecommendationId) {
+        utils.skills.getUpgradeRecommendationDetail.invalidate({ recommendationId: selectedRecommendationId });
+      }
+      toast({
+        title: "Recommendation Dismissed",
+        description: "The recommendation has been removed from the default queue.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Dismiss Failed",
+        description: error.message || "Failed to dismiss recommendation",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const applyUpgradeMutation = trpc.skills.applyUpgradeRecommendation.useMutation({
+    onSuccess: (data) => {
+      utils.skills.getUpgradeRecommendations.invalidate();
+      if (selectedRecommendationId) {
+        utils.skills.getUpgradeRecommendationDetail.invalidate({ recommendationId: selectedRecommendationId });
+      }
+      utils.skills.listFromDb.invalidate();
+      utils.skills.listIscProposals.invalidate();
+      setPendingMaintenanceApply(null);
+      if (data.applyStrategy === "proposal") {
+        setActiveTab("proposals");
+      }
+      toast({
+        title: data.applyStrategy === "proposal"
+          ? "Proposal Generation Started"
+          : data.mode === "queued"
+            ? "Upgrade Started"
+            : "Upgrade Applied",
+        description: data.applyStrategy === "proposal"
+          ? "A proposal-first upgrade task was queued. Review the generated diff in the Proposals tab before applying it."
+          : data.mode === "queued"
+            ? "The maintenance upgrade task was queued and will update this recommendation when it finishes."
+            : "The recommendation was applied successfully.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Apply Failed",
+        description: error.message || "Failed to apply recommendation",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const runMaintenanceSweepMutation = trpc.skills.runMaintenanceSweep.useMutation({
+    onSuccess: (data) => {
+      utils.skills.getUpgradeRecommendations.invalidate();
+      toast({
+        title: "Maintenance Sweep Complete",
+        description: `Analyzed ${data.analyzedCount} skill(s).`,
+      });
+      setActiveTab("maintenance");
+    },
+    onError: (error) => {
+      toast({
+        title: "Sweep Failed",
+        description: error.message || "Failed to run maintenance sweep",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const createMaintenanceScheduleMutation = trpc.skills.createMaintenanceSchedule.useMutation({
+    onSuccess: () => {
+      utils.skills.listMaintenanceSchedules.invalidate();
+      setScheduleDraft({
+        id: null,
+        name: "",
+        description: "",
+        cronExpression: "0 9 * * 1",
+        timezone: "Asia/Bangkok",
+        status: "active",
+        scopeType: "all_skills",
+        scopeCategory: "",
+        scopeExecutionMode: "",
+        genjsCandidatesOnly: false,
+        limit: "100",
+        policyJsonText: "{}",
+      });
+      toast({
+        title: "Schedule Saved",
+        description: "The maintenance schedule has been saved.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Save Failed",
+        description: error.message || "Failed to save maintenance schedule",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateMaintenanceScheduleMutation = trpc.skills.updateMaintenanceSchedule.useMutation({
+    onSuccess: () => {
+      utils.skills.listMaintenanceSchedules.invalidate();
+      toast({
+        title: "Schedule Updated",
+        description: "The maintenance schedule has been updated.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Update Failed",
+        description: error.message || "Failed to update maintenance schedule",
         variant: "destructive",
       });
     },
@@ -634,6 +1168,12 @@ export default function AdminSkills() {
       visibleByDefault: true,
       creditMultiplier: 1.0,
       priority: 50,
+      executionMode: "llm-only" as SkillExecutionMode,
+      sandboxProfileSlug: null,
+      requiresNetwork: null,
+      requiresBrowser: null,
+      maxRuntimeSeconds: null,
+      maxInputMb: null,
       systemPrompt: "",
       skillContent: "",
       marketplaceContent: "",
@@ -646,6 +1186,12 @@ export default function AdminSkills() {
       ...newSkillData,
       description: newSkillData.description || undefined,
       author: newSkillData.author || undefined,
+      executionMode: newSkillData.executionMode,
+      sandboxProfileSlug: newSkillData.sandboxProfileSlug,
+      requiresNetwork: newSkillData.requiresNetwork,
+      requiresBrowser: newSkillData.requiresBrowser,
+      maxRuntimeSeconds: newSkillData.maxRuntimeSeconds,
+      maxInputMb: newSkillData.maxInputMb,
       systemPrompt: newSkillData.systemPrompt || undefined,
       skillContent: newSkillData.skillContent || undefined,
       marketplaceContent: newSkillData.marketplaceContent || undefined,
@@ -655,6 +1201,19 @@ export default function AdminSkills() {
 
   const handleUpdateSkill = () => {
     if (!editingSkill) return;
+    const nextConfigJson = {
+      ...(editingSkill.configJson || {}),
+      orchestration: {
+        mode: (editingSkill as any)._orchestrationMode || "local",
+        endpoint: ((editingSkill as any)._orchestrationEndpoint || "").trim() || null,
+        skillTargets: ((editingSkill as any)._orchestrationSkillTargets || "")
+          .split(",")
+          .map((value: string) => value.trim())
+          .filter(Boolean),
+        parallel: (editingSkill as any)._orchestrationParallel ?? false,
+        fallback: (editingSkill as any)._orchestrationFallback || "local",
+      },
+    };
     updateMutation.mutate({
       id: editingSkill.id,
       name: editingSkill.name,
@@ -676,10 +1235,16 @@ export default function AdminSkills() {
       preferredProviderId: editingSkill.preferredProviderId ?? null,
       strictProviderPin: editingSkill.strictProviderPin ?? false,
       executionMode: editingSkill.executionMode || "llm-only",
+      sandboxProfileSlug: editingSkill.sandboxProfileSlug,
+      requiresNetwork: editingSkill.requiresNetwork,
+      requiresBrowser: editingSkill.requiresBrowser,
+      maxRuntimeSeconds: editingSkill.maxRuntimeSeconds,
+      maxInputMb: editingSkill.maxInputMb,
       systemPrompt: editingSkill.systemPrompt,
       skillContent: editingSkill.skillContent,
       marketplaceContent: editingSkill.marketplaceContent,
       knowledgebase: editingSkill.knowledgebase,
+      configJson: nextConfigJson,
       visibility: (editingSkill.visibility === "rejected" || editingSkill.visibility === "private")
         ? "private"
         : "public" as "private" | "public",
@@ -805,6 +1370,15 @@ export default function AdminSkills() {
               </Badge>
             )}
           </TabsTrigger>
+          <TabsTrigger value="maintenance">
+            <ShieldCheck className="mr-2 h-4 w-4" />
+            Maintenance
+            {!!maintenanceRecommendations?.length && (
+              <Badge className="ml-2" variant="secondary">
+                {maintenanceRecommendations.length}
+              </Badge>
+            )}
+          </TabsTrigger>
           {isAdmin && (
             <TabsTrigger value="pending">
               <Clock className="mr-2 h-4 w-4" />
@@ -820,14 +1394,8 @@ export default function AdminSkills() {
 
         <TabsContent value="skills" className="space-y-6">
           {/* Filters */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Search className="h-5 w-5" />
-                Search & Filter
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
+          <DashboardCard title="Search & Filter" leading={<Search className="h-5 w-5 text-slate-500" />}>
+            <div className="space-y-4">
               <div className="grid gap-4 md:grid-cols-4">
                 <div className="space-y-2">
                   <Label htmlFor="search">Search</Label>
@@ -884,18 +1452,14 @@ export default function AdminSkills() {
                   </Button>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </DashboardCard>
 
           {/* Skills List */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Skills Library</CardTitle>
-              <CardDescription>
-                {skills?.length || 0} skill(s) in database
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+          <DashboardCard
+            title="Skills Library"
+            description={`${skills?.length || 0} skill(s) in database`}
+          >
               {isLoading ? (
                 <div className="flex items-center justify-center py-8">
                   <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -1009,6 +1573,47 @@ export default function AdminSkills() {
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => analyzeUpgradeMutation.mutate({ skillId: skill.id })}
+                                disabled={analyzeUpgradeMutation.isPending}
+                              >
+                                <ShieldCheck className="h-3 w-3 text-blue-600" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  const latest = latestRecommendationBySkillId.get(skill.id);
+                                  setMaintenanceSkillFilter(skill.id);
+                                  setActiveTab("maintenance");
+                                  if (latest) {
+                                    setSelectedRecommendationId(latest.id);
+                                  }
+                                }}
+                              >
+                                <Clock className="h-3 w-3 text-slate-600" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  const latest = latestRecommendationBySkillId.get(skill.id);
+                                  if (latest && latest.status !== "applied") {
+                                    requestRecommendationApply(latest, skill.name);
+                                    return;
+                                  }
+                                  setMaintenanceSkillFilter(skill.id);
+                                  setActiveTab("maintenance");
+                                  if (latest) {
+                                    setSelectedRecommendationId(latest.id);
+                                  }
+                                }}
+                                disabled={applyUpgradeMutation.isPending}
+                              >
+                                <CheckCircle2 className="h-3 w-3 text-green-600" />
+                              </Button>
                               {(isAdmin || skill.createdBy === Number(user?.id)) && skill.hasLocalFolder && (
                                 <Button
                                   variant="ghost"
@@ -1031,7 +1636,8 @@ export default function AdminSkills() {
                                         ? ((skill as any).executionMode ?? "llm-only")
                                         : (getRecommendedExecutionModeForSkillCategory(skill.category) || "llm-only");
                                       const ep = (skill as any).executionPolicyJson ?? {};
-                                      return {
+                                      const orchestration = getOrchestrationConfig((skill as any).configJson ?? null);
+                                      return applySandboxDefaults({
                                         ...(skill as any),
                                         triggerPatterns: ((skill as any).triggerPatterns || []).map((pattern: any) =>
                                           typeof pattern === "string" ? pattern : pattern?.pattern || ""
@@ -1058,7 +1664,12 @@ export default function AdminSkills() {
                                         _reqBackground: ep.requirements?.supportsBackground ?? false,
                                         _reqResponses: ep.requirements?.supportsResponses ?? false,
                                         _reqContextLength: ep.requirements?.contextLength ?? null,
-                                      } as Skill;
+                                        _orchestrationMode: orchestration.mode,
+                                        _orchestrationEndpoint: orchestration.endpoint,
+                                        _orchestrationSkillTargets: orchestration.skillTargets,
+                                        _orchestrationParallel: orchestration.parallel,
+                                        _orchestrationFallback: orchestration.fallback,
+                                      } as Skill, normalizedExecutionMode);
                                     })())
                                   }
                                 >
@@ -1082,22 +1693,15 @@ export default function AdminSkills() {
                   </TableBody>
                 </Table>
               )}
-            </CardContent>
-          </Card>
+          </DashboardCard>
         </TabsContent>
 
         <TabsContent value="import" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FolderOpen className="h-5 w-5" />
-                Skill Folders
-              </CardTitle>
-              <CardDescription>
-                Skill folders found in /skills directory. Import them into the database.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+          <DashboardCard
+            title="Skill Folders"
+            description="Skill folders found in /skills directory. Import them into the database."
+            leading={<FolderOpen className="h-5 w-5 text-slate-500" />}
+          >
               <div className="flex justify-end mb-4">
                 <Button variant="outline" onClick={() => refetchFolders()}>
                   <RefreshCw className="mr-2 h-4 w-4" />
@@ -1183,22 +1787,15 @@ export default function AdminSkills() {
                   )}
                 </TableBody>
               </Table>
-            </CardContent>
-          </Card>
+          </DashboardCard>
         </TabsContent>
 
         <TabsContent value="proposals" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5" />
-                ISC Proposal Queue
-              </CardTitle>
-              <CardDescription>
-                Review and apply improvement proposals generated by Skill Studio.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+          <DashboardCard
+            title="ISC Proposal Queue"
+            description="Review and apply improvement proposals generated by Skill Studio."
+            leading={<Sparkles className="h-5 w-5 text-slate-500" />}
+          >
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -1249,24 +1846,400 @@ export default function AdminSkills() {
                   )}
                 </TableBody>
               </Table>
-            </CardContent>
-          </Card>
+          </DashboardCard>
+        </TabsContent>
+
+        <TabsContent value="maintenance" className="space-y-6">
+          <DashboardCard
+            title="Maintenance Queue"
+            description="Analyze skills, review upgrade advice, and apply only safe, non-breaking improvements."
+            leading={<ShieldCheck className="h-5 w-5 text-slate-500" />}
+          >
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-end gap-3">
+                <div className="space-y-2">
+                  <Label>Status Filter</Label>
+                  <Select value={maintenanceStatusFilter} onValueChange={setMaintenanceStatusFilter}>
+                    <SelectTrigger className="w-[200px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pending_review">Pending Review</SelectItem>
+                      <SelectItem value="applied">Applied</SelectItem>
+                      <SelectItem value="blocked">Blocked</SelectItem>
+                      <SelectItem value="failed">Failed</SelectItem>
+                      <SelectItem value="dismissed">Dismissed</SelectItem>
+                      <SelectItem value="all">All</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Skill Filter</Label>
+                  <Select
+                    value={maintenanceSkillFilter ? String(maintenanceSkillFilter) : "__all__"}
+                    onValueChange={(value) => setMaintenanceSkillFilter(value === "__all__" ? null : Number(value))}
+                  >
+                    <SelectTrigger className="w-[260px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__all__">All Skills</SelectItem>
+                      {(skills || []).map((skill) => (
+                        <SelectItem key={skill.id} value={String(skill.id)}>
+                          {skill.name} ({skill.slug})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <Button
+                  variant="outline"
+                  onClick={() => runMaintenanceSweepMutation.mutate({ limit: 100 })}
+                  disabled={runMaintenanceSweepMutation.isPending}
+                >
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  {runMaintenanceSweepMutation.isPending ? "Sweeping..." : "Sweep Skills"}
+                </Button>
+
+                <Button
+                  variant="outline"
+                  onClick={() => refetchMaintenanceRecommendations()}
+                >
+                  Refresh Queue
+                </Button>
+              </div>
+
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Skill</TableHead>
+                    <TableHead>Advice</TableHead>
+                    <TableHead>Risk</TableHead>
+                    <TableHead>Compatibility</TableHead>
+                    <TableHead>Quality</TableHead>
+                    <TableHead>Runtime</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {!maintenanceRecommendations?.length ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center text-muted-foreground">
+                        No maintenance recommendations in this view yet.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    ((maintenanceRecommendations || []) as any[]).map((item: MaintenanceRecommendation) => (
+                      <TableRow key={item.id}>
+                        <TableCell>
+                          <div className="font-medium">{item.skill?.name || `Skill #${item.skillId}`}</div>
+                          <div className="text-xs text-muted-foreground">{item.skill?.slug || item.skillId}</div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="font-medium">{item.title}</div>
+                          <div className="text-xs text-muted-foreground">{item.recommendationType}</div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant="outline"
+                            className={
+                              item.riskLevel === "critical" ? "border-red-500 text-red-600" :
+                              item.riskLevel === "high" ? "border-orange-500 text-orange-600" :
+                              item.riskLevel === "medium" ? "border-amber-500 text-amber-600" :
+                              "border-green-500 text-green-600"
+                            }
+                          >
+                            {item.riskLevel}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant="outline"
+                            className={
+                              item.compatibilityStatus === "blocked" ? "border-red-500 text-red-600" :
+                              item.compatibilityStatus === "warning" ? "border-amber-500 text-amber-600" :
+                              item.compatibilityStatus === "compatible" ? "border-green-500 text-green-600" :
+                              ""
+                            }
+                          >
+                            {item.compatibilityStatus}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{item.qualityScore ?? "-"}</TableCell>
+                        <TableCell>
+                          <div className="text-sm">{item.currentRuntime || "unknown"}</div>
+                          {item.isGenjsCandidate && (
+                            <Badge variant="secondary" className="mt-1">GenJS Candidate</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setSelectedRecommendationId(item.id)}
+                            >
+                              View Advice
+                            </Button>
+                            <Button
+                              size="sm"
+                              onClick={() => requestRecommendationApply(item, item.skill?.name || `Skill #${item.skillId}`)}
+                              disabled={item.status === "applied" || applyUpgradeMutation.isPending}
+                            >
+                              {item.isAutoApplySafe ? "Apply Upgrade" : "Generate Proposal"}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => dismissRecommendationMutation.mutate({ recommendationId: item.id })}
+                              disabled={dismissRecommendationMutation.isPending}
+                            >
+                              Dismiss
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </DashboardCard>
+
+          <DashboardCard
+            title="Maintenance Schedules"
+            description="Store recurring review policies so admins can revisit the queue later."
+            leading={<Clock className="h-5 w-5 text-slate-500" />}
+          >
+            <div className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-4">
+                <div className="space-y-2">
+                  <Label>Name</Label>
+                  <Input
+                    value={scheduleDraft.name}
+                    onChange={(e) => setScheduleDraft({ ...scheduleDraft, name: e.target.value })}
+                    placeholder="Weekly skill review"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Cron</Label>
+                  <Input
+                    value={scheduleDraft.cronExpression}
+                    onChange={(e) => setScheduleDraft({ ...scheduleDraft, cronExpression: e.target.value })}
+                    placeholder="0 9 * * 1"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Timezone</Label>
+                  <Input
+                    value={scheduleDraft.timezone}
+                    onChange={(e) => setScheduleDraft({ ...scheduleDraft, timezone: e.target.value })}
+                    placeholder="Asia/Bangkok"
+                  />
+                </div>
+                <div className="flex items-end">
+                  <Button
+                    onClick={saveMaintenanceSchedule}
+                    disabled={!scheduleDraft.name || createMaintenanceScheduleMutation.isPending || updateMaintenanceScheduleMutation.isPending}
+                  >
+                    {scheduleDraft.id ? "Update Schedule" : "Save Schedule"}
+                  </Button>
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-4">
+                <div className="space-y-2">
+                  <Label>Status</Label>
+                  <Select
+                    value={scheduleDraft.status}
+                    onValueChange={(value) => setScheduleDraft({ ...scheduleDraft, status: value as any })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="paused">Paused</SelectItem>
+                      <SelectItem value="disabled">Disabled</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Scope Type</Label>
+                  <Select
+                    value={scheduleDraft.scopeType}
+                    onValueChange={(value) => setScheduleDraft({ ...scheduleDraft, scopeType: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all_skills">All skills</SelectItem>
+                      <SelectItem value="category">By category</SelectItem>
+                      <SelectItem value="execution_mode">By execution mode</SelectItem>
+                      <SelectItem value="genjs_candidates">GenJS candidates</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Category Filter</Label>
+                  <Input
+                    value={scheduleDraft.scopeCategory}
+                    onChange={(e) => setScheduleDraft({ ...scheduleDraft, scopeCategory: e.target.value })}
+                    placeholder="slide_generation"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Execution Mode Filter</Label>
+                  <Input
+                    value={scheduleDraft.scopeExecutionMode}
+                    onChange={(e) => setScheduleDraft({ ...scheduleDraft, scopeExecutionMode: e.target.value })}
+                    placeholder="sandbox-command"
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="space-y-2">
+                  <Label>Limit</Label>
+                  <Input
+                    value={scheduleDraft.limit}
+                    onChange={(e) => setScheduleDraft({ ...scheduleDraft, limit: e.target.value })}
+                    placeholder="100"
+                  />
+                </div>
+                <div className="flex items-end">
+                  <div className="flex items-center justify-between rounded-lg border bg-white/60 px-3 py-2 w-full">
+                    <div>
+                      <Label className="text-xs font-medium">GenJS candidates only</Label>
+                      <p className="text-[10px] text-muted-foreground">
+                        Skip skills that do not meet the current GenJS heuristics.
+                      </p>
+                    </div>
+                    <Switch
+                      checked={scheduleDraft.genjsCandidatesOnly}
+                      onCheckedChange={(checked) => setScheduleDraft({ ...scheduleDraft, genjsCandidatesOnly: checked })}
+                    />
+                  </div>
+                </div>
+                <div className="flex items-end justify-end">
+                  {scheduleDraft.id && (
+                    <Button
+                      variant="outline"
+                      onClick={() => setScheduleDraft({
+                        id: null,
+                        name: "",
+                        description: "",
+                        cronExpression: "0 9 * * 1",
+                        timezone: "Asia/Bangkok",
+                        status: "active",
+                        scopeType: "all_skills",
+                        scopeCategory: "",
+                        scopeExecutionMode: "",
+                        genjsCandidatesOnly: false,
+                        limit: "100",
+                        policyJsonText: "{}",
+                      })}
+                    >
+                      New Schedule
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              <Textarea
+                value={scheduleDraft.description}
+                onChange={(e) => setScheduleDraft({ ...scheduleDraft, description: e.target.value })}
+                rows={2}
+                placeholder="Optional description for admins reviewing this schedule later"
+              />
+
+              <Textarea
+                value={scheduleDraft.policyJsonText}
+                onChange={(e) => setScheduleDraft({ ...scheduleDraft, policyJsonText: e.target.value })}
+                rows={4}
+                className="font-mono text-xs"
+                placeholder='{"notifyAdmins": true}'
+              />
+
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Cron</TableHead>
+                    <TableHead>Scope</TableHead>
+                    <TableHead>Timezone</TableHead>
+                    <TableHead>Next Run</TableHead>
+                    <TableHead>Updated</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {!maintenanceSchedules?.length ? (
+                    <TableRow>
+                      <TableCell colSpan={8} className="text-center text-muted-foreground">
+                        No maintenance schedules saved yet.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    ((maintenanceSchedules || []) as any[]).map((schedule: MaintenanceSchedule) => (
+                      <TableRow key={schedule.id}>
+                        <TableCell>
+                          <div className="font-medium">{schedule.name}</div>
+                          {schedule.description && (
+                            <div className="text-xs text-muted-foreground">{schedule.description}</div>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{schedule.status}</Badge>
+                        </TableCell>
+                        <TableCell className="font-mono text-xs">{schedule.cronExpression || "-"}</TableCell>
+                        <TableCell>{schedule.scopeType}</TableCell>
+                        <TableCell>{schedule.timezone}</TableCell>
+                        <TableCell>{schedule.nextRunAt ? new Date(schedule.nextRunAt).toLocaleString() : "-"}</TableCell>
+                        <TableCell>{new Date(schedule.updatedAt).toLocaleString()}</TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setScheduleDraft(buildScheduleDraftFromExisting(schedule))}
+                            >
+                              Edit
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => updateMaintenanceScheduleMutation.mutate({
+                                id: schedule.id,
+                                status: schedule.status === "active" ? "paused" : "active",
+                              })}
+                              disabled={updateMaintenanceScheduleMutation.isPending}
+                            >
+                              {schedule.status === "active" ? "Pause" : "Activate"}
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </DashboardCard>
         </TabsContent>
 
         {/* Pending Approval Tab — Admin Only */}
         {isAdmin && (
           <TabsContent value="pending" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Clock className="h-5 w-5" />
-                  Skills Pending Approval
-                </CardTitle>
-                <CardDescription>
-                  Review and approve or reject user-submitted public skills.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
+            <DashboardCard
+              title="Skills Pending Approval"
+              description="Review and approve or reject user-submitted public skills."
+              leading={<Clock className="h-5 w-5 text-slate-500" />}
+            >
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -1346,8 +2319,7 @@ export default function AdminSkills() {
                     )}
                   </TableBody>
                 </Table>
-              </CardContent>
-            </Card>
+            </DashboardCard>
           </TabsContent>
         )}
       </Tabs>
@@ -1447,6 +2419,185 @@ export default function AdminSkills() {
         </DialogContent>
       </Dialog>
 
+      <Dialog open={!!pendingMaintenanceApply} onOpenChange={() => setPendingMaintenanceApply(null)}>
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>
+              {pendingMaintenanceApply?.isAutoApplySafe ? "Apply Upgrade" : "Generate Proposal"}
+            </DialogTitle>
+            <DialogDescription>
+              {pendingMaintenanceApply?.skillName} • {pendingMaintenanceApply?.recommendationTitle}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 text-sm text-muted-foreground">
+            {pendingMaintenanceApply?.isAutoApplySafe ? (
+              <p>This upgrade can be applied directly through the maintenance pipeline.</p>
+            ) : (
+              <>
+                <p>
+                  This recommendation is not marked auto-safe. The system will generate an ISC proposal first so admin can review the diff before changing the live skill.
+                </p>
+                {pendingMaintenanceApply?.hasProposalReady && (
+                  <p>
+                    A proposal already exists for this skill. You can review that proposal in the Proposals tab instead of generating a new one.
+                  </p>
+                )}
+              </>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPendingMaintenanceApply(null)}>
+              Cancel
+            </Button>
+            {pendingMaintenanceApply?.hasProposalReady && !pendingMaintenanceApply?.isAutoApplySafe && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setPendingMaintenanceApply(null);
+                  setActiveTab("proposals");
+                }}
+              >
+                Open Proposals
+              </Button>
+            )}
+            {pendingMaintenanceApply && (
+              <Button
+                onClick={() => applyUpgradeMutation.mutate({ recommendationId: pendingMaintenanceApply.recommendationId })}
+                disabled={applyUpgradeMutation.isPending}
+              >
+                {pendingMaintenanceApply.isAutoApplySafe ? "Apply Now" : "Generate Proposal"}
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!selectedRecommendationId} onOpenChange={() => setSelectedRecommendationId(null)}>
+        <DialogContent className="sm:max-w-4xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Maintenance Advice</DialogTitle>
+            <DialogDescription>
+              {selectedRecommendationDetail?.skill?.name || "Selected skill"}{" "}
+              {selectedRecommendationDetail?.recommendation?.recommendationType
+                ? `• ${selectedRecommendationDetail.recommendation.recommendationType}`
+                : ""}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedRecommendationDetail?.recommendation ? (
+            <div className="space-y-4">
+              {selectedRecommendationDetail.skill?.slug && latestProposalBySkillName.has(selectedRecommendationDetail.skill.slug) && (
+                <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-3 text-sm">
+                  A proposal is already available for this skill in the ISC proposal queue.
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const proposal = latestProposalBySkillName.get(selectedRecommendationDetail.skill!.slug)!;
+                        setPreviewProposal({
+                          skillName: proposal.skillName,
+                          diffFile: proposal.diffFile,
+                          recommendationId: selectedRecommendationDetail.recommendation.id,
+                        });
+                      }}
+                    >
+                      Preview Proposal
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        const proposal = latestProposalBySkillName.get(selectedRecommendationDetail.skill!.slug)!;
+                        applyProposalMutation.mutate({
+                          skillName: proposal.skillName,
+                          diffFile: proposal.diffFile,
+                          recommendationId: selectedRecommendationDetail.recommendation.id,
+                        });
+                      }}
+                      disabled={applyProposalMutation.isPending}
+                    >
+                      Apply Proposal
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              <div className="grid gap-4 md:grid-cols-4">
+                <div className="rounded-lg border p-3">
+                  <div className="text-xs text-muted-foreground">Risk</div>
+                  <div className="font-medium">{selectedRecommendationDetail.recommendation.riskLevel}</div>
+                </div>
+                <div className="rounded-lg border p-3">
+                  <div className="text-xs text-muted-foreground">Compatibility</div>
+                  <div className="font-medium">{selectedRecommendationDetail.recommendation.compatibilityStatus}</div>
+                </div>
+                <div className="rounded-lg border p-3">
+                  <div className="text-xs text-muted-foreground">Quality Score</div>
+                  <div className="font-medium">{selectedRecommendationDetail.recommendation.qualityScore ?? "-"}</div>
+                </div>
+                <div className="rounded-lg border p-3">
+                  <div className="text-xs text-muted-foreground">Current Runtime</div>
+                  <div className="font-medium">{selectedRecommendationDetail.recommendation.currentRuntime || "-"}</div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Summary</Label>
+                <div className="rounded-lg border bg-muted/20 p-3 text-sm">
+                  {selectedRecommendationDetail.recommendation.summary || "No summary"}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Affected Files</Label>
+                <div className="rounded-lg border bg-muted/20 p-3 text-sm">
+                  {Array.isArray(selectedRecommendationDetail.recommendation.recommendationJson?.affectedFiles)
+                    ? selectedRecommendationDetail.recommendation.recommendationJson.affectedFiles.join(", ")
+                    : "No file inventory"}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Snapshot & Verification</Label>
+                <Textarea
+                  value={JSON.stringify({
+                    recommendation: selectedRecommendationDetail.recommendation,
+                    latestSnapshot: selectedRecommendationDetail.snapshots?.[0] || null,
+                    recentRuns: selectedRecommendationDetail.runs || [],
+                  }, null, 2)}
+                  readOnly
+                  rows={16}
+                  className="font-mono text-xs"
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="text-sm text-muted-foreground">Loading recommendation details...</div>
+          )}
+          <DialogFooter>
+            {selectedRecommendationDetail?.recommendation && (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => dismissRecommendationMutation.mutate({ recommendationId: selectedRecommendationDetail.recommendation.id })}
+                  disabled={dismissRecommendationMutation.isPending}
+                >
+                  Dismiss
+                </Button>
+                <Button
+                  onClick={() => requestRecommendationApply(
+                    selectedRecommendationDetail.recommendation as MaintenanceRecommendation,
+                    selectedRecommendationDetail.skill?.name || "Selected skill",
+                  )}
+                  disabled={selectedRecommendationDetail.recommendation.status === "applied" || applyUpgradeMutation.isPending}
+                >
+                  {selectedRecommendationDetail.recommendation.isAutoApplySafe ? "Apply Upgrade" : "Generate Proposal"}
+                </Button>
+              </>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Create Skill Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
         <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
@@ -1498,14 +2649,23 @@ export default function AdminSkills() {
               />
             </div>
 
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-4">
               <div>
                 <Label>Category</Label>
                 <Select
                   value={newSkillData.category}
-                  onValueChange={(value) =>
-                    setNewSkillData({ ...newSkillData, category: value })
-                  }
+                  onValueChange={(value) => {
+                    const nextExecutionMode = isExecutionModeCompatibleWithSkillCategory(
+                      value,
+                      newSkillData.executionMode,
+                    )
+                      ? newSkillData.executionMode
+                      : (getRecommendedExecutionModeForSkillCategory(value) || "llm-only");
+                    setNewSkillData(applySandboxDefaultsToNewSkill({
+                      ...newSkillData,
+                      category: value,
+                    }, nextExecutionMode));
+                  }}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -1518,6 +2678,30 @@ export default function AdminSkills() {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div>
+                <Label>Execution Mode</Label>
+                <Select
+                  value={newSkillData.executionMode}
+                  onValueChange={(value) =>
+                    setNewSkillData(applySandboxDefaultsToNewSkill(newSkillData, value as SkillExecutionMode))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {getAllowedExecutionModesForSkillCategory(newSkillData.category).map((mode) => (
+                      <SelectItem key={mode} value={mode}>
+                        {executionModeLabels[mode]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {getExecutionModeHelperText(newSkillData.category, newSkillData.executionMode)}
+                </p>
               </div>
 
               <div>
@@ -1549,6 +2733,97 @@ export default function AdminSkills() {
                 />
               </div>
             </div>
+
+            {isSandboxExecutionMode(newSkillData.executionMode) && (
+              <div className="space-y-4 rounded-xl border p-4">
+                <div>
+                  <Label>Sandbox Runtime</Label>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Configure the isolated runtime profile used for this skill.
+                  </p>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Sandbox Profile</Label>
+                    <Select
+                      value={newSkillData.sandboxProfileSlug || getDefaultSandboxSettings(newSkillData.category, newSkillData.executionMode).sandboxProfileSlug || "browser-default"}
+                      onValueChange={(value) => setNewSkillData({ ...newSkillData, sandboxProfileSlug: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(sandboxProfiles && sandboxProfiles.length > 0 ? sandboxProfiles : [
+                          { slug: "code-default", name: "Code Execution (Default)" },
+                          { slug: "browser-default", name: "Browser Automation (Default)" },
+                          { slug: "file-parser", name: "File Parser" },
+                          { slug: "media-processing", name: "Media Processing" },
+                        ]).map((profile: any) => (
+                          <SelectItem key={profile.slug} value={profile.slug}>
+                            {profile.name} ({profile.slug})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="new-maxRuntimeSeconds">Max Runtime (seconds)</Label>
+                    <Input
+                      id="new-maxRuntimeSeconds"
+                      type="number"
+                      min={1}
+                      max={3600}
+                      value={newSkillData.maxRuntimeSeconds ?? getDefaultSandboxSettings(newSkillData.category, newSkillData.executionMode).maxRuntimeSeconds ?? 300}
+                      onChange={(e) => setNewSkillData({
+                        ...newSkillData,
+                        maxRuntimeSeconds: parseInt(e.target.value, 10) || null,
+                      })}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="new-maxInputMb">Max Input (MB)</Label>
+                    <Input
+                      id="new-maxInputMb"
+                      type="number"
+                      min={1}
+                      max={2048}
+                      value={newSkillData.maxInputMb ?? getDefaultSandboxSettings(newSkillData.category, newSkillData.executionMode).maxInputMb ?? 25}
+                      onChange={(e) => setNewSkillData({
+                        ...newSkillData,
+                        maxInputMb: parseInt(e.target.value, 10) || null,
+                      })}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="flex items-center justify-between rounded-lg border px-3 py-2">
+                    <div>
+                      <Label className="text-sm">Requires Network</Label>
+                      <p className="text-xs text-muted-foreground">Needed when the sandbox must install packages or call external endpoints.</p>
+                    </div>
+                    <Switch
+                      checked={newSkillData.requiresNetwork ?? !!getDefaultSandboxSettings(newSkillData.category, newSkillData.executionMode).requiresNetwork}
+                      onCheckedChange={(checked) => setNewSkillData({ ...newSkillData, requiresNetwork: checked })}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between rounded-lg border px-3 py-2">
+                    <div>
+                      <Label className="text-sm">Requires Browser</Label>
+                      <p className="text-xs text-muted-foreground">Enable only for browser-automation flows that truly need Playwright/browser access.</p>
+                    </div>
+                    <Switch
+                      checked={newSkillData.requiresBrowser ?? !!getDefaultSandboxSettings(newSkillData.category, newSkillData.executionMode).requiresBrowser}
+                      onCheckedChange={(checked) => setNewSkillData({ ...newSkillData, requiresBrowser: checked })}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label>Visibility</Label>
@@ -1852,7 +3127,7 @@ export default function AdminSkills() {
                     )
                       ? (editingSkill.executionMode || getRecommendedExecutionModeForSkillCategory(value) || "llm-only")
                       : (getRecommendedExecutionModeForSkillCategory(value) || "llm-only");
-                    setEditingSkill({
+                    setEditingSkill(applySandboxDefaults({
                       ...editingSkill,
                       category: value,
                       executionMode: nextExecutionMode,
@@ -1860,7 +3135,7 @@ export default function AdminSkills() {
                       llmModelId: null,
                       preferredProviderId: null,
                       strictProviderPin: false,
-                    });
+                    }, nextExecutionMode));
                   }}
                 >
                     <SelectTrigger>
@@ -1912,14 +3187,14 @@ export default function AdminSkills() {
                 <Select
                   value={editingSkill.executionMode || "llm-only"}
                   onValueChange={(value) =>
-                    setEditingSkill({
+                    setEditingSkill(applySandboxDefaults({
                       ...editingSkill,
-                      executionMode: value as "llm-only" | "media-generate" | "enhance-prompt" | "python",
+                      executionMode: value as SkillExecutionMode,
                       defaultModel: null,
                       llmModelId: null,
                       preferredProviderId: null,
                       strictProviderPin: false,
-                    })
+                    }, value as SkillExecutionMode))
                   }
                 >
                   <SelectTrigger>
@@ -1937,6 +3212,97 @@ export default function AdminSkills() {
                   {getExecutionModeHelperText(editingSkill.category, editingSkill.executionMode)}
                 </p>
               </div>
+
+              {isSandboxExecutionMode(editingSkill.executionMode) && (
+                <div className="space-y-4 rounded-xl border p-4">
+                  <div>
+                    <Label>Sandbox Runtime</Label>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Configure the isolated runtime profile used for this skill. For `modern-editorial-slide`, use `sandbox-command` with `browser-default` so Node/npm are available for the bundled `src/*.mjs` renderer.
+                    </p>
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>Sandbox Profile</Label>
+                      <Select
+                        value={editingSkill.sandboxProfileSlug || getDefaultSandboxSettings(editingSkill.category, editingSkill.executionMode).sandboxProfileSlug || "browser-default"}
+                        onValueChange={(value) => setEditingSkill({ ...editingSkill, sandboxProfileSlug: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(sandboxProfiles && sandboxProfiles.length > 0 ? sandboxProfiles : [
+                            { slug: "code-default", name: "Code Execution (Default)" },
+                            { slug: "browser-default", name: "Browser Automation (Default)" },
+                            { slug: "file-parser", name: "File Parser" },
+                            { slug: "media-processing", name: "Media Processing" },
+                          ]).map((profile: any) => (
+                            <SelectItem key={profile.slug} value={profile.slug}>
+                              {profile.name} ({profile.slug})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-maxRuntimeSeconds">Max Runtime (seconds)</Label>
+                      <Input
+                        id="edit-maxRuntimeSeconds"
+                        type="number"
+                        min={1}
+                        max={3600}
+                        value={editingSkill.maxRuntimeSeconds ?? getDefaultSandboxSettings(editingSkill.category, editingSkill.executionMode).maxRuntimeSeconds ?? 300}
+                        onChange={(e) => setEditingSkill({
+                          ...editingSkill,
+                          maxRuntimeSeconds: parseInt(e.target.value, 10) || null,
+                        })}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-maxInputMb">Max Input (MB)</Label>
+                      <Input
+                        id="edit-maxInputMb"
+                        type="number"
+                        min={1}
+                        max={2048}
+                        value={editingSkill.maxInputMb ?? getDefaultSandboxSettings(editingSkill.category, editingSkill.executionMode).maxInputMb ?? 25}
+                        onChange={(e) => setEditingSkill({
+                          ...editingSkill,
+                          maxInputMb: parseInt(e.target.value, 10) || null,
+                        })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="flex items-center justify-between rounded-lg border px-3 py-2">
+                      <div>
+                        <Label className="text-sm">Requires Network</Label>
+                        <p className="text-xs text-muted-foreground">Needed when the sandbox must install packages or call external endpoints.</p>
+                      </div>
+                      <Switch
+                        checked={editingSkill.requiresNetwork ?? !!getDefaultSandboxSettings(editingSkill.category, editingSkill.executionMode).requiresNetwork}
+                        onCheckedChange={(checked) => setEditingSkill({ ...editingSkill, requiresNetwork: checked })}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between rounded-lg border px-3 py-2">
+                      <div>
+                        <Label className="text-sm">Requires Browser</Label>
+                        <p className="text-xs text-muted-foreground">Enable only for browser-automation flows that truly need Playwright/browser access.</p>
+                      </div>
+                      <Switch
+                        checked={editingSkill.requiresBrowser ?? !!getDefaultSandboxSettings(editingSkill.category, editingSkill.executionMode).requiresBrowser}
+                        onCheckedChange={(checked) => setEditingSkill({ ...editingSkill, requiresBrowser: checked })}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Default Model — show media models for media-generate, LLM models for llm-only */}
               <div className="space-y-2 pt-2 border-t">
@@ -2002,6 +3368,12 @@ export default function AdminSkills() {
                       The media generation model used when this skill creates media output.
                     </p>
                   </>
+                ) : isSandboxExecutionMode(editingSkill.executionMode) || editingSkill.executionMode === "python" ? (
+                  <div className="rounded-lg border border-dashed px-4 py-3 text-sm text-muted-foreground">
+                    {editingSkill.executionMode === "sandbox-command"
+                      ? "This skill executes through the sandbox runtime, so it does not use the LLM default-model picker."
+                      : "This execution mode does not use the LLM default-model picker."}
+                  </div>
                 ) : (
                   <>
                     <Label className="flex items-center gap-2">
@@ -2421,6 +3793,87 @@ export default function AdminSkills() {
               {editingSkill.id && (
                 <SkillModelPreviewPanel skillId={editingSkill.id} />
               )}
+
+              <div className="space-y-3 rounded-lg border border-emerald-200 bg-emerald-50/40 p-4">
+                <div className="flex items-center gap-2">
+                  <Users className="h-4 w-4 text-emerald-700" />
+                  <Label className="text-sm font-semibold text-emerald-800">Orchestration & Handoff</Label>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Configure whether this skill runs locally only, hands work to other skills, or participates in agency/swarm workflows. This is saved as runtime config and does not change the current input/output contract by itself.
+                </p>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium">Mode</Label>
+                    <Select
+                      value={(editingSkill as any)._orchestrationMode ?? "local"}
+                      onValueChange={(value) => setEditingSkill({ ...editingSkill, _orchestrationMode: value } as any)}
+                    >
+                      <SelectTrigger className="h-9">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="local">Local only</SelectItem>
+                        <SelectItem value="skill-handoff">Skill handoff</SelectItem>
+                        <SelectItem value="agency-swarm">Agency swarm</SelectItem>
+                        <SelectItem value="hybrid">Hybrid</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium">Execution Endpoint</Label>
+                    <Input
+                      value={(editingSkill as any)._orchestrationEndpoint ?? ""}
+                      onChange={(e) => setEditingSkill({ ...editingSkill, _orchestrationEndpoint: e.target.value } as any)}
+                      placeholder="/api/internal/skills/execute"
+                    />
+                  </div>
+
+                  <div className="space-y-1 md:col-span-2">
+                    <Label className="text-xs font-medium">Skill Targets</Label>
+                    <Input
+                      value={(editingSkill as any)._orchestrationSkillTargets ?? ""}
+                      onChange={(e) => setEditingSkill({ ...editingSkill, _orchestrationSkillTargets: e.target.value } as any)}
+                      placeholder="slide-planner, storyboard-writer, analysis-reporter"
+                    />
+                    <p className="text-[10px] text-muted-foreground">
+                      Comma-separated downstream skill targets used for handoff or hybrid flows.
+                    </p>
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium">Fallback</Label>
+                    <Select
+                      value={(editingSkill as any)._orchestrationFallback ?? "local"}
+                      onValueChange={(value) => setEditingSkill({ ...editingSkill, _orchestrationFallback: value } as any)}
+                    >
+                      <SelectTrigger className="h-9">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="local">Fallback to local</SelectItem>
+                        <SelectItem value="fail">Fail closed</SelectItem>
+                        <SelectItem value="queue">Queue for review</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex items-center justify-between rounded-lg border bg-white/60 px-3 py-2">
+                    <div>
+                      <Label className="text-xs font-medium">Parallel Dispatch</Label>
+                      <p className="text-[10px] text-muted-foreground">
+                        Enable only when downstream work can safely run side-by-side.
+                      </p>
+                    </div>
+                    <Switch
+                      checked={(editingSkill as any)._orchestrationParallel ?? false}
+                      onCheckedChange={(checked) => setEditingSkill({ ...editingSkill, _orchestrationParallel: checked } as any)}
+                    />
+                  </div>
+                </div>
+              </div>
 
               {/* Trigger Patterns */}
               <div className="space-y-2">

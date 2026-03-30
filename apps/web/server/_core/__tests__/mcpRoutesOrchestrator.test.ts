@@ -15,7 +15,8 @@ vi.mock("../authz", () => ({
   authorizeRequest: vi.fn(async () => ({
     ok: true,
     mode: "bearer",
-    sub: "static",
+    sub: "99",
+    tenantId: "tenant-1",
     scopes: ["mcp:read", "mcp:write"],
   })),
 }));

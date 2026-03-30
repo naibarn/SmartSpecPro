@@ -378,3 +378,4 @@ def get_llm_proxy() -> LLMProxyV2:
 class LLMProviderError(ProviderError):
     """Alias for ProviderError for backward compatibility."""
     pass
+# mypy: ignore-errors

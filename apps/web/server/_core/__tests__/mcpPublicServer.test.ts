@@ -17,6 +17,10 @@ vi.mock("../../services/redis", () => ({
       return "OK";
     }),
     expire: vi.fn(async () => 1),
+    del: vi.fn(async (key: string) => {
+      delete mockRedisData[key];
+      return 1;
+    }),
   }),
 }));
 
@@ -89,12 +93,33 @@ vi.mock("../../services/orchestratorRoomActionsService", () => ({
 function makeApp(scopes?: string[]) {
   const app = express();
   app.use(express.json());
-  if (scopes) {
-    app.use((req: any, _res: any, next: any) => {
-      (req as any)._mockScopes = scopes;
-      next();
-    });
-  }
+  // Simulate apiKeyAuthMiddleware by setting req.auth before routes
+  app.use((req: any, _res: any, next: any) => {
+    req.auth = {
+      ok: true,
+      mode: "api_key",
+      sub: "1",
+      userId: 1,
+      tenantId: "tenant-1",
+      apiKeyId: "key-1",
+      scopes: scopes ?? [
+        "mcp:read",
+        "mcp:write",
+        "skills:list",
+        "skills:execute",
+        "agencies:list",
+        "agencies:invoke",
+        "agency:tools:mcp",
+        "media:generate",
+        "presentations:create",
+        "video_projects:create",
+        "jobs:create",
+        "jobs:read",
+        "llm:chat",
+      ],
+    };
+    next();
+  });
   registerMcpPublicRoutes(app);
   return app;
 }
@@ -403,5 +428,245 @@ describe("GET /.well-known/mcp.json", () => {
     expect(res.body.auth.type).toBe("bearer");
     expect(res.body.capabilities.tools).toBe(true);
     expect(res.body.docs).toBeDefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// MCP Spec 2025-03-26 Compliance (section-05)
+// ---------------------------------------------------------------------------
+
+describe("MCP Spec Compliance — Batch requests", () => {
+  it("batch request — array of 3 JSON-RPC requests returns array of 3 responses", async () => {
+    const app = makeApp();
+    const sessionId = await initializeSession(app);
+
+    const res = await request(app)
+      .post("/v1/mcp")
+      .set("Mcp-Session-Id", sessionId)
+      .send([
+        { jsonrpc: "2.0", method: "tools/list", params: {}, id: 1 },
+        { jsonrpc: "2.0", method: "tools/list", params: {}, id: 2 },
+        { jsonrpc: "2.0", method: "ping", params: {}, id: 3 },
+      ]);
+
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body.length).toBe(3);
+    expect(res.body[0].id).toBe(1);
+    expect(res.body[1].id).toBe(2);
+    expect(res.body[2].id).toBe(3);
+  });
+
+  it("single request (non-array) still works", async () => {
+    const app = makeApp();
+    const sessionId = await initializeSession(app);
+
+    const res = await request(app)
+      .post("/v1/mcp")
+      .set("Mcp-Session-Id", sessionId)
+      .send({ jsonrpc: "2.0", method: "tools/list", params: {}, id: 1 });
+
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body)).toBe(false);
+    expect(res.body.id).toBe(1);
+    expect(res.body.result).toBeDefined();
+  });
+
+  it("batch with mixed valid/invalid — each processed independently", async () => {
+    const app = makeApp();
+    const sessionId = await initializeSession(app);
+
+    const res = await request(app)
+      .post("/v1/mcp")
+      .set("Mcp-Session-Id", sessionId)
+      .send([
+        { jsonrpc: "2.0", method: "tools/list", params: {}, id: 1 },
+        { jsonrpc: "2.0", method: "invalid_method", params: {}, id: 2 },
+      ]);
+
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body[0].result).toBeDefined();
+    expect(res.body[1].error.code).toBe(-32601);
+  });
+
+  it("rejects batch exceeding MAX_BATCH_SIZE with -32600", async () => {
+    const app = makeApp();
+    const sessionId = await initializeSession(app);
+
+    // Create batch of 101 requests (over limit of 100)
+    const batch = Array.from({ length: 101 }, (_, i) => ({
+      jsonrpc: "2.0",
+      method: "tools/list",
+      params: {},
+      id: i + 1,
+    }));
+
+    const res = await request(app)
+      .post("/v1/mcp")
+      .set("Mcp-Session-Id", sessionId)
+      .send(batch);
+
+    expect(res.status).toBe(200);
+    expect(res.body.error.code).toBe(-32600);
+  });
+});
+
+describe("MCP Spec Compliance — Protocol version negotiation", () => {
+  it("client sends supported version — server echoes it", async () => {
+    const res = await request(makeApp())
+      .post("/v1/mcp")
+      .send({
+        jsonrpc: "2.0",
+        method: "initialize",
+        params: { protocolVersion: "2025-03-26", capabilities: {}, clientInfo: { name: "test" } },
+        id: 1,
+      });
+
+    expect(res.body.result.protocolVersion).toBe("2025-03-26");
+    expect(res.headers["mcp-session-id"]).toBeDefined();
+  });
+
+  it("client sends unsupported version — server returns its latest", async () => {
+    const res = await request(makeApp())
+      .post("/v1/mcp")
+      .send({
+        jsonrpc: "2.0",
+        method: "initialize",
+        params: { protocolVersion: "2020-01-01", capabilities: {}, clientInfo: { name: "test" } },
+        id: 1,
+      });
+
+    expect(res.body.result.protocolVersion).toBe("2025-03-26");
+    expect(res.headers["mcp-session-id"]).toBeDefined();
+  });
+});
+
+describe("MCP Spec Compliance — notifications/initialized", () => {
+  it("notifications/initialized accepted as no-op (no error)", async () => {
+    const app = makeApp();
+    const sessionId = await initializeSession(app);
+
+    const res = await request(app)
+      .post("/v1/mcp")
+      .set("Mcp-Session-Id", sessionId)
+      .send({ jsonrpc: "2.0", method: "notifications/initialized" });
+
+    // Notifications have no id → no JSON-RPC response body expected
+    expect(res.status).toBe(204);
+  });
+});
+
+describe("MCP Spec Compliance — Session termination (DELETE)", () => {
+  it("DELETE /v1/mcp with valid Mcp-Session-Id terminates session", async () => {
+    const app = makeApp();
+    const sessionId = await initializeSession(app);
+
+    // Verify session exists
+    expect(mockRedisData[`mcp:session:${sessionId}`]).toBeDefined();
+
+    // Terminate
+    const del = await request(app)
+      .delete("/v1/mcp")
+      .set("Mcp-Session-Id", sessionId);
+
+    expect(del.status).toBe(204);
+
+    // Session should be deleted from Redis
+    expect(mockRedisData[`mcp:session:${sessionId}`]).toBeUndefined();
+  });
+
+  it("subsequent request after session termination returns 404", async () => {
+    const app = makeApp();
+    const sessionId = await initializeSession(app);
+
+    // Terminate the session
+    await request(app)
+      .delete("/v1/mcp")
+      .set("Mcp-Session-Id", sessionId);
+
+    // Try to use the terminated session
+    const res = await request(app)
+      .post("/v1/mcp")
+      .set("Mcp-Session-Id", sessionId)
+      .send({ jsonrpc: "2.0", method: "tools/list", params: {}, id: 1 });
+
+    expect(res.status).toBe(404);
+  });
+});
+
+describe("MCP Spec Compliance — Expired session HTTP 404", () => {
+  it("expired session returns HTTP 404, not JSON-RPC error in 200", async () => {
+    const res = await request(makeApp())
+      .post("/v1/mcp")
+      .set("Mcp-Session-Id", "00000000-dead-beef-0000-000000000000")
+      .send({ jsonrpc: "2.0", method: "tools/list", params: {}, id: 1 });
+
+    expect(res.status).toBe(404);
+  });
+});
+
+describe("MCP Spec Compliance — ping method", () => {
+  it("ping returns empty result", async () => {
+    const app = makeApp();
+    const sessionId = await initializeSession(app);
+
+    const res = await request(app)
+      .post("/v1/mcp")
+      .set("Mcp-Session-Id", sessionId)
+      .send({ jsonrpc: "2.0", method: "ping", params: {}, id: 99 });
+
+    expect(res.status).toBe(200);
+    expect(res.body.id).toBe(99);
+    expect(res.body.result).toEqual({});
+  });
+});
+
+describe("MCP Spec Compliance — additional edge cases", () => {
+  it("DELETE without Mcp-Session-Id header returns 204 (no-op)", async () => {
+    const res = await request(makeApp()).delete("/v1/mcp");
+    expect(res.status).toBe(204);
+  });
+
+  it("batch with notification excluded from response array", async () => {
+    const app = makeApp();
+    const sessionId = await initializeSession(app);
+
+    const res = await request(app)
+      .post("/v1/mcp")
+      .set("Mcp-Session-Id", sessionId)
+      .send([
+        { jsonrpc: "2.0", method: "tools/list", params: {}, id: 1 },
+        { jsonrpc: "2.0", method: "notifications/initialized" },
+      ]);
+
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body)).toBe(true);
+    // Only the tools/list response — notification produces no entry
+    expect(res.body.length).toBe(1);
+    expect(res.body[0].id).toBe(1);
+  });
+
+  it("batch with multiple initialize calls is rejected", async () => {
+    const res = await request(makeApp())
+      .post("/v1/mcp")
+      .send([
+        { jsonrpc: "2.0", method: "initialize", params: { protocolVersion: "2025-03-26" }, id: 1 },
+        { jsonrpc: "2.0", method: "initialize", params: { protocolVersion: "2025-03-26" }, id: 2 },
+      ]);
+
+    expect(res.status).toBe(200);
+    expect(res.body.error.code).toBe(-32600);
+    expect(res.body.error.message).toMatch(/at most one initialize/i);
+  });
+
+  it("DELETE with non-UUID session ID returns 204 without Redis call", async () => {
+    const app = makeApp();
+    const res = await request(app)
+      .delete("/v1/mcp")
+      .set("Mcp-Session-Id", "../other:key");
+
+    expect(res.status).toBe(204);
+    // The crafted key should NOT have been deleted from Redis
   });
 });

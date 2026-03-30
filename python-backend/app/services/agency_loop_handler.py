@@ -54,7 +54,7 @@ class LoopHandler:
         feedback_mode: str = cfg.get("feedbackMode", "auto")
         feedback_prompt_template: str = cfg.get("feedbackPrompt", "")
         delay_ms: int = min(cfg.get("delayBetweenIterationsMs", 0), 30000)
-        timeout_ms: int = cfg.get("timeoutMs", 300000)
+        timeout_ms: int = min(cfg.get("timeoutMs", 300000), 600000)  # Cap at 10 min
 
         # Validate target node exists
         target_node = orchestrator.nodes.get(target_node_id)
@@ -197,9 +197,15 @@ class LoopHandler:
         import os
 
         llm_url = os.getenv("LLM_GATEWAY_URL", "http://127.0.0.1:3000")
+        # SECURITY: Keep system prompt fixed; eval_prompt goes in user message
+        # to prevent prompt injection via user-controlled evaluation criteria
         system = (
-            f"You are evaluating loop iteration output.\n{eval_prompt}\n\n"
-            "Respond with ONLY 'yes' or 'no'."
+            "You are evaluating whether a loop iteration has produced satisfactory output. "
+            "Respond with ONLY 'yes' or 'no'. Do not include any other text."
+        )
+        user_content = (
+            f"Evaluation criteria: {eval_prompt[:500]}\n\n"
+            f"Output to evaluate:\n{output[:2000]}"
         )
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
@@ -207,7 +213,7 @@ class LoopHandler:
                     f"{llm_url}/api/llm/chat",
                     json={"messages": [
                         {"role": "system", "content": system},
-                        {"role": "user", "content": output[:2000]},
+                        {"role": "user", "content": user_content},
                     ]},
                     headers={"Authorization": f"Bearer {ctx.user_token}"},
                 )
@@ -223,6 +229,25 @@ class LoopHandler:
             logger.warning("loop_llm_evaluate_error", error=str(exc)[:100])
             return None
 
+    @staticmethod
+    def _sanitize_for_template(text: str) -> str:
+        """Sanitize text before injecting into feedback template.
+
+        SECURITY: Strips LLM prompt injection patterns that could jailbreak
+        the next-iteration agent or the LLM evaluator.
+        """
+        import re
+        # Strip common prompt injection patterns
+        text = re.sub(
+            r"(?i)(ignore\s+(all\s+)?(previous|above|prior)\s+(instructions?|prompts?|rules?))",
+            "[filtered]", text,
+        )
+        text = re.sub(
+            r"(?i)(system\s*:\s*|assistant\s*:\s*|<\|im_start\|>|<\|im_end\|>)",
+            "[filtered]", text,
+        )
+        return text
+
     def _inject_feedback(
         self,
         mode: str,
@@ -231,19 +256,25 @@ class LoopHandler:
         previous_output: str,
         iteration: int,
     ) -> str:
-        """Build the input for the next iteration with feedback."""
+        """Build the input for the next iteration with feedback.
+
+        SECURITY: previous_output is sanitized to mitigate prompt injection
+        from adversarial agent outputs being fed back into the loop.
+        """
+        safe_output = self._sanitize_for_template(previous_output[:2000])
+
         if mode == "custom_prompt" and template:
             return template.replace(
-                "{previous_output}", previous_output[:2000],
+                "{previous_output}", safe_output,
             ).replace(
                 "{iteration}", str(iteration),
             ).replace(
-                "{original_input}", original_input,
+                "{original_input}", original_input[:2000],
             )
         # Auto mode
         return (
             f"[Iteration {iteration} feedback] Previous output:\n"
-            f"{previous_output[:2000]}\n\n"
+            f"{safe_output}\n\n"
             f"Please improve or continue.\n\n"
-            f"Original request: {original_input}"
+            f"Original request: {original_input[:2000]}"
         )

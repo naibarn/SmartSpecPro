@@ -7,13 +7,6 @@
 import { useState, useMemo } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -35,6 +28,7 @@ import {
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
+import { DashboardCard, DashboardKpiCard } from "@/components/dashboard";
 
 /** Status → Badge variant mapping */
 const STATUS_VARIANT: Record<
@@ -127,55 +121,10 @@ export default function AdminSandbox() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Jobs</CardTitle>
-            <Server className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">—</div>
-            <p className="text-xs text-muted-foreground">
-              All time sandbox executions
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Now</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">—</div>
-            <p className="text-xs text-muted-foreground">
-              Currently executing sandboxes
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Cost</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">—</div>
-            <p className="text-xs text-muted-foreground">This period (USD)</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Failure Rate</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">—</div>
-            <p className="text-xs text-muted-foreground">
-              Failed / total jobs
-            </p>
-          </CardContent>
-        </Card>
+        <DashboardKpiCard icon={Server} label="Total Jobs" value="—" subLabel="All time sandbox executions" />
+        <DashboardKpiCard icon={Activity} label="Active Now" value="—" subLabel="Currently executing sandboxes" />
+        <DashboardKpiCard icon={DollarSign} label="Total Cost" value="—" subLabel="This period (USD)" />
+        <DashboardKpiCard icon={AlertTriangle} label="Failure Rate" value="—" subLabel="Failed / total jobs" />
       </div>
 
       {/* Tabs: Jobs / Profiles / Policies / Cost */}
@@ -219,15 +168,7 @@ export default function AdminSandbox() {
           </div>
 
           {/* Job Table Placeholder */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Sandbox Jobs</CardTitle>
-              <CardDescription>
-                Jobs are listed when OPENSANDBOX_ENABLED=true and sandbox
-                dispatch is active.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+          <DashboardCard title="Sandbox Jobs" description="Jobs are listed when OPENSANDBOX_ENABLED=true and sandbox dispatch is active.">
               <div className="text-center py-8 text-muted-foreground">
                 <Server className="h-12 w-12 mx-auto mb-3 opacity-50" />
                 <p>
@@ -235,8 +176,7 @@ export default function AdminSandbox() {
                   execution is enabled and workflows dispatch to it.
                 </p>
               </div>
-            </CardContent>
-          </Card>
+          </DashboardCard>
         </TabsContent>
 
         {/* Profiles Tab */}
@@ -261,15 +201,10 @@ export default function AdminSandbox() {
 /** Sandbox Profile Management Panel */
 function SandboxProfilePanel() {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Sandbox Profiles</CardTitle>
-        <CardDescription>
-          Manage runtime profiles that define resource limits for sandbox
-          execution environments.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
+    <DashboardCard
+      title="Sandbox Profiles"
+      description="Manage runtime profiles that define resource limits for sandbox execution environments."
+    >
         <div className="text-center py-8 text-muted-foreground">
           <Clock className="h-12 w-12 mx-auto mb-3 opacity-50" />
           <p>
@@ -278,23 +213,17 @@ function SandboxProfilePanel() {
             profiles.
           </p>
         </div>
-      </CardContent>
-    </Card>
+    </DashboardCard>
   );
 }
 
 /** Tenant Sandbox Policy Panel */
 function TenantSandboxPolicyPanel() {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Tenant Sandbox Policies</CardTitle>
-        <CardDescription>
-          Configure per-tenant limits for sandbox concurrency, runtime, and
-          network access.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
+    <DashboardCard
+      title="Tenant Sandbox Policies"
+      description="Configure per-tenant limits for sandbox concurrency, runtime, and network access."
+    >
         <div className="text-center py-8 text-muted-foreground">
           <Activity className="h-12 w-12 mx-auto mb-3 opacity-50" />
           <p>
@@ -303,22 +232,17 @@ function TenantSandboxPolicyPanel() {
             rules.
           </p>
         </div>
-      </CardContent>
-    </Card>
+    </DashboardCard>
   );
 }
 
 /** Sandbox Cost Analytics Card */
 function SandboxCostAnalytics() {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Sandbox Cost Analytics</CardTitle>
-        <CardDescription>
-          Aggregated cost breakdown by tenant, feature type, and profile.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
+    <DashboardCard
+      title="Sandbox Cost Analytics"
+      description="Aggregated cost breakdown by tenant, feature type, and profile."
+    >
         <div className="text-center py-8 text-muted-foreground">
           <DollarSign className="h-12 w-12 mx-auto mb-3 opacity-50" />
           <p>
@@ -326,7 +250,6 @@ function SandboxCostAnalytics() {
             filters to view cost trends by tenant and feature type.
           </p>
         </div>
-      </CardContent>
-    </Card>
+    </DashboardCard>
   );
 }

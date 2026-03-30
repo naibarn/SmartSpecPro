@@ -42,8 +42,8 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { useI18n } from "@/lib/i18n";
 import { LocaleToggle } from "@/components/LocaleToggle";
+import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import { PersonaEditorFields } from "@/components/settings/PersonaEditorFields";
 import {
   buildPersonaMutationFields,
@@ -219,7 +219,7 @@ function getDefaultRoleForKind(
 
 export default function Teams() {
   const { isLoading: authLoading, isAuthenticated } = useAuth();
-  const { t } = useI18n();
+  const { t } = useScopedTranslation('agency');
   const [location, setLocation] = useLocation();
   const [, routeParams] = useRoute("/teams/:teamId");
   const [search, setSearch] = useState("");
@@ -1537,7 +1537,7 @@ export default function Teams() {
                       ref={workflowPanelRef}
                       className={cn(
                         "flex min-h-0 flex-1 flex-col overflow-hidden",
-                        highlightWorkflowPanel && "ring-2 ring-violet-300 ring-offset-2",
+                        highlightWorkflowPanel && "ring-2 ring-teal-300 ring-offset-2",
                       )}
                     >
                       <RoomWorkflowPanel
@@ -1572,7 +1572,7 @@ export default function Teams() {
                       ref={workflowPanelRef}
                       className={cn(
                         "flex min-h-0 w-[26rem] min-w-[26rem] shrink-0 flex-col overflow-hidden",
-                        highlightWorkflowPanel && "ring-2 ring-violet-300 ring-offset-2",
+                        highlightWorkflowPanel && "ring-2 ring-teal-300 ring-offset-2",
                       )}
                     >
                       <RoomWorkflowPanel

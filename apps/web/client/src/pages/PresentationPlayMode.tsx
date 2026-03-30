@@ -9,6 +9,8 @@ import { CanvasStage } from "@/presentation-canvas";
 import { normalizeCanvasSize } from "@/presentation-canvas/constants";
 import { ensureSlideContent, getRenderableSlideElements } from "@/lib/presentationEditorState";
 import { Button } from "@/components/ui/button";
+import { LocaleToggle } from "@/components/LocaleToggle";
+import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 
 const PLAY_MODE_ROUTE = "/presentation/:itemId/play";
 const PLAY_TRANSITION_DURATION_MS = 700;
@@ -122,6 +124,7 @@ function getTransitionStyle(
 }
 
 export default function PresentationPlayMode() {
+  const { t } = useScopedTranslation("presentation");
   const [, setLocation] = useLocation();
   const [, routeParams] = useRoute(PLAY_MODE_ROUTE);
   const itemId = routeParams?.itemId ? parseInt(routeParams.itemId, 10) : null;
@@ -424,7 +427,7 @@ export default function PresentationPlayMode() {
   if (isLoading || deckDetailQuery.isLoading || (!playDeck && !isError && validItemId)) {
     return (
       <div className="fixed inset-0 bg-black flex items-center justify-center">
-        <Loader2 className="h-12 w-12 text-white animate-spin" aria-label="Loading" role="status" />
+        <Loader2 className="h-12 w-12 text-white animate-spin" aria-label={t("playMode.loading")} role="status" />
       </div>
     );
   }
@@ -436,14 +439,14 @@ export default function PresentationPlayMode() {
   if (isFeatureDisabled) {
     return (
       <div className="fixed inset-0 bg-black flex flex-col items-center justify-center gap-4">
-        <p className="text-white text-lg">Presentation play mode is not available.</p>
-        <p className="text-gray-400 text-sm">This feature has not been enabled for your account.</p>
+        <p className="text-white text-lg">{t("playMode.featureDisabledTitle")}</p>
+        <p className="text-gray-400 text-sm">{t("playMode.featureDisabledDescription")}</p>
         <button
           className="text-white underline"
           onClick={navigateBackToEditor}
-          aria-label="Go back to presentations"
+          aria-label={t("playMode.goBack")}
         >
-          Go Back
+          {t("playMode.goBack")}
         </button>
       </div>
     );
@@ -452,13 +455,13 @@ export default function PresentationPlayMode() {
   if (isError || deckDetailQuery.isError || !validItemId || !playDeck) {
     return (
       <div className="fixed inset-0 bg-black flex flex-col items-center justify-center gap-4">
-        <p className="text-white text-lg">Failed to load presentation.</p>
+        <p className="text-white text-lg">{t("playMode.failedLoad")}</p>
         <button
           className="text-white underline"
           onClick={navigateBackToEditor}
-          aria-label="Go back to presentations"
+          aria-label={t("playMode.goBack")}
         >
-          Go Back
+          {t("playMode.goBack")}
         </button>
       </div>
     );
@@ -471,7 +474,7 @@ export default function PresentationPlayMode() {
   if (playbackSlides.length === 0) {
     return (
       <div className="fixed inset-0 bg-black flex items-center justify-center">
-        <p className="text-white">No slides in this presentation.</p>
+        <p className="text-white">{t("playMode.noSlides")}</p>
       </div>
     );
   }
@@ -513,11 +516,14 @@ export default function PresentationPlayMode() {
           variant="secondary"
           className="gap-1 bg-black/60 text-white hover:bg-black/75"
           onClick={navigateBackToEditor}
-          aria-label="Back to editor"
+          aria-label={t("playMode.backToEditor")}
         >
           <ChevronLeft className="h-4 w-4" />
-          Back to Editor
+          {t("playMode.backToEditor")}
         </Button>
+      </div>
+      <div className="fixed right-3 top-3 z-20">
+        <LocaleToggle />
       </div>
       {/* Slide canvas — key change triggers CSS fade on slide transition */}
       <div
@@ -566,7 +572,7 @@ export default function PresentationPlayMode() {
       >
         {/* Left: Prev / Play-Pause / Next */}
         <div className="flex items-center gap-3">
-          <button onClick={() => engineRef.current?.prevSlide()} aria-label="Previous slide">
+          <button onClick={() => engineRef.current?.prevSlide()} aria-label={t("playMode.previousSlide")}>
             <SkipBack className="w-5 h-5 text-white" />
           </button>
           <button
@@ -581,20 +587,20 @@ export default function PresentationPlayMode() {
                 engineRef.current?.play();
               }
             }}
-            aria-label={isPlaying ? "Pause" : "Play"}
+            aria-label={isPlaying ? t("playMode.pause") : t("playMode.play")}
           >
             {isPlaying
               ? <Pause className="w-6 h-6 text-white" />
               : <Play className="w-6 h-6 text-white" />}
           </button>
-          <button onClick={() => engineRef.current?.nextSlide()} aria-label="Next slide">
+          <button onClick={() => engineRef.current?.nextSlide()} aria-label={t("playMode.nextSlide")}>
             <SkipForward className="w-5 h-5 text-white" />
           </button>
         </div>
 
         {/* Center: Slide counter */}
         <span className="text-white text-sm font-medium tabular-nums">
-          {currentIndex + 1} / {playbackSlides.length}
+          {t("playback.slide", { current: currentIndex + 1, total: playbackSlides.length })}
         </span>
 
         {/* Right: Fullscreen toggle */}
@@ -607,7 +613,7 @@ export default function PresentationPlayMode() {
               document.documentElement.requestFullscreen();
             }
           }}
-          aria-label="Toggle fullscreen"
+          aria-label={t("playMode.toggleFullscreen")}
         >
           <Maximize2 className="w-5 h-5 text-white" />
         </button>

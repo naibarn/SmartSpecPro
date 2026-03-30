@@ -55,13 +55,27 @@
           "type": "select",
           "label": "Implementation Language",
           "labelTh": "ภาษา Programming",
-          "helpText": "Python: math, NLP, data processing. JavaScript: async, JSON, templating",
-          "helpTextTh": "Python: math, NLP, ประมวลผลข้อมูล. JavaScript: async, JSON, template",
+          "helpText": "Python: math, NLP, data processing. JavaScript: JSON/object structure, schema pipelines, APIs, templating, web automation",
+          "helpTextTh": "Python: math, NLP, ประมวลผลข้อมูล. JavaScript: งาน JSON/object, schema pipeline, API, template, automation ฝั่งเว็บ",
           "default": "auto",
           "options": [
             { "value": "auto",       "label": "Auto (ISC chooses best)",  "labelTh": "อัตโนมัติ (ISC เลือกให้)" },
             { "value": "python",     "label": "Python",                   "labelTh": "Python" },
             { "value": "javascript", "label": "JavaScript (Node.js)",     "labelTh": "JavaScript (Node.js)" }
+          ]
+        },
+        {
+          "id": "javascript_runtime",
+          "type": "select",
+          "label": "JavaScript Runtime",
+          "labelTh": "รูปแบบ JavaScript Runtime",
+          "helpText": "Classic JS is a simple CommonJS respond() skill. GenJS creates a full sandbox-command bundle with skill.manifest.json + src/index.mjs, modular pipeline files, JSON-heavy artifact flow, and optional orchestration hooks.",
+          "helpTextTh": "Classic JS คือ skill แบบ CommonJS respond() ทั่วไป ส่วน GenJS จะสร้าง bundle แบบ sandbox-command พร้อม skill.manifest.json + src/index.mjs, ไฟล์ pipeline แยกเป็นระบบ, งาน JSON-heavy, การสร้าง artifact และ hook สำหรับ orchestration แบบเลือกใช้ได้",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "classic", "label": "Classic JS", "labelTh": "Classic JS" },
+            { "value": "genjs", "label": "GenJS (.mjs / Node.js)", "labelTh": "GenJS (.mjs / Node.js)" }
           ]
         },
         {
@@ -313,6 +327,7 @@
     "mode": "mode",
     "description": "description",
     "skill_language": "skill_language",
+    "javascript_runtime": "javascript_runtime",
     "complexity": "complexity",
     "skill_name": "skill_name",
     "workflow_selector": "workflow_json",

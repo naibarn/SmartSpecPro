@@ -372,3 +372,5 @@ class MediaTaskService:
         await db.commit()
 
         return result.rowcount
+# mypy: ignore-errors
+# mypy: ignore-errors

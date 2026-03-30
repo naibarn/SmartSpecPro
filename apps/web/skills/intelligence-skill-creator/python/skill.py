@@ -1,12 +1,12 @@
 """
-Intelligence Skill Creator (ISC) — SmartAIHub entry point v0.4.0
+Intelligence Skill Creator (ISC) — SmartAIHub entry point v0.5.0
 
 Two primary modes:
   create   — Multi-agent pipeline creates a FULL skill on disk:
                schemas/input.schema.json  (MANDATORY)
                schemas/output.schema.json (MANDATORY)
                schemas/ui.schema.json     (MANDATORY)
-               skill.md + SKILL.md, python/skill.py OR js/skill.js, tests/tests.json
+               skill.md + SKILL.md, python/skill.py OR js/skill.js OR skill.manifest.json + src/index.mjs, tests/tests.json
 
   improve  — Iterative LLM + research improvement loop for existing skills in apps/web/skills/
 
@@ -537,7 +537,7 @@ def _convert_workflow_skill(inp: dict, context: Any = None) -> str:
         f"{warnings_text}\n\n"
         f"---\n"
         f"💡 The skill replicates the workflow logic in a single `respond()` function. "
-        f"Review `python/skill.py` or `js/skill.js` and adjust if needed."
+        f"Review `python/skill.py`, `js/skill.js`, or the GenJS bundle (`skill.manifest.json` + `src/index.mjs`) and adjust if needed."
     )
 
     return json.dumps(
@@ -566,16 +566,16 @@ def _help_response() -> str:
     return json.dumps({
         "success": True,
         "output": (
-            "## Intelligence Skill Creator (ISC) v0.4.0\n\n"
+            "## Intelligence Skill Creator (ISC) v0.5.0\n\n"
             "### 🔨 Create a new skill\n"
             "Set `mode: create` and provide `description`. ISC generates all 3 schemas, code, and tests.\n"
             "```json\n"
             '{"mode": "create", "description": "A skill that converts Thai dates to Buddhist Era format",\n'
-            ' "skill_language": "python", "complexity": "simple",\n'
+            ' "skill_language": "python", "javascript_runtime": "auto", "complexity": "simple",\n'
             ' "llm_gateway_mode": "system", "llm_model_search": "claude-sonnet-4-6"}\n'
             "```\n\n"
             "**Always generates:** `schemas/input.schema.json`, `schemas/output.schema.json`, "
-            "`schemas/ui.schema.json`, `skill.md`, `SKILL.md`, `python/skill.py` or `js/skill.js`, "
+            "`schemas/ui.schema.json`, `skill.md`, `SKILL.md`, `python/skill.py` or `js/skill.js` or `skill.manifest.json` + `src/index.mjs`, "
             "`tests/tests.json`\n\n"
             "### 🔄 Convert a Virtual Workflow to a skill\n"
             "Export a workflow from the Workflow Editor and paste the JSON:\n"
@@ -602,6 +602,7 @@ def _help_response() -> str:
             "|-----------|------|-------------|\n"
             "| `description` | create | What the new skill should do |\n"
             "| `skill_language` | create/convert | python \\| javascript \\| auto |\n"
+            "| `javascript_runtime` | create/convert | auto \\| classic \\| genjs |\n"
             "| `complexity` | create/convert | simple \\| moderate \\| complex |\n"
             "| `workflow_json` | convert_workflow | Exported workflow JSON string |\n"
             "| `skill_name` | improve (required) | Skill slug to improve |\n"
@@ -612,9 +613,10 @@ def _help_response() -> str:
             "| `llm_model` | custom gateway | Model name (e.g. gpt-4o) |\n"
             "\n### Category rules\n"
             "- `article_generation` -> `llm-only`\n"
+            "- `slide_generation` -> `sandbox-command` or `sandbox-code` or `llm-only`\n"
             "- `image_prompt_generation` / `video_prompt_generation` -> `llm-only` or `enhance-prompt`\n"
             "- `image_generation` / `video_generation` / `image_video_generation` / `audio_generation` / `sound_effects` -> `media-generate`\n"
-            "- `automation`, `code_assistant`, `document_analysis`, `web_search`, `data_analysis`, `translation`, `summarization`, `chat_assistant`, `other` -> `llm-only` or `python`\n"
+            "- `automation`, `code_assistant`, `document_analysis`, `web_search`, `data_analysis`, `translation`, `summarization`, `chat_assistant`, `other` -> `llm-only` or `python` or `sandbox-command` or `sandbox-code` or `sandbox-browser` or `sandbox-file`\n"
         ),
     }, ensure_ascii=False)
 

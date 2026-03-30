@@ -1,0 +1,12 @@
+{
+  "sections": [
+    {
+      "id": "admin-operations",
+      "label": {
+        "en": "Admin Operations",
+        "th": "ปฏิบัติการผู้ดูแลระบบ"
+      },
+      "order": 1
+    }
+  ]
+}

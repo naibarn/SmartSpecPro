@@ -9,6 +9,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { getModelGenerationModeLabel } from "@/lib/mediaModelInputs";
 import {
   Search,
   Bot,
@@ -33,6 +34,7 @@ export interface MediaModel {
   isDefault?: boolean;
   isEnabled?: boolean;
   capabilities?: string[];
+  configJson?: unknown;
 }
 
 export interface MediaProvider {
@@ -246,6 +248,7 @@ interface ModelCardProps {
 }
 
 function ModelCard({ model, isSelected, onSelect }: ModelCardProps) {
+  const modeLabel = getModelGenerationModeLabel(model);
   return (
     <button
       onClick={onSelect}
@@ -260,6 +263,21 @@ function ModelCard({ model, isSelected, onSelect }: ModelCardProps) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-semibold text-gray-900">{model.name}</span>
+            {modeLabel && (
+              <Badge
+                variant="outline"
+                className={cn(
+                  "text-[10px] px-1.5 py-0",
+                  modeLabel === "Video to Video"
+                    ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+                    : modeLabel === "Text to Video"
+                      ? "border-sky-300 bg-sky-50 text-sky-700"
+                      : "border-slate-300 bg-slate-50 text-slate-700",
+                )}
+              >
+                {modeLabel}
+              </Badge>
+            )}
             {model.isDefault && (
               <Badge className="bg-yellow-100 text-yellow-800 text-[10px] px-1.5 py-0">
                 <Star className="h-3 w-3 mr-0.5 inline" />

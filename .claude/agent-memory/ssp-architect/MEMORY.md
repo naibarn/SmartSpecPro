@@ -56,6 +56,25 @@
 - High: Double-loop risk — agency-swarm already has its own internal tool loop
 - High: Crash recovery assumption that Redis survives process restarts is unsafe
 
+## 058-Meta Channels Architecture Review (2026-03-23)
+- See `project_058_arch_review.md` for full findings
+- Critical: `/api/internal/embeddings/batch` does not exist — section-13 RAG archival calls a phantom endpoint
+- Critical: Real-time pub/sub trigger subscriber has no valid runtime host in Celery worker context
+- Critical: `SocialApprovalGateExecutor` duplicates `ApprovalExecutor` (LangGraph interrupt) — creates two approval systems
+- High: `unreadCount` increment has no decrement/reset path in the plan
+- High: Dedup key synthesis is not unique for batched Meta payloads
+
+## 061-Upload-Post Gateway Architecture Review (2026-03-24) — SECOND ROUND
+- See `project_061_upload_post_arch_review.md` for full findings
+- First-round criticals resolved: standalone upload_post_jobs table, JWT/nonce designed, status sync loop added
+- Remaining Critical C-01: `SocialProviderAdapter.execute()` interface incompatible with Upload-Post (no userId, no API key in SocialBackgroundActionInput) — Section 4.4 registration call will not compile
+- Remaining Critical C-02: `uploadPost.publish` tRPC mutation holds decrypted API key in memory for 30+ seconds for video uploads — delegation token pattern deferred to "future scope" but must be resolved for Phase 2
+- High H-01: Unified timeline pagination has no cursor contract — two independent cursors cannot maintain cross-table sort order
+- High H-03: Feature flag enforcement pattern unspecified — 17 procedures, no middleware wrapper shown
+- High H-04: Workflow/agency user identity undefined — no userId in orchestrator context
+- Medium M-02: postMessage uses wildcard targetOrigin `'*'` — must use `'https://smartaihub.app'`
+- Medium M-03: Nonce in redirect URL leaks through Nginx/Node.js access logs
+
 ## 02-ClawFeature Spec Review (2026-03-01)
 - v1.0 review: 43 findings (11 CRITICAL, 14 HIGH, 12 MEDIUM, 6 LOW) — captured in spec Sections 15, 16, 17
 - v1.2.0 third-pass review: 29 NEW findings (5 CRITICAL, 9 HIGH, 10 MEDIUM, 5 LOW) — NOT yet in spec

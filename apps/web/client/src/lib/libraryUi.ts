@@ -40,6 +40,8 @@ export interface LibrarySearchResultItem {
   parent_id?: number | null;
 }
 
+export type LibraryItemTypeFilter = "all" | "image" | "video";
+
 export interface LibraryUploadPipelineLike {
   stage?: string | null;
   stageMessage?: string | null;

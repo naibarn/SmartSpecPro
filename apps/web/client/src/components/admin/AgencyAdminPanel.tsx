@@ -12,13 +12,6 @@ import { trpc } from "../../lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   Tabs,
@@ -37,6 +30,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { DashboardCard, DashboardKpiCard } from "@/components/dashboard";
 import {
   Save,
   Loader2,
@@ -112,17 +106,13 @@ export default function AgencyAdminPanel() {
   );
 
   return (
-    <Card className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
-      <CardHeader className="border-b bg-gradient-to-r from-purple-50/50 to-pink-50/30 pb-5">
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <Zap className="w-5 h-5 text-purple-500" />
-          Agency Management
-        </CardTitle>
-        <CardDescription>
-          Manage agency quotas, tool access, metrics, and emergency controls.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="pt-6">
+    <DashboardCard
+      className="overflow-hidden"
+      leading={<Zap className="w-5 h-5 text-purple-500" />}
+      title="Agency Management"
+      description="Manage agency quotas, tool access, metrics, and emergency controls."
+      bodyClassName="pt-6"
+    >
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid grid-cols-6 w-full">
             <TabsTrigger value="overview">Overview</TabsTrigger>
@@ -158,40 +148,18 @@ export default function AgencyAdminPanel() {
           {/* Tab: Overview */}
           <TabsContent value="overview" className="mt-4 space-y-4">
             <div className="grid grid-cols-3 gap-4">
-              <Card>
-                <CardContent className="pt-4">
-                  <div className="text-2xl font-bold">
-                    {agenciesQuery.data?.agencies.length ?? 0}
-                  </div>
-                  <div className="text-sm text-gray-500">Total Agencies</div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-4">
-                  <div className="text-2xl font-bold">
-                    {agenciesQuery.data?.agencies.filter(
-                      (a: any) => a.status === "published",
-                    ).length ?? 0}
-                  </div>
-                  <div className="text-sm text-gray-500">Published</div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-4">
-                  <div className="text-2xl font-bold">
-                    {metricsQuery.data?.totalRuns ?? 0}
-                  </div>
-                  <div className="text-sm text-gray-500">
-                    Total Runs ({windowHours}h)
-                  </div>
-                </CardContent>
-              </Card>
+              <DashboardKpiCard icon={Zap} label="Total Agencies" value={agenciesQuery.data?.agencies.length ?? 0} />
+              <DashboardKpiCard
+                icon={Settings}
+                label="Published"
+                value={agenciesQuery.data?.agencies.filter((a: any) => a.status === "published").length ?? 0}
+              />
+              <DashboardKpiCard icon={Activity} label={`Total Runs (${windowHours}h)`} value={metricsQuery.data?.totalRuns ?? 0} />
             </div>
 
             {/* Alerts */}
             {(alertsQuery.data?.alerts.length ?? 0) > 0 && (
-              <Card className="border-orange-200 bg-orange-50/50">
-                <CardContent className="pt-4">
+              <DashboardCard className="border-orange-200 bg-orange-50/50" bodyClassName="pt-4">
                   <div className="flex items-center gap-2 mb-2">
                     <AlertTriangle className="w-4 h-4 text-orange-500" />
                     <span className="font-medium text-orange-700">
@@ -207,8 +175,7 @@ export default function AgencyAdminPanel() {
                       (threshold: {(alert.threshold * 100).toFixed(0)}%)
                     </div>
                   ))}
-                </CardContent>
-              </Card>
+              </DashboardCard>
             )}
           </TabsContent>
 
@@ -219,8 +186,7 @@ export default function AgencyAdminPanel() {
                 Enter a Tenant ID above to manage quotas.
               </div>
             ) : (
-              <Card>
-                <CardContent className="pt-4 space-y-4">
+              <DashboardCard bodyClassName="pt-4 space-y-4">
                   <div>
                     <Label>Max Agencies per Tenant</Label>
                     <Input
@@ -287,8 +253,7 @@ export default function AgencyAdminPanel() {
                     )}
                     Save Quotas
                   </Button>
-                </CardContent>
-              </Card>
+              </DashboardCard>
             )}
           </TabsContent>
 
@@ -299,8 +264,7 @@ export default function AgencyAdminPanel() {
                 Enter an Agency ID above to manage tool whitelists.
               </div>
             ) : (
-              <Card>
-                <CardContent className="pt-4">
+              <DashboardCard bodyClassName="pt-4">
                   <div className="flex items-center gap-2 mb-3">
                     <Shield className="w-4 h-4 text-blue-500" />
                     <span className="font-medium">
@@ -326,8 +290,7 @@ export default function AgencyAdminPanel() {
                       )}
                     </div>
                   )}
-                </CardContent>
-              </Card>
+              </DashboardCard>
             )}
           </TabsContent>
 
@@ -350,8 +313,7 @@ export default function AgencyAdminPanel() {
               <Loader2 className="w-4 h-4 animate-spin" />
             ) : (
               <div className="grid grid-cols-2 gap-4">
-                <Card>
-                  <CardContent className="pt-4">
+                <DashboardCard bodyClassName="pt-4">
                     <div className="flex items-center gap-2">
                       <Activity className="w-4 h-4 text-green-500" />
                       <span className="text-sm text-gray-500">
@@ -364,10 +326,8 @@ export default function AgencyAdminPanel() {
                       ).toFixed(1)}
                       %
                     </div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="pt-4">
+                </DashboardCard>
+                <DashboardCard bodyClassName="pt-4">
                     <div className="flex items-center gap-2">
                       <Activity className="w-4 h-4 text-blue-500" />
                       <span className="text-sm text-gray-500">
@@ -377,24 +337,19 @@ export default function AgencyAdminPanel() {
                     <div className="text-2xl font-bold mt-1">
                       {Math.round(metricsQuery.data?.p95Latency ?? 0)}ms
                     </div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="pt-4">
+                </DashboardCard>
+                <DashboardCard bodyClassName="pt-4">
                     <div className="text-sm text-gray-500">Total Runs</div>
                     <div className="text-2xl font-bold">
                       {metricsQuery.data?.totalRuns ?? 0}
                     </div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="pt-4">
+                </DashboardCard>
+                <DashboardCard bodyClassName="pt-4">
                     <div className="text-sm text-gray-500">Failed Runs</div>
                     <div className="text-2xl font-bold text-red-600">
                       {metricsQuery.data?.failedRuns ?? 0}
                     </div>
-                  </CardContent>
-                </Card>
+                </DashboardCard>
               </div>
             )}
           </TabsContent>
@@ -411,8 +366,7 @@ export default function AgencyAdminPanel() {
                 Enter a Tenant ID above to use the kill switch.
               </div>
             ) : (
-              <Card className="border-red-200 bg-red-50/50">
-                <CardContent className="pt-4">
+              <DashboardCard className="border-red-200 bg-red-50/50" bodyClassName="pt-4">
                   <div className="flex items-center gap-2 mb-3">
                     <AlertTriangle className="w-5 h-5 text-red-500" />
                     <span className="font-medium text-red-700">
@@ -435,8 +389,7 @@ export default function AgencyAdminPanel() {
                     )}
                     Cancel All Runs
                   </Button>
-                </CardContent>
-              </Card>
+              </DashboardCard>
             )}
 
             <AlertDialog
@@ -467,8 +420,7 @@ export default function AgencyAdminPanel() {
             </AlertDialog>
           </TabsContent>
         </Tabs>
-      </CardContent>
-    </Card>
+    </DashboardCard>
   );
 }
 
@@ -489,8 +441,7 @@ function RevenueTab({ tenantId }: { tenantId: string }) {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <Card>
-          <CardContent className="pt-4">
+        <DashboardCard bodyClassName="pt-4">
             <div className="flex items-center gap-2 mb-1">
               <Coins className="h-4 w-4 text-amber-500" />
               <span className="text-xs text-muted-foreground">
@@ -500,44 +451,33 @@ function RevenueTab({ tenantId }: { tenantId: string }) {
             <p className="text-xl font-bold">
               {data?.totalPlatformRevenue ?? 0}
             </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4">
+        </DashboardCard>
+        <DashboardCard bodyClassName="pt-4">
             <span className="text-xs text-muted-foreground">
               Creator Payouts
             </span>
             <p className="text-xl font-bold text-green-600">
               {data?.totalCreatorPayouts ?? 0}
             </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4">
+        </DashboardCard>
+        <DashboardCard bodyClassName="pt-4">
             <span className="text-xs text-muted-foreground">
               Total Charged
             </span>
             <p className="text-xl font-bold">
               {data?.totalCharged ?? 0}
             </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4">
+        </DashboardCard>
+        <DashboardCard bodyClassName="pt-4">
             <span className="text-xs text-muted-foreground">Settlements</span>
             <p className="text-xl font-bold">
               {data?.settlementCount ?? 0}
             </p>
-          </CardContent>
-        </Card>
+        </DashboardCard>
       </div>
 
       {data?.topCreators && data.topCreators.length > 0 && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Top Creators (30d)</CardTitle>
-          </CardHeader>
-          <CardContent>
+        <DashboardCard title="Top Creators (30d)" titleClassName="text-sm" bodyClassName="">
             <div className="space-y-2">
               {data.topCreators.map((c: any) => (
                 <div
@@ -556,8 +496,7 @@ function RevenueTab({ tenantId }: { tenantId: string }) {
                 </div>
               ))}
             </div>
-          </CardContent>
-        </Card>
+        </DashboardCard>
       )}
     </div>
   );

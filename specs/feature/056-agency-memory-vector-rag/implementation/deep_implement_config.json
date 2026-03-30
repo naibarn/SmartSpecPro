@@ -1,0 +1,33 @@
+{
+  "plugin_root": "/home/dev/projects/SmartSpecPro/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/056-agency-memory-vector-rag/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/056-agency-memory-vector-rag/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "workflow_backend": "compatible",
+  "task_tracking_backend": "compatible",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-db-migration",
+    "section-02-embedding-integration",
+    "section-03-chunk-service",
+    "section-04-retrieval-engine",
+    "section-05-context-budget",
+    "section-06-orchestrator-wiring",
+    "section-07-internode-optimization",
+    "section-08-memory-purge",
+    "section-09-embedding-backfill",
+    "section-10-tests-verification"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-03-23T03:31:27.382321+00:00"
+}

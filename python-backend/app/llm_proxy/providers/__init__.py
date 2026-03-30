@@ -15,6 +15,7 @@ from .kie_ai_provider import KieAIProvider
 from .byteplus_modelark_provider import BytePlusModelArkProvider
 from .uvoice_provider import UVoiceProvider
 from .fal_ai_provider import FalAIProvider
+from .knplabai_provider import KNPLabsProvider
 
 __all__ = [
     "BaseLLMProvider",
@@ -29,4 +30,5 @@ __all__ = [
     "BytePlusModelArkProvider",
     "UVoiceProvider",
     "FalAIProvider",
+    "KNPLabsProvider",
 ]

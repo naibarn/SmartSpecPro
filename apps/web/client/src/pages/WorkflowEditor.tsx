@@ -30,6 +30,8 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { HelpButton } from '@/components/help';
+import { useScopedTranslation } from '@/i18n/useScopedTranslation';
 import {
   Select,
   SelectContent,
@@ -138,6 +140,7 @@ const nodeTypes: NodeTypes = {
 };
 
 function FlowEditor() {
+  const { t } = useScopedTranslation('workflow');
   const [, setLocation] = useLocation();
   const [, routeParams] = useRoute('/workflows/editor/:id');
   const utils = trpc.useUtils();
@@ -1371,6 +1374,7 @@ function FlowEditor() {
             </div>
 
             <div className="flex items-center gap-2">
+              <HelpButton page="/workflows/editor" variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" />
               <Button
                 variant="outline"
                 size="sm"
@@ -1412,7 +1416,7 @@ function FlowEditor() {
                 size="sm"
                 onClick={handleToggleConsolePanel}
                 className={showConsolePanel ? "bg-gray-100 dark:bg-gray-700" : ""}
-                title="Toggle console panel"
+                title={t("editor.toggleConsole")}
               >
                 <Terminal className="h-4 w-4 mr-1" />
                 Console
@@ -1439,9 +1443,9 @@ function FlowEditor() {
                 className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
               >
                 {saveWorkflowMutation.isPending ? (
-                  <><Wand2 className="h-4 w-4 mr-1 animate-pulse" />Saving…</>
+                  <><Wand2 className="h-4 w-4 mr-1 animate-pulse" />{t("editor.saving")}</>
                 ) : (
-                  <><Wand2 className="h-4 w-4 mr-1" />Convert to Skill</>
+                  <><Wand2 className="h-4 w-4 mr-1" />{t("editor.convertToSkill")}</>
                 )}
               </Button>
               <Button
@@ -1491,7 +1495,7 @@ function FlowEditor() {
                   onValueChange={(value) => handleWorkflowBrowserCommandSkillChange(value as typeof workflowBrowserCommandSkillId)}
                 >
                   <SelectTrigger className="bg-white">
-                    <SelectValue placeholder="Choose a browser skill" />
+                    <SelectValue placeholder={t("editor.browserskillPlaceholder")} />
                   </SelectTrigger>
                   <SelectContent>
                     {BROWSER_SKILL_PRESETS.map((preset) => (
@@ -1504,7 +1508,7 @@ function FlowEditor() {
                 <Textarea
                   value={workflowBrowserCommandDraft}
                   onChange={(event) => handleWorkflowBrowserCommandDraftChange(event.target.value)}
-                  placeholder="Example: Find the best site for this task, compare options, and continue."
+                  placeholder={t("editor.browserskillGoalPlaceholder")}
                   className="min-h-[88px] bg-white"
                 />
                 {workflowBrowserCommandNotice ? (
@@ -1552,7 +1556,7 @@ function FlowEditor() {
               <button
                 onClick={() => setShowAutoEdit(true)}
                 className="flex items-center gap-1 text-xs font-medium px-2 py-1 rounded bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
-                title="Fix with AI"
+                title={t("editor.fixWithAI")}
               >
                 <Wrench className="h-3 w-3" />
                 Fix with AI
@@ -1560,7 +1564,7 @@ function FlowEditor() {
               <button
                 onClick={() => { setValidationErrors([]); setCompilationWarnings([]); }}
                 className="text-red-500 hover:text-red-700 flex-shrink-0"
-                title="Dismiss"
+                title={t("editor.dismiss")}
               >
                 <X className="h-4 w-4" />
               </button>
@@ -1591,7 +1595,7 @@ function FlowEditor() {
               <button
                 onClick={() => setShowAutoEdit(true)}
                 className="flex items-center gap-1 text-xs font-medium px-2 py-1 rounded bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
-                title="Fix with AI"
+                title={t("editor.fixWithAI")}
               >
                 <Wrench className="h-3 w-3" />
                 Fix with AI
@@ -1599,7 +1603,7 @@ function FlowEditor() {
               <button
                 onClick={() => setCompilationWarnings([])}
                 className="text-amber-500 hover:text-amber-700 flex-shrink-0"
-                title="Dismiss"
+                title={t("editor.dismiss")}
               >
                 <X className="h-4 w-4" />
               </button>
@@ -1633,7 +1637,7 @@ function FlowEditor() {
             <div
               onMouseDown={onSidebarResizeMouseDown}
               className="absolute right-0 top-0 bottom-0 w-1.5 cursor-ew-resize hover:bg-blue-400 active:bg-blue-500 transition-colors z-20"
-              title="Drag to resize sidebar"
+              title={t("editor.dragToResize")}
             />
           )}
 
@@ -1661,7 +1665,7 @@ function FlowEditor() {
                   <textarea
                     value={workflowDescription}
                     onChange={(e) => setWorkflowDescription(e.target.value)}
-                    placeholder="Describe what this workflow does..."
+                    placeholder={t("editor.descriptionPlaceholder")}
                     rows={3}
                     className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   />
@@ -1677,7 +1681,7 @@ function FlowEditor() {
                     selectedModelId={defaultModel}
                     onSelect={handleSetDefaultModel}
                     isLoading={modelsLoading}
-                    placeholder="Select default model for this workflow..."
+                    placeholder={t("editor.modelPlaceholder")}
                   />
                   <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                     Choose which LLM model to use when executing this workflow
@@ -1729,7 +1733,7 @@ function FlowEditor() {
                     type="text"
                     value={nodeSearchTerm}
                     onChange={(e) => setNodeSearchTerm(e.target.value)}
-                    placeholder="Search nodes..."
+                    placeholder={t("editor.searchNodes")}
                     className="w-full px-3 py-2 pl-9 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                   <svg
@@ -1769,7 +1773,7 @@ function FlowEditor() {
                 </div>
 
                 {registryLoading ? (
-                  <div className="text-sm text-gray-500 dark:text-gray-400">Loading nodes...</div>
+                  <div className="text-sm text-gray-500 dark:text-gray-400">{t("editor.loadingNodes")}</div>
                 ) : (
                   <div className="space-y-4">
                     {/* AI Nodes */}
@@ -2101,7 +2105,7 @@ function FlowEditor() {
                           />
                         </svg>
                         <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                          No nodes found for "{nodeSearchTerm}"
+                          {t("editor.nodesNotFound", { query: nodeSearchTerm })}
                         </p>
                         <button
                           onClick={() => setNodeSearchTerm('')}
@@ -2219,14 +2223,14 @@ function FlowEditor() {
                 return edge ? (
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-500">From:</span>
+                      <span className="text-xs text-gray-500">{t("editor.fromLabel")}</span>
                       <code className="text-xs font-mono bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded text-blue-700 dark:text-blue-300">
                         {sourceNode?.data?.label || edge.source}
                       </code>
                       <span className="text-xs text-gray-400">({edge.sourceHandle})</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-500">To:</span>
+                      <span className="text-xs text-gray-500">{t("editor.toLabel")}</span>
                       <code className="text-xs font-mono bg-green-50 dark:bg-green-900/30 px-2 py-0.5 rounded text-green-700 dark:text-green-300">
                         {targetNode?.data?.label || edge.target}
                       </code>
@@ -2609,19 +2613,19 @@ function FlowEditor() {
       <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Save Workflow</DialogTitle>
+            <DialogTitle>{t("editor.saveTitle")}</DialogTitle>
             <DialogDescription>
-              Optionally describe what changed in this version. Leave blank to save without a note.
+              {t("editor.saveDescription")}
             </DialogDescription>
           </DialogHeader>
           <div className="py-2">
             <Label htmlFor="change-description" className="text-sm font-medium">
-              Change description <span className="text-muted-foreground">(optional)</span>
+              {t("editor.changeDescription")} <span className="text-muted-foreground">({t("common:optional")})</span>
             </Label>
             <Input
               id="change-description"
               className="mt-1.5"
-              placeholder="e.g. Added email notification node"
+              placeholder={t("editor.changeDescriptionPlaceholder")}
               maxLength={500}
               value={saveChangeDescription}
               onChange={(e) => setSaveChangeDescription(e.target.value)}

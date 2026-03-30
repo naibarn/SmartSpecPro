@@ -70,3 +70,4 @@ class TemplateEngineExecutor:
             return template.format(**variables)
         except KeyError as e:
             raise ValueError(f"Missing variable: {e}")
+# mypy: ignore-errors

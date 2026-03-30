@@ -160,7 +160,7 @@ We aim to respond to all inquiries within 5 business days.`
 
 export default function Terms() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/20">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-cyan-50/20">
       <Navbar />
       
       <main className="pt-24 pb-20">
@@ -171,13 +171,13 @@ export default function Terms() {
             animate={{ opacity: 1, y: 0 }}
             className="mb-12"
           >
-            <Link href="/" className="inline-flex items-center gap-2 text-gray-600 hover:text-purple-600 mb-6 transition-colors">
+            <Link href="/" className="inline-flex items-center gap-2 text-gray-600 hover:text-blue-600 mb-6 transition-colors">
               <ArrowLeft className="w-4 h-4" />
               Back to Home
             </Link>
             
             <div className="flex items-center gap-4 mb-4">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center">
                 <FileText className="w-6 h-6 text-white" />
               </div>
               <div>
@@ -207,7 +207,7 @@ export default function Terms() {
                 <a
                   key={section.id}
                   href={`#${section.id}`}
-                  className="text-gray-600 hover:text-purple-600 transition-colors text-sm py-1"
+                  className="text-gray-600 hover:text-blue-600 transition-colors text-sm py-1"
                 >
                   {section.title}
                 </a>
@@ -227,8 +227,8 @@ export default function Terms() {
                 className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 md:p-8 border border-gray-100"
               >
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
-                    <section.icon className="w-5 h-5 text-purple-600" />
+                  <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                    <section.icon className="w-5 h-5 text-blue-600" />
                   </div>
                   <h2 className="text-xl font-semibold text-gray-900">{section.title}</h2>
                 </div>
@@ -254,11 +254,11 @@ export default function Terms() {
               By using SmartAIHub, you acknowledge that you have read, understood, and agree to these Terms of Service.
             </p>
             <div className="flex justify-center gap-4 mt-4">
-              <Link href="/privacy" className="text-purple-600 hover:text-purple-700 font-medium">
+              <Link href="/privacy" className="text-blue-600 hover:text-blue-700 font-medium">
                 Privacy Policy
               </Link>
               <span className="text-gray-300">|</span>
-              <Link href="/contact" className="text-purple-600 hover:text-purple-700 font-medium">
+              <Link href="/contact" className="text-blue-600 hover:text-blue-700 font-medium">
                 Contact Us
               </Link>
             </div>

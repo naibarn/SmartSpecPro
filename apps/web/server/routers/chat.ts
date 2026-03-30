@@ -1227,7 +1227,7 @@ export const chatRouter = router({
 
   /**
    * Analyze user intent using the same routing pipeline as Teams (routeRoomIntent).
-   * Returns routing decision: chat / skill / agency, plus skill metadata.
+   * Returns routing decision: chat / skill / agency / hybrid, plus skill metadata.
    * Both Chat and Teams share this intent analysis logic for consistency.
    */
   analyzeIntent: protectedProcedure
@@ -1283,6 +1283,7 @@ export const chatRouter = router({
         routingStrategy: decision.routingStrategy ?? null,
         taskProfile: decision.taskProfile ?? null,
         candidateSkills: decision.candidateSkills ?? null,
+        hybridPlan: decision.hybridPlan ?? null,
         skillMeta,
       };
     }),

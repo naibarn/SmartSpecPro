@@ -15,6 +15,16 @@
       "minLength": 5,
       "description": "ไอเดียคลิป: คลิปเกี่ยวกับอะไร/ประเด็นหลัก/สิ่งที่อยากให้เกิดขึ้น"
     },
+    "continuityNotes": {
+      "type": "string",
+      "description": "Optional fixed character, wardrobe, props, and setting details that must stay identical across every prompt.",
+      "default": ""
+    },
+    "referenceNotes": {
+      "type": "string",
+      "description": "Optional notes for the attached reference images, especially character appearance and location details. If empty, the skill should infer a continuity bible from the idea and reference images automatically.",
+      "default": ""
+    },
     "dialogueLanguage": {
       "type": "string",
       "description": "ภาษาของบทพูด (dialogue) ที่ตัวละครพูด",

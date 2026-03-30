@@ -24,6 +24,7 @@ import {
   Palette,
   FileText,
   PenLine,
+  BookOpen,
 } from "lucide-react";
 import InviteCodeManager from "@/components/admin/InviteCodeManager";
 import InviteCodeDashboard from "@/components/admin/InviteCodeDashboard";
@@ -92,7 +93,7 @@ export default function DomainAdmin() {
   if (authLoading || !user || (user.role !== "domain_admin" && user.role !== "admin")) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <RefreshCw className="w-8 h-8 animate-spin text-purple-500" />
+        <RefreshCw className="w-8 h-8 animate-spin text-blue-500" />
       </div>
     );
   }
@@ -100,7 +101,7 @@ export default function DomainAdmin() {
   const totalPages = Math.ceil((usersData?.total || 0) / limit);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/20 px-4 sm:px-6 lg:px-8 py-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-cyan-50/20 px-4 sm:px-6 lg:px-8 py-6">
       <div className="px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8">
@@ -116,7 +117,7 @@ export default function DomainAdmin() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-                <UserCog className="w-8 h-8 text-purple-500" />
+                <UserCog className="w-8 h-8 text-cyan-500" />
                 Domain Admin: User Management
               </h1>
               <p className="text-gray-600 mt-2">
@@ -137,6 +138,13 @@ export default function DomainAdmin() {
               >
                 <Globe className="w-4 h-4 mr-2" />
                 Edit Content
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setLocation('/domain-admin/docs')}
+              >
+                <BookOpen className="w-4 h-4 mr-2" />
+                Manage Docs
               </Button>
               <Button
                 variant="outline"
@@ -168,8 +176,8 @@ export default function DomainAdmin() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
             <div className="bg-white rounded-xl p-6 shadow-sm border">
               <div className="flex items-center gap-3">
-                <div className="p-3 bg-purple-100 rounded-lg">
-                  <Users className="w-6 h-6 text-purple-600" />
+                <div className="p-3 bg-blue-100 rounded-lg">
+                  <Users className="w-6 h-6 text-blue-600" />
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Total Users</p>
@@ -237,7 +245,7 @@ export default function DomainAdmin() {
 
           {usersLoading ? (
             <div className="p-8 text-center">
-              <RefreshCw className="w-8 h-8 animate-spin text-purple-500 mx-auto" />
+              <RefreshCw className="w-8 h-8 animate-spin text-blue-500 mx-auto" />
             </div>
           ) : (
             <>
@@ -252,7 +260,7 @@ export default function DomainAdmin() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${
-                          u.isDisabled ? "from-gray-400 to-gray-600" : "from-purple-400 to-pink-400"
+                          u.isDisabled ? "from-gray-400 to-gray-600" : "from-blue-400 via-cyan-400 to-teal-400"
                         } flex items-center justify-center text-white font-medium`}>
                           {(u.name || u.email || "U")[0].toUpperCase()}
                         </div>
@@ -265,7 +273,7 @@ export default function DomainAdmin() {
                               </span>
                             )}
                             {u.role === "domain_admin" && (
-                              <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
+                              <span className="text-xs bg-cyan-100 text-cyan-700 px-2 py-0.5 rounded-full">
                                 Domain Admin
                               </span>
                             )}

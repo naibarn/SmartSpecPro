@@ -1,0 +1,103 @@
+INTELLIGENCE ENHANCEMENTS FOR AGENCY SYSTEM
+=============================================
+Research Completed: 2026-03-23
+
+OVERVIEW
+Five intelligence features have been fully mapped with exact file paths, line numbers, and implementation instructions.
+
+FEATURES MAPPED
+================
+
+1. CONFIDENCE BOOST (2-3 hours)
+   Goal: Increase memory confidence when successfully used
+
+   Key Files:
+   - agency_memory_retriever.py (lines 50-57, 231-234) — tracks retrieved memory IDs
+   - agency_orchestrator.py (lines 822-837, 970-985) — post-success hook points
+   - long_term_memory.py (after line 482) — new boost_memory_confidence() method
+
+   Data Available: memory IDs in retrieved facts, execution status, final answer
+
+
+2. OUTCOME-AWARE MEMORY (3-4 hours)
+   Goal: Enhance extraction prompt with execution context
+
+   Key Files:
+   - long_term_memory.py (lines 407-447) — extract_memories() prompt
+   - agency_orchestrator.py (lines 828-835, 976-983) — callsite updates
+
+   Data Available: execution_status, execution_tokens, execution_iterations, retrieved_memories
+
+
+3. AUTO FEW-SHOT FROM BEST RUNS (4-5 hours)
+   Goal: Capture high-quality example pairs (input → output)
+
+   Key Files:
+   - autonomous_executor.py (lines 551-559) — quality check point
+   - NEW: agency_few_shot_capture.py — capture service
+   - apps/web/drizzle/schema.ts (line 4870) — agencyAgents.examples field (already exists)
+
+   Data Available: quality_score >= 0.85, task, final_answer, subtask_results
+
+
+4. REACT REFLECTION (3-4 hours)
+   Goal: Add reflection phase analyzing execution quality
+
+   Key Files:
+   - react_executor.py (lines 241-247) — post-execution reflection
+   - react_executor.py (lines 31-39) — ReActResult.reflection field
+   - agency_orchestrator.py (lines 813-854) — store reflection in trace
+
+   Data Available: reasoning_trace, iterations, tokens_used, final_answer, tool_calls
+
+
+5. TRACE-BASED LEARNING (4-5 hours)
+   Goal: Periodic analysis of run traces to extract patterns
+
+   Key Files:
+   - NEW: agency_trace_analyzer.py — pattern extraction service
+   - NEW: agency_trace_learning.py — celery periodic task
+   - app/core/celery_app.py — beat schedule configuration
+   - apps/web/drizzle/schema.ts (lines 5248-5268) — agencyRunTraces table
+
+   Data Available: span data (tool_calls, durations, tokens, costs), aggregatable over 24h
+
+IMPLEMENTATION ORDER (Recommended)
+===================================
+
+1. Confidence Boost        (lowest risk, highest immediate value)
+2. Outcome-Aware Memory    (improves memory extraction quality)
+3. ReAct Reflection        (provides quality scores for other features)
+4. Auto Few-Shot           (depends on reflection quality scores)
+5. Trace Analysis          (batch learning, long-term patterns)
+
+TOTAL EFFORT: 16-21 hours (can be parallelized after features 1-2)
+
+KEY FINDINGS
+============
+
+✓ RetrievalResult already tracks memory IDs — can identify which memories were used
+✓ extract_memories() prompt is clean and ready for enhancement
+✓ Autonomous executor already computes quality_score in reflection (line 551)
+✓ agencyAgents.examples field exists in schema — just needs population logic
+✓ agencyRunTraces table has full span hierarchy (JSONB) — ready for analysis
+✓ TraceCollector already handles secret scrubbing and truncation
+
+CRITICAL INSERTION POINTS
+==========================
+
+Feature 1: agency_orchestrator.py lines 822-837 (post-ReAct success)
+Feature 2: long_term_memory.py lines 417-423 (prompt enhancement)
+Feature 3: autonomous_executor.py lines 551-559 (quality threshold check)
+Feature 4: react_executor.py lines 241-247 (post-execution phase)
+Feature 5: celery beat schedule (new periodic task)
+
+DEPENDENCIES & RISKS
+====================
+
+✓ Low risk — all insertion points are in existing success/completion paths
+✓ No schema changes required (except new tables/files)
+✓ Memory tracking (Feature 1) needs ExecutionContext.retrieved_memory_ids field (new)
+✓ Features 3-5 are non-critical (best-effort, failures don't block execution)
+
+Full details: INTELLIGENCE-ENHANCEMENTS-CODE-LOCATIONS.md

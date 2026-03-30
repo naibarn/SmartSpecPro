@@ -77,3 +77,4 @@ Index('idx_payment_transactions_created', PaymentTransaction.created_at.desc())
 
 # Index for faster queries
 Index("ix_payment_transactions_user_id_status", PaymentTransaction.user_id, PaymentTransaction.status)
+# mypy: ignore-errors

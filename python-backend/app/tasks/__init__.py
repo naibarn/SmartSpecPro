@@ -39,6 +39,7 @@ from app.tasks.live_browser_tasks import (
     publish_live_browser_readiness_snapshot,
     run_live_browser_maintenance_task,
 )
+from app.tasks.system_health_task import monitor_system_health
 try:
     from app.tasks.presentation_render import render_presentation
 except ModuleNotFoundError:
@@ -70,6 +71,7 @@ __all__ = [
     "automation_credit_reconciliation",
     "publish_live_browser_readiness_snapshot",
     "run_live_browser_maintenance_task",
+    "monitor_system_health",
 ]
 
 if render_presentation is not None:

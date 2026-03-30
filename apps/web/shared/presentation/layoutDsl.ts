@@ -18,6 +18,44 @@ export const PRESENTATION_LAYOUT_DSL_ALLOWED_PRIMITIVES = [
   "group",
 ] as const;
 
+export const PRESENTATION_LAYOUT_DSL_TEXT_DENSITIES = [
+  "sparse",
+  "balanced",
+  "dense",
+] as const;
+
+export const PRESENTATION_LAYOUT_DSL_CONTENT_INTENTS = [
+  "headline_only",
+  "visual_story",
+  "editorial",
+  "report",
+  "poster",
+] as const;
+
+export const PRESENTATION_LAYOUT_DSL_ARCHETYPES = [
+  "magazine_cover",
+  "editorial_feature",
+  "magazine_report",
+  "business_brochure",
+  "event_poster",
+  "photo_story",
+] as const;
+
+export const PRESENTATION_LAYOUT_DSL_MEDIA_PLACEMENTS = [
+  "top_span",
+  "bottom_band",
+  "left_column",
+  "right_column",
+  "center_inset",
+  "background_frame",
+] as const;
+
+export const PRESENTATION_LAYOUT_DSL_CROP_STYLES = [
+  "clear_subject",
+  "editorial_crop",
+  "wide_scene",
+] as const;
+
 export const PRESENTATION_LAYOUT_DSL_MAX_ELEMENTS = 18;
 export const PRESENTATION_LAYOUT_DSL_MAX_GROUPS = 4;
 
@@ -27,16 +65,49 @@ export const presentationLayoutDslRequestSchema = z.object({
   contentProfile: z.object({
     sectionCount: z.number().int().nonnegative(),
     paragraphCount: z.number().int().nonnegative(),
+    bulletCount: z.number().int().nonnegative(),
+    totalChars: z.number().int().nonnegative(),
+    longParagraphCount: z.number().int().nonnegative(),
+    denseTextCandidate: z.boolean(),
     visualFirstCandidate: z.boolean(),
+  }).strict(),
+  compositionGuidance: z.object({
+    textDensity: z.enum(PRESENTATION_LAYOUT_DSL_TEXT_DENSITIES),
+    contentIntent: z.enum(PRESENTATION_LAYOUT_DSL_CONTENT_INTENTS),
+    recommendedArchetype: z.enum(PRESENTATION_LAYOUT_DSL_ARCHETYPES),
+    alternativeArchetypes: z.array(z.enum(PRESENTATION_LAYOUT_DSL_ARCHETYPES)).max(4).optional(),
+    preferredMediaPlacement: z.enum(PRESENTATION_LAYOUT_DSL_MEDIA_PLACEMENTS).optional(),
+    alternativeMediaPlacements: z.array(z.enum(PRESENTATION_LAYOUT_DSL_MEDIA_PLACEMENTS)).max(4).optional(),
+    cropStyle: z.enum(PRESENTATION_LAYOUT_DSL_CROP_STYLES).optional(),
+    preferLargeDisplayType: z.boolean().optional(),
+    allowOverlayTextOnMedia: z.boolean().optional(),
+    preferImageClarity: z.boolean().optional(),
+    rationale: z.string().min(1).max(512).optional(),
   }).strict(),
   canvas: z.object({
     width: z.number().int().positive().max(10_000),
     height: z.number().int().positive().max(10_000),
+    aspectRatio: z.string().min(1).max(32).optional(),
+    preset: z.string().min(1).max(32).optional(),
   }).strict(),
   allowedPrimitives: z.array(z.enum(PRESENTATION_LAYOUT_DSL_ALLOWED_PRIMITIVES)).min(1).max(8),
+  availableMedia: z.array(z.object({
+    id: z.string().min(1).max(64),
+    kind: z.enum(["image", "video"]),
+    token: z.string().min(1).max(64),
+    label: z.string().min(1).max(160),
+    promptHint: z.string().min(1).max(1_000).optional(),
+  }).strict()).max(8).optional(),
   styleTokens: z.object({
     themeId: z.string().min(1).max(128),
     typographyPack: z.string().min(1).max(128),
+    allowedFontFamilies: z.array(z.string().min(1).max(128)).min(1).max(8).optional(),
+    fontScale: z.object({
+      titleMin: z.number().finite().min(8).max(512),
+      titleMax: z.number().finite().min(8).max(512),
+      bodyMin: z.number().finite().min(8).max(512),
+      bodyMax: z.number().finite().min(8).max(512),
+    }).strict().optional(),
   }).strict(),
   hardLimits: z.object({
     maxElements: z.number().int().positive().max(PRESENTATION_LAYOUT_DSL_MAX_ELEMENTS),
@@ -46,6 +117,7 @@ export const presentationLayoutDslRequestSchema = z.object({
   sourceNarrative: z.object({
     title: z.string().min(1).max(200),
     body: z.array(z.string().min(1).max(500)).max(16),
+    primaryText: z.string().min(1).max(6_000).optional(),
     notes: z.string().min(1).max(5_000).optional(),
     sections: z.array(z.object({
       heading: z.string().min(1).max(180),
@@ -56,6 +128,12 @@ export const presentationLayoutDslRequestSchema = z.object({
       text: z.string().min(1).max(260),
     })).max(24).optional(),
   }),
+  repairContext: z.object({
+    attempt: z.number().int().min(2).max(12),
+    previousFailure: z.string().min(1).max(512),
+    mustFix: z.array(z.string().min(1).max(240)).max(8).optional(),
+    previousDraftExcerpt: z.string().min(1).max(1_200).optional(),
+  }).strict().optional(),
 }).strict();
 
 const presentationLayoutDslBaseSchema = z.object({
@@ -290,14 +368,122 @@ function clampNumber(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
+function computeRectIntersectionArea(
+  a: { x: number; y: number; width: number; height: number },
+  b: { x: number; y: number; width: number; height: number },
+): number {
+  const left = Math.max(a.x, b.x);
+  const top = Math.max(a.y, b.y);
+  const right = Math.min(a.x + a.width, b.x + b.width);
+  const bottom = Math.min(a.y + a.height, b.y + b.height);
+  if (right <= left || bottom <= top) {
+    return 0;
+  }
+  return (right - left) * (bottom - top);
+}
+
+function rectArea(rect: { width: number; height: number }): number {
+  return Math.max(0, rect.width) * Math.max(0, rect.height);
+}
+
+function sanitizeDslImageSource(
+  src: string | undefined,
+  allowedMediaTokens?: Set<string>,
+): string {
+  const normalized = typeof src === "string" ? src.trim() : "";
+  if (!normalized || normalized === "__PLACEHOLDER__") {
+    return "__PLACEHOLDER__";
+  }
+
+  if (allowedMediaTokens?.has(normalized)) {
+    return normalized;
+  }
+
+  const isToken = /^link_\d+$/i.test(normalized) || /^__MEDIA_SLOT_\d+__$/i.test(normalized);
+  if (isToken) {
+    if (!allowedMediaTokens || allowedMediaTokens.size === 0 || allowedMediaTokens.has(normalized)) {
+      return normalized;
+    }
+    return "__PLACEHOLDER__";
+  }
+
+  // The DSL should only reference placeholder/media tokens. Reject arbitrary URLs or data payloads.
+  return "__PLACEHOLDER__";
+}
+
+function clampElementToCanvas<T extends PresentationSlideElement>(
+  element: T,
+  canvasWidth: number,
+  canvasHeight: number,
+): T {
+  const x = clampNumber(element.x, 0, canvasWidth);
+  const y = clampNumber(element.y, 0, canvasHeight);
+  const width = clampNumber(element.width, 0, Math.max(0, canvasWidth - x));
+  const height = clampNumber(element.height, 0, Math.max(0, canvasHeight - y));
+  return {
+    ...element,
+    x,
+    y,
+    width,
+    height,
+  };
+}
+
+function sanitizeFontFamily(
+  fontFamily: string | undefined,
+  allowedFontFamilies?: Set<string>,
+): string | undefined {
+  if (!allowedFontFamilies || allowedFontFamilies.size === 0) {
+    return fontFamily;
+  }
+  if (fontFamily && allowedFontFamilies.has(fontFamily)) {
+    return fontFamily;
+  }
+  return Array.from(allowedFontFamilies)[0];
+}
+
+function sanitizeFontSize(
+  fontSize: number | undefined,
+  fontScale?: {
+    titleMin: number;
+    titleMax: number;
+    bodyMin: number;
+    bodyMax: number;
+  },
+): number | undefined {
+  if (typeof fontSize !== "number" || !Number.isFinite(fontSize)) {
+    return fontSize;
+  }
+  if (!fontScale) {
+    return fontSize;
+  }
+  const minFontSize = Math.min(fontScale.bodyMin, fontScale.titleMin);
+  const maxFontSize = Math.max(fontScale.bodyMax, fontScale.titleMax);
+  return clampNumber(fontSize, minFontSize, maxFontSize);
+}
+
 function toSlideElement(
   element: PresentationLayoutDslPrimitive,
+  options?: {
+    allowedMediaTokens?: Set<string>;
+    allowedFontFamilies?: Set<string>;
+    fontScale?: {
+      titleMin: number;
+      titleMax: number;
+      bodyMin: number;
+      bodyMax: number;
+    };
+  },
 ): PresentationSlideElement {
   switch (element.type) {
     case "text":
       return presentationTextElementSchema.parse({
         ...element,
         text: element.text.trim(),
+        fontSize: sanitizeFontSize(element.fontSize, options?.fontScale) ?? element.fontSize,
+        ...(sanitizeFontFamily(element.fontFamily, options?.allowedFontFamilies)
+          ? { fontFamily: sanitizeFontFamily(element.fontFamily, options?.allowedFontFamilies) }
+          : {}),
       });
     case "rect":
       return presentationRectElementSchema.parse(element);
@@ -327,7 +513,7 @@ function toSlideElement(
         height: element.height,
         ...(element.opacity !== undefined ? { opacity: element.opacity } : {}),
         ...(element.rotation !== undefined ? { rotation: element.rotation } : {}),
-        src: element.src || "__PLACEHOLDER__",
+        src: sanitizeDslImageSource(element.src, options?.allowedMediaTokens),
         alt: element.alt ?? "Slide image",
         imageFit: element.imageFit ?? "cover",
         ...(element.imagePositionX !== undefined ? { imagePositionX: element.imagePositionX } : {}),
@@ -353,11 +539,255 @@ function estimateTextHeight(el: any): number {
   return Math.max(el.height || 30, estimatedLines * fontSize * lineHeight);
 }
 
+function hasHorizontalOverlap(a: { x: number; width: number }, b: { x: number; width: number }, slack = 16): boolean {
+  return a.x < (b.x + b.width - slack) && (a.x + a.width) > (b.x + slack);
+}
+
+function resolveVerticalTextCollisions(
+  elements: any[],
+  canvasHeight: number,
+): void {
+  const textElements = elements
+    .filter((el: any) => el.type === "text")
+    .sort((a: any, b: any) => (a.y - b.y) || (a.x - b.x));
+  if (textElements.length < 2) {
+    return;
+  }
+
+  const minGap = 12;
+  for (let index = 0; index < textElements.length; index += 1) {
+    const current = textElements[index]!;
+    let nextY = current.y;
+
+    for (let prevIndex = 0; prevIndex < index; prevIndex += 1) {
+      const previous = textElements[prevIndex]!;
+      if (!hasHorizontalOverlap(current, previous, 24)) {
+        continue;
+      }
+      const previousBottom = previous.y + previous.height;
+      if (nextY < previousBottom + minGap) {
+        nextY = previousBottom + minGap;
+      }
+    }
+
+    if (nextY > current.y) {
+      current.y = Math.round(nextY);
+      if (current.y + current.height > canvasHeight - 16) {
+        current.height = Math.max(20, canvasHeight - 16 - current.y);
+      }
+    }
+  }
+}
+
+function syncRectCardsToNearbyText(
+  elements: any[],
+  canvasWidth: number,
+): void {
+  const textElements = elements.filter((el: any) => el.type === "text");
+  for (const rect of elements) {
+    if (rect.type !== "rect" || rect.width >= canvasWidth * 0.9) {
+      continue;
+    }
+    const textsInRect = textElements.filter((text: any) => (
+      hasHorizontalOverlap(text, rect, 12)
+      && text.y + text.height >= rect.y - 36
+      && text.y <= rect.y + rect.height + 36
+    ));
+    if (textsInRect.length === 0) {
+      continue;
+    }
+    rect.y = Math.round(Math.min(...textsInRect.map((text: any) => text.y)) - 12);
+    rect.height = Math.round(
+      Math.max(...textsInRect.map((text: any) => text.y + text.height)) - rect.y + 12,
+    );
+  }
+}
+
+function rectContainsTextWithPadding(
+  rect: { x: number; y: number; width: number; height: number },
+  text: { x: number; y: number; width: number; height: number },
+  padding = 20,
+): boolean {
+  return (
+    rect.x <= text.x - padding
+    && rect.y <= text.y - padding
+    && rect.x + rect.width >= text.x + text.width + padding
+    && rect.y + rect.height >= text.y + text.height + padding
+  );
+}
+
+function hasSupportingRectBackdrop(
+  text: any,
+  elements: any[],
+): boolean {
+  return elements.some((element: any) => (
+    element.type === "rect"
+    && rectContainsTextWithPadding(element, text, 10)
+  ));
+}
+
+function ensureTextOnImageContrast(
+  elements: any[],
+  canvasWidth: number,
+  canvasHeight: number,
+): void {
+  const imageElements = elements.filter((element: any) => element.type === "image");
+  const textElements = elements.filter((element: any) => element.type === "text");
+
+  for (const text of textElements) {
+    const textArea = rectArea(text);
+    if (textArea <= 0) {
+      continue;
+    }
+    const overlappedImage = imageElements.find((image: any) => {
+      const overlap = computeRectIntersectionArea(text, image);
+      return overlap / textArea >= 0.35;
+    });
+    if (!overlappedImage) {
+      continue;
+    }
+
+    const hasBackdrop = hasSupportingRectBackdrop(text, elements);
+    if (!hasBackdrop && elements.length < PRESENTATION_LAYOUT_DSL_MAX_ELEMENTS) {
+      const backdrop = {
+        id: `${text.id}__contrast_backdrop`,
+        type: "rect",
+        x: Math.max(0, text.x - 18),
+        y: Math.max(0, text.y - 14),
+        width: Math.min(canvasWidth - Math.max(0, text.x - 18), text.width + 36),
+        height: Math.min(canvasHeight - Math.max(0, text.y - 14), text.height + 28),
+        fill: "rgba(15, 23, 42, 0.74)",
+      };
+      const insertionIndex = Math.max(0, elements.indexOf(text));
+      elements.splice(insertionIndex, 0, backdrop);
+    }
+
+    text.color = "#F8FAFC";
+  }
+}
+
+function isDecorativeAccent(
+  element: any,
+  canvasWidth: number,
+  canvasHeight: number,
+): boolean {
+  if (element.type === "line") {
+    return true;
+  }
+  if (element.type === "image" && typeof element.svgContent === "string" && element.svgContent.trim().length > 0) {
+    return true;
+  }
+  if (element.type === "rect") {
+    const areaRatio = rectArea(element) / Math.max(1, canvasWidth * canvasHeight);
+    return areaRatio <= 0.16;
+  }
+  return false;
+}
+
+function isEdgeAccent(
+  element: any,
+  canvasWidth: number,
+  canvasHeight: number,
+  padding = 28,
+): boolean {
+  return (
+    element.x <= padding
+    || element.y <= padding
+    || element.x + element.width >= canvasWidth - padding
+    || element.y + element.height >= canvasHeight - padding
+  );
+}
+
+function overlapsReadableContent(
+  element: any,
+  content: any[],
+  threshold = 0.08,
+): boolean {
+  const elementArea = Math.max(1, rectArea(element));
+  return content.some((entry: any) => {
+    const overlap = computeRectIntersectionArea(element, entry);
+    const entryArea = Math.max(1, rectArea(entry));
+    return overlap / elementArea >= threshold || overlap / entryArea >= threshold;
+  });
+}
+
+function findSafeAccentPosition(
+  element: any,
+  blockers: any[],
+  canvasWidth: number,
+  canvasHeight: number,
+): { x: number; y: number } | null {
+  const margin = 18;
+  const candidates = [
+    { x: margin, y: margin },
+    { x: canvasWidth - element.width - margin, y: margin },
+    { x: margin, y: canvasHeight - element.height - margin },
+    { x: canvasWidth - element.width - margin, y: canvasHeight - element.height - margin },
+    { x: margin, y: Math.max(margin, Math.round((canvasHeight - element.height) / 2)) },
+    { x: canvasWidth - element.width - margin, y: Math.max(margin, Math.round((canvasHeight - element.height) / 2)) },
+    { x: Math.max(margin, Math.round((canvasWidth - element.width) / 2)), y: margin },
+    { x: Math.max(margin, Math.round((canvasWidth - element.width) / 2)), y: canvasHeight - element.height - margin },
+  ];
+
+  for (const candidate of candidates) {
+    const positioned = { ...element, ...candidate };
+    if (!overlapsReadableContent(positioned, blockers, 0.08)) {
+      return candidate;
+    }
+  }
+  return null;
+}
+
+function resolveDecorativeOverlap(
+  elements: any[],
+  canvasWidth: number,
+  canvasHeight: number,
+): void {
+  const textElements = elements.filter((element: any) => element.type === "text");
+  const readableImages = elements.filter((element: any) => (
+    element.type === "image"
+    && !(typeof element.svgContent === "string" && element.svgContent.trim().length > 0)
+  ));
+  const blockers = [...textElements, ...readableImages];
+
+  for (let index = elements.length - 1; index >= 0; index -= 1) {
+    const element = elements[index];
+    if (!element || !isDecorativeAccent(element, canvasWidth, canvasHeight)) {
+      continue;
+    }
+    if (
+      element.type === "rect"
+      && textElements.some((text: any) => rectContainsTextWithPadding(element, text, 12))
+    ) {
+      continue;
+    }
+    const overlapsText = overlapsReadableContent(element, textElements, 0.08);
+    const overlapsImage = overlapsReadableContent(element, readableImages, 0.08);
+    if (!overlapsText && !overlapsImage) {
+      continue;
+    }
+    if (!overlapsText && overlapsImage && isEdgeAccent(element, canvasWidth, canvasHeight)) {
+      continue;
+    }
+
+    const safePosition = findSafeAccentPosition(element, blockers, canvasWidth, canvasHeight);
+    if (safePosition) {
+      element.x = safePosition.x;
+      element.y = safePosition.y;
+      continue;
+    }
+
+    elements.splice(index, 1);
+  }
+}
+
 /**
  * Fix overlapping elements:
  * 1. Correct text element heights based on content length
  * 2. Lines that overlap text → move to nearest gap
  * 3. Text that overlaps non-background images → shift below
+ * 4. Text blocks that collide with prior text → push downward
+ * 5. Small rect cards follow the text they are framing
  */
 function fixTextImageOverlap(
   elements: any[],
@@ -399,10 +829,21 @@ function fixTextImageOverlap(
   for (const img of contentImages) {
     const imgBottom = img.y + img.height;
     const imgRight = img.x + img.width;
+    const imageAreaRatio = rectArea(img) / Math.max(1, canvasWidth * canvasHeight);
     for (const text of textElements) {
       const overlapX = text.x < imgRight && text.x + text.width > img.x;
       const overlapY = text.y < imgBottom && text.y + text.height > img.y;
       if (overlapX && overlapY) {
+        const overlapArea = computeRectIntersectionArea(text, img);
+        const textArea = Math.max(1, rectArea(text));
+        const canUseEditorialOverlay = (
+          imageAreaRatio >= 0.18
+          && (text.fontSize ?? 0) >= 24
+          && overlapArea / textArea <= 1
+        );
+        if (canUseEditorialOverlay) {
+          continue;
+        }
         text.y = imgBottom + 12;
         if (text.y + text.height > canvasHeight - 16) {
           text.height = Math.max(20, canvasHeight - 16 - text.y);
@@ -410,6 +851,12 @@ function fixTextImageOverlap(
       }
     }
   }
+
+  // Step 4: Prevent later text blocks from colliding with earlier text blocks.
+  resolveVerticalTextCollisions(elements, canvasHeight);
+
+  // Step 5: Keep card-like rects aligned with the text they frame after shifts.
+  syncRectCardsToNearbyText(elements, canvasWidth);
 }
 
 /**
@@ -428,6 +875,16 @@ function autoScaleTextElements(
   const largeImages = elements.filter(
     (el: any) => el.type === "image" && el.width * el.height > canvasWidth * canvasHeight * 0.15,
   );
+  const hasEditorialOverlayText = textElements.some((text: any) => {
+    const textArea = Math.max(1, rectArea(text));
+    return largeImages.some((img: any) => (
+      (text.fontSize ?? 0) >= 24
+      && computeRectIntersectionArea(text, img) / textArea >= 0.35
+    ));
+  });
+  if (hasEditorialOverlayText) {
+    return;
+  }
   let textZoneTop = 0;
   let textZoneBottom = canvasHeight;
   for (const img of largeImages) {
@@ -498,18 +955,28 @@ function autoScaleTextElements(
     }
   }
 
-  // Adjust rect backgrounds to match redistributed text
-  for (const el of elements) {
-    if (el.type !== "rect" || el.width >= canvasWidth * 0.9) continue;
-    if (el.y < textZoneTop || el.y > textZoneBottom) continue;
-    const textsInRect = sorted.filter(
-      (t: any) => t.y >= el.y - 30 && t.y <= el.y + el.height + 30,
-    );
-    if (textsInRect.length > 0) {
-      el.y = Math.round(Math.min(...textsInRect.map((t: any) => t.y)) - 12);
-      el.height = Math.round(
-        Math.max(...textsInRect.map((t: any) => t.y + t.height)) - el.y + 12,
-      );
+  syncRectCardsToNearbyText(elements, canvasWidth);
+}
+
+function enforceFontScaleBounds(
+  elements: PresentationSlideElement[],
+  fontScale?: {
+    titleMin: number;
+    titleMax: number;
+    bodyMin: number;
+    bodyMax: number;
+  },
+): void {
+  if (!fontScale) {
+    return;
+  }
+  for (const element of elements) {
+    if (element.type !== "text") {
+      continue;
+    }
+    const sanitizedFontSize = sanitizeFontSize(element.fontSize, fontScale);
+    if (sanitizedFontSize !== undefined) {
+      element.fontSize = sanitizedFontSize;
     }
   }
 }
@@ -518,6 +985,14 @@ export function normalizePresentationLayoutDslToSlideContent(options: {
   draft: PresentationLayoutDslResponse;
   canvasWidth: number;
   canvasHeight: number;
+  allowedMediaTokens?: string[];
+  allowedFontFamilies?: string[];
+  fontScale?: {
+    titleMin: number;
+    titleMax: number;
+    bodyMin: number;
+    bodyMax: number;
+  };
 }): PresentationSlideContent | null {
   if (options.draft.status !== "ok") {
     return null;
@@ -525,6 +1000,12 @@ export function normalizePresentationLayoutDslToSlideContent(options: {
 
   const flattened: PresentationSlideElement[] = [];
   let groupCount = 0;
+  const allowedMediaTokens = options.allowedMediaTokens?.length
+    ? new Set(options.allowedMediaTokens)
+    : undefined;
+  const allowedFontFamilies = options.allowedFontFamilies?.length
+    ? new Set(options.allowedFontFamilies)
+    : undefined;
   for (const element of options.draft.elements) {
     if (element.type === "group") {
       groupCount += 1;
@@ -532,16 +1013,24 @@ export function normalizePresentationLayoutDslToSlideContent(options: {
         return null;
       }
       for (const child of element.children) {
-        flattened.push(toSlideElement({
+        flattened.push(clampElementToCanvas(toSlideElement({
           ...child,
           id: `${element.id}__${child.id}`,
           x: clampNumber(element.x + child.x, -100_000, 100_000),
           y: clampNumber(element.y + child.y, -100_000, 100_000),
-        }));
+        }, {
+          allowedMediaTokens,
+          allowedFontFamilies,
+          fontScale: options.fontScale,
+        }), options.canvasWidth, options.canvasHeight));
       }
       continue;
     }
-    flattened.push(toSlideElement(element));
+    flattened.push(clampElementToCanvas(toSlideElement(element, {
+      allowedMediaTokens,
+      allowedFontFamilies,
+      fontScale: options.fontScale,
+    }), options.canvasWidth, options.canvasHeight));
   }
 
   if (flattened.length === 0 || flattened.length > PRESENTATION_LAYOUT_DSL_MAX_ELEMENTS) {
@@ -552,8 +1041,13 @@ export function normalizePresentationLayoutDslToSlideContent(options: {
   fixTextImageOverlap(flattened, options.canvasWidth, options.canvasHeight);
   // Auto-scale text to fill available space if there's too much empty area
   autoScaleTextElements(flattened, options.canvasWidth, options.canvasHeight);
+  // Enforce the caller's fontScale after auto-scaling so post-processing does
+  // not silently exceed the negotiated DSL typography contract.
+  enforceFontScaleBounds(flattened, options.fontScale);
   // Re-check overlaps after redistribution (autoScale can push text into images)
   fixTextImageOverlap(flattened, options.canvasWidth, options.canvasHeight);
+  ensureTextOnImageContrast(flattened, options.canvasWidth, options.canvasHeight);
+  resolveDecorativeOverlap(flattened, options.canvasWidth, options.canvasHeight);
 
   const slideContent = presentationSlideContentSchema.safeParse({
     elements: flattened,

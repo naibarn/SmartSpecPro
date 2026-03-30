@@ -1,5 +1,151 @@
 # SSP Reviewer Agent Memory
 
+## Spec 062 — i18n Dual-Language System — Section-13 (Wave 1 Dashboard + Common) — Verdict: APPROVE_WITH_FIXES (2026-03-25)
+
+6 HIGH, 5 MEDIUM, 3 LOW findings.
+- **HIGH-1 — `healthBadge.*` hardcoded at line 981**: Keys exist in JSON but `t()` never called — ternary still returns English strings.
+- **HIGH-2 — `subtitle`, `websitePreview`, `meta.*` hardcoded at lines 986–1004**: Six keys defined in JSON, never wired.
+- **HIGH-3 — `attentionNotices` useMemo still builds English strings**: `notices.*` keys in JSON use non-standard `{{_count}}` (incompatible with i18next plural `{{count}}`); `t()` never called in memo.
+- **HIGH-4 — `nextBestActions` useMemo action labels/descriptions hardcoded**: `actions.*` keys not even present in `dashboard.json`; t() not called.
+- **HIGH-5 — `quickActions`, `statusConfig`, `txTypeConfig` hardcoded**: Keys in JSON but t() never called at lines 642–668.
+- **HIGH-6 — `trendHealth.*` section header and `prioritySnapshot.title` / `nextBestActions.title` hardcoded**: Lines 1126–1128, 1034, 1087.
+- **MEDIUM-1 — `usageMomentum` useMemo builds English label strings**: Must store key, call t() at JSX site.
+- **MEDIUM-2 — `{{_count}}` interpolation is wrong parameter name**: All six `notices.*` values use `{{_count}}`; i18next plural requires `{{count}}`.
+- **MEDIUM-3 — ~35 spec-required dashboard keys absent**: `actions.*`, `sidebar.*`, `txType.*`, `momentum.label`, `trendHealth.liveView`, etc.
+- **MEDIUM-4 — `toast.updated` absent from common.json**: Spec requires it; test also omits it.
+- **MEDIUM-5 — Integration tests are source-scan only**: Spec requires jsdom render tests; only `toContain(string)` source scans present.
+- **LOW-1 — `session.unauthorized` value semantics wrong**: Has "not authorized to perform this action" but spec requires "must be signed in to access this page".
+- **LOW-2 — `momentum.*` values abbreviated vs spec wording**: `"Rising"` vs `"Usage is rising"` etc.
+- **LOW-3 — No reverse th-completeness assertion**: Tests check th keys exist in en, not that en keys all have th translations.
+Review file: `specs/feature/062-i18n-dual-language-system/implementation/code_review/section-13-review.md`
+
+## Spec 062 — i18n Dual-Language System — Section-12 (Wave 1 Nav + Auth) — Verdict: APPROVE_WITH_FIXES (2026-03-25)
+
+3 HIGH, 3 MEDIUM, 3 LOW findings.
+- **HIGH-1 — Mobile Navbar buttons hardcoded**: Desktop buttons translated; mobile menu "Sign In" and "Get Started Free" remain hardcoded English at `Navbar.tsx:265–275`.
+- **HIGH-2 — `getResolvedMenuItems` not reactive to language change**: Plain function (not hook) reads `i18next.t()` once at call time. No React subscription — sidebar labels stale after language toggle. Fix: wrap with a hook that calls `useTranslation('nav')`, or add `useTranslation('nav')` in `Dashboard.tsx` to trigger re-render.
+- **HIGH-3 — `AuthCallback.tsx` standard OAuth path still hardcoded**: Meta OAuth path was translated; the standard success (`'Authentication successful! Redirecting...'`) and error fallback (`'Authentication failed'`) strings remain hardcoded English.
+- **MEDIUM-1 — `signUp.*` vs `signup.*` casing diverges from spec**: JSON files and tests use `signUp.*` (camelCase); spec defines `signup.*`. Latent defect — surfaces when Signup.tsx strings are replaced.
+- **MEDIUM-2 — `layout.signIn` absent from test key assertions**: Used by DashboardLayout but not in `REQUIRED_LAYOUT_KEYS`.
+- **MEDIUM-3 — `REQUIRED_NAVBAR_KEYS` covers only 5 of 13 navbar keys**: 8 keys (`navbar.workflows`, `navbar.gallery`, `navbar.docs`, etc.) not asserted.
+- **LOW-1 — `layout.authRequired` value silently reworded** during migration (added "Please sign in to continue.").
+- **LOW-2 — Partial Login.tsx migration is intentional** (hook added, 3 strings replaced); remaining hardcoded strings are known wave-1 state.
+- **LOW-3 — Three spec-required auth-page i18n test files absent** (`Login.i18n.test.tsx`, `Signup.i18n.test.tsx`, `ForgotPassword.i18n.test.tsx`).
+Review file: `specs/feature/062-i18n-dual-language-system/implementation/code_review/section-12-review.md`
+
+## Spec 062 — i18n Dual-Language System — Section-11 (Settings Display Language) — Verdict: APPROVE_WITH_FIXES (2026-03-25)
+
+2 HIGH, 3 MEDIUM, 3 LOW findings.
+- **HIGH-1 — Sub-component state never hydrated from saved prefs**: Parent `Settings()` holds a separate `displayLanguage` state and syncs it from `prefsData` in a `useEffect`, but `DisplayLanguageDropdown` is a module-level sub-component with its own isolated state. The parent's `setDisplayLanguage` is orphaned — the dropdown always initialises from `i18next.language`, not the user's saved preference.
+- **HIGH-2 — Dual mutation instances can overwrite each other**: `DisplayLanguageDropdown` holds its own `trpc.users.updatePreferences.useMutation()` instance; the parent `Settings()` holds another. When the user changes the display language and then clicks the parent's Save button, the parent fires with its stale `translationLanguage` state, overwriting the value that `DisplayLanguageDropdown` just persisted.
+- **MEDIUM-1 — `i18next.language` initialisation not normalised**: If i18next resolves to a region-tagged code (`"en-US"`), the controlled `<select>` value will not appear in the filtered `displayLanguages` list — the select renders with no matching option. The on-change allowlist guard is correct but the initial value is not guarded.
+- **MEDIUM-2 — Sub-component mutation has no error handler**: Silently swallows network/validation errors. Parent's mutation has `onError` toast; sub-component does not.
+- **MEDIUM-3 — Only 7 of 8 spec-required tests present**: Missing "dropdown reflects current i18next.language on initial render".
+- **LOW-1 — No pending guard on mutation**: Multiple concurrent mutations can fire on rapid selection changes.
+- **LOW-2 — `<label>` not associated to `<select>` via `htmlFor`/`id`**: Accessibility gap; screen readers cannot associate label with combobox.
+- **LOW-3 — Section heading and description are hardcoded English strings**: Not wrapped in `t()` — will not translate when language is changed.
+Review file: `specs/feature/062-i18n-dual-language-system/implementation/code_review/section-11-review.md`
+
+## Spec 062 — i18n Dual-Language System — Section-10 (Locale Toggle) — Verdict: APPROVE_WITH_FIXES (2026-03-25)
+
+0 HIGH, 3 MEDIUM, 3 LOW findings.
+- **MEDIUM-1 — `i18n.language` not guarded against non-`SUPPORTED_LANGUAGES` values**: If i18next resolves `"en-US"` (browser locale), `currentLang === "en"` is false, rendering `["en", "en-US"]` with raw code as button text. Fix: normalise `currentLang` against `SUPPORTED_LANGUAGES` before use.
+- **MEDIUM-2 — English-button finder uses wrong Thai string**: Test line 50 excludes `"ภาษาไทย"` but production renders `"ไทย"` (`LANGUAGE_LABELS["th"]`). The `find` is always undefined; `|| buttons[0]` silently rescues it — dead find logic.
+- **MEDIUM-3 — No BCP-47 region-tag test**: No test for `mockLanguage = "zh-Hans"` to verify the hyphenated code resolves to the correct label and not the raw fallback string.
+- **LOW-1 — `as keyof typeof LANGUAGE_LABELS` cast suppresses type safety**: The cast masks the fact that `visibleLocales` entries are unvalidated `string` values. Pre-validating against `SUPPORTED_LANGUAGES` makes the cast unnecessary.
+- **LOW-2 — `aria-pressed` tests are structurally weak**: Two separate tests each assert that any button has the given state, not that the *correct* button has it. Could both pass even with inverted state.
+- **LOW-3 — Styling-classes test missing**: Spec §Test cases requires asserting `"bg-primary"` on active and `"text-muted-foreground"` on inactive buttons — not implemented.
+Review file: `specs/feature/062-i18n-dual-language-system/implementation/code_review/section-10-review.md`
+
+## Spec 062 — i18n Dual-Language System — Section-08 (Locale JSON Files) — Verdict: APPROVE_WITH_FIXES (2026-03-25)
+
+2 HIGH, 3 MEDIUM, 3 LOW findings.
+- **HIGH-1 — `bsHelp.*` key collision overwrites `help.*` in help.json**: Both `bsHelp` and `help` map to the `"help"` namespace. After prefix stripping, `bsHelp.title` overwrites `help.title` ("Complete User Guide" → "Browser Session Help"). Any shared key suffix between the two source prefixes is silently clobbered. No test catches this.
+- **HIGH-2 — Unknown source prefixes silently fall to `misc.json`**: `keyToNamespace()` returns `"misc"` for unmapped prefixes. `misc.json` is never registered with i18next — any keys landing there are silently dropped from the runtime. No guard, no test, no error thrown.
+- **MEDIUM-1 — `ensureCommonKeys` uses falsy check `!data[k]`**: Would overwrite `"0"` or `""` values. Also has a latent divergence: script seeds `"copied": "Copied!"` while migration produces `"Copied to clipboard"` (migration wins today, but no test enforces alignment).
+- **MEDIUM-2 — `filePrefixMap` in prefix-stripping test is incomplete**: Doesn't cover `bsHelp.` for help.json, or `notifications.`/`common.` for common.json.
+- **MEDIUM-3 — No key-count completeness test for 8 migrated namespaces**: Only `help` has the completeness assertion; `chat`, `settings`, `billing`, `workflow`, `media`, `admin`, `presentation` are unverified.
+Review file: `specs/feature/062-i18n-dual-language-system/implementation/code_review/section-08-review.md`
+
+## Spec 062 — i18n Dual-Language System — Section-07 (Server Allowlist) — Verdict: APPROVE_WITH_FIXES (2026-03-25)
+
+1 HIGH, 3 MEDIUM, 2 LOW findings.
+- **HIGH — `targetLanguage` input not hardened in `translation.ts`**: The procedure body applies the `rawLang → targetLang` allowlist fallback, but the Zod *input* schema is still `z.string().max(10).optional()`. A 9-char payload passes input validation and only gets sanitised at runtime — the schema boundary is the authoritative enforcement point.
+- **MEDIUM-1 — `LANGUAGE_NAMES` map does not cover all `SUPPORTED_LANGUAGES`**: Missing `en`, `ar`, `ru`, `hi`, `vi`, `id`, `it`, `nl`, `pl`, `tr`, `zh-Hans`, `zh-Hant`, `pt-BR`. Raw BCP-47 codes fall through to LLM prompt. Fix: use `LANGUAGE_LABELS_EN` from `shared/i18n.ts`.
+- **MEDIUM-2 — `media.ts` consumer unguarded**: `getUserTranslationLanguagePreference` returns raw `prefs.translationLanguage` string without `SUPPORTED_LANGUAGES` check. Spec §Security Context lists this path explicitly.
+- **MEDIUM-3 — `helpContentService` missing English fallback**: Spec requires fallback to English when locale dir does not exist; service silently returns empty array. Also `getLocaleDir(locale)` uses the string directly with no internal guard.
+- **LOW-1 — Test schema reconstructed locally**: `users.i18n.test.ts` re-declares the schema instead of importing from the router; can drift silently.
+Review file: `specs/feature/062-i18n-dual-language-system/implementation/code_review/section-07-review.md`
+
+## Spec 062 — i18n Dual-Language System — Section-06 (Backward Compatibility) — Verdict: CONDITIONAL PASS (2026-03-25)
+
+1 HIGH, 2 MEDIUM, 2 LOW findings.
+- **HIGH-1 — `setLocale` not memoized**: New implementation returns a fresh arrow function on every render; old API used `useCallback`. Consumers passing `setLocale` as a prop or in a `useEffect` dep array will re-fire on every render — behavioral regression from old API.
+- **MEDIUM-1 — `locale` type cast unsafe**: `(i18n.resolvedLanguage ?? i18n.language) as Locale` lies to TypeScript if i18next is ever initialized with a language outside `"en" | "th"` (e.g. "en-US"). Silent type lie, not a runtime error.
+- **MEDIUM-2 — Namespace list hardcoded with no audit**: Three namespaces `["help","common","admin"]` assumed to cover all 13 consumers. No audit of actual key prefixes used. Any key in an unlisted namespace falls back to key-as-string silently.
+- **LOW-1 — `dict: {}` is a permanent lie**: Interface still declares `TranslationDictionary`; no consumer reads it today, but no runtime warning exists to catch future misuse before Wave 3 cleanup.
+- **LOW-2 — Shared module cache + mutable singleton in tests**: Dynamic `await import(../context)` inside each `it()` shares the same module instance; language-change tests mutate a shared `testI18n` singleton — potentially flaky under parallel test execution.
+Review file: `.claude/agent-memory/ssp-reviewer/project_062_i18n_section06_review.md`
+
+## Spec 062 — i18n Dual-Language System — Section-01 (Shared Config) — Verdict: APPROVE_WITH_FIXES (2026-03-24)
+
+1 HIGH, 3 MEDIUM, 2 LOW findings. All spec requirements implemented correctly; issues are integration/safety concerns.
+- **HIGH — react-i18next v16 / i18next v25 peer-dep unverified**: No `pnpm-lock.yaml` diff present. `react-i18next@^16.6.5` peer constraint requires `i18next >=24 <26`; v25 is a major with `TypeOptions` breaking changes. Must verify with `pnpm ls` in CI before downstream sections build on this.
+- **MEDIUM — Dual i18n system co-existence unaddressed**: Existing `client/src/lib/i18n/` (bespoke, `Locale = "en" | "th"`) still active. No migration plan in section-01. Sections using `@shared/i18n` + sections using `useI18n()` will have dual sources of truth for active language until section-06 (backward compat) lands.
+- **MEDIUM — No HTML-markup test for label values**: Security comment requires plain text only, but no test asserts `/<[^>]+>/` is absent from `LANGUAGE_LABELS`/`LANGUAGE_LABELS_EN`.
+- **MEDIUM — Server `@shared/` alias unverified**: Vite alias resolves `@shared/` client-side only. Server must use relative import. Risk of downstream sections using wrong path.
+Review file: `specs/feature/062-i18n-dual-language-system/implementation/code_review/section-01-review.md`
+
+## Spec 062 — i18n Dual-Language System — Plan Completeness Review — Verdict: APPROVE_WITH_FIXES (2026-03-24)
+
+5 of 13 section files were never generated — only `.prompts/` stubs exist. Wave 0 + Wave 1 are NOT implementable until these are written.
+- **BLOCKING: section-06-backward-compat.md missing** — 13 existing `useI18n()` consumers will break without this.
+- **BLOCKING: section-07-server-allowlist.md missing** — security requirement S2 unimplemented.
+- **BLOCKING: section-08-locale-files.md missing** — all 17 namespace JSON files + en.ts/th.ts migration. Sections 12 and 13 depend on it.
+- **section-11-settings-language.md missing** — settings page Display Language dropdown unimplemented.
+- Additional gaps: `main.tsx` i18nReady gating only in section-05 prose, `helpRouter` locale widening has no section, section-04 preloader calls `i18next.loadNamespaces()` not `loadNamespace()` from loader.ts (inconsistency with spec).
+Review file: `.claude/agent-memory/ssp-reviewer/project_062_i18n_plan_review.md`
+
+## Spec 061 — Upload-Post Universal Gateway — Round-2 Review — Verdict: APPROVE_WITH_FIXES (2026-03-24)
+
+All 3 CRITICALs from Round 1 FIXED. 3 new HIGH, 5 MEDIUM, 2 LOW remain.
+- **NEW-HIGH-1 — Large video upload path undefined**: §4.1 says "signed URL pattern" for >100MB video but never defines it. 30s UploadPostClient timeout will abort large uploads silently.
+- **NEW-HIGH-2 — XSS in JWT callback**: `window.opener.postMessage('upload-post-linked','*')` wildcard origin — must be `'https://smartaihub.app'`.
+- **NEW-HIGH-3 — Feature flag fail-OPEN risk**: `getTenantFeatureFlag()` existing helper defaults to `true` on Redis failure. Spec defines `isUploadPostEnabled()` (fail-closed) but does NOT mandate it replaces the generic helper in the tRPC middleware. If implementer uses the wrong helper, flag is fail-open.
+- **NEW-MED-1 — Unified timeline pagination unspecified**: Two independent ISO timestamp cursors for native + Upload-Post cannot be merged without a shared cursor strategy. Page boundaries will drop or duplicate items.
+- **NEW-MED-4 — Agency background context gap**: §4.6 says "executor resolves user's connection" but gives no mechanism for injecting userId into headless agency runs.
+Review files: `.claude/agent-memory/ssp-reviewer/project_061_upload_post_gateway_review.md` (R1), `project_061_upload_post_gateway_review_r2.md` (R2)
+
+## Spec 061 — Upload-Post Universal Social Gateway — Plan Completeness Review — Round 1 — Verdict: APPROVE_WITH_FIXES (2026-03-24)
+
+3 CRITICAL, 5 HIGH, 6 MEDIUM, 4 LOW findings (all addressed in updated spec). Key (now fixed):
+- CRITICAL-1: social_posts.pageId NOT NULL deadlock — FIXED by standalone upload_post_jobs
+- CRITICAL-2: Circular FK — FIXED (removed)
+- CRITICAL-3: No migration DDL — FIXED (Section 3.7)
+Review file: `.claude/agent-memory/ssp-reviewer/project_061_upload_post_gateway_review.md`
+
+## Spec 058 — Agency Creator Intelligence Upgrade — Section-08 (Frontend Suggestions UI) — Verdict: CONDITIONAL PASS (2026-03-24)
+
+2 HIGH, 3 MEDIUM, 4 LOW findings. Key:
+- **HIGH-1 — `Apply` button and `handleApplySuggestion` absent**: Only a `Skip`/Noted flow exists. The `applySuggestion` tRPC procedure is not defined. The `appliedSuggestions` Set tracks dismissals, not applications — a semantic mislabel. Spec §4 (Security: F03) requires a whitelist-only apply path.
+- **HIGH-2 — `change` field not stripped from client response**: Python backend stores `change` in every suggestion dict. The tRPC `autoCreateStatus` return type omits it but uses an `as` cast (no Zod parse), so the runtime object still contains `change`. Spec §4 explicitly forbids forwarding the raw change payload to the browser.
+- **MEDIUM-1 — `onCreated` callback deferred without caller audit**: Original code auto-called `onCreated(agencyId)` on completion; new code requires a button click. Callers in `AgencyBuilder.tsx` may rely on the auto-call.
+- **MEDIUM-2 — tRPC mutation accessed via `?? { mutateAsync: null }` defensive pattern** bypasses type safety for `saveAsTemplate`.
+- **MEDIUM-3 — Suggestion text rendered without Zod parse**: Conditional on HIGH-2 fix; currently safe with React text nodes but no structural validation.
+Review file: `specs/feature/058-agency-creator-intelligence-upgrade/implementation/code_review/section-08-review.md`
+
+## Spec 059 — KNPLabs AI Multi-Provider Expansion — Plan Completeness Review — Verdict: APPROVE_WITH_FIXES (2026-03-24)
+
+2 CRITICAL, 5 HIGH, 7 MEDIUM, 4 LOW findings. Key:
+- **CRITICAL-1 — generation_service.py integration path absent**: No section describes how `media_generation.py` routes `provider=knplabai` to the new Celery task. Section 05 defines the task but nothing wires it in.
+- **CRITICAL-2 — `_upload_and_return_url` helper undefined**: Used in Sections 04/06/07 (Gemini base64 and TTS binary→S3) but not defined anywhere in the spec or existing provider code.
+- **HIGH-1 — `KNPLABAI_API_KEY` missing from `config.py`**: No section adds the env var to pydantic BaseSettings — provider instantiation will raise AttributeError.
+- **HIGH-2 — Factory.py integration uses wrong pattern**: `factory.py` handles LLM providers only; KNPLabAIProvider is a media provider and must be wired in the media dispatch layer, not the LLM ProviderFactory.
+- **HIGH-3 — VEO multipart/form-data submission undetailed**: httpx requires `files=` kwarg; spec only sketches polling, not form-data submission.
+- **HIGH-4 — Credit cost column mismatch**: Spec shows both "0.156 cr/req" and integer "5" for the same model — rounding rule and DB column type are ambiguous.
+- **HIGH-5 — Section 08 embeddings dimension mismatch risk**: KNPLabs fallback may use 3,072-dim vectors while existing data uses 1,536-dim — corrupts vector comparisons silently.
+Review file: `.claude/agent-memory/ssp-reviewer/project_059_knplabai_plan_review.md`
+
 ## Project Conventions (confirmed)
 
 - tRPC routers: `apps/web/server/routers/library.ts` — library feature router
@@ -8,6 +154,216 @@
 - `fileBase64` is used for file uploads/replace — **no server-side size cap on `replaceFile`** (only `saveMarkdown` has a 5MB cap); `uploadFile` cap is 68MB base64 (`MAX_FILE_BASE64_LENGTH = 68_000_000`)
 - `fileBase64` must be a **raw base64 string** (no `data:` prefix). `FileReader.readAsDataURL()` returns a prefixed data URL — callers must strip the prefix with `.split(",")[1]` before sending. Sending the full data URL corrupts stored files silently.
 - Auth pattern: `protectedProcedure` enforces JWT; tenant isolation via `resolveLibraryTenantId`
+
+## Spec 057 — MCP Security Context Optimization, Section-17 (Multi-Transport Client) — Verdict: APPROVE_WITH_FIXES (2026-03-24)
+
+3 HIGH, 5 MEDIUM, 3 LOW findings. Key:
+- **HIGH-1 — Shell injection in `_call_rpc_stdio`**: `f"echo '{payload}' | cat"` embeds unsanitized JSON in a shell string. Single-quote in any param value causes RCE inside the container.
+- **HIGH-2 — No HTTP connection pooling**: New `httpx.AsyncClient` created per `call_rpc` call. Contradicts module docstring; TLS reconnect on every request.
+- **HIGH-3 — Response size limit bypassable via chunked encoding**: `resp.content` buffers full body before byte count check; chunked responses bypass the pre-download `Content-Length` guard.
+- **MEDIUM-1 — Post-connect IP verification absent**: `validated_ip` stored but never re-checked after TCP connect — spec §Security §1 (NEW-06) requires this step explicitly.
+- **MEDIUM-2 — SSE fallback logged but not executed**: `mcp_streamable_fallback` is logged then `McpConnectionError` raised immediately; no GET fallback attempt.
+- **MEDIUM-3 — `test_health_check_returns_status` makes a live network call** with no mock — passes vacuously via `except Exception` fallback.
+- **LOW-1 — `test_auto_reconnect_max_3_retries` is a constant assertion**: No reconnect loop exists in production code.
+Review file: `specs/feature/057-mcp-security-context-optimization/implementation/code_review/section-17-review.md`
+
+## Spec 058 — Agency Creator Intelligence Upgrade — Section-06 (Template Save) — Verdict: APPROVE_WITH_FIXES (2026-03-24)
+
+2 HIGH, 3 MEDIUM, 3 LOW findings. Key:
+- **HIGH-1 — `mcpServerTokensEncrypted` / `mcpServers` stripped by omission only**: Agent definition builder never reads these columns, but no explicit exclusion guard or comment exists. A future refactor using spread would silently embed encrypted tokens or server URLs in publicly readable template JSON.
+- **HIGH-2 — Agent/flow selects lack tenant re-verification**: Lines 4875/4879 filter only by `agencyId`; a defence-in-depth `tenantId` re-check is absent. Race condition between agency lookup and agent query could leak cross-tenant data.
+- **MEDIUM-1 — Migration bundles social DDL with `agency_templates` ALTER**: `0117_modern_patriot.sql` contains 11 social-channel table creations before the blocking `agency_templates` column additions. A failure in any social DDL rolls back the section-06 schema fix.
+- **MEDIUM-2 — Admin test missing insert assertion**: Admin test verifies `templateId` returned but does not assert `agentDefinitions` is empty — allows shared mock state to produce false positives.
+- **MEDIUM-3 — 2 spec-required tests missing**: "strips UUIDs" assertion on `id` absence and "preserves nodeConfig/modelRequirements" not implemented.
+Review file: `specs/feature/058-agency-creator-intelligence-upgrade/implementation/code_review/section-06-review.md`
+
+## Spec 058 — Agency Creator Intelligence Upgrade — Section-05 (Post-Creation Suggestions) — Verdict: REQUEST_CHANGES (2026-03-24)
+
+3 HIGH, 3 MEDIUM, 3 LOW findings. Key:
+- **HIGH-1 — `_llm_suggest_improvements` uses `_llm_call` directly (not `_budget_llm_call`)**: One untracked LLM call per design run bypasses the MAX_LLM_CALLS=18 budget guard. Recurring pattern from Section-04.
+- **HIGH-2 — Race condition in `check_rate_limit`**: GET + INCR + EXPIRE is non-atomic; concurrent requests from the same user can both pass the check before either increments. Fix: use `INCR` return value directly (atomic), set `EXPIRE` only when count==1 for a fixed window.
+- **HIGH-3 — `change` field forwarded raw to frontend**: Spec F09 requires `autoCreateStatus` to strip `change` from suggestions via Zod before returning. `safeData` is returned with a bare `as` cast — no stripping, no validation.
+- **MEDIUM-1 — No retrieval path for suggestions**: Only `hasSuggestions: bool` surfaces in completed status; no `getCreatorSuggestions` tRPC procedure exists; frontend cannot fetch the suggestion array.
+- **MEDIUM-2 — `get_suggestions` has no error handling**: Redis failure raises unhandled exception; `store_suggestions` is protected but its read counterpart is not.
+- **MEDIUM-3 — Rate limit window slides**: `r.expire()` called on every creation resets the TTL, creating a sliding window instead of the fixed 1-hour window the spec requires.
+Review file: `specs/feature/058-agency-creator-intelligence-upgrade/implementation/code_review/section-05-review.md`
+
+## Spec 058 — Agency Creator Intelligence Upgrade — Section-04 (Review Enhancement) — Verdict: APPROVE_WITH_FIXES (2026-03-24)
+
+2 HIGH, 2 MEDIUM, 2 LOW findings. Key:
+- **HIGH-1 — Budget guard bypassed**: `_llm_review_plan` and `_llm_review_design` call `_llm_call` directly, not `_budget_llm_call`. Up to 6 review iterations per design run can occur against a MAX_LLM_CALLS=12 budget without counting.
+- **HIGH-2 — Fix-instruction test only covers design reviewer**: `test_review_design_includes_fix_instruction` is titled "Both review prompts" but never calls `_llm_review_plan`. Missing `test_review_plan_includes_fix_instruction`.
+- **MEDIUM-1 — `_llm_review_design` loses complexity/memory hints**: Plan reviewer injects `complexity_level` and `memory_recommendation` from `discover_analysis`; design reviewer omits them — asymmetry unintentional.
+- **MEDIUM-2 — Two spec-required behavioral tests absent**: `test_review_design_checks_capabilities` and `test_review_design_checks_memory` from spec §Tests not implemented.
+Review file: `specs/feature/058-agency-creator-intelligence-upgrade/implementation/code_review/section-04-review.md`
+
+## Spec 058 — Agency Creator Intelligence Upgrade — Section-03 (Memory-Informed Planning) — Verdict: APPROVE_WITH_FIXES (2026-03-24)
+
+2 HIGH, 2 MEDIUM, 2 LOW findings. Key:
+- **HIGH-1 — Memory type mismatch vs spec**: Implementation queries `('constraint', 'preference', 'fact', 'skill')` but spec requires `('strategy_success', 'strategy_failure', 'process', 'insight')`. The DB only has the former types. Divergence needs formal reconciliation — either the spec is stale or those types were never added to the schema.
+- **HIGH-2 — `agency_improvement_history` secondary query absent**: Spec §Changes.1 explicitly requires a second query to this table (last 30 days, limit 5, with try/except fallback). Entirely missing from implementation.
+- **MEDIUM-1 — F02 security test too weak**: `test_scoped_by_tenant_and_user` only asserts `execute.called`, not that WHERE clause includes both tenant_id and user_id. A regression removing the user_id filter passes silently.
+- **MEDIUM-2 — Broken positional-arg fallback in `TestPlanIncludesMemories`**: `call_args[1]` accesses the kwargs dict, not the second positional arg. Assertion may not fire correctly.
+Review file: `specs/feature/058-agency-creator-intelligence-upgrade/implementation/code_review/section-03-review.md`
+
+## Spec 058 — Agency Creator Intelligence Upgrade — Section-02 (Interview Replacement) — Verdict: NEEDS_FIX (2026-03-24)
+
+1 HIGH, 2 MEDIUM, 2 LOW findings. Key:
+- **HIGH-1 — `discover_analysis` never forwarded to `_llm_plan()` or `_llm_design()`**: Extracted from payload at line 259 of `_design_async` but not passed as argument to either downstream function. The design LLM never sees capability recommendations — the primary purpose of the section is undelivered.
+- **MEDIUM-1 — `"react"` keyword too broad**: Bare substring match suppresses legitimate goal questions like "How will users react?" — should use word-boundary regex or a more specific pattern.
+- **MEDIUM-2 — No API-level test for answer-submission path**: `/answer` endpoint's `_discover_analysis` round-trip through Redis → design payload is untested at the FastAPI layer.
+Review file: `specs/feature/058-agency-creator-intelligence-upgrade/implementation/code_review/section-02-review.md`
+
+## Spec 058 — Agency Creator Intelligence Upgrade — Section-01 (Discover Enhancement) — Verdict: NEEDS_FIX (2026-03-24)
+
+3 HIGH, 3 MEDIUM, 3 LOW findings. Key:
+- **HIGH-1 — `computer_use` guardrail ignores tenant feature flag**: `_validate_spec` unconditionally strips `supportsComputerUse`; spec §5 requires `check_agentic_flag("agencyComputerUseEnabled", tenant_id)` so trusted tenants can opt in. No opt-in path exists.
+- **HIGH-2 — `agencyCreateSchema` still strips `objective` and `sharedInstructions`**: Confirmed unresolved from prior plan-review CRITICAL finding. Python sends both in `body_json` but Node.js schema and INSERT omit them.
+- **HIGH-3 — `MAX_DISCOVER_CALLS` defined but not enforced**: No retry loop in `_llm_discover`; the budget cap is dead code. Test is a constant-value assertion, not a behavioural test.
+- **MEDIUM-1 — `_self_review_spec` adds up to 2 untracked LLM calls in design phase**: Outside any budget constant.
+- **MEDIUM-2 — Sanity check `abs(old_nodes - new_nodes) <= 3` allows 0-node result and doubling from small specs**.
+Review file: `specs/feature/058-agency-creator-intelligence-upgrade/implementation/code_review/section-01-review.md`
+
+## Spec 058 — Agency Creator Intelligence Upgrade — Plan Completeness Review — Verdict: APPROVE_WITH_FIXES (2026-03-23)
+
+1 CRITICAL, 4 HIGH, 6 MEDIUM, 3 LOW findings. Key:
+- **CRITICAL — `objective` + `sharedInstructions` silently stripped by internal API**: `_implement_agency` sends both fields in `body_json` but `agencyCreateSchema` (index.ts line 954-978) doesn't include them — Zod strips them. The agencies INSERT also never reads them. Section 07 identifies the fix but must be complete.
+- **HIGH-1 — `AsyncSessionLocal` import path missing from Section 03**: Section 03 references the import without specifying `from app.core.database import AsyncSessionLocal` — causes ImportError in Celery worker.
+- **HIGH-2 — Section 06 no tenant isolation on agency read for saveAsTemplate**.
+- **HIGH-3 — Section 08 `handleApplySuggestion` is a stub**: Apply button marks suggestion as applied but never calls `saveBuilder`. No section defines the `change` payload → `saveBuilder` mapping.
+- **HIGH-4 — Budget guard absent in discover task**: MAX_LLM_CALLS budget is tracked only in `_design_async`; discover task calls `_llm_call` directly with no budget limit.
+Review file: `.claude/agent-memory/ssp-reviewer/project_058_agency_creator_plan_review.md`
+
+## Spec 058 — Meta Channels Plan Completeness Review — Verdict: APPROVE_WITH_FIXES (2026-03-23)
+
+1 CRITICAL, 4 HIGH, 5 MEDIUM, 2 LOW findings. Key:
+- **CRITICAL — `socialPages` Drizzle block missing `aiActionMode` + `autoSendConfidenceThreshold`**: Columns present in spec detail table but absent from the TypeScript code block (plan lines ~201-218). Sections 08 and 14 will have schema mismatch.
+- **HIGH-1 — Skills integration absent**: `meta-messenger` + `meta-page-manager` skills from spec.md §1.1 are not in the plan or section manifest.
+- **HIGH-2 — `social_cleanup_task.py` unplanned**: Listed in spec.md §4.6 but no section, no task body, no TDD test, no Celery beat schedule.
+- **HIGH-3 — `workflowTriggerStatus` column missing from Drizzle code block**: Referenced in workflow trigger narrative (plan §9) but not in the `socialMessages` TypeScript schema block — runtime error when batch trigger task queries it.
+- **HIGH-4 — API version mismatch**: spec.md env example uses `v21.0`; claude-spec and plan use `v25.0`.
+- **MEDIUM-1 — Redis unread counters unplanned**: Interview Q2 specified Redis-cached inbox counters; plan uses DB column only.
+- **MEDIUM-2 — Real-time trigger rate limiter unimplemented**: Described in narrative but no section defines the Redis counter or tests it.
+- **MEDIUM-3 — Blocked-category enforcement path unspecified in sections**: Section-14 mentions it but no implementation detail for the `generateDraft`/auto-send path.
+Review file: `.claude/agent-memory/ssp-reviewer/project_058_meta_channels_plan_review.md`
+
+## Spec 057 — MCP Security Context Optimization, Section-11 (Few-Shot Relevance + RAG Dedup) — Verdict: APPROVE_WITH_FIXES (2026-03-23)
+
+2 HIGH, 4 MEDIUM, 3 LOW findings. Key:
+- **HIGH-1 — Wrong patch target for deferred local import**: `EMBED_SVC = "app.orchestrator.vector_store.embedding_service.EmbeddingService"` patches the class in the source module, but production code imports it inside the `try` block body on each call. The name never exists as a module attribute in `agency_few_shot`. Correct fix: move import to module level and patch `"app.services.agency_few_shot.EmbeddingService"`. (Same pattern as Section-09 HIGH-1.)
+- **HIGH-2 — `hash()` cache key is non-deterministic across processes**: `_example_embedding_cache` uses `hash(ex_text)` as a key; Python randomizes `hash()` for strings by default (`PYTHONHASHSEED`). Collision between two different strings silently poisons the cache. Use `hashlib.md5(ex_text.encode()).hexdigest()` instead.
+- **MEDIUM-1 — `select_relevant_examples` never called from production code**: Function defined but never wired — `agency_orchestrator.py` still calls `prepend_examples` directly. Relevance filtering is dead code.
+- **MEDIUM-2 — FIFO eviction fires after insert**: Cache reaches `_CACHE_MAX_SIZE + 1` before eviction. Check `>= _CACHE_MAX_SIZE` before inserting.
+- **MEDIUM-3 — `deduplicate_chunks` has no pre-sort guard**: Spec requires caller to pre-sort by score, but function silently keeps the first (not highest-scored) duplicate if input is unsorted. Add internal sort or document.
+- **MEDIUM-4 — Cache test does not document that task embeddings are intentionally never cached**.
+Review file: `specs/feature/057-mcp-security-context-optimization/implementation/code_review/section-11-review.md`
+
+## Spec 057 — MCP Security Context Optimization, Section-10 (Chat Token Counting) — Verdict: APPROVE_WITH_FIXES (2026-03-23)
+
+2 HIGH, 3 MEDIUM, 2 LOW findings. Key:
+- **HIGH-1 — "At least 6 turns" guard allows oversized messages past budget**: `chatMessages.length >= 6` check is the only brake — when `chatMessages.length < 6`, every message is added unconditionally regardless of token size. A large pasted document as a single message can blow the model's context window.
+- **HIGH-2 — Dynamic `import("../../drizzle/schema")` for `llmModels`**: Module is already statically imported at the top of the file; the dynamic import is unnecessary, confuses static analysis, and should be a static import.
+- **MEDIUM-1 — `OUTPUT_RESERVE = 8192` hardcoded**: Not derived from model's actual `maxOutputTokens`. Should use model row data when available.
+- **MEDIUM-2 — `if (modelRow?.contextLength)` falsy for `contextLength = 0`**: Schema column is nullable integer with no `> 0` constraint. Use `!= null && > 0` guard.
+- **MEDIUM-3 — Negative `remainingBudget` not clamped**: If system context exceeds `inputBudget`, `remainingBudget` is negative; the minimum-6-turn guarantee then forces messages in past the context window limit.
+- **MEDIUM-4 — Four divergent local `estimateTokens` implementations not consolidated**: `messageChunkerService.ts`, `memoryMerger.ts`, `memoryService.ts` each have their own simpler `ceil(len/4)` variant. Migration should be deliberate (formulas differ; chunk sizing was calibrated against the simpler formula).
+Review file: `specs/feature/057-mcp-security-context-optimization/implementation/code_review/section-10-review.md`
+
+## Spec 057 — MCP Security Context Optimization, Section-09 (Vector Memory Tests) — Verdict: APPROVE_WITH_FIXES (2026-03-23)
+
+2 HIGH, 3 MEDIUM, 2 LOW findings. Key:
+- **HIGH-1 — Autouse fixture patches wrong module path**: `mock_embedding_service` patches `app.services.embedding_service.get_embedding_service`, but `long_term_memory.py` imports it via a local import inside `_generate_embedding`. Correct target is `app.services.long_term_memory.get_embedding_service` (or add a module-level import in production code to make the name patchable as a stable attribute).
+- **HIGH-2 — SQL fallback test has no negative assertion**: `test_semantic_memory_retrieval_falls_back_without_embedding` uses `embedding_service=object()` and asserts `execute.await_count == 2` but never asserts the first execute call was NOT the vector query. The test would pass even if the vector path was taken.
+- **MEDIUM-1 — `test_lazy_backfill` commit count uses loose `>= 2`**: Merging commits would break the test without breaking the feature. Tighten to `== 2` or document why the range is needed.
+- **MEDIUM-2 — `test_memory_injection_escapes_malicious_content` has potentially contradictory dual assertion**: Asserts both the HTML-encoded form and `[FILTERED]` appear for the same input string; only one can result from the sanitize-then-escape pipeline for a single content item.
+- **MEDIUM-3 — `extract_and_store_memories` uncovered** (pre-existing gap): The type-normalisation of `strategy_success`/`strategy_failure` → `"fact"` is untested.
+Review file: `specs/feature/057-mcp-security-context-optimization/implementation/code_review/section-09-review.md`
+
+## Spec 057 — MCP Security Context Optimization, Section-08 (Deferred Tool Registry) — Verdict: REQUEST_CHANGES (2026-03-23)
+
+3 HIGH, 2 MEDIUM, 2 LOW findings. Key:
+- **HIGH-1 — NEW-03 scope restriction not enforced**: `_tools` dict is instance-level and accumulates across `prepare_tools` calls. A prompt injection in Agent B's MCP response could use `tool_search("select:...")` to discover tools from Agent A sharing the registry. `search()` must filter against the calling agent's `execution_tools` only.
+- **HIGH-2 — `agency_tools.py` integration absent**: Spec requires wiring `DeferredToolRegistry` inside `resolve_mcp_tools_for_agent()`. File is unmodified; no production code imports `DeferredToolRegistry` — the entire feature is dead code.
+- **HIGH-3 — Tool description injection sanitization absent**: External MCP tool descriptions written into `available_names` (injected into system prompt) without applying `fewShotSanitizer`; prompt injection vector per spec Security §1.
+- **MEDIUM-1 — `_tools` never cleared between `prepare_tools` calls**: Stale tools from a prior call remain searchable if the same registry instance is reused.
+- **MEDIUM-2 — No integration test for `agency_tools.py` wiring**.
+Review file: `specs/feature/057-mcp-security-context-optimization/implementation/code_review/section-08-review.md`
+
+## Spec 057 — MCP Security Context Optimization, Section-07 (Context Summarizer) — Verdict: NEEDS_FIX (2026-03-23)
+
+2 HIGH, 3 MEDIUM, 2 LOW findings. Key:
+- **HIGH-1 — `"gpt-4o-mini"` hardcoded as model fallback**: Spec explicitly forbids hardcoding; non-OpenAI deployments will fail. Must route through gateway priority system.
+- **HIGH-2 — Off-by-one in `_adjust_split_for_atomic_pairs`**: After the while-loop backs past all `tool` messages, the subsequent block decrements `split_idx` again — moving the owning assistant-with-tool-calls into the "old" segment while its tool responses stay in "recent". This is the opposite of the intended behavior.
+- **MEDIUM-1 — Out-of-scope `_evaluate_quality` in `react_executor.py`**: Not in section-07 spec; adds an extra LLM call per completed run. Should be tracked under spec-053.
+- **MEDIUM-2 — Planner hardcoded budget `100000`**: Should read from run config like `ReActExecutor` does.
+- **MEDIUM-3 — `tool_calls` assistant content silently dropped**: Messages with `tool_calls` have `content=None`; tool-call function names are lost from the summary prompt.
+Review file: `specs/feature/057-mcp-security-context-optimization/implementation/code_review/section-07-review.md`
+
+## Spec 057 — MCP Security Context Optimization, Section-05 (Spec Compliance) — Verdict: APPROVE_WITH_FIXES (2026-03-23)
+
+2 HIGH, 3 MEDIUM, 2 LOW findings. Key:
+- **HIGH-1 — `_mcpSessionExpired` 404 not propagated in batch mode**: Batch handler never checks the flag; expired-session items return 200 with JSON-RPC error inside the array instead of HTTP 404.
+- **HIGH-2 — `mcpDeleteHandler` no UUID validation**: Unvalidated `Mcp-Session-Id` header value passed directly to `redis.del`; arbitrary strings reach the Redis keyspace.
+- **MEDIUM-1 — `isNotification` variable declared but never used**: Dead code at line 977.
+- **MEDIUM-2 — No guard against duplicate `initialize` in a batch**: Last writer to `_mcpNewSessionId` wins silently; earlier session ID is dropped.
+- **MEDIUM-3 — No batch test covering notification filtering**: No test verifies that a notification item in a mixed batch is excluded from the response array.
+Review file: `specs/feature/057-mcp-security-context-optimization/implementation/code_review/section-05-review.md`
+
+## Agency Continuous Improvement Loop — Completeness Review — Verdict: APPROVE_WITH_FIXES (2026-03-23)
+
+2 HIGH, 3 MEDIUM, 2 LOW findings. Key:
+- **HIGH-1 — `agency_feedback` router not registered in `main.py`**: `POST /api/v1/agency/analyze-feedback` is defined but never wired — advisor never runs, `advisorAnalysis` always null.
+- **HIGH-2 — `onRunFinished` does not receive `runId`**: Callback gets a message chunk ID, not the run UUID. Feedback row is stored under a wrong/invalid runId.
+- **MEDIUM-1 — `applyImprovement` marks entire feedback row applied on first single decision**: Remaining suggestions disappear after first Apply/Dismiss action.
+- **MEDIUM-2 — `_auto_enrich` dedup check uses wrong 50-char prefix anchor**: May skip valid enrichment or miss real duplicates.
+- **MEDIUM-3 — `getRunFeedback` lacks tenant isolation**: Filters only on `runId + userId`, not `tenantId`.
+Review file: `.claude/agent-memory/ssp-reviewer/project_agency_improvement_loop_review.md`
+
+## Spec 057 — MCP Security Context Optimization, Section-02 (Python Injection Fixes) — Verdict: APPROVE_WITH_FIXES (2026-03-23)
+
+3 HIGH, 3 MEDIUM, 3 LOW findings. Key:
+- **HIGH-1 — F23 empty-domains guard raises on mixed-validity input**: When one valid and one SSRF domain are passed, all domains are filtered and `ToolError` is raised rather than proceeding with the safe domain. Breaking change for existing callers.
+- **HIGH-2 — F17 cell-range test is vacuous**: `read_excel_data` called without `_get_access_token` patched or `credit_charge_fn` supplied; raises `TypeError` before reaching URL-encoding code, making the assertion trivially pass for the wrong reason.
+- **HIGH-3 — F27/F28 deferred with no tests**: Spec-required TDD tests for cross-tenant 403 (F27) and DB-error 503 (F28) are entirely absent. The deferral is undocumented in the test file.
+- **MEDIUM-1 — F25 incomplete**: `logger.info` logs only `base_command` but full command string still dispatched to `SandboxDispatcher` input dict; no test coverage.
+- **MEDIUM-2 — F14/F21 idempotency tests absent**: Double-charge tests for Drive search and OneDrive list required by spec TDD are missing from both test files.
+- **MEDIUM-3 — F27/F28 test stubs absent**: Test file covers only F26 and F29; the two deferred findings have no failing assertion to track them.
+- **LOW — `_SAFE_FILE_INFO_FIELDS` defined inside function body** in `onedrive_mcp.py` (allocates new set per call); should be module-level constant like Google Drive's `_SAFE_FILE_FIELDS`.
+Review file: `specs/feature/057-mcp-security-context-optimization/implementation/code_review/section-02-review.md`
+
+## Spec 057 — MCP Security Context Optimization, Section-01 (Python SSRF + Auth TDD) — Verdict: APPROVE_WITH_FIXES (2026-03-23)
+
+3 HIGH, 2 MEDIUM, 3 LOW findings. Key:
+- **HIGH-1 — `test_executor_uses_clamped_timeout` missing guard**: `mock_factory.call_args.kwargs["timeout"]` is checked without first asserting `mock_factory.called` — if execution short-circuits (ownership error, SSRF), `call_args` is `None` and the assertion raises `TypeError` instead of a test failure.
+- **HIGH-2 — `httpx.HTTPError(string)` breaks on httpx 0.23+**: `HTTPError` requires a `request=` argument; bare string constructor raises `TypeError`. Use `httpx.ConnectError` or `httpx.HTTPStatusError` per spec guidance.
+- **HIGH-3 — `TestStructlog` has redundant `.replace("/", ".")`**: `MODULE_PATH` is already dot-separated; the transform is a silent no-op that would corrupt a future path change.
+- **MEDIUM-1 — Cross-tenant cache contamination test does not catch regressions**: Two independent mock contexts both succeed regardless of cache key correctness; a broken implementation would also pass.
+- **MEDIUM-2 — `workflow_id` not-leaked assertion missing**: Spec line 110 explicitly requires asserting the workflow ID is absent from the error string; `test_blocks_unauthorized_user` does not include this check.
+Review file: `specs/feature/057-mcp-security-context-optimization/implementation/code_review/section-01-review.md`
+
+## Spec 052 — Agency Swarm Full Capability, Deep Data Flow & Tenant Isolation Audit Round 2 — Verdict: REQUEST_CHANGES (2026-03-23)
+
+4 HIGH, 5 MEDIUM, 3 LOW findings. Key:
+- **HIGH-1 — `getById` leaks `mcpServerTokensEncrypted`**: `.select()` wildcard on `agencyAgents` returns encrypted token blob to all callers. Strip with column projection; return boolean `hasMcpTokens` flag.
+- **HIGH-2 — `submitApproval` no tenant isolation**: `agencyConversations` lookup at line 4041 uses only `runId` — no `tenantId` filter. User in tenant B can approve tenant A's run by guessing UUID.
+- **HIGH-3 — `restoreVersion` inserts snapshot `nodeConfig` without Zod re-validation**: Bypasses current `saveBuilder` `.superRefine()` guards. Malicious `nodeConfig` (e.g., crafted `outputKey` in `approval:` namespace, injection payloads) is written verbatim to DB.
+- **HIGH-4 — `_call_skill` omits `tenant_id` from skill execute body**: POST to `/api/v1/skills/execute` carries JWT but no explicit `tenant_id` — skill endpoint must derive tenant from JWT alone.
+- **MEDIUM — `data_transform` `outputKey` not validated**: Free-form string can collide with `"approval:"` namespace used by `_await_approval`, enabling pre-seeding of fake approval entries.
+- **MEDIUM — `ctx.results` unbounded**: No cap on entry count or size; long graphs accumulate megabytes passed to every subsequent LLM prompt.
+- **MEDIUM — 8+ write procedures lack rate limiting**: `update`, `saveBuilder`, `delete`, `createConversation`, `shareAgencyWithGroups`, `unshareAgencyGroup`, `restoreVersion`, `routeResult`.
+- **MEDIUM — `parallel_fan_out` first_complete billing**: Branch cancellation does not cancel in-flight LLM calls; credits charged for discarded branches.
+- **MEDIUM — `_shared_tools_cache` no tenant stamp**: Safe today but has no assertion that `agency_id` belongs to `ctx.tenant_id`.
+Review file: `specs/feature/052-agency-swarm-full-capability/implementation/code_review/deep-dataflow-audit-r2.md`
+
+## Spec 053 — Agency Agentic Intelligence, Section-03 (Frontend Level 1 Intelligence UI) — Verdict: APPROVE_WITH_FIXES (2026-03-23)
+
+2 HIGH, 3 MEDIUM, 3 LOW findings. Key:
+- **HIGH-1 — `agencyAgenticModeEnabled` feature flag gate absent**: Intelligence section renders unconditionally. Section-04 spec confirms the flag defaults to `true` and must gate this UI — same pattern required by all prior specs (049, 051, 052). Must wrap the Intelligence `<div>` + its `<Separator />` in `{agencyAgenticModeEnabled && (...)}`.
+- **HIGH-2 — Zero write-path test assertions**: All 5 tests verify display/read behavior only. A regression in any `onValueChange` handler passes all 5 tests silently.
+- **MEDIUM-1 — Backend `maxReflectionCycles` stores original type, not normalized**: Validation accepts `"3"` (string) as valid integer via `Number("3")` but stores the original string. Add `typeof maxCycles !== "number"` guard.
+- **MEDIUM-2 — `openIntelligence()` uses `getByText` on span, not `getByRole("button")`**: Fragile if span gains child elements.
+- **MEDIUM-3 — `<button>` missing `aria-expanded`**: Screen readers cannot announce collapsed/expanded state.
+Review file: `specs/feature/053-agency-agentic-intelligence/implementation/code_review/section-03-review.md`
 
 ## Spec 053 — Agency Agentic Intelligence Layer — Verdict: APPROVE_WITH_FIXES (2026-03-22)
 

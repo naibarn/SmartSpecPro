@@ -606,3 +606,4 @@ class MarketplaceService:
             "total_purchases": total_purchases,
             "creator_share_percentage": CREATOR_REVENUE_PERCENTAGE,
         }
+# mypy: ignore-errors

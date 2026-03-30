@@ -76,6 +76,8 @@ function mapCategoryToEnum(category?: string): string {
     "video-prompt-generation": "video_prompt_generation",
     "article_generation": "article_generation",
     "article-generation": "article_generation",
+    "slide_generation": "slide_generation",
+    "slide-generation": "slide_generation",
     "product_review": "product_review",
     "product-review": "product_review",
     "audio_generation": "audio_generation",
@@ -102,6 +104,7 @@ function mapCategoryToEnum(category?: string): string {
   if ((cat.includes("image") || cat.includes("photo")) && cat.includes("prompt")) return "image_prompt_generation";
   if ((cat.includes("video") || cat.includes("film")) && cat.includes("prompt")) return "video_prompt_generation";
   if (cat.includes("code") || cat.includes("dev") || cat.includes("engineer") || cat.includes("programming")) return "code_assistant";
+  if (cat.includes("slide") || cat.includes("deck") || cat.includes("presentation") || cat.includes("storyboard")) return "slide_generation";
   if (cat.includes("review") || cat.includes("reviewer") || (cat.includes("product") && !cat.includes("prompt"))) return "product_review";
   if (cat.includes("write") || cat.includes("content") || cat.includes("blog")) return "article_generation";
   if (cat.includes("data") || cat.includes("analy")) return "data_analysis";

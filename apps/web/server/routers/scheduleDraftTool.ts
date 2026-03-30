@@ -22,6 +22,15 @@ const PRIVATE_IP_PATTERNS = [
   /^::1$/,
   /^localhost$/i,
 ];
+const WEEKDAY_TO_DOW: Record<string, number> = {
+  Sun: 0,
+  Mon: 1,
+  Tue: 2,
+  Wed: 3,
+  Thu: 4,
+  Fri: 5,
+  Sat: 6,
+};
 
 function verifyInternalToken(req: Request): boolean {
   const expected = ENV.webGatewayToken;
@@ -94,6 +103,16 @@ export function validateCronStrict(cron: string): { valid: boolean; error?: stri
   return { valid: true };
 }
 
+export function validateTimeZone(timeZone: string | undefined): { valid: boolean; error?: string } {
+  const normalized = timeZone?.trim() || "UTC";
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: normalized }).format(new Date());
+    return { valid: true };
+  } catch {
+    return { valid: false, error: `Invalid timezone: ${normalized}` };
+  }
+}
+
 function validateTopicTemplate(template: string): { valid: boolean; error?: string } {
   const placeholders = [...template.matchAll(/\{\{(\w+)\}\}/g)].map((m) => m[1]);
   const unsupported = placeholders.filter((p) => !ALLOWED_PLACEHOLDERS.has(p));
@@ -137,6 +156,7 @@ export function computeNextRun(
   scheduleType: string,
   cronExpression: string | undefined,
   runAt: Date | undefined,
+  options?: string | { timezone?: string; now?: Date },
 ): Date | null {
   if (scheduleType === "one_time") {
     return runAt ?? null;
@@ -144,22 +164,42 @@ export function computeNextRun(
 
   if (!cronExpression) return null;
 
+  const normalizedOptions = typeof options === "string"
+    ? { timezone: options, now: undefined }
+    : (options ?? {});
+  const timezone = normalizedOptions.timezone?.trim() || "UTC";
+  const timezoneCheck = validateTimeZone(timezone);
+  if (!timezoneCheck.valid) {
+    return null;
+  }
+
   // Simple cron next-occurrence algorithm
   const parts = cronExpression.trim().split(/\s+/);
   if (parts.length !== 5) return null;
 
-  const now = new Date();
+  const now = normalizedOptions.now ?? new Date();
   const candidate = new Date(now.getTime() + 60_000); // start from next minute
   candidate.setSeconds(0, 0);
 
   const maxTime = now.getTime() + 366 * 24 * 60 * 60_000; // 1 year max
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  });
 
   while (candidate.getTime() <= maxTime) {
-    if (matchesCronField(parts[1], candidate.getUTCHours()) &&
-        matchesCronField(parts[2], candidate.getUTCDate()) &&
-        matchesCronField(parts[3], candidate.getUTCMonth() + 1) &&
-        matchesCronField(parts[4], candidate.getUTCDay()) &&
-        matchesCronField(parts[0], candidate.getUTCMinutes())) {
+    const fields = getDateFieldsInTimeZone(candidate, formatter);
+    if (matchesCronField(parts[1], fields.hour) &&
+        matchesCronField(parts[2], fields.dayOfMonth) &&
+        matchesCronField(parts[3], fields.month) &&
+        matchesCronField(parts[4], fields.dayOfWeek, { allowSevenAlias: true }) &&
+        matchesCronField(parts[0], fields.minute)) {
       return new Date(candidate);
     }
     candidate.setTime(candidate.getTime() + 60_000);
@@ -168,19 +208,48 @@ export function computeNextRun(
   return null;
 }
 
-function matchesCronField(field: string, value: number): boolean {
+function getDateFieldsInTimeZone(
+  value: Date,
+  formatter: Intl.DateTimeFormat,
+): {
+  month: number;
+  dayOfMonth: number;
+  dayOfWeek: number;
+  hour: number;
+  minute: number;
+} {
+  const mapped: Record<string, string> = {};
+  for (const part of formatter.formatToParts(value)) {
+    if (part.type !== "literal") {
+      mapped[part.type] = part.value;
+    }
+  }
+
+  return {
+    month: Number(mapped.month),
+    dayOfMonth: Number(mapped.day),
+    dayOfWeek: WEEKDAY_TO_DOW[mapped.weekday] ?? 0,
+    hour: Number(mapped.hour),
+    minute: Number(mapped.minute),
+  };
+}
+
+function matchesCronField(field: string, value: number, options?: { allowSevenAlias?: boolean }): boolean {
+  const allowSevenAlias = options?.allowSevenAlias === true && value === 0;
+  const comparableValues = allowSevenAlias ? [value, 7] : [value];
+
   if (field === "*") return true;
   if (field.startsWith("*/")) {
     const step = parseInt(field.slice(2), 10);
-    return value % step === 0;
+    return comparableValues.some((candidate) => candidate % step === 0);
   }
   const segments = field.split(",");
   for (const seg of segments) {
     if (seg.includes("-")) {
       const [lo, hi] = seg.split("-").map(Number);
-      if (value >= lo && value <= hi) return true;
+      if (comparableValues.some((candidate) => candidate >= lo && candidate <= hi)) return true;
     } else {
-      if (parseInt(seg, 10) === value) return true;
+      if (comparableValues.includes(parseInt(seg, 10))) return true;
     }
   }
   return false;
@@ -221,6 +290,12 @@ export async function scheduleDraftHandler(req: Request, res: Response): Promise
       res.status(400).json({ success: false, error: { code: "invalid_cron", message: cronCheck.error } });
       return;
     }
+  }
+
+  const timezoneCheck = validateTimeZone(input.timezone);
+  if (!timezoneCheck.valid) {
+    res.status(400).json({ success: false, error: { code: "invalid_timezone", message: timezoneCheck.error } });
+    return;
   }
 
   // 4. Topic template placeholder validation
@@ -273,6 +348,7 @@ export async function scheduleDraftHandler(req: Request, res: Response): Promise
     input.schedule_type,
     input.cron_expression,
     input.run_at ? new Date(input.run_at) : undefined,
+    input.timezone,
   );
 
   emitAudit("schedule_draft.created", { userId, tenantId, schedule_type: input.schedule_type });

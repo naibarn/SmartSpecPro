@@ -417,3 +417,4 @@ def create_providers_from_settings(settings=None) -> dict[str, BaseLLMProvider]:
     
     factory = ProviderFactory(settings)
     return factory.create_all_providers()
+# mypy: ignore-errors

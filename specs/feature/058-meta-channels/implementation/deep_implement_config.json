@@ -1,0 +1,37 @@
+{
+  "plugin_root": "/home/dev/projects/SmartSpecPro/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/058-meta-channels/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/058-meta-channels/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "workflow_backend": "compatible",
+  "task_tracking_backend": "compatible",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-db-schema",
+    "section-02-feature-flag-menu",
+    "section-03-meta-graph-client",
+    "section-04-oauth-connection",
+    "section-05-webhook-ingestion",
+    "section-06-inbox-backend",
+    "section-07-inbox-frontend",
+    "section-08-ai-draft",
+    "section-09-publishing",
+    "section-10-comments-moderation",
+    "section-11-workflow-nodes",
+    "section-12-agency-tool",
+    "section-13-rag-archival",
+    "section-14-automation-rules"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-03-23T18:44:09.920132+00:00"
+}

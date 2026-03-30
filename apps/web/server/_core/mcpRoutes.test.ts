@@ -34,7 +34,7 @@ describeSocketSuite("website MCP server", () => {
     try { fs.rmSync(tmp, { recursive: true, force: true }); } catch {}
   });
 
-  it("lists tools via /api/mcp/tools and /mcp/tools", async () => {
+  it("lists tools via /api/mcp/tools", async () => {
     const { registerMCPRoutes } = await import("./mcpRoutes");
     const app = express();
     app.use(express.json());
@@ -46,8 +46,9 @@ describeSocketSuite("website MCP server", () => {
     const j1 = await r1.json();
     expect(Array.isArray(j1.tools)).toBe(true);
 
+    // M26: /mcp/ alias routes removed — only /api/mcp/ is valid
     const r2 = await fetch(`${base}/mcp/tools`, { headers: { Authorization: "Bearer mcptoken" } });
-    expect(r2.status).toBe(200);
+    expect(r2.status).toBe(404);
 
     server.close();
   });

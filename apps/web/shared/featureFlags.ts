@@ -2,7 +2,8 @@
  * Tenant-scoped feature flags for gating Claw features.
  *
  * Stored in tenants.featureFlags (JSON column).
- * All flags default to false unless specified otherwise.
+ * Most flags default to true — features are enabled by default unless
+ * explicitly gated off for rollout or safety.
  */
 export interface TenantFeatureFlags {
   multiChannel: boolean; // F01 — Multi-channel adapters
@@ -39,6 +40,15 @@ export interface TenantFeatureFlags {
   agencyStreaming: boolean; // F32 — Agency SSE streaming
   agencyMcpBridge: boolean; // F33 — Agency MCP bridge integration
   agencyToolApi: boolean; // F34 — Agency standalone tool API
+  agencyAgenticModeEnabled: boolean; // F35 — Agency agentic execution mode (Level 1)
+  agencyReactExecutorEnabled: boolean; // F36 — Agency ReAct executor (Level 2)
+  agencyAutonomousAgentEnabled: boolean; // F37 — Agency autonomous agent (Level 3)
+  agencyLongTermMemoryEnabled: boolean; // F38 — Agency long-term memory (Level 3)
+  META_CHANNELS_ENABLED: boolean; // F39 — Meta Channels feature set
+  mcpServerRegistry: boolean; // F40 — MCP Server Registry (centralized management)
+  mcpStdio: boolean; // F41 — MCP stdio transport (subprocess-based servers)
+  mcpOAuth: boolean; // F42 — MCP OAuth 2.1 authentication
+  UPLOAD_POST_GATEWAY_ENABLED: boolean; // F43 — Upload-Post Universal Gateway
 }
 
 export type TenantFeatureFlagKey = keyof TenantFeatureFlags;
@@ -82,46 +92,64 @@ export const ALLOWED_FEATURE_FLAGS: ReadonlySet<string> = new Set<TenantFeatureF
   "agencyStreaming",
   "agencyMcpBridge",
   "agencyToolApi",
+  "agencyAgenticModeEnabled",
+  "agencyReactExecutorEnabled",
+  "agencyAutonomousAgentEnabled",
+  "agencyLongTermMemoryEnabled",
+  "META_CHANNELS_ENABLED",
+  "mcpServerRegistry",
+  "mcpStdio",
+  "mcpOAuth",
+  "UPLOAD_POST_GATEWAY_ENABLED",
 ]);
 
 /**
  * Default values for each feature flag.
- * costDisplay and personaSystem default to true (low-risk, high-value).
- * All others default to false (opt-in for new features).
+ * All flags default to true — features are enabled by default.
+ * Disable individual flags per-tenant via the admin panel if needed.
  */
 export const FEATURE_FLAG_DEFAULTS: Readonly<TenantFeatureFlags> = {
-  multiChannel: false,
-  chatWidget: false,
-  browserTool: false,
-  canvas: false,
-  voiceChat: false,
-  webhookTriggers: false,
+  multiChannel: true,
+  chatWidget: true,
+  browserTool: true,
+  canvas: true,
+  voiceChat: true,
+  webhookTriggers: true,
   costDisplay: true,
   personaSystem: true,
-  crossAgency: false,
-  channelRouter: false,
-  automationCopilot: false,
-  liveBrowser: false,
-  responsesApi: false,
-  taskPlannerEnabled: false,
-  taskPlannerAgencyEscalation: false,
-  chatBrowserSessionEntry: false,
-  agencyBrowserSessionUi: false,
-  workflowBrowserSessionNodes: false,
-  publicApi: false,
-  multimodalMemory: false,
-  skillOrchestrator: false,
+  crossAgency: true,
+  channelRouter: true,
+  automationCopilot: true,
+  liveBrowser: true,
+  responsesApi: true,
+  taskPlannerEnabled: true,
+  taskPlannerAgencyEscalation: true,
+  chatBrowserSessionEntry: true,
+  agencyBrowserSessionUi: true,
+  workflowBrowserSessionNodes: true,
+  publicApi: true,
+  multimodalMemory: true,
+  skillOrchestrator: true,
   orchestratorEnabled: true,
-  notificationDedupEnabled: false,
-  notificationPreferencesEnabled: false,
-  notificationEscalationEnabled: false,
-  notificationUnifiedCenter: false,
-  notificationEmailDelivery: false,
-  notificationWebhookDelivery: false,
-  unifiedSkillExecution: false,
-  agencyCustomTools: false,
-  agencyGuardrails: false,
-  agencyStreaming: false,
-  agencyMcpBridge: false,
-  agencyToolApi: false,
+  notificationDedupEnabled: true,
+  notificationPreferencesEnabled: true,
+  notificationEscalationEnabled: true,
+  notificationUnifiedCenter: true,
+  notificationEmailDelivery: true,
+  notificationWebhookDelivery: true,
+  unifiedSkillExecution: true,
+  agencyCustomTools: true,
+  agencyGuardrails: true,
+  agencyStreaming: true,
+  agencyMcpBridge: true,
+  agencyToolApi: true,
+  agencyAgenticModeEnabled: true,
+  agencyReactExecutorEnabled: true,
+  agencyAutonomousAgentEnabled: true,
+  agencyLongTermMemoryEnabled: true,
+  META_CHANNELS_ENABLED: true,
+  mcpServerRegistry: true,
+  mcpStdio: false,  // Requires OpenSandbox — keep disabled by default
+  mcpOAuth: false,  // Requires Express callback route — keep disabled until wired
+  UPLOAD_POST_GATEWAY_ENABLED: false, // Requires Upload-Post connection + consent flow
 };

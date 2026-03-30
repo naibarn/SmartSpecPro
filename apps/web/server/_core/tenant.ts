@@ -148,11 +148,11 @@ export function requireTenant(req: TenantRequest, res: Response, next: NextFunct
  */
 export function getTenantTheme(tenant: Tenant) {
   const defaultTheme = {
-    primaryColor: "#6366f1",
-    secondaryColor: "#8b5cf6",
-    accentColor: "#ec4899",
+    primaryColor: "#2563eb",
+    secondaryColor: "#06b6d4",
+    accentColor: "#14b8a6",
     backgroundColor: "#ffffff",
-    textColor: "#1f2937",
+    textColor: "#0f172a",
     fontFamily: "Inter, system-ui, sans-serif",
     headingFont: "Inter, system-ui, sans-serif",
     layout: "modern" as const,
@@ -173,10 +173,25 @@ export function getTenantTheme(tenant: Tenant) {
  */
 export function getTenantSeo(tenant: Tenant) {
   const defaultSeo = {
-    defaultTitle: tenant.name,
-    defaultDescription: `Welcome to ${tenant.name}`,
-    defaultKeywords: [],
+    defaultTitle: `${tenant.name} | Skill Marketplace & Workflow Swarms`,
+    defaultDescription: `Discover reusable skills, build virtual workflows, and run coordinated swarms across chat, presentation, and video outputs with ${tenant.name}.`,
+    defaultKeywords: [
+      tenant.name,
+      "skill marketplace",
+      "virtual workflow",
+      "swarm execution",
+      "AI orchestration",
+      "chat output",
+      "presentation output",
+      "video output",
+    ],
     twitterCard: "summary_large_image" as const,
+    aiContext: `${tenant.name} is a skill marketplace platform for building virtual workflows and swarm executions that produce chat, presentation, and video outputs.`,
+    aiKeyFacts: [
+      `${tenant.name} lets teams publish reusable skills.`,
+      `${tenant.name} supports virtual workflow orchestration.`,
+      `${tenant.name} can coordinate swarm execution for multiple outputs.`,
+    ],
   };
 
   return {

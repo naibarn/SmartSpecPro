@@ -3,13 +3,13 @@ import { detectPlatform } from '@smartspec/shared';
 import DesktopOnlyMessage from '@/components/DesktopOnlyMessage';
 import { tauriInvoke } from '@/hooks/useTauriInvoke';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Play, Square, RotateCw, Trash2, FileText, RefreshCw,
   Download, HardDrive, Server, Cpu, MemoryStick, Loader2,
 } from 'lucide-react';
+import { DashboardCard, DashboardKpiCard } from '@/components/dashboard';
 
 interface ContainerInfo {
   id: string;
@@ -131,15 +131,15 @@ function DockerDashboard() {
     return (
       <div className="p-6 space-y-4">
         <h1 className="text-2xl font-bold">Docker Sandbox</h1>
-        <Card>
-          <CardContent className="pt-6">
+        <DashboardCard>
+          <div className="pt-6">
             <div className="text-center space-y-3">
               <Server className="w-12 h-12 mx-auto text-muted-foreground" />
               <p className="text-lg font-medium">Docker is not available</p>
               <p className="text-sm text-muted-foreground">{info.error || 'Please install and start Docker.'}</p>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </DashboardCard>
       </div>
     );
   }
@@ -162,10 +162,10 @@ function DockerDashboard() {
 
         <TabsContent value="containers" className="space-y-3 mt-4">
           {containers.length === 0 ? (
-            <Card><CardContent className="pt-6 text-center text-muted-foreground">No containers found</CardContent></Card>
+            <DashboardCard><div className="pt-6 text-center text-muted-foreground">No containers found</div></DashboardCard>
           ) : containers.map(c => (
-            <Card key={c.id}>
-              <CardContent className="pt-4 pb-4">
+            <DashboardCard key={c.id}>
+              <div className="pt-4 pb-4">
                 <div className="flex items-center justify-between gap-4">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
@@ -200,31 +200,29 @@ function DockerDashboard() {
                     </Button>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </DashboardCard>
           ))}
 
           {logsId && (
-            <Card>
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm">Logs: {logsId.slice(0, 12)}</CardTitle>
-                  <Button variant="ghost" size="sm" onClick={() => setLogsId(null)}>Close</Button>
-                </div>
-              </CardHeader>
-              <CardContent>
+            <DashboardCard
+              title={`Logs: ${logsId.slice(0, 12)}`}
+              titleClassName="text-sm font-semibold text-slate-900"
+              trailing={<Button variant="ghost" size="sm" onClick={() => setLogsId(null)}>Close</Button>}
+            >
+              <div>
                 <pre className="bg-muted rounded-lg p-4 text-xs font-mono max-h-80 overflow-auto whitespace-pre-wrap">{logs || 'No logs available'}</pre>
-              </CardContent>
-            </Card>
+              </div>
+            </DashboardCard>
           )}
         </TabsContent>
 
         <TabsContent value="images" className="space-y-3 mt-4">
           {images.length === 0 ? (
-            <Card><CardContent className="pt-6 text-center text-muted-foreground">No images found</CardContent></Card>
+            <DashboardCard><div className="pt-6 text-center text-muted-foreground">No images found</div></DashboardCard>
           ) : images.map(img => (
-            <Card key={img.id}>
-              <CardContent className="pt-4 pb-4">
+            <DashboardCard key={img.id}>
+              <div className="pt-4 pb-4">
                 <div className="flex items-center justify-between gap-4">
                   <div className="min-w-0 flex-1">
                     <span className="font-semibold">{img.repository}</span>
@@ -238,42 +236,18 @@ function DockerDashboard() {
                     <Trash2 className="w-4 h-4" />
                   </Button>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </DashboardCard>
           ))}
         </TabsContent>
 
         <TabsContent value="system" className="mt-4">
           {info && (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <Card>
-                <CardContent className="pt-6 text-center">
-                  <Server className="w-8 h-8 mx-auto mb-2 text-primary" />
-                  <div className="text-2xl font-bold">{info.version || '—'}</div>
-                  <div className="text-sm text-muted-foreground">Docker Version</div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-6 text-center">
-                  <HardDrive className="w-8 h-8 mx-auto mb-2 text-primary" />
-                  <div className="text-2xl font-bold">{info.containers_total}</div>
-                  <div className="text-sm text-muted-foreground">Total Containers</div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-6 text-center">
-                  <Cpu className="w-8 h-8 mx-auto mb-2 text-green-500" />
-                  <div className="text-2xl font-bold">{info.containers_running}</div>
-                  <div className="text-sm text-muted-foreground">Running</div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-6 text-center">
-                  <MemoryStick className="w-8 h-8 mx-auto mb-2 text-primary" />
-                  <div className="text-2xl font-bold">{info.images}</div>
-                  <div className="text-sm text-muted-foreground">Images</div>
-                </CardContent>
-              </Card>
+              <DashboardKpiCard icon={Server} label="Docker Version" value={info.version || '—'} />
+              <DashboardKpiCard icon={HardDrive} label="Total Containers" value={info.containers_total} />
+              <DashboardKpiCard icon={Cpu} label="Running" value={info.containers_running} iconClassName="text-green-500" />
+              <DashboardKpiCard icon={MemoryStick} label="Images" value={info.images} />
             </div>
           )}
           <div className="mt-4">

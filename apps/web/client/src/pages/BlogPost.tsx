@@ -9,8 +9,12 @@ import { motion } from 'framer-motion';
 import { Link, useRoute } from 'wouter';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
+import { Seo } from '@/components/Seo';
+import { useTenantSeoSnapshot } from '@/hooks/useTenantSeoSnapshot';
+import { isVideoMediaUrl } from '@/lib/media';
 import {
   ArrowLeft,
+  ArrowRight,
   Calendar,
   Clock,
   Tag,
@@ -29,6 +33,8 @@ interface BlogPostData {
   category: string;
   tags: string[];
   readTime: string;
+  metaDescription?: string | null;
+  metaKeywords?: string | null;
   publishedAt: string;
 }
 
@@ -38,6 +44,8 @@ export default function BlogPost() {
   const [post, setPost] = useState<BlogPostData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const { relatedLinks } = useTenantSeoSnapshot(`/blog/${slug}`);
+  const seoImage = post && !isVideoMediaUrl(post.coverImage) ? post.coverImage : "/images/og-image.png";
 
   useEffect(() => {
     if (!slug) return;
@@ -60,7 +68,7 @@ export default function BlogPost() {
       <div className="min-h-screen bg-background">
         <Navbar />
         <div className="flex items-center justify-center py-32">
-          <div className="w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full animate-spin" />
+          <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
         </div>
         <Footer />
       </div>
@@ -84,20 +92,47 @@ export default function BlogPost() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/20">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-cyan-50/20">
+      <Seo
+        title={`${post.title} | SmartAIHub Blog`}
+        description={post.metaDescription || post.excerpt || `${post.title} on the SmartAIHub blog.`}
+        keywords={[
+          ...(post.metaKeywords ? post.metaKeywords.split(",").map((keyword) => keyword.trim()).filter(Boolean) : []),
+          ...(post.tags || []),
+          "SmartAIHub blog",
+          "skill marketplace",
+          "workflow automation",
+          "swarm execution",
+        ]}
+        canonicalPath={`/blog/${slug}`}
+        type="article"
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "Article",
+          headline: post.title,
+          description: post.metaDescription || post.excerpt,
+          image: seoImage,
+          author: {
+            "@type": "Person",
+            name: post.author,
+          },
+          datePublished: post.publishedAt,
+          mainEntityOfPage: `/blog/${slug}`,
+        }}
+      />
       <Navbar />
 
       {/* Hero */}
       <section className="pt-28 pb-8">
         <div className="container max-w-4xl mx-auto px-4">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-            <Link href="/blog" className="inline-flex items-center gap-1 text-sm text-purple-600 hover:underline no-underline mb-6">
+            <Link href="/blog" className="inline-flex items-center gap-1 text-sm text-blue-600 hover:underline no-underline mb-6">
               <ArrowLeft className="w-4 h-4" />
               Back to Blog
             </Link>
 
             {post.category && (
-              <span className="inline-block px-3 py-1 bg-purple-100 text-purple-700 text-xs font-medium rounded-full mb-4">
+              <span className="inline-block px-3 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full mb-4">
                 {post.category}
               </span>
             )}
@@ -138,14 +173,25 @@ export default function BlogPost() {
       {post.coverImage && (
         <section className="pb-8">
           <div className="container max-w-4xl mx-auto px-4">
-            <motion.img
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              src={post.coverImage}
-              alt={post.title}
-              className="w-full h-64 sm:h-80 lg:h-96 object-cover rounded-2xl shadow-lg"
-            />
+            {isVideoMediaUrl(post.coverImage) ? (
+              <motion.video
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+                src={post.coverImage}
+                controls
+                className="w-full h-64 sm:h-80 lg:h-96 object-cover rounded-2xl shadow-lg bg-black"
+              />
+            ) : (
+              <motion.img
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+                src={post.coverImage}
+                alt={post.title}
+                className="w-full h-64 sm:h-80 lg:h-96 object-cover rounded-2xl shadow-lg"
+              />
+            )}
           </div>
         </section>
       )}
@@ -167,13 +213,33 @@ export default function BlogPost() {
                   prose-p:text-gray-600 prose-p:leading-relaxed
                   prose-li:text-gray-600
                   prose-strong:text-gray-900
-                  prose-a:text-purple-600 prose-a:no-underline hover:prose-a:underline
+                  prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline
                   prose-code:bg-gray-100 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded
                   prose-pre:bg-gray-900 prose-pre:text-gray-100 prose-pre:rounded-xl
                   prose-img:rounded-xl prose-img:shadow-lg
-                  prose-blockquote:border-purple-500 prose-blockquote:bg-purple-50/50 prose-blockquote:rounded-r-lg prose-blockquote:py-1"
-                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(post.content || '', { ALLOWED_TAGS: ['h1','h2','h3','h4','h5','h6','p','a','ul','ol','li','strong','em','b','i','code','pre','blockquote','img','br','hr','span','div','table','thead','tbody','tr','th','td'], ALLOWED_ATTR: ['href','src','alt','class','target','rel','id'] }) }}
+                  prose-blockquote:border-blue-500 prose-blockquote:bg-blue-50/50 prose-blockquote:rounded-r-lg prose-blockquote:py-1"
+                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(post.content || '', { ALLOWED_TAGS: ['h1','h2','h3','h4','h5','h6','p','a','ul','ol','li','strong','em','b','i','code','pre','blockquote','img','video','source','br','hr','span','div','table','thead','tbody','tr','th','td'], ALLOWED_ATTR: ['href','src','alt','class','target','rel','id','controls','autoplay','loop','muted','playsinline','poster','type'] }) }}
               />
+            </div>
+
+            <div className="mt-8 rounded-2xl border border-blue-100 bg-blue-50/60 p-6">
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-blue-600 mb-2">Related hubs</p>
+              <h2 className="text-xl font-bold text-gray-900 mb-3">Explore the next search intent cluster</h2>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {[
+                  { href: '/resources', label: 'Site Index' },
+                  { href: '/docs/seo/ai-search-optimization', label: 'AI Search Optimization' },
+                  { href: '/docs/content/factory', label: 'Content Factory' },
+                  { href: '/docs/faq/marketplace', label: 'Marketplace FAQ' },
+                  { href: '/docs/image/prompt-engineering', label: 'Image Prompt Engineering' },
+                  { href: '/docs/video/production-pipeline', label: 'Video Production Pipeline' },
+                ].map((link) => (
+                  <Link key={link.href} href={link.href} className="group flex items-center justify-between rounded-xl border border-white/70 bg-white px-4 py-3 no-underline hover:border-blue-200 hover:bg-blue-50 transition-colors">
+                    <span className="text-sm font-medium text-gray-900 group-hover:text-blue-600">{link.label}</span>
+                    <ArrowRight className="w-4 h-4 text-blue-500" />
+                  </Link>
+                ))}
+              </div>
             </div>
 
             {/* Tags */}
@@ -188,6 +254,25 @@ export default function BlogPost() {
                     {tag}
                   </span>
                 ))}
+              </div>
+            )}
+
+            {relatedLinks.length > 0 && (
+              <div className="mt-8 rounded-2xl border border-blue-100 bg-blue-50/60 p-6">
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-blue-600 mb-2">Related links</p>
+                <h2 className="text-xl font-bold text-gray-900 mb-3">Continue into the next cluster</h2>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {relatedLinks.map((link) => (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      className="group flex items-center justify-between rounded-xl border border-white/70 bg-white px-4 py-3 no-underline hover:border-blue-200 hover:bg-blue-50 transition-colors"
+                    >
+                      <span className="text-sm font-medium text-gray-900 group-hover:text-blue-600">{link.label}</span>
+                      <ArrowRight className="w-4 h-4 text-blue-500" />
+                    </Link>
+                  ))}
+                </div>
               </div>
             )}
           </motion.div>

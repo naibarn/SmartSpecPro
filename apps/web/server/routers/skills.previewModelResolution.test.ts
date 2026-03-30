@@ -86,6 +86,28 @@ vi.mock("../services/skillStudioService", () => ({
   readIscProposalContent: vi.fn(),
 }));
 
+vi.mock("../services/skillMaintenanceAnalyzer", () => ({
+  analyzeSkillForMaintenance: vi.fn(),
+}));
+
+vi.mock("../services/skillCompatibilityGate", () => ({
+  buildSkillContractSnapshot: vi.fn(),
+  compareSkillContractSnapshots: vi.fn(),
+}));
+
+vi.mock("../services/skillUpgradePlanner", () => ({
+  persistSkillMaintenanceAnalysis: vi.fn(),
+}));
+
+vi.mock("../services/skillUpgradeApplier", () => ({
+  applySkillUpgradeRecommendation: vi.fn(),
+}));
+
+vi.mock("../services/skillMaintenanceScheduler", () => ({
+  executeSkillMaintenanceSweep: vi.fn(),
+  resolveMaintenanceScheduleInput: vi.fn(),
+}));
+
 vi.mock("../services/skillFiles", () => ({
   hasRelativeSkillManifest: vi.fn(),
   mirrorExistingSkillManifest: vi.fn(),
@@ -143,6 +165,43 @@ vi.mock("../../drizzle/schema", () => ({
     isAutoTrigger: "isAutoTrigger",
     description: "description",
     priority: "priority",
+    tenantId: "tenantId",
+    sandboxProfileSlug: "sandboxProfileSlug",
+    requiresNetwork: "requiresNetwork",
+    requiresBrowser: "requiresBrowser",
+    maxRuntimeSeconds: "maxRuntimeSeconds",
+    maxInputMb: "maxInputMb",
+  },
+  skillImprovementRecommendations: {
+    id: "id",
+    skillId: "skillId",
+    recommendationType: "recommendationType",
+    status: "status",
+    riskLevel: "riskLevel",
+    compatibilityStatus: "compatibilityStatus",
+    analyzedAt: "analyzedAt",
+    updatedAt: "updatedAt",
+  },
+  skillImprovementRuns: {
+    id: "id",
+    skillId: "skillId",
+    recommendationId: "recommendationId",
+    scheduleId: "scheduleId",
+    status: "status",
+    createdAt: "createdAt",
+    updatedAt: "updatedAt",
+  },
+  skillContractSnapshots: {
+    id: "id",
+    recommendationId: "recommendationId",
+    runId: "runId",
+    capturedAt: "capturedAt",
+    contractHash: "contractHash",
+  },
+  skillMaintenanceSchedules: {
+    id: "id",
+    updatedAt: "updatedAt",
+    status: "status",
   },
   llmProviders: { id: "id" },
   modelProviderMap: {},

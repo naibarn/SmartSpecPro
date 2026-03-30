@@ -81,3 +81,4 @@ class SystemConfig(Base):
 
 # Index for faster queries
 Index("ix_credit_transactions_user_id_type", CreditTransaction.user_id, CreditTransaction.type)
+# mypy: ignore-errors

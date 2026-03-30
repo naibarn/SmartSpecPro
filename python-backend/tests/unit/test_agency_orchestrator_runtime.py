@@ -52,6 +52,7 @@ async def test_agent_node_uses_whitelist_scope_and_adapter_run():
         adapter=adapter,
         db=AsyncMock(),
         agency_config=MagicMock(
+            agency_id="agency-1",
             system_prompt="Parent prompt",
             user_id=7,
             conversation_id="conv-1",
@@ -69,11 +70,15 @@ async def test_agent_node_uses_whitelist_scope_and_adapter_run():
     with patch(
         "app.services.agency_tools.resolve_tools_for_agent",
         AsyncMock(return_value=["tool-class"]),
-    ) as mock_resolve_tools:
+    ) as mock_resolve_tools, patch(
+        "app.services.agency_tools.resolve_shared_tools_for_agency",
+        AsyncMock(return_value=[]),
+    ) as mock_resolve_shared_tools:
         result = await orchestrator._execute_agent_node(orchestrator.entry_node, ctx)
 
     assert result == "done"
     mock_resolve_tools.assert_awaited_once()
+    mock_resolve_shared_tools.assert_awaited_once()
     assert mock_resolve_tools.await_args.kwargs["agency_whitelist"] == {"builtin-document-search"}
     assert mock_resolve_tools.await_args.kwargs["retrieval_scope_mode"] == "library_only"
     adapter.run.assert_awaited_once()
@@ -196,6 +201,7 @@ async def test_browser_session_node_review_required_requests_approval():
                 ),
             ],
         ),
+        patch("app.services.agency_tools.resolve_shared_tools_for_agency", AsyncMock(return_value=[])),
     ):
         result = await orchestrator._execute_node(orchestrator.entry_node, ctx)
 

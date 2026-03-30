@@ -16,7 +16,7 @@ import { useState, useMemo, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatDate } from '@smartspec/shared';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { DashboardCard } from '@/components/dashboard';
 import { Input } from '@/components/ui/input';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
@@ -339,7 +339,7 @@ export default function Gallery() {
         <section className="relative pt-4 pb-12 overflow-hidden">
           {/* Background */}
           <div className="absolute inset-0">
-            <div className="absolute top-0 left-1/4 w-96 h-96 bg-violet-500/20 rounded-full blur-3xl" />
+            <div className="absolute top-0 left-1/4 w-96 h-96 bg-cyan-500/20 rounded-full blur-3xl" />
             <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-teal-500/20 rounded-full blur-3xl" />
           </div>
           
@@ -448,7 +448,7 @@ export default function Gallery() {
                       layout
                       layoutId={`gallery-item-${item.id}`}
                     >
-                      <Card 
+                      <DashboardCard
                         className="group cursor-pointer overflow-hidden hover:shadow-xl transition-all duration-300"
                         onClick={() => handleItemClick(item)}
                       >
@@ -571,13 +571,13 @@ export default function Gallery() {
                         </div>
 
                         {/* Content */}
-                        <CardContent className="p-4">
+                        <div className="p-4">
                           <h3 className="font-semibold truncate mb-1">{item.title}</h3>
 
                           {/* Author */}
                           {item.authorName && (
                             <div className="flex items-center gap-2 mb-2">
-                              <div className="w-5 h-5 rounded-full bg-gradient-to-br from-violet-500 to-teal-400 flex items-center justify-center text-white text-xs">
+                              <div className="w-5 h-5 rounded-full bg-gradient-to-br from-blue-500 to-teal-400 flex items-center justify-center text-white text-xs">
                                 {item.authorName.charAt(0)}
                               </div>
                               <span className="text-sm text-muted-foreground truncate">
@@ -611,8 +611,8 @@ export default function Gallery() {
                               </span>
                             )}
                           </div>
-                        </CardContent>
-                      </Card>
+                        </div>
+                      </DashboardCard>
                     </motion.div>
                   ))}
                 </AnimatePresence>

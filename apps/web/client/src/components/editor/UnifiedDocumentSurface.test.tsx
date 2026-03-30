@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, act, waitFor } from "@testing-library/react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import UnifiedDocumentSurface from "./UnifiedDocumentSurface";
 
 // Mock TiptapEditor to avoid heavy ProseMirror DOM setup
@@ -43,10 +43,12 @@ function MockTiptapEditor({
   viewZoom?: number;
 }) {
   const prevContentRef = useRef<string | null>(null);
+  const [contentRevision, setContentRevision] = useState(0);
 
   useEffect(() => {
     const nextContent = JSON.stringify(content);
     if (prevContentRef.current !== null && prevContentRef.current !== nextContent) {
+      setContentRevision((prev) => prev + 1);
       onUpdate?.({
         storage: {
           markdown: {
@@ -64,6 +66,7 @@ function MockTiptapEditor({
       data-editable={editable}
       data-template={template}
       data-view-zoom={viewZoom}
+      data-content-revision={contentRevision}
       onClick={() => {
         onUpdate?.({
           storage: {
@@ -243,7 +246,7 @@ describe("UnifiedDocumentSurface — Auto-Save", () => {
     expect(onContentChange).toHaveBeenCalledWith("# Changed content");
   });
 
-  it("auto-save fires 2 seconds after last change (debounce)", () => {
+  it("auto-save fires after the debounce window elapses", () => {
     const onSave = vi.fn();
     render(
       <UnifiedDocumentSurface initialContent="# Hello" onSave={onSave} />,
@@ -252,7 +255,7 @@ describe("UnifiedDocumentSurface — Auto-Save", () => {
     fireEvent.click(screen.getByTestId("tiptap-editor"));
     expect(onSave).not.toHaveBeenCalled();
     act(() => {
-      vi.advanceTimersByTime(2000);
+      vi.advanceTimersByTime(4000);
     });
     expect(onSave).toHaveBeenCalledTimes(1);
   });
@@ -266,15 +269,15 @@ describe("UnifiedDocumentSurface — Auto-Save", () => {
     // Simulate rapid typing
     fireEvent.click(screen.getByTestId("tiptap-editor"));
     act(() => {
-      vi.advanceTimersByTime(500);
+      vi.advanceTimersByTime(1000);
     });
     fireEvent.click(screen.getByTestId("tiptap-editor"));
     act(() => {
-      vi.advanceTimersByTime(500);
+      vi.advanceTimersByTime(1000);
     });
     fireEvent.click(screen.getByTestId("tiptap-editor"));
     act(() => {
-      vi.advanceTimersByTime(2000);
+      vi.advanceTimersByTime(4000);
     });
     expect(onSave).toHaveBeenCalledTimes(1);
   });
@@ -328,5 +331,27 @@ describe("UnifiedDocumentSurface — Auto-Save", () => {
       vi.advanceTimersByTime(5000);
     });
     expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it("does not rehydrate the editor when the server snapshot matches the local markdown", async () => {
+    const { rerender } = render(
+      <UnifiedDocumentSurface
+        documentId={42}
+        initialContent="# Hello"
+        updatedAt="2026-03-21T00:00:00.000Z"
+      />,
+    );
+
+    const initialRevision = screen.getByTestId("tiptap-editor").dataset.contentRevision;
+
+    rerender(
+      <UnifiedDocumentSurface
+        documentId={42}
+        initialContent="# Hello"
+        updatedAt="2026-03-21T00:05:00.000Z"
+      />,
+    );
+
+    expect(screen.getByTestId("tiptap-editor").dataset.contentRevision).toBe(initialRevision);
   });
 });

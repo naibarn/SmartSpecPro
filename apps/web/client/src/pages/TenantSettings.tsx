@@ -12,9 +12,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DashboardCard } from "@/components/dashboard";
 import { toast } from "sonner";
 import {
   Settings,
@@ -106,7 +106,7 @@ export default function TenantSettings() {
   if (authLoading || !user || !hasAccess) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
+        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
       </div>
     );
   }
@@ -153,7 +153,7 @@ export default function TenantSettings() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-purple-50/30">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-cyan-50/30">
       {/* Top Header */}
       <div className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-10">
         <div className="px-4 sm:px-6 lg:px-8 py-4 flex items-center gap-4">
@@ -168,7 +168,7 @@ export default function TenantSettings() {
           </Button>
           <div className="h-5 w-px bg-gray-200" />
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center shadow-md shadow-purple-200/50">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 via-cyan-500 to-teal-500 flex items-center justify-center shadow-md shadow-blue-200/50">
               <Settings className="w-5 h-5 text-white" />
             </div>
             <div>
@@ -201,7 +201,7 @@ export default function TenantSettings() {
                     onClick={() => setActiveTab(item.key)}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all duration-150 ${
                       isActive
-                        ? "bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-md shadow-purple-200/50"
+                        ? "bg-gradient-to-r from-blue-500 via-cyan-500 to-teal-500 text-white shadow-md shadow-blue-200/50"
                         : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                     }`}
                   >
@@ -223,196 +223,190 @@ export default function TenantSettings() {
 
               {/* Invoice Settings Tab */}
               <TabsContent value="invoice">
-                <Card className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
-                  <CardHeader className="border-b bg-gradient-to-r from-indigo-50/50 to-purple-50/30 pb-5">
-                    <CardTitle className="flex items-center gap-2 text-lg">
-                      <FileText className="w-5 h-5 text-indigo-500" />
-                      Invoice Configuration
-                    </CardTitle>
-                    <CardDescription>
-                      Configure your domain's company information for invoices. These settings override the platform defaults.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-6 pt-6">
-                    {invoiceLoading ? (
-                      <div className="py-8 text-center">
-                        <Loader2 className="w-8 h-8 animate-spin text-purple-500 mx-auto" />
-                        <p className="text-gray-500 mt-2">Loading invoice settings...</p>
+                <DashboardCard
+                  className="overflow-hidden"
+                  title="Invoice Configuration"
+                  description="Configure your domain's company information for invoices. These settings override the platform defaults."
+                  leading={<FileText className="w-5 h-5 text-blue-500" />}
+                >
+                  {invoiceLoading ? (
+                    <div className="py-8 text-center">
+                      <Loader2 className="mx-auto mt-0 w-8 animate-spin text-blue-500 h-8" />
+                      <p className="mt-2 text-gray-500">Loading invoice settings...</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      {/* White Label Info */}
+                      <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-4 text-sm space-y-1">
+                        <p className="font-semibold text-blue-800">White Label Invoice</p>
+                        <p className="text-blue-700 text-xs">
+                          Invoices generated for users in your domain will use this company information instead of the platform&apos;s default.
+                        </p>
                       </div>
-                    ) : (
-                      <>
-                        {/* White Label Info */}
-                        <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-4 text-sm space-y-1">
-                          <p className="font-semibold text-blue-800">White Label Invoice</p>
-                          <p className="text-blue-700 text-xs">
-                            Invoices generated for users in your domain will use this company information instead of the platform's default.
-                          </p>
-                        </div>
 
-                        {/* Company Info */}
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="col-span-2">
-                            <Label htmlFor="companyName">Company Name</Label>
-                            <Input
-                              id="companyName"
-                              placeholder="Your Company Inc."
-                              value={invoiceForm.companyName || ""}
-                              onChange={(e) => setInvoiceForm((prev) => ({ ...prev, companyName: e.target.value }))}
-                            />
-                          </div>
-                          <div className="col-span-2">
-                            <Label htmlFor="addressLine1">Address Line 1</Label>
-                            <Input
-                              id="addressLine1"
-                              placeholder="123 Main Street"
-                              value={invoiceForm.addressLine1 || ""}
-                              onChange={(e) => setInvoiceForm((prev) => ({ ...prev, addressLine1: e.target.value }))}
-                            />
-                          </div>
-                          <div className="col-span-2">
-                            <Label htmlFor="addressLine2">Address Line 2 (optional)</Label>
-                            <Input
-                              id="addressLine2"
-                              placeholder="Suite 100"
-                              value={invoiceForm.addressLine2 || ""}
-                              onChange={(e) => setInvoiceForm((prev) => ({ ...prev, addressLine2: e.target.value }))}
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="city">City</Label>
-                            <Input id="city" placeholder="San Francisco" value={invoiceForm.city || ""} onChange={(e) => setInvoiceForm((prev) => ({ ...prev, city: e.target.value }))} />
-                          </div>
-                          <div>
-                            <Label htmlFor="state">State/Province</Label>
-                            <Input id="state" placeholder="CA" value={invoiceForm.state || ""} onChange={(e) => setInvoiceForm((prev) => ({ ...prev, state: e.target.value }))} />
-                          </div>
-                          <div>
-                            <Label htmlFor="postalCode">Postal Code</Label>
-                            <Input id="postalCode" placeholder="94105" value={invoiceForm.postalCode || ""} onChange={(e) => setInvoiceForm((prev) => ({ ...prev, postalCode: e.target.value }))} />
-                          </div>
-                          <div>
-                            <Label htmlFor="country">Country</Label>
-                            <Input id="country" placeholder="United States" value={invoiceForm.country || ""} onChange={(e) => setInvoiceForm((prev) => ({ ...prev, country: e.target.value }))} />
-                          </div>
-                        </div>
-
-                        {/* Contact Info */}
-                        <div className="grid grid-cols-2 gap-4 pt-4 border-t">
-                          <div>
-                            <Label htmlFor="taxId">Tax ID / VAT Number</Label>
-                            <Input id="taxId" placeholder="XX-XXXXXXX" value={invoiceForm.taxId || ""} onChange={(e) => setInvoiceForm((prev) => ({ ...prev, taxId: e.target.value }))} />
-                          </div>
-                          <div>
-                            <Label htmlFor="invoiceEmail">Email</Label>
-                            <Input id="invoiceEmail" type="email" placeholder="billing@company.com" value={invoiceForm.email || ""} onChange={(e) => setInvoiceForm((prev) => ({ ...prev, email: e.target.value }))} />
-                          </div>
-                          <div>
-                            <Label htmlFor="phone">Phone</Label>
-                            <Input id="phone" placeholder="+1 (555) 123-4567" value={invoiceForm.phone || ""} onChange={(e) => setInvoiceForm((prev) => ({ ...prev, phone: e.target.value }))} />
-                          </div>
-                          <div>
-                            <Label htmlFor="website">Website</Label>
-                            <Input id="website" placeholder="https://company.com" value={invoiceForm.website || ""} onChange={(e) => setInvoiceForm((prev) => ({ ...prev, website: e.target.value }))} />
-                          </div>
-                        </div>
-
-                        {/* Logo URL */}
-                        <div className="pt-4 border-t">
-                          <Label htmlFor="logoUrl">Logo URL</Label>
+                      {/* Company Info */}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="col-span-2">
+                          <Label htmlFor="companyName">Company Name</Label>
                           <Input
-                            id="logoUrl"
-                            placeholder="https://company.com/logo.png"
-                            value={invoiceForm.logoUrl || ""}
-                            onChange={(e) => setInvoiceForm((prev) => ({ ...prev, logoUrl: e.target.value }))}
+                            id="companyName"
+                            placeholder="Your Company Inc."
+                            value={invoiceForm.companyName || ""}
+                            onChange={(e) => setInvoiceForm((prev) => ({ ...prev, companyName: e.target.value }))}
                           />
-                          <p className="text-xs text-gray-500 mt-1">URL to your company logo (recommended: 200x50px PNG)</p>
                         </div>
+                        <div className="col-span-2">
+                          <Label htmlFor="addressLine1">Address Line 1</Label>
+                          <Input
+                            id="addressLine1"
+                            placeholder="123 Main Street"
+                            value={invoiceForm.addressLine1 || ""}
+                            onChange={(e) => setInvoiceForm((prev) => ({ ...prev, addressLine1: e.target.value }))}
+                          />
+                        </div>
+                        <div className="col-span-2">
+                          <Label htmlFor="addressLine2">Address Line 2 (optional)</Label>
+                          <Input
+                            id="addressLine2"
+                            placeholder="Suite 100"
+                            value={invoiceForm.addressLine2 || ""}
+                            onChange={(e) => setInvoiceForm((prev) => ({ ...prev, addressLine2: e.target.value }))}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="city">City</Label>
+                          <Input id="city" placeholder="San Francisco" value={invoiceForm.city || ""} onChange={(e) => setInvoiceForm((prev) => ({ ...prev, city: e.target.value }))} />
+                        </div>
+                        <div>
+                          <Label htmlFor="state">State/Province</Label>
+                          <Input id="state" placeholder="CA" value={invoiceForm.state || ""} onChange={(e) => setInvoiceForm((prev) => ({ ...prev, state: e.target.value }))} />
+                        </div>
+                        <div>
+                          <Label htmlFor="postalCode">Postal Code</Label>
+                          <Input id="postalCode" placeholder="94105" value={invoiceForm.postalCode || ""} onChange={(e) => setInvoiceForm((prev) => ({ ...prev, postalCode: e.target.value }))} />
+                        </div>
+                        <div>
+                          <Label htmlFor="country">Country</Label>
+                          <Input id="country" placeholder="United States" value={invoiceForm.country || ""} onChange={(e) => setInvoiceForm((prev) => ({ ...prev, country: e.target.value }))} />
+                        </div>
+                      </div>
 
-                        {/* Footer & Terms */}
-                        <div className="grid grid-cols-1 gap-4 pt-4 border-t">
+                      {/* Contact Info */}
+                      <div className="grid grid-cols-2 gap-4 border-t pt-4">
+                        <div>
+                          <Label htmlFor="taxId">Tax ID / VAT Number</Label>
+                          <Input id="taxId" placeholder="XX-XXXXXXX" value={invoiceForm.taxId || ""} onChange={(e) => setInvoiceForm((prev) => ({ ...prev, taxId: e.target.value }))} />
+                        </div>
+                        <div>
+                          <Label htmlFor="invoiceEmail">Email</Label>
+                          <Input id="invoiceEmail" type="email" placeholder="billing@company.com" value={invoiceForm.email || ""} onChange={(e) => setInvoiceForm((prev) => ({ ...prev, email: e.target.value }))} />
+                        </div>
+                        <div>
+                          <Label htmlFor="phone">Phone</Label>
+                          <Input id="phone" placeholder="+1 (555) 123-4567" value={invoiceForm.phone || ""} onChange={(e) => setInvoiceForm((prev) => ({ ...prev, phone: e.target.value }))} />
+                        </div>
+                        <div>
+                          <Label htmlFor="website">Website</Label>
+                          <Input id="website" placeholder="https://company.com" value={invoiceForm.website || ""} onChange={(e) => setInvoiceForm((prev) => ({ ...prev, website: e.target.value }))} />
+                        </div>
+                      </div>
+
+                      {/* Logo URL */}
+                      <div className="border-t pt-4">
+                        <Label htmlFor="logoUrl">Logo URL</Label>
+                        <Input
+                          id="logoUrl"
+                          placeholder="https://company.com/logo.png"
+                          value={invoiceForm.logoUrl || ""}
+                          onChange={(e) => setInvoiceForm((prev) => ({ ...prev, logoUrl: e.target.value }))}
+                        />
+                        <p className="mt-1 text-xs text-gray-500">URL to your company logo (recommended: 200x50px PNG)</p>
+                      </div>
+
+                      {/* Footer & Terms */}
+                      <div className="grid grid-cols-1 gap-4 border-t pt-4">
+                        <div>
+                          <Label htmlFor="footerText">Invoice Footer</Label>
+                          <Textarea id="footerText" placeholder="Thank you for your business!" value={invoiceForm.footerText || ""} onChange={(e) => setInvoiceForm((prev) => ({ ...prev, footerText: e.target.value }))} rows={2} />
+                        </div>
+                        <div>
+                          <Label htmlFor="termsText">Terms & Conditions</Label>
+                          <Textarea id="termsText" placeholder="Payment is due within 30 days..." value={invoiceForm.termsText || ""} onChange={(e) => setInvoiceForm((prev) => ({ ...prev, termsText: e.target.value }))} rows={3} />
+                        </div>
+                      </div>
+
+                      {/* Bank Details */}
+                      <div className="border-t pt-4">
+                        <h3 className="mb-3 text-sm font-medium">Bank Details (for wire transfers)</h3>
+                        <div className="grid grid-cols-2 gap-4">
                           <div>
-                            <Label htmlFor="footerText">Invoice Footer</Label>
-                            <Textarea id="footerText" placeholder="Thank you for your business!" value={invoiceForm.footerText || ""} onChange={(e) => setInvoiceForm((prev) => ({ ...prev, footerText: e.target.value }))} rows={2} />
+                            <Label htmlFor="bankName">Bank Name</Label>
+                            <Input id="bankName" placeholder="First National Bank" value={invoiceForm.bankDetails?.bankName || ""} onChange={(e) => setInvoiceForm((prev) => ({ ...prev, bankDetails: { ...prev.bankDetails, bankName: e.target.value } }))} />
                           </div>
                           <div>
-                            <Label htmlFor="termsText">Terms & Conditions</Label>
-                            <Textarea id="termsText" placeholder="Payment is due within 30 days..." value={invoiceForm.termsText || ""} onChange={(e) => setInvoiceForm((prev) => ({ ...prev, termsText: e.target.value }))} rows={3} />
+                            <Label htmlFor="accountName">Account Name</Label>
+                            <Input id="accountName" placeholder="Your Company Inc." value={invoiceForm.bankDetails?.accountName || ""} onChange={(e) => setInvoiceForm((prev) => ({ ...prev, bankDetails: { ...prev.bankDetails, accountName: e.target.value } }))} />
+                          </div>
+                          <div>
+                            <Label htmlFor="accountNumber">Account Number</Label>
+                            <Input id="accountNumber" placeholder="XXXXXXXXXX" value={invoiceForm.bankDetails?.accountNumber || ""} onChange={(e) => setInvoiceForm((prev) => ({ ...prev, bankDetails: { ...prev.bankDetails, accountNumber: e.target.value } }))} />
+                          </div>
+                          <div>
+                            <Label htmlFor="routingNumber">Routing Number</Label>
+                            <Input id="routingNumber" placeholder="XXXXXXXXX" value={invoiceForm.bankDetails?.routingNumber || ""} onChange={(e) => setInvoiceForm((prev) => ({ ...prev, bankDetails: { ...prev.bankDetails, routingNumber: e.target.value } }))} />
+                          </div>
+                          <div>
+                            <Label htmlFor="swiftCode">SWIFT Code</Label>
+                            <Input id="swiftCode" placeholder="XXXXXXXX" value={invoiceForm.bankDetails?.swiftCode || ""} onChange={(e) => setInvoiceForm((prev) => ({ ...prev, bankDetails: { ...prev.bankDetails, swiftCode: e.target.value } }))} />
+                          </div>
+                          <div>
+                            <Label htmlFor="iban">IBAN</Label>
+                            <Input id="iban" placeholder="XX00 XXXX XXXX XXXX XXXX" value={invoiceForm.bankDetails?.iban || ""} onChange={(e) => setInvoiceForm((prev) => ({ ...prev, bankDetails: { ...prev.bankDetails, iban: e.target.value } }))} />
                           </div>
                         </div>
+                      </div>
 
-                        {/* Bank Details */}
-                        <div className="pt-4 border-t">
-                          <h3 className="text-sm font-medium mb-3">Bank Details (for wire transfers)</h3>
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <Label htmlFor="bankName">Bank Name</Label>
-                              <Input id="bankName" placeholder="First National Bank" value={invoiceForm.bankDetails?.bankName || ""} onChange={(e) => setInvoiceForm((prev) => ({ ...prev, bankDetails: { ...prev.bankDetails, bankName: e.target.value } }))} />
-                            </div>
-                            <div>
-                              <Label htmlFor="accountName">Account Name</Label>
-                              <Input id="accountName" placeholder="Your Company Inc." value={invoiceForm.bankDetails?.accountName || ""} onChange={(e) => setInvoiceForm((prev) => ({ ...prev, bankDetails: { ...prev.bankDetails, accountName: e.target.value } }))} />
-                            </div>
-                            <div>
-                              <Label htmlFor="accountNumber">Account Number</Label>
-                              <Input id="accountNumber" placeholder="XXXXXXXXXX" value={invoiceForm.bankDetails?.accountNumber || ""} onChange={(e) => setInvoiceForm((prev) => ({ ...prev, bankDetails: { ...prev.bankDetails, accountNumber: e.target.value } }))} />
-                            </div>
-                            <div>
-                              <Label htmlFor="routingNumber">Routing Number</Label>
-                              <Input id="routingNumber" placeholder="XXXXXXXXX" value={invoiceForm.bankDetails?.routingNumber || ""} onChange={(e) => setInvoiceForm((prev) => ({ ...prev, bankDetails: { ...prev.bankDetails, routingNumber: e.target.value } }))} />
-                            </div>
-                            <div>
-                              <Label htmlFor="swiftCode">SWIFT Code</Label>
-                              <Input id="swiftCode" placeholder="XXXXXXXX" value={invoiceForm.bankDetails?.swiftCode || ""} onChange={(e) => setInvoiceForm((prev) => ({ ...prev, bankDetails: { ...prev.bankDetails, swiftCode: e.target.value } }))} />
-                            </div>
-                            <div>
-                              <Label htmlFor="iban">IBAN</Label>
-                              <Input id="iban" placeholder="XX00 XXXX XXXX XXXX XXXX" value={invoiceForm.bankDetails?.iban || ""} onChange={(e) => setInvoiceForm((prev) => ({ ...prev, bankDetails: { ...prev.bankDetails, iban: e.target.value } }))} />
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Custom Fields */}
-                        <div className="pt-4 border-t">
-                          <div className="flex items-center justify-between mb-3">
-                            <h3 className="text-sm font-medium">Custom Fields</h3>
-                            <Button variant="outline" size="sm" onClick={addCustomField}>
-                              <Plus className="w-4 h-4 mr-1" /> Add Field
-                            </Button>
-                          </div>
-                          {invoiceForm.customFields?.map((field, index) => (
-                            <div key={index} className="flex gap-2 mb-2">
-                              <Input placeholder="Label" value={field.label} onChange={(e) => updateCustomField(index, "label", e.target.value)} className="flex-1" />
-                              <Input placeholder="Value" value={field.value} onChange={(e) => updateCustomField(index, "value", e.target.value)} className="flex-1" />
-                              <Button variant="ghost" size="sm" onClick={() => removeCustomField(index)} className="text-red-500">
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          ))}
-                        </div>
-
-                        {/* Save */}
-                        <div className="flex justify-end pt-4 border-t">
-                          <Button
-                            onClick={handleSaveInvoice}
-                            disabled={upsertInvoiceMutation.isPending || !tenant?.id}
-                            className="bg-gradient-to-r from-indigo-600 to-purple-500 hover:from-indigo-700 hover:to-purple-600"
-                          >
-                            {upsertInvoiceMutation.isPending ? (
-                              <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</>
-                            ) : (
-                              <><Save className="w-4 h-4 mr-2" /> Save Invoice Settings</>
-                            )}
+                      {/* Custom Fields */}
+                      <div className="border-t pt-4">
+                        <div className="mb-3 flex items-center justify-between">
+                          <h3 className="text-sm font-medium">Custom Fields</h3>
+                          <Button variant="outline" size="sm" onClick={addCustomField}>
+                            <Plus className="mr-1 w-4 h-4" /> Add Field
                           </Button>
                         </div>
-                        {!tenant?.id && (
-                          <p className="text-sm text-amber-600">
-                            Your domain is not yet configured. Please contact support.
-                          </p>
-                        )}
-                      </>
-                    )}
-                  </CardContent>
-                </Card>
+                        {invoiceForm.customFields?.map((field, index) => (
+                          <div key={index} className="mb-2 flex gap-2">
+                            <Input placeholder="Label" value={field.label} onChange={(e) => updateCustomField(index, "label", e.target.value)} className="flex-1" />
+                            <Input placeholder="Value" value={field.value} onChange={(e) => updateCustomField(index, "value", e.target.value)} className="flex-1" />
+                            <Button variant="ghost" size="sm" onClick={() => removeCustomField(index)} className="text-red-500">
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Save */}
+                      <div className="flex justify-end border-t pt-4">
+                        <Button
+                          onClick={handleSaveInvoice}
+                          disabled={upsertInvoiceMutation.isPending || !tenant?.id}
+                          className="bg-gradient-to-r from-blue-600 via-cyan-600 to-teal-500 hover:from-blue-700 hover:via-cyan-700 hover:to-teal-600"
+                        >
+                          {upsertInvoiceMutation.isPending ? (
+                            <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...</>
+                          ) : (
+                            <><Save className="mr-2 h-4 w-4" /> Save Invoice Settings</>
+                          )}
+                        </Button>
+                      </div>
+                      {!tenant?.id && (
+                        <p className="text-sm text-amber-600">
+                          Your domain is not yet configured. Please contact support.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </DashboardCard>
               </TabsContent>
             </Tabs>
           </div>

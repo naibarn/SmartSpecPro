@@ -114,7 +114,13 @@ function getManifestPath(): string {
 }
 
 function getLocaleDir(locale: string): string {
-  return path.join(getHelpBasePath(), locale);
+  const basePath = getHelpBasePath();
+  const resolved = path.join(basePath, locale);
+  // Defence-in-depth: reject any path that escapes the help base directory
+  if (!resolved.startsWith(basePath + path.sep) && resolved !== basePath) {
+    throw new Error(`Invalid locale path: ${locale}`);
+  }
+  return resolved;
 }
 
 // ---------------------------------------------------------------------------
@@ -268,6 +274,11 @@ export async function getHelpTopic(
 
   const localeDir = getLocaleDir(locale);
   const filePath = path.join(localeDir, `${slug}.md`);
+
+  // Defence-in-depth: slug must not escape the locale directory
+  if (!filePath.startsWith(localeDir + path.sep)) {
+    return null;
+  }
 
   if (!fs.existsSync(filePath)) {
     return null;

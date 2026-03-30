@@ -12,8 +12,15 @@ const { trackBrowserSessionOpened, trackBrowserSessionReopened } = vi.hoisted(()
   trackBrowserSessionOpened: vi.fn(),
   trackBrowserSessionReopened: vi.fn(),
 }));
+const { mockSetLocation, mockUseRoute } = vi.hoisted(() => ({
+  mockSetLocation: vi.fn(),
+  mockUseRoute: vi.fn((pattern: string) => (
+    pattern === "/agencies/:id/review"
+      ? [false, null]
+      : [true, { id: "agency-1" }]
+  )),
+}));
 
-const mockSetLocation = vi.fn();
 const createLiveBrowserSessionMutateAsync = vi.fn();
 const sendLiveBrowserCommandMutateAsync = vi.fn();
 const getSessionFetch = vi.fn();
@@ -21,7 +28,7 @@ const getRunPreviewFetch = vi.fn();
 
 vi.mock("wouter", () => ({
   useLocation: () => ["/agencies/agency-1", mockSetLocation],
-  useRoute: () => [true, { id: "agency-1" }],
+  useRoute: mockUseRoute,
 }));
 
 vi.mock("@/contexts/AuthContext", () => ({
@@ -82,6 +89,9 @@ vi.mock("@/lib/trpc", () => ({
       },
     },
     agency: {
+      reviewAgency: {
+        useMutation: () => ({ mutateAsync: vi.fn(), isPending: false }),
+      },
       commitPreview: {
         useMutation: () => ({ mutate: vi.fn(), isPending: false }),
       },
@@ -109,11 +119,20 @@ describe("AgencyChat Browser Session surface", () => {
       error: null,
       creditsUsed: 0,
       activityEvents: [],
+      toolCalls: [],
+      guardrailEvents: [],
+      pendingApproval: null,
+      isPollingFallback: false,
       connect: vi.fn(),
       disconnect: vi.fn(),
     });
     window.sessionStorage.clear();
     window.history.replaceState({}, "", "/agencies/agency-1");
+    mockUseRoute.mockImplementation((pattern: string) => (
+      pattern === "/agencies/:id/review"
+        ? [false, null]
+        : [true, { id: "agency-1" }]
+    ));
     getSessionFetch.mockResolvedValue({
       sessionId: "lbs_agency_1",
       tenantId: "tenant-1",

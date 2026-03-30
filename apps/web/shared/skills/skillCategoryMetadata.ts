@@ -2,7 +2,12 @@ export type SkillExecutionMode =
   | "llm-only"
   | "media-generate"
   | "enhance-prompt"
-  | "python";
+  | "python"
+  | "sandbox-code"
+  | "sandbox-command"
+  | "sandbox-browser"
+  | "sandbox-file"
+  | "sandbox-media";
 
 export type SkillMediaModelType = "image" | "video" | "audio" | "image-video";
 
@@ -12,6 +17,7 @@ function normalize(value: string | null | undefined): string {
 
 const CATEGORY_ALLOWED_EXECUTION_MODES: Partial<Record<string, SkillExecutionMode[]>> = {
   article_generation: ["llm-only"],
+  slide_generation: ["sandbox-command", "sandbox-code", "llm-only"],
   product_review: ["llm-only"],
   prompt_enhancement: ["llm-only", "enhance-prompt"],
   image_prompt_generation: ["llm-only", "enhance-prompt"],
@@ -40,6 +46,11 @@ export function getAllowedExecutionModesForSkillCategory(
     "media-generate",
     "enhance-prompt",
     "python",
+    "sandbox-code",
+    "sandbox-command",
+    "sandbox-browser",
+    "sandbox-file",
+    "sandbox-media",
   ];
 }
 

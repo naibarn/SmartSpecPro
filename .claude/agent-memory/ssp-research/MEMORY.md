@@ -1,5 +1,314 @@
 # SmartSpecPro Research Agent Memory
 
+## i18n (Spec 062) Performance Impact Assessment (2026-03-24)
+
+### Status: RESEARCH COMPLETE — TTI regression quantified, waterfall risk mapped, mitigations identified
+
+**Research Documents:**
+- `I18N_PERFORMANCE_BRIEF.md` (Executive summary, 3 options, risk ranking)
+- `I18N_PERFORMANCE_RESEARCH.md` (Detailed findings, 10 sections, network analysis)
+
+**Key Findings:**
+- **TTI regression: +200–400ms** (unavoidable due to "render app only after i18n namespaces ready" requirement)
+- **Startup payload:** 8 locale chunks in parallel (~8.6 KB gzipped) load before first render
+- **Bundle structure:** 17 namespaces × 2 languages; each JSON → separate Vite chunk (correct)
+- **Route waterfall:** On first visit to new route, component lazy-load + namespace lazy-load serialize (50–100ms perceived delay)
+- **Memory accumulation:** No unload strategy; power users visiting 12+ routes accumulate 288 KB uncompressed
+- **Current i18n:** Synchronous (1,067 lines en, 1,042 lines th), help namespace only, ~80 KB uncompressed, 10 KB gzipped
+- **Scope:** 3,000–5,000 keys across 17 namespaces (Wave 1–3 migration)
+- **Vite dynamic import:** `import.meta.glob()` verified to work correctly; each JSON becomes separate chunk
+- **Fallback:** Missing Thai keys → English, missing namespace → English (graceful, no errors)
+
+**Recommendations:**
+- **Proceed with Option A** (full spec implementation) — trade-off is acceptable for enterprise platform
+- **Phase 0:** Establish TTI baseline, set up Sentry RUM, HTTP/2 push
+- **Phase 1:** Implement infrastructure + startup namespace load + namespace unload logic
+- **Phase 2:** Predictive prefetch, chunk size monitoring, memory profiling
+
+**Critical missing specs:**
+1. Namespace unload trigger (when to evict old namespaces?)
+2. Chunk naming/versioning strategy (cache-bust on translation updates?)
+3. Fallback on network 404 (what renders if locale chunk fails?)
+4. Intl API vs. i18next formatter choice
+5. Thai auto-detection on first visit
+
+**Files affected:** App.tsx (async i18n init), i18n/* (new), locales/* (new), Nginx (HTTP/2 push)
+
+---
+
+## Social Automation System Architecture (2026-03-24)
+
+### Status: RESEARCH COMPLETE — Full system architecture documented, 13 DB tables, integration points identified
+
+**Research Document:**
+- `SOCIAL-AUTOMATION-SYSTEM-ARCHITECTURE.md` (3000+ lines, comprehensive)
+
+**Key Findings:**
+- **Multi-provider support:** Meta (Facebook Graph API), TikTok (Creator API), YouTube (Data API v3)
+- **Three subsystems:** Publishing (draft/schedule/publish), Automation (rules + approval queue), Inbox (conversations)
+- **DB tables:** 13 social-related tables (provider connections, pages, posts, conversations, messages, rules, approvals, comments, webhooks)
+- **Node.js layer:** 5 tRPC routers + 7 services + gateway to Python backend
+- **Python layer:** FastAPI POST /api/internal/social/publish endpoint, 3 provider clients
+- **Publishing flow:** Draft → Schedule/Publish → Celery task (for scheduled) → Provider API
+- **Token management:** All tokens encrypted at-rest (AES-256-GCM), decrypted server-side only
+- **Provider abstraction:** Protocol-based (SocialProviderClient), extensible for new providers
+- **Security:** SSRF protection, media URL validation (HTTPS + public IPs only), internal token auth
+
+**Upload Post API Integration Points:**
+1. `python-backend/app/services/social/publish_service.py` — Before calling provider clients
+2. `python-backend/app/services/social/meta_graph_client.py` — Modify create_post() to accept pre-staged URLs
+3. Database optional: Add `stagedMediaUrls` + `stagingStatus` to `social_posts` table
+4. All three providers (Meta, TikTok, YouTube) accept media URLs
+
+**No changes needed:**
+- Frontend flow (transparent to user)
+- tRPC routers (works with any media URL format)
+- Publishing workflow (scheduling, error handling, user auth)
+
+**Database schema location:** `apps/web/drizzle/schema.ts` lines 7505-7746
+
+---
+
+## AgencyContextSummarizer Code Patterns (2026-03-23)
+
+### Status: RESEARCH COMPLETE — All 6 Integration Points Identified
+
+**Research Document:**
+- `AGENCY-CONTEXT-SUMMARIZER-CODE-PATTERNS.md` (15 sections, exact line numbers and imports)
+
+**Key Findings:**
+- **ReAct compression hook:** Existing `_compress_messages()` at react_executor.py lines 320-362
+- **Pre-call insertion point:** Before line 108 in react_executor.py (before `_call_llm()` call each iteration)
+- **Planner accumulation:** previous_result parameter grows each re-planning cycle (autonomous_executor.py lines 122-129)
+- **Planner pre-call point:** Before line 132 (planner.plan() gateway call)
+- **Token estimation:** Two patterns available: simple (//4) or CJK-aware (context_manager.py lines 119-138)
+- **Secret scrubbing:** `scrub_secrets()` function in agency_trace_collector.py lines 36-44 with 5 regex patterns
+- **Reflection phase:** Vulnerable to large subtask results; pre-call compression recommended before reflector.reflect()
+- **Gateway client:** Already injected via factory pattern; use same `gateway_client.chat.completions.create()` as ReAct
+- **Model limits:** MODEL_CONTEXT_LIMITS dict at agency_context_budget.py lines 9-26 (8 models)
+- **Existing compression pattern:** react_executor.py _compress_messages() already implements LLM-based summarization
+
+**Implementation Effort:**
+- Single new file: `agency_context_summarizer.py` (~200-300 lines)
+- Three integration points (ReAct pre-call, Planner pre-call, Reflector pre-call)
+- No modifications to core executors — only optional calls before LLM invocations
+- **Total time:** 8-12 hours (research complete, ready for implementation)
+
+**Recommended Pattern:**
+```python
+# Before any LLM call in message-heavy loop
+if estimate_tokens(messages) > budget_threshold:
+    messages = await condense_messages(messages, gateway_client, model_name)
+```
+
+---
+
+## Intelligence Enhancements — Code Location Map (2026-03-23)
+
+### Status: RESEARCH COMPLETE — 5 Features Mapped, Insertion Points Identified
+
+**Research Document:**
+- `INTELLIGENCE-ENHANCEMENTS-CODE-LOCATIONS.md` (comprehensive, exact file/line references)
+
+**Features Mapped:**
+1. **Confidence Boost** — Increase memory confidence when successfully used (2–3h, insertion at orchestrator lines 822–837)
+2. **Outcome-Aware Memory** — Enhance extraction prompt with execution context (3–4h, prompt enhancement at long_term_memory.py lines 407–447)
+3. **Auto Few-Shot from Best Runs** — Capture high-quality examples when quality_score >= 0.85 (4–5h, autonomous_executor.py lines 551–559)
+4. **ReAct Reflection** — Add post-execution reflection phase (3–4h, react_executor.py lines 241–247)
+5. **Trace-Based Learning** — Periodic analysis of run traces to extract patterns (4–5h, new files + celery schedule)
+
+**Key Discoveries:**
+- RetrievalResult tracks memory IDs in `facts[].source` dict — can boost specific memories post-execution
+- extract_memories() prompt is at exact line 417; can be enhanced to include execution status/outcomes
+- Autonomous reflection already computes quality_score (line 551) — hook there to capture high-quality examples
+- agencyRunTraces table (JSONB trace field) has all span data — ready for analysis
+- agencyAgents.examples field already exists (line 4870 in schema) — just needs population logic
+
+**Total Implementation Effort:** 16–21 hours for all 5 features (can be phased)
+
+**Recommended Order:** 1 → 2 → 4 → 3 → 5 (dependency chain)
+
+---
+
+## Agency Vector Memory Infrastructure (2026-03-23)
+
+### Status: RESEARCH COMPLETE — Comprehensive analysis of vector reuse opportunities
+
+**Research Document:**
+- `AGENCY-VECTOR-MEMORY-RESEARCH-BRIEF.md` (comprehensive, 11 sections, 400+ lines)
+
+**Executive Summary:**
+- **Vector infrastructure status:** Fully production-ready (pgvector + embedding service + hybrid RAG)
+- **Current agency memory:** Text-based extraction (no vectors), uses exact lookup by confidence/useCount
+- **Design rationale:** Max 20 memories per agent, high-confidence facts don't need semantic search
+- **Integration opportunities:** Vector-enhanced memories Phase 2 (opt-in), semantic aggregation Phase 3
+- **Risk assessment:** Low - all infrastructure has tenant isolation; adoption gradual
+
+**Key Infrastructure Available:**
+1. **PgVectorStore** — Full CRUD + search, isolation built-in, 1536-dim embeddings
+2. **EmbeddingService** — 6 models (OpenAI, Cohere, local), caching, batching
+3. **HybridRAGEngine** — BM25 + vector + rerank, used by knowledge_base nodes
+4. **ExecutionContext** — Mutable state passed between nodes (results dict, knowledge list)
+
+**Current Agency Memory:**
+- Table: `agency_agent_memories` (NO embedding column)
+- Retrieval: Exact lookup by tenant_id + agency_id + agent_node_id + user_id + isActive
+- Sorting: confidence DESC, useCount DESC, lastUsedAt DESC
+- Isolation: Per-user + per-agent + per-agency
+
+**Proposed Phases:**
+- **Phase 1 (Foundation):** Current text-based (IN PROGRESS)
+- **Phase 2 (Optional):** Add embedding column, dual retrieval (8-16 hours)
+- **Phase 3 (Semantic):** Vector aggregation for multi-input merging (10-14 hours)
+
+**When to Add Vectors:**
+- Memory corpus > 50-100 per agent
+- Semantic similarity improves retrieval (measure quality)
+- Cost justified by demonstrable quality improvement
+
+**Code Locations:**
+- pgvector: `python-backend/app/orchestrator/vector_store/pgvector_store.py`
+- Embedding: `python-backend/app/orchestrator/vector_store/embedding_service.py`
+- RAG: `python-backend/app/orchestrator/rag/hybrid_rag.py`
+- Orchestrator: `python-backend/app/services/agency_orchestrator.py` (execution context + node execution)
+- Memory table: `apps/web/drizzle/schema.ts:5018-5046` (no embedding field)
+
+**Key Finding:** Vector infrastructure is not a gap—it exists and is ready. Agency memory design intentionally omits vectors because the problem doesn't yet require semantic search. This is sound architecture, not an oversight.
+
+---
+
+## Vector Infrastructure & Agency Memory Integration (2026-03-23)
+
+### Status: RESEARCH COMPLETE — Vectors exist but agency memories intentionally omit them
+
+**Research Document:**
+- `VECTOR_INFRASTRUCTURE_AND_AGENCY_MEMORY.md` (key findings reference)
+- Full brief: `specs/feature/053-agency-agentic-intelligence/implementation/code_review/memory-vector-readiness.md`
+
+**Executive Summary:**
+- **Vector infrastructure exists:** pgvector + hybrid RAG (BM25 + vector + rerank), fully implemented for knowledge retrieval
+- **Agency memory architecture:** Three tiers (execution, working, long-term) intentionally omit vectors
+- **Why no vectors for agency memories?** Max 20 memories per run, high-confidence extracted facts, not document corpus. Simple sort by confidence sufficient.
+- **Real risk identified:** Context window overflow in ReAct executor — unbounded message accumulation (40K tokens by iteration 10), no pre-call validation
+- **Quick wins:** Context safety checks (4-6h), sliding-window working memory
+
+**Three Agency Memory Tiers:**
+1. **Execution Memory** — Redis + PostgreSQL checkpoints for crash recovery (no search)
+2. **Working Memory** — Per-run iteration state (observations, constraints, failed approaches), formatted as text summary
+3. **Long-Term Memory** — Persistent facts extracted from runs, stored in `agency_agent_memories` table, retrieved by confidence + usage count (NO vectors)
+
+**Chat Memory (Different from Agencies):**
+- Also omits vectors despite same opportunity
+- Three tiers: buffer (20 messages) + summaries (5 max) + entity facts (10 max)
+- Exact lookup + sorting, no semantic search
+
+**Key Code Locations:**
+- pgvector: `python-backend/app/orchestrator/vector_store/pgvector_store.py`
+- Hybrid RAG: `python-backend/app/orchestrator/rag/hybrid_rag.py`
+- Long-term memory: `python-backend/app/services/long_term_memory.py` (414 lines, NO embedding code)
+- Working memory: `python-backend/app/services/working_memory.py` (207 lines, Redis only)
+- ReAct executor: `python-backend/app/services/react_executor.py` (context risk here)
+- Agency memory table: `apps/web/drizzle/schema.ts:5018-5043` (no embedding column)
+
+**Recommendations:**
+- **IMPLEMENT:** Context window safety checks (pre-flight token estimate, sliding-window memory)
+- **DO NOT:** Add vectors to agency memories (not a gap, intentional design)
+- **CONSIDER:** Extend hybrid RAG for agency-specific document retrieval (medium priority)
+
+---
+
+## Chat Memory System Architecture (2026-03-23)
+
+### Status: RESEARCH COMPLETE — Three-tier system, no vector DB for chat, pgvector for images only
+
+**Research Document:**
+- `CHAT-MEMORY-ARCHITECTURE-RESEARCH-BRIEF.md` (comprehensive, 400+ lines)
+
+**Executive Summary:**
+- **Three tiers:** Buffer (20 recent messages) + Summaries (LLM-compressed, max 5) + Entity (persistent facts)
+- **Storage:** conversationSummaries (message ranges) + entityMemories (user-scoped facts) + messages (buffer)
+- **Retrieval method:** Buffer = full fetch, Summaries = DB query by conversation, Entity = exact SQL lookup (NO semantic search)
+- **Vector DB status:** NOT used for chat. pgvector configured for multimodal (image) embeddings only, NOT for text
+- **RAG pipeline:** NO. Entity facts retrieved by exact lookup, not semantic similarity
+- **Summarization:** Auto-triggered when unsummarized messages > 70% of context. Manual compaction available.
+- **Context management:** Token budgeting (buffer 50-60%, summaries 20-30%, entity 10-20%), three memory modes (full/no_long/off)
+- **Auto-extraction:** NO for chat (exists for agency agents only). Manual memory creation via UI.
+
+**Why No Vector DB for Chat:**
+- Entity memories are categorical facts, not semantic documents
+- Small memory sets per user (<20 items typical)
+- Exact lookup is fast enough
+- Would add complexity/cost with marginal benefit
+
+**Multimodal Exception:**
+- Images use pgvector for embeddings
+- Hybrid ranking: explicit refs (35%) + vector (25%) + recency (20%) + metadata (10%) + projectScope (5%) + salience (5%)
+- NOT shared with text chat memory system
+
+**Key Code Locations:**
+- Frontend: `apps/web/client/src/components/chat/MemoryPanel.tsx` (762 lines) + `Chat.tsx`
+- Backend: `apps/web/server/routers/memory.ts` (509 lines) + `server/services/memoryService.ts` (1000+)
+- Schema: `drizzle/schema.ts` — conversations, conversationSummaries, entityMemories
+- Vector provider: `server/services/vectorProvider.ts` (1000+ lines, images only)
+
+**Recommendations:**
+- **Priority 1:** Auto-extraction of facts (16-20h) — reuses agency memory pattern, high value
+- **Priority 2:** Semantic search (12-16h) — if fuzzy fact matching needed
+- **Not recommended:** Hierarchical summarization (current 5-summary limit adequate)
+
+**Open Questions:**
+1. Should auto-extraction be opt-in or enabled by default?
+2. Should extracted facts require approval before storing?
+3. Should memory decay be added to chat (currently no decay)?
+4. Should there be per-conversation memory isolation (currently project-scoped)?
+5. What's the per-user memory quota (currently unlimited)?
+
+---
+
+## Capabilities-Based Model Selection: Chat → Agency (2026-03-23)
+
+### Status: RESEARCH COMPLETE — Capability routing architecture mapped, 5 implementation gaps identified
+
+**Research Document:**
+- `CAPABILITY-ROUTING-RESEARCH.md` (comprehensive, 10 sections, 250+ lines)
+
+**Executive Summary:**
+- **Chat capability system:** 9 boolean flags (vision, thinking, function tools, code execution, web search, structured outputs, computer use, background, responses) + context length requirement in llmModels table
+- **Selection algorithm:** Pure function `selectBestLlmModel(requirements, models)` filters by capabilities (AND logic), then sorts by priority (recency + cost + capability count)
+- **Priority scoring:** Range 1–85: recency (15–40 pts), cost (5–30 pts), capability breadth (0–30 pts)
+- **Current Agency:** Static model field (varchar), manual picker, no capability filtering, no smart defaults
+- **Integration gap:** AgencySwarmAdapter receives model string, passes to gateway unchanged; no capability checking or fallback
+- **Implementation path:** Schema field (capabilityRequirements + modelStrategy) → UI enhancement → selection logic (Python or tRPC) → orchestrator integration → testing
+
+**Key Code Locations:**
+- Chat selection logic: `apps/web/server/services/intelligentModelSelector.ts` (254 lines, all 9 capability flags + priority scoring)
+- llmModels schema: `apps/web/drizzle/schema.ts` lines 701–722 (9 boolean columns)
+- agencyAgents schema: `apps/web/drizzle/schema.ts` lines 4661–4662 (model field only, no requirements)
+- Python adapter: `python-backend/app/services/agency_swarm_adapter.py` lines 193–220 (direct model passthrough)
+- Orchestrator: `python-backend/app/services/agency_orchestrator.py` lines 177–300+ (no capability awareness)
+
+**Effort Estimate:**
+- Phase 1 (Schema + UI): 3–5 hours
+- Phase 2 (Selection Logic): 2–4 hours (Python option faster than tRPC wrapper)
+- Phase 3 (Orchestrator Integration): 1–2 hours
+- Phase 4 (Testing): 1–2 hours
+- **Total:** 7–13 hours for full implementation
+
+**Critical Gaps:**
+1. No `capabilityRequirements` field in agencyAgents schema
+2. No capability filtering in model selection (currently manual picker only)
+3. No automatic model selection logic in Python backend
+4. No integration between orchestrator and capability-aware selection
+5. Cost tracking may count wrong model if fallback occurs (not yet critical)
+
+**Open Questions:**
+1. Should model selection be automatic (system chooses) or manual (user selects, system validates)?
+2. Should capability requirements be explicit (DB field) or inferred (from tools/skills)?
+3. Should fallback models be supported (try next-best) or fail-fast?
+4. Should resolution be per-run (all agents same model) or per-agent (each independently)?
+
+---
+
 ## Agency Node Types & Skill System Gaps (2026-03-22)
 
 ### Status: RESEARCH COMPLETE — 8 existing types, 10 critical gaps, skill integration issues

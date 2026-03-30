@@ -4,7 +4,7 @@ import { GuardianChat } from "@/components/guardian/GuardianChat";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@smartspec/ui/src/components/ui/tabs";
 import { Badge } from "@smartspec/ui/src/components/ui/badge";
 import { Button } from "@smartspec/ui/src/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@smartspec/ui/src/components/ui/card";
+import { DashboardCard } from "@/components/dashboard";
 
 export default function AdminSystemGuardian() {
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -41,46 +41,46 @@ export default function AdminSystemGuardian() {
 
       {/* Stats Row */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-muted-foreground">Open</CardTitle>
-          </CardHeader>
-          <CardContent>
+        <DashboardCard>
+          <div className="pb-2">
+            <h3 className="text-sm text-muted-foreground">Open</h3>
+          </div>
+          <div>
             <div className="text-2xl font-bold">{stats?.openIncidents ?? 0}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-red-600">Critical</CardTitle>
-          </CardHeader>
-          <CardContent>
+          </div>
+        </DashboardCard>
+        <DashboardCard>
+          <div className="pb-2">
+            <h3 className="text-sm text-red-600">Critical</h3>
+          </div>
+          <div>
             <div className="text-2xl font-bold text-red-600">{stats?.criticalCount ?? 0}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-yellow-600">Warning</CardTitle>
-          </CardHeader>
-          <CardContent>
+          </div>
+        </DashboardCard>
+        <DashboardCard>
+          <div className="pb-2">
+            <h3 className="text-sm text-yellow-600">Warning</h3>
+          </div>
+          <div>
             <div className="text-2xl font-bold text-yellow-600">{stats?.warningCount ?? 0}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-muted-foreground">Last 24h</CardTitle>
-          </CardHeader>
-          <CardContent>
+          </div>
+        </DashboardCard>
+        <DashboardCard>
+          <div className="pb-2">
+            <h3 className="text-sm text-muted-foreground">Last 24h</h3>
+          </div>
+          <div>
             <div className="text-2xl font-bold">{stats?.last24hCount ?? 0}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-muted-foreground">Pending Approvals</CardTitle>
-          </CardHeader>
-          <CardContent>
+          </div>
+        </DashboardCard>
+        <DashboardCard>
+          <div className="pb-2">
+            <h3 className="text-sm text-muted-foreground">Pending Approvals</h3>
+          </div>
+          <div>
             <div className="text-2xl font-bold">{stats?.pendingApprovals ?? 0}</div>
-          </CardContent>
-        </Card>
+          </div>
+        </DashboardCard>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -93,8 +93,8 @@ export default function AdminSystemGuardian() {
 
         <TabsContent value="dashboard" className="space-y-3 mt-4">
           {incidentsQuery.data?.map((incident) => (
-            <Card key={incident.id}>
-              <CardContent className="flex items-center justify-between py-3">
+            <DashboardCard key={incident.id}>
+              <div className="flex items-center justify-between py-3">
                 <div className="flex items-center gap-3">
                   <Badge className={severityColor[incident.severity] ?? ""}>
                     {incident.severity}
@@ -123,8 +123,8 @@ export default function AdminSystemGuardian() {
                     </>
                   )}
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </DashboardCard>
           ))}
           {incidentsQuery.data?.length === 0 && (
             <p className="text-muted-foreground text-center py-8">No open incidents</p>
@@ -133,8 +133,8 @@ export default function AdminSystemGuardian() {
 
         <TabsContent value="approvals" className="space-y-3 mt-4">
           {approvalsQuery.data?.map((approval: any) => (
-            <Card key={approval.id}>
-              <CardContent className="flex items-center justify-between py-3">
+            <DashboardCard key={approval.id}>
+              <div className="flex items-center justify-between py-3">
                 <div>
                   <div className="font-medium text-sm">
                     {approval.actionType} — Incident #{approval.incidentId}
@@ -162,8 +162,8 @@ export default function AdminSystemGuardian() {
                     Reject
                   </Button>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </DashboardCard>
           ))}
           {approvalsQuery.data?.length === 0 && (
             <p className="text-muted-foreground text-center py-8">No pending approvals</p>
@@ -173,8 +173,8 @@ export default function AdminSystemGuardian() {
         <TabsContent value="sensors" className="mt-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {sensorsQuery.data?.map((s: any) => (
-              <Card key={s.id}>
-                <CardContent className="py-3">
+              <DashboardCard key={s.id}>
+                <div className="py-3">
                   <div className="flex items-center justify-between">
                     <span className="font-medium text-sm">{s.name}</span>
                     <Badge className={severityColor[s.reading?.status === "healthy" ? "info" : s.reading?.status === "degraded" ? "warning" : "critical"] ?? ""}>
@@ -182,8 +182,8 @@ export default function AdminSystemGuardian() {
                     </Badge>
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">{s.reading?.message}</p>
-                </CardContent>
-              </Card>
+                </div>
+              </DashboardCard>
             ))}
           </div>
         </TabsContent>

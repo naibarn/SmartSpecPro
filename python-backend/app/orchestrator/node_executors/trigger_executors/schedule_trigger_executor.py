@@ -111,7 +111,7 @@ class SchedulerService:
         workflow_id: str,
         cron: str,
         timezone: str = "UTC",
-        trigger_data: dict = None,
+        trigger_data: dict[str, Any] | None = None,
     ):
         """Add a new schedule (placeholder)."""
         if not ScheduleTriggerExecutor.validate_cron(cron):

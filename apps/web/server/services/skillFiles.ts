@@ -16,6 +16,51 @@ function dedupe(items: string[]): string[] {
   return Array.from(new Set(items));
 }
 
+function resolveDirectSkillManifestPath(skillDir: string): string | null {
+  for (const fileName of SKILL_MANIFEST_FILENAMES) {
+    const fullPath = path.join(skillDir, fileName);
+    if (fs.existsSync(fullPath)) {
+      return fullPath;
+    }
+  }
+  return null;
+}
+
+export function resolveSkillBundleDir(skillDir: string): string | null {
+  const directManifestPath = resolveDirectSkillManifestPath(skillDir);
+  const directCommandManifestPath = path.join(skillDir, "skill.manifest.json");
+  if (directManifestPath || fs.existsSync(directCommandManifestPath)) {
+    return skillDir;
+  }
+
+  if (!fs.existsSync(skillDir)) {
+    return null;
+  }
+
+  try {
+    const entries = fs.readdirSync(skillDir, { withFileTypes: true });
+    const nestedDirs = entries
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => path.join(skillDir, entry.name));
+
+    const candidates = nestedDirs.filter((dirPath) => {
+      const nestedSkillManifestPath = resolveDirectSkillManifestPath(dirPath);
+      const nestedCommandManifestPath = path.join(dirPath, "skill.manifest.json");
+      return Boolean(nestedSkillManifestPath) || fs.existsSync(nestedCommandManifestPath);
+    });
+
+    if (candidates.length === 0) {
+      return null;
+    }
+
+    return candidates.find((dirPath) => fs.existsSync(path.join(dirPath, "skill.manifest.json")))
+      ?? candidates[0]
+      ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export function resolveSkillDirCandidates(folderPath: string): string[] {
   if (path.isAbsolute(folderPath)) {
     return [folderPath];
@@ -30,13 +75,11 @@ export function resolveSkillDirCandidates(folderPath: string): string[] {
 }
 
 export function resolveSkillManifestPath(skillDir: string): string | null {
-  for (const fileName of SKILL_MANIFEST_FILENAMES) {
-    const fullPath = path.join(skillDir, fileName);
-    if (fs.existsSync(fullPath)) {
-      return fullPath;
-    }
+  const bundleDir = resolveSkillBundleDir(skillDir);
+  if (!bundleDir) {
+    return null;
   }
-  return null;
+  return resolveDirectSkillManifestPath(bundleDir);
 }
 
 export function hasSkillManifest(skillDir: string): boolean {
@@ -45,9 +88,13 @@ export function hasSkillManifest(skillDir: string): boolean {
 
 export function resolveRelativeSkillManifestPath(folderPath: string): string | null {
   for (const skillDir of resolveSkillDirCandidates(folderPath)) {
+    const bundleDir = resolveSkillBundleDir(skillDir);
+    if (!bundleDir) {
+      continue;
+    }
     const manifestPath = resolveSkillManifestPath(skillDir);
     if (manifestPath) {
-      return path.join(folderPath, path.basename(manifestPath)).split(path.sep).join("/");
+      return path.join(folderPath, path.relative(skillDir, manifestPath)).split(path.sep).join("/");
     }
   }
 
@@ -101,6 +148,11 @@ export interface SkillManifestMetadataUpdate {
   credit_multiplier?: number | null;
   priority?: number | null;
   execution_mode?: string | null;
+  sandbox_profile?: string | null;
+  requires_network?: boolean | null;
+  requires_browser?: boolean | null;
+  max_runtime_seconds?: number | null;
+  max_input_mb?: number | null;
   default_model?: string | null;
   llm_model_id?: string | null;
   preferred_provider_id?: number | null;
@@ -159,6 +211,11 @@ export function buildUpdatedSkillManifest(
   assignManifestValue(nextMetadata, "credit_multiplier", metadataUpdates.credit_multiplier);
   assignManifestValue(nextMetadata, "priority", metadataUpdates.priority);
   assignManifestValue(nextMetadata, "execution_mode", metadataUpdates.execution_mode);
+  assignManifestValue(nextMetadata, "sandbox_profile", metadataUpdates.sandbox_profile);
+  assignManifestValue(nextMetadata, "requires_network", metadataUpdates.requires_network);
+  assignManifestValue(nextMetadata, "requires_browser", metadataUpdates.requires_browser);
+  assignManifestValue(nextMetadata, "max_runtime_seconds", metadataUpdates.max_runtime_seconds);
+  assignManifestValue(nextMetadata, "max_input_mb", metadataUpdates.max_input_mb);
   assignManifestValue(nextMetadata, "default_model", metadataUpdates.default_model);
   assignManifestValue(nextMetadata, "llm_model_id", metadataUpdates.llm_model_id);
   assignManifestValue(nextMetadata, "preferred_provider_id", metadataUpdates.preferred_provider_id);

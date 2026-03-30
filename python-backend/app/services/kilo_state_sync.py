@@ -448,7 +448,7 @@ class KiloStateSync:
             return None
         
         mapping = state.get_checkpoint_for_step(step_id)
-        if mapping:
+        if mapping and mapping.smartspec_checkpoint_id is not None:
             return (mapping.kilo_checkpoint_hash, mapping.smartspec_checkpoint_id)
         
         return None
@@ -565,6 +565,7 @@ class KiloStateSync:
                 "found": False,
             }
         
+        latest_checkpoint = state.get_latest_checkpoint()
         return {
             "execution_id": execution_id,
             "found": True,
@@ -573,7 +574,7 @@ class KiloStateSync:
             "task_count": len(state.task_mappings),
             "last_sync": state.last_sync.isoformat() if state.last_sync else None,
             "sync_status": state.sync_status.value,
-            "latest_checkpoint": state.get_latest_checkpoint().to_dict() if state.get_latest_checkpoint() else None,
+            "latest_checkpoint": latest_checkpoint.to_dict() if latest_checkpoint else None,
         }
     
     def delete_sync_state(self, execution_id: str) -> bool:

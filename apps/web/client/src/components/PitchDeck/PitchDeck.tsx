@@ -72,12 +72,12 @@ export const PitchDeck: React.FC<PitchDeckProps> = ({ children }) => {
     const progress = ((activeIndex) / (totalSlides - 1)) * 100;
 
     return (
-        <div className="dark relative w-screen h-screen overflow-hidden bg-background text-foreground select-none">
+        <div className="relative w-screen h-screen overflow-hidden bg-background text-foreground select-none">
 
             {/* Elegant Line-Art Background (SVG + Framer Motion) replacing buggy video player */}
-            <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden bg-black flex items-center justify-center">
+            <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden bg-gradient-to-br from-slate-50 via-background to-blue-50/40 flex items-center justify-center">
                 <svg
-                    className="absolute w-[200vw] h-[200vh] opacity-30 mix-blend-screen"
+                    className="absolute w-[200vw] h-[200vh] opacity-20 mix-blend-screen"
                     viewBox="0 0 100 100"
                     preserveAspectRatio="none"
                 >
@@ -109,21 +109,21 @@ export const PitchDeck: React.FC<PitchDeckProps> = ({ children }) => {
                     ))}
                     <defs>
                         <linearGradient id="gradient1" x1="0%" y1="0%" x2="100%" y2="0%">
-                            <stop offset="0%" stopColor="#8b5cf6" />
-                            <stop offset="50%" stopColor="#2dd4bf" />
-                            <stop offset="100%" stopColor="#f43f5e" />
+                            <stop offset="0%" stopColor="#3b82f6" />
+                            <stop offset="50%" stopColor="#06b6d4" />
+                            <stop offset="100%" stopColor="#14b8a6" />
                         </linearGradient>
                         <linearGradient id="gradient2" x1="0%" y1="0%" x2="100%" y2="0%">
-                            <stop offset="0%" stopColor="#2dd4bf" />
-                            <stop offset="50%" stopColor="#8b5cf6" />
-                            <stop offset="100%" stopColor="#2dd4bf" />
+                            <stop offset="0%" stopColor="#06b6d4" />
+                            <stop offset="50%" stopColor="#14b8a6" />
+                            <stop offset="100%" stopColor="#3b82f6" />
                         </linearGradient>
                     </defs>
                 </svg>
 
                 {/* Ethereal overlay to prevent visual clutter */}
-                <div className="absolute inset-0 bg-gradient-to-b from-background/80 via-background/40 to-background/80 pointer-events-none" />
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.7)_100%)] pointer-events-none" />
+                <div className="absolute inset-0 bg-gradient-to-b from-background/92 via-background/80 to-background/94 pointer-events-none" />
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(255,255,255,0.65)_100%)] pointer-events-none" />
             </div>
 
             {/* Slides Container */}
@@ -148,9 +148,9 @@ export const PitchDeck: React.FC<PitchDeckProps> = ({ children }) => {
             <div className="absolute bottom-0 left-0 right-0 p-6 flex flex-col items-center justify-between z-50 pointer-events-none">
 
                 {/* Progress Bar */}
-                <div className="w-full max-w-lg mb-6 pointer-events-auto h-1.5 bg-muted/30 rounded-full overflow-hidden backdrop-blur-sm border border-white/10 shadow-[0_0_15px_rgba(255,255,255,0.1)]">
+                <div className="w-full max-w-lg mb-6 pointer-events-auto h-1.5 bg-muted/50 rounded-full overflow-hidden backdrop-blur-sm border border-border/60 shadow-[0_0_15px_rgba(59,130,246,0.12)]">
                     <div
-                        className="h-full bg-gradient-to-r from-violet-500 via-coral-400 to-teal-400 rounded-full transition-all duration-500 ease-out shadow-[0_0_10px_rgba(255,255,255,0.5)]"
+                        className="h-full bg-gradient-to-r from-blue-500 via-cyan-400 to-teal-400 rounded-full transition-all duration-500 ease-out shadow-[0_0_10px_rgba(59,130,246,0.35)]"
                         style={{ width: `${progress}%` }}
                     />
                 </div>
@@ -161,7 +161,7 @@ export const PitchDeck: React.FC<PitchDeckProps> = ({ children }) => {
                         <button
                             onClick={() => paginate(-1)}
                             disabled={activeIndex === 0}
-                            className="p-3 rounded-full glass-card hover:bg-white/10 transition-all disabled:opacity-30 disabled:cursor-not-allowed group border border-white/20 shadow-lg text-foreground hover:scale-105"
+                            className="p-3 rounded-full glass-card hover:bg-white/80 transition-all disabled:opacity-30 disabled:cursor-not-allowed group border border-border/60 shadow-lg text-foreground hover:scale-105 bg-white/70"
                             aria-label="Previous Slide"
                         >
                             <ChevronLeft className="w-6 h-6 group-hover:-translate-x-1 transition-transform" />
@@ -169,7 +169,7 @@ export const PitchDeck: React.FC<PitchDeckProps> = ({ children }) => {
                         <button
                             onClick={() => paginate(1)}
                             disabled={activeIndex === totalSlides - 1}
-                            className="p-3 rounded-full glass-card hover:bg-white/10 transition-all disabled:opacity-30 disabled:cursor-not-allowed group border border-white/20 shadow-lg text-foreground hover:scale-105"
+                            className="p-3 rounded-full glass-card hover:bg-white/80 transition-all disabled:opacity-30 disabled:cursor-not-allowed group border border-border/60 shadow-lg text-foreground hover:scale-105 bg-white/70"
                             aria-label="Next Slide"
                         >
                             <ChevronRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
@@ -179,7 +179,7 @@ export const PitchDeck: React.FC<PitchDeckProps> = ({ children }) => {
                     <div className="pointer-events-auto">
                         <button
                             onClick={toggleFullscreen}
-                            className="p-3 rounded-full glass-card hover:bg-white/10 transition-all text-foreground border border-white/20 shadow-lg hover:scale-105"
+                            className="p-3 rounded-full glass-card hover:bg-white/80 transition-all text-foreground border border-border/60 shadow-lg hover:scale-105 bg-white/70"
                             aria-label="Toggle Fullscreen"
                         >
                             {isFullscreen ? <Minimize className="w-6 h-6" /> : <Maximize className="w-6 h-6" />}

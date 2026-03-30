@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { trpc } from '../lib/trpc';
+import { useScopedTranslation } from '@/i18n/useScopedTranslation';
 import {
   Mail,
   Lock,
@@ -71,6 +72,7 @@ const plans: Plan[] = [
 ];
 
 export default function Signup() {
+  const { t } = useScopedTranslation('auth');
   const [, navigate] = useLocation();
   const { user, loading: authLoading } = useAuth();
   const [step, setStep] = useState<1 | 2>(1);
@@ -147,7 +149,7 @@ export default function Signup() {
       if (anonId) ph?.alias(anonId, String(userId));
       ph?.identify(String(userId), { email: formData.email, plan: selectedPlan });
       ph?.capture("signup_completed", { plan: selectedPlan, auth_method: "email" });
-      toast.success('Account created! Please verify your email.');
+      toast.success(t('signUp.toast.success'));
       navigate(`/verify-email?email=${encodeURIComponent(formData.email)}`);
     },
     onError: (error) => {
@@ -162,12 +164,12 @@ export default function Signup() {
     if (e) e.preventDefault();
 
     if (!agreeTerms) {
-      toast.error('Please agree to the terms and conditions');
+      toast.error(t('signUp.toast.agreeTerms'));
       return;
     }
 
     if (!isPasswordStrong(formData.password)) {
-      toast.error('Password must be 8+ characters with uppercase and number');
+      toast.error(t('signUp.toast.weakPassword'));
       return;
     }
 
@@ -218,7 +220,7 @@ export default function Signup() {
 
       window.location.href = redirectUrl;
     } catch {
-      toast.error(`Could not connect to authentication service. Please try email registration.`);
+      toast.error(t('signUp.toast.oauthFailed'));
     }
   };
 

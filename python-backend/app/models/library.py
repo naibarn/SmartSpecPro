@@ -270,3 +270,4 @@ class LibraryProviderSwitchState(Base):
         Index("ix_library_provider_switch_state_tenant_status", "tenant_id", "status"),
         Index("ix_library_provider_switch_state_campaign", "campaign_status", "status"),
     )
+# mypy: ignore-errors

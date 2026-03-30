@@ -202,16 +202,17 @@ class HealthChecker:
     
     async def get_health_status(self, db=None, redis=None) -> Dict[str, Any]:
         """Get overall health status"""
+        checks: Dict[str, Any] = {}
         health = {
             "status": "healthy",
             "timestamp": datetime.utcnow().isoformat(),
-            "checks": {}
+            "checks": checks
         }
         
         # Database check
         if db:
             db_healthy = await self.check_database(db)
-            health["checks"]["database"] = {
+            checks["database"] = {
                 "status": "healthy" if db_healthy else "unhealthy"
             }
             if not db_healthy:
@@ -220,7 +221,7 @@ class HealthChecker:
         # Redis check (if available)
         if redis:
             redis_healthy = await self.check_redis(redis)
-            health["checks"]["redis"] = {
+            checks["redis"] = {
                 "status": "healthy" if redis_healthy else "unhealthy"
             }
             if not redis_healthy:
@@ -228,9 +229,9 @@ class HealthChecker:
         
         # System checks
         try:
-            health["checks"]["memory"] = self.check_memory()
-            health["checks"]["cpu"] = self.check_cpu()
-            health["checks"]["disk"] = self.check_disk()
+            checks["memory"] = self.check_memory()
+            checks["cpu"] = self.check_cpu()
+            checks["disk"] = self.check_disk()
         except Exception as e:
             logger.error("system_health_check_failed", error=str(e))
         

@@ -6,7 +6,7 @@
 
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DashboardCard } from "@/components/dashboard";
 import {
   Dialog,
   DialogContent,
@@ -559,8 +559,8 @@ export default function AdminGallery() {
         {/* Stats Cards */}
         {stats && (
           <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
-            <Card>
-              <CardContent className="p-4">
+            <DashboardCard>
+              <div className="p-4">
                 <div className="flex items-center gap-2">
                   <div className="p-2 bg-purple-100 rounded-lg">
                     <Image className="w-5 h-5 text-purple-600" />
@@ -570,10 +570,10 @@ export default function AdminGallery() {
                     <p className="text-xl font-bold">{stats.totalItems}</p>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4">
+              </div>
+            </DashboardCard>
+            <DashboardCard>
+              <div className="p-4">
                 <div className="flex items-center gap-2">
                   <div className="p-2 bg-blue-100 rounded-lg">
                     <Image className="w-5 h-5 text-blue-600" />
@@ -583,10 +583,10 @@ export default function AdminGallery() {
                     <p className="text-xl font-bold">{stats.totalImages}</p>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4">
+              </div>
+            </DashboardCard>
+            <DashboardCard>
+              <div className="p-4">
                 <div className="flex items-center gap-2">
                   <div className="p-2 bg-red-100 rounded-lg">
                     <Video className="w-5 h-5 text-red-600" />
@@ -596,10 +596,10 @@ export default function AdminGallery() {
                     <p className="text-xl font-bold">{stats.totalVideos}</p>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4">
+              </div>
+            </DashboardCard>
+            <DashboardCard>
+              <div className="p-4">
                 <div className="flex items-center gap-2">
                   <div className="p-2 bg-green-100 rounded-lg">
                     <Globe className="w-5 h-5 text-green-600" />
@@ -609,10 +609,10 @@ export default function AdminGallery() {
                     <p className="text-xl font-bold">{stats.totalWebsites}</p>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4">
+              </div>
+            </DashboardCard>
+            <DashboardCard>
+              <div className="p-4">
                 <div className="flex items-center gap-2">
                   <div className="p-2 bg-yellow-100 rounded-lg">
                     <Eye className="w-5 h-5 text-yellow-600" />
@@ -622,10 +622,10 @@ export default function AdminGallery() {
                     <p className="text-xl font-bold">{stats.totalViews.toLocaleString()}</p>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4">
+              </div>
+            </DashboardCard>
+            <DashboardCard>
+              <div className="p-4">
                 <div className="flex items-center gap-2">
                   <div className="p-2 bg-pink-100 rounded-lg">
                     <Heart className="w-5 h-5 text-pink-600" />
@@ -635,8 +635,8 @@ export default function AdminGallery() {
                     <p className="text-xl font-bold">{stats.totalLikes.toLocaleString()}</p>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </DashboardCard>
           </div>
         )}
 
@@ -644,14 +644,14 @@ export default function AdminGallery() {
           /* Analytics View */
           <div className="space-y-6">
             {/* Top Items */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
+            <DashboardCard>
+              <div>
+                <h3 className="flex items-center gap-2">
                   <TrendingUp className="w-5 h-5 text-purple-500" />
                   Top Performing Items
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
+                </h3>
+              </div>
+              <div>
                 {analytics?.topItems && analytics.topItems.length > 0 ? (
                   <div className="space-y-3">
                     {analytics.topItems.map((item, index) => (
@@ -677,18 +677,18 @@ export default function AdminGallery() {
                 ) : (
                   <p className="text-gray-500 text-center py-8">No data available</p>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </DashboardCard>
 
             {/* Type Distribution */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
+            <DashboardCard>
+              <div>
+                <h3 className="flex items-center gap-2">
                   <Activity className="w-5 h-5 text-purple-500" />
                   Content Distribution
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
+                </h3>
+              </div>
+              <div>
                 {analytics?.typeDistribution && analytics.typeDistribution.length > 0 ? (
                   <div className="grid grid-cols-3 gap-4">
                     {analytics.typeDistribution.map((item) => (
@@ -706,8 +706,8 @@ export default function AdminGallery() {
                 ) : (
                   <p className="text-gray-500 text-center py-8">No data available</p>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </DashboardCard>
           </div>
         ) : (
           /* Gallery View */
@@ -816,13 +816,13 @@ export default function AdminGallery() {
             {isLoading ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {[...Array(8)].map((_, i) => (
-                  <Card key={i}>
+                  <DashboardCard key={i}>
                     <Skeleton className="aspect-video" />
-                    <CardContent className="p-4">
+                    <div className="p-4">
                       <Skeleton className="h-5 w-3/4 mb-2" />
                       <Skeleton className="h-4 w-1/2" />
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </DashboardCard>
                 ))}
               </div>
             ) : items && items.length > 0 ? (
@@ -835,7 +835,7 @@ export default function AdminGallery() {
                       : undefined;
 
                   return (
-                  <Card
+                  <DashboardCard
                     key={item.id}
                     className={`group overflow-hidden cursor-pointer transition-all ${
                       selectedIds.has(item.id) ? "ring-2 ring-purple-500" : ""
@@ -954,7 +954,7 @@ export default function AdminGallery() {
                       </button>
                     </div>
 
-                    <CardContent className="p-4">
+                    <div className="p-4">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
                           <h3 className="font-medium truncate">{item.title}</h3>
@@ -1028,13 +1028,13 @@ export default function AdminGallery() {
                           </span>
                         )}
                       </div>
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </DashboardCard>
                   );
                 })}
               </div>
             ) : (
-              <Card className="p-12">
+              <DashboardCard className="p-12">
                 <div className="text-center">
                   <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
                     <Image className="w-8 h-8 text-gray-400" />
@@ -1048,7 +1048,7 @@ export default function AdminGallery() {
                     Add Item
                   </Button>
                 </div>
-              </Card>
+              </DashboardCard>
             )}
 
             {/* Pagination */}

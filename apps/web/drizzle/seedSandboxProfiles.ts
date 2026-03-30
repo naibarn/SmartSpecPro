@@ -48,9 +48,9 @@ const BASELINE_PROFILES: InsertSandboxProfile[] = [
   {
     slug: "browser-default",
     name: "Browser Automation (Default)",
-    description: "Playwright browser sandbox with network access for web scraping",
+    description: "Playwright browser sandbox with network access plus LibreOffice for slide/PDF workflows",
     executionMode: "browser",
-    baseImage: "mcr.microsoft.com/playwright:v1.40.0-jammy",
+    baseImage: "smartspec/browser-sandbox:local",
     cpuLimit: "2000m",
     memoryLimitMb: 4096,
     ephemeralDiskMb: 5120,
@@ -96,7 +96,28 @@ export async function seedSandboxProfiles(): Promise<void> {
     await db
       .insert(sandboxProfiles)
       .values(profile)
-      .onConflictDoNothing({ target: sandboxProfiles.slug });
+      .onConflictDoUpdate({
+        target: sandboxProfiles.slug,
+        set: {
+          name: profile.name,
+          description: profile.description,
+          executionMode: profile.executionMode,
+          baseImage: profile.baseImage,
+          cpuLimit: profile.cpuLimit,
+          memoryLimitMb: profile.memoryLimitMb,
+          ephemeralDiskMb: profile.ephemeralDiskMb,
+          timeoutSeconds: profile.timeoutSeconds,
+          networkDefaultAction: profile.networkDefaultAction,
+          allowBrowser: profile.allowBrowser,
+          allowCommand: profile.allowCommand,
+          allowCodeInterpreter: profile.allowCodeInterpreter,
+          allowFileUpload: profile.allowFileUpload,
+          maxInputMb: profile.maxInputMb,
+          maxOutputMb: profile.maxOutputMb,
+          isActive: true,
+          updatedAt: new Date(),
+        },
+      });
   }
 
   console.log(`[Seed] Sandbox profiles seeded (${BASELINE_PROFILES.length} profiles)`);

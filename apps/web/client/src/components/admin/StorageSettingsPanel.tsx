@@ -11,7 +11,6 @@ import { trpc } from "../../lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -48,6 +47,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { DashboardCard, DashboardKpiCard } from "@/components/dashboard";
 import {
   Settings,
   Key,
@@ -310,17 +310,13 @@ export default function StorageSettingsPanel() {
   return (
     <div className="space-y-6">
       {/* Default Storage Provider Selector */}
-      <Card className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
-        <CardHeader className="border-b bg-gradient-to-r from-purple-50/50 to-pink-50/30 pb-5">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Cloud className="w-5 h-5 text-purple-500" />
-            Default Storage Provider
-          </CardTitle>
-          <CardDescription>
-            Choose where files are stored. During testing, use Local. For production, switch to R2 or S3.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="pt-6">
+      <DashboardCard
+        className="overflow-hidden"
+        leading={<Cloud className="w-5 h-5 text-purple-500" />}
+        title="Default Storage Provider"
+        description="Choose where files are stored. During testing, use Local. For production, switch to R2 or S3."
+        bodyClassName="pt-6"
+      >
           <div className="grid grid-cols-3 gap-4">
             {/* Local */}
             <button
@@ -425,21 +421,16 @@ export default function StorageSettingsPanel() {
               }
             </span>
           </div>
-        </CardContent>
-      </Card>
+      </DashboardCard>
 
       {/* Setup Guides */}
-      <Card className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
-        <CardHeader className="border-b bg-gradient-to-r from-blue-50/50 to-indigo-50/30 pb-5">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <BookOpen className="w-5 h-5 text-blue-500" />
-            Storage Setup Guides
-          </CardTitle>
-          <CardDescription>
-            Step-by-step instructions for configuring Cloudflare R2 or AWS S3 storage, including required CORS settings for direct file uploads.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="pt-6 space-y-4">
+      <DashboardCard
+        className="overflow-hidden"
+        leading={<BookOpen className="w-5 h-5 text-blue-500" />}
+        title="Storage Setup Guides"
+        description="Step-by-step instructions for configuring Cloudflare R2 or AWS S3 storage, including required CORS settings for direct file uploads."
+        bodyClassName="pt-6 space-y-4"
+      >
           {/* Cloudflare R2 Guide */}
           <div className="rounded-lg border border-orange-200 bg-orange-50/30 overflow-hidden">
             <button
@@ -621,66 +612,29 @@ export default function StorageSettingsPanel() {
               </div>
             )}
           </div>
-        </CardContent>
-      </Card>
+      </DashboardCard>
 
       {/* Stats Cards */}
       {stats && (
         <div className="grid gap-4 md:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Configurations</CardTitle>
-              <Settings className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.total}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Active</CardTitle>
-              <CheckCircle2 className="h-4 w-4 text-green-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.active}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">With Credentials</CardTitle>
-              <Key className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.withCredentials}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Cloudflare R2</CardTitle>
-              <Cloud className="h-4 w-4 text-orange-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.byType.r2}</div>
-            </CardContent>
-          </Card>
+          <DashboardKpiCard icon={Settings} label="Total Configurations" value={stats.total} />
+          <DashboardKpiCard icon={CheckCircle2} label="Active" value={stats.active} iconClassName="text-green-500" />
+          <DashboardKpiCard icon={Key} label="With Credentials" value={stats.withCredentials} />
+          <DashboardKpiCard icon={Cloud} label="Cloudflare R2" value={stats.byType.r2} iconClassName="text-orange-500" />
         </div>
       )}
 
       {/* Storage Configurations Table */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>Storage Configurations</CardTitle>
-            <CardDescription>
-              Manage your S3-compatible object storage settings. Only one configuration can be active at a time.
-            </CardDescription>
-          </div>
-          <Button onClick={() => setIsCreateDialogOpen(true)} size="sm">
-            <Plus className="mr-2 h-4 w-4" />
-            Add Storage
-          </Button>
-        </CardHeader>
-        <CardContent>
+      <DashboardCard
+        className="overflow-hidden"
+        title="Storage Configurations"
+        description="Manage your S3-compatible object storage settings. Only one configuration can be active at a time."
+        trailing={<Button onClick={() => setIsCreateDialogOpen(true)} size="sm"><Plus className="mr-2 h-4 w-4" />Add Storage</Button>}
+      >
+        <div className="overflow-x-auto">
+          <div className="sr-only">Storage configurations table</div>
+        </div>
+        <div className="overflow-x-auto">
           {settings.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <Cloud className="h-12 w-12 mx-auto mb-4 opacity-50" />
@@ -809,8 +763,8 @@ export default function StorageSettingsPanel() {
               </TableBody>
             </Table>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </DashboardCard>
 
       {/* Create/Edit Dialog */}
       <Dialog
@@ -1148,8 +1102,7 @@ export default function StorageSettingsPanel() {
       {/* Test Result Toast */}
       {testResult && (
         <div className="fixed bottom-4 right-4 z-50">
-          <Card className={testResult.success ? "border-green-500" : "border-red-500"}>
-            <CardContent className="flex items-center gap-3 p-4">
+          <DashboardCard className={testResult.success ? "border-green-500" : "border-red-500"} bodyClassName="flex items-center gap-3 p-4">
               {testResult.success ? (
                 <CheckCircle2 className="h-5 w-5 text-green-500" />
               ) : (
@@ -1164,8 +1117,7 @@ export default function StorageSettingsPanel() {
               <Button variant="ghost" size="sm" onClick={() => setTestResult(null)}>
                 <X className="h-4 w-4" />
               </Button>
-            </CardContent>
-          </Card>
+          </DashboardCard>
         </div>
       )}
     </div>

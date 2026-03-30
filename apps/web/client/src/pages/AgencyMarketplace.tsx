@@ -17,10 +17,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AgencyMarketplaceCard } from "@/components/agency/AgencyMarketplaceCard";
 import { AgencyMarketplaceDrawer } from "@/components/agency/AgencyMarketplaceDrawer";
+import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 
 const PAGE_SIZE = 24;
 
 export default function AgencyMarketplace() {
+  const { t } = useScopedTranslation("agency");
   const [, setLocation] = useLocation();
   const { isAuthenticated } = useAuth();
 
@@ -68,7 +70,7 @@ export default function AgencyMarketplace() {
             {/* Badge */}
             <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-500/10 text-purple-600 text-sm font-medium mb-5">
               <Bot className="w-4 h-4" />
-              Agencies Marketplace
+              {t("marketplace.title")}
             </span>
 
             <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold mb-4 leading-tight">
@@ -87,7 +89,7 @@ export default function AgencyMarketplace() {
             <div className="relative max-w-lg mx-auto mb-6">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
               <Input
-                placeholder="Search agencies..."
+                placeholder={t("marketplace.searchPlaceholder")}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-12 h-12 rounded-xl text-base shadow-sm"
@@ -173,7 +175,7 @@ export default function AgencyMarketplace() {
                 <div className="w-16 h-16 rounded-full bg-purple-500/10 flex items-center justify-center mx-auto mb-4">
                   <Sparkles className="h-8 w-8 text-purple-500" />
                 </div>
-                <p className="text-lg font-medium mb-2">No public agencies yet</p>
+                <p className="text-lg font-medium mb-2">{t("marketplace.empty")}</p>
                 <p className="text-muted-foreground mb-6">
                   {debouncedSearch
                     ? "Try adjusting your search."
@@ -252,7 +254,7 @@ export default function AgencyMarketplace() {
                   Build Your AI Agent Team
                 </h2>
                 <p className="text-lg opacity-90 mb-6 max-w-xl mx-auto">
-                  Sign up free to clone any agency, customize agents,
+                  {t("marketplace.signUpFreeDesc")}
                   and run multi-agent workflows.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-3 justify-center">

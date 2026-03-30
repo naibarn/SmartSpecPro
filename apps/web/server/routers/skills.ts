@@ -32,6 +32,10 @@ import {
   llmProviders,
   modelProviderMap,
   skills,
+  skillContractSnapshots,
+  skillImprovementRecommendations,
+  skillImprovementRuns,
+  skillMaintenanceSchedules,
   skillPermissions,
   userGroups,
   users as usersTable,
@@ -68,6 +72,13 @@ import {
   listIscProposalsWithOwners,
   readIscProposalContent,
 } from "../services/skillStudioService";
+import { analyzeSkillForMaintenance } from "../services/skillMaintenanceAnalyzer";
+import {
+  buildSkillContractSnapshot,
+  compareSkillContractSnapshots,
+} from "../services/skillCompatibilityGate";
+import { persistSkillMaintenanceAnalysis } from "../services/skillUpgradePlanner";
+import { applySkillUpgradeRecommendation } from "../services/skillUpgradeApplier";
 import {
   hasRelativeSkillManifest,
   mirrorExistingSkillManifest,
@@ -80,9 +91,48 @@ import { refreshModelCache } from "../services/modelRegistry";
 import { resolveSkillExecutionPolicy } from "../services/skillExecutionPolicy";
 import { loadEnabledLlmModelRows } from "../services/enabledLlmModels";
 import { resolveMediaTypeFromSkillCategory, sanitizeMediaModelSelection } from "../services/mediaModelSelection";
+import {
+  executeSkillMaintenanceSweep,
+  resolveMaintenanceScheduleInput,
+} from "../services/skillMaintenanceScheduler";
 
 // Skills directory path
 const SKILLS_DIR = path.resolve(process.cwd(), "skills");
+const SKILL_EXECUTION_MODE_VALUES = [
+  "llm-only",
+  "media-generate",
+  "enhance-prompt",
+  "python",
+  "sandbox-code",
+  "sandbox-command",
+  "sandbox-browser",
+  "sandbox-file",
+  "sandbox-media",
+] as const;
+const skillExecutionModeSchema = z.enum(SKILL_EXECUTION_MODE_VALUES);
+
+function isSandboxExecutionMode(mode: string | null | undefined): boolean {
+  return typeof mode === "string" && mode.startsWith("sandbox-");
+}
+
+function getDefaultSandboxProfileSlug(
+  executionMode: string | null | undefined,
+  category: string,
+): string {
+  if (executionMode === "sandbox-browser" || executionMode === "sandbox-command") {
+    return "browser-default";
+  }
+  if (executionMode === "sandbox-file") {
+    return "file-parser";
+  }
+  if (executionMode === "sandbox-media") {
+    return "media-processing";
+  }
+  if (category === "slide_generation") {
+    return "browser-default";
+  }
+  return "code-default";
+}
 
 /**
  * Parse skill.md frontmatter and content
@@ -146,6 +196,8 @@ function mapCategoryToEnum(category?: string): string {
     "audio-generation": "audio_generation",
     "article_generation": "article_generation",
     "article-generation": "article_generation",
+    "slide_generation": "slide_generation",
+    "slide-generation": "slide_generation",
     "product_review": "product_review",
     "product-review": "product_review",
     "sound_effects": "sound_effects",
@@ -172,6 +224,7 @@ function mapCategoryToEnum(category?: string): string {
   if ((cat.includes("video") || cat.includes("film") || cat.includes("movie")) && cat.includes("prompt")) return "video_prompt_generation";
   if (cat.includes("code") || cat.includes("dev") || cat.includes("engineer") || cat.includes("programming")) return "code_assistant";
   if (cat.includes("review") || cat.includes("reviewer") || (cat.includes("product") && !cat.includes("prompt"))) return "product_review";
+  if (cat.includes("slide") || cat.includes("deck") || cat.includes("presentation") || cat.includes("storyboard")) return "slide_generation";
   if (cat.includes("write") || cat.includes("content") || cat.includes("blog") || cat.includes("copy")) return "article_generation";
   if (cat.includes("data") || cat.includes("analy")) return "data_analysis";
   if (cat.includes("image") || cat.includes("photo") || cat.includes("visual")) return "image_generation";
@@ -494,7 +547,10 @@ const promptEnhancementRequestSchema = z.object({
   identityLock: z.enum(["none", "soft_lock_person", "strict_lock_product"]).optional(),
   aspectRatio: z.string().optional(),
   aspectRatioCustom: z.string().optional(),
-  language: z.enum(["en", "th", "both"]).optional(),
+  // NOTE: This is a skill-content language coverage filter, distinct from SUPPORTED_LANGUAGES (UI display locales).
+  // "en" = English-only skills, "th" = Thai-capable skills, "both" = supports both languages.
+  // Update this enum if new content-language variants are added to the skills system.
+  language: z.enum(["en", "th", "both"] as const).optional(),
   // LLM model selection for Advanced Mode - allows user to choose vision-capable model
   model: z.string().optional(), // e.g., "openai/gpt-4o", "anthropic/claude-3.5-sonnet"
 
@@ -2029,6 +2085,7 @@ export const skillsRouter = router({
       }).optional()
     )
     .query(async ({ input }) => {
+      await autoSyncSkillsFromFolder();
       const dbInstance = await getDb();
       if (!dbInstance) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
 
@@ -2092,6 +2149,7 @@ export const skillsRouter = router({
   getFromDb: protectedProcedure
     .input(z.object({ slug: z.string() }))
     .query(async ({ input }) => {
+      await autoSyncSkillsFromFolder();
       const dbInstance = await getDb();
       if (!dbInstance) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
 
@@ -2476,6 +2534,12 @@ export const skillsRouter = router({
         llmModelId: z.string().nullable().optional(),
         preferredProviderId: z.number().int().positive().nullable().optional(),
         strictProviderPin: z.boolean().optional(),
+        executionMode: skillExecutionModeSchema.optional(),
+        sandboxProfileSlug: z.string().trim().min(1).max(64).nullable().optional(),
+        requiresNetwork: z.boolean().nullable().optional(),
+        requiresBrowser: z.boolean().nullable().optional(),
+        maxRuntimeSeconds: z.number().int().min(1).max(3600).nullable().optional(),
+        maxInputMb: z.number().int().min(1).max(2048).nullable().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -2502,6 +2566,16 @@ export const skillsRouter = router({
         }
       }
 
+      const normalizedCategory = mapCategoryToEnum(input.category);
+      const effectiveExecutionMode = input.executionMode ?? getRecommendedExecutionModeForSkillCategory(normalizedCategory) ?? "llm-only";
+      if (!isExecutionModeCompatibleWithSkillCategory(normalizedCategory, effectiveExecutionMode)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Category '${normalizedCategory}' is not compatible with executionMode '${effectiveExecutionMode}'.`,
+        });
+      }
+      const shouldUseSandbox = isSandboxExecutionMode(effectiveExecutionMode);
+
       // Check if slug already exists
       const [existing] = await dbInstance
         .select({ id: skills.id })
@@ -2522,7 +2596,7 @@ export const skillsRouter = router({
           slug: input.slug,
           name: input.name,
           description: input.description,
-          category: mapCategoryToEnum(input.category) as any,
+          category: normalizedCategory as any,
           version: input.version || "1.0.0",
           author: input.author,
           icon: input.icon || "sparkles",
@@ -2541,6 +2615,26 @@ export const skillsRouter = router({
           llmModelId: input.llmModelId ?? null,
           preferredProviderId: input.preferredProviderId ?? null,
           strictProviderPin: input.strictProviderPin ?? false,
+          executionMode: effectiveExecutionMode,
+          sandboxProfileSlug: shouldUseSandbox
+            ? (input.sandboxProfileSlug ?? getDefaultSandboxProfileSlug(effectiveExecutionMode, normalizedCategory))
+            : null,
+          requiresNetwork: shouldUseSandbox
+            ? (input.requiresNetwork ?? (
+                effectiveExecutionMode === "sandbox-command"
+                || effectiveExecutionMode === "sandbox-browser"
+                || normalizedCategory === "slide_generation"
+              ))
+            : null,
+          requiresBrowser: shouldUseSandbox
+            ? (input.requiresBrowser ?? (effectiveExecutionMode === "sandbox-browser"))
+            : null,
+          maxRuntimeSeconds: shouldUseSandbox
+            ? (input.maxRuntimeSeconds ?? (normalizedCategory === "slide_generation" ? 600 : 300))
+            : null,
+          maxInputMb: shouldUseSandbox
+            ? (input.maxInputMb ?? (normalizedCategory === "slide_generation" ? 50 : 25))
+            : null,
           configJson: input.configJson,
           importSource: "manual",
           createdBy: ctx.user?.id,
@@ -2580,7 +2674,12 @@ export const skillsRouter = router({
         llmModelId: z.string().nullable().optional(),
         preferredProviderId: z.number().int().positive().nullable().optional(),
         strictProviderPin: z.boolean().optional(),
-        executionMode: z.enum(["llm-only", "media-generate", "enhance-prompt", "python"]).optional(),
+        executionMode: skillExecutionModeSchema.optional(),
+        sandboxProfileSlug: z.string().trim().min(1).max(64).nullable().optional(),
+        requiresNetwork: z.boolean().nullable().optional(),
+        requiresBrowser: z.boolean().nullable().optional(),
+        maxRuntimeSeconds: z.number().int().min(1).max(3600).nullable().optional(),
+        maxInputMb: z.number().int().min(1).max(2048).nullable().optional(),
         systemPrompt: z.string().nullable().optional(),
         skillContent: z.string().nullable().optional(),
         marketplaceContent: z.string().nullable().optional(),
@@ -2631,6 +2730,11 @@ export const skillsRouter = router({
           preferredProviderId: skills.preferredProviderId,
           category: skills.category,
           executionMode: skills.executionMode,
+          sandboxProfileSlug: skills.sandboxProfileSlug,
+          requiresNetwork: skills.requiresNetwork,
+          requiresBrowser: skills.requiresBrowser,
+          maxRuntimeSeconds: skills.maxRuntimeSeconds,
+          maxInputMb: skills.maxInputMb,
         })
         .from(skills)
         .where(eq(skills.id, id))
@@ -2719,6 +2823,11 @@ export const skillsRouter = router({
       }
       if (updateData.strictProviderPin !== undefined) updateObj.strictProviderPin = updateData.strictProviderPin;
       if (updateData.executionMode !== undefined) updateObj.executionMode = updateData.executionMode;
+      if (updateData.sandboxProfileSlug !== undefined) updateObj.sandboxProfileSlug = updateData.sandboxProfileSlug;
+      if (updateData.requiresNetwork !== undefined) updateObj.requiresNetwork = updateData.requiresNetwork;
+      if (updateData.requiresBrowser !== undefined) updateObj.requiresBrowser = updateData.requiresBrowser;
+      if (updateData.maxRuntimeSeconds !== undefined) updateObj.maxRuntimeSeconds = updateData.maxRuntimeSeconds;
+      if (updateData.maxInputMb !== undefined) updateObj.maxInputMb = updateData.maxInputMb;
       if (updateData.systemPrompt !== undefined) updateObj.systemPrompt = updateData.systemPrompt;
       if (updateData.skillContent !== undefined) updateObj.skillContent = updateData.skillContent;
       if (updateData.marketplaceContent !== undefined) updateObj.marketplaceContent = updateData.marketplaceContent;
@@ -2729,6 +2838,37 @@ export const skillsRouter = router({
         if (updateData.visibility === "pending_approval") {
           updateObj.requestedPublishAt = new Date();
         }
+      }
+
+      if (isSandboxExecutionMode(effectiveExecutionMode)) {
+        if (updateData.sandboxProfileSlug === undefined && currentSkill.sandboxProfileSlug == null) {
+          updateObj.sandboxProfileSlug = getDefaultSandboxProfileSlug(
+            effectiveExecutionMode,
+            effectiveCategory,
+          );
+        }
+        if (updateData.requiresNetwork === undefined && currentSkill.requiresNetwork == null) {
+          updateObj.requiresNetwork = (
+            effectiveExecutionMode === "sandbox-command"
+            || effectiveExecutionMode === "sandbox-browser"
+            || effectiveCategory === "slide_generation"
+          );
+        }
+        if (updateData.requiresBrowser === undefined && currentSkill.requiresBrowser == null) {
+          updateObj.requiresBrowser = effectiveExecutionMode === "sandbox-browser";
+        }
+        if (updateData.maxRuntimeSeconds === undefined && currentSkill.maxRuntimeSeconds == null) {
+          updateObj.maxRuntimeSeconds = effectiveCategory === "slide_generation" ? 600 : 300;
+        }
+        if (updateData.maxInputMb === undefined && currentSkill.maxInputMb == null) {
+          updateObj.maxInputMb = effectiveCategory === "slide_generation" ? 50 : 25;
+        }
+      } else if (updateData.executionMode !== undefined) {
+        updateObj.sandboxProfileSlug = null;
+        updateObj.requiresNetwork = null;
+        updateObj.requiresBrowser = null;
+        updateObj.maxRuntimeSeconds = null;
+        updateObj.maxInputMb = null;
       }
 
       // Spec 038: Merge execution policy into executionPolicyJson
@@ -2787,6 +2927,10 @@ export const skillsRouter = router({
           .find((candidate) => !!resolveSkillManifestPath(candidate));
 
         if (skillDir) {
+          const shouldClearSandboxManifestFields = (
+            updateData.executionMode !== undefined
+            && !isSandboxExecutionMode(updateData.executionMode)
+          );
           const manifestResult = updateSkillManifestFiles(
             skillDir,
             {
@@ -2803,6 +2947,11 @@ export const skillsRouter = router({
               credit_multiplier: updateData.creditMultiplier,
               priority: updateData.priority,
               execution_mode: updateData.executionMode,
+              sandbox_profile: shouldClearSandboxManifestFields ? null : updateData.sandboxProfileSlug,
+              requires_network: shouldClearSandboxManifestFields ? null : updateData.requiresNetwork,
+              requires_browser: shouldClearSandboxManifestFields ? null : updateData.requiresBrowser,
+              max_runtime_seconds: shouldClearSandboxManifestFields ? null : updateData.maxRuntimeSeconds,
+              max_input_mb: shouldClearSandboxManifestFields ? null : updateData.maxInputMb,
               default_model: updateData.defaultModel,
               llm_model_id: updateData.llmModelId,
               preferred_provider_id: updateData.preferredProviderId,
@@ -3413,10 +3562,171 @@ ${knowledgeFiles.map((f) => `- ${f}`).join("\n") || "(No knowledge files found)"
     .input(z.object({
       skillName: z.string().min(1).max(100).regex(/^[\w-]+$/),
       diffFile: z.string().min(1).max(200).regex(/^[\w.\-]+\.diff$/),
+      recommendationId: z.number().int().positive().optional(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       try {
         const result = await applyIscProposalDiff(input.skillName, input.diffFile);
+
+        if (input.recommendationId) {
+          const dbInstance = await getDb();
+          if (!dbInstance) {
+            throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+          }
+
+          const [recommendation] = await dbInstance
+            .select()
+            .from(skillImprovementRecommendations)
+            .where(eq(skillImprovementRecommendations.id, input.recommendationId))
+            .limit(1);
+
+          if (!recommendation) {
+            throw new TRPCError({ code: "NOT_FOUND", message: `Recommendation ${input.recommendationId} not found` });
+          }
+
+          const [skill] = await dbInstance
+            .select()
+            .from(skills)
+            .where(eq(skills.id, recommendation.skillId))
+            .limit(1);
+
+          if (!skill) {
+            throw new TRPCError({ code: "NOT_FOUND", message: `Skill ${recommendation.skillId} not found` });
+          }
+
+          const [run] = await dbInstance
+            .insert(skillImprovementRuns)
+            .values({
+              skillId: skill.id,
+              tenantId: skill.tenantId,
+              recommendationId: recommendation.id,
+              scheduleId: recommendation.scheduleId,
+              runType: "verify",
+              status: "running",
+              triggerSource: "manual",
+              requestedBy: ctx.user?.id ?? null,
+              summary: `Verifying applied proposal ${input.diffFile} for ${skill.slug}`,
+              logsJson: {
+                diffFile: input.diffFile,
+                skillName: input.skillName,
+              },
+              metricsJson: {},
+              verificationJson: {},
+              diffSummaryJson: {},
+              startedAt: new Date(),
+            })
+            .returning();
+
+          const [baselineSnapshotRow] = await dbInstance
+            .select()
+            .from(skillContractSnapshots)
+            .where(and(
+              eq(skillContractSnapshots.recommendationId, recommendation.id),
+              eq(skillContractSnapshots.snapshotType, "baseline"),
+            ))
+            .orderBy(desc(skillContractSnapshots.capturedAt))
+            .limit(1);
+
+          if (baselineSnapshotRow) {
+            const candidateSnapshot = buildSkillContractSnapshot({
+              id: skill.id,
+              slug: skill.slug,
+              name: skill.name,
+              description: skill.description,
+              folderPath: skill.folderPath,
+              executionMode: skill.executionMode,
+              configJson: (skill.configJson as Record<string, unknown> | null) ?? null,
+              sandboxProfileSlug: skill.sandboxProfileSlug,
+              requiresNetwork: skill.requiresNetwork,
+              requiresBrowser: skill.requiresBrowser,
+            });
+
+            const compatibilityReport = compareSkillContractSnapshots(
+              {
+                skillSlug: skill.slug,
+                skillDir: null,
+                bundleDir: null,
+                manifestPath: baselineSnapshotRow.manifestPath,
+                executionMode: baselineSnapshotRow.executionMode,
+                runtimeProfile: baselineSnapshotRow.runtimeProfile ?? "unknown",
+                inputSchemaHash: baselineSnapshotRow.inputSchemaHash,
+                outputSchemaHash: baselineSnapshotRow.outputSchemaHash,
+                testsHash: baselineSnapshotRow.testsHash,
+                fixtureHash: baselineSnapshotRow.fixtureHash,
+                manifestHash: baselineSnapshotRow.manifestHash,
+                contractHash: baselineSnapshotRow.contractHash ?? "",
+                schemaSummary: baselineSnapshotRow.schemaSummaryJson as any,
+                fileInventory: [],
+              },
+              candidateSnapshot,
+            );
+
+            await dbInstance.insert(skillContractSnapshots).values({
+              skillId: skill.id,
+              tenantId: skill.tenantId,
+              recommendationId: recommendation.id,
+              runId: run.id,
+              snapshotType: "post_apply",
+              executionMode: candidateSnapshot.executionMode,
+              runtimeProfile: candidateSnapshot.runtimeProfile,
+              manifestPath: candidateSnapshot.manifestPath,
+              manifestHash: candidateSnapshot.manifestHash,
+              inputSchemaHash: candidateSnapshot.inputSchemaHash,
+              outputSchemaHash: candidateSnapshot.outputSchemaHash,
+              fixtureHash: candidateSnapshot.fixtureHash,
+              testsHash: candidateSnapshot.testsHash,
+              contractHash: candidateSnapshot.contractHash,
+              schemaSummaryJson: candidateSnapshot.schemaSummary,
+              sampleInputsJson: [],
+              sampleOutputsJson: [],
+	              compatibilityNotesJson: {
+	                status: compatibilityReport.status,
+	                issues: compatibilityReport.issues,
+	              },
+              snapshotJson: {
+                fileInventory: candidateSnapshot.fileInventory,
+                source: "applyIscProposal",
+                diffFile: input.diffFile,
+              },
+              capturedAt: new Date(),
+              createdAt: new Date(),
+            });
+
+            await dbInstance
+              .update(skillImprovementRecommendations)
+              .set({
+                status: compatibilityReport.status === "blocked" ? "blocked" : "applied",
+                reviewedAt: new Date(),
+                reviewedBy: ctx.user?.id ?? null,
+                approvedAt: recommendation.approvedAt ?? new Date(),
+                approvedBy: recommendation.approvedBy ?? ctx.user?.id ?? null,
+                appliedAt: compatibilityReport.status === "blocked" ? null : new Date(),
+                compatibilityStatus: compatibilityReport.status,
+                updatedAt: new Date(),
+              })
+              .where(eq(skillImprovementRecommendations.id, recommendation.id));
+
+            await dbInstance
+              .update(skillImprovementRuns)
+              .set({
+                status: compatibilityReport.status === "blocked" ? "failed" : "completed",
+                summary: compatibilityReport.status === "blocked"
+                  ? `Proposal applied but compatibility gate blocked ${skill.slug}`
+                  : `Proposal applied and verified for ${skill.slug}`,
+                errorMessage: compatibilityReport.status === "blocked"
+                  ? compatibilityReport.issues.map((issue) => issue.message).join(" ")
+                  : null,
+	                verificationJson: {
+	                  status: compatibilityReport.status,
+	                  issues: compatibilityReport.issues,
+	                },
+                endedAt: new Date(),
+                updatedAt: new Date(),
+              })
+              .where(eq(skillImprovementRuns.id, run.id));
+          }
+        }
+
         return { success: true, output: result.output };
       } catch (error) {
         throw new TRPCError({
@@ -3424,6 +3734,401 @@ ${knowledgeFiles.map((f) => `- ${f}`).join("\n") || "(No knowledge files found)"
           message: `Apply failed: ${error instanceof Error ? error.message : "Unknown error"}`,
         });
       }
+    }),
+
+  analyzeUpgrade: adminProcedure
+    .input(z.object({
+      skillId: z.number().int().positive(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const dbInstance = await getDb();
+      if (!dbInstance) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      }
+
+      const [skill] = await dbInstance
+        .select()
+        .from(skills)
+        .where(eq(skills.id, input.skillId))
+        .limit(1);
+
+      if (!skill) {
+        throw new TRPCError({ code: "NOT_FOUND", message: `Skill ${input.skillId} not found` });
+      }
+
+      const result = await persistSkillMaintenanceAnalysis({
+        db: dbInstance,
+        skill,
+        requestedBy: ctx.user?.id ?? null,
+        triggerSource: "manual",
+      });
+
+      return {
+        skillId: skill.id,
+        skillSlug: skill.slug,
+        qualityScore: result.analysis.qualityScore,
+        currentRuntime: result.analysis.currentRuntime,
+        isGenjsCandidate: result.analysis.isGenjsCandidate,
+        genjsCandidateScore: result.analysis.genjsCandidateScore,
+        run: result.run,
+        recommendations: result.recommendations,
+      };
+    }),
+
+  getUpgradeRecommendations: adminProcedure
+    .input(z.object({
+      skillId: z.number().int().positive().optional(),
+      status: z.enum(["pending_review", "approved", "dismissed", "applied", "blocked", "failed"]).optional(),
+      riskLevel: z.enum(["low", "medium", "high", "critical"]).optional(),
+      recommendationType: z.string().min(1).max(100).optional(),
+      includeDismissed: z.boolean().optional(),
+      limit: z.number().int().min(1).max(200).optional(),
+      offset: z.number().int().min(0).optional(),
+    }).optional())
+    .query(async ({ input }) => {
+      const dbInstance = await getDb();
+      if (!dbInstance) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      }
+
+      const conditions = [];
+      if (input?.skillId) {
+        conditions.push(eq(skillImprovementRecommendations.skillId, input.skillId));
+      }
+      if (input?.status) {
+        conditions.push(eq(skillImprovementRecommendations.status, input.status));
+      } else if (!input?.includeDismissed) {
+        conditions.push(inArray(skillImprovementRecommendations.status, [
+          "pending_review",
+          "approved",
+          "blocked",
+          "failed",
+          "applied",
+        ]));
+      }
+      if (input?.riskLevel) {
+        conditions.push(eq(skillImprovementRecommendations.riskLevel, input.riskLevel));
+      }
+      if (input?.recommendationType) {
+        conditions.push(eq(skillImprovementRecommendations.recommendationType, input.recommendationType));
+      }
+
+      let query = dbInstance.select().from(skillImprovementRecommendations);
+      if (conditions.length > 0) {
+        query = query.where(and(...conditions)) as typeof query;
+      }
+      query = query.orderBy(desc(skillImprovementRecommendations.analyzedAt)) as typeof query;
+      if (input?.limit) {
+        query = query.limit(input.limit) as typeof query;
+      }
+      if (input?.offset) {
+        query = query.offset(input.offset) as typeof query;
+      }
+
+      const rows = await query;
+      const skillIds = Array.from(new Set(rows.map((row) => row.skillId)));
+      const relatedSkills = skillIds.length > 0
+        ? await dbInstance
+          .select({
+            id: skills.id,
+            slug: skills.slug,
+            name: skills.name,
+            category: skills.category,
+            executionMode: skills.executionMode,
+            sandboxProfileSlug: skills.sandboxProfileSlug,
+          })
+          .from(skills)
+          .where(inArray(skills.id, skillIds))
+        : [];
+      const skillMap = new Map(relatedSkills.map((skill) => [skill.id, skill]));
+
+      return rows.map((row) => ({
+        ...row,
+        skill: skillMap.get(row.skillId) ?? null,
+      }));
+    }),
+
+  getUpgradeRecommendationDetail: adminProcedure
+    .input(z.object({
+      recommendationId: z.number().int().positive(),
+    }))
+    .query(async ({ input }) => {
+      const dbInstance = await getDb();
+      if (!dbInstance) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      }
+
+      const [recommendation] = await dbInstance
+        .select()
+        .from(skillImprovementRecommendations)
+        .where(eq(skillImprovementRecommendations.id, input.recommendationId))
+        .limit(1);
+
+      if (!recommendation) {
+        throw new TRPCError({ code: "NOT_FOUND", message: `Recommendation ${input.recommendationId} not found` });
+      }
+
+      const [skill] = await dbInstance
+        .select()
+        .from(skills)
+        .where(eq(skills.id, recommendation.skillId))
+        .limit(1);
+
+      const snapshots = await dbInstance
+        .select()
+        .from(skillContractSnapshots)
+        .where(eq(skillContractSnapshots.recommendationId, recommendation.id))
+        .orderBy(desc(skillContractSnapshots.capturedAt))
+        .limit(5);
+
+      const runs = await dbInstance
+        .select()
+        .from(skillImprovementRuns)
+        .where(eq(skillImprovementRuns.recommendationId, recommendation.id))
+        .orderBy(desc(skillImprovementRuns.createdAt))
+        .limit(10);
+
+      return {
+        recommendation,
+        skill: skill ?? null,
+        snapshots,
+        runs,
+      };
+    }),
+
+  dismissUpgradeRecommendation: adminProcedure
+    .input(z.object({
+      recommendationId: z.number().int().positive(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const dbInstance = await getDb();
+      if (!dbInstance) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      }
+
+      const [updated] = await dbInstance
+        .update(skillImprovementRecommendations)
+        .set({
+          status: "dismissed",
+          dismissedAt: new Date(),
+          dismissedBy: ctx.user?.id ?? null,
+          reviewedAt: new Date(),
+          reviewedBy: ctx.user?.id ?? null,
+          updatedAt: new Date(),
+        })
+        .where(eq(skillImprovementRecommendations.id, input.recommendationId))
+        .returning();
+
+      if (!updated) {
+        throw new TRPCError({ code: "NOT_FOUND", message: `Recommendation ${input.recommendationId} not found` });
+      }
+
+      return updated;
+    }),
+
+  applyUpgradeRecommendation: adminProcedure
+    .input(z.object({
+      recommendationId: z.number().int().positive(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const dbInstance = await getDb();
+      if (!dbInstance) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      }
+
+      try {
+        const result = await applySkillUpgradeRecommendation({
+          db: dbInstance,
+          recommendationId: input.recommendationId,
+          requestedBy: ctx.user?.id ?? null,
+          tenantId: ctx.tenantId ?? null,
+          userRole: ctx.user?.role ?? "admin",
+          userToken: ctx.userToken ?? null,
+          publicUrl: ctx.publicUrl ?? null,
+        });
+
+        if (result.compatibilityReport?.status === "blocked" && result.mode === "applied") {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Compatibility gate blocked this apply attempt.",
+          });
+        }
+
+        return result;
+      } catch (error) {
+        if (error instanceof Error && error.message.includes("not found")) {
+          throw new TRPCError({ code: "NOT_FOUND", message: error.message });
+        }
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: error instanceof Error ? error.message : "Failed to apply upgrade recommendation",
+        });
+      }
+    }),
+
+  runMaintenanceSweep: adminProcedure
+    .input(z.object({
+      limit: z.number().int().min(1).max(200).optional(),
+      category: z.string().optional(),
+      executionMode: skillExecutionModeSchema.optional(),
+      genjsCandidatesOnly: z.boolean().optional(),
+    }).optional())
+    .mutation(async ({ ctx, input }) => {
+      const dbInstance = await getDb();
+      if (!dbInstance) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      }
+
+      return executeSkillMaintenanceSweep({
+        db: dbInstance,
+        requestedBy: ctx.user?.id ?? null,
+        triggerSource: "sweep",
+        tenantId: ctx.tenantId ?? null,
+        filters: {
+          limit: input?.limit,
+          category: input?.category,
+          executionMode: input?.executionMode,
+          genjsCandidatesOnly: input?.genjsCandidatesOnly,
+        },
+      });
+    }),
+
+  listMaintenanceSchedules: adminProcedure
+    .query(async () => {
+      const dbInstance = await getDb();
+      if (!dbInstance) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      }
+
+      return dbInstance
+        .select()
+        .from(skillMaintenanceSchedules)
+        .orderBy(desc(skillMaintenanceSchedules.updatedAt));
+    }),
+
+  createMaintenanceSchedule: adminProcedure
+    .input(z.object({
+      name: z.string().min(1).max(255),
+      description: z.string().optional(),
+      cronExpression: z.string().min(1).max(128).optional(),
+      timezone: z.string().min(1).max(64).optional(),
+      scopeType: z.string().min(1).max(50).optional(),
+      scopeJson: z.record(z.any()).optional(),
+      policyJson: z.record(z.any()).optional(),
+      status: z.enum(["active", "paused", "disabled"]).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const dbInstance = await getDb();
+      if (!dbInstance) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      }
+
+      let resolved;
+      try {
+        resolved = resolveMaintenanceScheduleInput({
+          name: input.name,
+          description: input.description,
+          cronExpression: input.cronExpression,
+          timezone: input.timezone,
+          scopeType: input.scopeType,
+          scopeJson: input.scopeJson,
+          policyJson: input.policyJson,
+          status: input.status,
+        });
+      } catch (error) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: error instanceof Error ? error.message : "Invalid maintenance schedule",
+        });
+      }
+
+      const [schedule] = await dbInstance
+        .insert(skillMaintenanceSchedules)
+        .values({
+          tenantId: ctx.tenantId ?? null,
+          name: resolved.name,
+          description: resolved.description,
+          cronExpression: resolved.cronExpression,
+          timezone: resolved.timezone,
+          scopeType: resolved.scopeType,
+          scopeJson: resolved.scopeJson,
+          policyJson: resolved.policyJson,
+          status: resolved.status,
+          createdBy: ctx.user?.id ?? null,
+          nextRunAt: resolved.nextRunAt,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning();
+
+      return schedule;
+    }),
+
+  updateMaintenanceSchedule: adminProcedure
+    .input(z.object({
+      id: z.number().int().positive(),
+      name: z.string().min(1).max(255).optional(),
+      description: z.string().optional(),
+      cronExpression: z.string().min(1).max(128).optional(),
+      timezone: z.string().min(1).max(64).optional(),
+      scopeType: z.string().min(1).max(50).optional(),
+      scopeJson: z.record(z.any()).optional(),
+      policyJson: z.record(z.any()).optional(),
+      status: z.enum(["active", "paused", "disabled"]).optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const dbInstance = await getDb();
+      if (!dbInstance) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      }
+
+      const [existing] = await dbInstance
+        .select()
+        .from(skillMaintenanceSchedules)
+        .where(eq(skillMaintenanceSchedules.id, input.id))
+        .limit(1);
+
+      if (!existing) {
+        throw new TRPCError({ code: "NOT_FOUND", message: `Schedule ${input.id} not found` });
+      }
+
+      let resolved;
+      try {
+        resolved = resolveMaintenanceScheduleInput({
+          name: input.name ?? existing.name,
+          description: input.description ?? existing.description,
+          cronExpression: input.cronExpression ?? existing.cronExpression,
+          timezone: input.timezone ?? existing.timezone,
+          scopeType: input.scopeType ?? existing.scopeType,
+          scopeJson: input.scopeJson ?? (existing.scopeJson as Record<string, unknown> | null) ?? {},
+          policyJson: input.policyJson ?? (existing.policyJson as Record<string, unknown> | null) ?? {},
+          status: input.status ?? existing.status,
+        });
+      } catch (error) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: error instanceof Error ? error.message : "Invalid maintenance schedule",
+        });
+      }
+
+      const [updated] = await dbInstance
+        .update(skillMaintenanceSchedules)
+        .set({
+          name: resolved.name,
+          description: resolved.description,
+          cronExpression: resolved.cronExpression,
+          timezone: resolved.timezone,
+          scopeType: resolved.scopeType,
+          scopeJson: resolved.scopeJson,
+          policyJson: resolved.policyJson,
+          status: resolved.status,
+          nextRunAt: resolved.nextRunAt,
+          updatedAt: new Date(),
+        })
+        .where(eq(skillMaintenanceSchedules.id, input.id))
+        .returning();
+
+      return updated;
     }),
 
   /**

@@ -1,0 +1,26 @@
+{
+  "plugin_root": "/home/dev/.codex/skills",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/060-social-video-platform-expansion/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/060-social-video-platform-expansion/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-provider-contracts-and-catalogs",
+    "section-02-tiktok-adapter-and-validation",
+    "section-03-youtube-adapter-and-shorts-classification",
+    "section-04-workflow-and-agency-integration",
+    "section-05-tests-rollout-and-operational-guardrails"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-03-24T02:29:26.911392+00:00"
+}

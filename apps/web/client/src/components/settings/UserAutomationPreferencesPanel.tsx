@@ -4,7 +4,6 @@ import { pickEnabledModelId } from "@/lib/enabledModelSelection";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -17,6 +16,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Save, Shield } from "lucide-react";
+import { DashboardCard } from "@/components/dashboard";
 
 export function UserAutomationPreferencesPanel() {
   const [enabled, setEnabled] = useState(true);
@@ -148,17 +148,13 @@ export function UserAutomationPreferencesPanel() {
   const lockedPersonalControls = personalControls.filter((control) => !control.enabled);
 
   return (
-    <Card className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
-      <CardHeader className="border-b bg-gradient-to-r from-sky-50/60 to-emerald-50/40 pb-5">
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <Shield className="h-5 w-5 text-sky-600" />
-          Personal Automation Preferences
-        </CardTitle>
-        <CardDescription>
-          These preferences apply only to your account. They can only narrow the tenant safety baseline, never expand it.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6 pt-6">
+    <DashboardCard
+      title="Personal Automation Preferences"
+      description="These preferences apply only to your account. They can only narrow the tenant safety baseline, never expand it."
+      leading={<Shield className="h-5 w-5 text-sky-500" />}
+      bodyClassName="p-0"
+    >
+      <div className="space-y-6 pt-6">
         <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 space-y-3">
           <div>
             <h3 className="text-sm font-semibold text-slate-800">What you can change</h3>
@@ -338,7 +334,7 @@ export function UserAutomationPreferencesPanel() {
           )}
           Save Personal Preferences
         </Button>
-      </CardContent>
-    </Card>
+      </div>
+    </DashboardCard>
   );
 }

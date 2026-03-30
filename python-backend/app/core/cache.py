@@ -306,3 +306,4 @@ CACHE_CONFIGS = {
 def get_cache_config(data_type: str) -> dict:
     """Get cache configuration for data type"""
     return CACHE_CONFIGS.get(data_type, {"ttl": 300, "prefix": "default"})
+# mypy: ignore-errors

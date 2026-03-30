@@ -9,6 +9,8 @@ import { Link } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
+import { Seo } from '@/components/Seo';
+import { isVideoMediaUrl } from '@/lib/media';
 import {
   Calendar,
   Clock,
@@ -16,7 +18,6 @@ import {
   Sparkles,
   ChevronRight,
   BookOpen,
-  PenLine,
 } from 'lucide-react';
 
 interface BlogPost {
@@ -31,11 +32,28 @@ interface BlogPost {
   tags: string[];
   readTime: string;
   isFeatured: boolean;
+  metaDescription?: string | null;
+  metaKeywords?: string | null;
   publishedAt: string;
   createdAt: string;
 }
 
-const categories = ['All', 'Product Update', 'Tutorial', 'Guide', 'Security', 'News'];
+const categories = ['All', 'Product Update', 'Tutorial', 'Guide', 'Security', 'SEO', 'News'];
+const topicClusters = [
+  'Skill marketplace SEO',
+  'Workflow automation',
+  'Swarm orchestration',
+  'Chat, presentation, video',
+  'FAQ and long-tail keywords',
+  'Image and video pipelines',
+  'Enterprise governance',
+];
+const relatedHubs = [
+  { href: '/resources', label: 'Site Index', description: 'Navigate the full public content graph.' },
+  { href: '/docs/seo/ai-search-optimization', label: 'AI Search Optimization', description: 'Tune each page for a different search intent.' },
+  { href: '/docs/content/factory', label: 'Content Factory', description: 'Generate docs, FAQ, and blog pages at scale.' },
+  { href: '/docs/faq/marketplace', label: 'Marketplace FAQ', description: 'Target discovery, publishing, and governance questions.' },
+];
 
 export default function Blog() {
   const [posts, setPosts] = useState<BlogPost[]>([]);
@@ -58,7 +76,20 @@ export default function Blog() {
   const regularPosts = filteredPosts.filter(post => !post.isFeatured);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/20">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-cyan-50/20">
+      <Seo
+        title="SmartAIHub Blog | Product Updates, Tutorials & Security"
+        description="Read SmartAIHub product updates, tutorials, security notes, and guides for skill marketplaces and workflow swarms."
+        keywords={["SmartAIHub blog", "product updates", "tutorials", "security", "workflow swarms"]}
+        canonicalPath="/blog"
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "Blog",
+          name: "SmartAIHub Blog",
+          description: "Product updates and tutorials for SmartAIHub.",
+          url: "/blog",
+        }}
+      />
       <Navbar />
 
       {/* Hero Section */}
@@ -69,26 +100,37 @@ export default function Blog() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
-            <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/60 backdrop-blur-sm border border-purple-100 text-sm text-purple-600 mb-6">
+            <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/60 backdrop-blur-sm border border-blue-100 text-sm text-blue-600 mb-6">
               <Sparkles className="w-4 h-4" />
               Blog
             </span>
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-6">
               Latest{' '}
-              <span className="bg-gradient-to-r from-purple-600 via-pink-500 to-orange-400 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-blue-600 via-cyan-500 to-teal-400 bg-clip-text text-transparent">
                 Posts
               </span>
             </h1>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              News, tutorials, and updates from our team.
+              News, tutorials, and updates covering skill marketplaces, workflow automation,
+              swarm execution, and output delivery for enterprise teams.
             </p>
+            <div className="mt-8 flex flex-wrap justify-center gap-3">
+              {topicClusters.map((cluster) => (
+                <span
+                  key={cluster}
+                  className="rounded-full border border-blue-100 bg-white/70 px-4 py-2 text-sm font-medium text-slate-600 shadow-sm backdrop-blur"
+                >
+                  {cluster}
+                </span>
+              ))}
+            </div>
           </motion.div>
         </div>
       </section>
 
       {isLoading ? (
         <div className="flex items-center justify-center py-20">
-          <div className="w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full animate-spin" />
+          <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
         </div>
       ) : posts.length === 0 ? (
         <section className="py-16 px-4">
@@ -102,6 +144,47 @@ export default function Blog() {
         </section>
       ) : (
         <>
+          <section className="px-4 pb-4">
+            <div className="container max-w-6xl mx-auto">
+              <div className="rounded-3xl border border-white/60 bg-white/70 backdrop-blur-xl p-6 shadow-lg shadow-blue-500/5">
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-600">Search intent</p>
+                    <p className="mt-2 text-sm text-gray-600">Each post targets a distinct cluster: marketplace, workflows, swarms, outputs, or governance.</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-600">Why it matters</p>
+                    <p className="mt-2 text-sm text-gray-600">That gives SmartAIHub more surface area to rank across product, how-to, and enterprise search terms.</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-600">Coverage</p>
+                    <p className="mt-2 text-sm text-gray-600">Posts are optimized for AI answers, featured snippets, and long-tail discovery.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="px-4 py-6">
+            <div className="container max-w-6xl mx-auto">
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                {relatedHubs.map((link) => (
+                  <Link key={link.href} href={link.href}>
+                    <div className="h-full rounded-2xl border border-white/60 bg-white/80 backdrop-blur-xl p-5 shadow-lg shadow-blue-500/5 hover:shadow-xl hover:shadow-blue-500/10 transition-all group">
+                        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-blue-600 mb-2">Related Hub</p>
+                        <h3 className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">{link.label}</h3>
+                        <p className="mt-2 text-sm text-gray-600 leading-6">{link.description}</p>
+                        <div className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-blue-600">
+                          Open hub
+                          <ArrowRight className="w-4 h-4" />
+                        </div>
+                      </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </section>
+
           {/* Category Filter */}
           <section className="py-4 px-4">
             <div className="container max-w-6xl mx-auto">
@@ -112,7 +195,7 @@ export default function Blog() {
                     onClick={() => setSelectedCategory(category)}
                     className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
                       selectedCategory === category
-                        ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-md'
+                        ? 'bg-gradient-to-r from-blue-500 to-cyan-400 text-white shadow-md'
                         : 'bg-white/60 text-gray-600 hover:bg-white hover:text-gray-900 border border-white/50'
                     }`}
                   >
@@ -131,18 +214,26 @@ export default function Blog() {
                   <motion.article
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="bg-white/70 backdrop-blur-xl rounded-3xl border border-white/50 shadow-xl shadow-purple-500/10 overflow-hidden cursor-pointer hover:shadow-2xl transition-shadow"
+                    className="bg-white/70 backdrop-blur-xl rounded-3xl border border-white/50 shadow-xl shadow-blue-500/10 overflow-hidden cursor-pointer hover:shadow-2xl transition-shadow"
                   >
                     <div className="grid md:grid-cols-2 gap-0">
                       {featuredPost.coverImage && (
                         <div className="relative h-64 md:h-auto">
-                          <img
-                            src={featuredPost.coverImage}
-                            alt={featuredPost.title}
-                            className="absolute inset-0 w-full h-full object-cover"
-                          />
+                          {isVideoMediaUrl(featuredPost.coverImage) ? (
+                            <video
+                              src={featuredPost.coverImage}
+                              controls
+                              className="absolute inset-0 w-full h-full object-cover bg-black"
+                            />
+                          ) : (
+                            <img
+                              src={featuredPost.coverImage}
+                              alt={featuredPost.title}
+                              className="absolute inset-0 w-full h-full object-cover"
+                            />
+                          )}
                           <div className="absolute top-4 left-4">
-                            <span className="px-3 py-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-semibold rounded-full">
+                            <span className="px-3 py-1 bg-gradient-to-r from-blue-500 to-cyan-400 text-white text-xs font-semibold rounded-full">
                               Featured
                             </span>
                           </div>
@@ -151,7 +242,7 @@ export default function Blog() {
                       <div className="p-8 flex flex-col justify-center">
                         <div className="flex items-center gap-4 mb-4">
                           {featuredPost.category && (
-                            <span className="px-3 py-1 bg-purple-100 text-purple-600 text-xs font-medium rounded-full">
+                            <span className="px-3 py-1 bg-blue-100 text-blue-600 text-xs font-medium rounded-full">
                               {featuredPost.category}
                             </span>
                           )}
@@ -176,7 +267,7 @@ export default function Blog() {
                               {featuredPost.readTime && <p className="text-sm text-gray-500">{featuredPost.readTime}</p>}
                             </div>
                           </div>
-                          <Button className="bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-700 hover:to-pink-600 text-white">
+                          <Button className="bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 text-white">
                             Read More
                             <ArrowRight className="w-4 h-4 ml-2" />
                           </Button>
@@ -199,18 +290,26 @@ export default function Blog() {
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.1 }}
-                      className="bg-white/70 backdrop-blur-xl rounded-2xl border border-white/50 shadow-lg shadow-purple-500/5 overflow-hidden hover:shadow-xl hover:shadow-purple-500/10 transition-all duration-300 group cursor-pointer h-full"
+                      className="bg-white/70 backdrop-blur-xl rounded-2xl border border-white/50 shadow-lg shadow-blue-500/5 overflow-hidden hover:shadow-xl hover:shadow-blue-500/10 transition-all duration-300 group cursor-pointer h-full"
                     >
                       {post.coverImage && (
                         <div className="relative h-48 overflow-hidden">
-                          <img
-                            src={post.coverImage}
-                            alt={post.title}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                          />
+                          {isVideoMediaUrl(post.coverImage) ? (
+                            <video
+                              src={post.coverImage}
+                              controls
+                              className="w-full h-full object-cover bg-black group-hover:scale-105 transition-transform duration-500"
+                            />
+                          ) : (
+                            <img
+                              src={post.coverImage}
+                              alt={post.title}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                            />
+                          )}
                           {post.category && (
                             <div className="absolute top-4 left-4">
-                              <span className="px-3 py-1 bg-white/90 backdrop-blur-sm text-purple-600 text-xs font-medium rounded-full">
+                              <span className="px-3 py-1 bg-white/90 backdrop-blur-sm text-blue-600 text-xs font-medium rounded-full">
                                 {post.category}
                               </span>
                             </div>
@@ -232,7 +331,7 @@ export default function Blog() {
                             </span>
                           )}
                         </div>
-                        <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2 group-hover:text-purple-600 transition-colors">
+                        <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2 group-hover:text-blue-600 transition-colors">
                           {post.title}
                         </h3>
                         <p className="text-gray-600 text-sm mb-4 line-clamp-2">
@@ -245,7 +344,7 @@ export default function Blog() {
                             )}
                             <span className="text-sm text-gray-600">{post.author}</span>
                           </div>
-                          <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-purple-500 group-hover:translate-x-1 transition-all" />
+                          <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-blue-500 group-hover:translate-x-1 transition-all" />
                         </div>
                       </div>
                     </motion.article>

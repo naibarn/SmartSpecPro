@@ -30,6 +30,7 @@ interface ModelInputFieldsPanelProps {
   promptPreview?: string;
   aspectRatioPreview?: string;
   referenceImageUrls?: string[];
+  referenceVideoUrls?: string[];
   className?: string;
   variant?: "light" | "dark";
   titlePrefix?: string;
@@ -96,6 +97,7 @@ export function ModelInputFieldsPanel({
   promptPreview,
   aspectRatioPreview,
   referenceImageUrls,
+  referenceVideoUrls,
   className,
   variant = "light",
   titlePrefix = "Model Inputs",
@@ -242,6 +244,7 @@ export function ModelInputFieldsPanel({
     none: "None",
     prompt: "Prompt",
     reference_images: "Reference Images",
+    reference_videos: "Reference Videos",
     aspect_ratio: "Aspect Ratio",
   };
 
@@ -268,6 +271,9 @@ export function ModelInputFieldsPanel({
         } else if (field.syncWith === "reference_images") {
           const count = referenceImageUrls?.length ?? 0;
           preview = count > 0 ? `${count} reference image${count === 1 ? "" : "s"}` : "No references";
+        } else if (field.syncWith === "reference_videos") {
+          const count = referenceVideoUrls?.length ?? 0;
+          preview = count > 0 ? `${count} reference video${count === 1 ? "" : "s"}` : "No references";
         }
         return (
           <label key={field.key} className="flex flex-col gap-1">

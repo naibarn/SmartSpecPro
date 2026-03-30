@@ -7,10 +7,31 @@ import type { Express } from "express";
 import type { TenantRequest } from "../_core/tenant";
 import { getTenantTheme, getTenantSeo, clearTenantCache } from "../_core/tenant";
 import { db } from "../db";
-import { tenants, tenantPages, themePresets } from "../../drizzle/schema";
-import { eq, and, asc } from "drizzle-orm";
+import { tenants, tenantPages, themePresets, seoMetadata } from "../../drizzle/schema";
+import { eq, and, asc, inArray } from "drizzle-orm";
 import { sdk } from "../_core/sdk";
 import { sanitizeBrandingDeep } from "../services/brandingSanitizer";
+import { SmartAiHubContentManifestSchema } from "../../shared/smartaihubContentManifest";
+import { importSmartAiHubContentManifest } from "../services/smartaihubContentImport";
+import { buildSmartAiHubRelatedLinks } from "../../shared/smartaihubDiscovery";
+import { pingSmartAiHubSearchEngines } from "../services/sitemapPing";
+
+function isVideoMediaUrl(url: string): boolean {
+  const value = url.trim().toLowerCase();
+  return /\.(mp4|webm|mov|m4v|ogg)(\?.*)?$/.test(value) || value.includes("video");
+}
+
+function buildTenantPagePath(pageKey: string, slug: string): string {
+  if (pageKey === "home" || slug === "home") {
+    return "/";
+  }
+
+  if (pageKey.startsWith("docs-")) {
+    return `/docs/${slug.replace(/^\/+/, "")}`;
+  }
+
+  return `/${slug.replace(/^\/+/, "")}`;
+}
 
 export function registerTenantRoutes(app: Express) {
   // Get current tenant information
@@ -67,16 +88,88 @@ export function registerTenantRoutes(app: Express) {
         return res.status(404).json({ error: "Tenant not found" });
       }
 
-      const path = (req.query.path as string) || "/";
-      const seo = getTenantSeo(req.tenant);
+      const rawPath = (req.query.path as string) || "/";
+      const path = rawPath.startsWith("/") ? rawPath : `/${rawPath}`;
+      const normalizedPath = path.length > 1 ? path.replace(/\/+$/, "") : "/";
+      const seoDefaults = getTenantSeo(req.tenant);
 
-      // TODO: Query seo_metadata table for path-specific metadata
-      // For now, return tenant defaults
+      const dbInstance = await db.instance;
+      const [metadata] = await dbInstance
+        .select()
+        .from(seoMetadata)
+        .where(
+          and(
+            eq(seoMetadata.tenantId, Number(req.tenant.id)),
+            eq(seoMetadata.path, normalizedPath)
+          )
+        )
+        .limit(1);
 
-      res.json(sanitizeBrandingDeep({ seo, path }));
+      const seo = {
+        ...seoDefaults,
+        defaultTitle: metadata?.title || seoDefaults.defaultTitle,
+        defaultDescription: metadata?.description || seoDefaults.defaultDescription,
+        defaultKeywords: metadata?.keywords || seoDefaults.defaultKeywords,
+        ogImage: metadata?.ogMetadata?.image || seoDefaults.ogImage,
+        twitterCard: metadata?.twitterMetadata?.card || seoDefaults.twitterCard,
+        aiContext: metadata?.aiContent?.context || seoDefaults.aiContext,
+        aiKeyFacts: metadata?.aiContent?.keyFacts || seoDefaults.aiKeyFacts,
+        structuredData: metadata?.structuredData || seoDefaults.structuredData,
+      };
+
+      res.json(sanitizeBrandingDeep({
+        seo,
+        metadata: metadata || null,
+        path: normalizedPath,
+        relatedLinks: buildSmartAiHubRelatedLinks(normalizedPath, metadata?.title || seoDefaults.defaultTitle, metadata?.keywords || seoDefaults.defaultKeywords || []),
+      }));
     } catch (error) {
       console.error("Error fetching SEO:", error);
       res.status(500).json({ error: "Failed to fetch SEO metadata" });
+    }
+  });
+
+  // Import content manifest for the current tenant (domain admin only)
+  app.post("/api/tenant/content-manifest/import", async (req: TenantRequest, res) => {
+    try {
+      const user = await sdk.authenticateRequest(req).catch(() => null);
+      if (!user) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      if (user.role !== "domain_admin" && user.role !== "admin") {
+        return res.status(403).json({ error: "Only domain admins can import content" });
+      }
+
+      if (!req.tenant) {
+        return res.status(404).json({ error: "Tenant not found" });
+      }
+
+      if (user.role === "domain_admin" && user.registeredDomain !== req.tenant.primaryDomain) {
+        return res.status(403).json({ error: "You can only import content for your own domain" });
+      }
+
+      const parsed = SmartAiHubContentManifestSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({
+          error: "Invalid content manifest",
+          details: parsed.error.flatten(),
+        });
+      }
+
+      const dbInstance = await db.instance;
+      const tenantDomain = req.tenant.primaryDomain || parsed.data.tenantDomain || "smartaihub.app";
+      const result = await importSmartAiHubContentManifest(dbInstance, parsed.data, tenantDomain);
+      clearTenantCache();
+      void pingSmartAiHubSearchEngines(tenantDomain).catch(() => {});
+
+      res.json({
+        success: true,
+        result,
+      });
+    } catch (error) {
+      console.error("Error importing content manifest:", error);
+      res.status(500).json({ error: "Failed to import content manifest" });
     }
   });
 
@@ -327,6 +420,114 @@ export function registerTenantRoutes(app: Express) {
     }
   });
 
+  // Attach generated media to a tenant page (domain admin only)
+  app.post("/api/tenant/pages/:pageKey/attach-media", async (req: TenantRequest, res) => {
+    try {
+      const user = await sdk.authenticateRequest(req).catch(() => null);
+      if (!user) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      if (user.role !== "domain_admin" && user.role !== "admin") {
+        return res.status(403).json({ error: "Only domain admins can update pages" });
+      }
+
+      if (!req.tenant) {
+        return res.status(404).json({ error: "Tenant not found" });
+      }
+
+      if (user.role === "domain_admin" && user.registeredDomain !== req.tenant.primaryDomain) {
+        return res.status(403).json({ error: "You can only update your own domain's pages" });
+      }
+
+      const { pageKey } = req.params;
+      const { mediaUrl } = req.body as { mediaUrl?: string; mediaType?: string };
+      if (!mediaUrl || !mediaUrl.trim()) {
+        return res.status(400).json({ error: "mediaUrl is required" });
+      }
+
+      const normalizedUrl = mediaUrl.trim();
+      const dbInstance = await db.instance;
+      const [existingPage] = await dbInstance
+        .select()
+        .from(tenantPages)
+        .where(
+          and(
+            eq(tenantPages.tenantId as any, req.tenant.id as any),
+            eq(tenantPages.pageKey, pageKey)
+          )
+        )
+        .limit(1);
+
+      if (!existingPage) {
+        return res.status(404).json({ error: "Page not found" });
+      }
+
+      const metadata = (existingPage.metadata || {}) as Record<string, any>;
+      const customMeta = { ...(metadata.customMeta || {}) };
+      customMeta.heroMediaUrl = normalizedUrl;
+      customMeta.heroMediaType = isVideoMediaUrl(normalizedUrl) ? "video" : "image";
+
+      const nextMetadata = {
+        ...metadata,
+        customMeta,
+        ...(isVideoMediaUrl(normalizedUrl) ? {} : { ogImage: normalizedUrl }),
+      };
+
+      await dbInstance
+        .update(tenantPages)
+        .set({
+          metadata: nextMetadata,
+          updatedAt: new Date(),
+        })
+        .where(eq(tenantPages.id, existingPage.id));
+
+      const pagePath = buildTenantPagePath(existingPage.pageKey, existingPage.slug);
+
+      const [existingSeo] = await dbInstance
+        .select()
+        .from(seoMetadata)
+        .where(
+          and(
+            eq(seoMetadata.tenantId, Number(req.tenant.id)),
+            eq(seoMetadata.path, pagePath)
+          )
+        )
+        .limit(1);
+
+      if (existingSeo && !isVideoMediaUrl(normalizedUrl)) {
+        await dbInstance
+          .update(seoMetadata)
+          .set({
+            ogMetadata: {
+              ...(existingSeo.ogMetadata || {}),
+              image: normalizedUrl,
+            },
+            twitterMetadata: {
+              ...(existingSeo.twitterMetadata || {}),
+              image: normalizedUrl,
+            },
+            updatedAt: new Date(),
+          })
+          .where(eq(seoMetadata.id, existingSeo.id));
+      }
+
+      clearTenantCache();
+      res.json({
+        success: true,
+        message: "Media attached to page",
+        page: {
+          pageKey: existingPage.pageKey,
+          slug: existingPage.slug,
+          mediaUrl: normalizedUrl,
+        },
+      });
+    } catch (error) {
+      console.error("Error attaching media to page:", error);
+      res.status(500).json({ error: "Failed to attach media to page" });
+    }
+  });
+
   // Delete page (domain admin only)
   app.delete("/api/tenant/pages/:pageKey", async (req: TenantRequest, res) => {
     try {
@@ -348,6 +549,28 @@ export function registerTenantRoutes(app: Express) {
       const { pageKey } = req.params;
 
       const dbInstance = await db.instance;
+      const [existingPage] = await dbInstance
+        .select({ id: tenantPages.id, slug: tenantPages.slug, pageKey: tenantPages.pageKey })
+        .from(tenantPages)
+        .where(
+          and(
+            eq(tenantPages.tenantId as any, req.tenant.id as any),
+            eq(tenantPages.pageKey, pageKey)
+          )
+        )
+        .limit(1);
+
+      if (existingPage) {
+        await dbInstance
+          .delete(seoMetadata)
+          .where(
+            and(
+              eq(seoMetadata.tenantId, Number(req.tenant.id)),
+              eq(seoMetadata.path, buildTenantPagePath(existingPage.pageKey, existingPage.slug))
+            )
+          );
+      }
+
       await dbInstance
         .delete(tenantPages)
         .where(
@@ -357,6 +580,7 @@ export function registerTenantRoutes(app: Express) {
           )
         );
 
+      clearTenantCache();
       res.json({
         success: true,
         message: "Page deleted successfully",
@@ -364,6 +588,82 @@ export function registerTenantRoutes(app: Express) {
     } catch (error) {
       console.error("Error deleting page:", error);
       res.status(500).json({ error: "Failed to delete page" });
+    }
+  });
+
+  // Bulk delete pages (domain admin only)
+  app.delete("/api/tenant/pages/bulk-delete", async (req: TenantRequest, res) => {
+    try {
+      const user = await sdk.authenticateRequest(req).catch(() => null);
+      if (!user) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      if (user.role !== "domain_admin" && user.role !== "admin") {
+        return res.status(403).json({ error: "Only domain admins can delete pages" });
+      }
+
+      if (!req.tenant) {
+        return res.status(404).json({ error: "Tenant not found" });
+      }
+
+      if (user.role === "domain_admin" && user.registeredDomain !== req.tenant.primaryDomain) {
+        return res.status(403).json({ error: "You can only delete your own domain's pages" });
+      }
+
+      const ids = Array.isArray(req.body?.ids)
+        ? req.body.ids
+            .map((value: unknown) => Number.parseInt(String(value), 10))
+            .filter((value: number) => Number.isInteger(value) && value > 0)
+        : [];
+
+      if (ids.length === 0) {
+        return res.status(400).json({ error: "ids is required" });
+      }
+
+      const dbInstance = await db.instance;
+      const pages = await dbInstance
+        .select({ id: tenantPages.id, slug: tenantPages.slug, pageKey: tenantPages.pageKey })
+        .from(tenantPages)
+        .where(
+          and(
+            eq(tenantPages.tenantId as any, req.tenant.id as any),
+            inArray(tenantPages.id, ids)
+          )
+        );
+
+      if (pages.length > 0) {
+        await dbInstance
+          .delete(seoMetadata)
+          .where(
+            and(
+              eq(seoMetadata.tenantId, Number(req.tenant.id)),
+              inArray(
+                seoMetadata.path,
+                pages.map((page) => buildTenantPagePath(page.pageKey, page.slug))
+              )
+            )
+          );
+      }
+
+      await dbInstance
+        .delete(tenantPages)
+        .where(
+          and(
+            eq(tenantPages.tenantId as any, req.tenant.id as any),
+            inArray(tenantPages.id, pages.map((page) => page.id))
+          )
+        );
+
+      clearTenantCache();
+      res.json({
+        success: true,
+        message: "Pages deleted successfully",
+        deletedIds: pages.map((page) => page.id),
+      });
+    } catch (error) {
+      console.error("Error bulk deleting pages:", error);
+      res.status(500).json({ error: "Failed to delete pages" });
     }
   });
 

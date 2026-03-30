@@ -22,11 +22,15 @@ import { registerFeedbackUploadRoutes } from "../routers/feedback";
 import { registerAgencyStreamRoutes } from "./agencyStreamProxy";
 import { registerLiveBrowserStreamRoutes } from "./liveBrowserStreamProxy";
 import { registerContentAutomationRoutes } from "../routers/contentAutomationRoutes";
+import { registerContentManifestImportRoutes } from "../routers/contentManifestImport";
 import { registerAutoDraftToolRoute } from "../routers/autoDraftTool";
 import { registerModelSuggestToolRoute } from "../routers/modelSuggestTool";
 import { registerFileParseToolRoute } from "../routers/fileParseTool";
 import { registerScheduleDraftToolRoute } from "../routers/scheduleDraftTool";
 import { registerSkillDiscoveryToolRoute } from "../routers/skillDiscoveryTool";
+import { registerInternalSocialToolRoute } from "../routes/internalSocialTool";
+import { registerInternalSocialActionsRoute } from "../routes/internalSocialActions";
+import { registerInternalMetricsRoute } from "../routes/internalMetrics";
 
 import { createWebhookRouter } from "../routes/webhooks";
 import { createWebhookTriggerRouter } from "../routes/webhookTrigger";
@@ -48,6 +52,7 @@ import { createGuardianSSERouter } from "../routes/guardianSSE";
 import agencyStreamRouter from "../routes/agencyStream";
 import orchestratorStreamRouter from "../routes/orchestratorStream";
 import notificationStreamRouter from "../routes/notificationStream";
+import contentComposerStreamRouter from "../routes/contentComposerStream";
 import internalOrchestratorRouter from "../routes/internalOrchestrator";
 import { registerDeviceAuthRoutes } from "./deviceAuthRoutes";
 import { registerServicesRoutes } from "../routers/services";
@@ -70,10 +75,16 @@ import { initDeliveryQueue, closeDeliveryQueue } from "../services/deliveryQueue
 import { initWebhookDispatchQueue, closeWebhookDispatchQueue } from "../services/webhookDispatchQueue";
 import { initializeTrashPurgeJob, shutdownTrashPurgeWorker } from "../jobs/purgeOldTrashItems";
 import { initializeGDriveCleanupJob, shutdownGDriveCleanupWorker } from "../jobs/gdriveSessionCleanup";
+import { initializeUploadPostCleanupJob, shutdownUploadPostCleanupWorker } from "../jobs/uploadPostCleanup";
 import { initializePendingApprovalAlertJob } from "../jobs/pendingApprovalAlert";
 import { initializeNotificationJobs } from "../jobs/notificationJobs";
+import { initializeMemoryMaintenanceJobs, shutdownMemoryMaintenanceJobs } from "../jobs/memoryMaintenanceJobs";
 import { initializeContentRefreshJob } from "../jobs/contentRefreshJob";
 import { initializeInactiveUserJob } from "../jobs/inactiveUserJob";
+import {
+  initializeSkillMaintenanceScheduleJob,
+  shutdownSkillMaintenanceScheduleJob,
+} from "../jobs/skillMaintenanceSchedule";
 import { initFromDb, startPeriodicPersistence } from "../services/providerHealth";
 import { startHistoryCollection } from "../services/llmQueue";
 import { recoverActiveRunsOnStartup } from "../services/runEngine";
@@ -100,7 +111,9 @@ import { initAutomationJobsQueue, closeAutomationJobsQueue } from "../services/j
 import { createPublicWebhooksRouter } from "../routes/publicWebhooksApi";
 import { createPublicEventsRouter } from "../routes/publicEventsApi";
 import { initWebhookApiDeliveryQueue, closeWebhookApiDeliveryQueue } from "../services/webhookDeliveryService";
+import { closeEmbeddingQueue } from "../services/embeddingQueue";
 import { registerPublicDocsRoutes } from "../routes/publicDocsApi";
+import { registerPublicSitemapRoutes } from "../routers/publicSitemap";
 import { createAgencyToolsApiRouter } from "../routes/agencyToolsApi";
 import { apiKeyAuthMiddleware } from "../middleware/apiKeyAuth";
 import { assertHmacSecretConfigured } from "../services/apiKeyService";
@@ -471,6 +484,7 @@ app.use("/v1/events", createPublicEventsRouter());
 app.use("/v1/agency-tools", createAgencyToolsApiRouter());
 
 // Public API documentation (unauthenticated)
+registerPublicSitemapRoutes(app);
 registerPublicDocsRoutes(app);
 
 // REST/SSE endpoints
@@ -482,15 +496,20 @@ registerFeedbackUploadRoutes(app);
 registerAgencyStreamRoutes(app);
 registerLiveBrowserStreamRoutes(app);
 registerContentAutomationRoutes(app);
+registerContentManifestImportRoutes(app);
 registerAutoDraftToolRoute(app);
 registerModelSuggestToolRoute(app);
 registerFileParseToolRoute(app);
 registerScheduleDraftToolRoute(app);
 registerSkillDiscoveryToolRoute(app);
+registerInternalSocialToolRoute(app);
+registerInternalSocialActionsRoute(app);
+registerInternalMetricsRoute(app);
 app.use("/api/virtual-admin/events", createGuardianSSERouter());
 app.use(agencyStreamRouter);
 app.use(orchestratorStreamRouter);
 app.use(notificationStreamRouter);
+app.use(contentComposerStreamRouter);
 app.use(internalOrchestratorRouter);
 
 // Proxy remote images through same-origin endpoint so browser canvas operations
@@ -874,6 +893,42 @@ app.post("/api/internal/presentation-import/callback", presentationImportCallbac
 
 // Internal agency creation endpoint (Python AI Creator task -> Node.js)
 // Auth: X-Internal-Token + X-User-Id (service-to-service), or Bearer JWT (legacy)
+// ── Internal: Resolve best LLM model from capability requirements ──────────
+app.get("/api/internal/models/resolve", async (req, res) => {
+  const internalToken = req.headers["x-internal-token"] as string | undefined;
+  if (!internalToken || !ENV.webGatewayToken) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  const tokenBuf = Buffer.from(internalToken);
+  const expectedBuf = Buffer.from(ENV.webGatewayToken);
+  if (tokenBuf.length !== expectedBuf.length || !crypto.timingSafeEqual(tokenBuf, expectedBuf)) {
+    return res.status(401).json({ error: "Invalid token" });
+  }
+
+  try {
+    const requirementsParam = req.query.requirements as string;
+    if (!requirementsParam) {
+      return res.status(400).json({ error: "requirements query param required" });
+    }
+    const requirements = JSON.parse(requirementsParam);
+    const { loadEnabledLlmModelRows } = await import("../services/enabledLlmModels");
+    const { selectBestLlmModel } = await import("../services/intelligentModelSelector");
+    const rows = await loadEnabledLlmModelRows();
+    const modelId = selectBestLlmModel(requirements, rows);
+    if (!modelId) {
+      return res.json({ modelId: null, error: "No matching model found" });
+    }
+    const matched = rows.find((r) => r.modelId === modelId);
+    return res.json({
+      modelId,
+      modelName: matched?.providerModelId ?? modelId,
+      provider: matched?.providerName ?? "unknown",
+    });
+  } catch (e: any) {
+    return res.status(400).json({ error: e.message?.slice(0, 200) ?? "Invalid request" });
+  }
+});
+
 app.post("/api/internal/agency/create", async (req, res) => {
   let user: Awaited<ReturnType<typeof sdk.authenticateRequest>> | null = null;
 
@@ -916,6 +971,8 @@ app.post("/api/internal/agency/create", async (req, res) => {
   const agencyCreateSchema = z.object({
     name: z.string().min(1).max(200),
     description: z.string().max(2000).optional().default(""),
+    objective: z.string().max(2000).optional(),
+    sharedInstructions: z.string().max(10000).optional(),
     tenantId: z.string().max(100).optional().default(""),
     agents: z.array(z.object({
       id: z.string(),
@@ -930,6 +987,16 @@ app.post("/api/internal/agency/create", async (req, res) => {
       position: z.object({ x: z.number(), y: z.number() }).optional(),
       toolIds: z.array(z.string().max(100)).optional().default([]),
       toolConfigs: z.record(z.record(z.unknown())).optional().default({}),
+      modelRequirements: z.object({
+        strategy: z.enum(["cheapest", "balanced", "best"]).optional(),
+        supportsVision: z.boolean().optional(),
+        supportsThinking: z.boolean().optional(),
+        supportsFunctionTools: z.boolean().optional(),
+        supportsStructuredOutputs: z.boolean().optional(),
+        supportsWebSearch: z.boolean().optional(),
+        supportsCodeExecution: z.boolean().optional(),
+        supportsComputerUse: z.boolean().optional(),
+      }).optional(),
     })).min(1).max(20),
     communicationFlows: z.array(z.object({
       id: z.string().optional(),
@@ -974,7 +1041,7 @@ app.post("/api/internal/agency/create", async (req, res) => {
       }
     }
 
-    const { name, description, agents, communicationFlows } = validatedBody;
+    const { name, description, objective, sharedInstructions, agents, communicationFlows } = validatedBody;
 
     if (!name?.trim()) {
       return res.status(400).json({ error: "name is required" });
@@ -998,6 +1065,7 @@ app.post("/api/internal/agency/create", async (req, res) => {
         model: a.model ? String(a.model).slice(0, 100) : null,
         nodeType: (a.nodeType ?? "agent") as any,
         nodeConfig: (a.nodeConfig ?? {}) as any,
+        modelRequirements: a.modelRequirements,
         isEntryPoint: Boolean(a.isEntryPoint),
         isOptional: Boolean(a.isOptional),
         position: a.position ?? { x: 400, y: 80 + idx * 200 },
@@ -1017,6 +1085,8 @@ app.post("/api/internal/agency/create", async (req, res) => {
         slug,
         name: String(name).slice(0, 255),
         description: description ? String(description).slice(0, 500) : null,
+        objective: objective ? objective.slice(0, 2000) : null,
+        sharedInstructions: sharedInstructions ? sharedInstructions.slice(0, 10000) : null,
         creditMultiplier: "1",
         maxAgents: 20,
         maxRunTimeSeconds: 600,
@@ -1071,8 +1141,8 @@ app.post("/api/internal/agency/create", async (req, res) => {
 
     return res.status(201).json({ id: agencyId });
   } catch (err: any) {
-    console.error("[internal/agency/create] error:", err?.message ?? err);
-    return res.status(500).json({ error: err?.message ?? "Internal server error" });
+    debugError("internal_agency_create", "Agency creation failed", { message: String(err?.message ?? "").slice(0, 200) });
+    return res.status(500).json({ error: "Internal server error" });
   }
 });
 
@@ -1411,11 +1481,25 @@ async function main() {
     console.error("[Startup] Failed to initialize notification jobs:", error);
   }
 
+  // Initialize chat memory maintenance jobs (daily/weekly recurring cleanup)
+  try {
+    await initializeMemoryMaintenanceJobs();
+  } catch (error) {
+    console.error("[Startup] Failed to initialize memory maintenance jobs:", error);
+  }
+
   // Initialize Google Drive edit session cleanup (every 6h)
   try {
     await initializeGDriveCleanupJob();
   } catch (error) {
     console.error("[Startup] Failed to initialize GDrive cleanup job:", error);
+  }
+
+  // Initialize Upload-Post retention cleanup (every 6h)
+  try {
+    await initializeUploadPostCleanupJob();
+  } catch (error) {
+    console.error("[Startup] Failed to initialize Upload-Post cleanup job:", error);
   }
 
   // Initialize content staleness checker (every 6h) — Spec 038
@@ -1430,6 +1514,13 @@ async function main() {
     await initializeInactiveUserJob();
   } catch (error) {
     console.error("[Startup] Failed to initialize inactive user job:", error);
+  }
+
+  // Initialize skill maintenance scheduler (every 15m)
+  try {
+    await initializeSkillMaintenanceScheduleJob();
+  } catch (error) {
+    console.error("[Startup] Failed to initialize skill maintenance scheduler:", error);
   }
 
   if (process.env.NODE_ENV === "development") {
@@ -1463,6 +1554,12 @@ async function main() {
       startQueueHealthMonitor();
     }).catch((err) => {
       console.error("[Startup] Failed to start queue health monitor:", err);
+    });
+
+    import("../services/opsAnomalyMonitor").then(({ startOpsAnomalyMonitor }) => {
+      startOpsAnomalyMonitor();
+    }).catch((err) => {
+      console.error("[Startup] Failed to start ops anomaly monitor:", err);
     });
 
     // Start System Guardian (Virtual Admin Agent)
@@ -1500,6 +1597,9 @@ process.on("SIGTERM", async () => {
   import("../services/queueHealthMonitor").then(({ stopQueueHealthMonitor }) => {
     stopQueueHealthMonitor();
   }).catch(() => {});
+  import("../services/opsAnomalyMonitor").then(({ stopOpsAnomalyMonitor }) => {
+    stopOpsAnomalyMonitor();
+  }).catch(() => {});
   import("../services/virtualAdmin/guardianScheduler").then(({ stopGuardian }) => {
     stopGuardian();
   }).catch(() => {});
@@ -1516,12 +1616,16 @@ process.on("SIGTERM", async () => {
 
   // 3. Shut down background workers
   await shutdownGDriveCleanupWorker().catch(() => {});
+  await shutdownUploadPostCleanupWorker().catch(() => {});
   await shutdownTrashPurgeWorker().catch(() => {});
   await shutdownTelegramWorker().catch(() => {});
   await closeDeliveryQueue().catch(() => {});
   await closeWebhookDispatchQueue().catch(() => {});
   await closeAutomationJobsQueue().catch(() => {});
   await closeWebhookApiDeliveryQueue().catch(() => {});
+  await shutdownMemoryMaintenanceJobs().catch(() => {});
+  await shutdownSkillMaintenanceScheduleJob().catch(() => {});
+  await closeEmbeddingQueue().catch(() => {});
   await shutdownVoiceGateway().catch(() => {});
 
   // 3b. Shut down channel adapters
@@ -1570,12 +1674,16 @@ process.on("SIGINT", async () => {
 
   await auditLogger.shutdown().catch(() => {});
   await shutdownGDriveCleanupWorker().catch(() => {});
+  await shutdownUploadPostCleanupWorker().catch(() => {});
   await shutdownTrashPurgeWorker().catch(() => {});
   await shutdownTelegramWorker().catch(() => {});
   await closeDeliveryQueue().catch(() => {});
   await closeWebhookDispatchQueue().catch(() => {});
   await closeAutomationJobsQueue().catch(() => {});
   await closeWebhookApiDeliveryQueue().catch(() => {});
+  await shutdownMemoryMaintenanceJobs().catch(() => {});
+  await shutdownSkillMaintenanceScheduleJob().catch(() => {});
+  await closeEmbeddingQueue().catch(() => {});
   await shutdownVoiceGateway().catch(() => {});
   await Promise.all(
     adapterRegistry.getAll()

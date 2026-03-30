@@ -3,6 +3,7 @@ SmartSpec Pro - Python Backend
 Main FastAPI Application
 """
 
+import asyncio
 import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
@@ -59,7 +60,16 @@ from app.api import (
     csrf,  # CSRF Protection
     oauth,  # OAuth Social Login
     telegram_webhook,  # Telegram bot webhook for account linking
-     internal_mcp,  # Internal MCP tools API (Google Drive)
+    meta_oauth,  # Meta Pages OAuth flow
+    meta_pages,  # Meta Pages internal management
+    meta_messages,  # Meta internal outbound message send API
+    meta_posts,  # Meta internal publishing API
+    meta_comments,  # Meta internal comment moderation API
+    meta_webhooks,  # Meta webhook ingestion
+    social_publish,  # Provider-aware social publishing API
+    agency_review,  # On-demand agency review analysis
+    internal_mcp,  # Internal MCP tools API (Google Drive)
+    internal_embeddings,  # Internal embeddings API for chat memory vectors
      internal_gdrive,  # Internal Google Drive sync API
      onedrive,  # OneDrive file operations API
      internal_onedrive,  # Internal OneDrive sync API
@@ -69,6 +79,8 @@ from app.api import (
     internal_guardrails,  # Internal guardrails test API
     agencies,  # Agency-Swarm multi-agent endpoints
     agency_creator,  # AI Agency Creator task endpoints
+    agency_feedback,  # Agency feedback analysis (internal)
+    scheduled_jobs,  # Scheduled job monitoring (internal)
     stt,  # Internal STT/TTS voice endpoints
     browser,  # Browser automation API
     automation_copilot,  # Automation Copilot API
@@ -214,6 +226,17 @@ async def lifespan(app: FastAPI):
         if not settings.DEBUG:
             raise
 
+    # Start realtime social trigger listener
+    try:
+        from app.services.social.workflow_trigger_listener import get_social_trigger_listener
+
+        social_trigger_listener = get_social_trigger_listener()
+        app.state.social_trigger_listener = social_trigger_listener
+        app.state.social_trigger_listener_task = asyncio.create_task(social_trigger_listener.run())
+        logger.info("Social trigger listener started")
+    except Exception as e:
+        logger.warning("Social trigger listener failed to start", error=str(e))
+
     # Initialize LLM Proxy
     try:
         from app.llm_proxy.unified_client import unified_client
@@ -250,6 +273,21 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning("PostgreSQL checkpointer initialization failed (workflows will use in-memory)", error=str(e))
 
+    # Initialize MCP Client Manager + Config Watcher
+    try:
+        import asyncio as _asyncio
+        from app.services.mcp_client_manager import get_mcp_client_manager
+        from app.services.mcp_config_watcher import McpConfigWatcher
+
+        app.state.mcp_client_manager = get_mcp_client_manager()
+        app.state.mcp_config_watcher = McpConfigWatcher()
+        app.state.mcp_watcher_task = _asyncio.create_task(
+            app.state.mcp_config_watcher.start()
+        )
+        logger.info("MCP client manager and config watcher started")
+    except Exception as e:
+        logger.warning("MCP subsystem initialization failed", error=str(e))
+
     logger.info("Application startup complete")
 
     yield
@@ -265,6 +303,26 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning("Sentry flush failed", error=str(e))
 
+    # Shutdown MCP subsystem
+    try:
+        import asyncio as _asyncio
+        mcp_watcher = getattr(app.state, "mcp_config_watcher", None)
+        if mcp_watcher:
+            await mcp_watcher.stop()
+        mcp_task = getattr(app.state, "mcp_watcher_task", None)
+        if mcp_task:
+            mcp_task.cancel()
+            try:
+                await mcp_task
+            except _asyncio.CancelledError:
+                pass
+        mcp_manager = getattr(app.state, "mcp_client_manager", None)
+        if mcp_manager:
+            await mcp_manager.disconnect_all()
+        logger.info("MCP subsystem shut down")
+    except Exception as e:
+        logger.warning("MCP shutdown failed", error=str(e))
+
     # Flush PostHog events
     try:
         from app.services.posthog_service import shutdown_posthog
@@ -272,6 +330,22 @@ async def lifespan(app: FastAPI):
         logger.info("PostHog events flushed")
     except Exception as e:
         logger.warning("PostHog flush failed", error=str(e))
+
+    # Stop realtime social trigger listener
+    try:
+        social_trigger_listener = getattr(app.state, "social_trigger_listener", None)
+        if social_trigger_listener is not None:
+            await social_trigger_listener.stop()
+
+        social_trigger_listener_task = getattr(app.state, "social_trigger_listener_task", None)
+        if social_trigger_listener_task is not None:
+            social_trigger_listener_task.cancel()
+            try:
+                await social_trigger_listener_task
+            except asyncio.CancelledError:
+                pass
+    except Exception as e:
+        logger.warning("Social trigger listener cleanup failed", error=str(e))
 
     # Close checkpointer connection pool
     try:
@@ -347,6 +421,13 @@ app.include_router(media_generation.router, prefix="/api/v1/media", tags=["Media
 app.include_router(media_advanced.router, prefix="/api/v1/media/tasks", tags=["Media Advanced"])
 app.include_router(webhooks.router, prefix="/api/v1", tags=["Webhooks"])
 app.include_router(telegram_webhook.router, prefix="/webhook", tags=["Telegram Webhook"])
+app.include_router(meta_oauth.router, tags=["Meta OAuth"])
+app.include_router(meta_pages.router, tags=["Meta Pages"])
+app.include_router(meta_webhooks.router, tags=["Meta Webhooks"])
+app.include_router(meta_posts.router, tags=["Meta Posts"])
+app.include_router(meta_comments.router, tags=["Meta Comments"])
+app.include_router(social_publish.router, tags=["Social Publishing"])
+app.include_router(agency_review.router, tags=["Agency Review"])
 app.include_router(prompt_enhancement.router, prefix="/api/v1/prompt", tags=["Prompt Enhancement"])
 app.include_router(skill_customization.router, prefix="/api/v1", tags=["Skill Customization"])
 app.include_router(assets.router, prefix="/api/v1/assets", tags=["Asset Management"])
@@ -396,6 +477,7 @@ app.include_router(rbac.router, tags=["RBAC"])
 app.include_router(approvals.router, tags=["Approvals"])
 app.include_router(oauth.router, tags=["OAuth"])
 app.include_router(internal_mcp.router, tags=["Internal MCP"])
+app.include_router(internal_embeddings.router, tags=["Internal Embeddings"])
 app.include_router(internal_gdrive.router, tags=["Internal GDrive"])
 app.include_router(onedrive.router, tags=["OneDrive"])
 app.include_router(internal_onedrive.router, tags=["Internal OneDrive"])
@@ -406,6 +488,8 @@ app.include_router(internal_guardrails.router, tags=["Internal Guardrails"])
 app.include_router(stt.router, tags=["Internal STT/TTS"])
 app.include_router(agencies.router, tags=["Agencies"])
 app.include_router(agency_creator.router, prefix="/api/v1/agency-creator", tags=["Agency Creator"])
+app.include_router(agency_feedback.router, tags=["Agency Feedback"])
+app.include_router(scheduled_jobs.router, tags=["Scheduled Jobs"])
 app.include_router(browser.router, tags=["Browser Automation"])
 app.include_router(automation_copilot.router, prefix="/api/v1/automation-copilot", tags=["Automation Copilot"])
 app.include_router(live_browser.router)

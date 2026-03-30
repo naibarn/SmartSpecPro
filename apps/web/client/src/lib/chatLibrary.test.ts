@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   appendLibraryContextToMessage,
+  extractRetrievalQueryText,
   isChatLibrarySourcePickerEnabled,
   toAttachableLibrarySources,
   toggleLibrarySourceSelection,
@@ -56,6 +57,24 @@ describe("chatLibrary helpers", () => {
   it("keeps chat flow stable when search results are unavailable", () => {
     expect(toAttachableLibrarySources(undefined)).toEqual([]);
     expect(appendLibraryContextToMessage("hello", [])).toBe("hello");
+  });
+
+  it("extracts the original query when library context is appended", () => {
+    const message = [
+      "Draft a launch concept",
+      "",
+      "Library context:",
+      "- [image] Hero still (id:11, source:media_task)",
+      "- [video] Teaser shot (id:12, source:media_task)",
+    ].join("\n");
+
+    expect(extractRetrievalQueryText(message)).toBe("Draft a launch concept");
+  });
+
+  it("falls back to the raw query when only library context is present", () => {
+    const message = "Use these library items as context.\n\nLibrary context:\n- [image] Hero still (id:11, source:media_task)";
+
+    expect(extractRetrievalQueryText(message, "hello")).toBe("hello");
   });
 
   it("toggles selected source items", () => {

@@ -6,7 +6,7 @@ Sends alerts via multiple channels when critical events occur
 import os
 import json
 import asyncio
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Callable
 from datetime import datetime
 from enum import Enum
 import structlog
@@ -39,7 +39,7 @@ class AlertRule:
     def __init__(
         self,
         name: str,
-        condition: callable,
+        condition: Callable[[Dict[str, Any]], bool],
         severity: AlertSeverity,
         channels: List[AlertChannel],
         message_template: str,
@@ -245,18 +245,18 @@ class AlertManager:
             AlertSeverity.CRITICAL: "#990000"
         }
 
-        payload = {
-            "attachments": [{
-                "color": color_map.get(rule.severity, "#cccccc"),
-                "title": f"[{rule.severity.value.upper()}] {rule.name}",
-                "text": message,
-                "fields": [
-                    {"title": "Severity", "value": rule.severity.value.upper(), "short": True},
-                    {"title": "Timestamp", "value": datetime.utcnow().isoformat(), "short": True},
-                ],
-                "footer": "SmartSpecPro Monitoring"
-            }]
+        slack_fields: list[dict[str, Any]] = [
+            {"title": "Severity", "value": rule.severity.value.upper(), "short": True},
+            {"title": "Timestamp", "value": datetime.utcnow().isoformat(), "short": True},
+        ]
+        attachment: dict[str, Any] = {
+            "color": color_map.get(rule.severity, "#cccccc"),
+            "title": f"[{rule.severity.value.upper()}] {rule.name}",
+            "text": message,
+            "fields": slack_fields,
+            "footer": "SmartSpecPro Monitoring",
         }
+        payload: dict[str, Any] = {"attachments": [attachment]}
 
         # Add key metrics to fields
         for key in ["error_rate", "avg_response_time_ms", "concurrent_purchases"]:
@@ -266,7 +266,7 @@ class AlertManager:
                     val = f"{val:.1%}"
                 elif key == "avg_response_time_ms":
                     val = f"{val:.0f}ms"
-                payload["attachments"][0]["fields"].append({
+                slack_fields.append({
                     "title": key.replace("_", " ").title(),
                     "value": str(val),
                     "short": True

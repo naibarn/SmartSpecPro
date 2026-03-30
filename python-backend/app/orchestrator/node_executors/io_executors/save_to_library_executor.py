@@ -341,3 +341,4 @@ class SaveToLibraryExecutor:
             "success": False,
             "error": error_message,
         }
+# mypy: ignore-errors

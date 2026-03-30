@@ -18,6 +18,7 @@ import {
   Plus, Trash2, Search, Loader2, Server, ChevronDown, ChevronRight, Lock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface McpServer {
   url: string;
@@ -35,11 +36,15 @@ interface McpServersPanelProps {
   agentId: string;
   mcpServers?: McpServer[];
   onChange: (servers: McpServer[], tokens?: Record<string, string>) => void;
+  /** Called when user clicks "Add to Agent" on a discovered tool */
+  onAddTool?: (tool: { toolId: string; toolName: string; toolConfig?: Record<string, unknown> }) => void;
+  /** Tool IDs already assigned to this agent (to prevent duplicates) */
+  excludeToolIds?: string[];
 }
 
 const MAX_SERVERS = 5;
 
-export function McpServersPanel({ agentId, mcpServers = [], onChange }: McpServersPanelProps) {
+export function McpServersPanel({ agentId, mcpServers = [], onChange, onAddTool, excludeToolIds = [] }: McpServersPanelProps) {
   const mcpEnabled = useTenantFeatureFlag("agencyMcpBridge");
   const [showAddForm, setShowAddForm] = useState(false);
   const [newUrl, setNewUrl] = useState("");
@@ -55,8 +60,20 @@ export function McpServersPanel({ agentId, mcpServers = [], onChange }: McpServe
 
   const handleAddServer = useCallback(() => {
     if (!newUrl.trim()) return;
+    // FE01: Validate URL protocol — only http/https allowed
+    const trimmedUrl = newUrl.trim();
+    try {
+      const parsed = new URL(trimmedUrl);
+      if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+        toast?.error?.("Only http:// and https:// URLs are allowed");
+        return;
+      }
+    } catch {
+      toast?.error?.("Invalid URL format");
+      return;
+    }
     const server: McpServer = {
-      url: newUrl.trim(),
+      url: trimmedUrl,
       name: newName.trim() || undefined,
       transport: "http",
     };
@@ -144,7 +161,7 @@ export function McpServersPanel({ agentId, mcpServers = [], onChange }: McpServe
                 <Server className="h-4 w-4 shrink-0 text-muted-foreground" />
                 <div className="min-w-0">
                   <p className="text-sm font-medium truncate">
-                    {server.name || new URL(server.url).hostname}
+                    {server.name || (() => { try { return new URL(server.url).hostname || server.url; } catch { return server.url; } })()}
                   </p>
                   <p className="text-xs text-muted-foreground truncate">{server.url}</p>
                 </div>
@@ -195,14 +212,46 @@ export function McpServersPanel({ agentId, mcpServers = [], onChange }: McpServe
                 </button>
                 {expandedServer === server.url && (
                   <div className="mt-1 space-y-1 pl-4">
-                    {discoveredTools[server.url].map((tool) => (
-                      <div key={tool.name} className="text-xs">
-                        <span className="font-mono text-primary">{tool.name}</span>
-                        {tool.description && (
-                          <span className="text-muted-foreground ml-1">— {tool.description}</span>
-                        )}
-                      </div>
-                    ))}
+                    {discoveredTools[server.url].map((tool) => {
+                      const mcpToolId = `mcp:${new URL(server.url).hostname}:${tool.name}`;
+                      const alreadyAdded = excludeToolIds.includes(mcpToolId);
+                      return (
+                        <div key={tool.name} className="text-xs flex items-start gap-1.5 group">
+                          <div className="flex-1 min-w-0">
+                            <span className="font-mono text-primary">{tool.name}</span>
+                            {tool.description && (
+                              <span className="text-muted-foreground ml-1">— {tool.description}</span>
+                            )}
+                          </div>
+                          {onAddTool && (
+                            alreadyAdded ? (
+                              <span className="text-[10px] text-green-600 shrink-0 mt-0.5">Added</span>
+                            ) : (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-5 px-1.5 text-[10px] shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                onClick={() => {
+                                  onAddTool({
+                                    toolId: mcpToolId,
+                                    toolName: `${tool.name} (MCP)`,
+                                    toolConfig: {
+                                      mcpServerUrl: server.url,
+                                      mcpToolName: tool.name,
+                                      mcpTransport: server.transport ?? "sse",
+                                    },
+                                  });
+                                  toast.success(`Added ${tool.name} to agent`);
+                                }}
+                              >
+                                <Plus className="h-3 w-3 mr-0.5" />
+                                Add
+                              </Button>
+                            )
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -219,12 +268,14 @@ export function McpServersPanel({ agentId, mcpServers = [], onChange }: McpServe
             value={newUrl}
             onChange={(e) => setNewUrl(e.target.value)}
             className="text-sm"
+            maxLength={500}
           />
           <Input
             placeholder="Server name (optional)"
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             className="text-sm"
+            maxLength={100}
           />
           <Input
             type="password"

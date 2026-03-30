@@ -5,6 +5,7 @@ and provides upload functionality for reference images
 """
 
 import os
+import json
 import httpx
 import structlog
 import hashlib
@@ -21,6 +22,7 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = structlog.get_logger()
+_R2_TRACE_FILE = "/tmp/smartspec-debug/r2-upload-trace.jsonl"
 
 # Encryption settings (must match Node.js side)
 ENCRYPTION_KEY = os.getenv("STORAGE_ENCRYPTION_KEY") or os.getenv("LLM_ENCRYPTION_KEY") or ""
@@ -40,6 +42,20 @@ def decrypt_aes256(encrypted_text: str) -> str:
     except Exception as e:
         logger.error("decrypt_error", error=str(e))
         return ""
+
+
+def _write_r2_trace(event: str, **payload) -> None:
+    """Persist lightweight R2 upload diagnostics for stuck sandbox jobs."""
+    try:
+        os.makedirs(os.path.dirname(_R2_TRACE_FILE), exist_ok=True)
+        with open(_R2_TRACE_FILE, "a", encoding="utf-8") as handle:
+            handle.write(json.dumps({
+                "ts": datetime.utcnow().isoformat() + "Z",
+                "event": event,
+                **payload,
+            }, ensure_ascii=True) + "\n")
+    except Exception:
+        logger.warning("r2_trace_write_failed", event=event, exc_info=True)
 
 
 class R2StorageService:
@@ -190,7 +206,7 @@ class R2StorageService:
 
     def _generate_file_key(self, settings: Dict[str, Any], filename: str, folder: str = "reference") -> str:
         """Generate unique file key with path prefix"""
-        path_prefix = settings.get("pathPrefix", "uploads/").rstrip("/")
+        path_prefix = (settings.get("pathPrefix") or "uploads/").rstrip("/")
         timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
         file_hash = hashlib.sha256(f"{filename}{timestamp}".encode()).hexdigest()[:8]
 
@@ -245,6 +261,7 @@ class R2StorageService:
             return None
 
         try:
+            _write_r2_trace("upload_file_begin", filename=filename, folder=folder, size_bytes=len(file_content))
             client = self._get_s3_client(settings)
 
             file_key = self._generate_file_key(settings, filename, folder)
@@ -259,14 +276,15 @@ class R2StorageService:
                 Body=file_content,
                 ContentType=content_type,
             )
+            _write_r2_trace("upload_file_put_object_complete", key=file_key, bucket=settings.get("bucket", ""))
 
             # Build public URL
-            public_url_prefix = settings.get("publicUrlPrefix", "").rstrip("/")
+            public_url_prefix = (settings.get("publicUrlPrefix") or "").rstrip("/")
             if public_url_prefix:
                 url = f"{public_url_prefix}/{file_key}"
             else:
                 # Fallback to endpoint URL
-                endpoint = settings.get("endpoint", "").rstrip("/")
+                endpoint = (settings.get("endpoint") or "").rstrip("/")
                 bucket = settings.get("bucket", "")
                 url = f"{endpoint}/{bucket}/{file_key}"
 
@@ -278,6 +296,7 @@ class R2StorageService:
             return url
 
         except Exception as e:
+            _write_r2_trace("upload_file_error", filename=filename, error=str(e))
             logger.error("upload_file_error",
                         error=str(e),
                         filename=filename)
@@ -306,6 +325,7 @@ class R2StorageService:
             raise ValueError("Local storage provider does not support external-access uploads")
 
         try:
+            _write_r2_trace("upload_bytes_begin", key=key, size_bytes=len(data), content_type=content_type)
             client = self._get_s3_client(settings)
 
             client.put_object(
@@ -314,19 +334,22 @@ class R2StorageService:
                 Body=data,
                 ContentType=content_type,
             )
+            _write_r2_trace("upload_bytes_put_object_complete", key=key, bucket=settings.get("bucket", ""))
 
-            public_url_prefix = settings.get("publicUrlPrefix", "").rstrip("/")
+            public_url_prefix = (settings.get("publicUrlPrefix") or "").rstrip("/")
             if public_url_prefix:
                 url = f"{public_url_prefix}/{key}"
             else:
-                endpoint = settings.get("endpoint", "").rstrip("/")
+                endpoint = (settings.get("endpoint") or "").rstrip("/")
                 bucket = settings.get("bucket", "")
                 url = f"{endpoint}/{bucket}/{key}"
 
             logger.info("bytes_uploaded_r2", key=key, size=len(data))
+            _write_r2_trace("upload_bytes_complete", key=key, url=url)
             return url
 
         except Exception as e:
+            _write_r2_trace("upload_bytes_error", key=key, error=str(e))
             logger.error("upload_bytes_error", key=key, error=str(e))
             raise
 

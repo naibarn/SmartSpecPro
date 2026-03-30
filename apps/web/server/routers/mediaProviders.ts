@@ -113,6 +113,22 @@ export const PROVIDER_TEMPLATES = [
       { id: "uvoice/tts-premium", name: "UVoice TTS Premium", type: "audio" as const, description: "Premium expressive voices (up to 1,500 chars)" },
     ],
   },
+  {
+    providerName: "knplabai",
+    displayName: "KNPLabs AI",
+    description: "Multi-provider media gateway for image, video, audio, and embeddings",
+    providerType: "multimodal" as const,
+    baseUrl: "https://api.knplabai.com/ai/v1",
+    defaultModel: "gpt-image-1.5-all",
+    availableModels: [
+      { id: "gpt-image-1.5-all", name: "GPT Image 1.5 All", type: "image" as const, description: "OpenAI-compatible image generation" },
+      { id: "gemini-3.1-flash-image-preview", name: "Gemini 3.1 Flash Image", type: "image" as const, description: "Gemini native image generation" },
+      { id: "veo_3_1-fast", name: "Veo 3.1 Fast", type: "video" as const, description: "Fast form-data video generation" },
+      { id: "grok-video-3", name: "Grok Video 3", type: "video" as const, description: "JSON video generation" },
+      { id: "gpt-4o-mini-tts", name: "GPT-4o Mini TTS", type: "audio" as const, description: "OpenAI-compatible text-to-speech" },
+      { id: "tts-1", name: "TTS-1", type: "audio" as const, description: "OpenAI-compatible text-to-speech" },
+    ],
+  },
 ];
 
 // Model schema for validation

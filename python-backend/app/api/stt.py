@@ -15,7 +15,7 @@ import secrets
 from typing import Optional
 
 import structlog
-from fastapi import APIRouter, Depends, Header, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
@@ -69,14 +69,24 @@ class STTResponse(BaseModel):
     summary="Transcribe audio to text",
 )
 async def transcribe_audio(
-    audio: UploadFile = File(...),
-    provider: str = Form(default="groq"),
-    format: str = Form(default="pcm16"),
-    language: Optional[str] = Form(default=None),
+    request: Request,
     _auth: None = Depends(_verify_internal_token),
 ) -> STTResponse:
     """Transcribe audio using the specified STT provider."""
+    try:
+        form = await request.form()
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Invalid multipart form data: {str(exc)}")
+
+    audio = form.get("audio")
+    if audio is None or not hasattr(audio, "read"):
+        raise HTTPException(status_code=422, detail="Missing audio file")
+
     audio_bytes = await audio.read()
+    provider = str(form.get("provider") or "groq")
+    format = str(form.get("format") or "pcm16")
+    language_raw = form.get("language")
+    language = str(language_raw) if isinstance(language_raw, str) and language_raw else None
 
     if len(audio_bytes) > MAX_AUDIO_BYTES:
         raise HTTPException(status_code=413, detail=f"Audio file exceeds {MAX_AUDIO_BYTES} bytes")
@@ -142,14 +152,24 @@ class TTSRequest(BaseModel):
     summary="Synthesize text to speech",
 )
 async def synthesize_speech(
-    body: TTSRequest,
+    request: Request,
     _auth: None = Depends(_verify_internal_token),
 ) -> Response:
     """Synthesize speech from text using the specified TTS provider."""
+    try:
+        payload = await request.json()
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Invalid JSON body: {str(exc)}")
+
+    try:
+        body = TTSRequest.model_validate(payload)
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
     if len(body.text) > MAX_TTS_CHARS:
         raise HTTPException(status_code=413, detail=f"Text exceeds {MAX_TTS_CHARS} characters")
 
-    if body.provider not in ("openai", "elevenlabs"):
+    if body.provider not in ("openai", "elevenlabs", "knplabs", "knplabai"):
         raise HTTPException(status_code=400, detail=f"Unsupported TTS provider: {body.provider}")
 
     try:

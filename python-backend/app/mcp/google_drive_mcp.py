@@ -17,6 +17,19 @@ logger = logging.getLogger(__name__)
 # File ID validation: alphanumeric, hyphens, underscores, max 256 chars
 _FILE_ID_RE = re.compile(r"^[a-zA-Z0-9_-]{1,256}$")
 
+# Safe query character whitelist (includes Thai Unicode range)
+_SAFE_QUERY_RE = re.compile(r"^[a-zA-Z0-9 .,_\-@\u0E00-\u0E7F]+$")
+
+# Safe fields for file info response (no owner emails or parent references)
+_SAFE_FILE_FIELDS = {"id", "name", "mimeType", "size", "modifiedTime", "createdTime", "webViewLink"}
+
+
+def _sanitize_drive_query(query: str) -> str:
+    """Sanitize Drive search query to prevent injection."""
+    if not _SAFE_QUERY_RE.match(query):
+        return re.sub(r"[^a-zA-Z0-9 .,_\-@\u0E00-\u0E7F]", "", query)
+    return query
+
 
 # ── Exceptions ──────────────────────────────────────────────────────────────
 
@@ -109,6 +122,7 @@ async def search_drive_files(
     from app.services.google_token_service import InvalidGrantError
 
     query = _validate_query(query)
+    query = _sanitize_drive_query(query)
 
     try:
         access_token = await _get_access_token(user_id, token_service)
@@ -392,10 +406,10 @@ async def get_drive_file_info(
 
         file_meta = drive.files().get(
             fileId=file_id,
-            fields="id,name,mimeType,size,modifiedTime,createdTime,owners,webViewLink,parents",
+            fields="id,name,mimeType,size,modifiedTime,createdTime,webViewLink",
         ).execute()
 
-        return file_meta
+        return {k: v for k, v in file_meta.items() if k in _SAFE_FILE_FIELDS}
 
     except InvalidGrantError:
         raise ToolError("token_expired", "Google account token has expired. Please reconnect.")

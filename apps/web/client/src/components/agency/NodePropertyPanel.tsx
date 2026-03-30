@@ -43,16 +43,18 @@ import {
   CommandItem,
 } from "@/components/ui/command";
 import { ToolPicker } from "./ToolPicker";
-import { ModelPicker } from "./ModelPicker";
+import { ModelPicker, AUTO_MODEL } from "./ModelPicker";
 import { GuardrailsPanel } from "./guardrails/GuardrailsPanel";
 import { McpServersPanel } from "./McpServersPanel";
+import { McpRegistryPicker } from "./McpRegistryPicker";
 import { FewShotExamplesEditor, type ExamplePair } from "./FewShotExamplesEditor";
+import { AutonomousConfigPanel } from "./AutonomousConfigPanel";
 import type { AgencyNodeData } from "./nodes/types";
 import { BROWSER_SESSION_COPY } from "@shared/browserSession";
 import {
   X, Wrench, ChevronDown, ChevronRight, Trash2, Plus,
   Search, Loader2, Zap, GripVertical, Check, ChevronsUpDown,
-  BookOpen, Shield, Server,
+  BookOpen, Shield, Server, Brain,
 } from "lucide-react";
 
 const PANEL_MIN_W = 340;
@@ -161,6 +163,12 @@ export function NodePropertyPanel({ node, nodeId, siblingNodes = [], agencyId, o
     skill_call: "Skill Call Properties",
     browser_session: "Browser Session Properties",
     human_approval: "Human Approval Properties",
+    conditional_branch: "Conditional Branch Properties",
+    parallel_fan_out: "Parallel Fan-Out Properties",
+    loop_retry: "Loop / Retry Properties",
+    skill_discovery: "Skill Discovery Properties",
+    data_transform: "Data Transform Properties",
+    error_handler: "Error Handler Properties",
   };
 
   return (
@@ -189,8 +197,11 @@ export function NodePropertyPanel({ node, nodeId, siblingNodes = [], agencyId, o
 
       <ScrollArea className="flex-1 min-h-0">
         <div className="space-y-4 p-4">
-          {(nodeType === "agent" || nodeType === "supervisor") && (
+          {(nodeType === "agent" || nodeType === "supervisor" || nodeType === "autonomous_agent") && (
             <AgentSupervisorForm node={node} onChange={onChange} agencyId={agencyId} nodeId={nodeId} />
+          )}
+          {nodeType === "autonomous_agent" && (
+            <AutonomousConfigPanel node={node} onChange={onChange} />
           )}
           {nodeType === "router" && <RouterForm node={node} onChange={onChange} siblingNodes={siblingNodes} />}
           {nodeType === "aggregator" && <AggregatorForm node={node} onChange={onChange} />}
@@ -241,6 +252,7 @@ function AgentSupervisorForm({
   const [kbOpen, setKbOpen] = useState(false);
   const [guardrailsOpen, setGuardrailsOpen] = useState(false);
   const [mcpServersOpen, setMcpServersOpen] = useState(false);
+  const [intelligenceOpen, setIntelligenceOpen] = useState(false);
   const [kbDocPickerOpen, setKbDocPickerOpen] = useState(false);
   const [kbSettingsOpen, setKbSettingsOpen] = useState(false);
   const [kbDocTypeFilter, setKbDocTypeFilter] = useState<string>("all");
@@ -577,9 +589,24 @@ function AgentSupervisorForm({
         )}
       </div>
 
-      <div className="space-y-1.5">
+      <div className="space-y-2">
         <Label>Model</Label>
-        <ModelPicker value={node.model ?? ""} onChange={(v) => onChange({ model: v })} />
+        <ModelPicker
+          value={node.modelRequirements ? AUTO_MODEL : (node.model ?? "")}
+          onChange={(v) => {
+            if (v === AUTO_MODEL) {
+              onChange({ modelRequirements: { strategy: "balanced" }, model: undefined });
+            } else {
+              onChange({ model: v, modelRequirements: undefined });
+            }
+          }}
+        />
+        {node.modelRequirements && (
+          <SmartModelConfig
+            requirements={node.modelRequirements}
+            onChange={(reqs) => onChange({ modelRequirements: reqs, model: undefined })}
+          />
+        )}
       </div>
 
       {/* Supervisor-only: maxRounds + routingStrategy */}
@@ -701,7 +728,9 @@ function AgentSupervisorForm({
                   onChange({
                     modelSettings: {
                       ...node.modelSettings,
-                      reasoningEffort: e.target.value || undefined,
+                      reasoningEffort: e.target.value
+                        ? (e.target.value as "minimal" | "low" | "medium" | "high")
+                        : undefined,
                     },
                   })
                 }
@@ -752,6 +781,117 @@ function AgentSupervisorForm({
 
       <Separator />
 
+      {/* Intelligence */}
+      <div>
+        <button
+          type="button"
+          onClick={() => setIntelligenceOpen(!intelligenceOpen)}
+          aria-expanded={intelligenceOpen}
+          className="flex w-full items-center justify-between text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors"
+        >
+          <span className="flex items-center gap-1.5">
+            <Brain className="h-3.5 w-3.5" />
+            Intelligence
+          </span>
+          {intelligenceOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+
+        {intelligenceOpen && (
+          <div className="mt-2 space-y-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Execution Mode</Label>
+              <Select
+                value={ncGet(node, "executionMode", "single_shot")}
+                onValueChange={(v) => onChange(ncSet(node, "executionMode", v))}
+              >
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="single_shot">Standard</SelectItem>
+                  <SelectItem value="agentic">Agentic</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {ncGet<"single_shot" | "agentic">(node, "executionMode", "single_shot") === "agentic" && (
+              <>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Planning Strategy</Label>
+                  <Select
+                    value={ncGet(node, "planningStrategy", "basic")}
+                    onValueChange={(v) => onChange(ncSet(node, "planningStrategy", v))}
+                  >
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="basic">Basic</SelectItem>
+                      <SelectItem value="cot">Chain-of-Thought</SelectItem>
+                      <SelectItem value="react">ReAct</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs">Max Reflection Cycles</Label>
+                    <span className="text-xs text-muted-foreground font-mono">
+                      {ncGet(node, "maxReflectionCycles", 3)}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={1}
+                    max={10}
+                    value={ncGet(node, "maxReflectionCycles", 3)}
+                    onChange={(e) => onChange(ncSet(node, "maxReflectionCycles", Number(e.target.value)))}
+                    className="w-full accent-blue-600"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs">Show reasoning steps in output</Label>
+                  <Switch
+                    checked={ncGet(node, "showReasoning", false)}
+                    onCheckedChange={(v) => onChange(ncSet(node, "showReasoning", v))}
+                  />
+                </div>
+
+                <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-md p-2 text-xs flex items-center gap-1.5">
+                  <Zap className="h-3.5 w-3.5 shrink-0" />
+                  Agentic mode may use 2-5x more credits per run
+                </div>
+              </>
+            )}
+
+            {/* Memory Scope */}
+            <div className="space-y-1.5">
+              <Label className="text-xs">Memory Scope</Label>
+              <Select
+                value={ncGet(node, "memoryScope", "agency")}
+                onValueChange={(v) => onChange(ncSet(node, "memoryScope", v))}
+              >
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="agency">All Agents (shared)</SelectItem>
+                  <SelectItem value="node">This Agent Only (private)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-[10px] text-muted-foreground">
+                {ncGet(node, "memoryScope", "agency") === "agency"
+                  ? "This agent can access memories from all agents in this workflow"
+                  : "This agent can only access its own memories"}
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <Separator />
+
       {/* Guardrails */}
       {agencyId && (
         <div>
@@ -780,7 +920,9 @@ function AgentSupervisorForm({
 
       <Separator />
 
-      {/* MCP Servers (section-14) */}
+      <Separator />
+
+      {/* MCP Servers (for agent/supervisor — legacy inline + registry tools) */}
       {(node.nodeType === "agent" || node.nodeType === "supervisor") && (
         <div>
           <button
@@ -806,6 +948,8 @@ function AgentSupervisorForm({
                 onChange={(servers) => {
                   onChange({ mcpServers: servers });
                 }}
+                onAddTool={handleAddTool}
+                excludeToolIds={(node.tools ?? []).map((t) => t.toolId)}
               />
             </div>
           )}
@@ -1067,6 +1211,7 @@ function AgentSupervisorForm({
         open={toolPickerOpen}
         onClose={() => setToolPickerOpen(false)}
         onSelect={handleAddTool}
+        onManageMcpServers={() => setMcpServersOpen(true)}
         excludeToolIds={(node.tools ?? []).map((t) => t.toolId)}
       />
     </>
@@ -3435,5 +3580,100 @@ function DataTransformForm({
         <p className="text-[10px] text-muted-foreground mt-0.5">Store result in context under this key</p>
       </div>
     </>
+  );
+}
+
+// ── Smart Model Config ───────────────────────────────────────────────────────
+
+const CAPABILITY_OPTIONS = [
+  { key: "supportsVision" as const, label: "Vision", description: "Image analysis" },
+  { key: "supportsThinking" as const, label: "Thinking", description: "Extended reasoning" },
+  { key: "supportsFunctionTools" as const, label: "Function Tools", description: "Tool calling" },
+  { key: "supportsStructuredOutputs" as const, label: "Structured Outputs", description: "JSON schema output" },
+  { key: "supportsWebSearch" as const, label: "Web Search", description: "Live web search" },
+  { key: "supportsCodeExecution" as const, label: "Code Execution", description: "Run code" },
+  { key: "supportsComputerUse" as const, label: "Computer Use", description: "Browser control" },
+] as const;
+
+type ModelReqs = NonNullable<import("./nodes/types").AgencyNodeData["modelRequirements"]>;
+
+function SmartModelConfig({
+  requirements,
+  onChange,
+}: {
+  requirements: ModelReqs;
+  onChange: (reqs: ModelReqs) => void;
+}) {
+  const resolveQuery = trpc.agency.resolveModel.useQuery(
+    { requirements },
+    { staleTime: 10_000, placeholderData: (previous) => previous },
+  );
+
+  return (
+    <div className="space-y-3">
+      {/* Strategy */}
+      <div>
+        <Label className="text-xs font-medium">Strategy</Label>
+        <Select
+          value={requirements.strategy ?? "cheapest"}
+          onValueChange={(v) => onChange({ ...requirements, strategy: v as ModelReqs["strategy"] })}
+        >
+          <SelectTrigger className="mt-1 h-8 text-xs"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="cheapest">Cheapest matching model</SelectItem>
+            <SelectItem value="balanced">Balanced (cost + quality)</SelectItem>
+            <SelectItem value="best">Best quality (highest priority)</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Capabilities */}
+      <div>
+        <Label className="text-xs font-medium mb-1.5 block">Required Capabilities</Label>
+        <div className="grid grid-cols-2 gap-1.5">
+          {CAPABILITY_OPTIONS.map(({ key, label, description }) => {
+            const checked = requirements[key] === true;
+            return (
+              <label
+                key={key}
+                className={cn(
+                  "flex items-center gap-2 rounded-md border px-2 py-1.5 text-xs cursor-pointer transition-colors",
+                  checked ? "border-primary bg-primary/5" : "border-input hover:bg-accent/50",
+                )}
+              >
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={() => {
+                    const next = { ...requirements, [key]: checked ? undefined : true };
+                    onChange(next);
+                  }}
+                  className="rounded border-gray-300 h-3.5 w-3.5"
+                />
+                <div>
+                  <div className="font-medium">{label}</div>
+                  <div className="text-[10px] text-muted-foreground">{description}</div>
+                </div>
+              </label>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Resolved Model Preview */}
+      <div className="rounded-md border bg-muted/30 px-3 py-2">
+        <div className="text-[10px] text-muted-foreground mb-0.5">Auto-selected model</div>
+        {resolveQuery.isLoading ? (
+          <div className="text-xs text-muted-foreground">Resolving...</div>
+        ) : resolveQuery.data?.modelId ? (
+          <div className="flex items-center gap-1.5">
+            <span className="text-sm font-medium">{resolveQuery.data.modelId}</span>
+            <Badge variant="outline" className="text-[10px] px-1 py-0">{resolveQuery.data.provider}</Badge>
+          </div>
+        ) : (
+          <div className="text-xs text-destructive">No matching model found — adjust capabilities</div>
+        )}
+      </div>
+    </div>
   );
 }

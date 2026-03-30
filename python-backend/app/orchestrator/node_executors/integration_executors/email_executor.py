@@ -33,27 +33,29 @@ class EmailExecutor:
         self, data: NodeExecutionData, context: ExecutionContext
     ) -> dict[str, Any]:
         """Send email with validation and rate limiting."""
-        to = data.inputs.get("to")
+        to = str(data.inputs.get("to") or "")
         cc = data.inputs.get("cc", [])
         bcc = data.inputs.get("bcc", [])
-        subject = data.inputs.get("subject", "")
-        body_text = data.inputs.get("body_text", "")
+        subject = str(data.inputs.get("subject", ""))
+        body_text = str(data.inputs.get("body_text", ""))
         body_html = data.inputs.get("body_html")
         from_email = data.inputs.get("from")  # Optional, uses default
         attachments = data.inputs.get("attachments", [])
 
         # Validate inputs
         self._validate_email(to, "to")
-        for email in cc:
-            self._validate_email(email, "cc")
-        for email in bcc:
-            self._validate_email(email, "bcc")
+        if isinstance(cc, list):
+            for email in cc:
+                self._validate_email(str(email or ""), "cc")
+        if isinstance(bcc, list):
+            for email in bcc:
+                self._validate_email(str(email or ""), "bcc")
 
         if not subject and not body_text and not body_html:
             raise ValueError("Email must have subject or body")
 
         # Validate attachments size
-        total_size = sum(len(a.get("content", "")) for a in attachments)
+        total_size = sum(len(a.get("content", "")) for a in attachments if isinstance(a, dict))
         if total_size > self.MAX_EMAIL_SIZE:
             raise ValueError(
                 f"Attachments too large: {total_size} bytes (max {self.MAX_EMAIL_SIZE})"

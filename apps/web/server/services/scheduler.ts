@@ -860,7 +860,12 @@ export async function sweepDueAutoDraftSchedules(): Promise<number> {
       } else {
         // Compute next run for recurring schedule
         const { computeNextRun } = await import("../routers/scheduleDraftTool");
-        const nextRun = computeNextRun("recurring", schedule.cronExpression ?? undefined, undefined);
+        const nextRun = computeNextRun(
+          "recurring",
+          schedule.cronExpression ?? undefined,
+          undefined,
+          schedule.timezone ?? "UTC",
+        );
         await db
           .update(autoDraftSchedules)
           .set({ lastRun: now, nextRun: nextRun ?? undefined, updatedAt: now })

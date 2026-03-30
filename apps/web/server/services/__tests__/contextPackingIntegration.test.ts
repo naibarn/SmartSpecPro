@@ -291,6 +291,7 @@ describe("contextToMessages — multimodal type migration", () => {
     const { contextToMessages } = await import("../memoryService");
     const ctx = {
       systemPrompt: "You are an assistant.",
+      retrievalContext: null,
       entityContext: null,
       summaryContext: null,
       bufferMessages: [{ role: "user" as const, content: "Hello" }],
@@ -306,6 +307,7 @@ describe("contextToMessages — multimodal type migration", () => {
     const { contextToMessages } = await import("../memoryService");
     const ctx = {
       systemPrompt: "You are an assistant.",
+      retrievalContext: null,
       entityContext: null,
       summaryContext: null,
       bufferMessages: [
@@ -326,6 +328,7 @@ describe("contextToMessages — multimodal type migration", () => {
     const { contextToMessages } = await import("../memoryService");
     const ctx = {
       systemPrompt: undefined,
+      retrievalContext: null,
       entityContext: null,
       summaryContext: null,
       bufferMessages: [
@@ -349,6 +352,7 @@ describe("contextToMessages — multimodal type migration", () => {
     const { contextToMessages } = await import("../memoryService");
     const ctx = {
       systemPrompt: "System",
+      retrievalContext: null,
       entityContext: null,
       summaryContext: null,
       bufferMessages: [

@@ -98,14 +98,34 @@ async def get_agency_creator_status(
     if not re.match(r"^agcreate-[a-f0-9]{12}$", task_id):
         raise HTTPException(status_code=400, detail="Invalid task_id format")
 
-    from app.tasks.agency_creator_task import get_status
+    from app.tasks.agency_creator_task import get_status, get_suggestions
 
     data = get_status(task_id, user_id=current_user.id)
     if data is None:
         raise HTTPException(status_code=404, detail="Task not found")
 
     # Strip internal fields before returning to client
-    return {k: v for k, v in data.items() if not k.startswith("_")}
+    result = {k: v for k, v in data.items() if not k.startswith("_")}
+
+    # Merge suggestions into completed status response
+    # Strip raw 'change' dict (F03 security) but extract the primary value as 'suggestedValue'
+    if result.get("status") == "completed" and result.get("hasSuggestions"):
+        _CHANGE_KEYS = {"add_capability": "capability", "add_tool": "toolId", "upgrade_mode": "executionMode"}
+        raw_suggestions = get_suggestions(task_id)
+        safe_suggestions = []
+        for s in raw_suggestions:
+            if not isinstance(s, dict):
+                continue
+            change = s.get("change", {}) if isinstance(s.get("change"), dict) else {}
+            primary_key = _CHANGE_KEYS.get(s.get("category", ""))
+            suggested_value = str(change.get(primary_key, ""))[:100] if primary_key else ""
+            safe = {k: v for k, v in s.items() if k != "change"}
+            if suggested_value:
+                safe["suggestedValue"] = suggested_value
+            safe_suggestions.append(safe)
+        result["suggestions"] = safe_suggestions
+
+    return result
 
 
 @router.post("/answer")
@@ -129,11 +149,15 @@ async def submit_agency_creator_answers(
 
     store_answers(body.task_id, body.answers)
 
-    # Retrieve stored payload + intent, dispatch design task
+    # Retrieve stored payload + intent + discover_analysis, dispatch design task
     payload = status.get("_payload", {})
     intent = status.get("_intent", {})
     model = status.get("_model", "gpt-4o")
-    design_payload = {**payload, "intent": intent, "answers": body.answers, "model": model}
+    discover_analysis = status.get("_discover_analysis", {})
+    design_payload = {
+        **payload, "intent": intent, "answers": body.answers,
+        "model": model, "discover_analysis": discover_analysis,
+    }
 
     _set_status(body.task_id, {
         "status": "processing",

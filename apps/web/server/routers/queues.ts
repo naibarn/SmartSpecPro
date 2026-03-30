@@ -475,4 +475,48 @@ export const queuesRouter = router({
   getQueueHealth: adminProcedure.query(async () => {
     return getQueueHealthStatus();
   }),
+
+  // ── Scheduled Job Monitoring ────────────────────────────────────
+
+  getScheduledJobs: adminProcedure.query(async () => {
+    const baseUrl = process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
+    const token = process.env.SMARTSPEC_WEB_GATEWAY_TOKEN || "";
+    const resp = await fetch(`${baseUrl}/api/v1/scheduled-jobs/schedule`, {
+      headers: { "X-Internal-Token": token },
+    });
+    if (!resp.ok) return { tasks: [], total: 0 };
+    return resp.json();
+  }),
+
+  getScheduledJobRuns: adminProcedure
+    .input(z.object({
+      taskName: z.string().optional(),
+      status: z.string().optional(),
+      limit: z.number().int().min(1).max(200).default(50),
+      offset: z.number().int().min(0).default(0),
+    }))
+    .query(async ({ input }) => {
+      const baseUrl = process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
+      const token = process.env.SMARTSPEC_WEB_GATEWAY_TOKEN || "";
+      const params = new URLSearchParams();
+      if (input.taskName) params.set("task_name", input.taskName);
+      if (input.status) params.set("status", input.status);
+      params.set("limit", String(input.limit));
+      params.set("offset", String(input.offset));
+      const resp = await fetch(`${baseUrl}/api/v1/scheduled-jobs/runs?${params}`, {
+        headers: { "X-Internal-Token": token },
+      });
+      if (!resp.ok) return { runs: [], total: 0 };
+      return resp.json();
+    }),
+
+  getScheduledJobStats: adminProcedure.query(async () => {
+    const baseUrl = process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
+    const token = process.env.SMARTSPEC_WEB_GATEWAY_TOKEN || "";
+    const resp = await fetch(`${baseUrl}/api/v1/scheduled-jobs/stats`, {
+      headers: { "X-Internal-Token": token },
+    });
+    if (!resp.ok) return { stats: [] };
+    return resp.json();
+  }),
 });

@@ -3,7 +3,7 @@
  * View and manage media generation tasks
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
@@ -36,6 +36,12 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import {
   ChevronLeft,
   Image,
   Video,
@@ -61,6 +67,7 @@ import {
   Maximize2,
   Share2,
   Library,
+  ArrowUpRight,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import ExpiredMediaPlaceholder from '@/components/media/ExpiredMediaPlaceholder';
@@ -75,6 +82,13 @@ import {
   type LibrarySearchResultItem,
   type TaskLibraryUIState,
 } from '@/lib/libraryUi';
+import {
+  extractReferenceImageConfig,
+  extractReferenceMediaAssets,
+  type MediaHistoryReferenceMediaAsset,
+  type MediaHistoryReferenceImageConfig,
+} from '@/lib/mediaHistoryDebug';
+import { cn } from '@/lib/utils';
 
 type MediaType = 'image' | 'video' | 'audio';
 type TaskStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
@@ -287,6 +301,63 @@ function pickString(...values: unknown[]): string | undefined {
   return undefined;
 }
 
+function readFirstHttpUrl(value: unknown, visited = new WeakSet<object>()): string | null {
+  if (!value) return null;
+  if (typeof value === 'string') {
+    return /^https?:\/\//i.test(value.trim()) ? value.trim() : null;
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = readFirstHttpUrl(item, visited);
+      if (found) return found;
+    }
+    return null;
+  }
+  if (typeof value !== 'object') return null;
+
+  const record = value as Record<string, unknown>;
+  if (visited.has(record)) return null;
+  visited.add(record);
+
+  for (const nestedValue of Object.values(record)) {
+    const found = readFirstHttpUrl(nestedValue, visited);
+    if (found) return found;
+  }
+
+  return null;
+}
+
+function extractMediaHistoryThumbnailUrl(task: MediaTask): string | null {
+  const resultData = task.resultData;
+  if (!resultData || typeof resultData !== 'object') {
+    return null;
+  }
+
+  const parsedResultJson = typeof resultData.resultJson === 'string'
+    ? (() => {
+      try {
+        return JSON.parse(resultData.resultJson);
+      } catch {
+        return null;
+      }
+    })()
+    : null;
+
+  return (
+    readFirstHttpUrl(resultData.poster)
+    || readFirstHttpUrl(resultData.poster_url)
+    || readFirstHttpUrl(resultData.posterUrl)
+    || readFirstHttpUrl(resultData.thumbnail)
+    || readFirstHttpUrl(resultData.thumbnail_url)
+    || readFirstHttpUrl(resultData.thumbnailUrl)
+    || readFirstHttpUrl(parsedResultJson?.poster)
+    || readFirstHttpUrl(parsedResultJson?.poster_url)
+    || readFirstHttpUrl(parsedResultJson?.thumbnail)
+    || readFirstHttpUrl(parsedResultJson?.thumbnail_url)
+    || null
+  );
+}
+
 function buildFallbackApiUrl(providerHint: string | undefined, endpoint: string | undefined): string | undefined {
   if (!endpoint) return undefined;
   if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) {
@@ -324,6 +395,50 @@ function sanitizeDebugPayload(value: unknown): unknown {
     next[key] = sanitizeDebugPayload(raw);
   }
   return next;
+}
+
+function extractStringList(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value
+      .flatMap((item) => (typeof item === 'string' ? [item] : []))
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+  if (typeof value === 'string') {
+    const normalized = value.trim();
+    return normalized ? [normalized] : [];
+  }
+  return [];
+}
+
+function extractReferenceImageUrls(task: MediaTask | null, apiDebugInfo: TaskApiDebugInfo | null): string[] {
+  const urls = new Set<string>();
+  const push = (value: unknown) => {
+    for (const url of extractStringList(value)) {
+      urls.add(url);
+    }
+  };
+
+  const payload = toRecord(apiDebugInfo?.requestPayload);
+  const parameters = toRecord(task?.parameters);
+
+  push(payload?.reference_image_urls);
+  push(payload?.referenceImageUrls);
+  push(payload?.image_input);
+  push(payload?.image_urls);
+
+  const extraParams = toRecord(payload?.extra_params ?? payload?.extraParams);
+  push(extraParams?.reference_image_urls);
+  push(extraParams?.referenceImageUrls);
+  push(extraParams?.image_input);
+  push(extraParams?.image_urls);
+
+  push(parameters?.referenceImageUrls);
+  push(parameters?.reference_image_urls);
+  push(parameters?.imageInput);
+  push(parameters?.image_input);
+
+  return Array.from(urls);
 }
 
 type TaskApiDebugInfo = {
@@ -514,6 +629,98 @@ function extractTaskApiDebugInfo(task: MediaTask | null): TaskApiDebugInfo | nul
   };
 }
 
+function formatReferenceImageConfigLabel(config?: MediaHistoryReferenceImageConfig | null): string {
+  if (!config) return '';
+  const title = config.label?.trim() || config.key;
+  return `${title} (${config.key}, ${config.type})`;
+}
+
+function getReferenceMediaAssetLabel(asset: MediaHistoryReferenceMediaAsset): string {
+  return asset.kind === 'video' ? 'Video reference' : 'Image reference';
+}
+
+function formatReferenceMediaSourceLabel(source?: MediaHistoryReferenceImageConfig['source']): string {
+  if (source === 'request_payload') return 'request payload';
+  if (source === 'task_parameters') return 'task parameters';
+  return 'unknown source';
+}
+
+function getReferenceMediaTooltipText(
+  asset: MediaHistoryReferenceMediaAsset,
+  config?: MediaHistoryReferenceImageConfig | null,
+): string[] {
+  const lines = [
+    `Asset type: ${asset.kind}`,
+    config ? `Resolved field: ${config.label?.trim() || config.key}` : 'Resolved field: unknown',
+    config ? `Field key: ${config.key}` : 'Field key: unknown',
+    config ? `Field type: ${config.type}` : 'Field type: unknown',
+    config ? `Source: ${formatReferenceMediaSourceLabel(config.source)}` : 'Source: unknown',
+  ];
+  return lines;
+}
+
+function VideoThumbnailCard({
+  src,
+  thumbnailUrl,
+  alt,
+  className,
+  onError,
+}: {
+  src: string;
+  thumbnailUrl?: string | null;
+  alt: string;
+  className?: string;
+  onError?: () => void;
+}) {
+  const [thumbnailFailed, setThumbnailFailed] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    setThumbnailFailed(false);
+  }, [src, thumbnailUrl]);
+
+  const handleLoadedMetadata = useCallback(() => {
+    const el = videoRef.current;
+    if (!el) return;
+    try {
+      el.currentTime = 0.5;
+    } catch {
+      // Some browsers disallow immediate seeks until metadata is fully ready.
+    }
+  }, []);
+
+  const useImageThumbnail = Boolean(thumbnailUrl) && !thumbnailFailed;
+
+  return (
+    <div className={cn("relative h-full w-full overflow-hidden bg-slate-950", className)}>
+      {useImageThumbnail ? (
+        <img
+          src={thumbnailUrl!}
+          alt={alt}
+          className="h-full w-full object-cover"
+          onError={() => setThumbnailFailed(true)}
+        />
+      ) : (
+        <video
+          ref={videoRef}
+          src={src}
+          className="h-full w-full object-cover"
+          muted
+          playsInline
+          preload="metadata"
+          onLoadedMetadata={handleLoadedMetadata}
+          onError={onError}
+        />
+      )}
+      <div className="absolute inset-0 flex items-center justify-center bg-black/20 pointer-events-none">
+        <div className="rounded-full bg-black/55 p-3 text-white">
+          <Play className="h-5 w-5" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function MediaHistory() {
   const { user, isLoading: authLoading, isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
@@ -527,6 +734,7 @@ export default function MediaHistory() {
   const [taskLibraryState, setTaskLibraryState] = useState<Record<string, TaskLibraryUIState>>({});
   const [shareDialogTarget, setShareDialogTarget] = useState<{ itemId: number; title: string } | null>(null);
   const [fullscreenTask, setFullscreenTask] = useState<MediaTask | null>(null);
+  const [fullscreenReferenceMedia, setFullscreenReferenceMedia] = useState<MediaHistoryReferenceMediaAsset | null>(null);
   const [copiedPromptTaskId, setCopiedPromptTaskId] = useState<string | null>(null);
   const [copiedDebugTaskId, setCopiedDebugTaskId] = useState<string | null>(null);
   const [expiredUrls, setExpiredUrls] = useState<Set<string>>(() => new Set());
@@ -790,7 +998,11 @@ export default function MediaHistory() {
   const selectedTaskLibraryMeta = getLibraryItemStatusMeta(selectedTaskLibraryState?.status);
   const selectedTaskDebugInfo = extractTaskDebugInfo(selectedTask);
   const selectedTaskApiDebugInfo = extractTaskApiDebugInfo(selectedTask);
+  const selectedTaskReferenceImageConfig = extractReferenceImageConfig(selectedTask, selectedTaskApiDebugInfo);
+  const selectedTaskReferenceMediaAssets = extractReferenceMediaAssets(selectedTask, selectedTaskApiDebugInfo);
   const selectedTaskErrorInfo = extractTaskErrorInfo(selectedTask);
+  const selectedTaskIsFailed = selectedTask?.status === 'failed';
+  const selectedTaskIsCancelled = selectedTask?.status === 'cancelled';
 
   // Format date for display - show both relative and absolute time
   // Automatically converts UTC to local timezone
@@ -849,11 +1061,20 @@ export default function MediaHistory() {
     setSelectedTask(task);
     setDetailsOpen(true);
 
-    // Auto-fetch result if task has external taskId but no resultUrl
-    if (task.taskId && !task.resultUrl && (task.status === 'processing' || task.status === 'pending')) {
+    // Auto-fetch result if the provider task id exists.
+    // Otherwise just refresh from the task list so status changes in DB still show up.
+    if (!task.resultUrl && (task.status === 'processing' || task.status === 'pending')) {
       setIsFetchingResult(true);
       try {
-        await fetchResultMutation.mutateAsync({ taskId: task.id });
+        if (task.taskId) {
+          await fetchResultMutation.mutateAsync({ taskId: task.id });
+        } else {
+          const refreshed = await refetch();
+          const updatedTask = refreshed.data?.tasks.find((t) => t.id === task.id);
+          if (updatedTask) {
+            setSelectedTask(updatedTask as MediaTask);
+          }
+        }
       } catch (error) {
         console.error('Failed to fetch task result:', error);
       } finally {
@@ -866,7 +1087,15 @@ export default function MediaHistory() {
     if (!selectedTask) return;
     setIsFetchingResult(true);
     try {
-      await fetchResultMutation.mutateAsync({ taskId: selectedTask.id });
+      if (selectedTask.taskId) {
+        await fetchResultMutation.mutateAsync({ taskId: selectedTask.id });
+      } else {
+        const refreshed = await refetch();
+        const updatedTask = refreshed.data?.tasks.find((t) => t.id === selectedTask.id);
+        if (updatedTask) {
+          setSelectedTask(updatedTask as MediaTask);
+        }
+      }
     } catch (error) {
       console.error('Failed to fetch task result:', error);
     } finally {
@@ -929,6 +1158,25 @@ export default function MediaHistory() {
     setFullscreenTask(task);
   };
 
+  const handleOpenFullscreenReferenceMedia = (asset: MediaHistoryReferenceMediaAsset) => {
+    if (!asset.url || expiredUrls.has(asset.url)) return;
+    setFullscreenReferenceMedia(asset);
+  };
+
+  const handleCopyReferenceMediaUrl = async (asset: MediaHistoryReferenceMediaAsset) => {
+    try {
+      await writeClipboardText(asset.url);
+      toast.success(`${asset.kind === 'video' ? 'Video' : 'Image'} reference URL copied`);
+    } catch (error) {
+      console.error('Copy reference media URL failed:', error);
+      toast.error('Failed to copy reference URL');
+    }
+  };
+
+  const handleOpenReferenceMediaUrl = (asset: MediaHistoryReferenceMediaAsset) => {
+    window.open(asset.url, '_blank', 'noopener,noreferrer');
+  };
+
   const handleCopyDebugJson = async () => {
     if (!selectedTask) return;
 
@@ -952,6 +1200,8 @@ export default function MediaHistory() {
       extracted: {
         debug: selectedTaskDebugInfo,
         api: selectedTaskApiDebugInfo,
+        referenceImageConfig: selectedTaskReferenceImageConfig,
+        referenceMediaAssets: selectedTaskReferenceMediaAssets,
         error: selectedTaskErrorInfo,
       },
     });
@@ -1026,12 +1276,61 @@ export default function MediaHistory() {
     }
   };
 
+  const handleRetryTask = useCallback((task: MediaTask) => {
+    const prompt = task.prompt.trim();
+    if (!prompt) {
+      toast.error('Cannot retry without a prompt.');
+      return;
+    }
+
+    const taskParameters = toRecord(task.parameters);
+    const referenceAssets = extractReferenceMediaAssets(task, null);
+    const referenceImages = referenceAssets.filter((asset) => asset.kind === 'image').map((asset) => asset.url);
+    const referenceVideoUrl = referenceAssets.find((asset) => asset.kind === 'video')?.url;
+    const aspectRatio = pickString(
+      taskParameters?.aspectRatio,
+      taskParameters?.aspect_ratio,
+      taskParameters?.ratio,
+    );
+    const extraParams = toRecord(taskParameters?.extraParams ?? taskParameters?.extra_params);
+
+    const params = new URLSearchParams();
+    params.set('type', task.mediaType);
+    params.set('prompt', prompt);
+    if (task.model?.trim()) {
+      params.set('model', task.model.trim());
+    }
+    if (aspectRatio) {
+      params.set('aspectRatio', aspectRatio);
+    }
+    if (taskParameters?.resolution !== undefined && taskParameters.resolution !== null) {
+      params.set('resolution', String(taskParameters.resolution));
+    }
+    if (taskParameters?.outputFormat !== undefined && taskParameters.outputFormat !== null) {
+      params.set('outputFormat', String(taskParameters.outputFormat));
+    }
+    if (taskParameters?.duration !== undefined && taskParameters.duration !== null) {
+      params.set('duration', String(taskParameters.duration));
+    }
+    if (referenceVideoUrl) {
+      params.set('referenceVideoUrl', referenceVideoUrl);
+    }
+    if (referenceImages.length > 0) {
+      params.set('referenceImages', JSON.stringify(referenceImages));
+    }
+    if (extraParams && Object.keys(extraParams).length > 0) {
+      params.set('extraParams', JSON.stringify(extraParams));
+    }
+    params.set('autostart', '1');
+
+    setLocation(`/media-studio?${params.toString()}`);
+  }, [setLocation]);
+
   // Background fallback polling:
   // if provider callback/worker update is delayed, periodically refresh one pending task.
   useEffect(() => {
     const hasPendingTasks = tasks.some(
       (task) =>
-        !!task.taskId &&
         !task.resultUrl &&
         (task.status === 'processing' || task.status === 'pending')
     );
@@ -1046,9 +1345,12 @@ export default function MediaHistory() {
           !task.resultUrl &&
           (task.status === 'processing' || task.status === 'pending')
       );
-      if (!nextTask) return;
       try {
-        await fetchResultMutation.mutateAsync({ taskId: nextTask.id });
+        if (nextTask) {
+          await fetchResultMutation.mutateAsync({ taskId: nextTask.id });
+        } else {
+          await refetch();
+        }
       } catch (error) {
         console.error('Background fetch task result failed:', error);
       }
@@ -1059,7 +1361,7 @@ export default function MediaHistory() {
       void tick();
     }, 15000);
     return () => window.clearInterval(interval);
-  }, [tasks, fetchResultMutation.isPending, fetchResultMutation.mutateAsync]);
+  }, [tasks, fetchResultMutation.isPending, fetchResultMutation.mutateAsync, refetch]);
 
   useEffect(() => {
     const tracking = Object.entries(taskLibraryState).filter(
@@ -1359,19 +1661,13 @@ export default function MediaHistory() {
                               className="relative block w-full text-left"
                               onClick={() => handleOpenFullscreenMedia(task)}
                             >
-                              <video
+                              <VideoThumbnailCard
                                 src={task.resultUrl}
-                                className="aspect-square w-full object-contain bg-slate-950"
-                                muted
-                                playsInline
-                                preload="metadata"
+                                thumbnailUrl={extractMediaHistoryThumbnailUrl(task)}
+                                alt={task.prompt || 'Generated video'}
+                                className="aspect-square w-full"
                                 onError={() => markExpired(task.resultUrl!)}
                               />
-                              <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-                                <div className="rounded-full bg-black/55 p-3 text-white">
-                                  <Play className="h-5 w-5" />
-                                </div>
-                              </div>
                             </button>
                           ) : (
                             <button
@@ -1542,7 +1838,13 @@ export default function MediaHistory() {
                               className="w-14 h-14 rounded-lg bg-blue-100 flex items-center justify-center cursor-pointer"
                               onClick={() => handleOpenFullscreenMedia(task)}
                             >
-                              <Play className="w-5 h-5 text-blue-600" />
+                              <VideoThumbnailCard
+                                src={task.resultUrl}
+                                thumbnailUrl={extractMediaHistoryThumbnailUrl(task)}
+                                alt={task.prompt || 'Generated video'}
+                                className="h-14 w-14 rounded-lg"
+                                onError={() => markExpired(task.resultUrl!)}
+                              />
                             </div>
                           ) : (
                             <div
@@ -1597,6 +1899,17 @@ export default function MediaHistory() {
                         >
                           <Eye className="w-4 h-4" />
                         </Button>
+                        {task.status === 'failed' && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRetryTask(task)}
+                            className="h-8 w-8 p-0 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                            title="Retry generation"
+                          >
+                            <RefreshCw className="w-4 h-4" />
+                          </Button>
+                        )}
                         {task.status === 'completed' && task.resultUrl && (
                           <>
                             <Button
@@ -1709,7 +2022,13 @@ export default function MediaHistory() {
                                   className="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center cursor-pointer hover:bg-blue-200"
                                   onClick={() => handleOpenFullscreenMedia(task)}
                                 >
-                                  <Play className="w-5 h-5 text-blue-600" />
+                                  <VideoThumbnailCard
+                                    src={task.resultUrl}
+                                    thumbnailUrl={extractMediaHistoryThumbnailUrl(task)}
+                                    alt={task.prompt || 'Generated video'}
+                                    className="h-12 w-12 rounded-lg"
+                                    onError={() => markExpired(task.resultUrl!)}
+                                  />
                                 </div>
                               ) : (
                                 <div
@@ -1830,6 +2149,17 @@ export default function MediaHistory() {
                               >
                                 <Eye className="w-4 h-4" />
                               </Button>
+                              {task.status === 'failed' && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleRetryTask(task)}
+                                  className="h-8 px-2 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                                  title="Retry generation"
+                                >
+                                  <RefreshCw className="w-4 h-4" />
+                                </Button>
+                              )}
                               {task.status === 'completed' && task.resultUrl && (
                                 <>
                                   <Button
@@ -1951,6 +2281,51 @@ export default function MediaHistory() {
         </DialogPortal>
       </Dialog>
 
+      <Dialog open={Boolean(fullscreenReferenceMedia)} onOpenChange={(open) => !open && setFullscreenReferenceMedia(null)}>
+        <DialogPortal>
+          <DialogOverlay className="bg-black/95" />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4">
+            <DialogHeader className="sr-only">
+              <DialogTitle>Fullscreen Reference Media</DialogTitle>
+            </DialogHeader>
+            <DialogClose asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="absolute right-3 top-3 z-10 h-11 w-11 rounded-md border border-cyan-500/70 bg-black/50 text-cyan-400 hover:bg-black/70 hover:text-cyan-300"
+              >
+                <span className="sr-only">Close fullscreen reference view</span>
+                <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 6 6 18" />
+                  <path d="m6 6 12 12" />
+                </svg>
+              </Button>
+            </DialogClose>
+
+            {fullscreenReferenceMedia?.url ? (
+              fullscreenReferenceMedia.kind === 'video' ? (
+                <video
+                  src={fullscreenReferenceMedia.url}
+                  controls
+                  autoPlay
+                  playsInline
+                  className="block max-h-[calc(100vh-1rem)] max-w-[calc(100vw-1rem)] object-contain sm:max-h-[calc(100vh-2rem)] sm:max-w-[calc(100vw-2rem)]"
+                  onError={() => markExpired(fullscreenReferenceMedia.url)}
+                />
+              ) : (
+                <img
+                  src={fullscreenReferenceMedia.url}
+                  alt="Reference preview"
+                  className="block max-h-[calc(100vh-1rem)] max-w-[calc(100vw-1rem)] object-contain sm:max-h-[calc(100vh-2rem)] sm:max-w-[calc(100vw-2rem)]"
+                  onError={() => markExpired(fullscreenReferenceMedia.url)}
+                />
+              )
+            ) : null}
+          </div>
+        </DialogPortal>
+      </Dialog>
+
       {/* Task Details Dialog */}
       <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
           <DialogContent className="w-[min(96vw,64rem)] max-h-[90vh] overflow-y-auto">
@@ -2036,6 +2411,40 @@ export default function MediaHistory() {
                 </div>
               )}
 
+              {(selectedTaskIsFailed || selectedTaskIsCancelled) && (selectedTaskErrorInfo || selectedTaskApiDebugInfo) && (
+                <div className="rounded-lg border border-red-200 bg-red-50/80 p-4 space-y-2">
+                  <div className="flex items-center gap-2 text-red-700 font-medium">
+                    <AlertCircle className="w-4 h-4" />
+                    <span>Provider Error</span>
+                  </div>
+                  {selectedTaskErrorInfo && (
+                    <p className="text-sm text-red-700">{selectedTaskErrorInfo.summary}</p>
+                  )}
+                  {selectedTaskApiDebugInfo?.providerMessage && (
+                    <p className="text-xs text-red-600 break-words">
+                      <span className="font-medium">Provider:</span> {selectedTaskApiDebugInfo.providerMessage}
+                    </p>
+                  )}
+                  <div className="flex flex-wrap gap-2 text-xs text-red-600">
+                    {selectedTaskApiDebugInfo?.responseStatus !== undefined && (
+                      <span className="rounded-full bg-white/80 px-2 py-1 border border-red-200">
+                        HTTP {selectedTaskApiDebugInfo.responseStatus}
+                      </span>
+                    )}
+                    {selectedTaskDebugInfo?.traceId && (
+                      <span className="rounded-full bg-white/80 px-2 py-1 border border-red-200 font-mono">
+                        Trace {selectedTaskDebugInfo.traceId}
+                      </span>
+                    )}
+                  </div>
+                  {selectedTaskApiDebugInfo?.requestUrl && (
+                    <p className="font-mono text-[11px] break-all bg-white/70 border border-red-200 rounded p-2 text-red-700">
+                      {selectedTaskApiDebugInfo.requestUrl}
+                    </p>
+                  )}
+                </div>
+              )}
+
               {/* Details Grid */}
               <div className="grid grid-cols-1 gap-4 p-4 bg-gray-50 rounded-lg sm:grid-cols-2">
                 <div className="sm:col-span-2">
@@ -2065,6 +2474,20 @@ export default function MediaHistory() {
                     <span className="text-sm text-gray-500">Provider Hint</span>
                     <p className="font-mono text-sm break-all">{selectedTaskDebugInfo.providerHint}</p>
                   </div>
+                )}
+                {selectedTaskReferenceImageConfig && (
+                  <>
+                    <div>
+                      <span className="text-sm text-gray-500">Reference Image Key</span>
+                      <p className="font-mono text-sm break-all">{selectedTaskReferenceImageConfig.key}</p>
+                    </div>
+                    <div>
+                      <span className="text-sm text-gray-500">Reference Image Type</span>
+                      <Badge className="mt-1 gap-1 bg-sky-100 text-sky-800">
+                        {selectedTaskReferenceImageConfig.type}
+                      </Badge>
+                    </div>
+                  </>
                 )}
                 {selectedTaskDebugInfo?.logFile && (
                   <div className="sm:col-span-2">
@@ -2111,6 +2534,135 @@ export default function MediaHistory() {
                     {selectedTask.creditsUsed || 0}
                   </p>
                 </div>
+                {selectedTaskReferenceMediaAssets.length > 0 && (
+                  <div className="sm:col-span-2">
+                    <span className="text-sm text-gray-500">
+                      Reference Media Sent ({selectedTaskReferenceMediaAssets.length})
+                    </span>
+                    {selectedTaskReferenceImageConfig && (
+                      <p className="text-xs text-gray-400 mt-1">
+                        Resolved field: <span className="font-mono">{formatReferenceImageConfigLabel(selectedTaskReferenceImageConfig)}</span>
+                      </p>
+                    )}
+                    <TooltipProvider delayDuration={200}>
+                      <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      {selectedTaskReferenceMediaAssets.map((asset, index) => (
+                        <div key={`${asset.url}-${index}`} className="overflow-hidden rounded-lg border bg-white shadow-sm">
+                          <div
+                            className="relative aspect-video bg-gray-50 cursor-zoom-in"
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => handleOpenFullscreenReferenceMedia(asset)}
+                            onKeyDown={(event) => {
+                              if (event.key === 'Enter' || event.key === ' ') {
+                                event.preventDefault();
+                                handleOpenFullscreenReferenceMedia(asset);
+                              }
+                            }}
+                          >
+                            <div className="absolute right-2 top-2 z-10 flex gap-1">
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    type="button"
+                                    variant="secondary"
+                                    size="icon"
+                                    className="h-7 w-7 rounded-full border border-white/70 bg-emerald-50/90 text-emerald-700 shadow-sm hover:bg-emerald-50"
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                    }}
+                                  >
+                                    <Info className="h-3.5 w-3.5" />
+                                    <span className="sr-only">Reference media details</span>
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-xs text-xs leading-relaxed">
+                                  <div className="space-y-1">
+                                    {getReferenceMediaTooltipText(asset, selectedTaskReferenceImageConfig).map((line) => (
+                                      <p key={line}>{line}</p>
+                                    ))}
+                                  </div>
+                                </TooltipContent>
+                              </Tooltip>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    type="button"
+                                    variant="secondary"
+                                    size="icon"
+                                    className="h-7 w-7 rounded-full border border-white/70 bg-sky-50/90 text-sky-700 shadow-sm hover:bg-sky-50"
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      void handleCopyReferenceMediaUrl(asset);
+                                    }}
+                                  >
+                                    <Copy className="h-3.5 w-3.5" />
+                                    <span className="sr-only">Copy reference URL</span>
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Copy reference URL</TooltipContent>
+                              </Tooltip>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    type="button"
+                                    variant="secondary"
+                                    size="icon"
+                                    className="h-7 w-7 rounded-full border border-white/70 bg-violet-50/90 text-violet-700 shadow-sm hover:bg-violet-50"
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      handleOpenReferenceMediaUrl(asset);
+                                    }}
+                                  >
+                                    <ArrowUpRight className="h-3.5 w-3.5" />
+                                    <span className="sr-only">Open reference URL</span>
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Open URL in new tab</TooltipContent>
+                              </Tooltip>
+                            </div>
+                            {expiredUrls.has(asset.url) ? (
+                              <ExpiredMediaPlaceholder
+                                mediaType={asset.kind === 'video' ? 'video' : 'image'}
+                                className="h-full w-full"
+                              />
+                            ) : asset.kind === 'video' ? (
+                              <video
+                                src={asset.url}
+                                muted
+                                playsInline
+                                preload="metadata"
+                                className="h-full w-full object-cover"
+                                onError={() => markExpired(asset.url)}
+                              />
+                            ) : (
+                              <img
+                                src={asset.url}
+                                alt={`${getReferenceMediaAssetLabel(asset)} ${index + 1}`}
+                                className="h-full w-full object-cover"
+                                onError={() => markExpired(asset.url)}
+                              />
+                            )}
+                          </div>
+                          <div className="border-t bg-white p-2">
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="text-[10px] uppercase tracking-wide text-gray-400">
+                                {selectedTaskReferenceImageConfig?.label?.trim() || getReferenceMediaAssetLabel(asset)}
+                              </p>
+                              <Badge className={`text-[10px] ${asset.kind === 'video' ? 'bg-blue-100 text-blue-800' : 'bg-emerald-100 text-emerald-800'}`}>
+                                {asset.kind}
+                              </Badge>
+                            </div>
+                            <p className="font-mono text-[11px] break-all select-all text-gray-700 mt-1">
+                              {asset.url}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                      </div>
+                    </TooltipProvider>
+                  </div>
+                )}
                 <div className="sm:col-span-2">
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-sm text-gray-500">Prompt</span>
@@ -2136,7 +2688,7 @@ export default function MediaHistory() {
                   </div>
                   <p className="text-sm mt-2 whitespace-pre-wrap">{selectedTask.prompt}</p>
                 </div>
-                {(selectedTask.status === 'failed' || selectedTask.status === 'cancelled') && selectedTaskApiDebugInfo && (
+                {(selectedTaskIsFailed || selectedTaskIsCancelled) && selectedTaskApiDebugInfo && (
                   <div className="sm:col-span-2 rounded-lg border border-sky-200 bg-sky-50/70 p-3 space-y-2">
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-sm font-medium text-sky-700">API Debug</span>
@@ -2270,7 +2822,7 @@ export default function MediaHistory() {
                     )}
                   </div>
                 )}
-                {(selectedTask.status === 'failed' || selectedTask.status === 'cancelled') && (() => {
+                {(selectedTaskIsFailed || selectedTaskIsCancelled) && (() => {
                   const errorInfo = selectedTaskErrorInfo;
                   if (!errorInfo) return null;
                   return (
@@ -2297,7 +2849,7 @@ export default function MediaHistory() {
                     </div>
                   );
                 })()}
-                {(selectedTask.status === 'failed' || selectedTask.status === 'cancelled') && selectedTask.resultData && (
+                {(selectedTaskIsFailed || selectedTaskIsCancelled) && selectedTask.resultData && (
                   <div className="sm:col-span-2">
                     <details className="rounded border bg-white p-2">
                       <summary className="cursor-pointer text-xs text-gray-600 select-none">
@@ -2423,6 +2975,18 @@ export default function MediaHistory() {
                       {importingTaskId === selectedTask.id ? 'Importing...' : 'Add to Gallery'}
                     </Button>
                   )}
+                </div>
+              )}
+              {selectedTaskIsFailed && (
+                <div className="flex flex-wrap justify-end gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => handleRetryTask(selectedTask)}
+                    className="gap-2 border-amber-200 text-amber-700 hover:bg-amber-50 hover:text-amber-800"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    Retry
+                  </Button>
                 </div>
               )}
             </div>

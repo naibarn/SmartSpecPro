@@ -52,7 +52,7 @@ class MockSandboxBackend:
         temp_dir = self._sandboxes.get(sandbox_id)
         if temp_dir is None:
             return CommandResult(
-                exit_code=1,
+                exitCode=1,
                 stdout="",
                 stderr=f"Sandbox {sandbox_id} not found",
             )
@@ -67,13 +67,13 @@ class MockSandboxBackend:
                 cwd=temp_dir,
             )
             return CommandResult(
-                exit_code=result.returncode,
+                exitCode=result.returncode,
                 stdout=result.stdout,
                 stderr=result.stderr,
             )
         except subprocess.TimeoutExpired:
             return CommandResult(
-                exit_code=124,
+                exitCode=124,
                 stdout="",
                 stderr=f"Command timed out after {timeout}s",
             )

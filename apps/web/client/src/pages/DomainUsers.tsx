@@ -387,8 +387,8 @@ export default function DomainUsers() {
                         </td>
                         <td className="px-6 py-4 text-right">
                           <div className="flex items-center justify-end gap-2">
-                            {/* Don't show actions for self or other domain admins */}
-                            {u.id !== Number(user?.id) && u.role !== "domain_admin" && u.role !== "admin" && (
+                            {/* Don't show actions for self */}
+                            {u.id !== Number(user?.id) && (
                               <>
                                 <Button
                                   variant="outline"
@@ -397,7 +397,7 @@ export default function DomainUsers() {
                                   title="Transfer Credits"
                                 >
                                   <Send className="w-4 h-4 mr-1" />
-                                  Transfer
+                                  Transfer Credits
                                 </Button>
                                 <Button
                                   variant={u.isDisabled ? "default" : "outline"}
@@ -498,10 +498,15 @@ export default function DomainUsers() {
               </div>
 
               <div className="bg-purple-50 rounded-lg p-4">
-                <p className="text-sm text-purple-600 mb-1">Your balance</p>
+                <p className="text-sm text-purple-600 mb-1">Your balance will be reduced</p>
                 <p className="text-xl font-bold text-purple-700">
                   {(user?.credits || 0).toLocaleString()} credits
                 </p>
+              </div>
+
+              <div className="rounded-lg border border-purple-200 bg-purple-50/60 p-4 text-sm text-purple-900">
+                This action deducts credits from your own balance and adds the same amount to the selected user.
+                You can only add credits to another user here.
               </div>
 
               <div>
