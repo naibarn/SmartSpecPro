@@ -99,6 +99,29 @@ class TestArtifactUpload:
         assert artifact.size_bytes == len(file_bytes)
         db.commit.assert_called_once()
 
+    @pytest.mark.asyncio
+    async def test_record_existing_creates_db_row_for_uploaded_artifact(self):
+        """record_existing() stores metadata for an already-uploaded sandbox output."""
+        db = AsyncMock()
+        service = SandboxArtifactService(db, storage_service=None)
+
+        await service.record_existing(
+            sandbox_job_id="job-789",
+            object_key="sandbox-artifacts/job-789/002-slides.pptx",
+            size_bytes=4096,
+            sha256="deadbeef",
+            metadata={"sandboxPath": "/tmp/smartspec-sandbox/skill-output/slides.pptx"},
+        )
+
+        db.add.assert_called_once()
+        artifact = db.add.call_args[0][0]
+        assert artifact.sandbox_job_id == "job-789"
+        assert artifact.object_key == "sandbox-artifacts/job-789/002-slides.pptx"
+        assert artifact.mime_type == "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+        assert artifact.is_primary is True
+        assert artifact.metadata_json == {"sandboxPath": "/tmp/smartspec-sandbox/skill-output/slides.pptx"}
+        db.commit.assert_called_once()
+
 
 class TestArtifactAccess:
     """Artifact service generates signed URLs and enforces tenant isolation."""

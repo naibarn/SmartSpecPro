@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { DashboardCard } from "@/components/dashboard";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   ChevronLeft,
@@ -310,8 +310,8 @@ export default function DomainDocsAdmin() {
                 <RefreshCw className="w-8 h-8 animate-spin text-blue-500" />
               </div>
             ) : filteredPages.length === 0 ? (
-              <Card>
-                <CardContent className="text-center py-16">
+              <DashboardCard>
+                <div className="text-center py-16">
                   <FileText className="w-16 h-16 mx-auto mb-4 text-gray-300" />
                   <h3 className="text-lg font-semibold text-gray-700 mb-2">
                     {pages.length === 0 ? "No docs yet" : "No matching docs"}
@@ -325,18 +325,18 @@ export default function DomainDocsAdmin() {
                     <Plus className="w-4 h-4 mr-2" />
                     Open Docs Editor
                   </Button>
-                </CardContent>
-              </Card>
+                </div>
+              </DashboardCard>
             ) : (
               <div className="space-y-3">
                 {filteredPages.map((page) => (
-                  <Card
+                  <DashboardCard
                     key={page.id}
                     className={`transition-shadow ${
                       page.id && selectedIds.has(page.id) ? "border-cyan-200 bg-cyan-50/40 shadow-md" : "hover:shadow-md"
                     }`}
                   >
-                    <CardContent className="p-4">
+                    <div className="p-4">
                       <div className="flex items-start gap-4">
                         <Checkbox
                           checked={!!page.id && selectedIds.has(page.id)}
@@ -400,8 +400,8 @@ export default function DomainDocsAdmin() {
                           </Button>
                         </div>
                       </div>
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </DashboardCard>
                 ))}
               </div>
             )}

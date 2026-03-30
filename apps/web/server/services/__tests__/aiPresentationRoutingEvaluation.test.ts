@@ -5,7 +5,7 @@ import { PRESENTATION_COMPONENT_LAYOUT_FAMILIES } from "@shared/presentation/com
 import { buildPresentationComponentRecipeSlotBindings } from "@shared/presentation/componentRecipeSlotBindings";
 import { evaluatePresentationRecipeSlotFit } from "@shared/presentation/recipeCompaction";
 
-import { evaluateDraftSlideRouting } from "../aiPresentationService";
+import { buildFallbackSlide, evaluateDraftSlideRouting } from "../aiPresentationService";
 
 function toNarrativeInput(slide: AIPresentationSlide) {
   return {
@@ -51,6 +51,37 @@ describe("aiPresentationRoutingEvaluation", () => {
     const compactFit = evaluatePresentationRecipeSlotFit(compactCandidate!.recipeId, compactBindings);
 
     expect(selectedFit.fitScore.overall).toBeGreaterThan(compactFit.fitScore.overall);
+  });
+
+  it("routes slide 1 through the same recipe selection path as later slides", () => {
+    const slide: AIPresentationSlide = {
+      templateId: "split_right_image",
+      title: "ทำไมกิจวัตรก่อนนอนจึงช่วยให้เด็กนอนง่ายขึ้น",
+      body: [
+        "กิจวัตรก่อนนอนที่ทำซ้ำในลำดับเดิมทุกคืนช่วยให้เด็กเล็กค่อย ๆ รับรู้ว่าสัญญาณของการพักผ่อนกำลังเริ่มขึ้น และลดการต่อต้านก่อนนอนได้ดีกว่าการเปลี่ยนกิจกรรมแบบไม่สม่ำเสมอ",
+        "ผู้ดูแลควรเลือกกิจกรรมเพียงไม่กี่อย่าง เช่น อาบน้ำ อ่านนิทาน และหรี่ไฟ แล้วทำในช่วงเวลาใกล้เคียงกันทุกวันเพื่อให้ร่างกายและอารมณ์ของเด็กคาดเดาได้",
+        "หากเด็กยังตื่นบ่อยในเวลากลางคืน การปรับกิจวัตรตอนเย็นให้สงบลงและสม่ำเสมอมากขึ้นมักช่วยลดสิ่งกระตุ้นที่รบกวนการนอนได้",
+      ],
+      notes: "บทความนี้ต้องการพื้นที่เล่าเรื่องแบบต่อเนื่อง ไม่ใช่บล็อกสั้นหรือโปสเตอร์โปรโมชัน",
+      graphicCategory: "Education",
+    };
+
+    const evaluation = evaluateDraftSlideRouting({ slide, slideIndex: 0 });
+    expect(evaluation.selection.selectionMode).not.toBe("none");
+    expect(evaluation.selection.componentRecipeId).toBeTruthy();
+  });
+
+  it("does not force fallback slide 1 back to hero_center", () => {
+    const fallback = buildFallbackSlide(0, {
+      title: "ทำไมกิจวัตรก่อนนอนจึงช่วยให้เด็กนอนง่ายขึ้น",
+      body: [
+        "กิจวัตรก่อนนอนที่ทำซ้ำในลำดับเดิมทุกคืนช่วยให้เด็กเล็กค่อย ๆ รับรู้ว่าสัญญาณของการพักผ่อนกำลังเริ่มขึ้น",
+        "ผู้ดูแลควรเลือกกิจกรรมเพียงไม่กี่อย่างและทำในช่วงเวลาใกล้เคียงกันทุกวัน",
+      ],
+    });
+
+    expect(fallback.templateId).not.toBe("hero_center");
+    expect(fallback.templateId).toBeTruthy();
   });
 
   it("routes profile-heavy resume copy into profile-board with better fit than profile-summary baseline", () => {

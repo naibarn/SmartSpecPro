@@ -14,7 +14,7 @@ import { SkillInputSchema } from '@/components/media/DynamicSkillForm';
 import { useSkillForm } from '@/components/chat/skill/hooks/useSkillForm';
 import { useSkillExecution } from '@/components/chat/skill/hooks/useSkillExecution';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { DashboardCard } from '@/components/dashboard';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Minimize2, X, Settings, Loader2, Clock } from 'lucide-react';
 import { toast } from 'sonner';
@@ -260,7 +260,7 @@ export function useChatSkillForm(
 
     return (
       <>
-        <Card className="mb-4 flex flex-col relative" style={{ maxHeight: '70vh' }}>
+        <DashboardCard className="mb-4 flex flex-col relative" style={{ maxHeight: '70vh' }}>
           {/* Execution overlay */}
           {isSubmitting && (
             <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm rounded-lg">
@@ -273,8 +273,8 @@ export function useChatSkillForm(
               </p>
             </div>
           )}
-          <CardHeader className="flex flex-row items-center justify-between py-3 shrink-0">
-            <CardTitle className="text-base flex items-center gap-2">
+          <div className="flex flex-row items-center justify-between py-3 shrink-0">
+            <h3 className="text-base flex items-center gap-2">
               {isSubmitting ? (
                 <Loader2 className="h-4 w-4 animate-spin text-primary" />
               ) : (
@@ -286,7 +286,7 @@ export function useChatSkillForm(
                   (กำลังทำงาน)
                 </span>
               )}
-            </CardTitle>
+            </h3>
             <div className="flex gap-1">
               <Button
                 variant="ghost"
@@ -305,10 +305,10 @@ export function useChatSkillForm(
                 disabled={isSubmitting}
               >
                 <X className="h-4 w-4" />
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent className="flex-1 overflow-y-auto px-6" style={{ minHeight: 0, maxHeight: 'calc(70vh - 140px)' }}>
+                </Button>
+              </div>
+          </div>
+          <div className="flex-1 overflow-y-auto px-6" style={{ minHeight: 0, maxHeight: 'calc(70vh - 140px)' }}>
             <ChatDynamicSkillForm
               schema={skillFormState.schema}
               values={values}
@@ -321,9 +321,9 @@ export function useChatSkillForm(
                 });
               }}
               error={executionError?.message || null}
-            />
-          </CardContent>
-          <CardFooter className="flex justify-end gap-2 shrink-0 border-t pt-4">
+              />
+          </div>
+          <div className="flex justify-end gap-2 shrink-0 border-t pt-4">
             <Button variant="ghost" onClick={closeSkillForm} disabled={isSubmitting || createScheduleMutation.isPending}>
               Cancel
             </Button>
@@ -350,8 +350,8 @@ export function useChatSkillForm(
                 'Execute'
               )}
             </Button>
-          </CardFooter>
-        </Card>
+          </div>
+        </DashboardCard>
 
         {skillFormState && (
           <ScheduleSkillDialog

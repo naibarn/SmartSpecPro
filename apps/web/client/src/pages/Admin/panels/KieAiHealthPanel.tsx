@@ -5,10 +5,10 @@
  */
 
 import { trpc } from "@/lib/trpc";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Webhook, AlertTriangle, CheckCircle, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { DashboardCard, DashboardKpiCard } from "@/components/dashboard";
 
 interface KieAiHealthPanelProps {
   refreshInterval: number | null;
@@ -30,11 +30,11 @@ export default function KieAiHealthPanel({ refreshInterval }: KieAiHealthPanelPr
 
   if (error) {
     return (
-      <Card>
-        <CardContent className="py-6">
+      <DashboardCard>
+        <div>
           <p className="text-destructive">Failed to load Kie AI health: {error.message}</p>
-        </CardContent>
-      </Card>
+        </div>
+      </DashboardCard>
     );
   }
 
@@ -45,61 +45,25 @@ export default function KieAiHealthPanel({ refreshInterval }: KieAiHealthPanelPr
     <div className="space-y-4">
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Events</CardTitle>
-            <Webhook className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{summary?.total ?? 0}</div>
-            <p className="text-xs text-muted-foreground">Last 24 hours</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Completed</CardTitle>
-            <CheckCircle className="h-4 w-4 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{summary?.completed ?? 0}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Failed</CardTitle>
-            <AlertTriangle className={cn(
-              "h-4 w-4",
-              (summary?.failed ?? 0) > 0 ? "text-destructive" : "text-muted-foreground"
-            )} />
-          </CardHeader>
-          <CardContent>
-            <div className={cn("text-2xl font-bold", (summary?.failed ?? 0) > 0 && "text-destructive")}>
-              {summary?.failed ?? 0}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Callback Rate</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className={cn("text-2xl font-bold", callbackRateLow && "text-destructive")}>
-              {summary?.callbackRate ?? 0}%
-            </div>
-            {callbackRateLow && (
-              <p className="text-xs text-destructive">Below threshold</p>
-            )}
-          </CardContent>
-        </Card>
+        <DashboardKpiCard icon={Webhook} label="Total Events" value={summary?.total ?? 0} subLabel="Last 24 hours" />
+        <DashboardKpiCard icon={CheckCircle} label="Completed" value={summary?.completed ?? 0} />
+        <DashboardKpiCard
+          icon={AlertTriangle}
+          label="Failed"
+          value={<span className={cn((summary?.failed ?? 0) > 0 && "text-destructive")}>{summary?.failed ?? 0}</span>}
+          iconClassName={cn((summary?.failed ?? 0) > 0 ? "text-destructive" : "text-muted-foreground")}
+        />
+        <DashboardKpiCard
+          icon={Clock}
+          label="Callback Rate"
+          value={<span className={cn(callbackRateLow && "text-destructive")}>{summary?.callbackRate ?? 0}%</span>}
+          subLabel={callbackRateLow ? <p className="text-xs text-destructive">Below threshold</p> : undefined}
+        />
       </div>
 
       {/* Processing Status */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm font-medium">Processing Status</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <DashboardCard title="Processing Status">
+        <div>
           <div className="flex flex-wrap gap-2">
             <Badge variant="secondary">
               Pending: {summary?.pending ?? 0}
@@ -111,8 +75,8 @@ export default function KieAiHealthPanel({ refreshInterval }: KieAiHealthPanelPr
               Dead Letter Queue: {data?.dlqCount ?? 0}
             </Badge>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </DashboardCard>
     </div>
   );
 }

@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
+import { DashboardCard } from "@/components/dashboard";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Dialog,
@@ -68,6 +68,7 @@ const CATEGORIES = [
   { value: "video_prompt_generation", label: "Create Prompt for Video Generation" },
   { value: "audio_generation", label: "Audio / TTS" },
   { value: "article_generation", label: "Article Generation" },
+  { value: "slide_generation", label: "Slide Generation" },
   { value: "sound_effects", label: "Sound Effects" },
   { value: "prompt_enhancement", label: "Prompt Enhancement" },
   { value: "code_assistant", label: "Code Assistant" },
@@ -88,6 +89,7 @@ const CATEGORY_ICONS: Record<string, any> = {
   video_prompt_generation: Sparkles,
   audio_generation: Music,
   article_generation: FileText,
+  slide_generation: FileText,
   sound_effects: Music,
   prompt_enhancement: Sparkles,
   code_assistant: Code2,
@@ -259,11 +261,11 @@ function SkillCard({ skill, onClick }: { skill: any; onClick: () => void }) {
         animate: { opacity: 1, y: 0, transition: { duration: 0.4 } },
       }}
     >
-      <Card
+      <DashboardCard
         className="group cursor-pointer hover:shadow-lg transition-all duration-300 hover:-translate-y-1 border-gray-200/80 bg-white/80 backdrop-blur"
         onClick={onClick}
       >
-        <CardContent className="p-5">
+        <div className="p-5">
           <div className="flex items-start gap-3 mb-3">
             <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center text-white shrink-0">
               <IconComponent className="h-5 w-5" />
@@ -312,8 +314,8 @@ function SkillCard({ skill, onClick }: { skill: any; onClick: () => void }) {
             </div>
             <span>{skill.author || "SmartAIHub"}</span>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </DashboardCard>
     </motion.div>
   );
 }

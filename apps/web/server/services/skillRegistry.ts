@@ -410,6 +410,11 @@ export async function autoSyncSkillsFromFolder(): Promise<{
         preferredProviderId: routingConfig.preferredProviderId ?? null,
         strictProviderPin: routingConfig.strictProviderPin ?? false,
         chainTo: getMetadataChainTarget(metadata) ?? null,
+        sandboxProfileSlug: metadata.sandbox_profile ?? null,
+        requiresNetwork: metadata.requires_network ?? null,
+        requiresBrowser: metadata.requires_browser ?? null,
+        maxRuntimeSeconds: metadata.max_runtime_seconds ?? null,
+        maxInputMb: metadata.max_input_mb ?? null,
         executionPolicyJson,
         importSource: "folder" as const,
       };
@@ -453,6 +458,11 @@ export async function autoSyncSkillsFromFolder(): Promise<{
             ...(filePreferredProviderId !== undefined ? { preferredProviderId: filePreferredProviderId } : {}),
             ...(fileStrictProviderPin !== undefined ? { strictProviderPin: fileStrictProviderPin } : {}),
             ...(getMetadataChainTarget(metadata) !== undefined ? { chainTo: getMetadataChainTarget(metadata) } : {}),
+            ...(metadata.sandbox_profile !== undefined ? { sandboxProfileSlug: metadata.sandbox_profile } : {}),
+            ...(metadata.requires_network !== undefined ? { requiresNetwork: metadata.requires_network } : {}),
+            ...(metadata.requires_browser !== undefined ? { requiresBrowser: metadata.requires_browser } : {}),
+            ...(metadata.max_runtime_seconds !== undefined ? { maxRuntimeSeconds: metadata.max_runtime_seconds } : {}),
+            ...(metadata.max_input_mb !== undefined ? { maxInputMb: metadata.max_input_mb } : {}),
             ...(executionPolicyJson !== null ? { executionPolicyJson } : {}),
           }).where(eq(skillsTable.slug, folder.slug));
           result.synced.push(folder.slug);

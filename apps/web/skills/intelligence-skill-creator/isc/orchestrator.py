@@ -7,7 +7,7 @@ from .llm import OpenAICompatibleClient
 from .researcher import plan_research_topics, run_research, format_research_snippets
 from .agents import triage_failures, plan_patch_strategy, rank_research_snippets
 from .validator import validate_patch
-from .registry import read_manifest_text, read_text
+from .registry import read_manifest_text, read_text, resolve_skill_files
 from .decider import ChoiceQuestion, ask_choice
 
 @dataclass
@@ -60,16 +60,14 @@ class Orchestrator:
             except FileNotFoundError:
                 manifest = "Manifest missing."
 
-        try:
-            skill_code = read_text(skill_name, "python/skill.py")
-        except FileNotFoundError:
+        files = resolve_skill_files(skill_name)
+        if files.code_path is not None:
+            skill_code = files.code_path.read_text(encoding="utf-8")
+        else:
             try:
-                skill_code = read_text(skill_name, "js/skill.js")
+                skill_code = read_text(skill_name, "skill.py")
             except FileNotFoundError:
-                try:
-                    skill_code = read_text(skill_name, "skill.py")
-                except FileNotFoundError:
-                    skill_code = "Code missing."
+                skill_code = "Code missing."
                     
         try:
             tests = read_text(skill_name, "tests/tests.json")

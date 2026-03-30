@@ -1,4 +1,3 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -23,6 +22,7 @@ import { DeckPreviewContent } from "./DeckPreviewContent";
 import { MediaPromptPreviewContent } from "./MediaPromptPreviewContent";
 import { TextContentPreviewContent } from "./TextContentPreviewContent";
 import type { AgencyComparisonPayload } from "@shared/agencyComparison";
+import { DashboardCard } from "@/components/dashboard";
 
 /**
  * Minimal client-side mirror of `AgencyPreview` from agencyPreviewService.ts.
@@ -170,67 +170,57 @@ export function AgencyPreviewCard({
     config.label;
 
   return (
-    <Card className={`${config.borderColor} ${config.bgColor}`}>
-      <CardHeader className="pb-3">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <div
-                className={`flex h-8 w-8 items-center justify-center rounded-full ${config.iconBg}`}
-              >
-                <DisplayIcon className="h-4 w-4" />
-              </div>
-              <div>
-                <CardTitle className="text-base">{title}</CardTitle>
-                <p className="text-xs text-muted-foreground">
-                  {preview.summaryText}
-                </p>
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {comparisonData ? (
-                <Badge variant="secondary">
-                  {comparisonKindLabels[comparisonData.comparisonKind] ??
-                    config.label}
-                </Badge>
-              ) : (
-                <Badge variant="secondary">{config.label}</Badge>
-              )}
-              {lifecycleBadge(preview.lifecycleState)}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {/* Commit button */}
-            <PreviewCommitButton
-              agencyId={agencyId}
-              runId={runId}
-              artifactId={preview.artifactId}
-              commitToken={preview.commit.token}
-              commitAvailable={preview.commit.available}
-              commitStatus={preview.commit.status}
-              lifecycleState={preview.lifecycleState}
-              previewType={preview.previewType}
-              targetType={preview.commit.targetType}
-              targetId={preview.commit.targetId}
-              onCommitted={onCommitted}
-            />
-            {onDismiss && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
-                onClick={onDismiss}
-                aria-label="Dismiss preview"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            )}
-          </div>
+    <DashboardCard
+      className={`${config.borderColor} ${config.bgColor}`}
+      leading={
+        <div className={`flex h-8 w-8 items-center justify-center rounded-full ${config.iconBg}`}>
+          <DisplayIcon className="h-4 w-4" />
         </div>
-      </CardHeader>
+      }
+      title={title}
+      titleClassName="text-base font-semibold text-slate-900"
+      description={preview.summaryText}
+      trailing={
+        <div className="flex items-center gap-2">
+          <PreviewCommitButton
+            agencyId={agencyId}
+            runId={runId}
+            artifactId={preview.artifactId}
+            commitToken={preview.commit.token}
+            commitAvailable={preview.commit.available}
+            commitStatus={preview.commit.status}
+            lifecycleState={preview.lifecycleState}
+            previewType={preview.previewType}
+            targetType={preview.commit.targetType}
+            targetId={preview.commit.targetId}
+            onCommitted={onCommitted}
+          />
+          {onDismiss && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
+              onClick={onDismiss}
+              aria-label="Dismiss preview"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+      }
+    >
+      <div className="space-y-4">
+        <div className="flex flex-wrap gap-2">
+          {comparisonData ? (
+            <Badge variant="secondary">
+              {comparisonKindLabels[comparisonData.comparisonKind] ?? config.label}
+            </Badge>
+          ) : (
+            <Badge variant="secondary">{config.label}</Badge>
+          )}
+          {lifecycleBadge(preview.lifecycleState)}
+        </div>
 
-      <CardContent className="space-y-4">
         {/* Type-specific content */}
         {preview.previewType === "research" && (
           <ResearchPreviewContent data={preview.data as any} />
@@ -283,8 +273,8 @@ export function AgencyPreviewCard({
             </div>
           </>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </DashboardCard>
   );
 }
 

@@ -98,6 +98,15 @@ function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
+function escapeXml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
 const THAI_COMBINING_MARK_REGEX = /[\u0e31\u0e34-\u0e3a\u0e47-\u0e4e]/g;
 const ZERO_WIDTH_CHAR_REGEX = /[\u200b-\u200d\ufeff]/g;
 const TEXT_BLOCK_VERTICAL_PADDING_EM = 0.22;
@@ -112,6 +121,45 @@ function countVisualCharacters(text: string): number {
     return 0;
   }
   return Array.from(normalized).length;
+}
+
+function buildFallbackImageDataUrl(
+  altText: string,
+  slideTitle: string,
+  width: number,
+  height: number,
+): string {
+  const safeAlt = escapeXml((altText || "Image unavailable").replace(/\s+/g, " ").trim().slice(0, 64));
+  const safeTitle = escapeXml((slideTitle || "Visual preview").replace(/\s+/g, " ").trim().slice(0, 96));
+  const safeWidth = Math.max(1, Math.round(width));
+  const safeHeight = Math.max(1, Math.round(height));
+  const iconX = Math.round(safeWidth / 2 - 28);
+  const iconY = Math.round(safeHeight / 2 - 52);
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="${safeWidth}" height="${safeHeight}" viewBox="0 0 ${safeWidth} ${safeHeight}">
+      <defs>
+        <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#e0e7ff"/>
+          <stop offset="100%" stop-color="#c7d2fe"/>
+        </linearGradient>
+        <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#6366f1"/>
+          <stop offset="100%" stop-color="#8b5cf6"/>
+        </linearGradient>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#bg)"/>
+      <circle cx="${Math.round(safeWidth * 0.82)}" cy="${Math.round(safeHeight * 0.2)}" r="${Math.max(48, Math.round(Math.min(safeWidth, safeHeight) * 0.12))}" fill="#ffffff" opacity="0.35"/>
+      <circle cx="${Math.round(safeWidth * 0.18)}" cy="${Math.round(safeHeight * 0.78)}" r="${Math.max(64, Math.round(Math.min(safeWidth, safeHeight) * 0.16))}" fill="#6366f1" opacity="0.14"/>
+      <g transform="translate(${iconX},${iconY})">
+        <rect x="4" y="4" width="48" height="48" rx="10" fill="none" stroke="url(#accent)" stroke-width="3" opacity="0.72"/>
+        <circle cx="20" cy="20" r="5" fill="#6366f1" opacity="0.8"/>
+        <path d="M8 40 L20 26 L28 33 L36 22 L48 36 L48 44 L8 44 Z" fill="#6366f1" opacity="0.36"/>
+      </g>
+      <text x="${Math.round(safeWidth / 2)}" y="${Math.round(safeHeight / 2) + 18}" text-anchor="middle" font-family="sans-serif" font-size="${Math.max(16, Math.round(Math.min(safeWidth, safeHeight) * 0.02))}" font-weight="600" fill="#4338ca" opacity="0.9">${safeAlt}</text>
+      <text x="${Math.round(safeWidth / 2)}" y="${Math.round(safeHeight / 2) + 48}" text-anchor="middle" font-family="sans-serif" font-size="${Math.max(18, Math.round(Math.min(safeWidth, safeHeight) * 0.024))}" font-weight="700" fill="#1e1b4b">${safeTitle}</text>
+    </svg>
+  `.trim().replace(/\s{2,}/g, " ");
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
 }
 
 function estimateParagraphLineCount(
@@ -955,9 +1003,17 @@ function makeImageOrPlaceholder(
     });
   }
   ctx.warnings.push(
-    `Slide ${ctx.slideIndex}: Visual generation failed, using placeholder`,
+    `Slide ${ctx.slideIndex}: Visual generation failed, using fallback visual image`,
   );
-  return makeRectElement({ x, y, width, height, fill: ctx.preset.colors.backgroundAlt });
+  return makeImageElement({
+    x,
+    y,
+    width,
+    height,
+    src: buildFallbackImageDataUrl(alt, ctx.slideData.title, width, height),
+    alt,
+    ...renderOptions,
+  });
 }
 
 // ── Template Builders ──────────────────────────────────────

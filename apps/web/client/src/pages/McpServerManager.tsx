@@ -10,7 +10,7 @@ import { trpc } from "@/lib/trpc";
 import { useTenantFeatureFlag } from "@/hooks/useTenantFeatureFlag";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DashboardCard } from "@/components/dashboard";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -416,13 +416,13 @@ export default function McpServerManager() {
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
       ) : servers.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center text-muted-foreground">
+        <DashboardCard>
+          <div className="py-12 text-center text-muted-foreground">
             <Server className="h-12 w-12 mx-auto mb-3 opacity-30" />
             <p>No MCP servers configured.</p>
             <p className="text-sm mt-1">Add a server to connect external tools to your agencies.</p>
-          </CardContent>
-        </Card>
+          </div>
+        </DashboardCard>
       ) : (
         <div className="grid gap-3">
           {servers.map((server) => {
@@ -436,14 +436,14 @@ export default function McpServerManager() {
             const toolsOpen = toolPanelOpen[server.id] ?? false;
 
             return (
-              <Card
+              <DashboardCard
                 key={server.id}
                 className={cn(
                   !server.enabled && "opacity-60",
                   selectedServerId === server.id && "ring-2 ring-primary",
                 )}
               >
-                <CardContent className="py-4">
+                <div className="py-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3 min-w-0">
                       <TransportIcon className="h-5 w-5 shrink-0 text-muted-foreground" />
@@ -604,8 +604,8 @@ export default function McpServerManager() {
                       )}
                     </div>
                   )}
-                </CardContent>
-              </Card>
+                </div>
+              </DashboardCard>
             );
           })}
         </div>
@@ -618,13 +618,13 @@ export default function McpServerManager() {
         const serverAssignments = assignments[selectedServerId] ?? [];
 
         return (
-          <Card className="mt-2">
-            <CardHeader className="pb-3">
+          <DashboardCard className="mt-2">
+            <div className="pb-3">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-base flex items-center gap-2">
+                <h3 className="text-base flex items-center gap-2">
                   <Link2 className="h-4 w-4" />
                   Assignments for <span className="font-semibold">{selectedServer.name}</span>
-                </CardTitle>
+                </h3>
                 <Button
                   variant="ghost"
                   size="icon"
@@ -634,8 +634,8 @@ export default function McpServerManager() {
                   <X className="h-4 w-4" />
                 </Button>
               </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
+            </div>
+            <div className="space-y-4">
               {/* Current assignments */}
               {serverAssignments.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
@@ -725,8 +725,8 @@ export default function McpServerManager() {
                   Enter the UUID or identifier of the target tenant, agency, or agent.
                 </p>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </DashboardCard>
         );
       })()}
 

@@ -17,6 +17,7 @@ MANIFEST_FILENAMES = ("skill.md", "SKILL.md")
 @dataclass(frozen=True)
 class ResolvedSkillFiles:
     skill_dir: Path
+    bundle_dir: Path
     manifest_path: Optional[Path]
     code_path: Optional[Path]
     tests_path: Optional[Path]
@@ -39,18 +40,7 @@ def candidate_skill_roots() -> List[Path]:
     return roots
 
 
-def _skill_dir_exists(skill_dir: Path) -> bool:
-    return skill_dir.is_dir() and (
-        any((skill_dir / file_name).exists() for file_name in MANIFEST_FILENAMES)
-        or (skill_dir / "manifest.json").exists()
-    )
-
-
-def canonical_skill_dir(skill_name: str) -> Path:
-    return canonical_skills_root() / skill_name
-
-
-def resolve_skill_manifest_path(skill_dir: Path) -> Optional[Path]:
+def _resolve_direct_skill_manifest_path(skill_dir: Path) -> Optional[Path]:
     for file_name in MANIFEST_FILENAMES:
         candidate = skill_dir / file_name
         if candidate.exists():
@@ -59,6 +49,43 @@ def resolve_skill_manifest_path(skill_dir: Path) -> Optional[Path]:
     if manifest_json.exists():
         return manifest_json
     return None
+
+
+def resolve_skill_bundle_dir(skill_dir: Path) -> Optional[Path]:
+    direct_manifest = _resolve_direct_skill_manifest_path(skill_dir)
+    if direct_manifest is not None or (skill_dir / "skill.manifest.json").exists():
+        return skill_dir
+
+    if not skill_dir.exists():
+        return None
+
+    try:
+        nested_dirs = [entry for entry in skill_dir.iterdir() if entry.is_dir()]
+    except OSError:
+        return None
+
+    candidates: List[Path] = []
+    for nested_dir in nested_dirs:
+        nested_manifest = _resolve_direct_skill_manifest_path(nested_dir)
+        if nested_manifest is not None or (nested_dir / "skill.manifest.json").exists():
+            candidates.append(nested_dir)
+
+    if not candidates:
+        return None
+
+    return next((candidate for candidate in candidates if (candidate / "skill.manifest.json").exists()), candidates[0])
+
+
+def _skill_dir_exists(skill_dir: Path) -> bool:
+    return skill_dir.is_dir() and resolve_skill_bundle_dir(skill_dir) is not None
+
+
+def canonical_skill_dir(skill_name: str) -> Path:
+    return canonical_skills_root() / skill_name
+
+
+def resolve_skill_manifest_path(skill_dir: Path) -> Optional[Path]:
+    return _resolve_direct_skill_manifest_path(skill_dir)
 
 
 def resolve_skill_dir(skill_name: str) -> Path:
@@ -71,15 +98,19 @@ def resolve_skill_dir(skill_name: str) -> Path:
 
 def resolve_skill_files(skill_name: str) -> ResolvedSkillFiles:
     skill_dir = resolve_skill_dir(skill_name)
+    bundle_dir = resolve_skill_bundle_dir(skill_dir) or skill_dir
     code_candidates = [
-        skill_dir / "python" / "skill.py",
-        skill_dir / "js" / "skill.js",
-        skill_dir / "skill.py",
+        bundle_dir / "python" / "skill.py",
+        bundle_dir / "js" / "skill.mjs",
+        bundle_dir / "js" / "skill.js",
+        bundle_dir / "src" / "index.mjs",
+        bundle_dir / "skill.mjs",
+        bundle_dir / "skill.py",
     ]
-    manifest_candidates = [*(skill_dir / file_name for file_name in MANIFEST_FILENAMES), skill_dir / "manifest.json"]
+    manifest_candidates = [*(bundle_dir / file_name for file_name in MANIFEST_FILENAMES), bundle_dir / "manifest.json"]
     tests_candidates = [
-        skill_dir / "tests" / "tests.json",
-        skill_dir / "tests.json",
+        bundle_dir / "tests" / "tests.json",
+        bundle_dir / "tests.json",
     ]
 
     manifest_path = next((p for p in manifest_candidates if p.exists()), None)
@@ -88,6 +119,7 @@ def resolve_skill_files(skill_name: str) -> ResolvedSkillFiles:
 
     return ResolvedSkillFiles(
         skill_dir=skill_dir,
+        bundle_dir=bundle_dir,
         manifest_path=manifest_path,
         code_path=code_path,
         tests_path=tests_path,
@@ -111,9 +143,11 @@ def list_skills() -> List[str]:
             has_code = any(
                 candidate.exists()
                 for candidate in (
-                    p / "python" / "skill.py",
-                    p / "js" / "skill.js",
-                    p / "skill.py",
+                    (resolve_skill_bundle_dir(p) or p) / "python" / "skill.py",
+                    (resolve_skill_bundle_dir(p) or p) / "js" / "skill.mjs",
+                    (resolve_skill_bundle_dir(p) or p) / "js" / "skill.js",
+                    (resolve_skill_bundle_dir(p) or p) / "src" / "index.mjs",
+                    (resolve_skill_bundle_dir(p) or p) / "skill.py",
                 )
             )
             if has_code:
@@ -196,8 +230,12 @@ def load_manifest(skill_name: str) -> SkillManifest:
             description=str(data.get("description", "")),
             entrypoint="python/skill.py"
             if (files.code_path and files.code_path.as_posix().endswith("python/skill.py"))
+            else "js/skill.mjs"
+            if (files.code_path and files.code_path.as_posix().endswith("js/skill.mjs"))
             else "js/skill.js"
             if (files.code_path and files.code_path.as_posix().endswith("js/skill.js"))
+            else "src/index.mjs"
+            if (files.code_path and files.code_path.as_posix().endswith("src/index.mjs"))
             else "skill.py",
             author=str(data.get("author", "")),
             tags=list(data.get("tags", []) or []),
@@ -233,7 +271,7 @@ def load_skill_module(skill_name: str):
 
 
 def skill_path(skill_name: str) -> Path:
-    return resolve_skill_dir(skill_name)
+    return resolve_skill_files(skill_name).bundle_dir
 
 
 def read_text(skill_name: str, rel_path: str) -> str:

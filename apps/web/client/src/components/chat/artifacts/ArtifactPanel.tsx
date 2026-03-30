@@ -4,13 +4,6 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
   X,
   Code2,
   Image,
@@ -27,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { CodeArtifact } from "./CodeArtifact";
 import { ImageLightbox } from "../media/ImageLightbox";
 import { VideoPlayer } from "../media/VideoPlayer";
+import { DashboardCard } from "@/components/dashboard";
 
 export type ArtifactType =
   | "code"
@@ -75,21 +69,20 @@ export function ArtifactPanel({ artifacts, onClose, className }: ArtifactPanelPr
 
   if (artifacts.length === 0) {
     return (
-      <Card className={cn("h-full flex flex-col", className)}>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg">Artifacts</CardTitle>
-            {onClose && (
-              <Button variant="ghost" size="icon" onClick={onClose}>
-                <X className="h-4 w-4" />
-              </Button>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent className="flex-1 flex items-center justify-center">
+      <DashboardCard
+        className={cn("h-full flex flex-col", className)}
+        title="Artifacts"
+        description="Code, images, and files from this conversation"
+        trailing={onClose ? (
+          <Button variant="ghost" size="icon" onClick={onClose}>
+            <X className="h-4 w-4" />
+          </Button>
+        ) : null}
+      >
+        <div className="flex flex-1 items-center justify-center">
           <p className="text-sm text-muted-foreground">No artifacts in this conversation</p>
-        </CardContent>
-      </Card>
+        </div>
+      </DashboardCard>
     );
   }
 
@@ -253,26 +246,23 @@ export function ArtifactPanel({ artifacts, onClose, className }: ArtifactPanelPr
   };
 
   return (
-    <Card className={cn("h-full flex flex-col", className)}>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Layers className="h-5 w-5 text-primary" />
-            <CardTitle className="text-lg">Artifacts</CardTitle>
-            <Badge variant="secondary">{artifacts.length}</Badge>
-          </div>
-          {onClose && (
-            <Button variant="ghost" size="icon" onClick={onClose}>
-              <X className="h-4 w-4" />
-            </Button>
-          )}
+    <DashboardCard
+      className={cn("h-full flex flex-col", className)}
+      bodyClassName="flex flex-1 flex-col overflow-hidden p-0"
+      leading={<Layers className="h-5 w-5 text-primary" />}
+      title={
+        <div className="flex items-center gap-2">
+          <span>Artifacts</span>
+          <Badge variant="secondary">{artifacts.length}</Badge>
         </div>
-        <CardDescription>
-          Code, images, and files from this conversation
-        </CardDescription>
-      </CardHeader>
-
-      <CardContent className="flex-1 overflow-hidden p-0">
+      }
+      description="Code, images, and files from this conversation"
+      trailing={onClose ? (
+        <Button variant="ghost" size="icon" onClick={onClose}>
+          <X className="h-4 w-4" />
+        </Button>
+      ) : null}
+    >
         {artifacts.length === 1 ? (
           <ScrollArea className="h-full px-4 pb-4">
             {renderArtifactContent(artifacts[0])}
@@ -342,7 +332,6 @@ export function ArtifactPanel({ artifacts, onClose, className }: ArtifactPanelPr
             )}
           </Tabs>
         )}
-      </CardContent>
-    </Card>
+    </DashboardCard>
   );
 }

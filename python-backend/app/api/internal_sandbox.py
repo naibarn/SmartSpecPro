@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import secrets
+import posixpath
 from datetime import datetime, timezone
 from typing import Any, Optional
 
@@ -24,6 +25,7 @@ from app.services.sandbox_dispatcher import PolicyDeniedError, SandboxDispatcher
 logger = structlog.get_logger(__name__)
 
 router = APIRouter(prefix="/api/internal/sandbox", tags=["Internal Sandbox"])
+_ALLOWED_SANDBOX_ROOTS = ("/workspace/", "/tmp/smartspec-sandbox/")
 
 
 async def _verify_internal_token(
@@ -31,17 +33,21 @@ async def _verify_internal_token(
     x_proxy_token: Optional[str] = Header(None),
 ) -> None:
     """Verify internal service token for Node.js -> Python calls."""
-    expected = (
-        getattr(settings, "SMARTSPEC_PROXY_TOKEN", None)
-        or getattr(settings, "SMARTSPEC_WEB_GATEWAY_TOKEN", None)
-    )
-    if not expected:
+    expected_tokens = [
+        token
+        for token in [
+            getattr(settings, "SMARTSPEC_WEB_GATEWAY_TOKEN", None),
+            getattr(settings, "SMARTSPEC_PROXY_TOKEN", None),
+        ]
+        if isinstance(token, str) and token
+    ]
+    if not expected_tokens:
         raise HTTPException(status_code=500, detail="Internal token is not configured")
 
     token = x_internal_token or x_proxy_token
     if not token:
         raise HTTPException(status_code=401, detail="Missing internal token")
-    if not secrets.compare_digest(token, expected):
+    if not any(secrets.compare_digest(token, expected) for expected in expected_tokens):
         raise HTTPException(status_code=401, detail="Invalid internal token")
 
 
@@ -103,6 +109,15 @@ def _normalize_execution_mode(mode: str) -> str:
     return mode
 
 
+def _validate_workspace_path(raw_path: str) -> str:
+    normalized = posixpath.normpath(raw_path)
+    if not any(normalized.startswith(root) for root in _ALLOWED_SANDBOX_ROOTS):
+        raise ValueError(
+            f"Path must stay within allowed sandbox roots ({', '.join(root.rstrip('/') for root in _ALLOWED_SANDBOX_ROOTS)}): {raw_path}"
+        )
+    return normalized
+
+
 def _build_manifest(request: SandboxDispatchRequest) -> dict[str, Any]:
     """Build worker input manifest from dispatch request payload."""
     manifest: dict[str, Any] = {
@@ -126,7 +141,10 @@ def _build_manifest(request: SandboxDispatchRequest) -> dict[str, Any]:
         manifest["commands"] = []
 
     if isinstance(metadata.get("output_paths"), list):
-        manifest["output_paths"] = [str(p) for p in metadata["output_paths"]]
+        manifest["output_paths"] = [
+            _validate_workspace_path(str(p))
+            for p in metadata["output_paths"]
+        ]
 
     inline_files = metadata.get("inlineFiles")
     if isinstance(inline_files, list):
@@ -139,7 +157,7 @@ def _build_manifest(request: SandboxDispatchRequest) -> dict[str, Any]:
             if not isinstance(path_value, str) or not isinstance(content_value, str):
                 continue
             normalized_entry: dict[str, Any] = {
-                "path": path_value,
+                "path": _validate_workspace_path(path_value),
                 "content_base64": content_value,
             }
             mode_value = entry.get("mode")
@@ -173,6 +191,8 @@ async def dispatch_sandbox_job(
             profile_override=body.profile_override,
             idempotency_key=body.idempotency_key,
         )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     except PolicyDeniedError as exc:
         raise HTTPException(status_code=429, detail=str(exc)) from exc
     except Exception as exc:

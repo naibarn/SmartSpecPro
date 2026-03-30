@@ -2067,6 +2067,27 @@ export const libraryPermissions = pgTable("library_permissions", {
 export type LibraryPermission = typeof libraryPermissions.$inferSelect;
 export type InsertLibraryPermission = typeof libraryPermissions.$inferInsert;
 
+export const libraryPublicShareLinks = pgTable("library_public_share_links", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  libraryItemId: integer("library_item_id").notNull().references(() => libraryItems.id, { onDelete: "cascade" }),
+  tokenHash: varchar("token_hash", { length: 128 }).notNull(),
+  tokenEncrypted: text("token_encrypted").notNull(),
+  createdByUserId: integer("created_by_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  expiresAt: timestamp("expires_at", { withTimezone: true }),
+  revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("library_public_share_links_token_hash_unique").on(t.tokenHash),
+  index("library_public_share_links_tenant_item_idx").on(t.tenantId, t.libraryItemId),
+  index("library_public_share_links_tenant_token_idx").on(t.tenantId, t.tokenHash),
+  index("library_public_share_links_item_active_idx").on(t.libraryItemId, t.revokedAt, t.expiresAt),
+]);
+
+export type LibraryPublicShareLink = typeof libraryPublicShareLinks.$inferSelect;
+export type InsertLibraryPublicShareLink = typeof libraryPublicShareLinks.$inferInsert;
+
 export const libraryIndexJobs = pgTable("library_index_jobs", {
   id: serial("id").primaryKey(),
   tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
@@ -2513,6 +2534,51 @@ export const skillCategoryEnum = pgEnum("skill_category", [
   "other",                 // Other
 ]);
 
+export const skillMaintenanceRecommendationStatusEnum = pgEnum("skill_maintenance_recommendation_status", [
+  "pending_review",
+  "approved",
+  "dismissed",
+  "applied",
+  "blocked",
+  "failed",
+]);
+
+export const skillMaintenanceRiskLevelEnum = pgEnum("skill_maintenance_risk_level", [
+  "low",
+  "medium",
+  "high",
+  "critical",
+]);
+
+export const skillMaintenanceRunTypeEnum = pgEnum("skill_maintenance_run_type", [
+  "analysis",
+  "apply",
+  "sweep",
+  "verify",
+]);
+
+export const skillMaintenanceRunStatusEnum = pgEnum("skill_maintenance_run_status", [
+  "queued",
+  "running",
+  "completed",
+  "failed",
+  "blocked",
+  "canceled",
+]);
+
+export const skillMaintenanceCompatibilityStatusEnum = pgEnum("skill_maintenance_compatibility_status", [
+  "unknown",
+  "compatible",
+  "warning",
+  "blocked",
+]);
+
+export const skillMaintenanceScheduleStatusEnum = pgEnum("skill_maintenance_schedule_status", [
+  "active",
+  "paused",
+  "disabled",
+]);
+
 /**
  * Skill Repositories - External Git repos containing skill collections
  * Admin can add repos, fetch/upgrade skills from them
@@ -2713,6 +2779,138 @@ export const skills = pgTable("skills", {
 
 export type Skill = typeof skills.$inferSelect;
 export type InsertSkill = typeof skills.$inferInsert;
+
+export const skillMaintenanceSchedules = pgTable("skill_maintenance_schedules", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).references(() => tenants.id, { onDelete: "set null" }),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  status: skillMaintenanceScheduleStatusEnum("status").notNull().default("active"),
+  cronExpression: varchar("cronExpression", { length: 128 }),
+  timezone: varchar("timezone", { length: 64 }).notNull().default("UTC"),
+  scopeType: varchar("scopeType", { length: 50 }).notNull().default("all_skills"),
+  scopeJson: jsonb("scopeJson").$type<Record<string, unknown>>().notNull().default({}),
+  policyJson: jsonb("policyJson").$type<Record<string, unknown>>().notNull().default({}),
+  createdBy: integer("createdBy").references(() => users.id, { onDelete: "set null" }),
+  lastRunAt: timestamp("lastRunAt", { withTimezone: true }),
+  nextRunAt: timestamp("nextRunAt", { withTimezone: true }),
+  runningAt: timestamp("runningAt", { withTimezone: true }),
+  lockToken: varchar("lockToken", { length: 80 }),
+  lockExpiresAt: timestamp("lockExpiresAt", { withTimezone: true }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("skill_maintenance_schedules_status_next_run_idx").on(t.status, t.nextRunAt),
+  index("skill_maintenance_schedules_tenant_status_idx").on(t.tenantId, t.status),
+  index("skill_maintenance_schedules_lock_expiry_idx").on(t.status, t.lockExpiresAt),
+]);
+
+export type SkillMaintenanceSchedule = typeof skillMaintenanceSchedules.$inferSelect;
+export type InsertSkillMaintenanceSchedule = typeof skillMaintenanceSchedules.$inferInsert;
+
+export const skillImprovementRecommendations = pgTable("skill_improvement_recommendations", {
+  id: serial("id").primaryKey(),
+  skillId: integer("skillId").notNull().references(() => skills.id, { onDelete: "cascade" }),
+  tenantId: varchar("tenantId", { length: 36 }).references(() => tenants.id, { onDelete: "set null" }),
+  scheduleId: integer("scheduleId").references(() => skillMaintenanceSchedules.id, { onDelete: "set null" }),
+  recommendationType: varchar("recommendationType", { length: 100 }).notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  summary: text("summary"),
+  rationale: text("rationale"),
+  status: skillMaintenanceRecommendationStatusEnum("status").notNull().default("pending_review"),
+  riskLevel: skillMaintenanceRiskLevelEnum("riskLevel").notNull().default("medium"),
+  compatibilityStatus: skillMaintenanceCompatibilityStatusEnum("compatibilityStatus").notNull().default("unknown"),
+  qualityScore: integer("qualityScore"),
+  confidenceScore: integer("confidenceScore"),
+  currentRuntime: varchar("currentRuntime", { length: 64 }),
+  proposedRuntime: varchar("proposedRuntime", { length: 64 }),
+  proposedAction: varchar("proposedAction", { length: 100 }),
+  isAutoApplySafe: boolean("isAutoApplySafe").notNull().default(false),
+  isGenjsCandidate: boolean("isGenjsCandidate").notNull().default(false),
+  recommendationJson: jsonb("recommendationJson").$type<Record<string, unknown>>().notNull().default({}),
+  contractDeltaJson: jsonb("contractDeltaJson").$type<Record<string, unknown>>().notNull().default({}),
+  analyzedAt: timestamp("analyzedAt", { withTimezone: true }).defaultNow().notNull(),
+  reviewedAt: timestamp("reviewedAt", { withTimezone: true }),
+  reviewedBy: integer("reviewedBy").references(() => users.id, { onDelete: "set null" }),
+  approvedAt: timestamp("approvedAt", { withTimezone: true }),
+  approvedBy: integer("approvedBy").references(() => users.id, { onDelete: "set null" }),
+  dismissedAt: timestamp("dismissedAt", { withTimezone: true }),
+  dismissedBy: integer("dismissedBy").references(() => users.id, { onDelete: "set null" }),
+  appliedAt: timestamp("appliedAt", { withTimezone: true }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("skill_improvement_recommendations_skill_status_idx").on(t.skillId, t.status),
+  index("skill_improvement_recommendations_status_risk_idx").on(t.status, t.riskLevel),
+  index("skill_improvement_recommendations_schedule_idx").on(t.scheduleId, t.status),
+]);
+
+export type SkillImprovementRecommendation = typeof skillImprovementRecommendations.$inferSelect;
+export type InsertSkillImprovementRecommendation = typeof skillImprovementRecommendations.$inferInsert;
+
+export const skillImprovementRuns = pgTable("skill_improvement_runs", {
+  id: serial("id").primaryKey(),
+  skillId: integer("skillId").references(() => skills.id, { onDelete: "cascade" }),
+  tenantId: varchar("tenantId", { length: 36 }).references(() => tenants.id, { onDelete: "set null" }),
+  scheduleId: integer("scheduleId").references(() => skillMaintenanceSchedules.id, { onDelete: "set null" }),
+  recommendationId: integer("recommendationId").references(() => skillImprovementRecommendations.id, { onDelete: "set null" }),
+  runType: skillMaintenanceRunTypeEnum("runType").notNull(),
+  status: skillMaintenanceRunStatusEnum("status").notNull().default("queued"),
+  triggerSource: varchar("triggerSource", { length: 50 }).notNull().default("manual"),
+  requestedBy: integer("requestedBy").references(() => users.id, { onDelete: "set null" }),
+  summary: text("summary"),
+  errorMessage: text("errorMessage"),
+  scopeJson: jsonb("scopeJson").$type<Record<string, unknown>>().notNull().default({}),
+  logsJson: jsonb("logsJson").$type<Record<string, unknown>>().notNull().default({}),
+  metricsJson: jsonb("metricsJson").$type<Record<string, unknown>>().notNull().default({}),
+  verificationJson: jsonb("verificationJson").$type<Record<string, unknown>>().notNull().default({}),
+  diffSummaryJson: jsonb("diffSummaryJson").$type<Record<string, unknown>>().notNull().default({}),
+  startedAt: timestamp("startedAt", { withTimezone: true }),
+  endedAt: timestamp("endedAt", { withTimezone: true }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("skill_improvement_runs_skill_created_idx").on(t.skillId, t.createdAt),
+  index("skill_improvement_runs_schedule_created_idx").on(t.scheduleId, t.createdAt),
+  index("skill_improvement_runs_recommendation_created_idx").on(t.recommendationId, t.createdAt),
+  index("skill_improvement_runs_status_created_idx").on(t.status, t.createdAt),
+]);
+
+export type SkillImprovementRun = typeof skillImprovementRuns.$inferSelect;
+export type InsertSkillImprovementRun = typeof skillImprovementRuns.$inferInsert;
+
+export const skillContractSnapshots = pgTable("skill_contract_snapshots", {
+  id: serial("id").primaryKey(),
+  skillId: integer("skillId").notNull().references(() => skills.id, { onDelete: "cascade" }),
+  tenantId: varchar("tenantId", { length: 36 }).references(() => tenants.id, { onDelete: "set null" }),
+  recommendationId: integer("recommendationId").references(() => skillImprovementRecommendations.id, { onDelete: "set null" }),
+  runId: integer("runId").references(() => skillImprovementRuns.id, { onDelete: "set null" }),
+  snapshotType: varchar("snapshotType", { length: 50 }).notNull().default("baseline"),
+  executionMode: varchar("executionMode", { length: 50 }),
+  runtimeProfile: varchar("runtimeProfile", { length: 64 }),
+  manifestPath: varchar("manifestPath", { length: 512 }),
+  manifestHash: varchar("manifestHash", { length: 64 }),
+  inputSchemaHash: varchar("inputSchemaHash", { length: 64 }),
+  outputSchemaHash: varchar("outputSchemaHash", { length: 64 }),
+  fixtureHash: varchar("fixtureHash", { length: 64 }),
+  testsHash: varchar("testsHash", { length: 64 }),
+  contractHash: varchar("contractHash", { length: 64 }),
+  schemaSummaryJson: jsonb("schemaSummaryJson").$type<Record<string, unknown>>().notNull().default({}),
+  sampleInputsJson: jsonb("sampleInputsJson").$type<unknown[]>().notNull().default([]),
+  sampleOutputsJson: jsonb("sampleOutputsJson").$type<unknown[]>().notNull().default([]),
+  compatibilityNotesJson: jsonb("compatibilityNotesJson").$type<Record<string, unknown>>().notNull().default({}),
+  snapshotJson: jsonb("snapshotJson").$type<Record<string, unknown>>().notNull().default({}),
+  capturedAt: timestamp("capturedAt", { withTimezone: true }).defaultNow().notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("skill_contract_snapshots_skill_captured_idx").on(t.skillId, t.capturedAt),
+  index("skill_contract_snapshots_recommendation_idx").on(t.recommendationId),
+  index("skill_contract_snapshots_run_idx").on(t.runId),
+  index("skill_contract_snapshots_contract_hash_idx").on(t.contractHash),
+]);
+
+export type SkillContractSnapshot = typeof skillContractSnapshots.$inferSelect;
+export type InsertSkillContractSnapshot = typeof skillContractSnapshots.$inferInsert;
 
 /**
  * Skill Permissions — controls which groups can use a private skill
@@ -3002,6 +3200,9 @@ export const blogPosts = pgTable("blog_posts", {
   /** Cover image URL */
   coverImage: varchar("coverImage", { length: 1024 }),
 
+  /** Library attachment IDs from the article composer */
+  mediaAttachments: json("mediaAttachments").$type<number[]>(),
+
   /** Author name */
   author: varchar("author", { length: 255 }),
 
@@ -3036,6 +3237,42 @@ export const blogPosts = pgTable("blog_posts", {
 
 export type BlogPost = typeof blogPosts.$inferSelect;
 export type InsertBlogPost = typeof blogPosts.$inferInsert;
+
+// ============================================================
+// Content Composer Drafts — Feature 063
+// ============================================================
+
+export const contentComposerDrafts = pgTable("content_composer_drafts", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  topic: text("topic").notNull().default(""),
+  executionSource: varchar("executionSource", { length: 20 }),
+  skillId: varchar("skillId", { length: 255 }),
+  agencyId: varchar("agencyId", { length: 255 }),
+  articleBody: text("articleBody"),
+  requiresWebSearch: boolean("requiresWebSearch").notNull().default(false),
+  requiresThinking: boolean("requiresThinking").notNull().default(false),
+  attachmentIds: json("attachmentIds").$type<number[]>().notNull().default([]),
+  destinationKind: varchar("destinationKind", { length: 20 }),
+  docsSubKind: varchar("docsSubKind", { length: 20 }),
+  docsTargetId: integer("docsTargetId"),
+  blogTargetId: integer("blogTargetId"),
+  socialPlatform: varchar("socialPlatform", { length: 50 }),
+  socialTargetId: integer("socialTargetId"),
+  socialCaption: text("socialCaption"),
+  status: varchar("status", { length: 30 }).notNull().default("draft"),
+  errorMessage: text("errorMessage"),
+  publishedAt: timestamp("publishedAt", { withTimezone: true }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("ccd_tenant_user_status_idx").on(t.tenantId, t.userId, t.status),
+  index("ccd_tenant_updated_at_idx").on(t.tenantId, t.updatedAt),
+]);
+
+export type ContentComposerDraft = typeof contentComposerDrafts.$inferSelect;
+export type InsertContentComposerDraft = typeof contentComposerDrafts.$inferInsert;
 
 // ============================================================
 // Chat Alert — Scheduled Messages System

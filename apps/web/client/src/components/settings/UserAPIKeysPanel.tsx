@@ -8,7 +8,6 @@
 
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,6 +40,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { DashboardCard } from "@/components/dashboard";
 import {
   Key,
   Plus,
@@ -246,8 +246,8 @@ export function UserAPIKeysPanel() {
 
         {/* Keys tab */}
         <TabsContent value="keys">
-          <Card>
-            <CardContent className="pt-4">
+          <DashboardCard title="My API Keys" description="Manage API keys issued to your account." leading={<Key className="h-5 w-5 text-sky-500" />}>
+            <div className="space-y-4">
               {keysQuery.isLoading && (
                 <p className="text-sm text-muted-foreground py-4">Loading...</p>
               )}
@@ -388,20 +388,22 @@ export function UserAPIKeysPanel() {
                   </TableBody>
                 </Table>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </DashboardCard>
         </TabsContent>
 
         {/* Webhooks tab */}
         <TabsContent value="webhooks">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">My Webhooks</CardTitle>
-              <CardDescription>
+          <DashboardCard
+            title="My Webhooks"
+            description={
+              <>
                 Register webhooks via the API (<code>POST /v1/webhooks</code>) to receive push events.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+              </>
+            }
+            leading={<Key className="h-5 w-5 text-sky-500" />}
+          >
+            <div className="space-y-4">
               {webhooksQuery.isLoading && <p className="text-sm text-muted-foreground">Loading...</p>}
               {!webhooksQuery.isLoading && (!webhooksQuery.data || webhooksQuery.data.length === 0) && (
                 <p className="text-sm text-muted-foreground py-6 text-center">
@@ -472,8 +474,8 @@ export function UserAPIKeysPanel() {
                   </TableBody>
                 </Table>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </DashboardCard>
         </TabsContent>
       </Tabs>
 

@@ -253,7 +253,18 @@ class SandboxArtifact(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     sandbox_job_id = Column("sandboxJobId", String(36), ForeignKey("sandbox_jobs.id", ondelete="CASCADE"), nullable=False)
 
-    artifact_type = Column("artifactType", String(16), nullable=False)
+    artifact_type = Column(
+        "artifactType",
+        SAEnum(
+            SandboxArtifactType,
+            name="sandbox_artifact_type",
+            values_callable=_enum_values,
+            native_enum=True,
+            create_type=False,
+            validate_strings=True,
+        ),
+        nullable=False,
+    )
     object_key = Column("objectKey", String(512), nullable=False)
     mime_type = Column("mimeType", String(128), nullable=True)
     size_bytes = Column("sizeBytes", BigInteger, nullable=True)

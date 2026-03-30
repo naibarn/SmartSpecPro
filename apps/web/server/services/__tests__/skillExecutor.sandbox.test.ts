@@ -8,6 +8,7 @@ vi.mock("../sandbox", () => ({
   getDispatchMode: vi.fn(() => "optional"),
   dispatchToSandbox: vi.fn(),
 }));
+vi.mock("../db", () => ({ getDb: vi.fn(async () => null) }));
 
 // Mock heavy dependencies to isolate skill executor logic
 vi.mock("../redis", () => ({ getRedisClient: vi.fn(() => ({ setex: vi.fn() })) }));
@@ -56,9 +57,99 @@ const defaultParams: SkillExecutionParams = {
   prompt: "test prompt",
 };
 
+function mockCommandSkillFilesystem(
+  skillRoot: string,
+  options?: {
+    manifestEntry?: string;
+    includePackageJson?: boolean;
+    nestedBundleDirName?: string;
+  },
+) {
+  const manifestEntry = options?.manifestEntry ?? "src/index.mjs";
+  const includePackageJson = options?.includePackageJson ?? true;
+  const nestedBundleDirName = options?.nestedBundleDirName?.trim() || "";
+  const bundleRoot = nestedBundleDirName ? `${skillRoot}/${nestedBundleDirName}` : skillRoot;
+  const manifestPath = `${bundleRoot}/skill.manifest.json`;
+  const entryPath = `${bundleRoot}/${manifestEntry}`;
+  const packageJsonPath = `${bundleRoot}/package.json`;
+  const skillFilePath = `${bundleRoot}/SKILL.md`;
+
+  const existingPaths = [manifestPath, entryPath, skillFilePath];
+  if (includePackageJson) {
+    existingPaths.push(packageJsonPath);
+  }
+
+  const existsSpy = vi.spyOn(fs, "existsSync").mockImplementation((targetPath) => {
+    const normalized = String(targetPath).replace(/\\/g, "/");
+    return existingPaths.includes(normalized);
+  });
+
+  const readdirSpy = vi.spyOn(fs, "readdirSync").mockImplementation((targetPath: any) => {
+    const normalized = String(targetPath).replace(/\\/g, "/");
+    if (normalized === skillRoot) {
+      if (nestedBundleDirName) {
+        return [
+          { name: nestedBundleDirName, isDirectory: () => true, isFile: () => false },
+        ] as any;
+      }
+      return [
+        { name: "skill.manifest.json", isDirectory: () => false, isFile: () => true },
+        { name: "SKILL.md", isDirectory: () => false, isFile: () => true },
+        ...(includePackageJson
+          ? [{ name: "package.json", isDirectory: () => false, isFile: () => true }]
+          : []),
+        { name: "src", isDirectory: () => true, isFile: () => false },
+      ] as any;
+    }
+    if (nestedBundleDirName && normalized === bundleRoot) {
+      return [
+        { name: "skill.manifest.json", isDirectory: () => false, isFile: () => true },
+        { name: "SKILL.md", isDirectory: () => false, isFile: () => true },
+        ...(includePackageJson
+          ? [{ name: "package.json", isDirectory: () => false, isFile: () => true }]
+          : []),
+        { name: "src", isDirectory: () => true, isFile: () => false },
+      ] as any;
+    }
+    if (normalized === `${bundleRoot}/src`) {
+      return [{ name: "index.mjs", isDirectory: () => false, isFile: () => true }] as any;
+    }
+    return [] as any;
+  });
+
+  const readSpy = vi.spyOn(fs, "readFileSync").mockImplementation((targetPath: any) => {
+    const normalized = String(targetPath).replace(/\\/g, "/");
+    if (normalized === manifestPath) {
+      return Buffer.from(JSON.stringify({ entry: manifestEntry }), "utf-8") as any;
+    }
+    if (includePackageJson && normalized === packageJsonPath) {
+      return Buffer.from(JSON.stringify({ name: "modern-editorial-slide", dependencies: { pptxgenjs: "^3.12.0" } }), "utf-8") as any;
+    }
+    if (normalized === skillFilePath) {
+      return Buffer.from("# Modern Editorial Slide Skill\n", "utf-8") as any;
+    }
+    if (normalized === entryPath) {
+      return Buffer.from("console.log('ok')\n", "utf-8") as any;
+    }
+    throw new Error(`Unexpected readFileSync path: ${normalized}`);
+  });
+
+  return {
+    skillFilePath,
+    restore() {
+      existsSpy.mockRestore();
+      readdirSpy.mockRestore();
+      readSpy.mockRestore();
+    },
+  };
+}
+
 describe("skillExecutor sandbox dispatch", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(isSandboxEnabled).mockReturnValue(false);
+    vi.mocked(shouldUseSandboxForFeature).mockReturnValue(false);
+    vi.mocked(getDispatchMode).mockReturnValue("optional");
   });
 
   afterEach(() => {
@@ -101,6 +192,7 @@ describe("skillExecutor sandbox dispatch", () => {
     expect(result.success).toBe(true);
     expect(result.isAsync).toBe(true);
     expect(dispatchToSandbox).toHaveBeenCalledWith(expect.objectContaining({
+      profileOverride: "code-default",
       tenantId: "tenant-001",
     }));
   });
@@ -110,11 +202,48 @@ describe("skillExecutor sandbox dispatch", () => {
     vi.mocked(shouldUseSandboxForFeature).mockReturnValue(true);
     vi.mocked(dispatchToSandbox).mockResolvedValue({ jobId: "job-456" });
 
-    const skill = makeSkill({ executionMode: "sandbox-command" });
-    const result = await executeSkill(skill, defaultParams, 1, "token", "tenant-001");
+    const mockedFs = mockCommandSkillFilesystem("/virtual/test-command-skill", {
+      includePackageJson: false,
+    });
 
-    expect(result.type).toBe("sandbox-job");
-    expect(result.jobId).toBe("job-456");
+    try {
+      const skill = makeSkill({
+        id: "test-command-skill",
+        executionMode: "sandbox-command",
+        skillFilePath: mockedFs.skillFilePath,
+      });
+      const result = await executeSkill(skill, defaultParams, 1, "token", "tenant-001");
+
+      expect(result.type).toBe("sandbox-job");
+      expect(result.jobId).toBe("job-456");
+    } finally {
+      mockedFs.restore();
+    }
+  });
+
+  it("dispatches nested shared-bundle sandbox-command skills when enabled", async () => {
+    vi.mocked(isSandboxEnabled).mockReturnValue(true);
+    vi.mocked(shouldUseSandboxForFeature).mockReturnValue(true);
+    vi.mocked(dispatchToSandbox).mockResolvedValue({ jobId: "job-nested" });
+
+    const mockedFs = mockCommandSkillFilesystem("/virtual/modern-editorial-slide", {
+      includePackageJson: true,
+      nestedBundleDirName: "modern_editorial_slide_skill",
+    });
+
+    try {
+      const skill = makeSkill({
+        id: "modern-editorial-slide",
+        executionMode: "sandbox-command",
+        skillFilePath: mockedFs.skillFilePath,
+      });
+      const result = await executeSkill(skill, defaultParams, 1, "token", "tenant-001");
+
+      expect(result.type).toBe("sandbox-job");
+      expect(result.jobId).toBe("job-nested");
+    } finally {
+      mockedFs.restore();
+    }
   });
 
   it("dispatches sandbox-browser to sandbox when enabled", async () => {
@@ -269,11 +398,153 @@ describe("skillExecutor sandbox dispatch", () => {
       expect(result.jobId).toBe("job-python-1");
       expect(dispatchToSandbox).toHaveBeenCalledWith(expect.objectContaining({
         executionMode: "sandbox-python",
+        profileOverride: "code-default",
       }));
     } finally {
       existsSpy.mockRestore();
       readdirSpy.mockRestore();
       readSpy.mockRestore();
+    }
+  });
+
+  it("prepares sandbox-command payload for manifest-based slide skills", async () => {
+    vi.mocked(isSandboxEnabled).mockReturnValue(true);
+    vi.mocked(shouldUseSandboxForFeature).mockReturnValue(true);
+    vi.mocked(dispatchToSandbox).mockResolvedValue({ jobId: "job-slide-1" });
+
+    const skillRoot = "/virtual/modern-editorial-slide";
+    const mockedFs = mockCommandSkillFilesystem(skillRoot);
+
+    try {
+      const skill = makeSkill({
+        id: "modern-editorial-slide",
+        name: "Modern Editorial Slide",
+        category: "slide_generation",
+        executionMode: "sandbox-command" as any,
+        maxRuntimeSeconds: 120,
+        skillFilePath: mockedFs.skillFilePath,
+      });
+
+      const result = await executeSkill(
+        skill,
+        {
+          ...defaultParams,
+          extraParams: {
+            request: {
+              projectTitle: "Deck",
+              outputFormats: ["json", "pptx"],
+              renderOptions: {
+                jsonFileName: "custom-layout.json",
+                pptxFileName: "custom-slides.pptx",
+              },
+              content: { rawText: "hello" },
+            },
+          },
+        },
+        1,
+        "token-slide",
+        "tenant-001",
+      );
+
+      expect(result.type).toBe("sandbox-job");
+      expect(result.jobId).toBe("job-slide-1");
+      expect(dispatchToSandbox).toHaveBeenCalledWith(expect.objectContaining({
+        executionMode: "sandbox-command",
+        profileOverride: "browser-default",
+        metadata: expect.objectContaining({
+          runtimeOverrides: {
+            timeoutSeconds: 120,
+          },
+          commands: expect.arrayContaining([
+            "mkdir -p '/tmp/smartspec-sandbox/skill-output'",
+            "npm --prefix '/tmp/smartspec-sandbox/skill' install --omit=dev --no-package-lock --ignore-scripts --no-audit --no-fund",
+            "node '/tmp/smartspec-sandbox/skill/src/index.mjs' '/tmp/smartspec-sandbox/skill-input.json' '/tmp/smartspec-sandbox/skill-output'",
+          ]),
+          output_paths: expect.arrayContaining([
+            "/tmp/smartspec-sandbox/skill-output/manifest.json",
+            "/tmp/smartspec-sandbox/skill-output/custom-layout.json",
+            "/tmp/smartspec-sandbox/skill-output/custom-slides.pptx",
+          ]),
+          inlineFiles: expect.arrayContaining([
+            expect.objectContaining({ path: "/tmp/smartspec-sandbox/skill/skill.manifest.json" }),
+            expect.objectContaining({ path: "/tmp/smartspec-sandbox/skill/package.json" }),
+            expect.objectContaining({ path: "/tmp/smartspec-sandbox/skill/src/index.mjs" }),
+            expect.objectContaining({ path: "/tmp/smartspec-sandbox/skill-input.json" }),
+          ]),
+        }),
+      }));
+    } finally {
+      mockedFs.restore();
+    }
+  });
+
+  it("rejects sandbox-command output file names that try to escape the sandbox output directory", async () => {
+    vi.mocked(isSandboxEnabled).mockReturnValue(true);
+    vi.mocked(shouldUseSandboxForFeature).mockReturnValue(true);
+
+    const mockedFs = mockCommandSkillFilesystem("/virtual/modern-editorial-slide", {
+      includePackageJson: false,
+    });
+
+    try {
+      const result = await executeSkill(
+        makeSkill({
+          id: "modern-editorial-slide",
+          category: "slide_generation",
+          executionMode: "sandbox-command" as any,
+          skillFilePath: mockedFs.skillFilePath,
+        }),
+        {
+          ...defaultParams,
+          extraParams: {
+            request: {
+              outputFormats: ["json"],
+              renderOptions: {
+                jsonFileName: "../escaped.json",
+              },
+            },
+          },
+        },
+        1,
+        "token-slide",
+        "tenant-001",
+      );
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("Invalid sandbox output file name");
+      expect(dispatchToSandbox).not.toHaveBeenCalled();
+    } finally {
+      mockedFs.restore();
+    }
+  });
+
+  it("rejects sandbox skills when the selected profile blocks required network access", async () => {
+    vi.mocked(isSandboxEnabled).mockReturnValue(true);
+    vi.mocked(shouldUseSandboxForFeature).mockReturnValue(true);
+    const mockedFs = mockCommandSkillFilesystem("/virtual/networked-command-skill", {
+      includePackageJson: false,
+    });
+
+    try {
+      const result = await executeSkill(
+        makeSkill({
+          id: "networked-command-skill",
+          executionMode: "sandbox-command" as any,
+          sandboxProfileSlug: "file-parser",
+          requiresNetwork: true,
+          skillFilePath: mockedFs.skillFilePath,
+        }),
+        defaultParams,
+        1,
+        "token",
+        "tenant-001",
+      );
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("does not allow network access");
+      expect(dispatchToSandbox).not.toHaveBeenCalled();
+    } finally {
+      mockedFs.restore();
     }
   });
 });

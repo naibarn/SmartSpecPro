@@ -9,12 +9,12 @@ import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plug, RefreshCw, Loader2, CheckCircle2, XCircle, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { Link } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
+import { DashboardCard } from "@/components/dashboard";
 
 const HEALTH_COLORS: Record<string, string> = {
   healthy: "bg-green-100 text-green-700",
@@ -53,27 +53,28 @@ export function McpServersSettingsPanel() {
   };
 
   return (
-    <Card className="border border-gray-200/60 shadow-sm">
-      <CardHeader className="pb-3">
+    <DashboardCard
+      title="MCP Servers"
+      description="External tool servers connected to your organization via Model Context Protocol"
+      leading={<Plug className="h-5 w-5 text-sky-500" />}
+      trailing={
+        isAdmin ? (
+          <Link href="/admin/mcp-servers">
+            <Button variant="outline" size="sm" className="gap-1">
+              <ExternalLink className="h-3.5 w-3.5" />
+              Manage
+            </Button>
+          </Link>
+        ) : null
+      }
+    >
+      <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Plug className="h-5 w-5 text-orange-500" />
-            MCP Servers
-          </CardTitle>
-          {isAdmin && (
-            <Link href="/admin/mcp-servers">
-              <Button variant="outline" size="sm" className="gap-1">
-                <ExternalLink className="h-3.5 w-3.5" />
-                Manage
-              </Button>
-            </Link>
-          )}
+          <div className="text-sm text-muted-foreground">
+            {serversQuery.isLoading ? "Checking registry..." : `${servers.length} server${servers.length === 1 ? "" : "s"} available`}
+          </div>
         </div>
-        <p className="text-sm text-muted-foreground">
-          External tool servers connected to your organization via Model Context Protocol
-        </p>
-      </CardHeader>
-      <CardContent>
+
         {serversQuery.isLoading ? (
           <div className="flex justify-center py-6">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -144,7 +145,7 @@ export function McpServersSettingsPanel() {
             ))}
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </DashboardCard>
   );
 }

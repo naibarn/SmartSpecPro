@@ -234,4 +234,26 @@ describe("computeNextRun", () => {
     expect(result).toBeTruthy();
     expect(result!.getTime()).toBeGreaterThan(now.getTime());
   });
+
+  it("respects timezone when computing recurring schedules", () => {
+    const result = computeNextRun(
+      "recurring",
+      "0 9 * * *",
+      undefined,
+      { timezone: "Asia/Bangkok", now: new Date("2026-04-01T00:30:00Z") },
+    );
+
+    expect(result?.toISOString()).toBe("2026-04-01T02:00:00.000Z");
+  });
+
+  it("returns null for invalid timezone", () => {
+    const result = computeNextRun(
+      "recurring",
+      "0 9 * * *",
+      undefined,
+      "Mars/Olympus",
+    );
+
+    expect(result).toBeNull();
+  });
 });

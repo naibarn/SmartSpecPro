@@ -1,5 +1,5 @@
 """
-isc/creator.py — Multi-agent skill creator for Intelligence Skill Creator v0.4.0
+isc/creator.py — Multi-agent skill creator for Intelligence Skill Creator v0.5.0
 
 Pipeline (7 phases):
   Phase 1 — PLAN:      Understand intent, design architecture (language, I/O, algorithms)
@@ -15,7 +15,7 @@ Mandatory output for every created skill:
   schemas/output.schema.json  — structured output spec
   schemas/ui.schema.json      — SmartAIHub UI form (Thai + English)
   skill.md                    — manifest with YAML frontmatter
-  python/skill.py OR js/skill.js
+  python/skill.py OR js/skill.js OR skill.manifest.json + src/index.mjs
   tests/tests.json
 """
 from __future__ import annotations
@@ -44,13 +44,19 @@ Your job: analyze a user description and design a complete, production-quality s
 
 SmartAIHub skill conventions:
 - Python skill: respond(input, context=None) -> str in python/skill.py
-- JavaScript skill: async respond(input, context=null) -> str in js/skill.js
+- JavaScript classic skill: async respond(input, context=null) -> str in js/skill.js
+- JavaScript GenJS bundle: sandbox-command bundle with skill.manifest.json + src/index.mjs
 - Schemas ALWAYS go in schemas/: input.schema.json, output.schema.json, ui.schema.json
 - skill.md has YAML frontmatter
 
 Language selection heuristic:
 - Python: math/stats, NLP, text processing, data parsing, complex algorithms, CSV/JSON analysis
-- JavaScript: JSON transformation, async APIs, event-driven, templating, URL manipulation
+- JavaScript: strong JSON/object structure work, schema/prompt pipelines, async APIs, web stack glue,
+  event-driven logic, templating, URL manipulation, Node.js automation, and libraries like PptxGenJS
+
+When JavaScript is selected, also choose a runtime profile:
+- classic: CommonJS skill at js/skill.js
+- genjs: modern Node.js ESM bundle with skill.manifest.json + src/index.mjs, better for complex schema/API/pipeline work
 
 RETURN: valid JSON only (no markdown fences, no preamble, no explanation)."""
 
@@ -123,6 +129,31 @@ MANDATORY conventions:
 
 RETURN: ONLY the complete JavaScript code (no markdown fences, no explanation)."""
 
+_SYS_JS_GEN = """You are an expert JavaScript developer creating SmartAIHub GenJS skill implementations.
+
+MANDATORY conventions:
+1. Use modern Node.js ESM (`.mjs`) syntax
+2. Entry point: `export async function respond(input, context = null)`
+3. Handle input as BOTH object AND JSON string
+4. Validate ALL required inputs; return error JSON if missing
+5. ALWAYS return a valid JSON string — never throw, never return null/undefined
+6. On ANY exception: return JSON.stringify({success: false, output: "Error: " + e.message})
+7. Prefer JavaScript for JSON/object modeling, schema-driven transforms, prompt pipelines, API orchestration,
+   web stack automation, and workloads that may later integrate tools like PptxGenJS
+8. ONLY use Node.js built-ins unless the prompt explicitly allows a package integration scaffold
+9. HTTP: use built-in `https`/`http` modules unless the plan explicitly requires a package placeholder
+10. CRITICAL SECURITY RULE 1: NO DIRECT DATABASE ACCESS. Never import sqlite, pg, mysql, mongodb, etc.
+11. CRITICAL SECURITY RULE 2: NO LOCAL FILESYSTEM ACCESS for host data. Do not read/write arbitrary local files.
+12. CRITICAL SECURITY RULE 3: NEVER CALL EXTERNAL LLMs DIRECTLY. Use the internal gateway at `/api/llm/chat`.
+13. JSDoc comments on all functions
+14. Keep the module easy to extend into a larger Node.js bundle later if needed
+
+15. The bundle includes helper modules such as `./parse.mjs`, `./classify.mjs`, `./normalize.mjs`,
+    `./planner.mjs`, `./renderer.mjs`, and optionally `./orchestration.mjs`; import and use them cleanly
+16. Export `respond(input, context = null)` for evaluator/runtime compatibility AND support CLI execution for sandbox-command
+
+RETURN: ONLY the complete JavaScript code for `src/index.mjs` (no markdown fences, no explanation)."""
+
 _SYS_CRITIC = """You are a senior code reviewer specializing in SmartAIHub skills.
 
 Review the code against these criteria:
@@ -145,6 +176,7 @@ RETURN: valid JSON only:
 SUPPORTED_SKILL_CATEGORY_GUIDE = """
 Supported categories and execution modes:
 - article_generation -> llm-only
+- slide_generation -> sandbox-command or sandbox-code or llm-only
 - image_prompt_generation -> llm-only or enhance-prompt
 - video_prompt_generation -> llm-only or enhance-prompt
 - prompt_enhancement -> llm-only or enhance-prompt
@@ -153,7 +185,8 @@ Supported categories and execution modes:
 - image_video_generation -> media-generate
 - audio_generation -> media-generate
 - sound_effects -> media-generate
-- automation, code_assistant, document_analysis, web_search, data_analysis, translation, summarization, chat_assistant, other -> llm-only or python
+- automation, code_assistant, document_analysis, web_search, data_analysis, translation, summarization, chat_assistant, other
+  -> llm-only or python or sandbox-command or sandbox-code or sandbox-browser or sandbox-file
 
 execution_mode describes runtime behavior, not the implementation language.
 Use the dedicated prompt categories for prompt-creation skills instead of generic prompt_enhancement whenever possible.
@@ -170,6 +203,600 @@ def _slugify(text: str) -> str:
     text = re.sub(r"[^\w\s-]", "", text.lower())
     text = re.sub(r"[\s_]+", "-", text.strip())
     return re.sub(r"-+", "-", text).strip("-")[:64]
+
+
+def _normalize_javascript_runtime(plan: dict) -> str:
+    runtime = str(plan.get("javascript_runtime", "auto")).strip().lower()
+    if runtime in {"classic", "genjs"}:
+        return runtime
+
+    if str(plan.get("language", "python")).strip().lower() != "javascript":
+        return "classic"
+
+    complexity = str(plan.get("complexity", "moderate")).strip().lower()
+    categories = {str(item).strip().lower() for item in plan.get("categories", []) if str(item).strip()}
+    if complexity == "complex" or "slide_generation" in categories:
+        return "genjs"
+    return "classic"
+
+
+def _javascript_code_relpath(plan: dict) -> str:
+    return "src/index.mjs" if _normalize_javascript_runtime(plan) == "genjs" else "js/skill.js"
+
+
+def _plan_text_blob(plan: dict) -> str:
+    values = [
+        plan.get("skill_title", ""),
+        plan.get("description", ""),
+        plan.get("purpose", ""),
+        " ".join(str(item) for item in plan.get("logic_steps", [])),
+        " ".join(str(item.get("name", "")) for item in plan.get("outputs", [])),
+        " ".join(str(item) for item in plan.get("categories", [])),
+    ]
+    return " ".join(part for part in values if part).lower()
+
+
+def _genjs_supports_pptx(plan: dict) -> bool:
+    blob = _plan_text_blob(plan)
+    return any(keyword in blob for keyword in ("pptx", "pptxgenjs", "powerpoint", "presentation", "slide", "deck", "storyboard"))
+
+
+def _genjs_supported_outputs(plan: dict) -> list[str]:
+    outputs = ["json", "md"]
+    if _genjs_supports_pptx(plan):
+        outputs.append("pptx")
+    return outputs
+
+
+def _build_genjs_package_json(plan: dict) -> str:
+    package_json: dict[str, Any] = {
+        "name": plan.get("skill_name", "generated-skill"),
+        "version": "1.0.0",
+        "private": True,
+        "type": "module",
+        "description": plan.get("description", "Generated GenJS skill bundle"),
+        "scripts": {
+            "start": "node src/index.mjs ./examples/demo.input.json ./dist",
+            "build": "node src/index.mjs",
+        },
+        "dependencies": {},
+    }
+    if _genjs_supports_pptx(plan):
+        package_json["dependencies"]["pptxgenjs"] = "^3.12.0"
+    if not package_json["dependencies"]:
+        package_json.pop("dependencies")
+    return json.dumps(package_json, ensure_ascii=False, indent=2) + "\n"
+
+
+def _build_genjs_command_manifest(plan: dict) -> str:
+    manifest = {
+        "name": plan.get("skill_name", "generated-skill"),
+        "version": "1.0.0",
+        "entry": "src/index.mjs",
+        "runtimeProfile": "genjs",
+        "executionMode": plan.get("execution_mode", "sandbox-command"),
+        "skillFile": "SKILL.md",
+        "schemas": {
+            "input": "schemas/input.schema.json",
+            "output": "schemas/output.schema.json",
+            "ui": "schemas/ui.schema.json",
+        },
+        "pipelineStages": ["parse", "classify", "normalize", "plan", "render"],
+        "orchestration": {
+            "defaultMode": "local",
+            "supportedModes": ["local", "skill-handoff", "agency-swarm", "hybrid"],
+        },
+        "supportedOutputs": _genjs_supported_outputs(plan),
+    }
+    return json.dumps(manifest, ensure_ascii=False, indent=2) + "\n"
+
+
+def _build_genjs_support_files(plan: dict) -> dict[str, str]:
+    demo_request: dict[str, Any] = {
+        "request": {
+            "requestId": "demo-request",
+            "prompt": plan.get("description", "") or plan.get("purpose", ""),
+            "artifactType": "presentation" if _genjs_supports_pptx(plan) else "document",
+            "outputFormats": _genjs_supported_outputs(plan),
+            "content": {
+                "rawText": plan.get("purpose", "") or plan.get("description", ""),
+                "sections": [
+                    {
+                        "title": "Overview",
+                        "text": plan.get("description", "") or plan.get("skill_title", "Generated Skill"),
+                    },
+                    {
+                        "title": "Workflow",
+                        "text": " -> ".join(str(step) for step in plan.get("logic_steps", [])) or "parse -> classify -> normalize -> plan -> render",
+                    },
+                ],
+            },
+            "renderOptions": {
+                "jsonFileName": "result.json",
+                "mdFileName": "result.md",
+                "pptxFileName": "result.pptx",
+            },
+            "orchestration": {
+                "mode": "local",
+                "parallel": True,
+                "objective": plan.get("purpose", "") or plan.get("description", ""),
+                "skillTargets": [],
+                "agencyTargets": [],
+            },
+        }
+    }
+    plan_json = json.dumps(
+        {
+            "skillName": plan.get("skill_name", "generated-skill"),
+            "skillTitle": plan.get("skill_title", "Generated Skill"),
+            "description": plan.get("description", ""),
+            "purpose": plan.get("purpose", ""),
+            "categories": plan.get("categories", []),
+            "logicSteps": plan.get("logic_steps", []),
+            "outputs": plan.get("outputs", []),
+            "supportedOutputs": _genjs_supported_outputs(plan),
+        },
+        ensure_ascii=False,
+        indent=2,
+    )
+    pptx_enabled_literal = "true" if _genjs_supports_pptx(plan) else "false"
+    return {
+        "src/parse.mjs": """export function parseSkillInput(rawInput) {
+  if (typeof rawInput === "string") {
+    try {
+      return JSON.parse(rawInput);
+    } catch {
+      return {
+        request: {
+          prompt: rawInput,
+        },
+      };
+    }
+  }
+
+  if (rawInput && typeof rawInput === "object") {
+    return rawInput;
+  }
+
+  return {};
+}
+
+export function extractRequestPayload(parsedInput) {
+  if (parsedInput && typeof parsedInput.request === "object" && !Array.isArray(parsedInput.request)) {
+    return parsedInput.request;
+  }
+  return parsedInput && typeof parsedInput === "object" ? parsedInput : {};
+}
+""",
+        "src/classify.mjs": """function normalizeFormatList(value) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => String(item || "").trim().toLowerCase())
+    .filter(Boolean);
+}
+
+export function classifyRequest(parsedInput, skillDefinition = {}) {
+  const request = parsedInput && typeof parsedInput.request === "object" ? parsedInput.request : parsedInput;
+  const requestedFormats = normalizeFormatList(request?.outputFormats || request?.formats || []);
+  const joinedText = [
+    skillDefinition.skillTitle,
+    skillDefinition.description,
+    request?.artifactType,
+    request?.prompt,
+    request?.requestType,
+  ]
+    .map((value) => String(value || "").toLowerCase())
+    .join(" ");
+
+  const wantsSlides = /slide|deck|presentation|ppt|storyboard/.test(joinedText);
+  const wantsAnalysis = /analysis|report|document|brief/.test(joinedText);
+
+  return {
+    artifactProfile: wantsSlides ? "slide-artifact" : wantsAnalysis ? "analysis-artifact" : "structured-artifact",
+    pipelineStages: ["parse", "classify", "normalize", "plan", "render"],
+    requestedFormats,
+  };
+}
+""",
+        "src/schema-helpers.mjs": """export function getRequiredFields(inputSchema = {}) {
+  return Array.isArray(inputSchema.required) ? inputSchema.required : [];
+}
+
+export function ensureObject(value) {
+  if (value && typeof value === "object" && !Array.isArray(value)) return value;
+  return {};
+}
+
+export function ensureArray(value) {
+  return Array.isArray(value) ? value : [];
+}
+
+export function isBlank(value) {
+  return value == null || (typeof value === "string" && value.trim().length === 0);
+}
+
+export function pickKnownFields(payload, inputSchema = {}) {
+  const source = ensureObject(payload);
+  const properties = ensureObject(inputSchema.properties);
+  const picked = {};
+  for (const key of Object.keys(properties)) {
+    if (key in source) {
+      picked[key] = source[key];
+    }
+  }
+  return picked;
+}
+""",
+        "src/normalize.mjs": """import { ensureArray, ensureObject, getRequiredFields, isBlank, pickKnownFields } from "./schema-helpers.mjs";
+
+function collectContentBlocks(requestPayload) {
+  const request = ensureObject(requestPayload);
+  const blocks = [];
+
+  if (typeof request.prompt === "string" && request.prompt.trim()) {
+    blocks.push({ type: "prompt", text: request.prompt.trim() });
+  }
+
+  const content = ensureObject(request.content);
+  if (typeof content.rawText === "string" && content.rawText.trim()) {
+    blocks.push({ type: "raw_text", text: content.rawText.trim() });
+  }
+
+  for (const item of ensureArray(content.sections || content.items || content.blocks)) {
+    if (item && typeof item === "object") {
+      const title = typeof item.title === "string" ? item.title.trim() : "";
+      const body = typeof item.text === "string" ? item.text.trim() : typeof item.body === "string" ? item.body.trim() : "";
+      if (title || body) {
+        blocks.push({ type: "section", title, text: body });
+      }
+    } else if (typeof item === "string" && item.trim()) {
+      blocks.push({ type: "section", text: item.trim() });
+    }
+  }
+
+  for (const page of ensureArray(request.pages || content.pages)) {
+    const pageObj = ensureObject(page);
+    const title = typeof pageObj.title === "string" ? pageObj.title.trim() : "";
+    const summary = typeof pageObj.summary === "string" ? pageObj.summary.trim() : "";
+    const body = typeof pageObj.text === "string" ? pageObj.text.trim() : typeof pageObj.body === "string" ? pageObj.body.trim() : "";
+    if (title || summary || body) {
+      blocks.push({ type: "page", title, summary, text: body });
+    }
+  }
+
+  return blocks;
+}
+
+export function normalizeRequest(parsedInput, classification, inputSchema = {}, skillDefinition = {}) {
+  const request = parsedInput && typeof parsedInput.request === "object" ? parsedInput.request : parsedInput;
+  const requestObject = ensureObject(request);
+  const requiredFields = getRequiredFields(inputSchema);
+  const fields = pickKnownFields(requestObject, inputSchema);
+  const missingFields = requiredFields.filter((field) => isBlank(fields[field]) && isBlank(requestObject[field]));
+  const contentBlocks = collectContentBlocks(requestObject);
+
+  const requestedFormats = classification.requestedFormats.length
+    ? classification.requestedFormats
+    : Array.isArray(skillDefinition.supportedOutputs) && skillDefinition.supportedOutputs.length
+      ? skillDefinition.supportedOutputs
+      : ["json"];
+
+  const renderOptions = ensureObject(requestObject.renderOptions);
+  return {
+    request: requestObject,
+    fields,
+    missingFields,
+    orchestration: ensureObject(requestObject.orchestration),
+    requestedFormats,
+    renderOptions: {
+      jsonFileName: typeof renderOptions.jsonFileName === "string" ? renderOptions.jsonFileName : "result.json",
+      mdFileName: typeof renderOptions.mdFileName === "string" ? renderOptions.mdFileName : "result.md",
+      pptxFileName: typeof renderOptions.pptxFileName === "string" ? renderOptions.pptxFileName : "result.pptx",
+    },
+    normalizedContent: {
+      requestId: String(requestObject.requestId || skillDefinition.skillName || "generated-request"),
+      prompt: typeof requestObject.prompt === "string" ? requestObject.prompt : "",
+      blocks: contentBlocks,
+      metadata: ensureObject(requestObject.metadata),
+      source: parsedInput,
+    },
+  };
+}
+""",
+        "src/orchestration.mjs": """function ensureArray(value) {
+  return Array.isArray(value) ? value : [];
+}
+
+function ensureObject(value) {
+  return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+}
+
+function resolveEndpointUrl(rawUrl, context) {
+  if (typeof rawUrl !== "string" || !rawUrl.trim()) {
+    return "";
+  }
+
+  if (/^https?:\\/\\//i.test(rawUrl)) {
+    return rawUrl;
+  }
+
+  const baseUrl = context && typeof context === "object" && typeof context.publicUrl === "string"
+    ? context.publicUrl.replace(/\\/$/, "")
+    : "";
+  if (!baseUrl) {
+    return rawUrl;
+  }
+
+  return new URL(rawUrl, baseUrl + "/").toString();
+}
+
+async function postJson(url, payload, authToken) {
+  if (typeof fetch !== "function") {
+    throw new Error("Global fetch is unavailable in this runtime");
+  }
+
+  const headers = {
+    "content-type": "application/json",
+  };
+  if (authToken) {
+    headers.authorization = `Bearer ${authToken}`;
+  }
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(payload),
+  });
+
+  const text = await response.text();
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    parsed = { raw: text };
+  }
+
+  if (!response.ok) {
+    throw new Error(parsed?.error || parsed?.message || `HTTP ${response.status}`);
+  }
+
+  return parsed;
+}
+
+async function runTasks(taskFactories, executeInParallel) {
+  if (executeInParallel) {
+    return Promise.all(taskFactories.map((factory) => factory()));
+  }
+
+  const results = [];
+  for (const factory of taskFactories) {
+    results.push(await factory());
+  }
+  return results;
+}
+
+export function buildOrchestrationState({ normalizedRequest, executionPlan }) {
+  const orchestration = ensureObject(normalizedRequest.orchestration);
+  return {
+    mode: String(orchestration.mode || "local").trim().toLowerCase(),
+    executeInParallel: orchestration.parallel !== false,
+    skillExecutionEndpoint: typeof orchestration.skillExecutionEndpoint === "string" ? orchestration.skillExecutionEndpoint : "",
+    agencyExecutionEndpoint: typeof orchestration.agencyExecutionEndpoint === "string" ? orchestration.agencyExecutionEndpoint : "",
+    skillTargets: ensureArray(orchestration.skillTargets),
+    agencyTargets: ensureArray(orchestration.agencyTargets),
+    objective: typeof orchestration.objective === "string" ? orchestration.objective : executionPlan.skillDefinition.description || "",
+  };
+}
+
+export async function maybeExecuteOrchestration({ orchestrationState, normalizedRequest, executionPlan, context }) {
+  if (!orchestrationState || orchestrationState.mode === "local" || orchestrationState.mode === "none") {
+    return {
+      executed: false,
+      mode: "local",
+      results: [],
+    };
+  }
+
+  const authToken = context && typeof context === "object" ? context.userToken || context.authToken || "" : "";
+  const output = {
+    executed: false,
+    mode: orchestrationState.mode,
+    results: [],
+    warnings: [],
+  };
+  const resolvedSkillEndpoint = resolveEndpointUrl(orchestrationState.skillExecutionEndpoint, context);
+  const resolvedAgencyEndpoint = resolveEndpointUrl(orchestrationState.agencyExecutionEndpoint, context);
+
+  if ((orchestrationState.mode === "skill-handoff" || orchestrationState.mode === "hybrid") && orchestrationState.skillTargets.length > 0) {
+    if (!resolvedSkillEndpoint) {
+      output.warnings.push("skill handoff requested but skillExecutionEndpoint is missing");
+    } else {
+      const taskFactories = orchestrationState.skillTargets.map((target) => () =>
+        postJson(
+          resolvedSkillEndpoint,
+          {
+            skillId: target.skillId,
+            prompt: target.prompt || normalizedRequest.request.prompt || executionPlan.skillDefinition.description || "",
+            input: ensureObject(target.input || target.params || normalizedRequest.request),
+            extraParams: target.input || target.params || {},
+            normalizedContent: normalizedRequest.normalizedContent,
+            layoutSpec: executionPlan.layoutSpec,
+          },
+          authToken
+        )
+      );
+      output.results.push(...(await runTasks(taskFactories, orchestrationState.executeInParallel)));
+      output.executed = true;
+    }
+  }
+
+  if ((orchestrationState.mode === "agency-swarm" || orchestrationState.mode === "hybrid") && orchestrationState.agencyTargets.length > 0) {
+    if (!resolvedAgencyEndpoint) {
+      output.warnings.push("agency swarm requested but agencyExecutionEndpoint is missing");
+    } else {
+      const taskFactories = orchestrationState.agencyTargets.map((target) => () =>
+        postJson(
+          resolvedAgencyEndpoint.replace(/\\/$/, "") + `/${encodeURIComponent(String(target.agencyId || target.id || ""))}/stream`,
+          {
+            message: target.message || orchestrationState.objective,
+            metadata: {
+              sourceSkill: executionPlan.skillDefinition.skillName,
+              objective: orchestrationState.objective,
+            },
+          },
+          authToken
+        )
+      );
+      output.results.push(...(await runTasks(taskFactories, orchestrationState.executeInParallel)));
+      output.executed = true;
+    }
+  }
+
+  return output;
+}
+""",
+        "src/planner.mjs": f"""const SKILL_DEFINITION = {plan_json};
+
+function makeSlideTitle(block, index) {{
+  const title = typeof block.title === "string" && block.title.trim() ? block.title.trim() : "";
+  return title || `Section ${{index + 1}}`;
+}}
+
+export function buildExecutionPlan({{ classification, normalizedRequest }}) {{
+  const blocks = Array.isArray(normalizedRequest.normalizedContent.blocks) ? normalizedRequest.normalizedContent.blocks : [];
+  const slidePlan = blocks.map((block, index) => {{
+    const text = typeof block.text === "string" ? block.text : "";
+    const summary = typeof block.summary === "string" ? block.summary : text.slice(0, 220);
+    return {{
+      id: `slide-${{index + 1}}`,
+      title: makeSlideTitle(block, index),
+      summary,
+      body: text,
+      renderMode: classification.artifactProfile,
+      objectHints: {{
+        emphasis: index === 0 ? "hero" : "body",
+        layout: classification.artifactProfile === "slide-artifact" ? "editorial-card" : "structured-section",
+      }},
+    }};
+  }});
+
+  const layoutSpec = {{
+    version: "1.0",
+    skill: SKILL_DEFINITION.skillName,
+    title: SKILL_DEFINITION.skillTitle,
+    artifactProfile: classification.artifactProfile,
+    pipelineStages: classification.pipelineStages,
+    normalizedContent: normalizedRequest.normalizedContent,
+    slidePlan,
+  }};
+
+  return {{
+    skillDefinition: SKILL_DEFINITION,
+    layoutSpec,
+    slidePlan,
+    normalizedContent: normalizedRequest.normalizedContent,
+    orchestrationMode: normalizedRequest.orchestration?.mode || "local",
+  }};
+}}
+""",
+        "src/renderer.mjs": f"""import fs from "node:fs/promises";
+import path from "node:path";
+
+const PPTX_ENABLED = {pptx_enabled_literal};
+
+function toMarkdown(executionPlan) {{
+  const lines = [
+    `# ${{executionPlan.skillDefinition.skillTitle || executionPlan.skillDefinition.skillName}}`,
+    "",
+    `Artifact profile: ${{executionPlan.layoutSpec.artifactProfile}}`,
+    "",
+  ];
+
+  for (const slide of executionPlan.slidePlan) {{
+    lines.push(`## ${{slide.title}}`);
+    if (slide.summary) lines.push(slide.summary);
+    if (slide.body) {{
+      lines.push("");
+      lines.push(slide.body);
+    }}
+    lines.push("");
+  }}
+
+  return lines.join("\\n").trim() + "\\n";
+}}
+
+async function writeFileIfRequested(outDir, fileName, content) {{
+  if (!outDir) return null;
+  await fs.mkdir(outDir, {{ recursive: true }});
+  const targetPath = path.join(outDir, fileName);
+  await fs.writeFile(targetPath, content, "utf8");
+  return targetPath;
+}}
+
+async function tryWritePptx(executionPlan, outDir, fileName) {{
+  if (!outDir || !PPTX_ENABLED) return null;
+  try {{
+    const module = await import("pptxgenjs");
+    const PptxGenJS = module.default || module;
+    const pptx = new PptxGenJS();
+    pptx.layout = "LAYOUT_WIDE";
+    for (const slidePlan of executionPlan.slidePlan.length ? executionPlan.slidePlan : [{{ title: executionPlan.skillDefinition.skillTitle, body: executionPlan.skillDefinition.description }}]) {{
+      const slide = pptx.addSlide();
+      slide.addText(String(slidePlan.title || executionPlan.skillDefinition.skillTitle || "Generated Slide"), {{
+        x: 0.5, y: 0.4, w: 12.2, h: 0.6, fontSize: 24, bold: true,
+      }});
+      slide.addText(String(slidePlan.summary || slidePlan.body || executionPlan.skillDefinition.description || ""), {{
+        x: 0.7, y: 1.3, w: 11.6, h: 4.8, fontSize: 15, color: "333333", valign: "top",
+      }});
+    }}
+    await fs.mkdir(outDir, {{ recursive: true }});
+    const targetPath = path.join(outDir, fileName);
+    await pptx.writeFile({{ fileName: targetPath }});
+    return targetPath;
+  }} catch (error) {{
+    return {{
+      skipped: true,
+      reason: String(error && error.message ? error.message : error),
+    }};
+  }}
+}}
+
+export async function renderArtifacts({{ normalizedRequest, executionPlan, outDir }}) {{
+  const jsonText = JSON.stringify(executionPlan.layoutSpec, null, 2);
+  const markdownText = toMarkdown(executionPlan);
+  const result = {{
+    normalizedContent: normalizedRequest.normalizedContent,
+    slidePlan: executionPlan.slidePlan,
+    layoutSpec: executionPlan.layoutSpec,
+    files: {{}},
+    warnings: [],
+  }};
+
+  const formats = normalizedRequest.requestedFormats;
+  if (formats.includes("json")) {{
+    const written = await writeFileIfRequested(outDir, normalizedRequest.renderOptions.jsonFileName, jsonText);
+    if (written) result.files.json = written;
+  }}
+
+  if (formats.includes("md")) {{
+    const written = await writeFileIfRequested(outDir, normalizedRequest.renderOptions.mdFileName, markdownText);
+    if (written) result.files.md = written;
+  }}
+
+  if (formats.includes("pptx")) {{
+    const written = await tryWritePptx(executionPlan, outDir, normalizedRequest.renderOptions.pptxFileName);
+    if (written && typeof written === "string") {{
+      result.files.pptx = written;
+    }} else if (written && typeof written === "object") {{
+      result.warnings.push(`pptx render skipped: ${{written.reason}}`);
+    }}
+  }}
+
+  return result;
+}}
+""",
+        "examples/demo.input.json": json.dumps(demo_request, ensure_ascii=False, indent=2) + "\n",
+    }
 
 
 def _write_json(path: Path, data: Any) -> None:
@@ -220,7 +847,7 @@ class SkillCreator:
       schemas/output.schema.json  (MANDATORY)
       schemas/ui.schema.json      (MANDATORY)
       skill.md
-      python/skill.py  OR  js/skill.js
+      python/skill.py  OR  js/skill.js  OR  skill.manifest.json + src/index.mjs
       tests/tests.json
     """
 
@@ -461,6 +1088,7 @@ Return this EXACT JSON structure (no omissions):
   "skill_title": "Human Readable Title (max 60 chars)",
   "description": "One concise sentence — what this skill does",
   "language": "python",
+  "javascript_runtime": "classic",
   "complexity": "moderate",
   "execution_mode": "llm-only",
   "purpose": "2-3 sentences explaining value, typical use cases, and who benefits",
@@ -488,7 +1116,14 @@ Return this EXACT JSON structure (no omissions):
 
 Language selection:
 - Python: math/stats, NLP, text processing, data parsing, CSV/JSON analysis, algorithms
-- JavaScript: JSON transformation, async/API-like, URL manipulation, templating, event logic
+- JavaScript: JSON/object structure, schema/prompt pipelines, async/API-like work, URL manipulation,
+  templating, event logic, web automation, Node.js integration, PptxGenJS-friendly workflows
+
+JavaScript runtime selection:
+- Use `classic` for straightforward respond()-style skills in `js/skill.js`
+- Use `genjs` for more complex Node.js ESM sandbox-command bundles with `skill.manifest.json` + `src/index.mjs`
+- Prefer `genjs` when the task is heavy on structured JSON, schema mapping, prompt pipelines,
+  APIs, web stack orchestration, or future package integrations
 
 Category selection:
 - Choose exactly one primary category from the supported list above.
@@ -526,6 +1161,7 @@ Return the EXACT same JSON structure as a standard skill plan:
   "skill_title": "Human Readable Title (max 60 chars)",
   "description": "One concise sentence — what this skill does",
   "language": "python",
+  "javascript_runtime": "classic",
   "complexity": "moderate",
   "execution_mode": "llm-only",
   "purpose": "2-3 sentences — what the workflow does and who benefits from having it as a skill",
@@ -555,6 +1191,25 @@ Return the EXACT same JSON structure as a standard skill plan:
     # ── Phase 2: Schemas ────────────────────────────────────────────────────────
 
     def _phase_input_schema(self, plan: dict) -> dict:
+        genjs_hint = ""
+        if plan.get("language") == "javascript" and _normalize_javascript_runtime(plan) == "genjs":
+            genjs_hint = """
+
+GENJS RUNTIME HINTS:
+- Prefer JSON-heavy object structures that work naturally in Node.js pipelines
+- For complex artifact skills, it is good to expose nested request objects such as:
+  - `request.content`
+  - `request.outputFormats`
+  - `request.renderOptions`
+  - `request.metadata`
+- Add an OPTIONAL `request.orchestration` object when appropriate with fields such as:
+  - `mode`: enum of `local`, `skill-handoff`, `agency-swarm`, `hybrid`
+  - `parallel`: boolean
+  - `objective`: string
+  - `skillExecutionEndpoint`, `agencyExecutionEndpoint`: strings
+  - `skillTargets`, `agencyTargets`: arrays of objects
+- Favor schemas that make parse -> classify -> normalize -> plan -> render workflows explicit and modular
+"""
         prompt = f"""Create input.schema.json for this SmartAIHub skill.
 
 PLAN:
@@ -562,6 +1217,7 @@ PLAN:
 
 LOCAL SKILL EXEMPLARS:
 {self._active_exemplar_context}
+{genjs_hint}
 
 Return a COMPLETE JSON Schema (draft-07):
 - "$schema": "http://json-schema.org/draft-07/schema#"
@@ -582,6 +1238,15 @@ Be comprehensive — add sensible optional parameters beyond the plan's basic in
         return _llm_json(self.client, _SYS_SCHEMA, prompt)
 
     def _phase_output_schema(self, plan: dict) -> dict:
+        genjs_hint = ""
+        if plan.get("language") == "javascript" and _normalize_javascript_runtime(plan) == "genjs":
+            genjs_hint = """
+
+GENJS OUTPUT HINTS:
+- For artifact-oriented GenJS bundles, prefer structured outputs such as `layoutSpec`, `normalizedContent`, `slidePlan`, `files`, and `warnings`
+- If orchestration is relevant, include a structured orchestration result object instead of flattening everything into `output`
+- Keep the output schema friendly to APIs, frontends, and automation services that consume JSON directly
+"""
         prompt = f"""Create output.schema.json for this SmartAIHub skill.
 
 PLAN:
@@ -589,6 +1254,7 @@ PLAN:
 
 LOCAL SKILL EXEMPLARS:
 {self._active_exemplar_context}
+{genjs_hint}
 
 Return a COMPLETE JSON Schema (draft-07):
 - "$schema": "http://json-schema.org/draft-07/schema#"
@@ -609,6 +1275,15 @@ Return a COMPLETE JSON Schema (draft-07):
         skill_name = plan.get("skill_name", "skill")
         skill_title = plan.get("skill_title", "Skill")
         required_fields = input_schema.get("required", [])
+        genjs_hint = ""
+        if plan.get("language") == "javascript" and _normalize_javascript_runtime(plan) == "genjs":
+            genjs_hint = """
+
+GENJS UI HINTS:
+- Put core JSON/content inputs in the first visible section
+- Place advanced render/orchestration controls in collapsed sections
+- If the schema includes orchestration settings, expose them as optional advanced controls rather than required fields
+"""
 
         prompt = f"""Create ui.schema.json for this SmartAIHub skill's UI form.
 
@@ -622,6 +1297,7 @@ INPUT SCHEMA properties:
 {json.dumps(input_schema.get('properties', {}), ensure_ascii=False, indent=2)}
 
 Required fields: {json.dumps(required_fields)}
+{genjs_hint}
 
 Return this EXACT top-level structure:
 {{
@@ -662,6 +1338,7 @@ Thai labels must be proper, natural Thai text — not Google-Translate style."""
         skill_name = plan.get("skill_name", "new-skill")
         skill_title = plan.get("skill_title", "New Skill")
         language = plan.get("language", "python")
+        javascript_runtime = _normalize_javascript_runtime(plan)
         categories = plan.get("categories", ["general"])
         execution_mode = plan.get("execution_mode", "llm-only")
         tags = plan.get("tags", [])
@@ -697,6 +1374,17 @@ Thai labels must be proper, natural Thai text — not Google-Translate style."""
                 f'  "{name}": "{ex}"' if t == "string" else f'  "{name}": {json.dumps(ex)}'
             )
         example_json = "{\n" + ",\n".join(example_fields) + "\n}"
+        implementation_notes = (
+            "- Python runtime: `python/skill.py`\n"
+            if language == "python"
+            else (
+                "- JavaScript runtime profile: `GenJS bundle` (`skill.manifest.json` + `src/index.mjs`, sandbox-command)\n"
+                "- Best for JSON/object-heavy transforms, schema pipelines, APIs, web stack glue, complex automation, and artifact generation\n"
+                "- Optional `request.orchestration` can route downstream work to other skills or agency swarm endpoints while defaulting to local execution\n"
+                if javascript_runtime == "genjs"
+                else "- JavaScript runtime profile: `Classic JS` (`js/skill.js`, CommonJS respond entrypoint)\n"
+            )
+        )
 
         return f"""---
 id: {skill_name}
@@ -721,6 +1409,10 @@ triggerPatterns:
 
 ## Capabilities
 {chr(10).join(f'- {s}' for s in logic_steps)}
+
+## Runtime Profile
+
+{implementation_notes}
 
 ## Input Fields
 
@@ -758,13 +1450,15 @@ All schemas are in `schemas/` — mandatory for every SmartAIHub skill:
 
 ## Generated By
 
-Created by **Intelligence Skill Creator (ISC) v0.4.0**
+Created by **Intelligence Skill Creator (ISC) v0.5.0**
 """
 
     # ── Phase 4: Code Generation ────────────────────────────────────────────────
 
     def _phase_code(self, plan: dict, input_schema: dict, output_schema: dict) -> str:
         language = plan.get("language", "python")
+        javascript_runtime = _normalize_javascript_runtime(plan)
+        js_code_path = _javascript_code_relpath(plan)
         plan_json = json.dumps(plan, ensure_ascii=False, indent=2)
         schemas_json = json.dumps(
             {"input": input_schema, "output": output_schema},
@@ -795,7 +1489,7 @@ Requirements:
 
 Write the complete python/skill.py now:"""
         else:
-            system = _SYS_JS
+            system = _SYS_JS_GEN if javascript_runtime == "genjs" else _SYS_JS
             prompt = f"""Write a COMPLETE, PRODUCTION-READY JavaScript skill.
 
 PLAN:
@@ -815,8 +1509,12 @@ Requirements:
 5. Output must match the output schema structure
 6. Make the skill genuinely useful and intelligent
 7. Handle edge cases: empty strings, null values, out-of-range numbers
+8. Lean into JavaScript strengths for JSON/object structure, schema mapping, prompt pipelines, API orchestration, and web stack logic
+9. If the plan calls for GenJS, write modern ESM entry code for a sandbox-command bundle
+10. For GenJS, export respond(), support CLI execution, and compose the pipeline through helper modules
+11. For GenJS, support optional `request.orchestration` modes (`local`, `skill-handoff`, `agency-swarm`, `hybrid`) without requiring them for normal local execution
 
-Write the complete js/skill.js now:"""
+Write the complete {js_code_path} now:"""
 
         return _llm_text(self.client, system, prompt)
 
@@ -829,6 +1527,8 @@ Write the complete js/skill.js now:"""
     ) -> str:
         """Phase 4 variant: generate skill code that faithfully translates a workflow."""
         language = plan.get("language", "python")
+        javascript_runtime = _normalize_javascript_runtime(plan)
+        js_code_path = _javascript_code_relpath(plan)
         plan_json = json.dumps(plan, ensure_ascii=False, indent=2)
         schemas_json = json.dumps(
             {"input": input_schema, "output": output_schema},
@@ -861,7 +1561,7 @@ Requirements:
 
 Write the complete python/skill.py now:"""
         else:
-            system = _SYS_JS
+            system = _SYS_JS_GEN if javascript_runtime == "genjs" else _SYS_JS
             prompt = f"""Write a COMPLETE, PRODUCTION-READY JavaScript skill that replicates a Virtual Workflow.
 
 WORKFLOW STRUCTURE (translate each node into code):
@@ -882,8 +1582,11 @@ Requirements:
 6. Output nodes → values in the final return object
 7. ALWAYS return a valid JSON string — never throw
 8. Handle missing/null inputs gracefully
+9. Keep JSON/object transformations explicit and easy to audit
+10. For GenJS, export respond(), support CLI execution, and compose the pipeline through helper modules
+11. For GenJS, keep optional downstream orchestration hooks easy to enable through `request.orchestration`
 
-Write the complete js/skill.js now:"""
+Write the complete {js_code_path} now:"""
 
         return _llm_text(self.client, system, prompt)
 
@@ -1096,6 +1799,8 @@ Rules:
         from .evaluator import evaluate_from_path
         
         lang = plan.get('language', 'python')
+        js_rel_path = _javascript_code_relpath(plan)
+        genjs_support_files = _build_genjs_support_files(plan) if lang == "javascript" and _normalize_javascript_runtime(plan) == "genjs" else {}
         
         for iteration in range(2):
             with tempfile.TemporaryDirectory() as tmpdir:
@@ -1106,11 +1811,16 @@ Rules:
                     code_file = tmp_path / "python" / "skill.py"
                     rel_path = "python/skill.py"
                 else:
-                    code_file = tmp_path / "js" / "skill.js"
-                    rel_path = "js/skill.js"
+                    code_file = tmp_path / js_rel_path
+                    rel_path = js_rel_path
                     
                 code_file.parent.mkdir(parents=True, exist_ok=True)
                 code_file.write_text(skill_code, encoding="utf-8")
+
+                for rel_path, content in genjs_support_files.items():
+                    support_path = tmp_path / rel_path
+                    support_path.parent.mkdir(parents=True, exist_ok=True)
+                    support_path.write_text(content, encoding="utf-8")
                 
                 test_file = tmp_path / "tests.json"
                 test_file.write_text(json.dumps({"tests": tests}, indent=2), encoding="utf-8")
@@ -1146,7 +1856,7 @@ Rules:
                     payload = payload.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
                     fixes = json.loads(payload)
                     for filepath, content in fixes.items():
-                        if "skill.py" in filepath or "skill.js" in filepath:
+                        if any(token in filepath for token in ("skill.py", "skill.js", "skill.mjs", "index.mjs")):
                             skill_code = content
                 except Exception as e:
                     _log(f"  TDC Iteration {iteration+1}: Failed to parse LLM fix ({e}). Keeping previous code.")
@@ -1157,6 +1867,8 @@ Rules:
     # ── Phase 6.7: Dependencies ─────────────────────────────────────────────────
 
     def _phase_dependencies(self, plan: dict, skill_code: str) -> str:
+        if plan.get("language") == "javascript" and _normalize_javascript_runtime(plan) == "genjs":
+            return _build_genjs_package_json(plan)
         _log("  Dependency generation disabled: ISC now defaults to stdlib/built-ins only")
         return ""
 
@@ -1196,6 +1908,8 @@ Rules:
     ) -> CreatedSkill:
         skill_name: str = plan["skill_name"]
         language: str = plan.get("language", "python")
+        javascript_runtime = _normalize_javascript_runtime(plan)
+        js_code_path = _javascript_code_relpath(plan)
 
         skill_dir = self.skills_root / skill_name
         skill_dir.mkdir(parents=True, exist_ok=True)
@@ -1230,13 +1944,36 @@ Rules:
                 (code_dir / "requirements.txt").write_text(dependencies, encoding="utf-8")
                 files_written.append("python/requirements.txt")
         else:
-            code_dir = skill_dir / "js"
-            code_dir.mkdir(exist_ok=True)
-            (code_dir / "skill.js").write_text(skill_code, encoding="utf-8")
-            files_written.append("js/skill.js")
-            if dependencies:
-                (code_dir / "package.json").write_text(dependencies, encoding="utf-8")
-                files_written.append("js/package.json")
+            if javascript_runtime == "genjs":
+                entry_path = skill_dir / js_code_path
+                entry_path.parent.mkdir(parents=True, exist_ok=True)
+                entry_path.write_text(skill_code, encoding="utf-8")
+                files_written.append(js_code_path)
+
+                for rel_path, content in _build_genjs_support_files(plan).items():
+                    target = skill_dir / rel_path
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    target.write_text(content, encoding="utf-8")
+                    files_written.append(rel_path)
+
+                (skill_dir / "skill.manifest.json").write_text(
+                    _build_genjs_command_manifest(plan),
+                    encoding="utf-8",
+                )
+                files_written.append("skill.manifest.json")
+
+                package_json = dependencies or _build_genjs_package_json(plan)
+                (skill_dir / "package.json").write_text(package_json, encoding="utf-8")
+                files_written.append("package.json")
+            else:
+                code_dir = skill_dir / "js"
+                code_dir.mkdir(exist_ok=True)
+                code_filename = Path(js_code_path).name
+                (code_dir / code_filename).write_text(skill_code, encoding="utf-8")
+                files_written.append(js_code_path)
+                if dependencies:
+                    (code_dir / "package.json").write_text(dependencies, encoding="utf-8")
+                    files_written.append("js/package.json")
 
         # ── tests/tests.json ──────────────────────────────────────────────────
         tests_dir = skill_dir / "tests"
@@ -1248,12 +1985,14 @@ Rules:
         # ── Summary ───────────────────────────────────────────────────────────
         summary_lines = [
             f"Language: {language}",
+            f"JavaScript runtime: {javascript_runtime}" if language == "javascript" else None,
             f"Complexity: {plan.get('complexity', 'moderate')}",
             f"Input fields: {len(plan.get('inputs', []))}",
             f"Output fields: {len(plan.get('outputs', []))}",
             f"Test cases: {len(tests)}",
             f"Critic fixes: {len(critic_issues)}",
         ]
+        summary_lines = [line for line in summary_lines if line]
         if plan.get("external_apis"):
             summary_lines.append(f"External APIs referenced: {', '.join(plan['external_apis'])}")
 

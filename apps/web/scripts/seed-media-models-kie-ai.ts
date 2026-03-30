@@ -591,8 +591,8 @@ const VIDEO_MODELS = [
     provider: "kie.ai",
     aliases: ["kling motion control 2.6", "kling motion-control 2.6", "kling-2.6 motion control"],
     creditCost: 100,
-    priority: 15.25,
-    sortOrder: 15.25,
+    priority: 15,
+    sortOrder: 15,
     configJson: {
       apiEndpoint: "/api/v1/jobs/createTask",
       apiPayloadFormat: "market",
@@ -614,8 +614,8 @@ const VIDEO_MODELS = [
     provider: "kie.ai",
     aliases: ["kling motion control", "kling motion-control", "kling-3 motion control", "kling-3.0 motion control"],
     creditCost: 100,
-    priority: 15.5,
-    sortOrder: 15.5,
+    priority: 16,
+    sortOrder: 16,
     configJson: {
       apiEndpoint: "/api/v1/jobs/createTask",
       apiPayloadFormat: "market",

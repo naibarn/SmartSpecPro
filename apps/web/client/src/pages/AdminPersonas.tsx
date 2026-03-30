@@ -21,13 +21,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
   Table,
   TableBody,
   TableCell,
@@ -39,6 +32,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Trash2, Pencil, X } from "lucide-react";
 import { toast } from "sonner";
+import { DashboardCard } from "@/components/dashboard";
 
 const TONE_OPTIONS = ["formal", "casual", "friendly", "technical", "creative"] as const;
 const SCOPE_OPTIONS = ["platform", "tenant"] as const;
@@ -198,14 +192,12 @@ export default function AdminPersonas() {
 
         {/* Create/Edit Form */}
         {showForm && (
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle>{editingId ? "Edit Persona" : "New Persona"}</CardTitle>
-              <CardDescription>
-                Define AI assistant behavior. Token overhead: ~{estimateTokens(form.systemPromptPrefix)} tokens.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
+          <DashboardCard
+            className="mb-6"
+            title={editingId ? "Edit Persona" : "New Persona"}
+            description={`Define AI assistant behavior. Token overhead: ~${estimateTokens(form.systemPromptPrefix)} tokens.`}
+          >
+            <div className="space-y-4">
               <div className="grid grid-cols-3 gap-4">
                 <div>
                   <Label>Name</Label>
@@ -336,16 +328,13 @@ export default function AdminPersonas() {
                   {editingId ? "Update" : "Create"}
                 </Button>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </DashboardCard>
         )}
 
         {/* Personas Table */}
-        <Card>
-          <CardHeader>
-            <CardTitle>All Personas</CardTitle>
-          </CardHeader>
-          <CardContent>
+        <DashboardCard title="All Personas">
+          <div>
             {isLoading ? (
               <p className="text-muted-foreground">Loading...</p>
             ) : (
@@ -410,8 +399,8 @@ export default function AdminPersonas() {
                 </TableBody>
               </Table>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </DashboardCard>
       </div>
     </div>
   );

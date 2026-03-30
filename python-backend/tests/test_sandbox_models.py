@@ -5,6 +5,7 @@ Validates model structure, column mappings, and enum definitions.
 """
 import pytest
 from sqlalchemy import inspect as sa_inspect
+from sqlalchemy.sql.sqltypes import Enum as SqlEnum
 
 from app.models.sandbox import (
     SandboxProfile,
@@ -122,6 +123,12 @@ class TestSandboxArtifactModel:
         fks = list(mapper.columns["sandbox_job_id"].foreign_keys)
         assert len(fks) == 1
         assert "sandbox_jobs.id" in str(fks[0])
+
+    def test_artifact_type_column_uses_enum_mapping(self):
+        mapper = sa_inspect(SandboxArtifact)
+        artifact_type_col = mapper.columns["artifact_type"]
+        assert isinstance(artifact_type_col.type, SqlEnum)
+        assert artifact_type_col.type.name == "sandbox_artifact_type"
 
 
 class TestTenantSandboxPolicyModel:

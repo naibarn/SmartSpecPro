@@ -15,7 +15,6 @@ import { HelpButton } from "@/components/help";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Switch } from "@/components/ui/switch";
@@ -82,6 +81,7 @@ import InfrastructureSettingsPanel from "@/components/admin/InfrastructureSettin
 import AgencyAdminPanel from "@/components/admin/AgencyAdminPanel";
 import TelegramConnectionsPanel from "@/components/admin/TelegramConnectionsPanel";
 import { TenantAutomationPolicyPanel } from "@/components/settings/TenantAutomationPolicyPanel";
+import { DashboardCard, DashboardKpiCard } from "@/components/dashboard";
 
 interface StripeSettings {
   secretKey?: string;
@@ -885,195 +885,187 @@ export default function AdminSettings() {
 
           {/* Stripe Settings Tab */}
           <TabsContent value="stripe">
-            <Card className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
-              <CardHeader className="border-b bg-gradient-to-r from-blue-50/50 to-cyan-50/30 pb-5">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <CreditCard className="w-5 h-5 text-blue-500" />
-                  Stripe Configuration
-                </CardTitle>
-                <CardDescription>
-                  Configure your Stripe API keys for payment processing. Get your keys from the{" "}
-                  <a
-                    href="https://dashboard.stripe.com/apikeys"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-600 hover:underline"
-                  >
-                    Stripe Dashboard
-                  </a>
-                  .
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Publishable Key */}
-                <div>
-                  <Label htmlFor="publishableKey">Publishable Key</Label>
-                  <div className="flex gap-2 mt-1">
+            <DashboardCard
+              className="overflow-hidden"
+              leading={<CreditCard className="w-5 h-5 text-blue-500" />}
+              title="Stripe Configuration"
+              description={<>
+                Configure your Stripe API keys for payment processing. Get your keys from the{" "}
+                <a
+                  href="https://dashboard.stripe.com/apikeys"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:underline"
+                >
+                  Stripe Dashboard
+                </a>
+                .
+              </>}
+              bodyClassName="space-y-6"
+            >
+              <div>
+                <Label htmlFor="publishableKey">Publishable Key</Label>
+                <div className="flex gap-2 mt-1">
+                  <Input
+                    id="publishableKey"
+                    placeholder="pk_test_..."
+                    value={stripeForm.publishableKey || ""}
+                    onChange={(e) =>
+                      setStripeForm((prev) => ({ ...prev, publishableKey: e.target.value }))
+                    }
+                  />
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Used in the frontend for Stripe.js integration
+                </p>
+              </div>
+
+              <div>
+                <Label htmlFor="secretKey">
+                  Secret Key
+                  {stripeForm.secretKeyConfigured && (
+                    <Badge variant="outline" className="ml-2 text-green-600 border-green-600">
+                      <Check className="w-3 h-3 mr-1" />
+                      Configured
+                    </Badge>
+                  )}
+                </Label>
+                <div className="flex gap-2 mt-1">
+                  <div className="relative flex-1">
                     <Input
-                      id="publishableKey"
-                      placeholder="pk_test_..."
-                      value={stripeForm.publishableKey || ""}
+                      id="secretKey"
+                      type={showSecretKey ? "text" : "password"}
+                      placeholder={stripeForm.secretKeyConfigured ? "Enter new key to update..." : "sk_test_..."}
+                      value={stripeForm.secretKey || ""}
                       onChange={(e) =>
-                        setStripeForm((prev) => ({ ...prev, publishableKey: e.target.value }))
+                        setStripeForm((prev) => ({ ...prev, secretKey: e.target.value }))
                       }
                     />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-1 top-1/2 -translate-y-1/2"
+                      onClick={() => setShowSecretKey(!showSecretKey)}
+                    >
+                      {showSecretKey ? (
+                        <EyeOff className="w-4 h-4" />
+                      ) : (
+                        <Eye className="w-4 h-4" />
+                      )}
+                    </Button>
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Used in the frontend for Stripe.js integration
-                  </p>
                 </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Keep this secret. Never expose in frontend code.
+                </p>
+              </div>
 
-                {/* Secret Key */}
-                <div>
-                  <Label htmlFor="secretKey">
-                    Secret Key
-                    {stripeForm.secretKeyConfigured && (
-                      <Badge variant="outline" className="ml-2 text-green-600 border-green-600">
-                        <Check className="w-3 h-3 mr-1" />
-                        Configured
-                      </Badge>
-                    )}
-                  </Label>
-                  <div className="flex gap-2 mt-1">
-                    <div className="relative flex-1">
-                      <Input
-                        id="secretKey"
-                        type={showSecretKey ? "text" : "password"}
-                        placeholder={stripeForm.secretKeyConfigured ? "Enter new key to update..." : "sk_test_..."}
-                        value={stripeForm.secretKey || ""}
-                        onChange={(e) =>
-                          setStripeForm((prev) => ({ ...prev, secretKey: e.target.value }))
-                        }
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="absolute right-1 top-1/2 -translate-y-1/2"
-                        onClick={() => setShowSecretKey(!showSecretKey)}
-                      >
-                        {showSecretKey ? (
-                          <EyeOff className="w-4 h-4" />
-                        ) : (
-                          <Eye className="w-4 h-4" />
-                        )}
-                      </Button>
-                    </div>
+              <div>
+                <Label htmlFor="webhookSecret">
+                  Webhook Secret
+                  {stripeForm.webhookSecretConfigured && (
+                    <Badge variant="outline" className="ml-2 text-green-600 border-green-600">
+                      <Check className="w-3 h-3 mr-1" />
+                      Configured
+                    </Badge>
+                  )}
+                </Label>
+                <div className="flex gap-2 mt-1">
+                  <div className="relative flex-1">
+                    <Input
+                      id="webhookSecret"
+                      type={showWebhookSecret ? "text" : "password"}
+                      placeholder={stripeForm.webhookSecretConfigured ? "Enter new secret to update..." : "whsec_..."}
+                      value={stripeForm.webhookSecret || ""}
+                      onChange={(e) =>
+                        setStripeForm((prev) => ({ ...prev, webhookSecret: e.target.value }))
+                      }
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-1 top-1/2 -translate-y-1/2"
+                      onClick={() => setShowWebhookSecret(!showWebhookSecret)}
+                    >
+                      {showWebhookSecret ? (
+                        <EyeOff className="w-4 h-4" />
+                      ) : (
+                        <Eye className="w-4 h-4" />
+                      )}
+                    </Button>
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Keep this secret. Never expose in frontend code.
-                  </p>
                 </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Required for receiving Stripe webhook events
+                </p>
+              </div>
 
-                {/* Webhook Secret */}
-                <div>
-                  <Label htmlFor="webhookSecret">
-                    Webhook Secret
-                    {stripeForm.webhookSecretConfigured && (
-                      <Badge variant="outline" className="ml-2 text-green-600 border-green-600">
-                        <Check className="w-3 h-3 mr-1" />
-                        Configured
-                      </Badge>
-                    )}
-                  </Label>
-                  <div className="flex gap-2 mt-1">
-                    <div className="relative flex-1">
-                      <Input
-                        id="webhookSecret"
-                        type={showWebhookSecret ? "text" : "password"}
-                        placeholder={stripeForm.webhookSecretConfigured ? "Enter new secret to update..." : "whsec_..."}
-                        value={stripeForm.webhookSecret || ""}
-                        onChange={(e) =>
-                          setStripeForm((prev) => ({ ...prev, webhookSecret: e.target.value }))
-                        }
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="absolute right-1 top-1/2 -translate-y-1/2"
-                        onClick={() => setShowWebhookSecret(!showWebhookSecret)}
-                      >
-                        {showWebhookSecret ? (
-                          <EyeOff className="w-4 h-4" />
-                        ) : (
-                          <Eye className="w-4 h-4" />
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Required for receiving Stripe webhook events
-                  </p>
-                </div>
+              <div>
+                <Label htmlFor="currency">Currency</Label>
+                <Select
+                  value={stripeForm.currency || "usd"}
+                  onValueChange={(value) =>
+                    setStripeForm((prev) => ({ ...prev, currency: value }))
+                  }
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select currency" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="usd">USD - US Dollar</SelectItem>
+                    <SelectItem value="eur">EUR - Euro</SelectItem>
+                    <SelectItem value="gbp">GBP - British Pound</SelectItem>
+                    <SelectItem value="thb">THB - Thai Baht</SelectItem>
+                    <SelectItem value="jpy">JPY - Japanese Yen</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-                {/* Currency */}
-                <div>
-                  <Label htmlFor="currency">Currency</Label>
-                  <Select
-                    value={stripeForm.currency || "usd"}
-                    onValueChange={(value) =>
-                      setStripeForm((prev) => ({ ...prev, currency: value }))
-                    }
-                  >
-                    <SelectTrigger className="mt-1">
-                      <SelectValue placeholder="Select currency" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="usd">USD - US Dollar</SelectItem>
-                      <SelectItem value="eur">EUR - Euro</SelectItem>
-                      <SelectItem value="gbp">GBP - British Pound</SelectItem>
-                      <SelectItem value="thb">THB - Thai Baht</SelectItem>
-                      <SelectItem value="jpy">JPY - Japanese Yen</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Actions */}
-                <div className="flex gap-3 pt-4 border-t">
-                  <Button
-                    onClick={handleSaveStripe}
-                    disabled={updateStripeMutation.isPending}
-                    className="bg-blue-600 hover:bg-blue-700"
-                  >
-                    {updateStripeMutation.isPending ? (
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    ) : (
-                      <Save className="w-4 h-4 mr-2" />
-                    )}
-                    Save Settings
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => testStripeMutation.mutate()}
-                    disabled={testStripeMutation.isPending}
-                  >
-                    {testStripeMutation.isPending ? (
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    ) : (
-                      <TestTube className="w-4 h-4 mr-2" />
-                    )}
-                    Test Connection
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+              <div className="flex gap-3 pt-4 border-t">
+                <Button
+                  onClick={handleSaveStripe}
+                  disabled={updateStripeMutation.isPending}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  {updateStripeMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Save className="w-4 h-4 mr-2" />
+                  )}
+                  Save Settings
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => testStripeMutation.mutate()}
+                  disabled={testStripeMutation.isPending}
+                >
+                  {testStripeMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <TestTube className="w-4 h-4 mr-2" />
+                  )}
+                  Test Connection
+                </Button>
+              </div>
+            </DashboardCard>
           </TabsContent>
 
           {/* OAuth Settings Tab */}
           <TabsContent value="oauth">
-            <Card className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
-              <CardHeader className="border-b bg-gradient-to-r from-blue-50/50 to-cyan-50/30 pb-5">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <Globe className="w-5 h-5 text-blue-500" />
-                  OAuth / Social Login Configuration
-                </CardTitle>
-                <CardDescription>
-                  Configure Google and GitHub OAuth credentials for social login.
-                  Users will be able to sign in with these providers once configured.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-8">
+            <DashboardCard
+              className="overflow-hidden"
+              leading={<Globe className="w-5 h-5 text-blue-500" />}
+              title="OAuth / Social Login Configuration"
+              description={
+                <>
+                  Configure Google and GitHub OAuth credentials for social login. Users will be able to sign
+                  in with these providers once configured.
+                </>
+              }
+              bodyClassName="space-y-8"
+            >
                 {/* Google OAuth */}
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold flex items-center gap-2">
@@ -1570,22 +1562,17 @@ export default function AdminSettings() {
                     Save OAuth Settings
                   </Button>
                 </div>
-              </CardContent>
-            </Card>
+            </DashboardCard>
           </TabsContent>
           {/* SMTP Settings Tab */}
           <TabsContent value="smtp">
-            <Card className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
-              <CardHeader className="border-b bg-gradient-to-r from-blue-50/50 to-cyan-50/30 pb-5">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <Mail className="w-5 h-5 text-blue-500" />
-                  Email / SMTP Settings
-                </CardTitle>
-                <CardDescription>
-                  Configure SMTP to send verification and password reset emails. Without SMTP, codes are logged to server console only.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
+            <DashboardCard
+              className="overflow-hidden"
+              leading={<Mail className="w-5 h-5 text-blue-500" />}
+              title="Email / SMTP Settings"
+              description="Configure SMTP to send verification and password reset emails. Without SMTP, codes are logged to server console only."
+              bodyClassName="space-y-6"
+            >
                 {smtpSettings?.configured && (
                   <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
                     <Check className="w-3 h-3 mr-1" /> SMTP Configured
@@ -1753,23 +1740,18 @@ export default function AdminSettings() {
                     )}
                   </Button>
                 </div>
-              </CardContent>
-            </Card>
+            </DashboardCard>
           </TabsContent>
 
           {/* SMS Provider Settings Tab */}
           <TabsContent value="sms">
-            <Card className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
-              <CardHeader className="border-b bg-gradient-to-r from-blue-50/50 to-cyan-50/30 pb-5">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <MessageSquare className="w-5 h-5 text-blue-500" />
-                  SMS Provider Settings
-                </CardTitle>
-                <CardDescription>
-                  Configure SMS provider for phone verification and password reset via SMS. Without SMS config, codes are logged to server console only.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
+            <DashboardCard
+              className="overflow-hidden"
+              leading={<MessageSquare className="w-5 h-5 text-blue-500" />}
+              title="SMS Provider Settings"
+              description="Configure SMS provider for phone verification and password reset via SMS. Without SMS config, codes are logged to server console only."
+              bodyClassName="space-y-6"
+            >
                 {smsSettings?.configured && (
                   <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
                     <Check className="w-3 h-3 mr-1" /> SMS Configured
@@ -1881,23 +1863,18 @@ export default function AdminSettings() {
                     )}
                   </Button>
                 </div>
-              </CardContent>
-            </Card>
+            </DashboardCard>
           </TabsContent>
 
           {/* Telegram Bot Settings Tab */}
           <TabsContent value="telegram">
-            <Card className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
-              <CardHeader className="border-b bg-gradient-to-r from-blue-50/50 to-cyan-50/30 pb-5">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <Send className="w-5 h-5 text-blue-500" />
-                  Telegram Bot Settings
-                </CardTitle>
-                <CardDescription>
-                  Configure Telegram Bot API credentials to send alert notifications to users who link their Telegram accounts.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
+            <DashboardCard
+              className="overflow-hidden"
+              leading={<Send className="w-5 h-5 text-blue-500" />}
+              title="Telegram Bot Settings"
+              description="Configure Telegram Bot API credentials to send alert notifications to users who link their Telegram accounts."
+              bodyClassName="space-y-6"
+            >
                 {/* Configuration Status Badge */}
                 {botTokenConfigured && (
                   <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
@@ -2047,8 +2024,7 @@ export default function AdminSettings() {
                     )}
                   </Button>
                 </div>
-              </CardContent>
-            </Card>
+            </DashboardCard>
 
             {/* Telegram Connections Management */}
             <div className="mt-6">
@@ -2059,17 +2035,13 @@ export default function AdminSettings() {
           {/* Registration Settings Tab */}
           <TabsContent value="registration">
             <div className="space-y-6">
-              <Card className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
-                <CardHeader className="border-b bg-gradient-to-r from-blue-50/50 to-cyan-50/30 pb-5">
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <UserPlus className="w-5 h-5 text-blue-500" />
-                    Registration Settings
-                  </CardTitle>
-                  <CardDescription>
-                    Configure registration mode, auth methods, credits, and security
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-8 pt-6">
+              <DashboardCard
+                className="overflow-hidden"
+                leading={<UserPlus className="w-5 h-5 text-blue-500" />}
+                title="Registration Settings"
+                description="Configure registration mode, auth methods, credits, and security"
+                bodyClassName="space-y-8 pt-6"
+              >
                   {/* Section 1: Registration Mode */}
                   <div>
                     <h4 className="font-semibold text-sm text-gray-900 mb-3">Registration Mode</h4>
@@ -2248,38 +2220,29 @@ export default function AdminSettings() {
                       )}
                     </Button>
                   </div>
-                </CardContent>
-              </Card>
+              </DashboardCard>
 
               {/* Invite Code Statistics */}
-              <Card className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
-                <CardContent className="pt-6">
+              <DashboardCard className="overflow-hidden" bodyClassName="pt-6">
                   <InviteCodeDashboard />
-                </CardContent>
-              </Card>
+              </DashboardCard>
 
               {/* Admin Invite Codes Management */}
-              <Card className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
-                <CardContent className="pt-6">
+              <DashboardCard className="overflow-hidden" bodyClassName="pt-6">
                   <InviteCodeManager />
-                </CardContent>
-              </Card>
+              </DashboardCard>
             </div>
           </TabsContent>
 
           {/* 2FA Settings Tab */}
           <TabsContent value="2fa">
-            <Card className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
-              <CardHeader className="border-b bg-gradient-to-r from-blue-50/50 to-cyan-50/30 pb-5">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <Shield className="w-5 h-5 text-blue-500" />
-                  Two-Factor Authentication Settings
-                </CardTitle>
-                <CardDescription>
-                  Configure TOTP-based two-factor authentication for user accounts
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
+            <DashboardCard
+              className="overflow-hidden"
+              leading={<Shield className="w-5 h-5 text-blue-500" />}
+              title="Two-Factor Authentication Settings"
+              description="Configure TOTP-based two-factor authentication for user accounts"
+              bodyClassName="space-y-6"
+            >
 
                 {/* Enable/Disable 2FA */}
                 <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
@@ -2373,23 +2336,18 @@ export default function AdminSettings() {
                     )}
                   </Button>
                 </div>
-              </CardContent>
-            </Card>
+            </DashboardCard>
           </TabsContent>
 
           {/* STT Providers Tab */}
           <TabsContent value="stt">
-            <Card className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
-              <CardHeader className="border-b bg-gradient-to-r from-blue-50/50 to-cyan-50/30 pb-5">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <Mic className="w-5 h-5 text-blue-500" />
-                  Speech-to-Text Providers
-                </CardTitle>
-                <CardDescription>
-                  Configure STT providers for voice transcription in Chat
-                </CardDescription>
-              </CardHeader>
-                <CardContent className="space-y-6 pt-6">
+            <DashboardCard
+              className="overflow-hidden"
+              leading={<Mic className="w-5 h-5 text-blue-500" />}
+              title="Speech-to-Text Providers"
+              description="Configure STT providers for voice transcription in Chat"
+              bodyClassName="space-y-6 pt-6"
+            >
                 {(sttTemplates || []).map((tpl) => {
                   const configured = sttProviders?.find((p: any) => p.providerName === tpl.providerName);
                   const isEditing = sttEditId === (configured?.id ?? -1);
@@ -2536,23 +2494,18 @@ export default function AdminSettings() {
                     <li>Groq offers free Whisper transcription — recommended to start</li>
                   </ul>
                 </div>
-              </CardContent>
-            </Card>
+            </DashboardCard>
           </TabsContent>
 
           {/* AI / Memory Settings Tab */}
           <TabsContent value="ai">
-            <Card className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
-              <CardHeader className="bg-gradient-to-r from-blue-50 to-cyan-50 border-b">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <Brain className="w-5 h-5 text-blue-600" />
-                  AI / Memory Settings
-                </CardTitle>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Configure LLM models used for background tasks like memory consolidation and summarization.
-                </p>
-              </CardHeader>
-              <CardContent className="p-6 space-y-6">
+            <DashboardCard
+              className="overflow-hidden"
+              leading={<Brain className="w-5 h-5 text-blue-600" />}
+              title="AI / Memory Settings"
+              description="Configure LLM models used for background tasks like memory consolidation and summarization."
+              bodyClassName="p-6 space-y-6"
+            >
                 <div className="flex items-start justify-between gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
                   <div className="space-y-1">
                     <label className="text-sm font-medium">Allow users to manage their own LLM API keys</label>
@@ -2674,21 +2627,22 @@ export default function AdminSettings() {
                     </p>
                   </div>
 
-                  <Card className="border-blue-200 bg-blue-50">
-                    <CardContent className="space-y-3 p-4 text-sm text-blue-950">
-                      <div className="font-medium">Where to create this key</div>
-                      <ol className="list-decimal space-y-1 pl-5 text-xs text-blue-900">
-                        <li>Open <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="font-medium underline">Google AI Studio</a> and sign in with the Google account that owns your project.</li>
-                        <li>Create or choose a Google Cloud project when prompted.</li>
-                        <li>Click <strong>Create API key</strong>.</li>
-                        <li>Copy the generated key that starts with <code className="rounded bg-white px-1 py-0.5 font-mono text-[11px]">AIza</code>.</li>
-                        <li>Paste it here, then click <strong>Save Google AI Key</strong>.</li>
-                      </ol>
-                      <div className="rounded-lg border border-blue-200 bg-white p-3 text-xs text-blue-900">
-                        Use this key for OCR and real-world photo understanding only. For AI-generated media saved from the app, prompt-based search is already used and is usually enough.
-                      </div>
-                    </CardContent>
-                  </Card>
+                  <DashboardCard
+                    className="border-blue-200 bg-blue-50"
+                    bodyClassName="space-y-3 p-4 text-sm text-blue-950"
+                  >
+                    <div className="font-medium">Where to create this key</div>
+                    <ol className="list-decimal space-y-1 pl-5 text-xs text-blue-900">
+                      <li>Open <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="font-medium underline">Google AI Studio</a> and sign in with the Google account that owns your project.</li>
+                      <li>Create or choose a Google Cloud project when prompted.</li>
+                      <li>Click <strong>Create API key</strong>.</li>
+                      <li>Copy the generated key that starts with <code className="rounded bg-white px-1 py-0.5 font-mono text-[11px]">AIza</code>.</li>
+                      <li>Paste it here, then click <strong>Save Google AI Key</strong>.</li>
+                    </ol>
+                    <div className="rounded-lg border border-blue-200 bg-white p-3 text-xs text-blue-900">
+                      Use this key for OCR and real-world photo understanding only. For AI-generated media saved from the app, prompt-based search is already used and is usually enough.
+                    </div>
+                  </DashboardCard>
 
                   <div className="flex flex-wrap gap-2">
                     <Button
@@ -2738,26 +2692,20 @@ export default function AdminSettings() {
                   )}
                   Save AI Settings
                 </Button>
-              </CardContent>
-            </Card>
+            </DashboardCard>
           </TabsContent>
 
           {/* Vector Database Settings Tab */}
           <TabsContent value="vectordb">
-            <Card className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
-              <CardHeader className="border-b bg-gradient-to-r from-blue-50/50 to-cyan-50/30 pb-5">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <Database className="w-5 h-5 text-blue-600" />
-                  Vector Database Configuration
-                </CardTitle>
-                <CardDescription>
-                  Configure vector database for RAG (Retrieval-Augmented Generation), semantic search, and document indexing
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-6 space-y-6">
+            <DashboardCard
+              className="overflow-hidden"
+              leading={<Database className="w-5 h-5 text-blue-600" />}
+              title="Vector Database Configuration"
+              description="Configure vector database for RAG (Retrieval-Augmented Generation), semantic search, and document indexing"
+              bodyClassName="p-6 space-y-6"
+            >
                 {/* Info Banner */}
-                <Card className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30">
-                  <CardContent className="flex items-start gap-3 p-4">
+                <DashboardCard className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30" bodyClassName="flex items-start gap-3 p-4">
                     <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
                     <div className="text-sm">
                       <p className="font-medium text-blue-800 dark:text-blue-200">About Vector Databases</p>
@@ -2765,101 +2713,75 @@ export default function AdminSettings() {
                         Vector databases store document embeddings for semantic search and RAG. Choose <strong>ChromaDB</strong> for development (zero-config, local storage), <strong>pgvector</strong> for production (scalable, hybrid search with PostgreSQL), or <strong>Cloudflare Vectorize</strong> for edge-native global deployment.
                       </p>
                     </div>
-                  </CardContent>
-                </Card>
+                </DashboardCard>
 
                 {/* Statistics Cards */}
                 {vectorDbStats && !vectorDbStats.error && (
                   <div className="grid gap-4 md:grid-cols-3">
-                    <Card>
-                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Provider</CardTitle>
-                        <Database className="h-4 w-4 text-muted-foreground" />
-                      </CardHeader>
-                      <CardContent>
-                        <div className="text-2xl font-bold capitalize">{vectorDbStats.provider}</div>
-                        {vectorDbStats.provider === "chromadb" && (
-                          <p className="text-xs text-muted-foreground mt-1">In-memory + Persistent</p>
-                        )}
-                        {vectorDbStats.provider === "pgvector" && (
-                          <p className="text-xs text-muted-foreground mt-1">PostgreSQL Extension</p>
-                        )}
-                        {vectorDbStats.provider === "cloudflare_vectorize" && (
-                          <p className="text-xs text-muted-foreground mt-1">Cloudflare Edge Network</p>
-                        )}
-                      </CardContent>
-                    </Card>
+                    <DashboardKpiCard
+                      icon={Database}
+                      label="Provider"
+                      value={<span className="capitalize">{vectorDbStats.provider}</span>}
+                      subLabel={
+                        vectorDbStats.provider === "chromadb" ? (
+                          <span className="text-xs text-slate-500">In-memory + Persistent</span>
+                        ) : vectorDbStats.provider === "pgvector" ? (
+                          <span className="text-xs text-slate-500">PostgreSQL Extension</span>
+                        ) : (
+                          <span className="text-xs text-slate-500">Cloudflare Edge Network</span>
+                        )
+                      }
+                    />
 
                     {vectorDbStats.provider === "chromadb" && vectorDbStats.totalCollections !== undefined && (
-                      <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                          <CardTitle className="text-sm font-medium">Collections</CardTitle>
-                          <HardDrive className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                          <div className="text-2xl font-bold">{vectorDbStats.totalCollections}</div>
-                          <p className="text-xs text-muted-foreground mt-1">Active collections</p>
-                        </CardContent>
-                      </Card>
+                      <DashboardKpiCard
+                        icon={HardDrive}
+                        label="Collections"
+                        value={vectorDbStats.totalCollections}
+                        subLabel={<span className="text-xs text-slate-500">Active collections</span>}
+                      />
                     )}
 
                     {vectorDbStats.provider === "pgvector" && vectorDbStats.totalDocuments !== undefined && (
-                      <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                          <CardTitle className="text-sm font-medium">Indexed Items</CardTitle>
-                          <HardDrive className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                          <div className="text-2xl font-bold">{vectorDbStats.totalDocuments.toLocaleString()}</div>
-                          <p className="text-xs text-muted-foreground mt-1">
+                      <DashboardKpiCard
+                        icon={HardDrive}
+                        label="Indexed Items"
+                        value={vectorDbStats.totalDocuments.toLocaleString()}
+                        subLabel={
+                          <span className="text-xs text-slate-500">
                             {vectorDbStats.totalVectors?.toLocaleString?.() ?? "—"} vectors
                             {vectorDbStats.activeItems !== undefined ? ` • ${vectorDbStats.activeItems.toLocaleString()} active items` : ""}
-                          </p>
-                        </CardContent>
-                      </Card>
+                          </span>
+                        }
+                      />
                     )}
 
                     {vectorDbStats.provider === "cloudflare_vectorize" && (
-                      <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                          <CardTitle className="text-sm font-medium">Vectors</CardTitle>
-                          <Cloud className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                          <div className="text-2xl font-bold">{vectorDbStats.vectorCount?.toLocaleString() ?? "—"}</div>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {vectorDbStats.dimensions ? `${vectorDbStats.dimensions}D • ${vectorDbStats.metric || "cosine"}` : "Index info"}
-                          </p>
-                        </CardContent>
-                      </Card>
+                      <DashboardKpiCard
+                        icon={Cloud}
+                        label="Vectors"
+                        value={vectorDbStats.vectorCount?.toLocaleString() ?? "—"}
+                        subLabel={<span className="text-xs text-slate-500">{vectorDbStats.dimensions ? `${vectorDbStats.dimensions}D • ${vectorDbStats.metric || "cosine"}` : "Index info"}</span>}
+                      />
                     )}
 
-                    <Card>
-                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Storage</CardTitle>
-                        <HardDrive className="h-4 w-4 text-muted-foreground" />
-                      </CardHeader>
-                      <CardContent>
-                        <div className="text-xs font-mono truncate">
-                          {vectorDbStats.storageLocation || vectorDbStats.storageType || "N/A"}
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-1">Location</p>
-                      </CardContent>
-                    </Card>
+                    <DashboardKpiCard
+                      icon={HardDrive}
+                      label="Storage"
+                      value={<span className="text-xs font-mono truncate">{vectorDbStats.storageLocation || vectorDbStats.storageType || "N/A"}</span>}
+                      subLabel={<span className="text-xs text-slate-500">Location</span>}
+                    />
                   </div>
                 )}
 
                 {normalizedVectorDbHealth && (
                   <div className="space-y-4">
                     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                      <Card>
-                        <CardHeader className="pb-2">
-                          <CardTitle className="text-sm font-medium">Active Read Provider</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-2">
-                          <div className="text-2xl font-bold capitalize">
-                            {normalizedVectorDbHealth.provider_status.current_read_provider}
-                          </div>
+                      <DashboardKpiCard
+                        icon={Database}
+                        label="Active Read Provider"
+                        value={<span className="capitalize">{normalizedVectorDbHealth.provider_status.current_read_provider}</span>}
+                        subLabel={
                           <div className="flex flex-wrap gap-2 text-xs">
                             <Badge variant="outline">
                               switch: {normalizedVectorDbHealth.provider_status.switch_status}
@@ -2868,61 +2790,38 @@ export default function AdminSettings() {
                               {normalizedVectorDbHealth.provider_status.mirror_writes ? "mirror writes on" : "mirror writes off"}
                             </Badge>
                           </div>
-                        </CardContent>
-                      </Card>
+                        }
+                      />
 
-                      <Card>
-                        <CardHeader className="pb-2">
-                          <CardTitle className="text-sm font-medium">Cutover Target</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-2">
-                          <div className="text-2xl font-bold capitalize">
-                            {normalizedVectorDbHealth.provider_status.target_provider || "None"}
-                          </div>
-                          <p className="text-xs text-muted-foreground">
-                            Current read provider stays authoritative until cutover finishes.
-                          </p>
-                        </CardContent>
-                      </Card>
+                      <DashboardKpiCard
+                        icon={Database}
+                        label="Cutover Target"
+                        value={<span className="capitalize">{normalizedVectorDbHealth.provider_status.target_provider || "None"}</span>}
+                        subLabel={<span className="text-xs text-slate-500">Current read provider stays authoritative until cutover finishes.</span>}
+                      />
 
-                      <Card>
-                        <CardHeader className="pb-2">
-                          <CardTitle className="text-sm font-medium">Connection Health</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-2">
-                          <Badge variant={normalizedVectorDbHealth.connection_health.healthy ? "default" : "destructive"}>
-                            {normalizedVectorDbHealth.connection_health.status}
-                          </Badge>
-                          <p className="text-xs text-muted-foreground">
-                            {normalizedVectorDbHealth.connection_health.message}
-                          </p>
-                        </CardContent>
-                      </Card>
+                      <DashboardKpiCard
+                        icon={AlertCircle}
+                        label="Connection Health"
+                        value={<Badge variant={normalizedVectorDbHealth.connection_health.healthy ? "default" : "destructive"}>{normalizedVectorDbHealth.connection_health.status}</Badge>}
+                        subLabel={<span className="text-xs text-slate-500">{normalizedVectorDbHealth.connection_health.message}</span>}
+                      />
 
-                      <Card>
-                        <CardHeader className="pb-2">
-                          <CardTitle className="text-sm font-medium">Queue & Search</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-2 text-sm">
-                          <div className="font-semibold">
-                            Queue lag {normalizedVectorDbHealth.queue_status.lag_minutes.toFixed(1)} min
-                          </div>
-                          <p className="text-xs text-muted-foreground">
-                            Search p95 {Math.round(normalizedVectorDbHealth.latency_status.current_p95_ms)} ms
-                          </p>
-                        </CardContent>
-                      </Card>
+                      <DashboardKpiCard
+                        icon={RefreshCw}
+                        label="Queue & Search"
+                        value={<span>Queue lag {normalizedVectorDbHealth.queue_status.lag_minutes.toFixed(1)} min</span>}
+                        subLabel={<span className="text-xs text-slate-500">Search p95 {Math.round(normalizedVectorDbHealth.latency_status.current_p95_ms)} ms</span>}
+                      />
                     </div>
 
                     {normalizedVectorDbHealth.recent_failures.length > 0 && (
-                      <Card className="border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/20">
-                        <CardHeader className="pb-2">
-                          <CardTitle className="text-sm font-medium">Recent Vector Failures</CardTitle>
-                          <CardDescription>
-                            Unsuperseded recent failures only. Completed retries are filtered out.
-                          </CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-2">
+                      <DashboardCard
+                        className="border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/20"
+                        title="Recent Vector Failures"
+                        description="Unsuperseded recent failures only. Completed retries are filtered out."
+                        bodyClassName="space-y-2"
+                      >
                           {normalizedVectorDbHealth.recent_failures.slice(0, 3).map((failure: (typeof DEFAULT_VECTOR_DB_HEALTH.recent_failures)[number]) => (
                             <div
                               key={failure.job_id}
@@ -2936,8 +2835,7 @@ export default function AdminSettings() {
                               </div>
                             </div>
                           ))}
-                        </CardContent>
-                      </Card>
+                      </DashboardCard>
                     )}
                   </div>
                 )}
@@ -2991,8 +2889,7 @@ export default function AdminSettings() {
                     </SelectContent>
                   </Select>
 
-                  <Card className="border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900/30">
-                    <CardContent className="p-3 space-y-2 text-sm">
+                  <DashboardCard className="border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900/30" bodyClassName="p-3 space-y-2 text-sm">
                       <div className="font-medium flex items-center gap-2">
                         <AlertCircle className="h-4 w-4" />
                         {vectorDbForm.provider === "chromadb" ? "ChromaDB" : vectorDbForm.provider === "pgvector" ? "pgvector" : "Cloudflare Vectorize"} Features:
@@ -3022,8 +2919,7 @@ export default function AdminSettings() {
                           <li className="text-amber-600">Requires Cloudflare account with Workers plan</li>
                         </ul>
                       )}
-                    </CardContent>
-                  </Card>
+                  </DashboardCard>
                 </div>
 
                 {/* Embedding Model Selection */}
@@ -3093,14 +2989,12 @@ export default function AdminSettings() {
                       </p>
                     </div>
 
-                    <Card className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/30">
-                      <CardContent className="p-3 text-xs">
+                    <DashboardCard className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/30" bodyClassName="p-3 text-xs">
                         <strong className="text-green-800 dark:text-green-200">Example:</strong>
                         <code className="block mt-1 p-2 bg-white dark:bg-slate-900 rounded border text-green-700 dark:text-green-300">
                           CHROMA_PERSIST_DIR=~/.smartaihub/chroma
                         </code>
-                      </CardContent>
-                    </Card>
+                    </DashboardCard>
                   </div>
                 )}
 
@@ -3199,14 +3093,12 @@ export default function AdminSettings() {
                       )}
                     </div>
 
-                    <Card className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/30">
-                      <CardContent className="p-3 text-xs space-y-2">
+                    <DashboardCard className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/30" bodyClassName="p-3 text-xs space-y-2">
                         <strong className="text-green-800 dark:text-green-200">Setup pgvector:</strong>
                         <code className="block p-2 bg-white dark:bg-slate-900 rounded border text-green-700 dark:text-green-300">
                           {`-- Connect to PostgreSQL\npsql -U smartaihub -d smartaihub\n\n-- Enable pgvector extension\nCREATE EXTENSION IF NOT EXISTS vector;`}
                         </code>
-                      </CardContent>
-                    </Card>
+                    </DashboardCard>
                   </div>
                 )}
 
@@ -3277,8 +3169,7 @@ export default function AdminSettings() {
                       )}
                     </div>
 
-                    <Card className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/30">
-                      <CardContent className="p-3 text-xs space-y-2">
+                    <DashboardCard className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/30" bodyClassName="p-3 text-xs space-y-2">
                         <strong className="text-green-800 dark:text-green-200">Setup Cloudflare Vectorize:</strong>
                         <ol className="list-decimal ml-4 space-y-1 text-green-700 dark:text-green-300">
                           <li>Go to <a href="https://dash.cloudflare.com" target="_blank" rel="noopener noreferrer" className="underline font-medium">Cloudflare Dashboard</a> &gt; Workers &amp; Pages &gt; Vectorize</li>
@@ -3287,8 +3178,7 @@ export default function AdminSettings() {
                           <li>Go to My Profile &gt; API Tokens &gt; Create Token with "Vectorize: Edit" permission</li>
                           <li>Paste the Account ID, Index Name, and API Token above</li>
                         </ol>
-                      </CardContent>
-                    </Card>
+                    </DashboardCard>
                   </div>
                 )}
 
@@ -3385,8 +3275,7 @@ export default function AdminSettings() {
                   </p>
 
                   {(isReindexing || reindexStatus?.status === "running") && reindexStatus && (
-                    <Card className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30">
-                      <CardContent className="space-y-3 p-3">
+                    <DashboardCard className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30" bodyClassName="space-y-3 p-3">
                         <div className="flex items-center gap-3">
                           <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
                           <div className="text-sm">
@@ -3407,8 +3296,7 @@ export default function AdminSettings() {
                           <div>Failed: {reindexFailedJobs}</div>
                           <div>Queued: {reindexExpectedJobs}</div>
                         </div>
-                      </CardContent>
-                    </Card>
+                    </DashboardCard>
                   )}
 
                   <Button
@@ -3425,8 +3313,7 @@ export default function AdminSettings() {
                     {isReindexing ? "Reindexing..." : "Reindex All Documents"}
                   </Button>
                 </div>
-              </CardContent>
-            </Card>
+            </DashboardCard>
 
             {/* Provider Switch Warning Dialog */}
             <AlertDialog open={showProviderSwitchWarning} onOpenChange={setShowProviderSwitchWarning}>
@@ -3606,26 +3493,20 @@ function MenuOverridesPanel() {
 
   if (isLoading) {
     return (
-      <Card className="border-0 shadow-sm rounded-2xl">
-        <CardContent className="py-12 flex justify-center">
+      <DashboardCard className="rounded-2xl" bodyClassName="py-12 flex justify-center">
           <Loader2 className="w-6 h-6 animate-spin text-blue-500" />
-        </CardContent>
-      </Card>
+      </DashboardCard>
     );
   }
 
   return (
-    <Card className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
-      <CardHeader className="border-b bg-gradient-to-r from-blue-50/50 to-cyan-50/30 pb-5">
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <Menu className="w-5 h-5 text-blue-500" />
-          Main Menu Settings
-        </CardTitle>
-        <CardDescription>
-          Control which menu items are visible per platform and role. Unchecked items will be hidden.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="p-0">
+    <DashboardCard
+      className="overflow-hidden"
+      leading={<Menu className="w-5 h-5 text-blue-500" />}
+      title="Main Menu Settings"
+      description="Control which menu items are visible per platform and role. Unchecked items will be hidden."
+      bodyClassName="p-0"
+    >
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -3698,8 +3579,7 @@ function MenuOverridesPanel() {
             Save Menu Settings
           </Button>
         </div>
-      </CardContent>
-    </Card>
+    </DashboardCard>
   );
 }
 

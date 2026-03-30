@@ -75,6 +75,11 @@ import {
   relayoutExistingSlideAsync,
   resolvePendingMediaForDeck,
 } from "../services/aiPresentationService";
+import {
+  generatePresentationArticle,
+  generatePresentationSlideDraft,
+  preparePresentationSlideBundle,
+} from "../services/presentationArticleGenerator";
 import { resolveAutoDraftParams } from "../services/autoDraftResolver";
 import { createLibraryItem } from "../services/libraryService";
 import {
@@ -115,6 +120,8 @@ const DOCUMENT_MANAGEMENT_ROUTE_BASE =
 const MAX_PRESENTATION_UPLOAD_BASE64_LENGTH = 68_000_000;
 const AI_DRAFT_STALLED_PROGRESS_MS = 60_000;
 const AI_DRAFT_STALLED_LOCK_TTL_SECONDS = 240;
+const PRESENTATION_SLIDE_CANVAS_RATIOS = ["16:9", "9:16", "4:5", "5:4"] as const;
+const PRESENTATION_SLIDE_OUTPUT_FORMATS = ["json", "md", "pptx", "pdf"] as const;
 
 type DraftProgressStatus = {
   phase: number;
@@ -781,6 +788,162 @@ export const presentationRouter = router({
             throw mapPresentationServiceError(err);
           }
           throw err;
+        }
+      }),
+
+    generateArticle: protectedProcedure
+      .use(createRateLimitMiddleware({ namespace: "presentation-article-gen", limit: 6, windowMs: 60_000 }))
+      .input(z.object({
+        deckId: z.number().int().positive(),
+        topic: z.string().trim().min(3).max(2_000),
+        preferredLanguage: z.enum(["th", "en"]).optional(),
+        executionSource: z.enum(["skill", "agency"]).default("skill"),
+        skillId: z.string().trim().max(255).optional().nullable(),
+        agencyId: z.string().trim().max(255).optional().nullable(),
+        requiresWebSearch: z.boolean().default(false),
+        requiresThinking: z.boolean().default(false),
+        targetImageCount: z.number().int().min(5).max(20).default(8),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        try {
+          ensureFeatureEnabled();
+          ensureAIGenerationEnabled();
+
+          const actor = toPresentationActor(ctx);
+          await getPresentationDeckDetail(input.deckId, actor);
+
+          return await generatePresentationArticle({
+            tenantId: actor.tenantId,
+            userId: actor.userId,
+            topic: input.topic,
+            preferredLanguage: input.preferredLanguage,
+            executionSource: input.executionSource,
+            skillId: input.skillId,
+            agencyId: input.agencyId,
+            requiresWebSearch: input.requiresWebSearch,
+            requiresThinking: input.requiresThinking,
+            targetImageCount: input.targetImageCount,
+          });
+        } catch (err) {
+          if (err instanceof PresentationServiceError) {
+            throw mapPresentationServiceError(err);
+          }
+          if (err instanceof TRPCError) {
+            throw err;
+          }
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: err instanceof Error ? err.message : "Failed to generate article",
+          });
+        }
+      }),
+
+    prepareSlideBundle: protectedProcedure
+      .use(createRateLimitMiddleware({ namespace: "presentation-slide-bundle", limit: 6, windowMs: 60_000 }))
+      .input(z.object({
+        deckId: z.number().int().positive(),
+        topic: z.string().trim().min(3).max(2_000),
+        article: z.string().trim().min(20).max(25_000),
+        preferredLanguage: z.enum(["th", "en"]).optional(),
+        slideSkillId: z.string().trim().min(1).max(255),
+        requiresThinking: z.boolean().default(false),
+        targetImageCount: z.number().int().min(5).max(20).default(8),
+        canvasRatio: z.enum(PRESENTATION_SLIDE_CANVAS_RATIOS).default("16:9"),
+        outputFormats: z.array(z.enum(PRESENTATION_SLIDE_OUTPUT_FORMATS)).min(1).max(4).default(["json"]),
+        imagePromptContext: z.string().trim().max(1_500).optional().nullable(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        try {
+          ensureFeatureEnabled();
+          ensureAIGenerationEnabled();
+
+          const actor = toPresentationActor(ctx);
+          await getPresentationDeckDetail(input.deckId, actor);
+
+          return await preparePresentationSlideBundle({
+            userId: actor.userId,
+            topic: input.topic,
+            article: input.article,
+            slideSkillId: input.slideSkillId,
+            preferredLanguage: input.preferredLanguage,
+            requiresThinking: input.requiresThinking,
+            targetImageCount: input.targetImageCount,
+            canvasRatio: input.canvasRatio,
+            outputFormats: input.outputFormats,
+            imagePromptContext: input.imagePromptContext ?? undefined,
+          });
+        } catch (err) {
+          if (err instanceof PresentationServiceError) {
+            throw mapPresentationServiceError(err);
+          }
+          if (err instanceof TRPCError) {
+            throw err;
+          }
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: err instanceof Error ? err.message : "Failed to prepare slide bundle",
+          });
+        }
+      }),
+
+    generateSlideDraft: protectedProcedure
+      .use(createRateLimitMiddleware({ namespace: "presentation-slide-draft", limit: 4, windowMs: 60_000 }))
+      .input(z.object({
+        deckId: z.number().int().positive(),
+        topic: z.string().trim().min(3).max(2_000),
+        article: z.string().trim().min(20).max(25_000),
+        preferredLanguage: z.enum(["th", "en"]).optional(),
+        slideSkillId: z.string().trim().min(1).max(255),
+        requiresThinking: z.boolean().default(false),
+        targetImageCount: z.number().int().min(5).max(20).default(8),
+        canvasRatio: z.enum(PRESENTATION_SLIDE_CANVAS_RATIOS).default("16:9"),
+        outputFormats: z.array(z.enum(PRESENTATION_SLIDE_OUTPUT_FORMATS)).min(1).max(4).default(["json"]),
+        maxPages: z.number().int().min(1).max(20),
+        imagePromptContext: z.string().trim().max(1_500).optional().nullable(),
+        imageAssets: z.array(z.object({
+          id: z.string().trim().min(1).max(128),
+          pageNumber: z.number().int().min(1).max(20),
+          imageIndex: z.number().int().min(1).max(3),
+          placementRole: z.enum(["hero", "supporting", "detail"]),
+          shortLabel: z.string().trim().min(1).max(255),
+          prompt: z.string().trim().min(1).max(4_000),
+          url: z.string().trim().url(),
+        })).min(1).max(60),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        try {
+          ensureFeatureEnabled();
+          ensureAIGenerationEnabled();
+
+          const actor = toPresentationActor(ctx);
+          await getPresentationDeckDetail(input.deckId, actor);
+
+          return await generatePresentationSlideDraft({
+            userId: actor.userId,
+            tenantId: actor.tenantId,
+            topic: input.topic,
+            article: input.article,
+            slideSkillId: input.slideSkillId,
+            preferredLanguage: input.preferredLanguage,
+            requiresThinking: input.requiresThinking,
+            targetImageCount: input.targetImageCount,
+            canvasRatio: input.canvasRatio,
+            outputFormats: input.outputFormats,
+            maxPages: input.maxPages,
+            imagePromptContext: input.imagePromptContext ?? undefined,
+            imageAssets: input.imageAssets,
+          });
+        } catch (err) {
+          if (err instanceof PresentationServiceError) {
+            throw mapPresentationServiceError(err);
+          }
+          if (err instanceof TRPCError) {
+            throw err;
+          }
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: err instanceof Error ? err.message : "Failed to generate slide JSON",
+          });
         }
       }),
 

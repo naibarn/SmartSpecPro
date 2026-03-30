@@ -57,6 +57,7 @@ import {
   type ProjectAudioTrackInput,
   type PresentationVersionConflict,
 } from "@shared/presentation/contracts";
+import type { z } from "zod";
 import {
   incrementPresentationMetric,
   recordPresentationFailureMetric,
@@ -689,6 +690,18 @@ function sanitizePendingMediaJobs(
   };
 }
 
+function summarizeSlideContentValidationIssues(
+  issues: z.ZodIssue[],
+): Array<{ path: string; code: string; message: string }> {
+  return issues
+    .slice(0, 5)
+    .map((issue) => ({
+      path: issue.path.length > 0 ? issue.path.join(".") : "slideContent",
+      code: issue.code,
+      message: issue.message.slice(0, 200),
+    }));
+}
+
 function validateSlideContentPayload(
   slideContent: Record<string, unknown>,
   options?: { preserveInternalPendingMediaBilling?: boolean },
@@ -713,6 +726,7 @@ function validateSlideContentPayload(
       `${PRESENTATION_ERROR_CODE.VALIDATION_FAILED}: slideContent failed schema validation`,
       {
         issueCount: parsed.error.issues.length,
+        issueSummaries: summarizeSlideContentValidationIssues(parsed.error.issues),
       },
     );
   }

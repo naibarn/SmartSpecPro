@@ -313,6 +313,7 @@ high_angle          - Looking down
 - **Char Limit**: 500 characters
 - **Structure**: 5-part (Cinematography + Subject + Action + Context + Style)
 - **Audio Format**: `SFX: [desc] | Character says, "[dialogue]"`
+- **Dialogue Length**: Keep spoken lines very short so they fit naturally in the clip; prefer one short sentence or one short clause, not a paragraph
 - **Best For**: Short, impactful clips
 
 ### Compatible (Universal)

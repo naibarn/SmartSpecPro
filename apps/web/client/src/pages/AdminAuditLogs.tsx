@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { DashboardCard, DashboardKpiCard } from "@/components/dashboard";
+import { OpsEarlyWarningPanel } from "@/components/admin/OpsEarlyWarningPanel";
 import {
   Select,
   SelectContent,
@@ -36,6 +37,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import {
+  Activity,
   AlertTriangle,
   ArrowLeft,
   CheckCircle,
@@ -45,6 +47,7 @@ import {
   Download,
   Filter,
   Loader2,
+  Play,
   RefreshCw,
   Search,
   User,
@@ -220,6 +223,11 @@ export default function AdminAuditLogs() {
   }, {
     staleTime: 10_000,
     refetchOnWindowFocus: false,
+  });
+  const opsOverviewQuery = trpc.monitoring.getOpsOverview.useQuery(undefined, {
+    staleTime: 10_000,
+    refetchOnWindowFocus: false,
+    refetchInterval: 30_000,
   });
 
   const exportRows = useMemo<AuditRow[]>(() => {
@@ -525,7 +533,7 @@ export default function AdminAuditLogs() {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => searchQuery.refetch()}>
+          <Button variant="outline" size="sm" onClick={() => void Promise.all([searchQuery.refetch(), opsOverviewQuery.refetch()])}>
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
@@ -542,6 +550,13 @@ export default function AdminAuditLogs() {
         <DashboardKpiCard icon={CheckCircle} label="Unique Traces" value={uniqueTraces} />
         <DashboardKpiCard icon={User} label="Users" value={uniqueUsers} />
       </div>
+
+      <OpsEarlyWarningPanel
+        overview={opsOverviewQuery.data}
+        isLoading={opsOverviewQuery.isLoading}
+        showMonitoringLink
+        description="Shared warning layer for infra pressure, alert backlog, audit error spikes, and orchestration drift so audit traces stay tied to runtime risk."
+      />
 
       <DashboardCard
         title="Routing Telemetry Summary"

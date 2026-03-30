@@ -27,6 +27,7 @@ const CSVViewer = lazy(() => import("./CSVViewer"));
 const JSONViewer = lazy(() => import("./JSONViewer"));
 const ExcelViewer = lazy(() => import("./ExcelViewer"));
 import { DocumentVersionHistory } from "./DocumentVersionHistory";
+import { CopyLinkButton } from "./CopyLinkButton";
 import MarkdownExportActions from "./MarkdownExportActions";
 import { ShareButton } from "./ShareButton";
 import { ShareDialog } from "./ShareDialog";
@@ -55,6 +56,7 @@ interface DocumentPreviewPanelProps {
   onReplaceFile?: (file: File, changeDescription?: string) => Promise<void>;
   isReplacingFile?: boolean;
   initialEditorTemplate?: TiptapEditorTemplate;
+  shareUrl?: string;
 }
 
 export default function DocumentPreviewPanel({
@@ -75,6 +77,7 @@ export default function DocumentPreviewPanel({
   onReplaceFile,
   isReplacingFile,
   initialEditorTemplate,
+  shareUrl,
 }: DocumentPreviewPanelProps) {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState("");
@@ -233,8 +236,21 @@ export default function DocumentPreviewPanel({
         marginInline: "auto",
       }
     : undefined;
+  const publicShareActions = (compact = false) => !isPrivateVaultItem ? (
+    <div className="flex flex-wrap items-center gap-1.5">
+      <ShareButton
+        shareCount={sharesData?.shares?.length ?? 0}
+        onOpenDialog={() => setShareDialogOpen(true)}
+        compact={compact}
+      />
+      {shareUrl ? <CopyLinkButton shareUrl={shareUrl} compact={compact} /> : null}
+    </div>
+  ) : null;
   const markdownSurfaceHeaderActions = isMarkdownPreview ? (
-    <MarkdownExportActions title={item.title} markdown={markdownValue || ""} />
+    <div className="flex flex-wrap items-center gap-1.5">
+      <MarkdownExportActions title={item.title} markdown={markdownValue || ""} />
+      {publicShareActions(false)}
+    </div>
   ) : null;
   const markdownEditorHeaderActions = isMarkdownPreview ? (
     <>
@@ -262,13 +278,6 @@ export default function DocumentPreviewPanel({
           )}
           {isMediaPreview ? null : <span className="hidden sm:inline">Upload New Version</span>}
         </Button>
-      ) : null}
-      {!isPrivateVaultItem ? (
-        <ShareButton
-          shareCount={sharesData?.shares?.length ?? 0}
-          onOpenDialog={() => setShareDialogOpen(true)}
-          compact={isMediaPreview}
-        />
       ) : null}
     </>
   ) : null;
@@ -408,7 +417,7 @@ export default function DocumentPreviewPanel({
             ) : null}
           </div>
           {isMarkdownPreview ? (
-            <div className="flex shrink-0 items-center gap-1.5">
+            <div className="flex shrink-0 flex-col items-end gap-2">
               <Badge className={processingMeta.className}>{processingMeta.label}</Badge>
             </div>
           ) : null}
@@ -493,13 +502,7 @@ export default function DocumentPreviewPanel({
                   {isMediaPreview ? null : <span className="hidden sm:inline">Upload New Version</span>}
                 </Button>
               ) : null}
-              {!isPrivateVaultItem ? (
-                <ShareButton
-                  shareCount={sharesData?.shares?.length ?? 0}
-                  onOpenDialog={() => setShareDialogOpen(true)}
-                  compact={isMediaPreview}
-                />
-              ) : null}
+              {publicShareActions(isMediaPreview)}
               {sourceUrl ? (
                 <Button
                   asChild

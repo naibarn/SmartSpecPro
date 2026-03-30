@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Redirect, useLocation } from "wouter";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -16,7 +15,6 @@ import { Badge } from "@/components/ui/badge";
 import {
   TrendingUp,
   Download,
-  Calendar,
   RefreshCw,
   AlertCircle,
   Loader2,
@@ -24,6 +22,7 @@ import {
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/AuthContext";
+import { DashboardCard } from "@/components/dashboard";
 
 export default function AdminFunnelDashboard() {
   // RBAC check - only admin and domain_admin can access
@@ -201,14 +200,8 @@ export default function AdminFunnelDashboard() {
       </div>
 
       {/* Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
-            Filters & Settings
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+      <DashboardCard title="Filters & Settings">
+        <div className="space-y-4">
           <div className="grid gap-4 md:grid-cols-4">
             <div className="space-y-2">
               <Label htmlFor="dateFrom">From</Label>
@@ -274,8 +267,8 @@ export default function AdminFunnelDashboard() {
               <Badge variant="secondary">Cached (5 min TTL)</Badge>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </DashboardCard>
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -382,64 +375,58 @@ interface FunnelSummaryPanelProps {
 function FunnelSummaryPanel({ data, isLoading, error, stage }: FunnelSummaryPanelProps) {
   if (isLoading) {
     return (
-      <Card>
-        <CardContent className="flex items-center justify-center py-12">
+      <DashboardCard>
+        <div className="flex items-center justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           <span className="ml-2 text-muted-foreground">Loading summary...</span>
-        </CardContent>
-      </Card>
+        </div>
+      </DashboardCard>
     );
   }
 
   if (error) {
     return (
-      <Card>
-        <CardContent className="flex items-center justify-center py-12 text-destructive">
+      <DashboardCard>
+        <div className="flex items-center justify-center py-12 text-destructive">
           <AlertCircle className="h-6 w-6 mr-2" />
           <span>Error loading summary: {error.message}</span>
-        </CardContent>
-      </Card>
+        </div>
+      </DashboardCard>
     );
   }
 
   if (!data || data.stages.length === 0) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>{stage ? `${stage} ` : ""}Stage Summary</CardTitle>
-        </CardHeader>
-        <CardContent className="text-center py-12 text-muted-foreground">
+      <DashboardCard title={`${stage ? `${stage} ` : ""}Stage Summary`}>
+        <div className="text-center py-12 text-muted-foreground">
           <p>No data available for the selected period</p>
-        </CardContent>
-      </Card>
+        </div>
+      </DashboardCard>
     );
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{stage ? `${stage} ` : ""}Stage Summary</CardTitle>
-        <CardDescription>Event counts and unique users</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          {data.stages.map((s) => (
-            <div key={s.eventName} className="flex items-center justify-between border-b pb-2">
-              <div>
-                <p className="font-medium">{s.eventName}</p>
-                <p className="text-xs text-muted-foreground">
-                  {s.uniqueUsers.toLocaleString()} unique users
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-2xl font-bold">{s.total.toLocaleString()}</p>
-                <p className="text-xs text-muted-foreground">total events</p>
-              </div>
+    <DashboardCard
+      title={`${stage ? `${stage} ` : ""}Stage Summary`}
+      description="Event counts and unique users"
+    >
+      <div className="space-y-4">
+        {data.stages.map((s) => (
+          <div key={s.eventName} className="flex items-center justify-between border-b pb-2">
+            <div>
+              <p className="font-medium">{s.eventName}</p>
+              <p className="text-xs text-muted-foreground">
+                {s.uniqueUsers.toLocaleString()} unique users
+              </p>
             </div>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
+            <div className="text-right">
+              <p className="text-2xl font-bold">{s.total.toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground">total events</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </DashboardCard>
   );
 }
 
@@ -453,47 +440,39 @@ interface FunnelTimeSeriesPanelProps {
 function FunnelTimeSeriesPanel({ data, isLoading, error, bucket }: FunnelTimeSeriesPanelProps) {
   if (isLoading) {
     return (
-      <Card>
-        <CardContent className="flex items-center justify-center py-12">
+      <DashboardCard>
+        <div className="flex items-center justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           <span className="ml-2 text-muted-foreground">Loading time series...</span>
-        </CardContent>
-      </Card>
+        </div>
+      </DashboardCard>
     );
   }
 
   if (error) {
     return (
-      <Card>
-        <CardContent className="flex items-center justify-center py-12 text-destructive">
+      <DashboardCard>
+        <div className="flex items-center justify-center py-12 text-destructive">
           <AlertCircle className="h-6 w-6 mr-2" />
           <span>Error loading time series: {error.message}</span>
-        </CardContent>
-      </Card>
+        </div>
+      </DashboardCard>
     );
   }
 
   if (!data || data.series.length === 0) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Time Series</CardTitle>
-          <CardDescription>Events over time ({bucket}ly buckets, UTC)</CardDescription>
-        </CardHeader>
-        <CardContent className="text-center py-12 text-muted-foreground">
+      <DashboardCard title="Time Series" description={`Events over time (${bucket}ly buckets, UTC)`}>
+        <div className="text-center py-12 text-muted-foreground">
           <p>No data available for the selected period</p>
-        </CardContent>
-      </Card>
+        </div>
+      </DashboardCard>
     );
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Time Series</CardTitle>
-        <CardDescription>Events over time ({bucket}ly buckets, UTC)</CardDescription>
-      </CardHeader>
-      <CardContent>
+    <DashboardCard title="Time Series" description={`Events over time (${bucket}ly buckets, UTC)`}>
+      <div className="space-y-2">
         <div className="space-y-2">
           {data.series.map((point, idx) => {
             // Parse bucket date and format as UTC
@@ -516,7 +495,7 @@ function FunnelTimeSeriesPanel({ data, isLoading, error, bucket }: FunnelTimeSer
             );
           })}
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </DashboardCard>
   );
 }

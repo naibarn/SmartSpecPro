@@ -1,5 +1,6 @@
 """Tests for sandbox_job_worker.py — full lifecycle Celery task."""
 import asyncio
+import mimetypes
 from unittest.mock import AsyncMock, MagicMock, patch, call
 
 import pytest
@@ -9,6 +10,7 @@ from app.workers.sandbox_job_worker import (
     NON_TERMINAL_STATUSES,
     TERMINAL_STATUSES,
     _execute_sandbox_job_async,
+    _resolve_runtime_timeout_seconds,
 )
 
 pytestmark = [pytest.mark.sandbox, pytest.mark.unit]
@@ -204,6 +206,90 @@ class TestWorkerLifecycle:
         assert args[2] == [{"path": "/workspace/skill/python/skill.py", "content_base64": "cHJpbnQoJ29rJykK"}]
 
     @pytest.mark.asyncio
+    @patch("app.workers.sandbox_job_worker.get_r2_storage_service")
+    @patch("app.workers.sandbox_job_worker.SandboxCostService")
+    @patch("app.workers.sandbox_job_worker.SandboxAuditService")
+    @patch("app.workers.sandbox_job_worker.SandboxArtifactService")
+    @patch("app.workers.sandbox_job_worker.collect_outputs")
+    @patch("app.workers.sandbox_job_worker.stage_inline_files")
+    @patch("app.workers.sandbox_job_worker.stage_inputs")
+    @patch("app.workers.sandbox_job_worker.run_command")
+    @patch("app.workers.sandbox_job_worker.SandboxLifecycleManager")
+    async def test_persists_collected_outputs_as_artifacts(
+        self,
+        MockLifecycle,
+        mock_run_cmd,
+        mock_stage_inputs,
+        mock_stage_inline,
+        mock_collect,
+        MockArtifactSvc,
+        MockAuditSvc,
+        MockCostSvc,
+        mock_get_r2_storage,
+    ):
+        """Collected sandbox outputs are uploaded and recorded into sandbox_artifacts."""
+        lifecycle = AsyncMock()
+        lifecycle.provision_sandbox.return_value = "sandbox-abc"
+        MockLifecycle.return_value = lifecycle
+
+        mock_run_cmd.return_value = _make_command_result()
+        mock_stage_inputs.return_value = []
+        mock_stage_inline.return_value = []
+        mock_collect.return_value = [
+            {
+                "sandbox_path": "/tmp/smartspec-sandbox/skill-output/layout-spec.json",
+                "object_key": "sandbox-artifacts/job-123/001-layout-spec.json",
+                "size_bytes": 256,
+                "sha256": "abc123",
+                "stored": True,
+            },
+            {
+                "sandbox_path": "/tmp/smartspec-sandbox/skill-output/slides.pptx",
+                "object_key": "sandbox-artifacts/job-123/002-slides.pptx",
+                "size_bytes": 2048,
+                "sha256": "def456",
+                "stored": True,
+            },
+        ]
+
+        mock_get_r2_storage.return_value = AsyncMock()
+
+        cost_svc = AsyncMock()
+        cost_svc.calculate_actual.return_value = 0.01
+        MockCostSvc.return_value = cost_svc
+        MockAuditSvc.return_value = MagicMock()
+
+        artifact_svc = AsyncMock()
+        MockArtifactSvc.return_value = artifact_svc
+        MockArtifactSvc.guess_mime_type.side_effect = (
+            lambda path: mimetypes.guess_type(path)[0] or "application/octet-stream"
+        )
+
+        job = _make_job()
+        profile = _make_profile()
+        mock_task = MagicMock()
+
+        with patch("app.workers.sandbox_job_worker._load_job", return_value=job), \
+             patch("app.workers.sandbox_job_worker._load_profile", return_value=profile), \
+             patch("app.workers.sandbox_job_worker._get_db_session") as mock_get_db, \
+             patch("app.workers.sandbox_job_worker._update_job_status"):
+
+            mock_get_db.return_value.__aenter__ = AsyncMock(return_value=AsyncMock())
+            mock_get_db.return_value.__aexit__ = AsyncMock(return_value=None)
+
+            result = await _execute_sandbox_job_async(mock_task, "job-123")
+
+        assert result["status"] == "completed"
+        assert mock_collect.call_args.kwargs["storage_service"] is not None
+        assert artifact_svc.record_existing.await_count == 2
+        first_record = artifact_svc.record_existing.await_args_list[0].kwargs
+        second_record = artifact_svc.record_existing.await_args_list[1].kwargs
+        assert first_record["artifact_type"] == "primary"
+        assert first_record["mime_type"] == "application/json"
+        assert second_record["artifact_type"] == "primary"
+        assert second_record["mime_type"] == "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+
+    @pytest.mark.asyncio
     @patch("app.workers.sandbox_job_worker.SandboxCostService")
     @patch("app.workers.sandbox_job_worker.SandboxAuditService")
     @patch("app.workers.sandbox_job_worker.SandboxArtifactService")
@@ -296,6 +382,126 @@ class TestWorkerErrorHandling:
         # Sandbox should still be destroyed even after failure
         lifecycle.destroy_sandbox.assert_called_once_with("sandbox-abc")
         assert result["status"] == "failed"
+
+    @pytest.mark.asyncio
+    @patch("app.workers.sandbox_job_worker.SandboxCostService")
+    @patch("app.workers.sandbox_job_worker.SandboxAuditService")
+    @patch("app.workers.sandbox_job_worker.SandboxArtifactService")
+    @patch("app.workers.sandbox_job_worker.collect_outputs")
+    @patch("app.workers.sandbox_job_worker.stage_inputs")
+    @patch("app.workers.sandbox_job_worker.run_command")
+    @patch("app.workers.sandbox_job_worker.SandboxLifecycleManager")
+    async def test_marks_job_failed_when_command_exits_non_zero(
+        self,
+        MockLifecycle,
+        mock_run_cmd,
+        mock_stage,
+        mock_collect,
+        MockArtifactSvc,
+        MockAuditSvc,
+        MockCostSvc,
+    ):
+        lifecycle = AsyncMock()
+        lifecycle.provision_sandbox.return_value = "sandbox-abc"
+        MockLifecycle.return_value = lifecycle
+
+        mock_run_cmd.return_value = _make_command_result(exit_code=13, stderr="permission denied")
+        mock_stage.return_value = []
+        mock_collect.return_value = []
+        MockCostSvc.return_value = AsyncMock()
+        MockAuditSvc.return_value = MagicMock()
+        MockArtifactSvc.return_value = AsyncMock()
+
+        job = _make_job()
+        profile = _make_profile()
+        mock_task = MagicMock()
+
+        with patch("app.workers.sandbox_job_worker._load_job", return_value=job), \
+             patch("app.workers.sandbox_job_worker._load_profile", return_value=profile), \
+             patch("app.workers.sandbox_job_worker._get_db_session") as mock_get_db, \
+             patch("app.workers.sandbox_job_worker._update_job_status") as mock_update:
+
+            mock_get_db.return_value.__aenter__ = AsyncMock(return_value=AsyncMock())
+            mock_get_db.return_value.__aexit__ = AsyncMock(return_value=None)
+
+            result = await _execute_sandbox_job_async(mock_task, "job-123")
+
+        assert result["status"] == "failed"
+        mock_collect.assert_not_called()
+        failed_updates = [call for call in mock_update.call_args_list if len(call.args) >= 3 and call.args[2] == "failed"]
+        assert failed_updates, "expected worker to write failed status when sandbox command exits non-zero"
+
+    @pytest.mark.asyncio
+    @patch("app.workers.sandbox_job_worker.get_r2_storage_service")
+    @patch("app.workers.sandbox_job_worker.SandboxCostService")
+    @patch("app.workers.sandbox_job_worker.SandboxAuditService")
+    @patch("app.workers.sandbox_job_worker.SandboxArtifactService")
+    @patch("app.workers.sandbox_job_worker.collect_outputs")
+    @patch("app.workers.sandbox_job_worker.stage_inline_files")
+    @patch("app.workers.sandbox_job_worker.stage_inputs")
+    @patch("app.workers.sandbox_job_worker.run_command")
+    @patch("app.workers.sandbox_job_worker.SandboxLifecycleManager")
+    async def test_rolls_back_and_marks_failed_when_artifact_recording_errors(
+        self,
+        MockLifecycle,
+        mock_run_cmd,
+        mock_stage_inputs,
+        mock_stage_inline,
+        mock_collect,
+        MockArtifactSvc,
+        MockAuditSvc,
+        MockCostSvc,
+        mock_get_r2_storage,
+    ):
+        lifecycle = AsyncMock()
+        lifecycle.provision_sandbox.return_value = "sandbox-abc"
+        MockLifecycle.return_value = lifecycle
+
+        mock_run_cmd.return_value = _make_command_result()
+        mock_stage_inputs.return_value = []
+        mock_stage_inline.return_value = []
+        mock_collect.return_value = [
+            {
+                "sandbox_path": "/tmp/smartspec-sandbox/skill-output/manifest.json",
+                "object_key": "sandbox-artifacts/job-123/000-manifest.json",
+                "size_bytes": 129,
+                "sha256": "abc123",
+                "stored": True,
+            },
+        ]
+
+        mock_get_r2_storage.return_value = AsyncMock()
+        cost_svc = AsyncMock()
+        cost_svc.calculate_actual.return_value = 0.01
+        MockCostSvc.return_value = cost_svc
+        MockAuditSvc.return_value = MagicMock()
+
+        artifact_svc = AsyncMock()
+        artifact_svc.record_existing.side_effect = RuntimeError("enum insert failed")
+        MockArtifactSvc.return_value = artifact_svc
+        MockArtifactSvc.guess_mime_type.side_effect = (
+            lambda path: mimetypes.guess_type(path)[0] or "application/octet-stream"
+        )
+
+        job = _make_job()
+        profile = _make_profile()
+        mock_task = MagicMock()
+        mock_db = AsyncMock()
+
+        with patch("app.workers.sandbox_job_worker._load_job", return_value=job), \
+             patch("app.workers.sandbox_job_worker._load_profile", return_value=profile), \
+             patch("app.workers.sandbox_job_worker._get_db_session") as mock_get_db, \
+             patch("app.workers.sandbox_job_worker._update_job_status") as mock_update:
+
+            mock_get_db.return_value.__aenter__ = AsyncMock(return_value=mock_db)
+            mock_get_db.return_value.__aexit__ = AsyncMock(return_value=None)
+
+            result = await _execute_sandbox_job_async(mock_task, "job-123")
+
+        assert result["status"] == "failed"
+        mock_db.rollback.assert_awaited()
+        failed_updates = [call for call in mock_update.call_args_list if len(call.args) >= 3 and call.args[2] == "failed"]
+        assert failed_updates, "expected worker to update failed status after artifact persistence errors"
 
     @pytest.mark.asyncio
     async def test_no_retry_on_policy_denied(self):
@@ -441,3 +647,81 @@ class TestWorkerSessionReuse:
         assert mock_run_cmd.call_count == 1
         # Two commands executed in the same sandbox via docker bridge fallback.
         assert mock_bridge_run_cmd.call_count == 2
+
+
+class TestWorkerRuntimeOverrides:
+    """Worker applies per-job timeout overrides without exceeding the profile cap."""
+
+    def test_resolve_runtime_timeout_seconds_caps_override_by_profile_limit(self):
+        profile = _make_profile()
+        profile.timeout_seconds = 300
+
+        assert _resolve_runtime_timeout_seconds({}, profile) == 300
+        assert _resolve_runtime_timeout_seconds(
+            {"metadata": {"runtimeOverrides": {"timeoutSeconds": 120}}},
+            profile,
+        ) == 120
+        assert _resolve_runtime_timeout_seconds(
+            {"metadata": {"runtimeOverrides": {"timeoutSeconds": 600}}},
+            profile,
+        ) == 300
+        assert _resolve_runtime_timeout_seconds(
+            {"metadata": {"runtimeOverrides": {"timeoutSeconds": "bad"}}},
+            profile,
+        ) == 300
+
+    @pytest.mark.asyncio
+    @patch("app.workers.sandbox_job_worker.SandboxCostService")
+    @patch("app.workers.sandbox_job_worker.SandboxAuditService")
+    @patch("app.workers.sandbox_job_worker.SandboxArtifactService")
+    @patch("app.workers.sandbox_job_worker.collect_outputs")
+    @patch("app.workers.sandbox_job_worker.stage_inputs")
+    @patch("app.workers.sandbox_job_worker.run_command")
+    @patch("app.workers.sandbox_job_worker.SandboxLifecycleManager")
+    async def test_worker_uses_runtime_override_timeout_for_commands(
+        self,
+        MockLifecycle,
+        mock_run_cmd,
+        mock_stage,
+        mock_collect,
+        MockArtifactSvc,
+        MockAuditSvc,
+        MockCostSvc,
+    ):
+        lifecycle = AsyncMock()
+        lifecycle.provision_sandbox.return_value = "sandbox-abc"
+        MockLifecycle.return_value = lifecycle
+
+        mock_run_cmd.return_value = _make_command_result()
+        mock_stage.return_value = []
+        mock_collect.return_value = []
+
+        cost_svc = AsyncMock()
+        cost_svc.calculate_actual.return_value = 0.01
+        MockCostSvc.return_value = cost_svc
+        MockAuditSvc.return_value = MagicMock()
+        MockArtifactSvc.return_value = AsyncMock()
+
+        job = _make_job(
+            input_manifest_json={
+                "commands": ["echo hello"],
+                "output_paths": [],
+                "metadata": {"runtimeOverrides": {"timeoutSeconds": 120}},
+            }
+        )
+        profile = _make_profile()
+        profile.timeout_seconds = 300
+        mock_task = MagicMock()
+
+        with patch("app.workers.sandbox_job_worker._load_job", return_value=job), \
+             patch("app.workers.sandbox_job_worker._load_profile", return_value=profile), \
+             patch("app.workers.sandbox_job_worker._get_db_session") as mock_get_db, \
+             patch("app.workers.sandbox_job_worker._update_job_status"):
+            mock_get_db.return_value.__aenter__ = AsyncMock(return_value=AsyncMock())
+            mock_get_db.return_value.__aexit__ = AsyncMock(return_value=None)
+
+            result = await _execute_sandbox_job_async(mock_task, "job-123")
+
+        assert result["status"] == "completed"
+        mock_run_cmd.assert_called_once()
+        assert mock_run_cmd.call_args.kwargs["timeout"] == 120

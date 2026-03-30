@@ -39,8 +39,20 @@
       "description": "Programming language for the skill implementation",
       "enumDescriptions": {
         "python": "Python — best for math, NLP, data processing, algorithms",
-        "javascript": "JavaScript/Node.js — best for async ops, JSON transformation, templating",
+        "javascript": "JavaScript/Node.js — best for JSON/object structure, schema pipelines, APIs, templating, and web automation",
         "auto": "Let ISC choose the best language automatically"
+      }
+    },
+
+    "javascript_runtime": {
+      "type": "string",
+      "enum": ["auto", "classic", "genjs"],
+      "default": "auto",
+      "description": "Runtime profile used when skill_language is javascript",
+      "enumDescriptions": {
+        "auto": "Let ISC choose between classic JS and GenJS based on task complexity",
+        "classic": "Classic CommonJS respond() skill at js/skill.js",
+        "genjs": "Modern Node.js ESM sandbox-command bundle with skill.manifest.json + src/index.mjs for complex JSON, schema, prompt-pipeline, API, web-stack, artifact, and orchestration work"
       }
     },
 
@@ -238,6 +250,14 @@
       "mode": "create",
       "description": "A skill that generates a professional weekly schedule in multiple formats (JSON, Markdown table, plain text) given a list of tasks with priorities and time estimates",
       "skill_language": "javascript",
+      "javascript_runtime": "genjs",
+      "complexity": "complex"
+    },
+    {
+      "mode": "create",
+      "description": "A Node.js skill that converts structured slide JSON into a PowerPoint draft using a schema-driven prompt pipeline and PptxGenJS-ready object mapping",
+      "skill_language": "javascript",
+      "javascript_runtime": "genjs",
       "complexity": "complex"
     },
     {

@@ -55,9 +55,10 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AgencyTemplateModal } from "@/components/agency/AgencyTemplateModal";
-import { formatPublishingReadiness, type SocialPublishingPageOption } from "@/types/social";
+import { type SocialPublishingPageOption } from "@/types/social";
 import type { HybridOrchestrationPlan, HybridPlanPayload } from "@shared/orchestration/hybridOrchestration";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
+import { LocaleToggle } from "@/components/LocaleToggle";
 
 interface AgencyItem {
   id: string;
@@ -76,12 +77,15 @@ interface AgencyItem {
   rejectionReason?: string | null;
 }
 
-function buildAgencyHybridPreviewPayload(agency: AgencyItem): HybridPlanPayload {
+function buildAgencyHybridPreviewPayload(
+  agency: AgencyItem,
+  t: (key: string, params?: Record<string, string | number>) => string,
+): HybridPlanPayload {
   const description = agency.description?.trim();
   const draft = [
-    `Design a hybrid orchestration for ${agency.name}.`,
-    description ? `Context: ${description}` : null,
-    "Use workflow for control and commit safety, and use the swarm for parallel reasoning and critique.",
+    t("browser.hybridDraft.intro", { name: agency.name }),
+    description ? t("browser.hybridDraft.context", { description }) : null,
+    t("browser.hybridDraft.cooperative"),
   ]
     .filter((part): part is string => Boolean(part))
     .join(" ");
@@ -89,7 +93,7 @@ function buildAgencyHybridPreviewPayload(agency: AgencyItem): HybridPlanPayload 
   const plan: HybridOrchestrationPlan = {
     mode: "hybrid",
     blendMode: "balanced-mixed",
-    summary: `Starter hybrid blueprint for ${agency.name}.`,
+    summary: t("browser.hybridDraft.summary", { name: agency.name }),
     workflowAnchor: "workflow-planner",
     swarmRoles: ["explorer", "critic", "synthesizer"],
     requiresApproval: true,
@@ -99,52 +103,99 @@ function buildAgencyHybridPreviewPayload(agency: AgencyItem): HybridPlanPayload 
         id: "workflow-intake",
         type: "intake",
         owner: "workflow",
-        title: "Lock scope and constraints",
-        description: "Turn the agency request into a deterministic brief and acceptance criteria.",
-        inputs: ["user message", "agency context"],
-        outputs: ["orchestration brief", "acceptance criteria"],
+        title: t("browser.hybridDraft.stages.workflowIntake.title"),
+        description: t("browser.hybridDraft.stages.workflowIntake.description"),
+        inputs: [
+          t("browser.hybridDraft.values.userMessage"),
+          t("browser.hybridDraft.values.agencyContext"),
+        ],
+        outputs: [
+          t("browser.hybridDraft.values.orchestrationBrief"),
+          t("browser.hybridDraft.values.acceptanceCriteria"),
+        ],
       },
       {
         id: "swarm-explore",
         type: "explore",
         owner: "swarm",
-        title: "Explore alternatives in parallel",
-        description: "Generate options, critique trade-offs, and surface edge cases.",
-        inputs: ["orchestration brief"],
-        outputs: ["option set", "risks", "recommended path"],
+        title: t("browser.hybridDraft.stages.swarmExplore.title"),
+        description: t("browser.hybridDraft.stages.swarmExplore.description"),
+        inputs: [t("browser.hybridDraft.values.orchestrationBrief")],
+        outputs: [
+          t("browser.hybridDraft.values.optionSet"),
+          t("browser.hybridDraft.values.risks"),
+          t("browser.hybridDraft.values.recommendedPath"),
+        ],
       },
       {
         id: "workflow-validate",
         type: "validate",
         owner: "workflow",
-        title: "Validate and reconcile",
-        description: "Merge the strongest option into a commit-ready plan.",
-        inputs: ["option set", "risks", "recommended path"],
-        outputs: ["validated execution plan", "guardrail checks"],
+        title: t("browser.hybridDraft.stages.workflowValidate.title"),
+        description: t("browser.hybridDraft.stages.workflowValidate.description"),
+        inputs: [
+          t("browser.hybridDraft.values.optionSet"),
+          t("browser.hybridDraft.values.risks"),
+          t("browser.hybridDraft.values.recommendedPath"),
+        ],
+        outputs: [
+          t("browser.hybridDraft.values.validatedExecutionPlan"),
+          t("browser.hybridDraft.values.guardrailChecks"),
+        ],
       },
       {
         id: "human-approval",
         type: "approval",
         owner: "human",
-        title: "Approve or adjust",
-        description: "Review the proposal before execution.",
-        inputs: ["validated execution plan", "guardrail checks"],
-        outputs: ["approval decision"],
+        title: t("browser.hybridDraft.stages.humanApproval.title"),
+        description: t("browser.hybridDraft.stages.humanApproval.description"),
+        inputs: [
+          t("browser.hybridDraft.values.validatedExecutionPlan"),
+          t("browser.hybridDraft.values.guardrailChecks"),
+        ],
+        outputs: [t("browser.hybridDraft.values.approvalDecision")],
         gate: "required",
       },
       {
         id: "workflow-commit",
         type: "commit",
         owner: "workflow",
-        title: "Commit the final action",
-        description: "Execute the approved plan and record the result.",
-        inputs: ["approval decision"],
-        outputs: ["published result", "audit record"],
+        title: t("browser.hybridDraft.stages.workflowCommit.title"),
+        description: t("browser.hybridDraft.stages.workflowCommit.description"),
+        inputs: [t("browser.hybridDraft.values.approvalDecision")],
+        outputs: [
+          t("browser.hybridDraft.values.publishedResult"),
+          t("browser.hybridDraft.values.auditRecord"),
+        ],
       },
     ],
   };
 
   return { draft, plan };
+}
+
+function formatPublishingReadinessLabel(
+  code: SocialPublishingPageOption["publishingIssueCode"] | null | undefined,
+  t: (key: string, params?: Record<string, string | number>) => string,
+): string {
+  switch (code) {
+    case "ready":
+      return t("browser.social.readiness.ready");
+    case "page_inactive":
+      return t("browser.social.readiness.pageInactive");
+    case "publishing_disabled":
+      return t("browser.social.readiness.publishingDisabled");
+    case "missing_page_access":
+      return t("browser.social.readiness.pageAccessMissing");
+    case "expired_page_access":
+      return t("browser.social.readiness.pageAccessExpired");
+    case "missing_provider_access":
+      return t("browser.social.readiness.providerAccessMissing");
+    case "expired_provider_access":
+      return t("browser.social.readiness.providerAccessExpired");
+    default:
+      return t("browser.social.readiness.notReady");
+  }
 }
 
 const STATUS_STYLES: Record<string, string> = {
@@ -262,7 +313,7 @@ function AgencyShareDialog({
         {/* Currently shared groups */}
         {loadingShared ? (
           <div className="flex items-center gap-2 py-3 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" /> Loading...
+            <Loader2 className="h-4 w-4 animate-spin" /> {t("browser.loading")}
           </div>
         ) : sharedGroups.length > 0 ? (
           <div className="space-y-1.5">
@@ -409,7 +460,7 @@ export default function AgencyBrowser() {
   const handleOpenHybridPreview = (agency: AgencyItem) => {
     void (async () => {
       try {
-        const payload = buildAgencyHybridPreviewPayload(agency);
+        const payload = buildAgencyHybridPreviewPayload(agency, t);
         const result = await createHybridPreviewTokenMutation.mutateAsync({
           agencyId: agency.id,
           payload,
@@ -479,7 +530,7 @@ export default function AgencyBrowser() {
       detail: t("browser.social.pagesNeedAccess", { count: blockedPages.length }),
       tone: "bg-amber-100 text-amber-700 border-amber-200",
       title: blockedPages
-        .map((page) => `${page.label}: ${formatPublishingReadiness(page.publishingIssueCode)}`)
+        .map((page) => `${page.label}: ${formatPublishingReadinessLabel(page.publishingIssueCode, t)}`)
         .join(" • "),
     };
   })();
@@ -519,6 +570,7 @@ export default function AgencyBrowser() {
                 <Users className="h-3 w-3" />
                 {t("browser.header.teamsCount", { count: agencyList.length })}
               </Badge>
+              <LocaleToggle className="hidden lg:inline-flex" />
               <Button
                 variant="outline"
                 onClick={() => setLocation("/agencies/marketplace")}
@@ -608,7 +660,7 @@ export default function AgencyBrowser() {
                         STATUS_STYLES[agency.status || ""] || "",
                       )}
                     >
-                      {agency.status || "draft"}
+                      {t(`browser.status.${agency.status || "draft"}`)}
                     </Badge>
                   </div>
 
@@ -649,7 +701,7 @@ export default function AgencyBrowser() {
                           <TooltipTrigger asChild>
                             <span className="inline-flex items-center gap-1 text-[10px] text-red-600 cursor-help">
                               <AlertTriangle className="h-3 w-3" />
-                              View reason
+                              {t("browser.card.viewReason")}
                             </span>
                           </TooltipTrigger>
                           <TooltipContent side="bottom" className="max-w-xs">
@@ -674,9 +726,9 @@ export default function AgencyBrowser() {
                       </div>
                       <div className="min-w-0">
                         <p className="text-xs font-semibold text-amber-800">
-                          {agency.visibility === "rejected" ? "Re-submit for Approval" : "Request Public Publish"}
+                          {agency.visibility === "rejected" ? t("browser.card.reSubmit") : t("browser.card.requestPublish")}
                         </p>
-                        <p className="text-[10px] text-amber-600 leading-tight">Submit to Marketplace for admin review</p>
+                        <p className="text-[10px] text-amber-600 leading-tight">{t("browser.card.submitToMarketplace")}</p>
                       </div>
                     </button>
                   )}
@@ -686,7 +738,7 @@ export default function AgencyBrowser() {
                     <div className="flex items-center justify-between mb-3 px-3 py-2 rounded-lg border border-amber-200 bg-amber-50/80">
                       <div className="flex items-center gap-2">
                         <Loader2 className="h-3.5 w-3.5 text-amber-600 animate-spin" />
-                        <span className="text-xs font-medium text-amber-700">Awaiting admin review...</span>
+                        <span className="text-xs font-medium text-amber-700">{t("browser.card.awaitingReview")}</span>
                       </div>
                       <button
                         className="text-[10px] font-medium text-amber-600 hover:text-amber-800 underline"
@@ -696,7 +748,7 @@ export default function AgencyBrowser() {
                           cancelPublishMutation.mutate({ agencyId: agency.id });
                         }}
                       >
-                        Cancel
+                        {t("browser.card.cancel")}
                       </button>
                     </div>
                   )}
@@ -713,7 +765,7 @@ export default function AgencyBrowser() {
                     >
                       <span className="flex items-center gap-2">
                         <Sparkles className="h-3.5 w-3.5" />
-                        Evaluate Agency
+                        {t("browser.card.evaluateAgency")}
                       </span>
                       <ChevronRight className="h-4 w-4" />
                     </Button>
@@ -732,7 +784,7 @@ export default function AgencyBrowser() {
                     >
                       <span className="flex items-center gap-2">
                         <Sparkles className="h-3.5 w-3.5" />
-                        Hybrid Orchestrate
+                        {t("browser.card.hybridOrchestrate")}
                       </span>
                       <ChevronRight className="h-4 w-4" />
                     </Button>
@@ -751,7 +803,7 @@ export default function AgencyBrowser() {
                     >
                       <span className="flex items-center gap-2">
                         <RefreshCw className="h-3.5 w-3.5" />
-                        Regenerate Preview Token
+                        {t("browser.card.regeneratePreviewToken")}
                       </span>
                       <ChevronRight className="h-4 w-4" />
                     </Button>
@@ -762,7 +814,7 @@ export default function AgencyBrowser() {
                     <div className="flex items-center gap-3 text-xs font-medium text-slate-500 bg-slate-50 px-2 py-1.5 rounded-md">
                       <span className="flex items-center gap-1.5">
                         <Users className="h-3.5 w-3.5" />
-                        {agency.agentCount ?? 0} agents
+                        {t("browser.card.agentsCount", { count: agency.agentCount ?? 0 })}
                       </span>
                     </div>
 
@@ -776,7 +828,7 @@ export default function AgencyBrowser() {
                             e.stopPropagation();
                             setLocation(`/agencies/${agency.id}`);
                           }}
-                          title="Chat with agency"
+                          title={t("browser.card.chatTitle")}
                         >
                           <MessageSquare className="h-3.5 w-3.5" />
                         </Button>
@@ -791,7 +843,7 @@ export default function AgencyBrowser() {
                               e.stopPropagation();
                               setLocation(`/agencies/${agency.id}/review`);
                             }}
-                            title="Open review center"
+                            title={t("browser.card.reviewTitle")}
                           >
                             <Sparkles className="h-3.5 w-3.5" />
                           </Button>
@@ -803,7 +855,7 @@ export default function AgencyBrowser() {
                               e.stopPropagation();
                               setShareTarget({ id: agency.id, name: agency.name });
                             }}
-                            title="Share agency"
+                            title={t("browser.card.shareTitle")}
                           >
                             <Share2 className="h-3.5 w-3.5" />
                           </Button>
@@ -815,7 +867,7 @@ export default function AgencyBrowser() {
                               e.stopPropagation();
                               setLocation(`/agencies/${agency.id}/edit`);
                             }}
-                            title="Edit agency"
+                            title={t("browser.card.editTitle")}
                           >
                             <Edit className="h-3.5 w-3.5" />
                           </Button>
@@ -827,7 +879,7 @@ export default function AgencyBrowser() {
                               e.stopPropagation();
                               setDeleteTarget({ id: agency.id, name: agency.name });
                             }}
-                            title="Delete agency"
+                            title={t("browser.card.deleteTitle")}
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>
@@ -856,13 +908,13 @@ export default function AgencyBrowser() {
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Agency</AlertDialogTitle>
+            <AlertDialogTitle>{t("browser.delete.title")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete <strong>{deleteTarget?.name}</strong>? This will archive the agency and it will no longer appear in your list.
+              {t("browser.delete.description", { name: deleteTarget?.name })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleteMutation.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleteMutation.isPending}>{t("browser.card.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-red-600 hover:bg-red-700 text-white"
               disabled={deleteMutation.isPending}
@@ -877,7 +929,7 @@ export default function AgencyBrowser() {
               ) : (
                 <Trash2 className="mr-2 h-4 w-4" />
               )}
-              Delete
+              {t("browser.delete.confirm")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -887,29 +939,29 @@ export default function AgencyBrowser() {
       <AlertDialog open={!!publishTarget} onOpenChange={(open) => { if (!open) setPublishTarget(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Request Public Publishing</AlertDialogTitle>
+            <AlertDialogTitle>{t("browser.publish.title")}</AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-3">
                 <p>
-                  Submit <strong>{publishTarget?.name}</strong> for admin review to be published on the public marketplace.
+                  {t("browser.publish.submitName", { name: publishTarget?.name })}
                 </p>
                 <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800 space-y-1.5">
                   <p className="font-medium flex items-center gap-1.5">
                     <AlertTriangle className="h-4 w-4" />
-                    What happens next:
+                    {t("browser.publish.whatNext")}
                   </p>
                   <ul className="list-disc pl-5 space-y-0.5 text-xs">
-                    <li>An admin will review your agency for quality and compliance</li>
-                    <li>If approved, it will appear on the public Agencies Marketplace</li>
-                    <li>Creator fee: <strong>{publishTarget?.creatorFee ?? 0} credits</strong> per use</li>
-                    <li>You&apos;ll be notified of the decision</li>
+                    <li>{t("browser.publish.reviewNote")}</li>
+                    <li>{t("browser.publish.approvedNote")}</li>
+                    <li>{t("browser.publish.creatorFee", { fee: publishTarget?.creatorFee ?? 0 })}</li>
+                    <li>{t("browser.publish.notifiedNote")}</li>
                   </ul>
                 </div>
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={requestPublishMutation.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={requestPublishMutation.isPending}>{t("browser.card.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-amber-600 hover:bg-amber-700 text-white"
               disabled={requestPublishMutation.isPending}
@@ -924,7 +976,7 @@ export default function AgencyBrowser() {
               ) : (
                 <Send className="mr-2 h-4 w-4" />
               )}
-              Submit for Review
+              {t("browser.publish.confirm")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

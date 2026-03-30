@@ -1,6 +1,7 @@
 """Sandbox Artifact Service — upload outputs, checksums, DB records, signed URLs."""
 
 import hashlib
+import mimetypes
 from typing import Any, List, Optional
 
 import structlog
@@ -66,6 +67,44 @@ class SandboxArtifactService:
 
         return artifact
 
+    async def record_existing(
+        self,
+        sandbox_job_id: str,
+        object_key: str,
+        *,
+        artifact_type: str = "primary",
+        mime_type: Optional[str] = None,
+        size_bytes: Optional[int] = None,
+        sha256: Optional[str] = None,
+        is_primary: Optional[bool] = None,
+        metadata: Optional[dict] = None,
+    ) -> SandboxArtifact:
+        """Create a DB record for an artifact that has already been uploaded."""
+        resolved_mime_type = mime_type or self.guess_mime_type(object_key)
+        artifact = SandboxArtifact(
+            sandbox_job_id=sandbox_job_id,
+            artifact_type=artifact_type,
+            object_key=object_key,
+            mime_type=resolved_mime_type,
+            size_bytes=size_bytes,
+            sha256=sha256,
+            is_primary=(artifact_type == "primary") if is_primary is None else bool(is_primary),
+            metadata_json=metadata,
+        )
+
+        self.db.add(artifact)
+        await self.db.commit()
+
+        logger.info(
+            "sandbox_artifact_recorded_existing",
+            sandbox_job_id=sandbox_job_id,
+            object_key=object_key,
+            size_bytes=size_bytes,
+            sha256=sha256,
+        )
+
+        return artifact
+
     async def generate_signed_url(
         self, artifact_id: int, tenant_id: str, ttl_seconds: int = SIGNED_URL_TTL_SECONDS
     ) -> str:
@@ -113,5 +152,11 @@ class SandboxArtifactService:
     def _compute_sha256(data: bytes) -> str:
         """Compute SHA-256 hex digest."""
         return hashlib.sha256(data).hexdigest()
+
+    @staticmethod
+    def guess_mime_type(path: str) -> str:
+        """Infer MIME type from object key or filename."""
+        mime_type, _ = mimetypes.guess_type(path)
+        return mime_type or "application/octet-stream"
 # mypy: ignore-errors
 # mypy: ignore-errors

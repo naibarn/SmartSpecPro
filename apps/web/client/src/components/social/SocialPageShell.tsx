@@ -9,15 +9,17 @@ import {
 } from "lucide-react";
 import { useLocation } from "wouter";
 
+import { LocaleToggle } from "@/components/LocaleToggle";
 import { SocialBackButton } from "@/components/social/SocialBackButton";
 import { cn } from "@/lib/utils";
+import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 
 const SOCIAL_NAV_ITEMS = [
-  { label: "Channels", path: "/social/channels", icon: Facebook },
-  { label: "Inbox", path: "/social/inbox", icon: MessageCircle },
-  { label: "Publishing", path: "/social/publishing", icon: Megaphone },
-  { label: "Moderation", path: "/social/moderation", icon: ShieldAlert },
-  { label: "Automation", path: "/social/automation", icon: Workflow },
+  { labelKey: "shell.nav.channels", path: "/social/channels", icon: Facebook },
+  { labelKey: "shell.nav.inbox", path: "/social/inbox", icon: MessageCircle },
+  { labelKey: "shell.nav.publishing", path: "/social/publishing", icon: Megaphone },
+  { labelKey: "shell.nav.moderation", path: "/social/moderation", icon: ShieldAlert },
+  { labelKey: "shell.nav.automation", path: "/social/automation", icon: Workflow },
 ] as const;
 
 type SocialPageShellProps = {
@@ -81,6 +83,7 @@ export function SocialPageShell({
   hero,
   children,
 }: SocialPageShellProps) {
+  const { t } = useScopedTranslation("social");
   const [location, setLocation] = useLocation();
   const theme = TONE_STYLES[tone];
   const accentBarClass = {
@@ -124,6 +127,7 @@ export function SocialPageShell({
               {actions}
             </div>
           ) : null}
+          <LocaleToggle className="hidden sm:inline-flex" />
         </div>
       </header>
 
@@ -131,7 +135,7 @@ export function SocialPageShell({
         <div className="mx-auto w-full max-w-[1600px] px-4 py-4">
           <div className="flex flex-wrap items-center gap-2">
             <span className="mr-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-              Social Workspace
+              {t("shell.workspace")}
             </span>
             {SOCIAL_NAV_ITEMS.map((item) => {
               const isActive = location === item.path;
@@ -148,7 +152,7 @@ export function SocialPageShell({
                   )}
                 >
                   <item.icon className="h-4 w-4" />
-                  {item.label}
+                  {t(item.labelKey)}
                 </button>
               );
             })}

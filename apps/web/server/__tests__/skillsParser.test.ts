@@ -7,6 +7,12 @@ describe("skills parser", () => {
     expect(mapCategoryToEnum("totally-unknown")).toBe("other");
   });
 
+  it("recognizes slide generation as a first-class category", () => {
+    expect(mapCategoryToEnum("slide_generation")).toBe("slide_generation");
+    expect(mapCategoryToEnum("slide-generation")).toBe("slide_generation");
+    expect(categoryToSkillType("slide_generation")).toBe("chat-assistant");
+  });
+
   it("treats unknown categories as generic chat skills instead of prompt skills", () => {
     expect(categoryToSkillType("other")).toBe("chat-assistant");
     expect(categoryToSkillType("totally-unknown")).toBe("chat-assistant");

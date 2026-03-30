@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DashboardCard } from "@/components/dashboard";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
@@ -776,8 +776,8 @@ export default function SocialAutomation() {
       hero={hero}
     >
         {selectedPage?.aiActionMode === "off" ? (
-          <Card className="border-amber-200 bg-amber-50 text-amber-900">
-            <CardContent className="flex items-start gap-3 p-4">
+          <DashboardCard className="border-amber-200 bg-amber-50 text-amber-900">
+            <div className="flex items-start gap-3 p-4">
               <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
               <div>
                 <h2 className="font-semibold">Automation is disabled for this channel</h2>
@@ -785,14 +785,14 @@ export default function SocialAutomation() {
                   The selected channel is currently set to <code>off</code>. Rules can still be edited, but they will not execute until the channel is re-enabled.
                 </p>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </DashboardCard>
         ) : null}
 
-        <Card className="border-slate-200/80 bg-white/85 shadow-lg shadow-slate-200/60 backdrop-blur">
-          <CardHeader className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <DashboardCard className="border-slate-200/80 bg-white/85 shadow-lg shadow-slate-200/60 backdrop-blur">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <CardTitle className="text-lg text-slate-900">Automation Rules</CardTitle>
+              <h3 className="text-lg text-slate-900">Automation Rules</h3>
               <p className="mt-1 text-sm text-slate-500">
                 Build broad rules that can be extended to other social providers later without changing the core model.
               </p>
@@ -801,8 +801,8 @@ export default function SocialAutomation() {
               <Plus className="h-4 w-4" />
               Add Rule
             </Button>
-          </CardHeader>
-          <CardContent className="border-t border-slate-100 pt-5">
+          </div>
+          <div className="border-t border-slate-100 pt-5">
             {rules.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 p-8 text-center text-sm text-slate-500">
                 No automation rules yet.
@@ -905,14 +905,14 @@ export default function SocialAutomation() {
                 </table>
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </DashboardCard>
 
-        <Card className="border-slate-200/80 bg-white/85 shadow-lg shadow-slate-200/60 backdrop-blur">
-          <CardHeader className="space-y-4">
+        <DashboardCard className="border-slate-200/80 bg-white/85 shadow-lg shadow-slate-200/60 backdrop-blur">
+          <div className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
-                <CardTitle className="text-lg text-slate-900">Approval Queue</CardTitle>
+                <h3 className="text-lg text-slate-900">Approval Queue</h3>
                 <p className="mt-1 text-sm text-slate-500">
                   Review AI-generated actions before they are sent or published.
                 </p>
@@ -931,9 +931,9 @@ export default function SocialAutomation() {
                 <TabsTrigger value="all" className="rounded-xl">All</TabsTrigger>
               </TabsList>
             </Tabs>
-          </CardHeader>
+          </div>
 
-          <CardContent className="border-t border-slate-100 pt-5">
+          <div className="border-t border-slate-100 pt-5">
             {approvals.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 p-8 text-center text-sm text-slate-500">
                 No approvals in this view.
@@ -1025,8 +1025,8 @@ export default function SocialAutomation() {
                 ) : null}
               </>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </DashboardCard>
       <RuleDialog
         open={ruleDialogOpen}
         mode={ruleDialogMode}

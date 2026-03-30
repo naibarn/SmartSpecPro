@@ -419,7 +419,22 @@ export async function executeWithFallback(params: {
         recordSuccess(candidate.providerId);
 
         const parseStart = Date.now();
-        const data = await response.json();
+        let responseText = "";
+        if (typeof response.text === "function") {
+          responseText = await response.text();
+        } else if (typeof response.json === "function") {
+          responseText = JSON.stringify(await response.json());
+        }
+        let data: any;
+        try {
+          data = responseText ? JSON.parse(responseText) : {};
+        } catch {
+          const contentType = response.headers?.get?.("content-type") || "unknown";
+          const responsePreview = compactText(responseText.replace(/\s+/g, " "), 240);
+          throw new Error(
+            `Provider returned ${contentType.includes("json") ? "malformed JSON" : "non-JSON response"} (${contentType})${responsePreview ? `: ${responsePreview}` : ""}`,
+          );
+        }
         const parseMs = Date.now() - parseStart;
         const inputTokens = data?.usage?.prompt_tokens ?? 0;
         const outputTokens = data?.usage?.completion_tokens ?? 0;

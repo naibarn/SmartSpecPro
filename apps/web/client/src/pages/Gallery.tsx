@@ -16,7 +16,7 @@ import { useState, useMemo, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatDate } from '@smartspec/shared';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { DashboardCard } from '@/components/dashboard';
 import { Input } from '@/components/ui/input';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
@@ -448,7 +448,7 @@ export default function Gallery() {
                       layout
                       layoutId={`gallery-item-${item.id}`}
                     >
-                      <Card 
+                      <DashboardCard
                         className="group cursor-pointer overflow-hidden hover:shadow-xl transition-all duration-300"
                         onClick={() => handleItemClick(item)}
                       >
@@ -571,7 +571,7 @@ export default function Gallery() {
                         </div>
 
                         {/* Content */}
-                        <CardContent className="p-4">
+                        <div className="p-4">
                           <h3 className="font-semibold truncate mb-1">{item.title}</h3>
 
                           {/* Author */}
@@ -611,8 +611,8 @@ export default function Gallery() {
                               </span>
                             )}
                           </div>
-                        </CardContent>
-                      </Card>
+                        </div>
+                      </DashboardCard>
                     </motion.div>
                   ))}
                 </AnimatePresence>

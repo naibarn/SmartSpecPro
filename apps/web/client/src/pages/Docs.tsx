@@ -8,7 +8,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'wouter';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { DashboardCard } from '@/components/dashboard';
 import { Input } from '@/components/ui/input';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
@@ -323,8 +323,8 @@ export default function Docs() {
                 transition={{ delay: index * 0.1 }}
               >
                 <Link href={link.href} className="block h-full no-underline">
-                  <Card className="glass-card h-full hover:shadow-xl transition-all duration-300 group cursor-pointer">
-                    <CardContent className="p-6">
+                  <DashboardCard className="glass-card h-full hover:shadow-xl transition-all duration-300 group cursor-pointer">
+                    <div className="p-6">
                       <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${link.color} flex items-center justify-center mb-4`}>
                         <link.icon className="w-6 h-6 text-white" />
                       </div>
@@ -336,8 +336,8 @@ export default function Docs() {
                         Learn more
                         <ArrowRight className="ml-1 w-4 h-4 group-hover:translate-x-1 transition-transform" />
                       </span>
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </DashboardCard>
                 </Link>
               </motion.div>
             ))}
@@ -480,8 +480,8 @@ export default function Docs() {
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.1 }}
               >
-                <Card className="glass-card h-full hover:shadow-lg transition-shadow cursor-pointer group">
-                  <CardContent className="p-6">
+                <DashboardCard className="glass-card h-full hover:shadow-lg transition-shadow cursor-pointer group">
+                  <div className="p-6">
                     <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
                       <article.icon className="w-5 h-5 text-primary" />
                     </div>
@@ -490,8 +490,8 @@ export default function Docs() {
                     </h3>
                     <p className="text-sm text-muted-foreground mb-3">{article.description}</p>
                     <span className="text-xs text-muted-foreground">{article.readTime} read</span>
-                  </CardContent>
-                </Card>
+                  </div>
+                </DashboardCard>
               </motion.div>
             ))}
           </div>

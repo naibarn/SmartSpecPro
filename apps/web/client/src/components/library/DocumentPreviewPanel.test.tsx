@@ -1,7 +1,7 @@
 /**
  * @vitest-environment jsdom
  */
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const getItemSharesMock = vi.fn(() => ({
@@ -88,11 +88,12 @@ function renderPreview(previewType: "image" | "video") {
       previewType={previewType}
       previewText="Preview text"
       documentId={1}
+      shareUrl="https://example.com/document-management?scope=my_library&sort=updated_desc&mode=editor&doc=1"
     />,
   );
 }
 
-function renderMarkdownPreview() {
+function renderMarkdownPreview(shareUrl?: string) {
   return render(
     <DocumentPreviewPanel
       item={{
@@ -106,6 +107,7 @@ function renderMarkdownPreview() {
       previewType="markdown"
       markdownValue="# Notes"
       documentId={1}
+      shareUrl={shareUrl}
     />,
   );
 }
@@ -113,6 +115,12 @@ function renderMarkdownPreview() {
 describe("DocumentPreviewPanel media previews", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    Object.defineProperty(navigator, "clipboard", {
+      value: {
+        writeText: vi.fn().mockResolvedValue(undefined),
+      },
+      configurable: true,
+    });
     getItemSharesMock.mockReturnValue({ data: { shares: [] } });
     processingMetaMock.mockReturnValue({
       label: "Ready",
@@ -130,6 +138,7 @@ describe("DocumentPreviewPanel media previews", () => {
       expect(screen.getByTestId("media-preview-body").className).toContain("overflow-hidden");
       expect(screen.getByRole("button", { name: /enter fullscreen preview/i })).toBeTruthy();
       expect(screen.getByTestId("share-button").getAttribute("data-compact")).toBe("true");
+      expect(screen.getByRole("button", { name: /copy link/i })).toBeTruthy();
       expect(screen.getByTestId("version-history").getAttribute("data-compact")).toBe("true");
       expect(screen.queryByText("Should be hidden for media previews")).toBeNull();
       expect(screen.queryByText("Metadata Search")).toBeNull();
@@ -137,10 +146,26 @@ describe("DocumentPreviewPanel media previews", () => {
   );
 
   it("renders a markdown download/export heading in the editor header", async () => {
-    renderMarkdownPreview();
+    renderMarkdownPreview("https://example.com/document-management?scope=my_library&sort=updated_desc&mode=editor&doc=1");
 
     expect(await screen.findByText("ดาวน์โหลด Markdown", { selector: "div" })).toBeTruthy();
     expect(screen.getByLabelText(/ดาวน์โหลดไฟล์ markdown ต้นฉบับ/i)).toBeTruthy();
     expect(screen.getByLabelText(/ส่งออก markdown/i)).toBeTruthy();
+    expect(screen.getByRole("button", { name: /copy link/i })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: /copy link/i }));
+    await waitFor(() => {
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+        "https://example.com/document-management?scope=my_library&sort=updated_desc&mode=editor&doc=1",
+      );
+    });
+    expect(screen.getByRole("button", { name: /link copied/i })).toBeTruthy();
+  });
+
+  it("shows share button even before a public link exists", () => {
+    renderMarkdownPreview("");
+
+    expect(screen.getByTestId("share-button")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /copy link/i })).toBeNull();
   });
 });

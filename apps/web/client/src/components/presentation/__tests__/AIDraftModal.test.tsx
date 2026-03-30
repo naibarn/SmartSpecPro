@@ -737,6 +737,38 @@ describe("G.3 Progress View", () => {
     expect(screen.getByPlaceholderText(/describe/i)).toBeInTheDocument();
   });
 
+  it("shows error phase detail when save fails after media completes", () => {
+    localStorage.setItem("smartspec_aiDraft_articleSkill", "general-article-writer");
+    mockGenerateDraftMutate.mockImplementation(
+      (_input: unknown, opts?: { onSuccess?: (data: { taskId: string }) => void }) => {
+        opts?.onSuccess?.({ taskId: "draft-task-save-error" });
+      },
+    );
+    mockGetDraftProgressData.current = {
+      phase: 7,
+      phaseLabel: "Saving slides failed",
+      phaseDetail: "Media completed for 5/5 slide(s); the failure happened while validating and saving the generated slide payload.",
+      slidesCompleted: 5,
+      totalSlides: 5,
+      slidePreview: [],
+      completed: true,
+      error: {
+        code: "AI_GENERATION_FAILED",
+        message: "Media finished for 5/5 slide(s), but saving slide 1 failed validation. aiDesign.selectionReason: String must contain at most 512 character(s)",
+      },
+    };
+    render(<AIDraftModal {...defaultProps} />);
+    fireEvent.change(screen.getByPlaceholderText(/describe/i), {
+      target: { value: "Thai parenting slides" },
+    });
+
+    expect(screen.getByRole("button", { name: /generate/i })).toBeEnabled();
+    fireEvent.click(screen.getByRole("button", { name: /generate/i }));
+
+    expect(screen.getByText(/saving slide 1 failed validation/i)).toBeInTheDocument();
+    expect(screen.getByText(/media completed for 5\/5 slide\(s\)/i)).toBeInTheDocument();
+  });
+
   it("formats deferred media warnings into user-friendly status text", async () => {
     localStorage.setItem("smartspec_aiDraft_articleSkill", "general-article-writer");
     mockGenerateDraftMutate.mockImplementation(

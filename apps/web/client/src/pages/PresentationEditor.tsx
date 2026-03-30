@@ -12,6 +12,7 @@ import {
   ChevronLeft,
   Clapperboard,
   Download,
+  FileText,
   ImageIcon,
   Sparkles,
   Loader2,
@@ -78,6 +79,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { HelpButton } from "@/components/help";
+import { LocaleToggle } from "@/components/LocaleToggle";
 import {
   Dialog,
   DialogContent,
@@ -138,6 +140,7 @@ import {
   updateComponentById,
   type ArrangeDirection,
   type PresentationComponentInstance,
+  type PresentationCanvasSize,
   type PresentationElement,
   type PresentationElementType,
   type PresentationSlideContent,
@@ -154,6 +157,10 @@ import { AudioTrackPlayer } from "@/presentation-canvas/play/AudioTrackPlayer";
 import { ExportDialog } from "@/components/presentation/ExportDialog";
 import { ImportPresentationDialog } from "@/components/presentation/ImportPresentationDialog";
 import { AIDraftModal } from "@/components/presentation/AIDraftModal";
+import {
+  PresentationArticleGeneratorDialog,
+  type PresentationGeneratedSlideDraft,
+} from "@/components/presentation/PresentationArticleGeneratorDialog";
 import { SearchableCombobox } from "@/components/presentation/SearchableCombobox";
 import { SlideAudioPanel } from "@/components/presentation/SlideAudioPanel";
 import { useAutosaveController } from "@/presentation-canvas/save/useAutosaveController";
@@ -270,30 +277,389 @@ const SLIDESHOW_PREVIEW_TRANSITION_DURATION_MS = 700;
 const MOBILE_SHEET_TAB_STORAGE_KEY = "presentation-editor-mobile-sheet-tab";
 const MOBILE_SHEET_EXPANDED_STORAGE_KEY = "presentation-editor-mobile-sheet-expanded";
 const MOBILE_SHEET_TABS = new Set<MobileBottomSheetTab>(["Add", "Layers", "Properties", "Pages", "Versions", "Audio"]);
-const PRESENTATION_TRANSITION_OPTIONS: Array<{ value: PresentationTransition; label: string }> = [
-  { value: "cut", label: "Cut" },
-  { value: "fade", label: "Fade" },
-  { value: "slide-left", label: "Slide Left" },
-  { value: "slide-right", label: "Slide Right" },
-  { value: "zoom-in", label: "Zoom In" },
-  { value: "zoom-out", label: "Zoom Out" },
-  { value: "blur", label: "Blur" },
+const PRESENTATION_TRANSITION_OPTIONS: Array<{ value: PresentationTransition; labelKey: string }> = [
+  { value: "cut", labelKey: "transition.cut" },
+  { value: "fade", labelKey: "transition.fade" },
+  { value: "slide-left", labelKey: "transition.slideLeft" },
+  { value: "slide-right", labelKey: "transition.slideRight" },
+  { value: "zoom-in", labelKey: "transition.zoomIn" },
+  { value: "zoom-out", labelKey: "transition.zoomOut" },
+  { value: "blur", labelKey: "transition.blur" },
 ];
 
-const PRESENTATION_AI_LAYOUT_MODE_LABELS: Record<PresentationAILayoutMode, string> = {
-  structured_block: "Structured Block",
-  long_form_block: "Long-Form Block",
-  llm_layout_dsl: "LLM Layout DSL",
-  full_slide_media: "Full-Slide Media",
+const PRESENTATION_AI_LAYOUT_MODE_LABEL_KEYS: Record<PresentationAILayoutMode, string> = {
+  structured_block: "aiLayoutMode.structuredBlock",
+  long_form_block: "aiLayoutMode.longFormBlock",
+  llm_layout_dsl: "aiLayoutMode.llmLayoutDsl",
+  full_slide_media: "aiLayoutMode.fullSlideMedia",
 };
 
-const PRESENTATION_AI_LAYOUT_BLOCKED_BY_LABELS: Record<string, string> = {
-  feature_flag: "Feature flag",
-  provider_capability: "Provider capability",
-  cost: "Cost guardrail",
-  safety: "Safety guardrail",
-  lock_conflict: "Mode lock conflict",
+const PRESENTATION_AI_LAYOUT_BLOCKED_BY_LABEL_KEYS: Record<string, string> = {
+  feature_flag: "aiBlockedBy.featureFlag",
+  provider_capability: "aiBlockedBy.providerCapability",
+  cost: "aiBlockedBy.cost",
+  safety: "aiBlockedBy.safety",
+  lock_conflict: "aiBlockedBy.lockConflict",
 };
+
+type ImportedSlideLayoutElement = {
+  kind?: string;
+  role?: string;
+  text?: string;
+  source?: string;
+  xPct?: number;
+  yPct?: number;
+  wPct?: number;
+  hPct?: number;
+  fontFace?: string;
+  fontSize?: number;
+  color?: string;
+  align?: string;
+  bold?: boolean;
+  fit?: string;
+  cornerRadius?: number;
+  shape?: string;
+  fill?: string;
+  line?: string;
+};
+
+type ImportedSlideLayout = {
+  id?: string;
+  title?: string;
+  background?: string;
+  notes?: string;
+  elements?: ImportedSlideLayoutElement[];
+  slideContent?: unknown;
+};
+
+type ImportedSlideLayoutSpec = {
+  canvas?: {
+    ratio?: string;
+  };
+  theme?: {
+    background?: string;
+  };
+  slides?: ImportedSlideLayout[];
+};
+
+function extractImportedSlideLayoutSpec(value: unknown): ImportedSlideLayoutSpec | null {
+  if (!value) {
+    return null;
+  }
+
+  if (typeof value === "string") {
+    try {
+      return extractImportedSlideLayoutSpec(JSON.parse(value));
+    } catch {
+      return null;
+    }
+  }
+
+  if (typeof value !== "object") {
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+  if (Array.isArray(record.slides)) {
+    return record as ImportedSlideLayoutSpec;
+  }
+
+  const nestedCandidates = [
+    record.layoutSpec,
+    record.layout_spec,
+    record.result,
+    record.output,
+    record.data,
+    record.payload,
+  ];
+
+  for (const candidate of nestedCandidates) {
+    const extracted = extractImportedSlideLayoutSpec(candidate);
+    if (extracted) {
+      return extracted;
+    }
+  }
+
+  return null;
+}
+
+type PreparedImportedSlide = {
+  title: string;
+  content: PresentationSlideContent;
+  notes?: string | null;
+};
+
+function normalizeImportedColor(value: unknown, fallback?: string): string | undefined {
+  if (typeof value !== "string") {
+    return fallback;
+  }
+  const normalized = value.trim();
+  if (!normalized) {
+    return fallback;
+  }
+  if (/^#[0-9A-F]{3,8}$/i.test(normalized)) {
+    return normalized;
+  }
+  if (/^[0-9A-F]{3,8}$/i.test(normalized)) {
+    return `#${normalized}`;
+  }
+  if (/^(?:rgb|rgba|hsl|hsla)\(/i.test(normalized) || /^var\(/i.test(normalized)) {
+    return normalized;
+  }
+  if (/^[a-z]+$/i.test(normalized)) {
+    return normalized;
+  }
+  return fallback;
+}
+
+function percentToPixels(
+  value: unknown,
+  total: number,
+  minimum = 0,
+): number {
+  const numeric = typeof value === "number" && Number.isFinite(value) ? value : 0;
+  return Math.max(minimum, Math.round((numeric / 100) * total));
+}
+
+function normalizeImportedCanvas(
+  ratio: string | undefined,
+  fallbackCanvas: PresentationCanvasSize,
+): PresentationCanvasSize {
+  const preset = ratio ? getCanvasPresetById(ratio) : null;
+  if (!preset) {
+    return fallbackCanvas;
+  }
+  return normalizeCanvasSize({
+    preset: preset.id,
+    width: preset.width,
+    height: preset.height,
+  });
+}
+
+function extractImportedSlideTitle(
+  slide: ImportedSlideLayout,
+  index: number,
+): string {
+  const explicitTitle = typeof slide.title === "string" ? slide.title.trim() : "";
+  if (explicitTitle) {
+    return explicitTitle;
+  }
+  const titleElement = (slide.elements ?? []).find((element) => (
+    element.kind === "text"
+    && typeof element.text === "string"
+    && element.text.trim()
+    && ["title", "pageTitle", "headline"].includes(String(element.role ?? "").trim())
+  ));
+  if (titleElement?.text?.trim()) {
+    return titleElement.text.trim().slice(0, 255);
+  }
+  return `Slide ${index + 1}`;
+}
+
+function convertImportedLayoutElement(
+  element: ImportedSlideLayoutElement,
+  canvas: PresentationCanvasSize,
+  slideIndex: number,
+  elementIndex: number,
+): PresentationElement | null {
+  const x = percentToPixels(element.xPct, canvas.width);
+  const y = percentToPixels(element.yPct, canvas.height);
+  const width = percentToPixels(element.wPct, canvas.width);
+  const height = percentToPixels(element.hPct, canvas.height);
+  const id = `${slideIndex + 1}-${elementIndex + 1}-${String(element.role ?? element.kind ?? "element")}`;
+
+  if (element.kind === "text") {
+    const text = typeof element.text === "string" ? element.text.trim() : "";
+    if (!text) {
+      return null;
+    }
+    const align = element.align === "center" || element.align === "right" || element.align === "justify"
+      ? element.align
+      : "left";
+    return {
+      id,
+      type: "text",
+      x,
+      y,
+      width: Math.max(80, width),
+      height: Math.max(24, height),
+      rotation: 0,
+      text,
+      color: normalizeImportedColor(element.color, "#0f172a") ?? "#0f172a",
+      fontSize: typeof element.fontSize === "number" && Number.isFinite(element.fontSize)
+        ? Math.max(8, Math.min(512, element.fontSize))
+        : undefined,
+      fontFamily: typeof element.fontFace === "string" && element.fontFace.trim()
+        ? element.fontFace.trim()
+        : undefined,
+      fontWeight: element.bold ? "700" : "400",
+      fontStyle: "normal",
+      textDecoration: "none",
+      textAlign: align,
+      lineHeight: 1.2,
+      letterSpacing: 0,
+      backgroundColor: "transparent",
+    };
+  }
+
+  if (element.kind === "image") {
+    const src = typeof element.source === "string" ? element.source.trim() : "";
+    if (!src) {
+      return null;
+    }
+    const imageFit = element.fit === "contain" || element.fit === "fill" ? element.fit : "cover";
+    return {
+      id,
+      type: "image",
+      x,
+      y,
+      width: Math.max(40, width),
+      height: Math.max(40, height),
+      rotation: 0,
+      src,
+      alt: String(element.role ?? "Image"),
+      imageFit,
+      mediaCornerRadius: typeof element.cornerRadius === "number" && Number.isFinite(element.cornerRadius)
+        ? Math.max(0, Math.min(1000, element.cornerRadius))
+        : undefined,
+      imagePositionX: 50,
+      imagePositionY: 50,
+      imageZoom: 1,
+      imagePrompt: "",
+      imageReferenceUrls: [],
+    };
+  }
+
+  if (element.kind === "shape" && element.shape === "line") {
+    const strokeWidth = Math.max(1, percentToPixels(element.hPct, canvas.height, 1));
+    return {
+      id,
+      type: "line",
+      x,
+      y,
+      width: Math.max(8, width),
+      height: strokeWidth,
+      rotation: 0,
+      fill: "transparent",
+      stroke: normalizeImportedColor(element.line, "#cbd5e1") ?? "#cbd5e1",
+      strokeWidth,
+    };
+  }
+
+  if (element.kind === "shape") {
+    const fill = normalizeImportedColor(element.fill, "transparent") ?? "transparent";
+    const stroke = normalizeImportedColor(element.line);
+    return {
+      id,
+      type: "rect",
+      x,
+      y,
+      width: Math.max(8, width),
+      height: Math.max(8, height),
+      rotation: 0,
+      fill,
+      stroke,
+      strokeWidth: stroke ? 1 : 0,
+    };
+  }
+
+  return null;
+}
+
+function convertGeneratedSlideJsonToPresentationSlides(
+  raw: string,
+  fallbackCanvas: PresentationCanvasSize,
+): PreparedImportedSlide[] {
+  const parsed = JSON.parse(raw) as unknown;
+  const normalizedSpec = extractImportedSlideLayoutSpec(parsed);
+  const slides = Array.isArray(normalizedSpec?.slides) ? normalizedSpec.slides : [];
+  if (!slides.length) {
+    return [];
+  }
+
+  return slides.map((slide, index) => {
+    const normalizedNotes = typeof slide.notes === "string" && slide.notes.trim()
+      ? slide.notes.trim()
+      : null;
+    if (slide.slideContent && typeof slide.slideContent === "object") {
+      return {
+        title: extractImportedSlideTitle(slide, index),
+        content: ensureSlideContent(slide.slideContent),
+        notes: normalizedNotes,
+      };
+    }
+
+    const slideCanvas = normalizeImportedCanvas(normalizedSpec?.canvas?.ratio, fallbackCanvas);
+    const backgroundColor = normalizeImportedColor(
+      slide.background ?? normalizedSpec?.theme?.background,
+      undefined,
+    );
+    const background: PresentationSlideBackground | undefined = backgroundColor
+      ? { type: "color", value: backgroundColor }
+      : undefined;
+
+    return {
+      title: extractImportedSlideTitle(slide, index),
+      notes: normalizedNotes,
+      content: ensureSlideContent({
+        canvas: slideCanvas,
+        background,
+        elements: (slide.elements ?? [])
+          .map((element, elementIndex) => (
+            convertImportedLayoutElement(element, slideCanvas, index, elementIndex)
+          ))
+          .filter((element): element is PresentationElement => Boolean(element)),
+      }),
+    };
+  }).filter((slide) => hasMeaningfulSlideContent(slide.content));
+}
+
+async function resolveImportableGeneratedSlideJson(
+  draft: PresentationGeneratedSlideDraft,
+  fallbackCanvas: PresentationCanvasSize,
+): Promise<string> {
+  const rawSlideJson = draft.slideJson.trim();
+  try {
+    if (convertGeneratedSlideJsonToPresentationSlides(rawSlideJson, fallbackCanvas).length > 0) {
+      return rawSlideJson;
+    }
+  } catch {
+    // Fall back to any JSON artifact produced by the sandbox slide skill.
+  }
+
+  const jsonArtifacts = (draft.artifacts ?? [])
+    .filter((artifact) => artifact?.format === "json" && artifact.url.trim())
+    .sort((left, right) => {
+      const leftKey = String(left?.key ?? left?.url ?? "").trim().toLowerCase();
+      const rightKey = String(right?.key ?? right?.url ?? "").trim().toLowerCase();
+      const leftScore = leftKey.endsWith("manifest.json") ? 10 : 0;
+      const rightScore = rightKey.endsWith("manifest.json") ? 10 : 0;
+      return leftScore - rightScore;
+    });
+  if (jsonArtifacts.length === 0) {
+    return rawSlideJson;
+  }
+
+  try {
+    for (const jsonArtifact of jsonArtifacts) {
+      const response = await fetch(jsonArtifact.url, { credentials: "omit" });
+      if (!response.ok) {
+        continue;
+      }
+      const artifactJson = (await response.text()).trim();
+      if (!artifactJson) {
+        continue;
+      }
+      if (convertGeneratedSlideJsonToPresentationSlides(artifactJson, fallbackCanvas).length > 0) {
+        return artifactJson;
+      }
+    }
+  } catch {
+    return rawSlideJson;
+  }
+
+  return rawSlideJson;
+}
 
 function resolvePresentationModeForRecipe(
   recipeId: BuiltInPresentationComponentId,
@@ -389,18 +755,36 @@ type AutoLayoutTemplateChoice =
 type AutoLayoutStyleChoice = "auto" | (typeof AI_STYLE_PRESET_IDS)[number];
 type AutoLayoutCropShapeChoice = (typeof AI_GEOMETRIC_CROP_SHAPES)[number];
 type AutoLayoutAccentShapeChoice = (typeof AI_GEOMETRIC_ACCENT_SHAPES)[number];
-const AUTO_LAYOUT_CROP_SHAPE_LABELS: Record<AutoLayoutCropShapeChoice, string> = {
-  auto: "Auto choose",
-  rect: "Rectangle",
-  circle: "Circle",
-  triangle: "Triangle",
-};
-const AUTO_LAYOUT_ACCENT_SHAPE_LABELS: Record<AutoLayoutAccentShapeChoice, string> = {
-  auto: "Auto choose",
-  rect: "Rectangle",
-  circle: "Circle",
-  triangle: "Triangle",
-};
+
+const AUTO_LAYOUT_CROP_SHAPE_LABELS = {
+  en: {
+    auto: "Auto choose",
+    rect: "Rectangle",
+    circle: "Circle",
+    triangle: "Triangle",
+  },
+  th: {
+    auto: "เลือกอัตโนมัติ",
+    rect: "สี่เหลี่ยม",
+    circle: "วงกลม",
+    triangle: "สามเหลี่ยม",
+  },
+} as const satisfies Record<"en" | "th", Record<AutoLayoutCropShapeChoice, string>>;
+
+const AUTO_LAYOUT_ACCENT_SHAPE_LABELS = {
+  en: {
+    auto: "Auto choose",
+    rect: "Rectangle",
+    circle: "Circle",
+    triangle: "Triangle",
+  },
+  th: {
+    auto: "เลือกอัตโนมัติ",
+    rect: "สี่เหลี่ยม",
+    circle: "วงกลม",
+    triangle: "สามเหลี่ยม",
+  },
+} as const satisfies Record<"en" | "th", Record<AutoLayoutAccentShapeChoice, string>>;
 
 function resolveAutoLayoutTemplateSelection(choice: AutoLayoutTemplateChoice): {
   templateId?: (typeof AI_LAYOUT_TEMPLATE_IDS)[number];
@@ -413,9 +797,6 @@ function resolveAutoLayoutTemplateSelection(choice: AutoLayoutTemplateChoice): {
     componentRecipeId: choice.slice("block:".length) as BuiltInPresentationComponentId,
   };
 }
-const UNSAVED_PRESENTATION_WARNING =
-  "คุณมีการแก้ไขสไลด์ที่ยังไม่ได้บันทึก หากออกตอนนี้ข้อมูลที่แก้ไขจะหายไป ต้องการออกจากโปรเจกต์หรือไม่?";
-
 interface LibraryResultItemLike {
   id?: number;
   item_id?: number;
@@ -816,10 +1197,16 @@ function isConflictSlideContentEqualDraft(
   }
 }
 
-function getDeckLoadErrorMessage(error: unknown): string {
-  const raw = String((error as any)?.message || "Failed to load deck.");
+function getDeckLoadErrorMessage(
+  error: unknown,
+  messages: {
+    fallback: string;
+    legacyBlocked: string;
+  },
+): string {
+  const raw = String((error as any)?.message || messages.fallback);
   if (raw.includes("PRESENTATION_LEGACY_PAYLOAD_BLOCKED")) {
-    return "Open read-only and convert this deck before editing.";
+    return messages.legacyBlocked;
   }
   return raw;
 }
@@ -1451,17 +1838,21 @@ function buildSlideContentSignature(content: PresentationSlideContent): string {
   return JSON.stringify(sortValueForStableJson(normalized));
 }
 
-async function copyTextToClipboard(value: string, successMessage: string): Promise<void> {
+async function copyTextToClipboard(
+  value: string,
+  successMessage: string,
+  messages: { empty: string; failure: string },
+): Promise<void> {
   const text = value.trim();
   if (!text) {
-    toast.error("Nothing to copy.");
+    toast.error(messages.empty);
     return;
   }
   try {
     await navigator.clipboard.writeText(text);
     toast.success(successMessage);
   } catch {
-    toast.error("Copy failed.");
+    toast.error(messages.failure);
   }
 }
 
@@ -1472,45 +1863,92 @@ export function mergeResolvedPendingMediaIntoCachedDraft(
   const cached = ensureSlideContent(cachedContent);
   const persisted = ensureSlideContent(persistedContent);
   const cachedJobs = Array.isArray(cached.pendingMediaJobs) ? cached.pendingMediaJobs : [];
-  if (cachedJobs.length === 0) {
-    return cached;
-  }
-
   const persistedJobs = Array.isArray(persisted.pendingMediaJobs) ? persisted.pendingMediaJobs : [];
   const persistedJobsById = new Map(persistedJobs.map((job) => [job.id, job]));
-  const resolvedJobs = cachedJobs.filter((job) => !persistedJobsById.has(job.id));
-  if (resolvedJobs.length === 0) {
+
+  const isResolvedMediaElement = (element: PresentationSlideContent["elements"][number]): boolean => (
+    (element.type === "image" || element.type === "video")
+    && typeof (element as { src?: unknown }).src === "string"
+    && String((element as { src?: string }).src).trim().startsWith("http")
+  );
+
+  const persistedResolvedMedia = persisted.elements.filter(isResolvedMediaElement);
+  if (cachedJobs.length === 0 && persistedResolvedMedia.length === 0) {
     return cached;
   }
 
   let nextElements = [...cached.elements];
-  for (const job of resolvedJobs) {
-    // Find the real URL from persisted content for this job
-    const resolvedElement = persisted.elements.find((element) => {
-      if (element.type !== "image" && element.type !== "video") return false;
-      if (!("src" in element) || !element.src || !element.src.startsWith("http")) return false;
-      if (job.targetElementId) return element.id === job.targetElementId;
-      return element.x === job.targetX && element.y === job.targetY;
-    });
-    const resolvedSrc = resolvedElement && "src" in resolvedElement ? resolvedElement.src : null;
-    if (!resolvedSrc) continue;
+  const isMockup = (el: any) =>
+    (el.type === "image" || el.type === "video")
+    && "src" in el
+    && (!el.src || el.src === "" || el.src.startsWith("data:image/svg+xml") || el.src === "__PLACEHOLDER__");
 
-    // Find mockup in cached elements and just swap src
-    const isMockup = (el: any) =>
-      (el.type === "image" || el.type === "video")
-      && "src" in el
-      && (!el.src || el.src === "" || el.src.startsWith("data:image/svg+xml") || el.src === "__PLACEHOLDER__");
-
-    let targetIndex = nextElements.findIndex(isMockup);
-    if (targetIndex < 0 && job.targetElementId) {
-      targetIndex = nextElements.findIndex((el) => el.id === job.targetElementId && isMockup(el));
+  const replaceTargetWithResolvedMedia = (
+    targetIndex: number,
+    resolvedElement: PresentationSlideContent["elements"][number],
+  ): void => {
+    const targetElement = nextElements[targetIndex];
+    if (!targetElement) {
+      return;
     }
+    nextElements[targetIndex] = {
+      ...targetElement,
+      ...resolvedElement,
+      id: targetElement.id,
+      x: targetElement.x,
+      y: targetElement.y,
+      width: targetElement.width,
+      height: targetElement.height,
+    } as PresentationSlideContent["elements"][number];
+  };
 
-    if (targetIndex >= 0) {
-      // Just update src — keep position, size, opacity, everything else
-      const targetElement = nextElements[targetIndex];
-      if (targetElement.type === "image" || targetElement.type === "video") {
-        nextElements[targetIndex] = { ...targetElement, src: resolvedSrc };
+  if (cachedJobs.length > 0) {
+    const resolvedJobs = cachedJobs.filter((job) => !persistedJobsById.has(job.id));
+    for (const job of resolvedJobs) {
+      // Find the real URL from persisted content for this job
+      const resolvedElement = persistedResolvedMedia.find((element) => {
+        if (job.targetElementId) return element.id === job.targetElementId;
+        return element.x === job.targetX && element.y === job.targetY;
+      });
+      if (!resolvedElement) continue;
+
+      let targetIndex = nextElements.findIndex(isMockup);
+      if (targetIndex < 0 && job.targetElementId) {
+        targetIndex = nextElements.findIndex((el) => el.id === job.targetElementId && isMockup(el));
+      }
+
+      if (targetIndex >= 0) {
+        replaceTargetWithResolvedMedia(targetIndex, resolvedElement);
+      }
+    }
+  }
+
+  if (cachedJobs.length === 0 && persistedResolvedMedia.length > 0) {
+    for (const resolvedElement of persistedResolvedMedia) {
+      const matchingIndex = nextElements.findIndex((element) => (
+        (element.id === resolvedElement.id
+          || (element.x === resolvedElement.x
+            && element.y === resolvedElement.y
+            && element.width === resolvedElement.width
+            && element.height === resolvedElement.height))
+        && (
+          element.type === "rect"
+          || isMockup(element)
+          || (element.type === resolvedElement.type && element.type === "image" && isMockup(element))
+        )
+      ));
+
+      if (matchingIndex >= 0) {
+        replaceTargetWithResolvedMedia(matchingIndex, resolvedElement);
+        continue;
+      }
+
+      const unresolvedIndex = nextElements.findIndex((element) => (
+        (element.type === "image" || element.type === "video" || element.type === "rect")
+        && isMockup(element)
+      ));
+      if (unresolvedIndex >= 0) {
+        replaceTargetWithResolvedMedia(unresolvedIndex, resolvedElement);
       }
     }
   }
@@ -1529,6 +1967,43 @@ export function mergeResolvedPendingMediaIntoCachedDraft(
   return buildSlideContentSignature(merged) === buildSlideContentSignature(cached)
     ? cached
     : merged;
+}
+
+function hasMeaningfulSlideContent(content: PresentationSlideContent): boolean {
+  const normalized = ensureSlideContent(content);
+  if ((normalized.components?.length ?? 0) > 0) {
+    return true;
+  }
+
+  const canvasWidth = Math.max(1, normalized.canvas?.width ?? 960);
+  const canvasHeight = Math.max(1, normalized.canvas?.height ?? 1200);
+  return normalized.elements.some((element) => {
+    if (element.type !== "rect") {
+      return true;
+    }
+    const coversCanvas = (
+      element.x <= canvasWidth * 0.02
+      && element.y <= canvasHeight * 0.02
+      && element.width >= canvasWidth * 0.96
+      && element.height >= canvasHeight * 0.96
+    );
+    return !coversCanvas;
+  });
+}
+
+function resolveSlideContentFromCache(
+  cachedContent: PresentationSlideContent | null | undefined,
+  persistedContent: PresentationSlideContent,
+): PresentationSlideContent {
+  const persisted = ensureSlideContent(persistedContent);
+  if (!cachedContent) {
+    return persisted;
+  }
+  const merged = mergeResolvedPendingMediaIntoCachedDraft(cachedContent, persisted);
+  if (!hasMeaningfulSlideContent(merged) && hasMeaningfulSlideContent(persisted)) {
+    return persisted;
+  }
+  return merged;
 }
 
 function normalizeLibraryMediaItems(
@@ -2235,7 +2710,7 @@ async function probeMediaDurationSeconds(
 }
 
 export default function PresentationEditor() {
-  const { t } = useScopedTranslation("presentation");
+  const { t, locale } = useScopedTranslation("presentation");
   const { user, isLoading: authLoading, isAuthenticated } = useAuth();
   const trpcUtils = trpc.useUtils();
   const [, setLocation] = useLocation();
@@ -2347,6 +2822,15 @@ export default function PresentationEditor() {
 
   const deckData = deckQuery.data as any;
   const deck = deckData?.deck;
+  const presetLocale = locale === "th" ? "th" : "en";
+  const autoLayoutCropShapeLabels = AUTO_LAYOUT_CROP_SHAPE_LABELS[presetLocale];
+  const autoLayoutAccentShapeLabels = AUTO_LAYOUT_ACCENT_SHAPE_LABELS[presetLocale];
+  const getLocalizedPresetName = useCallback(
+    (preset: (typeof BUILT_IN_PRESETS)[number]) => (
+      preset.nameLocalized?.[presetLocale] || preset.nameLocalized?.en || preset.name
+    ),
+    [presetLocale],
+  );
   const slides = useMemo(() => {
     const raw = Array.isArray(deckData?.slides) ? deckData.slides : [];
     return [...raw].sort((a, b) => a.orderIndex - b.orderIndex);
@@ -2407,7 +2891,7 @@ export default function PresentationEditor() {
     };
   }, [pendingMediaJobCount, deck?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const projectTitle = String(itemQuery.data?.title || deck?.title || (docId ? `Presentation ${docId}` : "Presentation"));
+  const projectTitle = String(itemQuery.data?.title || deck?.title || (docId ? t("fallback.presentationWithId", { id: docId }) : t("fallback.presentation")));
   const currentUserId = useMemo(() => {
     const parsed = Number(user?.id);
     return Number.isFinite(parsed) ? parsed : null;
@@ -2518,6 +3002,7 @@ export default function PresentationEditor() {
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [isAIDraftModalOpen, setIsAIDraftModalOpen] = useState(false);
+  const [isArticleGeneratorDialogOpen, setIsArticleGeneratorDialogOpen] = useState(false);
   const [isAutoLayoutDialogOpen, setIsAutoLayoutDialogOpen] = useState(false);
   const [isReorderDialogOpen, setIsReorderDialogOpen] = useState(false);
   const deckNoteDialogDrag = useDraggableDialog(isDeckNoteDialogOpen);
@@ -2550,6 +3035,10 @@ export default function PresentationEditor() {
   // Tracks which slide ID the current draftContent belongs to.
   // Used by autosave to skip saving if draftContent hasn't been loaded for the current slide yet.
   const draftContentSlideIdRef = useRef<number | null>(null);
+  // Tracks an in-flight slide load so autosave can stay blocked until the new
+  // slide's draft content has actually been hydrated into state.
+  const pendingSlideLoadIdRef = useRef<number | null>(null);
+  const pendingSlideLoadSignatureRef = useRef<string | null>(null);
   /** True while a slide switch is in progress — blocks autosave until content-loading completes */
   const switchingSlideRef = useRef(false);
   const [timingDurationSecInput, setTimingDurationSecInput] = useState<string>("3");
@@ -2891,10 +3380,10 @@ export default function PresentationEditor() {
   const hasSavedSlideNote = Boolean((selectedSlide?.notes ?? "").trim()) && !slideNoteDirty;
   const slideNoteRepairBusy = repairSlideFromNoteMutation.isPending;
   const slideNoteRepairStatuses = [
-    "Analyzing slide note...",
-    "Structuring title and content...",
-    "Generating image...",
-    "Composing slide layout...",
+    t("repair.analyzing"),
+    t("repair.structuring"),
+    t("repair.generatingImage"),
+    t("repair.composing"),
   ] as const;
   const slideNoteRepairStatusLabel = slideNoteRepairStatuses[
     Math.min(slideNoteRepairStatusIndex, slideNoteRepairStatuses.length - 1)
@@ -2938,6 +3427,7 @@ export default function PresentationEditor() {
     return result;
   })();
   const hasUnsavedSlideChanges = hasUnsavedSelectedSlideChanges || unsavedCachedSlideIds.length > 0;
+  const unsavedPresentationWarning = t("confirm.unsavedChanges");
   const autoLayoutBusy = autoLayoutProgress !== null || relayoutSlideMutation.isPending;
   const autoLayoutTargetCount = autoLayoutScope === "all"
     ? slides.length
@@ -2987,6 +3477,7 @@ export default function PresentationEditor() {
     () => [...(slideAIDesign?.fallbackHistory ?? [])].slice(-3).reverse(),
     [slideAIDesign?.fallbackHistory],
   );
+  const aiLayoutExecution = slideAIDesign?.layoutExecution ?? null;
   const currentComponentRecipeId = useMemo(() => {
     const firstComponentId = draftComponents[0]?.componentId;
     return isBuiltInPresentationComponentId(firstComponentId) ? firstComponentId : undefined;
@@ -3107,6 +3598,32 @@ export default function PresentationEditor() {
     },
     [currentComponentRecipeId, draftHasImage, draftHasVideo, inferredAILayoutRecipeId, slideAIDesign?.componentRecipeId],
   );
+  const aiLayoutCanvasLabel = useMemo(() => {
+    if (effectiveAILayoutMode === "llm_layout_dsl") {
+      if (aiLayoutExecution?.resolvedBy === "local_dsl_fallback") {
+        return t("slidePanel.dslLocalFallbackCanvas");
+      }
+      return t("slidePanel.dslCanvas");
+    }
+    return currentAILayoutRecipeId
+      ? (PRESENTATION_COMPONENT_AI_GUIDANCE[currentAILayoutRecipeId]?.label ?? currentAILayoutRecipeId)
+      : t("slidePanel.autoFallback");
+  }, [aiLayoutExecution?.resolvedBy, currentAILayoutRecipeId, effectiveAILayoutMode, t]);
+  const aiLayoutExecutionSummary = useMemo(() => {
+    if (!aiLayoutExecution || effectiveAILayoutMode !== "llm_layout_dsl") {
+      return null;
+    }
+    const labelKey = aiLayoutExecution.resolvedBy === "local_dsl_fallback"
+      ? "slidePanel.layoutExecution.localFallback"
+      : aiLayoutExecution.resolvedBy === "llm_repair_success"
+        ? "slidePanel.layoutExecution.llmRepair"
+        : "slidePanel.layoutExecution.llmSuccess";
+    return t("slidePanel.layoutExecutionSummary", {
+      source: t(labelKey),
+      attempt: aiLayoutExecution.attemptCount,
+      total: aiLayoutExecution.maxAttempts,
+    });
+  }, [aiLayoutExecution, effectiveAILayoutMode, t]);
   const showAILayoutPanel = Boolean(selectedSlide);
   const selectedComponentBounds = useMemo(
     () => selectedComponent ? getComponentBounds(selectedComponent) : null,
@@ -3502,12 +4019,15 @@ export default function PresentationEditor() {
       const key = slideId ? `slide-${slideId}` : "slide-unknown";
       const linkedSlide = slideId ? slidesById.get(slideId) : null;
       const groupLabel = linkedSlide
-        ? `Slide ${linkedSlide.orderIndex + 1}: ${linkedSlide.title}`
+        ? t("versions.group.slideWithTitle", {
+            index: linkedSlide.orderIndex + 1,
+            title: linkedSlide.title,
+          })
         : version.snapshot?.slideTitle
-          ? `Slide: ${version.snapshot.slideTitle}`
+          ? t("versions.group.slideTitle", { title: version.snapshot.slideTitle })
           : slideId
-            ? `Slide #${slideId}`
-            : "Unknown slide";
+            ? t("versions.group.slideId", { id: slideId })
+            : t("versions.group.unknownSlide");
       const sortOrder = linkedSlide ? linkedSlide.orderIndex : Number.MAX_SAFE_INTEGER;
       const existing = grouped.get(key);
       if (existing) {
@@ -3538,7 +4058,7 @@ export default function PresentationEditor() {
         }
         return a.label.localeCompare(b.label);
       });
-  }, [savedVersions, slidesById]);
+  }, [savedVersions, slidesById, t]);
   const selectedSavedVersion = useMemo(
     () => savedVersions.find((version) => version.id === selectedSavedVersionId) || null,
     [savedVersions, selectedSavedVersionId],
@@ -3572,11 +4092,11 @@ export default function PresentationEditor() {
       return null;
     }
     return {
-      title: selectedSavedVersion.snapshot?.slideTitle || "Slide",
+      title: selectedSavedVersion.snapshot?.slideTitle || t("versions.group.slideFallback"),
       notes: selectedSavedVersion.snapshot?.notes ?? null,
       content: selectedSavedVersionContent,
     };
-  }, [selectedSavedVersion, selectedSavedVersionContent]);
+  }, [selectedSavedVersion, selectedSavedVersionContent, t]);
   const selectedSavedVersionDiffSummary = useMemo(() => {
     if (!selectedSavedVersionSnapshotState) {
       return null;
@@ -3605,9 +4125,10 @@ export default function PresentationEditor() {
   const playbackSlides = useMemo(() => {
     return slides.map((slide) => {
       const cachedDraft = getCachedSlideDraft(slide.id);
+      const persistedContent = ensureSlideContent(slide.slideContent);
       const content = selectedSlideId === slide.id
         ? draftContent
-        : cachedDraft?.content ?? ensureSlideContent(slide.slideContent);
+        : resolveSlideContentFromCache(cachedDraft?.content, persistedContent);
       return {
         slideId: slide.id,
         title: slide.title,
@@ -3672,10 +4193,23 @@ export default function PresentationEditor() {
     // Block autosave during the transition period — draftContent still belongs
     // to the previous slide until the content-loading effect completes.
     switchingSlideRef.current = true;
+    pendingSlideLoadIdRef.current = nextSlideId;
+    pendingSlideLoadSignatureRef.current = null;
     // Clear any pending autosave BEFORE switching — prevents race condition where
     // the old slide's draftContent could be saved under the new slide's ID.
     autosaveController.clear();
-    cacheSlideDraft(selectedSlideId, draftContent, slideNoteDraft);
+    // Only cache when the current draft is known to belong to the slide being left.
+    // If the editor is still catching up after a refetch/selection change, caching
+    // here could persist a stale empty draft and overwrite real slide content later.
+    if (draftContentSlideIdRef.current === selectedSlideId) {
+      const persistedCurrentSlide = slides.find((slide) => slide.id === selectedSlideId);
+      const persistedCurrentContent = persistedCurrentSlide
+        ? ensureSlideContent(persistedCurrentSlide.slideContent)
+        : null;
+      if (!persistedCurrentContent || hasMeaningfulSlideContent(draftContent) || !hasMeaningfulSlideContent(persistedCurrentContent)) {
+        cacheSlideDraft(selectedSlideId, draftContent, slideNoteDraft);
+      }
+    }
     // Clear ALL slide-specific refs when navigating away so the new slide initializes correctly.
     aiRecipeManuallyAppliedSlideIdRef.current = null;
     pendingAutoLayoutUndoRef.current = null;
@@ -3786,7 +4320,7 @@ export default function PresentationEditor() {
         continue;
       }
       const persistedContent = ensureSlideContent(persistedSlide.slideContent);
-      const mergedContent = mergeResolvedPendingMediaIntoCachedDraft(cachedDraft.content, persistedContent);
+      const mergedContent = resolveSlideContentFromCache(cachedDraft.content, persistedContent);
       if (buildSlideContentSignature(mergedContent) !== buildSlideContentSignature(cachedDraft.content)) {
         slideDraftCacheRef.current.set(slideId, {
           ...cachedDraft,
@@ -3843,7 +4377,7 @@ export default function PresentationEditor() {
         return;
       }
 
-      const confirmed = window.confirm(UNSAVED_PRESENTATION_WARNING);
+      const confirmed = window.confirm(unsavedPresentationWarning);
       if (confirmed) {
         return;
       }
@@ -3857,7 +4391,7 @@ export default function PresentationEditor() {
       window.removeEventListener("beforeunload", handleBeforeUnload);
       document.removeEventListener("click", handleDocumentClick, true);
     };
-  }, [hasUnsavedSlideChanges]);
+  }, [hasUnsavedSlideChanges, unsavedPresentationWarning]);
 
   useEffect(() => {
     const currentSeconds = resolveSlideDurationMs(draftContent) / 1000;
@@ -3943,13 +4477,18 @@ export default function PresentationEditor() {
       setSaveState("idle");
       setExpectedSlideVersion(null);
       setConflictPolicy(releaseStaleBlock());
+      pendingSlideLoadIdRef.current = null;
+      pendingSlideLoadSignatureRef.current = null;
+      draftContentSlideIdRef.current = null;
+      switchingSlideRef.current = false;
       return;
     }
 
+    const persistedContent = ensureSlideContent(selectedSlide.slideContent);
     const cachedDraft = getCachedSlideDraft(selectedSlide.id);
-    const next = cachedDraft
-      ? ensureSlideContent(cachedDraft.content)
-      : ensureSlideContent(selectedSlide.slideContent);
+    const nextNotesDraft = cachedDraft?.notes ?? selectedSlide.notes ?? "";
+    const next = resolveSlideContentFromCache(cachedDraft?.content, persistedContent);
+    const nextSignature = buildDraftSignature(selectedSlide.id, next, nextNotesDraft);
     const nextSelected = next.elements[0]?.id ? [next.elements[0].id] : [];
     const nextState = createCanvasCommandState(next, nextSelected);
     selectSingleComponent(nextSelected.length === 0 ? (next.components?.[0]?.id ?? null) : null);
@@ -3964,10 +4503,13 @@ export default function PresentationEditor() {
       )
     ) {
       restoredAutoLayoutHistoryRef.current = null;
+      pendingSlideLoadIdRef.current = null;
+      pendingSlideLoadSignatureRef.current = null;
+      switchingSlideRef.current = false;
       setCommandState(commandBusRef.current.getState());
       setSaveState("idle");
       setExpectedSlideVersion(selectedSlide.version);
-      setSlideNoteDraft(cachedDraft?.notes ?? selectedSlide.notes ?? "");
+      setSlideNoteDraft(nextNotesDraft);
       return;
     }
 
@@ -3975,6 +4517,13 @@ export default function PresentationEditor() {
     const pendingUndo = pendingAutoLayoutUndoRef.current;
     if (pendingUndo) {
       pendingAutoLayoutUndoRef.current = null;
+      pendingSlideLoadIdRef.current = selectedSlide.id;
+      pendingSlideLoadSignatureRef.current = buildDraftSignature(
+        selectedSlide.id,
+        pendingUndo.postLayoutState.content,
+        nextNotesDraft,
+      );
+      switchingSlideRef.current = true;
       commandBusRef.current.reset(pendingUndo.preLayoutState);
       const restored = commandBusRef.current.execute({
         id: "restore-post-auto-layout",
@@ -3985,30 +4534,51 @@ export default function PresentationEditor() {
       // User manually applied a recipe override on this slide — don't reset content
       // from server on subsequent version changes (e.g., autosave bumping the version).
       // The current draftContent already has the rebuilt layout.
+      pendingSlideLoadIdRef.current = null;
+      pendingSlideLoadSignatureRef.current = null;
+      switchingSlideRef.current = false;
+      draftContentSlideIdRef.current = selectedSlide.id;
     } else {
+      pendingSlideLoadIdRef.current = selectedSlide.id;
+      pendingSlideLoadSignatureRef.current = nextSignature;
+      switchingSlideRef.current = true;
       commandBusRef.current.reset(nextState);
       setCommandState(nextState);
     }
     setSaveState("idle");
     setExpectedSlideVersion(selectedSlide.version);
-    setSlideNoteDraft(cachedDraft?.notes ?? selectedSlide.notes ?? "");
-    // NOTE: do NOT set draftContentSlideIdRef or switchingSlideRef here!
-    // setCommandState is batched — draftContent won't update until the NEXT render.
-    // Setting refs here creates a window where refs say "slide 2" but draftContent
-    // is still slide 1's content, causing autosave to save the wrong content.
-    // These refs are updated in a separate effect below that depends on commandState.
+    setSlideNoteDraft(nextNotesDraft);
   }, [selectedSlide?.id, selectedSlide?.version, selectedSlide?.notes]);
 
-  // Mark draftContent ownership ONLY after commandState has actually propagated.
-  // This effect runs on the render AFTER setCommandState() takes effect,
-  // ensuring draftContent and draftContentSlideIdRef are always in sync.
-  // Without this separation, autosave could save slide A's content to slide B.
+  // Mark draftContent ownership only after the expected slide draft signature
+  // has actually reached state. Until then, keep autosave blocked.
   useEffect(() => {
-    if (selectedSlide && commandState) {
+    if (!selectedSlide) {
+      draftContentSlideIdRef.current = null;
+      switchingSlideRef.current = false;
+      pendingSlideLoadIdRef.current = null;
+      pendingSlideLoadSignatureRef.current = null;
+      return;
+    }
+
+    const expectedPendingSignature = pendingSlideLoadIdRef.current === selectedSlide.id
+      ? pendingSlideLoadSignatureRef.current
+      : null;
+    if (expectedPendingSignature && draftSignature === expectedPendingSignature) {
       draftContentSlideIdRef.current = selectedSlide.id;
       switchingSlideRef.current = false;
+      pendingSlideLoadIdRef.current = null;
+      pendingSlideLoadSignatureRef.current = null;
+      return;
     }
-  }, [commandState, selectedSlide?.id]);
+
+    if (pendingSlideLoadIdRef.current === selectedSlide.id) {
+      return;
+    }
+
+    draftContentSlideIdRef.current = selectedSlide.id;
+    switchingSlideRef.current = false;
+  }, [draftSignature, selectedSlide?.id]);
 
   async function refreshDeck() {
     const tasks: Array<Promise<unknown>> = [];
@@ -4268,7 +4838,7 @@ export default function PresentationEditor() {
           snapGuides: [],
         }),
       });
-      toast.info("Visual-only mode was turned off for this slide because you added text.");
+      toast.info(t("toast.visualOnlyDisabledByText"));
     } else {
       executeCommand(addElementCommand(element));
     }
@@ -4277,7 +4847,7 @@ export default function PresentationEditor() {
 
   async function handleLocalMediaUpload(kind: LibraryMediaKind, file: File) {
     if (!deck || !selectedSlide) {
-      toast.error("No active slide selected.");
+      toast.error(t("toast.noActiveSlideSelected"));
       return;
     }
 
@@ -4688,7 +5258,7 @@ export default function PresentationEditor() {
     }
     const preset = getCanvasPresetById(presetId);
     if (!preset) {
-      toast.error("Invalid canvas preset.");
+      toast.error(t("toast.invalidCanvasPreset"));
       return;
     }
 
@@ -4696,9 +5266,10 @@ export default function PresentationEditor() {
     try {
       for (const slide of slides) {
         const cachedDraft = getCachedSlideDraft(slide.id);
+        const persistedContent = ensureSlideContent(slide.slideContent);
         const baseContent = slide.id === selectedSlide?.id
           ? draftContent
-          : cachedDraft?.content ?? ensureSlideContent(slide.slideContent);
+          : resolveSlideContentFromCache(cachedDraft?.content, persistedContent);
         await updateSlideMutation.mutateAsync({
           deckId: deck.id,
           slideId: slide.id,
@@ -5737,7 +6308,7 @@ export default function PresentationEditor() {
       },
     });
     if (includesTextElement && draftContent.visualOnly === true) {
-      toast.info("Visual-only mode was turned off for this slide because you pasted text.");
+      toast.info(t("toast.visualOnlyDisabledByPaste"));
     }
     clipboardPasteCountRef.current += 1;
   }
@@ -5845,9 +6416,10 @@ export default function PresentationEditor() {
     try {
       for (const slide of slides) {
         const cachedDraft = getCachedSlideDraft(slide.id);
+        const persistedContent = ensureSlideContent(slide.slideContent);
         const baseContent = slide.id === selectedSlide?.id
           ? draftContent
-          : cachedDraft?.content ?? ensureSlideContent(slide.slideContent);
+          : resolveSlideContentFromCache(cachedDraft?.content, persistedContent);
         await updateSlideMutation.mutateAsync({
           deckId: deck.id,
           slideId: slide.id,
@@ -5887,7 +6459,7 @@ export default function PresentationEditor() {
         }
         const baseContent = slide.id === selectedSlide?.id
           ? draftContent
-          : cachedDraft?.content ?? persistedContent;
+          : resolveSlideContentFromCache(cachedDraft?.content, persistedContent);
         await updateSlideMutation.mutateAsync({
           deckId: deck.id,
           slideId: slide.id,
@@ -5994,9 +6566,10 @@ export default function PresentationEditor() {
       const videoDurationProbeCache = new Map<string, Promise<number | null>>();
       const slideTimingInputs = await Promise.all(slides.map(async (slide) => {
         const cachedDraft = getCachedSlideDraft(slide.id);
+        const persistedContent = ensureSlideContent(slide.slideContent);
         const content = slide.id === selectedSlide?.id
           ? draftContent
-          : cachedDraft?.content ?? ensureSlideContent(slide.slideContent);
+          : resolveSlideContentFromCache(cachedDraft?.content, persistedContent);
         const currentDurationMs = resolveSlideDurationMs(content);
         const videoSourceUrls = [...new Set(content.elements
           .filter((element) => element.type === "video")
@@ -6052,9 +6625,10 @@ export default function PresentationEditor() {
           continue;
         }
         const cachedDraft = getCachedSlideDraft(slide.id);
+        const persistedContent = ensureSlideContent(slide.slideContent);
         const baseContent = slide.id === selectedSlide?.id
           ? draftContent
-          : cachedDraft?.content ?? ensureSlideContent(slide.slideContent);
+          : resolveSlideContentFromCache(cachedDraft?.content, persistedContent);
         if (resolveSlideDurationMs(baseContent) === nextDurationMs) {
           continue;
         }
@@ -6265,7 +6839,7 @@ export default function PresentationEditor() {
   async function handleSaveSlide(options?: { silent?: boolean }): Promise<boolean> {
     if (!deck || !selectedSlide) {
       if (!options?.silent) {
-        toast.error("No active slide to save.");
+      toast.error(t("toast.noActiveSlideToSave"));
       }
       return false;
     }
@@ -6290,9 +6864,9 @@ export default function PresentationEditor() {
         Date.now(),
       );
       if (blockedReason === "stale_blocked") {
-        toast.error("Save blocked by version conflict. Reload latest and retry.");
+        toast.error(t("toast.saveBlockedByConflict"));
       } else {
-        toast.error("Save failed. Please retry.");
+        toast.error(t("toast.saveFailedRetry"));
       }
     }
     return false;
@@ -6313,7 +6887,7 @@ export default function PresentationEditor() {
     supplementalMediaClarityPercent?: number;
   }) {
     if (!deck || !selectedSlide) {
-      toast.error("No active slide for auto layout.");
+      toast.error(t("toast.noActiveSlideForAutoLayout"));
       return;
     }
 
@@ -6335,18 +6909,18 @@ export default function PresentationEditor() {
     const targetSlides = scope === "all" ? slides : [selectedSlide];
     const selectedId = selectedSlide.id;
     if (targetSlides.length === 0) {
-      toast.error("No slides available for auto layout.");
+      toast.error(t("toast.noSlidesForAutoLayout"));
       return;
     }
     if (watermarkEnabled && !selectedWatermarkOption) {
-      toast.error("Please select a PNG/JPG watermark image from library.");
+      toast.error(t("toast.selectWatermarkImage"));
       return;
     }
 
     if (hasUnsavedSelectedSlideChanges) {
       const saved = await handleSaveSlide({ silent: true });
       if (!saved) {
-        toast.error("Please resolve save conflicts before running auto layout.");
+        toast.error(t("toast.resolveConflictsBeforeAutoLayout"));
         return;
       }
     }
@@ -6431,11 +7005,11 @@ export default function PresentationEditor() {
         }
 
         if (failedDraftSaves.length > 0) {
-          toast.error(`Failed to save pending edits for slides: ${failedDraftSaves.join(", ")}`);
+          toast.error(t("toast.failedToSavePendingEdits", { slides: failedDraftSaves.join(", ") }));
           return;
         }
         if (savedDraftCount > 0) {
-          toast.info(`Saved pending edits on ${savedDraftCount} slide(s) before auto layout.`);
+          toast.info(t("toast.savedPendingEditsBeforeAutoLayout", { count: savedDraftCount }));
         }
       }
     }
@@ -6964,6 +7538,107 @@ export default function PresentationEditor() {
     toast.info("Loaded the latest presentation note.");
   }
 
+  async function handleUseGeneratedArticle(article: string): Promise<void> {
+    const nextArticle = article.trim();
+    if (!nextArticle) {
+      toast.error(t("dialog.articleBuilder.copyEmpty"));
+      return;
+    }
+
+    setDeckNoteDraft(nextArticle);
+    deckNoteDraftRef.current = nextArticle;
+    setDeckNoteConflict(null);
+    setIsArticleGeneratorDialogOpen(false);
+    setIsDeckNoteDialogOpen(true);
+    toast.success(t("dialog.articleBuilder.insertedIntoNotes"));
+  }
+
+  async function handleInsertGeneratedSlides(
+    draft: PresentationGeneratedSlideDraft,
+    options?: { closeDialog?: boolean; showSuccessToast?: boolean },
+  ): Promise<boolean> {
+    if (!deck) {
+      toast.error(t("dialog.articleBuilder.noActiveDeck"));
+      return false;
+    }
+
+    const rawSlideJson = (await resolveImportableGeneratedSlideJson(draft, activeCanvasSize)).trim();
+    if (!rawSlideJson) {
+      toast.error(t("dialog.articleBuilder.noGeneratedSlideData"));
+      return false;
+    }
+
+    let preparedSlides: PreparedImportedSlide[] = [];
+    try {
+      preparedSlides = convertGeneratedSlideJsonToPresentationSlides(rawSlideJson, activeCanvasSize);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t("dialog.articleBuilder.readSlideJsonError"));
+      return false;
+    }
+
+    if (!preparedSlides.length) {
+      toast.error(t("dialog.articleBuilder.noSlidesToInsert"));
+      return false;
+    }
+
+    setDeckMutationBusy(true);
+    try {
+      let expectedVersion = getExpectedDeckVersion();
+      let firstCreatedSlideId: number | null = null;
+
+      for (const slide of preparedSlides) {
+        let created: unknown;
+        // Retry the current slide only if the deck version changed mid-import.
+        while (true) {
+          try {
+            created = await addSlideMutation.mutateAsync({
+              deckId: deck.id,
+              expectedVersion,
+              title: slide.title,
+              slideContent: slide.content,
+              notes: slide.notes ?? undefined,
+            });
+            expectedVersion += 1;
+            break;
+          } catch (error) {
+            if (!isConflictError(error)) {
+              throw error;
+            }
+            const latestVersion = await readLatestDeckVersion();
+            if (latestVersion == null) {
+              throw error;
+            }
+            expectedVersion = latestVersion;
+          }
+        }
+
+        const createdSlideId = Number((created as { id?: unknown } | null)?.id);
+        if (firstCreatedSlideId == null && Number.isFinite(createdSlideId) && createdSlideId > 0) {
+          firstCreatedSlideId = createdSlideId;
+        }
+      }
+
+      deckVersionRef.current = expectedVersion;
+      await refreshDeck();
+      if (firstCreatedSlideId != null) {
+        switchToSlide(firstCreatedSlideId);
+      }
+      setLibraryTab("slides");
+      if (options?.closeDialog !== false) {
+        setIsArticleGeneratorDialogOpen(false);
+      }
+      if (options?.showSuccessToast !== false) {
+        toast.success(t("dialog.articleBuilder.insertSlidesSuccess", { count: preparedSlides.length }));
+      }
+      return true;
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t("dialog.articleBuilder.insertSlidesError"));
+      return false;
+    } finally {
+      setDeckMutationBusy(false);
+    }
+  }
+
   async function handleSaveDeckNote(options?: { forceOverwrite?: boolean }): Promise<boolean> {
     if (!deck) {
       return false;
@@ -7055,7 +7730,7 @@ export default function PresentationEditor() {
       Date.now(),
     );
     if (blockedReason === "stale_blocked") {
-      toast.error("Save blocked by version conflict. Reload latest and retry before saving to template.");
+      toast.error(t("toast.saveBlockedBeforeTemplate"));
       return;
     }
 
@@ -7094,14 +7769,14 @@ export default function PresentationEditor() {
       } else if (result.jobsChecked > 0) {
         toast.info(`Checked ${result.jobsChecked} pending media item(s). ${result.jobsRemaining} still pending.`);
       } else {
-        toast.info("No pending media jobs found.");
+        toast.info(t("toast.noPendingMediaJobs"));
       }
 
       if (Array.isArray(result.warnings) && result.warnings.length > 0) {
         toast.warning(result.warnings[0]);
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to fetch pending media.");
+      toast.error(error instanceof Error ? error.message : t("toast.fetchPendingMediaFailed"));
     }
   }
 
@@ -7127,7 +7802,7 @@ export default function PresentationEditor() {
       }
       setConflictPolicy(releaseStaleBlock());
       setSaveState("saved");
-      toast.success("Version restored.");
+      toast.success(t("toast.versionRestored"));
     } catch (error) {
       setSaveState("error");
       toast.error(error instanceof Error ? error.message : "Failed to restore version.");
@@ -7170,7 +7845,7 @@ export default function PresentationEditor() {
       }
       await requestFullscreenForElement(overlay as FullscreenCapableElement);
     } catch {
-      setExportMessage("Fullscreen is not available in this browser context.");
+      setExportMessage(t("toast.fullscreenUnavailable"));
     }
   }
 
@@ -7193,7 +7868,7 @@ export default function PresentationEditor() {
       : slides.length;
     if (!slideCount) {
       setPlaybackState("idle");
-      setExportMessage("No slides available for playback.");
+      setExportMessage(t("toast.noSlidesForPlayback"));
       return;
     }
     // Always start from the beginning so the entire deck plays through.
@@ -7218,7 +7893,7 @@ export default function PresentationEditor() {
     }
     if (hasUnsavedSlideChanges && typeof window !== "undefined") {
       const confirmed = window.confirm(
-        "Play Mode shows only saved content. Unsaved edits will not appear. Continue?",
+        t("confirm.playModeUnsaved"),
       );
       if (!confirmed) {
         return;
@@ -7242,10 +7917,10 @@ export default function PresentationEditor() {
       const queuedMessage = result.message || `${format.toUpperCase()} export queued`;
       setExportMessage(queuedMessage);
     } catch (error) {
-      const raw = String((error as any)?.message || "Export failed");
+      const raw = String((error as any)?.message || t("toast.exportFailed"));
       const trimmed = raw.includes(":") ? raw.split(":").slice(1).join(":").trim() : raw;
       setExportWarnings([]);
-      setExportMessage(trimmed || "Export failed");
+      setExportMessage(trimmed || t("toast.exportFailed"));
     }
   }
 
@@ -7745,7 +8420,7 @@ export default function PresentationEditor() {
 
   function handleBackToPresentationLibrary() {
     if (hasUnsavedSlideChanges && typeof window !== "undefined") {
-      const confirmed = window.confirm(UNSAVED_PRESENTATION_WARNING);
+      const confirmed = window.confirm(unsavedPresentationWarning);
       if (!confirmed) {
         return;
       }
@@ -7763,7 +8438,7 @@ export default function PresentationEditor() {
   if (!docId) {
     return (
       <div className="min-h-screen p-8">
-        <p className="text-sm text-red-600">Invalid presentation route.</p>
+        <p className="text-sm text-red-600">{t("error.wrongRoute")}</p>
       </div>
     );
   }
@@ -7845,7 +8520,10 @@ export default function PresentationEditor() {
     return (
       <div className="min-h-screen p-8 space-y-4">
         <h1 className="text-2xl font-semibold">{t("appTitle")}</h1>
-        <p className="text-sm text-red-600">{getDeckLoadErrorMessage(deckQuery.error)}</p>
+        <p className="text-sm text-red-600">{getDeckLoadErrorMessage(deckQuery.error, {
+          fallback: t("error.loadDeck"),
+          legacyBlocked: t("error.legacyDeckBlocked"),
+        })}</p>
       </div>
     );
   }
@@ -7865,14 +8543,14 @@ export default function PresentationEditor() {
     : t("status.ready");
   const exportStatusLabel =
     exportStatusQuery.data?.status
-    || (triggerExportMutation.isPending ? "queued" : "idle");
+    || (triggerExportMutation.isPending ? t("status.queued") : t("status.idle"));
   const slidesPanel = (
     <div className="flex h-full min-h-0 min-w-0 flex-col">
       <button
         type="button"
         className="mb-2 rounded border border-slate-700 bg-slate-900/70 px-2 py-1 text-left text-[11px] text-slate-300 hover:border-sky-500 hover:text-sky-200"
         onClick={() => setIsReorderDialogOpen(true)}
-        aria-label="Open Reorder Slides Overview"
+        aria-label={t("slidesPanel.openReorder")}
       >
         {t("slidesPanel.browseHint")}
       </button>
@@ -7882,9 +8560,10 @@ export default function PresentationEditor() {
       >
         {slides.map((slide) => {
           const cachedDraft = getCachedSlideDraft(slide.id);
+          const persistedContent = ensureSlideContent(slide.slideContent);
           const slideContentForPreview = selectedSlideId === slide.id
             ? draftContent
-            : cachedDraft?.content ?? ensureSlideContent(slide.slideContent);
+            : resolveSlideContentFromCache(cachedDraft?.content, persistedContent);
           const isDraggingSlide = draggingSlideId === slide.id;
           const isDropTargetSlide =
             draggingSlideId !== null
@@ -7963,19 +8642,19 @@ export default function PresentationEditor() {
                   />
                 ) : (
                   <div className="grid h-full w-full place-items-center text-[11px] text-slate-500">
-                    Slide preview
+                    {t("slidesPanel.preview")}
                   </div>
                 )}
                 {preview.mediaKind === "video" ? (
                   <span className="absolute right-1 top-1 rounded bg-black/70 px-1.5 py-0.5 text-[10px] text-white">
-                    VIDEO
+                    {t("media.video")}
                   </span>
                 ) : null}
                 <div className="absolute left-1 top-1 flex flex-col items-start gap-1">
                   {(slide as any)?.audioTrack != null ? (
                     <span
                       className="flex items-center gap-0.5 rounded bg-black/70 px-1.5 py-0.5 text-[10px] text-white"
-                      title="Slide has audio"
+                      title={t("slidesPanel.audioTooltip")}
                     >
                       <Music className="h-2.5 w-2.5" />
                     </span>
@@ -7983,9 +8662,9 @@ export default function PresentationEditor() {
                   {isVisualOnlySlide ? (
                     <span
                       className="rounded bg-amber-500/90 px-1.5 py-0.5 text-[10px] font-medium text-slate-950"
-                      title="This slide is visual-only and does not show on-slide text"
+                      title={t("slidesPanel.visualOnlyTooltip")}
                     >
-                      NO TEXT
+                      {t("slidesPanel.noTextBadge")}
                     </span>
                   ) : null}
                 </div>
@@ -7997,11 +8676,11 @@ export default function PresentationEditor() {
               </div>
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="text-[11px] uppercase tracking-wide text-slate-500">Slide {slide.orderIndex + 1}</p>
+                  <p className="text-[11px] uppercase tracking-wide text-slate-500">{t("slidesPanel.slideNumber", { index: slide.orderIndex + 1 })}</p>
                   <p className="truncate font-medium">{slide.title}</p>
                   {isVisualOnlySlide ? (
                     <p className="mt-0.5 text-[10px] font-medium uppercase tracking-wide text-amber-700">
-                      Visual-only slide
+                      {t("slidePanel.visualOnlyTitle")}
                     </p>
                   ) : null}
                 </div>
@@ -8014,19 +8693,19 @@ export default function PresentationEditor() {
         })}
       </div>
       <div className="shrink-0 grid grid-cols-2 gap-1.5 border-t border-slate-700 pt-2">
-        <Button size="sm" onClick={() => void handleAddSlide()} aria-label="Add Slide" disabled={deckMutationBusy} className="gap-1">
+        <Button size="sm" onClick={() => void handleAddSlide()} aria-label={t("slidesPanel.addSlide")} disabled={deckMutationBusy} className="gap-1">
           <Plus className="h-3.5 w-3.5" />
           {t("slidesPanel.addSlide")}
         </Button>
-        <Button size="sm" onClick={() => void handleDuplicateSlide()} aria-label="Duplicate Slide" variant="secondary" disabled={deckMutationBusy} className="gap-1">
+        <Button size="sm" onClick={() => void handleDuplicateSlide()} aria-label={t("slidesPanel.duplicate")} variant="secondary" disabled={deckMutationBusy} className="gap-1">
           <Copy className="h-3.5 w-3.5" />
           {t("slidesPanel.duplicate")}
         </Button>
-        <Button size="sm" onClick={() => void handleMoveSlide("up")} aria-label="Move Slide Up" variant="outline" disabled={deckMutationBusy} className="gap-1">
+        <Button size="sm" onClick={() => void handleMoveSlide("up")} aria-label={t("slidesPanel.moveUp")} variant="outline" disabled={deckMutationBusy} className="gap-1">
           <ChevronUp className="h-3.5 w-3.5" />
           {t("slidesPanel.moveUp")}
         </Button>
-        <Button size="sm" onClick={() => void handleMoveSlide("down")} aria-label="Move Slide Down" variant="outline" disabled={deckMutationBusy} className="gap-1">
+        <Button size="sm" onClick={() => void handleMoveSlide("down")} aria-label={t("slidesPanel.moveDown")} variant="outline" disabled={deckMutationBusy} className="gap-1">
           <ChevronDown className="h-3.5 w-3.5" />
           {t("slidesPanel.moveDown")}
         </Button>
@@ -8035,7 +8714,7 @@ export default function PresentationEditor() {
           variant="outline"
           className="col-span-2 gap-1"
           onClick={() => setIsReorderDialogOpen(true)}
-          aria-label="Open Reorder Slides Overview"
+          aria-label={t("slidesPanel.openReorder")}
           disabled={!slides.length || deckMutationBusy}
         >
           {t("slidesPanel.reorderAll")}
@@ -8043,7 +8722,7 @@ export default function PresentationEditor() {
         <Button
           size="sm"
           onClick={() => void handleDeleteSlide()}
-          aria-label="Delete Slide"
+          aria-label={t("slidesPanel.deleteSlide")}
           variant="destructive"
           className="col-span-2 gap-1"
           disabled={deckMutationBusy}
@@ -8093,11 +8772,11 @@ export default function PresentationEditor() {
                           : "border-slate-200 bg-white hover:border-slate-300"
                           }`}
                         onClick={() => setSelectedSavedVersionId(version.id)}
-                        aria-label={`Select Version ${version.versionNumber ?? version.id}`}
+                        aria-label={t("versionsPanel.selectVersion", { version: version.versionNumber ?? version.id })}
                         data-testid={`presentation-version-item-${version.id}`}
                       >
                         <p className="truncate text-[11px] font-medium text-slate-700">
-                          V{version.versionNumber ?? version.id} - {version.snapshot?.slideTitle || "Slide"}
+                          V{version.versionNumber ?? version.id} - {version.snapshot?.slideTitle || t("versions.group.slideFallback")}
                         </p>
                         <p className="text-[10px] text-slate-500">
                           {formatVersionDate(version.snapshot?.savedAt || version.createdAt)}
@@ -8129,7 +8808,7 @@ export default function PresentationEditor() {
                   className="h-6 gap-1 px-2 text-[10px]"
                   onClick={() => setRestoreDialogVersionId(selectedSavedVersion.id)}
                   disabled={restoreVersionMutation.isPending}
-                  aria-label={`Restore Selected Version ${selectedSavedVersion.versionNumber ?? selectedSavedVersion.id}`}
+                  aria-label={t("versionsPanel.restoreSelectedVersion", { version: selectedSavedVersion.versionNumber ?? selectedSavedVersion.id })}
                 >
                   {restoreVersionMutation.isPending && restoreDialogVersionId === selectedSavedVersion.id ? (
                     <Loader2 className="h-3 w-3 animate-spin" />
@@ -8144,16 +8823,19 @@ export default function PresentationEditor() {
                     data-testid="presentation-version-diff-summary"
                   >
                     <span className="rounded bg-white px-1.5 py-0.5">
-                      Elements: {selectedSavedVersionDiffSummary.currentElementCount} {"->"} {selectedSavedVersionDiffSummary.versionElementCount}
+                      {t("versionsPanel.diffElements", {
+                        current: selectedSavedVersionDiffSummary.currentElementCount,
+                        next: selectedSavedVersionDiffSummary.versionElementCount,
+                      })}
                     </span>
                     <span className="rounded bg-white px-1.5 py-0.5">
-                      Changed: {selectedSavedVersionDiffSummary.changedElementCount}
+                      {t("versionsPanel.diffChanged", { count: selectedSavedVersionDiffSummary.changedElementCount })}
                     </span>
                     <span className="rounded bg-white px-1.5 py-0.5">
-                      Added: {selectedSavedVersionDiffSummary.addedElementCount}
+                      {t("versionsPanel.diffAdded", { count: selectedSavedVersionDiffSummary.addedElementCount })}
                     </span>
                     <span className="rounded bg-white px-1.5 py-0.5">
-                      Removed: {selectedSavedVersionDiffSummary.removedElementCount}
+                      {t("versionsPanel.diffRemoved", { count: selectedSavedVersionDiffSummary.removedElementCount })}
                     </span>
                     <span className="rounded bg-white px-1.5 py-0.5">
                       Canvas: {selectedSavedVersionDiffSummary.canvasChanged ? "changed" : "same"}
@@ -8176,7 +8858,7 @@ export default function PresentationEditor() {
                           />
                         ) : (
                           <div className="grid h-full w-full place-items-center px-1 text-center text-[10px] text-slate-500">
-                            {selectedSavedVersionCurrentState?.title || "Current slide not found"}
+                            {selectedSavedVersionCurrentState?.title || t("versionsPanel.currentSlideMissing")}
                           </div>
                         )}
                       </div>
@@ -8187,14 +8869,14 @@ export default function PresentationEditor() {
                         {selectedVersionPreview?.mediaSrc ? (
                           <img
                             src={selectedVersionPreview.mediaPosterSrc || selectedVersionPreview.mediaSrc}
-                            alt={selectedSavedVersion.snapshot?.slideTitle || "Version slide"}
+                            alt={selectedSavedVersion.snapshot?.slideTitle || t("versionsPanel.savedSlide")}
                             className="h-full w-full object-cover"
                             loading="lazy"
                             draggable={false}
                           />
                         ) : (
                           <div className="grid h-full w-full place-items-center px-1 text-center text-[10px] text-slate-500">
-                            {selectedSavedVersion.snapshot?.slideTitle || "Version slide"}
+                            {selectedSavedVersion.snapshot?.slideTitle || t("versionsPanel.savedSlide")}
                           </div>
                         )}
                       </div>
@@ -8202,20 +8884,20 @@ export default function PresentationEditor() {
                   </div>
                   <p className="mt-2 text-[10px] text-slate-600">
                     {selectedSavedVersionDiffSummary.isIdentical
-                      ? "No content differences detected."
-                      : "Review the diff summary and previews before restoring this version."}
+                      ? t("versionsPanel.noDiff")
+                      : t("versionsPanel.reviewDiff")}
                   </p>
                 </>
               ) : (
                 <p className="text-[10px] text-slate-500">
-                  This version payload cannot be previewed, but you can still restore it.
+                  {t("versionsPanel.unpreviewable")}
                 </p>
               )}
             </div>
           ) : null}
         </div>
       ) : (
-        <p className="text-xs text-slate-500">No saved versions yet. Use Save to create history.</p>
+        <p className="text-xs text-slate-500">{t("versionsPanel.empty")}</p>
       )}
     </div>
   );
@@ -8230,7 +8912,7 @@ export default function PresentationEditor() {
           : "text-slate-300 hover:bg-slate-800"
           }`}
         onClick={() => setLibraryTab("slides")}
-        aria-label="Open Slides Panel"
+        aria-label={t("toolbar.openSlidesPanel")}
       >
         <MousePointer2 className="h-4 w-4" />
       </Button>
@@ -8243,7 +8925,7 @@ export default function PresentationEditor() {
           : "text-slate-300 hover:bg-slate-800"
           }`}
         onClick={() => setLibraryTab("photos")}
-        aria-label="Open Photos Library"
+        aria-label={t("toolbar.openPhotosLibrary")}
       >
         <ImageIcon className="h-4 w-4" />
       </Button>
@@ -8256,7 +8938,7 @@ export default function PresentationEditor() {
           : "text-slate-300 hover:bg-slate-800"
           }`}
         onClick={() => setLibraryTab("videos")}
-        aria-label="Open Videos Library"
+        aria-label={t("toolbar.openVideosLibrary")}
       >
         <Clapperboard className="h-4 w-4" />
       </Button>
@@ -8269,7 +8951,7 @@ export default function PresentationEditor() {
           : "text-slate-300 hover:bg-slate-800"
           }`}
         onClick={() => setLibraryTab("graphics")}
-        aria-label="Open Graphics Library"
+        aria-label={t("toolbar.openGraphicsLibrary")}
       >
         <Shapes className="h-4 w-4" />
       </Button>
@@ -8282,7 +8964,7 @@ export default function PresentationEditor() {
           : "text-slate-300 hover:bg-slate-800"
           }`}
         onClick={() => setLibraryTab("blocks")}
-        aria-label="Open Blocks Library"
+        aria-label={t("toolbar.openBlocksLibrary")}
       >
         <LayoutTemplate className="h-4 w-4" />
       </Button>
@@ -8293,7 +8975,7 @@ export default function PresentationEditor() {
         variant="ghost"
         className="h-10 w-10 text-slate-300 hover:bg-slate-800"
         onClick={() => handleAddElement("text")}
-        aria-label="Quick Add Text"
+        aria-label={t("toolbar.quickAddText")}
       >
         <Type className="h-4 w-4" />
       </Button>
@@ -8303,7 +8985,7 @@ export default function PresentationEditor() {
         variant="ghost"
         className="h-10 w-10 text-slate-300 hover:bg-slate-800"
         onClick={() => handleAddElement("rect")}
-        aria-label="Quick Add Rectangle"
+        aria-label={t("toolbar.quickAddRectangle")}
       >
         <RectangleHorizontal className="h-4 w-4" />
       </Button>
@@ -8313,7 +8995,7 @@ export default function PresentationEditor() {
         variant="ghost"
         className="h-10 w-10 text-slate-300 hover:bg-slate-800"
         onClick={() => handleAddElement("line")}
-        aria-label="Quick Add Line"
+        aria-label={t("toolbar.quickAddLine")}
       >
         <Minus className="h-4 w-4" />
       </Button>
@@ -8365,91 +9047,91 @@ export default function PresentationEditor() {
       <div className="flex flex-wrap gap-1.5">
         <Button
           onClick={() => handleAddElement("text")}
-          aria-label="Add Text Element"
+          aria-label={t("toolbar.addTextElement")}
           variant="secondary"
           size="sm"
           className="gap-1 text-xs"
         >
           <Type className="h-3.5 w-3.5" />
-          Add Text
+          {t("toolbar.insertText")}
         </Button>
         <Button
           onClick={() => handleAddElement("image")}
-          aria-label="Upload Image Element"
+          aria-label={t("toolbar.uploadImageElement")}
           variant="secondary"
           size="sm"
           className="gap-1 text-xs"
           disabled={localUploadKind !== null}
         >
           {localUploadKind === "image" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImageIcon className="h-3.5 w-3.5" />}
-          Upload Image
+          {t("toolbar.insertImage")}
         </Button>
         <Button
           onClick={() => handleAddElement("video")}
-          aria-label="Upload Video Element"
+          aria-label={t("toolbar.uploadVideoElement")}
           variant="secondary"
           size="sm"
           className="gap-1 text-xs"
           disabled={localUploadKind !== null}
         >
           {localUploadKind === "video" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Clapperboard className="h-3.5 w-3.5" />}
-          Upload Video
+          {t("toolbar.insertVideo")}
         </Button>
         <Button
           onClick={() => handleAddElement("rect")}
-          aria-label="Add Rectangle Element"
+          aria-label={t("toolbar.addRectangleElement")}
           variant="secondary"
           size="sm"
           className="gap-1 text-xs"
         >
           <RectangleHorizontal className="h-3.5 w-3.5" />
-          Rectangle
+          {t("toolbar.rectangle")}
         </Button>
         <Button
           onClick={() => handleAddElement("line")}
-          aria-label="Add Line Element"
+          aria-label={t("toolbar.addLineElement")}
           variant="secondary"
           size="sm"
           className="gap-1 text-xs"
         >
           <Minus className="h-3.5 w-3.5" />
-          Line
+          {t("toolbar.line")}
         </Button>
         <Button
           onClick={() => setSnapLockEnabled((previous) => !previous)}
-          aria-label={snapLockEnabled ? "Disable Snap Lock" : "Enable Snap Lock"}
+          aria-label={t("toolbar.snapLock", { state: snapLockEnabled ? t("toolbar.snapOn") : t("toolbar.snapOff") })}
           variant={snapLockEnabled ? "secondary" : "outline"}
           size="sm"
           className="gap-1 text-xs"
         >
-          Snap Lock: {snapLockEnabled ? "On" : "Off"}
+          {t("toolbar.snapLock", { state: snapLockEnabled ? t("toolbar.snapOn") : t("toolbar.snapOff") })}
         </Button>
         <Button
           onClick={() => setShowElementFrames((previous) => !previous)}
-          aria-label={showElementFrames ? "Hide Element Borders" : "Show Element Borders"}
+          aria-label={t("toolbar.elementBorders", { state: showElementFrames ? t("toolbar.bordersOn") : t("toolbar.bordersOff") })}
           variant={showElementFrames ? "secondary" : "outline"}
           size="sm"
           className="gap-1 text-xs"
         >
-          Element Borders: {showElementFrames ? "On" : "Off"}
+          {t("toolbar.elementBorders", { state: showElementFrames ? t("toolbar.bordersOn") : t("toolbar.bordersOff") })}
         </Button>
         {aiRecipePreviewDefinition && (
           <Button
             onClick={() => setIsAILayoutPreviewDialogOpen(true)}
-            aria-label="AI Layout Preview"
+            aria-label={t("toolbar.aiLayoutPreview")}
             variant={isAILayoutPreviewDialogOpen ? "secondary" : "outline"}
             size="sm"
             className="gap-1 text-xs"
           >
             <LayoutTemplate className="h-3.5 w-3.5" />
-            AI Layout
+            {t("toolbar.aiLayout")}
           </Button>
         )}
         <div className="ml-auto flex items-center gap-1.5 rounded-md border border-slate-700 bg-slate-900 px-2 py-0.5 text-xs text-slate-300">
           <Crop className="h-3 w-3" />
           <span>{t("toolbar.canvas")}</span>
           <select
-            aria-label="Canvas Aspect Ratio"
+            aria-label={t("toolbar.canvasAspectRatio")}
             className="rounded border border-slate-700 bg-slate-950 px-1.5 py-0.5 text-xs text-slate-100 outline-none"
             value={activeCanvasSize.preset}
             onChange={(event) => handleChangeCanvasPreset(event.target.value)}
@@ -8467,7 +9149,7 @@ export default function PresentationEditor() {
             className="h-6 border-slate-600 bg-slate-900 px-2 text-[11px] text-slate-100 hover:bg-slate-800"
             onClick={() => void handleApplyCanvasPresetAllSlides(activeCanvasSize.preset)}
             disabled={!slides.length || canvasApplyAllPending}
-            aria-label="Apply Canvas Aspect Ratio to All Slides"
+            aria-label={t("toolbar.applyCanvasToAllSlides")}
           >
             {canvasApplyAllPending ? t("toolbar.applying") : t("toolbar.applyAll")}
           </Button>
@@ -8477,7 +9159,7 @@ export default function PresentationEditor() {
             variant="ghost"
             size="sm"
             className="h-6 px-1.5 text-slate-200 hover:bg-slate-800"
-            aria-label="Zoom Out"
+            aria-label={t("toolbar.zoomOut")}
             onClick={() => updateDesktopZoom(desktopViewport.scale - DESKTOP_ZOOM_STEP)}
           >
             <ZoomOut className="h-3 w-3" />
@@ -8485,7 +9167,7 @@ export default function PresentationEditor() {
           <button
             type="button"
             className="min-w-[44px] rounded px-1 text-center text-xs text-slate-300"
-            aria-label="Canvas Zoom Percentage"
+            aria-label={t("toolbar.canvasZoomPercentage")}
             onClick={() => updateDesktopZoom(1)}
           >
             {Math.round(desktopViewport.scale * 100)}%
@@ -8494,7 +9176,7 @@ export default function PresentationEditor() {
             variant="ghost"
             size="sm"
             className="h-6 px-1.5 text-slate-200 hover:bg-slate-800"
-            aria-label="Zoom In"
+            aria-label={t("toolbar.zoomIn")}
             onClick={() => updateDesktopZoom(desktopViewport.scale + DESKTOP_ZOOM_STEP)}
           >
             <ZoomIn className="h-3 w-3" />
@@ -8504,8 +9186,8 @@ export default function PresentationEditor() {
       <div className="flex flex-wrap gap-1.5 border-t border-slate-800 pt-1">
         <Button
           onClick={handleUndo}
-          aria-label="Undo Edit"
-          title="Undo (Ctrl/Cmd+Z)"
+          aria-label={t("toolbar.undoEdit")}
+          title={t("toolbar.undoHint")}
           variant="outline"
           size="sm"
           className="gap-1 text-xs"
@@ -8515,8 +9197,8 @@ export default function PresentationEditor() {
         </Button>
         <Button
           onClick={handleRedo}
-          aria-label="Redo Edit"
-          title="Redo (Ctrl/Cmd+Shift+Z or Ctrl/Cmd+Y)"
+          aria-label={t("toolbar.redoEdit")}
+          title={t("toolbar.redoHint")}
           variant="outline"
           size="sm"
           className="gap-1 text-xs"
@@ -8524,14 +9206,14 @@ export default function PresentationEditor() {
           <Redo2 className="h-3.5 w-3.5" />
           {t("toolbar.redo2")}
         </Button>
-        <Button onClick={handleDuplicateSelection} aria-label="Duplicate Selection" variant="outline" size="sm" className="gap-1 text-xs">
+        <Button onClick={handleDuplicateSelection} aria-label={t("toolbar.duplicateSelection")} variant="outline" size="sm" className="gap-1 text-xs">
           <Copy className="h-3.5 w-3.5" />
           {t("toolbar.duplicate")}
         </Button>
         <Button
           onClick={handleGroupSelection}
-          aria-label="Group Selection"
-          title="Group selected items (Ctrl/Cmd+G)"
+          aria-label={t("toolbar.groupSelection")}
+          title={t("toolbar.groupSelectionHint")}
           variant="outline"
           size="sm"
           className="text-xs"
@@ -8542,8 +9224,8 @@ export default function PresentationEditor() {
         {selectedComponent && selectedComponentIsGroup ? (
           <Button
             onClick={() => handleDetachComponent(selectedComponent.id)}
-            aria-label="Ungroup Selection"
-            title="Ungroup selected group (Ctrl/Cmd+Shift+G)"
+            aria-label={t("toolbar.ungroupSelection")}
+            title={t("toolbar.ungroupSelectionHint")}
             variant="outline"
             size="sm"
             className="text-xs"
@@ -8551,11 +9233,11 @@ export default function PresentationEditor() {
             {t("toolbar.ungroup")}
           </Button>
         ) : null}
-        <Button onClick={handleDeleteSelection} aria-label="Delete Selection" variant="outline" size="sm" className="gap-1 text-xs">
+        <Button onClick={handleDeleteSelection} aria-label={t("toolbar.deleteSelection")} variant="outline" size="sm" className="gap-1 text-xs">
           <Trash2 className="h-3.5 w-3.5" />
           {t("toolbar.delete")}
         </Button>
-        <Button onClick={() => handleRotateSelection(15)} aria-label="Rotate Selection" variant="outline" size="sm" className="gap-1 text-xs">
+        <Button onClick={() => handleRotateSelection(15)} aria-label={t("toolbar.rotateSelection")} variant="outline" size="sm" className="gap-1 text-xs">
           <RotateCw className="h-3.5 w-3.5" />
           {t("toolbar.rotate")}
         </Button>
@@ -8564,32 +9246,32 @@ export default function PresentationEditor() {
   );
   const canvasFooter = (
     <div className="flex flex-wrap items-center gap-2 rounded-md border border-slate-300 bg-white/95 px-2 py-1 text-[11px] text-slate-700 shadow-sm">
-      <span className="rounded bg-slate-100 px-2 py-0.5">Save: {saveStatusLabel}</span>
-      <span className="rounded bg-slate-100 px-2 py-0.5">Playback: {playbackStatusLabel}</span>
-      <span className="rounded bg-slate-100 px-2 py-0.5">Export: {exportStatusLabel}</span>
+      <span className="rounded bg-slate-100 px-2 py-0.5">{t("footer.save", { status: saveStatusLabel })}</span>
+      <span className="rounded bg-slate-100 px-2 py-0.5">{t("footer.playback", { status: playbackStatusLabel })}</span>
+      <span className="rounded bg-slate-100 px-2 py-0.5">{t("footer.export", { status: exportStatusLabel })}</span>
       {selectedSlideVisualOnly ? (
         <span
           className="rounded bg-amber-100 px-2 py-0.5 font-medium text-amber-800"
-          title="This slide is configured to hide on-slide text"
+          title={t("slidePanel.visualOnlyTitle")}
         >
-          Slide mode: Visual-only
+          {t("footer.visualOnly")}
         </span>
       ) : null}
       <span className="rounded bg-slate-100 px-2 py-0.5">
-        Snap: {snapLockEnabled ? "Locked" : "Free"}
+        {t("footer.snap")}: {snapLockEnabled ? t("footer.snapLocked") : t("footer.snapFree")}
       </span>
       <span className="rounded bg-slate-100 px-2 py-0.5">
-        Borders: {showElementFrames ? "Visible" : "Hidden"}
+        {t("footer.borders")}: {showElementFrames ? t("footer.bordersVisible") : t("footer.bordersHidden")}
       </span>
       {saveState === "conflict" ? (
         <Button
           variant="outline"
           size="sm"
           onClick={() => void handleReloadLatestSlide()}
-          aria-label="Reload Latest Slide"
+          aria-label={t("footer.reloadLatest")}
           className="h-6 px-2 text-[11px]"
         >
-          Reload Latest
+          {t("footer.reloadLatest")}
         </Button>
       ) : null}
       {exportMessage ? (
@@ -8602,7 +9284,9 @@ export default function PresentationEditor() {
           role="status"
           aria-live="polite"
         >
-          Export warnings: {exportWarnings.map((warning) => `${warning.code} (slide ${warning.slideId})`).join(", ")}
+          {t("footer.exportWarnings", {
+            warnings: exportWarnings.map((warning) => `${warning.code} (slide ${warning.slideId})`).join(", "),
+          })}
         </span>
       ) : null}
     </div>
@@ -8630,10 +9314,10 @@ export default function PresentationEditor() {
   );
   const canvasPropertiesPanel = (
     <label className={`rounded-md border border-slate-300 bg-white px-2 py-2 text-xs text-slate-700 ${isMobileViewport ? "block space-y-2" : "flex items-center justify-between gap-2"}`}>
-      <span className="font-medium">Canvas Size</span>
+      <span className="font-medium">{t("panel.canvasSize")}</span>
       <div className={`flex items-center gap-1.5 ${isMobileViewport ? "pt-1" : ""}`}>
         <select
-          aria-label="Canvas Aspect Ratio (Properties)"
+          aria-label={t("panel.canvasAspectRatio")}
           className="rounded border border-slate-300 bg-white px-2 py-1 text-xs outline-none"
           value={activeCanvasSize.preset}
           onChange={(event) => handleChangeCanvasPreset(event.target.value)}
@@ -8651,9 +9335,9 @@ export default function PresentationEditor() {
           className="h-7 px-2 text-[11px]"
           onClick={() => void handleApplyCanvasPresetAllSlides(activeCanvasSize.preset)}
           disabled={!slides.length || canvasApplyAllPending}
-          aria-label="Apply Canvas Size to All Slides"
+          aria-label={t("panel.applyCanvasToAll")}
         >
-          {canvasApplyAllPending ? "Applying..." : "Apply All"}
+          {canvasApplyAllPending ? t("panel.applying") : t("panel.applyAll")}
         </Button>
       </div>
     </label>
@@ -8662,37 +9346,39 @@ export default function PresentationEditor() {
     <div className="space-y-3">
       {selectedSlideVisualOnly ? (
         <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2">
-          <p className="text-xs font-semibold uppercase tracking-wide text-amber-800">Visual-only slide</p>
-          <p className="mt-1 text-[11px] text-amber-700">
-            This slide intentionally hides on-slide text and keeps image or video full-canvas.
-          </p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-amber-800">{t("slidePanel.visualOnlyTitle")}</p>
+          <p className="mt-1 text-[11px] text-amber-700">{t("slidePanel.visualOnlyDesc")}</p>
         </div>
       ) : null}
       {isMobileViewport ? (
         <div className="rounded-md border border-slate-300 bg-slate-50 px-3 py-2">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">Slide Controls</p>
-          <p className="mt-1 text-[11px] text-slate-500">Timing, transitions, and background for the current slide.</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">{t("slidePanel.slideControls")}</p>
+          <p className="mt-1 text-[11px] text-slate-500">{t("slidePanel.slideControlsDesc")}</p>
         </div>
       ) : null}
       {showAILayoutPanel ? (
         <div className="rounded-md border border-sky-200 bg-sky-50/70 p-3" data-testid="ai-layout-panel">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-sky-800">AI Layout</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-sky-800">{t("slidePanel.aiLayoutTitle")}</p>
               {effectiveAILayoutMode ? (
                 <p className="mt-1 text-[11px] text-sky-700" data-testid="ai-layout-mode-summary">
-                  Current mode: {PRESENTATION_AI_LAYOUT_MODE_LABELS[effectiveAILayoutMode]}
-                  {slideAIDesign?.modeLocked ? " · Locked" : ""}
+                  {slideAIDesign?.modeLocked
+                    ? t("slidePanel.currentModeWithLock", { mode: t(PRESENTATION_AI_LAYOUT_MODE_LABEL_KEYS[effectiveAILayoutMode]) })
+                    : t("slidePanel.currentMode", { mode: t(PRESENTATION_AI_LAYOUT_MODE_LABEL_KEYS[effectiveAILayoutMode]) })}
                 </p>
               ) : null}
               <p className="mt-1 text-[11px] text-sky-700">
-                Current block layout: {currentAILayoutRecipeId
-                  ? (PRESENTATION_COMPONENT_AI_GUIDANCE[currentAILayoutRecipeId]?.label ?? currentAILayoutRecipeId)
-                  : "Automatic fallback"}
+                {t("slidePanel.currentBlockLayout", { layout: aiLayoutCanvasLabel })}
               </p>
               {slideAIDesign?.selectionMode ? (
                 <p className="mt-1 text-[11px] text-sky-700">
-                  Selection mode: {slideAIDesign.selectionMode}
+                  {t("slidePanel.selectionMode", { mode: slideAIDesign.selectionMode })}
+                </p>
+              ) : null}
+              {aiLayoutExecutionSummary ? (
+                <p className="mt-1 text-[11px] text-sky-700">
+                  {aiLayoutExecutionSummary}
                 </p>
               ) : null}
               {slideAIDesign?.selectionReason ? (
@@ -8717,13 +9403,13 @@ export default function PresentationEditor() {
                   {slideAIDesign.fitScore.status}
                 </span>
                 <span className="text-[11px] text-sky-800">
-                  Fit {(slideAIDesign.fitScore.overall * 100).toFixed(0)}%
+                  {t("slidePanel.fitPercent", { percent: (slideAIDesign.fitScore.overall * 100).toFixed(0) })}
                 </span>
                 <span className="text-[11px] text-sky-700">
-                  Overflow {(slideAIDesign.fitScore.overflowRisk * 100).toFixed(0)}%
+                  {t("slidePanel.overflowPercent", { percent: (slideAIDesign.fitScore.overflowRisk * 100).toFixed(0) })}
                 </span>
                 <span className="text-[11px] text-sky-700">
-                  Readability {(slideAIDesign.fitScore.readability * 100).toFixed(0)}%
+                  {t("slidePanel.readabilityPercent", { percent: (slideAIDesign.fitScore.readability * 100).toFixed(0) })}
                 </span>
               </div>
               {aiLayoutCurrentModeCandidate?.reason ? (
@@ -8733,7 +9419,7 @@ export default function PresentationEditor() {
           ) : null}
           {aiLayoutCandidateModes.length ? (
             <div className="mt-3 space-y-1" data-testid="ai-layout-candidate-modes">
-              <p className="text-[11px] font-medium text-sky-800">Candidate modes</p>
+              <p className="text-[11px] font-medium text-sky-800">{t("slidePanel.candidateModes")}</p>
               <div className="space-y-1">
                 {aiLayoutCandidateModes.slice(0, 4).map((candidate) => (
                   <div
@@ -8742,7 +9428,7 @@ export default function PresentationEditor() {
                   >
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-medium">
-                        {PRESENTATION_AI_LAYOUT_MODE_LABELS[candidate.mode]}
+                        {t(PRESENTATION_AI_LAYOUT_MODE_LABEL_KEYS[candidate.mode])}
                       </span>
                       <span className="rounded-full border border-sky-100 bg-sky-50 px-1.5 py-0.5 text-[10px] text-sky-700">
                         {candidate.fitStatus}
@@ -8752,7 +9438,7 @@ export default function PresentationEditor() {
                       </span>
                       {candidate.blockedBy ? (
                         <span className="rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] text-amber-700">
-                          {PRESENTATION_AI_LAYOUT_BLOCKED_BY_LABELS[candidate.blockedBy] ?? candidate.blockedBy}
+                          {t(PRESENTATION_AI_LAYOUT_BLOCKED_BY_LABEL_KEYS[candidate.blockedBy] ?? candidate.blockedBy)}
                         </span>
                       ) : null}
                     </div>
@@ -8764,7 +9450,7 @@ export default function PresentationEditor() {
           ) : null}
           {slideAIDesign?.candidateRecipes?.length ? (
             <div className="mt-3 space-y-1">
-              <p className="text-[11px] font-medium text-sky-800">Candidate block layouts</p>
+              <p className="text-[11px] font-medium text-sky-800">{t("slidePanel.candidateBlockLayouts")}</p>
               <div className="flex flex-wrap gap-1.5">
                 {slideAIDesign.candidateRecipes.slice(0, 4).map((candidate) => (
                   <span
@@ -8790,15 +9476,15 @@ export default function PresentationEditor() {
                 onClick={() => setIsAILayoutPreviewDialogOpen(true)}
               >
                 <Maximize2 className="mr-1 h-3.5 w-3.5" />
-                Preview Block
+                {t("slidePanel.previewBlock")}
               </Button>
             </div>
           ) : null}
           <div className="mt-3 grid gap-2 md:grid-cols-[minmax(0,1fr)_auto]">
             <label>
-              <span className="text-[11px] font-medium text-sky-800">Preferred mode</span>
+              <span className="text-[11px] font-medium text-sky-800">{t("slidePanel.preferredMode")}</span>
               <select
-                aria-label="AI Layout Mode Override"
+                aria-label={t("toolbar.aiLayoutModeOverride")}
                 className="mt-1 h-9 w-full rounded border border-sky-200 bg-white px-2 py-1 text-xs text-slate-700 outline-none"
                 value={slideAIDesign?.userOverrideMode ?? ""}
                 onChange={(event) => {
@@ -8810,31 +9496,39 @@ export default function PresentationEditor() {
                   );
                 }}
               >
-                <option value="">Auto</option>
+                <option value="">{t("common.auto")}</option>
                 {PRESENTATION_AI_LAYOUT_MODES.map((mode) => (
                   <option key={mode} value={mode}>
-                    {PRESENTATION_AI_LAYOUT_MODE_LABELS[mode]}
+                    {t(PRESENTATION_AI_LAYOUT_MODE_LABEL_KEYS[mode])}
                   </option>
                 ))}
               </select>
               <p className="mt-1 text-[10px] text-sky-700">
-                Stored in slide metadata and reused by the next AI relayout pass.
+                {t("slidePanel.modeHint")}
               </p>
             </label>
             <label className="flex items-center gap-2 rounded-md border border-sky-200 bg-white px-3 py-2 text-[11px] text-sky-800">
               <input
-                aria-label="Lock AI Layout Mode"
+                aria-label={t("slidePanel.lockCurrentMode")}
                 type="checkbox"
                 className="h-4 w-4 rounded border-sky-300"
                 checked={Boolean(slideAIDesign?.modeLocked)}
                 onChange={(event) => handleToggleAILayoutModeLock(event.target.checked)}
                 disabled={!effectiveAILayoutMode}
               />
-              <span>Lock current mode</span>
+              <span>{t("slidePanel.lockCurrentMode")}</span>
             </label>
           </div>
           <div className="mt-2 flex flex-wrap gap-1">
-            {["All", "Process", "Document", "Marketing", "Data", "Profile", "Storytelling"].map((cat) => (
+            {[
+              t("slidePanel.all"),
+              t("slidePanel.process"),
+              t("slidePanel.document"),
+              t("slidePanel.marketing"),
+              t("slidePanel.data"),
+              t("slidePanel.profile"),
+              t("slidePanel.storytelling"),
+            ].map((cat) => (
               <button
                 key={cat}
                 type="button"
@@ -8847,9 +9541,9 @@ export default function PresentationEditor() {
           </div>
           <div className="mt-1.5 flex flex-col gap-2 sm:flex-row sm:items-end">
             <label className="flex-1">
-              <span className="text-[11px] font-medium text-sky-800">Override block layout</span>
+              <span className="text-[11px] font-medium text-sky-800">{t("slidePanel.overrideBlockLayout")}</span>
               <select
-                aria-label="AI Layout Block Override"
+                aria-label={t("slidePanel.overrideBlockLayout")}
                 className="mt-1 h-9 w-full rounded border border-sky-200 bg-white px-2 py-1 text-xs text-slate-700 outline-none"
                 value={aiRecipeOverrideChoice}
                 onChange={(event) => setAiRecipeOverrideChoice(event.target.value as BuiltInPresentationComponentId)}
@@ -8872,14 +9566,14 @@ export default function PresentationEditor() {
                 handleApplyAIRecipeOverride(aiRecipeOverrideChoice);
               }}
             >
-              Rebuild AI Layout
+              {t("slidePanel.rebuildAILayout")}
             </Button>
           </div>
           {(aiLayoutFallbackPreview.length > 0 || Object.keys(aiLayoutSourceTraceSummary).length > 0 || slideAIDesign?.mediaModeMetadata) ? (
             <div className="mt-3 space-y-2">
               {aiLayoutFallbackPreview.length > 0 ? (
                 <div className="rounded-md border border-sky-200 bg-white p-2" data-testid="ai-layout-fallback-history">
-                  <p className="text-[11px] font-medium text-sky-800">Fallback history</p>
+                  <p className="text-[11px] font-medium text-sky-800">{t("slidePanel.fallbackHistory")}</p>
                   <div className="mt-1 space-y-1">
                     {aiLayoutFallbackPreview.map((entry, index) => (
                       <p key={`${entry.step}-${entry.timestamp}-${index}`} className="text-[10px] text-sky-700">
@@ -8891,7 +9585,7 @@ export default function PresentationEditor() {
               ) : null}
               {Object.keys(aiLayoutSourceTraceSummary).length > 0 ? (
                 <div className="rounded-md border border-sky-200 bg-white p-2" data-testid="ai-layout-source-trace-summary">
-                  <p className="text-[11px] font-medium text-sky-800">Source trace</p>
+                  <p className="text-[11px] font-medium text-sky-800">{t("slidePanel.sourceTrace")}</p>
                   <div className="mt-1 flex flex-wrap gap-1.5">
                     {Object.entries(aiLayoutSourceTraceSummary).map(([disposition, count]) => (
                       <span
@@ -8906,13 +9600,13 @@ export default function PresentationEditor() {
               ) : null}
               {slideAIDesign?.mediaModeMetadata ? (
                 <div className="rounded-md border border-sky-200 bg-white p-2" data-testid="ai-layout-media-mode-metadata">
-                  <p className="text-[11px] font-medium text-sky-800">Media mode</p>
+                  <p className="text-[11px] font-medium text-sky-800">{t("slidePanel.mediaMode")}</p>
                   <p className="mt-1 text-[10px] text-sky-700">
-                    Visual intent: {slideAIDesign.mediaModeMetadata.visualIntent ?? "n/a"}
+                    {t("slidePanel.visualIntent")}: {slideAIDesign.mediaModeMetadata.visualIntent ?? t("common.na")}
                     {" · "}
-                    Thai text risk: {slideAIDesign.mediaModeMetadata.thaiTextRisk ?? "n/a"}
+                    {t("slidePanel.thaiTextRisk")}: {slideAIDesign.mediaModeMetadata.thaiTextRisk ?? t("common.na")}
                     {" · "}
-                    Editable source retained: {slideAIDesign.mediaModeMetadata.editableSourceRetained ? "yes" : "no"}
+                    {t("slidePanel.editableSourceRetained")}: {slideAIDesign.mediaModeMetadata.editableSourceRetained ? t("common.yes") : t("common.no")}
                   </p>
                 </div>
               ) : null}
@@ -8928,7 +9622,7 @@ export default function PresentationEditor() {
                 onClick={() => void handleSaveCurrentAIBlockAsCustom("private")}
                 disabled={saveCustomBlockMutation.isPending}
               >
-                Save as My Block
+                {t("slidePanel.saveAsMyBlock")}
               </Button>
               <Button
                 type="button"
@@ -8938,17 +9632,15 @@ export default function PresentationEditor() {
                 onClick={() => void handleSaveCurrentAIBlockAsCustom("team")}
                 disabled={saveCustomBlockMutation.isPending}
               >
-                Save as Team Preset
+                {t("slidePanel.saveAsTeamPreset")}
               </Button>
             </div>
           ) : null}
         </div>
       ) : null}
       <div className="rounded-md border border-slate-300 bg-white p-2">
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">Slide Timing</p>
-        <p className="mt-1 text-[11px] text-slate-500">
-          Set seconds per slide, apply to current slide/all slides, or auto-fit to media/project audio.
-        </p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">{t("slidePanel.slideTiming")}</p>
+        <p className="mt-1 text-[11px] text-slate-500">{t("slidePanel.slideTimingDesc")}</p>
         <div className="mt-2 flex items-center gap-2">
           <Input
             type="number"
@@ -8956,10 +9648,10 @@ export default function PresentationEditor() {
             step={0.1}
             value={timingDurationSecInput}
             onChange={(event) => setTimingDurationSecInput(event.target.value)}
-            aria-label="Slide duration seconds"
+            aria-label={t("slidePanel.duration")}
             className="h-8 text-xs"
           />
-          <span className="text-xs text-slate-500">sec</span>
+          <span className="text-xs text-slate-500">{t("slidePanel.seconds")}</span>
         </div>
         <div className="mt-2 flex flex-wrap gap-1.5">
           <Button
@@ -8969,7 +9661,7 @@ export default function PresentationEditor() {
             onClick={handleApplySelectedSlideDuration}
             disabled={!selectedSlide}
           >
-            Apply This Slide
+            {t("slidePanel.applyThisSlide")}
           </Button>
           <Button
             size="sm"
@@ -8978,7 +9670,7 @@ export default function PresentationEditor() {
             onClick={() => void handleApplyDurationAllSlides()}
             disabled={!slides.length || timingApplyAllPending}
           >
-            {timingApplyAllPending ? "Applying..." : "Apply All Slides"}
+            {timingApplyAllPending ? t("panel.applying") : t("slidePanel.applyAllSlides")}
           </Button>
           <Button
             size="sm"
@@ -8987,7 +9679,7 @@ export default function PresentationEditor() {
             onClick={() => void handleFitProjectAudioDurationAllSlides()}
             disabled={!slides.length || !deckProjectAudioTrack || timingFitProjectAudioPending}
           >
-            {timingFitProjectAudioPending ? "Fitting..." : "Auto: Fit Project Audio"}
+            {timingFitProjectAudioPending ? t("slidePanel.fitting") : t("slidePanel.fitProjectAudio")}
           </Button>
           <Button
             size="sm"
@@ -9000,7 +9692,7 @@ export default function PresentationEditor() {
               applyDurationToSelectedDraft(Math.round(autoDurationFromMediaSec * 1000));
             }}
           >
-            Auto: Play To End
+            {t("slidePanel.playToEnd")}
           </Button>
           <Button
             size="sm"
@@ -9013,7 +9705,7 @@ export default function PresentationEditor() {
               applyDurationToSelectedDraft(Math.round(autoDurationFromSlideAudioSec * 1000));
             }}
           >
-            Auto: Fit Audio
+            {t("slidePanel.fitAudio")}
           </Button>
           <Button
             size="sm"
@@ -9026,19 +9718,21 @@ export default function PresentationEditor() {
               applyDurationToSelectedDraft(Math.round(autoDurationFromVideoSec * 1000));
             }}
           >
-            Auto: Fit Video
+            {t("slidePanel.fitVideo")}
           </Button>
         </div>
         <div className="mt-3 space-y-1.5">
           <div className="flex items-center justify-between">
             <Label htmlFor="slide-transition-picker" className="text-xs font-medium text-slate-700">
-              Slide Transition
+              {t("slidePanel.slideTransition")}
             </Label>
-            <span className="text-[11px] text-slate-500">{selectedSlideTransition}</span>
+            <span className="text-[11px] text-slate-500">
+              {t(PRESENTATION_TRANSITION_OPTIONS.find((option) => option.value === selectedSlideTransition)?.labelKey ?? "common.unknown")}
+            </span>
           </div>
           <select
             id="slide-transition-picker"
-            aria-label="Slide Transition"
+            aria-label={t("slidePanel.slideTransition")}
             className="h-8 w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs outline-none"
             value={selectedSlideTransition}
             onChange={(event) => applyTransitionToSelectedDraft(normalizeTransitionChoice(event.target.value))}
@@ -9046,7 +9740,7 @@ export default function PresentationEditor() {
           >
             {PRESENTATION_TRANSITION_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
-                {option.label}
+                {t(option.labelKey)}
               </option>
             ))}
           </select>
@@ -9057,7 +9751,7 @@ export default function PresentationEditor() {
             onClick={() => void handleApplyTransitionAllSlides(selectedSlideTransition)}
             disabled={!slides.length || transitionApplyAllPending}
           >
-            {transitionApplyAllPending ? "Applying..." : "Apply Transition All Slides"}
+            {transitionApplyAllPending ? t("toolbar.applying") : t("slidePanel.applyAllTransitions")}
           </Button>
         </div>
       </div>
@@ -9145,12 +9839,12 @@ export default function PresentationEditor() {
     <div
       className="grid grid-cols-3 gap-2 rounded-xl border border-slate-200 bg-slate-100/90 p-1"
       role="tablist"
-      aria-label="Mobile Property Sections"
+      aria-label={t("inspector.mobileSections")}
     >
       {[
-        { id: "element", label: "Element", disabled: !selectedElement && !selectedComponent },
-        { id: "slide", label: "Slide", disabled: false },
-        { id: "canvas", label: "Canvas", disabled: false },
+        { id: "element", label: t("inspector.tabs.element"), disabled: !selectedElement && !selectedComponent },
+        { id: "slide", label: t("inspector.tabs.slide"), disabled: false },
+        { id: "canvas", label: t("inspector.tabs.canvas"), disabled: false },
       ].map((section) => {
         const isActive = mobilePropertiesSection === section.id;
         return (
@@ -9162,7 +9856,7 @@ export default function PresentationEditor() {
             className="h-8 text-xs"
             role="tab"
             aria-selected={isActive}
-            aria-label={`Mobile Properties Section ${section.label}`}
+            aria-label={t("inspector.mobileSection", { section: section.label })}
             disabled={section.disabled}
             onClick={() => setMobilePropertiesSection(section.id as MobilePropertiesSection)}
           >
@@ -9194,7 +9888,7 @@ export default function PresentationEditor() {
             onMove={handleMoveSelection}
             onResize={handleResizeSelection}
             onAutoFit={selectedComponent ? handleAutoFitSelection : undefined}
-            autoFitLabel={selectedComponentDefinition?.category === "Document" ? "Fit Canvas" : "Fit Width"}
+            autoFitLabel={selectedComponentDefinition?.category === "Document" ? t("slidePanel.fitCanvas") : t("slidePanel.fitWidth")}
             onRotate={handleRotateSelection}
             onArrange={handleArrangeSelection}
             currentWidth={selectedElement?.width ?? selectedComponentBounds?.width ?? 0}
@@ -9223,7 +9917,7 @@ export default function PresentationEditor() {
       onAudioChanged={refreshDeck}
     />
   ) : (
-    <div className="p-4 text-sm text-muted-foreground">Loading...</div>
+    <div className="p-4 text-sm text-muted-foreground">{t("loading.panel")}</div>
   );
   const desktopInspectorPanel = (
     <div className="space-y-3">
@@ -9233,27 +9927,27 @@ export default function PresentationEditor() {
           size="sm"
           className="h-8"
           onClick={() => setDesktopInspectorTab("properties")}
-          aria-label="Inspector Tab Properties"
+          aria-label={t("inspector.tabs.properties")}
         >
-          Properties
+          {t("inspector.tabs.properties")}
         </Button>
         <Button
           variant={desktopInspectorTab === "versions" ? "default" : "ghost"}
           size="sm"
           className="h-8"
           onClick={() => setDesktopInspectorTab("versions")}
-          aria-label={`Inspector Tab Version History (${savedVersions.length})`}
+          aria-label={t("inspector.tabs.versions", { count: savedVersions.length })}
         >
-          Versions ({savedVersions.length})
+          {t("inspector.tabs.versions", { count: savedVersions.length })}
         </Button>
         <Button
           variant={desktopInspectorTab === "audio" ? "default" : "ghost"}
           size="sm"
           className="h-8 relative"
           onClick={() => setDesktopInspectorTab("audio")}
-          aria-label={`Inspector Tab Audio${hasAnyAudio ? " (configured)" : ""}`}
+          aria-label={t("inspector.tabs.audio", { configured: hasAnyAudio ? t("common.configured") : "" })}
         >
-          Audio
+          {t("inspector.tabs.audioLabel")}
           {hasAnyAudio && desktopInspectorTab !== "audio" ? (
             <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-sky-500" />
           ) : null}
@@ -9281,7 +9975,7 @@ export default function PresentationEditor() {
                 className="gap-1 text-xs"
               >
                 <Type className="h-3.5 w-3.5" />
-                Text
+                {t("toolbar.insertText")}
               </Button>
               <Button
                 onClick={() => handleAddElement("image")}
@@ -9290,7 +9984,7 @@ export default function PresentationEditor() {
                 className="gap-1 text-xs"
               >
                 <ImageIcon className="h-3.5 w-3.5" />
-                Image
+                {t("toolbar.insertImage")}
               </Button>
               <Button
                 onClick={() => handleAddElement("video")}
@@ -9299,7 +9993,7 @@ export default function PresentationEditor() {
                 className="gap-1 text-xs"
               >
                 <Clapperboard className="h-3.5 w-3.5" />
-                Video
+                {t("toolbar.insertVideo")}
               </Button>
               <Button
                 onClick={() => handleAddElement("rect")}
@@ -9308,7 +10002,7 @@ export default function PresentationEditor() {
                 className="gap-1 text-xs"
               >
                 <RectangleHorizontal className="h-3.5 w-3.5" />
-                Rect
+                {t("toolbar.rectangle")}
               </Button>
               <Button
                 onClick={() => handleAddElement("line")}
@@ -9317,7 +10011,7 @@ export default function PresentationEditor() {
                 className="gap-1 text-xs"
               >
                 <Minus className="h-3.5 w-3.5" />
-                Line
+                {t("toolbar.line")}
               </Button>
               <Button
                 onClick={() => setSnapLockEnabled((p) => !p)}
@@ -9326,7 +10020,7 @@ export default function PresentationEditor() {
                 className="gap-1 text-xs"
               >
                 <Crop className="h-3.5 w-3.5" />
-                {snapLockEnabled ? "Snap On" : "Snap Off"}
+                {t("toolbar.snapLock", { state: snapLockEnabled ? t("toolbar.snapOn") : t("toolbar.snapOff") })}
               </Button>
               <Button
                 onClick={() => setShowElementFrames((p) => !p)}
@@ -9335,7 +10029,7 @@ export default function PresentationEditor() {
                 className="gap-1 text-xs"
               >
                 <RectangleHorizontal className="h-3.5 w-3.5" />
-                {showElementFrames ? "Borders On" : "Borders Off"}
+                {t("toolbar.elementBorders", { state: showElementFrames ? t("toolbar.bordersOn") : t("toolbar.bordersOff") })}
               </Button>
             </div>
           </div>
@@ -9433,7 +10127,7 @@ export default function PresentationEditor() {
             variant="ghost"
             className="h-8 w-8 shrink-0 text-slate-300 hover:bg-slate-800"
             onClick={() => setIsMobileDrawerOpen(true)}
-            aria-label="Open Tools Panel"
+            aria-label={t("header.openToolsPanel")}
           >
             <Menu className="h-4 w-4" />
           </Button>
@@ -9443,10 +10137,10 @@ export default function PresentationEditor() {
           size="sm"
           onClick={handleBackToPresentationLibrary}
           className="shrink-0 gap-1 px-2 text-slate-300 hover:bg-slate-800 hover:text-slate-100"
-          aria-label="Back"
+          aria-label={t("header.back")}
         >
           <ChevronLeft className="h-4 w-4" />
-          <span className="hidden sm:inline">Back</span>
+          <span className="hidden sm:inline">{t("header.back")}</span>
         </Button>
         <div className="h-4 w-px shrink-0 bg-slate-700" />
         {isProjectTitleEditing ? (
@@ -9454,7 +10148,7 @@ export default function PresentationEditor() {
             <Input
               value={projectTitleDraft}
               onChange={(event) => setProjectTitleDraft(event.target.value)}
-              aria-label="Project Name"
+              aria-label={t("header.projectName")}
               className="h-7 w-40 border-slate-700 bg-slate-900 text-sm text-slate-100 sm:w-52"
               onKeyDown={(event) => {
                 if (event.key === "Enter") {
@@ -9473,7 +10167,7 @@ export default function PresentationEditor() {
               size="sm"
               onClick={() => void handleSaveProjectTitle()}
               disabled={isProjectTitleSaving}
-              aria-label="Save Project Name"
+              aria-label={t("header.saveProjectName")}
               className="h-7 px-2"
             >
               <Check className="h-3.5 w-3.5" />
@@ -9486,7 +10180,7 @@ export default function PresentationEditor() {
                 setIsProjectTitleEditing(false);
               }}
               disabled={isProjectTitleSaving}
-              aria-label="Cancel Project Name Edit"
+              aria-label={t("header.cancelProjectNameEdit")}
               className="h-7 px-2"
             >
               <X className="h-3.5 w-3.5" />
@@ -9500,17 +10194,17 @@ export default function PresentationEditor() {
               size="sm"
               className="h-6 w-6 p-0 text-slate-400 hover:bg-slate-800 hover:text-slate-100"
               onClick={() => setIsProjectTitleEditing(true)}
-              aria-label="Edit Project Name"
+              aria-label={t("header.editProjectName")}
             >
               <Pencil className="h-3.5 w-3.5" />
             </Button>
           </div>
         )}
-        <span className="hidden text-xs text-slate-500 md:inline">· Presentation Editor</span>
+        <span className="hidden text-xs text-slate-500 md:inline">· {t("appTitle")}</span>
         {hasProjectAudio ? (
           <span
             className="hidden md:flex items-center gap-1 text-xs text-sky-400"
-            title="Project-wide background audio configured"
+            title={t("header.projectAudioConfigured")}
           >
             <Music className="h-3 w-3" />
           </span>
@@ -9518,45 +10212,45 @@ export default function PresentationEditor() {
         <div className="ml-auto flex items-center gap-1">
           <Button
             onClick={() => setIsDeckNoteDialogOpen(true)}
-            aria-label="Open Presentation Note"
+            aria-label={t("header.openPresentationNote")}
             variant="secondary"
             size="sm"
             className={`${isMobileViewport ? "h-8 w-8 px-0" : "gap-1"} bg-slate-800 text-slate-100 hover:bg-slate-700`}
             disabled={!deck || isDeckNoteSaving}
           >
             <BookMarked className="h-3.5 w-3.5" />
-            <span className="hidden lg:inline">Presentation Note</span>
+            <span className="hidden lg:inline">{t("header.presentationNote")}</span>
           </Button>
           <Button
             onClick={() => setIsSlideNoteDialogOpen(true)}
-            aria-label="Open Slide Note"
+            aria-label={t("header.openSlideNote")}
             variant="secondary"
             size="sm"
             className={`${isMobileViewport ? "h-8 w-8 px-0" : "gap-1"} bg-slate-800 text-slate-100 hover:bg-slate-700`}
             disabled={!selectedSlide}
           >
             <Pencil className="h-3.5 w-3.5" />
-            <span className="hidden lg:inline">Slide Note</span>
+            <span className="hidden lg:inline">{t("header.slideNote")}</span>
           </Button>
           <Button
             onClick={() => void handleSaveSlide()}
-            aria-label="Save Slide"
+            aria-label={t("header.saveSlide")}
             size="sm"
             className={`${isMobileViewport ? "h-8 w-8 px-0" : "gap-1"} bg-sky-600 text-white hover:bg-sky-500`}
             disabled={!deck || !selectedSlide || saveState === "pending"}
           >
             <Save className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Save</span>
+            <span className="hidden sm:inline">{t("header.save")}</span>
           </Button>
           <Button
             onClick={handlePlaySlideshow}
-            aria-label="Play Slideshow"
+            aria-label={t("header.playSlideshow")}
             variant="secondary"
             size="sm"
             className={`${isMobileViewport ? "h-8 w-8 px-0" : "gap-1"} bg-slate-800 text-slate-100 hover:bg-slate-700`}
           >
             <Play className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Play</span>
+            <span className="hidden sm:inline">{t("header.play")}</span>
           </Button>
           {isMobileViewport ? (
             <div className="relative" ref={mobileHeaderMenuRef}>
@@ -9564,7 +10258,7 @@ export default function PresentationEditor() {
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8 shrink-0 text-slate-300 hover:bg-slate-800 hover:text-slate-100"
-                aria-label="More Actions"
+                aria-label={t("header.moreActions")}
                 aria-haspopup="menu"
                 aria-expanded={isMobileHeaderMenuOpen}
                 onClick={() => setIsMobileHeaderMenuOpen((prev) => !prev)}
@@ -9575,7 +10269,7 @@ export default function PresentationEditor() {
                 <div
                   className="absolute right-0 top-full z-50 mt-2 w-56 rounded-lg border border-slate-700 bg-slate-900 p-1.5 shadow-xl"
                   role="menu"
-                  aria-label="More Actions Menu"
+                  aria-label={t("header.moreActionsMenu")}
                 >
                   <button
                     type="button"
@@ -9588,7 +10282,7 @@ export default function PresentationEditor() {
                     disabled={!deck || saveAsTemplateMutation.isPending || isProjectTitleSaving}
                   >
                     <BookMarked className="mr-2 h-4 w-4" />
-                    <span>Save to Template</span>
+                    <span>{t("header.saveToTemplate")}</span>
                   </button>
                   <button
                     type="button"
@@ -9600,7 +10294,7 @@ export default function PresentationEditor() {
                     }}
                   >
                     <Upload className="mr-2 h-4 w-4" />
-                    <span>Import</span>
+                    <span>{t("header.import")}</span>
                   </button>
                   <button
                     type="button"
@@ -9617,12 +10311,27 @@ export default function PresentationEditor() {
                     ) : (
                       <WandSparkles className="mr-2 h-4 w-4" />
                     )}
-                    <span>
-                      {autoLayoutProgress
-                        ? `Auto Layout ${autoLayoutProgress.done}/${autoLayoutProgress.total}`
-                        : "Auto Layout"}
-                    </span>
+                      <span>
+                        {autoLayoutProgress
+                          ? t("header.autoLayoutProgress", { done: autoLayoutProgress.done, total: autoLayoutProgress.total })
+                          : t("header.autoLayout")}
+                      </span>
                   </button>
+                  {isAIGenerationEnabled ? (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="flex w-full items-center rounded-md px-3 py-2 text-left text-sm text-slate-100 transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+                      onClick={() => {
+                        setIsMobileHeaderMenuOpen(false);
+                        setIsArticleGeneratorDialogOpen(true);
+                      }}
+                      disabled={!deck}
+                    >
+                      <FileText className="mr-2 h-4 w-4" />
+                      <span>{t("header.articleBuilder")}</span>
+                    </button>
+                  ) : null}
                   {isAIGenerationEnabled ? (
                     <button
                       type="button"
@@ -9635,7 +10344,7 @@ export default function PresentationEditor() {
                       disabled={!deck}
                     >
                       <Sparkles className="mr-2 h-4 w-4" />
-                      <span>Draft with AI</span>
+                      <span>{t("header.draftWithAI")}</span>
                     </button>
                   ) : null}
                   <button
@@ -9653,7 +10362,7 @@ export default function PresentationEditor() {
                     ) : (
                       <RotateCw className="mr-2 h-4 w-4" />
                     )}
-                    <span>Fetch Pending ({pendingMediaJobCount})</span>
+                    <span>{t("header.fetchPending", { count: pendingMediaJobCount })}</span>
                   </button>
                   <div className="my-1 h-px bg-slate-700" aria-hidden="true" />
                   <button
@@ -9667,7 +10376,7 @@ export default function PresentationEditor() {
                     disabled={!isExportsEnabled || !deck}
                   >
                     <Download className="mr-2 h-4 w-4" />
-                    <span>Export</span>
+                    <span>{t("header.export")}</span>
                   </button>
                   <button
                     type="button"
@@ -9680,7 +10389,7 @@ export default function PresentationEditor() {
                     disabled={!deck}
                   >
                     <Play className="mr-2 h-4 w-4" />
-                    <span>Play Mode</span>
+                    <span>{t("header.playMode")}</span>
                   </button>
                 </div>
               ) : null}
@@ -9689,30 +10398,30 @@ export default function PresentationEditor() {
             <>
               <Button
                 onClick={() => void handleSaveToTemplate()}
-                aria-label="Save to Template"
+                aria-label={t("header.saveToTemplate")}
                 variant="outline"
                 size="sm"
                 className="gap-1 border-slate-600 bg-slate-900 text-slate-100 hover:bg-slate-800"
                 disabled={!deck || saveAsTemplateMutation.isPending || isProjectTitleSaving}
               >
                 <BookMarked className="h-3.5 w-3.5" />
-                <span className="hidden lg:inline">Template</span>
+                <span className="hidden lg:inline">{t("header.template")}</span>
               </Button>
               <Button
                 onClick={() => setIsImportDialogOpen(true)}
-                aria-label="Import"
-                title="Import a file to create a new presentation"
+                aria-label={t("header.import")}
+                title={t("header.importTitle")}
                 variant="secondary"
                 size="sm"
                 className="gap-1 bg-slate-800 text-slate-100 hover:bg-slate-700"
               >
                 <Upload className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Import</span>
+                <span className="hidden sm:inline">{t("header.import")}</span>
               </Button>
               <Button
                 onClick={() => setIsAutoLayoutDialogOpen(true)}
-                aria-label="Auto Layout Slide"
-                title="Re-layout current slide using existing image"
+                aria-label={t("header.autoLayout")}
+                title={t("header.autoLayoutTitle")}
                 variant="secondary"
                 size="sm"
                 className="gap-1 bg-slate-800 text-slate-100 hover:bg-slate-700"
@@ -9725,65 +10434,79 @@ export default function PresentationEditor() {
                 )}
                 <span className="hidden sm:inline">
                   {autoLayoutProgress
-                    ? `Auto Layout ${autoLayoutProgress.done}/${autoLayoutProgress.total}`
-                    : "Auto Layout"}
+                    ? t("header.autoLayoutProgress", { done: autoLayoutProgress.done, total: autoLayoutProgress.total })
+                    : t("header.autoLayout")}
                 </span>
               </Button>
               {isAIGenerationEnabled && (
                 <Button
+                  onClick={() => setIsArticleGeneratorDialogOpen(true)}
+                  aria-label={t("header.articleBuilder")}
+                  variant="secondary"
+                  size="sm"
+                  className="gap-1 bg-slate-800 text-slate-100 hover:bg-slate-700"
+                  disabled={!deck}
+                >
+                  <FileText className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">{t("header.articleBuilder")}</span>
+                </Button>
+              )}
+              {isAIGenerationEnabled && (
+                <Button
                   onClick={() => setIsAIDraftModalOpen(true)}
-                  aria-label="Draft with AI"
+                  aria-label={t("header.draftWithAI")}
                   variant="secondary"
                   size="sm"
                   className="gap-1 bg-slate-800 text-slate-100 hover:bg-slate-700"
                   disabled={!deck}
                 >
                   <Sparkles className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">Draft with AI</span>
+                  <span className="hidden sm:inline">{t("header.draftWithAI")}</span>
                 </Button>
               )}
               <Button
                 onClick={() => void handleResolvePendingMedia()}
-                aria-label="Fetch Pending Media"
+                aria-label={t("header.fetchPendingMedia")}
                 variant="secondary"
                 size="sm"
                 className="gap-1 bg-slate-800 text-slate-100 hover:bg-slate-700"
                 disabled={!deck || pendingMediaJobCount <= 0 || resolvePendingMediaMutation.isPending}
                 title={pendingMediaJobCount > 0
-                  ? `Fetch ${pendingMediaJobCount} pending media tasks`
-                  : "No pending media tasks"}
+                  ? t("header.fetchPendingMediaTitle", { count: pendingMediaJobCount })
+                  : t("header.noPendingMedia")}
               >
                 {resolvePendingMediaMutation.isPending ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 ) : (
                   <RotateCw className="h-3.5 w-3.5" />
                 )}
-                <span className="hidden sm:inline">Fetch Pending ({pendingMediaJobCount})</span>
+                <span className="hidden sm:inline">{t("header.fetchPending", { count: pendingMediaJobCount })}</span>
               </Button>
               <Button
                 onClick={() => setIsExportDialogOpen(true)}
-                aria-label="Export"
+                aria-label={t("header.export")}
                 variant="secondary"
                 size="sm"
                 className="gap-1 bg-slate-800 text-slate-100 hover:bg-slate-700"
                 disabled={!isExportsEnabled || !deck}
               >
                 <Download className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Export</span>
+                <span className="hidden sm:inline">{t("header.export")}</span>
               </Button>
               <Button
                 onClick={handleOpenPlayMode}
-                aria-label="Play Mode"
+                aria-label={t("header.playMode")}
                 variant="secondary"
                 size="sm"
                 className="gap-1 bg-slate-800 text-slate-100 hover:bg-slate-700"
                 disabled={!deck}
               >
                 <Play className="h-3.5 w-3.5" />
-                <span className="hidden lg:inline">Play Mode</span>
+                <span className="hidden lg:inline">{t("header.playMode")}</span>
               </Button>
             </>
           )}
+          <LocaleToggle className="shrink-0" />
           <HelpButton page="/presentation" variant="ghost" size="sm" className="shrink-0 text-slate-300 hover:bg-slate-800 hover:text-slate-100" />
         </div>
       </header>
@@ -9834,13 +10557,16 @@ export default function PresentationEditor() {
           ref={playbackOverlayRef}
           className="fixed inset-0 z-[80] flex flex-col bg-black/90 p-3 md:p-6"
           role="dialog"
-          aria-label="Slideshow Preview Player"
+          aria-label={t("playback.previewPlayer")}
           data-testid="slideshow-preview-overlay"
         >
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-white">
             <div>
               <p className="text-sm font-semibold">
-                Slide {activePlaybackSlide.orderIndex + 1} / {playbackSlides.length}
+                {t("playback.slide", {
+                  current: activePlaybackSlide.orderIndex + 1,
+                  total: playbackSlides.length,
+                })}
               </p>
               <p className="text-xs text-slate-300">{activePlaybackSlide.title}</p>
             </div>
@@ -9851,30 +10577,30 @@ export default function PresentationEditor() {
                 className="gap-1 border-slate-700 bg-slate-900/80 text-slate-100 hover:bg-slate-800"
                 onClick={goToPreviousPlaybackSlide}
                 disabled={playbackSlideIndex <= 0}
-                aria-label="Previous Slide"
+                aria-label={t("playback.prev")}
               >
                 <SkipBack className="h-4 w-4" />
-                Prev
+                {t("playback.prev")}
               </Button>
               <Button
                 variant="outline"
                 size="sm"
                 className="gap-1 border-slate-700 bg-slate-900/80 text-slate-100 hover:bg-slate-800"
                 onClick={() => setPlaybackPaused((previous) => !previous)}
-                aria-label={playbackPaused ? "Resume Slideshow" : "Pause Slideshow"}
+                aria-label={playbackPaused ? t("playback.resume") : t("playback.pause")}
               >
                 {playbackPaused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
-                {playbackPaused ? "Resume" : "Pause"}
+                {playbackPaused ? t("playback.resume") : t("playback.pause")}
               </Button>
               <Button
                 variant="outline"
                 size="sm"
                 className="gap-1 border-slate-700 bg-slate-900/80 text-slate-100 hover:bg-slate-800"
                 onClick={() => void handleTogglePlaybackFullscreen()}
-                aria-label={isPlaybackFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
+                aria-label={isPlaybackFullscreen ? t("playback.windowed") : t("playback.fullscreen")}
               >
                 {isPlaybackFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-                {isPlaybackFullscreen ? "Windowed" : "Fullscreen"}
+                {isPlaybackFullscreen ? t("playback.windowed") : t("playback.fullscreen")}
               </Button>
               <Button
                 variant="outline"
@@ -9882,9 +10608,9 @@ export default function PresentationEditor() {
                 className="gap-1 border-slate-700 bg-slate-900/80 text-slate-100 hover:bg-slate-800"
                 onClick={goToNextPlaybackSlide}
                 disabled={playbackSlideIndex >= playbackSlides.length - 1}
-                aria-label="Next Slide"
+                aria-label={t("playback.next")}
               >
-                Next
+                {t("playback.next")}
                 <SkipForward className="h-4 w-4" />
               </Button>
               <Button
@@ -9892,10 +10618,10 @@ export default function PresentationEditor() {
                 size="sm"
                 className="gap-1"
                 onClick={handleStopSlideshow}
-                aria-label="Close Slideshow Preview"
+                aria-label={t("playback.close")}
               >
                 <X className="h-4 w-4" />
-                Close
+                {t("playback.close")}
               </Button>
             </div>
           </div>
@@ -9949,18 +10675,16 @@ export default function PresentationEditor() {
             className={aiLayoutPreviewDialogDrag.isDragging ? "cursor-grabbing select-none" : "cursor-move select-none"}
             onMouseDown={aiLayoutPreviewDialogDrag.handleDragStart}
           >
-            <DialogTitle>AI Layout Preview</DialogTitle>
-            <DialogDescription>
-              Review the rebuilt block layout in a larger canvas and apply block layout overrides without the narrow sidebar preview.
-            </DialogDescription>
+            <DialogTitle>{t("dialog.aiLayoutPreview.title")}</DialogTitle>
+            <DialogDescription>{t("dialog.aiLayoutPreview.description")}</DialogDescription>
           </DialogHeader>
           <div className="flex min-h-0 flex-1 flex-col space-y-3 overflow-hidden">
               <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-sky-200 bg-sky-50 px-3 py-2">
                 <div>
-                  <p className="text-sm font-semibold text-sky-900">{aiRecipePreviewDefinition?.label ?? "Select a block layout"}</p>
+                  <p className="text-sm font-semibold text-sky-900">{aiRecipePreviewDefinition?.label ?? t("dialog.aiLayoutPreview.selectLayout")}</p>
                   {aiRecipeCanonicalPreviewQuery.data ? (
                     <p className="text-xs text-sky-700">
-                      Canonical {aiRecipeCanonicalPreviewQuery.data.rendererVersion}
+                      {t("dialog.aiLayoutPreview.canonical", { version: aiRecipeCanonicalPreviewQuery.data.rendererVersion })}
                       {" · "}
                       {aiRecipeCanonicalPreviewQuery.data.previewHash.slice(0, 8)}
                     </p>
@@ -9968,7 +10692,15 @@ export default function PresentationEditor() {
                 </div>
                 <div className="flex min-w-[260px] flex-1 flex-col gap-2">
                   <div className="flex flex-wrap gap-1">
-                    {["All", "Process", "Document", "Marketing", "Data", "Profile", "Storytelling"].map((cat) => (
+                    {[
+                      t("slidePanel.all"),
+                      t("slidePanel.process"),
+                      t("slidePanel.document"),
+                      t("slidePanel.marketing"),
+                      t("slidePanel.data"),
+                      t("slidePanel.profile"),
+                      t("slidePanel.storytelling"),
+                    ].map((cat) => (
                       <button
                         key={cat}
                         type="button"
@@ -9981,9 +10713,9 @@ export default function PresentationEditor() {
                   </div>
                   <div className="flex flex-row items-end gap-2">
                   <label className="flex-1 sm:max-w-xs">
-                    <span className="text-[11px] font-medium text-sky-800">Override block layout</span>
+                    <span className="text-[11px] font-medium text-sky-800">{t("slidePanel.overrideBlockLayout")}</span>
                     <select
-                      aria-label="AI Layout Block Override Dialog"
+                      aria-label={t("slidePanel.overrideBlockLayout")}
                       className="mt-1 h-9 w-full rounded border border-sky-200 bg-white px-2 py-1 text-xs text-slate-700 outline-none"
                       value={aiRecipeOverrideChoice}
                       onChange={(event) => setAiRecipeOverrideChoice(event.target.value as BuiltInPresentationComponentId)}
@@ -10006,7 +10738,7 @@ export default function PresentationEditor() {
                       handleApplyAIRecipeOverride(aiRecipeOverrideChoice);
                     }}
                   >
-                    Rebuild AI Layout
+                    {t("slidePanel.rebuildAILayout")}
                   </Button>
                   </div>
                 </div>
@@ -10020,7 +10752,7 @@ export default function PresentationEditor() {
                     const next = Math.max(0.25, +(aiPreviewZoom - 0.25).toFixed(2));
                     setAiPreviewZoom(next);
                   }}
-                  aria-label="Zoom out preview"
+                  aria-label={t("dialog.aiLayoutPreview.zoomOut")}
                 >
                   -
                 </button>
@@ -10030,7 +10762,7 @@ export default function PresentationEditor() {
                   className="rounded border border-slate-200 px-2 py-0.5 text-xs text-slate-600 hover:bg-slate-100 disabled:opacity-40"
                   disabled={aiPreviewZoom >= 3}
                   onClick={() => { setAiPreviewZoom((z) => Math.min(3, +(z + 0.25).toFixed(2))); }}
-                  aria-label="Zoom in preview"
+                  aria-label={t("dialog.aiLayoutPreview.zoomIn")}
                 >
                   +
                 </button>
@@ -10038,11 +10770,11 @@ export default function PresentationEditor() {
                   type="button"
                   className="rounded border border-slate-200 px-2 py-0.5 text-xs text-slate-600 hover:bg-slate-100"
                   onClick={() => { setAiPreviewZoom(1); setAiPreviewPan({ x: 0, y: 0 }); }}
-                  aria-label="Reset preview zoom"
+                  aria-label={t("dialog.aiLayoutPreview.reset")}
                 >
-                  Reset
+                  {t("dialog.aiLayoutPreview.reset")}
                 </button>
-                <span className="ml-auto text-[10px] text-slate-400">Scroll to zoom, drag to pan</span>
+                <span className="ml-auto text-[10px] text-slate-400">{t("dialog.aiLayoutPreview.zoomHint")}</span>
               </div>
               <div
                 ref={aiPreviewContainerRef}
@@ -10065,7 +10797,7 @@ export default function PresentationEditor() {
                 </div>
                 ) : (
                   <div className="flex h-full items-center justify-center p-8 text-sm text-slate-500">
-                    Select a block layout above and click Rebuild AI Layout to preview.
+                    {t("dialog.aiLayoutPreview.emptyHint")}
                   </div>
                 )}
               </div>
@@ -10083,13 +10815,11 @@ export default function PresentationEditor() {
       >
         <DialogContent className="max-w-6xl">
           <DialogHeader>
-            <DialogTitle>Reorder Slides Overview</DialogTitle>
-            <DialogDescription>
-              Compact view for large decks. Drag any slide tile to set its new position.
-            </DialogDescription>
+            <DialogTitle>{t("dialog.reorder.title")}</DialogTitle>
+            <DialogDescription>{t("dialog.reorder.description")}</DialogDescription>
           </DialogHeader>
           <div className="rounded border border-slate-200 bg-slate-50 p-2 text-xs text-slate-600">
-            {slides.length} slide(s) total
+            {t("dialog.reorder.slideCount", { count: slides.length })}
           </div>
           <div className="max-h-[72vh] overflow-y-auto pr-1">
             <div className="grid grid-cols-2 gap-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -10100,9 +10830,10 @@ export default function PresentationEditor() {
                   && slideDropTargetId === slide.id
                   && draggingSlideId !== slide.id;
                 const cachedDraft = getCachedSlideDraft(slide.id);
+                const persistedContent = ensureSlideContent(slide.slideContent);
                 const reorderContent = selectedSlideId === slide.id
                   ? draftContent
-                  : cachedDraft?.content ?? ensureSlideContent(slide.slideContent);
+                  : resolveSlideContentFromCache(cachedDraft?.content, persistedContent);
                 const reorderPreview = summarizeSlidePreview(reorderContent);
                 const reorderBg = reorderContent.background;
                 const reorderBgStyle: React.CSSProperties = reorderBg?.type === "color"
@@ -10128,7 +10859,7 @@ export default function PresentationEditor() {
                       ? "border-sky-400 bg-sky-50 text-sky-800"
                       : "border-slate-300 bg-white text-slate-700 hover:border-slate-400"
                       } ${isDraggingSlide ? "cursor-grabbing opacity-70 ring-2 ring-sky-300" : "cursor-grab"} ${isDropTargetSlide ? "border-sky-500 bg-sky-100" : ""}`}
-                    aria-label={`Reorder slide ${slide.orderIndex + 1}`}
+                    aria-label={t("dialog.reorder.slideAria", { index: slide.orderIndex + 1 })}
                     data-testid={`reorder-slide-tile-${slide.orderIndex + 1}`}
                   >
                     <div
@@ -10171,12 +10902,12 @@ export default function PresentationEditor() {
                         />
                       ) : (
                         <div className="grid h-full w-full place-items-center text-[9px] text-slate-400">
-                          No preview
+                          {t("dialog.reorder.noPreview")}
                         </div>
                       )}
                       {reorderPreview.mediaKind === "video" ? (
                         <span className="absolute right-0.5 top-0.5 rounded bg-black/70 px-1 py-0.5 text-[8px] text-white">
-                          VIDEO
+                          {t("media.video")}
                         </span>
                       ) : null}
                     </div>
@@ -10202,7 +10933,7 @@ export default function PresentationEditor() {
                 resetSlideDragState();
               }}
             >
-              Done
+              {t("dialog.reorder.done")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -10218,15 +10949,13 @@ export default function PresentationEditor() {
       >
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Auto Layout</DialogTitle>
-            <DialogDescription>
-              Rearrange text blocks and composition without generating a new image.
-            </DialogDescription>
+            <DialogTitle>{t("dialog.autoLayout.title")}</DialogTitle>
+            <DialogDescription>{t("dialog.autoLayout.description")}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label>Scope</Label>
+                <Label>{t("dialog.autoLayout.scope")}</Label>
                 <Select
                   value={autoLayoutScope}
                   onValueChange={(value) => setAutoLayoutScope(value as AutoLayoutScope)}
@@ -10236,13 +10965,13 @@ export default function PresentationEditor() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="current">Current slide</SelectItem>
-                    <SelectItem value="all">All slides</SelectItem>
+                    <SelectItem value="current">{t("dialog.autoLayout.scopeCurrent")}</SelectItem>
+                    <SelectItem value="all">{t("dialog.autoLayout.scopeAll")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label>Block layout</Label>
+                <Label>{t("dialog.autoLayout.blockLayout")}</Label>
                 <Select
                   value={autoLayoutTemplateChoice}
                   onValueChange={(value) => setAutoLayoutTemplateChoice(value as AutoLayoutTemplateChoice)}
@@ -10252,7 +10981,7 @@ export default function PresentationEditor() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="auto">Auto choose</SelectItem>
+                    <SelectItem value="auto">{t("dialog.autoLayout.blockAuto")}</SelectItem>
                     {PRESENTATION_BLOCK_PRESETS.map((preset) => (
                       <SelectItem key={preset.id} value={`block:${preset.id}`}>
                         {preset.label}
@@ -10262,7 +10991,7 @@ export default function PresentationEditor() {
                 </Select>
               </div>
               <div className="space-y-1.5 sm:col-span-2">
-                <Label>Style preset</Label>
+                <Label>{t("dialog.autoLayout.stylePreset")}</Label>
                 <Select
                   value={autoLayoutStyleChoice}
                   onValueChange={(value) => setAutoLayoutStyleChoice(value as AutoLayoutStyleChoice)}
@@ -10289,7 +11018,7 @@ export default function PresentationEditor() {
                     )}
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="auto">Auto infer from current slide</SelectItem>
+                    <SelectItem value="auto">{t("dialog.autoLayout.styleAuto")}</SelectItem>
                     {autoLayoutStyleOptions.map((preset) => (
                       <SelectItem key={preset.id} value={preset.id}>
                         <div className="flex w-full items-center justify-between gap-2">
@@ -10312,8 +11041,8 @@ export default function PresentationEditor() {
             </div>
             <div className="flex items-center justify-between rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
               <div>
-                <p className="text-sm font-medium text-slate-900">Include decorative SVG</p>
-                <p className="text-xs text-slate-500">Adds supporting vector graphic accents when suitable.</p>
+                <p className="text-sm font-medium text-slate-900">{t("dialog.autoLayout.includeSvg")}</p>
+                <p className="text-xs text-slate-500">{t("dialog.autoLayout.includeSvgDesc")}</p>
               </div>
               <Switch
                 checked={autoLayoutIncludeSvg}
@@ -10324,8 +11053,8 @@ export default function PresentationEditor() {
             <div className="space-y-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-900">Geometric image crop</p>
-                  <p className="text-xs text-slate-500">Crop the main image with a shape mask (rect, circle, triangle).</p>
+                  <p className="text-sm font-medium text-slate-900">{t("dialog.autoLayout.geometricCrop")}</p>
+                  <p className="text-xs text-slate-500">{t("dialog.autoLayout.geometricCropDesc")}</p>
                 </div>
                 <Switch
                   checked={autoLayoutIncludeGeometricCrop}
@@ -10335,7 +11064,7 @@ export default function PresentationEditor() {
               </div>
               {autoLayoutIncludeGeometricCrop ? (
                 <div className="space-y-1.5">
-                  <Label>Crop shape</Label>
+                  <Label>{t("dialog.autoLayout.cropShape")}</Label>
                   <Select
                     value={autoLayoutCropShapeChoice}
                     onValueChange={(value) => setAutoLayoutCropShapeChoice(value as AutoLayoutCropShapeChoice)}
@@ -10347,7 +11076,7 @@ export default function PresentationEditor() {
                     <SelectContent>
                       {AI_GEOMETRIC_CROP_SHAPES.map((shape) => (
                         <SelectItem key={shape} value={shape}>
-                          {AUTO_LAYOUT_CROP_SHAPE_LABELS[shape]}
+                          {autoLayoutCropShapeLabels[shape]}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -10358,8 +11087,8 @@ export default function PresentationEditor() {
             <div className="space-y-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-900">Geometric accents</p>
-                  <p className="text-xs text-slate-500">Add decorative shape overlays without cropping image content.</p>
+                  <p className="text-sm font-medium text-slate-900">{t("dialog.autoLayout.geometricAccents")}</p>
+                  <p className="text-xs text-slate-500">{t("dialog.autoLayout.geometricAccentsDesc")}</p>
                 </div>
                 <Switch
                   checked={autoLayoutIncludeGeometricAccents}
@@ -10369,7 +11098,7 @@ export default function PresentationEditor() {
               </div>
               {autoLayoutIncludeGeometricAccents ? (
                 <div className="space-y-1.5">
-                  <Label>Accent shape</Label>
+                  <Label>{t("dialog.autoLayout.accentShape")}</Label>
                   <Select
                     value={autoLayoutAccentShapeChoice}
                     onValueChange={(value) => setAutoLayoutAccentShapeChoice(value as AutoLayoutAccentShapeChoice)}
@@ -10381,7 +11110,7 @@ export default function PresentationEditor() {
                     <SelectContent>
                       {AI_GEOMETRIC_ACCENT_SHAPES.map((shape) => (
                         <SelectItem key={shape} value={shape}>
-                          {AUTO_LAYOUT_ACCENT_SHAPE_LABELS[shape]}
+                          {autoLayoutAccentShapeLabels[shape]}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -10391,7 +11120,7 @@ export default function PresentationEditor() {
             </div>
             <div className="space-y-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
               <div className="space-y-1.5">
-                <Label>Support media clarity: {autoLayoutSupplementalMediaClarityPercent}%</Label>
+                <Label>{t("dialog.autoLayout.mediaClarity", { percent: autoLayoutSupplementalMediaClarityPercent })}</Label>
                 <Slider
                   min={5}
                   max={100}
@@ -10400,16 +11129,14 @@ export default function PresentationEditor() {
                   onValueChange={(value) => setAutoLayoutSupplementalMediaClarityPercent(value[0] ?? 16)}
                   disabled={autoLayoutBusy}
                 />
-                <p className="text-[11px] text-slate-500">
-                  Controls opacity for supplemental background media when Auto Layout uses text-first block layouts.
-                </p>
+                <p className="text-[11px] text-slate-500">{t("dialog.autoLayout.mediaClarityDesc")}</p>
               </div>
             </div>
             <div className="space-y-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-900">Watermark</p>
-                  <p className="text-xs text-slate-500">Use PNG/JPG image from library and set visibility percentage.</p>
+                  <p className="text-sm font-medium text-slate-900">{t("dialog.autoLayout.watermark")}</p>
+                  <p className="text-xs text-slate-500">{t("dialog.autoLayout.watermarkDesc")}</p>
                 </div>
                 <Switch
                   checked={autoLayoutWatermarkEnabled}
@@ -10420,30 +11147,29 @@ export default function PresentationEditor() {
               {autoLayoutWatermarkEnabled ? (
                 <div className="space-y-3">
                   <div className="space-y-1.5">
-                    <Label>Watermark image</Label>
+                    <Label>{t("dialog.autoLayout.watermarkImage")}</Label>
                     <SearchableCombobox
                       items={autoLayoutWatermarkComboboxItems}
                       value={autoLayoutWatermarkSourceUrl}
                       onValueChange={handleAutoLayoutWatermarkSourceChange}
                       disabled={autoLayoutBusy || autoLayoutWatermarkOptions.length === 0}
                       placeholder={autoLayoutWatermarkOptions.length === 0
-                        ? "No PNG/JPG image found in library"
-                        : "Select watermark image"}
-                      searchPlaceholder="Search watermark from Library..."
+                        ? t("dialog.autoLayout.watermarkNoImages")
+                        : t("dialog.autoLayout.watermarkSelect")}
+                      searchPlaceholder={t("dialog.autoLayout.watermarkSearch")}
                       emptyMessage={(
                         debouncedAutoLayoutWatermarkSearchQuery.length > 0
                           ? autoLayoutWatermarkSearchResultQuery.isLoading
                           : autoLayoutWatermarkListQuery.isLoading
-                      )
-                        ? "Loading watermark images..."
-                        : "No matching PNG/JPG watermark found."}
+                      ) ? t("dialog.autoLayout.watermarkLoading")
+                        : t("dialog.autoLayout.watermarkNoMatch")}
                       searchValue={autoLayoutWatermarkSearchQuery}
                       onSearchValueChange={setAutoLayoutWatermarkSearchQuery}
                     />
-                    <p className="text-[11px] text-slate-500">Search in Library (RAG) by image title or keyword.</p>
+                    <p className="text-[11px] text-slate-500">{t("dialog.autoLayout.watermarkRagHint")}</p>
                   </div>
                   <div className="space-y-1.5">
-                    <Label>Clarity: {autoLayoutWatermarkClarityPercent}%</Label>
+                    <Label>{t("dialog.autoLayout.watermarkClarity", { percent: autoLayoutWatermarkClarityPercent })}</Label>
                     <Slider
                       min={5}
                       max={100}
@@ -10470,24 +11196,24 @@ export default function PresentationEditor() {
               ) : null}
             </div>
             <p className="text-xs text-slate-500">
-              Target slides: {autoLayoutTargetCount}
+              {t("dialog.autoLayout.targetSlides", { count: autoLayoutTargetCount })}
             </p>
             {(
               (autoLayoutScope === "current" && selectedSlideVisualOnly)
               || (autoLayoutScope === "all" && visualOnlySlideCount > 0)
             ) ? (
               <p className="text-xs text-amber-700">
-                Visual-only slides keep text hidden during Auto Layout. Geometric crop and accent overlays are skipped for those slides.
+                {t("dialog.autoLayout.visualOnlyWarning")}
               </p>
             ) : null}
             {autoLayoutScope === "all" && unsavedCachedSlideIds.length > 0 ? (
               <p className="text-xs text-sky-600">
-                Pending edits on other slides will be saved automatically before Auto Layout runs.
+                {t("dialog.autoLayout.pendingEditsNotice")}
               </p>
             ) : null}
             {autoLayoutProgress ? (
               <p className="text-xs text-slate-600">
-                Processing {autoLayoutProgress.done}/{autoLayoutProgress.total} slides...
+                {t("dialog.autoLayout.processing", { done: autoLayoutProgress.done, total: autoLayoutProgress.total })}
               </p>
             ) : null}
           </div>
@@ -10498,7 +11224,7 @@ export default function PresentationEditor() {
               onClick={() => setIsAutoLayoutDialogOpen(false)}
               disabled={autoLayoutBusy}
             >
-              Cancel
+              {t("dialog.autoLayout.cancel")}
             </Button>
             <Button
               type="button"
@@ -10520,7 +11246,7 @@ export default function PresentationEditor() {
               disabled={autoLayoutApplyDisabled}
             >
               {autoLayoutBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <WandSparkles className="h-3.5 w-3.5" />}
-              Apply Auto Layout
+              {t("dialog.autoLayout.apply")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -10536,15 +11262,12 @@ export default function PresentationEditor() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              Restore version {restoreDialogVersion?.versionNumber ?? restoreDialogVersion?.id}?
+              {t("dialog.restore.title", { version: restoreDialogVersion?.versionNumber ?? restoreDialogVersion?.id ?? "" })}
             </AlertDialogTitle>
-            <AlertDialogDescription>
-              This will overwrite the target slide with the selected snapshot. The restore action
-              will also create a new history version so you can undo by restoring again.
-            </AlertDialogDescription>
+            <AlertDialogDescription>{t("dialog.restore.description")}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("dialog.restore.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 if (!restoreDialogVersion) {
@@ -10557,7 +11280,7 @@ export default function PresentationEditor() {
               {restoreVersionMutation.isPending ? (
                 <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
               ) : null}
-              Confirm Restore
+              {t("dialog.restore.confirm")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -10582,8 +11305,8 @@ export default function PresentationEditor() {
               );
               toast.error(
                 blockedReason === "stale_blocked"
-                  ? "Export blocked by version conflict. Reload latest and retry."
-                  : "Unable to save latest slide changes before export.",
+                  ? t("toast.exportBlockedByConflict")
+                  : t("toast.unableToSaveLatestBeforeExport"),
               );
             }
             return saved;
@@ -10599,10 +11322,8 @@ export default function PresentationEditor() {
             className={deckNoteDialogDrag.isDragging ? "cursor-grabbing select-none" : "cursor-move select-none"}
             onMouseDown={deckNoteDialogDrag.handleDragStart}
           >
-            <DialogTitle>Presentation Note</DialogTitle>
-            <DialogDescription>
-              Internal note for this presentation only. It is hidden from play mode and exports.
-            </DialogDescription>
+            <DialogTitle>{t("dialog.presentationNote.title")}</DialogTitle>
+            <DialogDescription>{t("dialog.presentationNote.description")}</DialogDescription>
           </DialogHeader>
           {/* AI Layout from Deck Note */}
           <div className="rounded-md border border-dashed border-violet-300/50 bg-violet-50/30 dark:bg-violet-950/10">
@@ -10615,17 +11336,15 @@ export default function PresentationEditor() {
             >
               <span className="flex items-center gap-1.5">
                 <WandSparkles className="h-3.5 w-3.5" />
-                สร้าง Slides จาก Notes ด้วย AI
+                {t("dialog.presentationNote.aiGenTitle")}
               </span>
               <ChevronDown className={`h-3.5 w-3.5 transition-transform ${deckLayoutGenOpen ? "rotate-180" : ""}`} />
             </button>
             {deckLayoutGenOpen && (
               <div id="deck-layout-gen-panel" className="space-y-2.5 border-t border-violet-200/40 px-3 pb-3 pt-2">
-                <p className="text-[11px] text-muted-foreground">
-                  AI จะแยก notes เป็นหลาย slides พร้อมจัดหน้าสวยงามตาม preset ที่เลือก (ใช้เครดิตประมาณ 10 + 5/slide)
-                </p>
+                <p className="text-[11px] text-muted-foreground">{t("dialog.presentationNote.aiGenDesc")}</p>
                 <div>
-                  <span className="text-[11px] font-medium text-slate-600 dark:text-slate-300">ธีมสไตล์</span>
+                  <span className="text-[11px] font-medium text-slate-600 dark:text-slate-300">{t("dialog.presentationNote.styleTheme")}</span>
                   <div className="mt-1 grid grid-cols-3 gap-1.5 sm:grid-cols-4">
                     {BUILT_IN_PRESETS.map((preset) => (
                       <button
@@ -10637,7 +11356,7 @@ export default function PresentationEditor() {
                             : "border-slate-200 hover:border-violet-300 dark:border-slate-700"
                         }`}
                         aria-pressed={deckLayoutGenPresetId === preset.id}
-                        aria-label={`เลือกธีม ${preset.nameLocalized?.th ?? preset.name}`}
+                        aria-label={t("dialog.presentationNote.selectTheme", { name: getLocalizedPresetName(preset) })}
                         onClick={() => setDeckLayoutGenPresetId(preset.id as (typeof AI_STYLE_PRESET_IDS)[number])}
                       >
                         <div className="flex gap-0.5">
@@ -10645,19 +11364,19 @@ export default function PresentationEditor() {
                           <div className="h-3 w-3 rounded-sm" style={{ background: preset.colors.primary }} />
                           <div className="h-3 w-3 rounded-sm" style={{ background: preset.colors.secondary }} />
                         </div>
-                        <span className="truncate">{preset.nameLocalized?.th ?? preset.name}</span>
+                        <span className="truncate">{getLocalizedPresetName(preset)}</span>
                       </button>
                     ))}
                   </div>
                 </div>
                 <div className="flex items-end gap-2">
                   <label className="flex-1">
-                    <span className="text-[11px] text-muted-foreground">จำนวน slides (ว่างไว้ = อัตโนมัติ)</span>
+                    <span className="text-[11px] text-muted-foreground">{t("dialog.presentationNote.slideCount")}</span>
                     <Input
                       type="number"
                       min={1}
                       max={30}
-                      placeholder="Auto"
+                      placeholder={t("common.auto")}
                       className="mt-0.5 h-8 text-xs"
                       value={deckLayoutGenSlideCount}
                       onChange={(e) => setDeckLayoutGenSlideCount(e.target.value)}
@@ -10673,12 +11392,12 @@ export default function PresentationEditor() {
                     {deckLayoutGenBusy ? (
                       <>
                         <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        กำลังสร้าง...
+                        {t("dialog.presentationNote.generating")}
                       </>
                     ) : (
                       <>
                         <WandSparkles className="h-3.5 w-3.5" />
-                        สร้าง Slides
+                        {t("dialog.presentationNote.generateSlides")}
                       </>
                     )}
                   </Button>
@@ -10691,25 +11410,25 @@ export default function PresentationEditor() {
             <div className="flex items-center justify-between text-xs text-slate-500">
               <span>
                 {deckNoteConflict
-                  ? "Conflict detected"
+                  ? t("save.conflict")
                   : deckNoteDirty
-                    ? "Unsaved changes"
-                    : "Saved"}
+                    ? t("save.unsaved")
+                    : t("save.saved")}
               </span>
-              <span>{deckNoteDraft.trim().length} chars</span>
+              <span>{t("dialog.presentationNote.charCount", { count: deckNoteDraft.trim().length })}</span>
             </div>
             {deckNoteConflict ? (
               <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-                <p className="font-medium">A newer presentation note was saved elsewhere.</p>
+                <p className="font-medium">{t("dialog.presentationNote.conflictTitle")}</p>
                 <p className="mt-1 line-clamp-3 whitespace-pre-wrap text-amber-800">
-                  {deckNoteConflict.latestNotes || "Latest note is empty."}
+                  {deckNoteConflict.latestNotes || t("dialog.presentationNote.latestEmpty")}
                 </p>
               </div>
             ) : null}
             <Textarea
               value={deckNoteDraft}
               onChange={(event) => setDeckNoteDraft(event.target.value)}
-              placeholder="Write presentation-level notes here..."
+              placeholder={t("dialog.presentationNote.placeholder")}
               rows={14}
             />
           </div>
@@ -10717,10 +11436,13 @@ export default function PresentationEditor() {
             <Button
               type="button"
               variant="outline"
-              onClick={() => void copyTextToClipboard(deckNoteDraft, "Presentation note copied.")}
+              onClick={() => void copyTextToClipboard(deckNoteDraft, t("dialog.presentationNote.copySuccess"), {
+                empty: t("toast.nothingToCopy"),
+                failure: t("toast.copyFailed"),
+              })}
             >
               <Copy className="mr-1 h-3.5 w-3.5" />
-              Copy
+              {t("dialog.presentationNote.copy")}
             </Button>
             <Button
               type="button"
@@ -10728,7 +11450,7 @@ export default function PresentationEditor() {
               onClick={() => setIsDeckNoteDialogOpen(false)}
               disabled={isDeckNoteSaving}
             >
-              Close
+              {t("dialog.presentationNote.close")}
             </Button>
             {deckNoteConflict ? (
               <Button
@@ -10737,7 +11459,7 @@ export default function PresentationEditor() {
                 onClick={handleReloadDeckNoteConflict}
                 disabled={isDeckNoteSaving}
               >
-                Reload Latest
+                {t("dialog.presentationNote.reloadLatest")}
               </Button>
             ) : null}
             {deckNoteConflict ? (
@@ -10747,7 +11469,7 @@ export default function PresentationEditor() {
                 onClick={() => void handleSaveDeckNote({ forceOverwrite: true })}
                 disabled={!deck || isDeckNoteSaving}
               >
-                Overwrite Note
+                {t("dialog.presentationNote.overwrite")}
               </Button>
             ) : null}
             <Button
@@ -10756,7 +11478,7 @@ export default function PresentationEditor() {
               disabled={!deck || isDeckNoteSaving}
             >
               {isDeckNoteSaving ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : null}
-              Save Note
+              {t("dialog.presentationNote.save")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -10770,9 +11492,9 @@ export default function PresentationEditor() {
             className={slideNoteDialogDrag.isDragging ? "cursor-grabbing select-none" : "cursor-move select-none"}
             onMouseDown={slideNoteDialogDrag.handleDragStart}
           >
-            <DialogTitle>Slide Note</DialogTitle>
+            <DialogTitle>{t("dialog.slideNote.title")}</DialogTitle>
             <DialogDescription>
-              Internal note for slide {selectedSlide ? selectedSlide.orderIndex + 1 : "-"}. It is hidden from play mode and exports.
+              {t("dialog.slideNote.description", { slideIndex: selectedSlide ? selectedSlide.orderIndex + 1 : "-" })}
             </DialogDescription>
           </DialogHeader>
 
@@ -10785,33 +11507,31 @@ export default function PresentationEditor() {
             >
               <span className="flex items-center gap-1.5">
                 <Sparkles className="h-3.5 w-3.5" />
-                AI Content Generator
+                {t("dialog.slideNote.aiContentTitle")}
               </span>
               <ChevronDown className={`h-3.5 w-3.5 transition-transform ${noteGenOpen ? "rotate-180" : ""}`} />
             </button>
             {noteGenOpen && (
               <div className="space-y-2.5 border-t border-teal-200/40 px-3 pb-3 pt-2">
-                <p className="text-[11px] text-muted-foreground">
-                  Select a skill to generate or rewrite content for this slide. The output will replace the note below.
-                </p>
+                <p className="text-[11px] text-muted-foreground">{t("dialog.slideNote.aiContentDesc")}</p>
                 <select
                   className="h-8 w-full rounded border border-teal-200 bg-white px-2 text-xs text-slate-700 outline-none dark:bg-slate-900 dark:text-slate-200"
                   value={noteGenSkill}
                   onChange={(e) => setNoteGenSkill(e.target.value)}
                 >
-                  <option value="">Select a skill...</option>
+                  <option value="">{t("dialog.slideNote.selectSkill")}</option>
                   {noteGenSkillItems.map((item) => (
                     <option key={item.value} value={item.value}>{item.label}</option>
                   ))}
                 </select>
                 <div className="flex items-end gap-2">
                   <label className="flex-1">
-                    <span className="text-[11px] text-muted-foreground">Word limit (optional)</span>
+                    <span className="text-[11px] text-muted-foreground">{t("dialog.slideNote.wordLimit")}</span>
                     <Input
                       type="number"
                       min={0}
                       max={10000}
-                      placeholder="e.g. 300"
+                      placeholder={t("dialog.slideNote.wordLimitPlaceholder")}
                       className="mt-0.5 h-8 text-xs"
                       value={noteGenWordLimit}
                       onChange={(e) => setNoteGenWordLimit(e.target.value)}
@@ -10828,12 +11548,12 @@ export default function PresentationEditor() {
                     {isGeneratingNoteContent ? (
                       <>
                         <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        Generating...
+                        {t("dialog.slideNote.generating")}
                       </>
                     ) : (
                       <>
                         <Sparkles className="h-3.5 w-3.5" />
-                        Generate Content
+                        {t("dialog.slideNote.generateContent")}
                       </>
                     )}
                   </Button>
@@ -10853,17 +11573,15 @@ export default function PresentationEditor() {
             >
               <span className="flex items-center gap-1.5">
                 <WandSparkles className="h-3.5 w-3.5" />
-                จัดหน้า Slide ด้วย AI
+                {t("dialog.slideNote.aiLayoutTitle")}
               </span>
               <ChevronDown className={`h-3.5 w-3.5 transition-transform ${layoutGenPresetOpen ? "rotate-180" : ""}`} />
             </button>
             {layoutGenPresetOpen && (
               <div id="slide-layout-gen-panel" className="space-y-2.5 border-t border-violet-200/40 px-3 pb-3 pt-2">
-                <p className="text-[11px] text-muted-foreground">
-                  แปลง note ของ slide นี้ให้เป็น layout สวยงามตาม preset ที่เลือก (ใช้เครดิตประมาณ 50)
-                </p>
+                <p className="text-[11px] text-muted-foreground">{t("dialog.slideNote.aiLayoutDesc")}</p>
                 <div>
-                  <span className="text-[11px] font-medium text-slate-600 dark:text-slate-300">ธีมสไตล์</span>
+                  <span className="text-[11px] font-medium text-slate-600 dark:text-slate-300">{t("dialog.slideNote.styleTheme")}</span>
                   <div className="mt-1 grid grid-cols-3 gap-1.5 sm:grid-cols-4">
                     {BUILT_IN_PRESETS.map((preset) => (
                       <button
@@ -10875,7 +11593,7 @@ export default function PresentationEditor() {
                             : "border-slate-200 hover:border-violet-300 dark:border-slate-700"
                         }`}
                         aria-pressed={layoutGenPresetId === preset.id}
-                        aria-label={`เลือกธีม ${preset.nameLocalized?.th ?? preset.name}`}
+                        aria-label={t("dialog.slideNote.selectTheme", { name: getLocalizedPresetName(preset) })}
                         onClick={() => setLayoutGenPresetId(preset.id as (typeof AI_STYLE_PRESET_IDS)[number])}
                       >
                         <div className="flex gap-0.5">
@@ -10883,7 +11601,7 @@ export default function PresentationEditor() {
                           <div className="h-3 w-3 rounded-sm" style={{ background: preset.colors.primary }} />
                           <div className="h-3 w-3 rounded-sm" style={{ background: preset.colors.secondary }} />
                         </div>
-                        <span className="truncate">{preset.nameLocalized?.th ?? preset.name}</span>
+                        <span className="truncate">{getLocalizedPresetName(preset)}</span>
                       </button>
                     ))}
                   </div>
@@ -10898,12 +11616,12 @@ export default function PresentationEditor() {
                   {layoutGenBusy ? (
                     <>
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      กำลังจัดหน้า...
+                      {t("dialog.slideNote.layoutBusy")}
                     </>
                   ) : (
                     <>
                       <WandSparkles className="h-3.5 w-3.5" />
-                      จัดหน้า Slide ด้วย AI
+                      {t("dialog.slideNote.aiLayoutTitle")}
                     </>
                   )}
                 </Button>
@@ -10913,20 +11631,20 @@ export default function PresentationEditor() {
 
           <div className="space-y-2">
             <div className="flex items-center justify-between text-xs text-slate-500">
-              <span>{slideNoteDirty ? "Unsaved changes" : "Saved"}</span>
-              <span>{slideNoteDraft.trim().length} chars</span>
+              <span>{slideNoteDirty ? t("save.unsaved") : t("save.saved")}</span>
+              <span>{t("dialog.slideNote.charCount", { count: slideNoteDraft.trim().length })}</span>
             </div>
             <Textarea
               value={slideNoteDraft}
               onChange={(event) => setSlideNoteDraft(event.target.value)}
-              placeholder="Write slide-level notes here, or use AI Content Generator above..."
+              placeholder={t("dialog.slideNote.placeholder")}
               rows={14}
               disabled={!selectedSlide}
             />
             {slideNoteRepairBusy || layoutGenBusy ? (
               <div className="flex items-center gap-2 text-xs text-slate-500">
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                <span>{layoutGenBusy ? "กำลังจัดหน้า slide ด้วย AI..." : slideNoteRepairStatusLabel}</span>
+                <span>{layoutGenBusy ? t("dialog.slideNote.layoutBusy") : slideNoteRepairStatusLabel}</span>
               </div>
             ) : null}
           </div>
@@ -10934,18 +11652,21 @@ export default function PresentationEditor() {
             <Button
               type="button"
               variant="outline"
-              onClick={() => void copyTextToClipboard(slideNoteDraft, "Slide note copied.")}
+              onClick={() => void copyTextToClipboard(slideNoteDraft, t("dialog.slideNote.copySuccess"), {
+                empty: t("toast.nothingToCopy"),
+                failure: t("toast.copyFailed"),
+              })}
               disabled={!selectedSlide}
             >
               <Copy className="mr-1 h-3.5 w-3.5" />
-              Copy
+              {t("dialog.slideNote.copy")}
             </Button>
             <Button
               type="button"
               variant="outline"
               onClick={() => setIsSlideNoteDialogOpen(false)}
             >
-              Close
+              {t("dialog.slideNote.close")}
             </Button>
             <Button
               type="button"
@@ -10954,7 +11675,7 @@ export default function PresentationEditor() {
               disabled={!selectedSlide || slideNoteRepairBusy || layoutGenBusy || (!slideNoteDraft.trim() && !(selectedSlide?.notes ?? "").trim())}
             >
               {slideNoteRepairBusy ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : null}
-              {slideNoteDirty ? "Save + Generate" : "Generate Slide"}
+              {slideNoteDirty ? t("dialog.slideNote.saveAndGenerate") : t("dialog.slideNote.generateSlide")}
             </Button>
             <Button
               type="button"
@@ -10962,7 +11683,7 @@ export default function PresentationEditor() {
               disabled={!selectedSlide || saveState === "pending"}
             >
               {saveState === "pending" ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : null}
-              Save Note
+              {t("dialog.slideNote.saveNote")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -10983,6 +11704,18 @@ export default function PresentationEditor() {
             await deckQuery.refetch();
             close();
           }}
+        />
+      )}
+      {isArticleGeneratorDialogOpen && deck && (
+        <PresentationArticleGeneratorDialog
+          open={isArticleGeneratorDialogOpen}
+          onClose={() => setIsArticleGeneratorDialogOpen(false)}
+          deckId={deck.id}
+          initialTopic={deck.title}
+          initialArticle={deckNoteDraft}
+          initialCanvasRatio={activeCanvasSize.preset}
+          onUseArticle={handleUseGeneratedArticle}
+          onInsertSlides={handleInsertGeneratedSlides}
         />
       )}
       {isMobileViewport && (

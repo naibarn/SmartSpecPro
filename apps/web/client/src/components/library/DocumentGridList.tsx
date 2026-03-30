@@ -4,10 +4,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import { resolveDocumentPreviewType } from "@/lib/documentManagementUi";
 import { cn } from "@/lib/utils";
 import { getLibraryItemProcessingMeta } from "@/lib/libraryUi";
-import { getDocumentAccessLabel, type DocumentLibraryItem } from "@/lib/documentManagementUi";
+import { type DocumentLibraryItem } from "@/lib/documentManagementUi";
 import {
   FileText,
   FileType2,
@@ -48,9 +49,28 @@ export default function DocumentGridList({
   selectedIds,
   onSelectionChange,
 }: DocumentGridListProps) {
+  const { t } = useScopedTranslation("common");
   const isMultiSelectMode = Boolean(onSelectionChange);
 
-  function toggleSelection(id: number, event: React.MouseEvent | React.KeyboardEvent) {
+  function getAccessLabel(
+    accessSource: DocumentLibraryItem["access_source"]
+  ): string {
+    switch (accessSource) {
+      case "owner":
+        return t("documentManagement.access.owner");
+      case "shared_direct":
+        return t("documentManagement.access.sharedDirect");
+      case "shared_group":
+        return t("documentManagement.access.sharedGroup");
+      default:
+        return t("documentManagement.access.shared");
+    }
+  }
+
+  function toggleSelection(
+    id: number,
+    event: React.MouseEvent | React.KeyboardEvent
+  ) {
     event.stopPropagation();
     if (!onSelectionChange || !selectedIds) return;
     const next = new Set(selectedIds);
@@ -62,7 +82,10 @@ export default function DocumentGridList({
     onSelectionChange(next);
   }
 
-  function handleCardKeyDown(event: KeyboardEvent<HTMLDivElement>, item: DocumentLibraryItem) {
+  function handleCardKeyDown(
+    event: KeyboardEvent<HTMLDivElement>,
+    item: DocumentLibraryItem
+  ) {
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
       if (item.item_type === "folder" && onFolderOpen) {
@@ -91,9 +114,10 @@ export default function DocumentGridList({
   }
 
   function getExtensionLabel(item: DocumentLibraryItem): string {
-    const fromMetadata = typeof item.metadata?.extension === "string"
-      ? item.metadata.extension.replace(/^\./, "")
-      : "";
+    const fromMetadata =
+      typeof item.metadata?.extension === "string"
+        ? item.metadata.extension.replace(/^\./, "")
+        : "";
     if (fromMetadata) return fromMetadata.toLowerCase();
     const source = item.source_url || "";
     const clean = source.split("?")[0];
@@ -105,7 +129,7 @@ export default function DocumentGridList({
   function renderCardPreview(item: DocumentLibraryItem) {
     if (item.item_type === "folder") {
       return (
-        <div className="flex h-24 w-32 items-center justify-center rounded-xl border border-amber-200 bg-gradient-to-br from-amber-50 to-yellow-50 lg:h-28 lg:w-40">
+        <div className="flex h-20 w-24 items-center justify-center rounded-xl border border-amber-200 bg-gradient-to-br from-amber-50 to-yellow-50 sm:h-24 sm:w-32 lg:h-28 lg:w-40">
           <Folder className="h-10 w-10 text-amber-400" />
         </div>
       );
@@ -116,7 +140,7 @@ export default function DocumentGridList({
 
     if (previewType === "image" && imageLikeUrl) {
       return (
-        <div className="h-24 w-32 overflow-hidden rounded-xl border bg-slate-100 lg:h-28 lg:w-40">
+        <div className="h-20 w-24 overflow-hidden rounded-xl border bg-slate-100 sm:h-24 sm:w-32 lg:h-28 lg:w-40">
           <img
             src={imageLikeUrl}
             alt={item.title}
@@ -129,7 +153,7 @@ export default function DocumentGridList({
 
     if (previewType === "video" && imageLikeUrl) {
       return (
-        <div className="relative h-24 w-32 overflow-hidden rounded-xl border bg-slate-900 lg:h-28 lg:w-40">
+        <div className="relative h-20 w-24 overflow-hidden rounded-xl border bg-slate-900 sm:h-24 sm:w-32 lg:h-28 lg:w-40">
           {item.thumbnail_url ? (
             <img
               src={item.thumbnail_url}
@@ -157,24 +181,29 @@ export default function DocumentGridList({
 
     if (previewType === "audio") {
       return (
-        <div className="flex h-24 w-32 items-center justify-center rounded-xl border bg-gradient-to-br from-slate-100 to-cyan-100 text-slate-700 lg:h-28 lg:w-40">
+        <div className="flex h-20 w-24 items-center justify-center rounded-xl border bg-gradient-to-br from-slate-100 to-cyan-100 text-slate-700 sm:h-24 sm:w-32 lg:h-28 lg:w-40">
           <Music2 className="mr-2 h-5 w-5" />
-          <span className="text-xs font-medium">Audio Preview</span>
+          <span className="text-xs font-medium">
+            {t("documentManagement.audioPreview")}
+          </span>
         </div>
       );
     }
 
     const ext = getExtensionLabel(item).toUpperCase();
-    const docIcon = previewType === "markdown"
-      ? <FileText className="h-5 w-5" />
-      : previewType === "video"
-        ? <Video className="h-5 w-5" />
-        : previewType === "image"
-          ? <ImageIcon className="h-5 w-5" />
-          : <FileType2 className="h-5 w-5" />;
+    const docIcon =
+      previewType === "markdown" ? (
+        <FileText className="h-5 w-5" />
+      ) : previewType === "video" ? (
+        <Video className="h-5 w-5" />
+      ) : previewType === "image" ? (
+        <ImageIcon className="h-5 w-5" />
+      ) : (
+        <FileType2 className="h-5 w-5" />
+      );
 
     return (
-      <div className="flex h-24 w-32 items-center justify-center rounded-xl border border-dashed bg-slate-50 text-slate-600 lg:h-28 lg:w-40">
+      <div className="flex h-20 w-24 items-center justify-center rounded-xl border border-dashed bg-slate-50 text-slate-600 sm:h-24 sm:w-32 lg:h-28 lg:w-40">
         <div className="flex flex-col items-center gap-2">
           {docIcon}
           <span className="rounded bg-white px-2 py-0.5 text-[10px] font-semibold tracking-wide text-slate-700">
@@ -185,10 +214,17 @@ export default function DocumentGridList({
     );
   }
 
+  function formatUpdatedAt(value: string): string {
+    return new Date(value).toLocaleString([], {
+      dateStyle: "short",
+      timeStyle: "short",
+    });
+  }
+
   return (
     <ScrollArea className={cn("h-full min-h-0 rounded-lg", className)}>
       <div className="space-y-3 pr-1.5">
-        {items.map((item) => {
+        {items.map(item => {
           const isFolder = item.item_type === "folder";
           const isChecked = selectedIds?.has(item.id) ?? false;
           const statusMeta = getLibraryItemProcessingMeta({
@@ -208,55 +244,109 @@ export default function DocumentGridList({
                   onSelect(item);
                 }
               }}
-              onKeyDown={(event) => handleCardKeyDown(event, item)}
+              onKeyDown={event => handleCardKeyDown(event, item)}
               className={cn(
-                "cursor-pointer rounded-2xl border bg-white/95 p-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary/30",
-                selectedId === item.id && !isFolder ? "border-sky-300 bg-sky-50/70" : "border-slate-200",
+                "cursor-pointer rounded-2xl border bg-white/95 p-2.5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary/30 sm:p-3",
+                selectedId === item.id && !isFolder
+                  ? "border-sky-300 bg-sky-50/70"
+                  : "border-slate-200",
                 isChecked && "border-sky-400 bg-sky-50/50 ring-1 ring-sky-300",
-                isFolder && "border-amber-200 bg-amber-50/40 hover:border-amber-300",
+                isFolder &&
+                  "border-amber-200 bg-amber-50/40 hover:border-amber-300"
               )}
             >
-              <div className="flex gap-3">
+              <div className="flex gap-2.5 sm:gap-3">
                 {/* Checkbox for multi-select — always reserve space when mode is active */}
                 {isMultiSelectMode && (
                   <div className="flex shrink-0 items-start pt-1">
                     <Checkbox
                       checked={isChecked}
-                      onClick={(e) => toggleSelection(item.id, e)}
+                      onClick={e => toggleSelection(item.id, e)}
                       aria-label={`Select ${item.title}`}
                     />
                   </div>
                 )}
 
-                <div className="shrink-0">
-                  {renderCardPreview(item)}
-                </div>
+                <div className="shrink-0">{renderCardPreview(item)}</div>
 
                 <div className="min-w-0 flex-1">
-                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start sm:gap-x-3">
-                    <div className="min-w-0 space-y-1.5">
-                      <div className="line-clamp-2 text-[15px] font-semibold leading-5 text-slate-900" title={item.title}>
-                        {isFolder && <Folder className="mr-1.5 inline h-4 w-4 text-amber-500" />}
-                        {item.title}
+                  <div className="grid min-h-20 grid-cols-[minmax(0,1fr)_auto] gap-x-2.5 gap-y-1.5 sm:min-h-24 sm:gap-x-3 lg:min-h-28">
+                    <div className="min-w-0 flex flex-col justify-between">
+                      <div className="space-y-1">
+                        <div
+                          className="line-clamp-2 text-sm font-semibold leading-5 text-slate-900 sm:text-[15px]"
+                          title={item.title}
+                        >
+                          {isFolder && (
+                            <Folder className="mr-1.5 inline h-4 w-4 text-amber-500" />
+                          )}
+                          {item.title}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
+                          <span className="inline-flex items-center gap-1">
+                            <FileText className="h-3.5 w-3.5" />
+                            <span className="uppercase tracking-wide">
+                              {isFolder ? "Folder" : item.item_type}
+                            </span>
+                          </span>
+                          {!isFolder && (
+                            <Badge
+                              variant="outline"
+                              className="h-5 rounded-full px-2 text-[10px] font-medium"
+                            >
+                              {getAccessLabel(item.access_source)}
+                            </Badge>
+                          )}
+                          {!isFolder &&
+                            statusMeta.searchQuality === "metadata_only" && (
+                              <Badge
+                                variant="outline"
+                                className="h-5 rounded-full px-2 text-[10px] uppercase tracking-wide"
+                              >
+                                {t("documentManagement.metadataSearch")}
+                              </Badge>
+                            )}
+                        </div>
                       </div>
-                      <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-                        <FileText className="h-3.5 w-3.5" />
-                        <span className="uppercase tracking-wide">{isFolder ? "Folder" : item.item_type}</span>
-                      </div>
+
                       {!isFolder && (
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Badge variant="outline" className="text-xs">
-                            {getDocumentAccessLabel(item.access_source)}
-                          </Badge>
+                        <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-slate-600">
+                          {item.description ? (
+                            <span className="inline-flex max-w-full items-center rounded-full bg-indigo-50 px-2 py-0.5 text-indigo-700">
+                              <span className="font-medium text-indigo-500">
+                                {t("documentManagement.prompt")}:
+                              </span>
+                              <span className="ml-1 line-clamp-1">
+                                {item.description}
+                              </span>
+                            </span>
+                          ) : null}
+                          {statusMeta.detail ? (
+                            <span className="inline-flex max-w-full items-center rounded-full bg-slate-100 px-2 py-0.5 text-slate-600">
+                              <span className="line-clamp-1">
+                                {statusMeta.detail}
+                              </span>
+                            </span>
+                          ) : null}
+                          <span className="text-slate-500">
+                            {t("documentManagement.updated")}{" "}
+                            <span className="font-medium text-slate-700">
+                              {formatUpdatedAt(item.updated_at)}
+                            </span>
+                          </span>
                         </div>
                       )}
                     </div>
 
-                    <div className="flex items-start justify-between gap-2 sm:flex-col sm:items-end">
-                      {!isFolder && <Badge className={statusMeta.className}>{statusMeta.label}</Badge>}
-                      {!isFolder && statusMeta.searchQuality === "metadata_only" && (
-                        <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
-                          Metadata Search
+                    <div className="flex flex-col items-end justify-between gap-2">
+                      {!isFolder && (
+                        <Badge
+                          className={cn(
+                            "h-6 rounded-full px-2.5 text-[10px]",
+                            statusMeta.className
+                          )}
+                        >
+                          {statusMeta.label}
                         </Badge>
                       )}
                       <div className="flex items-center gap-1.5">
@@ -264,8 +354,8 @@ export default function DocumentGridList({
                           <Button
                             size="sm"
                             variant="outline"
-                            className="h-8 rounded-lg px-3"
-                            onClick={(event) => {
+                            className="h-7 rounded-lg px-2.5 text-xs"
+                            onClick={event => {
                               event.stopPropagation();
                               if (onOpen) {
                                 onOpen(item);
@@ -274,16 +364,16 @@ export default function DocumentGridList({
                               onSelect(item);
                             }}
                           >
-                            Open
+                            {t("open")}
                           </Button>
                         )}
                         {onDelete && (
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="h-8 w-8 rounded-lg p-0 text-slate-400 hover:bg-red-50 hover:text-red-500"
+                            className="h-7 w-7 rounded-lg p-0 text-slate-400 hover:bg-red-50 hover:text-red-500"
                             title="Move to trash"
-                            onClick={(event) => {
+                            onClick={event => {
                               event.stopPropagation();
                               onDelete(item);
                             }}
@@ -294,27 +384,6 @@ export default function DocumentGridList({
                       </div>
                     </div>
                   </div>
-
-                  {!isFolder && item.description && (
-                    <div className="mt-2 rounded-lg bg-indigo-50/60 px-2.5 py-1.5 text-[11px] text-indigo-700">
-                      <span className="font-semibold text-indigo-500">Prompt: </span>
-                      <span className="line-clamp-2 leading-relaxed">{item.description}</span>
-                    </div>
-                  )}
-                  {!isFolder && (
-                    <div className="mt-1.5 rounded-lg bg-slate-50 px-2.5 py-2 text-[11px] text-slate-600">
-                      {statusMeta.detail ? (
-                        <div className="mb-1.5 rounded-md bg-white/80 px-2 py-1 text-[11px] text-slate-700">
-                          {statusMeta.detail}
-                        </div>
-                      ) : null}
-                      Updated:
-                      {" "}
-                      <span className="font-medium text-slate-700">
-                        {new Date(item.updated_at).toLocaleString()}
-                      </span>
-                    </div>
-                  )}
                 </div>
               </div>
             </div>

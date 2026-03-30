@@ -53,8 +53,8 @@ export const defaultMenuItems: MenuItem[] = [
   { id: 'settings',      label: 'Settings',        labelTh: 'ตั้งค่า',       icon: 'Settings',        path: '/settings',       platforms: ['web', 'desktop'], group: 'main', sortOrder: 99 },
 
   // === Admin group ===
-  { id: 'admin-overview',       label: 'Admin Overview',    labelTh: 'ภาพรวมระบบ',     icon: 'LayoutDashboard', path: '/admin/dashboard',      platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 18 },
-  { id: 'admin-ops',            label: 'Ops Dashboard',     labelTh: 'ระบบปฏิบัติการ', icon: 'Activity',    path: '/admin/ops',                platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 19 },
+  { id: 'admin-overview',       label: 'Admin Command Center', labelTh: 'ศูนย์บัญชาการระบบ', icon: 'LayoutDashboard', path: '/admin/dashboard', platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 18 },
+  { id: 'admin-ops',            label: 'Advanced Ops Panels', labelTh: 'แผงวิเคราะห์เชิงลึก', icon: 'Activity', path: '/admin/ops', platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 19 },
   { id: 'admin-funnel',         label: 'Funnel Analytics',  labelTh: 'วิเคราะห์ Funnel', icon: 'TrendingUp', path: '/admin/funnel',             platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 19.5, requiresFeature: 'FUNNEL_DASHBOARD' },
   { id: 'admin-approvals',      label: 'Approvals',         labelTh: 'อนุมัติ',        icon: 'ClipboardCheck', path: '/admin/approvals',       platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 19.8 },
   { id: 'admin-tenants',        label: 'Tenants',           icon: 'Building2',   path: '/admin/tenants',            platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 20 },

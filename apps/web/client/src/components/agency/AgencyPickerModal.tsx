@@ -14,6 +14,8 @@ import { trpc } from "@/lib/trpc";
 interface AgencyPickerModalProps {
   open: boolean;
   onClose: () => void;
+  currentUserId?: string | number | null;
+  requireRunnable?: boolean;
   onSelect: (agency: {
     id: string;
     name: string;
@@ -24,6 +26,8 @@ interface AgencyPickerModalProps {
 export function AgencyPickerModal({
   open,
   onClose,
+  currentUserId = null,
+  requireRunnable = false,
   onSelect,
 }: AgencyPickerModalProps) {
   const [search, setSearch] = useState("");
@@ -39,17 +43,44 @@ export function AgencyPickerModal({
       name: string;
       description?: string | null;
       agentCount?: number;
+      status?: string;
+      visibility?: string;
+      createdBy?: number | null;
+      isPublished?: boolean;
+      canRun?: boolean;
+      readinessLabel?: string;
     }> = agencyData?.agencies ?? [];
 
-    if (!search) return all;
+    const withRunState = all.map((agency) => {
+      const isTemplate = agency.visibility === "template";
+      const normalizedUserId = currentUserId != null ? String(currentUserId) : null;
+      const isOwnAgency = normalizedUserId != null && String(agency.createdBy ?? "") === normalizedUserId;
+      const isRunnable = agency.status === "published" || isTemplate || isOwnAgency;
+      const readinessLabel = agency.status === "archived"
+        ? "Archived"
+        : agency.status === "published"
+          ? "Ready"
+          : isTemplate
+            ? "Template"
+            : isOwnAgency
+              ? "Owner draft"
+              : "Draft";
+      return {
+        ...agency,
+        canRun: isRunnable && agency.status !== "archived",
+        readinessLabel,
+      };
+    }).filter((agency) => !requireRunnable || agency.canRun);
+
+    if (!search) return withRunState;
 
     const q = search.toLowerCase();
-    return all.filter(
+    return withRunState.filter(
       (a) =>
         a.name.toLowerCase().includes(q) ||
         a.description?.toLowerCase().includes(q),
     );
-  }, [agencyData, search]);
+  }, [agencyData, currentUserId, requireRunnable, search]);
 
   const handleClose = () => {
     setSearch("");
@@ -57,6 +88,9 @@ export function AgencyPickerModal({
   };
 
   const handleSelect = (agency: (typeof agencies)[number]) => {
+    if (requireRunnable && !agency.canRun) {
+      return;
+    }
     onSelect({
       id: agency.id,
       name: agency.name,
@@ -73,6 +107,11 @@ export function AgencyPickerModal({
             <Bot className="h-4 w-4" />
             Select Agency
           </DialogTitle>
+          {requireRunnable && (
+            <p className="text-sm text-muted-foreground">
+              Only runnable agencies are shown here: published agencies, templates, or agencies you created.
+            </p>
+          )}
         </DialogHeader>
 
         <div className="relative">
@@ -100,7 +139,8 @@ export function AgencyPickerModal({
                 <button
                   key={agency.id}
                   type="button"
-                  className="flex w-full items-start gap-2 rounded border px-3 py-2.5 text-left transition-colors hover:bg-accent"
+                  className="flex w-full items-start gap-2 rounded-xl border px-3 py-2.5 text-left transition-colors hover:border-cyan-300 hover:bg-cyan-50/60 disabled:cursor-not-allowed disabled:opacity-60"
+                  disabled={requireRunnable && !agency.canRun}
                   onClick={() => handleSelect(agency)}
                 >
                   <div className="min-w-0 flex-1">
@@ -112,10 +152,28 @@ export function AgencyPickerModal({
                           {agency.agentCount === 1 ? "agent" : "agents"}
                         </Badge>
                       )}
+                      {agency.readinessLabel && (
+                        <Badge
+                          variant={agency.canRun ? "default" : "outline"}
+                          className="px-1.5 py-0 text-[10px]"
+                        >
+                          {agency.readinessLabel}
+                        </Badge>
+                      )}
                     </div>
                     {agency.description && (
                       <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
                         {agency.description}
+                      </p>
+                    )}
+                    {requireRunnable && !agency.canRun && (
+                      <p className="mt-0.5 text-xs text-amber-700">
+                        This agency is not ready to run yet. Publish it or mark it as a template.
+                      </p>
+                    )}
+                    {!requireRunnable && !agency.canRun && (
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        Not runnable in composer yet.
                       </p>
                     )}
                   </div>

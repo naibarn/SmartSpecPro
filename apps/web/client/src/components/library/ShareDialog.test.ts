@@ -65,6 +65,8 @@ vi.mock("sonner", () => ({
 }));
 
 vi.mock("lucide-react", () => ({
+  ExternalLink: (props: Record<string, unknown>) =>
+    React.createElement("svg", { ...props, "data-testid": "icon-external-link" }),
   Loader2: (props: Record<string, unknown>) =>
     React.createElement("svg", { ...props, "data-testid": "loader" }),
   Search: (props: Record<string, unknown>) =>
@@ -81,19 +83,27 @@ vi.mock("./PermissionBadge", () => ({
     React.createElement("span", { "data-testid": `badge-${props.level}` }, props.level as string),
 }));
 
+vi.mock("./CopyLinkButton", () => ({
+  CopyLinkButton: () => React.createElement("button", { type: "button" }, "Copy link"),
+}));
+
 // Mock tRPC with hoisted functions
 vi.mock("@/lib/trpc", () => ({
   trpc: {
     useUtils: () => ({
       library: {
         getItemShares: { invalidate: mockInvalidate },
+        getPublicShareLink: { invalidate: mockInvalidate },
       },
     }),
     library: {
       getItemShares: { useQuery: mockUseQuery },
+      getPublicShareLink: { useQuery: mockUseQuery },
       shareItem: { useMutation: mockUseMutation },
       removeShare: { useMutation: mockUseMutation },
       updateSharePermission: { useMutation: mockUseMutation },
+      createPublicShareLink: { useMutation: mockUseMutation },
+      revokePublicShareLink: { useMutation: mockUseMutation },
     },
     groups: {
       list: { useQuery: mockUseQuery },

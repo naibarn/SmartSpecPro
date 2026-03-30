@@ -24,6 +24,7 @@ function mapCategoryToGroup(category: string): string {
   if (category.startsWith("video_")) return "media_video";
   if (category.startsWith("audio_")) return "media_audio";
   if (category === "article_generation" || category === "blog_writing") return "article_writing";
+  if (category === "slide_generation") return "content_tools";
   if (category === "product_review" || category.endsWith("_review")) return "product_review";
   if (category === "prompt_enhancement" || category === "image_prompt_generation") return "media_prompts";
   if (

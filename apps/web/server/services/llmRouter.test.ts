@@ -357,6 +357,42 @@ describe("executeWithFallback", () => {
     }
   });
 
+  it("falls back when a provider returns HTML instead of JSON", async () => {
+    const provider1 = makeCandidate({ providerId: 1, providerName: "HTMLProvider" });
+    const provider2 = makeCandidate({ providerId: 2, providerName: "JSONProvider" });
+    setupProviderResolution([provider1, provider2]);
+
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: { get: vi.fn().mockReturnValue("text/html; charset=utf-8") },
+        text: async () => "<!DOCTYPE html><html><body>login page</body></html>",
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          choices: [{ message: { content: "Recovered" } }],
+          usage: { prompt_tokens: 10, completion_tokens: 5 },
+        }),
+      });
+
+    const result = await executeWithFallback({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: "Hi" }],
+      stream: false,
+      userId: 1,
+    });
+
+    expect(result.type).toBe("success");
+    if (result.type === "success") {
+      expect(result.providerId).toBe(2);
+    }
+    expect(mockHealthRecordFailure).toHaveBeenCalledWith(1, expect.any(String));
+    expect(mockHealthRecordSuccess).toHaveBeenCalledWith(2);
+  });
+
   it("429 from primary triggers fallback to next same-tier provider", async () => {
     const provider1 = makeCandidate({ providerId: 1, isFree: true, pricingInput: "0", pricingOutput: "0" });
     const provider2 = makeCandidate({ providerId: 2, isFree: true, pricingInput: "0", pricingOutput: "0" });

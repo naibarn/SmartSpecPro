@@ -27,12 +27,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/contexts/AuthContext";
 import { trpc } from "@/lib/trpc";
 import { AddMemberDialog } from "./AddMemberDialog";
 import { CreateGroupDialog } from "./CreateGroupDialog";
+import { DashboardCard } from "@/components/dashboard";
 
 export default function GroupDetailPanel() {
   const params = useParams<{ groupId: string }>();
@@ -239,14 +239,11 @@ export default function GroupDetailPanel() {
 
       {/* Pending Requests (admin only) */}
       {canManage && pendingMembers.length > 0 && (
-        <Card className="mb-6">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <ShieldCheck className="h-4 w-4" />
-              Pending Requests ({pendingMembers.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+        <DashboardCard
+          className="mb-6"
+          title={`Pending Requests (${pendingMembers.length})`}
+          leading={<ShieldCheck className="h-4 w-4" />}
+        >
             <div className="space-y-2">
               {pendingMembers.map((member) => (
                 <div
@@ -292,28 +289,25 @@ export default function GroupDetailPanel() {
                 </div>
               ))}
             </div>
-          </CardContent>
-        </Card>
+        </DashboardCard>
       )}
 
       {/* Members List */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base">Members</CardTitle>
-            {canManage && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setIsAddMemberOpen(true)}
-              >
-                <UserPlus className="mr-1 h-4 w-4" />
-                Add Member
-              </Button>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent>
+      <DashboardCard
+        title="Members"
+        trailing={
+          canManage ? (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setIsAddMemberOpen(true)}
+            >
+              <UserPlus className="mr-1 h-4 w-4" />
+              Add Member
+            </Button>
+          ) : null
+        }
+      >
           {activeMembers.length === 0 ? (
             <p className="py-4 text-center text-sm text-muted-foreground">
               No active members
@@ -379,8 +373,7 @@ export default function GroupDetailPanel() {
               ))}
             </div>
           )}
-        </CardContent>
-      </Card>
+      </DashboardCard>
 
       {/* Edit Dialog */}
       <CreateGroupDialog

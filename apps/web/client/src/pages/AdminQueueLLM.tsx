@@ -12,7 +12,7 @@ import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { DashboardCard } from "@/components/dashboard";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
@@ -119,14 +119,14 @@ export default function AdminQueueLLM() {
   if (!user || user.role !== "admin") {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <Card className="w-96">
-          <CardHeader>
-            <CardTitle>Access Denied</CardTitle>
-            <CardDescription>
+        <DashboardCard className="w-96">
+          <div>
+            <h3>Access Denied</h3>
+            <p>
               You need admin privileges to access this page.
-            </CardDescription>
-          </CardHeader>
-        </Card>
+            </p>
+          </div>
+        </DashboardCard>
       </div>
     );
   }
@@ -205,14 +205,14 @@ export default function AdminQueueLLM() {
       <div className="flex-1 overflow-auto px-4 py-6 space-y-6">
         {/* Quick Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
+          <DashboardCard>
+            <div className="pb-2">
+              <h3 className="text-sm font-medium flex items-center gap-2">
                 <Database className="h-4 w-4" />
                 Redis
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
+              </h3>
+            </div>
+            <div>
               <div className="flex items-center gap-2">
                 {redis?.connected ? (
                   <>
@@ -226,53 +226,53 @@ export default function AdminQueueLLM() {
                   </>
                 )}
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </DashboardCard>
 
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
+          <DashboardCard>
+            <div className="pb-2">
+              <h3 className="text-sm font-medium flex items-center gap-2">
                 <Activity className="h-4 w-4" />
                 Active
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
+              </h3>
+            </div>
+            <div>
               <div className="text-2xl font-bold">
                 {systemStatus.data?.limiters.totalRunning || 0}
               </div>
               <p className="text-xs text-muted-foreground">
                 {systemStatus.data?.limiters.totalQueued || 0} queued
               </p>
-            </CardContent>
-          </Card>
+            </div>
+          </DashboardCard>
 
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
+          <DashboardCard>
+            <div className="pb-2">
+              <h3 className="text-sm font-medium flex items-center gap-2">
                 <CheckCircle className="h-4 w-4" />
                 Completed
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
+              </h3>
+            </div>
+            <div>
               <div className="text-2xl font-bold text-green-600">
                 {systemStatus.data?.limiters.totalDone || 0}
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </DashboardCard>
 
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
+          <DashboardCard>
+            <div className="pb-2">
+              <h3 className="text-sm font-medium flex items-center gap-2">
                 <AlertTriangle className="h-4 w-4" />
                 Failed
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
+              </h3>
+            </div>
+            <div>
               <div className="text-2xl font-bold text-red-600">
                 {systemStatus.data?.limiters.totalFailed || 0}
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </DashboardCard>
         </div>
 
         {/* Main Tabs */}
@@ -302,14 +302,14 @@ export default function AdminQueueLLM() {
 
           {/* Rate Limiters Tab */}
           <TabsContent value="limiters" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Provider Rate Limiters</CardTitle>
-                <CardDescription>
+            <DashboardCard>
+              <div>
+                <h3>Provider Rate Limiters</h3>
+                <p>
                   Real-time status of rate limiting per LLM provider
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
+                </p>
+              </div>
+              <div>
                 {!limiterStatus.data?.available && (
                   <div className="text-center py-8 text-muted-foreground">
                     <Database className="h-12 w-12 mx-auto mb-2 opacity-50" />
@@ -416,20 +416,20 @@ export default function AdminQueueLLM() {
                     })}
                   </div>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </DashboardCard>
           </TabsContent>
 
           {/* Background Queues Tab */}
           <TabsContent value="queues" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Background Job Queues</CardTitle>
-                <CardDescription>
+            <DashboardCard>
+              <div>
+                <h3>Background Job Queues</h3>
+                <p>
                   Cloud Tasks queues for async processing
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
+                </p>
+              </div>
+              <div>
                 {!queueStatus.data?.available && (
                   <div className="text-center py-8 text-muted-foreground">
                     <Database className="h-12 w-12 mx-auto mb-2 opacity-50" />
@@ -470,20 +470,20 @@ export default function AdminQueueLLM() {
                     </TableBody>
                   </Table>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </DashboardCard>
           </TabsContent>
 
           {/* Models Tab */}
           <TabsContent value="models" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Model Usage Statistics</CardTitle>
-                <CardDescription>
+            <DashboardCard>
+              <div>
+                <h3>Model Usage Statistics</h3>
+                <p>
                   Usage breakdown by LLM provider and model
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
+                </p>
+              </div>
+              <div>
                 {modelStats.isLoading ? (
                   <div className="flex items-center justify-center py-8">
                     <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -589,20 +589,20 @@ export default function AdminQueueLLM() {
                     </div>
                   </div>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </DashboardCard>
           </TabsContent>
 
           {/* History Tab */}
           <TabsContent value="history" className="space-y-4">
-            <Card>
-              <CardHeader>
+            <DashboardCard>
+              <div>
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle>Queue History</CardTitle>
-                    <CardDescription>
+                    <h3>Queue History</h3>
+                    <p>
                       Usage patterns over time
-                    </CardDescription>
+                    </p>
                   </div>
                   <div className="flex items-center gap-2">
                     <select
@@ -631,8 +631,8 @@ export default function AdminQueueLLM() {
                     </Button>
                   </div>
                 </div>
-              </CardHeader>
-              <CardContent>
+              </div>
+              <div>
                 {historyData.isLoading ? (
                   <div className="flex items-center justify-center py-8">
                     <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -721,20 +721,20 @@ export default function AdminQueueLLM() {
                     </div>
                   </div>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </DashboardCard>
           </TabsContent>
 
           {/* Configuration Tab */}
           <TabsContent value="config" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Provider Rate Limit Configurations</CardTitle>
-                <CardDescription>
+            <DashboardCard>
+              <div>
+                <h3>Provider Rate Limit Configurations</h3>
+                <p>
                   Default rate limiting settings per provider
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
+                </p>
+              </div>
+              <div>
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -767,14 +767,14 @@ export default function AdminQueueLLM() {
                     ))}
                   </TableBody>
                 </Table>
-              </CardContent>
-            </Card>
+              </div>
+            </DashboardCard>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Environment Configuration</CardTitle>
-              </CardHeader>
-              <CardContent>
+            <DashboardCard>
+              <div>
+                <h3>Environment Configuration</h3>
+              </div>
+              <div>
                 <div className="space-y-2 text-sm font-mono">
                   <div className="flex items-center gap-2">
                     <span className="text-muted-foreground">REDIS_URL=</span>
@@ -786,8 +786,8 @@ export default function AdminQueueLLM() {
                     )}
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </DashboardCard>
           </TabsContent>
         </Tabs>
       </div>

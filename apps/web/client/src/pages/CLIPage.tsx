@@ -4,7 +4,6 @@ import DesktopOnlyMessage from '@/components/DesktopOnlyMessage';
 import { tauriInvoke } from '@/hooks/useTauriInvoke';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   File, Folder, FolderOpen, ChevronRight, ChevronDown,
   Save, GitBranch, RefreshCw, Loader2, Search,

@@ -65,6 +65,7 @@ import { socialPublishingRouter } from "./routers/socialPublishing";
 import { socialModerationRouter } from "./routers/socialModeration";
 import { socialAutomationRouter } from "./routers/socialAutomation";
 import { searchRouter } from "./routers/search";
+import { contentComposerRouter } from "./routers/contentComposer";
 import { adminOpsRouter } from "./routers/adminOps";
 import { automationCopilotRouter } from "./routers/automationCopilot";
 import { liveBrowserRouter } from "./routers/liveBrowser";
@@ -1864,6 +1865,7 @@ export const appRouter = router({
   metaChannels: metaChannelsRouter,
   uploadPost: uploadPostRouter,
   socialPublishing: socialPublishingRouter,
+  contentComposer: contentComposerRouter,
   socialModeration: socialModerationRouter,
   socialInbox: socialInboxRouter,
   socialAutomation: socialAutomationRouter,

@@ -6,10 +6,10 @@ import { trpc } from "@/lib/trpc";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { DashboardCard } from "@/components/dashboard";
 
 import { UPLOAD_POST_PLATFORMS, UPLOAD_POST_POLICY_VERSION, type UploadPostConnectionDetail, type UploadPostPlatform, type UploadPostQueueSettings } from "@shared/uploadPost";
 
@@ -228,14 +228,13 @@ export function UploadPostGatewayPanel({ tenantId }: UploadPostGatewayPanelProps
       </div>
 
       {!connection ? (
-        <Card className="border-dashed border-emerald-300 bg-white/90">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Link2 className="h-5 w-5 text-emerald-600" />
-              Connect Upload-Post
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+        <DashboardCard
+          title="Connect Upload-Post"
+          description="Save an Upload-Post API key and confirm the disclosure to enable cross-platform posting."
+          leading={<Link2 className="h-5 w-5 text-sky-500" />}
+          className="border-dashed border-emerald-300 bg-white/90"
+        >
+          <div className="space-y-4">
             <Alert className="border-amber-200 bg-amber-50">
               <ShieldAlert className="h-4 w-4" />
               <AlertTitle>Disclosure required</AlertTitle>
@@ -278,15 +277,12 @@ export function UploadPostGatewayPanel({ tenantId }: UploadPostGatewayPanelProps
                 Connect
               </Button>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </DashboardCard>
       ) : (
         <div className="grid gap-6 xl:grid-cols-2">
-          <Card className="bg-white/90">
-            <CardHeader>
-              <CardTitle>Queue settings</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+          <DashboardCard title="Queue settings" className="bg-white/90">
+            <div className="space-y-4">
               <div className="flex items-center gap-2">
                 <Checkbox
                   checked={queueSettings.enabled}
@@ -333,14 +329,11 @@ export function UploadPostGatewayPanel({ tenantId }: UploadPostGatewayPanelProps
                 {updateQueueSettingsMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                 Save queue settings
               </Button>
-            </CardContent>
-          </Card>
+            </div>
+          </DashboardCard>
 
-          <Card className="bg-white/90">
-            <CardHeader>
-              <CardTitle>Create profile</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+          <DashboardCard title="Create profile" className="bg-white/90">
+            <div className="space-y-4">
               <div className="space-y-2">
                 <Label>Platform</Label>
                 <select
@@ -372,14 +365,11 @@ export function UploadPostGatewayPanel({ tenantId }: UploadPostGatewayPanelProps
                 {createProfileMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                 Create profile
               </Button>
-            </CardContent>
-          </Card>
+            </div>
+          </DashboardCard>
 
-          <Card className="bg-white/90 xl:col-span-2">
-            <CardHeader>
-              <CardTitle>Profiles</CardTitle>
-            </CardHeader>
-            <CardContent>
+          <DashboardCard title="Profiles" className="bg-white/90 xl:col-span-2">
+            <div>
               {connection.profiles.length === 0 ? (
                 <p className="text-sm text-slate-500">No Upload-Post profiles yet.</p>
               ) : (
@@ -409,14 +399,11 @@ export function UploadPostGatewayPanel({ tenantId }: UploadPostGatewayPanelProps
                   ))}
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </DashboardCard>
 
-          <Card className="bg-white/90 xl:col-span-2">
-            <CardHeader>
-              <CardTitle>Recent jobs</CardTitle>
-            </CardHeader>
-            <CardContent>
+          <DashboardCard title="Recent jobs" className="bg-white/90 xl:col-span-2">
+            <div>
               {connection.jobs.length === 0 ? (
                 <p className="text-sm text-slate-500">No Upload-Post jobs yet.</p>
               ) : (
@@ -434,15 +421,12 @@ export function UploadPostGatewayPanel({ tenantId }: UploadPostGatewayPanelProps
                   ))}
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </DashboardCard>
 
           {jwtResult && (
-            <Card className="bg-white/90 xl:col-span-2">
-              <CardHeader>
-                <CardTitle>Popup handshake</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
+            <DashboardCard title="Popup handshake" className="bg-white/90 xl:col-span-2">
+              <div className="space-y-3">
                 <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
                   Callback URL: <span className="font-mono text-xs">{jwtResult.callbackUrl}</span>
                 </div>
@@ -463,8 +447,8 @@ export function UploadPostGatewayPanel({ tenantId }: UploadPostGatewayPanelProps
                     Open callback popup
                   </Button>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </DashboardCard>
           )}
         </div>
       )}

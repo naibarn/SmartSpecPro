@@ -7,17 +7,11 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { OpsEarlyWarningPanel } from "@/components/admin/OpsEarlyWarningPanel";
 import {
   Select,
   SelectContent,
@@ -53,6 +47,7 @@ import {
   CreditCard,
   BarChart3,
 } from "lucide-react";
+import { DashboardCard } from "@/components/dashboard";
 
 const EVENT_LABELS: Record<string, string> = {
   orchestration_classify: "Classify",
@@ -110,6 +105,10 @@ export default function AdminOrchestrationLogs() {
     { traceId: selectedTrace!, date },
     { enabled: !!selectedTrace },
   );
+  const opsOverviewQuery = trpc.monitoring.getOpsOverview.useQuery(undefined, {
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: false,
+  });
 
   const stats = data?.stats;
   const entries = data?.entries ?? [];
@@ -146,7 +145,7 @@ export default function AdminOrchestrationLogs() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => refetch()}
+              onClick={() => void Promise.all([refetch(), opsOverviewQuery.refetch()])}
             >
               <RefreshCw className="h-3.5 w-3.5 mr-1" />
               Refresh
@@ -194,15 +193,22 @@ export default function AdminOrchestrationLogs() {
         </div>
       )}
 
+      <OpsEarlyWarningPanel
+        overview={opsOverviewQuery.data}
+        isLoading={opsOverviewQuery.isLoading}
+        showMonitoringLink
+        description="Shared early-warning feed that correlates orchestration fallback patterns with service pressure, alert backlog, and audit spikes."
+      />
+
       {/* Top Skills & Fallback Reasons */}
       {stats && (stats.topSkills.length > 0 || Object.keys(stats.fallbackReasons).length > 0) && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {stats.topSkills.length > 0 && (
-            <Card>
-              <CardHeader className="py-3 px-4">
-                <CardTitle className="text-sm">Top Skills</CardTitle>
-              </CardHeader>
-              <CardContent className="px-4 pb-3">
+            <DashboardCard>
+              <div className="py-3 px-4">
+                <h3 className="text-sm">Top Skills</h3>
+              </div>
+              <div className="px-4 pb-3">
                 <div className="flex flex-wrap gap-2">
                   {stats.topSkills.map((s) => (
                     <Badge key={s.skillId} variant="outline" className="text-xs">
@@ -210,15 +216,15 @@ export default function AdminOrchestrationLogs() {
                     </Badge>
                   ))}
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </DashboardCard>
           )}
           {Object.keys(stats.fallbackReasons).length > 0 && (
-            <Card>
-              <CardHeader className="py-3 px-4">
-                <CardTitle className="text-sm">Fallback Reasons</CardTitle>
-              </CardHeader>
-              <CardContent className="px-4 pb-3">
+            <DashboardCard>
+              <div className="py-3 px-4">
+                <h3 className="text-sm">Fallback Reasons</h3>
+              </div>
+              <div className="px-4 pb-3">
                 <div className="flex flex-wrap gap-2">
                   {Object.entries(stats.fallbackReasons).map(([reason, count]) => (
                     <Badge
@@ -230,15 +236,15 @@ export default function AdminOrchestrationLogs() {
                     </Badge>
                   ))}
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </DashboardCard>
           )}
         </div>
       )}
 
       {/* Filters */}
-      <Card>
-        <CardContent className="p-4">
+      <DashboardCard>
+        <div className="p-4">
           <div className="flex flex-wrap gap-3 items-end">
             <div className="space-y-1">
               <Label className="text-xs">Date</Label>
@@ -301,17 +307,17 @@ export default function AdminOrchestrationLogs() {
               Search
             </Button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </DashboardCard>
 
       {/* Events Table */}
-      <Card>
-        <CardHeader className="py-3 px-4">
-          <CardTitle className="text-sm">
+      <DashboardCard>
+        <div className="py-3 px-4">
+          <h3 className="text-sm">
             Events {entries.length > 0 ? `(${entries.length})` : ""}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
+          </h3>
+        </div>
+        <div className="p-0">
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -373,8 +379,8 @@ export default function AdminOrchestrationLogs() {
               </Table>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </DashboardCard>
 
       </div>{/* end content */}
 
@@ -466,15 +472,15 @@ function StatCard({
   value: string | number;
 }) {
   return (
-    <Card>
-      <CardContent className="p-3 flex items-center gap-2">
+    <DashboardCard>
+      <div className="p-3 flex items-center gap-2">
         {icon}
         <div>
           <div className="text-lg font-semibold leading-tight">{value}</div>
           <div className="text-xs text-muted-foreground">{label}</div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </DashboardCard>
   );
 }
 

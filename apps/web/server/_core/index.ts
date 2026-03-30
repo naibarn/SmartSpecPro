@@ -52,6 +52,7 @@ import { createGuardianSSERouter } from "../routes/guardianSSE";
 import agencyStreamRouter from "../routes/agencyStream";
 import orchestratorStreamRouter from "../routes/orchestratorStream";
 import notificationStreamRouter from "../routes/notificationStream";
+import contentComposerStreamRouter from "../routes/contentComposerStream";
 import internalOrchestratorRouter from "../routes/internalOrchestrator";
 import { registerDeviceAuthRoutes } from "./deviceAuthRoutes";
 import { registerServicesRoutes } from "../routers/services";
@@ -80,6 +81,10 @@ import { initializeNotificationJobs } from "../jobs/notificationJobs";
 import { initializeMemoryMaintenanceJobs, shutdownMemoryMaintenanceJobs } from "../jobs/memoryMaintenanceJobs";
 import { initializeContentRefreshJob } from "../jobs/contentRefreshJob";
 import { initializeInactiveUserJob } from "../jobs/inactiveUserJob";
+import {
+  initializeSkillMaintenanceScheduleJob,
+  shutdownSkillMaintenanceScheduleJob,
+} from "../jobs/skillMaintenanceSchedule";
 import { initFromDb, startPeriodicPersistence } from "../services/providerHealth";
 import { startHistoryCollection } from "../services/llmQueue";
 import { recoverActiveRunsOnStartup } from "../services/runEngine";
@@ -504,6 +509,7 @@ app.use("/api/virtual-admin/events", createGuardianSSERouter());
 app.use(agencyStreamRouter);
 app.use(orchestratorStreamRouter);
 app.use(notificationStreamRouter);
+app.use(contentComposerStreamRouter);
 app.use(internalOrchestratorRouter);
 
 // Proxy remote images through same-origin endpoint so browser canvas operations
@@ -1510,6 +1516,13 @@ async function main() {
     console.error("[Startup] Failed to initialize inactive user job:", error);
   }
 
+  // Initialize skill maintenance scheduler (every 15m)
+  try {
+    await initializeSkillMaintenanceScheduleJob();
+  } catch (error) {
+    console.error("[Startup] Failed to initialize skill maintenance scheduler:", error);
+  }
+
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);
   } else {
@@ -1541,6 +1554,12 @@ async function main() {
       startQueueHealthMonitor();
     }).catch((err) => {
       console.error("[Startup] Failed to start queue health monitor:", err);
+    });
+
+    import("../services/opsAnomalyMonitor").then(({ startOpsAnomalyMonitor }) => {
+      startOpsAnomalyMonitor();
+    }).catch((err) => {
+      console.error("[Startup] Failed to start ops anomaly monitor:", err);
     });
 
     // Start System Guardian (Virtual Admin Agent)
@@ -1578,6 +1597,9 @@ process.on("SIGTERM", async () => {
   import("../services/queueHealthMonitor").then(({ stopQueueHealthMonitor }) => {
     stopQueueHealthMonitor();
   }).catch(() => {});
+  import("../services/opsAnomalyMonitor").then(({ stopOpsAnomalyMonitor }) => {
+    stopOpsAnomalyMonitor();
+  }).catch(() => {});
   import("../services/virtualAdmin/guardianScheduler").then(({ stopGuardian }) => {
     stopGuardian();
   }).catch(() => {});
@@ -1602,6 +1624,7 @@ process.on("SIGTERM", async () => {
   await closeAutomationJobsQueue().catch(() => {});
   await closeWebhookApiDeliveryQueue().catch(() => {});
   await shutdownMemoryMaintenanceJobs().catch(() => {});
+  await shutdownSkillMaintenanceScheduleJob().catch(() => {});
   await closeEmbeddingQueue().catch(() => {});
   await shutdownVoiceGateway().catch(() => {});
 
@@ -1659,6 +1682,7 @@ process.on("SIGINT", async () => {
   await closeAutomationJobsQueue().catch(() => {});
   await closeWebhookApiDeliveryQueue().catch(() => {});
   await shutdownMemoryMaintenanceJobs().catch(() => {});
+  await shutdownSkillMaintenanceScheduleJob().catch(() => {});
   await closeEmbeddingQueue().catch(() => {});
   await shutdownVoiceGateway().catch(() => {});
   await Promise.all(

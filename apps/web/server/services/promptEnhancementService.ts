@@ -14,6 +14,8 @@ export interface PromptEnhancementRequest {
   userInput: string;
   /** Reference image URLs (1-5) */
   referenceImages?: string[];
+  /** Optional notes describing what to preserve from the reference images */
+  referenceNotes?: string;
   /** Reference image roles and notes */
   referenceImageRoles?: Array<{
     role?: string;
@@ -242,9 +244,28 @@ Always return the final prompt itself, not explanations.
 - Describe subject, environment, motion, camera movement, framing, and lighting clearly
 - Keep the wording usable for modern video generation models
 - Avoid JSON, bullet lists, and explanations unless explicitly requested
-- If reference images are provided, use them as subject/style continuity anchors
+- If reference images are provided, use them as continuity anchors for character identity, wardrobe, props, and scene layout
+- If any reference image is a character reference, preserve the same face, hairstyle, body shape, outfit colors, accessories, pose language, and signature props across the prompt
+- If any reference image is an object, product, or prop reference, preserve its shape, color, material, markings, and distinctive details across the prompt
+- If any reference image is a scene or location reference, preserve its composition, perspective, layout, and lighting mood across the prompt
+- If any reference image also contains readable text, preserve it only when that text is intentionally part of the design and must remain visible
+- If reference notes are provided, treat them as the authoritative continuity guide for character and scene details
 - Respect the requested aspect ratio and target platform when provided
 `;
+
+  if (request.referenceImages && request.referenceImages.length > 0) {
+    systemPrompt += `
+## Reference Images
+${request.referenceImages.length} reference image(s) provided.
+If any reference image is a character reference, preserve the same face, hairstyle, body shape, outfit colors, accessories, pose language, and signature props.
+If any reference image is an object, product, or prop reference, preserve its shape, color, material, markings, and distinctive details.
+If any reference image is a scene or location reference, preserve its composition, perspective, layout, and lighting mood.
+If any reference image also contains readable text, preserve it only when that text is intentionally part of the design and must remain visible.
+`;
+    if (request.referenceNotes?.trim()) {
+      systemPrompt += `Reference notes: ${request.referenceNotes.trim()}\n`;
+    }
+  }
 
   if (maxPromptChars < 5000) {
     systemPrompt += `
@@ -892,6 +913,14 @@ Include: "Realistic Skin: Keep pores, micro-texture, natural tone variation, and
   if (request.referenceImages && request.referenceImages.length > 0) {
     systemPrompt += `\n## Reference Images: ${request.referenceImages.length} image(s)\n`;
     systemPrompt += `Start prompt with: "Using image(s) as reference, generate..."\n`;
+    systemPrompt += `If any reference image is a character reference, preserve the same face, hairstyle, body shape, outfit colors, accessories, pose language, and signature props.\n`;
+    systemPrompt += `If any reference image is an object, product, or prop reference, preserve its shape, color, material, markings, and distinctive details.\n`;
+    systemPrompt += `If any reference image is a scene or location reference, preserve its composition, perspective, layout, and lighting mood.\n`;
+    systemPrompt += `If any reference image also contains readable text, preserve it only when that text is intentionally part of the design and must remain visible.\n`;
+
+    if (request.referenceNotes?.trim()) {
+      systemPrompt += `Reference notes: ${request.referenceNotes.trim()}\n`;
+    }
 
     if (request.referenceImageRoles?.length) {
       for (let i = 0; i < request.referenceImageRoles.length; i++) {
@@ -1127,6 +1156,10 @@ export function buildUserPrompt(request: PromptEnhancementRequest): string {
   // Reference images context
   if (request.referenceImages && request.referenceImages.length > 0) {
     userPrompt += `\n\n[${request.referenceImages.length} reference image(s) provided - analyze them for visual details]`;
+    userPrompt += `\nIf the image is a character reference, preserve the same face, hairstyle, body shape, outfit colors, accessories, pose language, and signature props.`;
+    userPrompt += `\nIf the image is an object, product, or prop reference, preserve its shape, color, material, markings, and distinctive details.`;
+    userPrompt += `\nIf the image is a scene or location reference, preserve its composition, perspective, layout, and lighting mood.`;
+    userPrompt += `\nIf the image also contains readable text, preserve it only when that text is intentionally part of the design and must remain visible.`;
 
     // Add role descriptions
     if (request.referenceImageRoles?.length) {
@@ -1143,9 +1176,16 @@ export function buildUserPrompt(request: PromptEnhancementRequest): string {
   // Handle empty text with images
   if (!request.userInput?.trim() && request.referenceImages?.length) {
     userPrompt = `Please analyze the provided reference image(s) and create a detailed prompt that describes what you see. The prompt should be suitable for AI ${mediaType} generation that recreates or reimagines the scene/subject.`;
+    userPrompt += ` If the image is a character reference, preserve the same face, hairstyle, body shape, outfit colors, accessories, pose language, and signature props.`;
+    userPrompt += ` If the image is an object, product, or prop reference, preserve its shape, color, material, markings, and distinctive details.`;
+    userPrompt += ` If the image is a scene or location reference, preserve its composition, perspective, layout, and lighting mood.`;
 
     if (inputSummary.length > 0) {
       userPrompt += `\n\nApply these options:\n- ${inputSummary.join("\n- ")}`;
+    }
+
+    if (request.referenceNotes?.trim()) {
+      userPrompt += `\n\nReference notes:\n${request.referenceNotes.trim()}`;
     }
   }
 

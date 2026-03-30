@@ -12,7 +12,7 @@ import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { DashboardCard, DashboardKpiCard } from "@/components/dashboard";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
@@ -87,14 +87,14 @@ export default function AdminQueueMedia() {
   if (!user || user.role !== "admin") {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <Card className="w-96">
-          <CardHeader>
-            <CardTitle>Access Denied</CardTitle>
-            <CardDescription>
+        <DashboardCard className="w-96">
+          <div>
+            <h3>Access Denied</h3>
+            <p>
               You need admin privileges to access this page.
-            </CardDescription>
-          </CardHeader>
-        </Card>
+            </p>
+          </div>
+        </DashboardCard>
       </div>
     );
   }
@@ -183,75 +183,14 @@ export default function AdminQueueMedia() {
       </div>
 
       <div className="flex-1 overflow-auto px-4 py-6 space-y-6">
-        {/* Quick Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Activity className="h-4 w-4" />
-                Total Requests
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{totalRequests.toLocaleString()}</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <CheckCircle className="h-4 w-4" />
-                Completed
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">
-                {totalCompleted.toLocaleString()}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4" />
-                Failed
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-red-600">
-                {totalFailed.toLocaleString()}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <CreditCard className="h-4 w-4" />
-                Credits Used
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-blue-600">
-                {totalCredits.toLocaleString()}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Gauge className="h-4 w-4" />
-                Providers
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{mediaLimiters.length}</div>
-              <p className="text-xs text-muted-foreground">active limiters</p>
-            </CardContent>
-          </Card>
-        </div>
+      {/* Quick Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <DashboardKpiCard icon={Activity} label="Total Requests" value={totalRequests.toLocaleString()} />
+        <DashboardKpiCard icon={CheckCircle} label="Completed" value={totalCompleted.toLocaleString()} valueClassName="text-green-600" />
+        <DashboardKpiCard icon={AlertTriangle} label="Failed" value={totalFailed.toLocaleString()} valueClassName="text-red-600" />
+        <DashboardKpiCard icon={CreditCard} label="Credits Used" value={totalCredits.toLocaleString()} valueClassName="text-blue-600" />
+        <DashboardKpiCard icon={Gauge} label="Providers" value={mediaLimiters.length} subLabel="active limiters" />
+      </div>
 
         {/* Main Tabs */}
         <Tabs defaultValue="overview">
@@ -279,14 +218,14 @@ export default function AdminQueueMedia() {
             {/* Media Type Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Image */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
+              <DashboardCard>
+                <div>
+                  <h3 className="flex items-center gap-2">
                     <Image className="h-5 w-5 text-blue-500" />
                     Images
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
+                  </h3>
+                </div>
+                <div>
                   <div className="space-y-4">
                     <div className="text-3xl font-bold">{imageRequests.toLocaleString()}</div>
                     <div className="grid grid-cols-2 gap-2 text-sm">
@@ -314,18 +253,18 @@ export default function AdminQueueMedia() {
                       </div>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </DashboardCard>
 
               {/* Video */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
+              <DashboardCard>
+                <div>
+                  <h3 className="flex items-center gap-2">
                     <Video className="h-5 w-5 text-purple-500" />
                     Videos
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
+                  </h3>
+                </div>
+                <div>
                   <div className="space-y-4">
                     <div className="text-3xl font-bold">{videoRequests.toLocaleString()}</div>
                     <div className="grid grid-cols-2 gap-2 text-sm">
@@ -353,18 +292,18 @@ export default function AdminQueueMedia() {
                       </div>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </DashboardCard>
 
               {/* Audio */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
+              <DashboardCard>
+                <div>
+                  <h3 className="flex items-center gap-2">
                     <Music className="h-5 w-5 text-green-500" />
                     Audio
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
+                  </h3>
+                </div>
+                <div>
                   <div className="space-y-4">
                     <div className="text-3xl font-bold">{audioRequests.toLocaleString()}</div>
                     <div className="grid grid-cols-2 gap-2 text-sm">
@@ -392,19 +331,19 @@ export default function AdminQueueMedia() {
                       </div>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </DashboardCard>
             </div>
 
             {/* Provider Summary */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Usage by Provider</CardTitle>
-                <CardDescription>
+            <DashboardCard>
+              <div>
+                <h3>Usage by Provider</h3>
+                <p>
                   Breakdown of requests across media providers
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
+                </p>
+              </div>
+              <div>
                 {mediaModels.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
                     <PlayCircle className="h-12 w-12 mx-auto mb-2 opacity-50" />
@@ -439,20 +378,20 @@ export default function AdminQueueMedia() {
                     ))}
                   </div>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </DashboardCard>
           </TabsContent>
 
           {/* Rate Limiters Tab */}
           <TabsContent value="limiters" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Media Provider Rate Limiters</CardTitle>
-                <CardDescription>
+            <DashboardCard>
+              <div>
+                <h3>Media Provider Rate Limiters</h3>
+                <p>
                   Real-time status of rate limiting per media provider
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
+                </p>
+              </div>
+              <div>
                 {mediaLimiters.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
                     <Activity className="h-12 w-12 mx-auto mb-2 opacity-50" />
@@ -521,20 +460,20 @@ export default function AdminQueueMedia() {
                     })}
                   </div>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </DashboardCard>
           </TabsContent>
 
           {/* Models Tab */}
           <TabsContent value="models" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>All Media Models</CardTitle>
-                <CardDescription>
+            <DashboardCard>
+              <div>
+                <h3>All Media Models</h3>
+                <p>
                   Detailed usage statistics by model
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
+                </p>
+              </div>
+              <div>
                 {mediaStats.isLoading ? (
                   <div className="flex items-center justify-center py-8">
                     <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -614,20 +553,20 @@ export default function AdminQueueMedia() {
                     </TableBody>
                   </Table>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </DashboardCard>
           </TabsContent>
 
           {/* Configuration Tab */}
           <TabsContent value="config" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Media Provider Rate Limit Configurations</CardTitle>
-                <CardDescription>
+            <DashboardCard>
+              <div>
+                <h3>Media Provider Rate Limit Configurations</h3>
+                <p>
                   Rate limiting settings per media provider with type multipliers
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
+                </p>
+              </div>
+              <div>
                 {mediaProviderConfigs.isLoading ? (
                   <div className="flex items-center justify-center py-8">
                     <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -676,14 +615,14 @@ export default function AdminQueueMedia() {
                     </TableBody>
                   </Table>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </DashboardCard>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Rate Limit Priority Explanation</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
+            <DashboardCard>
+              <div>
+                <h3>Rate Limit Priority Explanation</h3>
+              </div>
+              <div className="space-y-3">
                 <p className="text-sm text-muted-foreground">
                   Media generation uses priority-based scheduling to optimize API usage:
                 </p>
@@ -720,8 +659,8 @@ export default function AdminQueueMedia() {
                   Video and audio multipliers increase the minimum time between requests
                   for those media types to prevent overloading providers with long-running tasks.
                 </p>
-              </CardContent>
-            </Card>
+              </div>
+            </DashboardCard>
           </TabsContent>
         </Tabs>
       </div>

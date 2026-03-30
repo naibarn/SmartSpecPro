@@ -1,0 +1,280 @@
+{
+  "ui:order": [
+    "request"
+  ],
+  "request": {
+    "ui:order": [
+      "projectTitle",
+      "language",
+      "canvasRatio",
+      "compositionMode",
+      "designStyle",
+      "density",
+      "outputFormats",
+      "randomizeLayouts",
+      "seed",
+      "pagination",
+      "content",
+      "theme",
+      "brand",
+      "llm",
+      "renderOptions"
+    ],
+    "projectTitle": {
+      "ui:placeholder": "เช่น Sleep Training Guide / Executive Summary / Product Overview"
+    },
+    "language": {
+      "ui:placeholder": "th"
+    },
+    "canvasRatio": {
+      "ui:widget": "radio"
+    },
+    "compositionMode": {
+      "ui:widget": "radio"
+    },
+    "designStyle": {
+      "ui:widget": "select"
+    },
+    "density": {
+      "ui:widget": "radio"
+    },
+    "outputFormats": {
+      "ui:widget": "checkboxes"
+    },
+    "randomizeLayouts": {
+      "ui:help": "เปิดเพื่อสุ่ม variation ของเลย์เอาต์ให้ทันสมัยขึ้น โดยยังอยู่ใน family ที่เหมาะกับ intent และ ratio"
+    },
+    "seed": {
+      "ui:placeholder": "เช่น 42 หรือ campaign-2026-01"
+    },
+    "pagination": {
+      "ui:order": [
+        "maxPages",
+        "allowFewerPages",
+        "overflowStrategy"
+      ],
+      "ui:help": "กำหนดเพดานจำนวนหน้าทั้งชุด เช่น maxPages=5 หมายถึงผลลัพธ์ต้องไม่เกิน 5 หน้า แต่สร้างน้อยกว่าได้",
+      "maxPages": {
+        "ui:widget": "updown"
+      },
+      "overflowStrategy": {
+        "ui:widget": "radio"
+      }
+    },
+    "content": {
+      "ui:field": "OneOfField",
+      "ui:help": "เลือกว่าจะส่ง rawText ก้อนเดียวให้ระบบแตกหน้าอัตโนมัติ หรือกำหนด pages[] เอง"
+    },
+    "theme": {
+      "ui:order": [
+        "paletteMode",
+        "background",
+        "text",
+        "accent",
+        "titleFont",
+        "bodyFont",
+        "roundedCorners"
+      ],
+      "background": {
+        "ui:placeholder": "#F7F3EC"
+      },
+      "text": {
+        "ui:placeholder": "#1A1A1A"
+      },
+      "accent": {
+        "ui:placeholder": "#A48A6A"
+      },
+      "titleFont": {
+        "ui:placeholder": "Cormorant Garamond / Playfair Display / Noto Serif Thai"
+      },
+      "bodyFont": {
+        "ui:placeholder": "Inter / IBM Plex Sans Thai / Noto Sans Thai"
+      }
+    },
+    "brand": {
+      "ui:order": [
+        "name",
+        "tagline",
+        "website",
+        "logoPath"
+      ],
+      "logoPath": {
+        "ui:widget": "file"
+      }
+    },
+    "llm": {
+      "ui:order": [
+        "planningMode",
+        "externalLayoutSpecPath",
+        "preservePromptArtifacts"
+      ]
+    },
+    "renderOptions": {
+      "ui:order": [
+        "pptxFileName",
+        "jsonFileName",
+        "mdFileName",
+        "pdfFileName",
+        "pdfEngine"
+      ]
+    }
+  },
+  "$defs": {
+    "ImageSource": {
+      "id": {
+        "ui:placeholder": "เช่น hero_mother_01"
+      },
+      "source": {
+        "ui:widget": "file"
+      },
+      "roleHint": {
+        "ui:widget": "radio"
+      },
+      "tags": {
+        "ui:options": {
+          "orderable": false
+        },
+        "ui:help": "ใส่ keyword เพื่อช่วยคัดเลือกรูปอัตโนมัติ เช่น mother,baby,home,wellness"
+      },
+      "alt": {
+        "ui:widget": "textarea",
+        "ui:options": {
+          "rows": 2
+        }
+      },
+      "caption": {
+        "ui:widget": "textarea",
+        "ui:options": {
+          "rows": 2
+        }
+      },
+      "priority": {
+        "ui:widget": "range",
+        "ui:help": "1 = ต่ำ, 5 = สูง"
+      },
+      "focalPoint": {
+        "x": {
+          "ui:widget": "range"
+        },
+        "y": {
+          "ui:widget": "range"
+        }
+      }
+    },
+    "ImagePool": {
+      "ui:order": [
+        "images",
+        "maxImagesPerPage",
+        "minImagesPerPage",
+        "reusePolicy",
+        "selectionStrategy",
+        "coverPageImagePolicy",
+        "allowUnusedImages"
+      ],
+      "ui:help": "สำหรับ deck ที่มีรูปจำนวนมาก เช่น 20 รูป ให้ส่งเข้า imagePool.images ครั้งเดียว แล้วให้ skill คัดเลือก 0-3 รูปต่อหน้าอัตโนมัติ",
+      "images": {
+        "ui:options": {
+          "orderable": true
+        }
+      },
+      "maxImagesPerPage": {
+        "ui:widget": "updown"
+      },
+      "minImagesPerPage": {
+        "ui:widget": "updown"
+      },
+      "reusePolicy": {
+        "ui:widget": "radio"
+      },
+      "selectionStrategy": {
+        "ui:widget": "select"
+      },
+      "coverPageImagePolicy": {
+        "ui:widget": "radio"
+      }
+    },
+    "ManualPage": {
+      "ui:order": [
+        "titleHint",
+        "text",
+        "pageIntentHint",
+        "forceArchetype",
+        "imageSelectionMode",
+        "imageRefs",
+        "images",
+        "maxImagesOverride"
+      ],
+      "text": {
+        "ui:widget": "textarea",
+        "ui:options": {
+          "rows": 10
+        }
+      },
+      "pageIntentHint": {
+        "ui:widget": "select"
+      },
+      "forceArchetype": {
+        "ui:widget": "select"
+      },
+      "imageSelectionMode": {
+        "ui:widget": "radio",
+        "ui:help": "manual-only = ใช้เฉพาะ images ในหน้านี้, refs-only = ใช้ imageRefs จาก sharedImagePool, manual-plus-shared = เติมรูปจาก shared pool เมื่อ images ยังไม่เต็ม, auto-from-shared = ให้ระบบเลือกจาก shared pool"
+      },
+      "imageRefs": {
+        "ui:help": "อ้างถึง sharedImagePool.images[].id เช่น [\"hero_mother_01\", \"room_02\"]"
+      },
+      "images": {
+        "ui:options": {
+          "orderable": true
+        }
+      },
+      "maxImagesOverride": {
+        "ui:widget": "updown",
+        "ui:help": "ถ้าหน้านี้ต้องการจำกัดรูปต่ำกว่า image pool กลาง"
+      }
+    },
+    "AutoSplitContent": {
+      "ui:order": [
+        "titleHint",
+        "rawText",
+        "pageIntentHint",
+        "imagePool",
+        "images",
+        "imageReusePolicy"
+      ],
+      "rawText": {
+        "ui:widget": "textarea",
+        "ui:options": {
+          "rows": 16
+        }
+      },
+      "pageIntentHint": {
+        "ui:widget": "select"
+      },
+      "imagePool": {
+        "ui:field": "LayoutField",
+        "ui:help": "แนะนำให้ใช้ imagePool แทน images แบบเดิมเมื่อมีรูปทั้งชุดจำนวนมาก"
+      },
+      "images": {
+        "ui:help": "legacy shortcut สำหรับงานเล็ก ๆ; หากมีรูปจำนวนมากควรใช้ imagePool.images"
+      },
+      "imageReusePolicy": {
+        "ui:widget": "radio"
+      }
+    },
+    "ManualPagesContent": {
+      "ui:order": [
+        "sharedImagePool",
+        "pages"
+      ],
+      "sharedImagePool": {
+        "ui:help": "ใส่รูปทั้งชุดไว้กลาง deck เช่น 20 รูป แล้วใช้ imageRefs หรือ auto-from-shared ในแต่ละหน้า"
+      },
+      "pages": {
+        "ui:options": {
+          "orderable": true
+        }
+      }
+    }
+  }
+}

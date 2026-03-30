@@ -1,8 +1,8 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { AlertCircle, RefreshCw } from 'lucide-react';
 import { getPostHog } from '@/lib/posthog';
+import { DashboardCard } from '@/components/dashboard';
 
 interface Props {
   children: ReactNode;
@@ -64,14 +64,13 @@ export class SkillFormErrorBoundary extends Component<Props, State> {
       }
 
       return (
-        <Card className="mb-4 border-destructive/50">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-destructive text-base">
-              <AlertCircle className="h-5 w-5" />
-              Something went wrong
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+        <DashboardCard
+          className="mb-4 border-destructive/50"
+          title="Something went wrong"
+          leading={<AlertCircle className="h-5 w-5 text-destructive" />}
+          titleClassName="text-base font-semibold text-destructive"
+        >
+          <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
               We encountered an error while loading the skill form. Please try again.
             </p>
@@ -95,8 +94,8 @@ export class SkillFormErrorBoundary extends Component<Props, State> {
               <RefreshCw className="h-4 w-4 mr-2" />
               Try Again
             </Button>
-          </CardContent>
-        </Card>
+          </div>
+        </DashboardCard>
       );
     }
 

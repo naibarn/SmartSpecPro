@@ -6,9 +6,11 @@ import { ChevronLeft, FileStack, LayoutTemplate, Loader2, Plus, Presentation, Se
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { LocaleToggle } from "@/components/LocaleToggle";
 import { ShareDialog } from "@/components/library/ShareDialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { trpc } from "@/lib/trpc";
+import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import { isPresentationTemplateItem } from "@shared/presentation/template";
 import { toast } from "sonner";
 
@@ -254,6 +256,7 @@ function PresentationGroup({
   showSearch?: boolean;
 }) {
   const Icon = icon;
+  const { t } = useScopedTranslation("presentation");
 
   return (
     <section className="space-y-3 rounded-2xl border border-slate-200 bg-white/70 p-4 backdrop-blur-sm">
@@ -281,7 +284,7 @@ function PresentationGroup({
 
       {items.length === 0 ? (
         <div className="rounded-xl border border-dashed border-slate-300 bg-white p-5 text-sm text-slate-500">
-          No items in this group yet.
+          {t("library.empty")}
         </div>
       ) : (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
@@ -304,11 +307,13 @@ function PresentationGroup({
                   <div className="flex shrink-0 flex-col items-end gap-1">
                     {showSharedBadge ? (
                       <span
-                        className="inline-flex items-center gap-1 rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-medium text-sky-700"
-                        title={item.sharedOutCount > 0 ? `Shared with ${item.sharedOutCount} permission${item.sharedOutCount > 1 ? "s" : ""}` : "Shared"}
+                      className="inline-flex items-center gap-1 rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-medium text-sky-700"
+                        title={item.sharedOutCount > 0
+                          ? t("library.sharedWithCount", { count: item.sharedOutCount })
+                          : t("library.shared")}
                       >
                         <Users className="h-3 w-3" />
-                        Shared
+                        {t("library.shared")}
                       </span>
                     ) : null}
                     <span
@@ -318,14 +323,14 @@ function PresentationGroup({
                           : "bg-amber-100 text-amber-700"
                       }`}
                     >
-                      {indexed ? "Indexed" : item.status}
+                      {indexed ? t("library.indexed") : item.status}
                     </span>
                   </div>
                 </div>
                 <div className="mt-2 space-y-1 text-xs text-slate-500">
-                  <p>ID: {item.id}</p>
-                  <p>Source: {item.source}</p>
-                  <p>Updated: {item.updatedAt ? formatRelativeTime(item.updatedAt) : "-"}</p>
+                  <p>{t("library.id")}: {item.id}</p>
+                  <p>{t("library.source")}: {item.source}</p>
+                  <p>{t("library.updated")}: {item.updatedAt ? formatRelativeTime(item.updatedAt) : "-"}</p>
                 </div>
                 <div className="mt-4 flex gap-2">
                   {item.isTemplate ? (
@@ -333,19 +338,19 @@ function PresentationGroup({
                       onClick={() => onUseTemplate(item)}
                       className="flex-1"
                       size="sm"
-                      aria-label={`Use template ${item.title}`}
+                      aria-label={t("library.useTemplateFor", { title: item.title })}
                       disabled={useTemplateItemId === item.id}
                     >
-                      {useTemplateItemId === item.id ? "Preparing..." : "Use Template"}
+                      {useTemplateItemId === item.id ? t("library.preparing") : t("library.useTemplate")}
                     </Button>
                   ) : (
                     <Button
                       onClick={() => onOpen(item)}
                       className="flex-1"
                       size="sm"
-                      aria-label={`Open presentation ${item.title}`}
+                      aria-label={t("library.openPresentation", { title: item.title })}
                     >
-                      Open in Presentation Editor
+                      {t("library.openEditor")}
                     </Button>
                   )}
                   {canShare ? (
@@ -353,8 +358,8 @@ function PresentationGroup({
                       variant="outline"
                       size="sm"
                       onClick={() => onShare(item)}
-                      aria-label={`Share presentation ${item.title}`}
-                      title="Share"
+                      aria-label={t("library.sharePresentation", { title: item.title })}
+                      title={t("library.share")}
                     >
                       <Share2 className="h-4 w-4" />
                     </Button>
@@ -364,7 +369,7 @@ function PresentationGroup({
                       variant="outline"
                       size="sm"
                       onClick={() => onDelete(item)}
-                      aria-label={`Delete presentation ${item.title}`}
+                      aria-label={t("library.deletePresentationFor", { title: item.title })}
                       disabled={deletingItemId === item.id}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -382,6 +387,7 @@ function PresentationGroup({
 
 export default function PresentationLibrary() {
   const { isAuthenticated, isLoading: authLoading, user } = useAuth();
+  const { t } = useScopedTranslation("presentation");
   const trpcUtils = trpc.useUtils();
   const [, setLocation] = useLocation();
   const [projectQuery, setProjectQuery] = useState("");
@@ -554,7 +560,7 @@ export default function PresentationLibrary() {
     setUseTemplateItemId(item.id);
     try {
       const baseTitle = item.title.replace(/\s+template$/i, "").trim();
-      const title = baseTitle ? `${baseTitle} Copy` : `Presentation ${item.id} Copy`;
+      const title = baseTitle ? `${baseTitle} ${t("library.copySuffix")}` : `Presentation ${item.id} ${t("library.copySuffix")}`;
       const result = await useTemplateMutation.mutateAsync({
         templateLibraryItemId: item.id,
         title,
@@ -568,7 +574,7 @@ export default function PresentationLibrary() {
       }
       setLocation("/presentations");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to use template.");
+      toast.error(error instanceof Error ? error.message : t("library.templateFailed"));
     } finally {
       setUseTemplateItemId(null);
     }
@@ -577,8 +583,8 @@ export default function PresentationLibrary() {
   async function handleDeleteItem(item: LibraryPresentationItem) {
     const confirmed = window.confirm(
       item.isTemplate
-        ? `Delete template "${item.title}"?`
-        : `Delete presentation "${item.title}"?`,
+        ? t("library.deleteTemplate", { title: item.title })
+        : t("library.deletePresentation", { title: item.title }),
     );
     if (!confirmed) {
       return;
@@ -589,9 +595,9 @@ export default function PresentationLibrary() {
       await deleteItemMutation.mutateAsync({ id: item.id });
       await trpcUtils.library.listDocuments.invalidate();
       await trpcUtils.library.search.invalidate();
-      toast.success(item.isTemplate ? "Template deleted." : "Presentation deleted.");
+      toast.success(item.isTemplate ? t("library.templateDeleted") : t("library.presentationDeleted"));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to delete item.");
+      toast.error(error instanceof Error ? error.message : t("library.deleteFailed"));
     } finally {
       setDeletingItemId(null);
     }
@@ -602,12 +608,12 @@ export default function PresentationLibrary() {
   async function handleCreateNewPresentation() {
     try {
       const now = new Date();
-      const title = `New Presentation ${now.toLocaleString()}`;
+      const title = `${t("library.newPresentation")} ${now.toLocaleString()}`;
       const createResult = await createItemMutation.mutateAsync({
         itemType: "presentation",
         source: "presentation_library",
         title,
-        description: "Presentation deck",
+        description: t("library.deckDescription"),
         status: "ready",
         visibility: "private",
         metadata: {
@@ -627,10 +633,10 @@ export default function PresentationLibrary() {
 
       await trpcUtils.library.listDocuments.invalidate();
       await trpcUtils.library.search.invalidate();
-      toast.success("New presentation created.");
+      toast.success(t("library.presentationCreated"));
       setLocation(`/presentation-editor/${createResult.item.id}`);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to create presentation.");
+      toast.error(error instanceof Error ? error.message : t("library.createFailed"));
     }
   }
 
@@ -649,53 +655,56 @@ export default function PresentationLibrary() {
           <div className="flex items-center gap-3">
             <Button variant="ghost" size="sm" onClick={() => setLocation("/dashboard")}>
               <ChevronLeft className="mr-1 h-4 w-4" />
-              Back
+              {t("library.back")}
             </Button>
             <div className="flex items-center gap-2">
               <div className="rounded-xl bg-gradient-to-br from-sky-500 to-cyan-500 p-2 text-white">
                 <Presentation className="h-4 w-4" />
               </div>
               <div>
-                <h1 className="text-lg font-bold text-slate-900">Presentation Library</h1>
-                <p className="text-xs text-slate-600">
-                  Manage presentation projects and reusable templates.
-                </p>
+                <h1 className="text-lg font-bold text-slate-900">{t("library.title")}</h1>
+                <p className="text-xs text-slate-600">{t("library.subtitle")}</p>
               </div>
             </div>
           </div>
-          <Button
-            onClick={handleCreateNewPresentation}
-            disabled={isCreating}
-            size="sm"
-            className="gap-1.5"
-            aria-label="Create new presentation"
-          >
-            {isCreating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-            New Presentation
-          </Button>
+          <div className="flex items-center gap-2">
+            <LocaleToggle className="hidden sm:inline-flex" />
+            <Button
+              onClick={handleCreateNewPresentation}
+              disabled={isCreating}
+              size="sm"
+              className="gap-1.5"
+              aria-label={t("library.newPresentation")}
+            >
+              {isCreating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+              {t("library.newPresentation")}
+            </Button>
+          </div>
         </div>
       </header>
 
       <main className="w-full space-y-4 px-4 py-6 sm:px-6 lg:px-8">
         <div className="rounded-2xl border border-slate-200 bg-white/70 p-4 text-sm text-slate-600 backdrop-blur-sm">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div>Showing {filteredGrouped.projects.length + filteredGrouped.templates.length} of {activeTotal}</div>
+            <div>
+              {t("library.showing", { count: filteredGrouped.projects.length + filteredGrouped.templates.length, total: activeTotal })}
+            </div>
             <div className="flex items-center gap-2">
               <Button
                 size="sm"
                 variant={searchMode === "split" ? "default" : "outline"}
                 onClick={() => setSearchMode("split")}
-                aria-label="Split Search Mode"
+                aria-label={t("library.splitSearch")}
               >
-                Split Search
+                {t("library.splitSearch")}
               </Button>
               <Button
                 size="sm"
                 variant={searchMode === "global" ? "default" : "outline"}
                 onClick={() => setSearchMode("global")}
-                aria-label="Global Search Mode"
+                aria-label={t("library.globalSearch")}
               >
-                Global Search
+                {t("library.globalSearch")}
               </Button>
             </div>
           </div>
@@ -706,8 +715,8 @@ export default function PresentationLibrary() {
                 value={globalQuery}
                 onChange={(event) => setGlobalQuery(event.target.value)}
                 className="pl-9"
-                placeholder="Search all presentations..."
-                aria-label="Search all presentations"
+                placeholder={t("library.searchAll")}
+                aria-label={t("library.searchAll")}
               />
             </div>
           ) : null}
@@ -715,21 +724,21 @@ export default function PresentationLibrary() {
 
         {activeError ? (
           <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-            Failed to load presentations: {activeError.message}
+            {t("library.loadingError", { message: activeError.message })}
           </div>
         ) : null}
         {activeLoading ? (
           <div className="rounded-xl border border-slate-200 bg-white/70 p-4 text-sm text-slate-600">
             <div className="flex items-center gap-2">
               <Loader2 className="h-4 w-4 animate-spin" />
-              Loading presentations...
+              {t("library.loading")}
             </div>
           </div>
         ) : null}
 
         <PresentationGroup
-          title="Presentation Projects (My Library)"
-          description="Your editable presentation files from My Library."
+          title={t("library.projects.title")}
+          description={t("library.projects.desc")}
           icon={FileStack}
           items={filteredGrouped.projects}
           currentUserId={currentUserId}
@@ -742,13 +751,13 @@ export default function PresentationLibrary() {
           useTemplateItemId={useTemplateItemId}
           searchValue={projectQuery}
           onSearchChange={(value) => setProjectQuery(value)}
-          searchPlaceholder="Search projects..."
+          searchPlaceholder={t("library.projects.search")}
           showSearch={searchMode === "split"}
         />
 
         <PresentationGroup
-          title="Presentation Templates"
-          description="Reusable templates. Use template to create a new presentation file."
+          title={t("library.templates.title")}
+          description={t("library.templates.desc")}
           icon={LayoutTemplate}
           items={filteredGrouped.templates}
           currentUserId={currentUserId}
@@ -761,7 +770,7 @@ export default function PresentationLibrary() {
           useTemplateItemId={useTemplateItemId}
           searchValue={templateQuery}
           onSearchChange={(value) => setTemplateQuery(value)}
-          searchPlaceholder="Search templates..."
+          searchPlaceholder={t("library.templates.search")}
           showSearch={searchMode === "split"}
         />
 
@@ -772,14 +781,14 @@ export default function PresentationLibrary() {
             disabled={hasSemanticSearch || offset === 0 || listQuery.isFetching}
             onClick={() => setOffset((previous) => Math.max(0, previous - limit))}
           >
-            Previous
+            {t("library.previous")}
           </Button>
           <Button
             size="sm"
             disabled={hasSemanticSearch || !listQuery.data?.has_more || listQuery.isFetching}
             onClick={() => setOffset((previous) => previous + limit)}
           >
-            Next
+            {t("library.next")}
           </Button>
         </div>
       </main>

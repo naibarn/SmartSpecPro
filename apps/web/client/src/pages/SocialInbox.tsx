@@ -16,15 +16,17 @@ import { ConversationList } from "@/components/social/ConversationList";
 import { MessageThread } from "@/components/social/MessageThread";
 import { SocialPageShell } from "@/components/social/SocialPageShell";
 import { formatConversationStatus } from "@/types/social";
+import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 
 export default function SocialInbox() {
+  const { t } = useScopedTranslation("social");
   const inbox = useSocialInbox();
 
   const pageOptions = useMemo(() => inbox.pages, [inbox.pages]);
   const selectedPageLabel = useMemo(() => {
-    if (inbox.pageFilter === undefined) return "All pages";
-    return pageOptions.find((page) => page.id === inbox.pageFilter)?.label ?? `Page ${inbox.pageFilter}`;
-  }, [inbox.pageFilter, pageOptions]);
+    if (inbox.pageFilter === undefined) return t("inbox.allPages");
+    return pageOptions.find((page) => page.id === inbox.pageFilter)?.label ?? t("inbox.pageLabel", { pageId: inbox.pageFilter });
+  }, [inbox.pageFilter, pageOptions, t]);
   const totalUnread = inbox.conversations.reduce((sum, conversation) => sum + conversation.unreadCount, 0);
   const activeConversations = inbox.conversations.filter((conversation) => {
     const status = conversation.status.toLowerCase();
@@ -32,9 +34,9 @@ export default function SocialInbox() {
   }).length;
   const coveredPages = new Set(inbox.conversations.map((conversation) => conversation.pageId)).size;
   const inboxStats = [
-    { label: "Unread", value: totalUnread, color: "bg-cyan-500" },
-    { label: "Active", value: activeConversations, color: "bg-emerald-500" },
-    { label: "Pages", value: coveredPages, color: "bg-sky-500" },
+    { label: t("inbox.unread"), value: totalUnread, color: "bg-cyan-500" },
+    { label: t("inbox.active"), value: activeConversations, color: "bg-emerald-500" },
+    { label: t("inbox.pages"), value: coveredPages, color: "bg-sky-500" },
   ];
   const inboxMax = Math.max(...inboxStats.map((stat) => stat.value), 1);
   const hero = (
@@ -44,22 +46,20 @@ export default function SocialInbox() {
           <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/90 text-cyan-600 shadow-sm shadow-cyan-200/60">
             <MessageCircle className="h-5 w-5" />
           </div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-700">
-            Conversation flow
-          </p>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-700">{t("inbox.eyebrow")}</p>
         </div>
         <p className="mt-2 text-2xl font-semibold text-slate-900">
-          {inbox.conversations.length} conversation{inbox.conversations.length === 1 ? "" : "s"} in view
+          {t("inbox.conversationsInView", { count: inbox.conversations.length })}
         </p>
         <p className="mt-2 max-w-2xl text-sm text-slate-600">
-          Reply faster, filter by page or status, and keep the team focused on the threads that still need attention.
+          {t("inbox.heroDescription")}
         </p>
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <Badge className="rounded-full bg-white/80 text-slate-700 hover:bg-white/80">
             {selectedPageLabel}
           </Badge>
           <Badge className="rounded-full bg-white/80 text-slate-700 hover:bg-white/80">
-            {activeConversations} active
+            {t("inbox.activeCount", { count: activeConversations })}
           </Badge>
         </div>
         <div className="mt-4 space-y-2">
@@ -81,22 +81,22 @@ export default function SocialInbox() {
       </div>
 
       <div className="rounded-2xl border border-white/80 bg-white/90 p-4 shadow-sm shadow-slate-200/60">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Unread messages</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">{t("inbox.unreadMessages")}</p>
         <p className="mt-2 text-3xl font-semibold text-slate-900">{totalUnread}</p>
-        <p className="mt-2 text-sm text-slate-500">Messages waiting for a response.</p>
+        <p className="mt-2 text-sm text-slate-500">{t("inbox.messagesWaiting")}</p>
         <div className="mt-4 flex items-center gap-2 text-xs font-medium text-cyan-700">
           <MessageCircle className="h-4 w-4" />
-          Fast response queue
+          {t("inbox.fastResponseQueue")}
         </div>
       </div>
 
       <div className="rounded-2xl border border-white/80 bg-white/90 p-4 shadow-sm shadow-slate-200/60">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Pages covered</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">{t("inbox.pagesCovered")}</p>
         <p className="mt-2 text-3xl font-semibold text-slate-900">{coveredPages}</p>
-        <p className="mt-2 text-sm text-slate-500">Channels currently contributing conversations.</p>
+        <p className="mt-2 text-sm text-slate-500">{t("inbox.channelsContributing")}</p>
         <div className="mt-4 flex items-center gap-2 text-xs font-medium text-sky-700">
           <MessageCircle className="h-4 w-4" />
-          Multi-page view
+          {t("inbox.multiPageView")}
         </div>
       </div>
     </div>
@@ -105,29 +105,29 @@ export default function SocialInbox() {
   return (
     <SocialPageShell
       icon={MessageCircle}
-      title="Social Inbox"
-      eyebrow="Conversation triage"
-      description="Track Messenger threads, manage replies, and keep an eye on unread conversations."
+      title={t("inbox.title")}
+      eyebrow={t("inbox.eyebrow")}
+      description={t("inbox.description")}
       tone="inbox"
       badge={
         <Badge className="rounded-full bg-slate-100 text-slate-700 hover:bg-slate-100">
-          {inbox.statusFilter === "all" ? "All" : formatConversationStatus(inbox.statusFilter)}
+          {inbox.statusFilter === "all" ? t("inbox.all") : formatConversationStatus(inbox.statusFilter)}
         </Badge>
       }
       actions={
         <>
           <div className="flex items-center gap-2">
-            <span className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Page</span>
+            <span className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">{t("inbox.page")}</span>
             <span className="text-sm text-slate-600">{selectedPageLabel}</span>
             <Select
               value={inbox.pageFilter === undefined ? "all" : String(inbox.pageFilter)}
               onValueChange={(value) => inbox.setPageFilter(value === "all" ? undefined : Number(value))}
             >
-              <SelectTrigger aria-label="Page filter" className="w-[220px] rounded-xl border-slate-200 bg-white">
-                <SelectValue placeholder="All pages" />
+              <SelectTrigger aria-label={t("inbox.pageFilter")} className="w-[220px] rounded-xl border-slate-200 bg-white">
+                <SelectValue placeholder={t("inbox.allPages")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All pages</SelectItem>
+                <SelectItem value="all">{t("inbox.allPages")}</SelectItem>
                 {pageOptions.map((page) => (
                   <SelectItem key={page.id} value={String(page.id)}>
                     {page.label}
@@ -147,7 +147,7 @@ export default function SocialInbox() {
             }}
           >
             <RefreshCcw className="h-4 w-4" />
-            Refresh
+            {t("inbox.refresh")}
           </Button>
         </>
       }
@@ -156,9 +156,9 @@ export default function SocialInbox() {
       {inbox.error ? (
         <Alert className="border-rose-200 bg-rose-50 text-rose-900">
           <ServerCrash className="h-4 w-4" />
-          <AlertTitle>Unable to load Social Inbox</AlertTitle>
+          <AlertTitle>{t("inbox.loadErrorTitle")}</AlertTitle>
           <AlertDescription>
-            {inbox.error instanceof Error ? inbox.error.message : "The inbox is currently unavailable."}
+            {inbox.error instanceof Error ? inbox.error.message : t("inbox.loadErrorMessage")}
           </AlertDescription>
         </Alert>
       ) : null}

@@ -7,7 +7,9 @@ import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
+import { trpc } from '@/lib/trpc';
 import { Button } from '@/components/ui/button';
+import { OpsEarlyWarningPanel } from '@/components/admin/OpsEarlyWarningPanel';
 import { toast } from 'sonner';
 import {
   Server,
@@ -132,6 +134,11 @@ export default function AdminServices() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [dockerData, setDockerData] = useState<DockerContainerData | null>(null);
   const [dockerExpanded, setDockerExpanded] = useState(true);
+  const opsOverviewQuery = trpc.monitoring.getOpsOverview.useQuery(undefined, {
+    enabled: Boolean(user && user.role === 'admin'),
+    refetchInterval: 30000,
+    refetchOnWindowFocus: false,
+  });
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -241,7 +248,7 @@ export default function AdminServices() {
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await Promise.all([fetchServices(), fetchDockerContainers()]);
+    await Promise.all([fetchServices(), fetchDockerContainers(), opsOverviewQuery.refetch()]);
     setTimeout(() => setIsRefreshing(false), 500);
   };
 
@@ -356,11 +363,11 @@ export default function AdminServices() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setLocation('/dashboard')}
+                onClick={() => setLocation('/admin/dashboard')}
                 className="text-gray-600"
               >
                 <ChevronLeft className="w-5 h-5 mr-1" />
-                Back
+                Command Center
               </Button>
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
@@ -499,6 +506,20 @@ export default function AdminServices() {
               </div>
             </div>
           ))}
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.03 }}
+          className="mb-8"
+        >
+          <OpsEarlyWarningPanel
+            overview={opsOverviewQuery.data}
+            isLoading={opsOverviewQuery.isLoading}
+            showMonitoringLink
+            description="Unified warning feed across metrics, alerts, audit logs, and orchestration so service anomalies show up before they turn into downtime."
+          />
         </motion.div>
 
         {/* Docker Containers Section */}

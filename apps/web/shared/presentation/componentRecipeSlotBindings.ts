@@ -107,6 +107,86 @@ function normalizeNarrativeKey(value: string | null | undefined): string {
     .toLowerCase();
 }
 
+function stripRepeatedTitlePrefix(text: string, title: string): string {
+  const normalizedText = String(text ?? "").trim();
+  const normalizedTitle = String(title ?? "").trim();
+  if (!normalizedText || !normalizedTitle) {
+    return normalizedText;
+  }
+  const escapedTitle = normalizedTitle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return normalizedText
+    .replace(new RegExp(`^${escapedTitle}(?:\\s*[:：\\-–—|,，.。!?！？]+\\s*|\\s+)`, "i"), "")
+    .trim();
+}
+
+function sanitizeNarrativeSegment(value: string | null | undefined, title: string): string {
+  return stripRepeatedTitlePrefix(String(value ?? ""), title)
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function buildUniqueSegments(values: Array<string | null | undefined>, title: string): string[] {
+  const unique: string[] = [];
+  const seen = new Set<string>();
+  for (const value of values) {
+    const normalized = sanitizeNarrativeSegment(value, title);
+    const key = normalizeNarrativeKey(normalized);
+    if (!normalized || seen.has(key) || key === normalizeNarrativeKey(title)) {
+      continue;
+    }
+    seen.add(key);
+    unique.push(normalized);
+  }
+  return unique;
+}
+
+function extractTrailingNarrative(source: string, renderedLead: string): string {
+  const normalizedSource = source.trim();
+  const normalizedLead = renderedLead.trim();
+  if (!normalizedSource || !normalizedLead) {
+    return "";
+  }
+  if (!normalizedSource.startsWith(normalizedLead)) {
+    return "";
+  }
+  return normalizedSource
+    .slice(normalizedLead.length)
+    .replace(/^[\s,.;:：、\-–—|/]+/, "")
+    .trim();
+}
+
+function resolveCompactEyebrowText(
+  title: string,
+  values: Array<string | null | undefined>,
+  fallback: string,
+): string {
+  const candidates = buildUniqueSegments(values, title);
+  const preferred = candidates.find((candidate) => candidate.length <= 12)
+    ?? candidates.find((candidate) => /[\u0E00-\u0E7F]/.test(candidate) && candidate.length <= 18)
+    ?? "";
+  return preferred || fallback;
+}
+
+function buildLeadAndBodyText(options: {
+  componentId: BuiltInPresentationComponentId;
+  title: string;
+  leadSlotId: string;
+  bodySlotId: string;
+  leadCandidates: Array<string | null | undefined>;
+  bodyCandidates: Array<string | null | undefined>;
+}): { leadText: string; bodyText: string } {
+  const leadSource = buildUniqueSegments(options.leadCandidates, options.title)[0] ?? "";
+  const leadText = clampTextToBudget(options.componentId, options.leadSlotId, leadSource);
+  const bodySourceSegments = buildUniqueSegments(options.bodyCandidates, options.title)
+    .filter((segment) => normalizeNarrativeKey(segment) !== normalizeNarrativeKey(leadText));
+  const trailingLeadText = extractTrailingNarrative(leadSource, leadText);
+  const bodySource = bodySourceSegments.join(" ") || trailingLeadText;
+  return {
+    leadText,
+    bodyText: clampTextToBudget(options.componentId, options.bodySlotId, bodySource),
+  };
+}
+
 function buildUniqueNarrativeCandidates(
   input: PresentationRecipeNarrativeInput,
   sections: PresentationRecipeNarrativeSection[],
@@ -122,9 +202,9 @@ function buildUniqueNarrativeCandidates(
     .map((line) => line.replace(/^[-*]\s+/, "").trim())
     .filter(Boolean);
   const candidates = [
-    ...body,
-    ...sections.flatMap((section) => section.details),
-    ...rawNoteLines,
+    ...body.map((line) => sanitizeNarrativeSegment(line, input.title)),
+    ...sections.flatMap((section) => section.details.map((detail) => sanitizeNarrativeSegment(detail, input.title))),
+    ...rawNoteLines.map((line) => sanitizeNarrativeSegment(line, input.title)),
   ];
   const unique: string[] = [];
   const seen = new Set<string>();
@@ -233,13 +313,13 @@ function createSectionedExplainerSlotBindings(
   input: PresentationRecipeNarrativeInput,
 ): PresentationComponentSlotBinding[] {
   const sections = input.sections ?? [];
-  const body = clampListItems(input.body, 8);
+  const body = clampListItems(input.body.map((line) => sanitizeNarrativeSegment(line, input.title)), 8);
   const narrativeCandidates = buildUniqueNarrativeCandidates(input, sections, body);
   const bodyIntro = body.slice(0, 2).join(" ");
   const introText = clampTextToBudget(
     "sectioned-explainer",
     "intro",
-    input.notes?.trim() || bodyIntro || narrativeCandidates[0] || "",
+    bodyIntro || narrativeCandidates[0] || input.notes?.trim() || "",
   );
   const resolveSection = (index: number) => {
     const section = sections[index];
@@ -278,7 +358,11 @@ function createSectionedExplainerSlotBindings(
     {
       slotId: "eyebrow",
       type: "text",
-      text: clampTextToBudget("sectioned-explainer", "eyebrow", sections[0]?.heading || input.graphicCategory || "Explainer"),
+      text: clampTextToBudget(
+        "sectioned-explainer",
+        "eyebrow",
+        resolveCompactEyebrowText(input.title, [sections[0]?.heading, input.graphicCategory], "Explainer"),
+      ),
     },
     { slotId: "title", type: "text", text: clampTextToBudget("sectioned-explainer", "title", input.title) },
     { slotId: "hero", type: "image", src: input.mediaUrl ?? "", alt: input.title.slice(0, 512) || "Hero visual" },
@@ -747,24 +831,40 @@ function createArticleFocusSlotBindings(
   input: PresentationRecipeNarrativeInput,
 ): PresentationComponentSlotBinding[] {
   const sections = input.sections ?? [];
-  const body = clampListItems(input.body, 10);
-  const leadText = clampTextToBudget(
-    "article-focus",
-    "lead",
-    input.notes?.trim() || body.slice(0, 3).join(" ") || sections[0]?.details?.join(" ") || "",
-  );
-  const bodyText = clampTextToBudget(
-    "article-focus",
-    "body",
-    [...body.slice(3), ...sections.flatMap((s) => s.details)].join(" ") || body.join(" "),
-  );
+  const body = clampListItems(input.body.map((line) => sanitizeNarrativeSegment(line, input.title)), 10);
+  const narrativeCandidates = buildUniqueNarrativeCandidates(input, sections, body);
+  const { leadText, bodyText } = buildLeadAndBodyText({
+    componentId: "article-focus",
+    title: input.title,
+    leadSlotId: "lead",
+    bodySlotId: "body",
+    leadCandidates: [
+      body.slice(0, 3).join(" "),
+      sections[0]?.details?.join(" "),
+      narrativeCandidates[0],
+      input.notes?.trim(),
+    ],
+    bodyCandidates: [
+      ...body.slice(3),
+      ...sections.flatMap((section) => section.details),
+      ...narrativeCandidates.slice(1),
+    ],
+  });
   const keyPointCandidates = clampListItems([
     ...sections.map((s) => s.heading),
     ...body.filter((line) => line.length <= 120),
   ], budgetFor("article-focus", "key-points").maxItems ?? 5);
 
   return [
-    { slotId: "eyebrow", type: "text", text: clampTextToBudget("article-focus", "eyebrow", input.graphicCategory || sections[0]?.heading || "Article") },
+    {
+      slotId: "eyebrow",
+      type: "text",
+      text: clampTextToBudget(
+        "article-focus",
+        "eyebrow",
+        resolveCompactEyebrowText(input.title, [sections[0]?.heading, input.graphicCategory], "Article"),
+      ),
+    },
     { slotId: "title", type: "text", text: clampTextToBudget("article-focus", "title", input.title) },
     { slotId: "hero", type: "image", src: input.mediaUrl ?? "", alt: input.title.slice(0, 512) || "Hero visual" },
     { slotId: "lead", type: "text", text: leadText },
@@ -779,11 +879,12 @@ function createTwoColumnArticleSlotBindings(
   input: PresentationRecipeNarrativeInput,
 ): PresentationComponentSlotBinding[] {
   const sections = input.sections ?? [];
-  const body = clampListItems(input.body, 10);
+  const body = clampListItems(input.body.map((line) => sanitizeNarrativeSegment(line, input.title)), 10);
+  const narrativeCandidates = buildUniqueNarrativeCandidates(input, sections, body);
   const intro = clampTextToBudget(
     "two-column-article",
     "intro",
-    input.notes?.trim() || body.slice(0, 2).join(" ") || sections[0]?.details?.join(" ") || "",
+    body.slice(0, 2).join(" ") || sections[0]?.details?.join(" ") || narrativeCandidates[0] || input.notes?.trim() || "",
   );
   const leftSection = sections[0];
   const rightSection = sections[1] ?? sections[0];
@@ -808,7 +909,11 @@ function createTwoColumnArticleSlotBindings(
     {
       slotId: "eyebrow",
       type: "text",
-      text: clampTextToBudget("two-column-article", "eyebrow", input.graphicCategory || "Article"),
+      text: clampTextToBudget(
+        "two-column-article",
+        "eyebrow",
+        resolveCompactEyebrowText(input.title, [leftSection?.heading, input.graphicCategory], "Article"),
+      ),
     },
     { slotId: "title", type: "text", text: clampTextToBudget("two-column-article", "title", input.title) },
     { slotId: "hero", type: "image", src: input.mediaUrl ?? "", alt: input.title.slice(0, 512) || "Hero visual" },
@@ -834,19 +939,25 @@ function createImageTopArticleSlotBindings(
   input: PresentationRecipeNarrativeInput,
 ): PresentationComponentSlotBinding[] {
   const sections = input.sections ?? [];
-  const body = clampListItems(input.body, 10);
-  const leadText = clampTextToBudget(
-    "image-top-article",
-    "lead",
-    input.notes?.trim() || body.slice(0, 3).join(" ") || sections[0]?.details?.join(" ") || "",
-  );
-  const bodyText = clampTextToBudget(
-    "image-top-article",
-    "body",
-    [...body.slice(3), ...sections.flatMap((s) => s.details)].join(" ") || body.join(" "),
-  );
+  const body = clampListItems(input.body.map((line) => sanitizeNarrativeSegment(line, input.title)), 10);
+  const { leadText, bodyText } = buildLeadAndBodyText({
+    componentId: "image-top-article",
+    title: input.title,
+    leadSlotId: "lead",
+    bodySlotId: "body",
+    leadCandidates: [body.slice(0, 3).join(" "), sections[0]?.details?.join(" "), input.notes?.trim()],
+    bodyCandidates: [...body.slice(3), ...sections.flatMap((section) => section.details)],
+  });
   return [
-    { slotId: "eyebrow", type: "text", text: clampTextToBudget("image-top-article", "eyebrow", input.graphicCategory || sections[0]?.heading || "Article") },
+    {
+      slotId: "eyebrow",
+      type: "text",
+      text: clampTextToBudget(
+        "image-top-article",
+        "eyebrow",
+        resolveCompactEyebrowText(input.title, [sections[0]?.heading, input.graphicCategory], "Article"),
+      ),
+    },
     { slotId: "title", type: "text", text: clampTextToBudget("image-top-article", "title", input.title) },
     { slotId: "hero", type: "image", src: input.mediaUrl ?? "", alt: input.title.slice(0, 512) || "Hero visual" },
     { slotId: "lead", type: "text", text: leadText },
@@ -859,19 +970,25 @@ function createImageBottomArticleSlotBindings(
   input: PresentationRecipeNarrativeInput,
 ): PresentationComponentSlotBinding[] {
   const sections = input.sections ?? [];
-  const body = clampListItems(input.body, 10);
-  const leadText = clampTextToBudget(
-    "image-bottom-article",
-    "lead",
-    input.notes?.trim() || body.slice(0, 3).join(" ") || sections[0]?.details?.join(" ") || "",
-  );
-  const bodyText = clampTextToBudget(
-    "image-bottom-article",
-    "body",
-    [...body.slice(3), ...sections.flatMap((s) => s.details)].join(" ") || body.join(" "),
-  );
+  const body = clampListItems(input.body.map((line) => sanitizeNarrativeSegment(line, input.title)), 10);
+  const { leadText, bodyText } = buildLeadAndBodyText({
+    componentId: "image-bottom-article",
+    title: input.title,
+    leadSlotId: "lead",
+    bodySlotId: "body",
+    leadCandidates: [body.slice(0, 3).join(" "), sections[0]?.details?.join(" "), input.notes?.trim()],
+    bodyCandidates: [...body.slice(3), ...sections.flatMap((section) => section.details)],
+  });
   return [
-    { slotId: "eyebrow", type: "text", text: clampTextToBudget("image-bottom-article", "eyebrow", input.graphicCategory || sections[0]?.heading || "Article") },
+    {
+      slotId: "eyebrow",
+      type: "text",
+      text: clampTextToBudget(
+        "image-bottom-article",
+        "eyebrow",
+        resolveCompactEyebrowText(input.title, [sections[0]?.heading, input.graphicCategory], "Article"),
+      ),
+    },
     { slotId: "title", type: "text", text: clampTextToBudget("image-bottom-article", "title", input.title) },
     { slotId: "lead", type: "text", text: leadText },
     { slotId: "body", type: "text", text: bodyText },
@@ -884,19 +1001,25 @@ function createImageLeftArticleSlotBindings(
   input: PresentationRecipeNarrativeInput,
 ): PresentationComponentSlotBinding[] {
   const sections = input.sections ?? [];
-  const body = clampListItems(input.body, 10);
-  const leadText = clampTextToBudget(
-    "image-left-article",
-    "lead",
-    input.notes?.trim() || body.slice(0, 2).join(" ") || sections[0]?.details?.join(" ") || "",
-  );
-  const bodyText = clampTextToBudget(
-    "image-left-article",
-    "body",
-    [...body.slice(2), ...sections.flatMap((s) => s.details)].join(" ") || body.join(" "),
-  );
+  const body = clampListItems(input.body.map((line) => sanitizeNarrativeSegment(line, input.title)), 10);
+  const { leadText, bodyText } = buildLeadAndBodyText({
+    componentId: "image-left-article",
+    title: input.title,
+    leadSlotId: "lead",
+    bodySlotId: "body",
+    leadCandidates: [body.slice(0, 2).join(" "), sections[0]?.details?.join(" "), input.notes?.trim()],
+    bodyCandidates: [...body.slice(2), ...sections.flatMap((section) => section.details)],
+  });
   return [
-    { slotId: "eyebrow", type: "text", text: clampTextToBudget("image-left-article", "eyebrow", input.graphicCategory || sections[0]?.heading || "Article") },
+    {
+      slotId: "eyebrow",
+      type: "text",
+      text: clampTextToBudget(
+        "image-left-article",
+        "eyebrow",
+        resolveCompactEyebrowText(input.title, [sections[0]?.heading, input.graphicCategory], "Article"),
+      ),
+    },
     { slotId: "title", type: "text", text: clampTextToBudget("image-left-article", "title", input.title) },
     { slotId: "hero", type: "image", src: input.mediaUrl ?? "", alt: input.title.slice(0, 512) || "Article visual" },
     { slotId: "lead", type: "text", text: leadText },
@@ -909,19 +1032,25 @@ function createImageRightArticleSlotBindings(
   input: PresentationRecipeNarrativeInput,
 ): PresentationComponentSlotBinding[] {
   const sections = input.sections ?? [];
-  const body = clampListItems(input.body, 10);
-  const leadText = clampTextToBudget(
-    "image-right-article",
-    "lead",
-    input.notes?.trim() || body.slice(0, 2).join(" ") || sections[0]?.details?.join(" ") || "",
-  );
-  const bodyText = clampTextToBudget(
-    "image-right-article",
-    "body",
-    [...body.slice(2), ...sections.flatMap((s) => s.details)].join(" ") || body.join(" "),
-  );
+  const body = clampListItems(input.body.map((line) => sanitizeNarrativeSegment(line, input.title)), 10);
+  const { leadText, bodyText } = buildLeadAndBodyText({
+    componentId: "image-right-article",
+    title: input.title,
+    leadSlotId: "lead",
+    bodySlotId: "body",
+    leadCandidates: [body.slice(0, 2).join(" "), sections[0]?.details?.join(" "), input.notes?.trim()],
+    bodyCandidates: [...body.slice(2), ...sections.flatMap((section) => section.details)],
+  });
   return [
-    { slotId: "eyebrow", type: "text", text: clampTextToBudget("image-right-article", "eyebrow", input.graphicCategory || sections[0]?.heading || "Article") },
+    {
+      slotId: "eyebrow",
+      type: "text",
+      text: clampTextToBudget(
+        "image-right-article",
+        "eyebrow",
+        resolveCompactEyebrowText(input.title, [sections[0]?.heading, input.graphicCategory], "Article"),
+      ),
+    },
     { slotId: "title", type: "text", text: clampTextToBudget("image-right-article", "title", input.title) },
     { slotId: "lead", type: "text", text: leadText },
     { slotId: "body", type: "text", text: bodyText },
@@ -1063,48 +1192,92 @@ export function buildPresentationComponentRecipeSlotBindings(
     case "image-bottom-article":
     case "image-left-article":
     case "image-right-article": {
-      const bodyLines = Array.isArray(input.body) ? input.body : [];
+      const bodyLines = Array.isArray(input.body)
+        ? input.body.map((line) => sanitizeNarrativeSegment(line, input.title))
+        : [];
       const sections = input.sections ?? [];
-      const lead = sections[0]?.details.join(" ") || input.notes || bodyLines[0] || "";
-      const bodyText = sections.slice(1)
-        .map((s) => [s.heading, ...s.details].join("\n"))
-        .join("\n\n") || bodyLines.join("\n\n");
+      const { leadText, bodyText } = buildLeadAndBodyText({
+        componentId,
+        title: input.title,
+        leadSlotId: "lead",
+        bodySlotId: "body",
+        leadCandidates: [sections[0]?.details.join(" "), input.notes, bodyLines[0]],
+        bodyCandidates: [
+          ...bodyLines.slice(1),
+          ...sections.slice(1).flatMap((section) => [section.heading, ...section.details]),
+        ],
+      });
       return [
-        { slotId: "eyebrow", type: "text", text: clampTextToBudget(componentId, "eyebrow", input.graphicCategory || "Article") },
+        {
+          slotId: "eyebrow",
+          type: "text",
+          text: clampTextToBudget(
+            componentId,
+            "eyebrow",
+            resolveCompactEyebrowText(input.title, [sections[0]?.heading, input.graphicCategory], "Article"),
+          ),
+        },
         { slotId: "title", type: "text", text: clampTextToBudget(componentId, "title", input.title) },
         { slotId: "hero", type: "image", src: input.mediaUrl ?? "", alt: input.title || "Article image" },
-        { slotId: "lead", type: "text", text: clampTextToBudget(componentId, "lead", lead) },
-        { slotId: "body", type: "text", text: clampTextToBudget(componentId, "body", bodyText) },
+        { slotId: "lead", type: "text", text: leadText },
+        { slotId: "body", type: "text", text: bodyText },
         { slotId: "footnote", type: "text", text: "" },
       ];
     }
     case "wide-hero-article":
     case "split-image-article":
     case "centered-hero-article": {
-      const bodyLines = Array.isArray(input.body) ? input.body : [];
+      const bodyLines = Array.isArray(input.body)
+        ? input.body.map((line) => sanitizeNarrativeSegment(line, input.title))
+        : [];
       const sections = input.sections ?? [];
-      const lead = sections[0]?.details.join(" ") || input.notes || bodyLines[0] || "";
-      const bodyText = sections.slice(1)
-        .map((s) => [s.heading, ...s.details].join("\n"))
-        .join("\n\n") || bodyLines.join("\n\n");
+      const { leadText, bodyText } = buildLeadAndBodyText({
+        componentId,
+        title: input.title,
+        leadSlotId: "lead",
+        bodySlotId: "body",
+        leadCandidates: [sections[0]?.details.join(" "), input.notes, bodyLines[0]],
+        bodyCandidates: [
+          ...bodyLines.slice(1),
+          ...sections.slice(1).flatMap((section) => [section.heading, ...section.details]),
+        ],
+      });
       return [
-        { slotId: "eyebrow", type: "text", text: clampTextToBudget(componentId, "eyebrow", input.graphicCategory || "Article") },
+        {
+          slotId: "eyebrow",
+          type: "text",
+          text: clampTextToBudget(
+            componentId,
+            "eyebrow",
+            resolveCompactEyebrowText(input.title, [sections[0]?.heading, input.graphicCategory], "Article"),
+          ),
+        },
         { slotId: "title", type: "text", text: clampTextToBudget(componentId, "title", input.title) },
         { slotId: "hero", type: "image", src: input.mediaUrl ?? "", alt: input.title || "Article image" },
-        { slotId: "lead", type: "text", text: clampTextToBudget(componentId, "lead", lead) },
-        { slotId: "body", type: "text", text: clampTextToBudget(componentId, "body", bodyText) },
+        { slotId: "lead", type: "text", text: leadText },
+        { slotId: "body", type: "text", text: bodyText },
         { slotId: "footnote", type: "text", text: "" },
       ];
     }
     case "compact-article": {
-      const bodyLines = Array.isArray(input.body) ? input.body : [];
+      const bodyLines = Array.isArray(input.body)
+        ? input.body.map((line) => sanitizeNarrativeSegment(line, input.title))
+        : [];
       const sections = input.sections ?? [];
-      const lead = sections[0]?.details.join(" ") || input.notes || bodyLines[0] || "";
+      const lead = sanitizeNarrativeSegment(sections[0]?.details.join(" ") || input.notes || bodyLines[0] || "", input.title);
       const bodyText = bodyLines.slice(1).join("\n\n")
         || sections.slice(1).map((s) => [s.heading, ...s.details].join("\n")).join("\n\n");
       const sidebar = sections.map((s) => s.heading).filter(Boolean).join("\n• ") || bodyLines.slice(0, 3).join("\n• ");
       return [
-        { slotId: "eyebrow", type: "text", text: clampTextToBudget(componentId, "eyebrow", input.graphicCategory || "Article") },
+        {
+          slotId: "eyebrow",
+          type: "text",
+          text: clampTextToBudget(
+            componentId,
+            "eyebrow",
+            resolveCompactEyebrowText(input.title, [sections[0]?.heading, input.graphicCategory], "Article"),
+          ),
+        },
         { slotId: "title", type: "text", text: clampTextToBudget(componentId, "title", input.title) },
         { slotId: "lead", type: "text", text: clampTextToBudget(componentId, "lead", lead) },
         { slotId: "body", type: "text", text: clampTextToBudget(componentId, "body", bodyText) },

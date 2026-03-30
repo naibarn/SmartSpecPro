@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildDocumentQueryString,
+  buildDocumentShareUrl,
+  buildPublicDocumentShareUrl,
+  getMarkdownPreviewFallbackContent,
   getDocumentAccessLabel,
   isMarkdownLibraryItem,
   parseDocumentQueryState,
@@ -38,6 +41,51 @@ describe("documentManagementUi", () => {
     expect(parsed.viewMode).toBe("editor");
     expect(parsed.docId).toBe(42);
     expect(buildDocumentQueryString(parsed)).toBe("scope=my_library&sort=updated_desc&mode=editor&doc=42");
+  });
+
+  it("builds a share URL for the active document", () => {
+    expect(
+      buildDocumentShareUrl(
+        {
+          scope: "shared_groups",
+          sort: "created_desc",
+          viewMode: "library",
+          query: "guide",
+          itemType: "md",
+          status: "ready",
+        },
+        42,
+        "https://example.com",
+      ),
+    ).toBe(
+      "https://example.com/document-management?scope=shared_groups&sort=created_desc&mode=editor&doc=42&q=guide&type=md&status=ready",
+    );
+  });
+
+  it("builds a public share URL from a token", () => {
+    expect(buildPublicDocumentShareUrl("abc123", "https://example.com")).toBe(
+      "https://example.com/share/abc123",
+    );
+  });
+
+  it("reads markdown preview fallback content from metadata", () => {
+    expect(
+      getMarkdownPreviewFallbackContent({
+        metadata: {
+          extracted_text: "# Hello from metadata",
+        },
+      } as any),
+    ).toBe("# Hello from metadata");
+
+    expect(
+      getMarkdownPreviewFallbackContent({
+        metadata: {
+          extractedText: "  # Trimmed fallback  ",
+        },
+      } as any),
+    ).toBe("  # Trimmed fallback  ");
+
+    expect(getMarkdownPreviewFallbackContent({ metadata: {} } as any)).toBe("");
   });
 
   it("detects markdown files from metadata and source URL", () => {

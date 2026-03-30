@@ -7,10 +7,10 @@
 
 import { useState } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { DashboardCard } from "@/components/dashboard";
 import {
   ArrowLeft,
   RefreshCw,
@@ -45,14 +45,7 @@ export default function AdminOpsDashboard() {
   if (!user || (user.role !== "admin" && user.role !== "domain_admin")) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <Card className="w-96">
-          <CardHeader>
-            <CardTitle>Access Denied</CardTitle>
-            <CardDescription>
-              You need admin privileges to access this page.
-            </CardDescription>
-          </CardHeader>
-        </Card>
+        <DashboardCard className="w-96" title="Access Denied" description="You need admin privileges to access this page." />
       </div>
     );
   }
@@ -71,7 +64,7 @@ export default function AdminOpsDashboard() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => window.history.length > 1 ? window.history.back() : (window.location.href = "/dashboard")}
+                onClick={() => { window.location.href = "/admin/dashboard"; }}
               >
                 <ArrowLeft className="h-4 w-4 mr-1" />
                 Back
@@ -81,8 +74,8 @@ export default function AdminOpsDashboard() {
                   <Activity className="h-5 w-5 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-lg font-bold">Ops Dashboard</h1>
-                  <p className="text-xs text-muted-foreground">System health and operational metrics</p>
+                  <h1 className="text-lg font-bold">Advanced Ops Panels</h1>
+                  <p className="text-xs text-muted-foreground">Deep-dive panels for traffic, APIs, jobs, storage, and security after triage starts in the command center</p>
                 </div>
               </div>
             </div>

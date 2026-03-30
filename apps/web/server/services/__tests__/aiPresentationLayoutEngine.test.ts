@@ -296,6 +296,12 @@ describe("Component recipe rendering", () => {
     }));
 
     expect(result.slideContent.components?.[0]?.componentId).toBe("two-column-article");
+    const fallback = result.slideContent.components?.[0]?.fallbackElements ?? [];
+    const leftBody = fallback.find((element) => element.id.endsWith("::left-body"));
+    expect(leftBody?.type).toBe("text");
+    if (leftBody?.type === "text") {
+      expect(leftBody.fontSize).toBeGreaterThanOrEqual(17);
+    }
     const renderable = getPresentationSlideRenderableElements(result.slideContent);
     expect(renderable.elements.some((element) => element.type === "text" && element.id.includes("left-title"))).toBe(true);
     expect(renderable.elements.some((element) => element.type === "text" && element.id.includes("right-body"))).toBe(true);
@@ -404,6 +410,12 @@ describe("Component recipe rendering", () => {
     }));
 
     expect(result.slideContent.components?.[0]?.componentId).toBe("sectioned-explainer");
+    const fallback = result.slideContent.components?.[0]?.fallbackElements ?? [];
+    const sectionBody = fallback.find((element) => element.id.endsWith("::section-1-body"));
+    expect(sectionBody?.type).toBe("text");
+    if (sectionBody?.type === "text") {
+      expect(sectionBody.fontSize).toBeGreaterThanOrEqual(18);
+    }
     const renderable = getPresentationSlideRenderableElements(result.slideContent);
     expect(renderable.elements.some((element) => element.type === "text" && element.id.includes("section-1-heading"))).toBe(true);
     expect(renderable.elements.some((element) => element.type === "text" && element.id.includes("takeaways"))).toBe(true);
@@ -476,6 +488,36 @@ describe("Component recipe rendering", () => {
     }
   });
 
+  it("keeps sectioned-explainer portrait intro concise instead of injecting the full slide note blob", () => {
+    const result = generateSlide(makeLayoutInput({
+      slideData: makeSlideData({
+        templateId: "split_right_image",
+        componentRecipeId: "sectioned-explainer",
+        title: "การฝึกให้ลูกวัยหกเดือนนอนยาว",
+        body: [
+          "เตรียมความพร้อมก่อนเริ่มฝึก",
+          "ให้เวลากับร่างกายค่อย ๆ ปรับตัว",
+        ],
+        notes: "เตรียมความพร้อมก่อนเริ่มฝึก ให้เวลากับร่างกายค่อย ๆ ปรับตัว และนี่คือรายละเอียดขยายเต็มก้อนที่ไม่ควรโผล่ทั้งย่อหน้าใน intro",
+        sections: [
+          { heading: "ส่วนที่หนึ่ง", details: ["เตรียมความพร้อมก่อนเริ่มฝึก"] },
+          { heading: "ส่วนที่สอง", details: ["ให้เวลากับร่างกายค่อย ๆ ปรับตัว"] },
+        ],
+      }),
+      imageUrl: "https://example.com/hero-sectioned.jpg",
+      canvasWidth: 960,
+      canvasHeight: 1200,
+    }));
+
+    const fallback = result.slideContent.components?.[0]?.fallbackElements ?? [];
+    const intro = fallback.find((element) => element.id.endsWith("::intro"));
+    expect(intro?.type).toBe("text");
+    if (intro?.type === "text") {
+      expect(intro.text).toContain("เตรียมความพร้อมก่อนเริ่มฝึก");
+      expect(intro.text).not.toContain("รายละเอียดขยายเต็มก้อนที่ไม่ควรโผล่ทั้งย่อหน้าใน intro");
+    }
+  });
+
   it("renders article-focus with a split hero panel when media is available", () => {
     const result = generateSlide(makeLayoutInput({
       slideData: makeSlideData({
@@ -497,8 +539,56 @@ describe("Component recipe rendering", () => {
     expect(hero?.type).toBe("image");
     expect(body?.type).toBe("text");
     if (hero?.type === "image" && body?.type === "text") {
+      expect(body.fontSize).toBeGreaterThanOrEqual(21);
       expect(hero.x).toBeGreaterThan(body.x);
       expect(body.width).toBeGreaterThan(600);
+    }
+  });
+
+  it("keeps article-focus portrait layouts height-fitted on 4:5 canvases so title, lead, and body do not collide", () => {
+    const result = generateSlide(makeLayoutInput({
+      slideData: makeSlideData({
+        templateId: "split_right_image",
+        componentRecipeId: "article-focus",
+        title: "คู่มือการฝึกทารกวัยหกเดือนให้นอนหลับยาวตลอดคืน",
+        body: [
+          "คู่มือการฝึกทารกวัยหกเดือนให้นอนหลับยาวตลอดคืน เมื่อลูกมีอายุหกเดือน ร่างกายของเขามักจะพร้อมสำหรับการนอนยาวตลอดคืนเนื่องจากขนาดกระเพาะอาหารที่ใหญ่ขึ้นและไม่จำเป็นต้องตื่นมาดื่มนมมื้อดึกบ่อยเหมือนช่วงแรกเกิด",
+        ],
+        notes: "เมื่อลูกมีอายุหกเดือน ร่างกายของเขามักจะพร้อมสำหรับการนอนยาวตลอดคืนเนื่องจากขนาดกระเพาะอาหารที่ใหญ่ขึ้นและไม่จำเป็นต้องตื่นมาดื่มนมมื้อดึกบ่อยเหมือนช่วงแรกเกิด คุณพ่อคุณแม่ควรเข้าใจว่าการนอนหลับเป็นทักษะที่เด็กต้องเรียนรู้และพัฒนาไปตามวัย",
+        graphicCategory: "Communication",
+      }),
+      imageUrl: "https://example.com/article-focus-4x5.jpg",
+      canvasWidth: 960,
+      canvasHeight: 1200,
+    }));
+
+    const fallback = result.slideContent.components?.[0]?.fallbackElements ?? [];
+    const canvasBg = fallback.find((element) => element.id.endsWith("::bg"));
+    const eyebrow = fallback.find((element) => element.id.endsWith("::eyebrow"));
+    const title = fallback.find((element) => element.id.endsWith("::title"));
+    const lead = fallback.find((element) => element.id.endsWith("::lead"));
+    const body = fallback.find((element) => element.id.endsWith("::body"));
+
+    expect(canvasBg?.type).toBe("rect");
+    expect(eyebrow?.type).toBe("text");
+    expect(title?.type).toBe("text");
+    expect(lead?.type).toBe("text");
+    expect(body?.type).toBe("text");
+    if (
+      canvasBg?.type === "rect"
+      && eyebrow?.type === "text"
+      && title?.type === "text"
+      && lead?.type === "text"
+      && body?.type === "text"
+    ) {
+      expect(canvasBg.width).toBeLessThan(960);
+      expect(canvasBg.x).toBeGreaterThan(0);
+      expect(eyebrow.text).toBe("Article");
+      expect(title.y).toBeGreaterThan(eyebrow.y + eyebrow.height);
+      expect(lead.y).toBeGreaterThan(title.y + title.height);
+      expect(body.y).toBeGreaterThan(lead.y + lead.height);
+      expect(body.text).not.toBe(lead.text);
+      expect(body.text).not.toContain("คู่มือการฝึกทารกวัยหกเดือนให้นอนหลับยาวตลอดคืน");
     }
   });
 
@@ -1093,7 +1183,7 @@ describe("Header/Footer", () => {
 // ── C.4: Edge Cases ────────────────────────────────────────
 
 describe("Edge Cases", () => {
-  it("null imageUrl produces placeholder rect with preset.colors.backgroundAlt", () => {
+  it("null imageUrl produces a fallback visual image", () => {
     const preset = getBuiltInPreset("dark-professional")!;
     const input = makeLayoutInput({
       imageUrl: null,
@@ -1102,15 +1192,16 @@ describe("Edge Cases", () => {
     });
     const result = generateSlide(input);
 
-    // Should have a rect placeholder instead of an image
-    const placeholderRect = result.slideContent.elements.find(
+    // The fallback should be an actual image element, not a blank rect.
+    const fallbackImage = result.slideContent.elements.find(
       (e) =>
-        e.type === "rect" &&
-        e.fill === preset.colors.backgroundAlt &&
+        e.type === "image" &&
+        typeof e.src === "string" &&
+        e.src.startsWith("data:image/svg+xml,") &&
         e.width > 0 &&
         e !== result.slideContent.elements[0], // not background
     );
-    expect(placeholderRect).toBeDefined();
+    expect(fallbackImage).toBeDefined();
   });
 
   it("null imageUrl adds a warning to output", () => {

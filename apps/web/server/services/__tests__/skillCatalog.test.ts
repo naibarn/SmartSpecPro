@@ -219,6 +219,7 @@ describe("buildSkillCategoryGroups", () => {
       { id: "s1", name: "S1", category: "image_generation", description: "", inputTypes: [], outputTypes: [], hasInputSchema: false, requiredFields: [] },
       { id: "s2", name: "S2", category: "product_review", description: "", inputTypes: [], outputTypes: [], hasInputSchema: false, requiredFields: [] },
       { id: "s3", name: "S3", category: "chat_assistant", description: "", inputTypes: [], outputTypes: [], hasInputSchema: false, requiredFields: [] },
+      { id: "s4", name: "S4", category: "slide_generation", description: "", inputTypes: [], outputTypes: [], hasInputSchema: false, requiredFields: [] },
     ];
 
     const groups = buildSkillCategoryGroups(entries);
@@ -226,6 +227,7 @@ describe("buildSkillCategoryGroups", () => {
     expect(groups["media_image"]).toContain("s1");
     expect(groups["product_review"]).toContain("s2");
     expect(groups["content_tools"]).toContain("s3");
+    expect(groups["content_tools"]).toContain("s4");
   });
 });
 

@@ -3,15 +3,86 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 
 const setLocationMock = vi.fn();
+const authState = {
+  role: "user",
+};
+const changeLanguageMock = vi.fn();
+
+const translationMap: Record<string, string> = {
+  "common:admin": "Admin",
+  "dashboard:signOut": "Sign Out",
+  "dashboard:prioritySnapshot.title": "Priority Snapshot",
+  "dashboard:trendHealth.title": "Trend & Health",
+  "dashboard:quickActions.subtitle": "Workspace Shortcuts",
+  "dashboard:nextBestActions.title": "Next Best Actions",
+  "dashboard:review.improvementLoop": "Tenant-wide improvement loop",
+  "dashboard:filterByAgency": "Filter by agency",
+  "dashboard:review.open": "Open Review",
+  "dashboard:review.appliedChanges": "Applied Changes",
+  "dashboard:review.recentReviews": "Recent Reviews",
+  "dashboard:review.agencies": "Agencies",
+  "dashboard:review.center": "Open Review Center",
+  "dashboard:allAgencies": "All Agencies",
+};
+
+function translate(key: string, params?: Record<string, string | number>) {
+  if (key === "dashboard:welcome") {
+    return `Welcome, ${params?.name ?? "User"}`;
+  }
+
+  if (key === "dashboard:meta.updated") {
+    return `Updated ${params?.time ?? "just now"}`;
+  }
+
+  if (key === "dashboard:meta.analyticsWindow") {
+    return `${params?.days ?? 30}-day window`;
+  }
+
+  if (key === "dashboard:meta.latestChat") {
+    return `Latest chat ${params?.time ?? "just now"}`;
+  }
+
+  if (key === "dashboard:meta.latestCredit") {
+    return `Latest credit ${params?.time ?? "just now"}`;
+  }
+
+  if (key === "dashboard:stats.datapoints") {
+    return `${params?.count ?? 0} datapoints`;
+  }
+
+  if (key === "dashboard:notices.pendingApprovals") {
+    return `${params?.count ?? 0} approvals pending`;
+  }
+
+  if (key === "dashboard:notices.failedGenerations") {
+    return `${params?.count ?? 0} failed generations need review`;
+  }
+
+  return translationMap[key] ?? key;
+}
 
 vi.mock("wouter", () => ({
   useLocation: () => ["/dashboard", setLocationMock] as const,
 }));
 
+vi.mock("@/i18n/useScopedTranslation", () => ({
+  useScopedTranslation: () => ({
+    t: translate,
+    i18n: {
+      exists: () => true,
+      resolvedLanguage: "en",
+      language: "en",
+      changeLanguage: changeLanguageMock,
+    },
+    locale: "en",
+    setLocale: vi.fn(),
+  }),
+}));
+
 vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => ({
     user: {
-      role: "user",
+      role: authState.role,
       name: "Test User",
       email: "test@example.com",
       credits: 0,
@@ -117,38 +188,72 @@ vi.mock("@/hooks/useAgencyQuery", () => ({
 }));
 
 vi.mock("@/hooks/useMenuItems", () => ({
-  getResolvedMenuItems: () => ([
-    {
-      id: "dashboard",
-      label: "Dashboard",
-      path: "/dashboard",
-      external: false,
-      IconComponent: () => React.createElement("span", null, "D"),
-    },
-    {
-      id: "document-management",
-      label: "Library",
-      path: "/document-management",
-      external: false,
-      section: "documents",
-      IconComponent: () => React.createElement("span", null, "L"),
-    },
-    {
-      id: "private-files",
-      label: "Private Files",
-      path: "/document-management?scope=private_vault&sort=updated_desc",
-      external: false,
-      parentId: "document-management",
-      IconComponent: () => React.createElement("span", null, "P"),
-    },
-    {
-      id: "settings",
-      label: "Settings",
-      path: "/settings",
-      external: false,
-      IconComponent: () => React.createElement("span", null, "S"),
-    },
-  ]),
+  getResolvedMenuItems: (_role: string, group: string) => {
+    if (group === "admin") {
+      return authState.role === "admin"
+        ? [
+            {
+              id: "admin-overview",
+              label: "Admin Command Center",
+              path: "/admin/dashboard",
+              external: false,
+              IconComponent: () => React.createElement("span", null, "A"),
+            },
+            {
+              id: "admin-services",
+              label: "Services",
+              path: "/admin/services",
+              external: false,
+              IconComponent: () => React.createElement("span", null, "S"),
+            },
+            {
+              id: "admin-users",
+              label: "Users",
+              path: "/admin/users",
+              external: false,
+              IconComponent: () => React.createElement("span", null, "U"),
+            },
+          ]
+        : [];
+    }
+
+    if (group === "domain-admin") {
+      return [];
+    }
+
+    return [
+      {
+        id: "dashboard",
+        label: "Dashboard",
+        path: "/dashboard",
+        external: false,
+        IconComponent: () => React.createElement("span", null, "D"),
+      },
+      {
+        id: "document-management",
+        label: "Library",
+        path: "/document-management",
+        external: false,
+        section: "documents",
+        IconComponent: () => React.createElement("span", null, "L"),
+      },
+      {
+        id: "private-files",
+        label: "Private Files",
+        path: "/document-management?scope=private_vault&sort=updated_desc",
+        external: false,
+        parentId: "document-management",
+        IconComponent: () => React.createElement("span", null, "P"),
+      },
+      {
+        id: "settings",
+        label: "Settings",
+        path: "/settings",
+        external: false,
+        IconComponent: () => React.createElement("span", null, "S"),
+      },
+    ];
+  },
 }));
 
 vi.mock("@/lib/trpc", () => ({
@@ -252,6 +357,8 @@ import Dashboard from "../Dashboard";
 describe("Dashboard", () => {
   beforeEach(() => {
     setLocationMock.mockClear();
+    changeLanguageMock.mockClear();
+    authState.role = "user";
   });
 
   it("shows Private Files in the sidebar", () => {
@@ -278,7 +385,7 @@ describe("Dashboard", () => {
   it("shows agency review summary on the dashboard", () => {
     render(<Dashboard />);
 
-    expect(screen.getByText("Agency Review Center")).toBeInTheDocument();
+    expect(screen.getAllByText("Agency Review Center").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("Tenant-wide improvement loop")).toBeInTheDocument();
     expect(screen.getByText("75% coverage")).toBeInTheDocument();
     expect(screen.getByText("Avg rating")).toBeInTheDocument();
@@ -313,7 +420,24 @@ describe("Dashboard", () => {
 
     expect(screen.getByText("Priority Snapshot")).toBeInTheDocument();
     expect(screen.getByText("Trend & Health")).toBeInTheDocument();
-    expect(screen.getByText("Workspace Shortcuts")).toBeInTheDocument();
+    expect(screen.getAllByText("Workspace Shortcuts").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("Next Best Actions")).toBeInTheDocument();
+  });
+
+  it("keeps non-monitoring admin tools visible while grouping monitoring pages into the command center", () => {
+    authState.role = "admin";
+
+    render(<Dashboard />);
+
+    expect(screen.getAllByText("System Monitoring").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Admin Tools").length).toBeGreaterThanOrEqual(1);
+    const commandCenterButton = screen.getByRole("button", { name: /admin command center/i });
+    expect(commandCenterButton).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^services$/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /users$/i })).toBeInTheDocument();
+    expect(screen.getByText(/monitoring tools are grouped inside/i)).toBeInTheDocument();
+
+    fireEvent.click(commandCenterButton);
+    expect(setLocationMock).toHaveBeenCalledWith("/admin/dashboard");
   });
 });

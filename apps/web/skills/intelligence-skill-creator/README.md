@@ -1,4 +1,4 @@
-# Intelligence Skill Creator (ISC) — v0.3.0
+# Intelligence Skill Creator (ISC) — v0.5.0
 LLM-agnostic (OpenAI-compatible gateway) + Research-first + Multi-agent + Validator + Iterative patch→test loop
 
 ## Added (6 items)
@@ -13,6 +13,12 @@ LLM-agnostic (OpenAI-compatible gateway) + Research-first + Multi-agent + Valida
 - env: ISC_LLM_MODEL
 - CLI: --llm-model
 - input file: schemas/input.schema.json
+
+## JavaScript / GenJS support
+- `javascript_runtime: classic` -> `js/skill.js` CommonJS respond() skill
+- `javascript_runtime: genjs` -> full sandbox-command bundle with `skill.manifest.json`, `package.json`, `src/index.mjs`, and modular `src/*.mjs`
+- Best for schema mapping, prompt pipelines, APIs, web stack automation, JSON-heavy artifact generation, and PptxGenJS-ready workloads
+- Generated GenJS bundles expose an optional `request.orchestration` contract for local mode, skill handoff, agency swarm, or hybrid execution
 
 ## Commands
 ```bash

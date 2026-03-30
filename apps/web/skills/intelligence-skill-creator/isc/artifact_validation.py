@@ -108,6 +108,8 @@ def validate_ui_schema_document(ui_schema: dict) -> ArtifactValidationResult:
 
 CATEGORY_ALLOWED_EXECUTION_MODES: Dict[str, set[str]] = {
     "article_generation": {"llm-only"},
+    "slide_generation": {"sandbox-command", "sandbox-code", "llm-only"},
+    "product_review": {"llm-only"},
     "image_prompt_generation": {"llm-only", "enhance-prompt"},
     "video_prompt_generation": {"llm-only", "enhance-prompt"},
     "prompt_enhancement": {"llm-only", "enhance-prompt"},
@@ -116,15 +118,15 @@ CATEGORY_ALLOWED_EXECUTION_MODES: Dict[str, set[str]] = {
     "image_video_generation": {"media-generate"},
     "audio_generation": {"media-generate"},
     "sound_effects": {"media-generate"},
-    "automation": {"llm-only", "python"},
-    "code_assistant": {"llm-only", "python"},
-    "document_analysis": {"llm-only", "python"},
-    "web_search": {"llm-only", "python"},
-    "data_analysis": {"llm-only", "python"},
-    "translation": {"llm-only", "python"},
-    "summarization": {"llm-only", "python"},
-    "chat_assistant": {"llm-only", "python"},
-    "other": {"llm-only", "python"},
+    "automation": {"llm-only", "python", "sandbox-command", "sandbox-code", "sandbox-browser", "sandbox-file"},
+    "code_assistant": {"llm-only", "python", "sandbox-command", "sandbox-code", "sandbox-browser", "sandbox-file"},
+    "document_analysis": {"llm-only", "python", "sandbox-command", "sandbox-code", "sandbox-browser", "sandbox-file"},
+    "web_search": {"llm-only", "python", "sandbox-command", "sandbox-code", "sandbox-browser", "sandbox-file"},
+    "data_analysis": {"llm-only", "python", "sandbox-command", "sandbox-code", "sandbox-browser", "sandbox-file"},
+    "translation": {"llm-only", "python", "sandbox-command", "sandbox-code", "sandbox-browser", "sandbox-file"},
+    "summarization": {"llm-only", "python", "sandbox-command", "sandbox-code", "sandbox-browser", "sandbox-file"},
+    "chat_assistant": {"llm-only", "python", "sandbox-command", "sandbox-code", "sandbox-browser", "sandbox-file"},
+    "other": {"llm-only", "python", "sandbox-command", "sandbox-code", "sandbox-browser", "sandbox-file"},
 }
 
 

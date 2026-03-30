@@ -40,6 +40,7 @@ describe("Sandbox Profile Seed Data", () => {
   it("browser-default profile should have correct resource defaults", () => {
     const profile = BASELINE_PROFILES.find((p) => p.slug === "browser-default");
     expect(profile).toBeDefined();
+    expect(profile!.baseImage).toBe("smartspec/browser-sandbox:local");
     expect(profile!.cpuLimit).toBe("2000m");
     expect(profile!.memoryLimitMb).toBe(4096);
     expect(profile!.timeoutSeconds).toBe(600);

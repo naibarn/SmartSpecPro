@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import { trpc } from "@/lib/trpc";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,6 +35,7 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { DashboardCard } from "@/components/dashboard";
 
 export default function AdminSkillRepositories() {
   const { user } = useAuth();
@@ -145,8 +145,8 @@ export default function AdminSkillRepositories() {
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
       ) : reposQuery.data?.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+        <DashboardCard>
+          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
             <Package className="h-12 w-12 mb-3 opacity-30" />
             <p className="font-medium">No repositories added yet</p>
             <p className="text-sm mt-1">Add a Git repository to import skills</p>
@@ -154,19 +154,19 @@ export default function AdminSkillRepositories() {
               <Plus className="h-4 w-4 mr-2" />
               Add Repository
             </Button>
-          </CardContent>
-        </Card>
+          </div>
+        </DashboardCard>
       ) : (
         <div className="space-y-4">
           {reposQuery.data?.map((repo) => (
-            <Card key={repo.id}>
-              <CardHeader className="pb-3">
+            <DashboardCard key={repo.id}>
+              <div className="pb-3">
                 <div className="flex items-start justify-between">
                   <div>
-                    <CardTitle className="text-lg flex items-center gap-2">
+                    <h3 className="text-lg flex items-center gap-2">
                       {repo.name}
                       {getStatusBadge(repo.status)}
-                    </CardTitle>
+                    </h3>
                     <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1">
                       <ExternalLink className="h-3 w-3" />
                       {repo.gitUrl}
@@ -197,8 +197,8 @@ export default function AdminSkillRepositories() {
                     </Button>
                   </div>
                 </div>
-              </CardHeader>
-              <CardContent>
+              </div>
+              <div>
                 <div className="flex items-center gap-6 text-sm text-muted-foreground">
                   <span className="flex items-center gap-1">
                     <Package className="h-4 w-4" />
@@ -218,8 +218,8 @@ export default function AdminSkillRepositories() {
                     {repo.errorMessage}
                   </div>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </DashboardCard>
           ))}
         </div>
       )}

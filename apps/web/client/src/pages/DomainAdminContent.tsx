@@ -41,13 +41,7 @@ import {
   Image,
   Video,
 } from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { DashboardCard } from "@/components/dashboard";
 import {
   Select,
   SelectContent,
@@ -961,12 +955,8 @@ export default function DomainAdminContent() {
         <div className="grid grid-cols-12 gap-6">
           {/* Sidebar - Page Selector */}
           <div className="col-span-3">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Pages</CardTitle>
-                <CardDescription>Select a page to edit</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-2">
+            <DashboardCard title="Pages" description="Select a page to edit" titleClassName="text-lg">
+              <div className="space-y-2">
                 {DEFAULT_PAGES.map((page) => (
                   <button
                     key={page.key}
@@ -986,19 +976,19 @@ export default function DomainAdminContent() {
                     </div>
                   </button>
                 ))}
-              </CardContent>
-            </Card>
+              </div>
+            </DashboardCard>
           </div>
 
           {/* Main Content Editor */}
           <div className="col-span-9">
             {currentPage && (
-              <Card>
-                <CardHeader>
+              <DashboardCard>
+                <div className="px-5 pt-5 sm:px-6 sm:pt-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <CardTitle>{currentPage.title}</CardTitle>
-                      <CardDescription>Edit page content and settings</CardDescription>
+                      <h3 className="text-lg font-semibold text-slate-900">{currentPage.title}</h3>
+                      <p className="mt-1 text-sm leading-6 text-slate-500">Edit page content and settings</p>
                     </div>
                     <div className="flex items-center gap-4">
                       <Label className="flex items-center gap-2">
@@ -1012,8 +1002,8 @@ export default function DomainAdminContent() {
                       </Label>
                     </div>
                   </div>
-                </CardHeader>
-                <CardContent>
+                </div>
+                <div className="px-5 pb-5 pt-4 sm:px-6 sm:pb-6">
                   <Tabs defaultValue="content">
                     <TabsList>
                       <TabsTrigger value="content">Content</TabsTrigger>
@@ -1060,8 +1050,8 @@ export default function DomainAdminContent() {
                       {currentPage.sections && currentPage.sections.length > 0 ? (
                         <div className="space-y-4">
                           {currentPage.sections.map((section, index) => (
-                            <Card key={section.id}>
-                              <CardHeader className="pb-3">
+                            <DashboardCard key={section.id} bodyClassName="space-y-3">
+                              <div className="px-5 pt-5 sm:px-6 sm:pt-6">
                                 <div className="flex items-center justify-between">
                                   <Select
                                     value={section.type}
@@ -1089,8 +1079,8 @@ export default function DomainAdminContent() {
                                     <Trash2 className="w-4 h-4 text-red-500" />
                                   </Button>
                                 </div>
-                              </CardHeader>
-                              <CardContent className="space-y-3">
+                              </div>
+                              <div className="space-y-3 px-5 pb-5 pt-4 sm:px-6 sm:pb-6">
                                 <Input
                                   placeholder="Section Title"
                                   value={section.title || ""}
@@ -1113,8 +1103,8 @@ export default function DomainAdminContent() {
                                   }
                                   rows={4}
                                 />
-                              </CardContent>
-                            </Card>
+                              </div>
+                            </DashboardCard>
                           ))}
                         </div>
                       ) : (
@@ -1206,11 +1196,11 @@ export default function DomainAdminContent() {
                           </div>
                           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                             {autoContentPresetPacks.map((pack) => (
-                              <Card key={pack.id} className="border-cyan-100 bg-white/80 shadow-sm">
-                                <CardHeader className="pb-3">
-                                  <CardTitle className="text-base text-gray-900">{pack.label}</CardTitle>
-                                  <CardDescription>{pack.description}</CardDescription>
-                                  <div className="flex flex-wrap gap-2 pt-1">
+                              <DashboardCard key={pack.id} className="border-cyan-100 bg-white/80 shadow-sm">
+                                <div className="px-5 pt-5 sm:px-6 sm:pt-6">
+                                  <h3 className="text-base font-semibold text-gray-900">{pack.label}</h3>
+                                  <p className="mt-1 text-sm leading-6 text-slate-500">{pack.description}</p>
+                                  <div className="flex flex-wrap gap-2 pt-2">
                                     <span className="rounded-full border border-cyan-100 bg-cyan-50 px-2.5 py-1 text-[11px] font-medium text-cyan-700">
                                       mode: {pack.defaultMode || "auto"}
                                     </span>
@@ -1223,8 +1213,8 @@ export default function DomainAdminContent() {
                                       </span>
                                     )}
                                   </div>
-                                </CardHeader>
-                                <CardContent className="space-y-3">
+                                </div>
+                                <div className="space-y-3 px-5 pb-5 pt-4 sm:px-6 sm:pb-6">
                                   <div className="flex flex-wrap gap-2">
                                     {pack.keywords.slice(0, 3).map((keyword) => (
                                       <span
@@ -1254,8 +1244,8 @@ export default function DomainAdminContent() {
                                       Append
                                     </Button>
                                   </div>
-                                </CardContent>
-                              </Card>
+                                </div>
+                              </DashboardCard>
                             ))}
                           </div>
                         </div>
@@ -1406,12 +1396,12 @@ export default function DomainAdminContent() {
                                 };
 
                               return (
-                                <Card key={`${kind}-${item.slug}`} className="border-slate-200">
-                                  <CardHeader className="pb-3">
+                                <DashboardCard key={`${kind}-${item.slug}`} className="border-slate-200">
+                                  <div className="px-5 pt-5 sm:px-6 sm:pt-6">
                                     <div className="flex items-start justify-between gap-3">
                                       <div>
-                                        <CardTitle className="text-base text-gray-900">{item.title}</CardTitle>
-                                        <CardDescription className="mt-1">{href}</CardDescription>
+                                        <h3 className="text-base font-semibold text-gray-900">{item.title}</h3>
+                                        <p className="mt-1 text-sm leading-6 text-slate-500">{href}</p>
                                       </div>
                                       <div className="flex flex-wrap gap-2">
                                         <Button
@@ -1456,8 +1446,8 @@ export default function DomainAdminContent() {
                                         Open Media Studio to generate the image/video prompt and attach reference assets from Library.
                                       </p>
                                     </div>
-                                  </CardHeader>
-                                  <CardContent className="space-y-3">
+                                  </div>
+                                  <div className="space-y-3 px-5 pb-5 pt-4 sm:px-6 sm:pb-6">
                                     <div className="rounded-xl border bg-gradient-to-br from-slate-50 via-sky-50 to-cyan-50 p-2">
                                       <iframe
                                         title={`${item.title} preview`}
@@ -1498,21 +1488,21 @@ export default function DomainAdminContent() {
                                         <p className="whitespace-pre-wrap">{item.mediaPrompts.videoPrompt}</p>
                                       </div>
                                     )}
-                                  </CardContent>
-                                </Card>
-                                );
+                                  </div>
+                                </DashboardCard>
+                              );
                               };
 
                               return (
                                 <div className="space-y-4">
-                                  <Card className="border-cyan-100 bg-cyan-50/50">
-                                    <CardHeader className="pb-3">
-                                      <CardTitle className="text-base text-gray-900">Imported Pages</CardTitle>
-                                      <CardDescription>
+                                  <DashboardCard className="border-cyan-100 bg-cyan-50/50">
+                                    <div className="px-5 pt-5 sm:px-6 sm:pt-6">
+                                      <h3 className="text-base font-semibold text-gray-900">Imported Pages</h3>
+                                      <p className="mt-1 text-sm leading-6 text-slate-500">
                                         Quick links to open the generated pages after import.
-                                      </CardDescription>
-                                    </CardHeader>
-                                    <CardContent className="space-y-4">
+                                      </p>
+                                    </div>
+                                    <div className="space-y-4 px-5 pb-5 pt-4 sm:px-6 sm:pb-6">
                                       <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3 space-y-3">
                                         <div className="flex items-center justify-between gap-3 flex-wrap">
                                           <div>
@@ -1603,8 +1593,8 @@ export default function DomainAdminContent() {
                                           </Button>
                                         ))}
                                       </div>
-                                    </CardContent>
-                                  </Card>
+                                    </div>
+                                  </DashboardCard>
 
                                   <Tabs defaultValue="docs" className="space-y-3">
                                     <TabsList className="bg-slate-100">
@@ -1685,8 +1675,8 @@ export default function DomainAdminContent() {
                       </div>
                     </TabsContent>
                   </Tabs>
-                </CardContent>
-              </Card>
+                </div>
+              </DashboardCard>
             )}
           </div>
         </div>

@@ -1,8 +1,8 @@
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { ExternalLink, MapPin, ReceiptText, Ticket, Hotel, ListChecks } from "lucide-react";
 import type { AgencyComparisonPayload } from "@shared/agencyComparison";
+import { DashboardCard } from "@/components/dashboard";
 
 interface ComparisonPreviewCardProps {
   preview: {
@@ -47,36 +47,34 @@ export function ComparisonPreviewCard({ preview }: ComparisonPreviewCardProps) {
   const Icon = kindIcons[preview.data.comparisonKind];
 
   return (
-    <Card className="border-sky-200 bg-sky-50/40">
-      <CardHeader className="pb-3">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-sky-100 text-sky-700">
-                <Icon className="h-4 w-4" />
-              </div>
-              <div>
-                <CardTitle className="text-base">{preview.data.title}</CardTitle>
-                <p className="text-xs text-muted-foreground">{preview.summaryText}</p>
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Badge variant="secondary">{kindLabels[preview.data.comparisonKind]}</Badge>
-              <Badge variant="outline">{preview.data.options.length} options</Badge>
-              <Badge variant="outline">
-                {preview.lifecycleState === "expired_preview" ? "Expired Preview" : "Preview Ready"}
-              </Badge>
-            </div>
-          </div>
-          {preview.data.locationSummary ? (
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <MapPin className="h-3.5 w-3.5" />
-              <span>{preview.data.locationSummary}</span>
-            </div>
-          ) : null}
+    <DashboardCard
+      className="border-sky-200 bg-sky-50/40"
+      leading={
+        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-sky-100 text-sky-700">
+          <Icon className="h-4 w-4" />
         </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
+      }
+      title={preview.data.title}
+      titleClassName="text-base font-semibold text-slate-900"
+      description={preview.summaryText}
+      trailing={
+        preview.data.locationSummary ? (
+          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            <MapPin className="h-3.5 w-3.5" />
+            <span>{preview.data.locationSummary}</span>
+          </div>
+        ) : null
+      }
+    >
+      <div className="space-y-4">
+        <div className="flex flex-wrap gap-2">
+          <Badge variant="secondary">{kindLabels[preview.data.comparisonKind]}</Badge>
+          <Badge variant="outline">{preview.data.options.length} options</Badge>
+          <Badge variant="outline">
+            {preview.lifecycleState === "expired_preview" ? "Expired Preview" : "Preview Ready"}
+          </Badge>
+        </div>
+
         {preview.data.summary ? (
           <p className="text-sm leading-relaxed text-foreground/90">{preview.data.summary}</p>
         ) : null}
@@ -163,11 +161,11 @@ export function ComparisonPreviewCard({ preview }: ComparisonPreviewCardProps) {
                     </div>
                   </>
                 ) : null}
-              </div>
-            );
-          })}
-        </div>
-      </CardContent>
-    </Card>
+            </div>
+          );
+        })}
+      </div>
+      </div>
+    </DashboardCard>
   );
 }

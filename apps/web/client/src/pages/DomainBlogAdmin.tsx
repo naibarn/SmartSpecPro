@@ -45,13 +45,6 @@ import {
   Square,
 } from "lucide-react";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -59,6 +52,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { DashboardCard } from "@/components/dashboard";
 
 interface BlogPost {
   id?: number;
@@ -545,11 +539,8 @@ export default function DomainBlogAdmin() {
 
             {/* Sidebar settings */}
             <div className="col-span-4 space-y-4">
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm">Post Settings</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
+              <DashboardCard title="Post Settings">
+                <div className="space-y-4">
                   <div className="space-y-2">
                     <Label>Slug</Label>
                     <Input
@@ -624,14 +615,11 @@ export default function DomainBlogAdmin() {
                       />
                     )}
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </DashboardCard>
 
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm">SEO</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
+              <DashboardCard title="SEO">
+                <div className="space-y-4">
                   <div className="space-y-2">
                     <Label>Meta Description</Label>
                     <Textarea
@@ -649,8 +637,8 @@ export default function DomainBlogAdmin() {
                       placeholder="keyword1, keyword2"
                     />
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </DashboardCard>
             </div>
           </div>
         </div>
@@ -716,8 +704,8 @@ export default function DomainBlogAdmin() {
             <RefreshCw className="w-8 h-8 animate-spin text-blue-500" />
           </div>
         ) : posts.length === 0 ? (
-          <Card>
-            <CardContent className="text-center py-16">
+          <DashboardCard>
+            <div className="text-center py-16">
               <FileText className="w-16 h-16 mx-auto mb-4 text-gray-300" />
               <h3 className="text-lg font-semibold text-gray-700 mb-2">No blog posts yet</h3>
               <p className="text-gray-500 mb-6">Create your first blog post to get started.</p>
@@ -725,16 +713,16 @@ export default function DomainBlogAdmin() {
                 <Plus className="w-4 h-4 mr-2" />
                 Create First Post
               </Button>
-            </CardContent>
-          </Card>
+            </div>
+          </DashboardCard>
         ) : (
           <div className="space-y-3">
             {posts.map((post) => (
-              <Card
+              <DashboardCard
                 key={post.id}
                 className={`transition-shadow ${post.id && selectedPostIds.has(post.id) ? "border-cyan-200 bg-cyan-50/40 shadow-md" : "hover:shadow-md"}`}
               >
-                <CardContent className="p-4">
+                <div className="p-4">
                   <div className="flex items-center gap-4">
                     <Checkbox
                       checked={!!post.id && selectedPostIds.has(post.id)}
@@ -806,8 +794,8 @@ export default function DomainBlogAdmin() {
                       </Button>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </DashboardCard>
             ))}
           </div>
         )}

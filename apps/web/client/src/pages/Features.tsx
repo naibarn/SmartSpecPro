@@ -7,7 +7,7 @@
 import { motion } from 'framer-motion';
 import { Link } from 'wouter';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { DashboardCard } from '@/components/dashboard';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { Seo } from '@/components/Seo';
@@ -378,15 +378,15 @@ export default function Features() {
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.05 }}
               >
-                <Card className="glass-card h-full hover:shadow-xl transition-all duration-300 group">
-                  <CardContent className="p-6">
+                <DashboardCard className="glass-card h-full hover:shadow-xl transition-all duration-300 group">
+                  <div className="p-6">
                     <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500/20 to-teal-400/20 flex items-center justify-center mb-4 group-hover:from-blue-500 group-hover:to-teal-400 transition-all duration-300">
                       <feature.icon className="w-6 h-6 text-primary group-hover:text-white transition-colors" />
                     </div>
                     <h3 className="text-lg font-semibold mb-2">{feature.title}</h3>
                     <p className="text-muted-foreground text-sm">{feature.description}</p>
-                  </CardContent>
-                </Card>
+                  </div>
+                </DashboardCard>
               </motion.div>
             ))}
           </div>

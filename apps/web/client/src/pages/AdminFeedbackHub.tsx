@@ -4,7 +4,6 @@ import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { Badge } from "@smartspec/ui/src/components/ui/badge";
 import { Button } from "@smartspec/ui/src/components/ui/button";
-import { Card, CardContent } from "@smartspec/ui/src/components/ui/card";
 import { Input } from "@smartspec/ui/src/components/ui/input";
 import { Textarea } from "@smartspec/ui/src/components/ui/textarea";
 import {

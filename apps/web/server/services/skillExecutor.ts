@@ -7,6 +7,9 @@ import path from "path";
 import { spawnSync, spawn } from "child_process";
 import fs from "fs";
 import { SkillDefinition } from "./skillRegistry";
+import { getDb } from "../db";
+import { sandboxProfiles } from "../../drizzle/schema";
+import { eq, and } from "drizzle-orm";
 import { getRedisClient } from "./redis";
 import {
   mediaGenerationService,
@@ -30,6 +33,7 @@ import {
   getDispatchMode,
   dispatchToSandbox as sandboxDispatch,
 } from "./sandbox";
+import { resolveSkillBundleDir } from "./skillFiles";
 
 // Simple in-memory rate limiter per user per skill type
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
@@ -41,12 +45,52 @@ const RATE_LIMITS: Record<string, number> = {
   "audio-generation": 10,
 };
 const DEFAULT_RATE_LIMIT = 20;
-const SANDBOX_SKILL_ROOT = "/workspace/skill";
-const SANDBOX_INPUT_PATH = "/workspace/skill-input.json";
+const SANDBOX_FS_ROOT = "/tmp/smartspec-sandbox";
+const SANDBOX_SKILL_ROOT = `${SANDBOX_FS_ROOT}/skill`;
+const SANDBOX_INPUT_PATH = `${SANDBOX_FS_ROOT}/skill-input.json`;
+const SANDBOX_OUTPUT_DIR = `${SANDBOX_FS_ROOT}/skill-output`;
 const SANDBOX_MAX_INLINE_FILE_BYTES = 2 * 1024 * 1024; // 2MB per file
 const SANDBOX_MAX_INLINE_TOTAL_BYTES = 8 * 1024 * 1024; // 8MB total
 const SKILL_SKIP_DIRS = new Set([".git", "__pycache__", "node_modules", ".venv", "venv"]);
 const SKILL_SKIP_SUFFIXES = [".pyc", ".pyo"];
+const BUILT_IN_SANDBOX_PROFILES: Record<string, SandboxProfileCapabilities> = {
+  "code-default": {
+    slug: "code-default",
+    timeoutSeconds: 600,
+    networkDefaultAction: "deny",
+    allowBrowser: false,
+    allowCommand: false,
+    allowCodeInterpreter: true,
+    maxInputMb: 50,
+  },
+  "browser-default": {
+    slug: "browser-default",
+    timeoutSeconds: 600,
+    networkDefaultAction: "allow",
+    allowBrowser: true,
+    allowCommand: true,
+    allowCodeInterpreter: false,
+    maxInputMb: 50,
+  },
+  "file-parser": {
+    slug: "file-parser",
+    timeoutSeconds: 300,
+    networkDefaultAction: "deny",
+    allowBrowser: false,
+    allowCommand: true,
+    allowCodeInterpreter: false,
+    maxInputMb: 100,
+  },
+  "media-processing": {
+    slug: "media-processing",
+    timeoutSeconds: 1800,
+    networkDefaultAction: "deny",
+    allowBrowser: false,
+    allowCommand: true,
+    allowCodeInterpreter: false,
+    maxInputMb: 500,
+  },
+};
 
 interface PythonSkillPaths {
   skillDir: string;
@@ -58,8 +102,30 @@ interface SandboxInlineFile {
   contentBase64: string;
 }
 
+interface SandboxProfileCapabilities {
+  slug: string;
+  timeoutSeconds: number;
+  networkDefaultAction: string;
+  allowBrowser: boolean;
+  allowCommand: boolean;
+  allowCodeInterpreter: boolean;
+  maxInputMb: number | null;
+}
+
+interface CommandSkillPaths {
+  skillDir: string;
+  manifestPath: string;
+  entryPath: string;
+  packageJsonPath: string | null;
+}
+
 interface PreparedPythonSandboxPayload {
   executionMode: "sandbox-python";
+  metadata: Record<string, unknown>;
+}
+
+interface PreparedCommandSandboxPayload {
+  executionMode: "sandbox-command";
   metadata: Record<string, unknown>;
 }
 
@@ -177,6 +243,24 @@ function shellQuote(value: string): string {
   return `'${value.replace(/'/g, `'\"'\"'`)}'`;
 }
 
+function isPathInsideDir(resolvedPath: string, rootDir: string): boolean {
+  const relative = path.relative(rootDir, resolvedPath);
+  return relative !== ".." && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative);
+}
+
+function sanitizeSandboxOutputFileName(
+  value: unknown,
+  fallback: string,
+): string {
+  const raw = typeof value === "string" && value.trim() ? value.trim() : fallback;
+  const normalized = raw.replace(/\\/g, "/");
+  const basename = path.posix.basename(normalized);
+  if (!basename || basename === "." || basename === ".." || basename !== normalized) {
+    throw new Error(`Invalid sandbox output file name: ${raw}`);
+  }
+  return basename;
+}
+
 function resolvePythonSkillPaths(skill: SkillDefinition): PythonSkillPaths | null {
   const candidateDirs: string[] = [];
 
@@ -204,6 +288,62 @@ function resolvePythonSkillPaths(skill: SkillDefinition): PythonSkillPaths | nul
     const scriptPath = path.join(skillDir, "python", "skill.py");
     if (fs.existsSync(scriptPath)) {
       return { skillDir, scriptPath };
+    }
+  }
+
+  return null;
+}
+
+function resolveCommandSkillPaths(skill: SkillDefinition): CommandSkillPaths | null {
+  const candidateDirs: string[] = [];
+
+  if (skill.skillFilePath) {
+    const relativeDir = path.dirname(skill.skillFilePath);
+    if (path.isAbsolute(relativeDir)) {
+      candidateDirs.push(relativeDir);
+    } else {
+      candidateDirs.push(path.resolve(process.cwd(), relativeDir));
+      candidateDirs.push(path.resolve(process.cwd(), "..", "..", relativeDir));
+    }
+  }
+
+  const rootCandidates = [
+    path.resolve(process.cwd(), "skills"),
+    path.resolve(process.cwd(), "apps", "web", "skills"),
+    path.resolve(process.cwd(), "..", "..", "apps", "web", "skills"),
+  ];
+  for (const root of rootCandidates) {
+    candidateDirs.push(path.join(root, skill.id));
+  }
+
+  for (const skillDir of Array.from(new Set(candidateDirs))) {
+    const bundleDir = resolveSkillBundleDir(skillDir) ?? skillDir;
+    const manifestPath = path.join(bundleDir, "skill.manifest.json");
+    if (!fs.existsSync(manifestPath)) {
+      continue;
+    }
+
+    try {
+      const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf-8")) as Record<string, unknown>;
+      const entry = typeof manifest.entry === "string" ? manifest.entry.trim() : "";
+      if (!entry) {
+        continue;
+      }
+
+      const entryPath = path.resolve(bundleDir, entry);
+      if (!isPathInsideDir(entryPath, bundleDir) || !fs.existsSync(entryPath)) {
+        continue;
+      }
+
+      const packageJsonPath = path.join(bundleDir, "package.json");
+      return {
+        skillDir: bundleDir,
+        manifestPath,
+        entryPath,
+        packageJsonPath: fs.existsSync(packageJsonPath) ? packageJsonPath : null,
+      };
+    } catch (error) {
+      console.warn(`[SkillExecutor] Failed to parse skill manifest for '${skill.id}':`, error);
     }
   }
 
@@ -300,6 +440,212 @@ function preparePythonSandboxPayload(
       inlineFiles,
     },
   };
+}
+
+function getSandboxCommandInputPayload(
+  skill: SkillDefinition,
+  params: SkillExecutionParams,
+): Record<string, unknown> {
+  if (params.extraParams && typeof params.extraParams === "object" && !Array.isArray(params.extraParams)) {
+    const raw = params.extraParams as Record<string, unknown>;
+    const prioritizedPayloads = [
+      raw.sandboxInput,
+      raw.inputPayload,
+      raw.input,
+    ];
+    for (const candidate of prioritizedPayloads) {
+      if (candidate && typeof candidate === "object" && !Array.isArray(candidate)) {
+        return candidate as Record<string, unknown>;
+      }
+    }
+    return raw;
+  }
+
+  return {
+    request: {
+      projectTitle: skill.name,
+      language: "en",
+      compositionMode: "slide-deck",
+      outputFormats: ["json"],
+      pagination: {
+        maxPages: 5,
+        allowFewerPages: true,
+        overflowStrategy: "condense",
+      },
+      content: {
+        titleHint: skill.name,
+        rawText: params.prompt ?? "",
+      },
+    },
+  };
+}
+
+function buildSandboxOutputPaths(inputPayload: Record<string, unknown>): string[] {
+  const request = (
+    inputPayload.request && typeof inputPayload.request === "object" && !Array.isArray(inputPayload.request)
+      ? inputPayload.request
+      : {}
+  ) as Record<string, unknown>;
+  const renderOptions = (
+    request.renderOptions && typeof request.renderOptions === "object" && !Array.isArray(request.renderOptions)
+      ? request.renderOptions
+      : {}
+  ) as Record<string, unknown>;
+  const requestedFormats = Array.isArray(request.outputFormats)
+    ? request.outputFormats.map((value) => String(value).trim().toLowerCase()).filter(Boolean)
+    : ["json"];
+
+  const outputPaths = new Set<string>([
+    `${SANDBOX_OUTPUT_DIR}/manifest.json`,
+  ]);
+
+  if (requestedFormats.includes("json")) {
+    outputPaths.add(`${SANDBOX_OUTPUT_DIR}/${sanitizeSandboxOutputFileName(renderOptions.jsonFileName, "layout-spec.json")}`);
+  }
+  if (requestedFormats.includes("md")) {
+    outputPaths.add(`${SANDBOX_OUTPUT_DIR}/${sanitizeSandboxOutputFileName(renderOptions.mdFileName, "slides.md")}`);
+  }
+  if (requestedFormats.includes("pptx") || requestedFormats.includes("pdf")) {
+    outputPaths.add(`${SANDBOX_OUTPUT_DIR}/${sanitizeSandboxOutputFileName(renderOptions.pptxFileName, "slides.pptx")}`);
+  }
+  if (requestedFormats.includes("pdf")) {
+    outputPaths.add(`${SANDBOX_OUTPUT_DIR}/${sanitizeSandboxOutputFileName(renderOptions.pdfFileName, "slides.pdf")}`);
+  }
+
+  return Array.from(outputPaths);
+}
+
+function prepareCommandSandboxPayload(
+  skill: SkillDefinition,
+  params: SkillExecutionParams,
+): PreparedCommandSandboxPayload {
+  const paths = resolveCommandSkillPaths(skill);
+  if (!paths) {
+    throw new Error(`Command skill manifest not found for sandbox dispatch: ${skill.id}`);
+  }
+
+  const inlineFiles = collectSkillInlineFiles(paths.skillDir);
+  const inputPayload = getSandboxCommandInputPayload(skill, params);
+  const request = (
+    inputPayload.request && typeof inputPayload.request === "object" && !Array.isArray(inputPayload.request)
+      ? inputPayload.request
+      : {}
+  ) as Record<string, unknown>;
+  const renderOptions = (
+    request.renderOptions && typeof request.renderOptions === "object" && !Array.isArray(request.renderOptions)
+      ? { ...(request.renderOptions as Record<string, unknown>) }
+      : {}
+  );
+  renderOptions.jsonFileName = sanitizeSandboxOutputFileName(renderOptions.jsonFileName, "layout-spec.json");
+  renderOptions.mdFileName = sanitizeSandboxOutputFileName(renderOptions.mdFileName, "slides.md");
+  renderOptions.pptxFileName = sanitizeSandboxOutputFileName(renderOptions.pptxFileName, "slides.pptx");
+  renderOptions.pdfFileName = sanitizeSandboxOutputFileName(renderOptions.pdfFileName, "slides.pdf");
+  const sanitizedInputPayload = {
+    ...inputPayload,
+    request: {
+      ...request,
+      renderOptions,
+    },
+  };
+  inlineFiles.push({
+    path: SANDBOX_INPUT_PATH,
+    contentBase64: Buffer.from(JSON.stringify(sanitizedInputPayload), "utf-8").toString("base64"),
+  });
+
+  const entryRelativePath = path.relative(paths.skillDir, paths.entryPath).split(path.sep).join("/");
+  const entryPathInSandbox = `${SANDBOX_SKILL_ROOT}/${entryRelativePath}`;
+  const commands = [`mkdir -p ${shellQuote(SANDBOX_OUTPUT_DIR)}`];
+  if (paths.packageJsonPath) {
+    commands.push(
+      `npm --prefix ${shellQuote(SANDBOX_SKILL_ROOT)} install --omit=dev --no-package-lock --ignore-scripts --no-audit --no-fund`,
+    );
+  }
+  commands.push(
+    `node ${shellQuote(entryPathInSandbox)} ${shellQuote(SANDBOX_INPUT_PATH)} ${shellQuote(SANDBOX_OUTPUT_DIR)}`,
+  );
+
+  return {
+    executionMode: "sandbox-command",
+    metadata: {
+      skillSlug: skill.id,
+      skillName: skill.name,
+      prompt: params.prompt,
+      extraParams: params.extraParams,
+      commands,
+      output_paths: buildSandboxOutputPaths(sanitizedInputPayload),
+      inlineFiles,
+    },
+  };
+}
+
+function resolveSandboxProfileOverride(
+  skill: SkillDefinition,
+  executionMode: string,
+): string | undefined {
+  if (skill.sandboxProfileSlug?.trim()) {
+    return skill.sandboxProfileSlug.trim();
+  }
+  if (executionMode === "sandbox-code" || executionMode === "sandbox-python") {
+    return "code-default";
+  }
+  if (executionMode === "sandbox-command" || executionMode === "sandbox-browser") {
+    return "browser-default";
+  }
+  if (executionMode === "sandbox-file") {
+    return "file-parser";
+  }
+  if (executionMode === "sandbox-media") {
+    return "media-processing";
+  }
+  return undefined;
+}
+
+async function loadSandboxProfileCapabilities(
+  profileSlug: string,
+): Promise<SandboxProfileCapabilities | null> {
+  const fallback = BUILT_IN_SANDBOX_PROFILES[profileSlug];
+  try {
+    const dbInstance = await getDb();
+    if (!dbInstance) {
+      return fallback ?? null;
+    }
+
+    const [profile] = await dbInstance
+      .select({
+        slug: sandboxProfiles.slug,
+        timeoutSeconds: sandboxProfiles.timeoutSeconds,
+        networkDefaultAction: sandboxProfiles.networkDefaultAction,
+        allowBrowser: sandboxProfiles.allowBrowser,
+        allowCommand: sandboxProfiles.allowCommand,
+        allowCodeInterpreter: sandboxProfiles.allowCodeInterpreter,
+        maxInputMb: sandboxProfiles.maxInputMb,
+      })
+      .from(sandboxProfiles)
+      .where(and(eq(sandboxProfiles.slug, profileSlug), eq(sandboxProfiles.isActive, true)))
+      .limit(1);
+
+    return profile ?? fallback ?? null;
+  } catch {
+    return fallback ?? null;
+  }
+}
+
+function estimateSandboxInputBytes(
+  inputFiles: Array<{ key: string; mimeType: string; sizeBytes: number }>,
+  metadata: Record<string, unknown>,
+): number {
+  let total = inputFiles.reduce((sum, file) => sum + (Number(file.sizeBytes) || 0), 0);
+  const inlineFiles = Array.isArray(metadata.inlineFiles) ? metadata.inlineFiles : [];
+  for (const entry of inlineFiles) {
+    if (!entry || typeof entry !== "object") {
+      continue;
+    }
+    const contentBase64 = (entry as Record<string, unknown>).contentBase64;
+    if (typeof contentBase64 === "string") {
+      total += Buffer.byteLength(contentBase64, "base64");
+    }
+  }
+  return total;
 }
 
 export interface SkillExecutionParams {
@@ -405,7 +751,11 @@ export async function executeSkill(
     (executionMode === "python" && isSandboxEnabled())
   ) {
     const sandboxMode =
-      executionMode === "python" ? "sandbox-python" : (executionMode || "sandbox-code");
+      executionMode === "python"
+        ? "sandbox-python"
+        : executionMode === "media-generate"
+          ? "sandbox-media"
+          : (executionMode || "sandbox-code");
     try {
       if (shouldUseSandboxForFeature("skill", sandboxMode)) {
         console.log(`[SkillExecutor] Routing to sandbox dispatch (mode: ${sandboxMode})`);
@@ -908,10 +1258,70 @@ async function executeSandboxSkill(
     const dispatchPayload =
       dispatchExecutionMode === "sandbox-python"
         ? preparePythonSandboxPayload(skill, params, userToken)
+        : dispatchExecutionMode === "sandbox-command"
+          ? prepareCommandSandboxPayload(skill, params)
         : {
             executionMode: dispatchExecutionMode,
             metadata: defaultMetadata,
           };
+
+    const profileOverride = resolveSandboxProfileOverride(
+      skill,
+      dispatchPayload.executionMode,
+    );
+    if (!profileOverride) {
+      throw new Error(`No sandbox profile resolved for skill '${skill.id}'`);
+    }
+
+    const profile = await loadSandboxProfileCapabilities(profileOverride);
+    if (!profile) {
+      throw new Error(`Sandbox profile '${profileOverride}' not found or inactive`);
+    }
+
+    if (dispatchPayload.executionMode === "sandbox-command" && !profile.allowCommand) {
+      throw new Error(`Sandbox profile '${profile.slug}' does not allow command execution`);
+    }
+
+    if (
+      (dispatchPayload.executionMode === "sandbox-code" || dispatchPayload.executionMode === "sandbox-python")
+      && !profile.allowCodeInterpreter
+    ) {
+      throw new Error(`Sandbox profile '${profile.slug}' does not allow code execution`);
+    }
+
+    if ((dispatchPayload.executionMode === "sandbox-browser" || skill.requiresBrowser) && !profile.allowBrowser) {
+      throw new Error(`Sandbox profile '${profile.slug}' does not allow browser access`);
+    }
+
+    if (skill.requiresNetwork && profile.networkDefaultAction !== "allow") {
+      throw new Error(`Sandbox profile '${profile.slug}' does not allow network access`);
+    }
+
+    const inputLimitMb = [skill.maxInputMb ?? null, profile.maxInputMb ?? null]
+      .filter((value): value is number => typeof value === "number" && Number.isFinite(value) && value > 0)
+      .reduce<number | null>((minValue, value) => minValue == null ? value : Math.min(minValue, value), null);
+    if (inputLimitMb != null) {
+      const inputBytes = estimateSandboxInputBytes([], dispatchPayload.metadata);
+      if (inputBytes > inputLimitMb * 1024 * 1024) {
+        throw new Error(
+          `Sandbox input size ${Math.ceil(inputBytes / (1024 * 1024))}MB exceeds limit of ${inputLimitMb}MB`,
+        );
+      }
+    }
+
+    const requestedTimeoutSeconds = (
+      typeof skill.maxRuntimeSeconds === "number" && Number.isFinite(skill.maxRuntimeSeconds) && skill.maxRuntimeSeconds > 0
+        ? Math.min(skill.maxRuntimeSeconds, profile.timeoutSeconds)
+        : null
+    );
+    if (requestedTimeoutSeconds != null && requestedTimeoutSeconds !== profile.timeoutSeconds) {
+      dispatchPayload.metadata = {
+        ...dispatchPayload.metadata,
+        runtimeOverrides: {
+          timeoutSeconds: requestedTimeoutSeconds,
+        },
+      };
+    }
 
     const result = await sandboxDispatch({
       featureType: "skill",
@@ -919,7 +1329,7 @@ async function executeSandboxSkill(
       tenantId,
       userId,
       inputFiles: [],
-      profileOverride: skill.sandboxProfileSlug,
+      profileOverride,
       metadata: dispatchPayload.metadata,
     });
 
@@ -945,9 +1355,12 @@ async function executeSandboxSkill(
         console.warn(`[SkillExecutor] Falling back to legacy python subprocess for '${skill.id}'`);
         return await executePythonSkill(skill, params, userToken);
       }
-      // No Python script — re-throw so outer code falls through to type-based routing
-      console.warn(`[SkillExecutor] Sandbox failed for '${skill.id}', no Python script — falling through to type-based routing`);
-      throw error;
+      return {
+        success: false,
+        skillId: skill.id,
+        type: "text",
+        error: errMsg,
+      };
     }
 
     return {

@@ -21,10 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Card,
-  CardContent,
-} from "@/components/ui/card";
+import { DashboardCard } from "@/components/dashboard";
 import {
   Tooltip,
   TooltipContent,
@@ -393,8 +390,8 @@ export default function SkillBrowser() {
                       exit={{ opacity: 0, scale: 0.95 }}
                       transition={{ duration: 0.2 }}
                     >
-                      <Card className={`transition-all ${skill.visible ? "border-primary/30 bg-card" : "opacity-60 bg-muted/30"}`}>
-                        <CardContent className="p-4">
+                      <DashboardCard className={`transition-all ${skill.visible ? "border-primary/30 bg-card" : "opacity-60 bg-muted/30"}`}>
+                        <div className="p-4">
                           <div className="flex items-start gap-3">
                             <div className={`rounded-lg p-2 ${skill.visible ? "bg-primary/10" : "bg-muted"}`}>
                               <Icon className={`h-5 w-5 ${skill.visible ? "text-primary" : "text-muted-foreground"}`} />
@@ -572,8 +569,8 @@ export default function SkillBrowser() {
                               )}
                             </div>
                           </div>
-                        </CardContent>
-                      </Card>
+                        </div>
+                      </DashboardCard>
                     </motion.div>
                   );
                 })}

@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { DashboardCard } from "@/components/dashboard";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
@@ -187,18 +187,18 @@ export default function DomainAdminInvoice() {
           </div>
         </div>
 
-        {/* Invoice Settings Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+        {/* Invoice Settings DashboardCard */}
+        <DashboardCard>
+          <div>
+            <h3 className="flex items-center gap-2">
               <FileText className="w-5 h-5 text-purple-500" />
               Invoice Configuration
-            </CardTitle>
-            <CardDescription>
+            </h3>
+            <p>
               Configure the company information that appears on invoices for your domain users.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
+            </p>
+          </div>
+          <div className="space-y-6">
             {invoiceLoading ? (
               <div className="py-8 text-center">
                 <Loader2 className="w-8 h-8 animate-spin text-purple-500 mx-auto" />
@@ -538,8 +538,8 @@ export default function DomainAdminInvoice() {
                 </div>
               </>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </DashboardCard>
       </div>
     </div>
   );

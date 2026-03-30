@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
+import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import {
   buildHybridPlanSummary,
   formatHybridPlanInstructions,
@@ -27,6 +28,7 @@ export function HybridOrchestrationCard({
 }: HybridOrchestrationCardProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [, setLocation] = useLocation();
+  const { t } = useScopedTranslation("agency");
 
   const { data: agencyData } = trpc.agency.list.useQuery(
     { status: "published" },
@@ -37,7 +39,7 @@ export function HybridOrchestrationCard({
 
   const handlePreviewHybridFlow = async () => {
     if (!agencyList || agencyList.length === 0) {
-      toast.error("No agencies available. Please create one in the Agency Builder.");
+      toast.error(t("chat.hybridCard.noAgencies"));
       return;
     }
 
@@ -53,47 +55,47 @@ export function HybridOrchestrationCard({
       const query = new URLSearchParams({ hybridPreviewToken: result.token });
       setLocation(`/agencies/${agency.id}/hybrid-preview?${query.toString()}`);
     } catch {
-      toast.error("Failed to open hybrid orchestration flow");
+      toast.error(t("chat.hybridCard.failedToOpen"));
     } finally {
       setIsLoading(false);
     }
   };
 
   const stageSummary = plan.stages
-    .map((stage) => `${stage.owner === "workflow" ? "Workflow" : stage.owner === "swarm" ? "Swarm" : "Human"}: ${stage.title}`)
+    .map((stage) => `${stage.owner === "workflow" ? t("hybridPreview.owner.workflow") : stage.owner === "swarm" ? t("hybridPreview.owner.swarm") : t("hybridPreview.owner.human")}: ${stage.title}`)
     .join(" • ");
 
   return (
     <div className="max-w-xl space-y-3 rounded-xl border border-violet-200 bg-violet-50/70 p-4 dark:border-violet-900 dark:bg-violet-950/25">
       <div className="flex items-center gap-2 text-sm font-medium text-violet-800 dark:text-violet-200">
         <Workflow className="h-4 w-4" />
-        <span>Hybrid Orchestration Ready</span>
+        <span>{t("chat.hybridCard.ready")}</span>
       </div>
 
       <p className="text-sm text-muted-foreground">
-        This request will work best as a cooperative flow: workflow for the deterministic spine, swarm for exploration and critique, then workflow for validation and commit.
+        {t("chat.hybridCard.description")}
       </p>
 
       <div className="flex flex-wrap gap-1.5">
         <Badge variant="secondary" className="gap-1 bg-white/80 text-violet-800">
           <Bot className="h-3 w-3" />
-          {plan.workflowAnchor}
+          {t("hybridPreview.workflowAnchor")}: {plan.workflowAnchor}
         </Badge>
         <Badge variant="secondary" className="gap-1 bg-white/80 text-violet-800">
           <Sparkles className="h-3 w-3" />
-          {plan.requiresApproval ? "Approval required" : "Approval optional"}
+          {plan.requiresApproval ? t("chat.hybridCard.approvalRequired") : t("chat.hybridCard.approvalOptional")}
         </Badge>
       </div>
 
       <div className="rounded-lg border border-violet-200 bg-white/80 p-3 text-xs text-slate-600">
         <p className="font-medium text-slate-800">{buildHybridPlanSummary(plan)}</p>
-        <p className="mt-2 text-[11px] uppercase tracking-wide text-slate-500">Stages</p>
+        <p className="mt-2 text-[11px] uppercase tracking-wide text-slate-500">{t("chat.hybridCard.stages")}</p>
         <p className="mt-1 leading-5">{stageSummary}</p>
       </div>
 
       {reason && (
         <p className="text-xs italic text-muted-foreground/70">
-          Routing: {reason}
+          {t("chat.hybridCard.routing", { reason })}
         </p>
       )}
 
@@ -107,12 +109,12 @@ export function HybridOrchestrationCard({
           {isLoading ? (
             <>
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              Opening preview...
+              {t("chat.hybridCard.openingPreview")}
             </>
           ) : (
             <>
               <ChevronRight className="h-3.5 w-3.5" />
-              Preview Hybrid Flow
+              {t("chat.hybridCard.previewFlow")}
             </>
           )}
         </Button>
@@ -123,12 +125,12 @@ export function HybridOrchestrationCard({
           onClick={onKeepInChat}
           className="gap-1.5"
         >
-          Keep in Chat
+          {t("chat.hybridCard.keepInChat")}
         </Button>
       </div>
 
       <div className="rounded-md border border-violet-100 bg-violet-100/40 px-3 py-2 text-[11px] text-violet-900">
-        <p className="font-medium">Hybrid instructions preview</p>
+        <p className="font-medium">{t("chat.hybridCard.instructionsPreview")}</p>
         <p className="mt-1 whitespace-pre-wrap leading-5">
           {formatHybridPlanInstructions(plan)}
         </p>

@@ -28,6 +28,7 @@ const VideoEditorPage = lazy(() => import("@/pages/VideoEditorPage"));
 const PresentationEditor = lazy(() => import("@/pages/PresentationEditor"));
 const PresentationLibrary = lazy(() => import("@/pages/PresentationLibrary"));
 const PresentationPlayMode = lazy(() => import("@/pages/PresentationPlayMode"));
+const PublicDocumentShare = lazy(() => import("@/pages/PublicDocumentShare"));
 const Home = lazy(() => import("./pages/Home"));
 const Pricing = lazy(() => import("./pages/Pricing"));
 const Features = lazy(() => import("./pages/Features"));
@@ -70,7 +71,7 @@ const AdminOrchestrationLogs = lazy(() => import("./pages/AdminOrchestrationLogs
 const AdminNotifications = lazy(() => import("./pages/AdminNotifications"));
 const AdminAPIKeys = lazy(() => import("./pages/AdminAPIKeys"));
 const AdminOpsDashboard = lazy(() => import("./pages/Admin/AdminOpsDashboard"));
-const AdminOverviewDashboard = lazy(() => import("./pages/Admin/AdminOverviewDashboard"));
+const AdminCommandCenter = lazy(() => import("./pages/Admin/AdminCommandCenter"));
 const AdminFunnelDashboard = lazy(() => import("./pages/AdminFunnelDashboard"));
 const AdminSandbox = lazy(() => import("./pages/AdminSandbox"));
 const McpServerManager = lazy(() => import("./pages/McpServerManager"));
@@ -301,7 +302,7 @@ function Router() {
           <RequireAdmin><AdminOpsDashboard /></RequireAdmin>
         </Route>
         <Route path="/admin/dashboard">
-          <RequireAdmin><AdminOverviewDashboard /></RequireAdmin>
+          <RequireAdmin><AdminCommandCenter /></RequireAdmin>
         </Route>
         <Route path="/admin/funnel">
           <RequireAdmin><AdminFunnelDashboard /></RequireAdmin>
@@ -388,6 +389,7 @@ function Router() {
         <Route path="/groups/discover"><RequireAuth><GroupDiscovery /></RequireAuth></Route>
         <Route path="/groups/:groupId"><RequireAuth><GroupDetailPanel /></RequireAuth></Route>
         <Route path="/document-management"><RequireAuth><DocumentManagement /></RequireAuth></Route>
+        <Route path="/share/:token" component={PublicDocumentShare} />
         <Route path="/settings"><RequireAuth><Settings /></RequireAuth></Route>
         <Route path="/settings/personas"><RequireAuth><PersonaSettings /></RequireAuth></Route>
         <Route path="/settings/skills"><RequireAuth><SkillBrowser /></RequireAuth></Route>

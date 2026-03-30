@@ -8,7 +8,7 @@ except Exception:  # pragma: no cover
     DDGS = None
 
 from .models import EvaluationReport
-from .registry import load_manifest, read_manifest_text, read_text
+from .registry import load_manifest, read_manifest_text, read_text, resolve_skill_files
 from .llm import OpenAICompatibleClient
 
 @dataclass(frozen=True)
@@ -61,16 +61,11 @@ def plan_research_topics(
         except FileNotFoundError:
             manifest = "Manifest missing."
 
-    try:
-        skill_code = read_text(skill_name, "python/skill.py")
-    except FileNotFoundError:
-        try:
-            skill_code = read_text(skill_name, "js/skill.js")
-        except FileNotFoundError:
-            try:
-                skill_code = read_text(skill_name, "skill.py")
-            except FileNotFoundError:
-                skill_code = "Code missing."
+    files = resolve_skill_files(skill_name)
+    if files.code_path is not None:
+        skill_code = files.code_path.read_text(encoding="utf-8")
+    else:
+        skill_code = "Code missing."
 
     try:
         tests = read_text(skill_name, "tests/tests.json")

@@ -2,7 +2,6 @@ import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -25,6 +24,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Link } from "wouter";
+import { DashboardCard } from "@/components/dashboard";
 
 // ── Helpers ──
 
@@ -144,43 +144,45 @@ export default function AdminScheduledJobs() {
               const stat = statsMap.get(t.task);
               const isCron = t.scheduleType === "crontab";
               const isSelected = selectedTask === t.task;
+              const ScheduleIcon = isCron ? Clock : Repeat;
 
               return (
-                <Card
+                <DashboardCard
                   key={t.name}
                   className={cn(
                     "cursor-pointer transition-all hover:shadow-md",
                     isSelected && "ring-2 ring-primary shadow-md",
                   )}
+                  title={shortTaskName(t.name)}
+                  titleClassName="text-sm font-semibold text-slate-900"
+                  description={t.task}
+                  leading={
+                    <ScheduleIcon
+                      className={cn(
+                        "h-3.5 w-3.5 shrink-0",
+                        isCron ? "text-blue-500" : "text-purple-500",
+                      )}
+                    />
+                  }
+                  trailing={
+                    stat ? (
+                      <Badge className={cn("text-[10px] px-1.5 shrink-0", rateColor(stat.successRate))}>
+                        {stat.successRate}%
+                      </Badge>
+                    ) : null
+                  }
                   onClick={() => {
                     setSelectedTask(isSelected ? undefined : t.task);
                     setPage(0);
                   }}
                 >
-                  <CardContent className="p-3">
+                  <div className="space-y-2">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5">
-                          {isCron ? (
-                            <Clock className="h-3.5 w-3.5 text-blue-500 shrink-0" />
-                          ) : (
-                            <Repeat className="h-3.5 w-3.5 text-purple-500 shrink-0" />
-                          )}
-                          <span className="text-sm font-medium truncate capitalize">
-                            {shortTaskName(t.name)}
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-muted-foreground mt-0.5 truncate" title={t.task}>
+                        <p className="text-[11px] text-muted-foreground truncate" title={t.task}>
                           {t.task}
                         </p>
                       </div>
-
-                      {/* Success rate badge */}
-                      {stat && (
-                        <Badge className={cn("text-[10px] px-1.5 shrink-0", rateColor(stat.successRate))}>
-                          {stat.successRate}%
-                        </Badge>
-                      )}
                     </div>
 
                     {/* Schedule + stats row */}
@@ -216,8 +218,8 @@ export default function AdminScheduledJobs() {
                         No executions recorded yet
                       </div>
                     )}
-                  </CardContent>
-                </Card>
+                  </div>
+                </DashboardCard>
               );
             })}
           </div>
@@ -261,16 +263,16 @@ export default function AdminScheduledJobs() {
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
           </div>
         ) : runs.length === 0 ? (
-          <Card>
-            <CardContent className="py-12 text-center">
+          <DashboardCard>
+            <div className="py-12 text-center">
               <Clock className="h-8 w-8 mx-auto mb-2 text-muted-foreground/30" />
               <p className="text-sm text-muted-foreground">
                 {selectedTask || selectedStatus
                   ? "No matching executions found. Try adjusting filters."
                   : "No executions recorded yet. Jobs will appear here as they run."}
               </p>
-            </CardContent>
-          </Card>
+            </div>
+          </DashboardCard>
         ) : (
           <div className="space-y-1.5">
             {runs.map((r: any) => {

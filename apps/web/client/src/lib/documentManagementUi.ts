@@ -1,4 +1,5 @@
 export const DOCUMENT_MANAGEMENT_ROUTE = "/document-management";
+export const PUBLIC_DOCUMENT_SHARE_ROUTE = "/share";
 
 export type DocumentScopeTab = "my_library" | "private_vault" | "my_drive" | "my_onedrive" | "shared_with_me" | "shared_groups" | "trash";
 export type DocumentSortOrder = "updated_desc" | "created_desc";
@@ -142,6 +143,29 @@ export function buildDocumentQueryString(state: DocumentQueryState): string {
   return params.toString();
 }
 
+export function buildDocumentShareUrl(
+  state: DocumentQueryState,
+  docId: number,
+  origin = "",
+): string {
+  const queryString = buildDocumentQueryString({
+    ...state,
+    viewMode: "editor",
+    docId,
+  });
+
+  return `${origin}${DOCUMENT_MANAGEMENT_ROUTE}?${queryString}`;
+}
+
+export function buildPublicDocumentShareUrl(token: string, origin = ""): string {
+  const normalizedToken = token.trim();
+  if (!normalizedToken) {
+    return "";
+  }
+
+  return `${origin}${PUBLIC_DOCUMENT_SHARE_ROUTE}/${encodeURIComponent(normalizedToken)}`;
+}
+
 export function getDocumentAccessLabel(accessSource: DocumentAccessSource): string {
   switch (accessSource) {
     case "owner":
@@ -153,6 +177,24 @@ export function getDocumentAccessLabel(accessSource: DocumentAccessSource): stri
     default:
       return "Shared";
   }
+}
+
+export function getMarkdownPreviewFallbackContent(
+  item: Pick<DocumentLibraryItem, "metadata"> | null | undefined,
+): string {
+  const metadata = item?.metadata;
+  if (!metadata || Array.isArray(metadata)) {
+    return "";
+  }
+
+  const extractedText =
+    typeof metadata.extracted_text === "string"
+      ? metadata.extracted_text
+      : typeof metadata.extractedText === "string"
+        ? metadata.extractedText
+        : "";
+
+  return extractedText.trim().length > 0 ? extractedText : "";
 }
 
 function getFileExtension(item: Pick<DocumentLibraryItem, "item_type" | "source_url" | "metadata">): string {

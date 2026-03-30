@@ -615,6 +615,7 @@ export const scheduledMessagesRouter = router({
         conversationId: userNotifications.conversationId,
         actionUrl: userNotifications.actionUrl,
         actionLabel: userNotifications.actionLabel,
+        groupKey: userNotifications.groupKey,
         relatedResourceType: userNotifications.relatedResourceType,
         relatedResourceId: userNotifications.relatedResourceId,
         metadata: userNotifications.metadata,

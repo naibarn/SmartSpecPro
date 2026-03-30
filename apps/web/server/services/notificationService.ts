@@ -112,6 +112,9 @@ type ResourceType =
 interface NotificationMetadata {
   eventId?: string;
   source?: string;
+  signal?: string | null;
+  recommendation?: string | null;
+  observedAt?: string | null;
   errorDetails?: {
     errorCode?: string;
     errorMessage?: string;

@@ -6,13 +6,6 @@
 
 import { trpc } from "@/lib/trpc";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
   Table,
   TableBody,
   TableCell,
@@ -23,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { FileCheck, AlertTriangle, BarChart3, RefreshCw, DollarSign } from "lucide-react";
+import { DashboardCard, DashboardKpiCard } from "@/components/dashboard";
 
 export default function ContentQualityDashboard() {
   const overview = trpc.contentQuality.getOverview.useQuery();
@@ -49,57 +43,19 @@ export default function ContentQualityDashboard() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Total Artifacts</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">
-              {stats?.total_artifacts ?? 0}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Active</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-green-600">
-              {stats?.active ?? 0}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Stale</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-amber-600">
-              {stats?.stale ?? 0}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Avg Coverage</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">
-              {stats ? `${Math.round(stats.avg_citation_coverage * 100)}%` : "—"}
-            </div>
-          </CardContent>
-        </Card>
+        <DashboardKpiCard icon={FileCheck} label="Total Artifacts" value={stats?.total_artifacts ?? 0} />
+        <DashboardKpiCard icon={FileCheck} label="Active" value={stats?.active ?? 0} valueClassName="text-green-600" />
+        <DashboardKpiCard icon={AlertTriangle} label="Stale" value={stats?.stale ?? 0} valueClassName="text-amber-600" />
+        <DashboardKpiCard icon={BarChart3} label="Avg Coverage" value={stats ? `${Math.round(stats.avg_citation_coverage * 100)}%` : "—"} />
       </div>
 
       {/* Per-Skill Breakdown */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+      <DashboardCard title="Coverage by Skill">
+        <div>
+          <h3 className="flex items-center gap-2">
             <BarChart3 className="h-5 w-5" />
             Coverage by Skill
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+          </h3>
           {bySkill.data && bySkill.data.length > 0 ? (
             <Table>
               <TableHeader>
@@ -144,21 +100,16 @@ export default function ContentQualityDashboard() {
               No content artifacts yet. Generate CMS content using reviewer or article writer skills.
             </p>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </DashboardCard>
 
       {/* Stale Content */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+      <DashboardCard title="Stale Content" description="Content past its refresh cadence — review and update">
+        <div>
+          <h3 className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-amber-500" />
             Stale Content
-          </CardTitle>
-          <CardDescription>
-            Content past its refresh cadence — review and update
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+          </h3>
           {staleList.data && staleList.data.length > 0 ? (
             <Table>
               <TableHeader>
@@ -222,21 +173,16 @@ export default function ContentQualityDashboard() {
               All content is up to date
             </p>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </DashboardCard>
 
       {/* Cost Breakdown */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+      <DashboardCard title="Skill Execution Costs (30 days)" description="Token usage and cost from skill executions via providerUsageLog">
+        <div>
+          <h3 className="flex items-center gap-2">
             <DollarSign className="h-5 w-5" />
             Skill Execution Costs (30 days)
-          </CardTitle>
-          <CardDescription>
-            Token usage and cost from skill executions via providerUsageLog
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+          </h3>
           {costBreakdown.data && costBreakdown.data.length > 0 ? (
             <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
               {costBreakdown.data.map((item: any) => (
@@ -257,8 +203,8 @@ export default function ContentQualityDashboard() {
               No skill execution cost data in the last 30 days
             </p>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </DashboardCard>
     </div>
   );
 }

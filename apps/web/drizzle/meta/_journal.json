@@ -848,6 +848,13 @@
       "when": 1774404290241,
       "tag": "0120_next_black_knight",
       "breakpoints": true
+    },
+    {
+      "idx": 121,
+      "version": "7",
+      "when": 1774684800000,
+      "tag": "0121_add_slide_generation_category",
+      "breakpoints": true
     }
   ]
 }

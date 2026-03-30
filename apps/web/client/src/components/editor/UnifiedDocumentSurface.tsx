@@ -85,7 +85,14 @@ export default function UnifiedDocumentSurface({
       return;
     }
 
-    if (!documentChanged && dirty) {
+    const localMarkdownMatchesHydrated =
+      latestMarkdownRef.current === lastHydratedContentRef.current;
+
+    // If we have a dirty flag but the live markdown still matches the last
+    // hydrated snapshot, this is usually a bootstrap/update race rather than a
+    // real user edit. In that case we still want late-arriving server content
+    // to hydrate the editor instead of leaving the surface blank.
+    if (!documentChanged && dirty && !localMarkdownMatchesHydrated) {
       return;
     }
 

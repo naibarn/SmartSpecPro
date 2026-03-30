@@ -115,6 +115,13 @@ const sentrySampleRate = parseSampleRate(import.meta.env.VITE_SENTRY_SAMPLE_RATE
 const sentryTraceSampleRate = parseSampleRate(import.meta.env.VITE_SENTRY_TRACES_SAMPLE_RATE, 0.02);
 const sentryReplaySessionSampleRate = parseSampleRate(import.meta.env.VITE_SENTRY_REPLAY_SESSION_SAMPLE_RATE, 0);
 const sentryReplayOnErrorSampleRate = parseSampleRate(import.meta.env.VITE_SENTRY_REPLAY_ON_ERROR_SAMPLE_RATE, 0.1);
+const sentryDenyUrls = [
+  /chrome-extension:\/\//i,
+  /moz-extension:\/\//i,
+  /safari-extension:\/\//i,
+  /static\.cloudflareinsights\.com/i,
+  /extension\.js/i,
+];
 const isSentryEnabled = shouldEnableBrowserSentry({
   enabledFlag: import.meta.env.VITE_SENTRY_ENABLED,
   dsn: sentryDsn,
@@ -147,7 +154,10 @@ if (isSentryEnabled && sentryDsn) {
       "Fullscreen API unavailable",
       "ResizeObserver loop limit exceeded",
       "ResizeObserver loop completed with undelivered notifications",
+      /Loading the script .*static\.cloudflareinsights\.com\/beacon\.min\.js/i,
+      /violates the following Content Security Policy directive/i,
     ],
+    denyUrls: sentryDenyUrls,
     beforeSend(event) {
       if (shouldDropDuplicateSentryEvent(event)) {
         return null;
