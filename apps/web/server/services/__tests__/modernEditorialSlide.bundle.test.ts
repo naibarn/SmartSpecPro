@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 
 const skillRoot = path.resolve(
   process.cwd(),
-  "skills/modern-editorial-slide/modern_editorial_slide_skill",
+  "skills/modern-editorial-slide",
 );
 
 describe("modern-editorial-slide skill bundle", () => {

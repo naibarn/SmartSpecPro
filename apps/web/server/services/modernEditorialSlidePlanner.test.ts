@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { normalizeRequest } from "../../skills/modern-editorial-slide/modern_editorial_slide_skill/src/normalize.mjs";
-import { buildLayoutSpec } from "../../skills/modern-editorial-slide/modern_editorial_slide_skill/src/planner.mjs";
+import { normalizeRequest } from "../../skills/modern-editorial-slide/src/normalize.mjs";
+import { buildLayoutSpec } from "../../skills/modern-editorial-slide/src/planner.mjs";
 
 describe("modernEditorialSlidePlanner", () => {
   it("strips markdown decoration from numbered section slides and preserves body copy", () => {
