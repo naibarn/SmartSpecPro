@@ -25,6 +25,30 @@
           "rows": 3
         },
         {
+          "id": "continuityNotes",
+          "type": "textarea",
+          "label": "Continuity Notes",
+          "labelTh": "บันทึกความต่อเนื่อง",
+          "placeholder": "e.g., Main character: a small yellow dog wearing a blue collar. Same park, same time of day, same red ball in every scene.",
+          "placeholderTh": "เช่น ตัวละครหลัก: สุนัขตัวเล็กสีเหลืองใส่ปลอกคอสีน้ำเงิน ฉากสวนเดิม เวลาเดิม ลูกบอลสีแดงต้องอยู่ทุกฉาก",
+          "helpText": "Optional fixed character, wardrobe, props, and setting details that must remain identical in every prompt.",
+          "helpTextTh": "ระบุรายละเอียดตัวละคร เสื้อผ้า ของประกอบ และฉากที่ต้องเหมือนเดิมทุก prompt",
+          "required": false,
+          "rows": 3
+        },
+        {
+          "id": "referenceNotes",
+          "type": "textarea",
+          "label": "Reference Notes",
+          "labelTh": "บันทึกภาพอ้างอิง",
+          "placeholder": "e.g., The attached image shows a small yellow dog with a blue collar, round eyes, and a red bandana. Keep the same character identity, outfit, and accessories across all prompts.",
+          "placeholderTh": "เช่น ภาพที่แนบมาเป็นสุนัขตัวเล็กสีเหลือง ใส่ปลอกคอสีน้ำเงิน ตากลม และผ้าพันคอสีแดง ให้คงตัวตน เสื้อผ้า และเครื่องประดับเดิมในทุก prompt",
+          "helpText": "Optional notes for attached reference images, especially character identity and location details. If left blank, the skill will infer a continuity bible from the idea and reference images automatically.",
+          "helpTextTh": "บันทึกรายละเอียดของภาพอ้างอิง โดยเฉพาะตัวตนของตัวละครและสถานที่ ถ้าเว้นว่าง ระบบจะสร้าง continuity bible จากไอเดียและภาพอ้างอิงให้อัตโนมัติ",
+          "required": false,
+          "rows": 3
+        },
+        {
           "id": "dialogueLanguage",
           "type": "select",
           "label": "Dialogue Language",
@@ -192,6 +216,8 @@
   ],
   "outputMapping": {
     "userIdea": "userIdea",
+    "continuityNotes": "continuityNotes",
+    "referenceNotes": "referenceNotes",
     "dialogueLanguage": "dialogueLanguage",
     "style": "style",
     "targetDurationSeconds": "targetDurationSeconds",

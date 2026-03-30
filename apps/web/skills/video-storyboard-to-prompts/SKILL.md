@@ -49,21 +49,6 @@ See `schemas/output.schema.json`
   - normal = พื้นหลังฉากปกติให้สอดคล้องกับเรื่อง
   - green_screen = พื้นหลังเขียวล้วนแบบ chroma key ทุกฉาก
 - ทุกฉากต้องมี: Speaker, Dialogue, Emotion, Body movement, Action, Object/Villain reaction (ถ้ามี), Environment reaction, Camera, Lighting, และข้อห้าม (no subtitles / no on-screen text / no narrator)
-- บทพูดต้องยาวพอดีกับความยาวฉาก: ใช้ประมาณ 60–75% ของเวลาฉากสำหรับเสียงพูด และเหลือเวลาไว้สำหรับการตอบสนอง/การเคลื่อนไหว/จังหวะกล้อง
-- ถ้าฉากสั้นมาก โดยเฉพาะ 4–8 วินาที ให้ใช้บทพูดสั้นมาก 1 ประโยคสั้นหรือ 1 วลีเท่านั้น หลีกเลี่ยง monologue หรือประโยคยาวหลายท่อน
-- ถ้าข้อมูลที่ต้องสื่อมีเยอะกว่าที่ฉากรองรับได้ ให้แบ่งไปฉากถัดไปแทนการยัดบทพูดให้ยาวเกินไป
-- ให้คิดเป็น “speech budget” ต่อฉากเสมอ: ฉากยิ่งสั้น บทพูดต้องยิ่งสั้น และถ้าคลิปเป็น Veo 3.1 หรือแพลตฟอร์มที่คลิปสั้น ให้กระชับเป็นพิเศษ
-- ถ้าต้องเลือกระหว่างใส่รายละเอียดภาพเพิ่มกับทำให้บทพูดยาวเกินเวลา ให้ตัดบทพูดก่อน แล้วคง visual action ไว้แทน
-- ให้เขียน speech budget ออกมาเป็นบรรทัดชัดเจนในผลลัพธ์ของแต่ละฉาก เช่น "Dialogue Budget: 1 short sentence, ~5-6 seconds max" เพื่อบังคับจังหวะพูดให้สอดคล้องกับคลิป
-- ตัวอย่าง speech budget ตามความยาวฉาก:
-  - 4 วินาที: `Dialogue Budget: 1 short clause, ~3 seconds max`
-  - 6 วินาที: `Dialogue Budget: 1 short sentence, ~4-5 seconds max`
-  - 8 วินาที: `Dialogue Budget: 1 short sentence, ~5-6 seconds max`
-  - 10 วินาที: `Dialogue Budget: 1 short sentence + brief reaction beat, ~7 seconds max`
-- ถ้า dialogueLanguage เป็นไทย ให้คงหลักเดิมแต่เขียนเป็นคำไทยได้ เช่น `1 วลีสั้น` หรือ `1 ประโยคสั้น` ส่วนภาษาอังกฤษใช้ `short clause` / `short sentence`
-- ให้คำนวณ base scene duration ก่อนจาก targetDurationSeconds ÷ sceneCount แล้วค่อยคำนวณ speech budget เป็นประมาณ 65–70% ของค่านั้น จากนั้นเขียนค่าออกมาเป็นข้อความชัดเจนในแต่ละ prompt
-- ถ้าคำนวณได้ ให้เขียนเป็นตัวเลขประมาณจริงใน 0.5 วินาที เช่น `~4.5 seconds max`, `~5.0 seconds max`, `~6.5 seconds max`
-- ถ้า dialogueLanguage เป็นไทย ให้เขียน budget label เป็น `~4.5 วินาที max`; ถ้าเป็นอังกฤษให้ใช้ `~4.5 seconds max`; ถ้าเป็น mixed ให้ผสมได้ แต่ควรยังอ่านง่ายในบรรทัดเดียว
 
 ## Storyboard Format (must be plain text)
 โครงแบบ:
