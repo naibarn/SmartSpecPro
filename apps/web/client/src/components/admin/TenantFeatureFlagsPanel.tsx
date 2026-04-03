@@ -4,7 +4,7 @@
  * Admin panel for toggling feature flags on a per-tenant basis.
  * Used within the tenant edit dialog in AdminTenants.
  *
- * - 43 flags organized in 7 collapsible groups
+ * - 44 flags organized in 7 collapsible groups
  * - Search filter to quickly find flags
  * - Shows "X/Y enabled" summary per group
  * - Optimistic updates with rollback on error
@@ -79,6 +79,7 @@ const FLAG_GROUPS: { title: string; icon: string; flags: FlagInfo[] }[] = [
     icon: "🎯",
     flags: [
       { key: "taskPlannerEnabled", label: "Task Planner", description: "Active model selection planner" },
+      { key: "chatAutoModelSelection", label: "Chat Auto Model Selection", description: "Auto / provider-auto LLM routing in Chat" },
       { key: "taskPlannerAgencyEscalation", label: "Planner Escalation", description: "Escalate to agency for multi-step" },
       { key: "orchestratorEnabled", label: "Workflow Orchestrator", description: "Visual workflow engine" },
       { key: "skillOrchestrator", label: "Skill Orchestrator", description: "Automated skill chaining" },

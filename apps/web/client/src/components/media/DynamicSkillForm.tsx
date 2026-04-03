@@ -666,6 +666,11 @@ export default function DynamicSkillForm({
               className="min-h-[80px]"
               rows={field.rows}
             />
+            {field.id === "referenceNotes" && (
+              <div className="rounded-md border border-amber-200 bg-amber-50/70 px-3 py-2 text-xs text-amber-900">
+                For character reference images, describe the face, hair, outfit, accessories, pose, and signature props here. If you leave this blank, the skill will infer a continuity bible from the idea and reference images automatically.
+              </div>
+            )}
           </div>
         );
 

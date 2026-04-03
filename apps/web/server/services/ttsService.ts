@@ -7,13 +7,12 @@
  * Credit cost: 5 credits per 1000 characters (rounded up).
  */
 
+import { getAppRuntimeConfig, getPreferredInternalToken } from "./appRuntimeConfig";
+
 // ── Constants ─────────────────────────────────────────────────────────────
 
 /** Maximum text length for TTS synthesis */
 export const MAX_TTS_CHARS = 5000;
-
-const PYTHON_BACKEND_URL = process.env.PYTHON_BACKEND_URL ?? "http://localhost:8000";
-const INTERNAL_TOKEN = process.env.SMARTSPEC_WEB_GATEWAY_TOKEN ?? "";
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -48,6 +47,8 @@ export async function synthesize(
   text: string,
   options: SynthesizeOptions,
 ): Promise<TTSResult> {
+  const runtime = await getAppRuntimeConfig();
+  const internalToken = await getPreferredInternalToken();
   if (text.length > MAX_TTS_CHARS) {
     throw new Error(
       `Text exceeds maximum allowed length (${MAX_TTS_CHARS} characters)`,
@@ -56,11 +57,11 @@ export async function synthesize(
 
   const provider = options.provider ?? "openai";
 
-  const response = await fetch(`${PYTHON_BACKEND_URL}/api/internal/tts`, {
+  const response = await fetch(`${runtime.pythonBackendUrl}/api/internal/tts`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "X-Internal-Token": INTERNAL_TOKEN,
+      "X-Internal-Token": internalToken,
     },
     body: JSON.stringify({
       text,

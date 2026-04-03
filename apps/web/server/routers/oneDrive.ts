@@ -31,6 +31,7 @@ import { auditLogger } from "../services/auditLogger";
 import { uploadLibraryFile } from "../services/libraryService";
 import { isLibraryEnabledForTenant } from "../services/libraryFeatureFlags";
 import { resolveTenantIdVarchar } from "../services/tenantContext";
+import { getAppRuntimeConfig } from "../services/appRuntimeConfig";
 
 // ── Input validation schemas ──────────────────────────────────────────────
 const driveItemIdSchema = z
@@ -74,25 +75,24 @@ const readRateLimit = createGDriveRateLimitMiddleware(onedriveReadLimiter);
 const syncRateLimit = createGDriveRateLimitMiddleware(onedriveSyncLimiter);
 const editRateLimit = createGDriveRateLimitMiddleware(onedriveEditLimiter);
 
-const PYTHON_BACKEND_URL =
-  process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
-
-const PROXY_TOKEN = process.env.SMARTSPEC_PROXY_TOKEN ?? "";
-if (!PROXY_TOKEN) {
-  console.warn("[oneDrive] SMARTSPEC_PROXY_TOKEN is not set — internal API calls will lack auth");
-}
-
 const PY_TIMEOUT_MS = 10_000;
 const PY_UPLOAD_TIMEOUT_MS = 30_000;
 const MAX_EDIT_FILE_BYTES = 50 * 1024 * 1024; // 50 MB
 
-function pyFetch(
+async function pyFetch(
   url: string,
   init?: RequestInit & { timeoutMs?: number },
 ): Promise<Response> {
   const { timeoutMs, ...rest } = init ?? {};
+  const runtime = await getAppRuntimeConfig();
+  const proxyToken = runtime.proxyToken;
+  const headers = new Headers(rest.headers ?? {});
+  if (proxyToken && !headers.has("x-proxy-token")) {
+    headers.set("x-proxy-token", proxyToken);
+  }
   return fetch(url, {
     ...rest,
+    headers,
     signal: rest.signal ?? AbortSignal.timeout(timeoutMs ?? PY_TIMEOUT_MS),
   });
 }
@@ -127,9 +127,10 @@ export const oneDriveRouter = router({
    * Get the user's OneDrive connection status.
    */
   getConnectionStatus: protectedProcedure.query(async ({ ctx }) => {
+    const runtime = await getAppRuntimeConfig();
     const token = createOneDriveToken(ctx.user.id);
     const resp = await pyFetch(
-      `${PYTHON_BACKEND_URL}/api/oauth/microsoft/onedrive/status`,
+      `${runtime.pythonBackendUrl}/api/oauth/microsoft/onedrive/status`,
       {
         headers: { Authorization: `Bearer ${token}` },
       },
@@ -150,9 +151,10 @@ export const oneDriveRouter = router({
    * Get the Microsoft OAuth authorization URL with OneDrive scopes.
    */
   getAuthUrl: protectedProcedure.query(async ({ ctx }) => {
+    const runtime = await getAppRuntimeConfig();
     const token = createOneDriveToken(ctx.user.id);
     const resp = await pyFetch(
-      `${PYTHON_BACKEND_URL}/api/oauth/microsoft/onedrive/authorize`,
+      `${runtime.pythonBackendUrl}/api/oauth/microsoft/onedrive/authorize`,
       {
         headers: { Authorization: `Bearer ${token}` },
       },
@@ -173,9 +175,10 @@ export const oneDriveRouter = router({
   completeOAuth: protectedProcedure
     .input(z.object({ code: z.string(), state: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      const runtime = await getAppRuntimeConfig();
       const token = createOneDriveToken(ctx.user.id);
       const resp = await pyFetch(
-        `${PYTHON_BACKEND_URL}/api/oauth/microsoft/onedrive/callback`,
+        `${runtime.pythonBackendUrl}/api/oauth/microsoft/onedrive/callback`,
         {
           method: "POST",
           headers: {
@@ -208,17 +211,17 @@ export const oneDriveRouter = router({
    * Enqueues a background Celery task for full cleanup.
    */
   disconnect: protectedProcedure.mutation(async ({ ctx }) => {
+    const runtime = await getAppRuntimeConfig();
     if (!ctx.tenantId) {
       throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Tenant context required" });
     }
 
         const resp = await pyFetch(
-      `${PYTHON_BACKEND_URL}/api/internal/onedrive/disconnect`,
+      `${runtime.pythonBackendUrl}/api/internal/onedrive/disconnect`,
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-proxy-token": PROXY_TOKEN,
         },
         body: JSON.stringify({
           user_id: ctx.user.id,
@@ -282,11 +285,12 @@ export const oneDriveRouter = router({
     .input(z.object({ libraryItemId: z.number() }))
     .mutation(async ({ ctx, input }) => {
       if (!ctx.tenantId) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Tenant context required" });
+      const runtime = await getAppRuntimeConfig();
 
       // Check OneDrive connection
       const token = createOneDriveToken(ctx.user.id);
       const statusResp = await pyFetch(
-        `${PYTHON_BACKEND_URL}/api/oauth/microsoft/onedrive/status`,
+        `${runtime.pythonBackendUrl}/api/oauth/microsoft/onedrive/status`,
         { headers: { Authorization: `Bearer ${token}` } },
       );
       if (!statusResp.ok) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to check OneDrive connection" });
@@ -358,7 +362,7 @@ export const oneDriveRouter = router({
       }
 
       // Upload to OneDrive via Python backend
-      const uploadResp = await pyFetch(`${PYTHON_BACKEND_URL}/api/internal/onedrive/upload`, {
+      const uploadResp = await pyFetch(`${runtime.pythonBackendUrl}/api/internal/onedrive/upload`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -415,6 +419,7 @@ export const oneDriveRouter = router({
     .input(z.object({ sessionId: z.number() }))
     .mutation(async ({ ctx, input }) => {
       if (!ctx.tenantId) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Tenant context required" });
+      const runtime = await getAppRuntimeConfig();
 
       // Fetch session
       const [session] = await db
@@ -454,7 +459,7 @@ export const oneDriveRouter = router({
 
       // Download from OneDrive (Graph API returns the file in its native format)
       const token = createOneDriveToken(ctx.user.id);
-      const exportResp = await pyFetch(`${PYTHON_BACKEND_URL}/api/internal/onedrive/export`, {
+      const exportResp = await pyFetch(`${runtime.pythonBackendUrl}/api/internal/onedrive/export`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -507,7 +512,7 @@ export const oneDriveRouter = router({
         );
 
       // Delete temp OneDrive file
-      await pyFetch(`${PYTHON_BACKEND_URL}/api/internal/onedrive/files/${session.driveItemId}?user_id=${ctx.user.id}`, {
+      await pyFetch(`${runtime.pythonBackendUrl}/api/internal/onedrive/files/${session.driveItemId}?user_id=${ctx.user.id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       }).catch(() => {}); // best-effort cleanup
@@ -534,6 +539,7 @@ export const oneDriveRouter = router({
     .input(z.object({ sessionId: z.number() }))
     .mutation(async ({ ctx, input }) => {
       if (!ctx.tenantId) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Tenant context required" });
+      const runtime = await getAppRuntimeConfig();
 
       const [session] = await db
         .select()
@@ -552,7 +558,7 @@ export const oneDriveRouter = router({
 
       // Delete temp OneDrive file
       const token = createOneDriveToken(ctx.user.id);
-      await pyFetch(`${PYTHON_BACKEND_URL}/api/internal/onedrive/files/${session.driveItemId}?user_id=${ctx.user.id}`, {
+      await pyFetch(`${runtime.pythonBackendUrl}/api/internal/onedrive/files/${session.driveItemId}?user_id=${ctx.user.id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       }).catch(() => {});
@@ -607,10 +613,11 @@ export const oneDriveRouter = router({
   startSync: protectedProcedure.use(syncRateLimit).mutation(async ({ ctx }) => {
     if (!ctx.tenantId)
       throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Tenant context required" });
+    const runtime = await getAppRuntimeConfig();
 
     // Verify OneDrive connection
     const token = createOneDriveToken(ctx.user.id);
-    const statusResp = await pyFetch(`${PYTHON_BACKEND_URL}/api/oauth/microsoft/onedrive/status`, {
+    const statusResp = await pyFetch(`${runtime.pythonBackendUrl}/api/oauth/microsoft/onedrive/status`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!statusResp.ok)
@@ -639,11 +646,10 @@ export const oneDriveRouter = router({
     }
 
     // Trigger sync via Python backend
-        const pyResp = await pyFetch(`${PYTHON_BACKEND_URL}/api/internal/onedrive/start-sync`, {
+    const pyResp = await pyFetch(`${runtime.pythonBackendUrl}/api/internal/onedrive/start-sync`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-proxy-token": PROXY_TOKEN,
       },
       body: JSON.stringify({ user_id: ctx.user.id, tenant_id: ctx.tenantId }),
     });
@@ -730,12 +736,12 @@ export const oneDriveRouter = router({
   estimateSyncCost: protectedProcedure.use(syncRateLimit).mutation(async ({ ctx }) => {
     if (!ctx.tenantId)
       throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Tenant context required" });
+    const runtime = await getAppRuntimeConfig();
 
-        const resp = await pyFetch(`${PYTHON_BACKEND_URL}/api/internal/onedrive/estimate-cost`, {
+    const resp = await pyFetch(`${runtime.pythonBackendUrl}/api/internal/onedrive/estimate-cost`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-proxy-token": PROXY_TOKEN,
       },
       body: JSON.stringify({ user_id: ctx.user.id, tenant_id: ctx.tenantId }),
     });
@@ -1009,6 +1015,7 @@ export const oneDriveRouter = router({
       }),
     )
     .query(async ({ ctx, input }) => {
+      const runtime = await getAppRuntimeConfig();
       const token = createOneDriveToken(ctx.user.id);
       const params = new URLSearchParams();
       params.set("user_id", String(ctx.user.id));
@@ -1024,11 +1031,10 @@ export const oneDriveRouter = router({
       }
 
       const resp = await pyFetch(
-        `${PYTHON_BACKEND_URL}/api/internal/onedrive/list-items?${params.toString()}`,
+        `${runtime.pythonBackendUrl}/api/internal/onedrive/list-items?${params.toString()}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
-            "x-proxy-token": PROXY_TOKEN,
           },
         },
       );
@@ -1063,15 +1069,15 @@ export const oneDriveRouter = router({
     .use(readRateLimit)
     .input(z.object({ itemId: driveItemIdSchema }))
     .mutation(async ({ ctx, input }) => {
+      const runtime = await getAppRuntimeConfig();
       const token = createOneDriveToken(ctx.user.id);
-            const pyResp = await pyFetch(
-        `${PYTHON_BACKEND_URL}/api/internal/onedrive/import-file`,
+      const pyResp = await pyFetch(
+        `${runtime.pythonBackendUrl}/api/internal/onedrive/import-file`,
         {
           method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
-            "x-proxy-token": PROXY_TOKEN,
           },
           body: JSON.stringify({
             item_id: input.itemId,
@@ -1136,18 +1142,18 @@ export const oneDriveRouter = router({
     .use(readRateLimit)
     .input(z.object({ itemId: driveItemIdSchema }))
     .mutation(async ({ ctx, input }) => {
+      const runtime = await getAppRuntimeConfig();
       const tenantId = resolveLibraryTenantId(ctx);
       assertLibraryEnabled(tenantId);
 
       const token = createOneDriveToken(ctx.user.id);
-            const pyResp = await pyFetch(
-        `${PYTHON_BACKEND_URL}/api/internal/onedrive/import-file`,
+      const pyResp = await pyFetch(
+        `${runtime.pythonBackendUrl}/api/internal/onedrive/import-file`,
         {
           method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
-            "x-proxy-token": PROXY_TOKEN,
           },
           body: JSON.stringify({
             item_id: input.itemId,
@@ -1220,17 +1226,17 @@ export const oneDriveRouter = router({
     .use(searchRateLimit)
     .input(z.object({ parentFolderId: z.string().nullable().default(null) }))
     .query(async ({ ctx, input }) => {
+      const runtime = await getAppRuntimeConfig();
       const token = createOneDriveToken(ctx.user.id);
       const params = new URLSearchParams();
       if (input.parentFolderId) params.set("parent_id", input.parentFolderId);
       params.set("user_id", String(ctx.user.id));
 
       const resp = await pyFetch(
-        `${PYTHON_BACKEND_URL}/api/internal/onedrive/list-folders?${params}`,
+        `${runtime.pythonBackendUrl}/api/internal/onedrive/list-folders?${params}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
-            "x-proxy-token": PROXY_TOKEN,
           },
         },
       );
@@ -1249,6 +1255,7 @@ export const oneDriveRouter = router({
     .mutation(async ({ ctx, input }) => {
       if (!ctx.tenantId)
         throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Tenant context required" });
+      const runtime = await getAppRuntimeConfig();
 
       const [item] = await db
         .select()
@@ -1276,11 +1283,10 @@ export const oneDriveRouter = router({
         );
 
       // Trigger single-file re-index via Python backend
-      await pyFetch(`${PYTHON_BACKEND_URL}/api/internal/onedrive/reindex-item`, {
+      await pyFetch(`${runtime.pythonBackendUrl}/api/internal/onedrive/reindex-item`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-proxy-token": PROXY_TOKEN,
         },
         body: JSON.stringify({ library_item_id: input.libraryItemId, user_id: ctx.user.id, tenant_id: ctx.tenantId }),
         timeoutMs: PY_TIMEOUT_MS,
@@ -1299,6 +1305,7 @@ export const oneDriveRouter = router({
     .mutation(async ({ ctx, input }) => {
       if (!ctx.tenantId)
         throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Tenant context required" });
+      const runtime = await getAppRuntimeConfig();
 
       const [item] = await db
         .select()
@@ -1332,11 +1339,10 @@ export const oneDriveRouter = router({
         .where(eq(libraryChunks.libraryItemId, input.libraryItemId));
 
       // Clean up vectors via Python backend (best-effort)
-      await pyFetch(`${PYTHON_BACKEND_URL}/api/internal/onedrive/cleanup-vectors`, {
+      await pyFetch(`${runtime.pythonBackendUrl}/api/internal/onedrive/cleanup-vectors`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-proxy-token": PROXY_TOKEN,
         },
         body: JSON.stringify({ library_item_id: input.libraryItemId, tenant_id: ctx.tenantId }),
       }).catch(() => {}); // best-effort

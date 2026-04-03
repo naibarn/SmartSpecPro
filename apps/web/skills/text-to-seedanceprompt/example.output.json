@@ -1,0 +1,126 @@
+{
+  "skill_name": "seedance-2-prompt-builder",
+  "skill_version": "1.0.0",
+  "mode": "universal_reference",
+  "language": "en",
+  "prompt": "@Image1 as the first frame. Preserve the main_character appearance from @Image1. Reference @Video1 for the fighting choreography. Follow @Video1's camera movements and transitions. Use @Audio1 for the background music. Shot 1: A young male assassin stands in a dark cyberpunk alley with wet pavement and neon signs. He lowers his head slightly and ignites a glowing energy blade while fallen enemies remain around him. Medium close shot, pull back from the front with a normal lens. Cold blue cinematic lighting with subtle fog and steam. Maintain character identity from @Image1 and stable composition. No flicker and no warped hands. Shot 2: The same assassin remains centered as enemies rush in from the edges. He performs fast, fluid blink-dash attacks and defeats enemies one by one with readable choreography and natural reactions. Wide shot with a gimbal follow from a three-quarter angle using a wide lens. Use energy blade hum, impacts, and city ambience. Maintain facial consistency and smooth body mechanics. No extra limbs and no duplicated character. Let the final motion settle naturally into stillness. Shot 3: The assassin stands alone after the final enemy falls. He becomes still, then slowly raises his head and looks directly into the camera. Medium close shot, push in, eye level, normal lens. Maintain a calm expression and identity lock. No background deformation and no jittery camera. Maintain coherent action timing, stable anatomy, and smooth motion. No identity drift, messy motion, or distorted bodies.",
+  "prompt_sections": {
+    "reference_instructions": [
+      {
+        "label": "first_frame",
+        "text": "@Image1 as the first frame."
+      },
+      {
+        "label": "appearance_reference",
+        "text": "Preserve the main_character appearance from @Image1."
+      },
+      {
+        "label": "motion_reference",
+        "text": "Reference @Video1 for the fighting choreography."
+      },
+      {
+        "label": "camera_reference",
+        "text": "Follow @Video1's camera movements and transitions."
+      },
+      {
+        "label": "audio_reference",
+        "text": "Use @Audio1 for the background music."
+      }
+    ],
+    "global_block": [],
+    "shot_blocks": [
+      {
+        "shot_id": "Shot 1",
+        "beat_range": "0-3s",
+        "lines": [
+          {
+            "label": "subject",
+            "text": "A young male assassin stands in a dark cyberpunk alley with wet pavement and neon signs."
+          }
+        ]
+      },
+      {
+        "shot_id": "Shot 2",
+        "beat_range": "3-8s",
+        "lines": [
+          {
+            "label": "subject",
+            "text": "The same assassin remains centered as enemies rush in from the edges."
+          }
+        ]
+      },
+      {
+        "shot_id": "Shot 3",
+        "beat_range": "8-10s",
+        "lines": [
+          {
+            "label": "subject",
+            "text": "The assassin stands alone after the final enemy falls."
+          }
+        ]
+      }
+    ],
+    "constraint_block": [
+      {
+        "label": "global_constraints",
+        "text": "Maintain coherent action timing, stable anatomy, and smooth motion. No identity drift, messy motion, or distorted bodies."
+      }
+    ]
+  },
+  "api_ready": {
+    "provider": "wavespeed",
+    "model_family": "seedance_2_0",
+    "aspect_ratio": "16:9",
+    "duration_seconds": 10,
+    "prompt": "..."
+  },
+  "reference_map": [
+    {
+      "kind": "first_frame",
+      "asset_ids": [
+        "@Image1"
+      ],
+      "rendered_instruction": "@Image1 as the first frame.",
+      "scope": "global"
+    },
+    {
+      "kind": "motion_reference",
+      "asset_ids": [
+        "@Video1"
+      ],
+      "rendered_instruction": "Reference @Video1 for the fighting choreography.",
+      "scope": "global"
+    },
+    {
+      "kind": "camera_reference",
+      "asset_ids": [
+        "@Video1"
+      ],
+      "rendered_instruction": "Follow @Video1's camera movements and transitions.",
+      "scope": "global"
+    },
+    {
+      "kind": "audio_reference",
+      "asset_ids": [
+        "@Audio1"
+      ],
+      "rendered_instruction": "Use @Audio1 for the background music.",
+      "scope": "global"
+    }
+  ],
+  "metadata": {
+    "shot_count": 3,
+    "is_multi_shot": true,
+    "uses_references": true,
+    "recommended_duration_seconds": 10,
+    "recommended_aspect_ratio": "16:9",
+    "continuity_strategy": "single_prompt_multi_shot",
+    "render_strategy": "natural_language_single_prompt"
+  },
+  "validation": {
+    "is_valid": true,
+    "errors": [],
+    "warnings": [],
+    "suggestions": []
+  }
+}

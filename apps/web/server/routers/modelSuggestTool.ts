@@ -1,4 +1,3 @@
-import crypto from "node:crypto";
 import type { Express, Request, Response } from "express";
 
 import { ENV } from "../_core/env";
@@ -9,6 +8,7 @@ import { contentAutomationGate } from "../middleware/contentAutomationGate";
 import { ModelSuggestRequestSchema } from "@shared/contentAutomation/types";
 import { auditLogger } from "../services/auditLogger";
 import { getTraceId } from "../services/traceContext";
+import { compareCachedInternalToken } from "../services/appRuntimeConfig";
 
 export function creditCostToTier(creditCost: number): "low" | "medium" | "high" {
   if (creditCost <= 5) return "low";
@@ -80,16 +80,8 @@ export async function suggestModel(
 }
 
 function verifyInternalToken(req: Request): boolean {
-  const expected = ENV.webGatewayToken;
-  if (!expected) return false;
   const token = req.headers["x-internal-token"] as string | undefined;
-  if (!token) return false;
-  // Hash both values with SHA-256 to ensure equal-length 32-byte buffers.
-  // This prevents a length oracle attack where timingSafeEqual throws
-  // RangeError on length mismatch, leaking the expected token's length.
-  const tokenHash = crypto.createHash("sha256").update(token).digest();
-  const expectedHash = crypto.createHash("sha256").update(expected).digest();
-  return crypto.timingSafeEqual(tokenHash, expectedHash);
+  return compareCachedInternalToken(token) || (!!token && token === ENV.webGatewayToken);
 }
 
 export async function modelSuggestHandler(req: Request, res: Response): Promise<void> {

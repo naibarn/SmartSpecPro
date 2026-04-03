@@ -33,7 +33,8 @@ beforeEach(() => {
 function mockModelProviderMapQuery(rows: any[]) {
   const limitMock = vi.fn().mockResolvedValue(rows);
   const whereMock = vi.fn().mockReturnValue({ limit: limitMock });
-  const fromMock = vi.fn().mockReturnValue({ where: whereMock });
+  const innerJoinMock = vi.fn().mockReturnValue({ where: whereMock });
+  const fromMock = vi.fn().mockReturnValue({ where: whereMock, innerJoin: innerJoinMock });
   mockSelect.mockReturnValue({ from: fromMock });
 }
 
@@ -66,6 +67,20 @@ describe("isModelFree", () => {
     mockModelProviderMapQuery([{ isFree: false }]);
     expect(await isModelFree("openai/gpt-4o")).toBe(false);
   });
+
+  it("treats catalog-priced Kie mappings as paid even when legacy DB rows are marked free", async () => {
+    mockModelProviderMapQuery([
+      {
+        providerName: "kie_ai",
+        providerModelId: "gpt-5-4",
+        availableModels: [{ id: "gpt-5-4", pricing: { input: 0.7, output: 5.6 } }],
+        pricingInput: "0",
+        pricingOutput: "0",
+        isFree: true,
+      },
+    ]);
+    expect(await isModelFree("gpt-5.4")).toBe(false);
+  });
 });
 
 describe("deductCreditsForModel", () => {
@@ -79,6 +94,11 @@ describe("deductCreditsForModel", () => {
         // isModelFree
         return {
           from: vi.fn().mockReturnValue({
+            innerJoin: vi.fn().mockReturnValue({
+              where: vi.fn().mockReturnValue({
+                limit: vi.fn().mockResolvedValue([{ isFree: true }]),
+              }),
+            }),
             where: vi.fn().mockReturnValue({
               limit: vi.fn().mockResolvedValue([{ isFree: true }]),
             }),
@@ -155,6 +175,11 @@ describe("deductCreditsForModel", () => {
         // isModelFree → false
         return {
           from: vi.fn().mockReturnValue({
+            innerJoin: vi.fn().mockReturnValue({
+              where: vi.fn().mockReturnValue({
+                limit: vi.fn().mockResolvedValue([{ isFree: false }]),
+              }),
+            }),
             where: vi.fn().mockReturnValue({
               limit: vi.fn().mockResolvedValue([{ isFree: false }]),
             }),
@@ -165,6 +190,11 @@ describe("deductCreditsForModel", () => {
         // calculateCreditsForLLMDynamic → DB pricing
         return {
           from: vi.fn().mockReturnValue({
+            innerJoin: vi.fn().mockReturnValue({
+              where: vi.fn().mockReturnValue({
+                limit: vi.fn().mockResolvedValue([{ pricingInput: "2.50", pricingOutput: "10.00", isFree: false }]),
+              }),
+            }),
             where: vi.fn().mockReturnValue({
               limit: vi.fn().mockResolvedValue([{ pricingInput: "2.50", pricingOutput: "10.00", isFree: false }]),
             }),
@@ -222,6 +252,22 @@ describe("calculateCreditsForLLMDynamic", () => {
     // (1000/1M * 2.5) + (500/1M * 10.0) = 0.0025 + 0.005 = 0.0075
     // 0.0075 * 1000 = 7.5 → ceil = 8
     expect(credits).toBe(8);
+  });
+
+  it("falls back to catalog pricing when a legacy Kie mapping still has zeroed DB pricing", async () => {
+    mockModelProviderMapQuery([
+      {
+        providerName: "kie_ai",
+        providerModelId: "gpt-5-4",
+        availableModels: [{ id: "gpt-5-4", pricing: { input: 0.7, output: 5.6 } }],
+        pricingInput: "0",
+        pricingOutput: "0",
+        isFree: true,
+      },
+    ]);
+
+    const credits = await calculateCreditsForLLMDynamic(1000, 500, "gpt-5.4");
+    expect(credits).toBe(4);
   });
 
   it("falls back to hardcoded MODEL_PRICING when model not in map", async () => {

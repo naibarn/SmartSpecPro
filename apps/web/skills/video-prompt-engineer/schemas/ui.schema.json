@@ -79,6 +79,18 @@
             { "value": "th", "label": "Thai", "labelTh": "ไทย" },
             { "value": "auto", "label": "Auto-detect", "labelTh": "ตรวจจับอัตโนมัติ" }
           ]
+        },
+        {
+          "id": "maxPromptLength",
+          "type": "number",
+          "label": "Max Prompt Length (chars)",
+          "labelTh": "ความยาวพรอมต์สูงสุด (ตัวอักษร)",
+          "helpText": "Hard character cap for the final prompt. Thai or bilingual output will be kept more compact automatically.",
+          "helpTextTh": "กำหนดจำนวนตัวอักษรสูงสุดของพรอมต์ผลลัพธ์ ถ้าเป็นไทยหรือสองภาษา ระบบจะคุมให้กระชับเป็นพิเศษ",
+          "min": 100,
+          "max": 10000,
+          "step": 10,
+          "default": 2000
         }
       ]
     },

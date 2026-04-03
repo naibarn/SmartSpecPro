@@ -8,6 +8,7 @@
 
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
+import { useTranslation } from "react-i18next";
 import { trpc } from "../../lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -145,6 +146,31 @@ interface MonitoringForm {
   sentry_environment: string;
 }
 
+interface AppRuntimeConfigField {
+  value: string;
+  maskedValue: string;
+  source: "db" | "env" | "none";
+}
+
+interface AppRuntimeForm {
+  python_backend_url: string;
+  smartspec_proxy_token: string;
+  smartspec_web_gateway_token: string;
+  smartspec_mcp_token: string;
+  smartspec_internal_url: string;
+  node_server_internal_url: string;
+  upload_post_api_base_url: string;
+  public_url: string;
+  app_public_url: string;
+  app_url: string;
+  s3_endpoint: string;
+  r2_public_url: string;
+  oauth_server_url: string;
+  forge_api_url: string;
+  forge_api_key: string;
+  llm_gateway_service_account_id: string;
+}
+
 // ============================================================
 // Constants
 // ============================================================
@@ -183,6 +209,37 @@ const EMPTY_FORM: GcpForm = {
 // ============================================================
 
 export default function InfrastructureSettingsPanel() {
+  const { i18n } = useTranslation();
+  const isThai = i18n.resolvedLanguage?.startsWith("th") || i18n.language?.startsWith("th");
+  const copy = {
+    tabs: {
+      gcp: isThai ? "GCP" : "GCP",
+      runtime: isThai ? "รันไทม์" : "Runtime",
+      tasks: isThai ? "งาน" : "Tasks",
+      queues: isThai ? "คิว" : "Queues",
+      redis: isThai ? "Redis" : "Redis",
+      monitoring: isThai ? "มอนิเตอร์" : "Monitoring",
+      scaleTier: isThai ? "ระดับการสเกล" : "Scale Tier",
+    },
+    gcp: {
+      title: isThai ? "ตั้งค่า GCP" : "GCP Configuration",
+      description: isThai ? "ตั้งค่า Google Cloud Platform สำหรับ Cloud Run และ Cloud Tasks" : "Google Cloud Platform project settings for Cloud Run and Cloud Tasks.",
+      guideTitle: isThai ? "คู่มือการตั้งค่า — วิธีตั้งค่า GCP สำหรับ Cloud Tasks" : "Setup Guide — How to configure GCP for Cloud Tasks",
+      projectId: isThai ? "Project ID" : "Project ID",
+      region: isThai ? "รีเจียน" : "Region",
+      selectRegion: isThai ? "เลือกรีเจียน" : "Select region",
+      pythonServiceUrl: isThai ? "Python Service URL" : "Python Service URL",
+      nodeServiceUrl: isThai ? "Node Service URL" : "Node Service URL",
+      serviceAccountEmail: isThai ? "อีเมล Service Account" : "Service Account Email",
+      save: isThai ? "บันทึกการตั้งค่า GCP" : "Save GCP Configuration",
+      env: isThai ? "มาจาก env" : "from env",
+    },
+    runtime: {
+      title: isThai ? "ปลายทางและโทเคนของ App Runtime" : "App Runtime Endpoints & Tokens",
+      hideSecrets: isThai ? "ซ่อน secrets" : "Hide secrets",
+      showSecrets: isThai ? "แสดง secrets" : "Show secrets",
+    },
+  } as const;
   const [activeTab, setActiveTab] = useState("gcp");
   const [gcpForm, setGcpForm] = useState<GcpForm>(EMPTY_FORM);
   const [selectedMode, setSelectedMode] = useState<"celery" | "cloud_tasks">("celery");
@@ -201,6 +258,7 @@ export default function InfrastructureSettingsPanel() {
   const [testUrl, setTestUrl] = useState("");
   const [showMonitoringGuide, setShowMonitoringGuide] = useState(false);
   const [showMonitoringSecrets, setShowMonitoringSecrets] = useState(false);
+  const [showAppRuntimeSecrets, setShowAppRuntimeSecrets] = useState(false);
   const [monitoringForm, setMonitoringForm] = useState<MonitoringForm>({
     sentry_dsn_node: "",
     sentry_dsn_python: "",
@@ -215,6 +273,24 @@ export default function InfrastructureSettingsPanel() {
     log_level: "info",
     sentry_traces_sample_rate: "0.05",
     sentry_environment: "development",
+  });
+  const [appRuntimeForm, setAppRuntimeForm] = useState<AppRuntimeForm>({
+    python_backend_url: "",
+    smartspec_proxy_token: "",
+    smartspec_web_gateway_token: "",
+    smartspec_mcp_token: "",
+    smartspec_internal_url: "",
+    node_server_internal_url: "",
+    upload_post_api_base_url: "",
+    public_url: "",
+    app_public_url: "",
+    app_url: "",
+    s3_endpoint: "",
+    r2_public_url: "",
+    oauth_server_url: "",
+    forge_api_url: "",
+    forge_api_key: "",
+    llm_gateway_service_account_id: "",
   });
   const [selectedTier, setSelectedTier] = useState<"starter" | "growth" | "pro" | "business" | "enterprise">("starter");
   const [selectedDeployMode, setSelectedDeployMode] = useState<"localhost" | "cloudrun">("localhost");
@@ -262,6 +338,12 @@ export default function InfrastructureSettingsPanel() {
     isLoading: monitoringConfigLoading,
     refetch: refetchMonitoringConfig,
   } = trpc.infrastructure.getMonitoringConfig.useQuery();
+
+  const {
+    data: appRuntimeConfig,
+    isLoading: appRuntimeLoading,
+    refetch: refetchAppRuntime,
+  } = trpc.infrastructure.getAppRuntimeConfig.useQuery();
 
   const {
     data: monitoringStatus,
@@ -319,6 +401,14 @@ export default function InfrastructureSettingsPanel() {
       toast.success("Monitoring configuration saved. Restart services to apply changes.");
       refetchMonitoringConfig();
       refetchMonitoringStatus();
+    },
+    onError: (err) => toast.error(`Failed to save: ${err.message}`),
+  });
+
+  const updateAppRuntimeMutation = trpc.infrastructure.updateAppRuntimeConfig.useMutation({
+    onSuccess: () => {
+      toast.success("App runtime configuration saved. Restart services to apply changes.");
+      refetchAppRuntime();
     },
     onError: (err) => toast.error(`Failed to save: ${err.message}`),
   });
@@ -410,6 +500,29 @@ export default function InfrastructureSettingsPanel() {
   }, [monitoringConfig]);
 
   useEffect(() => {
+    if (appRuntimeConfig) {
+      setAppRuntimeForm({
+        python_backend_url: appRuntimeConfig.python_backend_url?.value || "",
+        smartspec_proxy_token: appRuntimeConfig.smartspec_proxy_token?.value || "",
+        smartspec_web_gateway_token: appRuntimeConfig.smartspec_web_gateway_token?.value || "",
+        smartspec_mcp_token: appRuntimeConfig.smartspec_mcp_token?.value || "",
+        smartspec_internal_url: appRuntimeConfig.smartspec_internal_url?.value || "",
+        node_server_internal_url: appRuntimeConfig.node_server_internal_url?.value || "",
+        upload_post_api_base_url: appRuntimeConfig.upload_post_api_base_url?.value || "",
+        public_url: appRuntimeConfig.public_url?.value || "",
+        app_public_url: appRuntimeConfig.app_public_url?.value || "",
+        app_url: appRuntimeConfig.app_url?.value || "",
+        s3_endpoint: appRuntimeConfig.s3_endpoint?.value || "",
+        r2_public_url: appRuntimeConfig.r2_public_url?.value || "",
+        oauth_server_url: appRuntimeConfig.oauth_server_url?.value || "",
+        forge_api_url: appRuntimeConfig.forge_api_url?.value || "",
+        forge_api_key: appRuntimeConfig.forge_api_key?.value || "",
+        llm_gateway_service_account_id: appRuntimeConfig.llm_gateway_service_account_id?.value || "",
+      });
+    }
+  }, [appRuntimeConfig]);
+
+  useEffect(() => {
     if (scaleTierData?.tier) {
       setSelectedTier(scaleTierData.tier);
     }
@@ -459,6 +572,10 @@ export default function InfrastructureSettingsPanel() {
     updateMonitoringMutation.mutate(monitoringForm as any);
   };
 
+  const handleSaveAppRuntime = () => {
+    updateAppRuntimeMutation.mutate(appRuntimeForm as any);
+  };
+
   const hasGcpConfig = !!(gcpForm.gcp_project_id && gcpForm.gcp_region);
 
   // --- Loading state ---
@@ -473,30 +590,34 @@ export default function InfrastructureSettingsPanel() {
   return (
     <div className="space-y-6">
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="gcp" className="flex items-center gap-1">
             <Cloud className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">GCP</span>
+            <span className="hidden sm:inline">{copy.tabs.gcp}</span>
+          </TabsTrigger>
+          <TabsTrigger value="app-runtime" className="flex items-center gap-1">
+            <Globe className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">{copy.tabs.runtime}</span>
           </TabsTrigger>
           <TabsTrigger value="tasks" className="flex items-center gap-1">
             <Server className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Tasks</span>
+            <span className="hidden sm:inline">{copy.tabs.tasks}</span>
           </TabsTrigger>
           <TabsTrigger value="queues" className="flex items-center gap-1">
             <Activity className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Queues</span>
+            <span className="hidden sm:inline">{copy.tabs.queues}</span>
           </TabsTrigger>
           <TabsTrigger value="redis" className="flex items-center gap-1">
             <Database className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Redis</span>
+            <span className="hidden sm:inline">{copy.tabs.redis}</span>
           </TabsTrigger>
           <TabsTrigger value="monitoring" className="flex items-center gap-1">
             <Shield className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Monitoring</span>
+            <span className="hidden sm:inline">{copy.tabs.monitoring}</span>
           </TabsTrigger>
           <TabsTrigger value="scale-tier" className="flex items-center gap-1">
             <Gauge className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Scale Tier</span>
+            <span className="hidden sm:inline">{copy.tabs.scaleTier}</span>
           </TabsTrigger>
         </TabsList>
 
@@ -508,10 +629,10 @@ export default function InfrastructureSettingsPanel() {
         <div className="border-b bg-gradient-to-r from-purple-50/50 to-pink-50/30 pb-5">
           <h3 className="flex items-center gap-2 text-lg">
             <Cloud className="w-5 h-5 text-purple-500" />
-            GCP Configuration
+            {copy.gcp.title}
           </h3>
           <p>
-            Google Cloud Platform project settings for Cloud Run and Cloud Tasks.
+            {copy.gcp.description}
           </p>
         </div>
         <div className="space-y-5 pt-6">
@@ -524,7 +645,7 @@ export default function InfrastructureSettingsPanel() {
             >
               <span className="flex items-center gap-2">
                 <BookOpen className="h-4 w-4" />
-                Setup Guide — How to configure GCP for Cloud Tasks
+                {copy.gcp.guideTitle}
               </span>
               {showGcpGuide ? (
                 <ChevronUp className="h-4 w-4" />
@@ -646,9 +767,9 @@ done`}
           {/* Project ID */}
           <div className="space-y-1.5">
             <div className="flex items-center gap-2">
-              <Label htmlFor="gcp_project_id">Project ID</Label>
+              <Label htmlFor="gcp_project_id">{copy.gcp.projectId}</Label>
               {gcpConfig?.gcp_project_id?.source === "env" && (
-                <Badge variant="outline" className="text-xs">from env</Badge>
+                <Badge variant="outline" className="text-xs">{copy.gcp.env}</Badge>
               )}
             </div>
             <Input
@@ -664,9 +785,9 @@ done`}
           {/* Region */}
           <div className="space-y-1.5">
             <div className="flex items-center gap-2">
-              <Label htmlFor="gcp_region">Region</Label>
+              <Label htmlFor="gcp_region">{copy.gcp.region}</Label>
               {gcpConfig?.gcp_region?.source === "env" && (
-                <Badge variant="outline" className="text-xs">from env</Badge>
+                <Badge variant="outline" className="text-xs">{copy.gcp.env}</Badge>
               )}
             </div>
             <Select
@@ -674,7 +795,7 @@ done`}
               onValueChange={(val) => setGcpForm({ ...gcpForm, gcp_region: val })}
             >
               <SelectTrigger id="gcp_region">
-                <SelectValue placeholder="Select region" />
+                <SelectValue placeholder={copy.gcp.selectRegion} />
               </SelectTrigger>
               <SelectContent>
                 {GCP_REGIONS.map((r) => (
@@ -689,9 +810,9 @@ done`}
           {/* Python Service URL */}
           <div className="space-y-1.5">
             <div className="flex items-center gap-2">
-              <Label htmlFor="cloud_run_python_url">Python Service URL</Label>
+              <Label htmlFor="cloud_run_python_url">{copy.gcp.pythonServiceUrl}</Label>
               {gcpConfig?.cloud_run_python_url?.source === "env" && (
-                <Badge variant="outline" className="text-xs">from env</Badge>
+                <Badge variant="outline" className="text-xs">{copy.gcp.env}</Badge>
               )}
             </div>
             <Input
@@ -708,9 +829,9 @@ done`}
           {/* Node Service URL */}
           <div className="space-y-1.5">
             <div className="flex items-center gap-2">
-              <Label htmlFor="cloud_run_node_url">Node Service URL</Label>
+              <Label htmlFor="cloud_run_node_url">{copy.gcp.nodeServiceUrl}</Label>
               {gcpConfig?.cloud_run_node_url?.source === "env" && (
-                <Badge variant="outline" className="text-xs">from env</Badge>
+                <Badge variant="outline" className="text-xs">{copy.gcp.env}</Badge>
               )}
             </div>
             <Input
@@ -727,9 +848,9 @@ done`}
           {/* Service Account Email */}
           <div className="space-y-1.5">
             <div className="flex items-center gap-2">
-              <Label htmlFor="cloud_run_sa_email">Service Account Email</Label>
+              <Label htmlFor="cloud_run_sa_email">{copy.gcp.serviceAccountEmail}</Label>
               {gcpConfig?.cloud_run_sa_email?.source === "env" && (
-                <Badge variant="outline" className="text-xs">from env</Badge>
+                <Badge variant="outline" className="text-xs">{copy.gcp.env}</Badge>
               )}
             </div>
             <Input
@@ -761,10 +882,146 @@ done`}
             ) : (
               <Save className="h-4 w-4 mr-2" />
             )}
-            Save GCP Configuration
+            {copy.gcp.save}
           </Button>
         </div>
       </DashboardCard>
+        </TabsContent>
+
+        <TabsContent value="app-runtime">
+          <DashboardCard className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
+            <div className="border-b bg-gradient-to-r from-cyan-50/50 to-sky-50/30 pb-5">
+              <h3 className="flex items-center gap-2 text-lg">
+                <Globe className="w-5 h-5 text-cyan-600" />
+                {copy.runtime.title}
+              </h3>
+              <p>
+                Configure Python backend URLs and internal service tokens from the UI instead of file-based env config.
+              </p>
+            </div>
+            <div className="space-y-5 pt-6">
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-slate-600">
+                  Values saved here should become the primary source for app-to-app requests after service restart.
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => refetchAppRuntime()} disabled={appRuntimeLoading}>
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    Refresh
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => setShowAppRuntimeSecrets((v) => !v)}>
+                    {showAppRuntimeSecrets ? <EyeOff className="mr-2 h-4 w-4" /> : <Eye className="mr-2 h-4 w-4" />}
+                    {showAppRuntimeSecrets ? copy.runtime.hideSecrets : copy.runtime.showSecrets}
+                  </Button>
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <Label htmlFor="python_backend_url">Python backend URL</Label>
+                  <Input id="python_backend_url" value={appRuntimeForm.python_backend_url} onChange={(e) => setAppRuntimeForm((prev) => ({ ...prev, python_backend_url: e.target.value }))} placeholder="https://python.example" />
+                  <div className="mt-1 text-xs text-slate-500">Used by STT, TTS, PDF render, social actions, and internal workflow bridges.</div>
+                </div>
+                <div>
+                  <Label htmlFor="upload_post_api_base_url">Upload Post API base URL</Label>
+                  <Input id="upload_post_api_base_url" value={appRuntimeForm.upload_post_api_base_url} onChange={(e) => setAppRuntimeForm((prev) => ({ ...prev, upload_post_api_base_url: e.target.value }))} placeholder="https://python.example" />
+                </div>
+                <div>
+                  <Label htmlFor="public_url">Public URL</Label>
+                  <Input id="public_url" value={appRuntimeForm.public_url} onChange={(e) => setAppRuntimeForm((prev) => ({ ...prev, public_url: e.target.value }))} placeholder="https://app.example" />
+                </div>
+                <div>
+                  <Label htmlFor="app_public_url">App public URL</Label>
+                  <Input id="app_public_url" value={appRuntimeForm.app_public_url} onChange={(e) => setAppRuntimeForm((prev) => ({ ...prev, app_public_url: e.target.value }))} placeholder="https://app.example" />
+                </div>
+                <div>
+                  <Label htmlFor="app_url">App URL</Label>
+                  <Input id="app_url" value={appRuntimeForm.app_url} onChange={(e) => setAppRuntimeForm((prev) => ({ ...prev, app_url: e.target.value }))} placeholder="https://app.example" />
+                </div>
+                <div>
+                  <Label htmlFor="smartspec_internal_url">SmartSpec internal URL</Label>
+                  <Input id="smartspec_internal_url" value={appRuntimeForm.smartspec_internal_url} onChange={(e) => setAppRuntimeForm((prev) => ({ ...prev, smartspec_internal_url: e.target.value }))} placeholder="http://node.internal:3000" />
+                </div>
+                <div>
+                  <Label htmlFor="node_server_internal_url">Node server internal URL</Label>
+                  <Input id="node_server_internal_url" value={appRuntimeForm.node_server_internal_url} onChange={(e) => setAppRuntimeForm((prev) => ({ ...prev, node_server_internal_url: e.target.value }))} placeholder="http://node.internal:3000" />
+                </div>
+                <div>
+                  <Label htmlFor="smartspec_proxy_token">Proxy token</Label>
+                  <Input id="smartspec_proxy_token" type={showAppRuntimeSecrets ? "text" : "password"} value={appRuntimeForm.smartspec_proxy_token} onChange={(e) => setAppRuntimeForm((prev) => ({ ...prev, smartspec_proxy_token: e.target.value }))} placeholder={appRuntimeConfig?.smartspec_proxy_token?.source === "db" ? "Leave blank to keep existing secret" : "Enter proxy token"} />
+                  <div className="mt-1 text-xs text-slate-500">Source: {appRuntimeConfig?.smartspec_proxy_token?.source ?? "none"}</div>
+                </div>
+                <div>
+                  <Label htmlFor="smartspec_web_gateway_token">Web gateway token</Label>
+                  <Input id="smartspec_web_gateway_token" type={showAppRuntimeSecrets ? "text" : "password"} value={appRuntimeForm.smartspec_web_gateway_token} onChange={(e) => setAppRuntimeForm((prev) => ({ ...prev, smartspec_web_gateway_token: e.target.value }))} placeholder={appRuntimeConfig?.smartspec_web_gateway_token?.source === "db" ? "Leave blank to keep existing secret" : "Enter gateway token"} />
+                  <div className="mt-1 text-xs text-slate-500">Source: {appRuntimeConfig?.smartspec_web_gateway_token?.source ?? "none"}</div>
+                </div>
+                <div>
+                  <Label htmlFor="smartspec_mcp_token">MCP server token</Label>
+                  <Input id="smartspec_mcp_token" type={showAppRuntimeSecrets ? "text" : "password"} value={appRuntimeForm.smartspec_mcp_token} onChange={(e) => setAppRuntimeForm((prev) => ({ ...prev, smartspec_mcp_token: e.target.value }))} placeholder={appRuntimeConfig?.smartspec_mcp_token?.source === "db" ? "Leave blank to keep existing secret" : "Enter MCP token"} />
+                  <div className="mt-1 text-xs text-slate-500">Source: {appRuntimeConfig?.smartspec_mcp_token?.source ?? "none"}</div>
+                </div>
+                <div>
+                  <Label htmlFor="s3_endpoint">S3 endpoint</Label>
+                  <Input id="s3_endpoint" value={appRuntimeForm.s3_endpoint} onChange={(e) => setAppRuntimeForm((prev) => ({ ...prev, s3_endpoint: e.target.value }))} placeholder="https://s3.example" />
+                </div>
+                <div>
+                  <Label htmlFor="r2_public_url">R2 public URL</Label>
+                  <Input id="r2_public_url" value={appRuntimeForm.r2_public_url} onChange={(e) => setAppRuntimeForm((prev) => ({ ...prev, r2_public_url: e.target.value }))} placeholder="https://cdn.example" />
+                </div>
+                <div>
+                  <Label htmlFor="oauth_server_url">OAuth server URL</Label>
+                  <Input id="oauth_server_url" value={appRuntimeForm.oauth_server_url} onChange={(e) => setAppRuntimeForm((prev) => ({ ...prev, oauth_server_url: e.target.value }))} placeholder="https://oauth.example" />
+                </div>
+                <div>
+                  <Label htmlFor="forge_api_url">Forge API URL</Label>
+                  <Input id="forge_api_url" value={appRuntimeForm.forge_api_url} onChange={(e) => setAppRuntimeForm((prev) => ({ ...prev, forge_api_url: e.target.value }))} placeholder="https://forge.example" />
+                </div>
+                <div>
+                  <Label htmlFor="forge_api_key">Forge API key</Label>
+                  <Input id="forge_api_key" type={showAppRuntimeSecrets ? "text" : "password"} value={appRuntimeForm.forge_api_key} onChange={(e) => setAppRuntimeForm((prev) => ({ ...prev, forge_api_key: e.target.value }))} placeholder={appRuntimeConfig?.forge_api_key?.source === "db" ? "Leave blank to keep existing secret" : "Enter Forge API key"} />
+                  <div className="mt-1 text-xs text-slate-500">Source: {appRuntimeConfig?.forge_api_key?.source ?? "none"}</div>
+                </div>
+                <div>
+                  <Label htmlFor="llm_gateway_service_account_id">LLM gateway service account ID</Label>
+                  <Input id="llm_gateway_service_account_id" value={appRuntimeForm.llm_gateway_service_account_id} onChange={(e) => setAppRuntimeForm((prev) => ({ ...prev, llm_gateway_service_account_id: e.target.value }))} placeholder="1" />
+                </div>
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-3">
+                {[
+                  ["python_backend_url", appRuntimeConfig?.python_backend_url?.source],
+                  ["public_url", appRuntimeConfig?.public_url?.source],
+                  ["app_public_url", appRuntimeConfig?.app_public_url?.source],
+                  ["app_url", appRuntimeConfig?.app_url?.source],
+                  ["smartspec_internal_url", appRuntimeConfig?.smartspec_internal_url?.source],
+                  ["node_server_internal_url", appRuntimeConfig?.node_server_internal_url?.source],
+                  ["upload_post_api_base_url", appRuntimeConfig?.upload_post_api_base_url?.source],
+                  ["smartspec_proxy_token", appRuntimeConfig?.smartspec_proxy_token?.source],
+                  ["smartspec_web_gateway_token", appRuntimeConfig?.smartspec_web_gateway_token?.source],
+                  ["smartspec_mcp_token", appRuntimeConfig?.smartspec_mcp_token?.source],
+                  ["s3_endpoint", appRuntimeConfig?.s3_endpoint?.source],
+                  ["r2_public_url", appRuntimeConfig?.r2_public_url?.source],
+                  ["oauth_server_url", appRuntimeConfig?.oauth_server_url?.source],
+                  ["forge_api_url", appRuntimeConfig?.forge_api_url?.source],
+                  ["forge_api_key", appRuntimeConfig?.forge_api_key?.source],
+                  ["llm_gateway_service_account_id", appRuntimeConfig?.llm_gateway_service_account_id?.source],
+                ].map(([label, source]) => (
+                  <div key={label} className="rounded-xl border border-slate-200 p-3 text-sm">
+                    <div className="font-medium text-slate-900">{label}</div>
+                    <div className="mt-1 text-xs text-slate-500">Source: {source ?? "none"}</div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex justify-end">
+                <Button onClick={handleSaveAppRuntime} disabled={updateAppRuntimeMutation.isPending}>
+                  {updateAppRuntimeMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                  Save App Runtime Configuration
+                </Button>
+              </div>
+            </div>
+          </DashboardCard>
         </TabsContent>
 
         <TabsContent value="tasks">

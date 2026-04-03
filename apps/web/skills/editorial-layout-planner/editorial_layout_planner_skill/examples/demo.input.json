@@ -1,0 +1,67 @@
+{
+  "request": {
+    "projectTitle": "Thai Sleep Training Guide",
+    "language": "th",
+    "canvasRatio": "9:16",
+    "compositionMode": "auto",
+    "designStyle": "family-editorial",
+    "density": "balanced",
+    "outputFormats": [
+      "json",
+      "md",
+      "pptx",
+      "pdf"
+    ],
+    "randomizeLayouts": false,
+    "seed": "sleep-demo-02",
+    "pagination": {
+      "maxPages": 5,
+      "allowFewerPages": true,
+      "overflowStrategy": "condense"
+    },
+    "content": {
+      "titleHint": "ทำความเข้าใจเรื่องการร้องไห้และการปรับจูนอารมณ์",
+      "rawText": "ทำความเข้าใจเรื่องการร้องไห้และการปรับจูนอารมณ์\n\nแนวทางการปล่อยให้ทารกร้องไห้เพื่อฝึกทำความเข้าใจเรื่องการกล่อมตัวเองให้นอนหลับ มักเป็นเรื่องที่ท้าทายความรู้สึกของคุณพ่อคุณแม่มากที่สุด\n• การร้องไห้ในขณะนี้ไม่ใช่การที่ลูกถูกทอดทิ้ง\n• แต่เป็นช่วงเวลาที่เขากำลังหัดเรียนรู้การจัดการกับอารมณ์และปรับตัวเข้าสู่สภาวะสงบด้วยตัวเอง\n• คุณพ่อคุณแม่ควรพิจารณาความพร้อมของจิตใจตนเองควบคู่ไปกับลูกด้วย\n• การเลือกวิธีที่นุ่มนวลกว่าเช่นการเข้าปลอบเป็นระยะก็เป็นทางเลือกที่ยอมรับได้เช่นกัน",
+      "pageIntentHint": "healthcare_steps",
+      "imagePool": {
+        "images": [
+          {
+            "id": "hero_mother_01",
+            "source": "./examples/assets/mother-and-baby.jpg",
+            "alt": "แม่อุ้มลูกน้อยในบ้าน",
+            "roleHint": "hero",
+            "caption": "ภาพอบอุ่นที่สื่อถึงการปลอบและการปรับอารมณ์",
+            "tags": [
+              "mother",
+              "baby",
+              "sleep",
+              "comfort",
+              "home"
+            ],
+            "priority": 5
+          }
+        ],
+        "maxImagesPerPage": 2,
+        "reusePolicy": "avoid-repeat-until-used",
+        "selectionStrategy": "semantic-hero",
+        "coverPageImagePolicy": "prefer-hero"
+      }
+    },
+    "theme": {
+      "paletteMode": "editorial-paper",
+      "background": "#FAF1E7",
+      "text": "#4B3328",
+      "accent": "#C47C5A",
+      "titleFont": "Noto Serif Thai",
+      "bodyFont": "Noto Sans Thai",
+      "roundedCorners": false
+    },
+    "renderOptions": {
+      "pptxFileName": "thai-sleep-training-editorial.pptx",
+      "jsonFileName": "thai-sleep-training-editorial.layout.json",
+      "mdFileName": "thai-sleep-training-editorial.md",
+      "pdfFileName": "thai-sleep-training-editorial.pdf",
+      "pdfEngine": "libreoffice"
+    }
+  }
+}

@@ -4,12 +4,13 @@
  */
 
 import { db } from "../db";
-import { users, creditTransactions, creditPackages, modelProviderMap, systemSettings, conversations } from "../../drizzle/schema";
+import { users, creditTransactions, creditPackages, modelProviderMap, systemSettings, conversations, llmProviders } from "../../drizzle/schema";
 import { eq, desc, and, gte, lte, sql } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { getRedisClient, isRedisAvailable } from "./redis";
 import { getTraceId } from "./traceContext";
 import { buildModelProviderMapLookupCondition } from "./modelLookup";
+import { resolveCatalogBackedPricing } from "./llmProviderCatalog";
 
 export type TransactionType = "purchase" | "usage" | "bonus" | "refund" | "adjustment" | "subscription" | "creator_fee";
 
@@ -630,11 +631,21 @@ export async function getCreditPackageById(id: number) {
  */
 export async function isModelFree(modelId: string): Promise<boolean> {
   const rows = await db
-    .select({ isFree: modelProviderMap.isFree })
+    .select({
+      providerName: llmProviders.providerName,
+      availableModels: llmProviders.availableModels,
+      providerModelId: modelProviderMap.providerModelId,
+      pricingInput: modelProviderMap.pricingInput,
+      pricingOutput: modelProviderMap.pricingOutput,
+      isFree: modelProviderMap.isFree,
+    })
     .from(modelProviderMap)
+    .innerJoin(llmProviders, eq(modelProviderMap.providerId, llmProviders.id))
     .where(and(buildModelProviderMapLookupCondition(modelId), eq(modelProviderMap.isEnabled, true)))
     .limit(1);
-  return rows.length > 0 && rows[0].isFree;
+  if (rows.length === 0) return false;
+  const effectivePricing = resolveCatalogBackedPricing(rows[0]);
+  return effectivePricing.isFree;
 }
 
 /**
@@ -643,17 +654,22 @@ export async function isModelFree(modelId: string): Promise<boolean> {
 async function getModelPricingFromDb(modelId: string): Promise<{ input: number; output: number } | null> {
   const rows = await db
     .select({
+      providerName: llmProviders.providerName,
+      availableModels: llmProviders.availableModels,
+      providerModelId: modelProviderMap.providerModelId,
       pricingInput: modelProviderMap.pricingInput,
       pricingOutput: modelProviderMap.pricingOutput,
       isFree: modelProviderMap.isFree,
     })
     .from(modelProviderMap)
+    .innerJoin(llmProviders, eq(modelProviderMap.providerId, llmProviders.id))
     .where(and(buildModelProviderMapLookupCondition(modelId), eq(modelProviderMap.isEnabled, true)))
     .limit(1);
 
   if (rows.length === 0) return null;
-  if (rows[0].isFree) return { input: 0, output: 0 };
-  return { input: Number(rows[0].pricingInput), output: Number(rows[0].pricingOutput) };
+  const effectivePricing = resolveCatalogBackedPricing(rows[0]);
+  if (effectivePricing.isFree) return { input: 0, output: 0 };
+  return { input: effectivePricing.pricingInput, output: effectivePricing.pricingOutput };
 }
 
 /**

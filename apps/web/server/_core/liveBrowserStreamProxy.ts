@@ -1,12 +1,6 @@
 import type { Express, Request, Response } from "express";
 import { authorizeRequest } from "./authz";
-import { ENV } from "./env";
-
-const PY_BACKEND = ENV.pythonBackendUrl || "http://localhost:8000";
-const PROXY_TOKEN =
-  process.env.SMARTSPEC_PROXY_TOKEN
-  || process.env.SMARTSPEC_WEB_GATEWAY_TOKEN
-  || "";
+import { getAppRuntimeConfig, getPreferredInternalToken } from "../services/appRuntimeConfig";
 const LIVE_BROWSER_SESSION_ID_PATTERN = /^lbs_[a-z0-9]{6,}$/;
 const LIVE_BROWSER_CURSOR_PATTERN = /^[a-zA-Z0-9:_-]{1,200}$/;
 const HEARTBEAT_INTERVAL_MS = 15_000;
@@ -71,9 +65,11 @@ export function registerLiveBrowserStreamRoutes(app: Express): void {
       });
 
       try {
+        const runtime = await getAppRuntimeConfig();
+        const proxyToken = await getPreferredInternalToken();
         const upstreamUrl = new URL(
           `/api/v1/live-browser/sessions/${encodeURIComponent(sessionId)}/stream`,
-          PY_BACKEND,
+          runtime.pythonBackendUrl,
         );
         upstreamUrl.searchParams.set("tenantId", tenantId);
         upstreamUrl.searchParams.set("userId", String(userId));
@@ -87,7 +83,7 @@ export function registerLiveBrowserStreamRoutes(app: Express): void {
           method: "GET",
           headers: {
             Accept: "text/event-stream",
-            ...(PROXY_TOKEN ? { "x-proxy-token": PROXY_TOKEN } : {}),
+            ...(proxyToken ? { "x-proxy-token": proxyToken } : {}),
           },
           signal: controller.signal,
         });

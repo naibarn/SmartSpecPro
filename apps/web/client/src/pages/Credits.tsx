@@ -9,7 +9,15 @@ import { formatNumber } from '@smartspec/shared';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { trpc } from '@/lib/trpc';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { TransactionDetailDialog } from '@/components/analytics/TransactionDetailDialog';
 import MyInviteCode from '@/components/user/MyInviteCode';
 import { LocaleToggle } from '@/components/LocaleToggle';
@@ -56,6 +64,7 @@ export default function Credits() {
   const { t, i18n } = useScopedTranslation('billing');
   const [, setLocation] = useLocation();
   const [selectedPackage, setSelectedPackage] = useState<number | null>(null);
+  const [pendingCheckoutPackage, setPendingCheckoutPackage] = useState<any | null>(null);
   const [buyCreditsExpanded, setBuyCreditsExpanded] = useState(false);
   const [page, setPage] = useState(0);
   type CreditSourceType = "chat" | "skill" | "media_image" | "media_video" | "media_audio" | "indexing" | "rag" | "stt" | "translation" | "brainstorm" | "scheduler" | "admin" | "other";
@@ -71,6 +80,11 @@ export default function Credits() {
   });
   const { data: usageStats } = trpc.credits.stats.useQuery({ days: 30 });
   const { data: packages, isLoading: packagesLoading } = trpc.packages.list.useQuery();
+  const topupMutation = trpc.billing.createTopupCheckout.useMutation({
+    onError: (error) => {
+      toast.error(error.message || "ไม่สามารถสร้างรายการชำระเงินได้");
+    },
+  });
   const sourceLabels = useMemo(() => ({
     chat: { label: t('credits.sources.chat'), color: "bg-blue-100 text-blue-700", icon: MessageCircle },
     skill: { label: t('credits.sources.skill'), color: "bg-blue-100 text-blue-700", icon: Sparkles },
@@ -111,6 +125,51 @@ export default function Credits() {
   if (!user) {
     return null;
   }
+
+  const handleBuyPackage = (pkg: any) => {
+    setSelectedPackage(pkg.id);
+    setPendingCheckoutPackage(pkg);
+  };
+
+  const handleConfirmTopupCheckout = (pkg: any, paymentMethod: "promptpay" | "card") => {
+    const payload = {
+      credits: Number(pkg.credits),
+      basePrice: Number(pkg.priceUsd),
+      currency: "THB",
+      packageCode: `credit-package-${pkg.id}`,
+      description: pkg.name || `Credit top-up (${pkg.credits} credits)`,
+      paymentMethod,
+    };
+    const topupQuery = new URLSearchParams({
+      view: "topup",
+      credits: String(payload.credits),
+      basePrice: String(payload.basePrice),
+      packageCode: payload.packageCode,
+      description: payload.description,
+      packageLabel: pkg.name || `${pkg.credits} credits`,
+      paymentMethod,
+    }).toString();
+
+    topupMutation.mutate(payload, {
+      onSuccess: async (result) => {
+        toast.success("สร้างรายการชำระเงินสำเร็จ");
+        setPendingCheckoutPackage(null);
+
+        const paymentUrl = result?.payment?.rawResponseJson?.paymentUrl;
+        if (typeof paymentUrl === "string" && paymentUrl.trim()) {
+          window.location.href = paymentUrl;
+          return;
+        }
+
+        if (result?.invoice?.id) {
+          setLocation(`/billing/invoices/${result.invoice.id}?${topupQuery}`);
+          return;
+        }
+
+        setLocation(`/billing?${topupQuery}`);
+      },
+    });
+  };
 
 
   // Format date and time for display
@@ -351,9 +410,23 @@ export default function Credits() {
                         ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white'
                         : 'bg-gray-900 text-white'
                     }`}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      handleBuyPackage(pkg);
+                    }}
+                    disabled={topupMutation.isPending}
                   >
-                    {t('credits.buyCredits.cta')}
-                    <ArrowRight className="w-3 h-3 ml-1" />
+                    {topupMutation.isPending && selectedPackage === pkg.id ? (
+                      <>
+                        <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                        กำลังสร้างรายการ
+                      </>
+                    ) : (
+                      <>
+                        {t('credits.buyCredits.cta')}
+                        <ArrowRight className="w-3 h-3 ml-1" />
+                      </>
+                    )}
                   </Button>
                 </motion.div>
               ))}
@@ -623,6 +696,82 @@ export default function Credits() {
           </DashboardCard>
         </motion.div>
       </main>
+
+      <Dialog open={!!pendingCheckoutPackage} onOpenChange={(open) => !open && !topupMutation.isPending && setPendingCheckoutPackage(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>เลือกวิธีชำระเงิน</DialogTitle>
+            <DialogDescription>
+              เลือกช่องทางชำระสำหรับแพ็กเกจเครดิตที่คุณเลือก ระบบจะสร้างรายการชำระของ Beam ตามวิธีที่เลือก
+            </DialogDescription>
+          </DialogHeader>
+          {pendingCheckoutPackage ? (
+            <div className="space-y-5">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <div className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Selected package</div>
+                <div className="mt-2 text-xl font-semibold text-slate-900">
+                  {pendingCheckoutPackage.name || `${formatNumber(Number(pendingCheckoutPackage.credits || 0))} credits`}
+                </div>
+                <div className="mt-2 text-sm text-slate-600">
+                  {formatNumber(Number(pendingCheckoutPackage.credits || 0))} เครดิต · ${pendingCheckoutPackage.priceUsd}
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <button
+                  type="button"
+                  className="rounded-2xl border-2 border-cyan-300 bg-cyan-50 p-5 text-left transition hover:border-cyan-400 hover:bg-cyan-100/70"
+                  onClick={() => handleConfirmTopupCheckout(pendingCheckoutPackage, "promptpay")}
+                  disabled={topupMutation.isPending}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-xl bg-cyan-500 p-3 text-white">
+                      <Zap className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <div className="font-semibold text-slate-900">PromptPay QR</div>
+                      <div className="text-sm text-slate-600">แนะนำสำหรับการโอนครั้งเดียว</div>
+                    </div>
+                  </div>
+                  <div className="mt-4 text-sm text-slate-600">
+                    ระบบจะสร้าง QR Code ของ Beam ให้คุณสแกนจ่ายได้ทันทีบนหน้าถัดไป
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  className="rounded-2xl border-2 border-slate-200 bg-white p-5 text-left transition hover:border-slate-300 hover:bg-slate-50"
+                  onClick={() => handleConfirmTopupCheckout(pendingCheckoutPackage, "card")}
+                  disabled={topupMutation.isPending}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-xl bg-slate-900 p-3 text-white">
+                      <CreditCard className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <div className="font-semibold text-slate-900">บัตรเครดิต / เดบิต</div>
+                      <div className="text-sm text-slate-600">ไปที่หน้า Beam checkout</div>
+                    </div>
+                  </div>
+                  <div className="mt-4 text-sm text-slate-600">
+                    ระบบจะพาคุณไปหน้า Beam เพื่อกรอกข้อมูลบัตรและชำระเงินให้เสร็จ
+                  </div>
+                </button>
+              </div>
+
+              <div className="flex justify-end">
+                <Button
+                  variant="ghost"
+                  onClick={() => setPendingCheckoutPackage(null)}
+                  disabled={topupMutation.isPending}
+                >
+                  ยกเลิก
+                </Button>
+              </div>
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

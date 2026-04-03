@@ -99,6 +99,10 @@ describe("taskProfileParser", () => {
       expect(parse("สร้างภาพ ดอกไม้สวยๆ").complexity).toBe("single");
     });
 
+    it("does not treat words like 'เหมาะกับ' as multi-deliverable conjunctions", () => {
+      expect(parse("qwen 3.6 llm model เหมาะกับงานสร้างภาพกราฟิกหรือไม่").complexity).toBe("single");
+    });
+
     it("returns single for simple requests", () => {
       expect(parse("เขียนบทความเกี่ยวกับแมว").complexity).toBe("single");
     });

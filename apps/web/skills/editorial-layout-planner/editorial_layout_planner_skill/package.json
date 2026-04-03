@@ -1,0 +1,15 @@
+{
+  "name": "editorial-layout-planner-skill",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Deterministic editorial layout planner with ratio-aware page composition and PPTX/PDF/JSON/MD export.",
+  "scripts": {
+    "start": "node src/index.mjs ./examples/demo.input.json ./dist",
+    "build": "node src/index.mjs",
+    "validate": "node -e \"JSON.parse(require('fs').readFileSync('./examples/demo.input.json','utf8')); console.log('demo input ok')\""
+  },
+  "dependencies": {
+    "pptxgenjs": "^3.12.0"
+  }
+}

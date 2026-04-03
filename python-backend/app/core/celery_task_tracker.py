@@ -98,9 +98,9 @@ def on_task_failure(
 def _get_sync_engine():
     """Get or create a sync SQLAlchemy engine for Celery worker threads."""
     from app.core.config import settings
+    from app.core.sqlalchemy_sync import to_sync_sqlalchemy_url
     from sqlalchemy import create_engine
-    url = settings.DATABASE_URL.replace("postgresql+asyncpg://", "postgresql://")
-    url = url.replace("sqlite+aiosqlite://", "sqlite://")
+    url = to_sync_sqlalchemy_url(settings.DATABASE_URL)
     return create_engine(url, pool_pre_ping=True, pool_size=2, max_overflow=1)
 
 

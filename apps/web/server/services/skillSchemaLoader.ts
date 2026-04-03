@@ -8,8 +8,12 @@ import fs from "fs";
 import path from "path";
 import type { SkillInputSchemaInfo } from "@shared/orchestration/types";
 
-/** Skills root directory */
-const SKILLS_ROOT_DIR = path.resolve(process.cwd(), "skills");
+/** Skills root directories */
+const SKILLS_ROOT_DIRS = [
+  path.resolve(process.cwd(), "skills"),
+  path.resolve(process.cwd(), "apps", "web", "skills"),
+  path.resolve(process.cwd(), "..", "skills"),
+];
 
 /** Module-level cache: skillId → parsed schema info (null = no schema or error) */
 const _schemaCache = new Map<string, SkillInputSchemaInfo | null>();
@@ -36,24 +40,34 @@ export async function loadInputSchema(
     return null;
   }
 
-  // Derive skill folder by stripping manifest filename
   const skillFolder = path.dirname(skill.skillFilePath);
-  const schemaPath = path.join(skillFolder, "schemas", "input.schema.json");
+  const schemaCandidates = [
+    path.join(skillFolder, "input.schema.json"),
+    path.join(skillFolder, "schemas", "input.schema.json"),
+  ];
 
-  // Path traversal guard
-  const resolvedSchema = path.resolve(schemaPath);
-  const resolvedSkillsRoot = path.resolve(SKILLS_ROOT_DIR);
-  if (!resolvedSchema.startsWith(resolvedSkillsRoot + path.sep)) {
-    console.warn("loadInputSchema: path traversal attempt blocked", {
-      skillId,
-      resolvedSchema,
-      resolvedSkillsRoot,
+  let resolvedSchema: string | null = null;
+  for (const candidatePath of schemaCandidates) {
+    const resolvedCandidate = path.resolve(candidatePath);
+    const allowedRoot = SKILLS_ROOT_DIRS.find((rootDir) => {
+      const resolvedRoot = path.resolve(rootDir);
+      return resolvedCandidate === resolvedRoot || resolvedCandidate.startsWith(resolvedRoot + path.sep);
     });
-    _schemaCache.set(skillId, null);
-    return null;
+    if (!allowedRoot) {
+      console.warn("loadInputSchema: path traversal attempt blocked", {
+        skillId,
+        resolvedSchema: resolvedCandidate,
+        resolvedSkillsRoot: SKILLS_ROOT_DIRS,
+      });
+      continue;
+    }
+    if (fs.existsSync(resolvedCandidate)) {
+      resolvedSchema = resolvedCandidate;
+      break;
+    }
   }
 
-  if (!fs.existsSync(resolvedSchema)) {
+  if (!resolvedSchema) {
     _schemaCache.set(skillId, null);
     return null;
   }

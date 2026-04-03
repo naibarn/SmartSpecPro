@@ -38,6 +38,28 @@ describe("LibrarySearchPanel", () => {
     expect(html).toContain("Updated in:");
   });
 
+  it("renders item type filter controls and treats the selected type as an active search", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(LibrarySearchPanel, {
+        query: "",
+        onQueryChange: vi.fn(),
+        recentDays: "all",
+        onRecentDaysChange: vi.fn(),
+        isLoading: false,
+        itemTypeFilter: "video",
+        onItemTypeFilterChange: vi.fn(),
+        results: [],
+        onSelect: vi.fn(),
+      }),
+    );
+
+    expect(html).toContain("All");
+    expect(html).toContain("Image");
+    expect(html).toContain("Video");
+    expect(html).toContain("No matching library items.");
+    expect(html).not.toContain("Pick a timeframe, type, or media kind");
+  });
+
   it("renders search results with status labels", () => {
     const html = renderToStaticMarkup(
       React.createElement(LibrarySearchPanel, {
@@ -122,5 +144,77 @@ describe("LibrarySearchPanel", () => {
     expect(html).toContain('src="https://cdn.example.com/lion-thumb.png"');
     expect(html).toContain('src="https://cdn.example.com/lion.mp4"');
     expect(html).toContain("<video");
+  });
+
+  it("marks searchable results as draggable for reference reuse", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(LibrarySearchPanel, {
+        query: "mix",
+        onQueryChange: vi.fn(),
+        recentDays: 7,
+        onRecentDaysChange: vi.fn(),
+        isLoading: false,
+        selectedItemId: null,
+        onSelect: vi.fn(),
+        results: [
+          {
+            item_id: 21,
+            item_type: "image",
+            title: "Landscape",
+            source_url: "https://cdn.example.com/landscape.png",
+            thumbnail_url: null,
+            status: "ready",
+            source: "media_task",
+            provider_name: "kie.ai",
+            model_name: "z-image",
+          },
+          {
+            item_id: 22,
+            item_type: "video",
+            title: "Walkthrough",
+            source_url: "https://cdn.example.com/walkthrough.mp4",
+            thumbnail_url: "https://cdn.example.com/walkthrough-thumb.png",
+            status: "ready",
+            source: "media_task",
+            provider_name: "kie.ai",
+            model_name: "kling-3.0",
+          },
+        ],
+      }),
+    );
+
+    expect(html).toContain('draggable="true"');
+    expect(html).toContain("cursor-grab");
+  });
+
+  it("renders an add to reference action when provided", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(LibrarySearchPanel, {
+        query: "mix",
+        onQueryChange: vi.fn(),
+        recentDays: 7,
+        onRecentDaysChange: vi.fn(),
+        isLoading: false,
+        selectedItemId: null,
+        onAddToReference: vi.fn(),
+        addToReferenceLabel: "Use as reference",
+        onSelect: vi.fn(),
+        results: [
+          {
+            item_id: 31,
+            item_type: "video",
+            title: "Reference clip",
+            source_url: "https://cdn.example.com/reference-clip.mp4",
+            thumbnail_url: "https://cdn.example.com/reference-clip-thumb.png",
+            status: "ready",
+            source: "media_task",
+            provider_name: "kie.ai",
+            model_name: "kling-3.0",
+          },
+        ],
+      }),
+    );
+
+    expect(html).toContain("Use as reference");
   });
 });

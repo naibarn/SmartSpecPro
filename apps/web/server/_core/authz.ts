@@ -5,6 +5,7 @@ import { verifyBearerToken } from "./tokens";
 import { isJtiRevoked } from "./revocation";
 import { validateKey } from "../services/apiKeyService";
 import { getRedisClient } from "../services/redis";
+import { getCachedMcpServerToken, getCachedPreferredInternalToken } from "../services/appRuntimeConfig";
 
 export type AuthResult =
   | { ok: true; mode: "bearer"; sub: string; scopes: string[] }
@@ -40,8 +41,10 @@ function parseBearer(req: Request): string | null {
 
 function scopesForStaticToken(token: string): string[] {
   // Least-privilege defaults for server-to-server tokens
-  if (ENV.mcpServerToken && token === ENV.mcpServerToken) return ["mcp:read", "mcp:write"];
-  if (ENV.webGatewayToken && token === ENV.webGatewayToken) return ["llm:chat", "mcp:read", "mcp:write"];
+  const mcpServerToken = getCachedMcpServerToken() || ENV.mcpServerToken;
+  const gatewayToken = getCachedPreferredInternalToken() || ENV.webGatewayToken;
+  if (mcpServerToken && token === mcpServerToken) return ["mcp:read", "mcp:write"];
+  if (gatewayToken && token === gatewayToken) return ["llm:chat", "mcp:read", "mcp:write"];
   return [];
 }
 

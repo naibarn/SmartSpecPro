@@ -9,6 +9,7 @@ import { getTraceId } from "./traceContext";
 import { calculateCreditsFromCost } from "./creditService";
 import { resolveEnabledLlmModelId } from "./enabledLlmModels";
 import { buildModelProviderMapLookupCondition } from "./modelLookup";
+import { resolveCatalogBackedPricing } from "./llmProviderCatalog";
 import type { Message } from "../_core/llm";
 
 // --- Types ---
@@ -139,6 +140,7 @@ async function resolveProvidersWithRule(modelId: string): Promise<ResolveResult>
       providerName: llmProviders.providerName,
       baseUrl: llmProviders.baseUrl,
       apiKeyEncrypted: llmProviders.apiKeyEncrypted,
+      availableModels: llmProviders.availableModels,
       providerModelId: modelProviderMap.providerModelId,
       pricingInput: modelProviderMap.pricingInput,
       pricingOutput: modelProviderMap.pricingOutput,
@@ -174,17 +176,27 @@ async function resolveProvidersWithRule(modelId: string): Promise<ResolveResult>
   const mode = rule?.routingMode ?? "cost";
 
   // 4. Sort candidates
-  const candidates = healthy.map((r) => ({
-    providerId: r.providerId,
-    providerName: r.providerName ?? "Unknown",
-    baseUrl: r.baseUrl ?? "",
-    apiKey: r.apiKeyEncrypted ? decrypt(r.apiKeyEncrypted) : "",
-    providerModelId: r.providerModelId,
-    pricingInput: Number(r.pricingInput),
-    pricingOutput: Number(r.pricingOutput),
-    isFree: r.isFree,
-    priority: r.priority,
-  }));
+  const candidates = healthy.map((r) => {
+    const effectivePricing = resolveCatalogBackedPricing({
+      providerName: r.providerName,
+      availableModels: r.availableModels,
+      providerModelId: r.providerModelId,
+      pricingInput: r.pricingInput,
+      pricingOutput: r.pricingOutput,
+      isFree: r.isFree,
+    });
+    return {
+      providerId: r.providerId,
+      providerName: r.providerName ?? "Unknown",
+      baseUrl: r.baseUrl ?? "",
+      apiKey: r.apiKeyEncrypted ? decrypt(r.apiKeyEncrypted) : "",
+      providerModelId: r.providerModelId,
+      pricingInput: effectivePricing.pricingInput,
+      pricingOutput: effectivePricing.pricingOutput,
+      isFree: effectivePricing.isFree,
+      priority: r.priority,
+    };
+  });
 
   sortCandidates(candidates, mode, rule?.providerOrder);
 
@@ -327,6 +339,7 @@ export async function executeWithFallback(params: {
   userId: number;
   conversationId?: number;
   preferredProvider?: number;
+  strictProviderPin?: boolean;
   /** When true, sends reasoning.effort="high" for thinking mode (OpenRouter) */
   enableThinking?: boolean;
   /** Max output tokens. When omitted the provider uses its own default. */
@@ -348,7 +361,17 @@ export async function executeWithFallback(params: {
   let targets: ProviderCandidate[];
   if (params.preferredProvider != null) {
     const preferred = candidates.find((c) => c.providerId === params.preferredProvider);
-    targets = preferred ? [preferred] : candidates;
+    if (preferred) {
+      targets = [preferred];
+    } else if (params.strictProviderPin) {
+      return {
+        type: "error",
+        error: "Pinned provider is not available for the selected model",
+        statusCode: 503,
+      };
+    } else {
+      targets = candidates;
+    }
   } else {
     targets = candidates;
   }

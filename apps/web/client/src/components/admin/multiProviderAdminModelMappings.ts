@@ -53,6 +53,25 @@ export interface AdminModelCatalogRow {
   supportsComputerUse?: boolean;
   supportsBackground?: boolean;
   supportsResponses?: boolean;
+  config?: {
+    requestBodyFormat: "responses" | "anthropic-messages" | "openai-chat-completions";
+    apiEndpoint?: string;
+    apiEndpointTemplate?: string;
+    authStrategy?: "provider-default";
+    supportsStreaming?: boolean;
+    inputFields?: Array<{
+      key: string;
+      label: string;
+      type: "boolean" | "number" | "text" | "select" | "json" | "messages" | "input" | "tools";
+      required?: boolean;
+      documented?: boolean;
+      default?: string | number | boolean;
+      options?: Array<{ value: string; label: string }>;
+      description?: string;
+    }>;
+    passthroughFields?: string[];
+    conflicts?: Array<{ type: "xor"; fields: string[] }>;
+  };
 }
 
 export type AdminModelMappingsGrouped = Record<string, AdminModelMappingRow[]>;

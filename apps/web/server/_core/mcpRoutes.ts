@@ -6,6 +6,7 @@ import { storageGet } from "../storage";
 import { authorizeRequest } from "./authz";
 import { rateLimit } from "./limits";
 import { hasScope } from "./tokens";
+import { getAppRuntimeConfig } from "../services/appRuntimeConfig";
 
 type ToolDef = {
   name: string;
@@ -30,11 +31,6 @@ const EXT_ALLOW = new Set(
 const REQUIRE_WRITE_TOKEN = process.env.MCP_REQUIRE_WRITE_TOKEN === "1";
 const WRITE_TOKEN = process.env.MCP_WRITE_TOKEN || "";
 const MCP_RPM = parseInt(process.env.WEB_MCP_RPM || "240");
-
-import { ENV } from "./env";
-
-const PYTHON_BACKEND_URL = ENV.pythonBackendUrl || "http://localhost:8000";
-const PROXY_TOKEN = process.env.SMARTSPEC_PROXY_TOKEN || "";
 
 // Simple TTL cache for Python-native tools
 let _pythonToolsCache: { tools: ToolDef[]; ts: number } | null = null;
@@ -338,12 +334,13 @@ async function fetchPythonMcpTools(userId: number): Promise<ToolDef[]> {
     if (_pythonToolsCache && Date.now() - _pythonToolsCache.ts < PYTHON_TOOLS_CACHE_TTL) {
       return _pythonToolsCache.tools;
     }
+    const runtime = await getAppRuntimeConfig();
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 2000);
     const resp = await fetch(
-      `${PYTHON_BACKEND_URL}/api/internal/mcp/tools?user_id=${userId}`,
+      `${runtime.pythonBackendUrl}/api/internal/mcp/tools?user_id=${userId}`,
       {
-        headers: { "x-proxy-token": PROXY_TOKEN },
+        headers: runtime.proxyToken ? { "x-proxy-token": runtime.proxyToken } : undefined,
         signal: controller.signal,
       },
     );
@@ -363,11 +360,12 @@ async function forwardToolCallToPython(
   userId: number,
   tenantId: string,
 ): Promise<any> {
-  const resp = await fetch(`${PYTHON_BACKEND_URL}/api/internal/mcp/tools/call`, {
+  const runtime = await getAppRuntimeConfig();
+  const resp = await fetch(`${runtime.pythonBackendUrl}/api/internal/mcp/tools/call`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "x-proxy-token": PROXY_TOKEN,
+      ...(runtime.proxyToken ? { "x-proxy-token": runtime.proxyToken } : {}),
     },
     body: JSON.stringify({
       name,

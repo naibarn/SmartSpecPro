@@ -1,14 +1,13 @@
-import crypto from "node:crypto";
 import type { Express, Request, Response } from "express";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
 
-import { ENV } from "../_core/env";
 import { classifyHostSafety } from "../services/libraryUrlPolicy";
 import { auditLogger } from "../services/auditLogger";
 import type { AuditEventType } from "../services/auditLogger";
 import { contentAutomationGate } from "../middleware/contentAutomationGate";
 import { FileParseRequestSchema } from "@shared/contentAutomation/types";
+import { compareCachedInternalToken, getCachedAppRuntimeConfig } from "../services/appRuntimeConfig";
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5MB
 const BLOCKED_SCHEMES = new Set(["file:", "gopher:", "dict:", "ftp:"]);
@@ -27,15 +26,8 @@ export function sanitizeCell(value: unknown): string {
 }
 
 function verifyInternalToken(req: Request): boolean {
-  const expected = ENV.webGatewayToken;
-  if (!expected) return false;
   const token = req.headers["x-internal-token"] as string | undefined;
-  if (!token) return false;
-  try {
-    return crypto.timingSafeEqual(Buffer.from(token), Buffer.from(expected));
-  } catch {
-    return false;
-  }
+  return compareCachedInternalToken(token);
 }
 
 function emitAudit(eventType: string, metadata: Record<string, unknown>): void {
@@ -43,11 +35,12 @@ function emitAudit(eventType: string, metadata: Record<string, unknown>): void {
 }
 
 function isAllowedUrl(parsed: URL): boolean {
+  const runtimeConfig = getCachedAppRuntimeConfig();
   // Allow /uploads/ path
   if (parsed.pathname.startsWith("/uploads/")) return true;
   // Allow S3/R2 hosts from env
-  const s3Endpoint = process.env.S3_ENDPOINT ?? "";
-  const r2Public = process.env.R2_PUBLIC_URL ?? "";
+  const s3Endpoint = runtimeConfig.s3Endpoint;
+  const r2Public = runtimeConfig.r2PublicUrl;
   if (s3Endpoint) {
     try {
       const s3Host = new URL(s3Endpoint).hostname;

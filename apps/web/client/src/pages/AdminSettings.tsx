@@ -9,6 +9,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { pickEnabledModelId } from "@/lib/enabledModelSelection";
 import InviteCodeManager from "@/components/admin/InviteCodeManager";
 import InviteCodeDashboard from "@/components/admin/InviteCodeDashboard";
+import { LocaleToggle } from "@/components/LocaleToggle";
+import { useTranslation } from "react-i18next";
 import { trpc } from "../lib/trpc";
 import { Button } from "@/components/ui/button";
 import { HelpButton } from "@/components/help";
@@ -91,6 +93,126 @@ interface StripeSettings {
   webhookSecretConfigured?: string;
   currency?: string;
 }
+
+interface BeamProviderForm {
+  apiBaseUrl: string;
+  apiKey: string;
+  chargesPath: string;
+  paymentLinksPath: string;
+  chargeStatusPathTemplate: string;
+  paymentLinkStatusPathTemplate: string;
+  cancelPathSuffix: string;
+  webhookSecretCurrent: string;
+  webhookSecretPrevious: string;
+  paymentMethodSetupPath: string;
+  paymentMethodSetupHostedUrlTemplate: string;
+  paymentMethodSetupReturnUrl: string;
+  paymentMethodSetupCallbackSecretCurrent: string;
+  paymentMethodSetupCallbackSecretPrevious: string;
+}
+
+interface PaymentProviderForm {
+  BILLING_ACTIVE_PROVIDER: "stripe" | "beam";
+  BILLING_STRIPE_ENABLED: boolean;
+  BILLING_BEAM_ENABLED: boolean;
+  BEAM_PAYMENT_LINK_FALLBACK: boolean;
+}
+
+interface BeamRuntimeForm {
+  PAYMENT_RECONCILIATION_ENABLED: boolean;
+  FINAL_RECONCILIATION_BEFORE_DOWNGRADE: boolean;
+  ADMIN_MANUAL_MARK_PAID_ENABLED: boolean;
+  ADMIN_DOWNGRADE_REVERSAL_ENABLED: boolean;
+  SUPPORT_RECOVERY_CASES_ENABLED: boolean;
+  DOCUMENT_RECOVERY_ENABLED: boolean;
+  INVOICE_HEADER_SYNC_ENABLED: boolean;
+  PAID_INVOICE_REISSUE_ENABLED: boolean;
+  AUTO_DOWNGRADE_AFTER_7_DAYS: boolean;
+  BILLING_PHASE2_SAVED_CARDS_ENABLED: boolean;
+  BILLING_PHASE2_AUTO_RENEW_ENABLED: boolean;
+  BILLING_PHASE2_DUNNING_ENABLED: boolean;
+  BILLING_PHASE2_CARD_SETUP_ENABLED: boolean;
+  BILLING_PHASE2_FORCE_MANUAL_FALLBACK_ENABLED: boolean;
+  BILLING_EMAIL_NOTIFICATIONS_ENABLED: boolean;
+  BILLING_PHASE2_REQUIRE_STEP_UP: boolean;
+  BILLING_PHASE2_ALLOWED_COHORTS: string;
+  BILLING_PHASE2_DEFAULT_COHORT: string;
+  BILLING_PHASE2_SETUP_CALLBACK_TOLERANCE_SECONDS: string;
+  BILLING_WEBHOOK_TIMESTAMP_TOLERANCE_SECONDS: string;
+  BILLING_PAYMENT_METHOD_SETUP_EXPIRY_MINUTES: string;
+  BILLING_PHASE2_STEP_UP_WINDOW_MINUTES: string;
+  BILLING_EVIDENCE_RETENTION_DAYS: string;
+  BILLING_OVERDUE_DAYS: string;
+  BILLING_SUBSCRIPTION_RENEWAL_DUE_DAYS: string;
+  BILLING_TOPUP_DUE_DAYS: string;
+  BILLING_NOTIFICATION_REMINDER_FIRST_THRESHOLD_DAYS: string;
+  BILLING_NOTIFICATION_REMINDER_FINAL_THRESHOLD_DAYS: string;
+  BILLING_NOTIFICATION_COOLDOWN_REMINDER_HOURS: string;
+  BILLING_NOTIFICATION_COOLDOWN_SUCCESS_HOURS: string;
+  BILLING_NOTIFICATION_COOLDOWN_DEFAULT_HOURS: string;
+  BILLING_SUBSCRIPTION_CUTOVER_READY: boolean;
+  BILLING_PUBLIC_URL: string;
+  BILLING_PHASE2_STEP_UP_SECRET: string;
+}
+
+const EMPTY_BEAM_PROVIDER_FORM: BeamProviderForm = {
+  apiBaseUrl: "",
+  apiKey: "",
+  chargesPath: "/v1/charges",
+  paymentLinksPath: "/v1/payment_links",
+  chargeStatusPathTemplate: "/v1/charges/{id}",
+  paymentLinkStatusPathTemplate: "/v1/payment_links/{id}",
+  cancelPathSuffix: "/cancel",
+  webhookSecretCurrent: "",
+  webhookSecretPrevious: "",
+  paymentMethodSetupPath: "",
+  paymentMethodSetupHostedUrlTemplate: "",
+  paymentMethodSetupReturnUrl: "",
+  paymentMethodSetupCallbackSecretCurrent: "",
+  paymentMethodSetupCallbackSecretPrevious: "",
+};
+
+const EMPTY_BEAM_RUNTIME_FORM: BeamRuntimeForm = {
+  PAYMENT_RECONCILIATION_ENABLED: true,
+  FINAL_RECONCILIATION_BEFORE_DOWNGRADE: true,
+  ADMIN_MANUAL_MARK_PAID_ENABLED: true,
+  ADMIN_DOWNGRADE_REVERSAL_ENABLED: true,
+  SUPPORT_RECOVERY_CASES_ENABLED: true,
+  DOCUMENT_RECOVERY_ENABLED: true,
+  INVOICE_HEADER_SYNC_ENABLED: true,
+  PAID_INVOICE_REISSUE_ENABLED: true,
+  AUTO_DOWNGRADE_AFTER_7_DAYS: true,
+  BILLING_PHASE2_SAVED_CARDS_ENABLED: true,
+  BILLING_PHASE2_AUTO_RENEW_ENABLED: true,
+  BILLING_PHASE2_DUNNING_ENABLED: true,
+  BILLING_PHASE2_CARD_SETUP_ENABLED: true,
+  BILLING_PHASE2_FORCE_MANUAL_FALLBACK_ENABLED: true,
+  BILLING_EMAIL_NOTIFICATIONS_ENABLED: false,
+  BILLING_PHASE2_REQUIRE_STEP_UP: false,
+  BILLING_PHASE2_ALLOWED_COHORTS: "",
+  BILLING_PHASE2_DEFAULT_COHORT: "",
+  BILLING_PHASE2_SETUP_CALLBACK_TOLERANCE_SECONDS: "300",
+  BILLING_WEBHOOK_TIMESTAMP_TOLERANCE_SECONDS: "300",
+  BILLING_PAYMENT_METHOD_SETUP_EXPIRY_MINUTES: "60",
+  BILLING_PHASE2_STEP_UP_WINDOW_MINUTES: "15",
+  BILLING_EVIDENCE_RETENTION_DAYS: "180",
+  BILLING_OVERDUE_DAYS: "7",
+  BILLING_SUBSCRIPTION_RENEWAL_DUE_DAYS: "7",
+  BILLING_TOPUP_DUE_DAYS: "1",
+  BILLING_NOTIFICATION_REMINDER_FIRST_THRESHOLD_DAYS: "4",
+  BILLING_NOTIFICATION_REMINDER_FINAL_THRESHOLD_DAYS: "1",
+  BILLING_NOTIFICATION_COOLDOWN_REMINDER_HOURS: "12",
+  BILLING_NOTIFICATION_COOLDOWN_SUCCESS_HOURS: "24",
+  BILLING_NOTIFICATION_COOLDOWN_DEFAULT_HOURS: "1",
+  BILLING_SUBSCRIPTION_CUTOVER_READY: false,
+  BILLING_PUBLIC_URL: "https://smartaihub.app",
+  BILLING_PHASE2_STEP_UP_SECRET: "",
+};
+
+const BEAM_LIGHTHOUSE_URL = "https://my.beamcheckout.com";
+const BEAM_WEBHOOK_GUIDE_URL = "https://docs.beamcheckout.com/webhook/webhook";
+const BEAM_PAYMENT_LINK_GUIDE_URL = "https://docs.beamcheckout.com/payment-links/payment-links";
+const BEAM_PAYMENT_LINK_API_GUIDE_URL = "https://docs.beamcheckout.com/payment-links/payment-links-api";
 
 const DEFAULT_VECTOR_DB_HEALTH = {
   provider_status: {
@@ -178,16 +300,208 @@ function normalizeVectorDbHealthPayload(data: any) {
 }
 
 export default function AdminSettings() {
+  const { i18n } = useTranslation();
   const { user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState("stripe");
+  const isThai = i18n.resolvedLanguage?.startsWith("th") || i18n.language?.startsWith("th");
+
+  const copy = {
+    dashboard: isThai ? "แดชบอร์ด" : "Dashboard",
+    platformSettings: isThai ? "ตั้งค่าแพลตฟอร์ม" : "Platform Settings",
+    platformSubtitle: isThai ? "จัดการ integrations ความปลอดภัย และการเชื่อมต่อระบบ" : "Configure integrations and security",
+    languageLabel: isThai ? "ภาษา" : "Language",
+    languageHelp: isThai ? "สลับภาษาได้ทันทีในหน้านี้" : "Switch this page instantly",
+    billingConsole: isThai ? "คอนโซลบิลลิ่ง" : "Billing Console",
+    providerSwitch: {
+      title: isThai ? "เกตเวย์การชำระเงิน" : "Payment Gateways",
+      description: isThai ? "เลือกผู้ให้บริการ checkout หลัก และจัดการ Stripe กับ Beam ในที่เดียว" : "Choose the active checkout provider and manage Stripe and Beam in one place.",
+      activePaymentProvider: isThai ? "ผู้ให้บริการชำระเงินหลัก" : "Active payment provider",
+      save: isThai ? "บันทึกการสลับผู้ให้บริการ" : "Save Provider Switch",
+      summaryTitle: isThai ? "สรุปการตั้งค่าใช้งานปัจจุบัน" : "Current runtime summary",
+      activeProvider: isThai ? "ผู้ให้บริการที่ใช้งานอยู่" : "Active provider",
+      enabled: isThai ? "เปิดใช้งาน" : "enabled",
+      disabled: isThai ? "ปิดใช้งาน" : "disabled",
+      stripeEnabled: isThai ? "เปิดใช้งาน Stripe" : "Stripe enabled",
+      stripeDesc: isThai ? "ให้ Stripe ยังเป็นตัวเลือกการชำระเงินได้" : "Keep Stripe available as a provider.",
+      beamEnabled: isThai ? "เปิดใช้งาน Beam" : "Beam enabled",
+      beamDesc: isThai ? "เปิดใช้ Beam checkout, PromptPay QR และระบบบิลลิ่งของ Beam" : "Enable Beam checkout, QR PromptPay, and Beam billing runtime.",
+      beamFallback: isThai ? "ใช้ Beam payment link เป็น fallback" : "Beam payment link fallback",
+      beamFallbackDesc: isThai ? "ให้ใช้ Beam payment link ได้เมื่อ charge flow ปกติใช้งานไม่ได้" : "Allow Beam payment links as fallback when charge flow is unavailable.",
+      runtimeNote: isThai ? "การตั้งค่า Beam billing runtime, checkout QR, payment links, webhook verification และ card setup อยู่ด้านล่าง" : "Beam billing runtime, checkout QR, payment links, webhook verification, and card-setup config are managed below.",
+      stripeLabel: isThai ? "Stripe" : "Stripe",
+      beamLabel: isThai ? "Beam" : "Beam",
+    },
+    stripe: {
+      title: isThai ? "ตั้งค่า Stripe" : "Stripe Configuration",
+      descPrefix: isThai ? "ตั้งค่า Stripe API keys สำหรับการชำระเงิน รับคีย์ได้จาก" : "Configure your Stripe API keys for payment processing. Get your keys from the",
+      descLink: isThai ? "Stripe Dashboard" : "Stripe Dashboard",
+      currently: isThai ? "สถานะ Stripe ตอนนี้" : "Stripe is currently",
+      publishableKey: isThai ? "Publishable Key" : "Publishable Key",
+      publishableHint: isThai ? "ใช้ในฝั่ง frontend สำหรับ Stripe.js integration" : "Used in the frontend for Stripe.js integration",
+      secretKey: isThai ? "Secret Key" : "Secret Key",
+      configured: isThai ? "ตั้งค่าแล้ว" : "Configured",
+      secretPlaceholderKeep: isThai ? "เว้นว่างเพื่อคงคีย์เดิมไว้" : "Enter new key to update...",
+      secretPlaceholderNew: isThai ? "sk_test_..." : "sk_test_...",
+      secretHint: isThai ? "เก็บเป็นความลับ ห้ามเปิดเผยใน frontend" : "Keep this secret. Never expose in frontend code.",
+      webhookSecret: isThai ? "Webhook Secret" : "Webhook Secret",
+      webhookPlaceholderKeep: isThai ? "เว้นว่างเพื่อคง secret เดิมไว้" : "Enter new secret to update...",
+      webhookPlaceholderNew: isThai ? "whsec_..." : "whsec_...",
+      webhookHint: isThai ? "จำเป็นสำหรับรับ Stripe webhook events" : "Required for receiving Stripe webhook events",
+      currency: isThai ? "สกุลเงิน" : "Currency",
+      selectCurrency: isThai ? "เลือกสกุลเงิน" : "Select currency",
+      save: isThai ? "บันทึกการตั้งค่า Stripe" : "Save Stripe Settings",
+      test: isThai ? "ทดสอบ Stripe" : "Test Stripe",
+    },
+    beam: {
+      title: isThai ? "ตั้งค่า Beam Gateway" : "Beam Gateway Configuration",
+      description: isThai ? "ตั้งค่า Beam checkout, PromptPay QR, payment links, webhook verification และ card setup จากหน้า Payments นี้" : "Configure Beam checkout, PromptPay QR, payment links, webhook verification, and card setup from the main Payments page.",
+      step1Title: isThai ? "1. เปิด Beam Lighthouse" : "1. Open Beam Lighthouse",
+      step1Body: isThai ? "ใช้ merchant console ของ Beam เพื่อคัดลอก API credentials, ตั้งค่า webhook endpoint และจัดการ hosted checkout" : "Use your Beam merchant console to copy API credentials, configure webhook endpoints, and manage hosted checkout settings.",
+      step1Button: isThai ? "เปิด Beam Lighthouse" : "Open Beam Lighthouse",
+      step2Title: isThai ? "2. คู่มือตั้งค่า Webhook" : "2. Webhook setup guide",
+      step2Body: isThai ? "ลงทะเบียน webhook endpoint ใน Beam แล้วคัดลอก signing secret มากรอกด้านล่าง" : "Register your webhook endpoint in Beam and copy the signing secret into the fields below.",
+      step2Button: isThai ? "เปิดคู่มือ Webhook" : "Open Webhook Guide",
+      step3Title: isThai ? "3. คู่มือ Payment Links" : "3. Payment Links guide",
+      step3Body: isThai ? "ใช้ตอนเปิด Beam-hosted checkout fallback หรือใช้ตรวจสอบ path templates ของ payment links" : "Use this when enabling Beam-hosted checkout fallback or validating path templates for payment links.",
+      overview: isThai ? "ภาพรวม" : "Overview",
+      apiGuide: isThai ? "คู่มือ API" : "API Guide",
+      runtimeHealth: isThai ? "สถานะการทำงาน Beam" : "Beam runtime health",
+      configuredSecrets: isThai ? "Secrets ที่ตั้งค่าไว้" : "Configured secrets",
+      yes: isThai ? "ใช่" : "Yes",
+      no: isThai ? "ไม่" : "No",
+      notConfigured: isThai ? "ยังไม่ตั้งค่า" : "not configured",
+      missing: isThai ? "ยังขาด" : "Missing",
+      gatewayNotice: isThai ? "การตั้งค่า Beam gateway อยู่ในหน้า Payments แล้ว ส่วน Billing Console ใช้เฉพาะ invoice, recovery และงานปฏิบัติการ" : "Beam gateway setup now lives in Payments. Billing Console remains only for invoice, recovery, and operational workflows.",
+      hideSecrets: isThai ? "ซ่อน secrets" : "Hide secrets",
+      showSecrets: isThai ? "แสดง secrets" : "Show secrets",
+      saveGateway: isThai ? "บันทึก Beam Gateway" : "Save Beam Gateway",
+      refreshHealth: isThai ? "รีเฟรชสถานะ Beam" : "Refresh Beam Health",
+      runtimeTitle: isThai ? "Beam Billing Runtime" : "Beam Billing Runtime",
+      runtimeDesc: isThai ? "จัดการนโยบายบิลลิ่งของ Beam, recovery toggles, QR/card setup flow, reminders และ rollout controls จากหน้า Payments" : "Manage Beam-specific billing policies, recovery toggles, QR/card setup flow, reminders, and rollout controls from the Payments page.",
+      runtimeSummary: isThai ? "สรุปการตั้งค่า Beam runtime" : "Beam runtime summary",
+      openBillingConsole: isThai ? "เปิดคอนโซลบิลลิ่ง" : "Open Billing Console",
+      field: {
+        apiBaseUrl: isThai ? "API base URL" : "API base URL",
+        apiBaseUrlHint: isThai ? "ปลายทางหลักของ Beam API ตัวอย่าง production คือ https://api.beamcheckout.com และ sandbox คือ https://playground.api.beamcheckout.com" : "Beam API base endpoint. Example: `https://api.beamcheckout.com` for production or `https://playground.api.beamcheckout.com` for sandbox.",
+        apiKey: isThai ? "API key" : "API key",
+        apiKeyKeep: isThai ? "เว้นว่างเพื่อคง API key เดิมไว้" : "Leave blank to keep existing key",
+        apiKeyEnter: isThai ? "กรอก API key" : "Enter API key",
+        apiKeyHint: isThai ? "คัดลอกมาจาก developer credentials ใน Beam Lighthouse ถ้าไม่ต้องการเปลี่ยนคีย์เดิมให้เว้นว่างไว้" : "Copy this from Beam Lighthouse developer credentials. Leave blank if you only want to keep the existing saved key.",
+        chargesPath: isThai ? "Charges path" : "Charges path",
+        chargesPathHint: isThai ? "relative path สำหรับสร้าง direct charge เช่น /v1/charges" : "Relative path used to create direct charges. Example: `/v1/charges`.",
+        paymentLinksPath: isThai ? "Payment Links path" : "Payment Links path",
+        paymentLinksPathHint: isThai ? "relative path สำหรับสร้าง Beam-hosted payment links เช่น /api/v1/payment-links" : "Relative path used to create Beam-hosted payment links. Example: `/api/v1/payment-links` or your Beam environment’s equivalent path.",
+        chargeStatusPathTemplate: isThai ? "Charge status path template" : "Charge status path template",
+        chargeStatusPathTemplateHint: isThai ? "template สำหรับดึง charge ตาม id โดยใช้ placeholder {id}" : "Template for retrieving a charge by id. Use `{id}` placeholder. Example: `/v1/charges/{id}`.",
+        paymentLinkStatusPathTemplate: isThai ? "Payment Link status path template" : "Payment Link status path template",
+        paymentLinkStatusPathTemplateHint: isThai ? "template สำหรับดึง payment link ตาม id โดยใช้ placeholder {id}" : "Template for retrieving a payment link by id. Use `{id}` placeholder. Example: `/api/v1/payment-links/{id}`.",
+        cancelPathSuffix: isThai ? "Cancel path suffix" : "Cancel path suffix",
+        cancelPathSuffixHint: isThai ? "suffix ที่ต่อท้ายเวลายกเลิกหรือปิด Beam object เช่น /cancel" : "Suffix appended when canceling or disabling a Beam object. Example: `/cancel`.",
+        setupApiPath: isThai ? "Setup API path" : "Setup API path",
+        setupApiPathHint: isThai ? "path สำหรับสร้าง session setup/authorization ของบัตรที่บันทึกไว้ ใช้เมื่อบัญชี Beam รองรับ card setup" : "API path used to create card setup or authorization sessions for saved-card enrollment. Fill this only if your Beam account supports card setup.",
+        hostedSetupUrlTemplate: isThai ? "Hosted setup URL template" : "Hosted setup URL template",
+        hostedSetupUrlTemplateHint: isThai ? "URL template ของ Beam hosted card setup ต้องมี {sessionId} และมักมี {returnUrl}" : "Beam-hosted card setup page URL template. Must include placeholders like `{sessionId}` and usually `{returnUrl}`.",
+        setupReturnUrl: isThai ? "Setup return URL" : "Setup return URL",
+        setupReturnUrlHint: isThai ? "URL ที่ Beam จะพาผู้ใช้กลับมาหลังทำ hosted card setup เสร็จ เช่นหน้าบิลลิ่งหรือหน้ากลับจาก checkout" : "Where Beam should redirect the user after completing hosted card setup. Example: your billing settings or checkout return page.",
+        webhookSecretCurrent: isThai ? "Webhook secret ปัจจุบัน" : "Webhook secret current",
+        webhookSecretCurrentKeep: isThai ? "เว้นว่างเพื่อคง secret เดิมไว้" : "Leave blank to keep existing secret",
+        webhookSecretCurrentEnter: isThai ? "กรอก webhook secret" : "Enter webhook secret",
+        webhookSecretCurrentHint: isThai ? "HMAC signing secret ปัจจุบันจากการตั้งค่า Beam webhook ให้วาง secret ล่าสุดที่ใช้งานอยู่" : "Current HMAC signing secret from Beam webhook configuration. Paste the newest active secret here.",
+        webhookSecretPrevious: isThai ? "Webhook secret ก่อนหน้า" : "Webhook secret previous",
+        webhookSecretPreviousKeep: isThai ? "เว้นว่างเพื่อคง secret เดิมไว้" : "Leave blank to keep previous secret",
+        optional: isThai ? "ไม่บังคับ" : "Optional",
+        webhookSecretPreviousHint: isThai ? "ใช้ชั่วคราวตอน rotate secret เพื่อให้ webhook retry เก่าตรวจสอบผ่านได้" : "Optional previous secret used during secret rotation so older retries can still validate.",
+        setupCallbackSecretCurrent: isThai ? "Setup callback secret ปัจจุบัน" : "Setup callback secret current",
+        setupCallbackSecretCurrentKeep: isThai ? "เว้นว่างเพื่อคง secret เดิมไว้" : "Leave blank to keep existing secret",
+        setupCallbackSecretCurrentEnter: isThai ? "กรอก callback secret" : "Enter callback secret",
+        setupCallbackSecretCurrentHint: isThai ? "secret สำหรับตรวจสอบ Beam hosted setup callbacks ควรแยกจาก webhook secret ปกติหาก Beam ออก secret เฉพาะมาให้" : "Secret used to verify Beam hosted setup callbacks. Keep it separate from the normal webhook secret if Beam provides a dedicated callback secret.",
+        setupCallbackSecretPrevious: isThai ? "Setup callback secret ก่อนหน้า" : "Setup callback secret previous",
+        setupCallbackSecretPreviousKeep: isThai ? "เว้นว่างเพื่อคง secret เดิมไว้" : "Leave blank to keep previous secret",
+        setupCallbackSecretPreviousHint: isThai ? "ใช้ชั่วคราวเฉพาะช่วงที่กำลัง rotate setup callback verification" : "Optional previous callback secret used only while rotating setup callback verification.",
+      },
+      runtimeLabels: {
+        PAYMENT_RECONCILIATION_ENABLED: isThai ? "กระทบยอดการชำระเงิน" : "Payment reconciliation",
+        FINAL_RECONCILIATION_BEFORE_DOWNGRADE: isThai ? "กระทบยอดรอบสุดท้ายก่อน downgrade" : "Final reconciliation before downgrade",
+        AUTO_DOWNGRADE_AFTER_7_DAYS: isThai ? "downgrade อัตโนมัติหลัง 7 วัน" : "Auto downgrade after 7 days",
+        INVOICE_HEADER_SYNC_ENABLED: isThai ? "ซิงก์หัวใบแจ้งหนี้" : "Invoice header sync",
+        PAID_INVOICE_REISSUE_ENABLED: isThai ? "ออก paid invoice ใหม่ได้" : "Paid invoice reissue",
+        BILLING_PHASE2_SAVED_CARDS_ENABLED: isThai ? "บันทึกบัตร" : "Saved cards",
+        BILLING_PHASE2_AUTO_RENEW_ENABLED: isThai ? "ต่ออายุอัตโนมัติ" : "Auto renew",
+        BILLING_PHASE2_DUNNING_ENABLED: isThai ? "Dunning" : "Dunning",
+        BILLING_PHASE2_CARD_SETUP_ENABLED: isThai ? "ตั้งค่าบัตร" : "Card setup",
+        BILLING_PHASE2_FORCE_MANUAL_FALLBACK_ENABLED: isThai ? "สั่ง fallback เป็น manual" : "Manual fallback actions",
+        BILLING_EMAIL_NOTIFICATIONS_ENABLED: isThai ? "อีเมลแจ้งเตือนบิลลิ่ง" : "Billing email notifications",
+        BILLING_PHASE2_REQUIRE_STEP_UP: isThai ? "บังคับ step-up auth" : "Require step-up auth",
+        SUPPORT_RECOVERY_CASES_ENABLED: isThai ? "เคส recovery ของ support" : "Support recovery cases",
+        DOCUMENT_RECOVERY_ENABLED: isThai ? "กู้คืนเอกสาร" : "Document recovery",
+        BILLING_SUBSCRIPTION_CUTOVER_READY: isThai ? "พร้อม cutover subscription" : "Subscription cutover ready",
+      },
+      runtimeFields: {
+        allowedCohorts: isThai ? "cohort ที่อนุญาตให้ rollout" : "Allowed rollout cohorts",
+        defaultCohort: isThai ? "cohort เริ่มต้น" : "Default rollout cohort",
+        billingPublicUrl: isThai ? "Billing public URL" : "Billing public URL",
+        stepUpSharedSecret: isThai ? "Step-up shared secret" : "Step-up shared secret",
+        stepUpSharedSecretKeep: isThai ? "เว้นว่างเพื่อคง secret เดิมไว้" : "Leave blank to keep existing secret",
+        stepUpSharedSecretEnter: isThai ? "กรอก step-up secret" : "Enter step-up secret",
+        setupCallbackToleranceSeconds: isThai ? "วินาทีที่ยอมรับ setup callback ได้" : "Setup callback tolerance seconds",
+        webhookTimestampToleranceSeconds: isThai ? "วินาทีที่ยอมรับ webhook timestamp ได้" : "Webhook timestamp tolerance seconds",
+        paymentMethodSetupExpiryMinutes: isThai ? "อายุ setup payment method (นาที)" : "Payment method setup expiry minutes",
+        stepUpWindowMinutes: isThai ? "หน้าต่างเวลา step-up (นาที)" : "Step-up window minutes",
+        evidenceRetentionDays: isThai ? "อายุเก็บ evidence (วัน)" : "Evidence retention days",
+        overdueDays: isThai ? "จำนวนวันค้างชำระ" : "Overdue days",
+        subscriptionRenewalDueDays: isThai ? "วันครบกำหนด renewal subscription" : "Subscription renewal due days",
+        topupDueDays: isThai ? "วันครบกำหนด top-up" : "Top-up due days",
+        reminderFirstThresholdDays: isThai ? "วันเตือนครั้งแรก" : "Reminder first threshold days",
+        reminderFinalThresholdDays: isThai ? "วันเตือนครั้งสุดท้าย" : "Reminder final threshold days",
+        reminderCooldownHours: isThai ? "คูลดาวน์การเตือน (ชั่วโมง)" : "Reminder cooldown hours",
+        successCooldownHours: isThai ? "คูลดาวน์หลังจ่ายสำเร็จ (ชั่วโมง)" : "Success cooldown hours",
+        defaultCooldownHours: isThai ? "คูลดาวน์เริ่มต้น (ชั่วโมง)" : "Default cooldown hours",
+      },
+      runtimeValues: {
+        savedCards: isThai ? "บันทึกบัตร" : "Saved cards",
+        autoRenew: isThai ? "ต่ออายุอัตโนมัติ" : "Auto renew",
+        dunning: isThai ? "Dunning" : "Dunning",
+        cardSetup: isThai ? "ตั้งค่าบัตร" : "Card setup",
+        supportRecovery: isThai ? "Support recovery" : "Support recovery",
+      },
+      saveRuntime: isThai ? "บันทึก Beam Runtime" : "Save Beam Runtime",
+    },
+    nav: {
+      payments: { label: isThai ? "การชำระเงิน" : "Payments", sublabel: isThai ? "Stripe / Beam" : "Stripe / Beam" },
+      oauth: { label: "OAuth", sublabel: isThai ? "เข้าสู่ระบบโซเชียล" : "Social Login" },
+      registration: { label: isThai ? "การสมัครสมาชิก" : "Registration", sublabel: isThai ? "สมัครใช้งาน / เครดิต" : "Signup & Credits" },
+      smtp: { label: isThai ? "อีเมล" : "Email", sublabel: isThai ? "ตั้งค่า SMTP" : "SMTP Settings" },
+      sms: { label: "SMS", sublabel: isThai ? "ตั้งค่าผู้ให้บริการ" : "Provider Config" },
+      telegram: { label: isThai ? "บอท Telegram" : "Telegram Bot", sublabel: isThai ? "แจ้งเตือน" : "Alert Notifications" },
+      twoFA: { label: "2FA", sublabel: isThai ? "ตัวพิสูจน์ตัวตน" : "Authenticator" },
+      stt: { label: "STT", sublabel: isThai ? "แปลงเสียงเป็นข้อความ" : "Speech-to-Text" },
+      ai: { label: isThai ? "AI / หน่วยความจำ" : "AI / Memory", sublabel: isThai ? "โมเดลสรุปผล" : "Summary Model" },
+      vectordb: { label: isThai ? "ฐานข้อมูลเวกเตอร์" : "Vector Database", sublabel: isThai ? "RAG / Embeddings" : "RAG & Embeddings" },
+      storage: { label: isThai ? "พื้นที่จัดเก็บ" : "Storage", sublabel: isThai ? "Local / R2 / S3" : "Local / R2 / S3" },
+      infrastructure: { label: isThai ? "โครงสร้างพื้นฐาน" : "Infrastructure", sublabel: isThai ? "GCP / Redis / Tasks" : "GCP / Redis / Tasks" },
+      agencies: { label: isThai ? "เอเจนซี" : "Agencies", sublabel: isThai ? "Multi-Agent Swarm" : "Multi-Agent Swarm" },
+      automation: { label: isThai ? "อัตโนมัติ" : "Automation", sublabel: isThai ? "ตั้งค่า Copilot" : "Copilot Settings" },
+      menu: { label: isThai ? "เมนูหลัก" : "Main Menu", sublabel: isThai ? "การมองเห็นเมนู" : "Visibility Control" },
+    },
+  } as const;
 
   // Stripe settings state
   const [stripeForm, setStripeForm] = useState<StripeSettings>({
     currency: "usd",
   });
+  const [paymentsSubTab, setPaymentsSubTab] = useState("provider");
+  const [beamProviderForm, setBeamProviderForm] = useState<BeamProviderForm>(EMPTY_BEAM_PROVIDER_FORM);
+  const [paymentProviderForm, setPaymentProviderForm] = useState<PaymentProviderForm>({
+    BILLING_ACTIVE_PROVIDER: "beam",
+    BILLING_STRIPE_ENABLED: false,
+    BILLING_BEAM_ENABLED: true,
+    BEAM_PAYMENT_LINK_FALLBACK: true,
+  });
+  const [beamRuntimeForm, setBeamRuntimeForm] = useState<BeamRuntimeForm>(EMPTY_BEAM_RUNTIME_FORM);
   const [showSecretKey, setShowSecretKey] = useState(false);
   const [showWebhookSecret, setShowWebhookSecret] = useState(false);
+  const [showBeamSecrets, setShowBeamSecrets] = useState(false);
 
   // Registration settings state
   const [regForm, setRegForm] = useState({
@@ -255,6 +569,37 @@ export default function AdminSettings() {
     },
     onError: (err) => {
       toast.error(`Test failed: ${err.message}`);
+    },
+  });
+
+  const beamProviderSettingsQuery = trpc.adminBilling.getBeamProviderSettings.useQuery(undefined, {
+    enabled: !!user && user.role === "admin",
+  });
+  const beamProviderHealthQuery = trpc.adminBilling.testBeamProviderSettings.useQuery(undefined, {
+    enabled: !!user && user.role === "admin",
+  });
+  const billingRuntimeSettingsQuery = trpc.adminBilling.getBillingRuntimeSettings.useQuery(undefined, {
+    enabled: !!user && user.role === "admin",
+  });
+
+  const updateBeamProviderSettingsMutation = trpc.adminBilling.updateBeamProviderSettings.useMutation({
+    onSuccess: () => {
+      toast.success("Beam settings saved successfully");
+      beamProviderSettingsQuery.refetch();
+      beamProviderHealthQuery.refetch();
+    },
+    onError: (err) => {
+      toast.error(`Failed to save Beam settings: ${err.message}`);
+    },
+  });
+
+  const updateBillingProviderMutation = trpc.adminBilling.updateBillingRuntimeSettings.useMutation({
+    onSuccess: () => {
+      toast.success("Payment provider settings saved");
+      billingRuntimeSettingsQuery.refetch();
+    },
+    onError: (err) => {
+      toast.error(`Failed to save provider settings: ${err.message}`);
     },
   });
 
@@ -746,6 +1091,74 @@ export default function AdminSettings() {
   }, [stripeSettings]);
 
   useEffect(() => {
+    if (!beamProviderSettingsQuery.data) return;
+    setBeamProviderForm((prev) => ({
+      ...prev,
+      apiBaseUrl: beamProviderSettingsQuery.data.apiBaseUrl ?? "",
+      chargesPath: beamProviderSettingsQuery.data.chargesPath ?? prev.chargesPath,
+      paymentLinksPath: beamProviderSettingsQuery.data.paymentLinksPath ?? prev.paymentLinksPath,
+      chargeStatusPathTemplate: beamProviderSettingsQuery.data.chargeStatusPathTemplate ?? prev.chargeStatusPathTemplate,
+      paymentLinkStatusPathTemplate: beamProviderSettingsQuery.data.paymentLinkStatusPathTemplate ?? prev.paymentLinkStatusPathTemplate,
+      cancelPathSuffix: beamProviderSettingsQuery.data.cancelPathSuffix ?? prev.cancelPathSuffix,
+      apiKey: "",
+      webhookSecretCurrent: "",
+      webhookSecretPrevious: "",
+      paymentMethodSetupPath: beamProviderSettingsQuery.data.paymentMethodSetupPath ?? "",
+      paymentMethodSetupHostedUrlTemplate: beamProviderSettingsQuery.data.paymentMethodSetupHostedUrlTemplate ?? "",
+      paymentMethodSetupReturnUrl: beamProviderSettingsQuery.data.paymentMethodSetupReturnUrl ?? "",
+      paymentMethodSetupCallbackSecretCurrent: "",
+      paymentMethodSetupCallbackSecretPrevious: "",
+    }));
+  }, [beamProviderSettingsQuery.data]);
+
+  useEffect(() => {
+    if (!billingRuntimeSettingsQuery.data) return;
+    setPaymentProviderForm({
+      BILLING_ACTIVE_PROVIDER:
+        billingRuntimeSettingsQuery.data.BILLING_ACTIVE_PROVIDER === "stripe" ? "stripe" : "beam",
+      BILLING_STRIPE_ENABLED: Boolean(billingRuntimeSettingsQuery.data.BILLING_STRIPE_ENABLED),
+      BILLING_BEAM_ENABLED: Boolean(billingRuntimeSettingsQuery.data.BILLING_BEAM_ENABLED),
+      BEAM_PAYMENT_LINK_FALLBACK: Boolean(billingRuntimeSettingsQuery.data.BEAM_PAYMENT_LINK_FALLBACK),
+    });
+    setBeamRuntimeForm({
+      PAYMENT_RECONCILIATION_ENABLED: Boolean(billingRuntimeSettingsQuery.data.PAYMENT_RECONCILIATION_ENABLED),
+      FINAL_RECONCILIATION_BEFORE_DOWNGRADE: Boolean(billingRuntimeSettingsQuery.data.FINAL_RECONCILIATION_BEFORE_DOWNGRADE),
+      ADMIN_MANUAL_MARK_PAID_ENABLED: Boolean(billingRuntimeSettingsQuery.data.ADMIN_MANUAL_MARK_PAID_ENABLED),
+      ADMIN_DOWNGRADE_REVERSAL_ENABLED: Boolean(billingRuntimeSettingsQuery.data.ADMIN_DOWNGRADE_REVERSAL_ENABLED),
+      SUPPORT_RECOVERY_CASES_ENABLED: Boolean(billingRuntimeSettingsQuery.data.SUPPORT_RECOVERY_CASES_ENABLED),
+      DOCUMENT_RECOVERY_ENABLED: Boolean(billingRuntimeSettingsQuery.data.DOCUMENT_RECOVERY_ENABLED),
+      INVOICE_HEADER_SYNC_ENABLED: Boolean(billingRuntimeSettingsQuery.data.INVOICE_HEADER_SYNC_ENABLED),
+      PAID_INVOICE_REISSUE_ENABLED: Boolean(billingRuntimeSettingsQuery.data.PAID_INVOICE_REISSUE_ENABLED),
+      AUTO_DOWNGRADE_AFTER_7_DAYS: Boolean(billingRuntimeSettingsQuery.data.AUTO_DOWNGRADE_AFTER_7_DAYS),
+      BILLING_PHASE2_SAVED_CARDS_ENABLED: Boolean(billingRuntimeSettingsQuery.data.BILLING_PHASE2_SAVED_CARDS_ENABLED),
+      BILLING_PHASE2_AUTO_RENEW_ENABLED: Boolean(billingRuntimeSettingsQuery.data.BILLING_PHASE2_AUTO_RENEW_ENABLED),
+      BILLING_PHASE2_DUNNING_ENABLED: Boolean(billingRuntimeSettingsQuery.data.BILLING_PHASE2_DUNNING_ENABLED),
+      BILLING_PHASE2_CARD_SETUP_ENABLED: Boolean(billingRuntimeSettingsQuery.data.BILLING_PHASE2_CARD_SETUP_ENABLED),
+      BILLING_PHASE2_FORCE_MANUAL_FALLBACK_ENABLED: Boolean(billingRuntimeSettingsQuery.data.BILLING_PHASE2_FORCE_MANUAL_FALLBACK_ENABLED),
+      BILLING_EMAIL_NOTIFICATIONS_ENABLED: Boolean(billingRuntimeSettingsQuery.data.BILLING_EMAIL_NOTIFICATIONS_ENABLED),
+      BILLING_PHASE2_REQUIRE_STEP_UP: Boolean(billingRuntimeSettingsQuery.data.BILLING_PHASE2_REQUIRE_STEP_UP),
+      BILLING_PHASE2_ALLOWED_COHORTS: billingRuntimeSettingsQuery.data.BILLING_PHASE2_ALLOWED_COHORTS ?? "",
+      BILLING_PHASE2_DEFAULT_COHORT: billingRuntimeSettingsQuery.data.BILLING_PHASE2_DEFAULT_COHORT ?? "",
+      BILLING_PHASE2_SETUP_CALLBACK_TOLERANCE_SECONDS: billingRuntimeSettingsQuery.data.BILLING_PHASE2_SETUP_CALLBACK_TOLERANCE_SECONDS ?? "300",
+      BILLING_WEBHOOK_TIMESTAMP_TOLERANCE_SECONDS: billingRuntimeSettingsQuery.data.BILLING_WEBHOOK_TIMESTAMP_TOLERANCE_SECONDS ?? "300",
+      BILLING_PAYMENT_METHOD_SETUP_EXPIRY_MINUTES: billingRuntimeSettingsQuery.data.BILLING_PAYMENT_METHOD_SETUP_EXPIRY_MINUTES ?? "60",
+      BILLING_PHASE2_STEP_UP_WINDOW_MINUTES: billingRuntimeSettingsQuery.data.BILLING_PHASE2_STEP_UP_WINDOW_MINUTES ?? "15",
+      BILLING_EVIDENCE_RETENTION_DAYS: billingRuntimeSettingsQuery.data.BILLING_EVIDENCE_RETENTION_DAYS ?? "180",
+      BILLING_OVERDUE_DAYS: billingRuntimeSettingsQuery.data.BILLING_OVERDUE_DAYS ?? "7",
+      BILLING_SUBSCRIPTION_RENEWAL_DUE_DAYS: billingRuntimeSettingsQuery.data.BILLING_SUBSCRIPTION_RENEWAL_DUE_DAYS ?? "7",
+      BILLING_TOPUP_DUE_DAYS: billingRuntimeSettingsQuery.data.BILLING_TOPUP_DUE_DAYS ?? "1",
+      BILLING_NOTIFICATION_REMINDER_FIRST_THRESHOLD_DAYS: billingRuntimeSettingsQuery.data.BILLING_NOTIFICATION_REMINDER_FIRST_THRESHOLD_DAYS ?? "4",
+      BILLING_NOTIFICATION_REMINDER_FINAL_THRESHOLD_DAYS: billingRuntimeSettingsQuery.data.BILLING_NOTIFICATION_REMINDER_FINAL_THRESHOLD_DAYS ?? "1",
+      BILLING_NOTIFICATION_COOLDOWN_REMINDER_HOURS: billingRuntimeSettingsQuery.data.BILLING_NOTIFICATION_COOLDOWN_REMINDER_HOURS ?? "12",
+      BILLING_NOTIFICATION_COOLDOWN_SUCCESS_HOURS: billingRuntimeSettingsQuery.data.BILLING_NOTIFICATION_COOLDOWN_SUCCESS_HOURS ?? "24",
+      BILLING_NOTIFICATION_COOLDOWN_DEFAULT_HOURS: billingRuntimeSettingsQuery.data.BILLING_NOTIFICATION_COOLDOWN_DEFAULT_HOURS ?? "1",
+      BILLING_SUBSCRIPTION_CUTOVER_READY: Boolean(billingRuntimeSettingsQuery.data.BILLING_SUBSCRIPTION_CUTOVER_READY),
+      BILLING_PUBLIC_URL: billingRuntimeSettingsQuery.data.BILLING_PUBLIC_URL ?? "",
+      BILLING_PHASE2_STEP_UP_SECRET: "",
+    });
+  }, [billingRuntimeSettingsQuery.data]);
+
+  useEffect(() => {
     if (oauthSettings) {
       setOauthForm({
         googleClientId: (oauthSettings.googleClientId as string) || "",
@@ -788,6 +1201,21 @@ export default function AdminSettings() {
     });
   };
 
+  const handleSaveBeam = () => {
+    updateBeamProviderSettingsMutation.mutate(beamProviderForm);
+  };
+
+  const handleSavePaymentProvider = () => {
+    updateBillingProviderMutation.mutate(paymentProviderForm);
+  };
+
+  const handleSaveBeamRuntime = () => {
+    updateBillingProviderMutation.mutate({
+      ...paymentProviderForm,
+      ...beamRuntimeForm,
+    });
+  };
+
   const handleSaveOAuth = () => {
     updateOAuthMutation.mutate({
       googleClientId: oauthForm.googleClientId,
@@ -804,28 +1232,28 @@ export default function AdminSettings() {
   };
 
   const navItems = [
-    { key: "stripe", label: "Payments", sublabel: "Stripe API Keys", icon: CreditCard },
-    { key: "oauth", label: "OAuth", sublabel: "Social Login", icon: Globe },
-    { key: "registration", label: "Registration", sublabel: "Signup & Credits", icon: UserPlus },
-    { key: "smtp", label: "Email", sublabel: "SMTP Settings", icon: Mail },
-    { key: "sms", label: "SMS", sublabel: "Provider Config", icon: MessageSquare },
-    { key: "telegram", label: "Telegram Bot", sublabel: "Alert Notifications", icon: Send },
-    { key: "2FA", label: "2FA", sublabel: "Authenticator", icon: Shield },
-    { key: "stt", label: "STT", sublabel: "Speech-to-Text", icon: Mic },
-    { key: "ai", label: "AI / Memory", sublabel: "Summary Model", icon: Brain },
-    { key: "vectordb", label: "Vector Database", sublabel: "RAG & Embeddings", icon: Database },
-    { key: "storage", label: "Storage", sublabel: "Local / R2 / S3", icon: Cloud },
-    { key: "infrastructure", label: "Infrastructure", sublabel: "GCP / Redis / Tasks", icon: Server },
-    { key: "agencies", label: "Agencies", sublabel: "Multi-Agent Swarm", icon: Zap },
-    { key: "automation", label: "Automation", sublabel: "Copilot Settings", icon: Bot },
-    { key: "menu", label: "Main Menu", sublabel: "Visibility Control", icon: Menu },
+    { key: "stripe", label: copy.nav.payments.label, sublabel: copy.nav.payments.sublabel, icon: CreditCard },
+    { key: "oauth", label: copy.nav.oauth.label, sublabel: copy.nav.oauth.sublabel, icon: Globe },
+    { key: "registration", label: copy.nav.registration.label, sublabel: copy.nav.registration.sublabel, icon: UserPlus },
+    { key: "smtp", label: copy.nav.smtp.label, sublabel: copy.nav.smtp.sublabel, icon: Mail },
+    { key: "sms", label: copy.nav.sms.label, sublabel: copy.nav.sms.sublabel, icon: MessageSquare },
+    { key: "telegram", label: copy.nav.telegram.label, sublabel: copy.nav.telegram.sublabel, icon: Send },
+    { key: "2FA", label: copy.nav.twoFA.label, sublabel: copy.nav.twoFA.sublabel, icon: Shield },
+    { key: "stt", label: copy.nav.stt.label, sublabel: copy.nav.stt.sublabel, icon: Mic },
+    { key: "ai", label: copy.nav.ai.label, sublabel: copy.nav.ai.sublabel, icon: Brain },
+    { key: "vectordb", label: copy.nav.vectordb.label, sublabel: copy.nav.vectordb.sublabel, icon: Database },
+    { key: "storage", label: copy.nav.storage.label, sublabel: copy.nav.storage.sublabel, icon: Cloud },
+    { key: "infrastructure", label: copy.nav.infrastructure.label, sublabel: copy.nav.infrastructure.sublabel, icon: Server },
+    { key: "agencies", label: copy.nav.agencies.label, sublabel: copy.nav.agencies.sublabel, icon: Zap },
+    { key: "automation", label: copy.nav.automation.label, sublabel: copy.nav.automation.sublabel, icon: Bot },
+    { key: "menu", label: copy.nav.menu.label, sublabel: copy.nav.menu.sublabel, icon: Menu },
   ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30">
       {/* Top Header */}
       <div className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-10">
-        <div className="px-4 sm:px-6 lg:px-8 py-4 flex items-center gap-4">
+        <div className="px-4 sm:px-6 lg:px-8 py-4 flex flex-wrap items-center gap-4">
           <Button
             variant="ghost"
             size="sm"
@@ -833,7 +1261,7 @@ export default function AdminSettings() {
             className="text-gray-500 hover:text-gray-900 -ml-2"
           >
             <ChevronLeft className="w-4 h-4 mr-1" />
-            Dashboard
+            {copy.dashboard}
           </Button>
           <div className="h-5 w-px bg-gray-200" />
           <div className="flex items-center gap-3">
@@ -841,10 +1269,28 @@ export default function AdminSettings() {
               <Settings className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h1 className="text-lg font-semibold text-gray-900">Platform Settings</h1>
-              <p className="text-xs text-gray-500">Configure integrations and security</p>
+              <h1 className="text-lg font-semibold text-gray-900">{copy.platformSettings}</h1>
+              <p className="text-xs text-gray-500">{copy.platformSubtitle}</p>
             </div>
             <HelpButton page="/admin/settings" variant="ghost" size="sm" />
+          </div>
+          <div className="ml-auto flex items-center gap-3">
+            <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50/80 px-3 py-2 shadow-sm">
+              <div className="hidden sm:flex items-center gap-2 text-slate-600">
+                <Globe className="h-4 w-4" />
+                <div className="leading-tight">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    {copy.languageLabel}
+                  </div>
+                  <div className="text-xs text-slate-500">{copy.languageHelp}</div>
+                </div>
+              </div>
+              <LocaleToggle className="shrink-0" />
+            </div>
+            <Button variant="outline" size="sm" onClick={() => setLocation("/admin/billing")}>
+              <CreditCard className="mr-2 h-4 w-4" />
+              {copy.billingConsole}
+            </Button>
           </div>
         </div>
       </div>
@@ -885,171 +1331,620 @@ export default function AdminSettings() {
 
           {/* Stripe Settings Tab */}
           <TabsContent value="stripe">
-            <DashboardCard
-              className="overflow-hidden"
-              leading={<CreditCard className="w-5 h-5 text-blue-500" />}
-              title="Stripe Configuration"
-              description={<>
-                Configure your Stripe API keys for payment processing. Get your keys from the{" "}
-                <a
-                  href="https://dashboard.stripe.com/apikeys"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 hover:underline"
-                >
-                  Stripe Dashboard
-                </a>
-                .
-              </>}
-              bodyClassName="space-y-6"
-            >
-              <div>
-                <Label htmlFor="publishableKey">Publishable Key</Label>
-                <div className="flex gap-2 mt-1">
-                  <Input
-                    id="publishableKey"
-                    placeholder="pk_test_..."
-                    value={stripeForm.publishableKey || ""}
-                    onChange={(e) =>
-                      setStripeForm((prev) => ({ ...prev, publishableKey: e.target.value }))
-                    }
-                  />
-                </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  Used in the frontend for Stripe.js integration
-                </p>
-              </div>
-
-              <div>
-                <Label htmlFor="secretKey">
-                  Secret Key
-                  {stripeForm.secretKeyConfigured && (
-                    <Badge variant="outline" className="ml-2 text-green-600 border-green-600">
-                      <Check className="w-3 h-3 mr-1" />
-                      Configured
-                    </Badge>
-                  )}
-                </Label>
-                <div className="flex gap-2 mt-1">
-                  <div className="relative flex-1">
-                    <Input
-                      id="secretKey"
-                      type={showSecretKey ? "text" : "password"}
-                      placeholder={stripeForm.secretKeyConfigured ? "Enter new key to update..." : "sk_test_..."}
-                      value={stripeForm.secretKey || ""}
-                      onChange={(e) =>
-                        setStripeForm((prev) => ({ ...prev, secretKey: e.target.value }))
-                      }
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="absolute right-1 top-1/2 -translate-y-1/2"
-                      onClick={() => setShowSecretKey(!showSecretKey)}
-                    >
-                      {showSecretKey ? (
-                        <EyeOff className="w-4 h-4" />
-                      ) : (
-                        <Eye className="w-4 h-4" />
-                      )}
-                    </Button>
+            <div className="space-y-6">
+              <DashboardCard
+                className="overflow-hidden"
+                leading={<CreditCard className="w-5 h-5 text-blue-500" />}
+                title={copy.providerSwitch.title}
+                description={copy.providerSwitch.description}
+                bodyClassName="space-y-6"
+              >
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                    <div className="text-sm font-medium text-slate-900">{copy.providerSwitch.activePaymentProvider}</div>
+                    <div className="mt-2">
+                      <Select
+                        value={paymentProviderForm.BILLING_ACTIVE_PROVIDER}
+                        onValueChange={(value) =>
+                          setPaymentProviderForm((prev) => ({
+                            ...prev,
+                            BILLING_ACTIVE_PROVIDER: value as "stripe" | "beam",
+                          }))
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="stripe">Stripe</SelectItem>
+                          <SelectItem value="beam">Beam</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="mt-3 space-y-3 text-sm">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <div className="font-medium text-slate-900">{copy.providerSwitch.stripeEnabled}</div>
+                          <div className="text-xs text-slate-500">{copy.providerSwitch.stripeDesc}</div>
+                        </div>
+                        <Switch
+                          checked={paymentProviderForm.BILLING_STRIPE_ENABLED}
+                          onCheckedChange={(checked) =>
+                            setPaymentProviderForm((prev) => ({
+                              ...prev,
+                              BILLING_STRIPE_ENABLED: checked,
+                              BILLING_ACTIVE_PROVIDER:
+                                !checked && prev.BILLING_ACTIVE_PROVIDER === "stripe" ? "beam" : prev.BILLING_ACTIVE_PROVIDER,
+                            }))
+                          }
+                        />
+                      </div>
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <div className="font-medium text-slate-900">{copy.providerSwitch.beamEnabled}</div>
+                          <div className="text-xs text-slate-500">{copy.providerSwitch.beamDesc}</div>
+                        </div>
+                        <Switch
+                          checked={paymentProviderForm.BILLING_BEAM_ENABLED}
+                          onCheckedChange={(checked) =>
+                            setPaymentProviderForm((prev) => ({
+                              ...prev,
+                              BILLING_BEAM_ENABLED: checked,
+                              BILLING_ACTIVE_PROVIDER:
+                                !checked && prev.BILLING_ACTIVE_PROVIDER === "beam" ? "stripe" : prev.BILLING_ACTIVE_PROVIDER,
+                            }))
+                          }
+                        />
+                      </div>
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <div className="font-medium text-slate-900">{copy.providerSwitch.beamFallback}</div>
+                          <div className="text-xs text-slate-500">{copy.providerSwitch.beamFallbackDesc}</div>
+                        </div>
+                        <Switch
+                          checked={paymentProviderForm.BEAM_PAYMENT_LINK_FALLBACK}
+                          onCheckedChange={(checked) =>
+                            setPaymentProviderForm((prev) => ({ ...prev, BEAM_PAYMENT_LINK_FALLBACK: checked }))
+                          }
+                        />
+                      </div>
+                    </div>
+                    <div className="mt-4 flex justify-end">
+                      <Button onClick={handleSavePaymentProvider} disabled={updateBillingProviderMutation.isPending}>
+                        {updateBillingProviderMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                        {copy.providerSwitch.save}
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+                    <div className="font-medium text-slate-900">{copy.providerSwitch.summaryTitle}</div>
+                    <div className="mt-2">{copy.providerSwitch.activeProvider}: <span className="font-medium uppercase">{paymentProviderForm.BILLING_ACTIVE_PROVIDER}</span></div>
+                    <div>Stripe: {paymentProviderForm.BILLING_STRIPE_ENABLED ? copy.providerSwitch.enabled : copy.providerSwitch.disabled}</div>
+                    <div>Beam: {paymentProviderForm.BILLING_BEAM_ENABLED ? copy.providerSwitch.enabled : copy.providerSwitch.disabled}</div>
+                    <div>Beam fallback: {paymentProviderForm.BEAM_PAYMENT_LINK_FALLBACK ? copy.providerSwitch.enabled : copy.providerSwitch.disabled}</div>
+                    <div className="mt-3 text-xs text-slate-500">
+                      {copy.providerSwitch.runtimeNote}
+                    </div>
                   </div>
                 </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  Keep this secret. Never expose in frontend code.
-                </p>
-              </div>
+              </DashboardCard>
 
-              <div>
-                <Label htmlFor="webhookSecret">
-                  Webhook Secret
-                  {stripeForm.webhookSecretConfigured && (
-                    <Badge variant="outline" className="ml-2 text-green-600 border-green-600">
-                      <Check className="w-3 h-3 mr-1" />
-                      Configured
-                    </Badge>
-                  )}
-                </Label>
-                <div className="flex gap-2 mt-1">
-                  <div className="relative flex-1">
-                    <Input
-                      id="webhookSecret"
-                      type={showWebhookSecret ? "text" : "password"}
-                      placeholder={stripeForm.webhookSecretConfigured ? "Enter new secret to update..." : "whsec_..."}
-                      value={stripeForm.webhookSecret || ""}
-                      onChange={(e) =>
-                        setStripeForm((prev) => ({ ...prev, webhookSecret: e.target.value }))
-                      }
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="absolute right-1 top-1/2 -translate-y-1/2"
-                      onClick={() => setShowWebhookSecret(!showWebhookSecret)}
+              <Tabs value={paymentsSubTab} onValueChange={setPaymentsSubTab}>
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="stripe">{copy.providerSwitch.stripeLabel}</TabsTrigger>
+                  <TabsTrigger value="beam">{copy.providerSwitch.beamLabel}</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="stripe">
+                  <DashboardCard
+                    className="overflow-hidden"
+                    leading={<CreditCard className="w-5 h-5 text-blue-500" />}
+                    title={copy.stripe.title}
+                    description={<>
+                      {copy.stripe.descPrefix}{" "}
+                      <a
+                        href="https://dashboard.stripe.com/apikeys"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:underline"
+                      >
+                        {copy.stripe.descLink}
+                      </a>
+                      .
+                    </>}
+                    bodyClassName="space-y-6"
+                  >
+                    <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
+                      {copy.stripe.currently} <span className="font-medium">{paymentProviderForm.BILLING_STRIPE_ENABLED ? copy.providerSwitch.enabled : copy.providerSwitch.disabled}</span>.
+                    </div>
+                    <div>
+                      <Label htmlFor="publishableKey">{copy.stripe.publishableKey}</Label>
+                      <div className="flex gap-2 mt-1">
+                        <Input
+                          id="publishableKey"
+                          placeholder="pk_test_..."
+                          value={stripeForm.publishableKey || ""}
+                          onChange={(e) =>
+                            setStripeForm((prev) => ({ ...prev, publishableKey: e.target.value }))
+                          }
+                        />
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {copy.stripe.publishableHint}
+                      </p>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="secretKey">
+                        {copy.stripe.secretKey}
+                        {stripeForm.secretKeyConfigured && (
+                          <Badge variant="outline" className="ml-2 text-green-600 border-green-600">
+                            <Check className="w-3 h-3 mr-1" />
+                            {copy.stripe.configured}
+                          </Badge>
+                        )}
+                      </Label>
+                      <div className="flex gap-2 mt-1">
+                        <div className="relative flex-1">
+                          <Input
+                            id="secretKey"
+                            type={showSecretKey ? "text" : "password"}
+                            placeholder={stripeForm.secretKeyConfigured ? copy.stripe.secretPlaceholderKeep : copy.stripe.secretPlaceholderNew}
+                            value={stripeForm.secretKey || ""}
+                            onChange={(e) =>
+                              setStripeForm((prev) => ({ ...prev, secretKey: e.target.value }))
+                            }
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="absolute right-1 top-1/2 -translate-y-1/2"
+                            onClick={() => setShowSecretKey(!showSecretKey)}
+                          >
+                            {showSecretKey ? (
+                              <EyeOff className="w-4 h-4" />
+                            ) : (
+                              <Eye className="w-4 h-4" />
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {copy.stripe.secretHint}
+                      </p>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="webhookSecret">
+                        {copy.stripe.webhookSecret}
+                        {stripeForm.webhookSecretConfigured && (
+                          <Badge variant="outline" className="ml-2 text-green-600 border-green-600">
+                            <Check className="w-3 h-3 mr-1" />
+                            {copy.stripe.configured}
+                          </Badge>
+                        )}
+                      </Label>
+                      <div className="flex gap-2 mt-1">
+                        <div className="relative flex-1">
+                          <Input
+                            id="webhookSecret"
+                            type={showWebhookSecret ? "text" : "password"}
+                            placeholder={stripeForm.webhookSecretConfigured ? copy.stripe.webhookPlaceholderKeep : copy.stripe.webhookPlaceholderNew}
+                            value={stripeForm.webhookSecret || ""}
+                            onChange={(e) =>
+                              setStripeForm((prev) => ({ ...prev, webhookSecret: e.target.value }))
+                            }
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="absolute right-1 top-1/2 -translate-y-1/2"
+                            onClick={() => setShowWebhookSecret(!showWebhookSecret)}
+                          >
+                            {showWebhookSecret ? (
+                              <EyeOff className="w-4 h-4" />
+                            ) : (
+                              <Eye className="w-4 h-4" />
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {copy.stripe.webhookHint}
+                      </p>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="currency">{copy.stripe.currency}</Label>
+                      <Select
+                        value={stripeForm.currency || "usd"}
+                        onValueChange={(value) =>
+                          setStripeForm((prev) => ({ ...prev, currency: value }))
+                        }
+                      >
+                        <SelectTrigger className="mt-1">
+                          <SelectValue placeholder={copy.stripe.selectCurrency} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="usd">USD - US Dollar</SelectItem>
+                          <SelectItem value="eur">EUR - Euro</SelectItem>
+                          <SelectItem value="gbp">GBP - British Pound</SelectItem>
+                          <SelectItem value="thb">THB - Thai Baht</SelectItem>
+                          <SelectItem value="jpy">JPY - Japanese Yen</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="flex gap-3 pt-4 border-t">
+                      <Button
+                        onClick={handleSaveStripe}
+                        disabled={updateStripeMutation.isPending}
+                        className="bg-blue-600 hover:bg-blue-700"
+                      >
+                        {updateStripeMutation.isPending ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <Save className="w-4 h-4 mr-2" />
+                        )}
+                        {copy.stripe.save}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => testStripeMutation.mutate()}
+                        disabled={testStripeMutation.isPending}
+                      >
+                        {testStripeMutation.isPending ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <TestTube className="w-4 h-4 mr-2" />
+                        )}
+                        {copy.stripe.test}
+                      </Button>
+                    </div>
+                  </DashboardCard>
+                </TabsContent>
+
+                <TabsContent value="beam">
+                  <div className="space-y-6">
+                    <DashboardCard
+                      className="overflow-hidden"
+                      leading={<Shield className="w-5 h-5 text-cyan-600" />}
+                      title={copy.beam.title}
+                      description={copy.beam.description}
+                      bodyClassName="space-y-6"
                     >
-                      {showWebhookSecret ? (
-                        <EyeOff className="w-4 h-4" />
-                      ) : (
-                        <Eye className="w-4 h-4" />
-                      )}
-                    </Button>
+                      <div className="grid gap-4 md:grid-cols-3">
+                        <div className="rounded-xl border border-cyan-200 bg-cyan-50/70 p-4 text-sm text-slate-700">
+                          <div className="font-medium text-slate-900">{copy.beam.step1Title}</div>
+                          <p className="mt-2 text-xs leading-5 text-slate-600">
+                            {copy.beam.step1Body}
+                          </p>
+                          <Button asChild variant="outline" size="sm" className="mt-3">
+                            <a href={BEAM_LIGHTHOUSE_URL} target="_blank" rel="noopener noreferrer">
+                              <ExternalLink className="mr-2 h-4 w-4" />
+                              {copy.beam.step1Button}
+                            </a>
+                          </Button>
+                        </div>
+                        <div className="rounded-xl border border-cyan-200 bg-cyan-50/70 p-4 text-sm text-slate-700">
+                          <div className="font-medium text-slate-900">{copy.beam.step2Title}</div>
+                          <p className="mt-2 text-xs leading-5 text-slate-600">
+                            {copy.beam.step2Body}
+                          </p>
+                          <Button asChild variant="outline" size="sm" className="mt-3">
+                            <a href={BEAM_WEBHOOK_GUIDE_URL} target="_blank" rel="noopener noreferrer">
+                              <ExternalLink className="mr-2 h-4 w-4" />
+                              {copy.beam.step2Button}
+                            </a>
+                          </Button>
+                        </div>
+                        <div className="rounded-xl border border-cyan-200 bg-cyan-50/70 p-4 text-sm text-slate-700">
+                          <div className="font-medium text-slate-900">{copy.beam.step3Title}</div>
+                          <p className="mt-2 text-xs leading-5 text-slate-600">
+                            {copy.beam.step3Body}
+                          </p>
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            <Button asChild variant="outline" size="sm">
+                              <a href={BEAM_PAYMENT_LINK_GUIDE_URL} target="_blank" rel="noopener noreferrer">
+                                <ExternalLink className="mr-2 h-4 w-4" />
+                                {copy.beam.overview}
+                              </a>
+                            </Button>
+                            <Button asChild variant="outline" size="sm">
+                              <a href={BEAM_PAYMENT_LINK_API_GUIDE_URL} target="_blank" rel="noopener noreferrer">
+                                <ExternalLink className="mr-2 h-4 w-4" />
+                                {copy.beam.apiGuide}
+                              </a>
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+                          <div className="font-medium text-slate-900">{copy.beam.runtimeHealth}</div>
+                          <div className="mt-2">Beam enabled: {paymentProviderForm.BILLING_BEAM_ENABLED ? copy.beam.yes : copy.beam.no}</div>
+                          <div>{copy.providerSwitch.activeProvider}: {paymentProviderForm.BILLING_ACTIVE_PROVIDER.toUpperCase()}</div>
+                          <div>API configured: {beamProviderHealthQuery.data?.configured ? copy.beam.yes : copy.beam.no}</div>
+                          <div>Webhook configured: {beamProviderHealthQuery.data?.webhookConfigured ? copy.beam.yes : copy.beam.no}</div>
+                          <div>Hosted setup configured: {beamProviderHealthQuery.data?.setupHostedConfigured ? copy.beam.yes : copy.beam.no}</div>
+                          <div>Setup API configured: {beamProviderHealthQuery.data?.setupApiConfigured ? copy.beam.yes : copy.beam.no}</div>
+                          <div>Payment Link configured: {beamProviderHealthQuery.data?.paymentLinkConfigured ? copy.beam.yes : copy.beam.no}</div>
+                          {(beamProviderHealthQuery.data?.missing?.length ?? 0) > 0 ? (
+                            <div className="mt-2 text-rose-700">{copy.beam.missing}: {(beamProviderHealthQuery.data?.missing ?? []).join(", ")}</div>
+                          ) : null}
+                        </div>
+                        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+                          <div className="font-medium text-slate-900">{copy.beam.configuredSecrets}</div>
+                          <div className="mt-2">API key: {beamProviderSettingsQuery.data?.apiKeyConfigured ? beamProviderSettingsQuery.data?.apiKeyMasked : copy.beam.notConfigured}</div>
+                          <div>Webhook current: {beamProviderSettingsQuery.data?.webhookSecretCurrentConfigured ? beamProviderSettingsQuery.data?.webhookSecretCurrentMasked : copy.beam.notConfigured}</div>
+                          <div>Webhook previous: {beamProviderSettingsQuery.data?.webhookSecretPreviousConfigured ? beamProviderSettingsQuery.data?.webhookSecretPreviousMasked : copy.beam.notConfigured}</div>
+                          <div>Setup callback current: {beamProviderSettingsQuery.data?.paymentMethodSetupCallbackSecretCurrentConfigured ? beamProviderSettingsQuery.data?.paymentMethodSetupCallbackSecretCurrentMasked : copy.beam.notConfigured}</div>
+                          <div>Setup callback previous: {beamProviderSettingsQuery.data?.paymentMethodSetupCallbackSecretPreviousConfigured ? beamProviderSettingsQuery.data?.paymentMethodSetupCallbackSecretPreviousMasked : copy.beam.notConfigured}</div>
+                        </div>
+                      </div>
+
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div>
+                          <Label>{copy.beam.field.apiBaseUrl}</Label>
+                          <Input value={beamProviderForm.apiBaseUrl} onChange={(e) => setBeamProviderForm((prev) => ({ ...prev, apiBaseUrl: e.target.value }))} placeholder="https://api.beam.example" />
+                          <p className="mt-1 text-xs text-slate-500">
+                            {copy.beam.field.apiBaseUrlHint}
+                          </p>
+                        </div>
+                        <div>
+                          <Label>{copy.beam.field.apiKey}</Label>
+                          <div className="relative">
+                            <Input type={showBeamSecrets ? "text" : "password"} value={beamProviderForm.apiKey} onChange={(e) => setBeamProviderForm((prev) => ({ ...prev, apiKey: e.target.value }))} placeholder={beamProviderSettingsQuery.data?.apiKeyConfigured ? copy.beam.field.apiKeyKeep : copy.beam.field.apiKeyEnter} />
+                          </div>
+                          <p className="mt-1 text-xs text-slate-500">
+                            {copy.beam.field.apiKeyHint}
+                          </p>
+                        </div>
+                        <div>
+                          <Label>{copy.beam.field.chargesPath}</Label>
+                          <Input value={beamProviderForm.chargesPath} onChange={(e) => setBeamProviderForm((prev) => ({ ...prev, chargesPath: e.target.value }))} />
+                          <p className="mt-1 text-xs text-slate-500">
+                            {copy.beam.field.chargesPathHint}
+                          </p>
+                        </div>
+                        <div>
+                          <Label>{copy.beam.field.paymentLinksPath}</Label>
+                          <Input value={beamProviderForm.paymentLinksPath} onChange={(e) => setBeamProviderForm((prev) => ({ ...prev, paymentLinksPath: e.target.value }))} />
+                          <p className="mt-1 text-xs text-slate-500">
+                            {copy.beam.field.paymentLinksPathHint}
+                          </p>
+                        </div>
+                        <div>
+                          <Label>{copy.beam.field.chargeStatusPathTemplate}</Label>
+                          <Input value={beamProviderForm.chargeStatusPathTemplate} onChange={(e) => setBeamProviderForm((prev) => ({ ...prev, chargeStatusPathTemplate: e.target.value }))} />
+                          <p className="mt-1 text-xs text-slate-500">
+                            {copy.beam.field.chargeStatusPathTemplateHint}
+                          </p>
+                        </div>
+                        <div>
+                          <Label>{copy.beam.field.paymentLinkStatusPathTemplate}</Label>
+                          <Input value={beamProviderForm.paymentLinkStatusPathTemplate} onChange={(e) => setBeamProviderForm((prev) => ({ ...prev, paymentLinkStatusPathTemplate: e.target.value }))} />
+                          <p className="mt-1 text-xs text-slate-500">
+                            {copy.beam.field.paymentLinkStatusPathTemplateHint}
+                          </p>
+                        </div>
+                        <div>
+                          <Label>{copy.beam.field.cancelPathSuffix}</Label>
+                          <Input value={beamProviderForm.cancelPathSuffix} onChange={(e) => setBeamProviderForm((prev) => ({ ...prev, cancelPathSuffix: e.target.value }))} />
+                          <p className="mt-1 text-xs text-slate-500">
+                            {copy.beam.field.cancelPathSuffixHint}
+                          </p>
+                        </div>
+                        <div>
+                          <Label>{copy.beam.field.setupApiPath}</Label>
+                          <Input value={beamProviderForm.paymentMethodSetupPath} onChange={(e) => setBeamProviderForm((prev) => ({ ...prev, paymentMethodSetupPath: e.target.value }))} />
+                          <p className="mt-1 text-xs text-slate-500">
+                            {copy.beam.field.setupApiPathHint}
+                          </p>
+                        </div>
+                        <div className="md:col-span-2">
+                          <Label>{copy.beam.field.hostedSetupUrlTemplate}</Label>
+                          <Input value={beamProviderForm.paymentMethodSetupHostedUrlTemplate} onChange={(e) => setBeamProviderForm((prev) => ({ ...prev, paymentMethodSetupHostedUrlTemplate: e.target.value }))} placeholder="https://beam.example/setup?session={sessionId}&return={returnUrl}" />
+                          <p className="mt-1 text-xs text-slate-500">
+                            {copy.beam.field.hostedSetupUrlTemplateHint}
+                          </p>
+                        </div>
+                        <div className="md:col-span-2">
+                          <Label>{copy.beam.field.setupReturnUrl}</Label>
+                          <Input value={beamProviderForm.paymentMethodSetupReturnUrl} onChange={(e) => setBeamProviderForm((prev) => ({ ...prev, paymentMethodSetupReturnUrl: e.target.value }))} placeholder="https://app.example/billing" />
+                          <p className="mt-1 text-xs text-slate-500">
+                            {copy.beam.field.setupReturnUrlHint}
+                          </p>
+                        </div>
+                        <div>
+                          <Label>{copy.beam.field.webhookSecretCurrent}</Label>
+                          <Input type={showBeamSecrets ? "text" : "password"} value={beamProviderForm.webhookSecretCurrent} onChange={(e) => setBeamProviderForm((prev) => ({ ...prev, webhookSecretCurrent: e.target.value }))} placeholder={beamProviderSettingsQuery.data?.webhookSecretCurrentConfigured ? copy.beam.field.webhookSecretCurrentKeep : copy.beam.field.webhookSecretCurrentEnter} />
+                          <p className="mt-1 text-xs text-slate-500">
+                            {copy.beam.field.webhookSecretCurrentHint}
+                          </p>
+                        </div>
+                        <div>
+                          <Label>{copy.beam.field.webhookSecretPrevious}</Label>
+                          <Input type={showBeamSecrets ? "text" : "password"} value={beamProviderForm.webhookSecretPrevious} onChange={(e) => setBeamProviderForm((prev) => ({ ...prev, webhookSecretPrevious: e.target.value }))} placeholder={beamProviderSettingsQuery.data?.webhookSecretPreviousConfigured ? copy.beam.field.webhookSecretPreviousKeep : copy.beam.field.optional} />
+                          <p className="mt-1 text-xs text-slate-500">
+                            {copy.beam.field.webhookSecretPreviousHint}
+                          </p>
+                        </div>
+                        <div>
+                          <Label>{copy.beam.field.setupCallbackSecretCurrent}</Label>
+                          <Input type={showBeamSecrets ? "text" : "password"} value={beamProviderForm.paymentMethodSetupCallbackSecretCurrent} onChange={(e) => setBeamProviderForm((prev) => ({ ...prev, paymentMethodSetupCallbackSecretCurrent: e.target.value }))} placeholder={beamProviderSettingsQuery.data?.paymentMethodSetupCallbackSecretCurrentConfigured ? copy.beam.field.setupCallbackSecretCurrentKeep : copy.beam.field.setupCallbackSecretCurrentEnter} />
+                          <p className="mt-1 text-xs text-slate-500">
+                            {copy.beam.field.setupCallbackSecretCurrentHint}
+                          </p>
+                        </div>
+                        <div>
+                          <Label>{copy.beam.field.setupCallbackSecretPrevious}</Label>
+                          <Input type={showBeamSecrets ? "text" : "password"} value={beamProviderForm.paymentMethodSetupCallbackSecretPrevious} onChange={(e) => setBeamProviderForm((prev) => ({ ...prev, paymentMethodSetupCallbackSecretPrevious: e.target.value }))} placeholder={beamProviderSettingsQuery.data?.paymentMethodSetupCallbackSecretPreviousConfigured ? copy.beam.field.setupCallbackSecretPreviousKeep : copy.beam.field.optional} />
+                          <p className="mt-1 text-xs text-slate-500">
+                            {copy.beam.field.setupCallbackSecretPreviousHint}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 p-3">
+                        <div className="text-sm text-slate-600">
+                          {copy.beam.gatewayNotice}
+                        </div>
+                        <Button type="button" variant="outline" onClick={() => setShowBeamSecrets((v) => !v)}>
+                          {showBeamSecrets ? <EyeOff className="w-4 h-4 mr-2" /> : <Eye className="w-4 h-4 mr-2" />}
+                          {showBeamSecrets ? copy.beam.hideSecrets : copy.beam.showSecrets}
+                        </Button>
+                      </div>
+
+                      <div className="flex gap-3 pt-4 border-t">
+                        <Button onClick={handleSaveBeam} disabled={updateBeamProviderSettingsMutation.isPending}>
+                          {updateBeamProviderSettingsMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                          {copy.beam.saveGateway}
+                        </Button>
+                        <Button variant="outline" onClick={() => beamProviderHealthQuery.refetch()} disabled={beamProviderHealthQuery.isFetching}>
+                          {beamProviderHealthQuery.isFetching ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <TestTube className="w-4 h-4 mr-2" />}
+                          {copy.beam.refreshHealth}
+                        </Button>
+                      </div>
+                    </DashboardCard>
+
+                    <DashboardCard
+                      className="overflow-hidden"
+                      leading={<Zap className="w-5 h-5 text-cyan-600" />}
+                      title={copy.beam.runtimeTitle}
+                      description={copy.beam.runtimeDesc}
+                      bodyClassName="space-y-6"
+                    >
+                      <div className="grid gap-3 md:grid-cols-2">
+                        {[
+                          "PAYMENT_RECONCILIATION_ENABLED",
+                          "FINAL_RECONCILIATION_BEFORE_DOWNGRADE",
+                          "AUTO_DOWNGRADE_AFTER_7_DAYS",
+                          "INVOICE_HEADER_SYNC_ENABLED",
+                          "PAID_INVOICE_REISSUE_ENABLED",
+                          "BILLING_PHASE2_SAVED_CARDS_ENABLED",
+                          "BILLING_PHASE2_AUTO_RENEW_ENABLED",
+                          "BILLING_PHASE2_DUNNING_ENABLED",
+                          "BILLING_PHASE2_CARD_SETUP_ENABLED",
+                          "BILLING_PHASE2_FORCE_MANUAL_FALLBACK_ENABLED",
+                          "BILLING_EMAIL_NOTIFICATIONS_ENABLED",
+                          "BILLING_PHASE2_REQUIRE_STEP_UP",
+                          "SUPPORT_RECOVERY_CASES_ENABLED",
+                          "DOCUMENT_RECOVERY_ENABLED",
+                          "BILLING_SUBSCRIPTION_CUTOVER_READY",
+                        ].map((key) => (
+                          <div key={key} className="flex items-center justify-between rounded-xl border border-slate-200 p-3">
+                            <div className="pr-3">
+                              <div className="text-sm font-medium text-slate-900">{copy.beam.runtimeLabels[key as keyof typeof copy.beam.runtimeLabels]}</div>
+                              <div className="text-xs text-slate-500">{key}</div>
+                            </div>
+                            <Switch
+                              checked={Boolean(beamRuntimeForm[key as keyof BeamRuntimeForm])}
+                              onCheckedChange={(checked) =>
+                                setBeamRuntimeForm((prev) => ({ ...prev, [key]: checked }))
+                              }
+                            />
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div>
+                          <Label>{copy.beam.runtimeFields.allowedCohorts}</Label>
+                          <Input value={beamRuntimeForm.BILLING_PHASE2_ALLOWED_COHORTS} onChange={(e) => setBeamRuntimeForm((prev) => ({ ...prev, BILLING_PHASE2_ALLOWED_COHORTS: e.target.value }))} placeholder="pilot-a,pilot-b" />
+                        </div>
+                        <div>
+                          <Label>{copy.beam.runtimeFields.defaultCohort}</Label>
+                          <Input value={beamRuntimeForm.BILLING_PHASE2_DEFAULT_COHORT} onChange={(e) => setBeamRuntimeForm((prev) => ({ ...prev, BILLING_PHASE2_DEFAULT_COHORT: e.target.value }))} placeholder="pilot-a" />
+                        </div>
+                        <div>
+                          <Label>{copy.beam.runtimeFields.billingPublicUrl}</Label>
+                          <Input value={beamRuntimeForm.BILLING_PUBLIC_URL} onChange={(e) => setBeamRuntimeForm((prev) => ({ ...prev, BILLING_PUBLIC_URL: e.target.value }))} placeholder="https://app.example" />
+                        </div>
+                        <div>
+                          <Label>{copy.beam.runtimeFields.stepUpSharedSecret}</Label>
+                          <Input type={showBeamSecrets ? "text" : "password"} value={beamRuntimeForm.BILLING_PHASE2_STEP_UP_SECRET} onChange={(e) => setBeamRuntimeForm((prev) => ({ ...prev, BILLING_PHASE2_STEP_UP_SECRET: e.target.value }))} placeholder={billingRuntimeSettingsQuery.data?.BILLING_PHASE2_STEP_UP_SECRETConfigured ? copy.beam.runtimeFields.stepUpSharedSecretKeep : copy.beam.runtimeFields.stepUpSharedSecretEnter} />
+                        </div>
+                        <div>
+                          <Label>{copy.beam.runtimeFields.setupCallbackToleranceSeconds}</Label>
+                          <Input value={beamRuntimeForm.BILLING_PHASE2_SETUP_CALLBACK_TOLERANCE_SECONDS} onChange={(e) => setBeamRuntimeForm((prev) => ({ ...prev, BILLING_PHASE2_SETUP_CALLBACK_TOLERANCE_SECONDS: e.target.value }))} />
+                        </div>
+                        <div>
+                          <Label>{copy.beam.runtimeFields.webhookTimestampToleranceSeconds}</Label>
+                          <Input value={beamRuntimeForm.BILLING_WEBHOOK_TIMESTAMP_TOLERANCE_SECONDS} onChange={(e) => setBeamRuntimeForm((prev) => ({ ...prev, BILLING_WEBHOOK_TIMESTAMP_TOLERANCE_SECONDS: e.target.value }))} />
+                        </div>
+                        <div>
+                          <Label>{copy.beam.runtimeFields.paymentMethodSetupExpiryMinutes}</Label>
+                          <Input value={beamRuntimeForm.BILLING_PAYMENT_METHOD_SETUP_EXPIRY_MINUTES} onChange={(e) => setBeamRuntimeForm((prev) => ({ ...prev, BILLING_PAYMENT_METHOD_SETUP_EXPIRY_MINUTES: e.target.value }))} />
+                        </div>
+                        <div>
+                          <Label>{copy.beam.runtimeFields.stepUpWindowMinutes}</Label>
+                          <Input value={beamRuntimeForm.BILLING_PHASE2_STEP_UP_WINDOW_MINUTES} onChange={(e) => setBeamRuntimeForm((prev) => ({ ...prev, BILLING_PHASE2_STEP_UP_WINDOW_MINUTES: e.target.value }))} />
+                        </div>
+                        <div>
+                          <Label>{copy.beam.runtimeFields.evidenceRetentionDays}</Label>
+                          <Input value={beamRuntimeForm.BILLING_EVIDENCE_RETENTION_DAYS} onChange={(e) => setBeamRuntimeForm((prev) => ({ ...prev, BILLING_EVIDENCE_RETENTION_DAYS: e.target.value }))} />
+                        </div>
+                        <div>
+                          <Label>{copy.beam.runtimeFields.overdueDays}</Label>
+                          <Input value={beamRuntimeForm.BILLING_OVERDUE_DAYS} onChange={(e) => setBeamRuntimeForm((prev) => ({ ...prev, BILLING_OVERDUE_DAYS: e.target.value }))} />
+                        </div>
+                        <div>
+                          <Label>{copy.beam.runtimeFields.subscriptionRenewalDueDays}</Label>
+                          <Input value={beamRuntimeForm.BILLING_SUBSCRIPTION_RENEWAL_DUE_DAYS} onChange={(e) => setBeamRuntimeForm((prev) => ({ ...prev, BILLING_SUBSCRIPTION_RENEWAL_DUE_DAYS: e.target.value }))} />
+                        </div>
+                        <div>
+                          <Label>{copy.beam.runtimeFields.topupDueDays}</Label>
+                          <Input value={beamRuntimeForm.BILLING_TOPUP_DUE_DAYS} onChange={(e) => setBeamRuntimeForm((prev) => ({ ...prev, BILLING_TOPUP_DUE_DAYS: e.target.value }))} />
+                        </div>
+                        <div>
+                          <Label>{copy.beam.runtimeFields.reminderFirstThresholdDays}</Label>
+                          <Input value={beamRuntimeForm.BILLING_NOTIFICATION_REMINDER_FIRST_THRESHOLD_DAYS} onChange={(e) => setBeamRuntimeForm((prev) => ({ ...prev, BILLING_NOTIFICATION_REMINDER_FIRST_THRESHOLD_DAYS: e.target.value }))} />
+                        </div>
+                        <div>
+                          <Label>{copy.beam.runtimeFields.reminderFinalThresholdDays}</Label>
+                          <Input value={beamRuntimeForm.BILLING_NOTIFICATION_REMINDER_FINAL_THRESHOLD_DAYS} onChange={(e) => setBeamRuntimeForm((prev) => ({ ...prev, BILLING_NOTIFICATION_REMINDER_FINAL_THRESHOLD_DAYS: e.target.value }))} />
+                        </div>
+                        <div>
+                          <Label>{copy.beam.runtimeFields.reminderCooldownHours}</Label>
+                          <Input value={beamRuntimeForm.BILLING_NOTIFICATION_COOLDOWN_REMINDER_HOURS} onChange={(e) => setBeamRuntimeForm((prev) => ({ ...prev, BILLING_NOTIFICATION_COOLDOWN_REMINDER_HOURS: e.target.value }))} />
+                        </div>
+                        <div>
+                          <Label>{copy.beam.runtimeFields.successCooldownHours}</Label>
+                          <Input value={beamRuntimeForm.BILLING_NOTIFICATION_COOLDOWN_SUCCESS_HOURS} onChange={(e) => setBeamRuntimeForm((prev) => ({ ...prev, BILLING_NOTIFICATION_COOLDOWN_SUCCESS_HOURS: e.target.value }))} />
+                        </div>
+                        <div>
+                          <Label>{copy.beam.runtimeFields.defaultCooldownHours}</Label>
+                          <Input value={beamRuntimeForm.BILLING_NOTIFICATION_COOLDOWN_DEFAULT_HOURS} onChange={(e) => setBeamRuntimeForm((prev) => ({ ...prev, BILLING_NOTIFICATION_COOLDOWN_DEFAULT_HOURS: e.target.value }))} />
+                        </div>
+                      </div>
+
+                      <div className="rounded-xl border border-cyan-100 bg-cyan-50/70 p-4 text-sm text-slate-700">
+                        <div className="font-medium text-slate-900">{copy.beam.runtimeSummary}</div>
+                        <div className="mt-2">{copy.beam.runtimeValues.savedCards}: {beamRuntimeForm.BILLING_PHASE2_SAVED_CARDS_ENABLED ? copy.providerSwitch.enabled : copy.providerSwitch.disabled}</div>
+                        <div>{copy.beam.runtimeValues.autoRenew}: {beamRuntimeForm.BILLING_PHASE2_AUTO_RENEW_ENABLED ? copy.providerSwitch.enabled : copy.providerSwitch.disabled}</div>
+                        <div>{copy.beam.runtimeValues.dunning}: {beamRuntimeForm.BILLING_PHASE2_DUNNING_ENABLED ? copy.providerSwitch.enabled : copy.providerSwitch.disabled}</div>
+                        <div>{copy.beam.runtimeValues.cardSetup}: {beamRuntimeForm.BILLING_PHASE2_CARD_SETUP_ENABLED ? copy.providerSwitch.enabled : copy.providerSwitch.disabled}</div>
+                        <div>{copy.beam.runtimeValues.supportRecovery}: {beamRuntimeForm.SUPPORT_RECOVERY_CASES_ENABLED ? copy.providerSwitch.enabled : copy.providerSwitch.disabled}</div>
+                      </div>
+
+                      <div className="flex gap-3 pt-4 border-t">
+                        <Button onClick={handleSaveBeamRuntime} disabled={updateBillingProviderMutation.isPending}>
+                          {updateBillingProviderMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                          {copy.beam.saveRuntime}
+                        </Button>
+                        <Button variant="outline" onClick={() => setLocation("/admin/billing")}>
+                          {copy.beam.openBillingConsole}
+                        </Button>
+                      </div>
+                    </DashboardCard>
                   </div>
-                </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  Required for receiving Stripe webhook events
-                </p>
-              </div>
-
-              <div>
-                <Label htmlFor="currency">Currency</Label>
-                <Select
-                  value={stripeForm.currency || "usd"}
-                  onValueChange={(value) =>
-                    setStripeForm((prev) => ({ ...prev, currency: value }))
-                  }
-                >
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Select currency" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="usd">USD - US Dollar</SelectItem>
-                    <SelectItem value="eur">EUR - Euro</SelectItem>
-                    <SelectItem value="gbp">GBP - British Pound</SelectItem>
-                    <SelectItem value="thb">THB - Thai Baht</SelectItem>
-                    <SelectItem value="jpy">JPY - Japanese Yen</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex gap-3 pt-4 border-t">
-                <Button
-                  onClick={handleSaveStripe}
-                  disabled={updateStripeMutation.isPending}
-                  className="bg-blue-600 hover:bg-blue-700"
-                >
-                  {updateStripeMutation.isPending ? (
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  ) : (
-                    <Save className="w-4 h-4 mr-2" />
-                  )}
-                  Save Settings
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => testStripeMutation.mutate()}
-                  disabled={testStripeMutation.isPending}
-                >
-                  {testStripeMutation.isPending ? (
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  ) : (
-                    <TestTube className="w-4 h-4 mr-2" />
-                  )}
-                  Test Connection
-                </Button>
-              </div>
-            </DashboardCard>
+                </TabsContent>
+              </Tabs>
+            </div>
           </TabsContent>
 
           {/* OAuth Settings Tab */}

@@ -1,8 +1,6 @@
-import crypto from "node:crypto";
 import type { Express, Request, Response } from "express";
 import { eq, and, count } from "drizzle-orm";
 
-import { ENV } from "../_core/env";
 import { getDb } from "../db";
 import { autoDraftSchedules } from "../../drizzle/schema";
 import { encrypt } from "../services/crypto";
@@ -10,6 +8,7 @@ import { auditLogger } from "../services/auditLogger";
 import type { AuditEventType } from "../services/auditLogger";
 import { contentAutomationGate } from "../middleware/contentAutomationGate";
 import { ScheduleDraftRequestSchema } from "@shared/contentAutomation/types";
+import { compareCachedInternalToken } from "../services/appRuntimeConfig";
 
 const MAX_ACTIVE_SCHEDULES_PER_USER = 10;
 const ALLOWED_PLACEHOLDERS = new Set(["date", "day_of_week"]);
@@ -33,15 +32,8 @@ const WEEKDAY_TO_DOW: Record<string, number> = {
 };
 
 function verifyInternalToken(req: Request): boolean {
-  const expected = ENV.webGatewayToken;
-  if (!expected) return false;
   const token = req.headers["x-internal-token"] as string | undefined;
-  if (!token) return false;
-  try {
-    return crypto.timingSafeEqual(Buffer.from(token), Buffer.from(expected));
-  } catch {
-    return false;
-  }
+  return compareCachedInternalToken(token);
 }
 
 export function validateCronStrict(cron: string): { valid: boolean; error?: string } {

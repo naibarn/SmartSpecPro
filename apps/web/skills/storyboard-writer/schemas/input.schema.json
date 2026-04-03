@@ -57,6 +57,14 @@
       "minimum": 120,
       "maximum": 8000
     },
+    "maxPromptLength": {
+      "type": "integer",
+      "title": "Maximum prompt length (chars)",
+      "description": "Hard character limit for the full storyboard output. Use the selected media model limit as a guide.",
+      "minimum": 100,
+      "maximum": 10000,
+      "default": 2000
+    },
     "reference_images": {
       "type": "array",
       "title": "Reference Images",

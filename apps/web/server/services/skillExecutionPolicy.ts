@@ -118,10 +118,10 @@ function normalizeExecutionPolicy(
  * Resolve the effective execution policy for a skill invocation.
  *
  * Mode semantics:
- * - "requirements": use capability-aware selector, fallback to llmModelId/system default
+ * - "requirements": honor an explicitly configured skill model first, otherwise use capability-aware selection
  * - "fixed": skip requirements, use existing cascade
- * - "hybrid": try fixedModel first, then requirements, then cascade
- * - undefined: auto-detect — use requirements if declared, else existing cascade
+ * - "hybrid": try fixedModel first, then explicit skill model, then requirements, then cascade
+ * - undefined: auto-detect — explicit skill model wins; otherwise use requirements if declared, else existing cascade
  *
  * Uses a single DB call to load rows, then resolves against them in-memory.
  */
@@ -177,6 +177,16 @@ export async function resolveSkillExecutionPolicy(
       return { ...resolvedBase, modelId: fixedResolved, modelSource: "skill_fixedModel" };
     }
     // fixedModel unavailable: fall through to requirements
+  }
+
+  const configuredSkillModel = resolveConfiguredSkillModel({
+    rows: eligibleRows,
+    base: resolvedBase,
+    skillLlmModelId,
+    skillDefaultModel,
+  });
+  if (configuredSkillModel) {
+    return configuredSkillModel;
   }
 
   // ─── Requirements matching (when applicable) ───
@@ -284,6 +294,37 @@ function legacyCascade(opts: {
   }
 
   return { ...base, modelId, modelSource: "system_default" };
+}
+
+function resolveConfiguredSkillModel(opts: {
+  rows: EnabledLlmModelRow[];
+  base: { allowFreeModels: boolean; preferredProviderId?: number; strictProviderPin?: boolean };
+  skillLlmModelId?: string;
+  skillDefaultModel?: string;
+}): SkillExecutionPolicyResult | null {
+  const { rows, base, skillLlmModelId, skillDefaultModel } = opts;
+
+  if (skillLlmModelId) {
+    const modelId = resolveEnabledLlmModelIdFromRows({
+      rows,
+      preferredModelIds: [skillLlmModelId],
+    });
+    if (modelId) {
+      return { ...base, modelId, modelSource: "skill_llmModelId" };
+    }
+  }
+
+  if (skillDefaultModel) {
+    const modelId = resolveEnabledLlmModelIdFromRows({
+      rows,
+      preferredModelIds: [skillDefaultModel],
+    });
+    if (modelId) {
+      return { ...base, modelId, modelSource: "skill_defaultModel" };
+    }
+  }
+
+  return null;
 }
 
 /**

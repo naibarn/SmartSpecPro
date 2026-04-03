@@ -1,0 +1,123 @@
+{
+  "ui:order": [
+    "article_title",
+    "article_body",
+    "article_language",
+    "target_audience",
+    "tone",
+    "page_size_or_ratio",
+    "custom_page_size_note",
+    "page_count_mode",
+    "requested_page_count",
+    "global_style_prompt",
+    "render_safety",
+    "page_fill_rules",
+    "quality_optimizer",
+    "image_assets",
+    "output_format"
+  ],
+  "article_body": {
+    "ui:widget": "textarea",
+    "ui:options": {
+      "rows": 18
+    }
+  },
+  "tone": {
+    "ui:widget": "textarea",
+    "ui:options": {
+      "rows": 3
+    }
+  },
+  "global_style_prompt": {
+    "ui:widget": "textarea",
+    "ui:options": {
+      "rows": 5
+    }
+  },
+  "page_size_or_ratio": {
+    "ui:widget": "select"
+  },
+  "page_count_mode": {
+    "ui:widget": "radio"
+  },
+  "requested_page_count": {
+    "ui:widget": "updown"
+  },
+  "render_safety.safe_margin_px": {
+    "ui:widget": "updown"
+  },
+  "render_safety.min_body_font_px": {
+    "ui:widget": "updown"
+  },
+  "render_safety.max_body_font_px": {
+    "ui:widget": "updown"
+  },
+  "render_safety.min_headline_font_px": {
+    "ui:widget": "updown"
+  },
+  "render_safety.max_headline_font_px": {
+    "ui:widget": "updown"
+  },
+  "render_safety.max_chars_per_line": {
+    "ui:widget": "updown"
+  },
+  "render_safety.strict_no_overlap": {
+    "ui:widget": "checkbox"
+  },
+  "render_safety.allow_repaginate": {
+    "ui:widget": "checkbox"
+  },
+  "render_safety.allow_reduce_image_area": {
+    "ui:widget": "checkbox"
+  },
+  "render_safety.fit_strategy": {
+    "ui:widget": "select"
+  },
+  "page_fill_rules.target_occupancy_min": {
+    "ui:widget": "updown"
+  },
+  "page_fill_rules.target_occupancy_max": {
+    "ui:widget": "updown"
+  },
+  "page_fill_rules.whitespace_ceiling": {
+    "ui:widget": "updown"
+  },
+  "page_fill_rules.cover_whitespace_ceiling": {
+    "ui:widget": "updown"
+  },
+  "page_fill_rules.closing_whitespace_ceiling": {
+    "ui:widget": "updown"
+  },
+  "page_fill_rules.allow_callout_injection": {
+    "ui:widget": "checkbox"
+  },
+  "page_fill_rules.allow_keypoint_box_injection": {
+    "ui:widget": "checkbox"
+  },
+  "quality_optimizer.enable_layout_fitness_scoring": {
+    "ui:widget": "checkbox"
+  },
+  "quality_optimizer.enable_auto_template_switch": {
+    "ui:widget": "checkbox"
+  },
+  "quality_optimizer.enable_post_layout_optimizer": {
+    "ui:widget": "checkbox"
+  },
+  "image_assets.items": {
+    "asset_type": {
+      "ui:widget": "select"
+    },
+    "page_hint": {
+      "ui:widget": "updown"
+    },
+    "prompt": {
+      "ui:widget": "textarea",
+      "ui:options": {
+        "rows": 4
+      }
+    }
+  },
+  "output_format": {
+    "ui:widget": "select"
+  }
+}

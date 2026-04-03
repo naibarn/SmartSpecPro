@@ -44,7 +44,7 @@ import {
 } from "../../drizzle/schema";
 import { eq, asc, desc, like, or, and, sql, inArray } from "drizzle-orm";
 import { deductCredits, calculateCreditsForLLM, hasEnoughCredits } from "../services/creditService";
-import { getProviderForModel } from "../services/llmRouter";
+import { executeWithFallback, getProviderForModel } from "../services/llmRouter";
 import { buildModelLookupCandidates } from "../services/modelLookup";
 import { getUploadsDir } from "../storage";
 import crypto from "crypto";
@@ -80,6 +80,12 @@ import {
 import { persistSkillMaintenanceAnalysis } from "../services/skillUpgradePlanner";
 import { applySkillUpgradeRecommendation } from "../services/skillUpgradeApplier";
 import {
+  buildPromptLengthPlan,
+  resolvePromptLanguageHintFromInputs,
+  truncateToPromptLength,
+} from "../services/promptLengthGuard";
+import {
+  extractZipToDirectory,
   hasRelativeSkillManifest,
   mirrorExistingSkillManifest,
   resolveSkillManifestPath,
@@ -95,6 +101,7 @@ import {
   executeSkillMaintenanceSweep,
   resolveMaintenanceScheduleInput,
 } from "../services/skillMaintenanceScheduler";
+import type { Message, MessageContent } from "../_core/llm";
 
 // Skills directory path
 const SKILLS_DIR = path.resolve(process.cwd(), "skills");
@@ -252,6 +259,7 @@ type VisionModelOption = {
   name: string;
   provider: string;
   providerDisplayName: string;
+  providerId: number;
   isDefault?: boolean;
   supportsVision?: boolean;
 };
@@ -262,6 +270,7 @@ async function getVisionModelOptions(): Promise<VisionModelOption[]> {
       modelId: modelProviderMap.modelId,
       modelName: modelProviderMap.modelName,
       providerModelId: modelProviderMap.providerModelId,
+      providerId: llmProviders.id,
       providerName: llmProviders.providerName,
       displayName: llmProviders.displayName,
       defaultModel: llmProviders.defaultModel,
@@ -297,6 +306,7 @@ async function getVisionModelOptions(): Promise<VisionModelOption[]> {
       name: row.modelName,
       provider: row.providerName,
       providerDisplayName: row.displayName,
+      providerId: row.providerId,
       isDefault: modelId === row.defaultModel || fullModelId === row.defaultModel || row.providerModelId === row.defaultModel,
       supportsVision,
     });
@@ -417,70 +427,75 @@ async function convertImageUrlForLLM(url: string): Promise<string> {
 async function callLLMWithVision(
   systemPrompt: string,
   userPrompt: string,
+  userId: number,
   imageUrls: string[] = [],
   model?: string,
   maxTokens: number = 2000,
-  options?: { extraBodyParams?: Record<string, unknown>; systemPromptSuffix?: string }
+  options?: { extraBodyParams?: Record<string, unknown>; systemPromptSuffix?: string },
 ): Promise<{ content: string; usage: { promptTokens: number; completionTokens: number }; rawResponse?: any }> {
   const useModel = resolveVisionModelId(await getVisionModelOptions(), model);
   if (!useModel) {
     throw new Error("No enabled vision model configured");
   }
-  const provider = await getProviderForModel(useModel);
-  if (!provider) {
-    throw new Error("No LLM provider configured");
-  }
 
   // Build messages with vision support
-  const userContent: Array<{ type: string; text?: string; image_url?: { url: string } }> = [
-    { type: "text", text: userPrompt }
-  ];
+  const userContent: MessageContent[] = [{ type: "text", text: userPrompt }];
 
   // Add images if provided (for vision analysis)
   // Convert relative URLs to base64 data URLs so LLM can access them
   for (const imageUrl of imageUrls) {
     const convertedUrl = await convertImageUrlForLLM(imageUrl);
-    userContent.push({
-      type: "image_url",
-      image_url: { url: convertedUrl }
-    });
+    userContent.push({ type: "image_url", image_url: { url: convertedUrl } });
   }
 
   const finalSystemPrompt = options?.systemPromptSuffix
     ? systemPrompt + options.systemPromptSuffix
     : systemPrompt;
 
-  const messages = [
+  const messages: Message[] = [
     { role: "system", content: finalSystemPrompt },
     { role: "user", content: userContent }
   ];
 
-  const baseUrl = provider.baseUrl.replace(/\/+$/, "");
-  const url = baseUrl.includes("/v1")
-    ? `${baseUrl}/chat/completions`
-    : `${baseUrl}/v1/chat/completions`;
-
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${provider.apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: provider.providerModelId || useModel,
+  const runWithFallback = async (preferredProvider?: number) => {
+    const result = await executeWithFallback({
+      model: useModel,
       messages,
-      max_tokens: maxTokens,
+      stream: false,
+      userId,
+      ...(preferredProvider != null
+        ? { preferredProvider, strictProviderPin: true }
+        : {}),
+      maxTokens,
       temperature: 0.7,
-      ...(options?.extraBodyParams ?? {}),
-    }),
-  });
+      extraBodyParams: options?.extraBodyParams,
+    });
 
-  if (!response.ok) {
-    const error = await response.text().catch(() => response.statusText);
-    throw new Error(`LLM request failed: ${error}`);
+    if (result.type === "fallback_required") {
+      // Auto Prompt is a user-initiated "make this work" flow, so keep going
+      // with the suggested provider instead of surfacing a consent blocker.
+      return executeWithFallback({
+        model: useModel,
+        messages,
+        stream: false,
+        userId,
+        preferredProvider: result.to.providerId,
+        strictProviderPin: true,
+        maxTokens,
+        temperature: 0.7,
+        extraBodyParams: options?.extraBodyParams,
+      });
+    }
+
+    return result;
+  };
+
+  const result = await runWithFallback();
+  if (result.type === "error") {
+    throw new Error(`LLM request failed: ${result.error}`);
   }
 
-  const data = await response.json();
+  const data = result.response;
 
   // Extract content - reasoning models like GPT-5.2 may put response in `reasoning` field
   const message = data.choices?.[0]?.message;
@@ -1387,9 +1402,12 @@ export const skillsRouter = router({
         // Call LLM with vision support
         // Feature 041: When no model explicitly selected, use skill execution policy
         let visionModel: string | null = null;
-        if (input.model) {
+        const requestedModel = typeof input.model === "string" && !input.model.startsWith("__auto")
+          ? input.model
+          : null;
+        if (requestedModel) {
           // User explicitly selected a model — use it
-          visionModel = resolveVisionModelId(await getVisionModelOptions(), input.model);
+          visionModel = resolveVisionModelId(await getVisionModelOptions(), requestedModel);
         } else {
           // Auto mode: try skill execution policy first (capability-aware selection)
           const skill = getSkillByIdOrType(resolvedSkillId);
@@ -1415,35 +1433,21 @@ export const skillsRouter = router({
           });
         }
 
-        // Calculate max_tokens based on prompt_count and maxPromptLength
-        // If maxPromptLength is provided (from model config), use it to constrain output
-        // Otherwise use default of 5000 characters
-        const promptCount = input.prompt_count || 1;
+        // Calculate max tokens from the requested character budget and language hint.
+        // This keeps the completion budget aligned with the selected media model limit.
         const maxCharLength = input.maxPromptLength || 5000;
-
-        // Convert character limit to approximate token limit (1 token ≈ 3-4 chars)
-        // For single prompt: full character budget
-        // For multiple prompts: divide budget per prompt with some overhead
-        const charsPerToken = 3.5;
-        // Use proportional overhead (10%) instead of fixed, with min 50 chars
-        const overheadChars = Math.max(50, Math.ceil(maxCharLength * 0.1));
-        const effectiveMaxChars = maxCharLength - overheadChars;
-        // Set minimum 800 tokens - reasoning models (like GPT-5.2) use tokens for encrypted thinking before output
-        // With 300 tokens, all were consumed by reasoning with nothing left for content output
-        const calculatedMaxTokens = Math.max(
-          800, // Minimum tokens - reasoning models need ~500+ just for thinking overhead
-          Math.min(
-            Math.ceil(effectiveMaxChars / charsPerToken),
-            2000 // Hard cap at 2000 tokens
-          )
+        const promptLengthPlan = buildPromptLengthPlan(
+          maxCharLength,
+          resolvePromptLanguageHintFromInputs(input as Record<string, unknown>),
         );
 
         const result = await callLLMWithVision(
           systemPrompt,
           userPrompt,
+          userId,
           input.referenceImages || [],
           visionModel,
-          calculatedMaxTokens
+          promptLengthPlan.maxTokens
         );
 
         // Check if LLM refused the request (safety filter)
@@ -1483,38 +1487,16 @@ export const skillsRouter = router({
           console.warn(
             `[Skills] Prompt exceeded limit: ${finalPromptEn.length}/${input.maxPromptLength} chars - truncating`
           );
-
-          // Smart truncation: try to cut at sentence boundary if possible
-          const targetLength = input.maxPromptLength - 3; // Leave room for "..."
-          let truncatedPrompt = finalPromptEn.substring(0, targetLength);
-
-          // Find the last sentence boundary (., !, ?) within the truncated portion
-          const lastSentenceEnd = Math.max(
-            truncatedPrompt.lastIndexOf(". "),
-            truncatedPrompt.lastIndexOf("! "),
-            truncatedPrompt.lastIndexOf("? "),
-            truncatedPrompt.lastIndexOf(".\n"),
-            truncatedPrompt.lastIndexOf("!\n"),
-            truncatedPrompt.lastIndexOf("?\n")
-          );
-
-          // If we found a sentence boundary in the last 20% of the truncated text, use it
-          const minSentencePosition = targetLength * 0.8;
-          if (lastSentenceEnd > minSentencePosition) {
-            truncatedPrompt = finalPromptEn.substring(0, lastSentenceEnd + 1);
-          } else {
-            // Otherwise, just add ellipsis
-            truncatedPrompt = truncatedPrompt.trimEnd() + "...";
-          }
-
-          finalPromptEn = truncatedPrompt;
-          wasTruncated = true;
+          const truncatedPrompt = truncateToPromptLength(finalPromptEn, input.maxPromptLength);
+          finalPromptEn = truncatedPrompt.text;
+          wasTruncated = truncatedPrompt.wasTruncated;
         }
 
         // Also truncate Thai prompt if provided
         if (input.maxPromptLength && finalPromptTh && finalPromptTh.length > input.maxPromptLength) {
-          const targetLength = input.maxPromptLength - 3;
-          finalPromptTh = finalPromptTh.substring(0, targetLength).trimEnd() + "...";
+          const truncatedPrompt = truncateToPromptLength(finalPromptTh, input.maxPromptLength);
+          finalPromptTh = truncatedPrompt.text;
+          wasTruncated = wasTruncated || truncatedPrompt.wasTruncated;
         }
 
         // Calculate and deduct credits based on the model used
@@ -1626,6 +1608,7 @@ export const skillsRouter = router({
           systemPrompt: skills.systemPrompt,
           folderPath: skills.folderPath,
           category: skills.category,
+          defaultModel: skills.defaultModel,
           executionPolicyJson: skills.executionPolicyJson,
         })
         .from(skills)
@@ -1677,14 +1660,28 @@ export const skillsRouter = router({
         ...sanitizedUserInputs,
       };
 
+      const requestedMaxPromptLength = Number(mergedUserInputs.maxPromptLength);
+      const promptLengthPlan = Number.isFinite(requestedMaxPromptLength) && requestedMaxPromptLength > 0
+        ? buildPromptLengthPlan(requestedMaxPromptLength, resolvePromptLanguageHintFromInputs(mergedUserInputs))
+        : null;
+
       // Substitute template variables with actual values
       systemPrompt = substituteTemplateVariables(systemPrompt, mergedUserInputs);
+      if (promptLengthPlan) {
+        systemPrompt = `${systemPrompt}\n\n${promptLengthPlan.directive}`;
+      }
 
       // Build user prompt - simpler now since template variables are already substituted
       let userPrompt = "Please execute the skill based on the inputs provided in the system prompt template and generate the output as specified.";
 
       try {
-        const visionModel = resolveVisionModelId(await getVisionModelOptions(), input.model);
+        const requestedModel = typeof input.model === "string" && !input.model.startsWith("__auto")
+          ? input.model
+          : null;
+        const visionModel = resolveVisionModelId(
+          await getVisionModelOptions(),
+          requestedModel || skill.defaultModel || null,
+        );
         if (!visionModel) {
           throw new TRPCError({
             code: "PRECONDITION_FAILED",
@@ -1721,9 +1718,10 @@ export const skillsRouter = router({
         const result = await callLLMWithVision(
           systemPrompt,
           userPrompt,
+          userId,
           input.referenceImages || [],
           visionModel,
-          4000, // Higher token limit for complex outputs
+          promptLengthPlan?.maxTokens ?? 4000,
           webSearchOptions,
         );
 
@@ -1820,6 +1818,19 @@ export const skillsRouter = router({
           }
         }
 
+        let wasTruncated = false;
+        if (promptLengthPlan && responseMode !== "cms_json") {
+          const originalLength = processedContent.length;
+          const truncated = truncateToPromptLength(processedContent, promptLengthPlan.maxPromptLength);
+          processedContent = truncated.text;
+          wasTruncated = truncated.wasTruncated;
+          if (truncated.wasTruncated) {
+            console.warn(
+              `[Skills] Custom skill output exceeded limit: ${originalLength}/${promptLengthPlan.maxPromptLength} chars`,
+            );
+          }
+        }
+
         return {
           success: true,
           content: processedContent,
@@ -1827,6 +1838,7 @@ export const skillsRouter = router({
           skillName: skill.name,
           creditsUsed,
           usage: result.usage,
+          wasTruncated,
           ...(qualityReport ? { qualityReport } : {}),
         };
       } catch (error) {
@@ -3375,11 +3387,11 @@ ${knowledgeFiles.map((f) => `- ${f}`).join("\n") || "(No knowledge files found)"
       // Extract the ZIP to the skill folder
       if (isClaudeFormat) {
         // For shared skill bundles, extract to root of skill folder
-        zip.extractAllTo(skillDir, true);
+        extractZipToDirectory(zip, skillDir);
         mirrorExistingSkillManifest(skillDir);
       } else {
         // For Custom GPT format, extract to imported subfolder
-        zip.extractAllTo(path.join(skillDir, "imported"), true);
+        extractZipToDirectory(zip, path.join(skillDir, "imported"));
         writeSkillManifestFiles(skillDir, skillContent);
       }
 

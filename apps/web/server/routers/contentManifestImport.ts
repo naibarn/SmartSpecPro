@@ -1,24 +1,16 @@
-import crypto from "node:crypto";
 import type { Express, Request, Response } from "express";
 
-import { ENV } from "../_core/env";
 import { clearTenantCache } from "../_core/tenant";
 import { contentAutomationGate } from "../middleware/contentAutomationGate";
 import { SmartAiHubContentManifestSchema } from "../../shared/smartaihubContentManifest";
 import { getDb } from "../db";
 import { importSmartAiHubContentManifest } from "../services/smartaihubContentImport";
 import { pingSmartAiHubSearchEngines } from "../services/sitemapPing";
+import { compareCachedInternalToken } from "../services/appRuntimeConfig";
 
 function verifyInternalToken(req: Request): boolean {
-  const expected = ENV.webGatewayToken;
-  if (!expected) return false;
   const token = req.headers["x-internal-token"] as string | undefined;
-  if (!token) return false;
-  try {
-    return crypto.timingSafeEqual(Buffer.from(token), Buffer.from(expected));
-  } catch {
-    return false;
-  }
+  return compareCachedInternalToken(token);
 }
 
 async function handleImport(req: Request, res: Response, tenantDomain?: string): Promise<void> {

@@ -123,6 +123,8 @@ export interface SkillCatalogEntry {
   outputTypes: string[];
   hasInputSchema: boolean;
   requiredFields: string[];
+  /** Whether the skill must be invoked explicitly and cannot be auto-routed from chat */
+  requiresExplicit?: boolean;
   /** Whether this skill requires/supports web search grounding */
   webSearchCapable?: boolean;
 }

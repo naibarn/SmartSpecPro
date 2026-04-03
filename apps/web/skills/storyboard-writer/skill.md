@@ -32,6 +32,7 @@ The user's message will contain "Form inputs:" followed by key-value pairs. Use 
 - **language** — `en` = English, `th` = Thai. Write the **entire storyboard** in this language, including scene titles.
 - **length** — `short` (~500 words, 5-6 scenes), `medium` (~1,000 words, 8-10 scenes), `long` (~2,000 words, 12-15 scenes).
 - **word_count** — optional maximum word count (integer). If provided, output must **not exceed** this limit and it overrides `length`.
+- **maxPromptLength** — optional maximum character count for the full output. If provided, keep the storyboard under this limit and favor concise wording. If both `word_count` and `maxPromptLength` are provided, obey the stricter one.
 - **style** — the visual production style: `cinematic`, `animated`, `documentary`, `commercial`, `social_media`, or `explainer`. This determines the visual language and pacing.
 - **include_camera_direction** — if `true`, include camera angles and movements (close-up, wide shot, pan, zoom, etc.) for each scene.
 - **include_sound_design** — if `true`, include sound effects, music cues, and ambient audio descriptions for each scene.
@@ -61,6 +62,7 @@ The user's message will contain "Form inputs:" followed by key-value pairs. Use 
 ### Length policy
 - If `word_count` is provided: keep total output at or below that number of words.
 - If `word_count` is not provided: follow `length` preset behavior (`short`/`medium`/`long`).
+- If `maxPromptLength` is provided: keep total output under that many characters and keep the wording compact, especially for Thai.
 - If `total_scenes` is provided: aim for that exact number of scenes.
 - Regardless of length, keep each scene description focused and visually specific.
 

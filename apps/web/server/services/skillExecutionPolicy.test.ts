@@ -231,8 +231,7 @@ describe("resolveSkillExecutionPolicy — requirements mode", () => {
     );
   });
 
-  it("falls back to llmModelId when requirements find no match", async () => {
-    mockSelectBestLlmModel.mockReturnValue(null);
+  it("uses llmModelId before requirements matching when a skill model is configured", async () => {
     mockResolveFromRows.mockImplementation(({ preferredModelIds }) => {
       if ((preferredModelIds ?? []).includes("gpt-4o")) return "gpt-4o";
       return null;
@@ -249,7 +248,8 @@ describe("resolveSkillExecutionPolicy — requirements mode", () => {
 
     expect(result.modelId).toBe("gpt-4o");
     expect(result.modelSource).toBe("skill_llmModelId");
-    expect(result.requirementsFallback).toBe(true);
+    expect(result.requirementsFallback).toBeUndefined();
+    expect(mockSelectBestLlmModel).not.toHaveBeenCalled();
   });
 
   it("falls back to system default when requirements fail and no llmModelId", async () => {
@@ -424,12 +424,10 @@ describe("resolveSkillExecutionPolicy — requirements mode", () => {
     expect(result.modelSource).toBe("conversation");
   });
 
-  it("requirements mode: skips defaultModel in fallback cascade", async () => {
-    mockSelectBestLlmModel.mockReturnValue(null);
+  it("requirements mode: honors configured defaultModel before requirements matching", async () => {
     mockResolveFromRows.mockImplementation(({ preferredModelIds }) => {
-      // defaultModel should NOT be in the array when mode=requirements
       if ((preferredModelIds ?? []).includes("default-model")) return "default-model";
-      return "system-default";
+      return null;
     });
 
     const result = await resolveSkillExecutionPolicy({
@@ -442,16 +440,16 @@ describe("resolveSkillExecutionPolicy — requirements mode", () => {
       }),
     });
 
-    // Should be system-default, NOT default-model
-    expect(result.modelId).toBe("system-default");
-    expect(result.modelSource).toBe("system_default");
-    expect(result.requirementsFallback).toBe(true);
+    expect(result.modelId).toBe("default-model");
+    expect(result.modelSource).toBe("skill_defaultModel");
+    expect(result.requirementsFallback).toBeUndefined();
+    expect(mockSelectBestLlmModel).not.toHaveBeenCalled();
   });
 
-  it("requirements mode with empty requirements: uses restricted fallback", async () => {
+  it("requirements mode with empty requirements still honors configured defaultModel", async () => {
     mockResolveFromRows.mockImplementation(({ preferredModelIds }) => {
       if ((preferredModelIds ?? []).includes("default-model")) return "default-model";
-      return "system-default";
+      return null;
     });
 
     const result = await resolveSkillExecutionPolicy({
@@ -464,14 +462,17 @@ describe("resolveSkillExecutionPolicy — requirements mode", () => {
       }),
     });
 
-    // defaultModel should be skipped in requirements mode
-    expect(result.modelId).toBe("system-default");
-    expect(result.requirementsFallback).toBe(true);
+    expect(result.modelId).toBe("default-model");
+    expect(result.modelSource).toBe("skill_defaultModel");
+    expect(result.requirementsFallback).toBeUndefined();
     expect(mockSelectBestLlmModel).not.toHaveBeenCalled();
   });
 
-  it("auto-detect: requirements take precedence over llmModelId when both present", async () => {
-    mockSelectBestLlmModel.mockReturnValue("claude-3-sonnet");
+  it("auto-detect: configured llmModelId takes precedence over requirements", async () => {
+    mockResolveFromRows.mockImplementation(({ preferredModelIds }) => {
+      if ((preferredModelIds ?? []).includes("gpt-4o")) return "gpt-4o";
+      return null;
+    });
 
     const result = await resolveSkillExecutionPolicy({
       skill: makeSkill({
@@ -482,8 +483,9 @@ describe("resolveSkillExecutionPolicy — requirements mode", () => {
       }),
     });
 
-    expect(result.modelId).toBe("claude-3-sonnet");
-    expect(result.modelSource).toBe("requirements_match");
+    expect(result.modelId).toBe("gpt-4o");
+    expect(result.modelSource).toBe("skill_llmModelId");
+    expect(mockSelectBestLlmModel).not.toHaveBeenCalled();
   });
 
   it("filters free models out of requirements matching by default", async () => {

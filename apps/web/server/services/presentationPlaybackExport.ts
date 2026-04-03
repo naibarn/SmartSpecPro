@@ -33,6 +33,7 @@ import type { DrizzleDB } from "../db";
 import { ENV } from "../_core/env";
 import { signBearerToken } from "../_core/tokens";
 import { storagePresignGet } from "../storage";
+import { getCachedAppRuntimeConfig } from "./appRuntimeConfig";
 import {
   createExportRecord,
   updateExportRecord,
@@ -182,8 +183,10 @@ function nextExportId(): number {
 }
 
 function resolvePythonBackendBaseUrl(): string {
+  const runtimeConfig = getCachedAppRuntimeConfig();
   const candidate =
-    ENV.pythonBackendUrl?.trim()
+    runtimeConfig.pythonBackendUrl?.trim()
+    || ENV.pythonBackendUrl?.trim()
     || DEFAULT_PYTHON_BACKEND_URL;
   return candidate.replace(/\/+$/, "");
 }

@@ -318,14 +318,27 @@ describe("skillExecutor sandbox dispatch", () => {
     expect(result).toHaveProperty("message");
   });
 
-  it("media-generate dispatches to sandbox when sandbox enabled", async () => {
+  it("media-generate image skills use legacy image executor even when sandbox is enabled", async () => {
     vi.mocked(isSandboxEnabled).mockReturnValue(true);
     vi.mocked(shouldUseSandboxForFeature).mockReturnValue(true);
-    vi.mocked(dispatchToSandbox).mockResolvedValue({ jobId: "job-media-migrate" });
+    vi.mocked(getDefaultModel).mockReturnValue({ id: "test-image-model" } as any);
+    vi.mocked(getModelById).mockReturnValue({
+      id: "test-image-model",
+      name: "Test Image Model",
+      type: "image",
+      configJson: {},
+    } as any);
+    vi.mocked(mediaGenerationService.generateImage as any).mockResolvedValue({
+      data: [{ url: "https://example.com/generated.png" }],
+      creditsUsed: 3,
+    });
 
     const skill = makeSkill({ executionMode: "media-generate", type: "image-generation" });
     const result = await executeSkill(skill, defaultParams, 1, "token", "tenant-001");
-    expect(result.type).toBe("sandbox-job");
+    expect(result.type).toBe("image");
+    expect(result.success).toBe(true);
+    expect(result.resultUrl).toBe("https://example.com/generated.png");
+    expect(dispatchToSandbox).not.toHaveBeenCalled();
   });
 
   it("routes audio-generation to audio executor in legacy path", async () => {
@@ -462,6 +475,7 @@ describe("skillExecutor sandbox dispatch", () => {
           ]),
           output_paths: expect.arrayContaining([
             "/tmp/smartspec-sandbox/skill-output/manifest.json",
+            "/tmp/smartspec-sandbox/skill-output/debug-report.json",
             "/tmp/smartspec-sandbox/skill-output/custom-layout.json",
             "/tmp/smartspec-sandbox/skill-output/custom-slides.pptx",
           ]),

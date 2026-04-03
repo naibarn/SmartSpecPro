@@ -30,6 +30,7 @@ import { channelGateway } from "../services/channelGateway";
 import { agencyBridge } from "../services/agencyBridge";
 import { runPlanner, recordStepAttempt } from "../services/taskPlannerMiddleware";
 import { buildAgencyTaskMetadata } from "../services/agencyEscalation";
+import { getAppRuntimeConfig, getPreferredInternalToken } from "../services/appRuntimeConfig";
 import { ENV } from "../_core/env";
 
 const WEBHOOK_BASE_URL = "https://smartaihub.app/api/webhooks/trigger";
@@ -370,14 +371,15 @@ export const webhookTriggersRouter = router({
           dispatchResult = { ok: true };
 
         } else if (trigger.targetType === "workflow" && trigger.targetWorkflowId) {
-          const PYTHON_BACKEND_URL = (ENV.pythonBackendUrl || "http://localhost:8000").replace(/\/+$/, "");
+          const runtime = await getAppRuntimeConfig();
+          const gatewayToken = await getPreferredInternalToken();
           const response = await fetch(
-            `${PYTHON_BACKEND_URL}/api/v1/workflows/internal/${trigger.targetWorkflowId}/webhook-trigger`,
+            `${runtime.pythonBackendUrl}/api/v1/workflows/internal/${trigger.targetWorkflowId}/webhook-trigger`,
             {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
-                "Authorization": `Bearer ${ENV.webGatewayToken}`,
+                "Authorization": `Bearer ${gatewayToken}`,
               },
               body: JSON.stringify({
                 input_data: substitutedPayload,

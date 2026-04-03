@@ -5,13 +5,14 @@
  * Tabs: Checks | Alerts | Metrics
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { DashboardCard, DashboardKpiCard } from "@/components/dashboard";
 import { OpsEarlyWarningPanel, type OpsOverview } from "@/components/admin/OpsEarlyWarningPanel";
 import { HelpButton } from "@/components/help/HelpButton";
+import { LocaleToggle } from "@/components/LocaleToggle";
 import { Badge } from "@/components/ui/badge";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import { getOpsIncidentGuidance } from "@/lib/opsMonitoringGuidance";
@@ -1465,7 +1466,14 @@ type Tab = "checks" | "alerts" | "metrics";
 export default function AdminMonitoring() {
   const { user, loading: authLoading } = useAuth();
   const { locale } = useScopedTranslation("admin");
+  const utils = trpc.useUtils();
   const [location, setLocation] = useLocation();
+  const tabsSectionRef = useRef<HTMLDivElement | null>(null);
+  const incidentSummaryRef = useRef<HTMLDivElement | null>(null);
+  const autoFreshCheckScheduledRef = useRef(false);
+  const freshCheckSourceRef = useRef<"auto" | "manual">("manual");
+  const [flashTarget, setFlashTarget] = useState<"tabs" | "incident" | null>(null);
+  const [autoFreshCheckState, setAutoFreshCheckState] = useState<"idle" | "waiting" | "checking" | "done">("idle");
   const routeState = useMemo(() => parseMonitoringRoute(location), [location]);
   const [activeTab, setActiveTab] = useState<Tab>(routeState.tab ?? (routeState.incidentKey ? "alerts" : "checks"));
 
@@ -1495,17 +1503,40 @@ export default function AdminMonitoring() {
   });
   const forceFreshCheckMutation = trpc.monitoring.forceFreshCheck.useMutation({
     onSuccess: async () => {
-      toast.success("Fresh monitoring check recorded");
+      const source = freshCheckSourceRef.current;
+      setAutoFreshCheckState("done");
+      if (source === "manual") {
+        toast.success("Fresh monitoring check recorded");
+      }
       await Promise.all([
-        statusQuery.refetch(),
-        opsOverviewQuery.refetch(),
-        ...(routeState.incidentKey ? [focusedIncidentQuery.refetch()] : []),
+        utils.monitoring.getCurrentStatus.invalidate(),
+        utils.monitoring.getOpsOverview.invalidate(),
+        utils.monitoring.getChecks.invalidate(),
+        utils.monitoring.getAlerts.invalidate(),
+        utils.monitoring.getMetricsHistory.invalidate(),
+        utils.monitoring.getOpsIncidentTimeline.invalidate(),
       ]);
     },
     onError: (error: { message: string }) => {
+      setAutoFreshCheckState("idle");
       toast.error(error.message || "Failed to force a fresh check");
     },
   });
+
+  useEffect(() => {
+    if (authLoading || !user || user.role !== "admin") return;
+    if (autoFreshCheckScheduledRef.current) return;
+    autoFreshCheckScheduledRef.current = true;
+    setAutoFreshCheckState("waiting");
+
+    const timeoutId = window.setTimeout(() => {
+      freshCheckSourceRef.current = "auto";
+      setAutoFreshCheckState("checking");
+      forceFreshCheckMutation.mutate();
+    }, 900);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [authLoading, forceFreshCheckMutation, user]);
 
   // Auth guard
   if (authLoading) {
@@ -1539,10 +1570,48 @@ export default function AdminMonitoring() {
   const focusedAnomaly = routeState.incidentKey
     ? anomalies.find((anomaly) => incidentKeyFromAnomaly(anomaly) === routeState.incidentKey) ?? null
     : anomalies[0] ?? null;
+  const staleServiceCount = services.filter((svc) => String(svc.status).toLowerCase() === "stale").length;
+  const suggestedIncidentKey = !routeState.incidentKey ? incidentKeyFromAnomaly(focusedAnomaly ?? null) : null;
+  const heroGuidance = getOpsIncidentGuidance({
+    locale,
+    title: focusedIncident?.title ?? focusedAnomaly?.title ?? null,
+    message: focusedIncident?.latestMessage ?? focusedAnomaly?.message ?? null,
+    category: focusedAnomaly?.category ?? focusedIncident?.category ?? null,
+    signal: focusedIncident?.signal ?? focusedAnomaly?.signal ?? null,
+    recommendation: focusedIncident?.recommendation ?? focusedAnomaly?.recommendation ?? null,
+    groupKey: focusedIncident?.groupKey ?? suggestedIncidentKey,
+    severity: focusedIncident?.severity ?? focusedAnomaly?.severity ?? null,
+  });
+  const heroSummary = staleServiceCount > 0 && staleServiceCount === services.length
+    ? locale === "th"
+      ? "ตอนนี้ service cards ทั้งหมดเป็น Stale แปลว่าข้อมูล monitoring ที่แสดงอาจเก่า ขั้นแรกให้กด Force Fresh Check ก่อน แล้วค่อยตรวจแท็บ Checks ถ้ายังไม่อัปเดต"
+      : "All service cards are stale right now, which means the monitoring view may be showing old data. Start with Force Fresh Check, then inspect Checks if the page still does not refresh."
+    : heroGuidance.summary;
 
   const navigateToTab = (tab: Tab) => {
     setActiveTab(tab);
     setLocation(buildMonitoringPath(tab, routeState.incidentKey));
+  };
+
+  const revealSection = (target: "tabs" | "incident") => {
+    const node = target === "incident" ? incidentSummaryRef.current : tabsSectionRef.current;
+    if (!node) return;
+    node.scrollIntoView({ behavior: "smooth", block: "start" });
+    setFlashTarget(target);
+    window.setTimeout(() => {
+      setFlashTarget((current) => (current === target ? null : current));
+    }, 1800);
+  };
+
+  const navigateToTabAndReveal = (tab: Tab) => {
+    navigateToTab(tab);
+    window.setTimeout(() => revealSection("tabs"), 80);
+  };
+
+  const focusIncidentAndReveal = (incidentKey: string) => {
+    setActiveTab("alerts");
+    setLocation(buildMonitoringPath("alerts", incidentKey));
+    window.setTimeout(() => revealSection("incident"), 120);
   };
 
   const clearIncidentFocus = () => {
@@ -1596,6 +1665,17 @@ export default function AdminMonitoring() {
                     timeAgo(lastCheck)
                   )}
                 </p>
+                {autoFreshCheckState === "waiting" || autoFreshCheckState === "checking" ? (
+                  <p className="mt-1 text-xs text-sky-600">
+                    {locale === "th"
+                      ? autoFreshCheckState === "waiting"
+                        ? "กำลังเตรียมตรวจ runtime ล่าสุดอัตโนมัติ..."
+                        : "กำลังเช็ก runtime ล่าสุดอัตโนมัติ..."
+                      : autoFreshCheckState === "waiting"
+                        ? "Preparing an automatic runtime refresh..."
+                        : "Checking the latest runtime automatically..."}
+                  </p>
+                ) : null}
                 {routeState.incidentKey && (
                   <p className="text-xs text-slate-500 mt-1">
                     Incident focus: {routeState.incidentKey}
@@ -1603,39 +1683,121 @@ export default function AdminMonitoring() {
                 )}
               </div>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => void Promise.all([
-                statusQuery.refetch(),
-                opsOverviewQuery.refetch(),
-                ...(routeState.incidentKey ? [focusedIncidentQuery.refetch()] : []),
-              ])}
-              disabled={statusQuery.isLoading || opsOverviewQuery.isLoading}
-            >
-              {statusQuery.isLoading || opsOverviewQuery.isLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <RefreshCw className="h-4 w-4" />
-              )}
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => forceFreshCheckMutation.mutate()}
-              disabled={forceFreshCheckMutation.isPending}
-            >
-              {forceFreshCheckMutation.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : (
-                <CheckCheck className="h-4 w-4 mr-2" />
-              )}
-              Force Fresh Check
-            </Button>
+            <div className="flex items-center gap-2">
+              <LocaleToggle className="hidden sm:inline-flex" />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void Promise.all([
+                  statusQuery.refetch(),
+                  opsOverviewQuery.refetch(),
+                  ...(routeState.incidentKey ? [focusedIncidentQuery.refetch()] : []),
+                ])}
+                disabled={statusQuery.isLoading || opsOverviewQuery.isLoading}
+              >
+                {statusQuery.isLoading || opsOverviewQuery.isLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4" />
+                )}
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => {
+                  freshCheckSourceRef.current = "manual";
+                  setAutoFreshCheckState("checking");
+                  forceFreshCheckMutation.mutate();
+                }}
+                disabled={forceFreshCheckMutation.isPending}
+              >
+                {forceFreshCheckMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <CheckCheck className="h-4 w-4 mr-2" />
+                )}
+                Force Fresh Check
+              </Button>
+            </div>
           </div>
         </div>
       </div>
 
       <div className="flex-1 overflow-auto px-4 py-6 space-y-6">
+        {(focusedIncident || focusedAnomaly || staleServiceCount > 0 || criticalCount > 0) && (
+          <DashboardCard
+            title={locale === "th" ? "เริ่มจากตรงนี้" : "Start Here"}
+            description={heroSummary}
+            leading={<AlertTriangle className="h-5 w-5 text-amber-500" />}
+          >
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-700">
+                  {staleServiceCount > 0
+                    ? locale === "th"
+                      ? `${staleServiceCount} service stale`
+                      : `${staleServiceCount} stale services`
+                    : heroGuidance.headline}
+                </Badge>
+                {criticalCount > 0 ? (
+                  <Badge variant="outline" className="border-rose-200 bg-rose-50 text-rose-700">
+                    {locale === "th" ? `${criticalCount} critical ที่ยังเปิด` : `${criticalCount} critical still open`}
+                  </Badge>
+                ) : null}
+                <Badge variant="outline" className="border-slate-200 bg-slate-50 text-slate-700">
+                  {locale === "th" ? `ตรวจล่าสุด ${timeAgo(lastCheck)}` : `Last check ${timeAgo(lastCheck)}`}
+                </Badge>
+              </div>
+
+              <div className="space-y-2 text-sm text-slate-700">
+                {heroGuidance.checkNow.slice(0, 3).map((step) => (
+                  <p key={step}>• {step}</p>
+                ))}
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    freshCheckSourceRef.current = "manual";
+                    setAutoFreshCheckState("checking");
+                    forceFreshCheckMutation.mutate();
+                  }}
+                  disabled={forceFreshCheckMutation.isPending}
+                >
+                  {forceFreshCheckMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <CheckCheck className="h-4 w-4 mr-2" />
+                  )}
+                  {locale === "th" ? "เช็กใหม่ทันที" : "Force Fresh Check"}
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => navigateToTabAndReveal("checks")}>
+                  {locale === "th" ? "เปิด Checks" : "Open Checks"}
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => navigateToTabAndReveal("alerts")}>
+                  {locale === "th" ? "เปิด Alert Inbox" : "Open Alert Inbox"}
+                </Button>
+                {suggestedIncidentKey ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => focusIncidentAndReveal(suggestedIncidentKey)}
+                  >
+                    {locale === "th" ? "โฟกัส incident นี้" : "Focus This Incident"}
+                  </Button>
+                ) : null}
+                <HelpButton
+                  page="/admin/monitoring"
+                  topic={heroGuidance.helpTopicSlug}
+                  variant="outline"
+                  size="sm"
+                  label={heroGuidance.helpLabel}
+                />
+              </div>
+            </div>
+          </DashboardCard>
+        )}
+
         {/* Status Cards */}
         {statusQuery.isLoading ? (
           <div className="flex items-center gap-2 text-muted-foreground text-sm">
@@ -1659,16 +1821,24 @@ export default function AdminMonitoring() {
         />
 
         {(focusedIncident || focusedAnomaly) && (
-          <IncidentSummaryCard
-            locale={locale}
-            incident={focusedIncident}
-            anomaly={focusedAnomaly}
-            lastCheck={lastCheck}
-            onOpenAlerts={() => navigateToTab("alerts")}
-            onOpenChecks={() => navigateToTab("checks")}
-            onOpenMetrics={() => navigateToTab("metrics")}
-            onClearFocus={routeState.incidentKey ? clearIncidentFocus : null}
-          />
+          <div
+            ref={incidentSummaryRef}
+            className={cn(
+              "rounded-3xl transition-all duration-500",
+              flashTarget === "incident" ? "ring-2 ring-sky-300 ring-offset-2" : "",
+            )}
+          >
+            <IncidentSummaryCard
+              locale={locale}
+              incident={focusedIncident}
+              anomaly={focusedAnomaly}
+              lastCheck={lastCheck}
+              onOpenAlerts={() => navigateToTabAndReveal("alerts")}
+              onOpenChecks={() => navigateToTabAndReveal("checks")}
+              onOpenMetrics={() => navigateToTabAndReveal("metrics")}
+              onClearFocus={routeState.incidentKey ? clearIncidentFocus : null}
+            />
+          </div>
         )}
 
         {focusedIncident && (
@@ -1700,7 +1870,7 @@ export default function AdminMonitoring() {
               variant="outline"
               size="sm"
               className="ml-auto"
-              onClick={() => navigateToTab("alerts")}
+              onClick={() => navigateToTabAndReveal("alerts")}
             >
               View Alerts
             </Button>
@@ -1708,7 +1878,13 @@ export default function AdminMonitoring() {
         )}
 
         {/* Tabs */}
-        <div>
+        <div
+          ref={tabsSectionRef}
+          className={cn(
+            "rounded-3xl transition-all duration-500",
+            flashTarget === "tabs" ? "ring-2 ring-sky-300 ring-offset-2" : "",
+          )}
+        >
           <div className="flex border-b mb-4">
             {tabs.map((tab) => (
               <button

@@ -855,6 +855,41 @@
       "when": 1774684800000,
       "tag": "0121_add_slide_generation_category",
       "breakpoints": true
+    },
+    {
+      "idx": 122,
+      "version": "7",
+      "when": 1775005200000,
+      "tag": "0125_beam_billing_phase1_foundation",
+      "breakpoints": true
+    },
+    {
+      "idx": 123,
+      "version": "7",
+      "when": 1775005201000,
+      "tag": "0126_billing_webhook_evidence_history",
+      "breakpoints": true
+    },
+    {
+      "idx": 124,
+      "version": "7",
+      "when": 1775005202000,
+      "tag": "0127_billing_payment_attempt_snapshots",
+      "breakpoints": true
+    },
+    {
+      "idx": 125,
+      "version": "7",
+      "when": 1775005203000,
+      "tag": "0128_billing_phase2_payment_methods",
+      "breakpoints": true
+    },
+    {
+      "idx": 126,
+      "version": "7",
+      "when": 1775005204000,
+      "tag": "0129_billing_phase2_rollout_and_setup_sessions",
+      "breakpoints": true
     }
   ]
 }

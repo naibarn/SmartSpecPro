@@ -5,14 +5,14 @@
 
 import { Router, type Request, type Response } from "express";
 import * as interAgentService from "../services/interAgentService";
+import { getPreferredInternalToken } from "../services/appRuntimeConfig";
 
 const internalOrchestratorRouter = Router();
 
-const GATEWAY_TOKEN = process.env.SMARTSPEC_WEB_GATEWAY_TOKEN ?? "";
-
-function validateGatewayToken(req: Request, res: Response): boolean {
+async function validateGatewayToken(req: Request, res: Response): Promise<boolean> {
+  const gatewayToken = await getPreferredInternalToken();
   const token = req.headers["x-gateway-token"] as string;
-  if (!token || token !== GATEWAY_TOKEN) {
+  if (!token || token !== gatewayToken) {
     res.status(401).json({ error: "Unauthorized" });
     return false;
   }
@@ -20,7 +20,7 @@ function validateGatewayToken(req: Request, res: Response): boolean {
 }
 
 internalOrchestratorRouter.post("/api/internal/orchestrator/system-impact", async (req, res) => {
-  if (!validateGatewayToken(req, res)) return;
+  if (!(await validateGatewayToken(req, res))) return;
 
   const { tenantId, incidentType, affectedResources, recommendedAction } = req.body;
   if (!tenantId || !incidentType) {
@@ -38,7 +38,7 @@ internalOrchestratorRouter.post("/api/internal/orchestrator/system-impact", asyn
 });
 
 internalOrchestratorRouter.post("/api/internal/orchestrator/system-broadcast", async (req, res) => {
-  if (!validateGatewayToken(req, res)) return;
+  if (!(await validateGatewayToken(req, res))) return;
 
   const { tenantId, targetRoomIds, messageType, displayMessage, severity, relatedIncidentId } = req.body;
   if (!tenantId || !targetRoomIds?.length || !messageType) {
@@ -58,7 +58,7 @@ internalOrchestratorRouter.post("/api/internal/orchestrator/system-broadcast", a
 });
 
 internalOrchestratorRouter.post("/api/internal/virtual-admin/team-escalation", async (req, res) => {
-  if (!validateGatewayToken(req, res)) return;
+  if (!(await validateGatewayToken(req, res))) return;
 
   const { tenantId, roomId, runId, assistantId, escalationType, context } = req.body;
   if (!tenantId || !roomId || !escalationType) {

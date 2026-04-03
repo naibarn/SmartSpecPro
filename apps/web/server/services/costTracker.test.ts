@@ -159,7 +159,10 @@ describe("calculateCost", () => {
         { pricingInput: "2.50", pricingOutput: "10.00", isFree: false },
       ]),
     });
-    const mockFrom = vi.fn().mockReturnValue({ where: mockWhere });
+    const mockFrom = vi.fn().mockReturnValue({
+      where: mockWhere,
+      innerJoin: vi.fn().mockReturnValue({ where: mockWhere }),
+    });
     const mockDb = {
       select: vi.fn().mockReturnValue({ from: mockFrom }),
       insert: mockInsert,
@@ -183,7 +186,10 @@ describe("calculateCost", () => {
         { pricingInput: "2.00", pricingOutput: "8.00", isFree: false },
       ]),
     });
-    const mockFrom = vi.fn().mockReturnValue({ where: mockWhere });
+    const mockFrom = vi.fn().mockReturnValue({
+      where: mockWhere,
+      innerJoin: vi.fn().mockReturnValue({ where: mockWhere }),
+    });
     const mockDb = {
       select: vi.fn().mockReturnValue({ from: mockFrom }),
       insert: mockInsert,
@@ -204,7 +210,10 @@ describe("calculateCost", () => {
     const mockWhere = vi.fn().mockReturnValue({
       limit: vi.fn().mockResolvedValue([]),
     });
-    const mockFrom = vi.fn().mockReturnValue({ where: mockWhere });
+    const mockFrom = vi.fn().mockReturnValue({
+      where: mockWhere,
+      innerJoin: vi.fn().mockReturnValue({ where: mockWhere }),
+    });
     const mockDb = {
       select: vi.fn().mockReturnValue({ from: mockFrom }),
       insert: mockInsert,
@@ -227,7 +236,10 @@ describe("calculateCost", () => {
         { pricingInput: "0", pricingOutput: "0", isFree: true },
       ]),
     });
-    const mockFrom = vi.fn().mockReturnValue({ where: mockWhere });
+    const mockFrom = vi.fn().mockReturnValue({
+      where: mockWhere,
+      innerJoin: vi.fn().mockReturnValue({ where: mockWhere }),
+    });
     const mockDb = {
       select: vi.fn().mockReturnValue({ from: mockFrom }),
       insert: mockInsert,

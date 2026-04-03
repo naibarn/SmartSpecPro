@@ -40,6 +40,7 @@ See `schemas/output.schema.json`
 - ไม่มีซับ ไม่มีข้อความบนจอ ไม่มี narrator (ตาม constraints ดีฟอลต์)
 - วิดีโอแต่ละฉากควร 6–10 วินาที (ปรับตาม sceneCount และ targetDurationSeconds)
 - Dialogue ต้องตรงกับภาษา dialogueLanguage (th/en/mixed) และเน้น lip-sync “พูดเป็นธรรมชาติ”
+- ถ้ากำหนด maxPromptLength ให้คุมความยาวผลลัพธ์ทั้งหมดให้อยู่ใต้ลิมิตนั้น และใช้สำนวนกระชับเป็นพิเศษเมื่อ output เป็นภาษาไทยหรือ mixed
 - ถ้ามี reference image ของตัวละคร ให้ถือเป็น identity reference และคงใบหน้า ทรงผม รูปร่าง เสื้อผ้า เครื่องประดับ ท่าทาง และของประจำตัวเดิมให้สอดคล้องทุก prompt
 - ถ้ามี reference image ของสินค้า/วัตถุ/พร็อพ ให้คงรูปทรง สี วัสดุ ลวดลาย และรายละเอียดเด่นเดิมให้สอดคล้องทุก prompt
 - ถ้ามี reference image ของฉาก/สถานที่ ให้คง composition perspective layout และ mood แสงเดิมให้สอดคล้องทุก prompt
@@ -80,9 +81,9 @@ See `schemas/output.schema.json`
 
 ## Video Prompt Format
 ต่อฉากให้เขียนเป็นบล็อก prompt พร้อมใช้ เช่น:
-"A high-quality {style} clip ({duration} seconds).
+"A high-quality {style} clip ({targetDurationSeconds} seconds).
 Speaker: ...
-The character speaks the following {language} dialogue naturally with lip-sync: "..."
+The character speaks the following {dialogueLanguage} dialogue naturally with lip-sync: "..."
 Emotion: ...
 Body movement: ...
 Action: ...

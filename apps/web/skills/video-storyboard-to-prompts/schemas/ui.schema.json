@@ -120,6 +120,18 @@
           "default": 8
         },
         {
+          "id": "maxPromptLength",
+          "type": "number",
+          "label": "Max Prompt Length (chars)",
+          "labelTh": "ความยาวพรอมต์สูงสุด (ตัวอักษร)",
+          "helpText": "Hard character cap for the combined storyboard and prompt output.",
+          "helpTextTh": "กำหนดจำนวนตัวอักษรสูงสุดของผลลัพธ์ storyboard และ prompt",
+          "min": 100,
+          "max": 10000,
+          "step": 10,
+          "default": 2000
+        },
+        {
           "id": "aspectRatio",
           "type": "select",
           "label": "Aspect Ratio",

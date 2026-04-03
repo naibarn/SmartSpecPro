@@ -497,6 +497,7 @@ function buildSandboxOutputPaths(inputPayload: Record<string, unknown>): string[
 
   const outputPaths = new Set<string>([
     `${SANDBOX_OUTPUT_DIR}/manifest.json`,
+    `${SANDBOX_OUTPUT_DIR}/debug-report.json`,
   ]);
 
   if (requestedFormats.includes("json")) {
@@ -747,15 +748,12 @@ export async function executeSkill(
   // Sandbox execution modes — dispatch to OpenSandbox when enabled
   if (
     executionMode?.startsWith("sandbox-") ||
-    (executionMode === "media-generate" && isSandboxEnabled()) ||
     (executionMode === "python" && isSandboxEnabled())
   ) {
     const sandboxMode =
       executionMode === "python"
         ? "sandbox-python"
-        : executionMode === "media-generate"
-          ? "sandbox-media"
-          : (executionMode || "sandbox-code");
+        : (executionMode || "sandbox-code");
     try {
       if (shouldUseSandboxForFeature("skill", sandboxMode)) {
         console.log(`[SkillExecutor] Routing to sandbox dispatch (mode: ${sandboxMode})`);

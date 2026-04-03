@@ -106,7 +106,19 @@ function cacheSet<T>(map: Map<string, CacheEntry<T>>, key: string, value: T): vo
 // ---------------------------------------------------------------------------
 
 function getHelpBasePath(): string {
-  return path.resolve(process.cwd(), "docs/help");
+  const candidates = [
+    path.resolve(process.cwd(), "docs/help"),
+    path.resolve(process.cwd(), "../docs/help"),
+    path.resolve(process.cwd(), "../../docs/help"),
+  ];
+
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) {
+      return candidate;
+    }
+  }
+
+  return candidates[0];
 }
 
 function getManifestPath(): string {

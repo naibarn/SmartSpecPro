@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from app.models.media_task import TaskStatus
 from app.tasks.media_tasks import (
     _generate_image_async,
+    _generate_audio_async,
     _mark_task_failed_async,
     _mark_task_retrying_async,
 )
@@ -57,6 +58,98 @@ async def test_generate_image_async_keeps_task_non_terminal_on_exception():
     assert task.completed_at is None
     assert task.result_data["failure"]["error"] == "transient provider error"
     assert task.result_data["failure"]["error_type"] == "RuntimeError"
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_generate_image_async_persists_provider_task_id_without_final_url():
+    task = MagicMock()
+    task.id = "task-image-submitted"
+    task.status = TaskStatus.PENDING
+    task.started_at = None
+    task.completed_at = None
+    task.result_data = None
+    task.error_message = None
+    task.task_id = None
+    task.result_url = None
+
+    user = SimpleNamespace(id="user-1")
+    session = _mock_session_with_execute_sequence(task, user)
+    gateway = MagicMock()
+    gateway.generate_image = AsyncMock(return_value=SimpleNamespace(
+        id="provider-image-123",
+        data=[],
+        credits_used=12,
+        credits_balance=88,
+        provider="kie_ai",
+        dict=lambda: {
+            "id": "provider-image-123",
+            "data": [],
+            "provider": "kie_ai",
+        },
+    ))
+
+    with patch("app.tasks.media_tasks.AsyncSessionLocal", return_value=session), \
+         patch("app.tasks.media_tasks.write_media_debug_event", return_value="/tmp/image-debug.json"), \
+         patch("app.tasks.media_tasks.LLMGateway", return_value=gateway):
+        result = await _generate_image_async(
+            "task-image-submitted",
+            "user-1",
+            {"model": "nano-banana-2", "prompt": "hello world"},
+        )
+
+    assert result["status"] == "submitted"
+    assert result["external_task_id"] == "provider-image-123"
+    assert task.status == TaskStatus.PROCESSING
+    assert task.task_id == "provider-image-123"
+    assert task.result_url is None
+    assert task.completed_at is None
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_generate_audio_async_persists_provider_task_id_without_final_url():
+    task = MagicMock()
+    task.id = "task-audio-submitted"
+    task.status = TaskStatus.PENDING
+    task.started_at = None
+    task.completed_at = None
+    task.result_data = None
+    task.error_message = None
+    task.task_id = None
+    task.result_url = None
+
+    user = SimpleNamespace(id="user-1")
+    session = _mock_session_with_execute_sequence(task, user)
+    gateway = MagicMock()
+    gateway.generate_audio = AsyncMock(return_value=SimpleNamespace(
+        id="provider-audio-123",
+        data=[],
+        credits_used=5,
+        credits_balance=95,
+        provider="uvoice",
+        dict=lambda: {
+            "id": "provider-audio-123",
+            "data": [],
+            "provider": "uvoice",
+        },
+    ))
+
+    with patch("app.tasks.media_tasks.AsyncSessionLocal", return_value=session), \
+         patch("app.tasks.media_tasks.write_media_debug_event", return_value="/tmp/audio-debug.json"), \
+         patch("app.tasks.media_tasks.LLMGateway", return_value=gateway):
+        result = await _generate_audio_async(
+            "task-audio-submitted",
+            "user-1",
+            {"model": "uvoice/tts-standard", "text": "hello world"},
+        )
+
+    assert result["status"] == "submitted"
+    assert result["external_task_id"] == "provider-audio-123"
+    assert task.status == TaskStatus.PROCESSING
+    assert task.task_id == "provider-audio-123"
+    assert task.result_url is None
+    assert task.completed_at is None
 
 
 @pytest.mark.unit

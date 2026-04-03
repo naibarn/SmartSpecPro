@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { router, protectedProcedure } from '../_core/trpc';
 import { TRPCError } from '@trpc/server';
 import type { TrpcContext } from '../_core/context';
+import { getAppRuntimeConfig } from '../services/appRuntimeConfig';
 
 const ENDPOINTS = [
   { path: '/api/v1/workflow/available-models', required: true, name: 'available-models' },
@@ -37,14 +38,8 @@ export const workflowHealthRouter = router({
       timestamp: z.string(),
     }))
     .query(async ({ ctx }: { ctx: TrpcContext }) => {
-      const pythonBackendUrl = process.env.PYTHON_BACKEND_URL;
-      
-      if (!pythonBackendUrl) {
-        throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'PYTHON_BACKEND_URL not configured',
-        });
-      }
+      const runtime = await getAppRuntimeConfig();
+      const pythonBackendUrl = runtime.pythonBackendUrl;
 
       const results = await Promise.all(
         ENDPOINTS.map(async (ep) => {
@@ -105,14 +100,8 @@ export const workflowHealthRouter = router({
       details: z.record(z.any()).optional(),
     }))
     .query(async ({ input, ctx }: { input: { name: string }, ctx: TrpcContext }) => {
-      const pythonBackendUrl = process.env.PYTHON_BACKEND_URL;
-      
-      if (!pythonBackendUrl) {
-        throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'PYTHON_BACKEND_URL not configured',
-        });
-      }
+      const runtime = await getAppRuntimeConfig();
+      const pythonBackendUrl = runtime.pythonBackendUrl;
 
       const endpoint = ENDPOINTS.find(ep => ep.name === input.name);
       

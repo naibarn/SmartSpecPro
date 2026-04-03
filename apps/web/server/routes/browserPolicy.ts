@@ -3,7 +3,7 @@ import crypto from "crypto";
 import { Router } from "express";
 import type { Request, Response } from "express";
 
-import { ENV } from "../_core/env";
+import { getPreferredInternalToken } from "../services/appRuntimeConfig";
 import {
   evaluateAndPersistBrowserPolicyRuntime,
   persistBrowserPolicyOutcomeRuntime,
@@ -11,8 +11,8 @@ import {
 
 const router = Router();
 
-function verifyInternalToken(req: Request): boolean {
-  const expected = ENV.webGatewayToken || process.env.SMARTSPEC_PROXY_TOKEN || "";
+async function verifyInternalToken(req: Request): Promise<boolean> {
+  const expected = await getPreferredInternalToken();
   if (!expected) {
     return false;
   }
@@ -31,7 +31,7 @@ function verifyInternalToken(req: Request): boolean {
 }
 
 router.post("/api/internal/browser-policy/evaluate", async (req: Request, res: Response) => {
-  if (!verifyInternalToken(req)) {
+  if (!(await verifyInternalToken(req))) {
     res.status(401).json({ error: "Unauthorized.", code: "UNAUTHORIZED" });
     return;
   }
@@ -49,7 +49,7 @@ router.post("/api/internal/browser-policy/evaluate", async (req: Request, res: R
 });
 
 router.post("/api/internal/browser-policy/outcome", async (req: Request, res: Response) => {
-  if (!verifyInternalToken(req)) {
+  if (!(await verifyInternalToken(req))) {
     res.status(401).json({ error: "Unauthorized.", code: "UNAUTHORIZED" });
     return;
   }

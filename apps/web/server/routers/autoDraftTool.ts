@@ -2,7 +2,6 @@ import crypto from "node:crypto";
 import type { Express, Request, Response } from "express";
 import { eq } from "drizzle-orm";
 
-import { ENV } from "../_core/env";
 import { signBearerToken } from "../_core/tokens";
 import type { TokenClaims } from "../_core/tokens";
 import { getDb } from "../db";
@@ -23,6 +22,7 @@ import {
 } from "@shared/contentAutomation/types";
 import { suggestModel } from "./modelSuggestTool";
 import { getDefaultModel } from "../services/modelRegistry";
+import { compareCachedInternalToken } from "../services/appRuntimeConfig";
 
 const FALLBACK_ARTICLE_SKILL = "general-article-writer";
 
@@ -39,12 +39,12 @@ export async function autoDraftToolHandler(req: Request, res: Response): Promise
 
   // 1. Authenticate via gateway token
   const authHeader = (req.headers.authorization as string) ?? "";
-  if (!authHeader.startsWith("Bearer ") || !ENV.webGatewayToken) {
+  if (!authHeader.startsWith("Bearer ")) {
     res.status(401).json({ success: false, error: "Unauthorized" });
     return;
   }
   const token = authHeader.slice(7);
-  if (token !== ENV.webGatewayToken) {
+  if (!compareCachedInternalToken(token)) {
     res.status(401).json({ success: false, error: "Unauthorized" });
     return;
   }

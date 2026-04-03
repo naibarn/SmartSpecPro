@@ -8,10 +8,9 @@ import type { Express, Request, Response } from "express";
 import { authorizeRequest } from "./authz";
 import { signBearerToken } from "./tokens";
 import { getFeatureFlag } from "../services/featureFlags";
+import { getAppRuntimeConfig } from "../services/appRuntimeConfig";
 import { hasEnoughCredits } from "../services/creditService";
 import { debugError } from "./logger";
-
-const PY_BACKEND = process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
 export const HEARTBEAT_INTERVAL_MS = 15_000;
 
 /** Conservative credit estimate for an agency run pre-check */
@@ -196,8 +195,9 @@ export function registerAgencyStreamRoutes(app: Express): void {
     }
 
     try {
+      const runtime = await getAppRuntimeConfig();
       const upstream = await fetch(
-        `${PY_BACKEND}/api/v1/agencies/${encodeURIComponent(agencyId)}/stream`,
+        `${runtime.pythonBackendUrl}/api/v1/agencies/${encodeURIComponent(agencyId)}/stream`,
         {
           method: "POST",
           headers: {

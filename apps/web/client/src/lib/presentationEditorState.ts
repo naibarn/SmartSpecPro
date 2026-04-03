@@ -754,6 +754,38 @@ export function detachComponentById(
   });
 }
 
+function getBuiltInComponentIdsContainingElements(
+  content: PresentationSlideContent,
+  elementIds: string[],
+): string[] {
+  if (!elementIds.length || !(content.components ?? []).length) {
+    return [];
+  }
+
+  const selected = new Set(elementIds);
+  return (content.components ?? [])
+    .filter((component) => (
+      component.componentType === "built-in"
+      && component.fallbackElements.some((element) => selected.has(element.id))
+    ))
+    .map((component) => component.id);
+}
+
+function detachBuiltInComponentsForElementIds(
+  content: PresentationSlideContent,
+  elementIds: string[],
+): PresentationSlideContent {
+  const componentIds = getBuiltInComponentIdsContainingElements(content, elementIds);
+  if (!componentIds.length) {
+    return content;
+  }
+
+  return componentIds.reduce(
+    (nextContent, componentId) => detachComponentById(nextContent, componentId),
+    content,
+  );
+}
+
 export function duplicateComponentById(
   content: PresentationSlideContent,
   componentId: string,
@@ -1034,12 +1066,13 @@ export function updateElementById(
   elementId: string,
   patch: PresentationElementPatch,
 ): PresentationSlideContent {
-  const topLevelElement = content.elements.find((element) => element.id === elementId);
+  const contentForEdit = detachBuiltInComponentsForElementIds(content, [elementId]);
+  const topLevelElement = contentForEdit.elements.find((element) => element.id === elementId);
   if (!topLevelElement) {
     return sortCollectionsByRenderOrder({
-      ...content,
-      canvas: getCanvasSize(content),
-      components: (content.components ?? []).map((component) => ({
+      ...contentForEdit,
+      canvas: getCanvasSize(contentForEdit),
+      components: (contentForEdit.components ?? []).map((component) => ({
         ...component,
         fallbackElements: component.fallbackElements.map((element) => {
           if (element.id !== elementId) {
@@ -1065,9 +1098,9 @@ export function updateElementById(
   }
 
   return sortCollectionsByRenderOrder({
-    ...content,
-    canvas: getCanvasSize(content),
-    elements: content.elements.map((element) => {
+    ...contentForEdit,
+    canvas: getCanvasSize(contentForEdit),
+    elements: contentForEdit.elements.map((element) => {
       if (element.id !== elementId) {
         return element;
       }
@@ -1099,11 +1132,12 @@ export function translateElements(
     return content;
   }
 
+  const contentForEdit = detachBuiltInComponentsForElementIds(content, elementIds);
   const selected = new Set(elementIds);
   return sortCollectionsByRenderOrder({
-    ...content,
-    canvas: getCanvasSize(content),
-    elements: content.elements.map((element) => {
+    ...contentForEdit,
+    canvas: getCanvasSize(contentForEdit),
+    elements: contentForEdit.elements.map((element) => {
       if (!selected.has(element.id)) {
         return element;
       }
@@ -1114,7 +1148,7 @@ export function translateElements(
         y: element.y + deltaY,
       } as PresentationElement;
     }),
-    components: (content.components ?? []).map((component) => ({
+    components: (contentForEdit.components ?? []).map((component) => ({
       ...component,
       fallbackElements: component.fallbackElements.map((element) => {
         if (!selected.has(element.id)) {
@@ -1135,12 +1169,13 @@ export function resizeElementById(
   elementId: string,
   patch: Partial<Pick<PresentationElement, "x" | "y" | "width" | "height">>,
 ): PresentationSlideContent {
-  const topLevelElement = content.elements.find((element) => element.id === elementId);
+  const contentForEdit = detachBuiltInComponentsForElementIds(content, [elementId]);
+  const topLevelElement = contentForEdit.elements.find((element) => element.id === elementId);
   if (!topLevelElement) {
     return sortCollectionsByRenderOrder({
-      ...content,
-      canvas: getCanvasSize(content),
-      components: (content.components ?? []).map((component) => ({
+      ...contentForEdit,
+      canvas: getCanvasSize(contentForEdit),
+      components: (contentForEdit.components ?? []).map((component) => ({
         ...component,
         fallbackElements: component.fallbackElements.map((element) => {
           if (element.id !== elementId) {
@@ -1168,9 +1203,9 @@ export function resizeElementById(
   }
 
   return sortCollectionsByRenderOrder({
-    ...content,
-    canvas: getCanvasSize(content),
-    elements: content.elements.map((element) => {
+    ...contentForEdit,
+    canvas: getCanvasSize(contentForEdit),
+    elements: contentForEdit.elements.map((element) => {
       if (element.id !== elementId) {
         return element;
       }
@@ -1199,7 +1234,8 @@ export function reorderElementById(
   elementId: string,
   direction: ArrangeDirection,
 ): PresentationSlideContent {
-  return reorderRenderableEntry(content, presentationRenderOrderIdForElement(elementId), direction);
+  const contentForEdit = detachBuiltInComponentsForElementIds(content, [elementId]);
+  return reorderRenderableEntry(contentForEdit, presentationRenderOrderIdForElement(elementId), direction);
 }
 
 export function deleteElements(
@@ -1210,16 +1246,17 @@ export function deleteElements(
     return content;
   }
 
+  const contentForEdit = detachBuiltInComponentsForElementIds(content, elementIds);
   const selected = new Set(elementIds);
   return sortCollectionsByRenderOrder({
-    ...content,
-    canvas: getCanvasSize(content),
-    elements: content.elements.filter((element) => !selected.has(element.id)),
-    components: (content.components ?? []).map((component) => ({
+    ...contentForEdit,
+    canvas: getCanvasSize(contentForEdit),
+    elements: contentForEdit.elements.filter((element) => !selected.has(element.id)),
+    components: (contentForEdit.components ?? []).map((component) => ({
       ...component,
       fallbackElements: component.fallbackElements.filter((element) => !selected.has(element.id)),
     })),
-    renderOrder: getRenderOrder(content).filter((entry) => (
+    renderOrder: getRenderOrder(contentForEdit).filter((entry) => (
       !entry.startsWith("element:") || !selected.has(entry.slice("element:".length))
     )),
   });
@@ -1234,11 +1271,12 @@ export function duplicateElements(
     return content;
   }
 
+  const contentForEdit = detachBuiltInComponentsForElementIds(content, elementIds);
   const selected = new Set(elementIds);
   const nextElements: PresentationElement[] = [];
   const duplicateIdsBySource = new Map<string, string>();
 
-  for (const element of content.elements) {
+  for (const element of contentForEdit.elements) {
     nextElements.push(element);
 
     if (!selected.has(element.id)) {
@@ -1255,7 +1293,7 @@ export function duplicateElements(
     nextElements.push(duplicate);
   }
 
-  const nextComponents = (content.components ?? []).map((component) => {
+  const nextComponents = (contentForEdit.components ?? []).map((component) => {
     const nextFallbackElements: PresentationElement[] = [];
     for (const element of component.fallbackElements) {
       nextFallbackElements.push(element);
@@ -1277,7 +1315,7 @@ export function duplicateElements(
     };
   });
 
-  const nextOrder = getRenderOrder(content).flatMap((entry) => {
+  const nextOrder = getRenderOrder(contentForEdit).flatMap((entry) => {
     if (!entry.startsWith("element:")) {
       return [entry];
     }
@@ -1289,8 +1327,8 @@ export function duplicateElements(
   });
 
   return sortCollectionsByRenderOrder({
-    ...content,
-    canvas: getCanvasSize(content),
+    ...contentForEdit,
+    canvas: getCanvasSize(contentForEdit),
     elements: nextElements,
     components: nextComponents,
     renderOrder: nextOrder,

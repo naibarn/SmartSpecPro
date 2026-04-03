@@ -1,3 +1,5 @@
+import { getAppRuntimeConfig, getPreferredInternalToken } from "./appRuntimeConfig";
+
 const PY_TIMEOUT_MS = 30_000;
 
 export interface SocialPublishGatewayRequest {
@@ -20,27 +22,21 @@ export interface SocialPublishGatewayRequest {
   } | null;
 }
 
-function getPythonBackendUrl(): string {
-  return (process.env.PYTHON_BACKEND_URL || "http://localhost:8000").replace(/\/+$/, "");
-}
-
-function getInternalToken(): string {
-  return process.env.SMARTSPEC_WEB_GATEWAY_TOKEN || process.env.SMARTSPEC_PROXY_TOKEN || "";
-}
-
 export async function publishSocialContentViaPythonBackend(
   payload: SocialPublishGatewayRequest,
   timeoutMs: number = PY_TIMEOUT_MS,
 ): Promise<Response> {
+  const runtime = await getAppRuntimeConfig();
+  const internalToken = await getPreferredInternalToken();
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    return await fetch(`${getPythonBackendUrl()}/api/internal/social/publish`, {
+    return await fetch(`${runtime.pythonBackendUrl}/api/internal/social/publish`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        ...(getInternalToken() ? { "x-internal-token": getInternalToken() } : {}),
+        ...(internalToken ? { "x-internal-token": internalToken } : {}),
       },
       body: JSON.stringify({
         provider: payload.provider,

@@ -534,21 +534,27 @@ function GlobalUrgentReminders({
 
   if (!modalReminder) return null;
 
+  const metadata = modalReminder.metadata ?? null;
+  const metadataSource = typeof metadata?.source === "string" ? metadata.source.toLowerCase() : null;
+  const billingNotificationType = typeof metadata?.relatedItems?.notificationType === "string"
+    ? metadata.relatedItems.notificationType.toLowerCase()
+    : null;
+  const invoiceNumber = typeof metadata?.relatedItems?.invoiceNumber === "string"
+    ? metadata.relatedItems.invoiceNumber
+    : null;
+  const isBillingReminder =
+    modalReminder.relatedResourceType === "scheduled_message" &&
+    (
+      metadataSource === "billing" ||
+      Boolean(billingNotificationType?.startsWith("invoice_")) ||
+      Boolean(modalReminder.actionUrl?.startsWith("/billing"))
+    );
   const isOpsIncidentReminder =
-    typeof modalReminder.groupKey === "string" ||
-    typeof modalReminder.metadata?.source === "string" ||
-    typeof modalReminder.metadata?.relatedItems?.category === "string";
+    !isBillingReminder &&
+    (modalReminder.relatedResourceType === "system_health" || modalReminder.relatedResourceType === "incident");
   const isCritical = modalReminder.priority === "critical";
   const borderColor = isCritical ? "#ef4444" : "#f59e0b";
   const badgeColor = isCritical ? "#ef4444" : "#f59e0b";
-  const badgeText = isCritical ? "Critical" : "Important";
-  const metadata = modalReminder.metadata ?? null;
-  const detailRows = [
-    metadata?.source ? { label: "Source", value: String(metadata.source) } : null,
-    metadata?.relatedItems?.category ? { label: "Category", value: String(metadata.relatedItems.category) } : null,
-    modalReminder.relatedResourceType ? { label: "Resource", value: String(modalReminder.relatedResourceType).replace(/_/g, " ") } : null,
-    modalReminder.groupKey ? { label: "Incident", value: modalReminder.groupKey } : null,
-  ].filter(Boolean) as Array<{ label: string; value: string }>;
   const recommendation = typeof metadata?.recommendation === "string" ? metadata.recommendation : null;
   const signal = typeof metadata?.signal === "string" ? metadata.signal : null;
   const observedAt = typeof metadata?.observedAt === "string" ? metadata.observedAt : null;
@@ -563,7 +569,50 @@ function GlobalUrgentReminders({
     severity: modalReminder.priority,
   });
   const technicalTitle = modalReminder.title.trim() !== guidance.headline.trim() ? modalReminder.title : null;
+  const actionLabel = modalReminder.actionLabel || (isBillingReminder
+    ? (locale === "th" ? "เปิดใบแจ้งหนี้" : "Open invoice")
+    : isOpsIncidentReminder
+      ? guidance.monitoringActionLabel
+      : (locale === "th" ? "เปิดรายละเอียด" : "Open details"));
+  const badgeText = isBillingReminder
+    ? (locale === "th" ? "แจ้งเตือน" : "Reminder")
+    : isCritical
+      ? "Critical"
+      : "Important";
+  const reminderLabel = isBillingReminder
+    ? (locale === "th" ? "การแจ้งเตือนใบแจ้งหนี้" : "Billing Reminder")
+    : guidance.reminderLabel;
+  const title = isOpsIncidentReminder
+    ? guidance.headline
+    : billingNotificationType === "invoice_due_reminder" && locale === "th"
+      ? `ใบแจ้งหนี้ค้างชำระ${invoiceNumber ? `: ${invoiceNumber}` : ""}`
+      : modalReminder.title;
+  const summary = isOpsIncidentReminder
+    ? guidance.summary
+    : billingNotificationType === "invoice_due_reminder" && locale === "th"
+      ? `พบใบแจ้งหนี้${invoiceNumber ? ` ${invoiceNumber}` : ""} ที่ยังค้างชำระ โปรดตรวจสอบสถานะและติดตามการชำระเงิน`
+      : modalReminder.content && modalReminder.content !== modalReminder.title
+        ? modalReminder.content
+        : null;
+  const detailReferenceLabel = isOpsIncidentReminder
+    ? "Incident"
+    : isBillingReminder
+      ? (locale === "th" ? "รหัสอ้างอิง" : "Reference")
+      : (locale === "th" ? "อ้างอิง" : "Reference");
+  const detailRows = [
+    metadata?.source ? { label: "Source", value: String(metadata.source) } : null,
+    isBillingReminder && invoiceNumber ? { label: locale === "th" ? "ใบแจ้งหนี้" : "Invoice", value: invoiceNumber } : null,
+    metadata?.relatedItems?.category ? { label: "Category", value: String(metadata.relatedItems.category) } : null,
+    modalReminder.relatedResourceType ? { label: "Resource", value: String(modalReminder.relatedResourceType).replace(/_/g, " ") } : null,
+    modalReminder.groupKey ? { label: detailReferenceLabel, value: modalReminder.groupKey } : null,
+  ].filter(Boolean) as Array<{ label: string; value: string }>;
   const openHelpGuide = () => {
+    if (modalReminder) {
+      setDismissedId(modalReminder.id);
+      markRead.mutate({ id: modalReminder.id });
+    }
+    setModalReminder(null);
+    releaseUrgentSurface("reminder");
     safeOpenInNewTab(guidance.helpHref);
   };
 
@@ -636,7 +685,7 @@ function GlobalUrgentReminders({
               : badgeText}
           </span>
           <span style={{ fontSize: "13px", color: "var(--muted-foreground, #888)" }}>
-            {guidance.reminderLabel}
+            {reminderLabel}
           </span>
         </div>
 
@@ -649,10 +698,10 @@ function GlobalUrgentReminders({
             marginBottom: "8px",
           }}
         >
-          {isOpsIncidentReminder ? guidance.headline : modalReminder.title}
+          {title}
         </h3>
 
-        {isOpsIncidentReminder ? (
+        {summary ? (
           <p
             style={{
               fontSize: "14px",
@@ -663,20 +712,7 @@ function GlobalUrgentReminders({
               opacity: 0.85,
             }}
           >
-            {guidance.summary}
-          </p>
-        ) : modalReminder.content && modalReminder.content !== modalReminder.title ? (
-          <p
-            style={{
-              fontSize: "14px",
-              lineHeight: 1.5,
-              color: "var(--foreground, #e0e0e0)",
-              marginBottom: "20px",
-              wordBreak: "break-word",
-              opacity: 0.85,
-            }}
-          >
-            {modalReminder.content}
+            {summary}
           </p>
         ) : null}
 
@@ -799,7 +835,7 @@ function GlobalUrgentReminders({
               fontWeight: 600,
             }}
           >
-            {modalReminder.actionLabel || guidance.monitoringActionLabel}
+            {actionLabel}
           </button>
         </div>
       </div>

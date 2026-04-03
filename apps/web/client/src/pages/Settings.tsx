@@ -1835,6 +1835,24 @@ export default function Settings() {
 
                   <BudgetPanel />
 
+                  <div className="rounded-2xl border border-cyan-200 bg-gradient-to-r from-cyan-50 to-sky-50 p-4">
+                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                      <div>
+                        <div className="text-sm font-semibold text-slate-900">Beam Billing Center</div>
+                        <div className="text-sm text-slate-600">
+                          Manage your billing profile, create PromptPay top-up checkout, and open invoice PDFs from one place.
+                        </div>
+                      </div>
+                      <Button
+                        variant="outline"
+                        className="border-cyan-300 bg-white text-cyan-700 hover:bg-cyan-50"
+                        onClick={() => setLocation("/billing")}
+                      >
+                        Open billing center
+                      </Button>
+                    </div>
+                  </div>
+
                   <div>
                     <h3 className="font-semibold text-gray-900 mb-4">{t('settings.billing.recentInvoices')}</h3>
                     <div className="space-y-2">

@@ -4,7 +4,7 @@
  */
 
 import yaml from "js-yaml";
-import { validateSsrfUrl } from "./ssrfValidator";
+import { validateSsrfUrlWithRuntime } from "./ssrfValidator";
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -342,7 +342,7 @@ export async function parseOpenApiSpec(options: {
   // 5. SSRF validate base URL
   if (baseUrl) {
     try {
-      validateSsrfUrl(baseUrl);
+      await validateSsrfUrlWithRuntime(baseUrl);
     } catch (e: any) {
       throw new OpenApiImportError(
         `Base URL blocked: ${e.message}`,

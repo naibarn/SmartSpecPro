@@ -8,6 +8,7 @@ from sqlalchemy.orm import sessionmaker
 
 from app.core.celery_app import celery_app
 from app.core.config import settings
+from app.core.sqlalchemy_sync import to_sync_sqlalchemy_url
 from app.services.sandbox_metrics import (
     emit_concurrent_gauge,
     emit_hetzner_health,
@@ -22,12 +23,7 @@ _SyncSession = None
 
 def _get_sync_db_url() -> str:
     """Convert async DB URL to sync for Celery tasks."""
-    url = settings.DATABASE_URL
-    if "+asyncpg" in url:
-        return url.replace("+asyncpg", "")
-    if url.startswith("postgresql+asyncpg"):
-        return url.replace("postgresql+asyncpg", "postgresql")
-    return url
+    return to_sync_sqlalchemy_url(settings.DATABASE_URL)
 
 
 @contextmanager

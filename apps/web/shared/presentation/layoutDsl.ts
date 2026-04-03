@@ -198,6 +198,263 @@ type PresentationLayoutDslGroup = z.infer<typeof presentationLayoutDslBaseSchema
   children: PresentationLayoutDslPrimitive[];
 };
 
+const PRESENTATION_LAYOUT_DSL_ELEMENT_TYPES = new Set<PresentationLayoutDslPrimitive["type"] | "group">([
+  "text",
+  "rect",
+  "line",
+  "svg",
+  "image",
+  "group",
+]);
+
+const PRESENTATION_LAYOUT_DSL_ALLOWED_ELEMENT_KEYS: Record<
+  PresentationLayoutDslPrimitive["type"] | "group",
+  Set<string>
+> = {
+  text: new Set([
+    "id",
+    "type",
+    "x",
+    "y",
+    "width",
+    "height",
+    "opacity",
+    "rotation",
+    "text",
+    "color",
+    "fontSize",
+    "fontFamily",
+    "fontWeight",
+    "fontStyle",
+    "textDecoration",
+    "textAlign",
+    "lineHeight",
+    "letterSpacing",
+    "backgroundColor",
+    "textShadow",
+    "textStroke",
+  ]),
+  rect: new Set([
+    "id",
+    "type",
+    "x",
+    "y",
+    "width",
+    "height",
+    "opacity",
+    "rotation",
+    "fill",
+    "stroke",
+    "strokeWidth",
+  ]),
+  line: new Set([
+    "id",
+    "type",
+    "x",
+    "y",
+    "width",
+    "height",
+    "opacity",
+    "rotation",
+    "fill",
+    "stroke",
+    "strokeWidth",
+  ]),
+  svg: new Set([
+    "id",
+    "type",
+    "x",
+    "y",
+    "width",
+    "height",
+    "opacity",
+    "rotation",
+    "svgContent",
+    "alt",
+  ]),
+  image: new Set([
+    "id",
+    "type",
+    "x",
+    "y",
+    "width",
+    "height",
+    "opacity",
+    "rotation",
+    "src",
+    "alt",
+    "imageFit",
+    "imagePositionX",
+    "imagePositionY",
+    "imageZoom",
+  ]),
+  group: new Set([
+    "id",
+    "type",
+    "x",
+    "y",
+    "width",
+    "height",
+    "opacity",
+    "rotation",
+    "children",
+  ]),
+};
+
+function normalizeLayoutDslElementId(parentId: string | undefined, index: number): string {
+  return parentId ? `${parentId}__${index + 1}` : `dsl-el-${index + 1}`;
+}
+
+function normalizeLayoutDslStatus(value: unknown): unknown {
+  if (typeof value !== "string") {
+    return value;
+  }
+  const normalized = value.trim().toLowerCase().replace(/[\s-]+/g, "_");
+  if (normalized === "success" || normalized === "ok") {
+    return "ok";
+  }
+  if (
+    normalized === "needs_fallback"
+    || normalized === "needsfallback"
+    || normalized === "fallback"
+    || normalized === "fallback_required"
+  ) {
+    return "needs_fallback";
+  }
+  return value;
+}
+
+function normalizeLayoutDslFallbackSuggestion(value: unknown): unknown {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed
+      ? {
+        action: "switch_mode",
+        reason: trimmed,
+      }
+      : value;
+  }
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return value;
+  }
+  const raw = value as Record<string, unknown>;
+  const action = typeof raw.action === "string"
+    && ["switch_mode", "switch_recipe", "split_slide"].includes(raw.action)
+    ? raw.action
+    : "switch_mode";
+  const reason = typeof raw.reason === "string" ? raw.reason.trim() : "";
+  return {
+    action,
+    reason: reason.length > 0 ? reason : "Layout DSL requested a fallback.",
+  };
+}
+
+function normalizeLayoutDslElementDraft(
+  value: unknown,
+  index: number,
+  parentId?: string,
+): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+
+  const raw = value as Record<string, unknown>;
+  const next: Record<string, unknown> = { ...raw };
+
+  for (const key of ["style", "position"] as const) {
+    const nested = next[key];
+    if (nested && typeof nested === "object" && !Array.isArray(nested)) {
+      Object.assign(next, nested);
+      delete next[key];
+    }
+  }
+
+  for (const key of ["rect", "line", "image"] as const) {
+    const nested = next[key];
+    if (nested && typeof nested === "object" && !Array.isArray(nested)) {
+      Object.assign(next, nested);
+      delete next[key];
+      if (!PRESENTATION_LAYOUT_DSL_ELEMENT_TYPES.has(typeof next.type === "string" ? next.type as PresentationLayoutDslPrimitive["type"] | "group" : "group")) {
+        next.type = key;
+      }
+    }
+  }
+
+  if (typeof next.type === "string") {
+    next.type = next.type.trim().toLowerCase();
+  }
+
+  let inferredType = PRESENTATION_LAYOUT_DSL_ELEMENT_TYPES.has(next.type as PresentationLayoutDslPrimitive["type"] | "group")
+    ? next.type as PresentationLayoutDslPrimitive["type"] | "group"
+    : undefined;
+
+  if (!inferredType) {
+    if (Array.isArray(next.children)) {
+      inferredType = "group";
+    } else if (typeof next.svgContent === "string" && next.svgContent.trim().length > 0) {
+      inferredType = "svg";
+    } else if (typeof next.text === "string" && next.text.trim().length > 0) {
+      inferredType = "text";
+    } else if (typeof next.src === "string" && next.src.trim().length > 0) {
+      inferredType = "image";
+    } else if (typeof next.color === "string" || typeof next.fill === "string" || typeof next.backgroundColor === "string") {
+      inferredType = "rect";
+    } else if (typeof next.stroke === "string" || typeof next.strokeWidth === "number") {
+      inferredType = "line";
+    } else {
+      inferredType = "rect";
+    }
+  }
+
+  next.type = inferredType;
+  if (typeof next.id !== "string" || next.id.trim().length === 0) {
+    next.id = normalizeLayoutDslElementId(parentId, index);
+  }
+
+  if (next.type === "group") {
+    const children = Array.isArray(next.children)
+      ? next.children
+        .map((child, childIndex) => normalizeLayoutDslElementDraft(child, childIndex, String(next.id)))
+        .filter((child): child is Record<string, unknown> => Boolean(child))
+      : [];
+    next.children = children;
+  } else {
+    delete next.children;
+  }
+
+  if (next.type === "text") {
+    if (typeof next.fill === "string" && typeof next.color !== "string") {
+      next.color = next.fill;
+    } else if (typeof next.backgroundColor === "string" && typeof next.color !== "string") {
+      next.color = next.backgroundColor;
+    }
+  } else if (next.type === "rect") {
+    if (typeof next.color === "string" && typeof next.fill !== "string") {
+      next.fill = next.color;
+    } else if (typeof next.backgroundColor === "string" && typeof next.fill !== "string") {
+      next.fill = next.backgroundColor;
+    }
+  } else if (next.type === "line") {
+    if (typeof next.color === "string" && typeof next.stroke !== "string") {
+      next.stroke = next.color;
+    } else if (typeof next.backgroundColor === "string" && typeof next.stroke !== "string") {
+      next.stroke = next.backgroundColor;
+    }
+  }
+
+  const allowedKeys = PRESENTATION_LAYOUT_DSL_ALLOWED_ELEMENT_KEYS[next.type as PresentationLayoutDslPrimitive["type"] | "group"];
+  if (!allowedKeys) {
+    return null;
+  }
+  for (const key of Object.keys(next)) {
+    if (!allowedKeys.has(key)) {
+      delete next[key];
+    }
+  }
+
+  return next;
+}
+
 export const presentationLayoutDslPrimitiveSchema = z.discriminatedUnion("type", [
   presentationLayoutDslTextSchema,
   presentationLayoutDslRectSchema,
@@ -233,130 +490,99 @@ export interface PresentationLayoutDslResponse {
 }
 
 export const presentationLayoutDslResponseSchema = z.object({
-  status: z.enum(["ok", "needs_fallback"]),
+  status: z.preprocess(normalizeLayoutDslStatus, z.enum(["ok", "needs_fallback"])),
   elements: z.preprocess(
     (val) => {
-      if (!Array.isArray(val)) return val;
-      // Flatten nested LLM format: {id, rect:{fill}} → {id, type:"rect", fill}
-      for (const el of val) {
-        if (!el || typeof el !== "object") continue;
-        if (el.type) continue; // already flat
-        // Detect type from nested object keys
-        if (el.rect && typeof el.rect === "object") {
-          Object.assign(el, el.rect);
-          el.type = "rect";
-          delete el.rect;
-        } else if (el.line && typeof el.line === "object") {
-          Object.assign(el, el.line);
-          el.type = "line";
-          delete el.line;
-        } else if (el.image && typeof el.image === "object") {
-          Object.assign(el, el.image);
-          el.type = "image";
-          delete el.image;
-        } else if (el.text != null && typeof el.text === "string" && el.text.length > 0) {
-          el.type = "text";
-        } else if (el.src != null) {
-          el.type = "image";
-        } else if (el.fill != null && !el.text) {
-          el.type = "rect";
-        } else if (el.stroke != null && !el.text) {
-          el.type = "line";
-        } else if (el.svgContent != null) {
-          el.type = "svg";
-        }
-        // Flatten style/position sub-objects
-        if (el.style && typeof el.style === "object") {
-          Object.assign(el, el.style);
-          delete el.style;
-        }
-        if (el.position && typeof el.position === "object") {
-          Object.assign(el, el.position);
-          delete el.position;
-        }
+      if (!Array.isArray(val)) {
+        return val;
       }
-      console.log(`[DSL-Preprocess] After flatten: ${val.length} elements, types: ${val.map((e: any) => e?.type ?? "?").join(",")}`);
-      // Clamp numeric fields that LLMs often send out of range
-      const clamp = (v: unknown, min: number, max: number): number | undefined => {
-        if (typeof v !== "number" || !Number.isFinite(v)) return undefined;
-        return Math.min(Math.max(v, min), max);
-      };
-      const fixElement = (el: any) => {
-        if (!el || typeof el !== "object") return;
-        // Clamp numeric ranges
-        if (el.lineHeight != null) el.lineHeight = clamp(el.lineHeight, 0.6, 10);
-        if (el.fontSize != null) el.fontSize = clamp(el.fontSize, 8, 512);
-        if (el.opacity != null) el.opacity = clamp(el.opacity, 0, 1);
-        if (el.rotation != null) el.rotation = clamp(el.rotation, -360, 360);
-        if (el.imagePositionX != null) el.imagePositionX = clamp(el.imagePositionX, 0, 100);
-        if (el.imagePositionY != null) el.imagePositionY = clamp(el.imagePositionY, 0, 100);
-        if (el.imageZoom != null) el.imageZoom = clamp(el.imageZoom, 0.5, 3);
-        // Fix fontWeight: LLMs often send number (700) instead of string ("700")
-        if (el.fontWeight != null) {
-          const fw = el.fontWeight;
-          if (typeof fw === "number") el.fontWeight = String(fw);
-          // Map common numeric values to valid enum
-          const validWeights = ["normal", "300", "400", "500", "600", "700"];
-          if (!validWeights.includes(el.fontWeight)) el.fontWeight = "400";
+      const clamped = (value: unknown, min: number, max: number): number | undefined => {
+        if (typeof value !== "number" || !Number.isFinite(value)) {
+          return undefined;
         }
-        // Fix text elements missing color — default to dark
-        if (el.type === "text" && !el.color) el.color = "#1a1a2e";
-        // Fix text elements missing fontSize
-        if (el.type === "text" && !el.fontSize) el.fontSize = 14;
-        // Fix rect elements missing fill
-        if (el.type === "rect" && !el.fill) el.fill = "#e0e0e0";
-        // Fix line elements missing stroke
-        if (el.type === "line" && !el.stroke) el.stroke = "#cccccc";
-        if (el.type === "line" && !el.strokeWidth) el.strokeWidth = 1;
-        // Fix image elements missing src
-        if (el.type === "image" && !el.src) el.src = "__PLACEHOLDER__";
-        // Strip unexpected nested objects (style, position, etc.)
-        for (const key of Object.keys(el)) {
-          if (typeof el[key] === "object" && el[key] !== null && !Array.isArray(el[key]) && key !== "children") {
-            delete el[key];
+        return Math.min(Math.max(value, min), max);
+      };
+      const normalized = val
+        .map((el, index) => normalizeLayoutDslElementDraft(el, index))
+        .filter((el): el is Record<string, unknown> => Boolean(el))
+        .map((el) => {
+          const next = { ...el };
+          if (next.type === "text") {
+            if (next.fontWeight != null) {
+              const fontWeight = next.fontWeight;
+              if (typeof fontWeight === "number") {
+                next.fontWeight = String(fontWeight);
+              }
+              const validWeights = ["normal", "300", "400", "500", "600", "700"];
+              if (typeof next.fontWeight !== "string" || !validWeights.includes(next.fontWeight)) {
+                next.fontWeight = "400";
+              }
+            }
+            if (next.fontSize != null) {
+              next.fontSize = clamped(next.fontSize, 8, 512) ?? next.fontSize;
+            }
+            if (!next.color) {
+              next.color = "#1a1a2e";
+            }
           }
-        }
-      };
-      const isValidPrimitive = (el: any): boolean => {
-        if (!el || typeof el !== "object" || !el.type) return false;
-        if (el.type === "svg" && !el.svgContent) return false;
-        if (el.type === "text" && !el.text) return false;
-        return true;
-      };
-      const result = val.filter((el: any) => {
-        if (!el || typeof el !== "object" || !el.type) {
-          console.log(`[DSL-Preprocess] REMOVED: invalid element (no type)`, JSON.stringify(el)?.slice(0, 200));
-          return false;
-        }
-        fixElement(el);
-        if (el.type === "group") {
-          if (!Array.isArray(el.children)) {
-            console.log(`[DSL-Preprocess] REMOVED: group without children array`);
+          if (next.type === "rect" && !next.fill) {
+            next.fill = "#e0e0e0";
+          }
+          if (next.type === "line") {
+            if (!next.stroke) {
+              next.stroke = "#cccccc";
+            }
+            if (!next.strokeWidth) {
+              next.strokeWidth = 1;
+            }
+          }
+          if (next.type === "image" && !next.src) {
+            next.src = "__PLACEHOLDER__";
+          }
+          if (next.opacity != null) {
+            next.opacity = clamped(next.opacity, 0, 1) ?? next.opacity;
+          }
+          if (next.rotation != null) {
+            next.rotation = clamped(next.rotation, -360, 360) ?? next.rotation;
+          }
+          if (next.imagePositionX != null) {
+            next.imagePositionX = clamped(next.imagePositionX, 0, 100) ?? next.imagePositionX;
+          }
+          if (next.imagePositionY != null) {
+            next.imagePositionY = clamped(next.imagePositionY, 0, 100) ?? next.imagePositionY;
+          }
+          if (next.imageZoom != null) {
+            next.imageZoom = clamped(next.imageZoom, 0.5, 3) ?? next.imageZoom;
+          }
+          return next;
+        })
+        .filter((el): el is Record<string, unknown> => {
+          if (!el || typeof el !== "object" || !PRESENTATION_LAYOUT_DSL_ELEMENT_TYPES.has(el.type as PresentationLayoutDslPrimitive["type"] | "group")) {
             return false;
           }
-          el.children.forEach(fixElement);
-          el.children = el.children.filter(isValidPrimitive);
-          if (el.children.length === 0) {
-            console.log(`[DSL-Preprocess] REMOVED: group with 0 valid children`);
+          if (el.type === "svg" && typeof el.svgContent !== "string") {
+            return false;
           }
-          return el.children.length > 0;
-        }
-        const valid = isValidPrimitive(el);
-        if (!valid) {
-          console.log(`[DSL-Preprocess] REMOVED: type=${el.type}, reason=${el.type === "text" && !el.text ? "no text" : el.type === "svg" && !el.svgContent ? "no svgContent" : "unknown"}`, JSON.stringify(el)?.slice(0, 200));
-        }
-        return valid;
-      });
-      console.log(`[DSL-Preprocess] After filter: ${result.length} elements, types: ${result.map((e: any) => e?.type ?? "?").join(",")}`);
-      return result;
+          if (el.type === "text" && typeof el.text !== "string") {
+            return false;
+          }
+          if (el.type === "group" && (!Array.isArray(el.children) || el.children.length === 0)) {
+            return false;
+          }
+          return true;
+        });
+      return normalized;
     },
     z.array(presentationLayoutDslElementSchema).max(PRESENTATION_LAYOUT_DSL_MAX_ELEMENTS),
   ),
   explanation: z.string().min(1).max(512).optional(),
-  fallbackSuggestion: z.object({
-    action: z.enum(["switch_mode", "switch_recipe", "split_slide"]),
-    reason: z.string().min(1).max(512),
-  }).strict().nullable().optional(),
+  fallbackSuggestion: z.preprocess(
+    normalizeLayoutDslFallbackSuggestion,
+    z.object({
+      action: z.enum(["switch_mode", "switch_recipe", "split_slide"]),
+      reason: z.string().min(1).max(512),
+    }).strict().nullable().optional(),
+  ),
 }).strict() as z.ZodType<PresentationLayoutDslResponse>;
 
 export type PresentationLayoutDslRequest = z.infer<typeof presentationLayoutDslRequestSchema>;

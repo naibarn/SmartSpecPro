@@ -32,6 +32,10 @@ import {
   updateSkillPreference,
   buildChatContext,
 } from "../services/chatService";
+import {
+  readStoredChatModelSelectionState,
+  writeStoredChatModelSelectionState,
+} from "../services/chatModelSelection";
 import { hasEnoughCredits, calculateCreditsForLLM } from "../services/creditService";
 import { TRPCError } from "@trpc/server";
 import { getAvailableSkills, getSkillById, getSkillByIdOrType, getDefaultEnabledSkills, syncSingleSkillIfChanged } from "../services/skillRegistry";
@@ -54,6 +58,8 @@ import { runPlanner, recordStepAttempt } from "../services/taskPlannerMiddleware
 import { classifyArtifactIntent, selectExecutionRoute } from "../services/artifactRouter";
 import { updateTaskRunArtifact } from "../services/taskRunStore";
 import type { UnifiedExecutionRequest } from "../services/executors/types";
+import { getAppRuntimeConfig } from "../services/appRuntimeConfig";
+import { getTenantFeatureFlags } from "../services/tenantFeatureFlagService";
 
 // ── Security: forbidden patterns in LLM-generated skillContent ───────────────
 const ISC_FORBIDDEN_PATTERNS = [
@@ -224,7 +230,70 @@ const skillSettingsSchema = z.object({
   autoDetect: z.boolean().default(true),
   enabledSkills: z.array(z.string()).default([]),
   detectionMode: z.enum(["ask", "auto", "explicit"]).default("auto"),
+  llmSelection: z.object({
+    mode: z.enum(["explicit", "auto-global", "auto-provider"]),
+    modelId: z.string().max(100).nullable().optional(),
+    providerId: z.number().int().positive().nullable().optional(),
+    providerName: z.string().max(120).nullable().optional(),
+    lastResolvedModelId: z.string().max(100).nullable().optional(),
+    lastResolvedProviderId: z.number().int().positive().nullable().optional(),
+    lastResolvedProviderName: z.string().max(120).nullable().optional(),
+    lastResolvedRouteFamily: z.enum(["chat-completions", "messages", "responses", "unknown"]).nullable().optional(),
+    updatedAt: z.string().max(64).nullable().optional(),
+  }).optional(),
 });
+
+const chatModelSelectionSchema = z.discriminatedUnion("mode", [
+  z.object({
+    mode: z.literal("explicit"),
+    modelId: z.string().min(1).max(100),
+    providerId: z.number().int().positive().nullable().optional(),
+    providerName: z.string().max(120).nullable().optional(),
+  }),
+  z.object({
+    mode: z.literal("auto-global"),
+  }),
+  z.object({
+    mode: z.literal("auto-provider"),
+    providerId: z.number().int().positive(),
+    providerName: z.string().max(120).nullable().optional(),
+  }),
+]);
+
+async function assertChatAutoModelSelectionEnabled(
+  tenantId: string,
+  modelSelection:
+    | z.infer<typeof chatModelSelectionSchema>
+    | null
+    | undefined,
+): Promise<void> {
+  if (!modelSelection || modelSelection.mode === "explicit") {
+    return;
+  }
+
+  const flags = await getTenantFeatureFlags(tenantId);
+  if (!flags.chatAutoModelSelection) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Chat auto model selection is not enabled for this tenant",
+    });
+  }
+}
+
+function assertNoClientManagedLlmSelectionPayload(
+  skillSettings: z.infer<typeof skillSettingsSchema> | undefined,
+): void {
+  if (!skillSettings) {
+    return;
+  }
+
+  if (readStoredChatModelSelectionState(skillSettings)) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "skillSettings.llmSelection must not be sent by clients; use modelSelection instead",
+    });
+  }
+}
 
 const entityTypeSchema = z.enum(["user", "project", "preference", "technical"]);
 type MessageAttachment = z.infer<typeof attachmentSchema>;
@@ -355,16 +424,28 @@ export const chatRouter = router({
       z.object({
         title: z.string().max(255).optional(),
         model: z.string().max(100).optional(),
+        modelSelection: chatModelSelectionSchema.optional(),
         systemPrompt: z.string().optional(),
         projectId: z.string().max(100).optional(),
         personaId: z.string().uuid().nullable().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
+      await assertChatAutoModelSelectionEnabled(ctx.tenantId || "default", input.modelSelection);
+
+      const initialSkillSettings = input.modelSelection
+        ? writeStoredChatModelSelectionState(undefined, {
+            mode: input.modelSelection.mode,
+            modelId: input.modelSelection.mode === "explicit" ? input.modelSelection.modelId : null,
+            providerId: "providerId" in input.modelSelection ? input.modelSelection.providerId ?? null : null,
+            providerName: "providerName" in input.modelSelection ? input.modelSelection.providerName ?? null : null,
+          })
+        : undefined;
       const conversation = await createConversation({
         userId: ctx.user.id,
         title: input.title,
-        model: input.model,
+        model: input.modelSelection?.mode === "explicit" ? input.modelSelection.modelId : input.model,
+        skillSettings: initialSkillSettings as any,
         systemPrompt: input.systemPrompt,
         projectId: input.projectId,
         tenantId: ctx.tenantId || null,
@@ -388,6 +469,7 @@ export const chatRouter = router({
         id: conversation.id,
         title: conversation.title,
         model: conversation.model,
+        modelSelection: readStoredChatModelSelectionState(conversation.skillSettings),
         projectId: (conversation as any).projectId,
         createdAt: conversation.createdAt,
       };
@@ -421,6 +503,7 @@ export const chatRouter = router({
           id: c.id,
           title: c.title,
           model: c.model,
+          modelSelection: readStoredChatModelSelectionState(c.skillSettings),
           messageCount: c.messageCount,
           isPinned: c.isPinned,
           isArchived: c.isArchived,
@@ -453,6 +536,7 @@ export const chatRouter = router({
         id: conversation.id,
         title: conversation.title,
         model: conversation.model,
+        modelSelection: readStoredChatModelSelectionState(conversation.skillSettings),
         temperature: conversation.temperature ? parseFloat(conversation.temperature) : 0.7,
         systemPrompt: conversation.systemPrompt,
         skillSettings: conversation.skillSettings,
@@ -476,7 +560,8 @@ export const chatRouter = router({
       z.object({
         id: z.number(),
         title: z.string().max(255).optional(),
-        model: z.string().max(100).optional(),
+        model: z.string().max(100).nullable().optional(),
+        modelSelection: chatModelSelectionSchema.nullable().optional(),
         temperature: z.number().min(0).max(2).optional(),
         systemPrompt: z.string().nullable().optional(),
         skillSettings: skillSettingsSchema.optional(),
@@ -488,12 +573,38 @@ export const chatRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const { id, ...data } = input;
+      const { id, modelSelection, ...data } = input;
+      assertNoClientManagedLlmSelectionPayload(data.skillSettings);
+      await assertChatAutoModelSelectionEnabled(ctx.tenantId || "default", modelSelection);
+      const currentConversation = await getConversationById(id, ctx.user.id);
+      if (!currentConversation) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Conversation not found",
+        });
+      }
 
       // Convert temperature to string for numeric column
       const updateData: any = { ...data };
       if (data.temperature !== undefined) {
         updateData.temperature = data.temperature.toString();
+      }
+
+      if (modelSelection !== undefined) {
+        updateData.skillSettings = writeStoredChatModelSelectionState(
+          (updateData.skillSettings as Record<string, unknown> | null | undefined)
+            ?? (currentConversation.skillSettings as Record<string, unknown> | null | undefined)
+            ?? {},
+          modelSelection
+            ? {
+                mode: modelSelection.mode,
+                modelId: modelSelection.mode === "explicit" ? modelSelection.modelId : null,
+                providerId: "providerId" in modelSelection ? modelSelection.providerId ?? null : null,
+                providerName: "providerName" in modelSelection ? modelSelection.providerName ?? null : null,
+              }
+            : null,
+        ) as any;
+        updateData.model = modelSelection?.mode === "explicit" ? modelSelection.modelId : null;
       }
 
       await updateConversation(id, ctx.user.id, updateData);
@@ -755,13 +866,11 @@ export const chatRouter = router({
 
                 if (canAfford) {
                   // Dispatch async vision analysis to Python backend (fire-and-forget)
-                  const pythonUrl = process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
-                  const proxyToken = process.env.SMARTSPEC_WEB_GATEWAY_TOKEN || "";
-                  fetch(`${pythonUrl}/api/v1/vision/analyze`, {
+                  getAppRuntimeConfig().then((runtime) => fetch(`${runtime.pythonBackendUrl}/api/v1/vision/analyze`, {
                     method: "POST",
                     headers: {
                       "Content-Type": "application/json",
-                      "x-proxy-token": proxyToken,
+                      ...(runtime.webGatewayToken ? { "x-proxy-token": runtime.webGatewayToken } : {}),
                     },
                     body: JSON.stringify({
                       asset_id: asset.assetId,
@@ -769,7 +878,7 @@ export const chatRouter = router({
                       tenant_id: (ctx.user as any).tenantId || "",
                       user_id: ctx.user.id,
                     }),
-                  }).catch((err: unknown) => {
+                  })).catch((err: unknown) => {
                     debugLog("Chat", "Vision analysis dispatch failed (non-fatal)", { assetId: asset.assetId, err });
                   });
                 } else {
@@ -1183,11 +1292,25 @@ export const chatRouter = router({
         }
       }
 
-      const result = await detectSkill(
-        input.message,
-        input.conversationId,
-        skillSettings as any
-      );
+      let result;
+      try {
+        result = await detectSkill(
+          input.message,
+          input.conversationId,
+          skillSettings as any,
+        );
+      } catch (error) {
+        debugError("Chat", "detectSkill failed; falling back to no-skill match", error);
+        return {
+          detected: false,
+          skill: null,
+          confidence: 0,
+          matchedTrigger: null,
+          suggestedPrompt: null,
+          patternChainTo: null,
+          params: null,
+        };
+      }
 
       if (!result.detected || !result.skill) {
         return {
@@ -1240,16 +1363,27 @@ export const chatRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const { routeRoomIntent } = await import("../services/roomIntentRouter");
-
-      const decision = await routeRoomIntent({
-        message: input.message,
-        origin: "human_user",
-        context: "room_message",
-        userId: ctx.user.id,
-        tenantId: ctx.tenantId || "default",
-        conversationId: input.conversationId,
-        hasImages: input.hasImages,
-      });
+      let decision;
+      try {
+        decision = await routeRoomIntent({
+          message: input.message,
+          origin: "human_user",
+          context: "room_message",
+          userId: ctx.user.id,
+          tenantId: ctx.tenantId || "default",
+          conversationId: input.conversationId,
+          hasImages: input.hasImages,
+        });
+      } catch (error) {
+        debugError("Chat", "analyzeIntent failed; falling back to chat route", error);
+        decision = {
+          route: "chat" as const,
+          reason: "intent_analysis_unavailable",
+          confidence: 0,
+          source: "fallback" as const,
+          agencyEscalation: false,
+        };
+      }
 
       // Enrich with skill metadata when a skill is selected
       let skillMeta: {

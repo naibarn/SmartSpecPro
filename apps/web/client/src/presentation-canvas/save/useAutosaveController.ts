@@ -29,6 +29,7 @@ export function useAutosaveController(
   const inFlightRef = useRef(false);
   const persistedSignatureRef = useRef<string | null>(null);
   const autosaveRef = useRef(onAutosave);
+  const latestEnabledRef = useRef(enabled);
   // Track the latest draftSignature for re-checking in the timer callback
   const latestDraftSignatureRef = useRef(draftSignature);
 
@@ -39,6 +40,10 @@ export function useAutosaveController(
   useEffect(() => {
     latestDraftSignatureRef.current = draftSignature;
   }, [draftSignature]);
+
+  useEffect(() => {
+    latestEnabledRef.current = enabled;
+  }, [enabled]);
 
   const clearTimer = useCallback(() => {
     if (!timerRef.current) {
@@ -70,6 +75,9 @@ export function useAutosaveController(
       // markPersisted runs after the timer was already scheduled.
       const currentSig = latestDraftSignatureRef.current;
       if (currentSig === persistedSignatureRef.current) {
+        return;
+      }
+      if (!latestEnabledRef.current) {
         return;
       }
 

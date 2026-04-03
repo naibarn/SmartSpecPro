@@ -3,6 +3,7 @@
 //           → 4) R2 env vars (Cloud Run) → 5) local fallback
 
 import { ENV } from "./_core/env";
+import { getCachedAppRuntimeConfig } from "./services/appRuntimeConfig";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
@@ -48,8 +49,9 @@ let _configCache: ConfigCache | null = null;
 
 export async function getActiveStorageConfig(): Promise<ResolvedConfig> {
   // Priority 1: Legacy Forge ENV vars (backward compatibility)
-  const forgeUrl = ENV.forgeApiUrl;
-  const forgeKey = ENV.forgeApiKey;
+  const runtimeConfig = getCachedAppRuntimeConfig();
+  const forgeUrl = runtimeConfig.forgeApiUrl || ENV.forgeApiUrl;
+  const forgeKey = runtimeConfig.forgeApiKey || ENV.forgeApiKey;
   if (forgeUrl && forgeKey) {
     return { provider: "forge", baseUrl: forgeUrl.replace(/\/+$/, ""), apiKey: forgeKey };
   }

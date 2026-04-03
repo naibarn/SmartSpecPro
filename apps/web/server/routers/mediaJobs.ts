@@ -17,6 +17,7 @@ import { promises as fs } from "fs";
 import path from "path";
 import os from "os";
 import { assertTextClipRolloutEnabledForSpec } from "../services/textClipRollout";
+import { getAppRuntimeConfig, getPreferredInternalToken } from "../services/appRuntimeConfig";
 
 // ========================================
 // Redis helpers (lazy import to avoid circular deps)
@@ -241,14 +242,13 @@ async function dispatchToCelery(
   jobId: string,
   requestId?: string,
 ): Promise<{ kie_job_id?: string }> {
-  const { ENV } = await import("../_core/env");
-  const pythonUrl =
-    ENV.pythonBackendUrl || process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
+  const runtime = await getAppRuntimeConfig();
+  const pythonUrl = runtime.pythonBackendUrl;
 
   // Resolve relative asset URIs so Python worker can access them via HTTP
   const resolvedSpecJson = resolveRelativeUris(specJson);
 
-  const internalToken = process.env.MEDIA_JOB_INTERNAL_TOKEN || "";
+  const internalToken = process.env.MEDIA_JOB_INTERNAL_TOKEN || await getPreferredInternalToken();
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     "x-internal-token": internalToken,
@@ -504,11 +504,8 @@ export const mediaJobsRouter = router({
           });
         } else {
           // Dispatch via direct HTTP to Python backend
-          const { ENV } = await import("../_core/env");
-          const pythonUrl =
-            ENV.pythonBackendUrl ||
-            process.env.PYTHON_BACKEND_URL ||
-            "http://localhost:8000";
+          const runtime = await getAppRuntimeConfig();
+          const pythonUrl = runtime.pythonBackendUrl;
           const headers: Record<string, string> = { "Content-Type": "application/json" };
           if (ctx.req.requestId) headers["x-request-id"] = ctx.req.requestId;
           const resp = await fetch(`${pythonUrl}/api/v1/media/tasks/process-video`, {

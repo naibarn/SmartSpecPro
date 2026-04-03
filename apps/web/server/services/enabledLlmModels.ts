@@ -5,10 +5,12 @@ import { getDb } from "../db";
 import { buildModelLookupCandidates } from "./modelLookup";
 
 export type EnabledLlmModelRow = {
+  providerId: number;
   providerName: string;
   modelId: string;
   providerModelId: string;
   defaultModel: string | null;
+  apiStyle: "chat-completions" | "responses" | "messages" | "gemini";
   // Capability columns (from model_provider_map)
   supportsVision: boolean | null;
   supportsThinking: boolean | null;
@@ -102,10 +104,12 @@ export async function loadEnabledLlmModelRows(): Promise<EnabledLlmModelRow[]> {
 
   const rows = await db
     .select({
+      providerId: llmProviders.id,
       providerName: llmProviders.providerName,
       modelId: modelProviderMap.modelId,
       providerModelId: modelProviderMap.providerModelId,
       defaultModel: llmProviders.defaultModel,
+      apiStyle: modelProviderMap.apiStyle,
       // Capability columns
       supportsVision: modelProviderMap.supportsVision,
       supportsThinking: modelProviderMap.supportsThinking,
@@ -132,10 +136,12 @@ export async function loadEnabledLlmModelRows(): Promise<EnabledLlmModelRow[]> {
     );
 
   return rows.map((row) => ({
+    providerId: row.providerId,
     providerName: row.providerName,
     modelId: row.modelId,
     providerModelId: row.providerModelId,
     defaultModel: row.defaultModel,
+    apiStyle: row.apiStyle,
     supportsVision: row.supportsVision,
     supportsThinking: row.supportsThinking,
     supportsFunctionTools: row.supportsFunctionTools,
@@ -163,4 +169,3 @@ export async function isEnabledLlmModelId(modelId: string | null | undefined): P
   const rows = await loadEnabledLlmModelRows();
   return rows.some((row) => rowMatchesModelId(row, modelId));
 }
-

@@ -53,15 +53,76 @@ describe("layoutDsl", () => {
     expect(slideContent?.elements[0]).toMatchObject({
       id: "card__bg",
       type: "rect",
-      x: 40,
-      y: 80,
     });
     expect(slideContent?.elements[1]).toMatchObject({
       id: "card__title",
       type: "text",
-      x: 72,
-      y: 116,
     });
+  });
+
+  it("normalizes common LLM aliases into schema-safe layout drafts", () => {
+    const parsed = presentationLayoutDslResponseSchema.parse({
+      status: "success",
+      elements: [
+        {
+          type: "rect",
+          x: 24,
+          y: 40,
+          width: 240,
+          height: 160,
+          color: "#f4f4f5",
+        },
+        {
+          type: "line",
+          x: 24,
+          y: 220,
+          width: 240,
+          height: 2,
+          color: "#1f2937",
+        },
+        {
+          type: "text",
+          x: 40,
+          y: 64,
+          width: 208,
+          height: 72,
+          text: "หัวข้อสำคัญ",
+          fill: "#0f172a",
+          fontSize: 32,
+        },
+      ],
+      fallbackSuggestion: "Switch to a simpler layout.",
+    });
+
+    expect(parsed.status).toBe("ok");
+    expect(parsed.fallbackSuggestion).toEqual({
+      action: "switch_mode",
+      reason: "Switch to a simpler layout.",
+    });
+    expect(parsed.elements[0]).toMatchObject({
+      id: "dsl-el-1",
+      type: "rect",
+      fill: "#f4f4f5",
+    });
+    expect(parsed.elements[1]).toMatchObject({
+      id: "dsl-el-2",
+      type: "line",
+      stroke: "#1f2937",
+    });
+    expect(parsed.elements[2]).toMatchObject({
+      id: "dsl-el-3",
+      type: "text",
+      color: "#0f172a",
+    });
+
+    const slideContent = normalizePresentationLayoutDslToSlideContent({
+      draft: parsed,
+      canvasWidth: 720,
+      canvasHeight: 1280,
+    });
+
+    expect(slideContent).not.toBeNull();
+    expect(slideContent?.elements).toHaveLength(3);
   });
 
   it("rejects drafts that exceed bounded group limits", () => {

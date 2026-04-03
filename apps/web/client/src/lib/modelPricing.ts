@@ -5,6 +5,7 @@
 export interface ModelProvider {
   providerId: number;
   providerName: string;
+  providerDisplayName?: string;
   providerModelId: string;
   pricingInput: string | number;
   pricingOutput: string | number;

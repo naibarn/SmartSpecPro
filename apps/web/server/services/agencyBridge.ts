@@ -6,12 +6,9 @@
  * Streaming is NOT handled here -- see section-07 (SSE streaming).
  */
 
-import { ENV } from "../_core/env";
+import { getAppRuntimeConfig, getPreferredInternalToken } from "./appRuntimeConfig";
 import type { AgencyTaskMetadata } from "./agencyEscalation";
 import type { ResolvedAgencyRetrievalScope } from "./agencyExperienceTemplateService";
-
-const PYTHON_BACKEND_URL = (ENV.pythonBackendUrl || "http://localhost:8000").replace(/\/+$/, "");
-const GATEWAY_TOKEN = ENV.webGatewayToken;
 const RUN_TIMEOUT_MS = 120_000; // 2 minutes for multi-agent runs
 
 interface RunParams {
@@ -100,21 +97,22 @@ interface RunListResult {
   total: number;
 }
 
-function makeHeaders(userToken: string): Record<string, string> {
+async function makeHeaders(userToken: string): Promise<Record<string, string>> {
+  const gatewayToken = await getPreferredInternalToken();
   return {
     "Content-Type": "application/json",
-    Authorization: `Bearer ${GATEWAY_TOKEN}`,
+    Authorization: `Bearer ${gatewayToken}`,
     "X-User-Token": userToken,
   };
 }
 
-function makeHeadersWithMeta(
+async function makeHeadersWithMeta(
   userToken: string,
   tenantId: string,
   userId: number,
-): Record<string, string> {
+): Promise<Record<string, string>> {
   return {
-    ...makeHeaders(userToken),
+    ...(await makeHeaders(userToken)),
     "X-Tenant-Id": tenantId,
     "X-User-Id": String(userId),
   };
@@ -156,7 +154,8 @@ async function handleResponse<T>(response: Response, context: string): Promise<T
 
 export class AgencyBridge {
   async executeRun(params: RunParams): Promise<RunResult> {
-    const url = `${PYTHON_BACKEND_URL}/api/v1/agencies/${params.agencyId}/run`;
+    const runtime = await getAppRuntimeConfig();
+    const url = `${runtime.pythonBackendUrl}/api/v1/agencies/${params.agencyId}/run`;
 
     const body: Record<string, unknown> = {
       conversation_id: params.conversationId,
@@ -182,7 +181,7 @@ export class AgencyBridge {
     try {
       response = await fetch(url, {
         method: "POST",
-        headers: makeHeadersWithMeta(params.userToken, params.tenantId, params.userId),
+        headers: await makeHeadersWithMeta(params.userToken, params.tenantId, params.userId),
         body: JSON.stringify(body),
         signal: AbortSignal.timeout(RUN_TIMEOUT_MS),
       });
@@ -209,11 +208,12 @@ export class AgencyBridge {
   }
 
   async cancelRun(agencyId: string, runId: string, userToken: string): Promise<void> {
-    const url = `${PYTHON_BACKEND_URL}/api/v1/agencies/${agencyId}/runs/${runId}/cancel`;
+    const runtime = await getAppRuntimeConfig();
+    const url = `${runtime.pythonBackendUrl}/api/v1/agencies/${agencyId}/runs/${runId}/cancel`;
 
     const response = await fetch(url, {
       method: "POST",
-      headers: makeHeaders(userToken),
+      headers: await makeHeaders(userToken),
     });
 
     await handleResponse<any>(response, "cancelRun");
@@ -224,17 +224,18 @@ export class AgencyBridge {
     userToken: string,
     filters: RunFilters,
   ): Promise<RunListResult> {
+    const runtime = await getAppRuntimeConfig();
     const params = new URLSearchParams();
     if (filters.status) params.set("status", filters.status);
     if (filters.limit != null) params.set("limit", String(filters.limit));
     if (filters.offset != null) params.set("offset", String(filters.offset));
 
     const qs = params.toString();
-    const url = `${PYTHON_BACKEND_URL}/api/v1/agencies/${agencyId}/runs${qs ? `?${qs}` : ""}`;
+    const url = `${runtime.pythonBackendUrl}/api/v1/agencies/${agencyId}/runs${qs ? `?${qs}` : ""}`;
 
     const response = await fetch(url, {
       method: "GET",
-      headers: makeHeaders(userToken),
+      headers: await makeHeaders(userToken),
     });
 
     return handleResponse<RunListResult>(response, "listRuns");
@@ -245,11 +246,12 @@ export class AgencyBridge {
     runId: string,
     userToken: string,
   ): Promise<RunResult> {
-    const url = `${PYTHON_BACKEND_URL}/api/v1/agencies/${agencyId}/runs/${runId}`;
+    const runtime = await getAppRuntimeConfig();
+    const url = `${runtime.pythonBackendUrl}/api/v1/agencies/${agencyId}/runs/${runId}`;
 
     const response = await fetch(url, {
       method: "GET",
-      headers: makeHeaders(userToken),
+      headers: await makeHeaders(userToken),
     });
 
     const data = await handleResponse<any>(response, "getRunDetails");

@@ -6,6 +6,7 @@ import { z } from "zod";
 import type { TrpcContext } from "../_core/context";
 import { ENV } from "../_core/env";
 import { signBearerToken } from "../_core/tokens";
+import { getCachedPreferredInternalToken, getCachedPythonBackendUrl } from "./appRuntimeConfig";
 import {
   liveBrowserCancelSessionResponseSchema,
   liveBrowserCreateSessionResponseSchema,
@@ -59,7 +60,7 @@ import { launchSkillStudioTask } from "./skillStudioService";
 import type { SkillExecutionResult } from "./skillExecutor";
 
 const LIVE_BROWSER_PREFIX = `${
-  (ENV.pythonBackendUrl || "http://localhost:8000").replace(/\/+$/, "")
+  (getCachedPythonBackendUrl() || ENV.pythonBackendUrl || "http://localhost:8000").replace(/\/+$/, "")
 }/api/v1/live-browser`;
 const LIVE_BROWSER_RESERVE_CREDITS = 100;
 const LIVE_BROWSER_STREAM_VIEWER_TTL = "5m";
@@ -252,7 +253,7 @@ async function assertLiveBrowserAccess(
 function buildGatewayHeaders(ctx: TrpcContext, tenantId: string): Record<string, string> {
   return {
     "Content-Type": "application/json",
-    ...(ENV.webGatewayToken ? { "x-proxy-token": ENV.webGatewayToken } : {}),
+    ...(getCachedPreferredInternalToken() ? { "x-proxy-token": getCachedPreferredInternalToken() } : {}),
     "X-Tenant-Id": tenantId,
     "X-User-Id": String(ctx.user?.id ?? ""),
     "X-User-Token": ctx.userToken ?? "",

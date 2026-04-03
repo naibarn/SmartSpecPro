@@ -7,9 +7,7 @@ import { z } from "zod";
 import { router, protectedProcedure } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { debugLog, debugError } from "../_core/logger";
-
-// Python backend URL from environment
-const PYTHON_BACKEND_URL = process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
+import { getAppRuntimeConfig } from "../services/appRuntimeConfig";
 
 /**
  * Approval request status enum
@@ -89,13 +87,14 @@ export const approvalsRouter = router({
       };
 
       try {
+        const runtime = await getAppRuntimeConfig();
         const params = new URLSearchParams({
           limit: input.limit.toString(),
           offset: input.offset.toString(),
         });
 
         const response = await fetch(
-          `${PYTHON_BACKEND_URL}/api/v1/approvals/requests/pending?${params}`,
+          `${runtime.pythonBackendUrl}/api/v1/approvals/requests/pending?${params}`,
           {
             headers: {
               Authorization: `Bearer ${getAuthToken(ctx)}`,
@@ -126,7 +125,7 @@ export const approvalsRouter = router({
           page_size: input.limit.toString(),
         });
         const fallbackResponse = await fetch(
-          `${PYTHON_BACKEND_URL}/api/v1/approvals/requests?${fallbackParams}`,
+          `${runtime.pythonBackendUrl}/api/v1/approvals/requests?${fallbackParams}`,
           {
             headers: {
               Authorization: `Bearer ${getAuthToken(ctx)}`,
@@ -166,6 +165,7 @@ export const approvalsRouter = router({
     )
     .query(async ({ input, ctx }) => {
       try {
+        const runtime = await getAppRuntimeConfig();
         const params = new URLSearchParams({
           limit: input.limit.toString(),
           offset: input.offset.toString(),
@@ -174,7 +174,7 @@ export const approvalsRouter = router({
         });
 
         const response = await fetch(
-          `${PYTHON_BACKEND_URL}/api/v1/approvals/requests?${params}`,
+          `${runtime.pythonBackendUrl}/api/v1/approvals/requests?${params}`,
           {
             headers: {
               Authorization: `Bearer ${getAuthToken(ctx)}`,
@@ -218,8 +218,9 @@ export const approvalsRouter = router({
     .input(z.object({ requestId: z.string().uuid() }))
     .query(async ({ input, ctx }) => {
       try {
+        const runtime = await getAppRuntimeConfig();
         const response = await fetch(
-          `${PYTHON_BACKEND_URL}/api/v1/approvals/requests/${input.requestId}`,
+          `${runtime.pythonBackendUrl}/api/v1/approvals/requests/${input.requestId}`,
           {
             headers: {
               Authorization: `Bearer ${getAuthToken(ctx)}`,
@@ -269,8 +270,9 @@ export const approvalsRouter = router({
     )
     .mutation(async ({ input, ctx }) => {
       try {
+        const runtime = await getAppRuntimeConfig();
         const response = await fetch(
-          `${PYTHON_BACKEND_URL}/api/v1/approvals/requests/${input.requestId}/respond`,
+          `${runtime.pythonBackendUrl}/api/v1/approvals/requests/${input.requestId}/respond`,
           {
             method: "POST",
             headers: {
@@ -329,8 +331,9 @@ export const approvalsRouter = router({
     )
     .mutation(async ({ input, ctx }) => {
       try {
+        const runtime = await getAppRuntimeConfig();
         const response = await fetch(
-          `${PYTHON_BACKEND_URL}/api/v1/approvals/requests/${input.requestId}/cancel`,
+          `${runtime.pythonBackendUrl}/api/v1/approvals/requests/${input.requestId}/cancel`,
           {
             method: "POST",
             headers: {

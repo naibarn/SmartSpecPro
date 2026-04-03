@@ -2,6 +2,7 @@ import { Express, Request, Response } from "express";
 import { randomUUID } from "crypto";
 import { requireScopes } from "../middleware/requireScopes";
 import { getRedisClient } from "../services/redis";
+import { getAppRuntimeConfig } from "../services/appRuntimeConfig";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -696,12 +697,13 @@ async function dispatchToolCall(
       throw { code: -32602, message: "Agency not found or access denied" };
     }
     // M07: Proxy to Python backend with proxy auth token
-    const pythonUrl = process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
+    const runtime = await getAppRuntimeConfig();
+    const pythonUrl = runtime.pythonBackendUrl;
     const response = await fetch(`${pythonUrl}/api/internal/agency/tool/execute`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-proxy-token": process.env.SMARTSPEC_PROXY_TOKEN || "",
+        ...(runtime.proxyToken ? { "x-proxy-token": runtime.proxyToken } : {}),
       },
       body: JSON.stringify({
         agency_id: agencyId,
@@ -1175,18 +1177,18 @@ function mcpDiscoveryHandler(_req: Request, res: Response): void {
 // ---------------------------------------------------------------------------
 
 export function registerMcpPublicRoutes(app: Express): void {
-  // M07: Warn at startup if required backend env vars are not set.
-  // These are needed for agency tool proxying and inter-service auth.
-  if (!process.env.PYTHON_BACKEND_URL) {
-    console.warn(
-      "[MCP] PYTHON_BACKEND_URL is not set — agency tool calls will fall back to http://localhost:8000",
-    );
-  }
-  if (!process.env.SMARTSPEC_PROXY_TOKEN) {
-    console.warn(
-      "[MCP] SMARTSPEC_PROXY_TOKEN is not set — inter-service requests to Python backend will be unauthenticated",
-    );
-  }
+  void getAppRuntimeConfig().then((runtimeConfig) => {
+    if (!runtimeConfig.pythonBackendUrl) {
+      console.warn(
+        "[MCP] Python backend URL is not configured in UI settings — agency tool calls will fall back to localhost",
+      );
+    }
+    if (!runtimeConfig.proxyToken && !runtimeConfig.webGatewayToken) {
+      console.warn(
+        "[MCP] Internal proxy/web gateway token is not configured in UI settings — inter-service requests may be unauthenticated",
+      );
+    }
+  }).catch(() => {});
 
   // NOTE: /v1/mcp relies on the shared app.use("/v1", ...) middleware chain for
   // CORS, headers, auth, feature guard, rate limiting, idempotency, and audit.

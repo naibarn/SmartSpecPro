@@ -1,7 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 import crypto from "crypto";
 import { authorizeRequest } from "../_core/authz";
-import { ENV } from "../_core/env";
+import { getCachedPreferredInternalToken } from "../services/appRuntimeConfig";
 
 /**
  * Express middleware that authenticates requests for /v1/* routes.
@@ -19,9 +19,10 @@ export async function apiKeyAuthMiddleware(
 ) {
   // Allow X-Internal-Token through — downstream handlers do their own credit checks
   const internalToken = req.headers["x-internal-token"] as string | undefined;
-  if (internalToken && ENV.webGatewayToken && internalToken.length >= 32) {
+  const expectedInternalToken = getCachedPreferredInternalToken();
+  if (internalToken && expectedInternalToken && internalToken.length >= 32) {
     const tokenBuf = Buffer.from(internalToken);
-    const expectedBuf = Buffer.from(ENV.webGatewayToken);
+    const expectedBuf = Buffer.from(expectedInternalToken);
     if (
       tokenBuf.length === expectedBuf.length &&
       crypto.timingSafeEqual(tokenBuf, expectedBuf)

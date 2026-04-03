@@ -16,6 +16,7 @@ import { debugLog, debugError } from "./logger";
 import { auditLogger } from "../services/auditLogger";
 import { getTraceId } from "../services/traceContext";
 import { logRequest as logCostRequest } from "../services/costTracker";
+import { getPreferredInternalToken } from "../services/appRuntimeConfig";
 import { resolveEnabledLlmModelId } from "../services/enabledLlmModels";
 import { getFeatureFlag, getTenantFeatureFlag } from "../services/featureFlags";
 import {
@@ -33,6 +34,13 @@ import {
 } from "../services/searchResultCache";
 import { getRedisClient } from "../services/redis";
 import { runPlanner, recordStepAttempt } from "../services/taskPlannerMiddleware";
+import {
+  findCatalogModel,
+  isSafeProviderModelId,
+  type AvailableLlmProviderModel,
+  type LlmRequestConfig,
+} from "../services/llmProviderCatalog";
+import { normalizeLlmUsage } from "../services/llmUsage";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -85,6 +93,8 @@ interface BudgetState {
   totalInputTokens: number;
   totalOutputTokens: number;
   webSearchCalls: number;
+  providerReportedCostUsd: number;
+  providerReportedCreditsConsumed: number;
 }
 
 interface ToolDispatchResult {
@@ -106,6 +116,11 @@ interface SanitizeError {
 }
 
 type SanitizeResult = SanitizeSuccess | SanitizeError;
+
+interface SanitizeResponsesOptions {
+  strictUnknownFields?: boolean;
+  passthroughFields?: string[];
+}
 
 // ---------------------------------------------------------------------------
 // Internal tool dispatch registry
@@ -150,6 +165,7 @@ export function sanitizeToolOutputForLLM(raw: string): string {
  */
 export function sanitizeResponsesBody(
   body: any,
+  options: SanitizeResponsesOptions = {},
 ): SanitizeResult {
   if (!body || typeof body !== "object") {
     return { ok: false, error: "Request body must be a JSON object", status: 400 };
@@ -169,9 +185,39 @@ export function sanitizeResponsesBody(
       ? body.max_budget_credits
       : DEFAULT_MAX_BUDGET_CREDITS;
 
+  const allowedFields = new Set([
+    ...ALLOWED_FIELDS,
+    "max_budget_credits",
+    ...(options.passthroughFields ?? []),
+  ]);
+  if (options.strictUnknownFields) {
+    const unknownFields = Object.keys(body).filter((key) => {
+      if (allowedFields.has(key)) {
+        return false;
+      }
+      return ![
+        "preferredProvider",
+        "_tenantId",
+      ].includes(key);
+    });
+
+    if (unknownFields.length > 0) {
+      return {
+        ok: false,
+        error: `Unsupported request fields: ${unknownFields.join(", ")}`,
+        status: 400,
+      };
+    }
+  }
+
   // Filter to allowed fields only
   const sanitized: Record<string, unknown> = {};
   for (const key of ALLOWED_FIELDS) {
+    if (key in body) {
+      sanitized[key] = body[key];
+    }
+  }
+  for (const key of options.passthroughFields ?? []) {
     if (key in body) {
       sanitized[key] = body[key];
     }
@@ -220,13 +266,82 @@ function parseResponsesUsage(data: any): {
   outputTokens: number;
   totalTokens: number;
 } {
-  const usage = data?.usage;
-  if (!usage) return { inputTokens: 0, outputTokens: 0, totalTokens: 0 };
+  const normalized = normalizeLlmUsage(data, "responses");
   return {
-    inputTokens: usage.input_tokens || 0,
-    outputTokens: usage.output_tokens || 0,
-    totalTokens: usage.total_tokens ?? ((usage.input_tokens || 0) + (usage.output_tokens || 0)),
+    inputTokens: normalized.inputTokens,
+    outputTokens: normalized.outputTokens,
+    totalTokens: normalized.totalTokens,
   };
+}
+
+function calculateResponseCreditsUsed(
+  inputTokens: number,
+  outputTokens: number,
+  requestedModelId: string,
+  providerReportedCostUsd: number,
+): number {
+  if (providerReportedCostUsd > 0) {
+    return calculateCreditsFromCost(providerReportedCostUsd);
+  }
+  return calculateCreditsForLLM(inputTokens, outputTokens, requestedModelId);
+}
+
+async function resolveProviderRouteModel(
+  canonicalModelId: string,
+  preferredProviderId: number | null | undefined,
+  deps: {
+    resolveProviderModelAny: (modelId: string) => Promise<any>;
+    resolveProviderModel: (modelId: string, providerId: number) => Promise<any>;
+  },
+): Promise<{ providerModelId: string; apiStyle: ApiStyle | undefined }> {
+  let providerModelId = canonicalModelId;
+  let apiStyle: ApiStyle | undefined;
+
+  if (preferredProviderId != null) {
+    const resolved = await deps.resolveProviderModel(canonicalModelId, preferredProviderId);
+    if (resolved) {
+      providerModelId = resolved.providerModelId;
+      apiStyle = resolved.apiStyle;
+    }
+  } else {
+    const resolved = await deps.resolveProviderModelAny(canonicalModelId);
+    if (resolved) {
+      providerModelId = resolved.providerModelId;
+      apiStyle = resolved.apiStyle;
+    }
+  }
+
+  return { providerModelId, apiStyle };
+}
+
+function isKieProvider(providerName: string): boolean {
+  return providerName.trim().toLowerCase() === "kie_ai";
+}
+
+function getKieModelConfig(
+  provider: { availableModels?: AvailableLlmProviderModel[] | null } | null | undefined,
+  providerModelId: string,
+): LlmRequestConfig | null {
+  return findCatalogModel(provider?.availableModels, providerModelId)?.config ?? null;
+}
+
+function isFunctionTool(tool: unknown): boolean {
+  return !!tool && typeof tool === "object" && (tool as { type?: unknown }).type === "function";
+}
+
+function isWebSearchTool(tool: unknown): boolean {
+  const type = typeof tool === "object" && tool ? String((tool as { type?: unknown }).type ?? "") : "";
+  return type.includes("web_search");
+}
+
+export function validateKieResponsesConflicts(body: any): string | null {
+  const tools = Array.isArray(body?.tools) ? body.tools : [];
+  const hasFunctionTools = tools.some(isFunctionTool);
+  const hasWebSearch = tools.some(isWebSearchTool);
+  if (hasFunctionTools && hasWebSearch) {
+    return "Kie responses models do not allow web-search tools together with function tools.";
+  }
+  return null;
 }
 
 /**
@@ -417,7 +532,7 @@ export function registerResponsesRoutes(
           .json({ error: { message: sanitizeResult.error } });
       }
 
-      const { body: sanitizedBody, maxBudgetCredits, stream } =
+      let { body: sanitizedBody, maxBudgetCredits, stream } =
         sanitizeResult;
 
       // --- Resolve provider & model ---
@@ -451,26 +566,82 @@ export function registerResponsesRoutes(
           },
         });
       }
-      let model = requestedModelId;
-      let apiStyle: ApiStyle | undefined;
+      let effectiveModelId = requestedModelId;
+      let { providerModelId: model, apiStyle } = await resolveProviderRouteModel(
+        effectiveModelId,
+        preferredProviderId,
+        deps,
+      );
 
-      if (preferredProviderId != null) {
-        const resolved = await deps.resolveProviderModel(
-          requestedModelId,
+      // --- Task planner wiring ---
+      const toolCount = Array.isArray(sanitizedBody.tools)
+        ? (sanitizedBody.tools as unknown[]).length
+        : 0;
+      const plannerResult = await runPlanner({
+        sourceType: "responses",
+        userId,
+        tenantId,
+        conversationModel: requestedModelId,
+        hasTools: toolCount > 0,
+      }).catch(() => null);
+      if (plannerResult?.resolvedModel) {
+        const plannerResolvedModelId =
+          await resolveEnabledLlmModelId([plannerResult.resolvedModel])
+          ?? effectiveModelId;
+        const plannerRouteModel = await resolveProviderRouteModel(
+          plannerResolvedModelId,
           preferredProviderId,
+          deps,
         );
-        if (resolved) {
-          model = resolved.providerModelId;
-          apiStyle = resolved.apiStyle;
-        }
-      } else {
-        const resolved =
-          await deps.resolveProviderModelAny(requestedModelId);
-        if (resolved) {
-          model = resolved.providerModelId;
-          apiStyle = resolved.apiStyle;
+
+        if (!plannerRouteModel.apiStyle || plannerRouteModel.apiStyle === "responses") {
+          effectiveModelId = plannerResolvedModelId;
+          model = plannerRouteModel.providerModelId;
+          apiStyle = plannerRouteModel.apiStyle;
+        } else {
+          debugLog("responses", "Ignoring planner override incompatible with responses route", {
+            requestedModelId,
+            plannerResolvedModel: plannerResult.resolvedModel,
+            plannerApiStyle: plannerRouteModel.apiStyle,
+          });
         }
       }
+
+      if (apiStyle && apiStyle !== "responses") {
+        return res.status(400).json({
+          error: {
+            message: "This model does not support /v1/responses. Use the correct endpoint family instead.",
+          },
+        });
+      }
+
+      if (isKieProvider(provider.providerName)) {
+        if (!isSafeProviderModelId(model)) {
+          return res.status(400).json({
+            error: { message: "Invalid provider model identifier for Kie routing." },
+          });
+        }
+
+        const kieConfig = getKieModelConfig(provider, model);
+        const strictSanitizeResult = sanitizeResponsesBody(req.body, {
+          strictUnknownFields: true,
+          passthroughFields: kieConfig?.passthroughFields ?? [],
+        });
+        if (!strictSanitizeResult.ok) {
+          return res.status(strictSanitizeResult.status).json({
+            error: { message: strictSanitizeResult.error },
+          });
+        }
+        ({ body: sanitizedBody, maxBudgetCredits, stream } = strictSanitizeResult);
+
+        const conflictMessage = validateKieResponsesConflicts(req.body);
+        if (conflictMessage) {
+          return res.status(400).json({ error: { message: conflictMessage } });
+        }
+      }
+
+      // Update sanitized body with resolved model
+      sanitizedBody.model = model;
 
       // Ensure we use the responses endpoint
       const effectiveApiStyle: ApiStyle = apiStyle || "responses";
@@ -485,28 +656,11 @@ export function registerResponsesRoutes(
         url,
         model,
         requestedModelId,
+        effectiveModelId,
         stream,
         userId,
         traceId,
       });
-
-      // --- Task planner wiring ---
-      const toolCount = Array.isArray(sanitizedBody.tools)
-        ? (sanitizedBody.tools as unknown[]).length
-        : 0;
-      const plannerResult = await runPlanner({
-        sourceType: "responses",
-        userId,
-        tenantId,
-        conversationModel: requestedModelId,
-        hasTools: toolCount > 0,
-      }).catch(() => null);
-      if (plannerResult?.resolvedModel) {
-        model = plannerResult.resolvedModel;
-      }
-
-      // Update sanitized body with resolved model
-      sanitizedBody.model = model;
 
       // --- Audit: log request ---
       auditLogger.log({
@@ -515,11 +669,12 @@ export function registerResponsesRoutes(
         userId,
         providerId: provider.providerId,
         providerName: provider.providerName,
-        model: requestedModelId,
+        model: effectiveModelId,
         endpoint: "/v1/responses",
         requestType: "responses",
         requestPayload: {
-          model: requestedModelId,
+          requestedModel: requestedModelId,
+          model: effectiveModelId,
           stream,
           toolCount: Array.isArray(sanitizedBody.tools)
             ? (sanitizedBody.tools as unknown[]).length
@@ -534,7 +689,7 @@ export function registerResponsesRoutes(
         model.toLowerCase().includes("-free");
       await deps.acquireProviderSlot(provider.providerName, isFreeModel);
 
-      const internalToken = process.env.SMARTSPEC_WEB_GATEWAY_TOKEN || "";
+      const internalToken = await getPreferredInternalToken();
 
       try {
         if (stream) {
@@ -545,7 +700,7 @@ export function registerResponsesRoutes(
             sanitizedBody,
             provider,
             userId,
-            requestedModelId,
+            effectiveModelId,
             maxBudgetCredits,
             traceId,
             startTime,
@@ -561,7 +716,7 @@ export function registerResponsesRoutes(
             sanitizedBody,
             provider,
             userId,
-            requestedModelId,
+            effectiveModelId,
             maxBudgetCredits,
             traceId,
             startTime,
@@ -604,7 +759,12 @@ async function proxyResponsesJson(
   plannerResult?: import("../services/taskPlannerMiddleware").PlannerResult | null,
 ) {
   const controller = new AbortController();
-  req.on("close", () => controller.abort());
+  req.on("aborted", () => controller.abort());
+  res.on("close", () => {
+    if (!res.writableEnded) {
+      controller.abort();
+    }
+  });
 
   // Ensure stream is false
   body.stream = false;
@@ -616,6 +776,8 @@ async function proxyResponsesJson(
     totalInputTokens: 0,
     totalOutputTokens: 0,
     webSearchCalls: 0,
+    providerReportedCostUsd: 0,
+    providerReportedCreditsConsumed: 0,
   };
 
   let currentInput = body.input;
@@ -693,8 +855,11 @@ async function proxyResponsesJson(
 
     // Parse usage
     const usage = parseResponsesUsage(data);
+    const normalizedUsage = normalizeLlmUsage(data, "responses");
     budget.totalInputTokens += usage.inputTokens;
     budget.totalOutputTokens += usage.outputTokens;
+    budget.providerReportedCostUsd += normalizedUsage.providerReportedCostUsd ?? 0;
+    budget.providerReportedCreditsConsumed += normalizedUsage.providerReportedCreditsConsumed ?? 0;
 
     // Count web_search_call items
     const searchCalls = countWebSearchCalls(data.output || []);
@@ -828,6 +993,7 @@ async function proxyResponsesJson(
     provider: provider.providerName,
     inputTokens: budget.totalInputTokens,
     outputTokens: budget.totalOutputTokens,
+    costUsd: budget.providerReportedCostUsd > 0 ? budget.providerReportedCostUsd : undefined,
     sourceType: "browser_automation",
   });
 
@@ -897,10 +1063,11 @@ async function proxyResponsesJson(
   );
 
   // Log to provider_usage_log
-  const totalCredits = calculateCreditsForLLM(
+  const totalCredits = calculateResponseCreditsUsed(
     budget.totalInputTokens,
     budget.totalOutputTokens,
     requestedModelId,
+    budget.providerReportedCostUsd,
   );
   logCostRequest({
     userId,
@@ -908,7 +1075,7 @@ async function proxyResponsesJson(
     modelUsed: requestedModelId,
     inputTokens: budget.totalInputTokens,
     outputTokens: budget.totalOutputTokens,
-    costUsd: 0,
+    costUsd: budget.providerReportedCostUsd,
     creditsCharged: totalCredits,
     responseTimeMs: totalMs,
     statusCode: 200,
@@ -948,7 +1115,11 @@ async function proxyResponsesJson(
       usage: {
         inputTokens: budget.totalInputTokens,
         outputTokens: budget.totalOutputTokens,
+        totalTokens: budget.totalInputTokens + budget.totalOutputTokens,
       },
+      providerReportedCostUsd: budget.providerReportedCostUsd || undefined,
+      providerReportedCreditsConsumed:
+        budget.providerReportedCreditsConsumed || undefined,
     };
 
     if (userId > 0) {
@@ -984,7 +1155,7 @@ async function proxyResponsesStream(
 ) {
   const controller = new AbortController();
   let clientDisconnected = false;
-  req.on("close", () => {
+  req.on("aborted", () => {
     clientDisconnected = true;
     controller.abort();
   });
@@ -998,6 +1169,12 @@ async function proxyResponsesStream(
   res.setHeader("Connection", "keep-alive");
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("X-Frame-Options", "DENY");
+  res.on("close", () => {
+    if (!res.writableEnded) {
+      clientDisconnected = true;
+      controller.abort();
+    }
+  });
 
   const budget: BudgetState = {
     maxBudgetCredits,
@@ -1006,6 +1183,8 @@ async function proxyResponsesStream(
     totalInputTokens: 0,
     totalOutputTokens: 0,
     webSearchCalls: 0,
+    providerReportedCostUsd: 0,
+    providerReportedCreditsConsumed: 0,
   };
 
   let currentInput = body.input;
@@ -1092,6 +1271,8 @@ async function proxyResponsesStream(
         .filter((l) => l.startsWith("data:"));
 
       let roundUsage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 };
+      let roundProviderReportedCostUsd = 0;
+      let roundProviderReportedCreditsConsumed = 0;
       let roundSearchCalls = 0;
 
       for (const line of dataLines) {
@@ -1102,7 +1283,15 @@ async function proxyResponsesStream(
 
           // Check for usage in response.completed event
           if (parsed?.usage) {
-            roundUsage = parseResponsesUsage(parsed);
+            const normalized = normalizeLlmUsage(parsed, "responses");
+            roundUsage = {
+              inputTokens: normalized.inputTokens,
+              outputTokens: normalized.outputTokens,
+              totalTokens: normalized.totalTokens,
+            };
+            roundProviderReportedCostUsd = normalized.providerReportedCostUsd ?? roundProviderReportedCostUsd;
+            roundProviderReportedCreditsConsumed =
+              normalized.providerReportedCreditsConsumed ?? roundProviderReportedCreditsConsumed;
           }
 
           // Track web_search_call events
@@ -1130,6 +1319,17 @@ async function proxyResponsesStream(
           // response.completed has the full output — use for web_search counting
           // and as fallback for function calls if individual events were missed
           if (parsed?.type === "response.completed" && parsed?.response?.output) {
+            const normalized = normalizeLlmUsage(parsed.response, "responses");
+            if (normalized.inputTokens > 0 || normalized.outputTokens > 0 || normalized.totalTokens > 0) {
+              roundUsage = {
+                inputTokens: normalized.inputTokens,
+                outputTokens: normalized.outputTokens,
+                totalTokens: normalized.totalTokens,
+              };
+            }
+            roundProviderReportedCostUsd = normalized.providerReportedCostUsd ?? roundProviderReportedCostUsd;
+            roundProviderReportedCreditsConsumed =
+              normalized.providerReportedCreditsConsumed ?? roundProviderReportedCreditsConsumed;
             const fcs = extractFunctionCalls(parsed.response.output);
             for (const fc of fcs) {
               if (!functionCalls.some((existing) => existing.callId === fc.callId)) {
@@ -1145,6 +1345,8 @@ async function proxyResponsesStream(
       budget.totalInputTokens += roundUsage.inputTokens;
       budget.totalOutputTokens += roundUsage.outputTokens;
       budget.webSearchCalls += roundSearchCalls;
+      budget.providerReportedCostUsd += roundProviderReportedCostUsd;
+      budget.providerReportedCreditsConsumed += roundProviderReportedCreditsConsumed;
 
       // Per-run search quota check (streaming)
       if (budget.webSearchCalls > MAX_SEARCH_CALLS_PER_REQUEST) {
@@ -1244,12 +1446,46 @@ async function proxyResponsesStream(
     const searchCostUsd = budget.webSearchCalls * WEB_SEARCH_COST_USD;
     const totalMs = Date.now() - startTime;
 
+    if (clientDisconnected) {
+      deps.recordModelUsage(
+        provider.providerName,
+        requestedModelId,
+        false,
+      );
+
+      auditLogger.log({
+        traceId,
+        eventType: "responses_api_call",
+        userId,
+        providerId: provider.providerId,
+        providerName: provider.providerName,
+        model: requestedModelId,
+        statusCode: 499,
+        inputTokens: budget.totalInputTokens,
+        outputTokens: budget.totalOutputTokens,
+        timing: { totalMs },
+        metadata: {
+          toolRounds: budget.currentRound,
+          webSearchCalls: budget.webSearchCalls,
+          budgetExceeded,
+          streaming: true,
+          clientDisconnected: true,
+        },
+      });
+
+      if (!res.writableEnded) {
+        res.end();
+      }
+      return;
+    }
+
     await deductCreditsForModel({
       userId,
       model: requestedModelId,
       provider: provider.providerName,
       inputTokens: budget.totalInputTokens,
       outputTokens: budget.totalOutputTokens,
+      costUsd: budget.providerReportedCostUsd > 0 ? budget.providerReportedCostUsd : undefined,
       sourceType: "browser_automation",
     });
 
@@ -1318,10 +1554,11 @@ async function proxyResponsesStream(
       budget.totalOutputTokens,
     );
 
-    const totalCredits = calculateCreditsForLLM(
+    const totalCredits = calculateResponseCreditsUsed(
       budget.totalInputTokens,
       budget.totalOutputTokens,
       requestedModelId,
+      budget.providerReportedCostUsd,
     );
 
     logCostRequest({
@@ -1330,7 +1567,7 @@ async function proxyResponsesStream(
       modelUsed: requestedModelId,
       inputTokens: budget.totalInputTokens,
       outputTokens: budget.totalOutputTokens,
-      costUsd: 0,
+      costUsd: budget.providerReportedCostUsd,
       creditsCharged: totalCredits,
       responseTimeMs: totalMs,
       statusCode: 200,
@@ -1371,8 +1608,12 @@ async function proxyResponsesStream(
           usage: {
             inputTokens: budget.totalInputTokens,
             outputTokens: budget.totalOutputTokens,
+            totalTokens: budget.totalInputTokens + budget.totalOutputTokens,
           },
           creditsUsed: totalCredits,
+          providerReportedCostUsd: budget.providerReportedCostUsd || undefined,
+          providerReportedCreditsConsumed:
+            budget.providerReportedCreditsConsumed || undefined,
         })}\n\n`,
       );
     }

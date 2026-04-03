@@ -14,18 +14,17 @@ import {
   getCleanupPreview,
 } from "../services/modelSyncService";
 import { encrypt, decrypt } from "../services/crypto";
-
-interface AvailableProviderModel {
-  id: string;
-  name: string;
-  contextLength?: number;
-}
+import {
+  availableLlmProviderModelSchema,
+  buildKieLlmAvailableModels,
+  type AvailableLlmProviderModel,
+} from "../services/llmProviderCatalog";
 
 interface EnabledProviderRow {
   id: number;
   providerName: string;
   displayName: string;
-  availableModels: AvailableProviderModel[] | null;
+  availableModels: AvailableLlmProviderModel[] | null;
   configJson: Record<string, unknown> | null;
   defaultModel: string | null;
 }
@@ -37,6 +36,39 @@ interface EnabledMappedModelRow {
   modelId: string;
   modelName: string;
   contextLength: number | null;
+}
+
+function findProviderTemplate(providerName: string) {
+  return PROVIDER_TEMPLATES.find((template) => template.providerName === providerName);
+}
+
+export function resolveProviderCatalogDefaults<T extends {
+  providerName: string;
+  displayName?: string | null;
+  description?: string | null;
+  baseUrl?: string | null;
+  defaultModel?: string | null;
+  availableModels?: AvailableLlmProviderModel[] | null;
+}>(provider: T): T & {
+  displayName?: string | null;
+  description?: string | null;
+  baseUrl?: string | null;
+  defaultModel?: string | null;
+  availableModels: AvailableLlmProviderModel[] | null;
+} {
+  const template = findProviderTemplate(provider.providerName);
+  const hasCatalog = Array.isArray(provider.availableModels) && provider.availableModels.length > 0;
+
+  return {
+    ...provider,
+    displayName: provider.displayName ?? template?.displayName ?? provider.displayName,
+    description: provider.description ?? template?.description ?? provider.description,
+    baseUrl: provider.baseUrl ?? template?.baseUrl ?? provider.baseUrl,
+    defaultModel: provider.defaultModel ?? template?.defaultModel ?? null,
+    availableModels: hasCatalog
+      ? provider.availableModels ?? null
+      : template?.availableModels ?? provider.availableModels ?? null,
+  };
 }
 
 export function mergeAvailableLlmModels(input: {
@@ -112,7 +144,15 @@ function validateExternalUrl(url: string): void {
 }
 
 // Provider templates for adding new providers
-const PROVIDER_TEMPLATES = [
+export const PROVIDER_TEMPLATES = [
+  {
+    providerName: "kie_ai",
+    displayName: "Kie AI",
+    description: "Kie AI marketplace gateway for GPT, Claude, Gemini, and Codex chat models",
+    baseUrl: "https://api.kie.ai",
+    defaultModel: "gpt-5-4",
+    availableModels: buildKieLlmAvailableModels(),
+  },
   {
     providerName: "openai",
     displayName: "OpenAI",
@@ -251,7 +291,9 @@ export const llmProvidersRouter = router({
         .orderBy(asc(modelProviderMap.modelName), asc(modelProviderMap.priority)),
     ]);
 
-    const enabledProviders = providers as EnabledProviderRow[];
+    const enabledProviders = (providers as EnabledProviderRow[]).map((provider) =>
+      resolveProviderCatalogDefaults(provider),
+    );
     const models = mergeAvailableLlmModels({
       providers: enabledProviders,
       mappedModels: mappedModels.filter((row) =>
@@ -288,7 +330,7 @@ export const llmProvidersRouter = router({
       .where(eq(llmProviders.isEnabled, true))
       .orderBy(asc(llmProviders.sortOrder));
     
-    return providers;
+    return providers.map((provider) => resolveProviderCatalogDefaults(provider as any));
   }),
 
   // Get all providers (admin)
@@ -326,10 +368,13 @@ export const llmProvidersRouter = router({
     const countMap = new Map(modelCounts.map((c: (typeof modelCounts)[number]) => [c.providerId, Number(c.count)]));
 
     // Merge routed model count into providers
-    return providers.map((p: (typeof providers)[number]) => ({
-      ...p,
+    return providers.map((p: (typeof providers)[number]) => {
+      const hydrated = resolveProviderCatalogDefaults(p as any);
+      return {
+      ...hydrated,
       routedModelCount: countMap.get(p.id) ?? 0,
-    }));
+      };
+    });
   }),
 
   // Get provider templates
@@ -367,15 +412,7 @@ export const llmProvidersRouter = router({
       baseUrl: z.string().optional(),
       apiKey: z.string().optional(),
       defaultModel: z.string().optional(),
-      availableModels: z.array(z.object({
-        id: z.string(),
-        name: z.string(),
-        contextLength: z.number().optional(),
-        pricing: z.object({
-          input: z.number(),
-          output: z.number(),
-        }).optional(),
-      })).optional(),
+      availableModels: z.array(availableLlmProviderModelSchema).optional(),
       configJson: z.record(z.any()).optional(),
       isEnabled: z.boolean().default(false),
     }))
@@ -422,15 +459,7 @@ export const llmProvidersRouter = router({
       baseUrl: z.string().optional(),
       apiKey: z.string().optional(), // If provided, update the key
       defaultModel: z.string().optional(),
-      availableModels: z.array(z.object({
-        id: z.string(),
-        name: z.string(),
-        contextLength: z.number().optional(),
-        pricing: z.object({
-          input: z.number(),
-          output: z.number(),
-        }).optional(),
-      })).optional(),
+      availableModels: z.array(availableLlmProviderModelSchema).optional(),
       configJson: z.record(z.any()).optional(),
       isEnabled: z.boolean().optional(),
       sortOrder: z.number().optional(),
@@ -473,22 +502,43 @@ export const llmProvidersRouter = router({
   toggleEnabled: adminProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input }) => {
-      const [provider] = await db
-        .select({ isEnabled: llmProviders.isEnabled })
+      const [providerDetails] = await db
+        .select({
+          isEnabled: llmProviders.isEnabled,
+          providerName: llmProviders.providerName,
+          availableModels: llmProviders.availableModels,
+          defaultModel: llmProviders.defaultModel,
+        })
         .from(llmProviders)
         .where(eq(llmProviders.id, input.id))
         .limit(1);
       
-      if (!provider) {
+      if (!providerDetails) {
         throw new Error("Provider not found");
       }
+
+      const nextEnabled = !providerDetails.isEnabled;
+      const hydrated = resolveProviderCatalogDefaults(providerDetails as any);
       
       await db
         .update(llmProviders)
-        .set({ isEnabled: !provider.isEnabled })
+        .set({
+          isEnabled: nextEnabled,
+          availableModels:
+            nextEnabled
+            && (!Array.isArray(providerDetails.availableModels) || providerDetails.availableModels.length === 0)
+              ? hydrated.availableModels
+              : undefined,
+          defaultModel:
+            nextEnabled
+            && !providerDetails.defaultModel
+            && hydrated.defaultModel
+              ? hydrated.defaultModel
+              : undefined,
+        })
         .where(eq(llmProviders.id, input.id));
       
-      return { isEnabled: !provider.isEnabled };
+      return { isEnabled: nextEnabled };
     }),
 
   // Update sort order (admin)
@@ -618,7 +668,8 @@ export const llmProvidersRouter = router({
       .from(llmProviders);
     
     const totalModels = providers.reduce((sum: number, p: (typeof providers)[number]) => {
-      const models = (p.availableModels as any[]) || [];
+      const hydrated = resolveProviderCatalogDefaults(p as any);
+      const models = (hydrated.availableModels as any[]) || [];
       return sum + models.length;
     }, 0);
     

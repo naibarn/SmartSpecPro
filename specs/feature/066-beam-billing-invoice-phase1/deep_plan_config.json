@@ -1,0 +1,13 @@
+{
+  "context": {
+    "check_enabled": true
+  },
+  "external_review": {
+    "alert_if_missing": false,
+    "feedback_iterations": 0
+  },
+  "plugin_root": "/home/dev/.codex/skills/deep-plan",
+  "planning_dir": "/home/dev/projects/SmartSpecPro/specs/feature/066-beam-billing-invoice-phase1",
+  "initial_file": "/home/dev/projects/SmartSpecPro/specs/feature/066-beam-billing-invoice-phase1/spec.md",
+  "review_mode": "self_review"
+}

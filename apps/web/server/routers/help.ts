@@ -7,6 +7,7 @@
 
 import { z } from "zod";
 import { publicProcedure, adminProcedure, router } from "../_core/trpc";
+import { getAppRuntimeConfig, getPreferredInternalToken } from "../services/appRuntimeConfig";
 import { storagePut } from "../storage";
 import {
   getHelpManifest,
@@ -62,13 +63,11 @@ export const helpRouter = router({
       }),
     )
     .mutation(async ({ input }) => {
-      const proxyToken =
-        process.env.SMARTSPEC_PROXY_TOKEN ||
-        process.env.SMARTSPEC_WEB_GATEWAY_TOKEN ||
-        "";
+      const runtime = await getAppRuntimeConfig();
+      const proxyToken = await getPreferredInternalToken();
 
       const response = await fetch(
-        "http://localhost:8000/api/help/screenshot",
+        `${runtime.pythonBackendUrl}/api/help/screenshot`,
         {
           method: "POST",
           headers: {

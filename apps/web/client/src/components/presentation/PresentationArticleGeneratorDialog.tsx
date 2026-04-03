@@ -4,6 +4,7 @@ import {
   Copy,
   Download,
   CheckCircle2,
+  ExternalLink,
   FileJson,
   FileText,
   Images,
@@ -12,6 +13,7 @@ import {
   Loader2,
   Palette,
   Sparkles,
+  Trash2,
   WandSparkles,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -42,6 +44,12 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
+import { normalizeMediaSourceUrl } from "@/lib/mediaUrl";
+import { cn } from "@/lib/utils";
+import {
+  hasImportableGeneratedSlides,
+  inspectGeneratedSlideImportability,
+} from "@shared/presentation/generatedSlideImportability";
 import {
   applyModelSyncTargets,
   buildDefaultExtraParamsForModel,
@@ -53,6 +61,21 @@ import {
 } from "@/lib/mediaModelInputs";
 import { trpc } from "@/lib/trpc";
 import { PRESENTATION_CANVAS_PRESETS } from "@/presentation-canvas/constants";
+import {
+  buildEditorialLayoutPlannerPayload,
+  EDITORIAL_LAYOUT_PLANNER_SKILL_ID,
+  EDITORIAL_PLANNER_QUICK_PRESETS,
+  getEditorialPlannerResolvedDefaults,
+  inferRecommendedEditorialPlannerPreset,
+  type EditorialPlannerAudiencePreset,
+  type EditorialPlannerFitPreset,
+  type EditorialPlannerImageAssetInput,
+  type EditorialPlannerImageAssetType,
+  type EditorialPlannerJsonObject,
+  type EditorialPlannerPageCountMode,
+  type EditorialPlannerQuickPreset,
+  type EditorialPlannerTonePreset,
+} from "@shared/presentation/editorialLayoutPlanner";
 
 type ExecutionSource = "skill" | "agency";
 type ArticleLanguage = "th" | "en";
@@ -90,10 +113,62 @@ type PreparedSlideBundle = {
   imagePrompts: PreparedImagePrompt[];
   slidePayloadJson: string;
   modelId?: string;
+  preflightPages?: Array<{
+    pageNumber: number;
+    titleHint: string;
+    compiledText: string;
+    pageIntentHint: string;
+    preferredArchetype: string;
+    forceArchetype: string | null;
+    archetypeMode: "forced" | "guided";
+    recommendedImageCount: number;
+    maxImagesOverride: number;
+    warnings: string[];
+    structure: {
+      paragraphCount: number;
+      bulletCount: number;
+      workflowStepCount: number;
+      timelinePhaseCount: number;
+      sectionCount: number;
+    };
+  }>;
+  preflightWarnings?: string[];
 };
 
 type GeneratedImageAsset = PreparedImagePrompt & {
   url: string;
+};
+
+type LibraryResultItemLike = {
+  id?: number;
+  item_id?: number;
+  item_type?: string | null;
+  title?: string | null;
+  source_url?: string | null;
+  thumbnail_url?: string | null;
+  preview_url?: string | null;
+  poster_url?: string | null;
+  owner_user_id?: number | null;
+  access_source?: string | null;
+};
+
+type MediaHistoryTaskLike = {
+  id?: string;
+  taskId?: string;
+  mediaType?: string;
+  status?: string;
+  model?: string | null;
+  prompt?: string | null;
+  resultUrl?: string | null;
+  resultData?: Record<string, unknown> | null;
+};
+
+type PickerAsset = {
+  id: number;
+  title: string;
+  sourceUrl: string;
+  thumbnailUrl: string | null;
+  sourceType: "library" | "shared" | "history";
 };
 
 type SlideArtifact = {
@@ -108,18 +183,181 @@ type GeneratedSlideDraft = {
   slideJson: string;
   slidePayloadJson: string;
   modelId?: string;
+  generatedAt?: string | null;
+  selectedSkillId?: string;
+  selectedSkillName?: string | null;
+  executionSkillId?: string | null;
+  executionSkillName?: string | null;
+  runtimeBundleSkillId?: string | null;
+  runtimeBundleSkillName?: string | null;
+  runtimeAliasApplied?: boolean;
   artifactJobId?: string | null;
   artifacts?: SlideArtifact[];
   downloadUrl?: string | null;
+  debugTracePath?: string | null;
+  importedSlideJson?: string | null;
+  importedAt?: string | null;
+  importedFromArtifact?: boolean;
+  importedArtifactUrl?: string | null;
 };
 
 export type PresentationGeneratedSlideDraft = GeneratedSlideDraft;
+export type PresentationInsertSlidesResult = {
+  inserted: boolean;
+  importedSlideJson?: string | null;
+  importedAt?: string | null;
+  importedFromArtifact?: boolean;
+  importedArtifactUrl?: string | null;
+};
 
-type WizardStepStatus = "idle" | "ready" | "running" | "done";
+type WizardStepStatus = "idle" | "ready" | "running" | "done" | "stale";
+type GeneratedSlideDraftSessionSource = "empty" | "fresh-run" | "restored-draft";
 
 const SUPPORTED_SLIDE_RATIOS: SlideCanvasRatio[] = ["16:9", "9:16", "4:5", "5:4"];
 const SUPPORTED_OUTPUT_FORMATS: SlideOutputFormat[] = ["json", "md", "pptx", "pdf"];
 const ARTICLE_BUILDER_DRAFT_STORAGE_KEY_PREFIX = "presentation-article-builder-draft";
+const TASK_POLL_INTERVAL_MS = 2000;
+const TASK_POLL_MAX_ATTEMPTS = 120;
+
+type EditorialPlannerImageAssetDraft = {
+  id: string;
+  assetType: EditorialPlannerImageAssetType;
+  label: string;
+  pageHint: string;
+  prompt: string;
+  reference: string;
+};
+
+function createEditorialPlannerImageAssetDraft(
+  overrides?: Partial<EditorialPlannerImageAssetDraft>,
+): EditorialPlannerImageAssetDraft {
+  return {
+    id: overrides?.id ?? `planner-asset-${Math.random().toString(36).slice(2, 10)}`,
+    assetType: overrides?.assetType ?? "image_prompt",
+    label: overrides?.label ?? "",
+    pageHint: overrides?.pageHint ?? "",
+    prompt: overrides?.prompt ?? "",
+    reference: overrides?.reference ?? "",
+  };
+}
+
+function normalizeEditorialPlannerAssetDrafts(
+  assets: EditorialPlannerImageAssetDraft[],
+): EditorialPlannerImageAssetDraft[] {
+  return assets.map((asset) => createEditorialPlannerImageAssetDraft(asset));
+}
+
+function parseEditorialPlannerJsonObject(raw: string, label: string): EditorialPlannerJsonObject | null {
+  const trimmed = raw.trim();
+  if (!trimmed) {
+    return null;
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(trimmed);
+  } catch {
+    throw new Error(`${label} must be valid JSON.`);
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error(`${label} must be a JSON object.`);
+  }
+  return parsed as EditorialPlannerJsonObject;
+}
+
+function normalizeEditorialPlannerImageAssets(
+  assets: EditorialPlannerImageAssetDraft[],
+): Array<{
+  assetType: EditorialPlannerImageAssetType;
+  label: string;
+  pageHint?: number;
+  prompt?: string;
+  reference?: string;
+}> {
+  return assets.flatMap((asset) => {
+    const label = asset.label.trim();
+    const prompt = asset.prompt.trim();
+    const reference = asset.reference.trim();
+    const parsedPageHint = Number.parseInt(asset.pageHint.trim(), 10);
+    const pageHint = Number.isFinite(parsedPageHint)
+      ? Math.max(1, Math.min(20, parsedPageHint))
+      : undefined;
+    if (asset.assetType === "uploaded_image") {
+      if (!reference) {
+        return [];
+      }
+      return [{
+        assetType: "uploaded_image" as const,
+        label: label || "Uploaded image",
+        ...(typeof pageHint === "number" ? { pageHint } : {}),
+        ...(prompt ? { prompt } : {}),
+        reference,
+      }];
+    }
+    if (!prompt) {
+      return [];
+    }
+    return [{
+      assetType: "image_prompt" as const,
+      label: label || "Image prompt",
+      ...(typeof pageHint === "number" ? { pageHint } : {}),
+      prompt,
+      ...(reference ? { reference } : {}),
+    }];
+  });
+}
+
+function stringifyPlannerJson(value: unknown): string {
+  return JSON.stringify(value, null, 2);
+}
+
+function summarizeEditorialPlannerImageAssetIssues(
+  assets: EditorialPlannerImageAssetDraft[],
+): {
+  errors: string[];
+  warnings: string[];
+} {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+  assets.forEach((asset, index) => {
+    const label = asset.label.trim() || `Asset #${index + 1}`;
+    const prompt = asset.prompt.trim();
+    const reference = asset.reference.trim();
+    const pageHint = asset.pageHint.trim();
+    if (pageHint) {
+      const parsed = Number.parseInt(pageHint, 10);
+      if (!Number.isFinite(parsed) || parsed < 1 || parsed > 20) {
+        errors.push(`${label}: page hint must be between 1 and 20.`);
+      }
+    }
+    if (asset.assetType === "uploaded_image") {
+      if (!reference) {
+        errors.push(`${label}: uploaded_image requires a reference URL.`);
+      } else if (!/^https?:\/\//i.test(reference)) {
+        errors.push(`${label}: uploaded_image reference must be an http/https URL.`);
+      }
+      if (prompt && prompt.length < 12) {
+        warnings.push(`${label}: optional prompt is very short and may not help the planner much.`);
+      }
+      return;
+    }
+    if (!prompt) {
+      errors.push(`${label}: image_prompt requires prompt text.`);
+      return;
+    }
+    if (prompt.length < 24) {
+      warnings.push(`${label}: prompt is short; adding subject, mood, and setting will improve image planning.`);
+    }
+  });
+  return { errors, warnings };
+}
+
+function inferTopicFallbackFromArticle(article: string): string {
+  return article
+    .split("\n")
+    .map((line) => line.trim())
+    .find(Boolean)
+    ?? "Presentation";
+}
 
 function isArticleFriendlySkill(skill: SkillOption): boolean {
   const category = String(skill.category ?? "").toLowerCase();
@@ -173,13 +411,100 @@ function sleepMs(ms: number): Promise<void> {
 }
 
 function getErrorMessage(error: unknown, fallback: string): string {
-  if (error instanceof Error && error.message.trim()) {
-    return error.message.trim();
-  }
-  if (typeof error === "string" && error.trim()) {
-    return error.trim();
+  const rawMessage = error instanceof Error
+    ? error.message.trim()
+    : typeof error === "string"
+      ? error.trim()
+      : "";
+  if (rawMessage) {
+    const normalized = rawMessage.toLowerCase();
+    if (
+      normalized.includes("unexpected token '<'")
+      || normalized.includes("<!doctype")
+      || normalized.includes("<html")
+      || normalized.includes("is not valid json")
+    ) {
+      return `${fallback} The server returned HTML instead of JSON.`;
+    }
+    return rawMessage;
   }
   return fallback;
+}
+
+function getRetryAfterSeconds(message: string): number | null {
+  const match = message.match(/retry\s+after\s+(\d+)\s*s/i) ?? message.match(/(\d+)\s*seconds?/i);
+  if (!match) {
+    return null;
+  }
+  const parsed = Number.parseInt(match[1] ?? "", 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+function normalizeTaskStatus(task: unknown): string | null {
+  if (!task || typeof task !== "object") {
+    return null;
+  }
+  const rawStatus = (task as { status?: unknown }).status;
+  if (typeof rawStatus !== "string") {
+    return null;
+  }
+  const normalized = rawStatus.trim().toLowerCase();
+  if (!normalized) {
+    return null;
+  }
+  if (normalized === "succeeded" || normalized === "ready") {
+    return "completed";
+  }
+  if (normalized === "error") {
+    return "failed";
+  }
+  return normalized;
+}
+
+function extractTaskFailureMessage(task: unknown): string | null {
+  if (!task || typeof task !== "object") {
+    return null;
+  }
+  const direct = (task as { errorMessage?: unknown }).errorMessage;
+  if (typeof direct === "string" && direct.trim().length > 0) {
+    return direct.trim();
+  }
+  const resultData = (task as { resultData?: unknown }).resultData;
+  if (!resultData || typeof resultData !== "object") {
+    return null;
+  }
+  const candidates = ["error", "errorMessage", "message", "detail", "failMsg"] as const;
+  for (const key of candidates) {
+    const value = (resultData as Record<string, unknown>)[key];
+    if (typeof value === "string" && value.trim().length > 0) {
+      return value.trim();
+    }
+  }
+  return null;
+}
+
+function isProbablyHtmlDocument(value: string | null | undefined): boolean {
+  const trimmed = String(value ?? "").trim().toLowerCase();
+  return trimmed.startsWith("<!doctype html")
+    || trimmed.startsWith("<html")
+    || trimmed.startsWith("<body")
+    || trimmed.startsWith("<head");
+}
+
+function normalizeSlidePayloadJson(
+  candidate: string | null | undefined,
+  fallback = "",
+): string {
+  const trimmed = String(candidate ?? "").trim();
+  if (!trimmed || isProbablyHtmlDocument(trimmed)) {
+    return fallback;
+  }
+  try {
+    JSON.parse(trimmed);
+    return trimmed;
+  } catch {
+    return fallback;
+  }
 }
 
 function normalizeSlideArtifact(raw: unknown): SlideArtifact | null {
@@ -234,20 +559,26 @@ function pickPreferredSlideArtifact(
 }
 
 function hasImportableSlidesJson(raw: string): boolean {
-  const trimmed = raw
-    .trim()
-    .replace(/^```(?:json)?\s*/i, "")
-    .replace(/\s*```$/i, "")
-    .trim();
+  return hasImportableGeneratedSlides(raw);
+}
+
+function resolveInspectableSlideJson(draft: GeneratedSlideDraft | null | undefined): string {
+  const importedSlideJson = typeof draft?.importedSlideJson === "string"
+    ? draft.importedSlideJson.trim()
+    : "";
+  if (importedSlideJson) {
+    return draft?.importedSlideJson ?? "";
+  }
+  return typeof draft?.slideJson === "string" ? draft.slideJson : "";
+}
+
+function formatAuditTimestamp(value: string | null | undefined): string | null {
+  const trimmed = typeof value === "string" ? value.trim() : "";
   if (!trimmed) {
-    return false;
+    return null;
   }
-  try {
-    const parsed = JSON.parse(trimmed) as { slides?: unknown[] };
-    return Array.isArray(parsed?.slides) && parsed.slides.length > 0;
-  } catch {
-    return false;
-  }
+  const parsed = new Date(trimmed);
+  return Number.isNaN(parsed.getTime()) ? trimmed : parsed.toISOString();
 }
 
 type PersistedArticleBuilderDraft = {
@@ -267,9 +598,23 @@ type PersistedArticleBuilderDraft = {
   imagePromptContext: string;
   slideSkillId: string;
   slideOutputFormat: SlideOutputFormat;
+  editorialPlannerAudiencePreset: EditorialPlannerAudiencePreset;
+  editorialPlannerTonePreset: EditorialPlannerTonePreset;
+  editorialPlannerFitPreset: EditorialPlannerFitPreset;
+  editorialPlannerPageCountMode: EditorialPlannerPageCountMode;
+  editorialPlannerRequestedPageCount: number;
+  editorialPlannerGlobalStylePrompt: string;
+  editorialPlannerRenderSafetyJson: string;
+  editorialPlannerPageFillRulesJson: string;
+  editorialPlannerQualityOptimizerJson: string;
+  editorialPlannerImageAssets: EditorialPlannerImageAssetDraft[];
   preparedBundle: PreparedSlideBundle | null;
+  preparedBundleSkillId?: string;
   generatedImages: GeneratedImageAsset[];
   generatedSlideDraft: GeneratedSlideDraft | null;
+  generatedSlideDraftSkillId?: string;
+  slidePayloadEditorJson: string;
+  slidePayloadEditorDirty: boolean;
 };
 
 function sanitizePersistedGeneratedSlideDraft(
@@ -282,9 +627,44 @@ function sanitizePersistedGeneratedSlideDraft(
     slideJson: typeof draft.slideJson === "string" ? draft.slideJson : "",
     slidePayloadJson: typeof draft.slidePayloadJson === "string" ? draft.slidePayloadJson : "",
     modelId: typeof draft.modelId === "string" && draft.modelId.trim() ? draft.modelId.trim() : undefined,
+    generatedAt: typeof draft.generatedAt === "string" && draft.generatedAt.trim()
+      ? draft.generatedAt.trim()
+      : null,
+    selectedSkillId: typeof draft.selectedSkillId === "string" && draft.selectedSkillId.trim()
+      ? draft.selectedSkillId.trim()
+      : undefined,
+    selectedSkillName: typeof draft.selectedSkillName === "string" && draft.selectedSkillName.trim()
+      ? draft.selectedSkillName.trim()
+      : null,
+    executionSkillId: typeof draft.executionSkillId === "string" && draft.executionSkillId.trim()
+      ? draft.executionSkillId.trim()
+      : null,
+    executionSkillName: typeof draft.executionSkillName === "string" && draft.executionSkillName.trim()
+      ? draft.executionSkillName.trim()
+      : null,
+    runtimeBundleSkillId: typeof draft.runtimeBundleSkillId === "string" && draft.runtimeBundleSkillId.trim()
+      ? draft.runtimeBundleSkillId.trim()
+      : null,
+    runtimeBundleSkillName: typeof draft.runtimeBundleSkillName === "string" && draft.runtimeBundleSkillName.trim()
+      ? draft.runtimeBundleSkillName.trim()
+      : null,
+    runtimeAliasApplied: Boolean(draft.runtimeAliasApplied),
     artifactJobId: null,
     artifacts: [],
     downloadUrl: null,
+    debugTracePath: typeof draft.debugTracePath === "string" && draft.debugTracePath.trim()
+      ? draft.debugTracePath.trim()
+      : null,
+    importedSlideJson: typeof draft.importedSlideJson === "string" && draft.importedSlideJson.trim()
+      ? draft.importedSlideJson
+      : null,
+    importedAt: typeof draft.importedAt === "string" && draft.importedAt.trim()
+      ? draft.importedAt.trim()
+      : null,
+    importedFromArtifact: Boolean(draft.importedFromArtifact),
+    importedArtifactUrl: typeof draft.importedArtifactUrl === "string" && draft.importedArtifactUrl.trim()
+      ? draft.importedArtifactUrl.trim()
+      : null,
   };
 }
 
@@ -367,28 +747,33 @@ function extractTaskResultUrl(task: unknown): string | null {
 }
 
 function renderWizardStatusBadge(status: WizardStepStatus): {
-  labelKey: string;
+  label: string;
   className: string;
 } {
   switch (status) {
     case "done":
       return {
-        labelKey: "dialog.articleBuilder.workflowStatusDone",
+        label: "Done",
         className: "border-emerald-200 bg-emerald-50 text-emerald-700",
       };
     case "running":
       return {
-        labelKey: "dialog.articleBuilder.workflowStatusRunning",
+        label: "Running",
         className: "border-sky-200 bg-sky-50 text-sky-700",
+      };
+    case "stale":
+      return {
+        label: "Needs refresh",
+        className: "border-rose-200 bg-rose-50 text-rose-700",
       };
     case "ready":
       return {
-        labelKey: "dialog.articleBuilder.workflowStatusReady",
+        label: "Ready",
         className: "border-amber-200 bg-amber-50 text-amber-700",
       };
     default:
       return {
-        labelKey: "dialog.articleBuilder.workflowStatusWaiting",
+        label: "Waiting",
         className: "border-slate-200 bg-slate-50 text-slate-600",
       };
   }
@@ -397,20 +782,24 @@ function renderWizardStatusBadge(status: WizardStepStatus): {
 async function pollTaskUntilTerminal(
   taskId: string,
   fetchTask: (taskId: string) => Promise<unknown>,
+  options?: {
+    mediaLabel?: string;
+  },
 ): Promise<unknown> {
-  const maxAttempts = 60;
-  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+  const mediaLabel = options?.mediaLabel ?? "Image";
+  for (let attempt = 0; attempt < TASK_POLL_MAX_ATTEMPTS; attempt += 1) {
     const current = await fetchTask(taskId);
-    const status = String((current as { status?: unknown })?.status ?? "").trim().toLowerCase();
-    if (status === "completed" || status === "succeeded" || status === "ready") {
+    const status = normalizeTaskStatus(current);
+    if (status === "completed") {
       return current;
     }
-    if (status === "failed" || status === "error" || status === "cancelled") {
-      throw new Error(`Media task failed (${status || "unknown"})`);
+    if (status === "failed" || status === "cancelled") {
+      const errorMessage = extractTaskFailureMessage(current);
+      throw new Error(errorMessage || `${mediaLabel} generation ${status}.`);
     }
-    await sleepMs(1500);
+    await sleepMs(TASK_POLL_INTERVAL_MS);
   }
-  throw new Error("Timed out while waiting for generated images");
+  throw new Error(`${mediaLabel} generation timeout. Please try again.`);
 }
 
 async function copyText(value: string, successMessage: string, errorMessage: string): Promise<void> {
@@ -434,15 +823,271 @@ function formatPromptPlan(prompts: PreparedImagePrompt[]): string {
     .join("\n\n");
 }
 
-function formatGeneratedImages(assets: GeneratedImageAsset[]): string {
-  if (assets.length === 0) {
-    return "";
+function getPreparedImageSlotKey(
+  value: Pick<PreparedImagePrompt, "pageNumber" | "imageIndex" | "placementRole">,
+): string {
+  return `${value.pageNumber}:${value.imageIndex}:${value.placementRole}`;
+}
+
+function normalizeGeneratedImagesForBundle(
+  bundle: PreparedSlideBundle | null,
+  assets: GeneratedImageAsset[],
+): GeneratedImageAsset[] {
+  if (!bundle) {
+    return assets.filter((asset) => Boolean(asset.url?.trim()));
   }
-  return assets
-    .map((asset) => (
-      `Page ${asset.pageNumber} · ${asset.shortLabel}\n${asset.url}`
-    ))
-    .join("\n\n");
+  const prompts = Array.isArray(bundle.imagePrompts) ? bundle.imagePrompts : [];
+  if (prompts.length === 0) {
+    return [];
+  }
+  const assetBySlot = new Map<string, GeneratedImageAsset>();
+  assets.forEach((asset) => {
+    if (!asset.url?.trim()) {
+      return;
+    }
+    const slotKey = getPreparedImageSlotKey(asset);
+    if (!assetBySlot.has(slotKey)) {
+      assetBySlot.set(slotKey, asset);
+    }
+  });
+  return prompts.flatMap((prompt) => {
+    const matchedAsset = assetBySlot.get(getPreparedImageSlotKey(prompt));
+    if (!matchedAsset) {
+      return [];
+    }
+    return [{
+      ...prompt,
+      url: matchedAsset.url,
+    }];
+  });
+}
+
+function generatedImagesMatchPreparedBundle(
+  bundle: PreparedSlideBundle | null,
+  assets: GeneratedImageAsset[],
+): boolean {
+  if (!bundle) {
+    return assets.length === 0;
+  }
+  const prompts = Array.isArray(bundle.imagePrompts) ? bundle.imagePrompts : [];
+  if (prompts.length === 0) {
+    return true;
+  }
+  return normalizeGeneratedImagesForBundle(bundle, assets).length === prompts.length;
+}
+
+function generatedImageAssetsEqual(
+  left: GeneratedImageAsset[],
+  right: GeneratedImageAsset[],
+): boolean {
+  if (left.length !== right.length) {
+    return false;
+  }
+  return left.every((asset, index) => {
+    const other = right[index];
+    return Boolean(other)
+      && asset.id === other.id
+      && asset.pageNumber === other.pageNumber
+      && asset.imageIndex === other.imageIndex
+      && asset.placementRole === other.placementRole
+      && asset.shortLabel === other.shortLabel
+      && asset.prompt === other.prompt
+      && asset.url === other.url;
+  });
+}
+
+function normalizeLibraryMediaItems(
+  rows: unknown,
+  currentUserId: number | null,
+): PickerAsset[] {
+  if (!Array.isArray(rows)) {
+    return [];
+  }
+
+  const normalized: PickerAsset[] = [];
+  for (const rawRow of rows) {
+    const row = rawRow as LibraryResultItemLike;
+    const id = Number(row.id ?? row.item_id);
+    if (!Number.isFinite(id)) {
+      continue;
+    }
+    if (String(row.item_type || "").toLowerCase() !== "image") {
+      continue;
+    }
+    const normalizedSourceUrl = normalizeMediaSourceUrl(String(row.source_url || "").trim());
+    if (!normalizedSourceUrl) {
+      continue;
+    }
+    const title = String(row.title || `image #${id}`).trim() || `image #${id}`;
+    const thumbnailUrl = normalizeMediaSourceUrl(
+      String(row.thumbnail_url || row.preview_url || row.poster_url || normalizedSourceUrl).trim(),
+    );
+    const ownerUserId = Number(row.owner_user_id);
+    const accessSource = String(row.access_source || "").toLowerCase();
+    const isSharedByAccessSource = accessSource === "shared_group" || accessSource === "shared_direct";
+    const isSharedByOwner = Number.isFinite(ownerUserId)
+      && currentUserId !== null
+      && ownerUserId !== currentUserId;
+    normalized.push({
+      id,
+      title,
+      sourceUrl: normalizedSourceUrl,
+      thumbnailUrl,
+      sourceType: isSharedByAccessSource || isSharedByOwner ? "shared" : "library",
+    });
+  }
+  return normalized;
+}
+
+function readFirstHttpUrl(value: unknown, visited = new WeakSet<object>()): string | null {
+  if (!value) {
+    return null;
+  }
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return /^https?:\/\//i.test(trimmed) ? trimmed : null;
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = readFirstHttpUrl(item, visited);
+      if (found) {
+        return found;
+      }
+    }
+    return null;
+  }
+  if (typeof value !== "object") {
+    return null;
+  }
+  const record = value as Record<string, unknown>;
+  if (visited.has(record)) {
+    return null;
+  }
+  visited.add(record);
+  for (const key of ["url", "image_url", "imageUrl", "result_url", "resultUrl", "signed_url", "signedUrl", "src"]) {
+    const found = readFirstHttpUrl(record[key], visited);
+    if (found) {
+      return found;
+    }
+  }
+  for (const nestedValue of Object.values(record)) {
+    const found = readFirstHttpUrl(nestedValue, visited);
+    if (found) {
+      return found;
+    }
+  }
+  return null;
+}
+
+function extractMediaHistoryResultUrl(task: MediaHistoryTaskLike): string | null {
+  const directUrl = String(task.resultUrl || "").trim();
+  if (directUrl && /^https?:\/\//i.test(directUrl)) {
+    return directUrl;
+  }
+  const resultData = task.resultData;
+  if (!resultData || typeof resultData !== "object") {
+    return null;
+  }
+  const parsedResultJson = typeof resultData.resultJson === "string"
+    ? (() => {
+      try {
+        return JSON.parse(resultData.resultJson);
+      } catch {
+        return null;
+      }
+    })()
+    : null;
+  return (
+    readFirstHttpUrl(resultData.output)
+    || readFirstHttpUrl(resultData.result)
+    || readFirstHttpUrl(resultData.data)
+    || readFirstHttpUrl(resultData.response)
+    || readFirstHttpUrl(parsedResultJson)
+    || readFirstHttpUrl(resultData)
+  );
+}
+
+function extractMediaHistoryThumbnailUrl(task: MediaHistoryTaskLike): string | null {
+  const resultData = task.resultData;
+  if (!resultData || typeof resultData !== "object") {
+    return null;
+  }
+  const parsedResultJson = typeof resultData.resultJson === "string"
+    ? (() => {
+      try {
+        return JSON.parse(resultData.resultJson);
+      } catch {
+        return null;
+      }
+    })()
+    : null;
+  return (
+    readFirstHttpUrl(resultData.poster)
+    || readFirstHttpUrl(resultData.poster_url)
+    || readFirstHttpUrl(resultData.posterUrl)
+    || readFirstHttpUrl(resultData.thumbnail)
+    || readFirstHttpUrl(resultData.thumbnail_url)
+    || readFirstHttpUrl(resultData.thumbnailUrl)
+    || readFirstHttpUrl(parsedResultJson?.poster)
+    || readFirstHttpUrl(parsedResultJson?.thumbnail)
+    || null
+  );
+}
+
+function normalizeMediaHistoryItems(
+  rows: unknown,
+  query: string,
+): PickerAsset[] {
+  if (!Array.isArray(rows)) {
+    return [];
+  }
+  const normalizedQuery = query.trim().toLowerCase();
+  const normalized: PickerAsset[] = [];
+  for (const rawRow of rows) {
+    const row = rawRow as MediaHistoryTaskLike;
+    if (String(row.status || "").toLowerCase() !== "completed") {
+      continue;
+    }
+    if (String(row.mediaType || "").toLowerCase() !== "image") {
+      continue;
+    }
+    const sourceUrl = normalizeMediaSourceUrl(extractMediaHistoryResultUrl(row));
+    if (!sourceUrl) {
+      continue;
+    }
+    const title = String(row.prompt || row.model || row.taskId || row.id || "History image").trim();
+    const searchable = `${title} ${row.model || ""} ${row.prompt || ""} ${row.id || ""} ${row.taskId || ""}`.toLowerCase();
+    if (normalizedQuery && !searchable.includes(normalizedQuery)) {
+      continue;
+    }
+    const seed = `image:${row.id || row.taskId || ""}`;
+    let hash = 0;
+    for (let index = 0; index < seed.length; index += 1) {
+      hash = ((hash * 31) + seed.charCodeAt(index)) | 0;
+    }
+    normalized.push({
+      id: -Math.max(1, Math.abs(hash)),
+      title,
+      sourceUrl,
+      thumbnailUrl: normalizeMediaSourceUrl(extractMediaHistoryThumbnailUrl(row) || sourceUrl),
+      sourceType: "history",
+    });
+  }
+  return normalized;
+}
+
+function mergePickerAssets(first: PickerAsset[], second: PickerAsset[]): PickerAsset[] {
+  const merged: PickerAsset[] = [];
+  const seen = new Set<string>();
+  for (const asset of [...first, ...second]) {
+    const key = asset.sourceUrl.trim().toLowerCase();
+    if (!key || seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    merged.push(asset);
+  }
+  return merged;
 }
 
 export interface PresentationArticleGeneratorDialogProps {
@@ -456,7 +1101,7 @@ export interface PresentationArticleGeneratorDialogProps {
   onInsertSlides: (
     draft: GeneratedSlideDraft,
     options?: { closeDialog?: boolean; showSuccessToast?: boolean },
-  ) => Promise<boolean> | boolean;
+  ) => Promise<PresentationInsertSlidesResult> | PresentationInsertSlidesResult;
 }
 
 export function PresentationArticleGeneratorDialog({
@@ -473,6 +1118,9 @@ export function PresentationArticleGeneratorDialog({
   const { user } = useAuth();
   const trpcUtils = trpc.useUtils();
   const wasOpenRef = useRef(false);
+  const workflowStepRefs = useRef<Record<number, HTMLDivElement | null>>({});
+  const workflowPrimaryActionRefs = useRef<Record<number, HTMLButtonElement | null>>({});
+  const insertSlidesButtonRef = useRef<HTMLButtonElement | null>(null);
 
   const [topic, setTopic] = useState(initialTopic ?? "");
   const [article, setArticle] = useState(initialArticle ?? "");
@@ -491,14 +1139,61 @@ export function PresentationArticleGeneratorDialog({
   const [imagePromptContext, setImagePromptContext] = useState("");
   const [slideSkillId, setSlideSkillId] = useState("");
   const [slideOutputFormat, setSlideOutputFormat] = useState<SlideOutputFormat>("json");
+  const [editorialPlannerAudiencePreset, setEditorialPlannerAudiencePreset] = useState<EditorialPlannerAudiencePreset>("parents");
+  const [editorialPlannerTonePreset, setEditorialPlannerTonePreset] = useState<EditorialPlannerTonePreset>("warm_parenting");
+  const [editorialPlannerFitPreset, setEditorialPlannerFitPreset] = useState<EditorialPlannerFitPreset>("balanced");
+  const [editorialPlannerPageCountMode, setEditorialPlannerPageCountMode] = useState<EditorialPlannerPageCountMode>("auto");
+  const [editorialPlannerRequestedPageCount, setEditorialPlannerRequestedPageCount] = useState(6);
+  const [editorialPlannerGlobalStylePrompt, setEditorialPlannerGlobalStylePrompt] = useState("");
+  const [editorialPlannerRenderSafetyJson, setEditorialPlannerRenderSafetyJson] = useState("");
+  const [editorialPlannerPageFillRulesJson, setEditorialPlannerPageFillRulesJson] = useState("");
+  const [editorialPlannerQualityOptimizerJson, setEditorialPlannerQualityOptimizerJson] = useState("");
+  const [editorialPlannerImageAssets, setEditorialPlannerImageAssets] = useState<EditorialPlannerImageAssetDraft[]>([]);
   const [preparedBundle, setPreparedBundle] = useState<PreparedSlideBundle | null>(null);
+  const [preparedBundleSkillId, setPreparedBundleSkillId] = useState("");
   const [generatedImages, setGeneratedImages] = useState<GeneratedImageAsset[]>([]);
   const [generatedSlideDraft, setGeneratedSlideDraft] = useState<GeneratedSlideDraft | null>(null);
+  const [generatedSlideDraftSkillId, setGeneratedSlideDraftSkillId] = useState("");
+  const [generatedSlideDraftSessionSource, setGeneratedSlideDraftSessionSource] = useState<GeneratedSlideDraftSessionSource>("empty");
+  const [slidePayloadEditorJson, setSlidePayloadEditorJson] = useState("");
+  const [slidePayloadEditorDirty, setSlidePayloadEditorDirty] = useState(false);
   const [isGeneratingImages, setIsGeneratingImages] = useState(false);
   const [imageGenerationProgress, setImageGenerationProgress] = useState<string>("");
+  const [slotPickerKey, setSlotPickerKey] = useState<string | null>(null);
+  const [slotPickerTab, setSlotPickerTab] = useState<"library" | "history">("library");
+  const [slotPickerSearchQuery, setSlotPickerSearchQuery] = useState("");
+  const [regeneratingSlotKey, setRegeneratingSlotKey] = useState<string | null>(null);
+  const [guidedWorkflowStep, setGuidedWorkflowStep] = useState<number | null>(null);
+  const [guidedFooterAction, setGuidedFooterAction] = useState<"insert" | null>(null);
 
   const skillsQuery = trpc.skills.listFromDb.useQuery({ enabledOnly: true, limit: 100 }, { enabled: open });
   const mediaModelsQuery = trpc.media.getModels.useQuery({ type: "image" }, { enabled: open, staleTime: 300_000 });
+  const libraryImageListQuery = trpc.library.listDocuments.useQuery(
+    {
+      limit: 50,
+      offset: 0,
+      filters: { itemType: "image" },
+    },
+    { enabled: open },
+  );
+  const libraryImageSearchQuery = trpc.library.search.useQuery(
+    {
+      query: slotPickerSearchQuery,
+      limit: 50,
+      offset: 0,
+      filters: { itemType: "image" },
+    },
+    { enabled: open && slotPickerSearchQuery.trim().length > 0 },
+  );
+  const mediaHistoryImageQuery = trpc.media.listTasks.useQuery(
+    {
+      mediaType: "image",
+      status: "completed",
+      limit: 50,
+      offset: 0,
+    },
+    { enabled: open },
+  );
   const generateArticleMutation = trpc.presentation.ai.generateArticle.useMutation();
   const prepareSlideBundleMutation = trpc.presentation.ai.prepareSlideBundle.useMutation();
   const generateSlideDraftMutation = trpc.presentation.ai.generateSlideDraft.useMutation();
@@ -558,6 +1253,158 @@ export function PresentationArticleGeneratorDialog({
     () => slideSkillOptions.find((skill) => skill.id === slideSkillId) ?? null,
     [slideSkillId, slideSkillOptions],
   );
+  const selectedSlideSkillLabel = selectedSlideSkill?.name?.trim().toLowerCase() ?? "";
+  const isEditorialLayoutPlannerSelected = selectedSlideSkill?.id === EDITORIAL_LAYOUT_PLANNER_SKILL_ID;
+  const preparedBundleMatchesSelectedSkill = useMemo(() => {
+    if (!preparedBundle) {
+      return false;
+    }
+    if (preparedBundleSkillId.trim() && slideSkillId.trim()) {
+      return preparedBundleSkillId.trim() === slideSkillId.trim();
+    }
+    return preparedBundle.slideSkillLabel.trim().toLowerCase() === selectedSlideSkillLabel;
+  }, [preparedBundle, preparedBundleSkillId, selectedSlideSkillLabel, slideSkillId]);
+  const generatedSlideDraftMatchesSelectedSkill = useMemo(() => {
+    if (!generatedSlideDraft) {
+      return false;
+    }
+    if (generatedSlideDraftSkillId.trim() && slideSkillId.trim()) {
+      return generatedSlideDraftSkillId.trim() === slideSkillId.trim();
+    }
+    return preparedBundleMatchesSelectedSkill;
+  }, [generatedSlideDraft, generatedSlideDraftSkillId, preparedBundleMatchesSelectedSkill, slideSkillId]);
+  const bundleNeedsRefreshAfterSkillChange = Boolean(preparedBundle) && !preparedBundleMatchesSelectedSkill;
+  const slideDraftNeedsRefreshAfterSkillChange = Boolean(generatedSlideDraft) && !generatedSlideDraftMatchesSelectedSkill;
+  const activeEditorialPlannerQuickPresetId = useMemo(
+    () => EDITORIAL_PLANNER_QUICK_PRESETS.find((preset) => (
+      preset.audience === editorialPlannerAudiencePreset
+      && preset.tone === editorialPlannerTonePreset
+      && preset.fit === editorialPlannerFitPreset
+    ))?.id ?? null,
+    [editorialPlannerAudiencePreset, editorialPlannerFitPreset, editorialPlannerTonePreset],
+  );
+  const recommendedEditorialPlannerPreset = useMemo(
+    () => inferRecommendedEditorialPlannerPreset({
+      canvasRatio,
+      language: detectedLanguage,
+      topic,
+    }),
+    [canvasRatio, detectedLanguage, topic],
+  );
+  const editorialPlannerJsonError = useMemo(() => {
+    try {
+      parseEditorialPlannerJsonObject(editorialPlannerRenderSafetyJson, "Render safety JSON");
+      parseEditorialPlannerJsonObject(editorialPlannerPageFillRulesJson, "Page fill rules JSON");
+      parseEditorialPlannerJsonObject(editorialPlannerQualityOptimizerJson, "Quality optimizer JSON");
+      return null;
+    } catch (error) {
+      return error instanceof Error ? error.message : "Planner JSON is invalid.";
+    }
+  }, [
+    editorialPlannerPageFillRulesJson,
+    editorialPlannerQualityOptimizerJson,
+    editorialPlannerRenderSafetyJson,
+  ]);
+  const editorialPlannerAssetValidation = useMemo(
+    () => summarizeEditorialPlannerImageAssetIssues(editorialPlannerImageAssets),
+    [editorialPlannerImageAssets],
+  );
+  const editorialPlannerResolvedDefaults = useMemo(() => getEditorialPlannerResolvedDefaults({
+    canvasRatio,
+    language: detectedLanguage,
+    imagePromptContext,
+    targetAudiencePreset: editorialPlannerAudiencePreset,
+    tonePreset: editorialPlannerTonePreset,
+    fitPreset: editorialPlannerFitPreset,
+    globalStylePrompt: editorialPlannerGlobalStylePrompt,
+    renderSafety: (() => {
+      try {
+        return parseEditorialPlannerJsonObject(editorialPlannerRenderSafetyJson, "Render safety JSON");
+      } catch {
+        return null;
+      }
+    })(),
+    pageFillRules: (() => {
+      try {
+        return parseEditorialPlannerJsonObject(editorialPlannerPageFillRulesJson, "Page fill rules JSON");
+      } catch {
+        return null;
+      }
+    })(),
+    qualityOptimizer: (() => {
+      try {
+        return parseEditorialPlannerJsonObject(editorialPlannerQualityOptimizerJson, "Quality optimizer JSON");
+      } catch {
+        return null;
+      }
+    })(),
+  }), [
+    canvasRatio,
+    detectedLanguage,
+    editorialPlannerAudiencePreset,
+    editorialPlannerFitPreset,
+    editorialPlannerGlobalStylePrompt,
+    editorialPlannerPageFillRulesJson,
+    editorialPlannerQualityOptimizerJson,
+    editorialPlannerRenderSafetyJson,
+    editorialPlannerTonePreset,
+    imagePromptContext,
+  ]);
+  const editorialPlannerPresetPreview = useMemo(() => ({
+    target_audience: editorialPlannerResolvedDefaults.target_audience,
+    tone: editorialPlannerResolvedDefaults.tone,
+    global_style_prompt: editorialPlannerResolvedDefaults.global_style_prompt,
+    render_safety: editorialPlannerResolvedDefaults.render_safety,
+    page_fill_rules: editorialPlannerResolvedDefaults.page_fill_rules,
+    quality_optimizer: editorialPlannerResolvedDefaults.quality_optimizer,
+  }), [editorialPlannerResolvedDefaults]);
+  const editorialPlannerPayloadPreviewJson = useMemo(() => {
+    if (editorialPlannerJsonError) {
+      return editorialPlannerJsonError;
+    }
+    return JSON.stringify(buildEditorialLayoutPlannerPayload({
+      articleTitle: topic.trim() || "Untitled article",
+      articleBody: article.trim(),
+      articleLanguage: detectedLanguage,
+      canvasRatio,
+      imagePromptContext,
+      maxPages: preparedBundle?.maxPages ?? 6,
+      targetAudiencePreset: editorialPlannerAudiencePreset,
+      tonePreset: editorialPlannerTonePreset,
+      fitPreset: editorialPlannerFitPreset,
+      pageCountMode: editorialPlannerPageCountMode,
+      requestedPageCount: editorialPlannerRequestedPageCount,
+      globalStylePrompt: editorialPlannerGlobalStylePrompt,
+      renderSafety: parseEditorialPlannerJsonObject(editorialPlannerRenderSafetyJson, "Render safety JSON"),
+      pageFillRules: parseEditorialPlannerJsonObject(editorialPlannerPageFillRulesJson, "Page fill rules JSON"),
+      qualityOptimizer: parseEditorialPlannerJsonObject(editorialPlannerQualityOptimizerJson, "Quality optimizer JSON"),
+      imageAssets: normalizeEditorialPlannerImageAssets(editorialPlannerImageAssets).map((asset) => ({
+        asset_type: asset.assetType,
+        label: asset.label,
+        page_hint: asset.pageHint,
+        prompt: asset.prompt,
+        reference: asset.reference,
+      })) as EditorialPlannerImageAssetInput[],
+    }), null, 2);
+  }, [
+    article,
+    canvasRatio,
+    detectedLanguage,
+    editorialPlannerAudiencePreset,
+    editorialPlannerFitPreset,
+    editorialPlannerGlobalStylePrompt,
+    editorialPlannerImageAssets,
+    editorialPlannerJsonError,
+    editorialPlannerPageCountMode,
+    editorialPlannerPageFillRulesJson,
+    editorialPlannerQualityOptimizerJson,
+    editorialPlannerRenderSafetyJson,
+    editorialPlannerRequestedPageCount,
+    editorialPlannerTonePreset,
+    imagePromptContext,
+    preparedBundle?.maxPages,
+    topic,
+  ]);
   const artifactCapableSlideSkillOptions = useMemo(
     () => slideSkillOptions.filter((skill) => supportsGeneratedSlideArtifacts(skill)),
     [slideSkillOptions],
@@ -572,6 +1419,26 @@ export function PresentationArticleGeneratorDialog({
     () => Array.from(new Set<SlideOutputFormat>(["json", slideOutputFormat])),
     [slideOutputFormat],
   );
+  const selectableSlideOutputFormats = useMemo<SlideOutputFormat[]>(
+    () => (isEditorialLayoutPlannerSelected ? ["json"] : SUPPORTED_OUTPUT_FORMATS),
+    [isEditorialLayoutPlannerSelected],
+  );
+  const normalizedGeneratedImages = useMemo(
+    () => normalizeGeneratedImagesForBundle(preparedBundle, generatedImages),
+    [generatedImages, preparedBundle],
+  );
+  const missingImagePrompts = useMemo(() => {
+    const prompts = preparedBundle?.imagePrompts ?? [];
+    if (prompts.length === 0) {
+      return [] as PreparedImagePrompt[];
+    }
+    const availableSlots = new Set(normalizedGeneratedImages.map((asset) => getPreparedImageSlotKey(asset)));
+    return prompts.filter((prompt) => !availableSlots.has(getPreparedImageSlotKey(prompt)));
+  }, [normalizedGeneratedImages, preparedBundle?.imagePrompts]);
+  const generatedImagesAreCurrentForBundle = useMemo(
+    () => generatedImagesMatchPreparedBundle(preparedBundle, normalizedGeneratedImages),
+    [normalizedGeneratedImages, preparedBundle],
+  );
   const articleStepStatus = useMemo<WizardStepStatus>(() => {
     if (generateArticleMutation.isPending) {
       return "running";
@@ -585,38 +1452,254 @@ export function PresentationArticleGeneratorDialog({
     if (prepareSlideBundleMutation.isPending) {
       return "running";
     }
+    if (bundleNeedsRefreshAfterSkillChange) {
+      return "stale";
+    }
     if (preparedBundle) {
       return "done";
     }
     return article.trim() ? "ready" : "idle";
-  }, [article, prepareSlideBundleMutation.isPending, preparedBundle]);
+  }, [article, bundleNeedsRefreshAfterSkillChange, prepareSlideBundleMutation.isPending, preparedBundle]);
   const imageStepStatus = useMemo<WizardStepStatus>(() => {
     if (isGeneratingImages || generateImageAsyncMutation.isPending) {
       return "running";
     }
-    if (generatedImages.length > 0) {
+    if (bundleNeedsRefreshAfterSkillChange) {
+      return "stale";
+    }
+    if (preparedBundle && generatedImagesAreCurrentForBundle) {
       return "done";
     }
     return preparedBundle ? "ready" : "idle";
-  }, [generateImageAsyncMutation.isPending, generatedImages.length, isGeneratingImages, preparedBundle]);
+  }, [bundleNeedsRefreshAfterSkillChange, generateImageAsyncMutation.isPending, generatedImagesAreCurrentForBundle, isGeneratingImages, preparedBundle]);
   const availableSlideArtifacts = useMemo(
     () => (generatedSlideDraft?.artifacts ?? []).map(normalizeSlideArtifact).filter((artifact): artifact is SlideArtifact => Boolean(artifact)),
     [generatedSlideDraft?.artifacts],
   );
-  const hasImportableSlides = useMemo(
-    () => hasImportableSlidesJson(generatedSlideDraft?.slideJson ?? "")
-      || availableSlideArtifacts.some((artifact) => artifact.format === "json"),
-    [availableSlideArtifacts, generatedSlideDraft?.slideJson],
+  const inspectableSlideJson = useMemo(
+    () => resolveInspectableSlideJson(generatedSlideDraft),
+    [generatedSlideDraft],
   );
+  const hasImportableSlides = useMemo(
+    () => hasImportableSlidesJson(inspectableSlideJson)
+    || availableSlideArtifacts.some((artifact) => artifact.format === "json"),
+    [availableSlideArtifacts, inspectableSlideJson],
+  );
+  const generatedSlideImportability = useMemo(
+    () => inspectGeneratedSlideImportability(inspectableSlideJson),
+    [inspectableSlideJson],
+  );
+  const generatedSlideRunTimestamp = useMemo(
+    () => formatAuditTimestamp(generatedSlideDraft?.generatedAt),
+    [generatedSlideDraft?.generatedAt],
+  );
+  const generatedSlideImportedTimestamp = useMemo(
+    () => formatAuditTimestamp(generatedSlideDraft?.importedAt),
+    [generatedSlideDraft?.importedAt],
+  );
+  const generatedSlideSelectedSkillId = useMemo(() => {
+    const selectedSkillIdFromDraft = typeof generatedSlideDraft?.selectedSkillId === "string"
+      ? generatedSlideDraft.selectedSkillId.trim()
+      : "";
+    if (selectedSkillIdFromDraft) {
+      return selectedSkillIdFromDraft;
+    }
+    return generatedSlideDraftSkillId.trim() || slideSkillId.trim() || null;
+  }, [generatedSlideDraft?.selectedSkillId, generatedSlideDraftSkillId, slideSkillId]);
+  const generatedSlideSelectedSkillLabel = useMemo(() => {
+    const selectedSkillNameFromDraft = typeof generatedSlideDraft?.selectedSkillName === "string"
+      ? generatedSlideDraft.selectedSkillName.trim()
+      : "";
+    if (selectedSkillNameFromDraft) {
+      return selectedSkillNameFromDraft;
+    }
+    return selectedSlideSkillLabel.trim() || null;
+  }, [generatedSlideDraft?.selectedSkillName, selectedSlideSkillLabel]);
+  const generatedSlideRuntimeBundleId = useMemo(() => {
+    const runtimeBundleId = typeof generatedSlideDraft?.runtimeBundleSkillId === "string"
+      ? generatedSlideDraft.runtimeBundleSkillId.trim()
+      : "";
+    return runtimeBundleId || null;
+  }, [generatedSlideDraft?.runtimeBundleSkillId]);
+  const generatedSlideRuntimeBundleLabel = useMemo(() => {
+    const runtimeBundleName = typeof generatedSlideDraft?.runtimeBundleSkillName === "string"
+      ? generatedSlideDraft.runtimeBundleSkillName.trim()
+      : "";
+    return runtimeBundleName || null;
+  }, [generatedSlideDraft?.runtimeBundleSkillName]);
+  const generatedSlidePayloadSourceLabel = useMemo(() => {
+    if (generatedSlideDraft?.importedSlideJson?.trim()) {
+      return generatedSlideDraft.importedFromArtifact
+        ? "Payload shown: JSON artifact that was actually imported into this deck."
+        : "Payload shown: Slide JSON that was actually imported into this deck.";
+    }
+    return "Payload shown: Latest generated slide JSON.";
+  }, [generatedSlideDraft?.importedFromArtifact, generatedSlideDraft?.importedSlideJson]);
+  const generatedSlideSnapshotSourceLabel = useMemo(() => {
+    switch (generatedSlideDraftSessionSource) {
+      case "restored-draft":
+        return "Snapshot source: restored from the saved draft for this project.";
+      case "fresh-run":
+        return "Snapshot source: generated in this session.";
+      case "empty":
+      default:
+        return null;
+    }
+  }, [generatedSlideDraftSessionSource]);
+  const generatedSlideImportabilityBadge = useMemo(() => {
+    switch (generatedSlideImportability.status) {
+      case "importable":
+        return {
+          label: `Importable ${generatedSlideImportability.importableSlides}/${generatedSlideImportability.totalSlides}`,
+          className: "border-emerald-200 bg-emerald-50 text-emerald-700",
+          hint: "Slide JSON นี้มี slides ที่นำเข้าได้จริง",
+        };
+      case "empty-slides":
+        return {
+          label: `Empty slides ${generatedSlideImportability.totalSlides}`,
+          className: "border-amber-200 bg-amber-50 text-amber-700",
+          hint: "พบ slides แต่ทุกหน้าว่างหรือไม่มี element ที่นำเข้าได้",
+        };
+      case "missing-slides":
+        return {
+          label: "Missing slides[]",
+          className: "border-rose-200 bg-rose-50 text-rose-700",
+          hint: "JSON นี้ไม่มี top-level slides[] หรือไม่มี layoutSpec.slides[]",
+        };
+      case "malformed":
+        return {
+          label: "Malformed JSON",
+          className: "border-rose-200 bg-rose-50 text-rose-700",
+          hint: "JSON parse ไม่ได้หรือมี envelope ที่อ่านไม่ออก",
+        };
+      default:
+        return {
+          label: "No slide JSON",
+          className: "border-slate-200 bg-slate-50 text-slate-600",
+          hint: "ยังไม่มี draft ล่าสุดสำหรับตรวจ importability",
+        };
+    }
+  }, [generatedSlideImportability]);
   const slideStepStatus = useMemo<WizardStepStatus>(() => {
     if (generateSlideDraftMutation.isPending) {
       return "running";
     }
+    if (bundleNeedsRefreshAfterSkillChange || slideDraftNeedsRefreshAfterSkillChange) {
+      return "stale";
+    }
     if (hasImportableSlides) {
       return "done";
     }
-    return generatedImages.length > 0 ? "ready" : "idle";
-  }, [generateSlideDraftMutation.isPending, generatedImages.length, hasImportableSlides]);
+    return preparedBundle ? "ready" : "idle";
+  }, [bundleNeedsRefreshAfterSkillChange, generateSlideDraftMutation.isPending, hasImportableSlides, preparedBundle, slideDraftNeedsRefreshAfterSkillChange]);
+  const bundleRefreshHint = bundleNeedsRefreshAfterSkillChange
+    ? "เปลี่ยน slide skill แล้ว Bundle เดิมไม่ตรงกับ skill ปัจจุบัน กรุณา Prepare Bundle ใหม่"
+    : null;
+  const imageRefreshHint = bundleNeedsRefreshAfterSkillChange
+    ? "รูปเดิมจะ reuse ได้เท่าที่ slot ยังตรงกัน แต่ควร Prepare Bundle ใหม่ก่อน"
+    : null;
+  const slideRefreshHint = bundleNeedsRefreshAfterSkillChange || slideDraftNeedsRefreshAfterSkillChange
+    ? "Slide JSON เดิมมาจาก skill ก่อนหน้า กรุณา Generate Slide JSON ใหม่ก่อนนำเข้า"
+    : null;
+  const canInsertGeneratedSlides = hasImportableSlides && !slideRefreshHint && !generateSlideDraftMutation.isPending;
+  const guidedWorkflowMessage = guidedWorkflowStep === 2
+    ? "Recommended next step: Refresh bundle เพื่อให้ layout plan และ payload ตรงกับ slide skill ใหม่"
+    : guidedWorkflowStep === 4
+      ? "Recommended next step: Generate Slide JSON ใหม่จาก bundle ล่าสุดก่อนนำเข้า"
+      : guidedFooterAction === "insert"
+        ? "Recommended next step: Insert Slides เพื่อใช้งานผลลัพธ์ล่าสุดใน Presentation Editor"
+        : null;
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    if (guidedFooterAction === "insert") {
+      const timer = window.setTimeout(() => {
+        insertSlidesButtonRef.current?.focus();
+      }, 220);
+      return () => window.clearTimeout(timer);
+    }
+    if (!guidedWorkflowStep) {
+      return;
+    }
+    const node = workflowStepRefs.current[guidedWorkflowStep];
+    const primaryAction = workflowPrimaryActionRefs.current[guidedWorkflowStep];
+    if (!node) {
+      return;
+    }
+    if (typeof node.scrollIntoView === "function") {
+      node.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+    const timer = window.setTimeout(() => {
+      primaryAction?.focus();
+    }, 220);
+    return () => window.clearTimeout(timer);
+  }, [guidedWorkflowStep, open]);
+  const generatedImageCards = useMemo(() => {
+    const assetBySlot = new Map(normalizedGeneratedImages.map((asset) => [getPreparedImageSlotKey(asset), asset] as const));
+    const plannedPrompts = preparedBundle?.imagePrompts ?? [];
+    if (plannedPrompts.length > 0) {
+      return plannedPrompts.map((prompt) => ({
+        prompt,
+        asset: assetBySlot.get(getPreparedImageSlotKey(prompt)) ?? null,
+      }));
+    }
+    return normalizedGeneratedImages.map((asset) => ({
+      prompt: asset,
+      asset,
+    }));
+  }, [normalizedGeneratedImages, preparedBundle?.imagePrompts]);
+  const pageSlotCounts = useMemo(() => {
+    const counts = new Map<number, number>();
+    for (const prompt of preparedBundle?.imagePrompts ?? []) {
+      counts.set(prompt.pageNumber, (counts.get(prompt.pageNumber) ?? 0) + 1);
+    }
+    return counts;
+  }, [preparedBundle?.imagePrompts]);
+  const leadPromptByPage = useMemo(() => {
+    const nextMap = new Map<number, PreparedImagePrompt>();
+    const sortedPrompts = [...(preparedBundle?.imagePrompts ?? [])]
+      .sort((left, right) => left.pageNumber - right.pageNumber || left.imageIndex - right.imageIndex);
+    for (const prompt of sortedPrompts) {
+      if (!nextMap.has(prompt.pageNumber)) {
+        nextMap.set(prompt.pageNumber, prompt);
+      }
+    }
+    return nextMap;
+  }, [preparedBundle?.imagePrompts]);
+  const pageImagePlanOverrides = useMemo(
+    () => (preparedBundle?.preflightPages ?? []).map((page) => ({
+      pageNumber: page.pageNumber,
+      maxImagesOverride: pageSlotCounts.get(page.pageNumber) ?? 0,
+    }))
+      .sort((left, right) => left.pageNumber - right.pageNumber),
+    [pageSlotCounts, preparedBundle?.preflightPages],
+  );
+  const libraryPickerAssets = useMemo(
+    () => normalizeLibraryMediaItems(
+      (slotPickerSearchQuery.trim().length > 0
+        ? libraryImageSearchQuery.data?.results
+        : libraryImageListQuery.data?.results) ?? [],
+      user?.id ?? null,
+    ),
+    [
+      libraryImageListQuery.data?.results,
+      libraryImageSearchQuery.data?.results,
+      slotPickerSearchQuery,
+      user?.id,
+    ],
+  );
+  const historyPickerAssets = useMemo(
+    () => normalizeMediaHistoryItems(mediaHistoryImageQuery.data?.tasks ?? [], slotPickerSearchQuery),
+    [mediaHistoryImageQuery.data?.tasks, slotPickerSearchQuery],
+  );
+  const pickerAssets = useMemo(
+    () => mergePickerAssets(
+      slotPickerTab === "history" ? historyPickerAssets : libraryPickerAssets,
+      [],
+    ),
+    [historyPickerAssets, libraryPickerAssets, slotPickerTab],
+  );
   const downloadableSlideArtifact = useMemo(
     () => {
       if (generatedSlideDraft?.downloadUrl) {
@@ -655,6 +1738,15 @@ export function PresentationArticleGeneratorDialog({
     }
     const persistedDraft = loadPersistedArticleBuilderDraft(deckId);
     if (persistedDraft) {
+      const preparedPayloadJson = normalizeSlidePayloadJson(persistedDraft.preparedBundle?.slidePayloadJson);
+      const generatedPayloadJson = normalizeSlidePayloadJson(
+        persistedDraft.generatedSlideDraft?.slidePayloadJson,
+        preparedPayloadJson,
+      );
+      const editorPayloadJson = normalizeSlidePayloadJson(
+        persistedDraft.slidePayloadEditorJson,
+        generatedPayloadJson,
+      );
       setTopic(persistedDraft.topic);
       setArticle(persistedDraft.article);
       setExecutionSource(persistedDraft.executionSource);
@@ -671,10 +1763,45 @@ export function PresentationArticleGeneratorDialog({
       setImagePromptContext(persistedDraft.imagePromptContext);
       setSlideSkillId(persistedDraft.slideSkillId);
       setSlideOutputFormat(persistedDraft.slideOutputFormat);
+      setEditorialPlannerAudiencePreset(persistedDraft.editorialPlannerAudiencePreset ?? "parents");
+      setEditorialPlannerTonePreset(persistedDraft.editorialPlannerTonePreset ?? "warm_parenting");
+      setEditorialPlannerFitPreset(persistedDraft.editorialPlannerFitPreset ?? "balanced");
+      setEditorialPlannerPageCountMode(persistedDraft.editorialPlannerPageCountMode ?? "auto");
+      setEditorialPlannerRequestedPageCount(
+        Number.isFinite(persistedDraft.editorialPlannerRequestedPageCount)
+          ? Math.max(1, Math.min(20, Math.round(persistedDraft.editorialPlannerRequestedPageCount)))
+          : 6,
+      );
+      setEditorialPlannerGlobalStylePrompt(persistedDraft.editorialPlannerGlobalStylePrompt ?? "");
+      setEditorialPlannerRenderSafetyJson(persistedDraft.editorialPlannerRenderSafetyJson ?? "");
+      setEditorialPlannerPageFillRulesJson(persistedDraft.editorialPlannerPageFillRulesJson ?? "");
+      setEditorialPlannerQualityOptimizerJson(persistedDraft.editorialPlannerQualityOptimizerJson ?? "");
+      setEditorialPlannerImageAssets(normalizeEditorialPlannerAssetDrafts(persistedDraft.editorialPlannerImageAssets ?? []));
       setPreparedBundle(persistedDraft.preparedBundle);
+      setPreparedBundleSkillId(
+        persistedDraft.preparedBundle
+          ? (persistedDraft.preparedBundleSkillId?.trim() || persistedDraft.slideSkillId || "")
+          : "",
+      );
       setGeneratedImages(persistedDraft.generatedImages ?? []);
       setGeneratedSlideDraft(persistedDraft.generatedSlideDraft);
+      setGeneratedSlideDraftSkillId(
+        persistedDraft.generatedSlideDraft
+          ? (persistedDraft.generatedSlideDraftSkillId?.trim() || persistedDraft.slideSkillId || "")
+          : ""
+      );
+      setGeneratedSlideDraftSessionSource(persistedDraft.generatedSlideDraft ? "restored-draft" : "empty");
+      setSlidePayloadEditorJson(editorPayloadJson);
+      setSlidePayloadEditorDirty(Boolean(
+        persistedDraft.slidePayloadEditorDirty
+        && editorPayloadJson
+        && editorPayloadJson === normalizeSlidePayloadJson(persistedDraft.slidePayloadEditorJson)
+      ));
       setImageGenerationProgress("");
+      setSlotPickerKey(null);
+      setSlotPickerSearchQuery("");
+      setSlotPickerTab("library");
+      setRegeneratingSlotKey(null);
       return;
     }
     setTopic(initialTopic ?? "");
@@ -693,11 +1820,36 @@ export function PresentationArticleGeneratorDialog({
     setImagePromptContext("");
     setSlideSkillId("");
     setSlideOutputFormat("json");
+    setEditorialPlannerAudiencePreset("parents");
+    setEditorialPlannerTonePreset("warm_parenting");
+    setEditorialPlannerFitPreset("balanced");
+    setEditorialPlannerPageCountMode("auto");
+    setEditorialPlannerRequestedPageCount(6);
+    setEditorialPlannerGlobalStylePrompt("");
+    setEditorialPlannerRenderSafetyJson("");
+    setEditorialPlannerPageFillRulesJson("");
+    setEditorialPlannerQualityOptimizerJson("");
+    setEditorialPlannerImageAssets([]);
     setPreparedBundle(null);
+    setPreparedBundleSkillId("");
     setGeneratedImages([]);
     setGeneratedSlideDraft(null);
+    setGeneratedSlideDraftSkillId("");
+    setGeneratedSlideDraftSessionSource("empty");
+    setSlidePayloadEditorJson("");
+    setSlidePayloadEditorDirty(false);
     setImageGenerationProgress("");
+    setSlotPickerKey(null);
+    setSlotPickerSearchQuery("");
+    setSlotPickerTab("library");
+    setRegeneratingSlotKey(null);
   }, [deckId, initialArticle, initialCanvasRatio, initialTopic, open]);
+
+  useEffect(() => {
+    if (!generatedSlideDraft) {
+      setGeneratedSlideDraftSessionSource("empty");
+    }
+  }, [generatedSlideDraft]);
 
   useEffect(() => {
     if (!open) {
@@ -720,9 +1872,23 @@ export function PresentationArticleGeneratorDialog({
       imagePromptContext,
       slideSkillId,
       slideOutputFormat,
+      editorialPlannerAudiencePreset,
+      editorialPlannerTonePreset,
+      editorialPlannerFitPreset,
+      editorialPlannerPageCountMode,
+      editorialPlannerRequestedPageCount,
+      editorialPlannerGlobalStylePrompt,
+      editorialPlannerRenderSafetyJson,
+      editorialPlannerPageFillRulesJson,
+      editorialPlannerQualityOptimizerJson,
+      editorialPlannerImageAssets,
       preparedBundle,
+      preparedBundleSkillId,
       generatedImages,
       generatedSlideDraft,
+      generatedSlideDraftSkillId,
+      slidePayloadEditorJson,
+      slidePayloadEditorDirty,
     });
   }, [
     advancedMediaOptionsEnabled,
@@ -738,12 +1904,26 @@ export function PresentationArticleGeneratorDialog({
     imagePromptContext,
     mediaModelExtraParams,
     open,
+    editorialPlannerAudiencePreset,
+    editorialPlannerTonePreset,
+    editorialPlannerFitPreset,
+    editorialPlannerPageCountMode,
+    editorialPlannerRequestedPageCount,
+    editorialPlannerGlobalStylePrompt,
+    editorialPlannerRenderSafetyJson,
+    editorialPlannerPageFillRulesJson,
+    editorialPlannerQualityOptimizerJson,
+    editorialPlannerImageAssets,
     preparedBundle,
+    preparedBundleSkillId,
     requiresThinking,
     requiresWebSearch,
     skillId,
+    slidePayloadEditorJson,
+    slidePayloadEditorDirty,
     slideOutputFormat,
     slideSkillId,
+    generatedSlideDraftSkillId,
     targetImageCount,
     topic,
   ]);
@@ -768,20 +1948,57 @@ export function PresentationArticleGeneratorDialog({
   }, [artifactCapableSlideSkillOptions, artifactRequiredForSelectedOutput, open, slideSkillId, slideSkillOptions]);
 
   useEffect(() => {
-    if (!open || !artifactRequiredForSelectedOutput || selectedSlideSkillSupportsArtifacts) {
+    if (!open || !isEditorialLayoutPlannerSelected) {
       return;
     }
-    const fallbackSkill = artifactCapableSlideSkillOptions[0];
-    if (fallbackSkill && fallbackSkill.id !== slideSkillId) {
-      setSlideSkillId(fallbackSkill.id);
+    if (slideOutputFormat !== "json") {
+      setSlideOutputFormat("json");
     }
+    if (
+      editorialPlannerGlobalStylePrompt.trim()
+      || editorialPlannerRenderSafetyJson.trim()
+      || editorialPlannerPageFillRulesJson.trim()
+      || editorialPlannerQualityOptimizerJson.trim()
+    ) {
+      return;
+    }
+    applyEditorialPlannerQuickPreset(recommendedEditorialPlannerPreset);
   }, [
-    artifactCapableSlideSkillOptions,
-    artifactRequiredForSelectedOutput,
+    editorialPlannerGlobalStylePrompt,
+    editorialPlannerPageFillRulesJson,
+    editorialPlannerQualityOptimizerJson,
+    editorialPlannerRenderSafetyJson,
+    isEditorialLayoutPlannerSelected,
     open,
-    selectedSlideSkillSupportsArtifacts,
-    slideSkillId,
+    recommendedEditorialPlannerPreset,
+    slideOutputFormat,
   ]);
+
+  useEffect(() => {
+    if (!open || isGeneratingImages || !preparedBundle || generatedImages.length === 0) {
+      return;
+    }
+    if (generatedImageAssetsEqual(generatedImages, normalizedGeneratedImages)) {
+      return;
+    }
+    setGeneratedImages(normalizedGeneratedImages);
+    setGeneratedSlideDraft(null);
+    setGeneratedSlideDraftSkillId("");
+  }, [generatedImages, isGeneratingImages, normalizedGeneratedImages, open, preparedBundle]);
+
+  useEffect(() => {
+    if (!open) {
+      setSlotPickerKey(null);
+      setSlotPickerSearchQuery("");
+      setRegeneratingSlotKey(null);
+    }
+  }, [open]);
+
+  useEffect(() => {
+    if (!generatedSlideDraft || slideRefreshHint || !hasImportableSlides) {
+      setGuidedFooterAction(null);
+    }
+  }, [generatedSlideDraft, hasImportableSlides, slideRefreshHint]);
 
   useEffect(() => {
     const artifacts = (sandboxJobStatusQuery.data?.artifacts ?? [])
@@ -851,6 +2068,92 @@ export function PresentationArticleGeneratorDialog({
     );
   };
 
+  const handleSlideSkillChange = (nextSkillId: string) => {
+    const nextSkill = slideSkillOptions.find((skill) => skill.id === nextSkillId) ?? null;
+    const nextSkillLabel = nextSkill?.name?.trim().toLowerCase() ?? "";
+    const bundleWillBecomeStale = Boolean(preparedBundle) && (
+      (preparedBundleSkillId.trim() && preparedBundleSkillId !== nextSkillId)
+      || (!preparedBundleSkillId.trim() && preparedBundle.slideSkillLabel.trim().toLowerCase() !== nextSkillLabel)
+    );
+    const slideDraftWillBecomeStale = Boolean(generatedSlideDraft) && (
+      (generatedSlideDraftSkillId.trim() && generatedSlideDraftSkillId !== nextSkillId)
+      || (!generatedSlideDraftSkillId.trim() && bundleWillBecomeStale)
+    );
+    setSlideSkillId(nextSkillId);
+    if (nextSkillId === EDITORIAL_LAYOUT_PLANNER_SKILL_ID) {
+      const recommendedPreset = inferRecommendedEditorialPlannerPreset({
+        canvasRatio,
+        language: detectedLanguage,
+        topic,
+      });
+      applyEditorialPlannerQuickPreset(recommendedPreset);
+      setSlideOutputFormat("json");
+    }
+    if (requiresGeneratedSlideArtifact(slideOutputFormat) && !supportsGeneratedSlideArtifacts(nextSkill)) {
+      setSlideOutputFormat("json");
+      toast.info(t("dialog.articleBuilder.slideOutputFormatDowngraded", {
+        format: slideOutputFormat.toUpperCase(),
+      }));
+    }
+    if (bundleWillBecomeStale || slideDraftWillBecomeStale) {
+      setGuidedWorkflowStep(2);
+      setGuidedFooterAction(null);
+      toast.info("เปลี่ยน slide skill แล้ว: ควร Prepare Bundle ใหม่ และ Generate Slide JSON ใหม่ ส่วนรูปจะ reuse ให้เท่าที่ slot เดิมยังตรงกัน");
+    }
+  };
+
+  const applyEditorialPlannerQuickPreset = (preset: EditorialPlannerQuickPreset) => {
+    setEditorialPlannerAudiencePreset(preset.audience);
+    setEditorialPlannerTonePreset(preset.tone);
+    setEditorialPlannerFitPreset(preset.fit);
+    const defaults = getEditorialPlannerResolvedDefaults({
+      canvasRatio,
+      language: detectedLanguage,
+      imagePromptContext,
+      targetAudiencePreset: preset.audience,
+      tonePreset: preset.tone,
+      fitPreset: preset.fit,
+    });
+    setEditorialPlannerPageCountMode("auto");
+    setEditorialPlannerRequestedPageCount(preparedBundle?.maxPages ?? 6);
+    setEditorialPlannerGlobalStylePrompt(defaults.global_style_prompt);
+    setEditorialPlannerRenderSafetyJson(stringifyPlannerJson(defaults.render_safety));
+    setEditorialPlannerPageFillRulesJson(stringifyPlannerJson(defaults.page_fill_rules));
+    setEditorialPlannerQualityOptimizerJson(stringifyPlannerJson(defaults.quality_optimizer));
+  };
+
+  const resolveEditorialPlannerOptionsOrToast = () => {
+    if (!isEditorialLayoutPlannerSelected) {
+      return undefined;
+    }
+    if (editorialPlannerAssetValidation.errors.length > 0) {
+      toast.error(editorialPlannerAssetValidation.errors[0]!);
+      return null;
+    }
+    if (editorialPlannerAssetValidation.warnings.length > 0) {
+      toast.info(editorialPlannerAssetValidation.warnings[0]!);
+    }
+    try {
+      return {
+        targetAudience: editorialPlannerAudiencePreset,
+        tonePreset: editorialPlannerTonePreset,
+        fitPreset: editorialPlannerFitPreset,
+        pageCountMode: editorialPlannerPageCountMode,
+        requestedPageCount: editorialPlannerPageCountMode === "fixed"
+          ? Math.max(1, Math.min(20, Math.round(editorialPlannerRequestedPageCount)))
+          : undefined,
+        globalStylePrompt: editorialPlannerGlobalStylePrompt.trim() || null,
+        renderSafety: parseEditorialPlannerJsonObject(editorialPlannerRenderSafetyJson, "Render safety JSON"),
+        pageFillRules: parseEditorialPlannerJsonObject(editorialPlannerPageFillRulesJson, "Page fill rules JSON"),
+        qualityOptimizer: parseEditorialPlannerJsonObject(editorialPlannerQualityOptimizerJson, "Quality optimizer JSON"),
+        imageAssets: normalizeEditorialPlannerImageAssets(editorialPlannerImageAssets),
+      };
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Planner input is invalid.");
+      return null;
+    }
+  };
+
   const resolveRequestedSlideGenerationPlan = (): {
     slideSkillId: string;
     outputFormats: SlideOutputFormat[];
@@ -871,16 +2174,6 @@ export function PresentationArticleGeneratorDialog({
         outputFormats: slideOutputFormats,
       };
     }
-    const fallbackSkill = artifactCapableSlideSkillOptions[0];
-    if (fallbackSkill) {
-      if (fallbackSkill.id !== slideSkillId) {
-        setSlideSkillId(fallbackSkill.id);
-      }
-      return {
-        slideSkillId: fallbackSkill.id,
-        outputFormats: slideOutputFormats,
-      };
-    }
     setSlideOutputFormat("json");
     toast.info(t("dialog.articleBuilder.slideOutputFormatDowngraded", {
       format: slideOutputFormat.toUpperCase(),
@@ -895,9 +2188,13 @@ export function PresentationArticleGeneratorDialog({
     articleOverride?: string;
     topicOverride?: string;
     successMessage?: string;
+    preserveExistingImages?: boolean;
   }): Promise<PreparedSlideBundle | null> => {
-    const trimmedTopic = (options?.topicOverride ?? topic).trim();
     const trimmedArticle = (options?.articleOverride ?? article).trim();
+    const fallbackTopic = inferTopicFallbackFromArticle(trimmedArticle);
+    const trimmedTopic = ((options?.topicOverride ?? topic).trim() || (
+      slideSkillId === EDITORIAL_LAYOUT_PLANNER_SKILL_ID ? fallbackTopic : ""
+    )).trim();
     if (!trimmedTopic) {
       toast.error(t("dialog.articleBuilder.topicRequired"));
       return null;
@@ -908,6 +2205,12 @@ export function PresentationArticleGeneratorDialog({
     }
     const generationPlan = resolveRequestedSlideGenerationPlan();
     if (!generationPlan) {
+      return null;
+    }
+    const editorialPlannerOptions = generationPlan.slideSkillId === EDITORIAL_LAYOUT_PLANNER_SKILL_ID
+      ? resolveEditorialPlannerOptionsOrToast()
+      : undefined;
+    if (editorialPlannerOptions === null) {
       return null;
     }
 
@@ -923,12 +2226,39 @@ export function PresentationArticleGeneratorDialog({
         canvasRatio,
         outputFormats: generationPlan.outputFormats,
         imagePromptContext: imagePromptContext.trim() || null,
+        editorialPlannerOptions,
+        existingImageAssets: options?.preserveExistingImages && generatedImages.length > 0
+          ? generatedImages
+          : undefined,
       });
+      const nextGeneratedImages = options?.preserveExistingImages
+        ? normalizeGeneratedImagesForBundle(result, generatedImages)
+        : [];
+      const nextPayloadJson = normalizeSlidePayloadJson(
+        result.slidePayloadJson,
+        normalizeSlidePayloadJson(preparedBundle?.slidePayloadJson, normalizeSlidePayloadJson(slidePayloadEditorJson)),
+      );
       setPreparedBundle(result);
-      setGeneratedImages([]);
+      setPreparedBundleSkillId(generationPlan.slideSkillId);
+      setSlidePayloadEditorJson(nextPayloadJson);
+      setSlidePayloadEditorDirty(false);
+      setGeneratedImages(nextGeneratedImages);
       setGeneratedSlideDraft(null);
+      setGeneratedSlideDraftSkillId("");
+      setGuidedWorkflowStep(4);
+      setGuidedFooterAction(null);
+      if (result.slidePayloadJson && nextPayloadJson !== result.slidePayloadJson.trim()) {
+        toast.error("Skill input JSON response was invalid. Kept the previous valid JSON instead.");
+      }
       if (options?.successMessage) {
-        toast.success(options.successMessage);
+        if (options?.preserveExistingImages && generatedImages.length > 0) {
+          toast.success(t("dialog.articleBuilder.prepareBundleReuseSuccess", {
+            count: nextGeneratedImages.length,
+            total: result.imagePrompts.length,
+          }));
+        } else {
+          toast.success(options.successMessage);
+        }
       }
       return result;
     } catch (error) {
@@ -937,13 +2267,206 @@ export function PresentationArticleGeneratorDialog({
     }
   };
 
+  const upsertGeneratedImageForPrompt = (prompt: PreparedImagePrompt, url: string) => {
+    const normalizedUrl = normalizeMediaSourceUrl(url);
+    if (!normalizedUrl) {
+      return;
+    }
+    const slotKey = getPreparedImageSlotKey(prompt);
+    setGeneratedImages((previous) => {
+      const nextAsset: GeneratedImageAsset = { ...prompt, url: normalizedUrl };
+      const withoutCurrentSlot = previous.filter((candidate) => getPreparedImageSlotKey(candidate) !== slotKey);
+      return [...withoutCurrentSlot, nextAsset]
+        .sort((left, right) => left.pageNumber - right.pageNumber || left.imageIndex - right.imageIndex);
+    });
+    setGeneratedSlideDraft(null);
+    setGeneratedSlideDraftSkillId("");
+  };
+
+  const removePreparedImageSlot = (prompt: PreparedImagePrompt) => {
+    const slotKey = getPreparedImageSlotKey(prompt);
+    setPreparedBundle((previous) => {
+      if (!previous) {
+        return previous;
+      }
+      const nextPrompts = previous.imagePrompts.filter(
+        (candidate) => getPreparedImageSlotKey(candidate) !== slotKey,
+      );
+      const nextPageSlotCounts = new Map<number, number>();
+      nextPrompts.forEach((candidate) => {
+        nextPageSlotCounts.set(candidate.pageNumber, (nextPageSlotCounts.get(candidate.pageNumber) ?? 0) + 1);
+      });
+      return {
+        ...previous,
+        imagePrompts: nextPrompts,
+        plannedImageCount: nextPrompts.length,
+        preflightPages: previous.preflightPages?.map((page) => ({
+          ...page,
+          maxImagesOverride: nextPageSlotCounts.get(page.pageNumber) ?? 0,
+        })),
+      };
+    });
+    setGeneratedImages((previous) => previous.filter(
+      (candidate) => getPreparedImageSlotKey(candidate) !== slotKey,
+    ));
+    setGeneratedSlideDraft(null);
+    setGeneratedSlideDraftSkillId("");
+    if (slotPickerKey === slotKey) {
+      setSlotPickerKey(null);
+    }
+  };
+
+  const handleAssignAssetToSlot = (prompt: PreparedImagePrompt, asset: PickerAsset) => {
+    upsertGeneratedImageForPrompt(prompt, asset.sourceUrl);
+    setSlotPickerKey(null);
+    toast.success(t("dialog.articleBuilder.replaceSlotImageSuccess"));
+  };
+
+  const openSlotPickerForPrompt = (prompt: PreparedImagePrompt) => {
+    setSlotPickerTab("library");
+    setSlotPickerSearchQuery("");
+    setSlotPickerKey((current) => current === getPreparedImageSlotKey(prompt) ? null : getPreparedImageSlotKey(prompt));
+  };
+
+  const handleRegenerateSlot = async (prompt: PreparedImagePrompt) => {
+    const missingRequiredFields = getMissingRequiredModelFields(
+      selectedMediaModelFields,
+      {
+        extraParams: syncedMediaModelExtraParams,
+        prompt: "__auto_prompt__",
+        aspectRatio: canvasRatio,
+      },
+      {
+        treatPromptSyncAsAuto: true,
+      },
+    );
+    if (missingRequiredFields.length > 0) {
+      toast.error(`${t("dialog.articleBuilder.mediaFieldsRequired")}: ${missingRequiredFields.join(", ")}`);
+      return;
+    }
+    const slotKey = getPreparedImageSlotKey(prompt);
+    setRegeneratingSlotKey(slotKey);
+    try {
+      const extraParams = applyModelSyncTargets(
+        selectedImageModelConfig,
+        syncedMediaModelExtraParams,
+        {
+          prompt: prompt.prompt,
+          aspectRatio: canvasRatio,
+        },
+      );
+      const requestPayload = {
+        prompt: prompt.prompt,
+        model: imageModel.trim() || undefined,
+        aspectRatio: canvasRatio,
+        numImages: 1 as const,
+        ...(extraParams ? { extraParams } : {}),
+      };
+      let taskResult;
+      try {
+        taskResult = await generateImageAsyncMutation.mutateAsync(requestPayload);
+      } catch (initialError) {
+        const initialMessage = getErrorMessage(initialError, t("dialog.articleBuilder.generateImagesError"));
+        const retryAfterSeconds = getRetryAfterSeconds(initialMessage);
+        const isBurstAnomalyError = initialMessage.toLowerCase().includes("burst_anomaly");
+        if (!isBurstAnomalyError || !retryAfterSeconds) {
+          throw initialError;
+        }
+        toast.info(`Rate limit reached, retrying in ${retryAfterSeconds}s...`);
+        await sleepMs((retryAfterSeconds + 1) * 1000);
+        taskResult = await generateImageAsyncMutation.mutateAsync(requestPayload);
+      }
+      let resultUrl = extractTaskResultUrl(taskResult);
+      if (!resultUrl) {
+        const taskId = extractTaskId(taskResult);
+        if (!taskId) {
+          throw new Error("Image generation started but task ID was not returned.");
+        }
+        const terminalTask = await pollTaskUntilTerminal(
+          taskId,
+          async (id) => trpcUtils.media.getTask.fetch({ taskId: id }),
+          { mediaLabel: "Image" },
+        );
+        resultUrl = extractTaskResultUrl(terminalTask);
+      }
+      if (!resultUrl) {
+        throw new Error("Image provider returned no URL");
+      }
+      upsertGeneratedImageForPrompt(prompt, resultUrl);
+      toast.success(t("dialog.articleBuilder.regenerateSlotSuccess"));
+    } catch (error) {
+      toast.error(getErrorMessage(error, t("dialog.articleBuilder.generateImagesError")));
+    } finally {
+      setRegeneratingSlotKey(null);
+    }
+  };
+
+  const handleAddPreparedImageSlot = (pageNumber: number) => {
+    const existingPagePromptCount = (preparedBundle?.imagePrompts ?? []).filter(
+      (prompt) => prompt.pageNumber === pageNumber,
+    ).length;
+    if (existingPagePromptCount >= 3) {
+      toast.info(t("dialog.articleBuilder.addImageSlotLimit"));
+      return;
+    }
+    setPreparedBundle((previous) => {
+      if (!previous) {
+        return previous;
+      }
+      const pagePrompts = previous.imagePrompts.filter((prompt) => prompt.pageNumber === pageNumber);
+      const pagePreflight = previous.preflightPages?.find((page) => page.pageNumber === pageNumber);
+      const nextImageIndex = Math.max(0, ...pagePrompts.map((prompt) => prompt.imageIndex)) + 1;
+      const placementRole = nextImageIndex === 1
+        ? "hero"
+        : (nextImageIndex === 2 ? "supporting" : "detail");
+      const shortLabel = placementRole === "hero"
+        ? "hero"
+        : (placementRole === "supporting" ? "supporting" : "detail");
+      const promptSource = pagePreflight?.compiledText?.trim() || pagePreflight?.titleHint?.trim() || topic.trim();
+      const nextPrompt: PreparedImagePrompt = {
+        id: `slot-${pageNumber}-${nextImageIndex}-${placementRole}`,
+        pageNumber,
+        imageIndex: nextImageIndex,
+        placementRole,
+        shortLabel,
+        prompt: [
+          `${pagePreflight?.titleHint || `Page ${pageNumber}`} - ${shortLabel} image`,
+          promptSource,
+          imagePromptContext.trim() || null,
+          "No text, letters, captions, or logos.",
+        ].filter(Boolean).join("\n\n"),
+      };
+      const nextPrompts = [...previous.imagePrompts, nextPrompt]
+        .sort((left, right) => left.pageNumber - right.pageNumber || left.imageIndex - right.imageIndex);
+      return {
+        ...previous,
+        imagePrompts: nextPrompts,
+        plannedImageCount: nextPrompts.length,
+        preflightPages: previous.preflightPages?.map((page) => (
+          page.pageNumber === pageNumber
+            ? { ...page, maxImagesOverride: Math.min(3, pagePrompts.length + 1) }
+            : page
+        )),
+      };
+    });
+    setGeneratedSlideDraft(null);
+    setGeneratedSlideDraftSkillId("");
+    toast.success(t("dialog.articleBuilder.addImageSlotSuccess"));
+  };
+
   const handleGenerateSlideDraft = async (options?: {
     imageAssetsOverride?: GeneratedImageAsset[];
     successMessage?: string;
   }): Promise<GeneratedSlideDraft | null> => {
-    const trimmedTopic = topic.trim();
     const trimmedArticle = article.trim();
-    const imageAssets = options?.imageAssetsOverride ?? generatedImages;
+    const fallbackTopic = inferTopicFallbackFromArticle(trimmedArticle);
+    const trimmedTopic = (topic.trim() || (
+      slideSkillId === EDITORIAL_LAYOUT_PLANNER_SKILL_ID ? fallbackTopic : ""
+    )).trim();
+    const imageAssets = normalizeGeneratedImagesForBundle(
+      preparedBundle,
+      options?.imageAssetsOverride ?? generatedImages,
+    );
     const activeMaxPages = preparedBundle?.maxPages ?? null;
     if (!trimmedTopic) {
       toast.error(t("dialog.articleBuilder.topicRequired"));
@@ -957,13 +2480,28 @@ export function PresentationArticleGeneratorDialog({
     if (!generationPlan) {
       return null;
     }
+    const editorialPlannerOptions = generationPlan.slideSkillId === EDITORIAL_LAYOUT_PLANNER_SKILL_ID
+      ? resolveEditorialPlannerOptionsOrToast()
+      : undefined;
+    if (editorialPlannerOptions === null) {
+      return null;
+    }
     if (!activeMaxPages) {
       toast.error(t("dialog.articleBuilder.prepareBundleFirst"));
       return null;
     }
-    if (imageAssets.length === 0) {
-      toast.error(t("dialog.articleBuilder.imagesRequired"));
-      return null;
+    const trimmedPayloadOverrideJson = slidePayloadEditorDirty ? slidePayloadEditorJson.trim() : "";
+    if (trimmedPayloadOverrideJson) {
+      if (isProbablyHtmlDocument(trimmedPayloadOverrideJson)) {
+        toast.error("Skill input JSON contains HTML instead of JSON. Please reset or prepare the slide bundle again.");
+        return null;
+      }
+      try {
+        JSON.parse(trimmedPayloadOverrideJson);
+      } catch {
+        toast.error("Skill input JSON must be valid JSON before generating slides.");
+        return null;
+      }
     }
 
     try {
@@ -979,34 +2517,77 @@ export function PresentationArticleGeneratorDialog({
         outputFormats: generationPlan.outputFormats,
         maxPages: activeMaxPages,
         imagePromptContext: imagePromptContext.trim() || null,
+        editorialPlannerOptions,
+        pageImagePlanOverrides,
+        slidePayloadOverrideJson: trimmedPayloadOverrideJson || null,
         imageAssets,
       });
       const nextDraft = {
         slideJson: result.slideJson,
         slidePayloadJson: result.slidePayloadJson,
         modelId: result.modelId,
+        generatedAt: typeof result.generatedAt === "string" && result.generatedAt.trim()
+          ? result.generatedAt.trim()
+          : new Date().toISOString(),
+        selectedSkillId: typeof result.selectedSkillId === "string" && result.selectedSkillId.trim()
+          ? result.selectedSkillId.trim()
+          : generationPlan.slideSkillId,
+        selectedSkillName: typeof result.selectedSkillName === "string" && result.selectedSkillName.trim()
+          ? result.selectedSkillName.trim()
+          : result.slideSkillLabel,
+        executionSkillId: typeof result.executionSkillId === "string" && result.executionSkillId.trim()
+          ? result.executionSkillId.trim()
+          : null,
+        executionSkillName: typeof result.executionSkillName === "string" && result.executionSkillName.trim()
+          ? result.executionSkillName.trim()
+          : null,
+        runtimeBundleSkillId: typeof result.runtimeBundleSkillId === "string" && result.runtimeBundleSkillId.trim()
+          ? result.runtimeBundleSkillId.trim()
+          : null,
+        runtimeBundleSkillName: typeof result.runtimeBundleSkillName === "string" && result.runtimeBundleSkillName.trim()
+          ? result.runtimeBundleSkillName.trim()
+          : null,
+        runtimeAliasApplied: Boolean(result.runtimeAliasApplied),
         artifactJobId: result.artifactJobId ?? null,
         artifacts: (result.artifacts ?? []).map(normalizeSlideArtifact).filter((artifact): artifact is SlideArtifact => Boolean(artifact)),
         downloadUrl: result.downloadUrl ?? null,
+        debugTracePath: result.debugTracePath ?? null,
+        importedSlideJson: null,
+        importedAt: null,
+        importedFromArtifact: false,
+        importedArtifactUrl: null,
       };
+      const nextPayloadJson = normalizeSlidePayloadJson(
+        result.slidePayloadJson,
+        normalizeSlidePayloadJson(
+          nextDraft.slidePayloadJson,
+          normalizeSlidePayloadJson(preparedBundle?.slidePayloadJson, normalizeSlidePayloadJson(slidePayloadEditorJson)),
+        ),
+      );
+      const nextDraftHasImportableSlides = hasImportableSlidesJson(nextDraft.slideJson);
       setGeneratedSlideDraft(nextDraft);
-      const insertSucceeded = await onInsertSlides(nextDraft, {
-        closeDialog: false,
-        showSuccessToast: false,
-      });
+      setGeneratedSlideDraftSkillId(generationPlan.slideSkillId);
+      setGeneratedSlideDraftSessionSource("fresh-run");
+      setSlidePayloadEditorJson(nextPayloadJson);
+      setSlidePayloadEditorDirty(Boolean(trimmedPayloadOverrideJson));
+      setGuidedWorkflowStep(null);
+      setGuidedFooterAction(nextDraftHasImportableSlides ? "insert" : null);
+      if (result.slidePayloadJson && nextPayloadJson !== result.slidePayloadJson.trim()) {
+        toast.error("Skill input JSON response was invalid. Kept the previous valid JSON instead.");
+      }
       const hasDownloadableArtifact = Boolean(
         nextDraft.downloadUrl
         || pickPreferredSlideArtifact(nextDraft.artifacts ?? [], slideOutputFormat),
       );
-      if (options?.successMessage && (insertSucceeded !== false || hasDownloadableArtifact)) {
-        toast.success(options.successMessage);
+      if (options?.successMessage) {
+        toast.success(
+          nextDraftHasImportableSlides || hasDownloadableArtifact
+            ? `${options.successMessage} ขั้นถัดไป: นำเข้า Slides ล่าสุดได้เลย`
+            : options.successMessage,
+        );
       }
       if (typeof result.artifactFailureMessage === "string" && result.artifactFailureMessage.trim()) {
-        if (insertSucceeded !== false) {
-          toast.info(`PPTX export failed, but slide JSON is ready and the slides were still imported. ${result.artifactFailureMessage.trim()}`);
-        } else {
-          toast.error(result.artifactFailureMessage.trim());
-        }
+        toast.error(result.artifactFailureMessage.trim());
       }
       return nextDraft;
     } catch (error) {
@@ -1076,13 +2657,27 @@ export function PresentationArticleGeneratorDialog({
     }
 
     setIsGeneratingImages(true);
-    setGeneratedImages([]);
+    const reusableAssets = normalizeGeneratedImagesForBundle(bundle, generatedImages);
+    setGeneratedImages(reusableAssets);
     setGeneratedSlideDraft(null);
+    setGeneratedSlideDraftSkillId("");
     try {
-      const nextAssets: GeneratedImageAsset[] = [];
-      for (let index = 0; index < bundle.imagePrompts.length; index += 1) {
-        const promptPlan = bundle.imagePrompts[index]!;
-        setImageGenerationProgress(`${index + 1}/${bundle.imagePrompts.length}`);
+      const reusableSlotKeys = new Set(reusableAssets.map((asset) => getPreparedImageSlotKey(asset)));
+      const promptsToGenerate = bundle.imagePrompts.filter(
+        (prompt) => !reusableSlotKeys.has(getPreparedImageSlotKey(prompt)),
+      );
+      const nextAssets: GeneratedImageAsset[] = [...reusableAssets];
+      if (promptsToGenerate.length === 0) {
+        setImageGenerationProgress("");
+        await handleGenerateSlideDraft({
+          imageAssetsOverride: nextAssets,
+          successMessage: t("dialog.articleBuilder.generateSlideJsonSuccess"),
+        });
+        return;
+      }
+      for (let index = 0; index < promptsToGenerate.length; index += 1) {
+        const promptPlan = promptsToGenerate[index]!;
+        setImageGenerationProgress(`${reusableAssets.length + index + 1}/${bundle.imagePrompts.length}`);
         const extraParams = applyModelSyncTargets(
           selectedImageModelConfig,
           syncedMediaModelExtraParams,
@@ -1091,13 +2686,27 @@ export function PresentationArticleGeneratorDialog({
             aspectRatio: canvasRatio,
           },
         );
-        const taskResult = await generateImageAsyncMutation.mutateAsync({
+        const requestPayload = {
           prompt: promptPlan.prompt,
           model: imageModel.trim() || undefined,
           aspectRatio: canvasRatio,
-          numImages: 1,
+          numImages: 1 as const,
           ...(extraParams ? { extraParams } : {}),
-        });
+        };
+        let taskResult;
+        try {
+          taskResult = await generateImageAsyncMutation.mutateAsync(requestPayload);
+        } catch (initialError) {
+          const initialMessage = getErrorMessage(initialError, t("dialog.articleBuilder.generateImagesError"));
+          const retryAfterSeconds = getRetryAfterSeconds(initialMessage);
+          const isBurstAnomalyError = initialMessage.toLowerCase().includes("burst_anomaly");
+          if (!isBurstAnomalyError || !retryAfterSeconds) {
+            throw initialError;
+          }
+          toast.info(`Rate limit reached, retrying in ${retryAfterSeconds}s...`);
+          await sleepMs((retryAfterSeconds + 1) * 1000);
+          taskResult = await generateImageAsyncMutation.mutateAsync(requestPayload);
+        }
         let resultUrl = extractTaskResultUrl(taskResult);
         if (!resultUrl) {
           const taskId = extractTaskId(taskResult);
@@ -1107,6 +2716,7 @@ export function PresentationArticleGeneratorDialog({
           const terminalTask = await pollTaskUntilTerminal(
             taskId,
             async (id) => trpcUtils.media.getTask.fetch({ taskId: id }),
+            { mediaLabel: "Image" },
           );
           resultUrl = extractTaskResultUrl(terminalTask);
         }
@@ -1150,7 +2760,7 @@ export function PresentationArticleGeneratorDialog({
             </DialogHeader>
 
             <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5 lg:overflow-hidden">
-              <div className="grid gap-6 lg:grid-cols-[380px_minmax(0,1fr)]">
+              <div className="grid gap-6 lg:grid-cols-[minmax(440px,520px)_minmax(0,1fr)] 2xl:grid-cols-[minmax(500px,580px)_minmax(0,1fr)]">
                 <section className="min-h-0 lg:flex lg:h-[calc(92vh-13rem)] lg:min-h-0 lg:flex-col lg:overflow-hidden lg:rounded-2xl lg:border lg:bg-background/60 lg:p-3">
                   <div className="space-y-4 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:pr-2">
                   <div className="space-y-2">
@@ -1354,7 +2964,7 @@ export function PresentationArticleGeneratorDialog({
                       <Label>{t("dialog.articleBuilder.slideSkillLabel")}</Label>
                       <Select
                         value={slideSkillId}
-                        onValueChange={setSlideSkillId}
+                        onValueChange={handleSlideSkillChange}
                         disabled={skillsQuery.isLoading || slideSkillOptions.length === 0}
                       >
                         <SelectTrigger>
@@ -1368,10 +2978,417 @@ export function PresentationArticleGeneratorDialog({
                           ))}
                         </SelectContent>
                       </Select>
-                      {selectedSlideSkill?.category ? (
-                        <Badge variant="outline">{selectedSlideSkill.category}</Badge>
-                      ) : null}
-                    </div>
+                    {selectedSlideSkill?.category ? (
+                      <Badge variant="outline">{selectedSlideSkill.category}</Badge>
+                    ) : null}
+                    {bundleNeedsRefreshAfterSkillChange || slideDraftNeedsRefreshAfterSkillChange ? (
+                      <div className="space-y-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-3 text-xs leading-5 text-rose-800">
+                        <div>
+                          เปลี่ยน slide skill แล้ว: ทำ `Prepare Bundle` ใหม่ และ `Generate Slide JSON` ใหม่ก่อนนำเข้า ส่วนรูปจะพยายาม reuse ให้เท่าที่ slot เดิมยังตรงกัน
+                        </div>
+                        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="border-rose-300 bg-white text-rose-900 hover:bg-rose-100"
+                            onClick={() => void handlePrepareSlideBundle({
+                              successMessage: t("dialog.articleBuilder.prepareBundleSuccess"),
+                              preserveExistingImages: true,
+                            })}
+                            disabled={!article.trim() || prepareSlideBundleMutation.isPending}
+                          >
+                            {prepareSlideBundleMutation.isPending ? (
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                              <LayoutTemplate className="mr-2 h-4 w-4" />
+                            )}
+                            Refresh bundle now
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="border-rose-300 bg-white text-rose-900 hover:bg-rose-100"
+                            onClick={() => void handleGenerateSlideDraft({
+                              successMessage: t("dialog.articleBuilder.generateSlideJsonSuccess"),
+                            })}
+                            disabled={
+                              !article.trim()
+                              || !preparedBundle
+                              || bundleNeedsRefreshAfterSkillChange
+                              || generateSlideDraftMutation.isPending
+                            }
+                          >
+                            {generateSlideDraftMutation.isPending ? (
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                              <FileJson className="mr-2 h-4 w-4" />
+                            )}
+                            Regenerate slides now
+                          </Button>
+                        </div>
+                        <div className="text-[11px] text-rose-700/90">
+                          ถ้าเพิ่งเปลี่ยน skill มาใหม่ แนะนำให้กด `Refresh bundle now` ก่อน แล้วค่อย `Regenerate slides now`
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                    {isEditorialLayoutPlannerSelected ? (
+                      <div className="space-y-4 rounded-xl border border-dashed bg-muted/10 p-3 sm:p-4">
+                        <div className="space-y-1">
+                          <div className="text-sm font-semibold">Editorial Layout Planner Options</div>
+                          <p className="text-xs text-muted-foreground">
+                            ตัวเลือกชุดนี้จะถูกส่งเฉพาะตอนใช้ `editorial-layout-planner` เท่านั้น
+                          </p>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Quick Presets</Label>
+                          <div className="flex flex-col gap-2 md:flex-row md:flex-wrap md:items-center">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => applyEditorialPlannerQuickPreset(recommendedEditorialPlannerPreset)}
+                            >
+                              Apply recommended defaults
+                            </Button>
+                            <span className="text-xs text-muted-foreground">
+                              Recommended: {recommendedEditorialPlannerPreset.label}
+                              {" · "}
+                              {recommendedEditorialPlannerPreset.description}
+                            </span>
+                          </div>
+                          <div className="grid gap-3 sm:grid-cols-2">
+                            {EDITORIAL_PLANNER_QUICK_PRESETS.map((preset) => {
+                              const isActive = activeEditorialPlannerQuickPresetId === preset.id;
+                              return (
+                                <button
+                                  key={preset.id}
+                                  type="button"
+                                  aria-pressed={isActive}
+                                  className={cn(
+                                    "rounded-2xl border px-4 py-3 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2",
+                                    isActive
+                                      ? "border-primary bg-primary/10 text-foreground ring-2 ring-primary shadow-sm shadow-primary/10"
+                                      : "border-border bg-background hover:border-primary/40 hover:bg-muted/40",
+                                  )}
+                                  onClick={() => applyEditorialPlannerQuickPreset(preset)}
+                                >
+                                  <div className="flex items-start justify-between gap-3">
+                                    <div className="text-sm font-semibold leading-6">{preset.label}</div>
+                                    {isActive ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" /> : null}
+                                  </div>
+                                  <div className={cn("mt-1 text-xs leading-5", isActive ? "text-foreground/80" : "text-muted-foreground")}>
+                                    {preset.description}
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                        <div className="grid gap-3 xl:grid-cols-3">
+                          <div className="space-y-2">
+                            <Label>Audience</Label>
+                            <Select
+                              value={editorialPlannerAudiencePreset}
+                              onValueChange={(value) => setEditorialPlannerAudiencePreset(value as EditorialPlannerAudiencePreset)}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="parents">Parents</SelectItem>
+                                <SelectItem value="educators">Educators</SelectItem>
+                                <SelectItem value="healthcare">Healthcare</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Tone</Label>
+                            <Select
+                              value={editorialPlannerTonePreset}
+                              onValueChange={(value) => setEditorialPlannerTonePreset(value as EditorialPlannerTonePreset)}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="warm_parenting">Warm Parenting</SelectItem>
+                                <SelectItem value="premium_editorial">Premium Editorial</SelectItem>
+                                <SelectItem value="clinical_guidance">Clinical Guidance</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Layout Priority</Label>
+                            <Select
+                              value={editorialPlannerFitPreset}
+                              onValueChange={(value) => setEditorialPlannerFitPreset(value as EditorialPlannerFitPreset)}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="balanced">Balanced</SelectItem>
+                                <SelectItem value="image_forward">Image Forward</SelectItem>
+                                <SelectItem value="text_safe">Text Safe</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        <p className="rounded-lg border border-border/60 bg-background/70 px-3 py-2 text-xs leading-5 text-muted-foreground">
+                          `Image Forward` จะดันภาพให้เด่นขึ้น, `Text Safe` จะคุมการอ่านและ repaginate เข้มขึ้น, `Balanced` จะสมดุลระหว่างสองฝั่ง
+                        </p>
+                        <div className="grid gap-3 xl:grid-cols-2">
+                          <div className="space-y-2">
+                            <Label>Page Count Mode</Label>
+                            <Select
+                              value={editorialPlannerPageCountMode}
+                              onValueChange={(value) => setEditorialPlannerPageCountMode(value as EditorialPlannerPageCountMode)}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="auto">Auto</SelectItem>
+                                <SelectItem value="fixed">Fixed</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <p className="text-xs text-muted-foreground">
+                              `Auto` ให้ skill คำนวณจำนวนหน้าเอง, `Fixed` จะบังคับตามจำนวนหน้าที่กำหนด
+                            </p>
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Requested Page Count</Label>
+                            <Input
+                              type="number"
+                              min={1}
+                              max={20}
+                              disabled={editorialPlannerPageCountMode !== "fixed"}
+                              value={editorialPlannerRequestedPageCount}
+                              onChange={(event) => setEditorialPlannerRequestedPageCount(Number(event.target.value || 1))}
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Global Style Prompt</Label>
+                          <Textarea
+                            value={editorialPlannerGlobalStylePrompt}
+                            onChange={(event) => setEditorialPlannerGlobalStylePrompt(event.target.value)}
+                            rows={5}
+                            className="text-sm leading-6"
+                            placeholder="Warm editorial photography, soft warm daylight, cozy nursery..."
+                          />
+                        </div>
+                        <div className="grid gap-3 2xl:grid-cols-3 xl:grid-cols-2">
+                          <div className="space-y-2">
+                            <Label>Render Safety JSON</Label>
+                            <Textarea
+                              value={editorialPlannerRenderSafetyJson}
+                              onChange={(event) => setEditorialPlannerRenderSafetyJson(event.target.value)}
+                              rows={9}
+                              className="font-mono text-xs leading-5"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Page Fill Rules JSON</Label>
+                            <Textarea
+                              value={editorialPlannerPageFillRulesJson}
+                              onChange={(event) => setEditorialPlannerPageFillRulesJson(event.target.value)}
+                              rows={9}
+                              className="font-mono text-xs leading-5"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Quality Optimizer JSON</Label>
+                            <Textarea
+                              value={editorialPlannerQualityOptimizerJson}
+                              onChange={(event) => setEditorialPlannerQualityOptimizerJson(event.target.value)}
+                              rows={9}
+                              className="font-mono text-xs leading-5"
+                            />
+                          </div>
+                        </div>
+                        {editorialPlannerJsonError ? (
+                          <p className="text-xs text-destructive">{editorialPlannerJsonError}</p>
+                        ) : null}
+                        <div className="space-y-3 rounded-xl border border-border/60 bg-muted/20 p-3">
+                          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                            <div>
+                              <div className="text-sm font-semibold">Image Assets</div>
+                              <p className="max-w-xl text-xs leading-5 text-muted-foreground">
+                                รองรับทั้ง `image_prompt` และ `uploaded_image` สำหรับ `editorial-layout-planner`
+                              </p>
+                            </div>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setEditorialPlannerImageAssets((previous) => [
+                                  ...previous,
+                                  createEditorialPlannerImageAssetDraft(),
+                                ]);
+                              }}
+                            >
+                              เพิ่ม image asset
+                            </Button>
+                          </div>
+                          {editorialPlannerImageAssets.length === 0 ? (
+                            <p className="text-xs text-muted-foreground">ตอนนี้จะส่ง `image_assets: []` ถ้าไม่เพิ่มรายการ</p>
+                          ) : null}
+                          {editorialPlannerAssetValidation.errors.length > 0 ? (
+                            <div className="space-y-1 rounded-lg border border-destructive/30 bg-destructive/5 p-2">
+                              {editorialPlannerAssetValidation.errors.map((message) => (
+                                <p key={message} className="text-xs text-destructive">{message}</p>
+                              ))}
+                            </div>
+                          ) : null}
+                          {editorialPlannerAssetValidation.warnings.length > 0 ? (
+                            <div className="space-y-1 rounded-lg border border-amber-300 bg-amber-50 p-2">
+                              {editorialPlannerAssetValidation.warnings.map((message) => (
+                                <p key={message} className="text-xs text-amber-800">{message}</p>
+                              ))}
+                            </div>
+                          ) : null}
+                          <div className="space-y-3">
+                            {editorialPlannerImageAssets.map((asset, index) => (
+                              <div key={asset.id} className="space-y-3 rounded-xl border bg-background p-3">
+                                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                                  <div className="text-sm font-medium">Asset #{index + 1}</div>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                      setEditorialPlannerImageAssets((previous) => previous.filter((entry) => entry.id !== asset.id));
+                                    }}
+                                  >
+                                    ลบ
+                                  </Button>
+                                </div>
+                                <div className="grid gap-3 xl:grid-cols-3">
+                                  <div className="space-y-2">
+                                    <Label>Type</Label>
+                                    <Select
+                                      value={asset.assetType}
+                                      onValueChange={(value) => {
+                                        setEditorialPlannerImageAssets((previous) => previous.map((entry) => (
+                                          entry.id === asset.id
+                                            ? {
+                                                ...entry,
+                                                assetType: value as EditorialPlannerImageAssetType,
+                                              }
+                                            : entry
+                                        )));
+                                      }}
+                                    >
+                                      <SelectTrigger>
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="image_prompt">image_prompt</SelectItem>
+                                        <SelectItem value="uploaded_image">uploaded_image</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label>Label</Label>
+                                    <Input
+                                      value={asset.label}
+                                      onChange={(event) => {
+                                        setEditorialPlannerImageAssets((previous) => previous.map((entry) => (
+                                          entry.id === asset.id ? { ...entry, label: event.target.value } : entry
+                                        )));
+                                      }}
+                                    />
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label>Page Hint</Label>
+                                    <Input
+                                      type="number"
+                                      min={1}
+                                      max={20}
+                                      value={asset.pageHint}
+                                      onChange={(event) => {
+                                        setEditorialPlannerImageAssets((previous) => previous.map((entry) => (
+                                          entry.id === asset.id ? { ...entry, pageHint: event.target.value } : entry
+                                        )));
+                                      }}
+                                    />
+                                  </div>
+                                </div>
+                                <div className="grid gap-3 xl:grid-cols-2">
+                                  <div className="space-y-2">
+                                    <Label>{asset.assetType === "uploaded_image" ? "Reference URL" : "Prompt"}</Label>
+                                    <Textarea
+                                      value={asset.assetType === "uploaded_image" ? asset.reference : asset.prompt}
+                                      onChange={(event) => {
+                                        setEditorialPlannerImageAssets((previous) => previous.map((entry) => (
+                                          entry.id === asset.id
+                                            ? (
+                                              asset.assetType === "uploaded_image"
+                                                ? { ...entry, reference: event.target.value }
+                                                : { ...entry, prompt: event.target.value }
+                                            )
+                                            : entry
+                                        )));
+                                      }}
+                                      rows={4}
+                                      className="text-sm leading-6"
+                                    />
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label>{asset.assetType === "uploaded_image" ? "Optional Prompt" : "Optional Reference"}</Label>
+                                    <Textarea
+                                      value={asset.assetType === "uploaded_image" ? asset.prompt : asset.reference}
+                                      onChange={(event) => {
+                                        setEditorialPlannerImageAssets((previous) => previous.map((entry) => (
+                                          entry.id === asset.id
+                                            ? (
+                                              asset.assetType === "uploaded_image"
+                                                ? { ...entry, prompt: event.target.value }
+                                                : { ...entry, reference: event.target.value }
+                                            )
+                                            : entry
+                                        )));
+                                      }}
+                                      rows={4}
+                                      className="text-sm leading-6"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="space-y-2 rounded-xl border border-border/60 bg-muted/20 p-3">
+                          <div className="text-sm font-semibold">Resolved Defaults Preview</div>
+                          <p className="text-xs text-muted-foreground">
+                            ค่าตั้งต้นหลังรวม preset กับ advanced options
+                          </p>
+                          <Textarea
+                            value={JSON.stringify(editorialPlannerPresetPreview, null, 2)}
+                            readOnly
+                            rows={14}
+                            className="bg-background font-mono text-xs leading-5"
+                          />
+                        </div>
+                        <div className="space-y-2 rounded-xl border border-border/60 bg-muted/20 p-3">
+                          <div className="text-sm font-semibold">Actual Payload Preview</div>
+                          <p className="text-xs text-muted-foreground">
+                            preview นี้สร้างจาก payload builder ตัวเดียวกับฝั่ง server
+                          </p>
+                          <Textarea
+                            value={editorialPlannerPayloadPreviewJson}
+                            readOnly
+                            rows={18}
+                            className="bg-background font-mono text-xs leading-5"
+                          />
+                        </div>
+                      </div>
+                    ) : null}
                     <div className="space-y-2">
                       <Label>{t("dialog.articleBuilder.slideOutputFormatLabel")}</Label>
                       <Select
@@ -1382,7 +3399,7 @@ export function PresentationArticleGeneratorDialog({
                           <SelectValue placeholder={t("dialog.articleBuilder.slideOutputFormatPlaceholder")} />
                         </SelectTrigger>
                         <SelectContent>
-                          {SUPPORTED_OUTPUT_FORMATS.map((format) => (
+                          {selectableSlideOutputFormats.map((format) => (
                             <SelectItem key={format} value={format}>
                               {format.toUpperCase()}
                             </SelectItem>
@@ -1428,6 +3445,11 @@ export function PresentationArticleGeneratorDialog({
                         </div>
                       <Badge variant="outline">{slideOutputFormats.join(", ").toUpperCase()}</Badge>
                     </div>
+                    {guidedWorkflowMessage ? (
+                      <div className="sticky top-0 z-10 rounded-xl border border-primary/20 bg-primary/10 px-4 py-3 text-sm font-medium text-primary shadow-sm">
+                        {guidedWorkflowMessage}
+                      </div>
+                    ) : null}
 
                     <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-4">
                       {[
@@ -1437,7 +3459,15 @@ export function PresentationArticleGeneratorDialog({
                           description: t("dialog.articleBuilder.workflowStep1Description"),
                           status: articleStepStatus,
                           action: (
-                            <Button type="button" className="w-full" onClick={() => void handleGenerate()} disabled={generateArticleMutation.isPending}>
+                            <Button
+                              type="button"
+                              className="w-full"
+                              ref={(node) => {
+                                workflowPrimaryActionRefs.current[1] = node;
+                              }}
+                              onClick={() => void handleGenerate()}
+                              disabled={generateArticleMutation.isPending}
+                            >
                               {generateArticleMutation.isPending ? (
                                 <>
                                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -1459,12 +3489,19 @@ export function PresentationArticleGeneratorDialog({
                           title: t("dialog.articleBuilder.workflowStep2Title"),
                           description: t("dialog.articleBuilder.workflowStep2Description"),
                           status: bundleStepStatus,
+                          hint: bundleRefreshHint,
                           action: (
                             <Button
                               type="button"
                               variant="outline"
                               className="w-full"
-                              onClick={() => void handlePrepareSlideBundle({ successMessage: t("dialog.articleBuilder.prepareBundleSuccess") })}
+                              ref={(node) => {
+                                workflowPrimaryActionRefs.current[2] = node;
+                              }}
+                              onClick={() => void handlePrepareSlideBundle({
+                                successMessage: t("dialog.articleBuilder.prepareBundleSuccess"),
+                                preserveExistingImages: true,
+                              })}
                               disabled={!article.trim() || prepareSlideBundleMutation.isPending}
                             >
                               {prepareSlideBundleMutation.isPending ? (
@@ -1481,11 +3518,15 @@ export function PresentationArticleGeneratorDialog({
                           title: t("dialog.articleBuilder.workflowStep3Title"),
                           description: t("dialog.articleBuilder.workflowStep3Description"),
                           status: imageStepStatus,
+                          hint: imageRefreshHint,
                           action: (
                             <Button
                               type="button"
                               variant="outline"
                               className="w-full"
+                              ref={(node) => {
+                                workflowPrimaryActionRefs.current[3] = node;
+                              }}
                               onClick={() => void handleGenerateImages()}
                               disabled={!article.trim() || isGeneratingImages || generateImageAsyncMutation.isPending}
                             >
@@ -1494,7 +3535,9 @@ export function PresentationArticleGeneratorDialog({
                               ) : (
                                 <Images className="mr-2 h-4 w-4" />
                               )}
-                              {t("dialog.articleBuilder.generateImages")}
+                              {missingImagePrompts.length > 0 && normalizedGeneratedImages.length > 0
+                                ? t("dialog.articleBuilder.generateMissingImages")
+                                : t("dialog.articleBuilder.generateImages")}
                               {imageGenerationProgress ? ` ${imageGenerationProgress}` : ""}
                             </Button>
                           ),
@@ -1504,14 +3547,23 @@ export function PresentationArticleGeneratorDialog({
                           title: t("dialog.articleBuilder.workflowStep4Title"),
                           description: t("dialog.articleBuilder.workflowStep4Description"),
                           status: slideStepStatus,
+                          hint: slideRefreshHint,
                           action: (
                             <div className="flex flex-col gap-2">
                               <Button
                                 type="button"
                                 variant="outline"
                                 className="w-full"
+                                ref={(node) => {
+                                  workflowPrimaryActionRefs.current[4] = node;
+                                }}
                                 onClick={() => void handleGenerateSlideDraft({ successMessage: t("dialog.articleBuilder.generateSlideJsonSuccess") })}
-                                disabled={!article.trim() || generatedImages.length === 0 || generateSlideDraftMutation.isPending}
+                                disabled={
+                                  !article.trim()
+                                  || !preparedBundle
+                                  || generateSlideDraftMutation.isPending
+                                  || Boolean(slideRefreshHint)
+                                }
                               >
                                 {generateSlideDraftMutation.isPending ? (
                                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -1545,10 +3597,17 @@ export function PresentationArticleGeneratorDialog({
                         },
                       ].map((stepCard) => {
                         const statusBadge = renderWizardStatusBadge(stepCard.status);
+                        const isGuidedStep = guidedWorkflowStep === stepCard.step;
                         return (
                           <div
                             key={stepCard.step}
-                            className="rounded-2xl border bg-background p-4 shadow-sm"
+                            ref={(node) => {
+                              workflowStepRefs.current[stepCard.step] = node;
+                            }}
+                            className={cn(
+                              "rounded-2xl border bg-background p-4 shadow-sm transition-all",
+                              isGuidedStep && "ring-2 ring-primary/50 shadow-md shadow-primary/10",
+                            )}
                           >
                             <div className="mb-3 flex items-start justify-between gap-3">
                               <div className="flex items-center gap-3">
@@ -1557,6 +3616,8 @@ export function PresentationArticleGeneratorDialog({
                                     ? "border-emerald-200 bg-emerald-50 text-emerald-700"
                                     : stepCard.status === "running"
                                       ? "border-sky-200 bg-sky-50 text-sky-700"
+                                      : stepCard.status === "stale"
+                                        ? "border-rose-200 bg-rose-50 text-rose-700"
                                       : stepCard.status === "ready"
                                         ? "border-amber-200 bg-amber-50 text-amber-700"
                                         : "border-slate-200 bg-slate-50 text-slate-500"
@@ -1572,12 +3633,22 @@ export function PresentationArticleGeneratorDialog({
                                 </div>
                               </div>
                               <Badge variant="outline" className={statusBadge.className}>
-                                {t(statusBadge.labelKey)}
+                                {statusBadge.label}
                               </Badge>
                             </div>
                             <p className="mb-4 text-xs leading-5 text-muted-foreground">
                               {stepCard.description}
                             </p>
+                            {stepCard.hint ? (
+                              <div className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs leading-5 text-rose-800">
+                                {stepCard.hint}
+                              </div>
+                            ) : null}
+                            {isGuidedStep ? (
+                              <div className="mb-4 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs font-medium leading-5 text-primary">
+                                ขั้นตอนถัดไปที่แนะนำสำหรับตอนนี้
+                              </div>
+                            ) : null}
                             {stepCard.action}
                           </div>
                         );
@@ -1648,26 +3719,442 @@ export function PresentationArticleGeneratorDialog({
                     <div className="space-y-2 rounded-xl border p-4">
                       <div className="flex items-center justify-between gap-2">
                         <div className="text-sm font-medium">{t("dialog.articleBuilder.generatedImagesLabel")}</div>
-                        <Badge variant="outline">{generatedImages.length}</Badge>
+                        <Badge variant="outline">
+                          {t("dialog.articleBuilder.generatedImagesCoverage", {
+                            current: normalizedGeneratedImages.length,
+                            total: preparedBundle?.imagePrompts?.length ?? normalizedGeneratedImages.length,
+                          })}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {t("dialog.articleBuilder.generatedImagesHint")}
+                      </p>
+                      <div className="grid min-h-[220px] gap-3 sm:grid-cols-2">
+                        {generatedImageCards.length > 0 ? generatedImageCards.map(({ prompt, asset }) => {
+                          const imageLabel = `Page ${prompt.pageNumber} · ${prompt.shortLabel}`;
+                          const slotKey = getPreparedImageSlotKey(prompt);
+                          const isPickerOpen = slotPickerKey === slotKey;
+                          const isPageLeadSlot = (preparedBundle?.imagePrompts ?? [])
+                            .filter((candidate) => candidate.pageNumber === prompt.pageNumber)
+                            .sort((left, right) => left.imageIndex - right.imageIndex)[0]?.id === prompt.id;
+                          return (
+                            <div key={slotKey} className="rounded-xl border bg-muted/20 p-3">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="min-w-0">
+                                  <div className="text-sm font-medium">{imageLabel}</div>
+                                  <div className="mt-1 text-xs text-muted-foreground">
+                                    {prompt.placementRole} · #{prompt.imageIndex}
+                                  </div>
+                                </div>
+                                <Badge variant={asset ? "secondary" : "outline"}>
+                                  {asset ? t("dialog.articleBuilder.generatedImageReady") : t("dialog.articleBuilder.generatedImageMissing")}
+                                </Badge>
+                              </div>
+                              {asset ? (
+                                <div className="mt-3 space-y-3">
+                                  <img
+                                    src={asset.url}
+                                    alt={imageLabel}
+                                    className="h-40 w-full rounded-lg border object-cover"
+                                    loading="lazy"
+                                  />
+                                  <div className="flex flex-wrap gap-2">
+                                    <a
+                                      href={asset.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex"
+                                    >
+                                      <Button type="button" variant="outline" size="sm">
+                                        <ExternalLink className="mr-2 h-4 w-4" />
+                                        {t("dialog.articleBuilder.openImage")}
+                                      </Button>
+                                    </a>
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => void copyText(
+                                        asset.url,
+                                        t("dialog.articleBuilder.copyImageUrlSuccess"),
+                                        t("dialog.articleBuilder.copyImageUrlEmpty"),
+                                      )}
+                                    >
+                                      <Copy className="mr-2 h-4 w-4" />
+                                      {t("dialog.articleBuilder.copyImageUrl")}
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => {
+                                        setGeneratedImages((previous) => previous.filter(
+                                          (candidate) => getPreparedImageSlotKey(candidate) !== slotKey,
+                                        ));
+                                        setGeneratedSlideDraft(null);
+                                        setGeneratedSlideDraftSkillId("");
+                                      }}
+                                    >
+                                      <Trash2 className="mr-2 h-4 w-4" />
+                                      {t("dialog.articleBuilder.removeImage")}
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => void handleRegenerateSlot(prompt)}
+                                      disabled={regeneratingSlotKey === slotKey}
+                                    >
+                                      <WandSparkles className="mr-2 h-4 w-4" />
+                                      {t("dialog.articleBuilder.regenerateSlot")}
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => openSlotPickerForPrompt(prompt)}
+                                    >
+                                      <Images className="mr-2 h-4 w-4" />
+                                      {t("dialog.articleBuilder.pickSlotImage")}
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => removePreparedImageSlot(prompt)}
+                                    >
+                                      <Trash2 className="mr-2 h-4 w-4" />
+                                      {t("dialog.articleBuilder.removeImageSlot")}
+                                    </Button>
+                                    {isPageLeadSlot ? (
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => handleAddPreparedImageSlot(prompt.pageNumber)}
+                                      >
+                                        <Images className="mr-2 h-4 w-4" />
+                                        {t("dialog.articleBuilder.addImageSlot")}
+                                      </Button>
+                                    ) : null}
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="mt-3 space-y-3">
+                                  <div className="rounded-lg border border-dashed bg-background/70 p-3">
+                                    <div className="text-xs font-medium text-muted-foreground">
+                                      {t("dialog.articleBuilder.generatedImagePromptLabel")}
+                                    </div>
+                                    <p className="mt-2 line-clamp-5 text-sm text-muted-foreground">
+                                      {prompt.prompt}
+                                    </p>
+                                  </div>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => void handleRegenerateSlot(prompt)}
+                                    disabled={regeneratingSlotKey === slotKey}
+                                  >
+                                    <WandSparkles className="mr-2 h-4 w-4" />
+                                    {t("dialog.articleBuilder.regenerateSlot")}
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => openSlotPickerForPrompt(prompt)}
+                                  >
+                                    <Images className="mr-2 h-4 w-4" />
+                                    {t("dialog.articleBuilder.pickSlotImage")}
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => removePreparedImageSlot(prompt)}
+                                  >
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    {t("dialog.articleBuilder.removeImageSlot")}
+                                  </Button>
+                                  {isPageLeadSlot ? (
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => handleAddPreparedImageSlot(prompt.pageNumber)}
+                                    >
+                                      <Images className="mr-2 h-4 w-4" />
+                                      {t("dialog.articleBuilder.addImageSlot")}
+                                    </Button>
+                                  ) : null}
+                                </div>
+                              )}
+                              {isPickerOpen ? (
+                                <div className="mt-3 space-y-3 rounded-lg border bg-background/80 p-3">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant={slotPickerTab === "library" ? "default" : "outline"}
+                                      onClick={() => setSlotPickerTab("library")}
+                                    >
+                                      {t("dialog.articleBuilder.assetPickerLibrary")}
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant={slotPickerTab === "history" ? "default" : "outline"}
+                                      onClick={() => setSlotPickerTab("history")}
+                                    >
+                                      {t("dialog.articleBuilder.assetPickerHistory")}
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => setSlotPickerKey(null)}
+                                    >
+                                      {t("dialog.articleBuilder.close")}
+                                    </Button>
+                                  </div>
+                                  <Input
+                                    value={slotPickerSearchQuery}
+                                    onChange={(event) => setSlotPickerSearchQuery(event.target.value)}
+                                    placeholder={t("dialog.articleBuilder.assetPickerSearchPlaceholder")}
+                                  />
+                                  <div className="grid gap-3 sm:grid-cols-2">
+                                    {pickerAssets.length > 0 ? pickerAssets.map((pickerAsset) => (
+                                      <div key={`${pickerAsset.sourceType}:${pickerAsset.id}:${pickerAsset.sourceUrl}`} className="rounded-lg border p-2">
+                                        {pickerAsset.thumbnailUrl ? (
+                                          <img
+                                            src={pickerAsset.thumbnailUrl}
+                                            alt={pickerAsset.title}
+                                            className="h-28 w-full rounded-md border object-cover"
+                                            loading="lazy"
+                                          />
+                                        ) : null}
+                                        <div className="mt-2 line-clamp-2 text-xs font-medium">{pickerAsset.title}</div>
+                                        <div className="mt-1 text-[11px] text-muted-foreground">{pickerAsset.sourceType}</div>
+                                        <Button
+                                          type="button"
+                                          size="sm"
+                                          className="mt-2 w-full"
+                                          onClick={() => handleAssignAssetToSlot(prompt, pickerAsset)}
+                                        >
+                                          {t("dialog.articleBuilder.useThisImage")}
+                                        </Button>
+                                      </div>
+                                    )) : (
+                                      <div className="rounded-lg border border-dashed p-3 text-xs text-muted-foreground sm:col-span-2">
+                                        {t("dialog.articleBuilder.assetPickerEmpty")}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              ) : null}
+                            </div>
+                          );
+                        }) : (
+                          <div className="rounded-xl border border-dashed bg-muted/20 p-4 text-sm text-muted-foreground sm:col-span-2">
+                            {t("dialog.articleBuilder.generatedImagesPlaceholder")}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="space-y-3 rounded-xl border p-4 xl:col-span-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="text-sm font-medium">Skill Preflight</div>
+                        <Badge variant="outline">{preparedBundle?.preflightPages?.length ?? 0} pages</Badge>
+                      </div>
+                      {preparedBundle?.preflightWarnings?.length ? (
+                        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                          {preparedBundle.preflightWarnings.join(" ")}
+                        </div>
+                      ) : null}
+                      <div className="grid gap-3 lg:grid-cols-2">
+                        {(preparedBundle?.preflightPages ?? []).map((page) => {
+                          const leadPrompt = leadPromptByPage.get(page.pageNumber) ?? null;
+                          const leadSlotKey = leadPrompt ? getPreparedImageSlotKey(leadPrompt) : null;
+                          return (
+                          <div key={page.pageNumber} className="rounded-lg border bg-muted/20 p-3">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Badge variant="secondary">Page {page.pageNumber}</Badge>
+                              <Badge variant="outline">{page.pageIntentHint}</Badge>
+                              <Badge variant={page.archetypeMode === "forced" ? "default" : "secondary"}>
+                                {page.archetypeMode === "forced" ? "Forced" : "Guided"}: {page.forceArchetype ?? page.preferredArchetype}
+                              </Badge>
+                              <Badge variant="outline">{pageSlotCounts.get(page.pageNumber) ?? page.recommendedImageCount} images</Badge>
+                              {leadPrompt ? (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => void handleRegenerateSlot(leadPrompt)}
+                                  disabled={leadSlotKey !== null && regeneratingSlotKey === leadSlotKey}
+                                >
+                                  <WandSparkles className="mr-2 h-4 w-4" />
+                                  {t("dialog.articleBuilder.regenerateSlot")}
+                                </Button>
+                              ) : null}
+                              {leadPrompt ? (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => openSlotPickerForPrompt(leadPrompt)}
+                                >
+                                  <Images className="mr-2 h-4 w-4" />
+                                  {t("dialog.articleBuilder.pickSlotImage")}
+                                </Button>
+                              ) : null}
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleAddPreparedImageSlot(page.pageNumber)}
+                                disabled={(pageSlotCounts.get(page.pageNumber) ?? 0) >= 3}
+                              >
+                                <Images className="mr-2 h-4 w-4" />
+                                {t("dialog.articleBuilder.addImageSlot")}
+                              </Button>
+                            </div>
+                            <div className="mt-2 text-sm font-medium">{page.titleHint}</div>
+                            <div className="mt-2 text-xs text-muted-foreground">
+                              Structure: {page.structure.paragraphCount} paragraphs, {page.structure.bulletCount} bullets, {page.structure.workflowStepCount} steps, {page.structure.timelinePhaseCount} phases
+                            </div>
+                            <Textarea
+                              readOnly
+                              value={page.compiledText}
+                              rows={7}
+                              className="mt-3 min-h-[150px] resize-none font-mono text-xs"
+                            />
+                            {page.warnings.length ? (
+                              <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-amber-800">
+                                {page.warnings.join(" ")}
+                              </div>
+                            ) : null}
+                          </div>
+                        );
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="space-y-2 rounded-xl border p-4">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="text-sm font-medium">Skill Input JSON</div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              setSlidePayloadEditorJson(normalizeSlidePayloadJson(
+                                generatedSlideDraft?.slidePayloadJson,
+                                normalizeSlidePayloadJson(preparedBundle?.slidePayloadJson),
+                              ));
+                              setSlidePayloadEditorDirty(false);
+                            }}
+                          >
+                            <WandSparkles className="mr-2 h-4 w-4" />
+                            Reset
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => void copyText(
+                              slidePayloadEditorJson,
+                              "Copied skill input JSON.",
+                              "No skill input JSON to copy.",
+                            )}
+                          >
+                            <Copy className="mr-2 h-4 w-4" />
+                            Copy
+                          </Button>
+                        </div>
                       </div>
                       <Textarea
-                        readOnly
-                        value={formatGeneratedImages(generatedImages)}
-                        placeholder={t("dialog.articleBuilder.generatedImagesPlaceholder")}
-                        rows={10}
-                        className="min-h-[220px] resize-none"
+                        value={slidePayloadEditorJson}
+                        onChange={(event) => {
+                          setSlidePayloadEditorJson(event.target.value);
+                          setSlidePayloadEditorDirty(true);
+                        }}
+                        placeholder="Resolved input that will be sent to the selected slide skill."
+                        aria-label="Skill Input JSON"
+                        rows={12}
+                        className="min-h-[260px] resize-y font-mono text-xs"
                       />
                     </div>
 
                     <div className="space-y-2 rounded-xl border p-4">
                       <div className="flex items-center justify-between gap-2">
                         <div className="text-sm font-medium">{t("dialog.articleBuilder.slideJsonLabel")}</div>
-                        {generatedSlideDraft?.modelId ? <Badge variant="secondary">{generatedSlideDraft.modelId}</Badge> : null}
+                        <div className="flex items-center gap-2">
+                          {generatedSlideDraft?.modelId ? <Badge variant="secondary">{generatedSlideDraft.modelId}</Badge> : null}
+                          <Badge variant="outline" className={generatedSlideImportabilityBadge.className}>
+                            {generatedSlideImportabilityBadge.label}
+                          </Badge>
+                        </div>
                       </div>
+                      <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-600">
+                        <div>{generatedSlideImportabilityBadge.hint}</div>
+                        <div className="mt-1">{generatedSlidePayloadSourceLabel}</div>
+                        {generatedSlideSnapshotSourceLabel ? (
+                          <div className="mt-1">{generatedSlideSnapshotSourceLabel}</div>
+                        ) : null}
+                        {generatedSlideRunTimestamp ? (
+                          <div className="mt-1">Generated run: <code>{generatedSlideRunTimestamp}</code></div>
+                        ) : null}
+                        {generatedSlideImportedTimestamp ? (
+                          <div className="mt-1">Imported payload recorded: <code>{generatedSlideImportedTimestamp}</code></div>
+                        ) : null}
+                        {generatedSlideSelectedSkillId ? (
+                          <div className="mt-1">
+                            Selected skill run:{" "}
+                            <code>
+                              {generatedSlideSelectedSkillLabel
+                                ? `${generatedSlideSelectedSkillLabel} (${generatedSlideSelectedSkillId})`
+                                : generatedSlideSelectedSkillId}
+                            </code>
+                          </div>
+                        ) : null}
+                        {generatedSlideRuntimeBundleId ? (
+                          <div className="mt-1">
+                            Runtime bundle:{" "}
+                            <code>
+                              {generatedSlideRuntimeBundleLabel
+                                ? `${generatedSlideRuntimeBundleLabel} (${generatedSlideRuntimeBundleId})`
+                                : generatedSlideRuntimeBundleId}
+                            </code>
+                            {generatedSlideDraft?.runtimeAliasApplied ? " [runtime alias applied]" : ""}
+                          </div>
+                        ) : null}
+                        {generatedSlideDraft?.importedArtifactUrl ? (
+                          <div className="mt-1 break-all">
+                            Imported JSON artifact: <code>{generatedSlideDraft.importedArtifactUrl}</code>
+                          </div>
+                        ) : null}
+                        <div className="mt-1">
+                          Debug trace: total slides = {generatedSlideImportability.totalSlides}, importable slides = {generatedSlideImportability.importableSlides}
+                        </div>
+                        {generatedSlideDraft?.debugTracePath ? (
+                          <div className="mt-1 break-all">
+                            Server debug snapshot: <code>{generatedSlideDraft.debugTracePath}</code>
+                          </div>
+                        ) : null}
+                      </div>
+                      {slideRefreshHint ? (
+                        <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs leading-5 text-rose-800">
+                          {slideRefreshHint}
+                        </div>
+                      ) : null}
                       <Textarea
                         readOnly
-                        value={generatedSlideDraft?.slideJson ?? preparedBundle?.slidePayloadJson ?? ""}
+                        value={inspectableSlideJson}
                         placeholder={t("dialog.articleBuilder.slideJsonPlaceholder")}
+                        aria-label={t("dialog.articleBuilder.slideJsonLabel")}
                         rows={10}
                         className="min-h-[220px] resize-none font-mono text-xs"
                       />
@@ -1697,8 +4184,42 @@ export function PresentationArticleGeneratorDialog({
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => generatedSlideDraft ? void onInsertSlides(generatedSlideDraft) : undefined}
-                disabled={!generatedSlideDraft?.slideJson.trim() || generateSlideDraftMutation.isPending}
+                ref={insertSlidesButtonRef}
+                onClick={() => {
+                  if (!generatedSlideDraft || !canInsertGeneratedSlides) {
+                    toast.error("ยังไม่มี slides ที่นำเข้าได้ กรุณา Generate Slide JSON ใหม่อีกครั้ง");
+                    return;
+                  }
+                  const activeDraft = generatedSlideDraft;
+                  void (async () => {
+                    const insertResult = await onInsertSlides(activeDraft, { closeDialog: false });
+                    if (!insertResult.inserted || !insertResult.importedSlideJson?.trim()) {
+                      return;
+                    }
+                    setGeneratedSlideDraft((previous) => {
+                      if (!previous) {
+                        return previous;
+                      }
+                      const previousGeneratedAt = typeof previous.generatedAt === "string" ? previous.generatedAt.trim() : "";
+                      const activeGeneratedAt = typeof activeDraft.generatedAt === "string" ? activeDraft.generatedAt.trim() : "";
+                      const matchesActiveDraft = (
+                        (previousGeneratedAt && activeGeneratedAt && previousGeneratedAt === activeGeneratedAt)
+                        || previous.slideJson === activeDraft.slideJson
+                      );
+                      if (!matchesActiveDraft) {
+                        return previous;
+                      }
+                      return {
+                        ...previous,
+                        importedSlideJson: insertResult.importedSlideJson ?? previous.importedSlideJson ?? null,
+                        importedAt: insertResult.importedAt ?? new Date().toISOString(),
+                        importedFromArtifact: Boolean(insertResult.importedFromArtifact),
+                        importedArtifactUrl: insertResult.importedArtifactUrl ?? null,
+                      };
+                    });
+                  })();
+                }}
+                disabled={!generatedSlideDraft || !canInsertGeneratedSlides}
               >
                 <LayoutTemplate className="mr-2 h-4 w-4" />
                 {t("dialog.articleBuilder.insertSlides")}

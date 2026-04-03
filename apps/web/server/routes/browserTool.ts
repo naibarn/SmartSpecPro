@@ -29,6 +29,7 @@ import {
 } from "../services/browserPolicyLaunchGuard";
 import { assertBrowserPolicySurfaceReady } from "../services/browserPolicyReleaseControl";
 import { resolveEffectiveUserAutomationPolicy } from "../services/browserPolicyUserSettings";
+import { getAppRuntimeConfig, getPreferredInternalToken } from "../services/appRuntimeConfig";
 import { getTraceId } from "../services/traceContext";
 import { ENV } from "../_core/env";
 
@@ -92,12 +93,11 @@ export function validateBrowserDomains(
 }
 
 const BROWSER_RESERVE_CREDITS = 20;
-const PYTHON_BACKEND_URL = ENV.pythonBackendUrl || "http://127.0.0.1:8000";
 
 // ── Internal token check ───────────────────────────────────────────────────
 
-function verifyInternalToken(req: Request): boolean {
-  const expected = ENV.webGatewayToken;
+async function verifyInternalToken(req: Request): Promise<boolean> {
+  const expected = await getPreferredInternalToken();
   if (!expected) return false;
   const token = req.headers["x-internal-token"] as string | undefined;
   if (!token) return false;
@@ -160,7 +160,7 @@ async function releaseConcurrency(userId: number, tenantId: string): Promise<voi
 
 router.post("/api/internal/tools/browser", async (req: Request, res: Response) => {
   // Verify internal service token
-  if (!verifyInternalToken(req)) {
+  if (!(await verifyInternalToken(req))) {
     res.status(401).json({ error: "Unauthorized.", code: "UNAUTHORIZED" });
     return;
   }
@@ -302,11 +302,13 @@ router.post("/api/internal/tools/browser", async (req: Request, res: Response) =
       .filter((a) => a.action === "navigate" && a.url)
       .map((a) => { try { return new URL(a.url!).hostname; } catch { return "unknown"; } });
 
-    const pythonRes = await fetch(`${PYTHON_BACKEND_URL}/api/browser/execute`, {
+    const runtime = await getAppRuntimeConfig();
+    const internalToken = await getPreferredInternalToken();
+    const pythonRes = await fetch(`${runtime.pythonBackendUrl}/api/browser/execute`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-Internal-Token": ENV.webGatewayToken ?? "",
+        "X-Internal-Token": internalToken,
       },
       body: JSON.stringify({
         session_id: sessionId,

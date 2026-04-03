@@ -4,7 +4,7 @@
  */
 
 import { encrypt, decrypt } from "./crypto";
-import { validateSsrfUrl } from "./ssrfValidator";
+import { validateSsrfUrlWithRuntime } from "./ssrfValidator";
 import { assertPublicIp } from "./ssrfValidation";
 
 // ---------------------------------------------------------------------------
@@ -106,7 +106,7 @@ export async function validateMcpServerUrl(url: string): Promise<{ valid: boolea
 
   // Synchronous SSRF check (pattern-based)
   try {
-    validateSsrfUrl(url);
+    await validateSsrfUrlWithRuntime(url);
   } catch (err: any) {
     return { valid: false, error: err.message || "SSRF validation failed" };
   }

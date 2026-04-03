@@ -76,12 +76,18 @@ beforeEach(() => {
 });
 
 // Helper to set up chained mocks
-function mockSelectChain(result: any[]) {
+function mockSelectChain(result: any[], providers: any[] = []) {
+  const providerOrderByMock = vi.fn().mockResolvedValue(providers);
+  const providerFromMock = vi.fn().mockReturnValue({ orderBy: providerOrderByMock });
+
   const orderByMock = vi.fn().mockResolvedValue(result);
   const whereMock = vi.fn().mockReturnValue({ orderBy: orderByMock });
   const joinMock = vi.fn().mockReturnValue({ where: whereMock, orderBy: orderByMock });
   const fromMock = vi.fn().mockReturnValue({ innerJoin: joinMock, where: whereMock, orderBy: orderByMock });
-  mockDbSelect.mockReturnValue({ from: fromMock });
+
+  mockDbSelect
+    .mockImplementationOnce(() => ({ from: providerFromMock }))
+    .mockImplementationOnce(() => ({ from: fromMock }));
 }
 
 describe("groupModelMappingsByModelId", () => {
@@ -191,6 +197,43 @@ describe("mergeAdminModelCatalogRows", () => {
     expect(rows[0]?.isMapped).toBe(false);
     expect(rows[0]?.isEnabled).toBe(false);
   });
+
+  it("preserves Kie catalog apiStyle, config, capabilities, and canonical alias mapping", () => {
+    const rows = mergeAdminModelCatalogRows({
+      providers: [
+        {
+          id: 2,
+          providerName: "kie_ai",
+          providerDisplayName: "Kie AI",
+          availableModels: [
+            {
+              id: "gpt-5-4",
+              name: "GPT 5.4",
+              contextLength: 400000,
+              pricing: { input: 2.5, output: 15 },
+              apiStyle: "responses",
+              supportsResponses: true,
+              supportsVision: true,
+              config: {
+                requestBodyFormat: "responses",
+                apiEndpoint: "/codex/v1/responses",
+                passthroughFields: ["reasoning", "tools"],
+              },
+            },
+          ],
+        },
+      ],
+      mappings: [],
+    });
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.modelId).toBe("gpt-5.4");
+    expect(rows[0]?.apiStyle).toBe("responses");
+    expect(rows[0]?.supportsResponses).toBe(true);
+    expect(rows[0]?.supportsVision).toBe(true);
+    expect(rows[0]?.config?.apiEndpoint).toBe("/codex/v1/responses");
+    expect(rows[0]?.config?.passthroughFields).toEqual(["reasoning", "tools"]);
+  });
 });
 
 describe("listAdminModelCatalog", () => {
@@ -240,6 +283,31 @@ describe("listAdminModelCatalog", () => {
 
     expect(result.some((row: any) => row.providerModelId === "openai/gpt-4o" && row.isMapped)).toBe(true);
     expect(result.some((row: any) => row.providerModelId === "openai/gpt-5.4" && !row.isMapped)).toBe(true);
+  });
+
+  it("hydrates Kie AI template catalog when a legacy provider row has no availableModels", async () => {
+    const providerOrderByMock = vi.fn().mockResolvedValue([
+      {
+        id: 2,
+        providerName: "kie_ai",
+        providerDisplayName: "Kie AI",
+        availableModels: null,
+      },
+    ]);
+    const providerFromMock = vi.fn().mockReturnValue({ orderBy: providerOrderByMock });
+    mockDbSelect.mockImplementationOnce(() => ({ from: providerFromMock }));
+
+    const mappingOrderByMock = vi.fn().mockResolvedValue([]);
+    const mappingJoinMock = vi.fn().mockReturnValue({ orderBy: mappingOrderByMock });
+    const mappingFromMock = vi.fn().mockReturnValue({ innerJoin: mappingJoinMock });
+    mockDbSelect.mockImplementationOnce(() => ({ from: mappingFromMock }));
+
+    const fn = multiProviderRouter.listAdminModelCatalog as Function;
+    const result = await fn({ ctx: { user: { role: "admin" } } });
+
+    expect(result.length).toBeGreaterThan(0);
+    expect(result.some((row: any) => row.providerName === "kie_ai" && row.providerModelId === "gpt-5-4")).toBe(true);
+    expect(result.some((row: any) => row.providerName === "kie_ai" && row.providerModelId === "gemini-3-pro")).toBe(true);
   });
 });
 
@@ -464,6 +532,41 @@ describe("getAvailableModelsWithProviders", () => {
     expect(result).toHaveLength(2);
     expect(result[0].modelId).toBe("gpt-4o");
     expect(result[0].providers).toHaveLength(1);
+  });
+
+  it("hydrates Kie pricing from provider catalog when legacy mappings were stored as free", async () => {
+    const rows = [
+      {
+        modelId: "gpt-5.4",
+        modelName: "GPT 5.4",
+        providerId: 9,
+        providerName: "kie_ai",
+        providerDisplayName: "Kie AI",
+        providerModelId: "gpt-5-4",
+        pricingInput: "0",
+        pricingOutput: "0",
+        isFree: true,
+        isEnabled: true,
+        contextLength: 400000,
+        availableModels: [
+          {
+            id: "gpt-5-4",
+            name: "GPT 5.4",
+            pricing: { input: 0.7, output: 5.6 },
+          },
+        ],
+      },
+    ];
+    mockAvailableModelsQuery(rows);
+
+    const fn = multiProviderRouter.getAvailableModelsWithProviders as Function;
+    const result = await fn({ ctx: { user: { id: 1 } } });
+
+    expect(result[0]?.providers[0]).toMatchObject({
+      pricingInput: "0.7",
+      pricingOutput: "5.6",
+      isFree: false,
+    });
   });
 
   it("excludes disabled models", async () => {

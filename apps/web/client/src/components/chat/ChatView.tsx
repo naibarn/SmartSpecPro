@@ -59,6 +59,7 @@ import {
 import { Brain, Languages, Mic } from "lucide-react";
 import { usePushToTalk } from "@/hooks/usePushToTalk";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
+import { useTenantFeatureFlag } from "@/hooks/useTenantFeatureFlag";
 import { useChatSkillForm, SkillCommandButton, SkillFormErrorBoundary } from "@/components/chat/skill";
 import { TelegramBindingButton } from "./TelegramBindingButton";
 import { ScheduleConfirmCard } from "./ScheduleConfirmCard";
@@ -70,6 +71,15 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { FallbackConsent } from "./FallbackConsent";
 import { MessageCostBadge } from "./MessageCostBadge";
 import { formatModelCost, getCheapestProvider, type AvailableModel, type ModelProvider } from "@/lib/modelPricing";
+import {
+  AUTO_MODEL,
+  buildAutoProviderValue,
+  getSelectionDisplaySummary,
+  isAutoProviderValue,
+  parsePickerSelectionValue,
+  selectionToPickerValue,
+  type StoredChatModelSelectionState,
+} from "@/lib/chatModelSelection";
 import { BrowserSessionSummaryCard } from "@/components/browser-session/BrowserSessionSummaryCard";
 import { BrowserSessionLaunchSuggestionCard } from "@/components/browser-session/BrowserSessionLaunchSuggestionCard";
 import { HelpButton } from "@/components/help";
@@ -198,6 +208,18 @@ type MediaModelOption = {
   supportsSizes: string[] | null;
   supportsDurations: number[] | null;
 };
+
+function hasParsedScheduleTiming(value: unknown): boolean {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Record<string, unknown>;
+  const cronExpression = typeof candidate.cronExpression === "string" ? candidate.cronExpression.trim() : "";
+  const scheduledAt = typeof candidate.scheduledAt === "string" ? candidate.scheduledAt.trim() : "";
+  return cronExpression.length > 0 || scheduledAt.length > 0;
+}
+
+function looksLikeScheduleIntent(text: string): boolean {
+  return /(?:ทุกวัน|ทุก\s*(?:วัน(?:จันทร์|อังคาร|พุธ|พฤหัส|ศุกร์|เสาร์|อาทิตย์)?|สัปดาห์|เดือน)|ตี\s*\d|ตอน(?:เช้า|บ่าย|เย็น|ดึก|เที่ยง|เช้ามืด)|ทุก\s*\d+\s*(?:นาที|ชั่วโมง)|เตือน(?:ฉัน)?|แจ้ง(?:ฉัน)?|schedule|scheduled|cron|remind(?:er| me)?|every\s+(?:day|week|month|monday|tuesday|wednesday|thursday|friday|saturday|sunday|morning|night)|daily|weekly|monthly|at\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)?)/i.test(text);
+}
 
 function toMediaModelOption(value: unknown): MediaModelOption | null {
   if (!value || typeof value !== "object") return null;
@@ -389,6 +411,12 @@ export function ChatView({
     [librarySearchData?.results],
   );
 
+  const conversationModelSelection = useMemo(
+    () => ((conversation as any)?.modelSelection ?? (conversation?.skillSettings as any)?.llmSelection ?? null) as StoredChatModelSelectionState | null,
+    [conversation],
+  );
+  const chatAutoModelSelectionEnabled = useTenantFeatureFlag("chatAutoModelSelection");
+
   // Current selected model (use conversation model, localStorage fallback, or first available)
   const [selectedModel, setSelectedModel] = useState<string>(
     () => localStorage.getItem("smartspec_lastModel") || ""
@@ -423,8 +451,42 @@ export function ChatView({
       return;
     }
 
+    const preferredSelectionValue = selectionToPickerValue(
+      conversationModelSelection,
+      conversation?.model ?? undefined,
+    );
+    if (
+      !chatAutoModelSelectionEnabled
+      && (preferredSelectionValue === AUTO_MODEL || isAutoProviderValue(preferredSelectionValue))
+    ) {
+      const fallbackModelId = pickEnabledModelId({
+        preferredId: conversationModelSelection?.lastResolvedModelId ?? conversation?.model ?? undefined,
+        allowedIds: enabledModelIds,
+        fallbackIds: [defaultEnabledModelId],
+      });
+      if (fallbackModelId && fallbackModelId !== selectedModel) {
+        setSelectedModel(fallbackModelId);
+      }
+      setSelectedProviderId(conversationModelSelection?.lastResolvedProviderId ?? null);
+      return;
+    }
+
+    if (preferredSelectionValue === AUTO_MODEL || isAutoProviderValue(preferredSelectionValue)) {
+      if (preferredSelectionValue !== selectedModel) {
+        setSelectedModel(preferredSelectionValue);
+      }
+      if (conversationModelSelection?.mode === "auto-provider" && conversationModelSelection.providerId) {
+        setSelectedProviderId(conversationModelSelection.providerId);
+      }
+      return;
+    }
+
+    if (conversationModelSelection?.mode === "explicit") {
+      setSelectedProviderId(conversationModelSelection.providerId ?? null);
+    }
+
     const nextModelId = pickEnabledModelId({
-      preferredId: conversation?.model,
+      preferredId: preferredSelectionValue,
       allowedIds: enabledModelIds,
       fallbackIds: [defaultEnabledModelId],
     });
@@ -432,7 +494,7 @@ export function ChatView({
     if (nextModelId && nextModelId !== selectedModel) {
       setSelectedModel(nextModelId);
     }
-  }, [conversationId, conversation?.model, defaultEnabledModelId, enabledModelIds, modelsData?.models, selectedModel]);
+  }, [chatAutoModelSelectionEnabled, conversationId, conversation?.model, conversationModelSelection, defaultEnabledModelId, enabledModelIds, modelsData?.models, selectedModel]);
 
   // Sanitize stale localStorage state when the enabled model catalog changes.
   useEffect(() => {
@@ -441,10 +503,14 @@ export function ChatView({
     }
 
     if (enabledModelIds.length === 0) {
-      if (selectedModel) {
+      if (selectedModel && selectedModel !== AUTO_MODEL && !isAutoProviderValue(selectedModel)) {
         setSelectedModel("");
         localStorage.removeItem("smartspec_lastModel");
       }
+      return;
+    }
+
+    if ((selectedModel === AUTO_MODEL || isAutoProviderValue(selectedModel)) && chatAutoModelSelectionEnabled) {
       return;
     }
 
@@ -457,7 +523,7 @@ export function ChatView({
     if (nextModelId !== selectedModel) {
       setSelectedModel(nextModelId);
     }
-  }, [conversation?.model, defaultEnabledModelId, enabledModelIds, modelsData?.models, selectedModel]);
+  }, [chatAutoModelSelectionEnabled, conversation?.model, defaultEnabledModelId, enabledModelIds, modelsData?.models, selectedModel]);
 
   // Persist selected model to localStorage
   useEffect(() => {
@@ -488,6 +554,98 @@ export function ChatView({
   const executeSkillMutation = trpc.chat.executeSkill.useMutation();
   const addSkillCreditsMutation = trpc.chat.addSkillCreditsToConversation.useMutation();
   const enhancePromptMutation = trpc.skills.enhancePrompt.useMutation();
+
+  const resolveAsyncSkillResult = useCallback(async <T extends {
+    success?: boolean;
+    isAsync?: boolean;
+    taskId?: string;
+    jobId?: string;
+    skillId?: string;
+    type?: string;
+    message?: string;
+  }>(rawResult: T): Promise<any> => {
+    if (rawResult?.isAsync && rawResult?.taskId) {
+      const taskId = rawResult.taskId;
+      while (true) {
+        await new Promise<void>((r) => setTimeout(r, 3000));
+        const task = await utils.chat.getSkillTaskResult.fetch({ taskId });
+        if (task.status === "done") {
+          if (!task.result) {
+            return {
+              success: false,
+              skillId: rawResult.skillId ?? "",
+              type: "text",
+              error: "Task completed with no result",
+            };
+          }
+          return task.result;
+        }
+        if (task.status === "not_found") {
+          return {
+            success: false,
+            skillId: rawResult.skillId ?? "",
+            type: "text",
+            error: "Task not found or expired",
+          };
+        }
+      }
+    }
+
+    if (rawResult?.isAsync && rawResult?.jobId) {
+      const jobId = rawResult.jobId;
+      while (true) {
+        await new Promise<void>((r) => setTimeout(r, 3000));
+        const job = await utils.sandbox.getJobStatus.fetch({ jobId });
+        if (job.status === "completed") {
+          const artifacts = Array.isArray((job as any).artifacts)
+            ? (job as any).artifacts
+            : [];
+          const imageArtifacts = artifacts.filter((artifact: any) =>
+            typeof artifact?.url === "string"
+            && (
+              String(artifact?.mimeType || "").toLowerCase().startsWith("image/")
+              || String(artifact?.key || "").toLowerCase().match(/\.(png|jpe?g|webp|gif|svg)$/)
+            ));
+          return {
+            success: true,
+            skillId: rawResult.skillId ?? "",
+            type: imageArtifacts.length > 0 ? "image" : "text",
+            resultUrl: imageArtifacts[0]?.url,
+            resultUrls: imageArtifacts.map((artifact: any) => artifact.url),
+            message: imageArtifacts.length > 0
+              ? "Image generated successfully!"
+              : rawResult.message || "Sandbox job completed successfully.",
+            isAsync: true,
+            jobId,
+          };
+        }
+        if (job.status === "failed" || job.status === "timed_out") {
+          return {
+            success: false,
+            skillId: rawResult.skillId ?? "",
+            type: "text",
+            error:
+              (job as any).label
+              || "Sandbox job failed",
+            isAsync: true,
+            jobId,
+          };
+        }
+        if (job.status === "cancelled" || job.status === "canceled") {
+          return {
+            success: false,
+            skillId: rawResult.skillId ?? "",
+            type: "text",
+            error: "Sandbox job was cancelled",
+            isAsync: true,
+            jobId,
+          };
+        }
+      }
+    }
+
+    return rawResult;
+  }, [utils]);
 
   // Memory auto-save state
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
@@ -568,39 +726,54 @@ export function ChatView({
   }, [isSkillFormEnabled, skillForm.setShowSkillSelector]);
 
   // Handle model change
-  const handleModelChange = async (modelId: string, providerId?: number) => {
+  const handleModelChange = async (modelId: string, providerId?: number, providerName?: string) => {
     if (!conversationId || isStreaming) return;
+
+    const parsedSelection = parsePickerSelectionValue({
+      value: modelId,
+      explicitProviderId: providerId ?? null,
+      explicitProviderName: providerName ?? null,
+    });
+
+    if (!chatAutoModelSelectionEnabled && parsedSelection && parsedSelection.mode !== "explicit") {
+      toast.error("Auto model selection is not enabled for this workspace");
+      return;
+    }
 
     setSelectedModel(modelId);
 
-    // Auto-select cheapest provider if not specified
-    if (providerId !== undefined) {
-      setSelectedProviderId(providerId);
-    } else {
-      // Find the model in multiProviderModels and select cheapest provider
-      const multiModel = multiProviderModels?.find((m: AvailableModel) => m.modelId === modelId);
-      if (multiModel?.providers?.length) {
-        const cheapest = getCheapestProvider(multiModel.providers);
-        setSelectedProviderId(cheapest?.providerId ?? null);
+    if (parsedSelection?.mode === "explicit") {
+      if (providerId !== undefined) {
+        setSelectedProviderId(providerId);
       } else {
-        setSelectedProviderId(null);
+        const multiModel = multiProviderModels?.find((m: AvailableModel) => m.modelId === modelId);
+        if (multiModel?.providers?.length) {
+          const cheapest = getCheapestProvider(multiModel.providers);
+          setSelectedProviderId(cheapest?.providerId ?? null);
+        } else {
+          setSelectedProviderId(null);
+        }
       }
+    } else if (parsedSelection?.mode === "auto-provider") {
+      setSelectedProviderId(parsedSelection.providerId);
+    } else {
+      setSelectedProviderId(null);
     }
 
     // Update conversation in database
     try {
       await updateConversationMutation.mutateAsync({
         id: conversationId,
-        model: modelId,
+        model: parsedSelection?.mode === "explicit" ? modelId : null,
+        modelSelection: parsedSelection,
       });
       // Invalidate to refresh conversation data
       utils.chat.getConversation.invalidate({ id: conversationId });
     } catch (error) {
       console.error("Failed to update model:", error);
       // Revert on error
-      if (conversation?.model) {
-        setSelectedModel(conversation.model);
-      }
+      setSelectedModel(selectionToPickerValue(conversationModelSelection, conversation?.model ?? undefined));
+      setSelectedProviderId(conversationModelSelection?.providerId ?? null);
     }
   };
 
@@ -643,6 +816,49 @@ export function ChatView({
     }
     return modelName;
   };
+
+  const selectedModelDisplay = useMemo(() => {
+    const modelData = modelsData?.models.find((m) => m.id === selectedModel);
+    const multiModel = multiProviderModels?.find((m: AvailableModel) => m.modelId === selectedModel);
+    const provider = multiModel?.providers?.find((p: ModelProvider) => p.providerId === selectedProviderId)
+      || (multiModel?.providers?.length ? getCheapestProvider(multiModel.providers) : null);
+    const providerDisplayName = provider?.providerDisplayName || provider?.providerName || null;
+    const selectedProviderDisplayName =
+      multiProviderModels
+        ?.flatMap((model) => model.providers || [])
+        .find((candidate) => candidate.providerId === selectedProviderId)?.providerDisplayName
+      || multiProviderModels
+        ?.flatMap((model) => model.providers || [])
+        .find((candidate) => candidate.providerId === selectedProviderId)?.providerName
+      || conversationModelSelection?.providerName
+      || null;
+
+    if (selectedModel === AUTO_MODEL || isAutoProviderValue(selectedModel)) {
+      return getSelectionDisplaySummary({
+        pickerValue: selectedModel,
+        explicitProviderName: selectedProviderDisplayName,
+        storedSelection: conversationModelSelection,
+      });
+    }
+
+    const displayName = formatModelDisplayName(
+      modelData?.name || selectedModel || "Select model",
+      providerDisplayName ?? undefined,
+    );
+
+    return getSelectionDisplaySummary({
+      pickerValue: selectedModel || "Select model",
+      explicitLabel: displayName,
+      explicitProviderName: providerDisplayName,
+      storedSelection: conversationModelSelection,
+    });
+  }, [
+    conversationModelSelection,
+    modelsData?.models,
+    multiProviderModels,
+    selectedModel,
+    selectedProviderId,
+  ]);
 
   // Skill detection state
   const [detectedSkill, setDetectedSkill] = useState<{
@@ -721,6 +937,8 @@ export function ChatView({
     message: string;
     reason: string;
     plan: HybridOrchestrationPlan;
+    fallbackUserMessage: Message;
+    retrievalQueryText: string;
   } | null>(null);
 
   const parseIntentMutation = trpc.scheduledMessages.parseIntent.useMutation();
@@ -1230,7 +1448,15 @@ export function ChatView({
 
     // Include conversationId so server can save the message at end of streaming
     // Use selectedModel which reflects user's current selection
-    const effectiveModel = selectedModel || conversation?.model || undefined;
+    const parsedSelection = parsePickerSelectionValue({
+      value: selectedModel || selectionToPickerValue(conversationModelSelection, conversation?.model ?? undefined),
+      explicitProviderId: !selectedModel || selectedModel === AUTO_MODEL || isAutoProviderValue(selectedModel)
+        ? null
+        : selectedProviderId,
+    });
+    const effectiveModel = parsedSelection?.mode === "explicit"
+      ? parsedSelection.modelId
+      : undefined;
     const body: Record<string, any> = {
       ...(effectiveModel ? { model: effectiveModel } : {}),
       messages: apiMessages,
@@ -1238,15 +1464,18 @@ export function ChatView({
       conversationId,
       skillUsed,
     };
-    // Include preferredProvider if user explicitly selected one
-    if (selectedProviderId) {
+    if (parsedSelection) {
+      body.modelSelection = parsedSelection;
+    }
+    // Include preferredProvider only for explicit model selection
+    if (parsedSelection?.mode === "explicit" && selectedProviderId) {
       body.preferredProvider = selectedProviderId;
     }
 
     try {
       const streamOpenStartedAt = performance.now();
       logTiming("stream_request_sent", {
-        bodyModel: effectiveModel || null,
+        bodyModel: effectiveModel || parsedSelection?.mode || null,
         messageCount: apiMessages.length,
       });
       const resp = await fetch("/api/llm/stream", {
@@ -1280,6 +1509,8 @@ export function ChatView({
       let fullContent = "";
       let savedMessageId: number | null = null;
       let creditsUsed = 0;
+      let resolvedModelUsed: string | null = null;
+      let streamErrorMessage: string | null = null;
       let sawFirstChunk = false;
       let lastStreamingUiFlushAt = 0;
 
@@ -1309,9 +1540,19 @@ export function ChatView({
                   if (eventName === "message_saved") {
                     savedMessageId = parsed.id;
                     creditsUsed = parsed.creditsUsed || 0;
+                    resolvedModelUsed = parsed.resolvedModelId || resolvedModelUsed;
                     timingSummary.messageSavedMs = Math.round(performance.now() - streamStartedAt);
                     console.log("[Chat Client] Server saved message:", { savedMessageId, creditsUsed });
                     logTiming("message_saved", { savedMessageId, creditsUsed });
+                  } else if (eventName === "message_complete") {
+                    resolvedModelUsed = parsed.resolvedModelId || resolvedModelUsed;
+                    if (typeof parsed?.content === "string" && parsed.content && !fullContent) {
+                      fullContent = parsed.content;
+                      setStreamingContent(fullContent);
+                      logTiming("message_complete_content_fallback", {
+                        contentLength: fullContent.length,
+                      });
+                    }
                   } else if (eventName === "save_error") {
                     console.error("[Chat Client] Server save error:", parsed.error);
                     logTiming("save_error", {
@@ -1331,6 +1572,15 @@ export function ChatView({
                     setIsStreaming(false);
                     reader.releaseLock();
                     return ""; // Stop processing, user must decide
+                  } else if (eventName === "error") {
+                    streamErrorMessage =
+                      parsed?.error
+                      || parsed?.message
+                      || "Failed to resolve a valid model for this chat request";
+                    logTiming("stream_error_event", {
+                      error: streamErrorMessage,
+                      statusCode: parsed?.statusCode ?? null,
+                    });
                   }
                 } catch {
                   // Ignore parse errors for event data
@@ -1371,6 +1621,28 @@ export function ChatView({
 
       reader.releaseLock();
 
+      if (streamErrorMessage) {
+        const errorContent = `[Error] ${streamErrorMessage}`;
+        lastLocalAddTime.current = Date.now();
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now(),
+            role: "assistant" as const,
+            content: errorContent,
+            createdAt: new Date(),
+          },
+        ]);
+        setStreamingContent("");
+        setIsStreaming(false);
+        toast.error(streamErrorMessage);
+        timingSummary.totalMs = Math.round(performance.now() - streamStartedAt);
+        logTiming("stream_complete_error", {
+          error: streamErrorMessage,
+        });
+        return "";
+      }
+
       // Message was saved by server - add to local state
       if (fullContent) {
         // Set timestamp BEFORE adding message to prevent useEffect from overwriting
@@ -1386,7 +1658,7 @@ export function ChatView({
           role: "assistant" as const,
           content: fullContent,
           creditsUsed: creditsUsed.toString(),
-          modelUsed: selectedModel || conversation?.model || undefined,
+          modelUsed: resolvedModelUsed || (selectedModel || conversation?.model || undefined),
           skillUsed: skillUsed,
           artifacts: inlineArtifacts.length > 0
             ? inlineArtifacts.map((a) => ({ id: a.identifier, type: a.type as any, title: a.title, content: a.content }))
@@ -1415,6 +1687,7 @@ export function ChatView({
 
         // Invalidate conversation list (for title/timestamp) and credits
         utils.chat.listConversations.invalidate();
+        utils.chat.getConversation.invalidate({ id: conversationId });
         utils.credits.balance.invalidate();
 
         // Process memory in background (entity extraction, summarization check)
@@ -1583,14 +1856,10 @@ export function ChatView({
         }
 
         if (intent.route === "hybrid" && intent.hybridPlan) {
-          const assistantContent = "This looks like a strong hybrid flow: workflow for the deterministic steps and swarm for the collaborative reasoning. I can set that up for you.";
-          const saved = await saveAssistantMessageMutation.mutateAsync({
-            conversationId: conversationId!,
-            content: assistantContent,
-          }).catch(() => null);
+          const assistantContent = "I found a possible hybrid workflow for this request. Please confirm whether you want to open the hybrid flow, or keep this as a normal chat question.";
           lastLocalAddTime.current = Date.now();
           setMessages((prev) => [...prev, {
-            id: saved?.id ?? Date.now(),
+            id: Date.now(),
             role: "assistant" as const,
             content: assistantContent,
             createdAt: new Date(),
@@ -1599,6 +1868,13 @@ export function ChatView({
             message: text,
             reason: intent.reason,
             plan: intent.hybridPlan,
+            fallbackUserMessage: {
+              id: userMessage.id,
+              role: "user" as const,
+              content: typeof content === "string" ? content : text,
+              createdAt: new Date(userMessage.createdAt),
+            },
+            retrievalQueryText: text,
           });
           return;
         }
@@ -1708,7 +1984,7 @@ export function ChatView({
           setStreamingContent(`Using prompt from previous message to create image...${paramsInfo}`);
 
           try {
-            const result = await executeSkillMutation.mutateAsync({
+            const rawResult = await executeSkillMutation.mutateAsync({
               skillId: "image-creator",
               prompt: extractedPrompt,
               conversationId,
@@ -1716,6 +1992,7 @@ export function ChatView({
               // Pass reference image if this is an image edit request
               ...(referenceImageUrl ? { referenceImageUrls: [referenceImageUrl] } : {}),
             });
+            const result = await resolveAsyncSkillResult(rawResult as any);
 
             let responseContent = "";
             let imageAttachments: Array<{ type: "image"; url: string; name: string }> = [];
@@ -1792,6 +2069,7 @@ export function ChatView({
 
       if (isScheduledPresentation) {
         // Route to schedule flow — let parseIntent handle the cron expression
+        let scheduledPresentationHandled = false;
         try {
           // Extract topic + slide count for dynamicParams
           const scMatch = text.match(/จำนวน\s*(\d+)|(\d+)\s*(?:slides?|สไลด์|แผ่น|หน้า)/i);
@@ -1807,6 +2085,7 @@ export function ChatView({
           const parsed = await parseIntentMutation.mutateAsync({
             message: text,
             model: selectedModel || conversation?.model || undefined,
+            sourceType: "chat",
           });
 
           // Override parsed result to use auto-draft-presentation skill
@@ -1821,26 +2100,31 @@ export function ChatView({
             },
           };
 
-          setPendingSchedule(scheduleParsed);
-          const schedContent = `I detected a scheduled presentation request. Please confirm the schedule below.`;
-          const schedSaved = conversationId ? await saveAssistantMessageMutation.mutateAsync({
-            conversationId,
-            content: schedContent,
-            skillUsed: "chat-alert",
-          }).catch(() => null) : null;
-          lastLocalAddTime.current = Date.now();
-          setMessages((prev) => [...prev, {
-            id: schedSaved?.id ?? Date.now(),
-            role: "assistant" as const,
-            content: schedContent,
-            createdAt: new Date(),
-            skillUsed: "chat-alert",
-          }]);
+          if (hasParsedScheduleTiming(scheduleParsed)) {
+            scheduledPresentationHandled = true;
+            setPendingSchedule(scheduleParsed);
+            const schedContent = `I detected a scheduled presentation request. Please confirm the schedule below.`;
+            const schedSaved = conversationId ? await saveAssistantMessageMutation.mutateAsync({
+              conversationId,
+              content: schedContent,
+              skillUsed: "chat-alert",
+            }).catch(() => null) : null;
+            lastLocalAddTime.current = Date.now();
+            setMessages((prev) => [...prev, {
+              id: schedSaved?.id ?? Date.now(),
+              role: "assistant" as const,
+              content: schedContent,
+              createdAt: new Date(),
+              skillUsed: "chat-alert",
+            }]);
+          }
         } catch (err) {
           console.warn("[ChatView] Scheduled presentation parse failed:", err);
           // Fall through to immediate generation
         }
-        return;
+        if (scheduledPresentationHandled) {
+          return;
+        }
       }
 
       // ── Immediate presentation generation (no schedule) ─────────
@@ -1990,36 +2274,43 @@ export function ChatView({
     }
 
     // Check if this is a chat-alert (scheduling) skill
-    if (currentSkillId === "chat-alert" || currentSkillType === "automation") {
+    if ((currentSkillId === "chat-alert" || currentSkillType === "automation") && looksLikeScheduleIntent(text)) {
+      let scheduleIntentHandled = false;
       try {
         const parsed = await parseIntentMutation.mutateAsync({
           message: text,
           model: selectedModel || conversation?.model || undefined,
+          sourceType: "chat",
         });
-        setPendingSchedule(parsed);
-        // Add assistant message about the schedule and persist it
-        const alertContent = `I detected a scheduling request. Please confirm the details below.`;
-        const alertSaved = conversationId ? await saveAssistantMessageMutation.mutateAsync({
-          conversationId,
-          content: alertContent,
-          skillUsed: "chat-alert",
-        }).catch(() => null) : null;
-        lastLocalAddTime.current = Date.now();
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: alertSaved?.id ?? Date.now(),
-            conversationId: conversationId || 0,
-            role: "assistant" as const,
+        if (hasParsedScheduleTiming(parsed)) {
+          scheduleIntentHandled = true;
+          setPendingSchedule(parsed);
+          // Add assistant message about the schedule and persist it
+          const alertContent = `I detected a scheduling request. Please confirm the details below.`;
+          const alertSaved = conversationId ? await saveAssistantMessageMutation.mutateAsync({
+            conversationId,
             content: alertContent,
-            createdAt: new Date(),
             skillUsed: "chat-alert",
-          },
-        ]);
+          }).catch(() => null) : null;
+          lastLocalAddTime.current = Date.now();
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: alertSaved?.id ?? Date.now(),
+              conversationId: conversationId || 0,
+              role: "assistant" as const,
+              content: alertContent,
+              createdAt: new Date(),
+              skillUsed: "chat-alert",
+            },
+          ]);
+        }
       } catch {
         // Fall through to normal chat if parse fails
       }
-      return;
+      if (scheduleIntentHandled) {
+        return;
+      }
     }
 
     // Execution mode determines skill behavior (from DB, no hardcoded patterns)
@@ -2142,7 +2433,7 @@ export function ChatView({
         setStreamingContent(`Using generated prompt to create image...${paramsInfo}`);
 
         try {
-          const result = await executeSkillMutation.mutateAsync({
+          const rawResult = await executeSkillMutation.mutateAsync({
             skillId: effectiveChainTo,
             prompt: chainedPrompt,
             conversationId,
@@ -2150,6 +2441,7 @@ export function ChatView({
             // Pass reference image if this is an image edit request
             ...(referenceImageUrl ? { referenceImageUrls: [referenceImageUrl] } : {}),
           });
+          const result = await resolveAsyncSkillResult(rawResult as any);
 
           let responseContent = "";
           let imageAttachments: Array<{ type: "image"; url: string; name: string }> = [];
@@ -2213,12 +2505,13 @@ export function ChatView({
     setPendingMediaPrompt(null);
 
     try {
-      const result = await executeSkillMutation.mutateAsync({
+      const rawResult = await executeSkillMutation.mutateAsync({
         skillId,
         prompt: editedPrompt,
         conversationId: convId,
         ...params,
       });
+      const result = await resolveAsyncSkillResult(rawResult as any);
 
       let responseContent = "";
       let imageAttachments: Array<{ type: "image"; url: string; name: string }> = [];
@@ -2290,7 +2583,10 @@ export function ChatView({
   };
 
   const handleKeepHybridInChat = () => {
+    const pending = pendingHybridOrchestration;
     setPendingHybridOrchestration(null);
+    if (!pending || isStreaming) return;
+    void streamResponse(pending.fallbackUserMessage, undefined, pending.retrievalQueryText);
   };
 
   // Render user content (including images)
@@ -2375,21 +2671,18 @@ export function ChatView({
               <Button
                 variant="outline"
                 size="sm"
-                className="h-7 max-w-[180px] sm:max-w-[280px] justify-start gap-1.5 text-xs font-normal shrink-0"
+                className="h-8 max-w-[220px] sm:max-w-[340px] justify-start gap-1.5 text-xs font-normal shrink-0"
                 onClick={() => setModelDialogOpen(true)}
                 disabled={isStreaming || updateConversationMutation.isPending || !!fallbackRequest}
+                title={selectedModelDisplay.tooltipLabel}
               >
                 <Bot className="h-3 w-3 shrink-0" />
-                <span className="truncate">
-                  {(() => {
-                    const modelData = modelsData.models.find(m => m.id === selectedModel);
-                    const multiModel = multiProviderModels?.find((m: AvailableModel) => m.modelId === selectedModel);
-                    const provider = multiModel?.providers?.find((p: ModelProvider) => p.providerId === selectedProviderId)
-                      || (multiModel?.providers?.length ? getCheapestProvider(multiModel.providers) : null);
-                    const displayName = modelData?.name || selectedModel || "Select model";
-                    return formatModelDisplayName(displayName, provider?.providerName);
-                  })()}
-                </span>
+                {selectedModelDisplay.providerLabel ? (
+                  <Badge variant="secondary" className="h-4 max-w-[92px] shrink-0 px-1.5 text-[10px] font-medium">
+                    <span className="truncate">{selectedModelDisplay.providerLabel}</span>
+                  </Badge>
+                ) : null}
+                <span className="truncate">{selectedModelDisplay.primaryLabel}</span>
                 {/* FREE badge in header */}
                 {(() => {
                   const multiModel = multiProviderModels?.find((m: AvailableModel) => m.modelId === selectedModel);
@@ -2440,40 +2733,100 @@ export function ChatView({
                       if (!model.providers || model.providers.length === 0) continue;
                       const bestProvider = getCheapestProvider(model.providers);
                       if (!bestProvider) continue;
-                      const providerKey = bestProvider.providerName;
+                      const providerKey = bestProvider.providerDisplayName || bestProvider.providerName;
                       if (!grouped[providerKey]) {
                         grouped[providerKey] = [];
                       }
                       grouped[providerKey].push({ model, provider: bestProvider });
                     }
 
-                    return Object.entries(grouped).map(([providerName, items]) => (
-                      <CommandGroup key={providerName} heading={providerName}>
-                        {items.map(({ model, provider }) => (
-                          <CommandItem
-                            key={`${model.modelId}-${provider.providerId}`}
-                            value={`${model.modelName} ${model.modelId} ${providerName}`}
-                            onSelect={() => {
-                              handleModelChange(model.modelId, provider.providerId);
-                              setModelDialogOpen(false);
-                            }}
-                            className="flex items-center gap-2"
-                          >
-                            <Check className={cn("h-3.5 w-3.5 shrink-0", selectedModel === model.modelId ? "opacity-100" : "opacity-0")} />
-                            <span className="flex-1 truncate">{formatModelDisplayName(model.modelName, providerName)}</span>
-                            {provider.isFree ? (
-                              <Badge variant="secondary" className="h-4 px-1 text-[10px] shrink-0 bg-green-500/10 text-green-600">
-                                FREE
-                              </Badge>
-                            ) : (
-                              <span className="text-[10px] text-muted-foreground shrink-0">
-                                {formatModelCost(provider.pricingInput, provider.pricingOutput, false)}
-                              </span>
-                            )}
-                          </CommandItem>
+                    const providerAutoEntries = Object.entries(grouped)
+                      .map(([providerName, items]) => ({
+                        providerName,
+                        providerId: items[0]?.provider.providerId ?? null,
+                      }))
+                      .filter((entry): entry is { providerName: string; providerId: number } => typeof entry.providerId === "number");
+
+                    return (
+                      <>
+                        {chatAutoModelSelectionEnabled ? (
+                          <CommandGroup heading="Recommended">
+                            <CommandItem
+                              value="Auto best overall"
+                              onSelect={() => {
+                                handleModelChange(AUTO_MODEL);
+                                setModelDialogOpen(false);
+                              }}
+                              className="flex items-center gap-2"
+                            >
+                              <Check className={cn("h-3.5 w-3.5 shrink-0", selectedModel === AUTO_MODEL ? "opacity-100" : "opacity-0")} />
+                              <Sparkles className="h-3.5 w-3.5 shrink-0 text-primary" />
+                              <span className="flex-1 truncate">Auto (best overall)</span>
+                              {conversationModelSelection?.lastResolvedProviderName ? (
+                                <Badge variant="secondary" className="h-4 max-w-[92px] shrink-0 px-1 text-[10px]">
+                                  <span className="truncate">{conversationModelSelection.lastResolvedProviderName}</span>
+                                </Badge>
+                              ) : null}
+                            </CommandItem>
+                            {providerAutoEntries.map((entry) => {
+                              const autoValue = buildAutoProviderValue(entry.providerId);
+                              return (
+                                <CommandItem
+                                  key={autoValue}
+                                  value={`${entry.providerName} auto model`}
+                                  onSelect={() => {
+                                    handleModelChange(autoValue, entry.providerId, entry.providerName);
+                                    setModelDialogOpen(false);
+                                  }}
+                                  className="flex items-center gap-2"
+                                >
+                                  <Check className={cn("h-3.5 w-3.5 shrink-0", selectedModel === autoValue ? "opacity-100" : "opacity-0")} />
+                                  <Sparkles className="h-3.5 w-3.5 shrink-0 text-primary" />
+                                  <span className="flex-1 truncate">Auto Model</span>
+                                  <Badge variant="secondary" className="h-4 max-w-[92px] shrink-0 px-1 text-[10px]">
+                                    <span className="truncate">{entry.providerName}</span>
+                                  </Badge>
+                                </CommandItem>
+                              );
+                            })}
+                          </CommandGroup>
+                        ) : null}
+                        {Object.entries(grouped).map(([providerName, items]) => (
+                          <CommandGroup key={providerName} heading={providerName}>
+                            {items.map(({ model, provider }) => (
+                              <CommandItem
+                                key={`${model.modelId}-${provider.providerId}`}
+                                value={`${model.modelName} ${model.modelId} ${providerName}`}
+                                onSelect={() => {
+                                  handleModelChange(
+                                    model.modelId,
+                                    provider.providerId,
+                                    provider.providerDisplayName || provider.providerName,
+                                  );
+                                  setModelDialogOpen(false);
+                                }}
+                                className="flex items-center gap-2"
+                              >
+                                <Check className={cn("h-3.5 w-3.5 shrink-0", selectedModel === model.modelId ? "opacity-100" : "opacity-0")} />
+                                <span className="flex-1 truncate">{formatModelDisplayName(model.modelName, providerName)}</span>
+                                <Badge variant="secondary" className="h-4 max-w-[92px] shrink-0 px-1 text-[10px]">
+                                  <span className="truncate">{providerName}</span>
+                                </Badge>
+                                {provider.isFree ? (
+                                  <Badge variant="secondary" className="h-4 px-1 text-[10px] shrink-0 bg-green-500/10 text-green-600">
+                                    FREE
+                                  </Badge>
+                                ) : (
+                                  <span className="text-[10px] text-muted-foreground shrink-0">
+                                    {formatModelCost(provider.pricingInput, provider.pricingOutput, false)}
+                                  </span>
+                                )}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
                         ))}
-                      </CommandGroup>
-                    ));
+                      </>
+                    );
                   })()}
                 </CommandList>
               </CommandDialog>
@@ -2889,7 +3242,13 @@ export function ChatView({
                     const lastUserMsg = messages.filter(m => m.role === "user").pop();
                     if (lastUserMsg) {
                       // Trigger re-send by simulating submit with preferredProvider
-                      const effectiveModel = selectedModel || conversation?.model || undefined;
+                      const parsedSelection = parsePickerSelectionValue({
+                        value: selectedModel || selectionToPickerValue(conversationModelSelection, conversation?.model ?? undefined),
+                        explicitProviderId: providerId,
+                      });
+                      const effectiveModel = parsedSelection?.mode === "explicit"
+                        ? parsedSelection.modelId
+                        : undefined;
                       const body: Record<string, any> = {
                         ...(effectiveModel ? { model: effectiveModel } : {}),
                         messages: fallbackRequest.originalMessages,
@@ -2897,6 +3256,9 @@ export function ChatView({
                         conversationId,
                         preferredProvider: providerId,
                       };
+                      if (parsedSelection) {
+                        body.modelSelection = parsedSelection;
+                      }
                       setIsStreaming(true);
                       try {
                         const resp = await fetch("/api/llm/stream", {
@@ -2909,6 +3271,7 @@ export function ChatView({
                           const decoder = new TextDecoder("utf-8");
                           let buf = "";
                           let fullContent = "";
+                          let streamErrorMessage: string | null = null;
                           while (true) {
                             const { done, value } = await reader.read();
                             if (done) break;
@@ -2918,6 +3281,33 @@ export function ChatView({
                               if (idx < 0) break;
                               const line = buf.slice(0, idx).replace(/\r$/, "");
                               buf = buf.slice(idx + 1);
+                              if (line.startsWith("event:")) {
+                                const eventName = line.slice("event:".length).trim();
+                                const dataIdx = buf.indexOf("\n");
+                                if (dataIdx >= 0) {
+                                  const dataLine = buf.slice(0, dataIdx).replace(/\r$/, "");
+                                  buf = buf.slice(dataIdx + 1);
+                                  if (dataLine.startsWith("data:")) {
+                                    try {
+                                      const parsed = JSON.parse(dataLine.slice("data:".length).trim());
+                                      if (eventName === "error") {
+                                        streamErrorMessage =
+                                          parsed?.error
+                                          || parsed?.message
+                                          || "Failed to resolve a valid model for this chat request";
+                                      } else if (eventName === "message_complete") {
+                                        if (typeof parsed?.content === "string" && parsed.content && !fullContent) {
+                                          fullContent = parsed.content;
+                                          setStreamingContent(fullContent);
+                                        }
+                                      }
+                                    } catch {
+                                      // Ignore malformed event payloads
+                                    }
+                                  }
+                                }
+                                continue;
+                              }
                               if (line.startsWith("data:")) {
                                 const data = line.slice("data:".length).trim();
                                 if (data === "[DONE]") break;
@@ -2933,6 +3323,18 @@ export function ChatView({
                             }
                           }
                           reader.releaseLock();
+                          if (streamErrorMessage) {
+                            setMessages((prev) => [...prev, {
+                              id: Date.now(),
+                              role: "assistant" as const,
+                              content: `[Error] ${streamErrorMessage}`,
+                              createdAt: new Date(),
+                            }]);
+                            toast.error(streamErrorMessage);
+                            setStreamingContent("");
+                            setIsStreaming(false);
+                            return;
+                          }
                           if (fullContent) {
                             setMessages((prev) => [...prev, {
                               id: Date.now(),

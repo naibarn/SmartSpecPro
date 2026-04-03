@@ -43,6 +43,8 @@ services:
       - REDIS_URL=redis://smartspec-redis:6379/0
       - DATABASE_URL=postgresql+asyncpg://smartspec:smartspec123@smartspec-postgres:5432/smartspec
       - MEDIA_STORAGE_PATH=/app/media_storage
+      - SMARTSPEC_WEB_GATEWAY_URL=http://host.docker.internal:3000
+      - WEB_APP_URL=http://host.docker.internal:3000
       # API keys inherited from env_file
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -90,6 +92,8 @@ services:
       - REDIS_URL=redis://smartspec-redis:6379/0
       - DATABASE_URL=postgresql+asyncpg://smartspec:smartspec123@smartspec-postgres:5432/smartspec
       - MEDIA_STORAGE_PATH=/app/media_storage
+      - SMARTSPEC_WEB_GATEWAY_URL=http://host.docker.internal:3000
+      - WEB_APP_URL=http://host.docker.internal:3000
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
@@ -134,6 +138,8 @@ services:
       - REDIS_URL=redis://smartspec-redis:6379/0
       - DATABASE_URL=postgresql+asyncpg://smartspec:smartspec123@smartspec-postgres:5432/smartspec
       - NODE_INTERNAL_URL=http://host.docker.internal:3000
+      - SMARTSPEC_WEB_GATEWAY_URL=http://host.docker.internal:3000
+      - WEB_APP_URL=http://host.docker.internal:3000
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
@@ -175,6 +181,8 @@ services:
       - DATABASE_URL=postgresql+asyncpg://smartspec:smartspec123@smartspec-postgres:5432/smartspec
       # Presentation renderer runs in Docker; use host gateway to reach web server
       - INTERNAL_RENDER_BASE_URL=http://host.docker.internal:3000
+      - SMARTSPEC_WEB_GATEWAY_URL=http://host.docker.internal:3000
+      - WEB_APP_URL=http://host.docker.internal:3000
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
@@ -221,6 +229,8 @@ services:
       - REDIS_URL=redis://smartspec-redis:6379/0
       - DATABASE_URL=postgresql+asyncpg://smartspec:smartspec123@smartspec-postgres:5432/smartspec
       - OPENSANDBOX_BASE_URL=http://smartspec-opensandbox:8080
+      - SMARTSPEC_WEB_GATEWAY_URL=http://host.docker.internal:3000
+      - WEB_APP_URL=http://host.docker.internal:3000
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
@@ -251,9 +261,7 @@ services:
   # ============================================
   celery-beat:
     <<: *external-dns
-    build:
-      context: ./python-backend
-      dockerfile: Dockerfile
+    image: smartspecpro-celery-media
     container_name: smartspec-celery-beat
     command: celery -A app.core.celery_app beat --loglevel=info --schedule /tmp/celerybeat-schedule
     env_file:
@@ -262,6 +270,8 @@ services:
       - CELERY_BROKER_URL=redis://smartspec-redis:6379/0
       - CELERY_RESULT_BACKEND=redis://smartspec-redis:6379/0
       - DATABASE_URL=postgresql+asyncpg://smartspec:smartspec123@smartspec-postgres:5432/smartspec
+      - SMARTSPEC_WEB_GATEWAY_URL=http://host.docker.internal:3000
+      - WEB_APP_URL=http://host.docker.internal:3000
     volumes:
       - ./python-backend:/app
     deploy:

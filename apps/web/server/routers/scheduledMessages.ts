@@ -71,6 +71,20 @@ function validateCronExpression(cron: string): { valid: boolean; error?: string 
   return { valid: true };
 }
 
+function buildScheduleParseFallback(message: string) {
+  const trimmed = message.trim();
+  const description = trimmed.length > 120 ? `${trimmed.slice(0, 117)}...` : trimmed;
+  return {
+    prompt: trimmed,
+    cronExpression: null,
+    scheduledAt: null,
+    isRecurring: false,
+    emailNotify: true,
+    description,
+    timezone: "Asia/Bangkok",
+  };
+}
+
 export const scheduledMessagesRouter = router({
   /**
    * Create a new scheduled message
@@ -759,11 +773,15 @@ export const scheduledMessagesRouter = router({
     .input(z.object({
       message: z.string().min(1).max(5000),
       model: z.string().max(128).optional(),
+      sourceType: z.enum(["chat", "scheduler"]).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       // Use the LLM to parse scheduling intent
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const fallback = buildScheduleParseFallback(input.message);
+      const billingSourceType = input.sourceType === "chat" ? "chat" : "scheduler";
+      const auditRequestType = input.sourceType === "chat" ? "chat" : "scheduler";
 
       // Run planner (returns null if disabled — zero overhead)
       const plannerResult = await runPlanner({
@@ -780,11 +798,11 @@ export const scheduledMessagesRouter = router({
         model = await resolveEnabledLlmModelId([input.model]);
       }
       if (!model) {
-        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No enabled LLM model configured" });
+        return fallback;
       }
       const provider = await getProviderForModel(model);
       if (!provider) {
-        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No LLM provider configured" });
+        return fallback;
       }
       const apiKey = provider.apiKey;
 
@@ -810,7 +828,7 @@ Return ONLY the JSON, no markdown, no explanation.`;
         userId: ctx.user.id,
         providerName: provider.providerName,
         model,
-        requestType: "scheduler",
+        requestType: auditRequestType,
         requestPayload: {
           messageCount: 2,
           messages: [
@@ -820,21 +838,36 @@ Return ONLY the JSON, no markdown, no explanation.`;
         },
       });
 
-      const response = await fetch(`${provider.baseUrl}/chat/completions`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
+      let response: Response;
+      try {
+        response = await fetch(`${provider.baseUrl}/chat/completions`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            model,
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: input.message },
+            ],
+            temperature: 0.1,
+          }),
+        });
+      } catch (error) {
+        auditLogger.log({
+          eventType: "llm_response",
+          userId: ctx.user.id,
+          providerName: provider.providerName,
           model,
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: input.message },
-          ],
-          temperature: 0.1,
-        }),
-      });
+          requestType: auditRequestType,
+          errorType: "network_error",
+          errorMessage: error instanceof Error ? error.message.slice(0, 500) : "Unknown scheduler parse fetch error",
+          timing: { totalMs: Date.now() - schedStartTime },
+        });
+        return fallback;
+      }
 
       if (!response.ok) {
         const errText = await response.text().catch(() => "");
@@ -843,16 +876,16 @@ Return ONLY the JSON, no markdown, no explanation.`;
           userId: ctx.user.id,
           providerName: provider.providerName,
           model,
-          requestType: "scheduler",
+          requestType: auditRequestType,
           statusCode: response.status,
           errorType: `http_${response.status}`,
           errorMessage: errText.slice(0, 500),
           timing: { totalMs: Date.now() - schedStartTime },
         });
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "LLM request failed" });
+        return fallback;
       }
 
-      const data = await response.json() as any;
+      const data = await response.json().catch(() => null) as any;
       const content = data?.choices?.[0]?.message?.content || "";
       const inputTokens = data?.usage?.prompt_tokens ?? 0;
       const outputTokens = data?.usage?.completion_tokens ?? 0;
@@ -863,7 +896,7 @@ Return ONLY the JSON, no markdown, no explanation.`;
         userId: ctx.user.id,
         providerName: provider.providerName,
         model,
-        requestType: "scheduler",
+        requestType: auditRequestType,
         inputTokens,
         outputTokens,
         statusCode: 200,
@@ -882,7 +915,11 @@ Return ONLY the JSON, no markdown, no explanation.`;
           provider: provider.providerName,
           inputTokens,
           outputTokens,
-          sourceType: "scheduler",
+          sourceType: billingSourceType,
+          metadata: {
+            operation: "schedule_intent_parse",
+            initiatedFrom: input.sourceType ?? "scheduler",
+          },
         });
       } catch (err) {
         // Non-blocking — don't fail the schedule parse if credit deduction fails
@@ -909,7 +946,7 @@ Return ONLY the JSON, no markdown, no explanation.`;
         const parsed = JSON.parse(jsonMatch[0]);
         return parsed;
       } catch {
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to parse LLM response as schedule" });
+        return fallback;
       }
     }),
 

@@ -4,6 +4,10 @@
  */
 
 import { getAvailableSkills, getSkillById, getSkillByIdOrType } from "./skillRegistry";
+import {
+  buildPromptLengthPlan,
+  resolvePromptLanguageHintFromInputs,
+} from "./promptLengthGuard";
 import fs from "fs";
 import path from "path";
 
@@ -216,6 +220,10 @@ function buildVideoPromptSystemPrompt(
 ): string {
   const language = request.language || "en";
   const maxPromptChars = request.maxPromptLength || 5000;
+  const promptLengthPlan = buildPromptLengthPlan(
+    maxPromptChars,
+    resolvePromptLanguageHintFromInputs(request as Record<string, unknown>),
+  );
   let systemPrompt = `You are an expert AI video prompt generator.
 
 Transform the user's idea into a production-ready prompt for AI video generation.
@@ -267,10 +275,11 @@ If any reference image also contains readable text, preserve it only when that t
     }
   }
 
-  if (maxPromptChars < 5000) {
+  if (request.maxPromptLength !== undefined) {
     systemPrompt += `
 ## Character Limit
-Keep the total prompt under ${maxPromptChars} characters.
+Keep the total prompt under ${promptLengthPlan.maxPromptLength} characters.
+${promptLengthPlan.directive}
 `;
   }
 
@@ -663,6 +672,10 @@ export function buildSystemPrompt(request: PromptEnhancementRequest): string {
 
   // Build system prompt with actual skill content or enhanced default
   const language = request.language || "en";
+  const promptLengthPlan = buildPromptLengthPlan(
+    request.maxPromptLength || 5000,
+    resolvePromptLanguageHintFromInputs(request as Record<string, unknown>),
+  );
 
   let systemPrompt = `You are PromptDepth Pro v2.1, an expert AI image prompt generator.
 
@@ -701,38 +714,14 @@ Format:
 
 `;
 
-  // Add character limit constraint - ALWAYS apply if limit is below default 5000
-  // Each model has different limits, so we must respect whatever limit is provided
-  const maxPromptChars = request.maxPromptLength || 5000;
-  if (maxPromptChars < 5000) {
-    // Add warning for any non-default limit - stronger warning for very low limits
-    const isVeryLow = maxPromptChars <= 1500;
-    const isLow = maxPromptChars <= 2500;
-
-    if (isVeryLow) {
-      systemPrompt += `
-⚠️⚠️⚠️ CRITICAL CHARACTER LIMIT WARNING ⚠️⚠️⚠️
-The target AI model has an EXTREMELY STRICT maximum prompt length of ${maxPromptChars} characters.
-Your generated prompt MUST be under ${maxPromptChars} characters total.
-Be VERY CONCISE - include only essential visual elements.
-Every word counts! Remove unnecessary adjectives and descriptions.
+  // Add character limit constraint when the caller provides one.
+  if (request.maxPromptLength !== undefined) {
+    systemPrompt += `
+## Character Limit
+Keep the total prompt under ${promptLengthPlan.maxPromptLength} characters.
+${promptLengthPlan.directive}
 
 `;
-    } else if (isLow) {
-      systemPrompt += `
-⚠️ CHARACTER LIMIT WARNING ⚠️
-The target AI model has a STRICT maximum prompt length of ${maxPromptChars} characters.
-Your generated prompt MUST be under ${maxPromptChars} characters total.
-Be CONCISE - prioritize the most important visual elements.
-
-`;
-    } else {
-      systemPrompt += `
-## Character Limit: ${maxPromptChars} characters
-Keep the total prompt under ${maxPromptChars} characters.
-
-`;
-    }
   }
 
   // Add generation mode context

@@ -8,6 +8,7 @@
 import { eq, and, isNull, ilike, or, sql } from "drizzle-orm";
 import { getDb } from "../db";
 import { libraryItems, libraryLinks, systemSettings } from "../../drizzle/schema";
+import { getAppRuntimeConfig } from "./appRuntimeConfig";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -61,11 +62,6 @@ const RRF_K = 60;
 const LOCAL_DB_TIMEOUT = 2000;
 const VECTOR_TIMEOUT = 3000;
 const DRIVE_TIMEOUT = 3000;
-
-import { ENV } from "../_core/env";
-
-const PYTHON_BACKEND_URL = ENV.pythonBackendUrl || "http://localhost:8000";
-const PROXY_TOKEN = process.env.SMARTSPEC_PROXY_TOKEN || "";
 
 // ── Core Function ──────────────────────────────────────────────────────────
 
@@ -203,12 +199,13 @@ async function searchVectorStore(
   _timeoutMs: number,
 ): Promise<FederatedSearchResult[]> {
   try {
+    const runtime = await getAppRuntimeConfig();
     const controller = new AbortController();
-    const resp = await fetch(`${PYTHON_BACKEND_URL}/api/internal/mcp/tools/call`, {
+    const resp = await fetch(`${runtime.pythonBackendUrl}/api/internal/mcp/tools/call`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-proxy-token": PROXY_TOKEN,
+        ...(runtime.proxyToken ? { "x-proxy-token": runtime.proxyToken } : {}),
       },
       body: JSON.stringify({
         name: "search_drive_files",
@@ -238,11 +235,12 @@ async function searchGoogleDrive(
   _timeoutMs: number,
 ): Promise<FederatedSearchResult[]> {
   try {
-    const resp = await fetch(`${PYTHON_BACKEND_URL}/api/internal/mcp/tools/call`, {
+    const runtime = await getAppRuntimeConfig();
+    const resp = await fetch(`${runtime.pythonBackendUrl}/api/internal/mcp/tools/call`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-proxy-token": PROXY_TOKEN,
+        ...(runtime.proxyToken ? { "x-proxy-token": runtime.proxyToken } : {}),
       },
       body: JSON.stringify({
         name: "search_drive_files",
@@ -295,10 +293,11 @@ async function checkGoogleConnectionStatus(
   actor: SearchActor,
 ): Promise<"connected" | "disconnected" | "expired"> {
   try {
+    const runtime = await getAppRuntimeConfig();
     const resp = await fetch(
-      `${PYTHON_BACKEND_URL}/api/internal/mcp/tools?user_id=${actor.userId}`,
+      `${runtime.pythonBackendUrl}/api/internal/mcp/tools?user_id=${actor.userId}`,
       {
-        headers: { "x-proxy-token": PROXY_TOKEN },
+        headers: runtime.proxyToken ? { "x-proxy-token": runtime.proxyToken } : undefined,
       },
     );
     if (!resp.ok) return "disconnected";

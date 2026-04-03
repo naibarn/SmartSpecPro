@@ -1,0 +1,318 @@
+import { and, desc, eq, sql } from "drizzle-orm";
+
+import { getDb } from "../../db";
+import { storagePut } from "../../storage";
+import { renderPdfFromHtml } from "../markdownExport";
+import {
+  invoiceAuditLogs,
+  invoiceDocuments,
+  invoiceLineItems,
+  invoices,
+  payments,
+} from "../../../drizzle/schema";
+
+function escapeHtml(value: string | null | undefined): string {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function formatMoney(value: string | number | null | undefined, currency = "THB") {
+  const amount = Number(value ?? 0);
+  if (!Number.isFinite(amount)) return `0.00 ${currency}`;
+  return `${amount.toFixed(2)} ${currency}`;
+}
+
+function buildAddressBlock(snapshot: Record<string, any> | null | undefined) {
+  if (!snapshot) return "";
+  return [
+    snapshot.legalNameTh || snapshot.entityNameTh || snapshot.legalNameEn || snapshot.entityNameEn || "",
+    snapshot.addressLine1 || "",
+    snapshot.addressLine2 || "",
+    [snapshot.subdistrict, snapshot.district, snapshot.province, snapshot.postalCode].filter(Boolean).join(" "),
+    snapshot.country || "",
+    snapshot.taxId ? `Tax ID: ${snapshot.taxId}` : "",
+    snapshot.email || "",
+    snapshot.phone || "",
+  ]
+    .filter(Boolean)
+    .map((line) => `<div>${escapeHtml(line)}</div>`)
+    .join("");
+}
+
+function buildInvoiceHtml(params: {
+  invoice: Record<string, any>;
+  sellerSnapshot: Record<string, any> | null | undefined;
+  buyerSnapshot: Record<string, any> | null | undefined;
+  lineItems: Array<Record<string, any>>;
+  payment: Record<string, any> | null | undefined;
+  language: "th" | "en" | "bilingual";
+  documentVersion: number;
+  templateVersion: string;
+}) {
+  const { invoice, sellerSnapshot, buyerSnapshot, lineItems, payment, language, documentVersion, templateVersion } = params;
+  const title =
+    language === "th"
+      ? "ใบแจ้งหนี้"
+      : language === "en"
+        ? "Invoice"
+        : "Invoice / ใบแจ้งหนี้";
+
+  const rows = lineItems
+    .map((item) => `
+      <tr>
+        <td>${escapeHtml(item.description)}</td>
+        <td style="text-align:right">${escapeHtml(item.quantity)}</td>
+        <td style="text-align:right">${formatMoney(item.unitPrice, invoice.currency)}</td>
+        <td style="text-align:right">${escapeHtml(String(item.metadataJson?.discount ?? "0"))}</td>
+        <td style="text-align:right">${formatMoney(item.amount, invoice.currency)}</td>
+      </tr>
+    `)
+    .join("");
+
+  const effectiveTaxRate = invoice.totalsSnapshotJson?.taxRatePercent ?? invoice.totalsSnapshotJson?.taxRate ?? "0";
+  const taxLabel = invoice.totalsSnapshotJson?.taxLabel ?? invoice.totalsSnapshotJson?.taxName ?? "Tax";
+  const paymentUrl = payment?.rawResponseJson?.paymentUrl ?? payment?.providerReferenceId ?? null;
+  const qrCodeUrl = payment?.rawResponseJson?.qrCodeUrl ?? null;
+  const logoUrl = sellerSnapshot?.logoUrl || null;
+  const pendingInstructions = ["issued", "payment_pending"].includes(String(invoice.status))
+    ? `
+      <div style="margin-top:14px;padding:12px;border:1px solid #dbeafe;border-radius:10px;background:#eff6ff;">
+        <div style="font-weight:bold;margin-bottom:6px;">Payment instructions</div>
+        <div>Provider: Beam (${escapeHtml(String(payment?.providerPaymentType ?? "charge"))})</div>
+        ${paymentUrl ? `<div>Payment page: ${escapeHtml(String(paymentUrl))}</div>` : ""}
+        ${qrCodeUrl ? `<div>PromptPay QR: ${escapeHtml(String(qrCodeUrl))}</div>` : ""}
+        ${qrCodeUrl && /^https?:\/\//i.test(String(qrCodeUrl))
+          ? `<div style="margin-top:8px;"><img src="${escapeHtml(String(qrCodeUrl))}" alt="QR" style="width:140px;height:140px;object-fit:contain;" /></div>`
+          : ""}
+      </div>
+    `
+    : "";
+  const references = [
+    invoice.subscriptionId ? `Subscription: ${invoice.subscriptionId}` : "",
+    invoice.orderId ? `Order: ${invoice.orderId}` : "",
+    payment?.id ? `Payment: ${payment.id}` : "",
+    payment?.providerPaymentType ? `Payment type: ${payment.providerPaymentType}` : "",
+    payment?.providerPaymentId ? `Beam ref: ${payment.providerPaymentId}` : "",
+    payment?.providerReferenceId ? `Provider link ref: ${payment.providerReferenceId}` : "",
+  ].filter(Boolean);
+  const signerBlock = sellerSnapshot?.signerName || sellerSnapshot?.signerTitle
+    ? `
+      <div style="margin-top:24px;max-width:220px;margin-left:auto;text-align:center;">
+        <div style="height:48px;"></div>
+        <div style="font-weight:bold;">${escapeHtml(sellerSnapshot?.signerName || "-")}</div>
+        <div style="color:#6b7280;">${escapeHtml(sellerSnapshot?.signerTitle || "")}</div>
+      </div>
+    `
+    : "";
+  const documentNote = buyerSnapshot?.invoiceNote || "";
+
+  const footerNote =
+    language === "th"
+      ? sellerSnapshot?.autoGeneratedDocumentNoteTh || sellerSnapshot?.footerNoteTh || ""
+      : language === "en"
+        ? sellerSnapshot?.autoGeneratedDocumentNoteEn || sellerSnapshot?.footerNoteEn || ""
+        : [sellerSnapshot?.autoGeneratedDocumentNoteTh, sellerSnapshot?.autoGeneratedDocumentNoteEn]
+            .filter(Boolean)
+            .join(" / ");
+
+  return `<!doctype html>
+<html lang="${language === "th" ? "th" : "en"}">
+<head>
+  <meta charset="utf-8" />
+  <title>${escapeHtml(title)} ${escapeHtml(invoice.invoiceNumber || String(invoice.id))}</title>
+  <style>
+    @page { size: A4; margin: 14mm 12mm; }
+    body { font-family: Arial, sans-serif; color: #111827; font-size: 12px; margin: 0; }
+    .page { padding: 8px 4px; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 18px; }
+    .header-left { display:flex; gap:14px; align-items:flex-start; }
+    .badge { display:inline-block; padding:4px 10px; border-radius:999px; background:#e5f3ff; color:#0f4c81; font-weight:bold; }
+    .columns { display:flex; gap:24px; margin-bottom: 16px; }
+    .col { flex:1; }
+    .label { color:#6b7280; font-size:11px; font-weight:bold; margin-bottom:6px; text-transform:uppercase; }
+    table { width:100%; border-collapse: collapse; margin-top: 12px; }
+    th, td { border-bottom:1px solid #e5e7eb; padding:8px 6px; vertical-align: top; }
+    th { background:#f9fafb; text-align:left; }
+    .totals { margin-top: 16px; margin-left:auto; width: 260px; }
+    .totals div { display:flex; justify-content:space-between; padding:4px 0; }
+    .grand { font-weight:bold; font-size:14px; border-top:1px solid #d1d5db; padding-top:8px; margin-top:8px; }
+    .footer { margin-top: 22px; font-size: 11px; color:#4b5563; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="header">
+      <div class="header-left">
+        ${logoUrl ? `<img src="${escapeHtml(String(logoUrl))}" alt="Seller logo" style="width:64px;height:64px;object-fit:contain;border-radius:12px;border:1px solid #e5e7eb;padding:6px;background:#fff;" />` : ""}
+        <div>
+          <h1 style="margin:0 0 6px 0;">${escapeHtml(title)}</h1>
+          <div>${escapeHtml(invoice.invoiceNumber || String(invoice.id))}</div>
+          <div>Issued: ${escapeHtml(invoice.issuedAt ? new Date(invoice.issuedAt).toISOString().slice(0, 10) : "-")}</div>
+          <div>Due: ${escapeHtml(invoice.dueAt ? new Date(invoice.dueAt).toISOString().slice(0, 10) : "-")}</div>
+          <div>Currency: ${escapeHtml(invoice.currency || "THB")}</div>
+        </div>
+      </div>
+      <div style="text-align:right">
+        <div class="badge">${escapeHtml(invoice.status)}</div>
+        <div style="margin-top:8px">${escapeHtml(invoice.invoiceStream)}</div>
+        <div style="margin-top:4px">${escapeHtml(invoice.invoiceType || "invoice")}</div>
+      </div>
+    </div>
+
+    <div class="columns">
+      <div class="col">
+        <div class="label">Seller</div>
+        ${buildAddressBlock(sellerSnapshot)}
+      </div>
+      <div class="col">
+        <div class="label">Buyer</div>
+        ${buildAddressBlock(buyerSnapshot)}
+      </div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Description</th>
+          <th style="text-align:right">Qty</th>
+          <th style="text-align:right">Unit Price</th>
+          <th style="text-align:right">Discount</th>
+          <th style="text-align:right">Amount</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+
+    <div class="totals">
+      <div><span>Subtotal</span><span>${formatMoney(invoice.subtotal, invoice.currency)}</span></div>
+      <div><span>${escapeHtml(String(taxLabel))} (${escapeHtml(String(effectiveTaxRate))}%)</span><span>${formatMoney(invoice.taxAmount, invoice.currency)}</span></div>
+      <div class="grand"><span>Total</span><span>${formatMoney(invoice.totalAmount, invoice.currency)}</span></div>
+    </div>
+
+    ${references.length > 0 ? `
+      <div style="margin-top:16px;">
+        <div class="label">References</div>
+        ${references.map((line) => `<div>${escapeHtml(line)}</div>`).join("")}
+      </div>
+    ` : ""}
+
+    ${documentNote ? `
+      <div style="margin-top:14px;">
+        <div class="label">Notes</div>
+        <div>${escapeHtml(documentNote)}</div>
+      </div>
+    ` : ""}
+
+    ${pendingInstructions}
+
+    ${signerBlock}
+
+    <div class="footer">
+      <div>${escapeHtml(footerNote)}</div>
+      <div style="margin-top:8px">Generated at ${escapeHtml(new Date().toISOString())}</div>
+      <div>Header version ${escapeHtml(invoice.headerVersion)}</div>
+      <div>Document version ${escapeHtml(String(documentVersion))}</div>
+      <div>Template version ${escapeHtml(templateVersion)}</div>
+      <div>Document language ${escapeHtml(language)}</div>
+    </div>
+  </div>
+</body>
+</html>`;
+}
+
+export async function renderInvoiceDocument(params: {
+  invoiceId: number;
+  language: "th" | "en" | "bilingual";
+  reason: "initial_issue" | "sync_header" | "language_variant" | "reissue_render" | "manual_regeneration";
+  renderedByType?: "system" | "admin" | "user";
+  renderedById?: number | null;
+}) {
+  const db = getDb();
+  const [invoice] = await db
+    .select()
+    .from(invoices)
+    .where(eq(invoices.id, params.invoiceId))
+    .limit(1);
+  if (!invoice) {
+    throw new Error("Invoice not found");
+  }
+
+  const lineItems = await db
+    .select()
+    .from(invoiceLineItems)
+    .where(eq(invoiceLineItems.invoiceId, invoice.id))
+    .orderBy(sql`${invoiceLineItems.id} asc`);
+  const [payment] = await db
+    .select()
+    .from(payments)
+    .where(eq(payments.invoiceId, invoice.id))
+    .limit(1);
+
+  const [latestDocument] = await db
+    .select()
+    .from(invoiceDocuments)
+    .where(and(eq(invoiceDocuments.invoiceId, invoice.id), eq(invoiceDocuments.documentLanguage, params.language)))
+    .orderBy(desc(invoiceDocuments.documentVersion))
+    .limit(1);
+
+  const documentVersion = (latestDocument?.documentVersion ?? 0) + 1;
+  const templateVersion = "billing-phase1-v1";
+  const html = buildInvoiceHtml({
+    invoice,
+    sellerSnapshot: invoice.sellerSnapshotJson,
+    buyerSnapshot: invoice.buyerSnapshotJson,
+    lineItems,
+    payment,
+    language: params.language,
+    documentVersion,
+    templateVersion,
+  });
+  const pdfBytes = await renderPdfFromHtml(html);
+  const storageKey = `billing/invoices/${invoice.id}/${params.language}-v${documentVersion}.pdf`;
+  const stored = await storagePut(storageKey, pdfBytes, "application/pdf");
+
+  await db.transaction(async (tx) => {
+    await tx
+      .update(invoiceDocuments)
+      .set({
+        isLatestForLanguage: false,
+      })
+      .where(and(eq(invoiceDocuments.invoiceId, invoice.id), eq(invoiceDocuments.documentLanguage, params.language)));
+
+    await tx.insert(invoiceDocuments).values({
+      invoiceId: invoice.id,
+      documentLanguage: params.language,
+      documentVersion,
+      templateVersion,
+      pdfFileUrl: stored.key,
+      renderReason: params.reason,
+      renderedByType: params.renderedByType ?? "system",
+      renderedById: params.renderedById ?? null,
+      isLatestForLanguage: true,
+    });
+
+    await tx.insert(invoiceAuditLogs).values({
+      invoiceId: invoice.id,
+      action: "invoice_document_rendered",
+      actorType: params.renderedByType ?? "system",
+      actorId: params.renderedById ?? null,
+      afterJson: {
+        documentLanguage: params.language,
+        documentVersion,
+        pdfFileUrl: stored.key,
+        renderReason: params.reason,
+      },
+    });
+  });
+
+  return {
+    storageKey: stored.key,
+    url: stored.url,
+    documentVersion,
+    language: params.language,
+  };
+}

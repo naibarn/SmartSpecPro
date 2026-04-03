@@ -17,6 +17,7 @@ import type { Request, Response } from "express";
 import crypto from "crypto";
 import { z } from "zod";
 import { getAvailableSkillsAsync } from "../services/skillRegistry";
+import { getPreferredInternalToken } from "../services/appRuntimeConfig";
 import type { SkillDefinition } from "@smartspec/skills";
 import { contentAutomationGate } from "../middleware/contentAutomationGate";
 
@@ -35,8 +36,8 @@ const SkillDiscoveryRequestSchema = z.object({
 
 // ── Internal token verification ────────────────────────────────────────────
 
-function verifyInternalToken(req: Request): boolean {
-  const expected = process.env.SMARTSPEC_WEB_GATEWAY_TOKEN ?? "";
+async function verifyInternalToken(req: Request): Promise<boolean> {
+  const expected = await getPreferredInternalToken();
   if (!expected) return false;
   const token = req.headers["x-internal-token"] as string | undefined;
   if (!token) return false;
@@ -79,7 +80,7 @@ function computeConfidence(skill: SkillDefinition, description: string | undefin
 
 export async function skillDiscoveryHandler(req: Request, res: Response): Promise<void> {
   // 1. Verify X-Internal-Token
-  if (!verifyInternalToken(req)) {
+  if (!(await verifyInternalToken(req))) {
     res.status(401).json({ error: "UNAUTHORIZED" });
     return;
   }

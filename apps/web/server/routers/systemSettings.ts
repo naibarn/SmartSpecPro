@@ -13,6 +13,7 @@ import { encrypt, decrypt } from "../services/crypto";
 import { validateGoogleOAuthFormat } from "../services/googleOAuthValidation";
 import { signBearerToken } from "../_core/tokens";
 import { loadTenantAutomationPolicyStatus, updateTenantAutomationPolicySettings } from "../services/browserPolicySettingsBridge";
+import { getAppRuntimeConfig } from "../services/appRuntimeConfig";
 import {
   browserPolicyConfigSchema,
   browserPolicyUserCustomizationSchema,
@@ -69,7 +70,6 @@ const invoiceConfigSchema = z.object({
   isActive: z.boolean().default(true),
 });
 
-const PYTHON_BACKEND_URL = process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
 const PY_TIMEOUT_MS = 10_000;
 
 async function readPythonErrorDetail(response: Response): Promise<string> {
@@ -102,8 +102,9 @@ async function fetchPythonAdminJson<T>(params: {
   method?: "GET" | "POST";
   body?: unknown;
 }): Promise<T> {
+  const runtime = await getAppRuntimeConfig();
   const token = createAdminBearerToken(params.userId);
-  const response = await fetch(`${PYTHON_BACKEND_URL}${params.path}`, {
+  const response = await fetch(`${runtime.pythonBackendUrl}${params.path}`, {
     method: params.method ?? "GET",
     headers: {
       "Content-Type": "application/json",
@@ -126,8 +127,9 @@ async function assertVectorDbConfigEditAllowedOrThrow(params: {
   tenantId?: string | null;
   emergency?: boolean;
 }): Promise<void> {
+  const runtime = await getAppRuntimeConfig();
   const token = createAdminBearerToken(params.userId);
-  const response = await fetch(`${PYTHON_BACKEND_URL}/api/admin/vectordb/provider-switch/assert-config-edit`, {
+  const response = await fetch(`${runtime.pythonBackendUrl}/api/admin/vectordb/provider-switch/assert-config-edit`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

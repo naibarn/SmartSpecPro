@@ -132,6 +132,67 @@ describe("presentationEditorState", () => {
     });
   });
 
+  it("detaches built-in components before directly editing fallback elements so changes survive reload", () => {
+    const base = ensureSlideContent({
+      canvas: { preset: "5:4", width: 1250, height: 1000 },
+      elements: [],
+      components: [
+        {
+          id: "built-in-sectioned",
+          componentId: "sectioned-explainer",
+          componentType: "built-in",
+          definitionRevision: 1,
+          slotBindings: [
+            { slotId: "eyebrow", type: "text", text: "Health" },
+            { slotId: "title", type: "text", text: "Original title" },
+            { slotId: "hero", type: "image", src: "", alt: "Hero" },
+            { slotId: "intro", type: "text", text: "Original intro" },
+            { slotId: "section1-heading", type: "text", text: "Section one" },
+            { slotId: "section1-body", type: "text", text: "Section one body" },
+            { slotId: "section2-heading", type: "text", text: "" },
+            { slotId: "section2-body", type: "text", text: "" },
+            { slotId: "section3-heading", type: "text", text: "" },
+            { slotId: "section3-body", type: "text", text: "" },
+            { slotId: "takeaways-title", type: "text", text: "Key Takeaways" },
+            { slotId: "takeaways", type: "list", items: ["Point one"] },
+          ],
+          fallbackElements: [],
+        },
+      ],
+    });
+
+    const builtInComponent = base.components?.[0];
+    expect(builtInComponent?.componentType).toBe("built-in");
+
+    const titleElement = builtInComponent?.fallbackElements.find((element) => (
+      element.id.endsWith("::title") && element.type === "text"
+    ));
+    expect(titleElement?.type).toBe("text");
+
+    if (!titleElement || titleElement.type !== "text") {
+      throw new Error("Built-in title element not found");
+    }
+
+    const edited = updateElementById(base, titleElement.id, {
+      text: "Edited directly on canvas",
+      width: titleElement.width + 40,
+    });
+    const moved = translateElements(edited, [titleElement.id], 18, 12);
+    const reloaded = ensureSlideContent(JSON.parse(JSON.stringify(moved)));
+    const reloadedTitle = reloaded.elements.find((element) => element.id === titleElement.id);
+
+    expect(edited.components).toEqual([]);
+    expect(reloaded.components).toEqual([]);
+    expect(reloadedTitle).toMatchObject({
+      id: titleElement.id,
+      type: "text",
+      text: "Edited directly on canvas",
+      x: titleElement.x + 18,
+      y: titleElement.y + 12,
+      width: titleElement.width + 40,
+    });
+  });
+
   it("keeps square media frames square for circle-like shapes during patch and resize operations", () => {
     const base: PresentationSlideContent = {
       elements: [

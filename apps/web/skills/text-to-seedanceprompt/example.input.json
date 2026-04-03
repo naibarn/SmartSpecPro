@@ -1,0 +1,150 @@
+{
+  "request_name": "Cyberpunk assassin with reference image and choreography video",
+  "mode": "universal_reference",
+  "language": "en",
+  "aspect_ratio": "16:9",
+  "duration_seconds": 10,
+  "multi_shot_mode": "single_prompt_multi_shot",
+  "narrative_goal": "Reveal the assassin, execute a fast combat beat, and finish on a direct look to camera.",
+  "reference_assets": [
+    {
+      "asset_id": "@Image1",
+      "asset_type": "image",
+      "label": "Main character",
+      "priority": "primary"
+    },
+    {
+      "asset_id": "@Video1",
+      "asset_type": "video",
+      "label": "Fight choreography",
+      "priority": "primary"
+    },
+    {
+      "asset_id": "@Audio1",
+      "asset_type": "audio",
+      "label": "Dark pulse music",
+      "priority": "supporting"
+    }
+  ],
+  "reference_directives": [
+    {
+      "kind": "first_frame",
+      "asset_id": "@Image1"
+    },
+    {
+      "kind": "appearance_reference",
+      "asset_id": "@Image1",
+      "appearance_scope": "main_character"
+    },
+    {
+      "kind": "motion_reference",
+      "asset_id": "@Video1",
+      "reference_target": "the fighting choreography"
+    },
+    {
+      "kind": "camera_reference",
+      "asset_id": "@Video1"
+    },
+    {
+      "kind": "audio_reference",
+      "asset_id": "@Audio1",
+      "audio_role": "background_music"
+    }
+  ],
+  "shots": [
+    {
+      "shot_id": "Shot 1",
+      "beat_range": "0-3s",
+      "subject": "A young male assassin stands in a dark cyberpunk alley with wet pavement and neon signs.",
+      "action": "He lowers his head slightly and ignites a glowing energy blade while fallen enemies remain around him.",
+      "camera": {
+        "shot_size": "medium_close",
+        "movement": "pull_back",
+        "angle": "front",
+        "lens": "normal",
+        "movement_notes": "Start tight and rapidly reveal the wider alley while keeping him centered."
+      },
+      "style": {
+        "lighting": "Cold blue cinematic lighting with subtle fog and steam.",
+        "color_treatment": "Muted cyberpunk palette with high contrast.",
+        "realism_level": "cinematic_realism"
+      },
+      "constraints": {
+        "must_keep": [
+          "character identity from @Image1",
+          "stable composition"
+        ],
+        "must_avoid": [
+          "flicker",
+          "warped hands"
+        ]
+      }
+    },
+    {
+      "shot_id": "Shot 2",
+      "beat_range": "3-8s",
+      "subject": "The same assassin remains centered as enemies rush in from the edges.",
+      "action": "He performs fast, fluid blink-dash attacks and defeats enemies one by one with readable choreography and natural reactions.",
+      "camera": {
+        "shot_size": "wide",
+        "movement": "gimbal_follow",
+        "angle": "three_quarter",
+        "lens": "wide"
+      },
+      "audio": {
+        "sound_effects": "Energy blade hum, impacts, and city ambience."
+      },
+      "constraints": {
+        "must_keep": [
+          "facial consistency",
+          "smooth body mechanics"
+        ],
+        "must_avoid": [
+          "extra limbs",
+          "duplicated character"
+        ]
+      },
+      "transition_to_next": "Let the final motion settle naturally into stillness."
+    },
+    {
+      "shot_id": "Shot 3",
+      "beat_range": "8-10s",
+      "subject": "The assassin stands alone after the final enemy falls.",
+      "action": "He becomes still, then slowly raises his head and looks directly into the camera.",
+      "camera": {
+        "shot_size": "medium_close",
+        "movement": "push_in",
+        "angle": "eye_level",
+        "lens": "normal"
+      },
+      "constraints": {
+        "must_keep": [
+          "calm expression",
+          "identity lock"
+        ],
+        "must_avoid": [
+          "background deformation",
+          "jittery camera"
+        ]
+      }
+    }
+  ],
+  "global_constraints": {
+    "must_keep": [
+      "coherent action timing",
+      "stable anatomy",
+      "smooth motion"
+    ],
+    "must_avoid": [
+      "identity drift",
+      "messy motion",
+      "distorted bodies"
+    ]
+  },
+  "render_options": {
+    "output_format": "api_ready_bundle",
+    "include_shot_labels": true,
+    "include_provider_hints": true,
+    "merge_constraints_into_main_prompt": true
+  }
+}

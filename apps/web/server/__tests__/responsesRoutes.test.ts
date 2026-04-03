@@ -8,6 +8,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import express from "express";
 import request from "supertest";
 import { sanitizeResponsesBody, registerResponsesRoutes } from "../_core/responsesRoutes";
+import { buildKieLlmAvailableModels } from "../services/llmProviderCatalog";
 
 // ── Env stubs (MUST be before any imports) ──────────────────
 process.env.JWT_SECRET =
@@ -30,6 +31,24 @@ vi.mock("../_core/limits", () => ({
 // ── Mock llmRoutes (avoid authz import chain) ───────────────
 vi.mock("../_core/llmRoutes", () => ({
   resolveApiUrl: vi.fn().mockReturnValue("https://api.openai.com/v1/responses"),
+}));
+
+// ── Mock enabled model resolution ────────────────────────────
+vi.mock("../../server/services/enabledLlmModels", () => ({
+  resolveEnabledLlmModelId: vi.fn(async (candidates: Array<string | null | undefined>) =>
+    candidates.find((value) => typeof value === "string" && value.trim().length > 0) ?? null,
+  ),
+}));
+
+// ── Mock planner middleware ──────────────────────────────────
+const { mockRunPlanner, mockRecordStepAttempt } = vi.hoisted(() => ({
+  mockRunPlanner: vi.fn().mockResolvedValue(null),
+  mockRecordStepAttempt: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock("../../server/services/taskPlannerMiddleware", () => ({
+  runPlanner: (...args: any[]) => mockRunPlanner(...args),
+  recordStepAttempt: (...args: any[]) => mockRecordStepAttempt(...args),
 }));
 
 // ── Mock Redis ──────────────────────────────────────────────
@@ -255,6 +274,39 @@ describe("sanitizeResponsesBody", () => {
       expect(result.maxBudgetCredits).toBe(500);
     }
   });
+
+  it("rejects unknown top-level fields in strict mode", () => {
+    const result = sanitizeResponsesBody(
+      {
+        model: "gpt-5.4",
+        input: [{ role: "user", content: "hi" }],
+        unsupported: true,
+      },
+      { strictUnknownFields: true },
+    );
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.status).toBe(400);
+      expect(result.error).toContain("unsupported");
+    }
+  });
+
+  it("preserves allowlisted passthrough fields in strict mode", () => {
+    const result = sanitizeResponsesBody(
+      {
+        model: "gpt-5.4",
+        input: [{ role: "user", content: "hi" }],
+        reasoning: { effort: "high" },
+      },
+      { strictUnknownFields: true, passthroughFields: ["reasoning"] },
+    );
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.body.reasoning).toEqual({ effort: "high" });
+    }
+  });
 });
 
 describe("/v1/responses endpoint", () => {
@@ -265,6 +317,10 @@ describe("/v1/responses endpoint", () => {
     mockFetch.mockReset();
     mockAuditLog.mockClear();
     mockLogRequest.mockResolvedValue(undefined);
+    mockRunPlanner.mockReset();
+    mockRunPlanner.mockResolvedValue(null);
+    mockRecordStepAttempt.mockReset();
+    mockRecordStepAttempt.mockResolvedValue(undefined);
     mockGetFeatureFlag.mockResolvedValue(true);
     mockGetTenantFeatureFlag.mockResolvedValue(true);
     mockHasEnoughCredits.mockResolvedValue(true);
@@ -351,6 +407,179 @@ describe("/v1/responses endpoint", () => {
       expect(res.status).toBe(200);
       expect(res.body.id).toBe("resp_test123");
     });
+
+    it("rejects Kie requests with unknown top-level fields outside the allowlist", async () => {
+      deps = createMockDeps({
+        getActiveLlmProvider: vi.fn().mockResolvedValue({
+          providerId: 9,
+          providerName: "kie_ai",
+          baseUrl: "https://api.kie.ai",
+          apiKey: "kie-key",
+          defaultModel: "gpt-5-4",
+          availableModels: buildKieLlmAvailableModels(),
+        }),
+        resolveProviderModelAny: vi.fn().mockResolvedValue({
+          providerModelId: "gpt-5-4",
+          apiStyle: "responses" as const,
+        }),
+      });
+      app = createApp(deps);
+
+      const res = await request(app)
+        .post("/v1/responses")
+        .send({
+          model: "gpt-5.4",
+          input: [{ role: "user", content: "hello" }],
+          unsupported: true,
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error.message).toContain("unsupported");
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it("rejects Kie responses requests that resolve to non-responses models", async () => {
+      deps = createMockDeps({
+        getActiveLlmProvider: vi.fn().mockResolvedValue({
+          providerId: 9,
+          providerName: "kie_ai",
+          baseUrl: "https://api.kie.ai",
+          apiKey: "kie-key",
+          defaultModel: "claude-sonnet-4-6",
+          availableModels: buildKieLlmAvailableModels(),
+        }),
+        resolveProviderModelAny: vi.fn().mockResolvedValue({
+          providerModelId: "claude-sonnet-4-6",
+          apiStyle: "messages" as const,
+        }),
+      });
+      app = createApp(deps);
+
+      const res = await request(app)
+        .post("/v1/responses")
+        .send({
+          model: "claude-sonnet-4-6",
+          input: [{ role: "user", content: "hello" }],
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error.message).toContain("does not support /v1/responses");
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it("rejects Kie responses requests that mix web search and function tools", async () => {
+      deps = createMockDeps({
+        getActiveLlmProvider: vi.fn().mockResolvedValue({
+          providerId: 9,
+          providerName: "kie_ai",
+          baseUrl: "https://api.kie.ai",
+          apiKey: "kie-key",
+          defaultModel: "gpt-5-4",
+          availableModels: buildKieLlmAvailableModels(),
+        }),
+        resolveProviderModelAny: vi.fn().mockResolvedValue({
+          providerModelId: "gpt-5-4",
+          apiStyle: "responses" as const,
+        }),
+      });
+      app = createApp(deps);
+
+      const res = await request(app)
+        .post("/v1/responses")
+        .send({
+          model: "gpt-5.4",
+          input: [{ role: "user", content: "hello" }],
+          tools: [{ type: "web_search_preview" }, { type: "function", name: "lookup_weather" }],
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error.message).toContain("do not allow web-search tools together with function tools");
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it("re-resolves planner-selected Kie responses models before sending upstream", async () => {
+      mockRunPlanner.mockResolvedValue({
+        resolvedModel: "gpt-5.4",
+        taskRunId: "task-1",
+        plan: null,
+        snapshot: null,
+      });
+
+      deps = createMockDeps({
+        getActiveLlmProvider: vi.fn().mockResolvedValue({
+          providerId: 9,
+          providerName: "kie_ai",
+          baseUrl: "https://api.kie.ai",
+          apiKey: "kie-key",
+          defaultModel: "gpt-5.3-codex",
+          availableModels: buildKieLlmAvailableModels(),
+        }),
+        resolveProviderModelAny: vi.fn()
+          .mockResolvedValueOnce({
+            providerModelId: "gpt-5.3-codex",
+            apiStyle: "responses" as const,
+          })
+          .mockResolvedValueOnce({
+            providerModelId: "gpt-5-4",
+            apiStyle: "responses" as const,
+          }),
+      });
+      app = createApp(deps);
+      mockFetch.mockResolvedValue(makeFetchResponse(makeResponsesApiResponse()));
+
+      const res = await request(app)
+        .post("/v1/responses")
+        .send({
+          model: "gpt-5.3-codex",
+          input: [{ role: "user", content: "hello" }],
+        });
+
+      expect(res.status).toBe(200);
+      const upstreamBody = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(upstreamBody.model).toBe("gpt-5-4");
+    });
+
+    it("ignores planner overrides that switch the route to a non-responses family", async () => {
+      mockRunPlanner.mockResolvedValue({
+        resolvedModel: "claude-sonnet-4-6",
+        taskRunId: "task-2",
+        plan: null,
+        snapshot: null,
+      });
+
+      deps = createMockDeps({
+        getActiveLlmProvider: vi.fn().mockResolvedValue({
+          providerId: 9,
+          providerName: "kie_ai",
+          baseUrl: "https://api.kie.ai",
+          apiKey: "kie-key",
+          defaultModel: "gpt-5-4",
+          availableModels: buildKieLlmAvailableModels(),
+        }),
+        resolveProviderModelAny: vi.fn()
+          .mockResolvedValueOnce({
+            providerModelId: "gpt-5-4",
+            apiStyle: "responses" as const,
+          })
+          .mockResolvedValueOnce({
+            providerModelId: "claude-sonnet-4-6",
+            apiStyle: "messages" as const,
+          }),
+      });
+      app = createApp(deps);
+      mockFetch.mockResolvedValue(makeFetchResponse(makeResponsesApiResponse()));
+
+      const res = await request(app)
+        .post("/v1/responses")
+        .send({
+          model: "gpt-5.4",
+          input: [{ role: "user", content: "hello" }],
+        });
+
+      expect(res.status).toBe(200);
+      const upstreamBody = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(upstreamBody.model).toBe("gpt-5-4");
+    });
   });
 
   // === Non-Streaming Mode ===
@@ -389,6 +618,38 @@ describe("/v1/responses endpoint", () => {
           sourceType: "browser_automation",
         }),
       );
+    });
+
+    it("prefers normalized provider-reported cost for billing and response metadata", async () => {
+      mockFetch.mockResolvedValue(
+        makeFetchResponse(
+          makeResponsesApiResponse({
+            usage: {
+              input_tokens: 12,
+              output_tokens: 8,
+              total_tokens: 20,
+              cost: 0.045,
+            },
+            credits_consumed: 45,
+          }),
+        ),
+      );
+
+      const res = await request(app)
+        .post("/v1/responses")
+        .send({
+          model: "gpt-5.4",
+          input: [{ role: "user", content: "hello" }],
+        });
+
+      expect(res.status).toBe(200);
+      expect(mockDeductCreditsForModel).toHaveBeenCalledWith(
+        expect.objectContaining({
+          costUsd: 0.045,
+        }),
+      );
+      expect(res.body._meta.providerReportedCostUsd).toBe(0.045);
+      expect(res.body._meta.providerReportedCreditsConsumed).toBe(45);
     });
 
     it("adds _credits and _meta to response", async () => {

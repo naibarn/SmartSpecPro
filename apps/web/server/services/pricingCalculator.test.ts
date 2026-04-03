@@ -111,4 +111,51 @@ describe("calculateCreditCost", () => {
     // "ab cd ef" => 8 chars, 6 without whitespace => ceil(6/5)=2 units
     expect(credits).toBe(20);
   });
+
+  it("uses the selected pricing field value for flat pricing", () => {
+    const credits = calculateCreditCost(
+      {
+        creditCost: 200,
+        configJson: {
+          pricingFormula: "flat",
+          pricingTiers: {
+            default: 200,
+            veo3_fast: 30,
+            veo3_lite: 15,
+          },
+          inputFields: [
+            { key: "model", affectsPricing: true },
+          ],
+        },
+      },
+      { model: "veo3_fast" },
+    );
+
+    expect(credits).toBe(30);
+  });
+
+  it("builds matrix keys from pricing fields in config order", () => {
+    const credits = calculateCreditCost(
+      {
+        creditCost: 200,
+        configJson: {
+          pricingFormula: "matrix",
+          pricingTiers: {
+            default: 200,
+            "veo3_fast-9:16": 42,
+          },
+          inputFields: [
+            { key: "model", affectsPricing: true },
+            { key: "aspect_ratio", affectsPricing: true },
+          ],
+        },
+      },
+      {
+        model: "veo3_fast",
+        aspect_ratio: "9:16",
+      },
+    );
+
+    expect(credits).toBe(42);
+  });
 });

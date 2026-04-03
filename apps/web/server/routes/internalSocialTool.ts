@@ -1,4 +1,3 @@
-import crypto from "node:crypto";
 import { isIP } from "node:net";
 import { Router } from "express";
 import type { Express, Request, Response } from "express";
@@ -21,6 +20,11 @@ import {
   resetConversationUnreadCount,
   sendMessageViaPythonBackend,
 } from "../services/socialInboxService";
+import {
+  compareCachedInternalToken,
+  getCachedAppRuntimeConfig,
+  getCachedPythonBackendUrl,
+} from "../services/appRuntimeConfig";
 
 const INTERNAL_TOOL_ACTIONS = ["read_inbox", "send_reply", "publish_post", "read_comments", "reply_comment"] as const;
 type InternalToolAction = (typeof INTERNAL_TOOL_ACTIONS)[number];
@@ -79,17 +83,8 @@ class ToolExecutionError extends Error {
 }
 
 function verifyInternalToken(req: Request): boolean {
-  const expected = ENV.webGatewayToken;
-  if (!expected) return false;
   const token = req.headers["x-internal-token"] as string | undefined;
-  if (!token) return false;
-  try {
-    const tokenHash = crypto.createHash("sha256").update(token).digest();
-    const expectedHash = crypto.createHash("sha256").update(expected).digest();
-    return crypto.timingSafeEqual(tokenHash, expectedHash);
-  } catch {
-    return false;
-  }
+  return compareCachedInternalToken(token) || (!!token && token === ENV.webGatewayToken);
 }
 
 function getHeaderValue(req: Request, name: string): string | null {
@@ -359,13 +354,14 @@ async function handlePublishPost(
   }
 
   const pageAccessToken = decrypt(page.encryptedPageAccessToken);
+  const runtimeConfig = getCachedAppRuntimeConfig();
   const response = await fetch(
-    `${ENV.pythonBackendUrl || "http://127.0.0.1:8000"}/api/internal/meta/posts/publish`,
+    `${getCachedPythonBackendUrl()}/api/internal/meta/posts/publish`,
     {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        ...(ENV.webGatewayToken ? { "x-internal-token": ENV.webGatewayToken } : {}),
+        ...(runtimeConfig.webGatewayToken ? { "x-internal-token": runtimeConfig.webGatewayToken } : {}),
       },
       body: JSON.stringify({
         page_id: page.providerPageId,
@@ -464,13 +460,14 @@ async function handleReplyComment(
   }
 
   const pageAccessToken = decrypt(page.encryptedPageAccessToken);
+  const runtimeConfig = getCachedAppRuntimeConfig();
   const response = await fetch(
-    `${ENV.pythonBackendUrl || "http://127.0.0.1:8000"}/api/internal/meta/comments/reply`,
+    `${getCachedPythonBackendUrl()}/api/internal/meta/comments/reply`,
     {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        ...(ENV.webGatewayToken ? { "x-internal-token": ENV.webGatewayToken } : {}),
+        ...(runtimeConfig.webGatewayToken ? { "x-internal-token": runtimeConfig.webGatewayToken } : {}),
       },
       body: JSON.stringify({
         object_id: comment.providerCommentId,

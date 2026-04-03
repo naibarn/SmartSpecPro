@@ -8,6 +8,13 @@ import { eq, and, asc, inArray } from "drizzle-orm";
 import { getHealthSummary } from "../services/providerHealth";
 import { getAdminUsageStats, getUserUsageStats } from "../services/costTracker";
 import { computeModelPriority } from "../services/intelligentModelSelector";
+import { resolveProviderCatalogDefaults } from "./llmProviders";
+import {
+  canonicalModelIdForCatalogModel,
+  resolveCatalogBackedPricing,
+  type AvailableLlmProviderModel,
+  type LlmRequestConfig,
+} from "../services/llmProviderCatalog";
 
 export interface ModelMappingListRow {
   id: number;
@@ -41,10 +48,22 @@ interface ProviderCatalogModel {
   id: string;
   name: string;
   contextLength?: number;
+  createdAt?: number;
   pricing?: {
     input?: number;
     output?: number;
   };
+  apiStyle?: "chat-completions" | "responses" | "messages" | "gemini";
+  supportsVision?: boolean;
+  supportsThinking?: boolean;
+  supportsWebSearch?: boolean;
+  supportsFunctionTools?: boolean;
+  supportsStructuredOutputs?: boolean;
+  supportsCodeExecution?: boolean;
+  supportsComputerUse?: boolean;
+  supportsBackground?: boolean;
+  supportsResponses?: boolean;
+  config?: LlmRequestConfig;
 }
 
 interface ProviderCatalogRow {
@@ -81,6 +100,7 @@ export interface AdminModelCatalogRow {
   supportsComputerUse?: boolean;
   supportsBackground?: boolean;
   supportsResponses?: boolean;
+  config?: LlmRequestConfig;
 }
 
 function defaultApiStyleForProvider(providerName: string): AdminModelCatalogRow["apiStyle"] {
@@ -116,8 +136,19 @@ export function mergeAdminModelCatalogRows(input: {
   mappings: ModelMappingListRow[];
 }): AdminModelCatalogRow[] {
   const rows = new Map<string, AdminModelCatalogRow>();
+  const providerCatalogs = new Map(
+    input.providers.map((provider) => [provider.id, provider.availableModels ?? []] as const),
+  );
 
   for (const mapping of input.mappings) {
+    const effectivePricing = resolveCatalogBackedPricing({
+      providerName: mapping.providerName,
+      availableModels: providerCatalogs.get(mapping.providerId),
+      providerModelId: mapping.providerModelId,
+      pricingInput: mapping.pricingInput,
+      pricingOutput: mapping.pricingOutput,
+      isFree: mapping.isFree,
+    });
     rows.set(`${mapping.providerId}:${mapping.providerModelId}`, {
       mappingId: mapping.id,
       isMapped: true,
@@ -127,9 +158,9 @@ export function mergeAdminModelCatalogRows(input: {
       providerDisplayName: mapping.providerDisplayName,
       modelName: mapping.modelName,
       providerModelId: mapping.providerModelId,
-      pricingInput: mapping.pricingInput,
-      pricingOutput: mapping.pricingOutput,
-      isFree: mapping.isFree,
+      pricingInput: String(effectivePricing.pricingInput),
+      pricingOutput: String(effectivePricing.pricingOutput),
+      isFree: effectivePricing.isFree,
       contextLength: mapping.contextLength,
       isEnabled: mapping.isEnabled,
       priority: mapping.priority,
@@ -145,6 +176,7 @@ export function mergeAdminModelCatalogRows(input: {
       supportsComputerUse: !!mapping.supportsComputerUse,
       supportsBackground: !!mapping.supportsBackground,
       supportsResponses: !!mapping.supportsResponses,
+      config: undefined,
     });
   }
 
@@ -161,7 +193,9 @@ export function mergeAdminModelCatalogRows(input: {
       rows.set(key, {
         mappingId: null,
         isMapped: false,
-        modelId: buildCanonicalModelId(model.id),
+        modelId: buildCanonicalModelId(
+          canonicalModelIdForCatalogModel(provider.providerName, model.id),
+        ),
         providerId: provider.id,
         providerName: provider.providerName,
         providerDisplayName: provider.providerDisplayName,
@@ -174,7 +208,17 @@ export function mergeAdminModelCatalogRows(input: {
         isEnabled: false,
         priority: 0,
         priorityLocked: false,
-        apiStyle: defaultApiStyleForProvider(provider.providerName),
+        apiStyle: model.apiStyle ?? defaultApiStyleForProvider(provider.providerName),
+        supportsVision: !!model.supportsVision,
+        supportsThinking: !!model.supportsThinking,
+        supportsWebSearch: !!model.supportsWebSearch,
+        supportsFunctionTools: !!model.supportsFunctionTools,
+        supportsStructuredOutputs: !!model.supportsStructuredOutputs,
+        supportsCodeExecution: !!model.supportsCodeExecution,
+        supportsComputerUse: !!model.supportsComputerUse,
+        supportsBackground: !!model.supportsBackground,
+        supportsResponses: !!model.supportsResponses,
+        config: model.config,
       });
     }
   }
@@ -204,43 +248,87 @@ export function groupModelMappingsByModelId(rows: ModelMappingListRow[]) {
   }, {});
 }
 
+function hydrateMappedRowsFromCatalog(input: {
+  providers: ProviderCatalogRow[];
+  mappings: ModelMappingListRow[];
+}): ModelMappingListRow[] {
+  const providerCatalogs = new Map(
+    input.providers.map((provider) => [provider.id, provider.availableModels ?? []] as const),
+  );
+
+  return input.mappings.map((mapping) => {
+    const effectivePricing = resolveCatalogBackedPricing({
+      providerName: mapping.providerName,
+      availableModels: providerCatalogs.get(mapping.providerId),
+      providerModelId: mapping.providerModelId,
+      pricingInput: mapping.pricingInput,
+      pricingOutput: mapping.pricingOutput,
+      isFree: mapping.isFree,
+    });
+
+    return {
+      ...mapping,
+      pricingInput: String(effectivePricing.pricingInput),
+      pricingOutput: String(effectivePricing.pricingOutput),
+      isFree: effectivePricing.isFree,
+    };
+  });
+}
+
 export const multiProviderRouter = router({
   // --- Model Mapping CRUD (Admin) ---
 
   listModelMappings: adminProcedure.query(async () => {
-    const rows = await db
-      .select({
-        id: modelProviderMap.id,
-        modelId: modelProviderMap.modelId,
-        providerId: modelProviderMap.providerId,
-        providerName: llmProviders.providerName,
-        providerDisplayName: llmProviders.displayName,
-        modelName: modelProviderMap.modelName,
-        providerModelId: modelProviderMap.providerModelId,
-        pricingInput: modelProviderMap.pricingInput,
-        pricingOutput: modelProviderMap.pricingOutput,
-        isFree: modelProviderMap.isFree,
-        contextLength: modelProviderMap.contextLength,
-        isEnabled: modelProviderMap.isEnabled,
-        priority: modelProviderMap.priority,
-        priorityLocked: modelProviderMap.priorityLocked,
-        apiStyle: modelProviderMap.apiStyle,
-        // Capability columns
-        supportsVision: modelProviderMap.supportsVision,
-        supportsThinking: modelProviderMap.supportsThinking,
-        supportsWebSearch: modelProviderMap.supportsWebSearch,
-        supportsFunctionTools: modelProviderMap.supportsFunctionTools,
-        supportsStructuredOutputs: modelProviderMap.supportsStructuredOutputs,
-        supportsCodeExecution: modelProviderMap.supportsCodeExecution,
-        supportsComputerUse: modelProviderMap.supportsComputerUse,
-        supportsBackground: modelProviderMap.supportsBackground,
-        supportsResponses: modelProviderMap.supportsResponses,
-      })
-      .from(modelProviderMap)
-      .innerJoin(llmProviders, eq(modelProviderMap.providerId, llmProviders.id))
-      .orderBy(asc(modelProviderMap.modelId), asc(modelProviderMap.priority));
+    const [providers, rows] = await Promise.all([
+      db
+        .select({
+          id: llmProviders.id,
+          providerName: llmProviders.providerName,
+          providerDisplayName: llmProviders.displayName,
+          availableModels: llmProviders.availableModels,
+        })
+        .from(llmProviders),
+      db
+        .select({
+          id: modelProviderMap.id,
+          modelId: modelProviderMap.modelId,
+          providerId: modelProviderMap.providerId,
+          providerName: llmProviders.providerName,
+          providerDisplayName: llmProviders.displayName,
+          modelName: modelProviderMap.modelName,
+          providerModelId: modelProviderMap.providerModelId,
+          pricingInput: modelProviderMap.pricingInput,
+          pricingOutput: modelProviderMap.pricingOutput,
+          isFree: modelProviderMap.isFree,
+          contextLength: modelProviderMap.contextLength,
+          isEnabled: modelProviderMap.isEnabled,
+          priority: modelProviderMap.priority,
+          priorityLocked: modelProviderMap.priorityLocked,
+          apiStyle: modelProviderMap.apiStyle,
+          supportsVision: modelProviderMap.supportsVision,
+          supportsThinking: modelProviderMap.supportsThinking,
+          supportsWebSearch: modelProviderMap.supportsWebSearch,
+          supportsFunctionTools: modelProviderMap.supportsFunctionTools,
+          supportsStructuredOutputs: modelProviderMap.supportsStructuredOutputs,
+          supportsCodeExecution: modelProviderMap.supportsCodeExecution,
+          supportsComputerUse: modelProviderMap.supportsComputerUse,
+          supportsBackground: modelProviderMap.supportsBackground,
+          supportsResponses: modelProviderMap.supportsResponses,
+        })
+        .from(modelProviderMap)
+        .innerJoin(llmProviders, eq(modelProviderMap.providerId, llmProviders.id))
+        .orderBy(asc(modelProviderMap.modelId), asc(modelProviderMap.priority)),
+    ]);
 
-    return groupModelMappingsByModelId(rows as ModelMappingListRow[]);
+    const hydratedProviders = (Array.isArray(providers) ? providers : [] as ProviderCatalogRow[]).map((provider) =>
+      resolveProviderCatalogDefaults(provider as any),
+    );
+    const hydratedMappings = hydrateMappedRowsFromCatalog({
+      providers: hydratedProviders,
+      mappings: rows as ModelMappingListRow[],
+    });
+
+    return groupModelMappingsByModelId(hydratedMappings);
   }),
 
   listAdminModelCatalog: adminProcedure.query(async () => {
@@ -287,9 +375,15 @@ export const multiProviderRouter = router({
         .orderBy(asc(modelProviderMap.modelId), asc(modelProviderMap.priority)),
     ]);
 
+    const hydratedProviders = (Array.isArray(providers) ? providers : [] as ProviderCatalogRow[]).map((provider) =>
+      resolveProviderCatalogDefaults(provider as any),
+    );
     return mergeAdminModelCatalogRows({
-      providers: providers as ProviderCatalogRow[],
-      mappings: mappings as ModelMappingListRow[],
+      providers: hydratedProviders,
+      mappings: hydrateMappedRowsFromCatalog({
+        providers: hydratedProviders,
+        mappings: mappings as ModelMappingListRow[],
+      }),
     });
   }),
 
@@ -327,6 +421,15 @@ export const multiProviderRouter = router({
         contextLength: z.number().int().nonnegative().nullable().optional(),
         priority: z.number().int().optional(),
         apiStyle: z.enum(["chat-completions", "responses", "messages", "gemini"]).optional(),
+        supportsVision: z.boolean().optional(),
+        supportsThinking: z.boolean().optional(),
+        supportsWebSearch: z.boolean().optional(),
+        supportsFunctionTools: z.boolean().optional(),
+        supportsStructuredOutputs: z.boolean().optional(),
+        supportsCodeExecution: z.boolean().optional(),
+        supportsComputerUse: z.boolean().optional(),
+        supportsBackground: z.boolean().optional(),
+        supportsResponses: z.boolean().optional(),
       })).min(1).max(500),
       isEnabled: z.boolean(),
     }))
@@ -353,6 +456,7 @@ export const multiProviderRouter = router({
           const providerAvailableModels = await db
             .select({
               id: llmProviders.id,
+              providerName: llmProviders.providerName,
               availableModels: llmProviders.availableModels,
             })
             .from(llmProviders)
@@ -365,7 +469,8 @@ export const multiProviderRouter = router({
             contextLength?: number;
           }>();
           for (const provider of providerAvailableModels) {
-            const models = Array.isArray(provider.availableModels) ? provider.availableModels : [];
+            const hydratedProvider = resolveProviderCatalogDefaults(provider as any);
+            const models = Array.isArray(hydratedProvider.availableModels) ? hydratedProvider.availableModels : [];
             for (const model of models) {
               syncedModelMap.set(model.id, {
                 createdAt: model.createdAt,
@@ -385,15 +490,15 @@ export const multiProviderRouter = router({
                 isFree: item.isFree,
                 contextLength: item.contextLength ?? syncedModel?.contextLength ?? null,
                 createdAt: syncedModel?.createdAt,
-                supportsFunctionTools: false,
-                supportsStructuredOutputs: false,
-                supportsWebSearch: false,
-                supportsThinking: false,
-                supportsCodeExecution: false,
-                supportsComputerUse: false,
-                supportsBackground: false,
-                supportsResponses: false,
-                supportsVision: false,
+                supportsFunctionTools: !!item.supportsFunctionTools,
+                supportsStructuredOutputs: !!item.supportsStructuredOutputs,
+                supportsWebSearch: !!item.supportsWebSearch,
+                supportsThinking: !!item.supportsThinking,
+                supportsCodeExecution: !!item.supportsCodeExecution,
+                supportsComputerUse: !!item.supportsComputerUse,
+                supportsBackground: !!item.supportsBackground,
+                supportsResponses: !!item.supportsResponses,
+                supportsVision: !!item.supportsVision,
               });
 
               return {
@@ -408,6 +513,15 @@ export const multiProviderRouter = router({
                 isEnabled: true,
                 priority: computedPriority,
                 apiStyle: item.apiStyle ?? "chat-completions",
+                supportsVision: !!item.supportsVision,
+                supportsThinking: !!item.supportsThinking,
+                supportsWebSearch: !!item.supportsWebSearch,
+                supportsFunctionTools: !!item.supportsFunctionTools,
+                supportsStructuredOutputs: !!item.supportsStructuredOutputs,
+                supportsCodeExecution: !!item.supportsCodeExecution,
+                supportsComputerUse: !!item.supportsComputerUse,
+                supportsBackground: !!item.supportsBackground,
+                supportsResponses: !!item.supportsResponses,
               };
             }))
             .onConflictDoUpdate({
@@ -676,19 +790,20 @@ export const multiProviderRouter = router({
   // --- User Endpoints ---
 
   getAvailableModelsWithProviders: protectedProcedure.query(async () => {
-    // Return only enabled mappings from enabled providers.
     const mappedRows = await db
       .select({
         modelId: modelProviderMap.modelId,
         modelName: modelProviderMap.modelName,
         providerId: modelProviderMap.providerId,
         providerName: llmProviders.providerName,
+        providerDisplayName: llmProviders.displayName,
         providerModelId: modelProviderMap.providerModelId,
         pricingInput: modelProviderMap.pricingInput,
         pricingOutput: modelProviderMap.pricingOutput,
         isFree: modelProviderMap.isFree,
         isEnabled: modelProviderMap.isEnabled,
         contextLength: modelProviderMap.contextLength,
+        availableModels: llmProviders.availableModels,
       })
       .from(modelProviderMap)
       .innerJoin(llmProviders, eq(modelProviderMap.providerId, llmProviders.id))
@@ -698,10 +813,27 @@ export const multiProviderRouter = router({
     const modelProviders: Record<string, { modelId: string; modelName: string; providers: any[] }> = {};
 
     for (const row of mappedRows) {
+      const hydratedProvider = resolveProviderCatalogDefaults({
+        providerName: row.providerName,
+        availableModels: row.availableModels,
+      } as any);
+      const effectivePricing = resolveCatalogBackedPricing({
+        providerName: row.providerName,
+        availableModels: hydratedProvider.availableModels,
+        providerModelId: row.providerModelId,
+        pricingInput: row.pricingInput,
+        pricingOutput: row.pricingOutput,
+        isFree: row.isFree,
+      });
       if (!modelProviders[row.modelId]) {
         modelProviders[row.modelId] = { modelId: row.modelId, modelName: row.modelName, providers: [] };
       }
-      modelProviders[row.modelId].providers.push(row);
+      modelProviders[row.modelId].providers.push({
+        ...row,
+        pricingInput: String(effectivePricing.pricingInput),
+        pricingOutput: String(effectivePricing.pricingOutput),
+        isFree: effectivePricing.isFree,
+      });
     }
 
     return Object.values(modelProviders);

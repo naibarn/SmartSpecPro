@@ -69,11 +69,11 @@ export function HybridOrchestrationCard({
     <div className="max-w-xl space-y-3 rounded-xl border border-violet-200 bg-violet-50/70 p-4 dark:border-violet-900 dark:bg-violet-950/25">
       <div className="flex items-center gap-2 text-sm font-medium text-violet-800 dark:text-violet-200">
         <Workflow className="h-4 w-4" />
-        <span>{t("chat.hybridCard.ready")}</span>
+        <span>{t("chat.hybridCard.confirmTitle")}</span>
       </div>
 
       <p className="text-sm text-muted-foreground">
-        {t("chat.hybridCard.description")}
+        {t("chat.hybridCard.confirmDescription")}
       </p>
 
       <div className="flex flex-wrap gap-1.5">
@@ -114,7 +114,7 @@ export function HybridOrchestrationCard({
           ) : (
             <>
               <ChevronRight className="h-3.5 w-3.5" />
-              {t("chat.hybridCard.previewFlow")}
+              {t("chat.hybridCard.confirmHybrid")}
             </>
           )}
         </Button>
@@ -125,7 +125,7 @@ export function HybridOrchestrationCard({
           onClick={onKeepInChat}
           className="gap-1.5"
         >
-          {t("chat.hybridCard.keepInChat")}
+          {t("chat.hybridCard.answerInChat")}
         </Button>
       </div>
 

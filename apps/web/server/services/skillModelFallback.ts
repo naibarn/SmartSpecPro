@@ -296,8 +296,9 @@ export async function executeSkillLlmWithFallback(
  * Build ordered candidate list for model-level fallback.
  *
  * 1. Primary model from executionPolicy.modelId (first)
- * 2. If requirements-based: additional models matching same requirements (by priority ASC)
- * 3. If legacy cascade: all enabled models by priority ASC
+ * 2. If the model came from explicit skill configuration: stop there and honor it
+ * 3. If requirements-based: additional models matching same requirements (by priority ASC)
+ * 4. If legacy cascade: all enabled models by priority ASC
  * Deduplicates and caps at MAX_MODEL_ATTEMPTS.
  */
 async function buildCandidateList(
@@ -321,6 +322,14 @@ async function buildCandidateList(
 
   // 1. Primary model always first
   if (primaryModel) add(primaryModel);
+
+  const honorsExplicitSkillModel =
+    policy.modelSource === "skill_llmModelId" ||
+    policy.modelSource === "skill_defaultModel" ||
+    policy.modelSource === "skill_fixedModel";
+  if (honorsExplicitSkillModel) {
+    return result;
+  }
 
   // 2. If requirements matched, get more candidates matching same requirements
   if (

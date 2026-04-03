@@ -1,0 +1,81 @@
+{
+  "output_format": "layout_plan_json",
+  "project_summary": {
+    "article_title": "แนวทางการฝึกทารกหกเดือนให้นอนยาวและงดมื้อดึกอย่างเข้าใจ",
+    "article_language": "th",
+    "recommended_page_count": 6,
+    "visual_direction": "warm, calm, premium parenting editorial",
+    "content_strategy": "cover + 4 content pages + closing summary with layout fitness scoring and auto template switching"
+  },
+  "global_style_prompt": "Warm editorial photography, Thai mother and her six-month-old baby, soft warm daylight, cozy nursery, calm nurturing mood, no text, no logos, no watermark, clean composition.",
+  "pages": [
+    {
+      "page_number": 1,
+      "page_role": "cover",
+      "section_title": "แนวทางการฝึกทารกหกเดือนให้นอนยาวและงดมื้อดึกอย่างเข้าใจ",
+      "layout_pattern": "hero_text_stack",
+      "initial_layout_pattern": "hero_image_top_with_text_panel",
+      "template_switched": true,
+      "switch_reason": "expanded hero to improve page fill",
+      "image_position": "top_full_width",
+      "page_quality_expectation": "hero cover with moderate breathing room"
+    },
+    {
+      "page_number": 2,
+      "page_role": "content",
+      "section_title": "เริ่มจากความเข้าใจพื้นฐานของลูกน้อย",
+      "layout_pattern": "split_text_card_image",
+      "initial_layout_pattern": "text_left_image_right_60_40",
+      "template_switched": true,
+      "switch_reason": "lower half too empty; image enlarged and callout injected",
+      "image_position": "right_column",
+      "page_quality_expectation": "balanced medium-density content page"
+    },
+    {
+      "page_number": 3,
+      "page_role": "content",
+      "section_title": "จัดจังหวะการนอนให้สม่ำเสมอ",
+      "layout_pattern": "split_text_card_image",
+      "initial_layout_pattern": "image_left_text_right_40_60",
+      "template_switched": true,
+      "switch_reason": "underfill fixed by deeper text card and larger image",
+      "image_position": "left_column",
+      "page_quality_expectation": "balanced medium-density content page"
+    },
+    {
+      "page_number": 4,
+      "page_role": "content",
+      "section_title": "รับมือการตื่นกลางดึกอย่างอ่อนโยน",
+      "layout_pattern": "text_panel_with_bottom_strip",
+      "template_switched": false,
+      "image_position": "bottom_full_width",
+      "page_quality_expectation": "text-first practical content page"
+    },
+    {
+      "page_number": 5,
+      "page_role": "content",
+      "section_title": "ค่อย ๆ ลดการพึ่งมื้อดึกอย่างเหมาะสม",
+      "layout_pattern": "image_band_with_callout",
+      "initial_layout_pattern": "floating_top_right",
+      "template_switched": true,
+      "switch_reason": "floating image too small and page too top-heavy",
+      "image_position": "center_band",
+      "page_quality_expectation": "dense page made fuller with image band and callout"
+    },
+    {
+      "page_number": 6,
+      "page_role": "closing",
+      "section_title": "สิ่งสำคัญคือความเข้าใจ ความสม่ำเสมอ และความอดทน",
+      "layout_pattern": "text_panel_with_bottom_strip",
+      "template_switched": false,
+      "image_position": "bottom_full_width",
+      "page_quality_expectation": "closing page with softer density"
+    }
+  ],
+  "quality_checks": [
+    "No consecutive duplicate layout patterns",
+    "Content pages stay above target occupancy",
+    "Underfilled templates can be switched automatically",
+    "Article meaning preserved"
+  ]
+}

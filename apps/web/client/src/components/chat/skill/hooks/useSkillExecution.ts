@@ -19,13 +19,14 @@ const analytics = {
 export interface SkillExecutionResult {
   success: boolean;
   skillId: string;
-  type: 'image' | 'video' | 'audio' | 'text' | 'action';
+  type: 'image' | 'video' | 'audio' | 'text' | 'action' | 'sandbox-job';
   resultUrl?: string;
   resultUrls?: string[];
   message?: string;
   error?: string;
   creditsUsed?: number;
   taskId?: string;
+  jobId?: string;
   isAsync?: boolean;
 }
 
@@ -93,8 +94,8 @@ export function useSkillExecution(
           dynamicParams: params.dynamicParams,
           conversationId,
         });
-        // Cast to include isAsync/taskId fields present on the Python skill fast-return path
-        const data = _data as typeof _data & { isAsync?: boolean; taskId?: string };
+        // Cast to include async handles present on the fast-return paths
+        const data = _data as typeof _data & { isAsync?: boolean; taskId?: string; jobId?: string };
 
         // Long-running Python skills return isAsync:true + taskId immediately.
         // Poll until the background task finishes (avoids Cloudflare 100s timeout).
@@ -113,6 +114,61 @@ export function useSkillExecution(
               return { success: false, skillId: params.skillId, type: "text", error: "Task not found or expired" };
             }
             // status === "running" → keep polling
+          }
+        }
+
+        // Sandbox-backed media skills return isAsync:true + jobId.
+        if (data.isAsync && data.jobId) {
+          const jobId = data.jobId;
+          while (true) {
+            await new Promise<void>((r) => setTimeout(r, 3000));
+            const job = await utils.sandbox.getJobStatus.fetch({ jobId });
+            if (job.status === "completed") {
+              const artifacts = Array.isArray((job as any).artifacts)
+                ? (job as any).artifacts
+                : [];
+              const imageArtifacts = artifacts.filter((artifact: any) =>
+                typeof artifact?.url === "string"
+                && (
+                  String(artifact?.mimeType || "").toLowerCase().startsWith("image/")
+                  || String(artifact?.key || "").toLowerCase().match(/\.(png|jpe?g|webp|gif|svg)$/)
+                ));
+              return {
+                success: true,
+                skillId: params.skillId,
+                type: imageArtifacts.length > 0 ? "image" : "text",
+                resultUrl: imageArtifacts[0]?.url,
+                resultUrls: imageArtifacts.map((artifact: any) => artifact.url),
+                message: imageArtifacts.length > 0
+                  ? "Image generated successfully!"
+                  : data.message || "Sandbox job completed successfully.",
+                isAsync: true,
+                jobId,
+              };
+            }
+            if (job.status === "failed" || job.status === "timed_out") {
+              return {
+                success: false,
+                skillId: params.skillId,
+                type: "text",
+                error:
+                  (job as any).label
+                  || "Sandbox job failed",
+                isAsync: true,
+                jobId,
+              };
+            }
+            if (job.status === "canceled" || job.status === "cancelled") {
+              return {
+                success: false,
+                skillId: params.skillId,
+                type: "text",
+                error: "Sandbox job was cancelled",
+                isAsync: true,
+                jobId,
+              };
+            }
+            // queued/running → keep polling
           }
         }
 

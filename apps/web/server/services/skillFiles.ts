@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import yaml from "js-yaml";
+import AdmZip from "adm-zip";
 
 export const SKILL_MANIFEST_FILENAMES = ["skill.md", "SKILL.md"] as const;
 export const SKILL_AGENT_DOC_FILENAMES = [
@@ -11,9 +12,35 @@ export const SKILL_AGENT_DOC_FILENAMES = [
   "AGENTS.md",
   "agents.md",
 ] as const;
+const ZIP_METADATA_DIR_NAMES = new Set(["__MACOSX"]);
+const ZIP_METADATA_FILE_NAMES = new Set([".DS_Store", "Thumbs.db"]);
 
 function dedupe(items: string[]): string[] {
   return Array.from(new Set(items));
+}
+
+function shouldIgnoreExtractedEntryName(name: string): boolean {
+  return ZIP_METADATA_DIR_NAMES.has(name) || ZIP_METADATA_FILE_NAMES.has(name) || name.startsWith("._");
+}
+
+function readUsefulDirEntries(dirPath: string): fs.Dirent[] {
+  return fs
+    .readdirSync(dirPath, { withFileTypes: true })
+    .filter((entry) => !shouldIgnoreExtractedEntryName(entry.name));
+}
+
+function moveEntry(sourcePath: string, destinationPath: string): void {
+  try {
+    fs.renameSync(sourcePath, destinationPath);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (!message.includes("EXDEV")) {
+      throw error;
+    }
+
+    fs.cpSync(sourcePath, destinationPath, { recursive: true });
+    fs.rmSync(sourcePath, { recursive: true, force: true });
+  }
 }
 
 function resolveDirectSkillManifestPath(skillDir: string): string | null {
@@ -27,17 +54,13 @@ function resolveDirectSkillManifestPath(skillDir: string): string | null {
 }
 
 export function resolveSkillBundleDir(skillDir: string): string | null {
-  const directManifestPath = resolveDirectSkillManifestPath(skillDir);
-  const directCommandManifestPath = path.join(skillDir, "skill.manifest.json");
-  if (directManifestPath || fs.existsSync(directCommandManifestPath)) {
-    return skillDir;
-  }
-
   if (!fs.existsSync(skillDir)) {
     return null;
   }
 
   try {
+    const directManifestPath = resolveDirectSkillManifestPath(skillDir);
+    const directCommandManifestPath = path.join(skillDir, "skill.manifest.json");
     const entries = fs.readdirSync(skillDir, { withFileTypes: true });
     const nestedDirs = entries
       .filter((entry) => entry.isDirectory())
@@ -50,7 +73,19 @@ export function resolveSkillBundleDir(skillDir: string): string | null {
     });
 
     if (candidates.length === 0) {
-      return null;
+      return (directManifestPath || fs.existsSync(directCommandManifestPath)) ? skillDir : null;
+    }
+
+    const directHasCommandManifest = fs.existsSync(directCommandManifestPath);
+    if (!directHasCommandManifest) {
+      const nestedCommandBundle = candidates.find((dirPath) => fs.existsSync(path.join(dirPath, "skill.manifest.json")));
+      if (nestedCommandBundle) {
+        return nestedCommandBundle;
+      }
+    }
+
+    if (directManifestPath || directHasCommandManifest) {
+      return skillDir;
     }
 
     return candidates.find((dirPath) => fs.existsSync(path.join(dirPath, "skill.manifest.json")))
@@ -75,10 +110,16 @@ export function resolveSkillDirCandidates(folderPath: string): string[] {
 }
 
 export function resolveSkillManifestPath(skillDir: string): string | null {
+  const directManifestPath = resolveDirectSkillManifestPath(skillDir);
+  if (directManifestPath) {
+    return directManifestPath;
+  }
+
   const bundleDir = resolveSkillBundleDir(skillDir);
   if (!bundleDir) {
     return null;
   }
+
   return resolveDirectSkillManifestPath(bundleDir);
 }
 
@@ -132,6 +173,39 @@ export function writeSkillManifestFiles(skillDir: string, content: string): stri
     written.push(targetPath);
   }
   return written;
+}
+
+export function extractZipToDirectory(
+  zip: AdmZip,
+  destinationDir: string,
+): { extractedEntries: string[]; flattenedWrapperDir: string | null } {
+  fs.mkdirSync(destinationDir, { recursive: true });
+  const parentDir = path.dirname(destinationDir);
+  fs.mkdirSync(parentDir, { recursive: true });
+
+  const tempDir = fs.mkdtempSync(path.join(parentDir, `.${path.basename(destinationDir)}-extract-`));
+
+  try {
+    zip.extractAllTo(tempDir, true);
+
+    const rootEntries = readUsefulDirEntries(tempDir);
+    const wrapperDir = rootEntries.length === 1 && rootEntries[0]?.isDirectory()
+      ? rootEntries[0]
+      : null;
+    const sourceDir = wrapperDir ? path.join(tempDir, wrapperDir.name) : tempDir;
+    const extractedEntries = readUsefulDirEntries(sourceDir).map((entry) => entry.name);
+
+    for (const entry of readUsefulDirEntries(sourceDir)) {
+      moveEntry(path.join(sourceDir, entry.name), path.join(destinationDir, entry.name));
+    }
+
+    return {
+      extractedEntries,
+      flattenedWrapperDir: wrapperDir?.name ?? null,
+    };
+  } finally {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  }
 }
 
 export interface SkillManifestMetadataUpdate {

@@ -2,6 +2,7 @@ import { eq, and, gte, lte, sql, isNotNull } from "drizzle-orm";
 import { getDb } from "../db";
 import { providerUsageLog, modelProviderMap, llmProviders } from "../../drizzle/schema";
 import { buildModelProviderMapLookupCondition } from "./modelLookup";
+import { resolveCatalogBackedPricing } from "./llmProviderCatalog";
 
 // --- Constants ---
 
@@ -65,11 +66,15 @@ export async function calculateCost(params: {
   if (db) {
     const rows = await db
       .select({
+        providerName: llmProviders.providerName,
+        availableModels: llmProviders.availableModels,
+        providerModelId: modelProviderMap.providerModelId,
         pricingInput: modelProviderMap.pricingInput,
         pricingOutput: modelProviderMap.pricingOutput,
         isFree: modelProviderMap.isFree,
       })
       .from(modelProviderMap)
+      .innerJoin(llmProviders, eq(modelProviderMap.providerId, llmProviders.id))
       .where(
         and(
           buildModelProviderMapLookupCondition(params.modelId),
@@ -79,10 +84,10 @@ export async function calculateCost(params: {
       .limit(1);
 
     if (rows.length > 0) {
-      const row = rows[0];
-      if (row.isFree) return { cost: 0, method: "model_lookup" };
-      const inputCost = (params.inputTokens / 1_000_000) * Number(row.pricingInput);
-      const outputCost = (params.outputTokens / 1_000_000) * Number(row.pricingOutput);
+      const effectivePricing = resolveCatalogBackedPricing(rows[0]);
+      if (effectivePricing.isFree) return { cost: 0, method: "model_lookup" };
+      const inputCost = (params.inputTokens / 1_000_000) * effectivePricing.pricingInput;
+      const outputCost = (params.outputTokens / 1_000_000) * effectivePricing.pricingOutput;
       return { cost: inputCost + outputCost, method: "model_lookup" };
     }
   }

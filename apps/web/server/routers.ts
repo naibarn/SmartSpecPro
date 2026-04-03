@@ -101,6 +101,8 @@ import { notificationPreferencesRouter } from "./routers/notificationPreferences
 import { alertRulesRouter } from "./routers/alertRules";
 import { notificationWebhooksRouter } from "./routers/notificationWebhooks";
 import { socialInboxRouter } from "./routers/socialInbox";
+import { billingRouter } from "./routers/billing";
+import { adminBillingRouter } from "./routers/adminBilling";
 
 // Zod schemas for validation
 const strongPasswordSchema = z.string().min(8).refine(
@@ -144,6 +146,8 @@ const galleryFiltersSchema = z.object({
 export const appRouter = router({
   // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
   system: systemRouter,
+  billing: billingRouter,
+  adminBilling: adminBillingRouter,
   
   auth: router({
     me: publicProcedure.query(opts => {
@@ -1308,11 +1312,13 @@ export const appRouter = router({
         const { getUserByEmail } = await import("./db");
         const { getDb } = await import("./db");
         const { sdk } = await import("./_core/sdk");
+        const { getAppRuntimeConfig } = await import("./services/appRuntimeConfig");
         const { users, systemSettings, tenants } = await import("../drizzle/schema");
         const { eq, and } = await import("drizzle-orm");
 
         // 1. Verify the Python OAuth token by calling Python backend
-        const PYTHON_BACKEND = process.env.PYTHON_BACKEND_URL || 'http://localhost:8000';
+        const runtime = await getAppRuntimeConfig();
+        const PYTHON_BACKEND = runtime.pythonBackendUrl;
         let pythonUser: { id: string; email: string; full_name: string | null; is_admin: boolean; email_verified: boolean };
 
         try {

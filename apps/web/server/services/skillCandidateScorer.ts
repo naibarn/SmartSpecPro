@@ -221,6 +221,8 @@ export function retrieveAndScoreCandidates(
 ): ScoredCandidate[] {
   // Step 1: Filter by policy (excluded families + required capabilities)
   const filtered = catalog.filter((skill) => {
+    if (skill.requiresExplicit) return false;
+
     const family = getCatalogFamily(skill.category);
     if (policy.excludedFamilies.includes(family)) return false;
 

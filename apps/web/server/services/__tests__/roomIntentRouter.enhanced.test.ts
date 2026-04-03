@@ -78,6 +78,46 @@ describe("routeRoomIntent -- assistant origin skill detection", () => {
     expect(decision.source).toBe("skill-detect");
   });
 
+  it("should keep model-selection questions on chat even when advanced routing is enabled", async () => {
+    mockGetTenantFeatureFlag.mockResolvedValue(true);
+
+    const decision = await routeRoomIntent({
+      ...baseInput,
+      origin: "human_user",
+      context: "room_message",
+      message: "ใช้ llm model อะไร",
+    });
+
+    expect(decision).toMatchObject({
+      route: "chat",
+      reason: "model_selection_query",
+      source: "rules",
+    });
+    expect(mockDetectSkill).not.toHaveBeenCalled();
+    expect(mockClassifyIntent).not.toHaveBeenCalled();
+    expect(mockRetrieveAndScoreCandidates).not.toHaveBeenCalled();
+  });
+
+  it("should keep model suitability questions on chat even when they mention image work", async () => {
+    mockGetTenantFeatureFlag.mockResolvedValue(true);
+
+    const decision = await routeRoomIntent({
+      ...baseInput,
+      origin: "human_user",
+      context: "room_message",
+      message: "qwen 3.6 llm model เหมาะกับงานสร้างภาพกราฟิกหรือไม่",
+    });
+
+    expect(decision).toMatchObject({
+      route: "chat",
+      reason: "model_selection_query",
+      source: "rules",
+    });
+    expect(mockDetectSkill).not.toHaveBeenCalled();
+    expect(mockClassifyIntent).not.toHaveBeenCalled();
+    expect(mockRetrieveAndScoreCandidates).not.toHaveBeenCalled();
+  });
+
   it("should return detected skill when confidence >= 0.6", async () => {
     mockDetectSkill.mockResolvedValue({
       detected: true,

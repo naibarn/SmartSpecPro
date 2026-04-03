@@ -42,8 +42,10 @@ export interface UploadPostClientResponse<T> {
   data: T;
 }
 
-function normalizeBaseUrl(baseUrl?: string): string {
-  return (baseUrl || process.env.UPLOAD_POST_API_BASE_URL || "http://localhost:8000").replace(/\/+$/, "");
+async function normalizeBaseUrl(baseUrl?: string): Promise<string> {
+  if (baseUrl) return baseUrl.replace(/\/+$/, "");
+  const runtime = await getAppRuntimeConfig();
+  return runtime.uploadPostApiBaseUrl.replace(/\/+$/, "");
 }
 
 function sanitizeUploadPostError(status: number, body: unknown): string {
@@ -71,11 +73,11 @@ async function safeJson(response: Response): Promise<unknown> {
 }
 
 export class UploadPostClient {
-  private readonly baseUrl: string;
+  private readonly baseUrl?: string;
   private readonly timeoutMs: number;
 
   constructor(options: UploadPostClientOptions = {}) {
-    this.baseUrl = normalizeBaseUrl(options.baseUrl);
+    this.baseUrl = options.baseUrl;
     this.timeoutMs = options.timeoutMs ?? 15_000;
   }
 
@@ -84,6 +86,7 @@ export class UploadPostClient {
     apiKey: string,
     init: RequestInit = {},
   ): Promise<UploadPostClientResponse<T>> {
+    const resolvedBaseUrl = await normalizeBaseUrl(this.baseUrl);
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
     try {
@@ -91,7 +94,7 @@ export class UploadPostClient {
       headers.set("Content-Type", "application/json");
       headers.set("Authorization", `Bearer ${apiKey}`);
 
-      const response = await fetch(`${this.baseUrl}${path}`, {
+      const response = await fetch(`${resolvedBaseUrl}${path}`, {
         ...init,
         signal: controller.signal,
         headers,
@@ -215,3 +218,4 @@ export class UploadPostClient {
 export function createUploadPostClient(options?: UploadPostClientOptions): UploadPostClient {
   return new UploadPostClient(options);
 }
+import { getAppRuntimeConfig } from "./appRuntimeConfig";

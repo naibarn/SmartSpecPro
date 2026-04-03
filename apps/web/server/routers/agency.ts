@@ -11,6 +11,7 @@ import { router, protectedProcedure, adminProcedure, publicProcedure } from "../
 import { TRPCError } from "@trpc/server";
 import { createRateLimitMiddleware } from "../_core/rateLimitedProcedure";
 import { requireFeatureFlag } from "../middleware/requireFeatureFlag";
+import { getAppRuntimeConfig, getPreferredInternalToken } from "../services/appRuntimeConfig";
 import { db } from "../db";
 import {
   agencies,
@@ -37,7 +38,7 @@ import {
 } from "../../drizzle/schema";
 import { eq, and, or, desc, asc, inArray, sql, getTableColumns, count } from "drizzle-orm";
 import { agencyBridge } from "../services/agencyBridge";
-import { validateSsrfUrl } from "../services/ssrfValidator";
+import { validateSsrfUrl, validateSsrfUrlWithRuntime } from "../services/ssrfValidator";
 import { encrypt, decrypt } from "../services/crypto";
 import type { RunResult } from "../services/agencyBridge";
 import { runPlanner, recordStepAttempt } from "../services/taskPlannerMiddleware";
@@ -3060,8 +3061,8 @@ export const agencyRouter = router({
       const tenantId = resolveTenantId(ctx);
       await assertAgencyEnabled(tenantId);
 
-      const { ENV } = await import("../_core/env");
-      const pythonBackendUrl = (ENV.pythonBackendUrl || "http://localhost:8000").replace(/\/+$/, "");
+      const { getCachedPythonBackendUrl } = await import("../services/appRuntimeConfig");
+      const pythonBackendUrl = (getCachedPythonBackendUrl() || "http://localhost:8000").replace(/\/+$/, "");
 
       const response = await fetch(`${pythonBackendUrl}/api/v1/agency-creator/start`, {
         method: "POST",
@@ -3094,8 +3095,8 @@ export const agencyRouter = router({
   autoCreateStatus: protectedProcedure
     .input(z.object({ taskId: z.string().regex(/^agcreate-[a-f0-9]{12}$/) }))
     .query(async ({ ctx, input }) => {
-      const { ENV } = await import("../_core/env");
-      const pythonBackendUrl = (ENV.pythonBackendUrl || "http://localhost:8000").replace(/\/+$/, "");
+      const { getCachedPythonBackendUrl } = await import("../services/appRuntimeConfig");
+      const pythonBackendUrl = (getCachedPythonBackendUrl() || "http://localhost:8000").replace(/\/+$/, "");
 
       const response = await fetch(
         `${pythonBackendUrl}/api/v1/agency-creator/status/${encodeURIComponent(input.taskId)}`,
@@ -3184,8 +3185,8 @@ export const agencyRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const { ENV } = await import("../_core/env");
-      const pythonBackendUrl = (ENV.pythonBackendUrl || "http://localhost:8000").replace(/\/+$/, "");
+      const { getCachedPythonBackendUrl } = await import("../services/appRuntimeConfig");
+      const pythonBackendUrl = (getCachedPythonBackendUrl() || "http://localhost:8000").replace(/\/+$/, "");
 
       const response = await fetch(`${pythonBackendUrl}/api/v1/agency-creator/answer`, {
         method: "POST",
@@ -3738,7 +3739,7 @@ export const agencyRouter = router({
 
       // SSRF validation
       try {
-        validateSsrfUrl(input.endpoint);
+        await validateSsrfUrlWithRuntime(input.endpoint);
       } catch (e: any) {
         throw new TRPCError({ code: "BAD_REQUEST", message: `SSRF: ${e.message}` });
       }
@@ -3794,7 +3795,7 @@ export const agencyRouter = router({
       // SSRF re-validation if endpoint changed
       if (input.endpoint) {
         try {
-          validateSsrfUrl(input.endpoint);
+          await validateSsrfUrlWithRuntime(input.endpoint);
         } catch (e: any) {
           throw new TRPCError({ code: "BAD_REQUEST", message: `SSRF: ${e.message}` });
         }
@@ -3960,7 +3961,7 @@ export const agencyRouter = router({
         throw new TRPCError({ code: "BAD_REQUEST", message: "Tool has no endpoint configured" });
       }
       try {
-        validateSsrfUrl(endpoint);
+        await validateSsrfUrlWithRuntime(endpoint);
       } catch (e: any) {
         throw new TRPCError({ code: "BAD_REQUEST", message: `SSRF: ${e.message}` });
       }
@@ -4023,7 +4024,7 @@ export const agencyRouter = router({
       // SSRF validate baseUrl override if provided
       if (input.baseUrl) {
         try {
-          validateSsrfUrl(input.baseUrl);
+          await validateSsrfUrlWithRuntime(input.baseUrl);
         } catch (e: any) {
           throw new TRPCError({ code: "BAD_REQUEST", message: `SSRF: ${e.message}` });
         }
@@ -4066,7 +4067,7 @@ export const agencyRouter = router({
 
       // SSRF validate baseUrl
       try {
-        validateSsrfUrl(input.baseUrl);
+        await validateSsrfUrlWithRuntime(input.baseUrl);
       } catch (e: any) {
         throw new TRPCError({ code: "BAD_REQUEST", message: `SSRF: ${e.message}` });
       }
@@ -4139,7 +4140,7 @@ export const agencyRouter = router({
       isEnabled: z.boolean().default(true),
       sortOrder: z.number().int().min(0).default(0),
       enforceOnHandoff: z.boolean().default(false),
-    }).superRefine((data, ctx) => {
+    }).superRefine(async (data, ctx) => {
       const c = data.config as Record<string, unknown>;
       switch (data.strategy) {
         case "keyword_block": {
@@ -4180,7 +4181,7 @@ export const agencyRouter = router({
           if (typeof c.endpoint !== "string")
             ctx.addIssue({ code: "custom", message: "endpoint URL required", path: ["config", "endpoint"] });
           else {
-            try { validateSsrfUrl(c.endpoint as string); } catch (e: any) {
+            try { await validateSsrfUrl(c.endpoint as string); } catch (e: any) {
               ctx.addIssue({ code: "custom", message: `SSRF: ${e.message}`, path: ["config", "endpoint"] });
             }
           }
@@ -4344,11 +4345,11 @@ export const agencyRouter = router({
       if (guardrail.tenantId !== tenantId)
         throw new TRPCError({ code: "FORBIDDEN", message: "Cross-tenant access denied" });
 
-      const PY_BACKEND = process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
-      const token = process.env.SMARTSPEC_WEB_GATEWAY_TOKEN || "";
+      const runtime = await getAppRuntimeConfig();
+      const token = await getPreferredInternalToken();
 
       try {
-        const resp = await fetch(`${PY_BACKEND}/api/internal/guardrails/test`, {
+        const resp = await fetch(`${runtime.pythonBackendUrl}/api/internal/guardrails/test`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -4890,9 +4891,9 @@ export const agencyRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "Agency not found" });
       }
 
-      const baseUrl = process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
-      const gatewayToken = process.env.SMARTSPEC_WEB_GATEWAY_TOKEN || "";
-      const response = await fetch(`${baseUrl}/api/v1/agency/review-agency`, {
+      const runtime = await getAppRuntimeConfig();
+      const gatewayToken = await getPreferredInternalToken();
+      const response = await fetch(`${runtime.pythonBackendUrl}/api/v1/agency/review-agency`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -5043,9 +5044,9 @@ export const agencyRouter = router({
 
       // Trigger async LLM advisor analysis via Python backend
       try {
-        const baseUrl = process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
-        const gatewayToken = process.env.SMARTSPEC_WEB_GATEWAY_TOKEN || "";
-        await fetch(`${baseUrl}/api/v1/agency/analyze-feedback`, {
+        const runtime = await getAppRuntimeConfig();
+        const gatewayToken = await getPreferredInternalToken();
+        await fetch(`${runtime.pythonBackendUrl}/api/v1/agency/analyze-feedback`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

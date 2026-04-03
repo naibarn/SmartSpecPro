@@ -1,5 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { ENV } from "./env";
+import { getCachedAppRuntimeConfig } from "../services/appRuntimeConfig";
 
 export type NotificationPayload = {
   title: string;
@@ -67,29 +68,32 @@ export async function notifyOwner(
   payload: NotificationPayload
 ): Promise<boolean> {
   const { title, content } = validatePayload(payload);
+  const runtimeConfig = getCachedAppRuntimeConfig();
+  const forgeApiUrl = runtimeConfig.forgeApiUrl || ENV.forgeApiUrl;
+  const forgeApiKey = runtimeConfig.forgeApiKey || ENV.forgeApiKey;
 
-  if (!ENV.forgeApiUrl) {
+  if (!forgeApiUrl) {
     throw new TRPCError({
       code: "INTERNAL_SERVER_ERROR",
       message: "Notification service URL is not configured.",
     });
   }
 
-  if (!ENV.forgeApiKey) {
+  if (!forgeApiKey) {
     throw new TRPCError({
       code: "INTERNAL_SERVER_ERROR",
       message: "Notification service API key is not configured.",
     });
   }
 
-  const endpoint = buildEndpointUrl(ENV.forgeApiUrl);
+  const endpoint = buildEndpointUrl(forgeApiUrl);
 
   try {
     const response = await fetch(endpoint, {
       method: "POST",
       headers: {
         accept: "application/json",
-        authorization: `Bearer ${ENV.forgeApiKey}`,
+        authorization: `Bearer ${forgeApiKey}`,
         "content-type": "application/json",
         "connect-protocol-version": "1",
       },

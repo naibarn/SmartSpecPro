@@ -1,0 +1,564 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/modern-editorial-slide-skill/input.schema.json",
+  "title": "Modern Editorial Slide Skill Input",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "request"
+  ],
+  "properties": {
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "canvasRatio",
+        "outputFormats",
+        "content"
+      ],
+      "properties": {
+        "projectTitle": {
+          "type": "string",
+          "minLength": 1
+        },
+        "language": {
+          "type": "string",
+          "default": "th"
+        },
+        "canvasRatio": {
+          "type": "string",
+          "enum": [
+            "16:9",
+            "9:16",
+            "4:5",
+            "5:4"
+          ]
+        },
+        "compositionMode": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "slide-deck",
+            "document-pages"
+          ],
+          "default": "auto"
+        },
+        "designStyle": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "luxury-editorial",
+            "modern-report",
+            "soft-wellness",
+            "corporate-premium",
+            "magazine-infographic",
+            "minimal-premium"
+          ],
+          "default": "auto"
+        },
+        "density": {
+          "type": "string",
+          "enum": [
+            "airy",
+            "balanced",
+            "dense"
+          ],
+          "default": "balanced"
+        },
+        "outputFormats": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "md",
+              "json",
+              "pptx",
+              "pdf"
+            ]
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "randomizeLayouts": {
+          "type": "boolean",
+          "default": true
+        },
+        "seed": {
+          "description": "Used for deterministic layout randomization.",
+          "oneOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "pagination": {
+          "$ref": "#/$defs/Pagination"
+        },
+        "maxSlides": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20,
+          "default": 5,
+          "description": "Legacy alias. Prefer request.pagination.maxPages. If both are set, pagination.maxPages wins."
+        },
+        "content": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/AutoSplitContent"
+            },
+            {
+              "$ref": "#/$defs/ManualPagesContent"
+            }
+          ]
+        },
+        "theme": {
+          "$ref": "#/$defs/Theme"
+        },
+        "brand": {
+          "$ref": "#/$defs/Brand"
+        },
+        "llm": {
+          "$ref": "#/$defs/LlmConfig"
+        },
+        "renderOptions": {
+          "$ref": "#/$defs/RenderOptions"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "Pagination": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "maxPages": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20,
+          "default": 5,
+          "description": "Hard cap for the final deck/page count. The skill may return fewer pages when content fits."
+        },
+        "allowFewerPages": {
+          "type": "boolean",
+          "default": true,
+          "description": "When true, the skill may return any page count from 1..maxPages."
+        },
+        "overflowStrategy": {
+          "type": "string",
+          "enum": [
+            "condense",
+            "merge-tail",
+            "strict-error"
+          ],
+          "default": "condense",
+          "description": "How to handle content that would exceed maxPages."
+        }
+      }
+    },
+    "ImageSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Optional unique key for imageRefs in manual page mode."
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Local path, relative path, or URL of an image asset."
+        },
+        "alt": {
+          "type": "string"
+        },
+        "caption": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "maxItems": 12,
+          "uniqueItems": true
+        },
+        "roleHint": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "hero",
+            "supporting",
+            "module",
+            "background"
+          ],
+          "default": "auto"
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5,
+          "default": 3
+        },
+        "focalPoint": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "x": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "y": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          "required": [
+            "x",
+            "y"
+          ]
+        }
+      }
+    },
+    "ImagePool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "images"
+      ],
+      "properties": {
+        "images": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ImageSource"
+          },
+          "minItems": 1,
+          "maxItems": 60
+        },
+        "maxImagesPerPage": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 3,
+          "default": 3
+        },
+        "minImagesPerPage": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 3,
+          "default": 0
+        },
+        "reusePolicy": {
+          "type": "string",
+          "enum": [
+            "allow",
+            "avoid-repeat-until-used",
+            "disallow"
+          ],
+          "default": "avoid-repeat-until-used"
+        },
+        "selectionStrategy": {
+          "type": "string",
+          "enum": [
+            "auto-diverse",
+            "sequential",
+            "shuffle",
+            "semantic-hero"
+          ],
+          "default": "auto-diverse"
+        },
+        "coverPageImagePolicy": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "prefer-hero",
+            "no-image"
+          ],
+          "default": "auto"
+        },
+        "allowUnusedImages": {
+          "type": "boolean",
+          "default": true
+        }
+      }
+    },
+    "Theme": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "paletteMode": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "warm-neutral",
+            "monochrome-premium",
+            "soft-pastel",
+            "brand-first"
+          ],
+          "default": "auto"
+        },
+        "background": {
+          "type": "string",
+          "pattern": "^#([A-Fa-f0-9]{6})$"
+        },
+        "text": {
+          "type": "string",
+          "pattern": "^#([A-Fa-f0-9]{6})$"
+        },
+        "accent": {
+          "type": "string",
+          "pattern": "^#([A-Fa-f0-9]{6})$"
+        },
+        "titleFont": {
+          "type": "string"
+        },
+        "bodyFont": {
+          "type": "string"
+        },
+        "roundedCorners": {
+          "type": "boolean",
+          "default": true
+        }
+      }
+    },
+    "Brand": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "tagline": {
+          "type": "string"
+        },
+        "website": {
+          "type": "string"
+        },
+        "logoPath": {
+          "type": "string"
+        }
+      }
+    },
+    "RenderOptions": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "pptxFileName": {
+          "type": "string",
+          "default": "slides.pptx"
+        },
+        "jsonFileName": {
+          "type": "string",
+          "default": "layout-spec.json"
+        },
+        "mdFileName": {
+          "type": "string",
+          "default": "slides.md"
+        },
+        "pdfFileName": {
+          "type": "string",
+          "default": "slides.pdf"
+        },
+        "pdfEngine": {
+          "type": "string",
+          "enum": [
+            "libreoffice",
+            "skip"
+          ],
+          "default": "libreoffice"
+        }
+      }
+    },
+    "LlmConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "planningMode": {
+          "type": "string",
+          "enum": [
+            "skill-agent",
+            "heuristic-only",
+            "external-layout-spec"
+          ],
+          "default": "skill-agent"
+        },
+        "externalLayoutSpecPath": {
+          "type": "string"
+        },
+        "preservePromptArtifacts": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "AutoSplitContent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rawText"
+      ],
+      "properties": {
+        "titleHint": {
+          "type": "string"
+        },
+        "rawText": {
+          "type": "string",
+          "minLength": 1
+        },
+        "imagePool": {
+          "$ref": "#/$defs/ImagePool"
+        },
+        "images": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ImageSource"
+          },
+          "maxItems": 60,
+          "description": "Legacy shortcut. Prefer content.imagePool.images."
+        },
+        "imageReusePolicy": {
+          "type": "string",
+          "enum": [
+            "allow",
+            "avoid-repeat-until-used",
+            "disallow"
+          ],
+          "default": "avoid-repeat-until-used",
+          "description": "Legacy shortcut. Prefer content.imagePool.reusePolicy."
+        },
+        "pageIntentHint": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "editorial_cover",
+            "executive_summary",
+            "report_page",
+            "workflow_infographic",
+            "healthcare_steps",
+            "product_summary",
+            "strategy_overview",
+            "project_timeline",
+            "business_process",
+            "case_study"
+          ],
+          "default": "auto"
+        }
+      }
+    },
+    "ManualPage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "text"
+      ],
+      "properties": {
+        "titleHint": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pageIntentHint": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "editorial_cover",
+            "executive_summary",
+            "report_page",
+            "workflow_infographic",
+            "healthcare_steps",
+            "product_summary",
+            "strategy_overview",
+            "project_timeline",
+            "business_process",
+            "case_study"
+          ],
+          "default": "auto"
+        },
+        "forceArchetype": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "editorial_cover_split",
+            "title_hero_split",
+            "two_column_editorial",
+            "executive_summary_dashboard",
+            "product_overview_report",
+            "stat_card_with_image",
+            "vertical_workflow_steps",
+            "project_timeline_bands",
+            "feature_story_panels"
+          ],
+          "default": "auto"
+        },
+        "images": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ImageSource"
+          },
+          "minItems": 0,
+          "maxItems": 3
+        },
+        "imageRefs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 0,
+          "maxItems": 3,
+          "uniqueItems": true
+        },
+        "imageSelectionMode": {
+          "type": "string",
+          "enum": [
+            "manual-only",
+            "refs-only",
+            "manual-plus-shared",
+            "auto-from-shared"
+          ],
+          "default": "manual-only"
+        },
+        "maxImagesOverride": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 3
+        }
+      }
+    },
+    "ManualPagesContent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "pages"
+      ],
+      "properties": {
+        "sharedImagePool": {
+          "$ref": "#/$defs/ImagePool"
+        },
+        "pages": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 50,
+          "items": {
+            "$ref": "#/$defs/ManualPage"
+          }
+        }
+      }
+    }
+  }
+}

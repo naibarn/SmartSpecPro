@@ -99,6 +99,7 @@ triggerPatterns:
 |-----------|------|---------|---------|
 | `target_platform` | string | `compatible` | `sora`, `veo`, `kling`, `wan`, `seedance`, `compatible` |
 | `language` | string | `en` | `en`, `th`, `auto` |
+| `maxPromptLength` | integer | `2000` | Hard character cap for the final prompt |
 | `duration` | integer | `8` | 4-60 (platform limits apply) |
 | `aspect_ratio` | string | `9:16` | `9:16`, `16:9`, `1:1`, `4:5`, `21:9` |
 
@@ -145,6 +146,11 @@ triggerPatterns:
 | `text_overlay` | boolean | `false` | Include text (Sora only) |
 | `creative_freedom` | integer | `50` | AI creativity (0-100) |
 | `color_grading` | string | `natural` | Color preset (10 options) |
+
+### Output Length
+
+- If `maxPromptLength` is provided, keep the final prompt under that character limit.
+- When `language` is `th` or `auto` resolves to Thai, stay even more concise and avoid redundant adjectives so the prompt stays safely under the cap.
 
 ---
 

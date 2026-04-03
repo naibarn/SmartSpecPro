@@ -33,6 +33,7 @@ import { getRedisClient, isRedisAvailable } from "../services/redis";
 import { uploadLibraryFile } from "../services/libraryService";
 import { isLibraryEnabledForTenant } from "../services/libraryFeatureFlags";
 import { resolveTenantIdVarchar } from "../services/tenantContext";
+import { getAppRuntimeConfig } from "../services/appRuntimeConfig";
 
 // ── Input validation schemas ──────────────────────────────────────────────
 const driveFileIdSchema = z
@@ -135,25 +136,24 @@ const readRateLimit = createGDriveRateLimitMiddleware(gdriveReadLimiter);
 const syncRateLimit = createGDriveRateLimitMiddleware(gdriveSyncLimiter);
 const editRateLimit = createGDriveRateLimitMiddleware(gdriveEditLimiter);
 
-const PYTHON_BACKEND_URL =
-  process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
-
-const PROXY_TOKEN = process.env.SMARTSPEC_PROXY_TOKEN ?? "";
-if (!PROXY_TOKEN) {
-  console.warn("[googleDrive] SMARTSPEC_PROXY_TOKEN is not set — internal API calls will lack auth");
-}
-
 const PY_TIMEOUT_MS = 10_000;
 const PY_UPLOAD_TIMEOUT_MS = 30_000;
 const MAX_EDIT_FILE_BYTES = 50 * 1024 * 1024; // 50 MB
 
-function pyFetch(
+async function pyFetch(
   url: string,
   init?: RequestInit & { timeoutMs?: number },
 ): Promise<Response> {
   const { timeoutMs, ...rest } = init ?? {};
+  const runtime = await getAppRuntimeConfig();
+  const proxyToken = runtime.proxyToken;
+  const headers = new Headers(rest.headers ?? {});
+  if (proxyToken && !headers.has("x-proxy-token")) {
+    headers.set("x-proxy-token", proxyToken);
+  }
   return fetch(url, {
     ...rest,
+    headers,
     signal: rest.signal ?? AbortSignal.timeout(timeoutMs ?? PY_TIMEOUT_MS),
   });
 }
@@ -188,9 +188,10 @@ export const googleDriveRouter = router({
    * Get the user's Google Drive connection status.
    */
   getConnectionStatus: protectedProcedure.query(async ({ ctx }) => {
+    const runtime = await getAppRuntimeConfig();
     const token = createDriveToken(ctx.user.id);
     const resp = await pyFetch(
-      `${PYTHON_BACKEND_URL}/api/oauth/google/drive/status`,
+      `${runtime.pythonBackendUrl}/api/oauth/google/drive/status`,
       {
         headers: { Authorization: `Bearer ${token}` },
       },
@@ -211,9 +212,10 @@ export const googleDriveRouter = router({
    * Get the Google OAuth authorization URL with Drive scopes.
    */
   getAuthUrl: protectedProcedure.query(async ({ ctx }) => {
+    const runtime = await getAppRuntimeConfig();
     const token = createDriveToken(ctx.user.id);
     const resp = await pyFetch(
-      `${PYTHON_BACKEND_URL}/api/oauth/google/drive/authorize`,
+      `${runtime.pythonBackendUrl}/api/oauth/google/drive/authorize`,
       {
         headers: { Authorization: `Bearer ${token}` },
       },
@@ -234,9 +236,10 @@ export const googleDriveRouter = router({
   completeOAuth: protectedProcedure
     .input(z.object({ code: z.string(), state: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      const runtime = await getAppRuntimeConfig();
       const token = createDriveToken(ctx.user.id);
       const resp = await pyFetch(
-        `${PYTHON_BACKEND_URL}/api/oauth/google/drive/callback`,
+        `${runtime.pythonBackendUrl}/api/oauth/google/drive/callback`,
         {
           method: "POST",
           headers: {
@@ -269,17 +272,17 @@ export const googleDriveRouter = router({
    * Enqueues a background Celery task for full cleanup (Drive API + local data).
    */
   disconnect: protectedProcedure.mutation(async ({ ctx }) => {
+    const runtime = await getAppRuntimeConfig();
     if (!ctx.tenantId) {
       throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Tenant context required" });
     }
 
         const resp = await pyFetch(
-      `${PYTHON_BACKEND_URL}/api/internal/gdrive/disconnect`,
+      `${runtime.pythonBackendUrl}/api/internal/gdrive/disconnect`,
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-proxy-token": PROXY_TOKEN,
         },
         body: JSON.stringify({
           user_id: ctx.user.id,
@@ -343,11 +346,12 @@ export const googleDriveRouter = router({
     .input(z.object({ libraryItemId: z.number() }))
     .mutation(async ({ ctx, input }) => {
       if (!ctx.tenantId) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Tenant context required" });
+      const runtime = await getAppRuntimeConfig();
 
       // Check Google connection
       const token = createDriveToken(ctx.user.id);
       const statusResp = await pyFetch(
-        `${PYTHON_BACKEND_URL}/api/oauth/google/drive/status`,
+        `${runtime.pythonBackendUrl}/api/oauth/google/drive/status`,
         { headers: { Authorization: `Bearer ${token}` } },
       );
       if (!statusResp.ok) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to check Google connection" });
@@ -419,7 +423,7 @@ export const googleDriveRouter = router({
       }
 
       // Upload to Google Drive via Python backend
-      const uploadResp = await pyFetch(`${PYTHON_BACKEND_URL}/api/internal/gdrive/upload`, {
+      const uploadResp = await pyFetch(`${runtime.pythonBackendUrl}/api/internal/gdrive/upload`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -477,6 +481,7 @@ export const googleDriveRouter = router({
     .input(z.object({ sessionId: z.number() }))
     .mutation(async ({ ctx, input }) => {
       if (!ctx.tenantId) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Tenant context required" });
+      const runtime = await getAppRuntimeConfig();
 
       // Fetch session (tenant-scoped + not expired)
       const [session] = await db
@@ -525,7 +530,7 @@ export const googleDriveRouter = router({
 
       // Export from Google Drive
       const token = createDriveToken(ctx.user.id);
-      const exportResp = await pyFetch(`${PYTHON_BACKEND_URL}/api/internal/gdrive/export`, {
+      const exportResp = await pyFetch(`${runtime.pythonBackendUrl}/api/internal/gdrive/export`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -571,7 +576,7 @@ export const googleDriveRouter = router({
         );
 
       // Delete temp Drive file
-      await pyFetch(`${PYTHON_BACKEND_URL}/api/internal/gdrive/files/${session.driveFileId}?user_id=${ctx.user.id}`, {
+      await pyFetch(`${runtime.pythonBackendUrl}/api/internal/gdrive/files/${session.driveFileId}?user_id=${ctx.user.id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       }).catch(() => {}); // best-effort cleanup
@@ -598,6 +603,7 @@ export const googleDriveRouter = router({
     .input(z.object({ sessionId: z.number() }))
     .mutation(async ({ ctx, input }) => {
       if (!ctx.tenantId) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Tenant context required" });
+      const runtime = await getAppRuntimeConfig();
 
       // Fetch session (tenant-scoped + not expired)
       const [session] = await db
@@ -617,7 +623,7 @@ export const googleDriveRouter = router({
 
       // Delete temp Drive file
       const token = createDriveToken(ctx.user.id);
-      await pyFetch(`${PYTHON_BACKEND_URL}/api/internal/gdrive/files/${session.driveFileId}?user_id=${ctx.user.id}`, {
+      await pyFetch(`${runtime.pythonBackendUrl}/api/internal/gdrive/files/${session.driveFileId}?user_id=${ctx.user.id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       }).catch(() => {}); // best-effort cleanup
@@ -672,13 +678,14 @@ export const googleDriveRouter = router({
   startSync: protectedProcedure.use(syncRateLimit).mutation(async ({ ctx }) => {
     if (!ctx.tenantId)
       throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Tenant context required" });
+    const runtime = await getAppRuntimeConfig();
 
     // Gate behind drive.readonly scope approval
     await assertDriveReadonlyApproved();
 
     // Verify Google connection
     const token = createDriveToken(ctx.user.id);
-    const statusResp = await pyFetch(`${PYTHON_BACKEND_URL}/api/oauth/google/drive/status`, {
+    const statusResp = await pyFetch(`${runtime.pythonBackendUrl}/api/oauth/google/drive/status`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!statusResp.ok)
@@ -707,11 +714,10 @@ export const googleDriveRouter = router({
     }
 
     // Trigger sync via Python backend
-        const pyResp = await pyFetch(`${PYTHON_BACKEND_URL}/api/internal/gdrive/start-sync`, {
+    const pyResp = await pyFetch(`${runtime.pythonBackendUrl}/api/internal/gdrive/start-sync`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-proxy-token": PROXY_TOKEN,
       },
       body: JSON.stringify({ user_id: ctx.user.id, tenant_id: ctx.tenantId }),
     });
@@ -798,12 +804,12 @@ export const googleDriveRouter = router({
   estimateSyncCost: protectedProcedure.use(syncRateLimit).mutation(async ({ ctx }) => {
     if (!ctx.tenantId)
       throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Tenant context required" });
+    const runtime = await getAppRuntimeConfig();
 
-        const resp = await pyFetch(`${PYTHON_BACKEND_URL}/api/internal/gdrive/estimate-cost`, {
+    const resp = await pyFetch(`${runtime.pythonBackendUrl}/api/internal/gdrive/estimate-cost`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-proxy-token": PROXY_TOKEN,
       },
       body: JSON.stringify({ user_id: ctx.user.id, tenant_id: ctx.tenantId }),
     });
@@ -1081,6 +1087,7 @@ export const googleDriveRouter = router({
       }),
     )
     .query(async ({ ctx, input }) => {
+      const runtime = await getAppRuntimeConfig();
       const token = createDriveToken(ctx.user.id);
       const params = new URLSearchParams();
       params.set("user_id", String(ctx.user.id));
@@ -1098,11 +1105,10 @@ export const googleDriveRouter = router({
       }
 
       const resp = await pyFetch(
-        `${PYTHON_BACKEND_URL}/api/internal/gdrive/list-items?${params.toString()}`,
+        `${runtime.pythonBackendUrl}/api/internal/gdrive/list-items?${params.toString()}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
-            "x-proxy-token": PROXY_TOKEN,
           },
         },
       );
@@ -1139,15 +1145,15 @@ export const googleDriveRouter = router({
     .use(readRateLimit)
     .input(z.object({ fileId: driveFileIdSchema }))
     .mutation(async ({ ctx, input }) => {
+      const runtime = await getAppRuntimeConfig();
       const token = createDriveToken(ctx.user.id);
-            const pyResp = await pyFetch(
-        `${PYTHON_BACKEND_URL}/api/internal/gdrive/import-file`,
+      const pyResp = await pyFetch(
+        `${runtime.pythonBackendUrl}/api/internal/gdrive/import-file`,
         {
           method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
-            "x-proxy-token": PROXY_TOKEN,
           },
           body: JSON.stringify({
             file_id: input.fileId,
@@ -1215,18 +1221,18 @@ export const googleDriveRouter = router({
       // Gate behind drive.readonly scope approval
       await assertDriveReadonlyApproved();
 
+      const runtime = await getAppRuntimeConfig();
       const tenantId = resolveLibraryTenantId(ctx);
       assertLibraryEnabled(tenantId);
 
       const token = createDriveToken(ctx.user.id);
-            const pyResp = await pyFetch(
-        `${PYTHON_BACKEND_URL}/api/internal/gdrive/import-file`,
+      const pyResp = await pyFetch(
+        `${runtime.pythonBackendUrl}/api/internal/gdrive/import-file`,
         {
           method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
-            "x-proxy-token": PROXY_TOKEN,
           },
           body: JSON.stringify({
             file_id: input.fileId,
@@ -1299,17 +1305,17 @@ export const googleDriveRouter = router({
     .use(searchRateLimit)
     .input(z.object({ parentFolderId: z.string().nullable().default(null) }))
     .query(async ({ ctx, input }) => {
+      const runtime = await getAppRuntimeConfig();
       const token = createDriveToken(ctx.user.id);
       const params = new URLSearchParams();
       if (input.parentFolderId) params.set("parent_id", input.parentFolderId);
       params.set("user_id", String(ctx.user.id));
 
       const resp = await pyFetch(
-        `${PYTHON_BACKEND_URL}/api/internal/gdrive/list-folders?${params}`,
+        `${runtime.pythonBackendUrl}/api/internal/gdrive/list-folders?${params}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
-            "x-proxy-token": PROXY_TOKEN,
           },
         },
       );
@@ -1328,6 +1334,7 @@ export const googleDriveRouter = router({
     .mutation(async ({ ctx, input }) => {
       if (!ctx.tenantId)
         throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Tenant context required" });
+      const runtime = await getAppRuntimeConfig();
 
       const [item] = await db
         .select()
@@ -1355,11 +1362,10 @@ export const googleDriveRouter = router({
         );
 
       // Trigger single-file re-index via Python backend
-      await pyFetch(`${PYTHON_BACKEND_URL}/api/internal/gdrive/reindex-item`, {
+      await pyFetch(`${runtime.pythonBackendUrl}/api/internal/gdrive/reindex-item`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-proxy-token": PROXY_TOKEN,
         },
         body: JSON.stringify({ library_item_id: input.libraryItemId, user_id: ctx.user.id, tenant_id: ctx.tenantId }),
         timeoutMs: PY_TIMEOUT_MS,
@@ -1378,6 +1384,7 @@ export const googleDriveRouter = router({
     .mutation(async ({ ctx, input }) => {
       if (!ctx.tenantId)
         throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Tenant context required" });
+      const runtime = await getAppRuntimeConfig();
 
       const [item] = await db
         .select()
@@ -1411,11 +1418,10 @@ export const googleDriveRouter = router({
         .where(eq(libraryChunks.libraryItemId, input.libraryItemId));
 
       // Clean up vectors via Python backend (best-effort)
-      await pyFetch(`${PYTHON_BACKEND_URL}/api/internal/gdrive/cleanup-vectors`, {
+      await pyFetch(`${runtime.pythonBackendUrl}/api/internal/gdrive/cleanup-vectors`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-proxy-token": PROXY_TOKEN,
         },
         body: JSON.stringify({ library_item_id: input.libraryItemId, tenant_id: ctx.tenantId }),
       }).catch(() => {}); // best-effort

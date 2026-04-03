@@ -60,6 +60,7 @@ const CODE_RE = /(โค้ด|เขียนโปรแกรม|สคริ
 const CITATION_RE = /(อ้างอิง|แหล่งข้อมูล|หลักฐาน|เอกสารอ้างอิง|\bcitation\b|\breference\b|\bsource\b|\bevidence\b|\bcite\b)/i;
 
 const WEB_SEARCH_REQUEST_RE = /(ค้นเว็บ|ค้นหาจากเว็บ|ค้นหาออนไลน์|หาจากอินเทอร์เน็ต|ใช้ web search|เปิด web search|ข้อมูลจากเว็บ|\bweb search\b|\bsearch the web\b|\bsearch online\b|\buse web\b|\buse search\b|\blook up online\b|\binternet search\b|\bgoogle\b|\bbrowse the web\b)/i;
+const CONJUNCTION_RE = /(?:^|[\s(])(?:และ|กับ)(?:[\s,.:;!?)]|$)|\band\b|\bwith\b/i;
 
 // ─── Domain Detection ───────────────────────────────────────────────────────
 
@@ -121,7 +122,7 @@ export function parseTaskProfile(
   // Multiple distinct modalities joined by conjunction = multi-deliverable
   // e.g., "สร้างภาพ และ ข้อความ" = image + text with "และ"
   // Thai doesn't support \b — use bare match for Thai, \b for English
-  const hasConjunction = /(และ|กับ|\band\b|\bwith\b)/i.test(text);
+  const hasConjunction = CONJUNCTION_RE.test(text);
   const distinctMediaModalities = modalities.filter((m) => m !== "text").length;
   const isMultiModalWithConjunction = distinctMediaModalities >= 1 && hasConjunction && modalities.length >= 2;
 

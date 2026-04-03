@@ -316,6 +316,45 @@ describe("GlobalNotificationBell occurrence badge", () => {
     expect(setLocationMock).not.toHaveBeenCalled();
   });
 
+  it("treats billing invoice due reminders as billing reminders instead of incident guidance", async () => {
+    urgentRemindersData = [
+      {
+        id: 100,
+        title: "Invoice due reminder",
+        content: "Invoice TH-INV-2026-000001 is still awaiting payment.",
+        priority: "high",
+        scheduledMessageId: 55,
+        conversationId: null,
+        actionUrl: "/billing/invoices/55",
+        relatedResourceType: "scheduled_message",
+        metadata: {
+          source: "billing",
+          relatedItems: {
+            invoiceId: "55",
+            invoiceNumber: "TH-INV-2026-000001",
+            notificationType: "invoice_due_reminder",
+          },
+        },
+      },
+    ];
+
+    render(<GlobalAlerts />);
+
+    expect(await screen.findByText("Billing Reminder")).toBeTruthy();
+    expect(screen.getByText("Invoice due reminder")).toBeTruthy();
+    expect(screen.getByText("Invoice TH-INV-2026-000001 is still awaiting payment.")).toBeTruthy();
+    expect(screen.queryByText("Check Now")).toBeNull();
+    expect(screen.queryByText("Open Monitoring")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: /open invoice/i }));
+
+    expect(openWindowMock).toHaveBeenCalledWith(
+      "/billing/invoices/55",
+      "_blank",
+      "noopener,noreferrer",
+    );
+  });
+
   it("dismisses an urgent reminder modal when the dismiss button is clicked", async () => {
     urgentRemindersData = [
       {
