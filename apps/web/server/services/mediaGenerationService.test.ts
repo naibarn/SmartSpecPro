@@ -19,6 +19,7 @@ vi.mock("./modelRegistry", () => ({
 
 import { scheduleMediaWithLimiter } from "./llmRateLimiter";
 import { auditLogger } from "./auditLogger";
+import { getCachedInternalNodeUrl } from "./appRuntimeConfig";
 import { getModelById } from "./modelRegistry";
 import { MEDIA_MODELS, MediaGenerationService, resolveReferenceUrl } from "./mediaGenerationService";
 
@@ -243,11 +244,22 @@ describe("resolveReferenceUrl", () => {
 
   it("rewrites localhost URLs to the internal node server base", () => {
     expect(resolveReferenceUrl("https://localhost:3000/uploads/ref.png", "https://tenant.example.com"))
-      .toBe("http://smartspec-web:3000/uploads/ref.png");
+      .toBe(`${getCachedInternalNodeUrl()}/uploads/ref.png`);
   });
 
-  it("uses the internal node server base when the request publicUrl is localhost", () => {
-    expect(resolveReferenceUrl("/uploads/ref.png", "https://localhost:3000"))
-      .toBe("http://smartspec-web:3000/uploads/ref.png");
+  it("uses the request public URL for relative upload and storage-proxy assets", () => {
+    expect(resolveReferenceUrl("/uploads/ref.png", "https://tenant.example.com"))
+      .toBe("https://tenant.example.com/uploads/ref.png");
+    expect(resolveReferenceUrl("/api/storage/files/library/ref.png", "https://tenant.example.com"))
+      .toBe("https://tenant.example.com/api/storage/files/library/ref.png");
+  });
+
+  it("rejects relative asset paths outside the public allowlist and requires a public app URL", () => {
+    expect(() => resolveReferenceUrl("/api/private.png", "https://tenant.example.com"))
+      .toThrow(/\/uploads\/ or \/api\/storage\/files\//i);
+    expect(() => resolveReferenceUrl("/uploads/ref.png", "https://localhost:3000"))
+      .toThrow(/public app url/i);
+    expect(() => resolveReferenceUrl("/api/storage/files/library/ref.png", "https://localhost:3000"))
+      .toThrow(/public app url/i);
   });
 });

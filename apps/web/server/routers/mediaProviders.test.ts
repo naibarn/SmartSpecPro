@@ -31,7 +31,15 @@ vi.mock("../services/crypto", () => ({
   decrypt: vi.fn((v: string) => v.replace("encrypted:", "")),
 }));
 
-import { PROVIDER_TEMPLATES, testBytePlusModelArk, testKieAI, testUVoice } from "./mediaProviders";
+import {
+  PROVIDER_TEMPLATES,
+  mediaProvidersRouter,
+  testBytePlusModelArk,
+  testKieAI,
+  testUVoice,
+  testWaveSpeedAI,
+} from "./mediaProviders";
+import { db } from "../db";
 
 describe("PROVIDER_TEMPLATES — BytePlus ModelArk entry", () => {
   const bytePlusTemplate = PROVIDER_TEMPLATES.find(
@@ -151,6 +159,154 @@ describe("testConnection switch — byteplus_modelark routing", () => {
       (t) => t.providerName === "kie_ai"
     );
     expect(kieTemplate).toBeDefined();
+  });
+});
+
+describe("PROVIDER_TEMPLATES — WaveSpeed entry", () => {
+  const wavespeedTemplate = PROVIDER_TEMPLATES.find(
+    (t) => t.providerName === "wavespeed_ai"
+  );
+
+  it("includes an entry with providerName 'wavespeed_ai'", () => {
+    expect(wavespeedTemplate).toBeDefined();
+  });
+
+  it("uses the official API root and launch model", () => {
+    expect(wavespeedTemplate?.baseUrl).toBe("https://api.wavespeed.ai/api/v3");
+    expect(wavespeedTemplate?.defaultModel).toBe("wavespeed-ai/cinematic-video-generator");
+  });
+});
+
+describe("testWaveSpeedAI", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("calls GET /balance with bearer auth after normalizing the API root", async () => {
+    const fetchSpy = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ data: { balance: 12.5 } }),
+    });
+    vi.stubGlobal("fetch", fetchSpy);
+
+    await testWaveSpeedAI("wavespeed-secret", "https://api.wavespeed.ai");
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    const [url, options] = fetchSpy.mock.calls[0];
+    expect(url).toBe("https://api.wavespeed.ai/api/v3/balance");
+    expect(options.method).toBe("GET");
+    expect(options.headers.Authorization).toBe("Bearer wavespeed-secret");
+  });
+
+  it("accepts 200 responses only when data.balance is numeric", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ data: { balance: 99 } }),
+    }));
+
+    const result = await testWaveSpeedAI("test-key", "https://api.wavespeed.ai/api/v3");
+
+    expect(result).toMatchObject({
+      success: true,
+      balance: 99,
+    });
+  });
+
+  it("returns actionable failure messages for auth and rate-limit errors", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+      json: async () => ({ error: "unauthorized" }),
+    }));
+    await expect(testWaveSpeedAI("bad-key", "https://api.wavespeed.ai/api/v3")).resolves.toMatchObject({
+      success: false,
+      message: expect.stringMatching(/401/i),
+    });
+
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: false,
+      status: 403,
+      json: async () => ({ error: "forbidden" }),
+    }));
+    await expect(testWaveSpeedAI("bad-key", "https://api.wavespeed.ai/api/v3")).resolves.toMatchObject({
+      success: false,
+      message: expect.stringMatching(/403/i),
+    });
+
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: false,
+      status: 429,
+      json: async () => ({ error: "rate limited" }),
+    }));
+    await expect(testWaveSpeedAI("busy-key", "https://api.wavespeed.ai/api/v3")).resolves.toMatchObject({
+      success: false,
+      message: expect.stringMatching(/429/i),
+    });
+  });
+
+  it("returns a generic API error with a short response summary for other non-2xx statuses", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: async () => ({ error: { message: "provider exploded" } }),
+    }));
+
+    const result = await testWaveSpeedAI("test-key", "https://api.wavespeed.ai/api/v3");
+
+    expect(result.success).toBe(false);
+    expect(result.message).toMatch(/HTTP 500/i);
+    expect(result.message).toMatch(/provider exploded/i);
+  });
+});
+
+describe("mediaProvidersRouter persistence hardening", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.clearAllMocks();
+  });
+
+  it("rejects private provider base URLs before create persists them", async () => {
+    await expect((mediaProvidersRouter.create as Function)({
+      input: {
+        providerName: "wavespeed_ai",
+        displayName: "WaveSpeed",
+        providerType: "multimodal",
+        baseUrl: "https://127.0.0.1/api/v3",
+      },
+    })).rejects.toThrow(/public host/i);
+
+    expect((db.insert as any)).not.toHaveBeenCalled();
+  });
+
+  it("normalizes WaveSpeed base URLs and rejects unsafe callback URLs on update", async () => {
+    const setMock = vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) });
+    (db.select as any).mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockResolvedValue([{ id: 7, providerName: "wavespeed_ai", providerType: "multimodal" }]),
+      }),
+    });
+    (db.update as any).mockReturnValue({ set: setMock });
+
+    await expect((mediaProvidersRouter.update as Function)({
+      input: {
+        id: 7,
+        baseUrl: "https://api.wavespeed.ai",
+        callbackUrl: "https://localhost/callback",
+      },
+    })).rejects.toThrow(/public host/i);
+
+    await (mediaProvidersRouter.update as Function)({
+      input: {
+        id: 7,
+        baseUrl: "https://api.wavespeed.ai",
+      },
+    });
+
+    expect(setMock).toHaveBeenCalledWith(expect.objectContaining({
+      baseUrl: "https://api.wavespeed.ai/api/v3",
+    }));
   });
 });
 

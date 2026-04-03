@@ -10,6 +10,9 @@
 import { db } from "../db";
 import { mediaModels } from "../../drizzle/schema";
 import { eq, asc } from "drizzle-orm";
+import {
+  buildWaveSpeedLaunchModelSeed,
+} from "./mediaProviderUtils";
 
 export type MediaType = "image" | "video" | "audio";
 
@@ -52,6 +55,8 @@ export interface ModelDefinition {
  * Static fallback registry - used when database is unavailable
  * This ensures the system works even without database connection
  */
+const wavespeedLaunchModelSeed = buildWaveSpeedLaunchModelSeed();
+
 const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
   // ==================== Image Models ====================
   {
@@ -166,10 +171,21 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
     name: "Veo 3.1",
     provider: "kie.ai",
     description: "Google's video generation model",
-    aliases: ["veo 3.1", "veo 3", "veo3", "veo_3_1", "veo-3.1", "google veo", "veo"],
+    aliases: [
+      "veo 3.1",
+      "veo 3",
+      "veo3",
+      "veo_3_1",
+      "veo-3.1",
+      "veo3/generate-veo-3-video",
+      "veo3/extend-video",
+      "google veo",
+      "veo",
+    ],
     creditCost: 50,
     durations: [5, 10, 15],
     aspectRatios: ["16:9", "9:16", "1:1"],
+    configJson: { maxPromptLength: 5000 },
     isEnabled: true,
     priority: 1,
   },
@@ -205,10 +221,17 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
     name: "Veo 3.1 Fast",
     provider: "knplabai",
     description: "KNPLabs fast form-data video generation",
-    aliases: ["veo 3.1 fast", "veo_3_1-fast", "knplabs veo fast"],
+    aliases: [
+      "veo 3.1 fast",
+      "veo_3_1-fast",
+      "veo3_fast",
+      "veo3/generate-veo-3-video-fast",
+      "knplabs veo fast",
+    ],
     creditCost: 35,
     durations: [5, 10, 15],
     aspectRatios: ["16:9", "9:16", "1:1"],
+    configJson: { maxPromptLength: 5000 },
     isEnabled: true,
     priority: 4,
   },
@@ -224,6 +247,20 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
     aspectRatios: ["16:9", "9:16", "1:1"],
     isEnabled: true,
     priority: 5,
+  },
+  {
+    id: wavespeedLaunchModelSeed.modelId,
+    type: wavespeedLaunchModelSeed.modelType,
+    name: wavespeedLaunchModelSeed.name,
+    provider: wavespeedLaunchModelSeed.provider,
+    description: wavespeedLaunchModelSeed.description,
+    aliases: wavespeedLaunchModelSeed.aliases,
+    creditCost: wavespeedLaunchModelSeed.creditCost,
+    durations: wavespeedLaunchModelSeed.durations,
+    aspectRatios: wavespeedLaunchModelSeed.aspectRatios,
+    configJson: wavespeedLaunchModelSeed.configJson,
+    isEnabled: wavespeedLaunchModelSeed.isEnabled,
+    priority: wavespeedLaunchModelSeed.priority,
   },
 
   // ==================== Audio Models ====================
@@ -310,6 +347,25 @@ function reportStaticFallback(reason: string): void {
     return;
   }
   console.warn("[ModelRegistry] Using static fallback registry", details);
+}
+
+function normalizeStaticModelLookupKey(value: string | null | undefined): string {
+  return String(value ?? "")
+    .trim()
+    .toLowerCase();
+}
+
+function matchesStaticModelLookupKey(model: ModelDefinition, lookupKey: string): boolean {
+  const normalizedLookupKey = normalizeStaticModelLookupKey(lookupKey);
+  if (!normalizedLookupKey) {
+    return false;
+  }
+
+  if (normalizeStaticModelLookupKey(model.id) === normalizedLookupKey) {
+    return true;
+  }
+
+  return model.aliases.some((alias) => normalizeStaticModelLookupKey(alias) === normalizedLookupKey);
 }
 
 /**
@@ -440,6 +496,31 @@ export function getModelsByType(type: MediaType): ModelDefinition[] {
  */
 export function getModelById(id: string): ModelDefinition | undefined {
   return getModelRegistry().find((m) => m.id === id);
+}
+
+/**
+ * Get the static fallback model definition by ID without consulting the database cache.
+ * Useful for augmenting DB-backed models with defaults that should be present even
+ * when older records are missing new config keys.
+ */
+export function getStaticModelById(id: string): ModelDefinition | undefined {
+  return STATIC_MODEL_REGISTRY.find((m) => matchesStaticModelLookupKey(m, id));
+}
+
+/**
+ * Get the full static fallback catalog without consulting the database cache.
+ * Useful for admin tooling that needs to show importable templates.
+ */
+export function getStaticFallbackModels(): ModelDefinition[] {
+  return STATIC_MODEL_REGISTRY.map((model) => ({
+    ...model,
+    aliases: [...model.aliases],
+    aspectRatios: model.aspectRatios ? [...model.aspectRatios] : undefined,
+    sizes: model.sizes ? [...model.sizes] : undefined,
+    durations: model.durations ? [...model.durations] : undefined,
+    voices: model.voices ? [...model.voices] : undefined,
+    configJson: model.configJson ? { ...model.configJson } : undefined,
+  }));
 }
 
 /**

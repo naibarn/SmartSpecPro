@@ -12,6 +12,23 @@ import {
 import { normalizeMediaPrompt } from "./mediaPromptNormalization";
 import { auditLogger } from "./auditLogger";
 import { getModelById, mapToApiModelId } from "./modelRegistry";
+import {
+  getCachedInternalNodeUrl,
+  getCachedPublicAppUrl,
+  getCachedPythonBackendUrl,
+} from "./appRuntimeConfig";
+import {
+  assertRelativeUploadMediaReferencePath,
+  buildWaveSpeedLaunchModelConfigJson,
+  getReferenceImageLimitFromConfig,
+  normalizeMediaProviderName,
+  WAVESPEED_ALLOWED_ASPECT_RATIOS,
+  WAVESPEED_ALLOWED_DURATIONS,
+  WAVESPEED_LAUNCH_MODEL_DESCRIPTION,
+  WAVESPEED_LAUNCH_MODEL_ID,
+  WAVESPEED_LAUNCH_MODEL_NAME,
+  WAVESPEED_PROVIDER,
+} from "./mediaProviderUtils";
 
 // ==================== Types ====================
 
@@ -40,6 +57,7 @@ export interface ModelMetadata {
   supportsDurations?: number[];
   supportsVoices?: string[];
   creditCost: number;
+  configJson?: Record<string, unknown>;
 }
 export { normalizeMediaPrompt } from "./mediaPromptNormalization";
 
@@ -70,7 +88,8 @@ function resolveProviderFromApiConfig(apiConfig?: Record<string, string>): strin
   for (const key of ["provider", "provider_id", "providerId", "providerName"]) {
     const value = apiConfig[key as keyof typeof apiConfig];
     if (typeof value === "string" && value.trim().length > 0) {
-      return value.trim();
+      const normalized = normalizeMediaProviderName(value);
+      return normalized === WAVESPEED_PROVIDER ? normalized : value.trim();
     }
   }
   return null;
@@ -216,6 +235,17 @@ export const MEDIA_MODELS: Record<string, ModelMetadata> = {
     supportsDurations: [5, 10, 15],
     supportsAspectRatios: ["16:9", "9:16", "1:1"],
     creditCost: 36,
+  },
+  [WAVESPEED_LAUNCH_MODEL_ID]: {
+    id: WAVESPEED_LAUNCH_MODEL_ID,
+    type: "video",
+    name: WAVESPEED_LAUNCH_MODEL_NAME,
+    provider: WAVESPEED_PROVIDER,
+    description: WAVESPEED_LAUNCH_MODEL_DESCRIPTION,
+    supportsDurations: [...WAVESPEED_ALLOWED_DURATIONS],
+    supportsAspectRatios: [...WAVESPEED_ALLOWED_ASPECT_RATIOS],
+    creditCost: 800,
+    configJson: buildWaveSpeedLaunchModelConfigJson(),
   },
   // ========== BytePlus ModelArk — Seedream Image Models ==========
   "seedream-4-5-251128": {
@@ -464,31 +494,10 @@ export interface TaskListResponse {
 
 // ==================== Service Class ====================
 
-// Support multiple env var names for docker compatibility
-// PYTHON_BACKEND_URL (preferred) -> BACKEND_URL -> localhost fallback
-const PYTHON_BACKEND_URL =
-  process.env.PYTHON_BACKEND_URL ||
-  process.env.BACKEND_URL ||
-  "http://localhost:8000";
 const NODE_ENV = process.env.NODE_ENV || "development";
 
-// Public URL for external services (like KIE AI) to access uploaded files
-// This should be the tenant's public domain (e.g., https://smartaihub.app)
-// Falls back to internal URL for backward compatibility
-const PUBLIC_URL =
-  process.env.PUBLIC_URL ||
-  process.env.APP_PUBLIC_URL ||
-  process.env.APP_URL ||
-  null;
-
-// Internal URL for Python backend to access Node.js server (for file downloads)
-// In Docker, this is the internal container network URL
-const NODE_SERVER_INTERNAL_URL =
-  process.env.NODE_SERVER_INTERNAL_URL ||
-  "http://smartspec-web:3000";
-
 /**
- * Convert relative URLs (e.g., /uploads/xxx.png) to full URLs
+ * Convert relative public asset URLs (e.g., /uploads/xxx.png, /api/storage/files/xxx.png) to full URLs
  * so external services (like KIE AI) can download the files
  * @param url The URL to resolve
  * @param publicUrl Optional public URL from request context (tenant domain, e.g., https://smartaihub.app)
@@ -506,7 +515,7 @@ export function resolveReferenceUrl(url: string, publicUrl?: string | null): str
         return url;
       }
 
-      const internalBase = new URL(NODE_SERVER_INTERNAL_URL);
+      const internalBase = new URL(getCachedInternalNodeUrl());
       internalBase.pathname = parsed.pathname;
       internalBase.search = parsed.search;
       internalBase.hash = parsed.hash;
@@ -517,13 +526,19 @@ export function resolveReferenceUrl(url: string, publicUrl?: string | null): str
   }
 
   // Convert relative path to full URL
-  // Priority: 1) Request's publicUrl (tenant domain) if public, 2) Env PUBLIC_URL if public, 3) Internal URL
-  if (url.startsWith("/uploads/") || url.startsWith("/")) {
+  // Priority: 1) Request's publicUrl (tenant domain) if public, 2) UI-managed public URL.
+  // Internal-only fallbacks are rejected so external providers never receive app-internal paths.
+  if (url.startsWith("/")) {
+    assertRelativeUploadMediaReferencePath(url, "Reference URL");
+    const cachedPublicUrl = getCachedPublicAppUrl();
     const baseUrl = isPublicHttpUrl(publicUrl || "")
       ? publicUrl!
-      : isPublicHttpUrl(PUBLIC_URL || "")
-        ? PUBLIC_URL!
-        : NODE_SERVER_INTERNAL_URL;
+      : isPublicHttpUrl(cachedPublicUrl || "")
+        ? cachedPublicUrl
+        : null;
+    if (!baseUrl) {
+      throw new Error("Reference URL requires a public app URL to resolve /uploads/ assets safely");
+    }
     return `${baseUrl}${url}`;
   }
 
@@ -532,7 +547,7 @@ export function resolveReferenceUrl(url: string, publicUrl?: string | null): str
 
 /**
  * Process extraParams and resolve any relative URLs (e.g., image_input field)
- * This ensures URLs like /uploads/... are converted to full URLs for the Python backend
+ * This ensures public asset URLs like /uploads/... and /api/storage/files/... are converted to full URLs for the Python backend
  * @param extraParams The extra parameters object
  * @param publicUrl Optional public URL from request context (tenant domain)
  */
@@ -542,16 +557,37 @@ function resolveExtraParamsUrls(extraParams: Record<string, any>, publicUrl?: st
     // If value is an array of strings that look like relative URLs, resolve them
     if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'string') {
       const firstVal = value[0] as string;
-      if (firstVal.startsWith('/uploads/') || (firstVal.startsWith('/') && !firstVal.startsWith('//'))) {
+      if (firstVal.startsWith('/') && !firstVal.startsWith('//')) {
         resolved[key] = value.map((url: string) => resolveReferenceUrl(url, publicUrl));
       }
     }
     // If value is a single string that looks like a relative URL
-    else if (typeof value === 'string' && (value.startsWith('/uploads/') || (value.startsWith('/') && !value.startsWith('//')))) {
+    else if (typeof value === 'string' && value.startsWith('/') && !value.startsWith('//')) {
       resolved[key] = resolveReferenceUrl(value, publicUrl);
     }
   }
   return resolved;
+}
+
+function getReferenceImageLimitForModel(modelId: string): number {
+  const normalizedModelId = mapToApiModelId(modelId);
+  const model = getModelById(normalizedModelId) || getModelById(modelId) || MEDIA_MODELS[modelId];
+  return getReferenceImageLimitFromConfig(model?.configJson) ?? 5;
+}
+
+function resolveReferenceImageUrlsForModel(
+  modelId: string,
+  urls: string[] | undefined,
+  publicUrl?: string | null,
+): string[] | undefined {
+  if (!urls || urls.length === 0) {
+    return undefined;
+  }
+
+  const limit = getReferenceImageLimitForModel(modelId);
+  return urls
+    .slice(0, limit)
+    .map((url) => resolveReferenceUrl(url, publicUrl));
 }
 
 type ReferenceImageInputType = "array" | "url";
@@ -766,7 +802,7 @@ export class MediaGenerationService {
   private baseUrl: string;
 
   constructor(baseUrl?: string) {
-    const rawUrl = baseUrl || PYTHON_BACKEND_URL;
+    const rawUrl = baseUrl || getCachedPythonBackendUrl();
     this.baseUrl = validateBackendUrl(rawUrl);
   }
 
@@ -1047,10 +1083,13 @@ export class MediaGenerationService {
 
     // Add reference images if provided (1-5 images)
     // Convert relative URLs to full URLs for Python backend
-    if (request.referenceImageUrls && request.referenceImageUrls.length > 0) {
-      payload.reference_image_urls = request.referenceImageUrls
-        .slice(0, 5)
-        .map(url => resolveReferenceUrl(url, publicUrl));
+    const resolvedReferenceImageUrls = resolveReferenceImageUrlsForModel(
+      modelId,
+      request.referenceImageUrls,
+      publicUrl,
+    );
+    if (resolvedReferenceImageUrls) {
+      payload.reference_image_urls = resolvedReferenceImageUrls;
     }
 
     const apiConfig = buildApiConfigWithReferenceImageConfig(
@@ -1163,10 +1202,13 @@ export class MediaGenerationService {
 
     // Add reference images for img2vid
     // Convert relative URLs to full URLs for Python backend
-    if (request.referenceImageUrls && request.referenceImageUrls.length > 0) {
-      payload.reference_image_urls = request.referenceImageUrls
-        .slice(0, 5)
-        .map(url => resolveReferenceUrl(url, publicUrl));
+    const resolvedReferenceImageUrls = resolveReferenceImageUrlsForModel(
+      modelId,
+      request.referenceImageUrls,
+      publicUrl,
+    );
+    if (resolvedReferenceImageUrls) {
+      payload.reference_image_urls = resolvedReferenceImageUrls;
     }
 
     const apiConfig = buildApiConfigWithReferenceImageConfig(
@@ -1362,10 +1404,13 @@ export class MediaGenerationService {
     }
 
     // Add reference images if provided (1-5 images)
-    if (request.referenceImageUrls && request.referenceImageUrls.length > 0) {
-      payload.reference_image_urls = request.referenceImageUrls
-        .slice(0, 5)
-        .map(url => resolveReferenceUrl(url, publicUrl));
+    const resolvedReferenceImageUrls = resolveReferenceImageUrlsForModel(
+      modelId,
+      request.referenceImageUrls,
+      publicUrl,
+    );
+    if (resolvedReferenceImageUrls) {
+      payload.reference_image_urls = resolvedReferenceImageUrls;
     }
 
     const apiConfig = buildApiConfigWithReferenceImageConfig(
@@ -1472,10 +1517,13 @@ export class MediaGenerationService {
     const publicUrl = request.publicUrl;
 
     // Add reference images for img2vid
-    if (request.referenceImageUrls && request.referenceImageUrls.length > 0) {
-      payload.reference_image_urls = request.referenceImageUrls
-        .slice(0, 5)
-        .map(url => resolveReferenceUrl(url, publicUrl));
+    const resolvedReferenceImageUrls = resolveReferenceImageUrlsForModel(
+      modelId,
+      request.referenceImageUrls,
+      publicUrl,
+    );
+    if (resolvedReferenceImageUrls) {
+      payload.reference_image_urls = resolvedReferenceImageUrls;
     }
 
     // Add reference video(s) for vid2vid
@@ -1886,7 +1934,7 @@ export class MediaGenerationService {
   /**
    * Map Python backend task to our format
    */
-  private mapTask(data: Record<string, unknown>): MediaTask {
+  mapTask(data: Record<string, unknown>): MediaTask {
     return {
       id: data.id as string,
       taskId: data.task_id as string | undefined, // External provider task ID (e.g., Kie.ai)

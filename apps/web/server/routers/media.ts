@@ -28,12 +28,22 @@ import { mediaModels, mediaProviders, users } from "../../drizzle/schema";
 import { eq, asc, and } from "drizzle-orm";
 import { shouldUseSandbox, dispatchToSandbox } from "../services/sandbox/dispatchService";
 import { checkAbuseGuard, hashPrompt } from "../services/abuseGuard";
+import { getAppRuntimeConfig } from "../services/appRuntimeConfig";
 import { decrypt } from "../services/crypto";
+import {
+  assertPublicSafeHttpUrl,
+  assertRelativeUploadMediaReferencePath,
+  getAllowedAspectRatiosFromConfig,
+  getAllowedDurationsFromConfig,
+  getReferenceImageLimitFromConfig,
+  normalizeMediaProviderName,
+} from "../services/mediaProviderUtils";
 import {
   getAllModelsAsync,
   getDefaultModel,
   getModelMetadata,
   getModelsByTypeAsync,
+  getStaticModelById,
   refreshModelCache,
 } from "../services/modelRegistry";
 
@@ -102,6 +112,7 @@ async function getModelWithPricing(modelId: string): Promise<{
   creditCost: number;
   configJson: Record<string, any> | null;
 }> {
+  const staticConfig = getStaticModelById(modelId)?.configJson as Record<string, any> | null | undefined;
   try {
     const db = await getDb();
     if (db) {
@@ -111,7 +122,16 @@ async function getModelWithPricing(modelId: string): Promise<{
         .where(eq(mediaModels.modelId, modelId))
         .limit(1);
       if (dbModel) {
-        return { creditCost: dbModel.creditCost, configJson: dbModel.configJson as Record<string, any> | null };
+        const dbConfig = dbModel.configJson as Record<string, any> | null;
+        return {
+          creditCost: dbModel.creditCost,
+          configJson: staticConfig || dbConfig
+            ? {
+                ...(staticConfig ?? {}),
+                ...(dbConfig ?? {}),
+              }
+            : null,
+        };
       }
     }
   } catch (error) {
@@ -121,11 +141,15 @@ async function getModelWithPricing(modelId: string): Promise<{
     });
   }
   mediaModelLookupCounters.pricingDbMissFallback += 1;
+  const staticModel = getStaticModelById(modelId);
   const hardcoded = MEDIA_MODELS[modelId];
   if (!hardcoded) {
     console.warn("[MediaModelLookup] Pricing fallback used default credit cost", { modelId });
   }
-  return { creditCost: hardcoded?.creditCost ?? 10, configJson: null };
+  return {
+    creditCost: staticModel?.creditCost ?? hardcoded?.creditCost ?? 10,
+    configJson: (staticModel?.configJson as Record<string, any> | null | undefined) ?? null,
+  };
 }
 
 function resolveConfiguredMaxPromptLength(configJson: Record<string, any> | null | undefined): number | null {
@@ -133,7 +157,7 @@ function resolveConfiguredMaxPromptLength(configJson: Record<string, any> | null
     return null;
   }
 
-  const raw = configJson.maxPromptLength;
+  const raw = configJson.maxPromptLength ?? configJson.max_prompt_length;
   if (typeof raw !== "number" && typeof raw !== "string") {
     return null;
   }
@@ -144,6 +168,33 @@ function resolveConfiguredMaxPromptLength(configJson: Record<string, any> | null
   }
 
   return Math.floor(parsed);
+}
+
+function resolveModelMaxPromptLength(
+  modelId: string,
+  configJson: Record<string, any> | null | undefined,
+): number | null {
+  const dbLimit = resolveConfiguredMaxPromptLength(configJson);
+  if (dbLimit !== null) {
+    return dbLimit;
+  }
+
+  return resolveConfiguredMaxPromptLength(getStaticModelById(modelId)?.configJson);
+}
+
+function assertMediaPromptWithinModelLimit(params: {
+  value: string;
+  modelId: string;
+  configJson: Record<string, any> | null | undefined;
+  fieldLabel: string;
+}): void {
+  const maxPromptLength = resolveModelMaxPromptLength(params.modelId, params.configJson);
+  if (maxPromptLength !== null && params.value.length > maxPromptLength) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `${params.fieldLabel} is ${params.value.length} characters and exceeds model limit ${maxPromptLength} for the selected model. Shorten it or choose a model with a higher prompt limit.`,
+    });
+  }
 }
 
 /**
@@ -188,14 +239,15 @@ export async function reconcileTaskCredits(params: {
       return noOp;
     }
 
-    // Skip non-duration-based pricing
+    // Skip per-unit pricing here; output duration/resolution reconciliation does not apply.
     const formula = dbModel.configJson?.pricingFormula;
-    if (formula === "per_unit" || formula === "flat") return noOp;
+    if (formula === "per_unit") return noOp;
 
     // Compute actual cost
     const actualDuration = resultData.actual_duration as number;
     const actualResolution = (resultData.actual_resolution as string) ?? (extraParams.__reserved_resolution as string);
     const actualCost = calculateCreditCost(dbModel, {
+      ...(extraParams ?? {}),
       duration: actualDuration,
       resolution: actualResolution,
     });
@@ -599,14 +651,19 @@ async function resolveProviderConnection(providerName: string): Promise<{ baseUr
   const db = await getDb();
   if (!db) return null;
 
-  const [provider] = await db
+  const normalizedProviderName = normalizeMediaProviderName(providerName);
+  const providers = await db
     .select({
+      providerName: mediaProviders.providerName,
       baseUrl: mediaProviders.baseUrl,
       apiKeyEncrypted: mediaProviders.apiKeyEncrypted,
     })
     .from(mediaProviders)
-    .where(eq(mediaProviders.providerName, providerName))
-    .limit(1);
+    .limit(200);
+
+  const provider = providers.find((candidate) => (
+    normalizeMediaProviderName(candidate.providerName) === normalizedProviderName
+  ));
 
   if (!provider?.baseUrl || !provider.apiKeyEncrypted) {
     return null;
@@ -816,31 +873,6 @@ async function getModelName(modelId: string): Promise<string> {
   return MEDIA_MODELS[modelId]?.name ?? modelId;
 }
 
-function normalizeMediaProviderName(providerName: string | null | undefined): string {
-  const normalized = String(providerName ?? "")
-    .trim()
-    .toLowerCase()
-    .replace(/[\s.-]+/g, "_");
-  if (!normalized) {
-    return "";
-  }
-  if (normalized === "kie" || normalized === "kie_ai" || normalized === "kieai") {
-    return "kie_ai";
-  }
-  if (normalized === "uvoice" || normalized === "u_voice" || normalized === "uvoice_ai" || normalized === "uvoiceapp") {
-    return "uvoice";
-  }
-  if (
-    normalized === "byteplus"
-    || normalized === "modelark"
-    || normalized === "byteplus_modelark"
-    || normalized === "byteplus_model_ark"
-  ) {
-    return "byteplus_modelark";
-  }
-  return normalized;
-}
-
 async function getConfiguredMediaProviderNames(): Promise<Set<string>> {
   try {
     const db = await getDb();
@@ -885,6 +917,84 @@ function pickConfiguredDefaultModelId<T extends { modelId: string; provider: str
     ?? rows[0]?.modelId
     ?? null
   );
+}
+
+function getAllowedAspectRatiosForModel(
+  modelId: string,
+  configJson: Record<string, unknown> | null | undefined,
+  fallback: readonly string[] = [],
+): string[] {
+  return getAllowedAspectRatiosFromConfig(
+    configJson ?? getStaticModelById(modelId)?.configJson,
+    fallback,
+  );
+}
+
+function getAllowedDurationsForModel(
+  modelId: string,
+  configJson: Record<string, unknown> | null | undefined,
+  fallback: readonly number[] = [],
+): number[] {
+  return getAllowedDurationsFromConfig(
+    configJson ?? getStaticModelById(modelId)?.configJson,
+    fallback,
+  );
+}
+
+function getReferenceImageLimitForModel(
+  modelId: string,
+  configJson: Record<string, unknown> | null | undefined,
+): number | null {
+  return getReferenceImageLimitFromConfig(
+    configJson ?? getStaticModelById(modelId)?.configJson,
+  );
+}
+
+function assertModelAwareVideoRequest(params: {
+  modelId: string;
+  configJson: Record<string, unknown> | null | undefined;
+  aspectRatio?: string;
+  duration?: number;
+  referenceImageUrls?: string[];
+}): void {
+  const imageLimit = getReferenceImageLimitForModel(params.modelId, params.configJson);
+  if (imageLimit !== null && (params.referenceImageUrls?.length ?? 0) > imageLimit) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `The selected model allows at most ${imageLimit} reference images.`,
+    });
+  }
+
+  const allowedAspectRatios = getAllowedAspectRatiosForModel(params.modelId, params.configJson);
+  if (params.aspectRatio && allowedAspectRatios.length > 0 && !allowedAspectRatios.includes(params.aspectRatio)) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `Unsupported aspect ratio "${params.aspectRatio}" for model "${params.modelId}".`,
+    });
+  }
+
+  const allowedDurations = getAllowedDurationsForModel(params.modelId, params.configJson);
+  if (params.duration !== undefined && allowedDurations.length > 0 && !allowedDurations.includes(params.duration)) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `Unsupported duration "${params.duration}" for model "${params.modelId}".`,
+    });
+  }
+
+  for (const rawUrl of params.referenceImageUrls ?? []) {
+    try {
+      if (rawUrl.startsWith("/")) {
+        assertRelativeUploadMediaReferencePath(rawUrl, "Reference image URL");
+      } else {
+        assertPublicSafeHttpUrl(rawUrl, "Reference image URL");
+      }
+    } catch (error) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: error instanceof Error ? error.message : "Reference image URL must point to a public host.",
+      });
+    }
+  }
 }
 
 async function getDefaultModelId(type: MediaType): Promise<string> {
@@ -995,13 +1105,25 @@ async function resolveModelMeta(
 const mediaTypeSchema = z.enum(["image", "video", "audio"]);
 const taskStatusSchema = z.enum(["pending", "processing", "completed", "failed", "cancelled"]);
 const mediaModelIdSchema = z.string().min(1).max(120);
+const mediaPromptSchema = z.string().min(1);
 const flexibleAspectRatioSchema = z.string().min(2).max(20);
 const referenceMediaUrlSchema = z
   .string()
   .min(1)
   .max(2048)
-  .refine((value) => value.startsWith("/") || /^https?:\/\//i.test(value), {
-    message: "Reference URL must be a relative path or http(s) URL",
+  .superRefine((value, ctx) => {
+    try {
+      if (value.startsWith("/")) {
+        assertRelativeUploadMediaReferencePath(value, "Reference URL");
+      } else {
+        assertPublicSafeHttpUrl(value, "Reference URL");
+      }
+    } catch (error) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: error instanceof Error ? error.message : "Reference URL is invalid.",
+      });
+    }
   });
 
 const audioModelSchema = mediaModelIdSchema;
@@ -1150,7 +1272,7 @@ export const mediaRouter = router({
   generateImage: protectedProcedure
     .input(
       z.object({
-        prompt: z.string().min(1).max(2000),
+        prompt: mediaPromptSchema,
         model: mediaModelIdSchema.optional(),
         size: z.string().optional(),
         aspectRatio: flexibleAspectRatioSchema.optional(),
@@ -1185,6 +1307,18 @@ export const mediaRouter = router({
         });
       }
 
+      const model = input.model || await getDefaultModelId("image");
+      const modelMeta = await resolveModelMeta(model, "image");
+
+      // Calculate credit cost from DB pricingTiers
+      const dbModel = await getModelWithPricing(model);
+      assertMediaPromptWithinModelLimit({
+        value: input.prompt,
+        modelId: model,
+        configJson: dbModel.configJson,
+        fieldLabel: "Prompt",
+      });
+
       // Check if media should route through sandbox
       if (
         shouldUseSandbox("sandbox-media") &&
@@ -1198,7 +1332,7 @@ export const mediaRouter = router({
           userId: ctx.user.id,
           inputFiles: [],
           metadata: {
-            model: input.model,
+            model,
             prompt: input.prompt,
             aspectRatio: input.aspectRatio,
             numImages: input.numImages,
@@ -1215,12 +1349,8 @@ export const mediaRouter = router({
         };
       }
 
-      const model = input.model || await getDefaultModelId("image");
-      const modelMeta = await resolveModelMeta(model, "image");
-
-      // Calculate credit cost from DB pricingTiers
-      const dbModel = await getModelWithPricing(model);
       const creditCost = calculateCreditCost(dbModel, {
+        ...(input.extraParams ?? {}),
         numImages: input.numImages,
         resolution: input.resolution,
       });
@@ -1294,7 +1424,7 @@ export const mediaRouter = router({
   generateVideo: protectedProcedure
     .input(
       z.object({
-        prompt: z.string().min(1).max(2000),
+        prompt: mediaPromptSchema,
         model: mediaModelIdSchema.optional(),
         duration: z.number().min(1).max(60).optional(),
         aspectRatio: flexibleAspectRatioSchema.optional(),
@@ -1335,7 +1465,21 @@ export const mediaRouter = router({
 
       // Calculate credit cost from DB pricingTiers
       const dbModel = await getModelWithPricing(model);
+      assertMediaPromptWithinModelLimit({
+        value: input.prompt,
+        modelId: model,
+        configJson: dbModel.configJson,
+        fieldLabel: "Prompt",
+      });
+      assertModelAwareVideoRequest({
+        modelId: model,
+        configJson: dbModel.configJson,
+        aspectRatio: input.aspectRatio,
+        duration: input.duration,
+        referenceImageUrls: input.referenceImageUrls,
+      });
       const creditCost = calculateCreditCost(dbModel, {
+        ...(input.extraParams ?? {}),
         duration: input.duration,
         resolution: input.resolution,
       });
@@ -1411,8 +1555,7 @@ export const mediaRouter = router({
   generateAudio: protectedProcedure
     .input(
       z.object({
-        // Keep a broad safety cap; enforce model-specific maxPromptLength from DB config below.
-        text: z.string().min(1).max(50000),
+        text: z.string().min(1),
         model: audioModelSchema.optional(),
         voice: z.string().optional(),
         speed: z.number().min(0.5).max(2.0).optional(),
@@ -1459,13 +1602,12 @@ export const mediaRouter = router({
 
       // Calculate credit cost from DB pricingTiers
       const dbModel = await getModelWithPricing(model);
-      const maxPromptLength = resolveConfiguredMaxPromptLength(dbModel.configJson);
-      if (maxPromptLength !== null && input.text.length > maxPromptLength) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: `Text length ${input.text.length} exceeds model limit ${maxPromptLength} for ${model}`,
-        });
-      }
+      assertMediaPromptWithinModelLimit({
+        value: input.text,
+        modelId: model,
+        configJson: dbModel.configJson,
+        fieldLabel: "Text",
+      });
       const creditCost = calculateCreditCost(dbModel, {
         text: input.text,
         ...(input.extraParams ?? {}),
@@ -1536,7 +1678,7 @@ export const mediaRouter = router({
   generateAudioAsync: protectedProcedure
     .input(
       z.object({
-        text: z.string().min(1).max(50_000),
+        text: z.string().min(1),
         model: audioModelSchema.optional(),
         voice: z.string().optional(),
         speed: z.number().min(0.5).max(2.0).optional(),
@@ -1579,13 +1721,12 @@ export const mediaRouter = router({
       const model = input.model || await getDefaultModelId("audio");
       const modelMeta = await resolveModelMeta(model, "audio");
       const dbModel = await getModelWithPricing(model);
-      const maxPromptLength = resolveConfiguredMaxPromptLength(dbModel.configJson);
-      if (maxPromptLength !== null && input.text.length > maxPromptLength) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: `Text length ${input.text.length} exceeds model limit ${maxPromptLength} for ${model}`,
-        });
-      }
+      assertMediaPromptWithinModelLimit({
+        value: input.text,
+        modelId: model,
+        configJson: dbModel.configJson,
+        fieldLabel: "Text",
+      });
       const creditCost = calculateCreditCost(dbModel, {
         text: input.text,
         ...(input.extraParams ?? {}),
@@ -1670,7 +1811,7 @@ export const mediaRouter = router({
   generateImageAsync: protectedProcedure
     .input(
       z.object({
-        prompt: z.string().min(1).max(2000),
+        prompt: mediaPromptSchema,
         model: mediaModelIdSchema.optional(),
         size: z.string().optional(),
         aspectRatio: flexibleAspectRatioSchema.optional(),
@@ -1712,7 +1853,14 @@ export const mediaRouter = router({
 
       // Calculate credit cost from DB pricingTiers
       const dbModel = await getModelWithPricing(model);
+      assertMediaPromptWithinModelLimit({
+        value: input.prompt,
+        modelId: model,
+        configJson: dbModel.configJson,
+        fieldLabel: "Prompt",
+      });
       const creditCost = calculateCreditCost(dbModel, {
+        ...(input.extraParams ?? {}),
         numImages: input.numImages,
         resolution: input.resolution,
       });
@@ -1807,7 +1955,7 @@ export const mediaRouter = router({
   generateVideoAsync: protectedProcedure
     .input(
       z.object({
-        prompt: z.string().min(1).max(2000),
+        prompt: mediaPromptSchema,
         model: mediaModelIdSchema.optional(),
         duration: z.number().min(1).max(60).optional(),
         aspectRatio: flexibleAspectRatioSchema.optional(),
@@ -1848,8 +1996,22 @@ export const mediaRouter = router({
 
       // Calculate credit cost from DB pricingTiers
       const dbModel = await getModelWithPricing(model);
+      assertMediaPromptWithinModelLimit({
+        value: input.prompt,
+        modelId: model,
+        configJson: dbModel.configJson,
+        fieldLabel: "Prompt",
+      });
       const duration = input.duration || 5;
+      assertModelAwareVideoRequest({
+        modelId: model,
+        configJson: dbModel.configJson,
+        aspectRatio: input.aspectRatio,
+        duration,
+        referenceImageUrls: input.referenceImageUrls,
+      });
       const creditCost = calculateCreditCost(dbModel, {
+        ...(input.extraParams ?? {}),
         duration,
         resolution: input.resolution,
       });
@@ -2094,10 +2256,7 @@ export const mediaRouter = router({
     .query(async ({ input, ctx }) => {
       try {
         const userToken = getUserToken(ctx);
-        const PYTHON_BACKEND_URL =
-          process.env.PYTHON_BACKEND_URL ||
-          process.env.BACKEND_URL ||
-          "http://localhost:8000";
+        const runtime = await getAppRuntimeConfig();
 
         const params = new URLSearchParams();
         if (input?.mediaType) params.append("media_type", input.mediaType);
@@ -2105,7 +2264,7 @@ export const mediaRouter = router({
         if (input?.limit) params.append("limit", input.limit.toString());
         if (input?.offset) params.append("offset", input.offset.toString());
 
-        const url = `${PYTHON_BACKEND_URL}/api/v1/media/tasks/admin${params.toString() ? `?${params}` : ""}`;
+        const url = `${runtime.pythonBackendUrl}/api/v1/media/tasks/admin${params.toString() ? `?${params}` : ""}`;
         const response = await fetch(url, {
           method: "GET",
           headers: {
@@ -2156,12 +2315,9 @@ export const mediaRouter = router({
     .mutation(async ({ input, ctx }) => {
       try {
         const userToken = getUserToken(ctx);
-        const PYTHON_BACKEND_URL =
-          process.env.PYTHON_BACKEND_URL ||
-          process.env.BACKEND_URL ||
-          "http://localhost:8000";
+        const runtime = await getAppRuntimeConfig();
 
-        const response = await fetch(`${PYTHON_BACKEND_URL}/api/v1/media/tasks/${input.taskId}`, {
+        const response = await fetch(`${runtime.pythonBackendUrl}/api/v1/media/tasks/${input.taskId}`, {
           method: "DELETE",
           headers: {
             "Content-Type": "application/json",
@@ -2183,18 +2339,15 @@ export const mediaRouter = router({
       }
     }),
 
-  // Fetch task result from Kie.ai (useful when callback wasn't received)
+  // Fetch task result from provider (useful when callback/polling update wasn't received)
   fetchTaskResult: protectedProcedure
     .input(z.object({ taskId: z.string() }))
     .mutation(async ({ input, ctx }) => {
       try {
         const userToken = getUserToken(ctx);
-        const PYTHON_BACKEND_URL =
-          process.env.PYTHON_BACKEND_URL ||
-          process.env.BACKEND_URL ||
-          "http://localhost:8000";
+        const runtime = await getAppRuntimeConfig();
 
-        const response = await fetch(`${PYTHON_BACKEND_URL}/api/v1/media/tasks/${input.taskId}/fetch-result`, {
+        const response = await fetch(`${runtime.pythonBackendUrl}/api/v1/media/tasks/${input.taskId}/fetch-result`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -2207,7 +2360,14 @@ export const mediaRouter = router({
           throw new Error(error.detail || `Fetch result failed: ${response.status}`);
         }
 
-        return await response.json();
+        const payload = await response.json() as Record<string, unknown>;
+        const taskPayload = payload.task;
+        return {
+          ...payload,
+          task: taskPayload && typeof taskPayload === "object"
+            ? mediaGenerationService.mapTask(taskPayload as Record<string, unknown>)
+            : undefined,
+        };
       } catch (error) {
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",

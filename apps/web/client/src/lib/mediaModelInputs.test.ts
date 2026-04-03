@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   applyModelSyncTargets,
+  clampReferenceImagesToModelLimit,
   getModelGenerationModeLabel,
   getMissingRequiredModelFields,
   getModelReferenceInputSupport,
+  getModelReferenceImageLimit,
+  getModelInputField,
   parseModelInputFields,
 } from "./mediaModelInputs";
 
@@ -25,6 +28,51 @@ describe("mediaModelInputs", () => {
       "video_urls:reference_videos",
       "ref_videos:reference_videos",
     ]);
+  });
+
+  it("finds a parsed input field by key", () => {
+    const model = {
+      id: "test-video-model",
+      name: "Test Video Model",
+      configJson: {
+        inputFields: [
+          { key: "model", label: "Model", type: "select", affectsPricing: true },
+          { key: "duration", label: "Duration", type: "select" },
+        ],
+      },
+    };
+
+    expect(getModelInputField(model, "model")).toMatchObject({
+      key: "model",
+      label: "Model",
+      affectsPricing: true,
+    });
+    expect(getModelInputField(model, "missing")).toBeUndefined();
+  });
+
+  it("preserves maxItems metadata for synchronized image fields", () => {
+    const model = {
+      id: "wavespeed-video-model",
+      name: "WaveSpeed",
+      configJson: {
+        inputFields: [
+          {
+            key: "image_urls",
+            label: "Reference Images",
+            type: "image_urls",
+            syncWith: "reference_images",
+            maxItems: 4,
+          },
+        ],
+      },
+    };
+
+    expect(getModelInputField(model, "image_urls")).toMatchObject({
+      key: "image_urls",
+      maxItems: 4,
+      syncWith: "reference_images",
+    });
+    expect(getModelReferenceImageLimit(model)).toBe(4);
   });
 
   it("tracks reference image and video support independently", () => {
@@ -131,5 +179,57 @@ describe("mediaModelInputs", () => {
         referenceVideoUrls: [],
       }),
     ).toEqual(["Motion References"]);
+  });
+
+  it("clamps synced reference images to the model-declared maxItems limit", () => {
+    const model = {
+      id: "wavespeed-video-model",
+      name: "WaveSpeed",
+      configJson: {
+        maxReferenceImages: 4,
+        inputFields: [
+          {
+            key: "image_urls",
+            label: "Reference Images",
+            type: "image_urls",
+            syncWith: "reference_images",
+            maxItems: 4,
+          },
+        ],
+      },
+    };
+
+    const extraParams = applyModelSyncTargets(model, undefined, {
+      referenceImageUrls: [
+        "https://cdn.example.com/1.png",
+        "https://cdn.example.com/2.png",
+        "https://cdn.example.com/3.png",
+        "https://cdn.example.com/4.png",
+        "https://cdn.example.com/5.png",
+      ],
+    });
+
+    expect(extraParams).toEqual({
+      image_urls: [
+        "https://cdn.example.com/1.png",
+        "https://cdn.example.com/2.png",
+        "https://cdn.example.com/3.png",
+        "https://cdn.example.com/4.png",
+      ],
+    });
+
+    expect(
+      clampReferenceImagesToModelLimit(model, [
+        { url: "1" },
+        { url: "2" },
+        { url: "3" },
+        { url: "4" },
+        { url: "5" },
+      ]),
+    ).toEqual({
+      items: [{ url: "1" }, { url: "2" }, { url: "3" }, { url: "4" }],
+      maxItems: 4,
+      droppedCount: 1,
+    });
   });
 });

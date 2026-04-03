@@ -18,7 +18,7 @@ function encrypt(text: string): string {
 }
 
 // Default providers to seed
-const DEFAULT_PROVIDERS = [
+export const DEFAULT_PROVIDERS = [
   {
     providerName: "kie_ai",
     displayName: "Kie AI",
@@ -80,6 +80,25 @@ const DEFAULT_PROVIDERS = [
     priority: 10,
   },
   {
+    providerName: "wavespeed_ai",
+    displayName: "WaveSpeedAI",
+    description: "WaveSpeed media-generation provider for cinematic text-to-video and image-guided video generation",
+    providerType: "multimodal",
+    baseUrl: "https://api.wavespeed.ai/api/v3",
+    defaultModel: "wavespeed-ai/cinematic-video-generator",
+    availableModels: [
+      {
+        id: "wavespeed-ai/cinematic-video-generator",
+        name: "Seedance 2.0 Grade Cinematic Video Generator",
+        type: "video",
+        description: "Cinematic async video generation with optional image guidance and native audio",
+      },
+    ],
+    isEnabled: false,
+    isPrimary: false,
+    priority: 12,
+  },
+  {
     providerName: "uvoice",
     displayName: "UVoice",
     description: "Thai-focused text-to-speech provider with Standard/Natural/Premium voice tiers and configurable output format",
@@ -132,7 +151,7 @@ const DEFAULT_PROVIDERS = [
   },
 ];
 
-async function seedMediaProviders() {
+export async function seedMediaProviders() {
   console.log("Seeding Media Providers...\n");
 
   const sql = postgres(DATABASE_URL);
@@ -200,4 +219,6 @@ async function seedMediaProviders() {
   }
 }
 
-seedMediaProviders();
+if (import.meta.url === `file://${process.argv[1]}`) {
+  void seedMediaProviders();
+}

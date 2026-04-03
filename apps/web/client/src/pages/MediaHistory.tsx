@@ -145,6 +145,22 @@ function getMediaTypeMeta(mediaType: string | undefined) {
   return mediaTypeConfig[mediaType as MediaType] || fallbackMediaTypeConfig;
 }
 
+function canManuallyFetchTaskResult(task: MediaTask | null | undefined): task is MediaTask {
+  return Boolean(task?.taskId && !task?.resultUrl && task?.status !== 'cancelled');
+}
+
+function getTaskFetchResultLabel(task: MediaTask | null | undefined): string {
+  if (!task) return 'Fetch URL';
+  return task.status === 'failed' || task.status === 'cancelled' ? 'Refetch URL' : 'Fetch URL';
+}
+
+function getTaskFetchResultTitle(task: MediaTask | null | undefined): string {
+  if (!task) return 'Check provider status and sync the download URL';
+  return task.status === 'failed' || task.status === 'cancelled'
+    ? 'Check the provider again and sync the download URL'
+    : 'Check provider status and sync the download URL';
+}
+
 function getTaskLibraryDisplayLabel(state?: TaskLibraryUIState | null): string {
   if (state?.action === 'adding') return 'Adding to Library';
   if (state?.action === 'error') return 'Library Failed';
@@ -358,16 +374,26 @@ function extractMediaHistoryThumbnailUrl(task: MediaTask): string | null {
   );
 }
 
-function buildFallbackApiUrl(providerHint: string | undefined, endpoint: string | undefined): string | undefined {
+function buildFallbackApiUrl(
+  providerHint: string | undefined,
+  endpoint: string | undefined,
+  baseUrl?: string | undefined,
+): string | undefined {
   if (!endpoint) return undefined;
   if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) {
     return endpoint;
   }
+  const normalizedBaseUrl = typeof baseUrl === 'string' ? baseUrl.trim() : '';
+  if (normalizedBaseUrl) {
+    return `${normalizedBaseUrl.replace(/\/+$/, '')}${endpoint.startsWith('/') ? '' : '/'}${endpoint}`;
+  }
   const normalizedProvider = String(providerHint || '').trim().toLowerCase();
-  const baseUrl = normalizedProvider === 'uvoice'
+  const fallbackBaseUrl = normalizedProvider === 'uvoice'
     ? 'https://api.uvoice.ai'
-    : 'https://api.kie.ai/api/v1';
-  return `${baseUrl}${endpoint.startsWith('/') ? '' : '/'}${endpoint}`;
+    : normalizedProvider === 'wavespeed_ai' || normalizedProvider === 'wavespeed'
+      ? 'https://api.wavespeed.ai/api/v3'
+      : 'https://api.kie.ai/api/v1';
+  return `${fallbackBaseUrl}${endpoint.startsWith('/') ? '' : '/'}${endpoint}`;
 }
 
 function sanitizeDebugPayload(value: unknown): unknown {
@@ -466,6 +492,7 @@ function extractTaskApiDebugInfo(task: MediaTask | null): TaskApiDebugInfo | nul
   const debugObj = toRecord(resultData.debug) ?? {};
   const apiDebug = toRecord(debugObj.api) ?? {};
   const failureObj = toRecord(resultData.failure) ?? {};
+  const submission = toRecord(resultData.submission) ?? {};
   const kieResponse = toRecord(resultData.kie_ai_response);
   const providerDetail = toRecord(failureObj.provider_detail);
   const providerDebug = toRecord(providerDetail?.debug);
@@ -483,21 +510,33 @@ function extractTaskApiDebugInfo(task: MediaTask | null): TaskApiDebugInfo | nul
     providerApi?.provider,
     debugObj.provider_hint,
     providerDebug?.provider_hint,
+    submission.provider,
     apiConfig.provider,
   );
   const endpoint = pickString(
     apiDebug.endpoint,
     providerApi?.endpoint,
+    submission.submit_endpoint,
     apiConfig.endpoint,
     apiConfig.api_endpoint,
     apiConfig.apiEndpoint,
+  );
+  const requestBaseUrl = pickString(
+    apiDebug.base_url,
+    apiDebug.baseUrl,
+    providerApi?.base_url,
+    providerApi?.baseUrl,
+    submission.base_url,
+    apiConfig.base_url,
+    apiConfig.baseUrl,
+    apiConfig.url,
   );
   const requestUrl = pickString(
     apiDebug.request_url,
     apiDebug.api_url,
     providerApi?.request_url,
     providerApi?.api_url,
-    buildFallbackApiUrl(providerHint, endpoint),
+    buildFallbackApiUrl(providerHint, endpoint, requestBaseUrl),
   );
   const method = pickString(
     apiDebug.method,
@@ -723,12 +762,13 @@ function VideoThumbnailCard({
 
 export default function MediaHistory() {
   const { user, isLoading: authLoading, isAuthenticated } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const [, setLocation] = useLocation();
   const [mediaTypeFilter, setMediaTypeFilter] = useState<MediaType | 'all'>('all');
   const [statusFilter, setStatusFilter] = useState<TaskStatus | 'all'>('all');
   const [selectedTask, setSelectedTask] = useState<MediaTask | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
-  const [isFetchingResult, setIsFetchingResult] = useState(false);
+  const [fetchingResultTaskId, setFetchingResultTaskId] = useState<string | null>(null);
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = useState<HistoryViewMode>('list');
   const [taskLibraryState, setTaskLibraryState] = useState<Record<string, TaskLibraryUIState>>({});
@@ -777,17 +817,8 @@ export default function MediaHistory() {
   );
   const recentLibraryResults = (recentLibraryData?.results || []) as LibrarySearchResultItem[];
 
-  // Mutation for fetching task result from Kie.ai
-  const fetchResultMutation = trpc.media.fetchTaskResult.useMutation({
-    onSuccess: (data) => {
-      if (data.fetched && data.task) {
-        // Update local task state
-        setSelectedTask(data.task as MediaTask);
-        // Refetch the list to update the table
-        refetch();
-      }
-    },
-  });
+  // Mutation for fetching task result from provider
+  const fetchResultMutation = trpc.media.fetchTaskResult.useMutation();
 
   // Mutation for deleting a task
   const deleteTaskMutation = trpc.media.deleteTask.useMutation({
@@ -818,6 +849,40 @@ export default function MediaHistory() {
 
   // State for tracking gallery import in progress
   const [importingTaskId, setImportingTaskId] = useState<string | null>(null);
+
+  const runFetchTaskResult = useCallback(
+    async (task: MediaTask, options?: { silent?: boolean }) => {
+      if (!canManuallyFetchTaskResult(task)) return null;
+
+      setFetchingResultTaskId(task.id);
+      try {
+        const result = await fetchResultMutation.mutateAsync({ taskId: task.id });
+        if (result.task) {
+          setSelectedTask((current) => (current?.id === task.id ? result.task as MediaTask : current));
+        }
+        await refetch();
+
+        if (!options?.silent) {
+          if (result.task?.resultUrl) {
+            toast.success('Synced result URL from provider.');
+          } else {
+            toast.info(result.message || 'Checked provider status.');
+          }
+        }
+
+        return result;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to fetch task result';
+        if (!options?.silent) {
+          toast.error(message);
+        }
+        throw error;
+      } finally {
+        setFetchingResultTaskId((current) => (current === task.id ? null : current));
+      }
+    },
+    [fetchResultMutation, refetch],
+  );
 
   const libraryItemsBySourceUrl = useMemo(() => {
     const map = new Map<string, TaskLibraryUIState>();
@@ -1003,6 +1068,12 @@ export default function MediaHistory() {
   const selectedTaskErrorInfo = extractTaskErrorInfo(selectedTask);
   const selectedTaskIsFailed = selectedTask?.status === 'failed';
   const selectedTaskIsCancelled = selectedTask?.status === 'cancelled';
+  const selectedTaskCanFetchResult = canManuallyFetchTaskResult(selectedTask);
+  const isFetchingResult = Boolean(
+    selectedTask
+    && fetchResultMutation.isPending
+    && fetchingResultTaskId === selectedTask.id,
+  );
 
   // Format date for display - show both relative and absolute time
   // Automatically converts UTC to local timezone
@@ -1064,10 +1135,9 @@ export default function MediaHistory() {
     // Auto-fetch result if the provider task id exists.
     // Otherwise just refresh from the task list so status changes in DB still show up.
     if (!task.resultUrl && (task.status === 'processing' || task.status === 'pending')) {
-      setIsFetchingResult(true);
       try {
-        if (task.taskId) {
-          await fetchResultMutation.mutateAsync({ taskId: task.id });
+        if (canManuallyFetchTaskResult(task)) {
+          await runFetchTaskResult(task, { silent: true });
         } else {
           const refreshed = await refetch();
           const updatedTask = refreshed.data?.tasks.find((t) => t.id === task.id);
@@ -1077,29 +1147,16 @@ export default function MediaHistory() {
         }
       } catch (error) {
         console.error('Failed to fetch task result:', error);
-      } finally {
-        setIsFetchingResult(false);
       }
     }
   };
 
-  const handleFetchResult = async () => {
-    if (!selectedTask) return;
-    setIsFetchingResult(true);
+  const handleFetchResult = async (task: MediaTask) => {
+    if (!canManuallyFetchTaskResult(task)) return;
     try {
-      if (selectedTask.taskId) {
-        await fetchResultMutation.mutateAsync({ taskId: selectedTask.id });
-      } else {
-        const refreshed = await refetch();
-        const updatedTask = refreshed.data?.tasks.find((t) => t.id === selectedTask.id);
-        if (updatedTask) {
-          setSelectedTask(updatedTask as MediaTask);
-        }
-      }
+      await runFetchTaskResult(task);
     } catch (error) {
       console.error('Failed to fetch task result:', error);
-    } finally {
-      setIsFetchingResult(false);
     }
   };
 
@@ -1605,6 +1662,9 @@ export default function MediaHistory() {
                   const StatusIcon = status?.icon || AlertCircle;
                   const TypeIcon = typeConfig?.icon || FileImage;
                   const canAddToLibrary = isMediaTaskEligibleForLibraryAdd(task);
+                  const canAddToGallery = isAdmin && task.status === 'completed' && Boolean(task.resultUrl);
+                  const canFetchResult = canManuallyFetchTaskResult(task);
+                  const isFetchPending = fetchResultMutation.isPending && fetchingResultTaskId === task.id;
                   const libraryState = getEffectiveTaskLibraryState(task);
                   const libraryStatusMeta = getLibraryItemStatusMeta(libraryState?.status);
                   const canShare = Boolean(libraryState?.itemId);
@@ -1722,6 +1782,25 @@ export default function MediaHistory() {
                         </div>
 
                         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                          {canFetchResult && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                void handleFetchResult(task);
+                              }}
+                              disabled={isFetchPending}
+                              className="justify-start gap-2"
+                              title={getTaskFetchResultTitle(task)}
+                            >
+                              {isFetchPending ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <RefreshCw className="h-4 w-4" />
+                              )}
+                              {getTaskFetchResultLabel(task)}
+                            </Button>
+                          )}
                           <Button
                             variant="outline"
                             size="sm"
@@ -1761,6 +1840,23 @@ export default function MediaHistory() {
                             <Share2 className="h-4 w-4" />
                             Share
                           </Button>
+                          {canAddToGallery && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleAddToGallery(task)}
+                              disabled={importingTaskId === task.id}
+                              className="justify-start gap-2"
+                              title="Add to public gallery"
+                            >
+                              {importingTaskId === task.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <ArrowUpRight className="h-4 w-4" />
+                              )}
+                              {importingTaskId === task.id ? 'Publishing' : 'Gallery'}
+                            </Button>
+                          )}
                           <Button
                             variant="outline"
                             size="sm"
@@ -1812,6 +1908,8 @@ export default function MediaHistory() {
                   const StatusIcon = status?.icon || AlertCircle;
                   const TypeIcon = typeConfig?.icon || FileImage;
                   const canAddToLibrary = isMediaTaskEligibleForLibraryAdd(task);
+                  const canFetchResult = canManuallyFetchTaskResult(task);
+                  const isFetchPending = fetchResultMutation.isPending && fetchingResultTaskId === task.id;
                   const libraryState = getEffectiveTaskLibraryState(task);
                   const libraryStatusMeta = getLibraryItemStatusMeta(libraryState?.status);
                   return (
@@ -1899,7 +1997,24 @@ export default function MediaHistory() {
                         >
                           <Eye className="w-4 h-4" />
                         </Button>
-                        {task.status === 'failed' && (
+                        {canFetchResult ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              void handleFetchResult(task);
+                            }}
+                            disabled={isFetchPending}
+                            className="h-8 w-8 p-0 text-sky-600 hover:text-sky-700 hover:bg-sky-50"
+                            title={getTaskFetchResultTitle(task)}
+                          >
+                            {isFetchPending ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <RefreshCw className="w-4 h-4" />
+                            )}
+                          </Button>
+                        ) : task.status === 'failed' && (
                           <Button
                             variant="ghost"
                             size="sm"
@@ -1989,6 +2104,8 @@ export default function MediaHistory() {
                       const StatusIcon = status?.icon || AlertCircle;
                       const TypeIcon = typeConfig?.icon || FileImage;
                       const canAddToLibrary = isMediaTaskEligibleForLibraryAdd(task);
+                      const canFetchResult = canManuallyFetchTaskResult(task);
+                      const isFetchPending = fetchResultMutation.isPending && fetchingResultTaskId === task.id;
                       const libraryState = getEffectiveTaskLibraryState(task);
                       const libraryStatusMeta = getLibraryItemStatusMeta(libraryState?.status);
 
@@ -2149,15 +2266,34 @@ export default function MediaHistory() {
                               >
                                 <Eye className="w-4 h-4" />
                               </Button>
-                              {task.status === 'failed' && (
+                              {canFetchResult ? (
                                 <Button
-                                  variant="ghost"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    void handleFetchResult(task);
+                                  }}
+                                  disabled={isFetchPending}
+                                  className="h-8 gap-1 border-sky-200 px-2 text-sky-700 hover:bg-sky-50 hover:text-sky-800"
+                                  title={getTaskFetchResultTitle(task)}
+                                >
+                                  {isFetchPending ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                  ) : (
+                                    <RefreshCw className="w-4 h-4" />
+                                  )}
+                                  <span className="text-xs font-medium">{getTaskFetchResultLabel(task)}</span>
+                                </Button>
+                              ) : task.status === 'failed' && (
+                                <Button
+                                  variant="outline"
                                   size="sm"
                                   onClick={() => handleRetryTask(task)}
-                                  className="h-8 px-2 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                                  className="h-8 gap-1 border-amber-200 px-2 text-amber-700 hover:bg-amber-50 hover:text-amber-800"
                                   title="Retry generation"
                                 >
                                   <RefreshCw className="w-4 h-4" />
+                                  <span className="text-xs font-medium">Retry</span>
                                 </Button>
                               )}
                               {task.status === 'completed' && task.resultUrl && (
@@ -2189,7 +2325,7 @@ export default function MediaHistory() {
                                     <Download className="w-4 h-4" />
                                   </Button>
                                   {/* Add to Gallery button - admin only */}
-                                  {user?.role === 'admin' && (
+                                  {isAdmin && (
                                     <Button
                                       variant="ghost"
                                       size="sm"
@@ -2390,23 +2526,30 @@ export default function MediaHistory() {
               )}
 
               {/* Fetch Result Button (for tasks without result) */}
-              {!selectedTask.resultUrl && selectedTask.taskId && selectedTask.status !== 'failed' && (
+              {selectedTaskCanFetchResult && (
                 <div className="flex items-center justify-center p-4 bg-yellow-50 rounded-lg">
                   <AlertCircle className="w-5 h-5 text-yellow-600 mr-2" />
-                  <span className="text-yellow-700 mr-4">No result yet.</span>
+                  <span className="text-yellow-700 mr-4">
+                    {selectedTaskIsFailed || selectedTaskIsCancelled
+                      ? 'Provider may have finished after the last sync.'
+                      : 'No result yet.'}
+                  </span>
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={handleFetchResult}
+                    onClick={() => {
+                      void handleFetchResult(selectedTask);
+                    }}
                     disabled={isFetchingResult}
                     className="gap-2"
+                    title={getTaskFetchResultTitle(selectedTask)}
                   >
                     {isFetchingResult ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
                     ) : (
                       <RefreshCw className="w-4 h-4" />
                     )}
-                    Fetch Result
+                    {getTaskFetchResultLabel(selectedTask)}
                   </Button>
                 </div>
               )}
@@ -2960,7 +3103,7 @@ export default function MediaHistory() {
                     Download
                   </Button>
                   {/* Add to Gallery button - admin only */}
-                  {user?.role === 'admin' && (
+                  {isAdmin && (
                     <Button
                       variant="default"
                       onClick={() => handleAddToGallery(selectedTask)}
@@ -2977,16 +3120,35 @@ export default function MediaHistory() {
                   )}
                 </div>
               )}
-              {selectedTaskIsFailed && (
+              {(selectedTaskCanFetchResult || selectedTaskIsFailed) && (
                 <div className="flex flex-wrap justify-end gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => handleRetryTask(selectedTask)}
-                    className="gap-2 border-amber-200 text-amber-700 hover:bg-amber-50 hover:text-amber-800"
-                  >
-                    <RefreshCw className="w-4 h-4" />
-                    Retry
-                  </Button>
+                  {selectedTaskCanFetchResult && (
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        void handleFetchResult(selectedTask);
+                      }}
+                      disabled={isFetchingResult}
+                      className="gap-2 border-sky-200 text-sky-700 hover:bg-sky-50 hover:text-sky-800"
+                    >
+                      {isFetchingResult ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <RefreshCw className="w-4 h-4" />
+                      )}
+                      {getTaskFetchResultLabel(selectedTask)}
+                    </Button>
+                  )}
+                  {selectedTaskIsFailed && (
+                    <Button
+                      variant="outline"
+                      onClick={() => handleRetryTask(selectedTask)}
+                      className="gap-2 border-amber-200 text-amber-700 hover:bg-amber-50 hover:text-amber-800"
+                    >
+                      <RefreshCw className="w-4 h-4" />
+                      Retry Generate
+                    </Button>
+                  )}
                 </div>
               )}
             </div>

@@ -5,6 +5,7 @@ Celery Tasks Package
 from app.tasks.media_tasks import (
     generate_image_task,
     generate_video_task,
+    poll_wavespeed_video_task,
     generate_audio_task,
     cleanup_expired_tasks,
     retry_failed_tasks,
@@ -12,6 +13,18 @@ from app.tasks.media_tasks import (
 from app.tasks.media_job_worker import execute_media_job
 from app.tasks.workflow_gen_tasks import generate_workflow_task
 from app.tasks.workflow_edit_tasks import edit_workflow_task
+from app.tasks.workflow_tasks import (
+    check_scheduled_workflows,
+    process_system_event,
+    process_queue_message,
+    execute_webhook_workflow,
+    execute_delayed_node,
+)
+from app.tasks.google_drive_tasks import (
+    cleanup_expired_edit_sessions,
+    renew_drive_watch_channels,
+    poll_drive_changes,
+)
 from app.tasks.onedrive_tasks import (
     initial_onedrive_sync,
     process_onedrive_changes,
@@ -48,12 +61,21 @@ except ModuleNotFoundError:
 __all__ = [
     "generate_image_task",
     "generate_video_task",
+    "poll_wavespeed_video_task",
     "generate_audio_task",
     "cleanup_expired_tasks",
     "retry_failed_tasks",
     "execute_media_job",
     "generate_workflow_task",
     "edit_workflow_task",
+    "check_scheduled_workflows",
+    "process_system_event",
+    "process_queue_message",
+    "execute_webhook_workflow",
+    "execute_delayed_node",
+    "cleanup_expired_edit_sessions",
+    "renew_drive_watch_channels",
+    "poll_drive_changes",
     "initial_onedrive_sync",
     "process_onedrive_changes",
     "renew_onedrive_subscriptions",

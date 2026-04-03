@@ -62,6 +62,7 @@ celery_app.conf.update(
         # API-based media generation -> media queue (network-bound)
         "app.tasks.media_tasks.generate_image_task": {"queue": "media"},
         "app.tasks.media_tasks.generate_video_task": {"queue": "media"},
+        "app.tasks.media_tasks.poll_wavespeed_video_task": {"queue": "media"},
         "app.tasks.media_tasks.generate_audio_task": {"queue": "media"},
         # Periodic maintenance -> media queue (lightweight)
         "app.tasks.media_tasks.cleanup_expired_tasks": {"queue": "media"},
@@ -124,7 +125,11 @@ celery_app.conf.update(
         "app.tasks.system_health_task.monitor_system_health": {"queue": "celery"},
     },
     # Ensure non-default task modules are always loaded at worker startup.
-    imports=("app.workers.sandbox_job_worker",),
+    imports=(
+        "app.tasks.google_drive_tasks",
+        "app.tasks.workflow_tasks",
+        "app.workers.sandbox_job_worker",
+    ),
 )
 
 # Periodic tasks

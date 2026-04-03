@@ -16,6 +16,7 @@ from .byteplus_modelark_provider import BytePlusModelArkProvider
 from .uvoice_provider import UVoiceProvider
 from .fal_ai_provider import FalAIProvider
 from .knplabai_provider import KNPLabsProvider
+from .wavespeed_media_provider import WaveSpeedMediaProvider
 
 __all__ = [
     "BaseLLMProvider",
@@ -31,4 +32,5 @@ __all__ = [
     "UVoiceProvider",
     "FalAIProvider",
     "KNPLabsProvider",
+    "WaveSpeedMediaProvider",
 ]

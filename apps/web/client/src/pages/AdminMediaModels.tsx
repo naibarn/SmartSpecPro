@@ -100,6 +100,29 @@ interface MediaModel {
   updatedAt: string;
 }
 
+interface MediaModelTemplate {
+  modelId: string;
+  name: string;
+  description: string | null;
+  modelType: "image" | "video" | "audio";
+  provider: string;
+  aliases: string[] | null;
+  creditCost: number;
+  aspectRatios: string[] | null;
+  sizes: string[] | null;
+  durations: number[] | null;
+  voices: string[] | null;
+  configJson: Record<string, any> | null;
+  isEnabled: boolean;
+  providerReady?: boolean;
+  providerReadiness?: "ready" | "provider_not_found" | "provider_disabled" | "missing_api_key" | "test_failed";
+  providerReadinessMessage?: string | null;
+  providerDisplayName?: string | null;
+  providerConfigFound?: boolean;
+  priority: number;
+  sortOrder: number;
+}
+
 interface FormData {
   modelId: string;
   name: string;
@@ -191,6 +214,7 @@ interface ApiConfigPreset {
   label: string;
   description: string;
   pricingFormula: "flat" | "per_duration" | "matrix" | "per_unit";
+  maxPromptLength: number;
   inputFields: Array<Record<string, unknown>>;
   pricingTiers: Record<string, number>;
 }
@@ -795,8 +819,9 @@ const API_CONFIG_PRESETS: ApiConfigPreset[] = [
   {
     id: "sora2_text_video",
     label: "Sora2 Text-to-Video",
-    description: "KIE Sora2 text-to-video with n_frames + aspect ratio + watermark controls.",
+    description: "KIE Sora2 text-to-video with n_frames + aspect ratio + watermark controls and a model prompt cap.",
     pricingFormula: "per_duration",
+    maxPromptLength: 10000,
     inputFields: [
       {
         key: "aspect_ratio",
@@ -844,8 +869,9 @@ const API_CONFIG_PRESETS: ApiConfigPreset[] = [
   {
     id: "veo31_text_video",
     label: "Veo 3.1 Text-to-Video",
-    description: "Simple Veo setup with aspect ratio selector and flat credits.",
+    description: "Simple Veo setup with aspect ratio selector, prompt length cap, and flat credits.",
     pricingFormula: "flat",
+    maxPromptLength: 5000,
     inputFields: [
       {
         key: "aspect_ratio",
@@ -866,8 +892,9 @@ const API_CONFIG_PRESETS: ApiConfigPreset[] = [
   {
     id: "kling_text_video",
     label: "Kling Text-to-Video",
-    description: "Matrix pricing by resolution + duration with optional aspect ratio.",
+    description: "Matrix pricing by resolution + duration with optional aspect ratio and a prompt cap.",
     pricingFormula: "matrix",
+    maxPromptLength: 5000,
     inputFields: [
       {
         key: "duration",
@@ -939,7 +966,7 @@ const DEFAULT_FORM_DATA: FormData = {
   pricingMinUnits: 0,
   operationType: "other",
   generateType: "",
-  maxPromptLength: 2000,
+  maxPromptLength: 0,
   inputFieldDrafts: [],
   pricingTierDrafts: [createEmptyPricingTierDraft(10)],
 };
@@ -988,6 +1015,17 @@ export default function AdminMediaModels() {
     }
   );
 
+  const { data: templates = [] } = trpc.mediaModels.adminTemplates.useQuery(
+    {
+      search: searchFilter,
+      type: typeFilter !== "all" ? (typeFilter as "image" | "video" | "audio") : undefined,
+      includeDisabled: true,
+    },
+    {
+      enabled: !!user && user.role === "admin",
+    }
+  );
+
   const { data: stats } = trpc.mediaModels.stats.useQuery(undefined, {
     enabled: !!user && user.role === "admin",
   });
@@ -997,6 +1035,13 @@ export default function AdminMediaModels() {
       operationFilter === "all" || inferOperationTypeFromModel(model) === operationFilter
     )),
     [models, operationFilter],
+  );
+
+  const visibleTemplates = useMemo(
+    () => templates.filter((template: MediaModelTemplate) => (
+      operationFilter === "all" || inferOperationTypeFromModel(template) === operationFilter
+    )),
+    [templates, operationFilter],
   );
 
   const {
@@ -1023,6 +1068,25 @@ export default function AdminMediaModels() {
     },
     onError: (error) => {
       toast.error("Failed to create model", {
+        description: error.message,
+      });
+    },
+  });
+
+  const importTemplateMutation = trpc.mediaModels.importTemplate.useMutation({
+    onSuccess: (data) => {
+      toast.success(data.imported ? "Template imported" : "Template already imported", {
+        description: data.imported
+          ? `${data.model.name} is now available in the configured model catalog.`
+          : `${data.model.name} already exists in the configured model catalog.`,
+      });
+      refetch();
+      trpcUtils.mediaModels.adminTemplates.invalidate();
+      trpcUtils.mediaModels.stats.invalidate();
+      trpcUtils.mediaModels.list.invalidate();
+    },
+    onError: (error) => {
+      toast.error("Failed to import template", {
         description: error.message,
       });
     },
@@ -1134,7 +1198,7 @@ export default function AdminMediaModels() {
       pricingMinUnits: Number(cfg.pricingMinUnits) >= 0 ? Number(cfg.pricingMinUnits) : 0,
       operationType: inferOperationTypeFromModel(model),
       generateType: cfg.generateType || "",
-      maxPromptLength: cfg.maxPromptLength || 2000,
+      maxPromptLength: Number(cfg.maxPromptLength) > 0 ? Number(cfg.maxPromptLength) : 0,
       inputFieldDrafts: parseInputFieldDrafts(cfg.inputFields),
       pricingTierDrafts: parsePricingTierDrafts(cfg.pricingTiers, model.creditCost),
     });
@@ -1176,7 +1240,7 @@ export default function AdminMediaModels() {
       pricingMinUnits: Number(cfg.pricingMinUnits) >= 0 ? Number(cfg.pricingMinUnits) : 0,
       operationType: inferOperationTypeFromModel(model),
       generateType: cfg.generateType || "",
-      maxPromptLength: cfg.maxPromptLength || 2000,
+      maxPromptLength: Number(cfg.maxPromptLength) > 0 ? Number(cfg.maxPromptLength) : 0,
       inputFieldDrafts: parseInputFieldDrafts(cfg.inputFields),
       pricingTierDrafts: parsePricingTierDrafts(cfg.pricingTiers, model.creditCost),
     });
@@ -1235,6 +1299,7 @@ export default function AdminMediaModels() {
       return;
     }
 
+    const includeMaxPromptLength = formData.maxPromptLength > 0;
     const configJson: Record<string, any> = {
       apiEndpoint: formData.apiEndpoint,
       apiQueryEndpoint: formData.apiQueryEndpoint || undefined,
@@ -1253,7 +1318,7 @@ export default function AdminMediaModels() {
         : undefined,
       operationType: formData.operationType,
       generateType: formData.generateType || undefined,
-      maxPromptLength: formData.maxPromptLength,
+      ...(includeMaxPromptLength ? { maxPromptLength: formData.maxPromptLength } : {}),
       inputFields: serializedInputFields.fields,
       pricingTiers: serializedPricingTiers.tiers,
     };
@@ -1262,6 +1327,9 @@ export default function AdminMediaModels() {
       // Preserve any extra configJson keys the seed script set
       const existing = editingModel.configJson || {};
       const merged = { ...existing, ...configJson };
+      if (!includeMaxPromptLength) {
+        delete merged.maxPromptLength;
+      }
       updateMutation.mutate({
         id: editingModel.id,
         modelId: formData.modelId,
@@ -1284,6 +1352,9 @@ export default function AdminMediaModels() {
       const finalConfigJson = duplicateSourceConfig
         ? { ...duplicateSourceConfig, ...configJson }
         : configJson;
+      if (!includeMaxPromptLength) {
+        delete finalConfigJson.maxPromptLength;
+      }
       createMutation.mutate({
         modelId: formData.modelId,
         name: formData.name,
@@ -1567,6 +1638,132 @@ export default function AdminMediaModels() {
       </DashboardCard>
 
       {/* Models List */}
+      {visibleTemplates.length > 0 && (
+        <DashboardCard
+          className="mb-6"
+          title="Available Templates"
+          description="Static fallback models that are available in runtime but have not been imported into the admin database yet."
+        >
+          <div className="grid gap-4 lg:grid-cols-2">
+            {visibleTemplates.map((template: MediaModelTemplate) => {
+              const generationModeLabel = getModelGenerationModeLabel(template as Pick<MediaModel, "modelType" | "modelId" | "configJson">);
+              const isImporting = importTemplateMutation.isPending
+                && importTemplateMutation.variables?.modelId === template.modelId;
+
+              return (
+                <DashboardCard key={template.modelId} className="border-dashed">
+                  <div className="space-y-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
+                          {getModelTypeIcon(template.modelType)}
+                        </div>
+                        <div className="space-y-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <div className="font-medium">{template.name}</div>
+                            <Badge className={getModelTypeBadgeColor(template.modelType)}>
+                              {template.modelType}
+                            </Badge>
+                            {generationModeLabel && (
+                              <Badge
+                                variant="outline"
+                                className={`text-[10px] px-1.5 py-0 ${getGenerationModeBadgeColor(generationModeLabel)}`}
+                              >
+                                {generationModeLabel}
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="font-mono text-xs text-muted-foreground">
+                            {template.modelId}
+                          </div>
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() => importTemplateMutation.mutate({ modelId: template.modelId })}
+                        disabled={importTemplateMutation.isPending}
+                      >
+                        {isImporting ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <Plus className="mr-2 h-4 w-4" />
+                        )}
+                        Import
+                      </Button>
+                    </div>
+
+                    {template.description && (
+                      <p className="text-sm leading-6 text-muted-foreground">
+                        {template.description}
+                      </p>
+                    )}
+
+                    <div className="flex flex-wrap gap-2">
+                      <Badge variant="outline">
+                        {template.providerDisplayName || template.provider}
+                      </Badge>
+                      <Badge variant="outline">
+                        <Coins className="mr-1 h-3 w-3 text-amber-500" />
+                        {template.creditCost} credits
+                      </Badge>
+                      {Array.isArray(template.durations) && template.durations.length > 0 && (
+                        <Badge variant="outline">
+                          {template.durations.join(", ")}s
+                        </Badge>
+                      )}
+                      {Array.isArray(template.aspectRatios) && template.aspectRatios.length > 0 && (
+                        <Badge variant="outline">
+                          {template.aspectRatios.join(", ")}
+                        </Badge>
+                      )}
+                    </div>
+
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="flex flex-wrap gap-1">
+                        {(template.aliases || []).slice(0, 3).map((alias: string) => (
+                          <Badge key={alias} variant="outline" className="text-xs">
+                            {alias}
+                          </Badge>
+                        ))}
+                        {(template.aliases || []).length > 3 && (
+                          <Badge variant="outline" className="text-xs">
+                            +{(template.aliases || []).length - 3}
+                          </Badge>
+                        )}
+                      </div>
+
+                      <div className="max-w-[280px] text-right">
+                        {template.providerReady ? (
+                          <Badge variant="outline" className="border-green-200 text-green-700">
+                            Provider Ready
+                          </Badge>
+                        ) : (
+                          <div className="space-y-1">
+                            <Badge variant="outline" className="border-amber-200 text-amber-700">
+                              {template.providerReadiness === "provider_disabled" && "Provider Disabled"}
+                              {template.providerReadiness === "missing_api_key" && "Missing API Key"}
+                              {template.providerReadiness === "provider_not_found" && "Provider Missing"}
+                              {template.providerReadiness === "test_failed" && "Health Test Failed"}
+                              {!template.providerReadiness && "Not Ready"}
+                            </Badge>
+                            {template.providerReadinessMessage && (
+                              <div className="text-xs leading-5 text-muted-foreground">
+                                {summarizeProviderReadinessMessage(template.providerReadinessMessage)}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </DashboardCard>
+              );
+            })}
+          </div>
+        </DashboardCard>
+      )}
+
       <DashboardCard
         title="Configured Models"
         description='These models are available for image, video, and audio generation skills. Users can specify model names in their prompts (e.g., "generate image with flux 2.0").'
@@ -1885,6 +2082,7 @@ function ModelForm({
     setFormData({
       ...formData,
       pricingFormula: preset.pricingFormula,
+      maxPromptLength: preset.maxPromptLength,
       inputFieldDrafts: parseInputFieldDrafts(preset.inputFields),
       pricingTierDrafts: parsePricingTierDrafts(preset.pricingTiers, formData.creditCost),
     });
@@ -2587,11 +2785,11 @@ function ModelForm({
                 id="maxPromptLength"
                 type="number"
                 value={formData.maxPromptLength}
-                onChange={(e) => setFormData({ ...formData, maxPromptLength: parseInt(e.target.value) || 2000 })}
-                placeholder="2000"
+                onChange={(e) => setFormData({ ...formData, maxPromptLength: parseInt(e.target.value) || 0 })}
+                placeholder="0"
               />
               <p className="text-xs text-muted-foreground">
-                Maximum characters allowed for prompts. Shows warning in Media Studio when exceeded.
+                Maximum characters allowed for prompts. Leave as 0 to skip the prompt limit.
               </p>
             </div>
           </div>
@@ -2621,12 +2819,15 @@ function ModelForm({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="flat">Flat (single price or by resolution)</SelectItem>
-                <SelectItem value="per_duration">Per Duration (5s, 10s...)</SelectItem>
-                <SelectItem value="matrix">Matrix (resolution x duration)</SelectItem>
+                <SelectItem value="flat">Flat (single price or one pricing field)</SelectItem>
+                <SelectItem value="per_duration">Per Duration (duration field)</SelectItem>
+                <SelectItem value="matrix">Matrix (combine all pricing fields)</SelectItem>
                 <SelectItem value="per_unit">Per Unit (characters/items)</SelectItem>
               </SelectContent>
             </Select>
+            <p className="text-xs text-muted-foreground">
+              Tier keys should match the values from the input fields you mark as <code>Affects Pricing</code>.
+            </p>
           </div>
 
           {formData.pricingFormula === "per_unit" && (
@@ -2770,7 +2971,7 @@ function ModelForm({
                     <Input
                       value={tier.key}
                       onChange={(e) => updatePricingTierDraft(tier.id, { key: e.target.value })}
-                      placeholder="Tier key (e.g., 720p-5s)"
+                      placeholder="Tier key (e.g., model, veo3_fast)"
                     />
                     <Input
                       type="number"
@@ -2793,7 +2994,8 @@ function ModelForm({
               )}
             </div>
             <p className="text-xs text-muted-foreground">
-              Define tier key and credit cost. Example keys: "default", "5s", "720p-10s". Affects pricing is controlled by input fields.
+              Define tier key and credit cost. Example keys: "default", "model", "veo3_fast", "720p-10s".
+              Pricing is controlled by the input fields marked <code>Affects Pricing</code>.
             </p>
           </div>
 

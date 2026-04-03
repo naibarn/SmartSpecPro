@@ -28,6 +28,7 @@ export interface ModelInputField {
   syncWith: ModelInputSyncTarget;
   affectsPricing?: boolean;
   searchable?: boolean;
+  maxItems?: number;
   optionsSource?: {
     type?: string;
   };
@@ -42,6 +43,17 @@ export interface ModelReferenceInputSupport {
 export const LIBRARY_IMAGE_EXTENSIONS = ["png", "jpg", "jpeg", "webp", "gif", "bmp", "svg"];
 export const LIBRARY_VIDEO_EXTENSIONS = ["mp4", "webm", "mov", "m4v", "avi", "mkv"];
 export const LIBRARY_AUDIO_EXTENSIONS = ["mp3", "wav", "m4a", "aac", "flac", "ogg"];
+
+function parsePositiveInteger(value: unknown): number | undefined {
+  if (typeof value !== "number" && typeof value !== "string") {
+    return undefined;
+  }
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return undefined;
+  }
+  return Math.floor(parsed);
+}
 
 function normalizeGenerateType(configJson: unknown): string | null {
   if (!configJson || typeof configJson !== "object") {
@@ -320,6 +332,7 @@ export function parseModelInputFields(model: MediaModelOption | undefined): Mode
       syncWith: inferSyncTarget(key, type, explicitSyncWith),
       affectsPricing: Boolean(record.affectsPricing),
       searchable: Boolean(record.searchable),
+      maxItems: parsePositiveInteger(record.maxItems) ?? parsePositiveInteger(record.maxCount),
       optionsSource:
         record.optionsSource && typeof record.optionsSource === "object"
           ? { type: typeof (record.optionsSource as Record<string, unknown>).type === "string"
@@ -329,6 +342,58 @@ export function parseModelInputFields(model: MediaModelOption | undefined): Mode
     });
   }
   return parsed;
+}
+
+export function getModelInputField(
+  model: MediaModelOption | undefined,
+  key: string,
+): ModelInputField | undefined {
+  const normalizedKey = String(key ?? "").trim();
+  if (!normalizedKey) {
+    return undefined;
+  }
+
+  return parseModelInputFields(model).find((field) => field.key === normalizedKey);
+}
+
+export function getModelReferenceImageLimit(model: MediaModelOption | undefined): number | null {
+  const fieldLimit = parseModelInputFields(model).find((field) => (
+    field.syncWith === "reference_images" || field.type === "image_urls"
+  ))?.maxItems;
+  if (fieldLimit) {
+    return fieldLimit;
+  }
+
+  const configJson = model?.configJson;
+  if (!configJson || typeof configJson !== "object") {
+    return null;
+  }
+
+  return (
+    parsePositiveInteger((configJson as Record<string, unknown>).maxReferenceImages)
+    ?? parsePositiveInteger((configJson as Record<string, unknown>).max_reference_images)
+    ?? null
+  );
+}
+
+export function clampReferenceImagesToModelLimit<T>(
+  model: MediaModelOption | undefined,
+  referenceImages: readonly T[],
+): { items: T[]; maxItems: number | null; droppedCount: number } {
+  const maxItems = getModelReferenceImageLimit(model);
+  if (maxItems === null || referenceImages.length <= maxItems) {
+    return {
+      items: [...referenceImages],
+      maxItems,
+      droppedCount: 0,
+    };
+  }
+
+  return {
+    items: referenceImages.slice(0, maxItems),
+    maxItems,
+    droppedCount: referenceImages.length - maxItems,
+  };
 }
 
 export function mergeExtraParams(
@@ -417,7 +482,9 @@ export function applyModelSyncTargets(
       && syncValues.referenceImageUrls
       && syncValues.referenceImageUrls.length > 0
     ) {
-      next[field.key] = syncValues.referenceImageUrls;
+      next[field.key] = field.maxItems
+        ? syncValues.referenceImageUrls.slice(0, field.maxItems)
+        : syncValues.referenceImageUrls;
       continue;
     }
     if (
@@ -425,7 +492,9 @@ export function applyModelSyncTargets(
       && syncValues.referenceVideoUrls
       && syncValues.referenceVideoUrls.length > 0
     ) {
-      next[field.key] = syncValues.referenceVideoUrls;
+      next[field.key] = field.maxItems
+        ? syncValues.referenceVideoUrls.slice(0, field.maxItems)
+        : syncValues.referenceVideoUrls;
     }
   }
   return Object.keys(next).length > 0 ? next : undefined;

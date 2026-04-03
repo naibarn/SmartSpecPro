@@ -4,6 +4,15 @@ import { db, getDb } from "../db";
 import { mediaProviders } from "../../drizzle/schema";
 import { eq, asc, desc, sql } from "drizzle-orm";
 import { encrypt, decrypt } from "../services/crypto";
+import {
+  assertPublicSafeHttpUrl,
+  normalizeMediaProviderName,
+  normalizePersistedMediaProviderBaseUrl,
+  normalizeWaveSpeedBaseUrl,
+  WAVESPEED_LAUNCH_MODEL_ID,
+  WAVESPEED_LAUNCH_MODEL_NAME,
+  WAVESPEED_PROVIDER,
+} from "../services/mediaProviderUtils";
 
 // Provider templates for adding new providers
 export const PROVIDER_TEMPLATES = [
@@ -98,6 +107,22 @@ export const PROVIDER_TEMPLATES = [
       { id: "seedance-1-0-pro-250528",      name: "Seedance 1.0 Pro",      type: "video" as const, description: "Professional video generation (T2V + I2V)" },
       { id: "seedance-1-0-lite-t2v-250428", name: "Seedance 1.0 Lite T2V", type: "video" as const, description: "Lightweight text-to-video generation" },
       { id: "seedance-1-0-lite-i2v-250428", name: "Seedance 1.0 Lite I2V", type: "video" as const, description: "Lightweight image-to-video generation" },
+    ],
+  },
+  {
+    providerName: WAVESPEED_PROVIDER,
+    displayName: "WaveSpeedAI",
+    description: "WaveSpeed media-generation provider for cinematic text-to-video and image-guided video generation",
+    providerType: "multimodal" as const,
+    baseUrl: "https://api.wavespeed.ai/api/v3",
+    defaultModel: WAVESPEED_LAUNCH_MODEL_ID,
+    availableModels: [
+      {
+        id: WAVESPEED_LAUNCH_MODEL_ID,
+        name: WAVESPEED_LAUNCH_MODEL_NAME,
+        type: "video" as const,
+        description: "Cinematic async video generation with optional image guidance and native audio",
+      },
     ],
   },
   {
@@ -213,6 +238,15 @@ export const mediaProvidersRouter = router({
     }))
     .mutation(async ({ input }) => {
       const { apiKey, ...data } = input;
+      const normalizedProviderName = normalizeMediaProviderName(input.providerName);
+      const normalizedBaseUrl = normalizePersistedMediaProviderBaseUrl(
+        normalizedProviderName,
+        input.baseUrl,
+      );
+      const normalizedCallbackUrl = input.callbackUrl?.trim();
+      if (normalizedCallbackUrl) {
+        assertPublicSafeHttpUrl(normalizedCallbackUrl, "Provider callback URL", { requireHttps: true });
+      }
 
       // Get max sort order
       const [maxSort] = await db
@@ -223,6 +257,9 @@ export const mediaProvidersRouter = router({
         .insert(mediaProviders)
         .values({
           ...data,
+          providerName: normalizedProviderName,
+          baseUrl: normalizedBaseUrl,
+          callbackUrl: normalizedCallbackUrl,
           apiKeyEncrypted: apiKey ? encrypt(apiKey) : null,
           hasApiKey: !!apiKey,
           sortOrder: (maxSort?.max ?? -1) + 1,
@@ -252,14 +289,16 @@ export const mediaProvidersRouter = router({
     }))
     .mutation(async ({ input }) => {
       const { id, apiKey, callbackUrl, baseUrl, ...data } = input;
+      const needsCurrentProvider = data.isPrimary || baseUrl !== undefined;
+      const [current] = needsCurrentProvider
+        ? await db
+          .select()
+          .from(mediaProviders)
+          .where(eq(mediaProviders.id, id))
+        : [null];
 
       // If setting as primary, unset other primaries of same type
       if (data.isPrimary) {
-        const [current] = await db
-          .select()
-          .from(mediaProviders)
-          .where(eq(mediaProviders.id, id));
-
         if (current) {
           await db
             .update(mediaProviders)
@@ -275,10 +314,16 @@ export const mediaProvidersRouter = router({
 
       // Handle URL fields explicitly - allow clearing with null
       if (callbackUrl !== undefined) {
-        updateData.callbackUrl = callbackUrl; // null will clear, string will set
+        const normalizedCallbackUrl = callbackUrl?.trim() || null;
+        if (normalizedCallbackUrl) {
+          assertPublicSafeHttpUrl(normalizedCallbackUrl, "Provider callback URL", { requireHttps: true });
+        }
+        updateData.callbackUrl = normalizedCallbackUrl; // null will clear, string will set
       }
       if (baseUrl !== undefined) {
-        updateData.baseUrl = baseUrl; // null will clear, string will set
+        updateData.baseUrl = baseUrl == null
+          ? null
+          : normalizePersistedMediaProviderBaseUrl(current?.providerName ?? "", baseUrl);
       }
 
       // Only update API key if provided
@@ -341,7 +386,7 @@ export const mediaProvidersRouter = router({
 
       try {
         // Test based on provider type
-        switch (provider.providerName) {
+        switch (normalizeMediaProviderName(provider.providerName)) {
           case "kie_ai":
             result = await testKieAI(apiKey, provider.baseUrl || "https://api.kie.ai/api/v1");
             break;
@@ -355,6 +400,12 @@ export const mediaProvidersRouter = router({
             result = await testBytePlusModelArk(
               apiKey,
               provider.baseUrl || "https://ark.ap-southeast.bytepluses.com/api/v3"
+            );
+            break;
+          case WAVESPEED_PROVIDER:
+            result = await testWaveSpeedAI(
+              apiKey,
+              provider.baseUrl || "https://api.wavespeed.ai/api/v3"
             );
             break;
           case "uvoice":
@@ -455,20 +506,16 @@ export const mediaProvidersRouter = router({
 
 /** Block SSRF: reject URLs pointing to private/internal networks */
 function validateExternalUrl(url: string): void {
-  const parsed = new URL(url);
-  const hostname = parsed.hostname.toLowerCase();
-  const blocked = [
-    /^localhost$/i, /^127\.\d+\.\d+\.\d+$/, /^10\.\d+\.\d+\.\d+$/,
-    /^172\.(1[6-9]|2\d|3[01])\.\d+\.\d+$/, /^192\.168\.\d+\.\d+$/,
-    /^169\.254\.\d+\.\d+$/, /^0\.0\.0\.0$/, /^\[::1?\]$/,
-    /^::1$/, /^::ffff:127\./i, /^fe80:/i, /^fd[0-9a-f]{2}:/i,
-    /\.internal$/i, /\.local$/i,
-  ];
-  if (blocked.some(r => r.test(hostname))) {
-    throw new Error("URL points to a private/internal network address");
-  }
-  if (!["https:", "http:"].includes(parsed.protocol)) {
-    throw new Error("Only HTTP(S) URLs are allowed");
+  try {
+    assertPublicSafeHttpUrl(url);
+  } catch (error) {
+    if (error instanceof Error && /public host/i.test(error.message)) {
+      throw new Error("URL points to a private/internal network address");
+    }
+    if (error instanceof Error && /http or https/i.test(error.message)) {
+      throw new Error("Only HTTP(S) URLs are allowed");
+    }
+    throw error;
   }
 }
 
@@ -583,6 +630,76 @@ export async function testBytePlusModelArk(
     return { success: false, message: `API error: ${response.status} - ${text}`, latencyMs };
   }
   return { success: true, message: "Connection successful", latencyMs };
+}
+
+function summarizeResponseText(text: string, maxLength = 160): string {
+  const normalized = String(text ?? "").replace(/\s+/g, " ").trim();
+  if (!normalized) {
+    return "No response body";
+  }
+  return normalized.length > maxLength
+    ? `${normalized.slice(0, maxLength - 1)}...`
+    : normalized;
+}
+
+export async function testWaveSpeedAI(
+  apiKey: string,
+  baseUrl: string,
+): Promise<{ success: boolean; message: string; latencyMs?: number; balance?: number }> {
+  const normalizedBaseUrl = normalizeWaveSpeedBaseUrl(baseUrl);
+  validateExternalUrl(normalizedBaseUrl);
+  const startTime = Date.now();
+  const response = await fetch(`${normalizedBaseUrl}/balance`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      Accept: "application/json",
+    },
+  });
+  const latencyMs = Date.now() - startTime;
+
+  if (response.status === 401) {
+    return { success: false, message: "Invalid API key (401 Unauthorized)", latencyMs };
+  }
+  if (response.status === 403) {
+    return { success: false, message: "WaveSpeed account is not authorized for this resource (403 Forbidden)", latencyMs };
+  }
+  if (response.status === 429) {
+    return { success: false, message: "WaveSpeed rate limit reached (429 Too Many Requests)", latencyMs };
+  }
+
+  let payload: any = null;
+  let responseSummary = "";
+  try {
+    payload = await response.json();
+    responseSummary = summarizeResponseText(JSON.stringify(payload));
+  } catch {
+    responseSummary = summarizeResponseText(await response.text().catch(() => ""));
+  }
+
+  if (!response.ok) {
+    return {
+      success: false,
+      message: `WaveSpeed API error (HTTP ${response.status}): ${responseSummary}`,
+      latencyMs,
+    };
+  }
+
+  const balance = payload?.data?.balance;
+  if (typeof balance !== "number" || !Number.isFinite(balance)) {
+    return {
+      success: false,
+      message: "WaveSpeed balance response did not include numeric data.balance",
+      latencyMs,
+    };
+  }
+
+  return {
+    success: true,
+    message: "Connection successful",
+    latencyMs,
+    balance,
+  };
 }
 
 export async function testUVoice(

@@ -12,6 +12,7 @@ from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.backends import default_backend
 import hashlib
 import os
+import re
 
 logger = structlog.get_logger()
 
@@ -31,6 +32,25 @@ if not _RAW_KEY:
 def _derive_key(raw_key: str) -> bytes:
     """Derive 32-byte key using SHA-256 (matches SmartSpecWeb crypto.ts)."""
     return hashlib.sha256(raw_key.encode()).digest()
+
+
+def normalize_media_provider_name(provider_name: str | None) -> str:
+    normalized = re.sub(r"[\s.\-]+", "_", str(provider_name or "").strip().lower()).strip("_")
+    if not normalized:
+        return ""
+    if normalized in {"kie", "kie_ai", "kieai"}:
+        return "kie_ai"
+    if normalized in {"uvoice", "u_voice", "uvoice_ai", "uvoiceapp"}:
+        return "uvoice"
+    if normalized in {"byteplus", "modelark", "byteplus_modelark", "byteplus_model_ark"}:
+        return "byteplus_modelark"
+    if normalized in {"knplabs", "knplabai", "knplabs_ai", "knplabsai"}:
+        return "knplabai"
+    if normalized in {"fal", "fal_ai", "falai", "fal_ai_provider"}:
+        return "fal_ai"
+    if normalized in {"wavespeed_ai", "wavespeedai"}:
+        return "wavespeed_ai"
+    return normalized
 
 
 def decrypt_api_key(encrypted_text: str) -> Optional[str]:
@@ -93,10 +113,11 @@ async def get_media_provider_key(provider_name: str = "kie_ai") -> Optional[Dict
 
     # Check cache
     now = time.time()
-    if provider_name in _provider_cache:
-        if now - _last_fetch.get(provider_name, 0) < _cache_ttl:
-            logger.debug("media_provider_cache_hit", provider=provider_name)
-            return _provider_cache[provider_name]
+    normalized_provider_name = normalize_media_provider_name(provider_name)
+    if normalized_provider_name in _provider_cache:
+        if now - _last_fetch.get(normalized_provider_name, 0) < _cache_ttl:
+            logger.debug("media_provider_cache_hit", provider=normalized_provider_name)
+            return _provider_cache[normalized_provider_name]
 
     try:
         async with AsyncSessionLocal() as session:
@@ -111,23 +132,37 @@ async def get_media_provider_key(provider_name: str = "kie_ai") -> Optional[Dict
                       AND "isEnabled" = true
                     LIMIT 1
                 '''),
-                {"provider_name": provider_name}
+                {"provider_name": normalized_provider_name}
             )
             row = result.fetchone()
 
             if not row:
-                logger.warning("media_provider_not_found", provider=provider_name)
+                fallback_result = await session.execute(
+                    text('''
+                        SELECT "providerName", "displayName", "apiKeyEncrypted",
+                               "baseUrl", "callbackUrl", "configJson", "isEnabled", "hasApiKey"
+                        FROM media_providers
+                        WHERE "isEnabled" = true
+                    ''')
+                )
+                for candidate in fallback_result.fetchall():
+                    if normalize_media_provider_name(candidate[0]) == normalized_provider_name:
+                        row = candidate
+                        break
+
+            if not row:
+                logger.warning("media_provider_not_found", provider=normalized_provider_name)
                 return None
 
             # Decrypt API key
             api_key_encrypted = row[2]  # apiKeyEncrypted
             if not api_key_encrypted:
-                logger.warning("media_provider_no_api_key", provider=provider_name)
+                logger.warning("media_provider_no_api_key", provider=normalized_provider_name)
                 return None
 
             api_key = decrypt_api_key(api_key_encrypted)
             if not api_key:
-                logger.error("media_provider_decrypt_failed", provider=provider_name)
+                logger.error("media_provider_decrypt_failed", provider=normalized_provider_name)
                 return None
 
             result_data = {
@@ -140,12 +175,12 @@ async def get_media_provider_key(provider_name: str = "kie_ai") -> Optional[Dict
             }
 
             # Update cache
-            _provider_cache[provider_name] = result_data
-            _last_fetch[provider_name] = now
+            _provider_cache[normalized_provider_name] = result_data
+            _last_fetch[normalized_provider_name] = now
 
             logger.info(
                 "media_provider_key_fetched",
-                provider=provider_name,
+                provider=normalized_provider_name,
                 has_base_url=bool(result_data.get("baseUrl"))
             )
             return result_data
@@ -153,7 +188,7 @@ async def get_media_provider_key(provider_name: str = "kie_ai") -> Optional[Dict
     except Exception as e:
         logger.error(
             "media_provider_fetch_error",
-            provider=provider_name,
+            provider=normalized_provider_name,
             error=str(e)
         )
         return None

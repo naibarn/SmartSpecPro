@@ -108,6 +108,38 @@ class ModelsListResponse(BaseModel):
     total: int
 
 
+def _coerce_json_dict(value: Any) -> dict[str, Any]:
+    if isinstance(value, dict):
+        return dict(value)
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+        except json.JSONDecodeError:
+            return {}
+        return dict(parsed) if isinstance(parsed, dict) else {}
+    return {}
+
+
+def _detect_task_provider(task: MediaTask) -> str:
+    result_data = _coerce_json_dict(task.result_data)
+    submission = result_data.get("submission")
+    if isinstance(submission, dict):
+        provider = submission.get("provider")
+        if isinstance(provider, str) and provider.strip():
+            return provider.strip().lower()
+
+    response = result_data.get("response")
+    if isinstance(response, dict):
+        provider = response.get("provider")
+        if isinstance(provider, str) and provider.strip():
+            return provider.strip().lower()
+
+    model = str(task.model or "").strip().lower()
+    if model.startswith("wavespeed-ai/"):
+        return "wavespeed_ai"
+    return "kie_ai"
+
+
 def _normalize_kie_task_state(status_response: dict) -> tuple[str, str]:
     """
     Normalize Kie task state to one of: success, fail, processing, unknown.
@@ -665,13 +697,57 @@ async def fetch_task_result(
             "fetched": False
         }
 
-    # Get external task ID (Kie.ai task ID)
+    # Get external task ID (provider task ID)
     external_task_id = task.task_id
     if not external_task_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Missing provider_task_id for this task. Result queries require provider_task_id."
         )
+
+    provider_name = _detect_task_provider(task)
+    if provider_name == "wavespeed_ai":
+        from app.tasks.media_tasks import _poll_wavespeed_video_task_async
+
+        try:
+            poll_result = await _poll_wavespeed_video_task_async(task_id, schedule_next_poll=False)
+            await db.refresh(task)
+        except Exception as e:
+            logger.error("fetch_task_result_wavespeed_error", task_id=task_id, external_task_id=external_task_id, error=str(e))
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to fetch task result: {str(e)}"
+            )
+
+        poll_status = str(poll_result.get("status") or "").strip().lower()
+        if task.result_url and task.status == TaskStatus.COMPLETED.value:
+            return {
+                "success": True,
+                "message": "Task completed, result fetched",
+                "task": TaskResponse(**task.to_dict()),
+                "fetched": poll_status != "terminal",
+                "provider_state": "completed",
+            }
+
+        if task.status == TaskStatus.FAILED.value:
+            error_message = task.error_message or "Task failed on WaveSpeed"
+            return {
+                "success": False,
+                "message": f"Task failed: {error_message}",
+                "task": TaskResponse(**task.to_dict()),
+                "fetched": poll_status == "failed",
+                "provider_state": "failed",
+            }
+
+        polling_state = _coerce_json_dict(task.result_data).get("polling")
+        raw_status = polling_state.get("raw_status") if isinstance(polling_state, dict) else None
+        return {
+            "success": True,
+            "message": f"Task still in progress (state: {raw_status or poll_status or 'processing'})",
+            "task": TaskResponse(**task.to_dict()),
+            "fetched": False,
+            "provider_state": raw_status or poll_status or "processing",
+        }
 
     # Initialize Kie.ai client
     from app.services.media_provider_service import initialize_kie_ai_client

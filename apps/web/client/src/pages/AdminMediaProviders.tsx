@@ -202,6 +202,9 @@ export default function AdminMediaProviders() {
     },
   });
 
+  const configuredProviderNames = new Set(providers.map((provider) => provider.providerName));
+  const availableTemplates = templates.filter((template) => !configuredProviderNames.has(template.providerName));
+
   const resetForm = () => {
     setFormData({
       displayName: "",
@@ -234,6 +237,11 @@ export default function AdminMediaProviders() {
       priority: 0,
     });
     setEditingModels(template.availableModels || []);
+  };
+
+  const handleStartFromTemplate = (template: ProviderTemplate) => {
+    setIsCreateDialogOpen(true);
+    handleSelectTemplate(template);
   };
 
   const handleEditProvider = (provider: Provider) => {
@@ -404,6 +412,51 @@ export default function AdminMediaProviders() {
         </div>
       )}
 
+      {availableTemplates.length > 0 && (
+        <DashboardCard className="mb-8">
+          <div>
+            <h3>Available Templates</h3>
+            <p>
+              Built-in provider templates that are ready to add. WaveSpeed and the other providers here
+              will not appear in the configured list until a provider row is created.
+            </p>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {availableTemplates.map((template) => (
+              <DashboardCard key={template.providerName} className="border-dashed">
+                <div className="pb-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
+                        {getProviderTypeIcon(template.providerType)}
+                      </div>
+                      <div>
+                        <h3 className="text-base">{template.displayName}</h3>
+                        <p className="text-xs text-muted-foreground">{template.providerName}</p>
+                      </div>
+                    </div>
+                    <Badge className={getProviderTypeBadgeColor(template.providerType)}>
+                      {template.providerType}
+                    </Badge>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">{template.description}</p>
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>{template.availableModels?.length || 0} models</span>
+                    <span>{template.baseUrl}</span>
+                  </div>
+                  <Button size="sm" onClick={() => handleStartFromTemplate(template)}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Template
+                  </Button>
+                </div>
+              </DashboardCard>
+            ))}
+          </div>
+        </DashboardCard>
+      )}
+
       {/* Providers List */}
       <DashboardCard>
         <div>
@@ -546,7 +599,7 @@ export default function AdminMediaProviders() {
 
       {/* Create Provider Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="flex max-h-[90vh] max-w-2xl flex-col overflow-hidden">
           <DialogHeader>
             <DialogTitle>Add Media Provider</DialogTitle>
             <DialogDescription>
@@ -554,54 +607,59 @@ export default function AdminMediaProviders() {
             </DialogDescription>
           </DialogHeader>
 
-          {!selectedTemplate ? (
-            <div className="grid gap-4 py-4">
-              {templates.map((template) => (
-                <DashboardCard
-                  key={template.providerName}
-                  className="cursor-pointer hover:border-primary transition-colors"
-                  onClick={() => handleSelectTemplate(template)}
-                >
-                  <div className="pb-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
-                          {getProviderTypeIcon(template.providerType)}
-                        </div>
-                        <div>
-                          <h3 className="text-lg">{template.displayName}</h3>
-                          <Badge className={getProviderTypeBadgeColor(template.providerType)}>
-                            {template.providerType}
-                          </Badge>
+          <div className="flex-1 overflow-y-auto pr-1">
+            {!selectedTemplate ? (
+              <div className="grid gap-4 py-4">
+                {templates.map((template) => (
+                  <button
+                    type="button"
+                    key={template.providerName}
+                    className="text-left"
+                    onClick={() => handleSelectTemplate(template)}
+                  >
+                    <DashboardCard className="cursor-pointer hover:border-primary transition-colors">
+                      <div className="pb-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
+                              {getProviderTypeIcon(template.providerType)}
+                            </div>
+                            <div>
+                              <h3 className="text-lg">{template.displayName}</h3>
+                              <Badge className={getProviderTypeBadgeColor(template.providerType)}>
+                                {template.providerType}
+                              </Badge>
+                            </div>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">{template.description}</p>
-                  </div>
-                </DashboardCard>
-              ))}
-            </div>
-          ) : (
-            <ProviderForm
-              formData={formData}
-              setFormData={setFormData}
-              editingModels={editingModels}
-              setEditingModels={setEditingModels}
-              newModel={newModel}
-              setNewModel={setNewModel}
-              deleteModelConfirm={deleteModelConfirm}
-              setDeleteModelConfirm={setDeleteModelConfirm}
-              handleAddModel={handleAddModel}
-              handleRemoveModel={handleRemoveModel}
-              activeTab={activeTab}
-              setActiveTab={setActiveTab}
-              isNew={true}
-              providerName={selectedTemplate.providerName}
-              suggestedKieCallbackUrl={suggestedKieCallbackUrl}
-            />
-          )}
+                      <div>
+                        <p className="text-sm text-muted-foreground">{template.description}</p>
+                      </div>
+                    </DashboardCard>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <ProviderForm
+                formData={formData}
+                setFormData={setFormData}
+                editingModels={editingModels}
+                setEditingModels={setEditingModels}
+                newModel={newModel}
+                setNewModel={setNewModel}
+                deleteModelConfirm={deleteModelConfirm}
+                setDeleteModelConfirm={setDeleteModelConfirm}
+                handleAddModel={handleAddModel}
+                handleRemoveModel={handleRemoveModel}
+                activeTab={activeTab}
+                setActiveTab={setActiveTab}
+                isNew={true}
+                providerName={selectedTemplate.providerName}
+                suggestedKieCallbackUrl={suggestedKieCallbackUrl}
+              />
+            )}
+          </div>
 
           <DialogFooter>
             <Button
@@ -632,7 +690,7 @@ export default function AdminMediaProviders() {
 
       {/* Edit Provider Dialog */}
       <Dialog open={!!editingProvider} onOpenChange={(open) => !open && setEditingProvider(null)}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="flex max-h-[90vh] max-w-2xl flex-col overflow-hidden">
           <DialogHeader>
             <DialogTitle>Edit Provider - {editingProvider?.displayName}</DialogTitle>
             <DialogDescription>
@@ -640,23 +698,25 @@ export default function AdminMediaProviders() {
             </DialogDescription>
           </DialogHeader>
 
-          <ProviderForm
-            formData={formData}
-            setFormData={setFormData}
-            editingModels={editingModels}
-            setEditingModels={setEditingModels}
-            newModel={newModel}
-            setNewModel={setNewModel}
-            deleteModelConfirm={deleteModelConfirm}
-            setDeleteModelConfirm={setDeleteModelConfirm}
-            handleAddModel={handleAddModel}
-            handleRemoveModel={handleRemoveModel}
-            activeTab={activeTab}
-            setActiveTab={setActiveTab}
-            isNew={false}
-            providerName={editingProvider?.providerName}
-            suggestedKieCallbackUrl={suggestedKieCallbackUrl}
-          />
+          <div className="flex-1 overflow-y-auto pr-1">
+            <ProviderForm
+              formData={formData}
+              setFormData={setFormData}
+              editingModels={editingModels}
+              setEditingModels={setEditingModels}
+              newModel={newModel}
+              setNewModel={setNewModel}
+              deleteModelConfirm={deleteModelConfirm}
+              setDeleteModelConfirm={setDeleteModelConfirm}
+              handleAddModel={handleAddModel}
+              handleRemoveModel={handleRemoveModel}
+              activeTab={activeTab}
+              setActiveTab={setActiveTab}
+              isNew={false}
+              providerName={editingProvider?.providerName}
+              suggestedKieCallbackUrl={suggestedKieCallbackUrl}
+            />
+          </div>
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditingProvider(null)}>

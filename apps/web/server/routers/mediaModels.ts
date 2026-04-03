@@ -10,8 +10,13 @@ import { mediaModels, mediaProviders } from "../../drizzle/schema";
 import { eq, asc, desc, and, ilike, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { clearModelCache } from "../services/modelRegistry";
+import { getStaticFallbackModels, getStaticModelById } from "../services/modelRegistry";
 import { clearSkillRegistryCache } from "../services/skillRegistry";
 import { decrypt } from "../services/crypto";
+import {
+  normalizeMediaProviderName,
+  sanitizeMediaModelConfigJson,
+} from "../services/mediaProviderUtils";
 import {
   getMediaModelResolutionCounters,
   resetMediaModelResolutionCounters,
@@ -27,6 +32,13 @@ import {
 
 // Zod schemas
 const mediaModelTypeSchema = z.enum(["image", "video", "audio"]);
+
+const adminModelListFiltersSchema = z.object({
+  type: mediaModelTypeSchema.optional(),
+  provider: z.string().optional(),
+  search: z.string().optional(),
+  includeDisabled: z.boolean().default(true),
+});
 
 const createModelSchema = z.object({
   modelId: z.string().min(1).max(128),
@@ -99,35 +111,17 @@ type MediaModelProviderReadiness =
   | "missing_api_key"
   | "test_failed";
 
-const modelFieldOptionsCache = new Map<string, { expiresAt: number; options: ModelFieldOption[] }>();
+type AdminModelFilterInput = z.infer<typeof adminModelListFiltersSchema> | undefined;
 
-function normalizeMediaProviderName(providerName: string | null | undefined): string {
-  const normalized = String(providerName ?? "")
-    .trim()
-    .toLowerCase()
-    .replace(/[\s.-]+/g, "_");
-  if (!normalized) {
-    return "";
-  }
-  if (normalized === "kie" || normalized === "kie_ai" || normalized === "kieai") {
-    return "kie_ai";
-  }
-  if (normalized === "uvoice" || normalized === "u_voice" || normalized === "uvoice_ai" || normalized === "uvoiceapp") {
-    return "uvoice";
-  }
-  if (
-    normalized === "byteplus"
-    || normalized === "modelark"
-    || normalized === "byteplus_modelark"
-    || normalized === "byteplus_model_ark"
-  ) {
-    return "byteplus_modelark";
-  }
-  if (normalized === "knplabs" || normalized === "knplabai" || normalized === "knplabs_ai") {
-    return "knplabai";
-  }
-  return normalized;
-}
+type AdminModelListCandidate = {
+  modelId: string;
+  name: string;
+  modelType: "image" | "video" | "audio";
+  provider: string;
+  isEnabled: boolean;
+};
+
+const modelFieldOptionsCache = new Map<string, { expiresAt: number; options: ModelFieldOption[] }>();
 
 function getProviderReadiness(provider: MediaProviderStatusRow | undefined): {
   providerReady: boolean;
@@ -202,6 +196,102 @@ function dedupeFieldOptions(options: ModelFieldOption[]): ModelFieldOption[] {
   return deduped;
 }
 
+function normalizeCatalogLookupKey(value: string | null | undefined): string {
+  return String(value ?? "").trim().toLowerCase();
+}
+
+function matchesAdminModelFilters(
+  model: AdminModelListCandidate,
+  input: AdminModelFilterInput,
+): boolean {
+  if (input?.type && model.modelType !== input.type) {
+    return false;
+  }
+
+  if (input?.provider && normalizeMediaProviderName(model.provider) !== normalizeMediaProviderName(input.provider)) {
+    return false;
+  }
+
+  if (input && input.includeDisabled === false && !model.isEnabled) {
+    return false;
+  }
+
+  const search = input?.search?.trim().toLowerCase();
+  if (search) {
+    const name = model.name.toLowerCase();
+    const modelId = model.modelId.toLowerCase();
+    if (!name.includes(search) && !modelId.includes(search)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function collectStaticModelLookupKeys(
+  modelId: string,
+  configJson: Record<string, unknown> | null | undefined,
+): string[] {
+  const keys = new Set<string>();
+
+  const addKey = (value: unknown) => {
+    if (typeof value !== "string") {
+      return;
+    }
+    const trimmed = value.trim();
+    if (trimmed) {
+      keys.add(trimmed);
+    }
+  };
+
+  addKey(modelId);
+  if (configJson && typeof configJson === "object") {
+    addKey(configJson.kieModelId);
+    addKey(configJson.providerModelId);
+    addKey(configJson.modelId);
+
+    const apiConfig = configJson.apiConfig;
+    if (apiConfig && typeof apiConfig === "object") {
+      const apiConfigRecord = apiConfig as Record<string, unknown>;
+      addKey(apiConfigRecord.kieModelId);
+      addKey(apiConfigRecord.providerModelId);
+      addKey(apiConfigRecord.modelId);
+    }
+  }
+
+  return Array.from(keys);
+}
+
+function findStaticModelConfigJson(
+  modelId: string,
+  configJson: Record<string, unknown> | null | undefined,
+): Record<string, unknown> | undefined {
+  for (const candidate of collectStaticModelLookupKeys(modelId, configJson)) {
+    const staticConfig = getStaticModelById(candidate)?.configJson;
+    if (staticConfig) {
+      return staticConfig;
+    }
+  }
+  return undefined;
+}
+
+function mergeStaticModelConfigJson(
+  modelId: string,
+  configJson: Record<string, unknown> | null | undefined,
+): Record<string, unknown> | null {
+  const staticConfig = findStaticModelConfigJson(modelId, configJson);
+  const dbConfig = configJson && typeof configJson === "object" ? configJson : null;
+
+  if (!staticConfig && !dbConfig) {
+    return null;
+  }
+
+  return {
+    ...(staticConfig ?? {}),
+    ...(dbConfig ?? {}),
+  };
+}
+
 function applyOptionValueTransform(value: unknown, transform?: "none" | "before_dash"): string {
   if (typeof value !== "string") {
     return "";
@@ -234,14 +324,19 @@ function interpolateTemplateValue(template: unknown, query: string): unknown {
 }
 
 async function resolveProviderConnection(providerName: string): Promise<{ baseUrl: string; apiKey: string } | null> {
-  const [provider] = await db
+  const normalizedProviderName = normalizeMediaProviderName(providerName);
+  const providers = await db
     .select({
+      providerName: mediaProviders.providerName,
       baseUrl: mediaProviders.baseUrl,
       apiKeyEncrypted: mediaProviders.apiKeyEncrypted,
     })
     .from(mediaProviders)
-    .where(eq(mediaProviders.providerName, providerName))
-    .limit(1);
+    .limit(200);
+
+  const provider = providers.find((candidate: { providerName: string | null }) => (
+    normalizeMediaProviderName(candidate.providerName) === normalizedProviderName
+  ));
 
   if (!provider?.baseUrl || !provider.apiKeyEncrypted) {
     return null;
@@ -369,12 +464,7 @@ export const mediaModelsRouter = router({
    * List all models (admin)
    */
   adminList: adminProcedure
-    .input(z.object({
-      type: mediaModelTypeSchema.optional(),
-      provider: z.string().optional(),
-      search: z.string().optional(),
-      includeDisabled: z.boolean().default(true),
-    }).optional())
+    .input(adminModelListFiltersSchema.optional())
     .query(async ({ input }) => {
       try {
         const conditions = [];
@@ -424,12 +514,84 @@ export const mediaModelsRouter = router({
           const readiness = getProviderReadiness(provider);
           return {
             ...model,
+            configJson: mergeStaticModelConfigJson(model.modelId, model.configJson as Record<string, unknown> | null | undefined),
             ...readiness,
             providerConfigFound: Boolean(provider),
           };
         });
       } catch (error: any) {
         console.warn("[MediaModels] List query failed:", error.message);
+        return [];
+      }
+    }),
+
+  /**
+   * List static fallback model templates that are not yet imported into the DB.
+   */
+  adminTemplates: adminProcedure
+    .input(adminModelListFiltersSchema.optional())
+    .query(async ({ input }) => {
+      try {
+        const [existingRows, providers] = await Promise.all([
+          db
+            .select({ modelId: mediaModels.modelId })
+            .from(mediaModels),
+          db
+            .select({
+              providerName: mediaProviders.providerName,
+              displayName: mediaProviders.displayName,
+              isEnabled: mediaProviders.isEnabled,
+              hasApiKey: mediaProviders.hasApiKey,
+              lastTestResult: mediaProviders.lastTestResult,
+            })
+            .from(mediaProviders)
+            .orderBy(asc(mediaProviders.sortOrder), asc(mediaProviders.displayName)),
+        ]);
+
+        const existingModelIds = new Set(
+          existingRows.map((row: { modelId: string | null }) => normalizeCatalogLookupKey(row.modelId)),
+        );
+
+        const providerRows = providers as MediaProviderStatusRow[];
+        const providersByName = new Map<string, MediaProviderStatusRow>(
+          providerRows.map((provider: MediaProviderStatusRow) => [normalizeMediaProviderName(provider.providerName), provider]),
+        );
+
+        return getStaticFallbackModels()
+          .map((template) => {
+            const provider = providersByName.get(normalizeMediaProviderName(template.provider));
+            const readiness = getProviderReadiness(provider);
+
+            return {
+              modelId: template.id,
+              name: template.name,
+              description: template.description || null,
+              modelType: template.type,
+              provider: normalizeMediaProviderName(template.provider),
+              aliases: template.aliases,
+              creditCost: template.creditCost,
+              aspectRatios: template.aspectRatios ?? null,
+              sizes: template.sizes ?? null,
+              durations: template.durations ?? null,
+              voices: template.voices ?? null,
+              configJson: template.configJson ?? null,
+              isEnabled: template.isEnabled !== false,
+              priority: template.priority ?? 99,
+              sortOrder: template.priority ?? 99,
+              providerConfigFound: Boolean(provider),
+              ...readiness,
+            };
+          })
+          .filter((template) => !existingModelIds.has(normalizeCatalogLookupKey(template.modelId)))
+          .filter((template) => matchesAdminModelFilters(template, input))
+          .sort((a, b) => (
+            a.modelType.localeCompare(b.modelType)
+            || a.sortOrder - b.sortOrder
+            || a.priority - b.priority
+            || a.name.localeCompare(b.name)
+          ));
+      } catch (error: any) {
+        console.warn("[MediaModels] Template query failed:", error.message);
         return [];
       }
     }),
@@ -452,7 +614,10 @@ export const mediaModelsRouter = router({
         });
       }
 
-      return model;
+      return {
+        ...model,
+        configJson: mergeStaticModelConfigJson(model.modelId, model.configJson as Record<string, unknown> | null | undefined),
+      };
     }),
 
   /**
@@ -466,7 +631,12 @@ export const mediaModelsRouter = router({
         .from(mediaModels)
         .where(eq(mediaModels.modelId, input.modelId));
 
-      return model || null;
+      return model
+        ? {
+          ...model,
+          configJson: mergeStaticModelConfigJson(model.modelId, model.configJson as Record<string, unknown> | null | undefined),
+        }
+        : null;
     }),
 
   /**
@@ -475,6 +645,8 @@ export const mediaModelsRouter = router({
   create: adminProcedure
     .input(createModelSchema)
     .mutation(async ({ input }) => {
+      const configJson = sanitizeMediaModelConfigJson(input.configJson as Record<string, unknown> | null | undefined);
+
       // Check if modelId already exists
       const [existing] = await db
         .select()
@@ -495,14 +667,14 @@ export const mediaModelsRouter = router({
           name: input.name,
           description: input.description,
           modelType: input.modelType,
-          provider: input.provider,
+          provider: normalizeMediaProviderName(input.provider),
           aliases: input.aliases,
           creditCost: input.creditCost,
           aspectRatios: input.aspectRatios,
           sizes: input.sizes,
           durations: input.durations,
           voices: input.voices,
-          configJson: input.configJson,
+          configJson,
           isEnabled: input.isEnabled,
           priority: input.priority,
           sortOrder: input.sortOrder,
@@ -517,12 +689,87 @@ export const mediaModelsRouter = router({
     }),
 
   /**
+   * Import a static fallback model template into the DB-backed admin catalog.
+   */
+  importTemplate: adminProcedure
+    .input(z.object({ modelId: z.string().min(1).max(128) }))
+    .mutation(async ({ input }) => {
+      const template = getStaticFallbackModels().find((candidate) => candidate.id === input.modelId);
+      if (!template) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: `Static model template '${input.modelId}' not found`,
+        });
+      }
+
+      const [existing] = await db
+        .select()
+        .from(mediaModels)
+        .where(eq(mediaModels.modelId, input.modelId));
+
+      if (existing) {
+        return {
+          imported: false,
+          model: {
+            ...existing,
+            configJson: mergeStaticModelConfigJson(
+              existing.modelId,
+              existing.configJson as Record<string, unknown> | null | undefined,
+            ),
+          },
+        };
+      }
+
+      const configJson = sanitizeMediaModelConfigJson(
+        (template.configJson as Record<string, unknown> | null | undefined) ?? undefined,
+      );
+
+      const [created] = await db
+        .insert(mediaModels)
+        .values({
+          modelId: template.id,
+          name: template.name,
+          description: template.description,
+          modelType: template.type,
+          provider: normalizeMediaProviderName(template.provider),
+          aliases: template.aliases,
+          creditCost: template.creditCost,
+          aspectRatios: template.aspectRatios,
+          sizes: template.sizes,
+          durations: template.durations,
+          voices: template.voices,
+          configJson,
+          isEnabled: template.isEnabled !== false,
+          priority: template.priority ?? 99,
+          sortOrder: template.priority ?? 99,
+        })
+        .returning();
+
+      clearModelCache();
+      clearSkillRegistryCache();
+
+      return {
+        imported: true,
+        model: {
+          ...created,
+          configJson: mergeStaticModelConfigJson(
+            created.modelId,
+            created.configJson as Record<string, unknown> | null | undefined,
+          ),
+        },
+      };
+    }),
+
+  /**
    * Update model
    */
   update: adminProcedure
     .input(updateModelSchema)
     .mutation(async ({ input }) => {
       const { id, ...data } = input;
+      const configJson = data.configJson === undefined
+        ? undefined
+        : sanitizeMediaModelConfigJson(data.configJson as Record<string, unknown> | null | undefined);
 
       // Check if model exists
       const [existing] = await db
@@ -556,6 +803,8 @@ export const mediaModelsRouter = router({
         .update(mediaModels)
         .set({
           ...data,
+          ...(data.provider ? { provider: normalizeMediaProviderName(data.provider) } : {}),
+          ...(configJson !== undefined ? { configJson } : {}),
           updatedAt: new Date(),
         })
         .where(eq(mediaModels.id, id))
@@ -857,7 +1106,13 @@ export const mediaModelsRouter = router({
         // Get unique providers for grouping
         const providers = [...new Set(models.map((m: (typeof models)[number]) => m.provider))];
 
-        return { models, providers };
+        return {
+          models: models.map((model: (typeof models)[number]) => ({
+            ...model,
+            configJson: mergeStaticModelConfigJson(model.modelId, model.configJson as Record<string, unknown> | null | undefined),
+          })),
+          providers,
+        };
       } catch (error: any) {
         console.warn("[MediaModels] Public list query failed:", error.message);
         return { models: [], providers: [] };

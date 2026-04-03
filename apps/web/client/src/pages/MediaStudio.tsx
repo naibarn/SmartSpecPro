@@ -9,7 +9,6 @@ import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { HelpButton } from "@/components/help";
 import { LocaleToggle } from "@/components/LocaleToggle";
-import { pickEnabledModelId } from "@/lib/enabledModelSelection";
 import { useAuth } from "@/contexts/AuthContext";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import { Button } from "@/components/ui/button";
@@ -21,7 +20,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectSeparator,
   SelectTrigger,
   SelectValue,
@@ -47,6 +48,10 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+  Collapsible,
+  CollapsibleContent,
+} from "@/components/ui/collapsible";
+import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -57,6 +62,7 @@ import {
   DashboardSectionHeader,
   DashboardSurface,
 } from "@/components/dashboard";
+import { StoryboardBatchReviewDialog, type StoryboardReviewTask } from "@/components/media/StoryboardBatchReviewDialog";
 import {
   Sparkles,
   Image,
@@ -92,6 +98,7 @@ import {
   Maximize2,
   Copy,
   CheckCircle,
+  Pencil,
   Search,
   Languages,
   Mic,
@@ -109,7 +116,10 @@ import { GenerationProgress, type GenerationTask as QueueGenerationTask } from "
 import { clearTenantPageCache } from "@/hooks/useTenantPage";
 import ModelSelectorDialog from "@/components/media/ModelSelectorDialog";
 import LibrarySearchPanel from "@/components/media/LibrarySearchPanel";
+import { ContentComposerPanel } from "@/components/media/ContentComposerPanel";
+import { RenderProgressDialog } from "@/components/videoeditor/RenderProgressDialog";
 import { usePushToTalk } from "@/hooks/usePushToTalk";
+import { AUTO_MODEL } from "@/lib/chatModelSelection";
 import {
   buildTaskLibraryErrorState,
   buildTaskLibraryStateFromAddResult,
@@ -117,9 +127,11 @@ import {
   getAddToLibrarySuccessMessage,
   getLibraryStatusMeta as getLibraryItemStatusMeta,
   isMediaTaskEligibleForLibraryAdd,
+  type LibraryItemTypeFilter,
   type LibrarySearchResultItem,
   type TaskLibraryUIState,
 } from "@/lib/libraryUi";
+import { isVideoMediaUrl } from "@/lib/media";
 import {
   isMediaStudioSkillCompatible,
   sortMediaStudioSkillsForTab,
@@ -129,11 +141,35 @@ import {
   pickMediaStudioSkillForTab,
 } from "@/lib/mediaStudioSelection";
 import {
+  collectGenerationQueueTaskIdentityCandidates,
+  getGenerationQueueIdentityCandidates,
+  isActiveGenerationQueueStatus,
+  isGenerationQueueTaskDismissed,
+  isTerminalGenerationQueueStatus,
+  mergeGenerationQueueTasks,
+  shouldIncludeHistoryTaskInGenerationQueue,
+} from "@/lib/mediaStudioGenerationQueue";
+import {
+  buildMediaStudioProviderAutoOptions,
+  formatMediaStudioModelLabel,
+  groupMediaStudioModelsByProvider,
+  resolveMediaStudioAutoPromptSelection,
+  type MediaStudioVisionModelOption,
+} from "@/lib/mediaStudioAutoPromptSelection";
+import { applySharedContextToMultiVideoText, parseMultiVideoPrompts, splitMultiVideoPromptOutput } from "@/lib/mediaStudioPromptParsing";
+import { buildStoryboardVideoProject } from "@/lib/storyboardVideoProject";
+import {
+  clampReferenceImagesToModelLimit,
   getAllowedLibraryExtensionsForField,
   getModelGenerationModeLabel,
+  getModelInputField,
+  getModelReferenceImageLimit,
   getModelReferenceInputSupport,
 } from "@/lib/mediaModelInputs";
 import { buildMediaStudioCommonPayload } from "@/lib/mediaStudioPayload";
+import { buildPricingTierKey } from "@shared/mediaModelPricing";
+import { videoEditorRenderService } from "@/services/videoEditorService";
+import { sanitizeProjectName } from "@smartspec/shared";
 
 import DynamicSkillForm, { type SkillInputSchema, type StyleAction } from "@/components/media/DynamicSkillForm";
 import { LibraryFilePicker } from "@/components/library/LibraryFilePicker";
@@ -157,6 +193,7 @@ import {
 type MediaType = "image" | "video" | "audio";
 type LibraryRecentDaysFilter = "all" | 1 | 3 | 7 | 15 | 30;
 type StudioSidebarTab = "history" | "library";
+type HistoryGalleryTab = "image" | "video";
 
 interface ReferenceImage {
   url: string;
@@ -170,12 +207,26 @@ interface ReferenceVideo {
 
 interface GeneratedMedia {
   id: string;
+  taskId?: string;
   type: MediaType;
   url: string;
   prompt: string;
   model: string;
   createdAt: string;
   creditsUsed?: number;
+}
+
+interface StoryboardVideoGenerationContext {
+  aspectRatio: string;
+  duration?: number;
+  model?: string;
+  referenceImages: ReferenceImage[];
+  referenceVideos: ReferenceVideo[];
+  extraParams?: Record<string, any>;
+  apiConfig?: Record<string, string>;
+  resolution?: string;
+  referenceVideoUrl?: string;
+  useReferenceVideoUrlFallback?: boolean;
 }
 
 // Track individual image generation tasks for progressive preview
@@ -193,6 +244,7 @@ interface GenerationTask {
   backendTaskId?: string;
   providerTaskId?: string;
   statusDetail?: string;
+  storyboardContext?: StoryboardVideoGenerationContext;
 }
 
 interface StyleOption {
@@ -258,7 +310,7 @@ const createDefaultTabState = (mediaType: MediaType): TabState => ({
   numImages: 1,
   aspectRatio: mediaType === "video" ? (localStorage.getItem("smartspec_aspect_video") || "16:9") : (localStorage.getItem("smartspec_aspect_image") || "1:1"),
   duration: parseInt(localStorage.getItem("smartspec_duration_video") || "5", 10),
-  selectedLlmModel: "",
+  selectedLlmModel: AUTO_MODEL,
   skillInitialized: false,
   modelInitialized: false,
 });
@@ -634,10 +686,10 @@ type MediaHistoryTaskLite = {
   updatedAt?: string | null;
 };
 
-function parseTimestampMs(value?: string | null): number {
-  if (!value) return 0;
-  const parsed = Date.parse(value);
-  return Number.isNaN(parsed) ? 0 : parsed;
+function sleepMs(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
 }
 
 function normalizeQueueStatus(status: string | undefined | null): QueueGenerationTask["status"] {
@@ -700,6 +752,7 @@ export default function MediaStudio() {
 
   // Active tab state
   const [activeTab, setActiveTab] = useState<MediaType>("image");
+  const [isComposerOpen, setIsComposerOpen] = useState(false);
   const [attachTarget, setAttachTarget] = useState<{ kind: "blog" | "page"; id: string } | null>(null);
   const [isAttachingContent, setIsAttachingContent] = useState(false);
   const autoGenerateRequestRef = useRef<{ tab: MediaType; prompt: string; model?: string } | null>(null);
@@ -966,6 +1019,9 @@ export default function MediaStudio() {
   const selectedLlmModel = currentTabState.selectedLlmModel;
   const skillInitialized = currentTabState.skillInitialized;
   const modelInitialized = currentTabState.modelInitialized;
+  const currentPromptBundle = useMemo(() => splitMultiVideoPromptOutput((enhancedPrompt || prompt).trim()), [enhancedPrompt, prompt]);
+  const [referenceNotesEditorOpen, setReferenceNotesEditorOpen] = useState(false);
+  const [referenceNotesDraft, setReferenceNotesDraft] = useState("");
 
   // Setter functions that update the current tab's state
   const setPrompt = useCallback((value: string | ((prev: string) => string)) => {
@@ -1034,6 +1090,32 @@ export default function MediaStudio() {
   const setSkillInitialized = useCallback((value: boolean) => updateTabState('skillInitialized', value), [updateTabState]);
   const setModelInitialized = useCallback((value: boolean) => updateTabState('modelInitialized', value), [updateTabState]);
 
+  const applySharedReferenceNotes = useCallback((sharedContext: string) => {
+    const currentText = promptTextareaRef.current?.value?.trim() || (enhancedPrompt || prompt).trim();
+    const updatedText = applySharedContextToMultiVideoText(currentText, sharedContext);
+
+    if (enhancedPrompt) {
+      setEnhancedPrompt(updatedText);
+    } else {
+      setPrompt(updatedText);
+    }
+  }, [enhancedPrompt, prompt, setEnhancedPrompt, setPrompt]);
+
+  const openReferenceNotesEditor = useCallback(() => {
+    setReferenceNotesDraft(currentPromptBundle.sharedContext);
+    setReferenceNotesEditorOpen(true);
+  }, [currentPromptBundle.sharedContext]);
+
+  const regenerateReferenceNotes = useCallback(() => {
+    setReferenceNotesDraft(currentPromptBundle.sharedContext);
+    setReferenceNotesEditorOpen(true);
+  }, [currentPromptBundle.sharedContext]);
+
+  const saveReferenceNotes = useCallback(() => {
+    applySharedReferenceNotes(referenceNotesDraft);
+    setReferenceNotesEditorOpen(false);
+  }, [applySharedReferenceNotes, referenceNotesDraft]);
+
   // Loading state (global)
   const [isEnhancing, setIsEnhancing] = useState(false);
 
@@ -1060,8 +1142,20 @@ export default function MediaStudio() {
   const [isPreviewCollapsed, setIsPreviewCollapsed] = useState(true);
   // Track multiple generation tasks for progressive preview (when count > 1)
   const [generationTasks, setGenerationTasks] = useState<GenerationTask[]>([]);
+  const [dismissedGenerationQueueTaskIds, setDismissedGenerationQueueTaskIds] = useState<Set<string>>(() => new Set());
+  const [trackedGenerationQueueTaskIds, setTrackedGenerationQueueTaskIds] = useState<Set<string>>(() => new Set());
   const [isGenerationQueueCollapsed, setIsGenerationQueueCollapsed] = useState(false);
+  const [isGenerationQueueHidden, setIsGenerationQueueHidden] = useState(false);
   const [focusedGenerationTaskId, setFocusedGenerationTaskId] = useState<string | null>(null);
+  const [storyboardReviewOpen, setStoryboardReviewOpen] = useState(false);
+  const [storyboardReviewTaskIds, setStoryboardReviewTaskIds] = useState<string[]>([]);
+  const [selectedStoryboardTaskIds, setSelectedStoryboardTaskIds] = useState<Set<string>>(new Set());
+  const [isCompoundingStoryboard, setIsCompoundingStoryboard] = useState(false);
+  const [isCreatingStoryboardProject, setIsCreatingStoryboardProject] = useState(false);
+  const [regeneratingStoryboardTaskId, setRegeneratingStoryboardTaskId] = useState<string | null>(null);
+  const [storyboardCompoundStatus, setStoryboardCompoundStatus] = useState<string | null>(null);
+  const [storyboardProjectLink, setStoryboardProjectLink] = useState<string | null>(null);
+  const [storyboardRenderJobId, setStoryboardRenderJobId] = useState<string | null>(null);
   const [previewContextTab, setPreviewContextTab] = useState<MediaType | null>(null);
   const autoPreviewSessionStartRef = useRef<number>(0);
   const autoPreviewWindowUntilRef = useRef<number>(0);
@@ -1081,8 +1175,10 @@ export default function MediaStudio() {
   const [librarySearchQuery, setLibrarySearchQuery] = useState("");
   const [debouncedLibrarySearchQuery, setDebouncedLibrarySearchQuery] = useState("");
   const [libraryRecentDays, setLibraryRecentDays] = useState<LibraryRecentDaysFilter>(7);
+  const [libraryItemTypeFilter, setLibraryItemTypeFilter] = useState<LibraryItemTypeFilter>("all");
   const [selectedLibraryItemId, setSelectedLibraryItemId] = useState<number | null>(null);
   const [activeSidebarTab, setActiveSidebarTab] = useState<StudioSidebarTab>("history");
+  const [historyGalleryTab, setHistoryGalleryTab] = useState<HistoryGalleryTab>("image");
 
   const openPreview = useCallback((url: string | null | undefined, contextTab: MediaType | null = activeTab) => {
     if (!url) return;
@@ -1130,6 +1226,7 @@ export default function MediaStudio() {
 
   // Drag & drop state
   const [isDraggingOver, setIsDraggingOver] = useState(false);
+  const [isVideoDraggingOver, setIsVideoDraggingOver] = useState(false);
 
   // Image lightbox state
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -1218,6 +1315,11 @@ export default function MediaStudio() {
     }
     return null;
   }, [selectedMediaModel?.configJson]);
+  const selectedMediaModelMaxPromptLength = useMemo(() => {
+    const rawLimit = selectedMediaModelConfig?.maxPromptLength;
+    const parsedLimit = Number(rawLimit);
+    return Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : null;
+  }, [selectedMediaModelConfig]);
   const selectedMediaModelReferenceSupport = useMemo(
     () => getModelReferenceInputSupport(selectedMediaModel as any),
     [selectedMediaModel],
@@ -1226,6 +1328,26 @@ export default function MediaStudio() {
     () => getModelGenerationModeLabel(selectedMediaModel as any),
     [selectedMediaModel],
   );
+  const selectedMediaModelForInputFields = useMemo(
+    () => (selectedMediaModel ? { ...selectedMediaModel, configJson: selectedMediaModelConfig ?? undefined } : undefined),
+    [selectedMediaModel, selectedMediaModelConfig],
+  );
+  const selectedMediaModelReferenceImageLimit = useMemo(
+    () => getModelReferenceImageLimit(selectedMediaModelForInputFields as any),
+    [selectedMediaModelForInputFields],
+  );
+  const selectedDurationField = useMemo(
+    () => getModelInputField(selectedMediaModelForInputFields as any, "duration"),
+    [selectedMediaModelForInputFields],
+  );
+  const selectedVideoDuration = useMemo(() => {
+    if (activeTab !== "video" || !selectedDurationField) {
+      return undefined;
+    }
+    const rawValue = modelInputValues.duration ?? selectedDurationField.default ?? duration;
+    const parsed = Number(rawValue);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }, [activeTab, duration, modelInputValues.duration, selectedDurationField]);
   const selectedModelInputFields = useMemo(() => {
     const inputFields = Array.isArray(selectedMediaModelConfig?.inputFields)
       ? selectedMediaModelConfig.inputFields as any[]
@@ -1346,7 +1468,6 @@ export default function MediaStudio() {
   const { data: mediaHistory, refetch: refetchMediaHistory } = trpc.media.listTasks.useQuery(
     {
       limit: 50,
-      mediaType: activeTab,
       daysAgo: 12,
     },
     {
@@ -1356,6 +1477,7 @@ export default function MediaStudio() {
     }
   );
   const trpcUtils = trpc.useUtils();
+  const saveStoryboardProjectMutation = trpc.videoEditorProjects.save.useMutation();
   const addTaskToLibraryMutation = trpc.media.addTaskToLibrary.useMutation();
   const {
     data: librarySearchData,
@@ -1365,18 +1487,41 @@ export default function MediaStudio() {
     {
       query: debouncedLibrarySearchQuery || undefined,
       limit: 50,
-      filters: activeTab
-        ? {
-            itemType: activeTab,
-            ...(libraryRecentDays === "all" ? {} : { recentDays: libraryRecentDays }),
-          }
-        : undefined,
+      filters: {
+        ...(libraryRecentDays === "all" ? {} : { recentDays: libraryRecentDays }),
+        ...(libraryItemTypeFilter === "all" ? {} : { itemType: libraryItemTypeFilter }),
+      },
     },
     {
-      enabled: debouncedLibrarySearchQuery.trim().length > 0 || libraryRecentDays !== "all",
+      enabled:
+        debouncedLibrarySearchQuery.trim().length > 0 ||
+        libraryRecentDays !== "all" ||
+        libraryItemTypeFilter !== "all",
     },
   );
   const librarySearchResults = (librarySearchData?.results || []) as LibrarySearchResultItem[];
+
+  const historyGalleryTasks = useMemo(() => {
+    const tasks = (mediaHistory?.tasks ?? []) as MediaHistoryTaskLite[];
+    return tasks.filter((task) => task.mediaType === historyGalleryTab);
+  }, [mediaHistory?.tasks, historyGalleryTab]);
+
+  const historyGalleryCompletedTasks = useMemo(() => {
+    return historyGalleryTasks.filter((task) => {
+      const resultUrl = extractTaskResultUrl(task);
+      return task.status === "completed" && !!resultUrl && !expiredUrls.has(resultUrl);
+    });
+  }, [expiredUrls, historyGalleryTasks]);
+
+  const historyGalleryPendingTasks = useMemo(() => {
+    return historyGalleryTasks.filter((task) => {
+      if (task.status === "processing" || task.status === "pending") return true;
+      if (task.status === "failed") {
+        return task.createdAt && new Date(task.createdAt) >= sessionStartTime;
+      }
+      return false;
+    });
+  }, [historyGalleryTasks, sessionStartTime]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -1391,22 +1536,41 @@ export default function MediaStudio() {
     { enabled: !!selectedSkillId }
   );
   const skillSchema = skillSchemaData?.hasSchema ? skillSchemaData.schema as SkillInputSchema : null;
+  const skillHasMaxPromptLengthField = useMemo(
+    () => !!skillSchema?.sections?.some((section) => section.fields?.some((field) => field.id === "maxPromptLength")),
+    [skillSchema],
+  );
 
   // Query for vision-capable LLM models (for Auto Prompt model selection)
   const { data: visionModels } = trpc.skills.getVisionModels.useQuery();
-  const enabledVisionModelIds = useMemo(
-    () => (visionModels?.models ?? []).map((model: any) => model.id),
+  const supportedVisionModels = useMemo<MediaStudioVisionModelOption[]>(
+    () => (visionModels?.models ?? []).filter((model: MediaStudioVisionModelOption) => model.supportsVision !== false),
     [visionModels?.models],
   );
-  const defaultVisionModelId = useMemo(() => {
-    const defaultModel = visionModels?.models?.find((model: any) => model.isDefault) || visionModels?.models?.[0];
-    return defaultModel?.id || "";
-  }, [visionModels?.models]);
+  const visionModelsByProvider = useMemo(
+    () => groupMediaStudioModelsByProvider(supportedVisionModels),
+    [supportedVisionModels],
+  );
+  const providerAutoModelOptions = useMemo(
+    () => buildMediaStudioProviderAutoOptions(supportedVisionModels),
+    [supportedVisionModels],
+  );
 
   // Query for skill's default model configuration
   const { data: skillConfig } = trpc.skills.getSkillConfig.useQuery(
     { skillId: selectedSkillId },
     { enabled: !!selectedSkillId }
+  );
+
+  const selectedLlmModelSelection = useMemo(
+    () => resolveMediaStudioAutoPromptSelection({
+      selectedValue: selectedLlmModel,
+      models: supportedVisionModels,
+      autoLabel: t('mediaStudio.autoSkillRequirements'),
+      autoProviderLabelFormatter: (providerDisplayName) => t('mediaStudio.autoByProvider', { provider: providerDisplayName }),
+      preferredModelId: skillConfig?.defaultModel ?? null,
+    }),
+    [selectedLlmModel, skillConfig?.defaultModel, supportedVisionModels, t],
   );
 
   // Mutations
@@ -1665,58 +1829,97 @@ export default function MediaStudio() {
     // Advanced Mode is OFF by default - user must enable it manually
   }, [selectedSkillId, setDynamicFormValues]);
 
-  // Track if user has manually selected a model (to avoid overriding their choice)
-  const [llmModelManuallySet, setLlmModelManuallySet] = useState(false);
-
-  // Set default LLM model when skill config loads (from Skills Management default)
-  // Only set default if user hasn't manually selected a model
+  // Keep a max prompt length field aligned with the selected media model limit.
+  // This field is used by prompt-creation skills that can overflow the model's prompt cap.
   useEffect(() => {
-    if (!visionModels?.models) {
+    if (!skillHasMaxPromptLengthField) {
       return;
     }
 
-    if (enabledVisionModelIds.length === 0) {
-      if (selectedLlmModel) {
-        setSelectedLlmModel("");
-      }
-      return;
-    }
+    if (selectedMediaModelMaxPromptLength === null) {
+      setDynamicFormValues((prev: Record<string, any>) => {
+        if (prev.maxPromptLength === undefined) {
+          return prev;
+        }
 
-    if (llmModelManuallySet) {
-      // User explicitly chose "Auto" (empty string) — respect that choice
-      if (!selectedLlmModel) return;
-      const nextModelId = pickEnabledModelId({
-        preferredId: selectedLlmModel,
-        allowedIds: enabledVisionModelIds,
-        fallbackIds: [defaultVisionModelId],
+        const next = { ...prev };
+        delete next.maxPromptLength;
+        return next;
       });
-      if (nextModelId !== selectedLlmModel) {
-        setSelectedLlmModel(nextModelId);
-      }
       return;
     }
 
-    const nextModelId = pickEnabledModelId({
-      preferredId: skillConfig?.defaultModel,
-      allowedIds: enabledVisionModelIds,
-      fallbackIds: [selectedLlmModel, defaultVisionModelId],
+    setDynamicFormValues((prev: Record<string, any>) => {
+      const current = Number(prev.maxPromptLength);
+      const hasCurrent = Number.isFinite(current) && current > 0;
+      const nextValue = hasCurrent
+        ? Math.min(current, selectedMediaModelMaxPromptLength)
+        : selectedMediaModelMaxPromptLength;
+
+      if (prev.maxPromptLength === nextValue) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        maxPromptLength: nextValue,
+      };
     });
+  }, [
+    selectedMediaModelMaxPromptLength,
+    setDynamicFormValues,
+    skillHasMaxPromptLengthField,
+  ]);
 
-    if (nextModelId !== selectedLlmModel) {
-      setSelectedLlmModel(nextModelId);
+  // Keep the model selector aligned with the available vision models.
+  useEffect(() => {
+    if (!visionModels?.models?.length) {
+      return;
     }
-  }, [defaultVisionModelId, enabledVisionModelIds, llmModelManuallySet, selectedLlmModel, setSelectedLlmModel, skillConfig?.defaultModel, visionModels?.models]);
 
-  // Reference image limits per tab (video allows more for storyboards)
-  const maxReferenceImages = activeTab === "video" ? 25 : 5;
+    if (selectedLlmModelSelection.mode === "auto-provider" && !selectedLlmModelSelection.resolvedModelId) {
+      setSelectedLlmModel(AUTO_MODEL);
+      return;
+    }
+
+    if (selectedLlmModelSelection.mode === "explicit" && !supportedVisionModels.some((model) => model.id === selectedLlmModelSelection.value)) {
+      setSelectedLlmModel(AUTO_MODEL);
+    }
+  }, [selectedLlmModelSelection, setSelectedLlmModel, supportedVisionModels, visionModels?.models]);
+
+  // Reference image limits per tab, further constrained by model metadata when present.
+  const maxReferenceImages = useMemo(() => {
+    const tabLimit = activeTab === "video" ? 25 : 5;
+    return selectedMediaModelReferenceImageLimit === null
+      ? tabLimit
+      : Math.min(tabLimit, selectedMediaModelReferenceImageLimit);
+  }, [activeTab, selectedMediaModelReferenceImageLimit]);
   const maxReferenceVideos = activeTab === "video" ? 5 : 0;
+
+  useEffect(() => {
+    const clamped = clampReferenceImagesToModelLimit(
+      selectedMediaModelForInputFields as any,
+      referenceImages,
+    );
+    if (clamped.droppedCount <= 0 || clamped.maxItems === null) {
+      return;
+    }
+
+    setReferenceImages(clamped.items);
+    toast.error(t('mediaStudio.maxReferenceImagesError', { max: clamped.maxItems }));
+  }, [
+    referenceImages,
+    selectedMediaModelForInputFields,
+    setReferenceImages,
+    t,
+  ]);
 
   // Handle file upload for reference images
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    // Limit reference images based on tab (video: 25, others: 5)
+    // Limit reference images based on the active tab and any model-declared cap.
     const remainingSlots = maxReferenceImages - referenceImages.length;
     const filesToUpload = Array.from(files).slice(0, remainingSlots);
 
@@ -1808,7 +2011,7 @@ export default function MediaStudio() {
 
   // Add generated media as reference
   const addAsReference = (media: GeneratedMedia) => {
-    if (referenceImages.length >= 5) {
+    if (referenceImages.length >= maxReferenceImages) {
       return;
     }
     setReferenceImages(prev => [...prev, { url: media.url, name: `generated-${media.id}` }]);
@@ -1816,7 +2019,7 @@ export default function MediaStudio() {
 
   // Add history task image as reference
   const addHistoryAsReference = (task: { id: string; resultUrl?: string }) => {
-    if (referenceImages.length >= 5 || !task.resultUrl) {
+    if (referenceImages.length >= maxReferenceImages || !task.resultUrl) {
       return;
     }
     setReferenceImages(prev => [...prev, { url: task.resultUrl!, name: `history-${task.id}` }]);
@@ -1894,6 +2097,56 @@ export default function MediaStudio() {
     toast.success(t('mediaStudio.selectedItemFromLibrary', { title: item.title }));
   }, [openPreview, t]);
 
+  const handleLibraryResultAddToReference = useCallback((item: LibrarySearchResultItem) => {
+    const itemType = item.item_type.toLowerCase();
+    const referenceUrl = itemType === "video"
+      ? item.source_url?.trim() || null
+      : item.source_url?.trim() || item.thumbnail_url?.trim() || null;
+
+    if (!referenceUrl) {
+      toast.error(t('mediaStudio.failedToAddAsReference'));
+      return;
+    }
+
+    if (itemType === "video") {
+      if (!selectedMediaModelReferenceSupport.videoUrls) {
+        toast.error("The selected model does not accept video references.");
+        return;
+      }
+      if (referenceVideos.length >= maxReferenceVideos) {
+        toast.error("Video reference is full.");
+        return;
+      }
+      setReferenceVideos((prev) => [...prev, { url: referenceUrl, name: `library-${item.item_id}` }]);
+      toast.success(t('mediaStudio.useAsReference'));
+      return;
+    }
+
+    if (itemType === "image") {
+      if (!selectedMediaModelReferenceSupport.imageUrls) {
+        toast.error("The selected model does not accept image references.");
+        return;
+      }
+      if (referenceImages.length >= maxReferenceImages) {
+        toast.error(t('mediaStudio.maxReferenceImagesError', { max: maxReferenceImages }));
+        return;
+      }
+      setReferenceImages((prev) => [...prev, { url: referenceUrl, name: `library-${item.item_id}` }]);
+      toast.success(t('mediaStudio.useAsReference'));
+      return;
+    }
+
+    toast.error(t('mediaStudio.failedToAddAsReference'));
+  }, [
+    maxReferenceImages,
+    maxReferenceVideos,
+    referenceImages.length,
+    referenceVideos.length,
+    selectedMediaModelReferenceSupport.imageUrls,
+    selectedMediaModelReferenceSupport.videoUrls,
+    t,
+  ]);
+
   useEffect(() => {
     const tracking = Object.entries(taskLibraryState).filter(
       ([, state]) => state.action === "added" && state.itemId && state.status === "indexing",
@@ -1912,9 +2165,33 @@ export default function MediaStudio() {
   }, [taskLibraryState, refreshLibraryStatus]);
 
   // Drag & drop handlers for reference images
+  const isImageMediaUrl = (url?: string | null) => {
+    if (!url) return false;
+    return /\.(jpg|jpeg|png|gif|webp|svg|avif|bmp)([?#].*)?$/i.test(url.trim());
+  };
+
+  const getDraggedMediaType = (dataTransfer: DataTransfer) => {
+    return dataTransfer.getData("application/x-smartspec-media-type")
+      || dataTransfer.getData("text/x-smartspec-media-type");
+  };
+
+  const getDraggedMediaUrl = (dataTransfer: DataTransfer) => {
+    return dataTransfer.getData("text/uri-list") || dataTransfer.getData("text/plain");
+  };
+
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
-    setIsDraggingOver(true);
+    const draggedMediaType = getDraggedMediaType(e.dataTransfer);
+    const url = getDraggedMediaUrl(e.dataTransfer);
+    if (draggedMediaType === "video" || isVideoMediaUrl(url)) {
+      setIsDraggingOver(false);
+      return;
+    }
+    if (draggedMediaType === "image" || isImageMediaUrl(url)) {
+      setIsDraggingOver(true);
+      return;
+    }
+    setIsDraggingOver(false);
   };
 
   const handleDragLeave = (e: React.DragEvent) => {
@@ -1926,19 +2203,56 @@ export default function MediaStudio() {
     e.preventDefault();
     setIsDraggingOver(false);
 
-    const url = e.dataTransfer.getData("text/uri-list") || e.dataTransfer.getData("text/plain");
+    const url = getDraggedMediaUrl(e.dataTransfer);
+    const draggedMediaType = getDraggedMediaType(e.dataTransfer);
     if (url && referenceImages.length < maxReferenceImages) {
-      // Check if it's an image URL
-      if (url.match(/\.(jpg|jpeg|png|gif|webp|svg)/i) || url.includes("blob:") || url.startsWith("http")) {
+      if (draggedMediaType === "image" || isImageMediaUrl(url)) {
         setReferenceImages(prev => [...prev, { url, name: `dropped-${Date.now()}` }]);
       }
     }
   };
 
-  // Handle drag start for history images
-  const handleHistoryDragStart = (e: React.DragEvent, url: string) => {
+  const handleVideoDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    const draggedMediaType = getDraggedMediaType(e.dataTransfer);
+    const url = getDraggedMediaUrl(e.dataTransfer);
+    if (draggedMediaType === "image" || isImageMediaUrl(url)) {
+      setIsVideoDraggingOver(false);
+      return;
+    }
+    if (draggedMediaType === "video" || isVideoMediaUrl(url)) {
+      setIsVideoDraggingOver(true);
+      return;
+    }
+    setIsVideoDraggingOver(false);
+  };
+
+  const handleVideoDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsVideoDraggingOver(false);
+  };
+
+  const handleVideoDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsVideoDraggingOver(false);
+
+    const url = getDraggedMediaUrl(e.dataTransfer);
+    const draggedMediaType = getDraggedMediaType(e.dataTransfer);
+    if (url && referenceVideos.length < maxReferenceVideos) {
+      if (draggedMediaType === "video" || isVideoMediaUrl(url)) {
+        setReferenceVideos((prev) => [...prev, { url, name: `dropped-${Date.now()}` }]);
+      }
+    }
+  };
+
+  // Handle drag start for history media
+  const handleHistoryDragStart = (e: React.DragEvent, url: string, mediaType: MediaType | null | undefined) => {
     e.dataTransfer.setData("text/uri-list", url);
     e.dataTransfer.setData("text/plain", url);
+    if (mediaType) {
+      e.dataTransfer.setData("application/x-smartspec-media-type", mediaType);
+      e.dataTransfer.setData("text/x-smartspec-media-type", mediaType);
+    }
     e.dataTransfer.effectAllowed = "copy";
   };
 
@@ -2115,6 +2429,17 @@ export default function MediaStudio() {
           }
         }
 
+        // Keep the prompt length cap aligned with the selected media model when the skill exposes it.
+        // Users can lower it in Advanced Mode, but we never allow it to exceed the model limit.
+        if (skillHasMaxPromptLengthField && selectedMediaModelMaxPromptLength !== null) {
+          const requestedPromptLength = Number(mappedValues.maxPromptLength);
+          mappedValues.maxPromptLength = Number.isFinite(requestedPromptLength) && requestedPromptLength > 0
+            ? Math.min(requestedPromptLength, selectedMediaModelMaxPromptLength)
+            : selectedMediaModelMaxPromptLength;
+        } else if (skillHasMaxPromptLengthField) {
+          delete mappedValues.maxPromptLength;
+        }
+
         // Remove null/empty placeholder values before sending to skill execution
         const sanitizedInputs = Object.fromEntries(
           Object.entries(mappedValues).filter(([, value]) => hasUsableSkillValue(value))
@@ -2123,7 +2448,7 @@ export default function MediaStudio() {
         const result = await executeCustomSkillMutation.mutateAsync({
           skillId: selectedSkillId,
           userInputs: sanitizedInputs,
-          model: selectedLlmModel || undefined,
+          ...(selectedLlmModelSelection.resolvedModelId ? { model: selectedLlmModelSelection.resolvedModelId } : {}),
           referenceImages: referenceImages.map((r: any) => r.url),
         });
 
@@ -2182,12 +2507,6 @@ export default function MediaStudio() {
         // Use the specialized prompt-enhancement endpoint for prompt-focused skills
         let requestData;
 
-        // Get maxPromptLength from selected media model's configJson
-        // Default to 2000 if not set in model config
-        const modelData = mediaModels?.models?.find((m: any) => m.modelId === selectedModel);
-        const modelConfig = modelData?.configJson as any;
-        const modelMaxPromptLength = modelConfig?.maxPromptLength || 2000;
-
         if (useAdvancedMode && skillSchema) {
           // Use dynamic form values with output mapping
           const mappedValues: Record<string, any> = {};
@@ -2206,9 +2525,13 @@ export default function MediaStudio() {
             userInput: userIdea || "Create a prompt based on the reference images",
             referenceImages: referenceImages.map((r: any) => r.url),
             // Include selected LLM model for Auto Prompt (from Advanced Mode selector)
-            ...(selectedLlmModel ? { model: selectedLlmModel } : {}),
-            // Pass maxPromptLength from selected media model so skill generates shorter prompts
-            maxPromptLength: modelMaxPromptLength,
+            ...(selectedLlmModelSelection.resolvedModelId ? { model: selectedLlmModelSelection.resolvedModelId } : {}),
+            ...(skillHasMaxPromptLengthField && selectedMediaModelMaxPromptLength !== null
+              ? {
+                // Pass maxPromptLength from selected media model so skill generates shorter prompts
+                maxPromptLength: selectedMediaModelMaxPromptLength,
+              }
+              : {}),
             ...mappedValues,
           };
         } else {
@@ -2225,9 +2548,13 @@ export default function MediaStudio() {
             userInput: userIdea || "Create a prompt based on the reference images",
             referenceImages: referenceImages.map((r: any) => r.url),
             // Include selected LLM model for Auto Prompt (from Advanced Mode selector)
-            ...(selectedLlmModel ? { model: selectedLlmModel } : {}),
-            // Pass maxPromptLength from selected media model so skill generates shorter prompts
-            maxPromptLength: modelMaxPromptLength,
+            ...(selectedLlmModelSelection.resolvedModelId ? { model: selectedLlmModelSelection.resolvedModelId } : {}),
+            ...(skillHasMaxPromptLengthField && selectedMediaModelMaxPromptLength !== null
+              ? {
+                // Pass maxPromptLength from selected media model so skill generates shorter prompts
+                maxPromptLength: selectedMediaModelMaxPromptLength,
+              }
+              : {}),
             // Style options (only if enabled and has value)
             ...(isStyleEnabled && selectedStyleCategory ? { styleCategory: selectedStyleCategory } : {}),
             ...(isStyleEnabled && selectedStyle ? { styleName: selectedStyle } : {}),
@@ -2293,27 +2620,10 @@ export default function MediaStudio() {
         description: t('mediaStudio.promptAutoFilledForUpscaleDesc'),
       });
     }
-  }, [useAdvancedMode]);
+  }, [t, useAdvancedMode]);
 
   // Get current skill info
   const currentSkill = skillsList?.find(s => s.id === selectedSkillId);
-
-  // Parse multi-prompt format (PROMPT 1 (X seconds): ... PROMPT 2 (X seconds): ...)
-  const parseMultiPrompts = (text: string): string[] => {
-    const prompts: string[] = [];
-    // Split by PROMPT pattern (e.g., "PROMPT 1 (8 seconds):", "PROMPT 2 (8 seconds):")
-    const parts = text.split(/PROMPT\s+\d+\s*\([^)]+\):/i);
-
-    // Skip first part (usually empty or header text)
-    for (let i = 1; i < parts.length; i++) {
-      const promptText = parts[i].trim();
-      if (promptText) {
-        prompts.push(promptText);
-      }
-    }
-
-    return prompts;
-  };
 
   // Generate media with loop for multiple images
   const handleGenerate = async () => {
@@ -2357,12 +2667,16 @@ export default function MediaStudio() {
     // Parse prompts if Multi Video mode
     let promptsToGenerate: string[] = [finalPrompt];
     if (isMultiVideo) {
-      const parsed = parseMultiPrompts(finalPrompt);
-      console.log('[Multi Video] Parsed prompts count:', parsed.length);
-      if (parsed.length > 0) {
-        promptsToGenerate = parsed;
-        console.log(`[Multi Video] Using ${parsed.length} prompts`);
-        toast.info(t('mediaStudio.multiVideoModeGenerating', { count: parsed.length }), { duration: 3000 });
+      const parsed = splitMultiVideoPromptOutput(finalPrompt);
+      const parsedPrompts = parsed.prompts.length > 0 ? parsed.prompts : parseMultiVideoPrompts(finalPrompt);
+      console.log('[Multi Video] Shared context length:', parsed.sharedContext.length);
+      console.log('[Multi Video] Parsed prompts count:', parsedPrompts.length);
+      if (parsedPrompts.length > 0) {
+        promptsToGenerate = parsedPrompts.map((prompt) =>
+          parsed.sharedContext ? `${parsed.sharedContext}\n\n${prompt}` : prompt
+        );
+        console.log(`[Multi Video] Using ${parsedPrompts.length} prompts`);
+        toast.info(t('mediaStudio.multiVideoModeGenerating', { count: parsedPrompts.length }), { duration: 3000 });
       } else {
         toast.warning(t('mediaStudio.noMultiplePrompts'), { duration: 3000 });
       }
@@ -2371,22 +2685,6 @@ export default function MediaStudio() {
     // Determine how many items to generate
     const imageCount = isMultiVideo ? promptsToGenerate.length : (activeTab === "image" ? numImages : 1);
     console.log('[Generate] Image/Video count to generate:', imageCount);
-
-    // Initialize generation tasks for progressive preview
-    const initialTasks: GenerationTask[] = Array.from({ length: imageCount }, (_, i) => ({
-      id: `task-${Date.now()}-${i}`,
-      index: i,
-      status: 'queued' as const,
-      type: activeTab,
-      prompt: isMultiVideo ? promptsToGenerate[i] : finalPrompt,
-      model: selectedModel,
-      createdAt: nowMs,
-      updatedAt: nowMs,
-    }));
-    setGenerationTasks(initialTasks);
-    setIsGenerationQueueCollapsed(false);
-    setFocusedGenerationTaskId(initialTasks[0]?.id ?? null);
-    setIsGenerating(true);
 
     // Generate media via model-driven gateway for all tabs.
     // Skills are only used for Auto Prompt / prompt enhancement.
@@ -2476,20 +2774,65 @@ export default function MediaStudio() {
     const effectiveReferenceVideos = selectedMediaModelReferenceSupport.videoUrls
       ? referenceVideos
       : [];
+    const storyboardGenerationContext: StoryboardVideoGenerationContext | undefined =
+      activeTab === "video"
+      ? {
+            aspectRatio: finalAspectRatio,
+            duration: selectedVideoDuration,
+            model: selectedModel || undefined,
+            referenceImages: effectiveReferenceImages.map((item) => ({ ...item })),
+            referenceVideos: effectiveReferenceVideos.map((item) => ({ ...item })),
+            extraParams: Object.keys(extraParams).length > 0 ? { ...extraParams } : undefined,
+            apiConfig: Object.keys(apiConfig).length > 0 ? { ...apiConfig } : undefined,
+            resolution: modelInputValues.resolution || undefined,
+            referenceVideoUrl,
+            useReferenceVideoUrlFallback:
+              selectedMediaModelReferenceSupport.videoUrls &&
+              effectiveReferenceVideos.length === 0 &&
+              !!referenceVideoUrl,
+          }
+        : undefined;
+
+    // Initialize generation tasks for progressive preview after all context is ready.
+    const initialTasks: GenerationTask[] = Array.from({ length: imageCount }, (_, i) => ({
+      id: `task-${Date.now()}-${i}`,
+      index: i,
+      status: 'queued' as const,
+      type: activeTab,
+      prompt: isMultiVideo ? promptsToGenerate[i] : finalPrompt,
+      model: selectedModel,
+      createdAt: nowMs,
+      updatedAt: nowMs,
+      ...(storyboardGenerationContext ? { storyboardContext: storyboardGenerationContext } : {}),
+    }));
+    setGenerationTasks(initialTasks);
+    setIsGenerationQueueHidden(false);
+    setIsGenerationQueueCollapsed(false);
+    setFocusedGenerationTaskId(initialTasks[0]?.id ?? null);
+    setStoryboardReviewOpen(false);
+    const initialStoryboardTaskIds = isMultiVideo && imageCount > 1
+      ? initialTasks.map((task) => task.id)
+      : [];
+    setStoryboardReviewTaskIds(initialStoryboardTaskIds);
+    setSelectedStoryboardTaskIds(new Set(initialStoryboardTaskIds));
+    setStoryboardCompoundStatus(null);
+    setStoryboardProjectLink(null);
+    setStoryboardRenderJobId(null);
+    setIsGenerating(true);
 
     // Loop through each image generation with delay
     let successCount = 0;
     for (let i = 0; i < imageCount; i++) {
       // Update task status to 'generating'
       setGenerationTasks(prev =>
-        prev.map((t, idx) => idx === i ? { ...t, status: 'generating' as const, updatedAt: Date.now() } : t)
+        prev.map((task, idx) => idx === i ? { ...task, status: 'generating' as const, updatedAt: Date.now() } : task)
       );
 
       // Get the appropriate prompt for this iteration
       const currentPrompt = isMultiVideo ? promptsToGenerate[i] : finalPrompt;
       console.log(`[Generate] Iteration ${i + 1}/${imageCount}, Prompt length:`, currentPrompt.length);
       console.log(`[Generate] Model:`, selectedModel);
-      console.log(`[Generate] Duration:`, activeTab === "video" ? (modelInputValues.duration ? Number(modelInputValues.duration) : duration) : undefined);
+      console.log(`[Generate] Duration:`, activeTab === "video" ? selectedVideoDuration : undefined);
 
       try {
         let resultUrl: string | undefined;
@@ -2522,7 +2865,7 @@ export default function MediaStudio() {
         } else if (shouldUseDirectMediaGateway && activeTab === "video") {
           const task = await generateVideoAsyncMutation.mutateAsync({
             ...commonPayload,
-            duration: modelInputValues.duration ? Number(modelInputValues.duration) : duration,
+            ...(selectedVideoDuration !== undefined ? { duration: selectedVideoDuration } : {}),
             ...(selectedMediaModelReferenceSupport.videoUrls && effectiveReferenceVideos.length === 0 && referenceVideoUrl
               ? { referenceVideoUrl }
               : {}),
@@ -2549,20 +2892,21 @@ export default function MediaStudio() {
         if (resultUrl) {
           // Update task with completed status and URL
           setGenerationTasks(prev =>
-            prev.map((t, idx) => idx === i ? {
-              ...t,
+            prev.map((task, idx) => idx === i ? {
+              ...task,
               status: 'completed' as const,
               url: resultUrl,
-              backendTaskId: t.backendTaskId,
-              providerTaskId: t.providerTaskId,
-              statusDetail: "Completed",
+              backendTaskId: task.backendTaskId,
+              providerTaskId: task.providerTaskId,
+              statusDetail: t('mediaStudio.generationStatus.completed'),
               updatedAt: Date.now(),
-            } : t)
+            } : task)
           );
 
           // Add to generated media
           const newMedia: GeneratedMedia = {
             id: `${Date.now()}-${Math.random()}`,
+            taskId: initialTasks[i]?.id,
             type: activeTab,
             url: resultUrl,
             prompt: currentPrompt, // For multi-video, this is the individual prompt
@@ -2601,8 +2945,8 @@ export default function MediaStudio() {
         } else if (startedAsyncTask) {
           // Async task created successfully; output will appear in history.
           setGenerationTasks(prev =>
-            prev.map((t, idx) => idx === i ? {
-              ...t,
+            prev.map((task, idx) => idx === i ? {
+              ...task,
               status: asyncTask?.status === "processing"
                 ? "generating"
                 : asyncTask?.status === "completed"
@@ -2610,17 +2954,17 @@ export default function MediaStudio() {
                   : asyncTask?.status === "failed" || asyncTask?.status === "cancelled"
                     ? "error"
                     : "queued",
-              url: resultUrl ?? t.url,
-              backendTaskId: asyncTask?.id || t.backendTaskId,
-              providerTaskId: asyncTask?.taskId || t.providerTaskId,
+              url: resultUrl ?? task.url,
+              backendTaskId: asyncTask?.id || task.backendTaskId,
+              providerTaskId: asyncTask?.taskId || task.providerTaskId,
               statusDetail:
-                asyncTask?.status === "processing" ? "Provider is processing this job" :
-                asyncTask?.status === "pending" ? "Waiting for provider pickup" :
-                asyncTask?.status === "completed" ? "Task completed" :
-                asyncTask?.status === "failed" ? (asyncTask?.errorMessage || "Task failed") :
-                "Queued for submission",
+                asyncTask?.status === "processing" ? t('mediaStudio.generationStatus.providerProcessing') :
+                asyncTask?.status === "pending" ? t('mediaStudio.generationStatus.waitingForProviderPickup') :
+                asyncTask?.status === "completed" ? t('mediaStudio.generationStatus.taskCompleted') :
+                asyncTask?.status === "failed" ? (asyncTask?.errorMessage || t('mediaStudio.generationStatus.taskFailed')) :
+                t('mediaStudio.generationStatus.queuedForSubmission'),
               updatedAt: Date.now(),
-            } : t)
+            } : task)
           );
           successCount++;
           if (i === 0) {
@@ -2631,7 +2975,7 @@ export default function MediaStudio() {
           const errorMessage = t('mediaStudio.generationCompletedButNoMediaOutputUrlWasReturned');
           console.error(`[Generate] Missing output URL for iteration ${i + 1}:`, errorMessage);
           setGenerationTasks(prev =>
-            prev.map((t, idx) => idx === i ? { ...t, status: 'error' as const, error: errorMessage } : t)
+            prev.map((task, idx) => idx === i ? { ...task, status: 'error' as const, error: errorMessage } : task)
           );
           toast.error(t('mediaStudio.generationFailed'), { description: errorMessage });
         }
@@ -2642,13 +2986,13 @@ export default function MediaStudio() {
         console.error(`[Generate] Full error object:`, JSON.stringify(error, null, 2));
         const errorMessage = error?.message || 'Unknown error';
         setGenerationTasks(prev =>
-          prev.map((t, idx) => idx === i ? {
-            ...t,
+          prev.map((task, idx) => idx === i ? {
+            ...task,
             status: 'error' as const,
             error: errorMessage,
             statusDetail: errorMessage,
             updatedAt: Date.now(),
-          } : t)
+          } : task)
         );
         toast.error(t('mediaStudio.generationFailed'), { description: errorMessage });
       }
@@ -2663,6 +3007,10 @@ export default function MediaStudio() {
 
     // Note: Prompt is intentionally NOT cleared after generation
     // Users can manually clear using the "Clear" button if needed
+
+    if (isMultiVideo && imageCount > 1) {
+      setStoryboardReviewOpen(true);
+    }
 
     setIsGenerating(false);
   };
@@ -2747,7 +3095,7 @@ export default function MediaStudio() {
     }
   };
 
-  const extractTaskResultUrl = (task: any): string | null => {
+  function extractTaskResultUrl(task: any): string | null {
     const fromValue = (value: any): string | null => {
       if (!value) return null;
       if (typeof value === "string" && value.startsWith("http")) return value;
@@ -2827,47 +3175,52 @@ export default function MediaStudio() {
     }
 
     return null;
-  };
+  }
 
-  const generationQueueTasks = useMemo<QueueGenerationTask[]>(() => {
-    const merged = new Map<string, QueueGenerationTask>();
-    const sessionStartMs = sessionStartTime.getTime();
+  useEffect(() => {
+    setTrackedGenerationQueueTaskIds((prev) => {
+      const next = new Set(prev);
+      let changed = false;
 
-    const upsert = (task: QueueGenerationTask) => {
-      const existing = merged.get(task.id);
-      if (!existing) {
-        if (task.status === "completed" && task.result) {
-          const duplicate = Array.from(merged.values()).find(
-            (candidate) => candidate.status === "completed" && candidate.result && candidate.result === task.result,
-          );
-          if (duplicate) {
-            merged.set(duplicate.id, {
-              ...duplicate,
-              ...task,
-              id: duplicate.id,
-              prompt: task.prompt || duplicate.prompt,
-              result: task.result || duplicate.result,
-              error: task.error || duplicate.error,
-              statusDetail: task.statusDetail || duplicate.statusDetail,
-              progress: task.progress ?? duplicate.progress,
-            });
-            return;
+      const rememberIds = (ids: readonly string[]) => {
+        for (const id of ids) {
+          if (!next.has(id)) {
+            next.add(id);
+            changed = true;
           }
         }
-        merged.set(task.id, task);
-        return;
+      };
+
+      for (const task of generationTasks) {
+        rememberIds(getGenerationQueueIdentityCandidates(task));
       }
 
-      merged.set(task.id, {
-        ...existing,
-        ...task,
-        prompt: task.prompt || existing.prompt,
-        result: task.result || existing.result,
-        error: task.error || existing.error,
-        statusDetail: task.statusDetail || existing.statusDetail,
-        progress: task.progress ?? existing.progress,
-      });
-    };
+      for (const rawTask of (mediaHistory?.tasks ?? []) as MediaHistoryTaskLite[]) {
+        const status = normalizeQueueStatus(rawTask.status);
+        if (!isActiveGenerationQueueStatus(status)) {
+          continue;
+        }
+        rememberIds(
+          getGenerationQueueIdentityCandidates({
+            id: rawTask.id,
+            taskId: rawTask.taskId,
+          }),
+        );
+      }
+
+      return changed ? next : prev;
+    });
+  }, [generationTasks, mediaHistory?.tasks]);
+
+  const generationQueueTasks = useMemo<QueueGenerationTask[]>(() => {
+    const queueCandidates: QueueGenerationTask[] = [];
+    const trackedTaskIds = new Set(trackedGenerationQueueTaskIds);
+
+    for (const task of generationTasks) {
+      for (const candidate of getGenerationQueueIdentityCandidates(task)) {
+        trackedTaskIds.add(candidate);
+      }
+    }
 
     for (const task of generationTasks) {
       const normalizedStatus = task.status === "generating"
@@ -2879,7 +3232,7 @@ export default function MediaStudio() {
             : "failed";
 
       const queueTask: QueueGenerationTask = {
-        id: task.backendTaskId || task.providerTaskId || task.id,
+        id: task.id,
         type: task.type,
         prompt: task.prompt,
         model: task.model,
@@ -2893,24 +3246,26 @@ export default function MediaStudio() {
         providerTaskId: task.providerTaskId,
         statusDetail: task.statusDetail,
       };
-      upsert(queueTask);
+      queueCandidates.push(queueTask);
     }
 
     for (const rawTask of (mediaHistory?.tasks ?? []) as MediaHistoryTaskLite[]) {
       const task = rawTask;
       const taskType = task.mediaType || activeTab;
-      const createdMs = parseTimestampMs(task.createdAt);
-      const startedMs = parseTimestampMs(task.startedAt);
-      const completedMs = parseTimestampMs(task.completedAt);
-      const updatedMs = parseTimestampMs(task.updatedAt);
-      const taskTimestampMs = Math.max(createdMs, startedMs, completedMs, updatedMs);
-      const isRecent = taskTimestampMs >= sessionStartMs - 5 * 60 * 1000;
-      const isActive = task.status === "pending" || task.status === "processing";
-      if (!isRecent && !isActive) {
+      const status = normalizeQueueStatus(task.status);
+      if (
+        !shouldIncludeHistoryTaskInGenerationQueue(
+          status,
+          {
+            id: task.id,
+            taskId: task.taskId,
+          },
+          trackedTaskIds,
+        )
+      ) {
         continue;
       }
 
-      const status = normalizeQueueStatus(task.status);
       const resultUrl = task.resultUrl || extractTaskResultUrl(task as any) || undefined;
       const queueTask: QueueGenerationTask = {
         id: task.taskId || task.id,
@@ -2926,23 +3281,146 @@ export default function MediaStudio() {
         backendTaskId: task.id,
         providerTaskId: task.taskId || undefined,
         statusDetail:
-          status === "pending" ? "Waiting for provider" :
-          status === "processing" ? "Provider is processing this job" :
-          status === "completed" ? "Completed" :
-          status === "failed" ? (task.errorMessage || "Failed") :
-          status === "cancelled" ? "Cancelled" :
-          "Queued",
+          status === "pending" ? t('mediaStudio.generationStatus.waitingForProvider') :
+          status === "processing" ? t('mediaStudio.generationStatus.providerProcessing') :
+          status === "completed" ? t('mediaStudio.generationStatus.completed') :
+          status === "failed" ? (task.errorMessage || t('mediaStudio.generationStatus.failed')) :
+          status === "cancelled" ? t('mediaStudio.generationStatus.cancelled') :
+          t('mediaStudio.generationStatus.queued'),
       };
 
-      upsert(queueTask);
+      queueCandidates.push(queueTask);
     }
 
-    return Array.from(merged.values()).sort((a, b) => {
+    return mergeGenerationQueueTasks(queueCandidates).sort((a, b) => {
       const aTime = a.updatedAt instanceof Date ? a.updatedAt.getTime() : Date.parse(String(a.updatedAt)) || 0;
       const bTime = b.updatedAt instanceof Date ? b.updatedAt.getTime() : Date.parse(String(b.updatedAt)) || 0;
       return bTime - aTime;
     });
-  }, [activeTab, generationTasks, mediaHistory?.tasks, sessionStartTime]);
+  }, [activeTab, extractTaskResultUrl, generationTasks, mediaHistory?.tasks, t, trackedGenerationQueueTaskIds]);
+
+  const visibleGenerationQueueTasks = useMemo(
+    () => generationQueueTasks.filter((task) => !isGenerationQueueTaskDismissed(task, dismissedGenerationQueueTaskIds)),
+    [dismissedGenerationQueueTaskIds, generationQueueTasks],
+  );
+
+  useEffect(() => {
+    const historyTasks = (mediaHistory?.tasks ?? []) as MediaHistoryTaskLite[];
+    if (historyTasks.length === 0) {
+      return;
+    }
+
+    const historyLookup = new Map<string, MediaHistoryTaskLite>();
+    for (const task of historyTasks) {
+      historyLookup.set(task.id, task);
+      if (task.taskId) {
+        historyLookup.set(task.taskId, task);
+      }
+    }
+
+    const resolveHistoryTask = (task: GenerationTask): MediaHistoryTaskLite | undefined => {
+      if (task.providerTaskId && historyLookup.has(task.providerTaskId)) {
+        return historyLookup.get(task.providerTaskId);
+      }
+      if (task.backendTaskId && historyLookup.has(task.backendTaskId)) {
+        return historyLookup.get(task.backendTaskId);
+      }
+      if (historyLookup.has(task.id)) {
+        return historyLookup.get(task.id);
+      }
+      return undefined;
+    };
+
+    let mediaChanged = false;
+    setGenerationTasks((prev) => {
+      let changed = false;
+      const next = prev.map((task) => {
+        const historyTask = resolveHistoryTask(task);
+        if (!historyTask) {
+          return task;
+        }
+
+        const resultUrl = historyTask.resultUrl || extractTaskResultUrl(historyTask as any) || undefined;
+        const normalizedStatus = normalizeQueueStatus(historyTask.status);
+        const status =
+          normalizedStatus === "completed" && resultUrl
+            ? "completed"
+            : normalizedStatus === "failed"
+              ? "error"
+              : normalizedStatus === "cancelled"
+                ? "error"
+                : normalizedStatus === "processing"
+                  ? "generating"
+                  : task.status;
+        const statusDetail =
+          normalizedStatus === "completed"
+            ? t('mediaStudio.generationStatus.completed')
+            : normalizedStatus === "failed"
+              ? (historyTask.errorMessage || t('mediaStudio.generationStatus.failed'))
+              : normalizedStatus === "cancelled"
+                ? t('mediaStudio.generationStatus.cancelled')
+                : normalizedStatus === "processing"
+                  ? t('mediaStudio.generationStatus.providerProcessing')
+                  : task.statusDetail;
+
+        const nextTask: GenerationTask = {
+          ...task,
+          ...(resultUrl ? { url: resultUrl } : {}),
+          backendTaskId: task.backendTaskId ?? historyTask.id ?? undefined,
+          providerTaskId: task.providerTaskId ?? historyTask.taskId ?? undefined,
+          status,
+          error: normalizedStatus === "failed" ? (historyTask.errorMessage || task.error) : task.error,
+          statusDetail,
+        };
+
+        if (
+          nextTask.status !== task.status
+          || nextTask.url !== task.url
+          || nextTask.backendTaskId !== task.backendTaskId
+          || nextTask.providerTaskId !== task.providerTaskId
+          || nextTask.error !== task.error
+          || nextTask.statusDetail !== task.statusDetail
+        ) {
+          changed = true;
+        }
+        return nextTask;
+      });
+      mediaChanged = changed;
+      return changed ? next : prev;
+    });
+
+    if (mediaChanged) {
+      setGeneratedMedia((prev) => {
+        let changed = false;
+        const next = prev.map((item) => {
+          const matchingTask = item.taskId
+            ? resolveHistoryTask(
+                generationTasks.find((task) => task.id === item.taskId) || {
+                  id: item.taskId,
+                  index: 0,
+                  status: "queued",
+                  type: item.type,
+                  prompt: item.prompt,
+                  model: item.model,
+                  createdAt: Date.now(),
+                  updatedAt: Date.now(),
+                } as GenerationTask,
+              )
+            : undefined;
+          if (!matchingTask) {
+            return item;
+          }
+          const resultUrl = matchingTask.resultUrl || extractTaskResultUrl(matchingTask as any) || undefined;
+          if (!resultUrl || resultUrl === item.url) {
+            return item;
+          }
+          changed = true;
+          return { ...item, url: resultUrl };
+        });
+        return changed ? next : prev;
+      });
+    }
+  }, [extractTaskResultUrl, generationTasks, mediaHistory?.tasks]);
 
   const retryGenerationTask = useCallback(async (task: QueueGenerationTask) => {
     const targetTab = task.type === "image" || task.type === "video" || task.type === "audio"
@@ -2965,6 +3443,7 @@ export default function MediaStudio() {
     const nowMs = Date.now();
     const retryTaskId = `task-${nowMs}-${Math.random().toString(36).slice(2, 11)}`;
 
+    setIsGenerationQueueHidden(false);
     setIsGenerationQueueCollapsed(false);
     setIsGenerating(true);
     setFocusedGenerationTaskId(retryTaskId);
@@ -2978,7 +3457,7 @@ export default function MediaStudio() {
         model: retryModel,
         createdAt: nowMs,
         updatedAt: nowMs,
-        statusDetail: "Queued for retry",
+        statusDetail: t('mediaStudio.generationStatus.queuedForRetry'),
       },
       ...prev,
     ]);
@@ -2994,11 +3473,12 @@ export default function MediaStudio() {
     };
 
     try {
-      updateRetryTask({ status: "generating", statusDetail: "Retry in progress" });
+      updateRetryTask({ status: "generating", statusDetail: t('mediaStudio.generationStatus.retryInProgress') });
 
       const selectedModelData = mediaModels?.models?.find((m: any) => m.modelId === retryModel);
       const rawConfig = selectedModelData?.configJson;
       const modelConfig = (typeof rawConfig === "string" ? (() => { try { return JSON.parse(rawConfig); } catch { return null; } })() : rawConfig) as any;
+      const retryDurationField = getModelInputField({ configJson: modelConfig } as any, "duration");
       const extraParams: Record<string, any> = {};
       const apiConfig: Record<string, string> = buildApiConfigFromModelConfig(
         (modelConfig as Record<string, unknown>) ?? null,
@@ -3102,7 +3582,13 @@ export default function MediaStudio() {
       } else if (targetTab === "video") {
         const taskResult = await generateVideoAsyncMutation.mutateAsync({
           ...commonPayload,
-          duration: tabState.modelInputValues.duration ? Number(tabState.modelInputValues.duration) : tabState.duration,
+          ...(retryDurationField
+            ? {
+                duration: Number.isFinite(Number(tabState.modelInputValues.duration ?? tabState.duration))
+                  ? Number(tabState.modelInputValues.duration ?? tabState.duration)
+                  : tabState.duration,
+              }
+            : {}),
           ...(selectedMediaModelReferenceSupport.videoUrls && effectiveReferenceVideos.length === 0 && referenceVideoUrl
             ? { referenceVideoUrl }
             : {}),
@@ -3128,11 +3614,12 @@ export default function MediaStudio() {
         updateRetryTask({
           status: "completed",
           url: resultUrl,
-          statusDetail: "Completed",
+          statusDetail: t('mediaStudio.generationStatus.completed'),
         });
         setGeneratedMedia((prev) => [
           {
             id: `${Date.now()}-${Math.random()}`,
+            taskId: retryTaskId,
             type: targetTab,
             url: resultUrl,
             prompt: retryPrompt,
@@ -3157,18 +3644,18 @@ export default function MediaStudio() {
           backendTaskId: asyncTask?.id,
           providerTaskId: asyncTask?.taskId,
           statusDetail:
-            asyncTask?.status === "processing" ? "Provider is processing this job" :
-            asyncTask?.status === "pending" ? "Waiting for provider pickup" :
-            asyncTask?.status === "completed" ? "Task completed" :
-            asyncTask?.status === "failed" ? (asyncTask?.errorMessage || "Task failed") :
-            "Queued for submission",
+            asyncTask?.status === "processing" ? t('mediaStudio.generationStatus.providerProcessing') :
+            asyncTask?.status === "pending" ? t('mediaStudio.generationStatus.waitingForProviderPickup') :
+            asyncTask?.status === "completed" ? t('mediaStudio.generationStatus.taskCompleted') :
+            asyncTask?.status === "failed" ? (asyncTask?.errorMessage || t('mediaStudio.generationStatus.taskFailed')) :
+            t('mediaStudio.generationStatus.queuedForSubmission'),
         });
         void refetchMediaHistory();
       } else {
         updateRetryTask({
           status: "error",
           error: t('mediaStudio.generationCompletedButNoMediaOutputUrlWasReturned'),
-          statusDetail: "No media output URL was returned",
+          statusDetail: t('mediaStudio.generationStatus.noMediaOutputUrl'),
         });
       toast.error(t('mediaStudio.generationFailed'), {
         description: t('mediaStudio.generationCompletedButNoMediaOutputUrlWasReturned'),
@@ -3200,11 +3687,438 @@ export default function MediaStudio() {
     setIsGenerating,
     openPreview,
     tabStates,
+    t,
   ]);
 
+  const dismissGenerationQueueTask = useCallback((taskId: string) => {
+    const matchedTask = generationQueueTasks.find((candidate) =>
+      getGenerationQueueIdentityCandidates(candidate).includes(taskId),
+    );
+    const dismissIds = matchedTask
+      ? collectGenerationQueueTaskIdentityCandidates([matchedTask])
+      : [taskId];
+
+    setDismissedGenerationQueueTaskIds((prev) => {
+      if (dismissIds.every((dismissId) => prev.has(dismissId))) {
+        return prev;
+      }
+
+      const next = new Set(prev);
+      for (const dismissId of dismissIds) {
+        next.add(dismissId);
+      }
+      return next;
+    });
+
+    setGenerationTasks((prev) =>
+      prev.filter(
+        (candidate) =>
+          !getGenerationQueueIdentityCandidates(candidate).some((candidateId) => dismissIds.includes(candidateId))
+      )
+    );
+
+    setFocusedGenerationTaskId((prev) => (
+      prev && dismissIds.includes(prev) ? null : prev
+    ));
+  }, [generationQueueTasks]);
+
   const clearCompletedGenerationTasks = useCallback(() => {
-    setGenerationTasks((prev) => prev.filter((task) => task.status !== "completed" && task.status !== "error"));
+    const terminalTaskIds = collectGenerationQueueTaskIdentityCandidates(
+      generationQueueTasks.filter((task) => isTerminalGenerationQueueStatus(task.status)),
+    );
+
+    if (terminalTaskIds.length === 0) {
+      return;
+    }
+
+    setDismissedGenerationQueueTaskIds((prev) => {
+      const next = new Set(prev);
+      let changed = false;
+      for (const taskId of terminalTaskIds) {
+        if (!next.has(taskId)) {
+          next.add(taskId);
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+
+    setGenerationTasks((prev) =>
+      prev.filter((candidate) =>
+        !terminalTaskIds.includes(candidate.id)
+        && !terminalTaskIds.includes(candidate.backendTaskId || "")
+        && !terminalTaskIds.includes(candidate.providerTaskId || "")
+      )
+    );
+  }, [generationQueueTasks]);
+
+  const closeGenerationQueue = useCallback(() => {
+    const terminalTaskIds = collectGenerationQueueTaskIdentityCandidates(
+      generationQueueTasks.filter((task) => isTerminalGenerationQueueStatus(task.status)),
+    );
+
+    if (terminalTaskIds.length > 0) {
+      setDismissedGenerationQueueTaskIds((prev) => {
+        const next = new Set(prev);
+        let changed = false;
+        for (const taskId of terminalTaskIds) {
+          if (!next.has(taskId)) {
+            next.add(taskId);
+            changed = true;
+          }
+        }
+        return changed ? next : prev;
+      });
+
+      setGenerationTasks((prev) =>
+        prev.filter((candidate) =>
+          !getGenerationQueueIdentityCandidates(candidate).some((candidateId) => terminalTaskIds.includes(candidateId))
+        ),
+      );
+    }
+
+    setIsGenerationQueueHidden(true);
+  }, [generationQueueTasks]);
+
+  const showGenerationQueue = useCallback(() => {
+    setIsGenerationQueueHidden(false);
+    setIsGenerationQueueCollapsed(false);
   }, []);
+
+  const storyboardReviewTasks = useMemo<StoryboardReviewTask[]>(
+    () => generationTasks
+      .filter((task) => storyboardReviewTaskIds.includes(task.id))
+      .map((task) => ({
+        id: task.id,
+        index: task.index,
+        prompt: task.prompt,
+        url: task.url,
+        model: task.model,
+        status: task.status,
+        error: task.error,
+      })),
+    [generationTasks, storyboardReviewTaskIds],
+  );
+
+  const toggleStoryboardTaskSelection = useCallback((taskId: string) => {
+    setSelectedStoryboardTaskIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(taskId)) {
+        next.delete(taskId);
+      } else {
+        next.add(taskId);
+      }
+      return next;
+    });
+  }, []);
+
+  const selectAllStoryboardTasks = useCallback(() => {
+    setSelectedStoryboardTaskIds(new Set(storyboardReviewTaskIds));
+  }, [storyboardReviewTaskIds]);
+
+  const selectNoStoryboardTasks = useCallback(() => {
+    setSelectedStoryboardTaskIds(new Set());
+  }, []);
+
+  const upsertGeneratedMediaForTask = useCallback((
+    taskId: string,
+    url: string,
+    prompt: string,
+    model: string,
+    creditsUsed?: number,
+  ) => {
+    setGeneratedMedia((prev) => {
+      const nextItem: GeneratedMedia = {
+        id: `${taskId}-${Date.now()}`,
+        taskId,
+        type: "video",
+        url,
+        prompt,
+        model,
+        createdAt: new Date().toISOString(),
+        creditsUsed,
+      };
+
+      const existingIndex = prev.findIndex((item) => item.taskId === taskId);
+      if (existingIndex >= 0) {
+        const next = [...prev];
+        next[existingIndex] = {
+          ...prev[existingIndex],
+          ...nextItem,
+          id: prev[existingIndex].id,
+        };
+        return next;
+      }
+
+      return [nextItem, ...prev];
+    });
+  }, []);
+
+  const buildStoryboardVideoGenerationPayload = useCallback((
+    promptText: string,
+    context: StoryboardVideoGenerationContext,
+  ): Record<string, unknown> => {
+    const payload = buildMediaStudioCommonPayload({
+      prompt: promptText,
+      model: context.model,
+      aspectRatio: context.aspectRatio,
+      referenceImages: context.referenceImages,
+      referenceVideos: context.referenceVideos,
+      extraParams: context.extraParams,
+      apiConfig: context.apiConfig,
+      resolution: context.resolution,
+    });
+
+    return {
+      ...payload,
+      ...(context.duration !== undefined ? { duration: context.duration } : {}),
+      ...(context.useReferenceVideoUrlFallback && context.referenceVideoUrl
+        ? { referenceVideoUrl: context.referenceVideoUrl }
+        : {}),
+    };
+  }, []);
+
+  const buildSelectedStoryboardProject = useCallback(() => {
+    const selectedTasks = storyboardReviewTasks.filter((task) => selectedStoryboardTaskIds.has(task.id) && task.status === "completed" && task.url);
+    if (selectedTasks.length === 0) {
+      return null;
+    }
+
+    const project = buildStoryboardVideoProject(
+      selectedTasks.map((task) => ({
+        id: task.id,
+        prompt: task.prompt,
+        url: task.url!,
+        model: task.model,
+      })),
+      {
+        projectName: sanitizeProjectName(`Storyboard Edit ${new Date().toLocaleString()}`),
+        defaultDurationSeconds: tabStates.video.duration,
+      },
+    );
+
+    return project;
+  }, [selectedStoryboardTaskIds, storyboardReviewTasks, tabStates.video.duration]);
+
+  const createStoryboardEditProject = useCallback(async () => {
+    const project = buildSelectedStoryboardProject();
+    if (!project) {
+      toast.error("Select at least one completed clip before creating a project.");
+      return;
+    }
+
+    setIsCreatingStoryboardProject(true);
+    setStoryboardCompoundStatus("Saving project...");
+    try {
+      const clipCount = project.timeline.tracks.reduce((sum, track) => sum + track.clips.length, 0);
+      const result = await saveStoryboardProjectMutation.mutateAsync({
+        name: project.name,
+        projectData: project,
+        duration: project.settings.duration,
+        resolution: `${project.settings.width}x${project.settings.height}`,
+        trackCount: project.timeline.tracks.length,
+        clipCount,
+      });
+
+      const link = `/video-editor?projectId=${result.id}`;
+      setStoryboardProjectLink(link);
+      setStoryboardCompoundStatus("Project saved. Choose how to open it below.");
+      void navigator.clipboard?.writeText(`${window.location.origin}${link}`).catch(() => undefined);
+      toast.success("Storyboard project created and link copied");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to create video edit project");
+      setStoryboardCompoundStatus(null);
+    } finally {
+      setIsCreatingStoryboardProject(false);
+    }
+  }, [
+    buildSelectedStoryboardProject,
+    saveStoryboardProjectMutation,
+    setStoryboardCompoundStatus,
+    setStoryboardProjectLink,
+    toast,
+  ]);
+
+  const autoCompoundStoryboardClips = useCallback(async () => {
+    const project = buildSelectedStoryboardProject();
+    if (!project) {
+      toast.error("Select at least one completed clip before compounding.");
+      return;
+    }
+
+    setIsCompoundingStoryboard(true);
+    setStoryboardCompoundStatus("Saving storyboard project and starting compound render...");
+    try {
+      const clipCount = project.timeline.tracks.reduce((sum, track) => sum + track.clips.length, 0);
+      const saved = await saveStoryboardProjectMutation.mutateAsync({
+        name: project.name,
+        projectData: project,
+        duration: project.settings.duration,
+        resolution: `${project.settings.width}x${project.settings.height}`,
+        trackCount: project.timeline.tracks.length,
+        clipCount,
+      });
+
+      const link = `/video-editor?projectId=${saved.id}`;
+      setStoryboardProjectLink(link);
+      void navigator.clipboard?.writeText(`${window.location.origin}${link}`).catch(() => undefined);
+      const outputPath = `/tmp/storyboard-compound-${saved.id}.mp4`;
+      const jobId = await videoEditorRenderService.startRender(JSON.stringify(project), outputPath);
+      setStoryboardRenderJobId(jobId);
+      setStoryboardCompoundStatus("Compound render started. Watch progress below.");
+      setStoryboardReviewOpen(false);
+      toast.success("Compound render started");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to compound selected clips");
+      setStoryboardCompoundStatus(null);
+    } finally {
+      setIsCompoundingStoryboard(false);
+    }
+  }, [
+    buildSelectedStoryboardProject,
+    saveStoryboardProjectMutation,
+    toast,
+    videoEditorRenderService,
+    setStoryboardCompoundStatus,
+    setStoryboardProjectLink,
+    setStoryboardRenderJobId,
+    setStoryboardReviewOpen,
+  ]);
+
+  const handleStoryboardRenderComplete = useCallback((outputPath: string) => {
+    setStoryboardRenderJobId(null);
+    setStoryboardCompoundStatus(`Compound render complete: ${outputPath}`);
+    toast.success("Compound video is ready");
+  }, [setStoryboardCompoundStatus, toast]);
+
+  const handleStoryboardRenderCancel = useCallback(() => {
+    setStoryboardRenderJobId(null);
+    setStoryboardCompoundStatus("Compound render cancelled");
+  }, [setStoryboardCompoundStatus]);
+
+  const regenerateStoryboardClip = useCallback(async (taskId: string, prompt: string) => {
+    const task = generationTasks.find((item) => item.id === taskId);
+    if (!task?.storyboardContext) {
+      toast.error("Storyboard clip context not found");
+      return;
+    }
+
+    const normalizedPrompt = prompt.trim();
+    if (!normalizedPrompt) {
+      toast.error("Prompt cannot be empty");
+      return;
+    }
+
+    setRegeneratingStoryboardTaskId(taskId);
+    setStoryboardCompoundStatus(`Regenerating clip ${task.index + 1}...`);
+
+    const updateTask = (updates: Partial<GenerationTask>) => {
+      setGenerationTasks((prev) =>
+        prev.map((item) =>
+          item.id === taskId
+            ? { ...item, ...updates, prompt: normalizedPrompt, updatedAt: Date.now() }
+            : item
+        )
+      );
+    };
+
+    try {
+      updateTask({
+        status: "generating",
+        error: undefined,
+        statusDetail: t('mediaStudio.generationStatus.regeneratingClip'),
+      });
+
+      const payload = buildStoryboardVideoGenerationPayload(normalizedPrompt, task.storyboardContext);
+      const taskResult = await generateVideoAsyncMutation.mutateAsync(payload as any);
+      const taskResultAny = taskResult as any;
+      const resultUrl = taskResultAny.resultUrl || extractTaskResultUrl(taskResultAny) || undefined;
+      const startedAsyncTask = !!taskResultAny.id || !!taskResultAny.taskId;
+      const backendTaskId = taskResultAny.id || taskResultAny.backendTaskId || undefined;
+      const providerTaskId = taskResultAny.taskId || taskResultAny.providerTaskId || undefined;
+
+      if (resultUrl) {
+        updateTask({
+          status: "completed",
+          url: resultUrl,
+          backendTaskId,
+          providerTaskId,
+          statusDetail: t('mediaStudio.generationStatus.completed'),
+        });
+        upsertGeneratedMediaForTask(taskId, resultUrl, normalizedPrompt, task.model || selectedModel, taskResult.creditsUsed);
+        openPreview(resultUrl, "video");
+        setStoryboardCompoundStatus(`Clip ${task.index + 1} regenerated.`);
+        void refetchMediaHistory();
+        return;
+      }
+
+      if (startedAsyncTask && (backendTaskId || providerTaskId)) {
+        updateTask({
+          backendTaskId,
+          providerTaskId,
+          statusDetail: t('mediaStudio.generationStatus.waitingForProviderCompletion'),
+        });
+
+        const pollId = providerTaskId || backendTaskId!;
+        let completedTask: unknown = null;
+        for (let attempt = 0; attempt < 90; attempt += 1) {
+          const currentTask = await trpcUtils.media.getTask.fetch({ taskId: pollId });
+          const currentTaskAny = currentTask as any;
+          const status = String(currentTaskAny?.status || "").toLowerCase();
+          if (status === "completed" || status === "failed" || status === "cancelled") {
+            completedTask = currentTask;
+            break;
+          }
+          await sleepMs(2000);
+        }
+        if (!completedTask) {
+          throw new Error("video generation timeout. Please try again.");
+        }
+        const completedUrl = extractTaskResultUrl(completedTask as any) || undefined;
+        if (!completedUrl) {
+          throw new Error("No media output URL was returned");
+        }
+
+        updateTask({
+          status: "completed",
+          url: completedUrl,
+          backendTaskId,
+          providerTaskId,
+          statusDetail: t('mediaStudio.generationStatus.completed'),
+        });
+        upsertGeneratedMediaForTask(taskId, completedUrl, normalizedPrompt, task.model || selectedModel, taskResult.creditsUsed);
+        openPreview(completedUrl, "video");
+        setStoryboardCompoundStatus(`Clip ${task.index + 1} regenerated.`);
+        void refetchMediaHistory();
+        return;
+      }
+
+      throw new Error("No media output URL was returned");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to regenerate clip";
+      updateTask({
+        status: "error",
+        error: message,
+        statusDetail: message,
+      });
+      toast.error(message);
+      setStoryboardCompoundStatus(`Regeneration failed for clip ${task.index + 1}`);
+    } finally {
+      setRegeneratingStoryboardTaskId(null);
+    }
+  }, [
+    buildStoryboardVideoGenerationPayload,
+    extractTaskResultUrl,
+    generationTasks,
+    generateVideoAsyncMutation,
+    openPreview,
+    refetchMediaHistory,
+    selectedModel,
+    setStoryboardCompoundStatus,
+    toast,
+    trpcUtils.media.getTask,
+    upsertGeneratedMediaForTask,
+  ]);
 
   const handleGenerationQueueTaskClick = useCallback((task: QueueGenerationTask) => {
     if (task.result) {
@@ -3574,7 +4488,7 @@ export default function MediaStudio() {
 
     // Get video tab's current reference images count
     const videoReferenceCount = tabStates.video.referenceImages.length;
-    const videoMaxImages = 25;
+    const videoMaxImages = activeTab === "video" ? maxReferenceImages : 25;
     const availableSlots = videoMaxImages - videoReferenceCount;
 
     if (availableSlots <= 0) {
@@ -3629,35 +4543,15 @@ export default function MediaStudio() {
     // If no pricing tiers, use legacy calculation
     if (!config?.pricingTiers) {
       if (activeTab === "image") return baseCost * numImages;
-      if (activeTab === "video") return baseCost * Math.ceil(duration / 5);
+      if (activeTab === "video") {
+        return selectedVideoDuration !== undefined
+          ? baseCost * Math.ceil(selectedVideoDuration / 5)
+          : baseCost;
+      }
       return baseCost;
     }
 
-    // Build tier key from current selections
-    const pricingFields = (config.inputFields || []).filter((f: any) => f.affectsPricing);
-    let tierKey = "default";
-
-    if (config.pricingFormula === "matrix" && pricingFields.length > 0) {
-      const parts: string[] = [];
-      const fieldOrder: Record<string, number> = { resolution: 0, quality: 1, duration: 2 };
-      const sorted = [...pricingFields].sort((a: any, b: any) => (fieldOrder[a.key] ?? 99) - (fieldOrder[b.key] ?? 99));
-      for (const field of sorted) {
-        const val = modelInputValues[field.key] ?? field.default;
-        if (val !== undefined) {
-          const s = String(val);
-          parts.push(field.key === "duration" && !s.endsWith("s") ? `${s}s` : s);
-        }
-      }
-      tierKey = parts.length > 0 ? parts.join("-") : "default";
-    } else if (config.pricingFormula === "per_duration") {
-      const dur = modelInputValues.duration ?? duration;
-      tierKey = dur ? `${dur}s` : "default";
-    } else if (config.pricingFormula === "per_unit") {
-      tierKey = "default";
-    } else if (config.pricingFormula === "flat") {
-      const res = modelInputValues.resolution;
-      tierKey = res && config.pricingTiers[res] !== undefined ? res : "default";
-    }
+    const tierKey = buildPricingTierKey(config, modelInputValues);
 
     const tierCost = config.pricingTiers[tierKey] ?? baseCost;
 
@@ -3787,6 +4681,96 @@ export default function MediaStudio() {
                 </TabsTrigger>
               </TabsList>
             </Tabs>
+
+            <DashboardCard
+              className="overflow-hidden border-cyan-200/70 bg-gradient-to-br from-white via-white to-cyan-50/60 shadow-[0_18px_50px_rgba(14,165,233,0.08)]"
+              bodyClassName="p-4"
+            >
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <DashboardSectionHeader
+                  eyebrow="Content Composer"
+                  title="Article and social draft workspace"
+                  description="Draft content, attach library assets, and prepare blog or social delivery from one place."
+                />
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="border-cyan-200 bg-cyan-50 text-cyan-800">
+                    Draft workspace
+                  </Badge>
+                  <Button
+                    variant={isComposerOpen ? "outline" : "default"}
+                    className={cn(
+                      isComposerOpen
+                        ? "border-cyan-200 text-cyan-900"
+                        : "bg-cyan-600 text-white hover:bg-cyan-700",
+                    )}
+                    onClick={() => setIsComposerOpen((value) => !value)}
+                  >
+                    {isComposerOpen ? "Collapse composer" : "Open composer"}
+                    <ChevronDown className={cn("ml-2 h-4 w-4 transition-transform", isComposerOpen && "rotate-180")} />
+                  </Button>
+                </div>
+              </div>
+
+              <div className="mt-4">
+                <Collapsible open={isComposerOpen} onOpenChange={setIsComposerOpen}>
+                  <CollapsibleContent className="space-y-4">
+                    <ContentComposerPanel className="mt-2" />
+                  </CollapsibleContent>
+                  <div className={cn(
+                    "rounded-3xl border border-cyan-200/70 bg-white/90 p-5 shadow-sm transition-all",
+                    isComposerOpen && "hidden",
+                  )}>
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                      <div className="space-y-2">
+                        <p className="text-xs font-semibold uppercase tracking-[0.34em] text-cyan-700">
+                          Ready when you need it
+                        </p>
+                        <h3 className="text-xl font-semibold text-slate-900">
+                          Compose articles, route them to Docs or Blog, and publish from one focused panel.
+                        </h3>
+                        <p className="max-w-3xl text-sm leading-6 text-slate-600">
+                          The composer stays collapsed by default so Media Studio feels light. Open it when you need to draft, target a destination, or generate a social caption.
+                        </p>
+                      </div>
+                      <div className="flex flex-col gap-2 sm:flex-row">
+                        <Button
+                          onClick={() => setIsComposerOpen(true)}
+                          className="bg-cyan-600 text-white hover:bg-cyan-700"
+                        >
+                          Open Content Composer
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setIsComposerOpen(true);
+                            window.setTimeout(() => {
+                              const el = document.querySelector('[data-content-composer-panel="true"]');
+                              if (el instanceof HTMLElement) {
+                                el.scrollIntoView({ behavior: "smooth", block: "start" });
+                              }
+                            }, 0);
+                          }}
+                        >
+                          Jump to editor
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {[
+                        "Docs ready",
+                        "Blog ready",
+                        "Social caption generation",
+                        "Autosave drafts",
+                      ].map((label) => (
+                        <Badge key={label} variant="secondary" className="bg-cyan-50 text-cyan-800">
+                          {label}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                </Collapsible>
+              </div>
+            </DashboardCard>
 
             {/* Prompt Input */}
             <DashboardCard className="space-y-4" bodyClassName="p-4">
@@ -3920,14 +4904,117 @@ export default function MediaStudio() {
                 className="min-h-[120px] resize-y"
               />
 
+              {activeTab === "video" && (currentPromptBundle.sharedContext || referenceNotesEditorOpen) && (
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-3 shadow-sm">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-emerald-900">
+                      <CheckCircle className="h-4 w-4" />
+                      REFERENCE NOTES
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {!referenceNotesEditorOpen ? (
+                        <>
+                          <Badge variant="outline" className="border-emerald-200 bg-white text-emerald-700">
+                            Auto-synced
+                          </Badge>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="border-emerald-200 text-emerald-800 hover:bg-emerald-100"
+                            onClick={openReferenceNotesEditor}
+                          >
+                            <Pencil className="h-4 w-4 mr-1" />
+                            Edit
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-emerald-800 hover:bg-emerald-100"
+                            onClick={regenerateReferenceNotes}
+                          >
+                            <RefreshCw className="h-4 w-4 mr-1" />
+                            Regenerate
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <Badge variant="outline" className="border-emerald-200 bg-white text-emerald-700">
+                            Editing
+                          </Badge>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-emerald-800 hover:bg-emerald-100"
+                            onClick={() => {
+                              setReferenceNotesDraft(currentPromptBundle.sharedContext);
+                            }}
+                          >
+                            Reset
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-emerald-800 hover:bg-emerald-100"
+                            onClick={() => setReferenceNotesEditorOpen(false)}
+                          >
+                            Cancel
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {!referenceNotesEditorOpen ? (
+                    <>
+                      <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-emerald-950/90">
+                        {currentPromptBundle.sharedContext || "No shared continuity notes detected yet."}
+                      </p>
+                      <p className="mt-2 text-xs text-emerald-700/80">
+                        This shared block will be merged into every prompt before Media Studio generates the videos.
+                      </p>
+                    </>
+                  ) : (
+                    <div className="mt-3 space-y-2">
+                      <Textarea
+                        value={referenceNotesDraft}
+                        onChange={(e) => setReferenceNotesDraft(e.target.value)}
+                        className="min-h-[120px] bg-white/90"
+                        placeholder="Summarize the recurring character, location, props, and visual anchors here..."
+                      />
+                      <div className="flex items-center justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="border-emerald-200 text-emerald-800 hover:bg-emerald-100"
+                          onClick={() => setReferenceNotesEditorOpen(false)}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="bg-emerald-600 text-white hover:bg-emerald-700"
+                          onClick={saveReferenceNotes}
+                        >
+                          Apply to all prompts
+                        </Button>
+                      </div>
+                      <p className="text-xs text-emerald-700/80 text-right">
+                        Applies the shared continuity notes to every prompt in this batch.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Character Count */}
               {(() => {
                 const currentPromptLength = (enhancedPrompt || prompt).length;
                 const modelData = mediaModels?.models?.find((m: any) => m.modelId === selectedModel);
                 const config = modelData?.configJson as any;
-                const maxLength = config?.maxPromptLength || 2000;
-                const isOverLimit = currentPromptLength > maxLength;
-                const isNearLimit = currentPromptLength > maxLength * 0.95;
+                const parsedMaxLength = Number(config?.maxPromptLength);
+                const maxLength = Number.isFinite(parsedMaxLength) && parsedMaxLength > 0 ? parsedMaxLength : null;
+                const isOverLimit = maxLength !== null ? currentPromptLength > maxLength : false;
+                const isNearLimit = maxLength !== null ? currentPromptLength > maxLength * 0.95 : false;
 
                 return (
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
@@ -3935,18 +5022,25 @@ export default function MediaStudio() {
                       isOverLimit && "text-red-600 font-medium",
                       isNearLimit && !isOverLimit && "text-amber-600"
                     )}>
-                      {currentPromptLength.toLocaleString()} / {maxLength.toLocaleString()} characters
+                      {maxLength !== null
+                        ? `${currentPromptLength.toLocaleString()} / ${maxLength.toLocaleString()} characters`
+                        : `${currentPromptLength.toLocaleString()} characters`}
                     </span>
-                    {isOverLimit && (
+                    {isOverLimit && maxLength !== null && (
                       <span className="text-red-600 flex items-center gap-1">
                         <AlertCircle className="h-3 w-3" />
                         Exceeds model limit
                       </span>
                     )}
-                    {isNearLimit && !isOverLimit && (
+                    {isNearLimit && !isOverLimit && maxLength !== null && (
                       <span className="text-amber-600 flex items-center gap-1">
                         <AlertCircle className="h-3 w-3" />
                         Approaching limit
+                      </span>
+                    )}
+                    {maxLength === null && (
+                      <span className="text-muted-foreground">
+                        No model prompt limit configured
                       </span>
                     )}
                   </div>
@@ -4101,10 +5195,15 @@ export default function MediaStudio() {
                 <div
                   className={cn(
                     "space-y-2 p-3 rounded-lg border-2 border-dashed transition-all",
-                    selectedModel && !selectedMediaModelReferenceSupport.videoUrls
-                      ? "border-gray-200 bg-gray-50 opacity-70"
-                      : "border-gray-200 hover:border-gray-300",
+                    isVideoDraggingOver
+                      ? "border-blue-500 bg-blue-50"
+                      : selectedModel && !selectedMediaModelReferenceSupport.videoUrls
+                        ? "border-gray-200 bg-gray-50 opacity-70"
+                        : "border-gray-200 hover:border-gray-300",
                   )}
+                  onDragOver={selectedModel && selectedMediaModelReferenceSupport.videoUrls ? handleVideoDragOver : undefined}
+                  onDragLeave={selectedModel && selectedMediaModelReferenceSupport.videoUrls ? handleVideoDragLeave : undefined}
+                  onDrop={selectedModel && selectedMediaModelReferenceSupport.videoUrls ? handleVideoDrop : undefined}
                 >
                   <div className="flex items-center justify-between gap-2">
                     <label className="text-sm font-medium">
@@ -4347,18 +5446,15 @@ export default function MediaStudio() {
                   </div>
                 )}
 
-                {/* Duration (for video only) — uses model-specific options from configJson when available */}
-                {activeTab === "video" && (() => {
-                  const modelData = mediaModels?.models?.find((m: any) => m.modelId === selectedModel);
-                  const config = modelData?.configJson as any;
-                  const durationField = config?.inputFields?.find((f: any) => f.key === "duration");
-                  const durationOptions = durationField?.options as { value: string; label: string }[] | undefined;
-                  const currentVal = String(modelInputValues.duration ?? duration);
+                {/* Duration (video only) — shown only when the selected model declares a duration field */}
+                {activeTab === "video" && selectedDurationField && (() => {
+                  const durationOptions = selectedDurationField.options as { value: string; label: string }[] | undefined;
+                  const currentVal = String(modelInputValues.duration ?? selectedDurationField.default ?? duration);
                   return (
                     <div className="space-y-1">
                       <label className="text-sm text-muted-foreground">
                         {t('mediaStudio.duration')}
-                        {durationField?.affectsPricing && <span className="ml-1 text-xs text-amber-500">($)</span>}
+                        {selectedDurationField.affectsPricing && <span className="ml-1 text-xs text-amber-500">($)</span>}
                       </label>
                       <Select
                         value={currentVal}
@@ -5147,26 +6243,36 @@ export default function MediaStudio() {
                       )}
                     </label>
                     <Select
-                      value={selectedLlmModel || "__auto__"}
+                      value={selectedLlmModel || AUTO_MODEL}
                       onValueChange={(value) => {
-                        setSelectedLlmModel(value === "__auto__" ? "" : value);
-                        // Any explicit selection (including Auto) counts as manual
-                        setLlmModelManuallySet(true);
+                        setSelectedLlmModel(value);
                       }}
                     >
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder={t('mediaStudio.autoSkillRequirements')}>
-                          {selectedLlmModel
-                            ? (visionModels?.models?.find((m: any) => m.id === selectedLlmModel)?.name
-                              ? `${visionModels.models.find((m: any) => m.id === selectedLlmModel)?.name} (${visionModels.models.find((m: any) => m.id === selectedLlmModel)?.providerDisplayName})`
-                              : selectedLlmModel)
-                            : t('mediaStudio.autoSkillRequirements')}
+                          {selectedLlmModelSelection.displayLabel}
                         </SelectValue>
                       </SelectTrigger>
                       <SelectContent className="max-h-[300px]">
-                        <SelectItem value="__auto__" className="font-medium">
-                          {t('mediaStudio.autoSkillRequirements')}
-                        </SelectItem>
+                        <SelectGroup>
+                          <SelectLabel>{t('mediaStudio.recommended')}</SelectLabel>
+                          <SelectItem value={AUTO_MODEL} className="font-medium">
+                            <span className="flex items-center gap-2">
+                              <Sparkles className="h-3.5 w-3.5 shrink-0 text-primary" />
+                              <span className="flex-1 truncate">{t('mediaStudio.autoSkillRequirements')}</span>
+                            </span>
+                          </SelectItem>
+                          {providerAutoModelOptions.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              <span className="flex items-center gap-2">
+                                <Sparkles className="h-3.5 w-3.5 shrink-0 text-primary" />
+                                <span className="flex-1 truncate">
+                                  {t('mediaStudio.autoByProvider', { provider: option.providerDisplayName })}
+                                </span>
+                              </span>
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
                         <SelectSeparator />
                         {/* Search input */}
                         <div className="sticky top-0 bg-popover p-2 border-b z-10">
@@ -5182,8 +6288,8 @@ export default function MediaStudio() {
                             />
                           </div>
                         </div>
-                        {visionModels?.models
-                          ?.filter((model) => {
+                        {visionModelsByProvider.map(({ providerName, models }) => {
+                          const filteredModels = models.filter((model) => {
                             if (!llmModelSearch) return true;
                             const search = llmModelSearch.toLowerCase();
                             return (
@@ -5191,22 +6297,33 @@ export default function MediaStudio() {
                               model.id.toLowerCase().includes(search) ||
                               model.providerDisplayName?.toLowerCase().includes(search)
                             );
-                          })
-                          .map((model) => (
-                            <SelectItem key={model.id} value={model.id}>
-                              {model.name} ({model.providerDisplayName})
-                              {model.isDefault && " • default"}
-                            </SelectItem>
-                          ))}
-                        {visionModels?.models?.filter((model) => {
-                          if (!llmModelSearch) return true;
-                          const search = llmModelSearch.toLowerCase();
+                          });
+
+                          if (filteredModels.length === 0) {
+                            return null;
+                          }
+
                           return (
+                            <SelectGroup key={providerName}>
+                              <SelectLabel>{providerName}</SelectLabel>
+                              {filteredModels.map((model) => (
+                                <SelectItem key={model.id} value={model.id}>
+                                  {formatMediaStudioModelLabel(model)}
+                                  {model.isDefault && " • default"}
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
+                          );
+                        })}
+                        {providerAutoModelOptions.length === 0 && visionModelsByProvider.every(({ models }) => {
+                          if (!llmModelSearch) return models.length === 0;
+                          const search = llmModelSearch.toLowerCase();
+                          return models.filter((model) => (
                             model.name.toLowerCase().includes(search) ||
                             model.id.toLowerCase().includes(search) ||
                             model.providerDisplayName?.toLowerCase().includes(search)
-                          );
-                        }).length === 0 && (
+                          )).length === 0;
+                        }) && (
                           <div className="py-4 text-center text-sm text-muted-foreground">
                             {t('mediaStudio.noModelsFound')}
                           </div>
@@ -5634,282 +6751,291 @@ export default function MediaStudio() {
               </TabsList>
 
               <TabsContent value="history" className="mt-4">
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-semibold flex items-center gap-2">
-                      <History className="h-4 w-4" />
-                      {t('mediaStudio.historyGallery')}
-                    </h3>
-                    <Badge variant="outline" className="text-xs">
-                      {activeTab === "image" ? t('mediaStudio.dragToUseAsReference') : t('mediaStudio.clickToPreview')}
-                    </Badge>
-                  </div>
+                <div className="pr-3">
+                    <Tabs value={historyGalleryTab} onValueChange={(value) => setHistoryGalleryTab(value as HistoryGalleryTab)}>
+                        <TabsList className="grid w-full grid-cols-2 bg-muted/50 p-1">
+                          <TabsTrigger value="image" className="gap-2">
+                            <Image className="h-4 w-4" />
+                            {t('mediaStudio.tabs.image')}
+                          </TabsTrigger>
+                          <TabsTrigger value="video" className="gap-2">
+                            <Video className="h-4 w-4" />
+                            {t('mediaStudio.tabs.video')}
+                          </TabsTrigger>
+                        </TabsList>
 
-                  <div className="pr-3">
-                    {/* Completed tasks grid */}
-                    <div className="grid grid-cols-3 gap-2 mb-4 pb-2">
-                      {mediaHistory?.tasks
-                        ?.filter((task) => task.status === "completed" && !!extractTaskResultUrl(task) && !expiredUrls.has(extractTaskResultUrl(task)!))
-                        .map((task) => {
-                          const resultUrl = extractTaskResultUrl(task);
-                          if (!resultUrl) return null;
-                          const canAddToLibrary = isMediaTaskEligibleForLibraryAdd({
-                            id: task.id,
-                            status: task.status,
-                            resultUrl,
-                          });
-                          const libraryState = taskLibraryState[task.id];
-                          const libraryStatusMeta = getLibraryItemStatusMeta(libraryState?.status);
-                          return (
-                            <div
-                              key={task.id}
-                              className={cn(
-                                "relative",
-                                task.mediaType === "image" ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"
-                              )}
-                              draggable={task.mediaType === "image"}
-                              onDragStart={task.mediaType === "image" ? (e) => handleHistoryDragStart(e, resultUrl) : undefined}
-                              onClick={() => openPreview(resultUrl)}
-                            >
-                              {canAddToLibrary && (
-                                <TooltipProvider>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Button
-                                        size="icon"
-                                        variant="secondary"
-                                        className={cn(
-                                          "absolute left-1 top-1 z-[1] h-7 w-7 rounded-full border shadow-sm",
-                                          libraryState?.action === "adding" && "border-amber-300 bg-amber-100 text-amber-800 hover:bg-amber-100",
-                                          libraryState?.action === "added" && "border-emerald-300 bg-emerald-100 text-emerald-700 hover:bg-emerald-100",
-                                          libraryState?.action === "error" && "border-red-300 bg-red-100 text-red-700 hover:bg-red-100",
-                                          !libraryState?.action && "border-slate-300 bg-white/95 text-slate-700 hover:bg-white",
-                                        )}
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          void handleAddHistoryTaskToLibrary({
-                                            id: task.id,
-                                            status: task.status,
-                                            resultUrl,
-                                          });
-                                        }}
-                                        disabled={libraryState?.action === "adding" || libraryState?.action === "added"}
-                                      >
-                                        {libraryState?.action === "adding" ? (
-                                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                        ) : libraryState?.action === "added" ? (
-                                          <CheckCircle className="h-3.5 w-3.5" />
-                                        ) : (
-                                          <Library className="h-3.5 w-3.5" />
-                                        )}
-                                      </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      {libraryState?.action === "adding"
-                                        ? t('mediaStudio.addingToLibrary')
-                                        : libraryState?.action === "added"
-                                          ? t('mediaStudio.addedToLibrary')
-                                          : libraryStatusMeta.retryable
-                                            ? t('mediaStudio.retryAddToLibrary')
-                                            : t('mediaStudio.addToLibrary')}
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
-                              )}
-                              {task.mediaType === "video" ? (
-                                <div className="relative w-full aspect-square rounded-lg border border-blue-200 overflow-hidden hover:border-blue-400 transition-colors bg-black">
-                                  <video
-                                    src={resultUrl}
-                                    className="w-full h-full object-cover"
-                                    muted
-                                    playsInline
-                                    preload="metadata"
-                                    onError={() => markExpired(resultUrl)}
-                                  />
-                                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                    <div className="rounded-full bg-black/50 p-2">
-                                      <Play className="h-4 w-4 text-white" />
+                        <div className="mt-4 flex items-center justify-between mb-3">
+                          <h3 className="font-semibold flex items-center gap-2">
+                            <History className="h-4 w-4" />
+                            {t('mediaStudio.historyGallery')}
+                          </h3>
+                          <Badge variant="outline" className="text-xs">
+                            {historyGalleryTab === "image"
+                              ? t('mediaStudio.dragToUseAsReference')
+                              : t('mediaStudio.clickToPreview')}
+                          </Badge>
+                        </div>
+
+                        <div className="pr-3">
+                          {/* Completed tasks grid */}
+                          <div className="grid grid-cols-3 gap-2 mb-4 pb-2">
+                            {historyGalleryCompletedTasks.map((task) => {
+                              const resultUrl = extractTaskResultUrl(task);
+                              if (!resultUrl) return null;
+                              const canAddToLibrary = isMediaTaskEligibleForLibraryAdd({
+                                id: task.id,
+                                status: task.status,
+                                resultUrl,
+                              });
+                              const libraryState = taskLibraryState[task.id];
+                              const libraryStatusMeta = getLibraryItemStatusMeta(libraryState?.status);
+                              return (
+                                <div
+                                  key={task.id}
+                                  className={cn(
+                                    "relative",
+                                    task.mediaType === "image" || task.mediaType === "video"
+                                      ? "cursor-grab active:cursor-grabbing"
+                                      : "cursor-pointer"
+                                  )}
+                                  draggable={task.mediaType === "image" || task.mediaType === "video"}
+                                  onDragStart={
+                                    task.mediaType === "image" || task.mediaType === "video"
+                                      ? (e) => handleHistoryDragStart(e, resultUrl, task.mediaType)
+                                      : undefined
+                                  }
+                                  onClick={() => openPreview(resultUrl)}
+                                >
+                                  {canAddToLibrary && (
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Button
+                                            size="icon"
+                                            variant="secondary"
+                                            className={cn(
+                                              "absolute left-1 top-1 z-[1] h-7 w-7 rounded-full border shadow-sm",
+                                              libraryState?.action === "adding" && "border-amber-300 bg-amber-100 text-amber-800 hover:bg-amber-100",
+                                              libraryState?.action === "added" && "border-emerald-300 bg-emerald-100 text-emerald-700 hover:bg-emerald-100",
+                                              libraryState?.action === "error" && "border-red-300 bg-red-100 text-red-700 hover:bg-red-100",
+                                              !libraryState?.action && "border-slate-300 bg-white/95 text-slate-700 hover:bg-white",
+                                            )}
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              void handleAddHistoryTaskToLibrary({
+                                                id: task.id,
+                                                status: task.status ?? undefined,
+                                                resultUrl: resultUrl!,
+                                              });
+                                            }}
+                                            disabled={libraryState?.action === "adding" || libraryState?.action === "added"}
+                                          >
+                                            {libraryState?.action === "adding" ? (
+                                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                            ) : libraryState?.action === "added" ? (
+                                              <CheckCircle className="h-3.5 w-3.5" />
+                                            ) : (
+                                              <Library className="h-3.5 w-3.5" />
+                                            )}
+                                          </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          {libraryState?.action === "adding"
+                                            ? t('mediaStudio.addingToLibrary')
+                                            : libraryState?.action === "added"
+                                              ? t('mediaStudio.addedToLibrary')
+                                              : libraryStatusMeta.retryable
+                                                ? t('mediaStudio.retryAddToLibrary')
+                                                : t('mediaStudio.addToLibrary')}
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
+                                  )}
+                                  {task.mediaType === "video" ? (
+                                    <div className="relative w-full aspect-square rounded-lg border border-blue-200 overflow-hidden hover:border-blue-400 transition-colors bg-black">
+                                      <video
+                                        src={resultUrl}
+                                        className="w-full h-full object-cover"
+                                        muted
+                                        playsInline
+                                        preload="metadata"
+                                        onError={() => markExpired(resultUrl)}
+                                      />
+                                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                        <div className="rounded-full bg-black/50 p-2">
+                                          <Play className="h-4 w-4 text-white" />
+                                        </div>
+                                      </div>
                                     </div>
+                                  ) : task.mediaType === "audio" ? (
+                                    <div className="w-full aspect-square rounded-lg border border-orange-200 bg-orange-50 hover:border-orange-400 transition-colors flex items-center justify-center">
+                                      <Music className="h-8 w-8 text-orange-500" />
+                                    </div>
+                                  ) : (
+                                    <img
+                                      src={resultUrl}
+                                      alt={task.prompt?.slice(0, 30)}
+                                      className="w-full aspect-square object-cover rounded-lg border hover:border-blue-400 transition-colors"
+                                      onError={() => markExpired(resultUrl)}
+                                    />
+                                  )}
+                                  <div className="mt-1 flex items-center justify-center gap-1.5 rounded-md border bg-white/90 px-1 py-1 shadow-sm">
+                                    {task.mediaType === "image" && (
+                                      <TooltipProvider>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <Button
+                                              size="icon"
+                                              variant="ghost"
+                                              className="h-9 w-9 rounded-lg"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                openLightbox(resultUrl!, task.prompt || "", task.model ?? undefined, task.createdAt ?? undefined);
+                                              }}
+                                            >
+                                              <Maximize2 className="h-5 w-5" />
+                                            </Button>
+                                          </TooltipTrigger>
+                                          <TooltipContent>{t('viewCopyPrompt')}</TooltipContent>
+                                        </Tooltip>
+                                      </TooltipProvider>
+                                    )}
+                                    {task.mediaType === "image" && referenceImages.length < maxReferenceImages && (
+                                      <TooltipProvider>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <Button
+                                              size="icon"
+                                              variant="ghost"
+                                              className="h-9 w-9 rounded-lg"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                addHistoryAsReference({ id: task.id, resultUrl });
+                                              }}
+                                            >
+                                              <ImagePlus className="h-5 w-5" />
+                                            </Button>
+                                          </TooltipTrigger>
+                                          <TooltipContent>{t('useAsReference')}</TooltipContent>
+                                        </Tooltip>
+                                      </TooltipProvider>
+                                    )}
+                                    {task.mediaType === "image" && (
+                                      <TooltipProvider>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <Button
+                                              size="icon"
+                                              variant="ghost"
+                                              className="h-9 w-9 rounded-lg"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                openSplitDialog(resultUrl);
+                                              }}
+                                            >
+                                              <Grid2X2 className="h-5 w-5" />
+                                            </Button>
+                                          </TooltipTrigger>
+                                          <TooltipContent>{t('mediaStudio.splitGrid')}</TooltipContent>
+                                        </Tooltip>
+                                      </TooltipProvider>
+                                    )}
+                                    {task.mediaType === "image" && (
+                                      <TooltipProvider>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <Button
+                                              size="icon"
+                                              variant="ghost"
+                                              className="h-9 w-9 rounded-lg"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                openSplitDialog(resultUrl, "crop");
+                                              }}
+                                            >
+                                              <Crop className="h-5 w-5" />
+                                            </Button>
+                                          </TooltipTrigger>
+                                          <TooltipContent>{t('mediaStudio.cropByRatio')}</TooltipContent>
+                                        </Tooltip>
+                                      </TooltipProvider>
+                                    )}
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Button
+                                            size="icon"
+                                            variant="ghost"
+                                            className="h-9 w-9 rounded-lg"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              const ext = task.mediaType === "image" ? "png" : task.mediaType === "video" ? "mp4" : "mp3";
+                                              downloadMedia(resultUrl, `${task.id}.${ext}`);
+                                            }}
+                                          >
+                                            <Download className="h-5 w-5" />
+                                          </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>{t('mediaStudio.download')}</TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
                                   </div>
                                 </div>
-                              ) : task.mediaType === "audio" ? (
-                                <div className="w-full aspect-square rounded-lg border border-orange-200 bg-orange-50 hover:border-orange-400 transition-colors flex items-center justify-center">
-                                  <Music className="h-8 w-8 text-orange-500" />
-                                </div>
-                              ) : (
-                                <img
-                                  src={resultUrl}
-                                  alt={task.prompt?.slice(0, 30)}
-                                  className="w-full aspect-square object-cover rounded-lg border hover:border-blue-400 transition-colors"
-                                  onError={() => markExpired(resultUrl)}
-                                />
-                              )}
-                              <div className="mt-1 flex items-center justify-center gap-1.5 rounded-md border bg-white/90 px-1 py-1 shadow-sm">
-                                {task.mediaType === "image" && (
-                                  <TooltipProvider>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <Button
-                                          size="icon"
-                                          variant="ghost"
-                                          className="h-9 w-9 rounded-lg"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            openLightbox(resultUrl, task.prompt || "", task.model, task.createdAt);
-                                          }}
-                                        >
-                                          <Maximize2 className="h-5 w-5" />
-                                        </Button>
-                                      </TooltipTrigger>
-                                      <TooltipContent>{t('viewCopyPrompt')}</TooltipContent>
-                                    </Tooltip>
-                                  </TooltipProvider>
-                                )}
-                                {task.mediaType === "image" && referenceImages.length < maxReferenceImages && (
-                                  <TooltipProvider>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <Button
-                                          size="icon"
-                                          variant="ghost"
-                                          className="h-9 w-9 rounded-lg"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            addHistoryAsReference({ id: task.id, resultUrl });
-                                          }}
-                                        >
-                                          <ImagePlus className="h-5 w-5" />
-                                        </Button>
-                                      </TooltipTrigger>
-                                      <TooltipContent>{t('useAsReference')}</TooltipContent>
-                                    </Tooltip>
-                                  </TooltipProvider>
-                                )}
-                                {task.mediaType === "image" && (
-                                  <TooltipProvider>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <Button
-                                          size="icon"
-                                          variant="ghost"
-                                          className="h-9 w-9 rounded-lg"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            openSplitDialog(resultUrl);
-                                          }}
-                                        >
-                                          <Grid2X2 className="h-5 w-5" />
-                                        </Button>
-                                      </TooltipTrigger>
-                                      <TooltipContent>{t('mediaStudio.splitGrid')}</TooltipContent>
-                                    </Tooltip>
-                                  </TooltipProvider>
-                                )}
-                                {task.mediaType === "image" && (
-                                  <TooltipProvider>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <Button
-                                          size="icon"
-                                          variant="ghost"
-                                          className="h-9 w-9 rounded-lg"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            openSplitDialog(resultUrl, "crop");
-                                          }}
-                                        >
-                                          <Crop className="h-5 w-5" />
-                                        </Button>
-                                      </TooltipTrigger>
-                                      <TooltipContent>{t('mediaStudio.cropByRatio')}</TooltipContent>
-                                    </Tooltip>
-                                  </TooltipProvider>
-                                )}
-                                <TooltipProvider>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Button
-                                        size="icon"
-                                        variant="ghost"
-                                        className="h-9 w-9 rounded-lg"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          const ext = task.mediaType === "image" ? "png" : task.mediaType === "video" ? "mp4" : "mp3";
-                                          downloadMedia(resultUrl, `${task.id}.${ext}`);
-                                        }}
-                                      >
-                                        <Download className="h-5 w-5" />
-                                      </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>{t('mediaStudio.download')}</TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
-                              </div>
-                            </div>
-                          );
-                        })}
-                    </div>
-
-                    {/* Pending/Processing Tasks - Only show failed tasks from current session */}
-                    <div className="space-y-2">
-                      {mediaHistory?.tasks
-                        ?.filter((task) => {
-                          if (task.status === "processing" || task.status === "pending") return true;
-                          if (task.status === "failed") {
-                            return task.createdAt && new Date(task.createdAt) >= sessionStartTime;
-                          }
-                          return false;
-                        })
-                        .map((task) => (
-                          <div
-                            key={task.id}
-                            className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-50"
-                          >
-                            <div className={cn(
-                              "w-10 h-10 rounded-lg flex items-center justify-center shrink-0",
-                              task.mediaType === "image" ? "bg-blue-100" :
-                              task.mediaType === "video" ? "bg-blue-100" : "bg-orange-100"
-                            )}>
-                              {task.status === "processing" ? (
-                                <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
-                              ) : task.mediaType === "image" ? (
-                                <Image className="h-5 w-5 text-blue-500" />
-                              ) : task.mediaType === "video" ? (
-                                <Video className="h-5 w-5 text-blue-500" />
-                              ) : (
-                                <Music className="h-5 w-5 text-orange-500" />
-                              )}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium truncate">
-                                {task.prompt?.slice(0, 25)}...
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {task.status === "processing" ? (
-                                  <span className="text-blue-500">{t('mediaStudio.processing')}</span>
-                                ) : task.status === "failed" ? (
-                                  <span className="text-red-500">{t('mediaStudio.failed')}</span>
-                                ) : (
-                                  <span className="text-yellow-500">{t('mediaStudio.pending')}</span>
-                                )}
-                              </p>
-                            </div>
+                              );
+                            })}
                           </div>
-                        ))}
-                    </div>
 
-                    {(!mediaHistory?.tasks || mediaHistory.tasks.length === 0) && (
-                      <p className="text-sm text-muted-foreground text-center py-8">
-                        {activeTab === "video"
-                          ? t('mediaStudio.noHistoryVideo')
-                          : activeTab === "audio"
-                            ? t('mediaStudio.noHistoryAudio')
-                            : t('mediaStudio.noHistoryImage')}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </TabsContent>
+                          {/* Pending/Processing Tasks - Only show failed tasks from current session */}
+                          <div className="space-y-2">
+                            {historyGalleryPendingTasks.map((task) => (
+                              <div
+                                key={task.id}
+                                className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-50"
+                              >
+                                <div className={cn(
+                                  "w-10 h-10 rounded-lg flex items-center justify-center shrink-0",
+                                  task.mediaType === "image" ? "bg-blue-100" :
+                                  task.mediaType === "video" ? "bg-blue-100" : "bg-orange-100"
+                                )}>
+                                  {task.status === "processing" ? (
+                                    <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
+                                  ) : task.mediaType === "image" ? (
+                                    <Image className="h-5 w-5 text-blue-500" />
+                                  ) : task.mediaType === "video" ? (
+                                    <Video className="h-5 w-5 text-blue-500" />
+                                  ) : (
+                                    <Music className="h-5 w-5 text-orange-500" />
+                                  )}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium truncate">
+                                    {task.prompt?.slice(0, 25)}...
+                                  </p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {task.status === "processing" ? (
+                                      <span className="text-blue-500">{t('mediaStudio.processing')}</span>
+                                    ) : task.status === "failed" ? (
+                                      <span className="text-red-500">{t('mediaStudio.failed')}</span>
+                                    ) : (
+                                      <span className="text-yellow-500">{t('mediaStudio.pending')}</span>
+                                    )}
+                                  </p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+
+                          {historyGalleryTasks.length === 0 && (
+                            <p className="text-sm text-muted-foreground text-center py-8">
+                              {historyGalleryTab === "image"
+                                ? t('mediaStudio.noHistoryImage')
+                                : t('mediaStudio.noHistoryVideo')}
+                            </p>
+                          )}
+                        </div>
+                      </Tabs>
+                    </div>
+                  </TabsContent>
 
               <TabsContent value="library" className="mt-4">
                 <LibrarySearchPanel
@@ -5923,6 +7049,20 @@ export default function MediaStudio() {
                   hasMore={librarySearchData?.has_more ?? false}
                   errorMessage={librarySearchError?.message}
                   selectedItemId={selectedLibraryItemId}
+                  itemTypeFilter={libraryItemTypeFilter}
+                  onItemTypeFilterChange={setLibraryItemTypeFilter}
+                  addToReferenceLabel={t('mediaStudio.useAsReference')}
+                  canAddToReferenceItem={(item) => {
+                    const itemType = item.item_type.toLowerCase();
+                    if (itemType === "video") {
+                      return (!selectedModel || selectedMediaModelReferenceSupport.videoUrls) && referenceVideos.length < maxReferenceVideos;
+                    }
+                    if (itemType === "image") {
+                      return (!selectedModel || selectedMediaModelReferenceSupport.imageUrls) && referenceImages.length < maxReferenceImages;
+                    }
+                    return false;
+                  }}
+                  onAddToReference={handleLibraryResultAddToReference}
                   onSelect={handleLibraryResultSelect}
                 />
               </TabsContent>
@@ -6455,12 +7595,54 @@ export default function MediaStudio() {
               )}
             </div>
           </div>
-        </DialogContent>
+      </DialogContent>
       </Dialog>
 
-      {generationQueueTasks.length > 0 && (
+      {storyboardReviewOpen && (
+      <StoryboardBatchReviewDialog
+        open={storyboardReviewOpen}
+        tasks={storyboardReviewTasks}
+        selectedTaskIds={Array.from(selectedStoryboardTaskIds)}
+        onOpenChange={setStoryboardReviewOpen}
+        onToggleTask={toggleStoryboardTaskSelection}
+        onSelectAll={selectAllStoryboardTasks}
+        onSelectNone={selectNoStoryboardTasks}
+        onRegenerateTask={regenerateStoryboardClip}
+        onAutoCompound={autoCompoundStoryboardClips}
+        onCreateProject={createStoryboardEditProject}
+        isCompounding={isCompoundingStoryboard}
+        isCreatingProject={isCreatingStoryboardProject}
+        regeneratingTaskId={regeneratingStoryboardTaskId}
+        compoundStatus={storyboardCompoundStatus}
+        projectLink={storyboardProjectLink}
+      />
+      )}
+
+      {storyboardRenderJobId && (
+        <RenderProgressDialog
+          jobId={storyboardRenderJobId}
+          onComplete={handleStoryboardRenderComplete}
+          onCancel={handleStoryboardRenderCancel}
+        />
+      )}
+
+      {isGenerationQueueHidden && visibleGenerationQueueTasks.length > 0 && (
+        <Button
+          type="button"
+          variant="outline"
+          onClick={showGenerationQueue}
+          className="fixed bottom-3 right-3 z-[60] rounded-full border-sky-200 bg-white/95 px-4 py-2 text-sky-700 shadow-xl backdrop-blur hover:bg-sky-50 sm:right-4 dark:border-sky-900 dark:bg-slate-950/95 dark:text-sky-300 dark:hover:bg-sky-950/60"
+        >
+          {t('mediaStudio.generationQueue.showQueue')}
+          <span className="ml-2 rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-medium text-sky-700 dark:bg-sky-950/70 dark:text-sky-200">
+            {t('mediaStudio.items', { count: visibleGenerationQueueTasks.length })}
+          </span>
+        </Button>
+      )}
+
+      {!isGenerationQueueHidden && visibleGenerationQueueTasks.length > 0 && (
         <GenerationProgress
-          tasks={generationQueueTasks}
+          tasks={visibleGenerationQueueTasks}
           title={t('mediaStudio.generationQueueTitle')}
           subtitle={t('mediaStudio.generationQueueSubtitle')}
           maxVisible={6}
@@ -6468,7 +7650,9 @@ export default function MediaStudio() {
           onExpandedChange={(expanded) => setIsGenerationQueueCollapsed(!expanded)}
           onTaskClick={handleGenerationQueueTaskClick}
           onTaskRetry={retryGenerationTask}
+          onTaskRemove={dismissGenerationQueueTask}
           onClearCompleted={clearCompletedGenerationTasks}
+          onClose={closeGenerationQueue}
           focusTaskId={focusedGenerationTaskId}
           className="left-3 right-3 bottom-3 sm:left-auto sm:right-4 sm:w-[24rem]"
         />

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   mockGenerateImage,
+  mockGenerateVideoAsync,
   mockGenerateAudio,
   mockCalculateCreditCost,
   mockDeductCredits,
@@ -11,6 +12,7 @@ const {
   mockDecrypt,
 } = vi.hoisted(() => ({
   mockGenerateImage: vi.fn(),
+  mockGenerateVideoAsync: vi.fn(),
   mockGenerateAudio: vi.fn(),
   mockCalculateCreditCost: vi.fn(),
   mockDeductCredits: vi.fn(),
@@ -23,6 +25,7 @@ const {
 vi.mock("../../services/mediaGenerationService", () => ({
   mediaGenerationService: {
     generateImage: mockGenerateImage,
+    generateVideoAsync: mockGenerateVideoAsync,
     generateAudio: mockGenerateAudio,
     getModels: vi.fn().mockReturnValue([]),
     getModel: vi.fn().mockReturnValue(null),
@@ -54,6 +57,8 @@ vi.mock("../../services/rateLimiter", () => ({
     isAllowed: vi.fn().mockReturnValue(true),
     getResetTime: vi.fn().mockReturnValue(1000),
   },
+  isLuxTtsModel: vi.fn().mockReturnValue(false),
+  checkLuxTtsRateLimit: vi.fn().mockResolvedValue({ allowed: true, retryAfter: 0 }),
 }));
 
 vi.mock("../../db", () => ({
@@ -149,6 +154,7 @@ function makeDbWithSequentialSelectResults(results: Array<any[]>) {
   return {
     select: vi.fn().mockImplementation(() => ({
       from: vi.fn().mockReturnValue({
+        limit: vi.fn().mockImplementation(async () => results[idx++] ?? []),
         where: vi.fn().mockReturnValue({
           orderBy: vi.fn().mockReturnValue({
             limit: vi.fn().mockImplementation(async () => results[idx++] ?? []),
@@ -185,6 +191,15 @@ describe("media router DB-first model contract", () => {
       provider: "uvoice",
       creditsUsed: 22,
       data: [{ url: "https://example.com/audio.mp3" }],
+    });
+    mockGenerateVideoAsync.mockResolvedValue({
+      success: true,
+      taskId: "task-video-1",
+      status: "completed",
+      model: "db-only-video-model",
+      provider: "kie.ai",
+      creditsUsed: 50,
+      data: [{ url: "https://example.com/video.mp4" }],
     });
   });
 
@@ -316,6 +331,300 @@ describe("media router DB-first model contract", () => {
     expect(mockGenerateImage).toHaveBeenCalledWith(
       expect.objectContaining({
         model: "db-default-image",
+      }),
+      "user-token",
+    );
+  });
+
+  it("generateVideoAsync accepts prompts over 2000 chars when the model config allows it", async () => {
+    const db = makeDbWithSequentialSelectResults([
+      [{ modelType: "video", provider: "kie.ai", isEnabled: true }],
+      [{ creditCost: 50, configJson: { maxPromptLength: 5000, pricingTiers: { default: 50 } } }],
+    ]);
+    mockGetDb.mockResolvedValue(db as any);
+    mockCalculateCreditCost.mockReturnValue(50);
+
+    const fn = mediaRouter.generateVideoAsync as Function;
+    const result = await fn({
+      ctx: {
+        user: { id: 123, role: "user", currentTenantId: 1 },
+        userToken: "user-token",
+        tenantId: 1,
+        publicUrl: "https://tenant.example.com",
+      },
+      input: {
+        prompt: "a".repeat(2501),
+        model: "veo-3-1",
+        duration: 10,
+      },
+    });
+
+    expect(result.success).toBe(true);
+    expect(mockGenerateVideoAsync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        prompt: "a".repeat(2501),
+        model: "veo-3-1",
+        duration: 10,
+        apiConfig: expect.objectContaining({ provider: "kie.ai" }),
+      }),
+      "user-token",
+    );
+  });
+
+  it("generateVideoAsync rejects a fifth reference image only for the WaveSpeed launch model", async () => {
+    const wavespeedConfig = {
+      maxReferenceImages: 4,
+      inputFields: [
+        { key: "image_urls", type: "image_urls", syncWith: "reference_images", maxItems: 4 },
+        { key: "aspect_ratio", type: "select", options: [{ value: "16:9", label: "16:9" }] },
+        { key: "duration", type: "select", options: [{ value: "5", label: "5s" }] },
+      ],
+    };
+    const db = makeDbWithSequentialSelectResults([
+      [{ modelType: "video", provider: "wavespeed_ai", isEnabled: true }],
+      [{ creditCost: 800, configJson: wavespeedConfig }],
+    ]);
+    mockGetDb.mockResolvedValue(db as any);
+
+    const fn = mediaRouter.generateVideoAsync as Function;
+    await expect(
+      fn({
+        ctx: {
+          user: { id: 123, role: "user", currentTenantId: 1 },
+          userToken: "user-token",
+          tenantId: 1,
+          publicUrl: "https://tenant.example.com",
+        },
+        input: {
+          prompt: "test prompt",
+          model: "wavespeed-ai/cinematic-video-generator",
+          duration: 5,
+          aspectRatio: "16:9",
+          referenceImageUrls: [
+            "/uploads/1.png",
+            "/uploads/2.png",
+            "/uploads/3.png",
+            "/uploads/4.png",
+            "/uploads/5.png",
+          ],
+        },
+      }),
+    ).rejects.toMatchObject({
+      message: "The selected model allows at most 4 reference images.",
+    });
+
+    expect(mockGenerateVideoAsync).not.toHaveBeenCalled();
+  });
+
+  it("generateVideoAsync rejects WaveSpeed-only aspect ratios and durations that are not in the model contract", async () => {
+    const wavespeedConfig = {
+      inputFields: [
+        {
+          key: "aspect_ratio",
+          type: "select",
+          options: [
+            { value: "16:9", label: "16:9" },
+            { value: "9:16", label: "9:16" },
+          ],
+        },
+        {
+          key: "duration",
+          type: "select",
+          options: [
+            { value: "5", label: "5s" },
+            { value: "10", label: "10s" },
+          ],
+        },
+      ],
+    };
+    const fn = mediaRouter.generateVideoAsync as Function;
+
+    mockGetDb.mockResolvedValue(makeDbWithSequentialSelectResults([
+      [{ modelType: "video", provider: "wavespeed_ai", isEnabled: true }],
+      [{ creditCost: 800, configJson: wavespeedConfig }],
+    ]) as any);
+    await expect(
+      fn({
+        ctx: {
+          user: { id: 123, role: "user", currentTenantId: 1 },
+          userToken: "user-token",
+          tenantId: 1,
+          publicUrl: "https://tenant.example.com",
+        },
+        input: {
+          prompt: "test prompt",
+          model: "wavespeed-ai/cinematic-video-generator",
+          duration: 5,
+          aspectRatio: "1:1",
+        },
+      }),
+    ).rejects.toMatchObject({
+      message: 'Unsupported aspect ratio "1:1" for model "wavespeed-ai/cinematic-video-generator".',
+    });
+
+    mockGetDb.mockResolvedValue(makeDbWithSequentialSelectResults([
+      [{ modelType: "video", provider: "wavespeed_ai", isEnabled: true }],
+      [{ creditCost: 800, configJson: wavespeedConfig }],
+    ]) as any);
+    await expect(
+      fn({
+        ctx: {
+          user: { id: 123, role: "user", currentTenantId: 1 },
+          userToken: "user-token",
+          tenantId: 1,
+          publicUrl: "https://tenant.example.com",
+        },
+        input: {
+          prompt: "test prompt",
+          model: "wavespeed-ai/cinematic-video-generator",
+          duration: 15,
+          aspectRatio: "16:9",
+        },
+      }),
+    ).rejects.toMatchObject({
+      message: 'Unsupported duration "15" for model "wavespeed-ai/cinematic-video-generator".',
+    });
+  });
+
+  it("generateVideoAsync rejects unsafe absolute reference image URLs but still allows tenant-local relative paths", async () => {
+    const wavespeedConfig = {
+      maxReferenceImages: 4,
+      inputFields: [
+        { key: "image_urls", type: "image_urls", syncWith: "reference_images", maxItems: 4 },
+      ],
+    };
+    const fn = mediaRouter.generateVideoAsync as Function;
+
+    mockGetDb.mockResolvedValue(makeDbWithSequentialSelectResults([
+      [{ modelType: "video", provider: "wavespeed_ai", isEnabled: true }],
+      [{ creditCost: 800, configJson: wavespeedConfig }],
+    ]) as any);
+    await expect(
+      fn({
+        ctx: {
+          user: { id: 123, role: "user", currentTenantId: 1 },
+          userToken: "user-token",
+          tenantId: 1,
+          publicUrl: "https://tenant.example.com",
+        },
+        input: {
+          prompt: "test prompt",
+          model: "wavespeed-ai/cinematic-video-generator",
+          duration: 5,
+          referenceImageUrls: ["http://127.0.0.1/private.png"],
+        },
+      }),
+    ).rejects.toMatchObject({
+      message: expect.stringMatching(/public host/i),
+    });
+
+    mockGetDb.mockResolvedValue(makeDbWithSequentialSelectResults([
+      [{ modelType: "video", provider: "wavespeed_ai", isEnabled: true }],
+      [{ creditCost: 800, configJson: wavespeedConfig }],
+    ]) as any);
+    await expect(
+      fn({
+        ctx: {
+          user: { id: 123, role: "user", currentTenantId: 1 },
+          userToken: "user-token",
+          tenantId: 1,
+          publicUrl: "https://tenant.example.com",
+        },
+        input: {
+          prompt: "test prompt",
+          model: "wavespeed-ai/cinematic-video-generator",
+          duration: 5,
+          referenceImageUrls: ["/api/private.png"],
+        },
+      }),
+    ).rejects.toMatchObject({
+      message: expect.stringMatching(/\/uploads\/ or \/api\/storage\/files\//i),
+    });
+
+    mockGetDb.mockResolvedValue(makeDbWithSequentialSelectResults([
+      [{ modelType: "video", provider: "wavespeed_ai", isEnabled: true }],
+      [{ creditCost: 800, configJson: wavespeedConfig }],
+    ]) as any);
+    await expect(
+      fn({
+        ctx: {
+          user: { id: 123, role: "user", currentTenantId: 1 },
+          userToken: "user-token",
+          tenantId: 1,
+          publicUrl: "https://tenant.example.com",
+        },
+        input: {
+          prompt: "test prompt",
+          model: "wavespeed-ai/cinematic-video-generator",
+          duration: 5,
+          referenceImageUrls: ["/api/storage/files/library/reference.png"],
+        },
+      }),
+    ).resolves.toMatchObject({ success: true });
+
+    mockGetDb.mockResolvedValue(makeDbWithSequentialSelectResults([
+      [{ modelType: "video", provider: "wavespeed_ai", isEnabled: true }],
+      [{ creditCost: 800, configJson: wavespeedConfig }],
+    ]) as any);
+    await expect(
+      fn({
+        ctx: {
+          user: { id: 123, role: "user", currentTenantId: 1 },
+          userToken: "user-token",
+          tenantId: 1,
+          publicUrl: "https://tenant.example.com",
+        },
+        input: {
+          prompt: "test prompt",
+          model: "wavespeed-ai/cinematic-video-generator",
+          duration: 5,
+          referenceImageUrls: ["/uploads/reference.png"],
+        },
+      }),
+    ).resolves.toMatchObject({ success: true });
+  });
+
+  it("generateVideoAsync keeps the existing five-image behavior for other providers", async () => {
+    const db = makeDbWithSequentialSelectResults([
+      [{ modelType: "video", provider: "kie.ai", isEnabled: true }],
+      [{ creditCost: 50, configJson: null }],
+    ]);
+    mockGetDb.mockResolvedValue(db as any);
+    mockCalculateCreditCost.mockReturnValue(50);
+
+    const fn = mediaRouter.generateVideoAsync as Function;
+    const result = await fn({
+      ctx: {
+        user: { id: 123, role: "user", currentTenantId: 1 },
+        userToken: "user-token",
+        tenantId: 1,
+        publicUrl: "https://tenant.example.com",
+      },
+      input: {
+        prompt: "test prompt",
+        model: "veo-3-1",
+        duration: 5,
+        referenceImageUrls: [
+          "/uploads/1.png",
+          "/uploads/2.png",
+          "/uploads/3.png",
+          "/uploads/4.png",
+          "/uploads/5.png",
+        ],
+      },
+    });
+
+    expect(result.success).toBe(true);
+    expect(mockGenerateVideoAsync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model: "veo-3-1",
+        referenceImageUrls: [
+          "/uploads/1.png",
+          "/uploads/2.png",
+          "/uploads/3.png",
+          "/uploads/4.png",
+          "/uploads/5.png",
+        ],
       }),
       "user-token",
     );
@@ -532,6 +841,7 @@ describe("media router DB-first model contract", () => {
         },
       }],
       [{
+        providerName: "example-tts",
         baseUrl: "https://api.uvoice.ai",
         apiKeyEncrypted: "encrypted-key",
       }],

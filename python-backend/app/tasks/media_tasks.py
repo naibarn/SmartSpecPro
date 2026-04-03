@@ -22,8 +22,8 @@ from app.llm_proxy.models import (
     VideoGenerationRequest,
     AudioGenerationRequest,
 )
-from datetime import datetime, timedelta
-from sqlalchemy import select, text
+from datetime import datetime, timedelta, timezone
+from sqlalchemy import or_, select, text
 from typing import Any, Optional
 import re
 import structlog
@@ -82,6 +82,33 @@ def _merge_task_result_data(
         merged.pop(key, None)
     merged.update(patch)
     return merged
+
+
+def _enum_value_or_str(value: Any) -> Optional[str]:
+    """Return the persisted string value for SQLAlchemy enum-or-string columns."""
+    if value is None:
+        return None
+    return value.value if hasattr(value, "value") else str(value)
+
+
+def _has_wavespeed_terminal_state_bug(error_message: Any) -> bool:
+    if not isinstance(error_message, str):
+        return False
+    return "has no attribute 'value'" in error_message.lower()
+
+
+def _is_recoverable_wavespeed_failure(
+    task: MediaTask,
+    submission: Any,
+) -> bool:
+    if _enum_value_or_str(task.status) != TaskStatus.FAILED.value:
+        return False
+    if not isinstance(submission, dict) or submission.get("provider") != "wavespeed_ai":
+        return False
+    provider_task_id = str(task.task_id or submission.get("provider_task_id") or "").strip()
+    if not provider_task_id:
+        return False
+    return _has_wavespeed_terminal_state_bug(task.error_message)
 
 
 async def _mark_task_retrying_async(task_id: str, error: Exception, retry_after_seconds: int) -> None:
@@ -332,6 +359,374 @@ def _extract_first_kie_result_url(status_response: dict) -> Optional[str]:
     if url:
         return url
     return _extract_url_from_value(status_response)
+
+
+def _coerce_json_dict(value: Any) -> dict[str, Any]:
+    if isinstance(value, dict):
+        return dict(value)
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+        except json.JSONDecodeError:
+            return {}
+        return dict(parsed) if isinstance(parsed, dict) else {}
+    return {}
+
+
+def _normalize_utc_datetime(value: Any) -> Optional[datetime]:
+    if not isinstance(value, datetime):
+        return None
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
+
+
+def _get_wavespeed_poll_age_seconds(task: MediaTask) -> float:
+    anchor = _normalize_utc_datetime(task.started_at) or _normalize_utc_datetime(task.created_at)
+    if anchor is None:
+        return 0.0
+    return max(0.0, (datetime.now(timezone.utc) - anchor).total_seconds())
+
+
+def _get_wavespeed_requested_duration(
+    request_data: dict[str, Any],
+    submission: dict[str, Any],
+) -> int:
+    request_summary = submission.get("request_summary")
+    if isinstance(request_summary, dict):
+        requested_duration = request_summary.get("requested_duration") or request_summary.get("duration")
+        if isinstance(requested_duration, (int, float)) and requested_duration > 0:
+            return int(requested_duration)
+        if isinstance(requested_duration, str) and requested_duration.strip().isdigit():
+            return int(requested_duration.strip())
+
+    raw_duration = request_data.get("duration")
+    if isinstance(raw_duration, (int, float)) and raw_duration > 0:
+        return int(raw_duration)
+
+    extra_params = request_data.get("extra_params")
+    if isinstance(extra_params, dict):
+        extra_duration = extra_params.get("duration") or extra_params.get("seconds")
+        if isinstance(extra_duration, (int, float)) and extra_duration > 0:
+            return int(extra_duration)
+        if isinstance(extra_duration, str) and extra_duration.strip().isdigit():
+            return int(extra_duration.strip())
+
+    return 5
+
+
+def _enqueue_wavespeed_poll(task_id: str, delay_seconds: int) -> None:
+    poll_wavespeed_video_task.apply_async(args=[task_id], countdown=max(0, int(delay_seconds)))
+
+
+async def _poll_wavespeed_video_task_async(
+    task_id: str,
+    *,
+    schedule_next_poll: bool = True,
+) -> dict[str, Any]:
+    from app.llm_proxy.providers.wavespeed_media_provider import (
+        WAVESPEED_RETRYABLE_POLL_STATUS_CODES,
+        WaveSpeedMediaProvider,
+    )
+    from app.services.media_provider_service import get_media_provider_key
+    import httpx
+
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(
+            select(MediaTask).filter(MediaTask.id == task_id)
+        )
+        task = result.scalar_one_or_none()
+        if task is None:
+            return {"status": "missing", "task_id": task_id}
+
+        result_data = _coerce_json_dict(task.result_data)
+        submission = result_data.get("submission")
+        persisted_state = _enum_value_or_str(task.status)
+
+        if (
+            persisted_state == TaskStatus.FAILED.value
+            and _is_recoverable_wavespeed_failure(task, submission)
+            and isinstance(task.result_url, str)
+            and task.result_url.strip()
+        ):
+            task.status = TaskStatus.COMPLETED
+            task.error_message = None
+            task.completed_at = task.completed_at or datetime.now(timezone.utc)
+            await db.commit()
+            return {
+                "status": "completed",
+                "task_id": task_id,
+                "result_url": task.result_url,
+                "recovered": True,
+            }
+
+        if persisted_state in {TaskStatus.COMPLETED.value, TaskStatus.FAILED.value, TaskStatus.CANCELLED.value} and not (
+            persisted_state == TaskStatus.FAILED.value
+            and _is_recoverable_wavespeed_failure(task, submission)
+        ):
+            return {
+                "status": "terminal",
+                "task_id": task_id,
+                "state": persisted_state,
+            }
+
+        if not isinstance(submission, dict) or submission.get("provider") != "wavespeed_ai":
+            return {"status": "skipped", "task_id": task_id}
+
+        polling_state = result_data.get("polling")
+        polling_state = polling_state if isinstance(polling_state, dict) else {}
+        attempts = int(polling_state.get("attempts") or 0)
+        previous_delay = int(
+            polling_state.get("next_delay_seconds")
+            or polling_state.get("last_delay_seconds")
+            or WaveSpeedMediaProvider.POLL_INITIAL_SECONDS
+        )
+        now = datetime.now(timezone.utc)
+        provider_task_id = str(task.task_id or submission.get("provider_task_id") or "").strip()
+
+        if not provider_task_id:
+            task.status = TaskStatus.FAILED
+            task.error_message = "WaveSpeed submission metadata is missing provider_task_id"
+            task.completed_at = now
+            task.result_data = _merge_task_result_data(
+                result_data,
+                {
+                    "failure": {
+                        "error": task.error_message,
+                        "error_type": "WaveSpeedSubmissionError",
+                    },
+                },
+                remove_keys=("retry",),
+            )
+            await db.commit()
+            return {"status": "failed", "task_id": task_id}
+
+        age_seconds = _get_wavespeed_poll_age_seconds(task)
+        if age_seconds >= WaveSpeedMediaProvider.POLL_TIMEOUT_SECONDS:
+            last_raw_status = str(polling_state.get("raw_status") or "unknown")
+            error_message = f"WaveSpeed polling timed out after 30 minutes (last status: {last_raw_status})"
+            task.status = TaskStatus.FAILED
+            task.error_message = error_message
+            task.completed_at = now
+            task.result_data = _merge_task_result_data(
+                result_data,
+                {
+                    "polling": {
+                        "provider": "wavespeed_ai",
+                        "state": "timeout",
+                        "attempts": attempts,
+                        "raw_status": last_raw_status,
+                        "last_polled_at": now.isoformat(),
+                        "last_delay_seconds": previous_delay,
+                    },
+                    "failure": {
+                        "error": error_message,
+                        "error_type": "WaveSpeedPollingTimeoutError",
+                        "raw_status": last_raw_status,
+                    },
+                },
+                remove_keys=("retry",),
+            )
+            await db.commit()
+            return {"status": "failed", "task_id": task_id, "reason": "timeout"}
+
+        provider_config = await get_media_provider_key("wavespeed_ai")
+        if not provider_config or not provider_config.get("apiKey"):
+            next_delay = WaveSpeedMediaProvider.calculate_next_poll_delay(previous_delay)
+            task.status = TaskStatus.PROCESSING
+            task.error_message = None
+            task.result_data = _merge_task_result_data(
+                result_data,
+                {
+                    "polling": {
+                        "provider": "wavespeed_ai",
+                        "state": "processing",
+                        "attempts": attempts + 1,
+                        "raw_status": str(polling_state.get("raw_status") or ""),
+                        "last_polled_at": now.isoformat(),
+                        "last_delay_seconds": previous_delay,
+                        "next_delay_seconds": next_delay,
+                        "last_error": "WaveSpeed provider configuration unavailable during polling",
+                    },
+                },
+                remove_keys=("failure",),
+            )
+            await db.commit()
+            if schedule_next_poll:
+                _enqueue_wavespeed_poll(task.id, next_delay)
+            return {"status": "processing", "task_id": task_id, "next_delay_seconds": next_delay}
+
+        provider = None
+        try:
+            provider = WaveSpeedMediaProvider(
+                api_key=provider_config["apiKey"],
+                base_url=submission.get("base_url"),
+                submit_endpoint=submission.get("submit_endpoint"),
+                result_endpoint_template=submission.get("result_endpoint_template"),
+                provider_model_id=submission.get("provider_model_id"),
+            )
+            poll_result = await provider.poll_prediction(provider_task_id)
+        except httpx.TimeoutException:
+            next_delay = WaveSpeedMediaProvider.calculate_next_poll_delay(previous_delay)
+            task.status = TaskStatus.PROCESSING
+            task.error_message = None
+            task.result_data = _merge_task_result_data(
+                result_data,
+                {
+                    "polling": {
+                        "provider": "wavespeed_ai",
+                        "state": "processing",
+                        "attempts": attempts + 1,
+                        "raw_status": str(polling_state.get("raw_status") or ""),
+                        "last_polled_at": now.isoformat(),
+                        "last_delay_seconds": previous_delay,
+                        "next_delay_seconds": next_delay,
+                        "last_error": "WaveSpeed polling request timed out",
+                    },
+                },
+                remove_keys=("failure",),
+            )
+            await db.commit()
+            if schedule_next_poll:
+                _enqueue_wavespeed_poll(task.id, next_delay)
+            return {"status": "processing", "task_id": task_id, "next_delay_seconds": next_delay}
+        except httpx.HTTPStatusError as exc:
+            if exc.response.status_code in WAVESPEED_RETRYABLE_POLL_STATUS_CODES:
+                retry_after = WaveSpeedMediaProvider.extract_retry_after_seconds(exc.response.headers)
+                next_delay = WaveSpeedMediaProvider.calculate_next_poll_delay(previous_delay, retry_after)
+                task.status = TaskStatus.PROCESSING
+                task.error_message = None
+                task.result_data = _merge_task_result_data(
+                    result_data,
+                    {
+                        "polling": {
+                            "provider": "wavespeed_ai",
+                            "state": "processing",
+                            "attempts": attempts + 1,
+                            "raw_status": str(polling_state.get("raw_status") or ""),
+                            "last_polled_at": now.isoformat(),
+                            "last_delay_seconds": previous_delay,
+                            "next_delay_seconds": next_delay,
+                            "last_error": f"WaveSpeed poll HTTP {exc.response.status_code}",
+                            "last_http_status": exc.response.status_code,
+                        },
+                    },
+                    remove_keys=("failure",),
+                )
+                await db.commit()
+                if schedule_next_poll:
+                    _enqueue_wavespeed_poll(task.id, next_delay)
+                return {"status": "processing", "task_id": task_id, "next_delay_seconds": next_delay}
+
+            task.status = TaskStatus.FAILED
+            task.error_message = f"WaveSpeed poll HTTP {exc.response.status_code}"
+            task.completed_at = now
+            task.result_data = _merge_task_result_data(
+                result_data,
+                {
+                    "polling": {
+                        "provider": "wavespeed_ai",
+                        "state": "failed",
+                        "attempts": attempts + 1,
+                        "raw_status": str(polling_state.get("raw_status") or ""),
+                        "last_polled_at": now.isoformat(),
+                        "last_delay_seconds": previous_delay,
+                        "last_http_status": exc.response.status_code,
+                    },
+                    "failure": {
+                        "error": task.error_message,
+                        "error_type": "WaveSpeedPollingHttpError",
+                        "http_status_code": exc.response.status_code,
+                    },
+                },
+                remove_keys=("retry",),
+            )
+            await db.commit()
+            return {"status": "failed", "task_id": task_id}
+        finally:
+            if provider is not None:
+                await provider.aclose()
+
+        if poll_result.state == "success" and poll_result.result_url:
+            actual_duration = _get_wavespeed_requested_duration(
+                _coerce_json_dict(task.parameters),
+                submission,
+            )
+            task.status = TaskStatus.COMPLETED
+            task.error_message = None
+            task.result_url = poll_result.result_url
+            task.completed_at = now
+            task.result_data = _merge_task_result_data(
+                result_data,
+                {
+                    "polling": {
+                        "provider": "wavespeed_ai",
+                        "state": "completed",
+                        "attempts": attempts + 1,
+                        "raw_status": poll_result.raw_status,
+                        "last_polled_at": now.isoformat(),
+                        "last_delay_seconds": previous_delay,
+                    },
+                    "provider_status": poll_result.raw_status,
+                    "provider_response": poll_result.raw_response,
+                    "actual_duration": actual_duration,
+                },
+                remove_keys=("failure", "retry"),
+            )
+            await db.commit()
+            return {"status": "completed", "task_id": task_id, "result_url": poll_result.result_url}
+
+        if poll_result.state == "failure":
+            task.status = TaskStatus.FAILED
+            task.error_message = f"WaveSpeed failed: {(poll_result.error_message or 'Unknown error')[:200]}"
+            task.completed_at = now
+            task.result_data = _merge_task_result_data(
+                result_data,
+                {
+                    "polling": {
+                        "provider": "wavespeed_ai",
+                        "state": "failed",
+                        "attempts": attempts + 1,
+                        "raw_status": poll_result.raw_status,
+                        "last_polled_at": now.isoformat(),
+                        "last_delay_seconds": previous_delay,
+                    },
+                    "provider_status": poll_result.raw_status,
+                    "provider_response": poll_result.raw_response,
+                    "failure": {
+                        "error": poll_result.error_message or "WaveSpeed returned a terminal failure",
+                        "error_type": "WaveSpeedTerminalError",
+                        "raw_status": poll_result.raw_status,
+                    },
+                },
+                remove_keys=("retry",),
+            )
+            await db.commit()
+            return {"status": "failed", "task_id": task_id}
+
+        next_delay = WaveSpeedMediaProvider.calculate_next_poll_delay(previous_delay)
+        task.status = TaskStatus.PROCESSING
+        task.error_message = None
+        task.result_data = _merge_task_result_data(
+            result_data,
+            {
+                "polling": {
+                    "provider": "wavespeed_ai",
+                    "state": "processing",
+                    "attempts": attempts + 1,
+                    "raw_status": poll_result.raw_status,
+                    "last_polled_at": now.isoformat(),
+                    "last_delay_seconds": previous_delay,
+                    "next_delay_seconds": next_delay,
+                },
+                "provider_status": poll_result.raw_status,
+            },
+            remove_keys=("failure",),
+        )
+        await db.commit()
+        if schedule_next_poll:
+            _enqueue_wavespeed_poll(task.id, next_delay)
+        return {"status": "processing", "task_id": task_id, "next_delay_seconds": next_delay}
 
 
 SENSITIVE_DEBUG_FIELD_MARKERS = (
@@ -618,25 +1013,44 @@ async def _generate_image_async(task_id: str, user_id: str, request_data: dict):
             gateway = LLMGateway(db)
             response = await gateway.generate_image(request, user)
 
-            # Update task with results
-            task.status = TaskStatus.COMPLETED
-            task.result_url = response.data[0].get("url") if response.data else None
+            provider_task_id = response.id or None
+            if provider_task_id:
+                task.task_id = provider_task_id
+
+            result_url = response.data[0].get("url") if response.data else None
+            task.result_url = result_url
             task.result_data = {"response": response.dict()}
             task.credits_used = int(response.credits_used) if response.credits_used else None
             task.credits_balance = int(response.credits_balance) if response.credits_balance else None
-            task.completed_at = datetime.utcnow()
+            if result_url:
+                task.status = TaskStatus.COMPLETED
+                task.completed_at = datetime.utcnow()
             await db.commit()
             write_media_debug_event("image.task.completed", {
                 "trace_id": trace_id,
                 "task_id": task_id,
-                "provider_task_id": response.id,
+                "provider_task_id": provider_task_id,
                 "result_url": task.result_url,
                 "provider": response.provider,
                 "log_file": debug_log_file,
             })
 
-            logger.info("generate_image_task_completed", task_id=task_id)
-            return {"status": "completed", "task_id": task_id, "result_url": task.result_url}
+            if result_url:
+                logger.info("generate_image_task_completed", task_id=task_id, provider_task_id=provider_task_id)
+                return {
+                    "status": "completed",
+                    "task_id": task_id,
+                    "external_task_id": provider_task_id,
+                    "result_url": task.result_url,
+                }
+
+            logger.info("generate_image_task_submitted", task_id=task_id, provider_task_id=provider_task_id)
+            return {
+                "status": "submitted",
+                "task_id": task_id,
+                "external_task_id": provider_task_id,
+                "result_url": None,
+            }
 
         except Exception as e:
             logger.error("generate_image_task_failed", task_id=task_id, error=str(e))
@@ -739,7 +1153,65 @@ async def _generate_video_async(task_id: str, user_id: str, request_data: dict):
             if external_task_id:
                 task.task_id = external_task_id
 
-            task.result_data = {"submission": response.dict()}
+            submission_record: dict[str, Any] | None = None
+            if response.provider == "wavespeed_ai" and external_task_id:
+                from app.llm_proxy.providers.wavespeed_media_provider import WaveSpeedMediaProvider
+                from app.services.media_provider_service import get_media_provider_key
+
+                provider_config = await get_media_provider_key("wavespeed_ai")
+                if not provider_config or not provider_config.get("apiKey"):
+                    raise RuntimeError("WaveSpeed provider configuration unavailable after submission")
+
+                extra_params = request.extra_params if isinstance(request.extra_params, dict) else {}
+                api_config = request.api_config if isinstance(request.api_config, dict) else {}
+                aspect_ratio = (
+                    request.aspect_ratio
+                    or gateway._get_api_config_string(extra_params, "aspect_ratio", "aspectRatio")
+                    or "16:9"
+                )
+                duration = request.duration or int(
+                    gateway._get_api_config_string(extra_params, "duration", "seconds") or 5
+                )
+                resolution = request.resolution or gateway._get_api_config_string(extra_params, "resolution", "size")
+
+                wavespeed_provider = WaveSpeedMediaProvider(
+                    api_key=provider_config["apiKey"],
+                    base_url=provider_config.get("baseUrl"),
+                    submit_endpoint=WaveSpeedMediaProvider.resolve_submit_endpoint(api_config),
+                    result_endpoint_template=WaveSpeedMediaProvider.resolve_result_endpoint_template(api_config),
+                    provider_model_id=WaveSpeedMediaProvider.resolve_provider_model_id(request.model, api_config),
+                )
+                try:
+                    submission_record = wavespeed_provider.build_submission_record(
+                        provider_task_id=external_task_id,
+                        prompt=request.prompt,
+                        reference_image_urls=request.reference_image_urls,
+                        aspect_ratio=aspect_ratio,
+                        duration=duration,
+                        resolution=resolution,
+                        used_sync_mode=False,
+                    )
+                finally:
+                    await wavespeed_provider.aclose()
+
+            task.result_data = {
+                **({"submission": submission_record} if submission_record else {"submission": response.dict()}),
+                "response": response.dict(),
+                **(
+                    {
+                        "polling": {
+                            "provider": "wavespeed_ai",
+                            "state": "scheduled",
+                            "attempts": 0,
+                            "raw_status": "created",
+                            "last_delay_seconds": 0,
+                            "next_delay_seconds": 3,
+                        },
+                    }
+                    if response.provider == "wavespeed_ai"
+                    else {}
+                ),
+            }
             task.credits_used = int(response.credits_used) if response.credits_used else None
             task.credits_balance = int(response.credits_balance) if response.credits_balance else None
 
@@ -754,6 +1226,8 @@ async def _generate_video_async(task_id: str, user_id: str, request_data: dict):
                 return {"status": "completed", "task_id": task_id, "external_task_id": external_task_id, "result_url": task.result_url}
 
             await db.commit()
+            if response.provider == "wavespeed_ai":
+                _enqueue_wavespeed_poll(task_id, 3)
             logger.info("generate_video_task_submitted", task_id=task_id, external_task_id=external_task_id)
             return {"status": "submitted", "task_id": task_id, "external_task_id": external_task_id}
 
@@ -809,6 +1283,30 @@ def generate_video_task(self, task_id: str, user_id: str, request_data: dict):
         return {"status": "failed", "task_id": task_id, "error": str(e)}
 
 
+@celery_app.task(bind=True, max_retries=3)
+def poll_wavespeed_video_task(self, task_id: str):
+    """Poll a submitted WaveSpeed task and reschedule until terminal or timed out."""
+    logger.info("poll_wavespeed_video_task_started", task_id=task_id)
+
+    try:
+        return _run_async(_poll_wavespeed_video_task_async(task_id, schedule_next_poll=True))
+    except Exception as e:
+        logger.error("poll_wavespeed_video_task_exception", task_id=task_id, error=str(e))
+
+        if self.request.retries < self.max_retries:
+            raise self.retry(exc=e, countdown=15)
+
+        try:
+            _run_async(_mark_task_failed_async(task_id, e))
+        except Exception as fail_state_error:
+            logger.warning(
+                "poll_wavespeed_video_task_final_state_update_failed",
+                task_id=task_id,
+                error=str(fail_state_error),
+            )
+        return {"status": "failed", "task_id": task_id, "error": str(e)}
+
+
 async def _generate_audio_async(task_id: str, user_id: str, request_data: dict):
     """
     Async implementation of audio generation
@@ -859,8 +1357,12 @@ async def _generate_audio_async(task_id: str, user_id: str, request_data: dict):
             gateway = LLMGateway(db)
             response = await gateway.generate_audio(request, user)
 
-            task.status = TaskStatus.COMPLETED
-            task.result_url = response.data[0].get("url") if response.data else None
+            provider_task_id = response.id or None
+            if provider_task_id:
+                task.task_id = provider_task_id
+
+            result_url = response.data[0].get("url") if response.data else None
+            task.result_url = result_url
             task.result_data = {
                 "response": response.dict(),
                 "debug": {
@@ -873,19 +1375,35 @@ async def _generate_audio_async(task_id: str, user_id: str, request_data: dict):
             }
             task.credits_used = int(response.credits_used) if response.credits_used else None
             task.credits_balance = int(response.credits_balance) if response.credits_balance else None
-            task.completed_at = datetime.utcnow()
+            if result_url:
+                task.status = TaskStatus.COMPLETED
+                task.completed_at = datetime.utcnow()
             await db.commit()
             write_media_debug_event("audio.task.completed", {
                 "trace_id": trace_id,
                 "task_id": task_id,
-                "provider_task_id": response.id,
+                "provider_task_id": provider_task_id,
                 "result_url": task.result_url,
                 "provider": response.provider,
                 "log_file": debug_log_file,
             })
 
-            logger.info("generate_audio_task_completed", task_id=task_id)
-            return {"status": "completed", "task_id": task_id, "result_url": task.result_url}
+            if result_url:
+                logger.info("generate_audio_task_completed", task_id=task_id, provider_task_id=provider_task_id)
+                return {
+                    "status": "completed",
+                    "task_id": task_id,
+                    "external_task_id": provider_task_id,
+                    "result_url": task.result_url,
+                }
+
+            logger.info("generate_audio_task_submitted", task_id=task_id, provider_task_id=provider_task_id)
+            return {
+                "status": "submitted",
+                "task_id": task_id,
+                "external_task_id": provider_task_id,
+                "result_url": None,
+            }
 
         except Exception as e:
             logger.error("generate_audio_task_failed", task_id=task_id, error=str(e))
@@ -1309,13 +1827,44 @@ async def _recover_stuck_tasks_async():
                     MediaTask.task_id.isnot(None)  # Must have external task_id
                 ).limit(20)
             )
-            stuck_tasks = result.scalars().all()
+            stuck_tasks = list(result.scalars().all())
+
+            failed_cutoff_time = datetime.now(timezone.utc) - timedelta(hours=1)
+            failed_result = await db.execute(
+                select(MediaTask).filter(
+                    MediaTask.status == TaskStatus.FAILED,
+                    MediaTask.task_id.isnot(None),
+                    MediaTask.completed_at > failed_cutoff_time,
+                    or_(
+                        MediaTask.error_message.like("%has no attribute 'value'%"),
+                        MediaTask.error_message.like("%object has no attribute 'value'%"),
+                    ),
+                ).limit(20)
+            )
+            recoverable_failed_tasks = [
+                task
+                for task in failed_result.scalars().all()
+                if _is_recoverable_wavespeed_failure(
+                    task,
+                    _coerce_json_dict(task.result_data).get("submission"),
+                )
+            ]
+
+            if recoverable_failed_tasks:
+                deduped_tasks = {task.id: task for task in stuck_tasks}
+                for task in recoverable_failed_tasks:
+                    deduped_tasks.setdefault(task.id, task)
+                stuck_tasks = list(deduped_tasks.values())
 
             if not stuck_tasks:
                 logger.info("recover_stuck_tasks_none_found")
                 return {"status": "success", "recovered_count": 0}
 
-            logger.info("recover_stuck_tasks_found", count=len(stuck_tasks))
+            logger.info(
+                "recover_stuck_tasks_found",
+                count=len(stuck_tasks),
+                recoverable_failed_count=len(recoverable_failed_tasks),
+            )
 
             recovered_count = 0
             failed_count = 0
@@ -1337,6 +1886,19 @@ async def _recover_stuck_tasks_async():
                     from app.llm_proxy.providers.knplabai_provider import KNPLabsProvider
                     from app.llm_proxy.providers.fal_ai_provider import FalAIProvider
                     import httpx
+                    task_result_data = _coerce_json_dict(task.result_data)
+                    wavespeed_submission = task_result_data.get("submission")
+
+                    if isinstance(wavespeed_submission, dict) and wavespeed_submission.get("provider") == "wavespeed_ai":
+                        wavespeed_result = await _poll_wavespeed_video_task_async(
+                            task.id,
+                            schedule_next_poll=True,
+                        )
+                        if wavespeed_result.get("status") == "completed":
+                            recovered_count += 1
+                        elif wavespeed_result.get("status") == "failed":
+                            failed_count += 1
+                        continue
 
                     if task.model in BytePlusModelArkProvider.VIDEO_MODELS:
                         # --- BytePlus polling branch ---

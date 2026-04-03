@@ -124,6 +124,8 @@ class LLMGateway:
             return "knplabai"
         if normalized in {"fal", "fal_ai", "falai", "fal_ai_provider"}:
             return "fal_ai"
+        if normalized in {"wavespeed_ai", "wavespeedai"}:
+            return "wavespeed_ai"
         return normalized
 
     @staticmethod
@@ -1066,8 +1068,19 @@ class LLMGateway:
 
         # --- BytePlus ModelArk routing ---
         from app.llm_proxy.providers.byteplus_modelark_provider import BytePlusModelArkProvider
+        from app.llm_proxy.providers.wavespeed_media_provider import (
+            WaveSpeedError,
+            WaveSpeedMediaProvider,
+            WaveSpeedPollingTimeoutError,
+            WaveSpeedTerminalError,
+        )
         resolved_provider = await self._resolve_media_provider(request.model, request.api_config)
         normalized_model = self._normalize_model_id(request.model)
+        wavespeed_launch_model = self._normalize_model_id(WaveSpeedMediaProvider.LAUNCH_MODEL_ID)
+        route_to_wavespeed = (
+            resolved_provider == "wavespeed_ai"
+            or normalized_model == wavespeed_launch_model
+        )
         byteplus_video_models = {
             self._normalize_model_id(model_name)
             for model_name in BytePlusModelArkProvider.VIDEO_MODELS
@@ -1082,8 +1095,118 @@ class LLMGateway:
             model=request.model,
             normalized_model=normalized_model,
             resolved_provider=resolved_provider,
-            route="byteplus_modelark" if route_to_byteplus else "kie_ai",
+            route=(
+                "wavespeed_ai"
+                if route_to_wavespeed
+                else "byteplus_modelark"
+                if route_to_byteplus
+                else "kie_ai"
+            ),
         )
+
+        if route_to_wavespeed:
+            from app.services.media_provider_service import get_media_provider_key
+
+            provider_config = await get_media_provider_key("wavespeed_ai")
+            if not provider_config or not provider_config.get("apiKey"):
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="WaveSpeedAI not configured. Please add API key in Admin > Media Providers.",
+                )
+
+            client = None
+            try:
+                extra = request.extra_params or {}
+                api_config = request.api_config if isinstance(request.api_config, dict) else {}
+                aspect_ratio = (
+                    request.aspect_ratio
+                    or self._get_api_config_string(extra, "aspect_ratio", "aspectRatio")
+                    or "16:9"
+                )
+                duration = request.duration or int(
+                    self._get_api_config_string(extra, "duration", "seconds") or 5
+                )
+                resolution = request.resolution or self._get_api_config_string(extra, "resolution", "size")
+
+                client = WaveSpeedMediaProvider(
+                    api_key=provider_config["apiKey"],
+                    base_url=provider_config.get("baseUrl"),
+                    submit_endpoint=WaveSpeedMediaProvider.resolve_submit_endpoint(api_config),
+                    result_endpoint_template=WaveSpeedMediaProvider.resolve_result_endpoint_template(api_config),
+                    provider_model_id=WaveSpeedMediaProvider.resolve_provider_model_id(request.model, api_config),
+                )
+
+                submit_result = await client.create_prediction(
+                    prompt=request.prompt,
+                    reference_image_urls=request.reference_image_urls,
+                    aspect_ratio=aspect_ratio,
+                    duration=duration,
+                )
+                response = VideoGenerationResponse(
+                    id=submit_result["provider_task_id"],
+                    model=request.model,
+                    provider="wavespeed_ai",
+                    created=0,
+                    data=[],
+                )
+
+                if wait_for_completion:
+                    completion = await client.wait_for_completion(
+                        request_id=submit_result["provider_task_id"],
+                    )
+                    if not completion.result_url:
+                        raise WaveSpeedTerminalError(
+                            "WaveSpeed completed without a final media URL"
+                        )
+                    response.data = [{"url": completion.result_url}]
+
+                transaction = await self._deduct_credits(
+                    user,
+                    estimated_cost,
+                    request,
+                    response,
+                    estimated_cost,
+                    False,
+                )
+                response.credits_used = abs(transaction.amount)
+                response.credits_balance = transaction.balance_after
+                return response
+            except HTTPException:
+                raise
+            except WaveSpeedError as exc:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=str(exc),
+                ) from exc
+            except WaveSpeedTerminalError as exc:
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail=str(exc),
+                ) from exc
+            except WaveSpeedPollingTimeoutError as exc:
+                raise HTTPException(
+                    status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+                    detail=str(exc),
+                ) from exc
+            except httpx.HTTPStatusError as exc:
+                raise HTTPException(
+                    status_code=exc.response.status_code,
+                    detail=f"WaveSpeed API error: HTTP {exc.response.status_code}",
+                ) from exc
+            except Exception as exc:
+                logger.error(
+                    "wavespeed_video_generation_failed",
+                    user_id=user.id,
+                    model=request.model,
+                    error=str(exc),
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="WaveSpeed video generation failed",
+                ) from exc
+            finally:
+                if client is not None:
+                    await client.aclose()
 
         if route_to_byteplus:
             from app.services.media_provider_service import get_media_provider_key
@@ -1855,6 +1978,38 @@ class LLMGateway:
                     return db_cost
             except Exception as e:
                 logger.debug(f"Could not look up model cost from DB: {e}")
+
+            try:
+                from app.llm_proxy.providers.wavespeed_media_provider import (
+                    WAVESPEED_PRICING_TIERS,
+                    WaveSpeedMediaProvider,
+                )
+
+                if isinstance(request, VideoGenerationRequest):
+                    provider_hint = self._normalize_provider_id(
+                        self._get_api_config_string(request.api_config, "provider", "provider_id", "providerId", "providerName")
+                    )
+                    if (
+                        self._normalize_model_id(request.model) == self._normalize_model_id(WaveSpeedMediaProvider.LAUNCH_MODEL_ID)
+                        or provider_hint == "wavespeed_ai"
+                    ):
+                        extra_params = request.extra_params if isinstance(request.extra_params, dict) else {}
+                        duration = request.duration or int(
+                            self._get_api_config_string(extra_params, "duration", "seconds") or 5
+                        )
+                        credit_cost = WAVESPEED_PRICING_TIERS.get(f"{duration}s")
+                        if credit_cost is not None:
+                            db_cost = Decimal(str(credit_cost)) / Decimal("1000")
+                            logger.info(
+                                "estimate_cost_from_wavespeed_static_fallback",
+                                model=request.model,
+                                duration=duration,
+                                credit_cost=credit_cost,
+                                usd_cost=float(db_cost),
+                            )
+                            return db_cost
+            except Exception as e:
+                logger.debug(f"Could not apply WaveSpeed static fallback cost: {e}")
 
         try:
             gateway_cost = await self.web_gateway.estimate_cost(
