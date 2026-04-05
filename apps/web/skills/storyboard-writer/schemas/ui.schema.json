@@ -134,6 +134,18 @@
           "min": 120,
           "max": 8000,
           "step": 10
+        },
+        {
+          "id": "maxPromptLength",
+          "type": "number",
+          "label": "Max Prompt Length (chars)",
+          "labelTh": "ความยาวพรอมต์สูงสุด (ตัวอักษร)",
+          "helpText": "Hard character cap for the full storyboard output. Leave lower than the media model limit if needed.",
+          "helpTextTh": "กำหนดจำนวนตัวอักษรสูงสุดของผลลัพธ์ทั้งชุด ใช้ค่าที่ไม่เกินลิมิตของ media model",
+          "min": 100,
+          "max": 10000,
+          "step": 10,
+          "default": 2000
         }
       ]
     }

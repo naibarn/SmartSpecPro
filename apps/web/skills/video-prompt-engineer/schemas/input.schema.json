@@ -41,6 +41,14 @@
         "auto": "Auto-detect from request"
       }
     },
+
+    "maxPromptLength": {
+      "type": "integer",
+      "minimum": 100,
+      "maximum": 10000,
+      "default": 2000,
+      "description": "Maximum character length for the final prompt output."
+    },
     
     "duration": {
       "type": "integer",

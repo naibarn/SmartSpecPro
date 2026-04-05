@@ -68,6 +68,13 @@
       "default": 8,
       "description": "จำนวนฉาก (ปกติ 8 ฉากตามตัวอย่าง)"
     },
+    "maxPromptLength": {
+      "type": "integer",
+      "minimum": 100,
+      "maximum": 10000,
+      "default": 2000,
+      "description": "Maximum character length for the combined storyboard and prompt output."
+    },
     "aspectRatio": {
       "type": "string",
       "enum": [
