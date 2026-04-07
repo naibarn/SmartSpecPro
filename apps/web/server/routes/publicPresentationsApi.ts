@@ -19,6 +19,11 @@ import { incrementDailyCredits } from "../services/apiKeyRateLimiter";
 import { getRedisClient } from "../services/redis";
 import { createInternalTokenFromAuth } from "../_core/tokens";
 import { resolveExportDownloadTarget } from "./exportDownloadTarget";
+import {
+  buildDelegatedWorkerOriginMetadata,
+  DelegatedWorkerPlatformError,
+  runWithDelegatedWorkerExecution,
+} from "../services/delegatedWorkerPlatformService";
 
 // ---------------------------------------------------------------------------
 // Schemas
@@ -380,56 +385,68 @@ export function createPresentationPublicRouter(): Router {
       const auth = req.auth!;
       const userId = (auth as any).userId as number;
       const tenantId = (auth as any).tenantId as string;
+      const idempotencyKey = req.get("Idempotency-Key") || undefined;
       const taskId = randomUUID();
       const actor = { userId, tenantId };
 
       try {
-        // Resolve auto-draft params
-        const draftParams = await resolveAutoDraftParams(topic, {
-          userId,
-          tenantId,
-          traceId: taskId,
-        } as any);
-
-        // Create library item
-        const { item } = await createLibraryItem(
-          {
-            itemType: "presentation",
-            source: "auto_draft",
-            title: topic.slice(0, 200),
-          } as any,
-          actor as any,
-        );
-
-        // Create presentation deck
-        const { deck } = await createPresentationDeckForLibraryItem(
-          { libraryItemId: item.id, title: topic.slice(0, 200) } as any,
-          actor as any,
-        );
-
-        // Store initial progress in Redis
-        const redis = getRedisClient();
-        await redis.set(
-          `ai_draft_progress:${taskId}`,
-          JSON.stringify({
-            phase: 0,
-            phaseLabel: "Queued",
-            slidesCompleted: 0,
-            totalSlides: slide_count,
-            completed: false,
+        const { deck, draftParams } = await runWithDelegatedWorkerExecution({
+          auth,
+          actionClass: "media",
+          estimatedCredits: 5,
+          idempotencyKey,
+        }, async () => {
+          const draftParams = await resolveAutoDraftParams(topic, {
             userId,
-          }),
-          "EX",
-          300,
-        );
+            tenantId,
+            traceId: taskId,
+          } as any);
 
-        // Deduct credits
-        await deductCredits({
-          userId,
-          amount: 5,
-          sourceType: "api_presentation",
-          description: `Presentation generation: ${topic.slice(0, 50)}`,
-        } as any);
+          const { item } = await createLibraryItem(
+            {
+              itemType: "presentation",
+              source: "auto_draft",
+              title: topic.slice(0, 200),
+            } as any,
+            actor as any,
+          );
+
+          const { deck } = await createPresentationDeckForLibraryItem(
+            { libraryItemId: item.id, title: topic.slice(0, 200) } as any,
+            actor as any,
+          );
+
+          const redis = getRedisClient();
+          await redis.set(
+            `ai_draft_progress:${taskId}`,
+            JSON.stringify({
+              phase: 0,
+              phaseLabel: "Queued",
+              slidesCompleted: 0,
+              totalSlides: slide_count,
+              completed: false,
+              userId,
+            }),
+            "EX",
+            300,
+          );
+
+          await deductCredits({
+            userId,
+            amount: 5,
+            sourceType: "api_presentation",
+            description: `Presentation generation: ${topic.slice(0, 50)}`,
+            idempotencyKey,
+            metadata: buildDelegatedWorkerOriginMetadata(auth, "presentations.generate", {
+              endpoint: "/v1/presentations/generate",
+              topic: topic.slice(0, 200),
+              style: style ?? null,
+              slideCount: slide_count,
+            }),
+          } as any);
+
+          return { deck, draftParams };
+        });
         res.setHeader("X-Credits-Used", "5");
         if (auth.mode === "api_key") {
           incrementDailyCredits(auth.apiKeyId ?? "", 5).catch(() => {});
@@ -459,6 +476,10 @@ export function createPresentationPublicRouter(): Router {
 
         res.json({ task_id: taskId, deck_id: deck.id, status: "pending" });
       } catch (err: any) {
+        if (err instanceof DelegatedWorkerPlatformError) {
+          sendApiError(res, err.statusCode, err.code, err.message, err.type);
+          return;
+        }
         console.error("[PresentationsApi] generate error", err);
         if (!res.headersSent) {
           sendApiError(res, 500, "internal_error", "Internal server error");

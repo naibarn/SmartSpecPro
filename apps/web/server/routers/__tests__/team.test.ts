@@ -34,6 +34,7 @@ const {
   mockCreateFromTemplate,
   mockCreateTeamFromBlueprint,
   mockListTeamTemplates,
+  mockListBindableWorkers,
   mockListTeams,
   mockGetTeam,
   mockArchiveTeam,
@@ -44,6 +45,7 @@ const {
   mockCreateFromTemplate: vi.fn(),
   mockCreateTeamFromBlueprint: vi.fn(),
   mockListTeamTemplates: vi.fn(),
+  mockListBindableWorkers: vi.fn(),
   mockListTeams: vi.fn(),
   mockGetTeam: vi.fn(),
   mockArchiveTeam: vi.fn(),
@@ -56,6 +58,7 @@ vi.mock("../../services/teamService", () => ({
   createFromTemplate: mockCreateFromTemplate,
   createTeamFromBlueprint: mockCreateTeamFromBlueprint,
   listTeamTemplates: mockListTeamTemplates,
+  listBindableWorkers: mockListBindableWorkers,
   listTeams: mockListTeams,
   getTeam: mockGetTeam,
   archiveTeam: mockArchiveTeam,
@@ -65,6 +68,11 @@ vi.mock("../../services/teamService", () => ({
 
 const { mockAuditLog } = vi.hoisted(() => ({
   mockAuditLog: vi.fn(),
+}));
+
+vi.mock("../../services/workerBudgetService", () => ({
+  getWorkerBudgetSettings: vi.fn(),
+  updateWorkerBudgetSettings: vi.fn(),
 }));
 
 vi.mock("../../services/auditLogger", () => ({
@@ -170,5 +178,41 @@ describe("teamRouter", () => {
 
     expect(Array.isArray(result)).toBe(true);
     expect(result.some((blueprint: any) => blueprint.id === "creative-content-studio")).toBe(true);
+  });
+
+  it("listBindableWorkers delegates with tenant and optional team scope", async () => {
+    mockListBindableWorkers.mockResolvedValue([
+      {
+        id: "worker-1",
+        displayName: "OpenClaw Main",
+        status: "online",
+        runtimeType: "openclaw_gateway",
+        runtimeVersion: "1.2.3",
+        externalReference: "openclaw://main",
+        teamId: "team-1",
+        lastSeenAt: new Date("2026-04-06T00:00:00.000Z"),
+        warningFlagsJson: [],
+        boundProfileCount: 1,
+        availableForBinding: true,
+      },
+    ]);
+
+    const result = await teamRouter.listBindableWorkers({
+      input: {
+        teamId: "team-1",
+      },
+      ctx: {
+        tenantId: "tenant-1",
+        user: { id: 42, currentTenantId: 1 },
+      },
+    } as any);
+
+    expect(mockListBindableWorkers).toHaveBeenCalledWith("tenant-1", 42, "team-1");
+    expect(result).toEqual([
+      expect.objectContaining({
+        id: "worker-1",
+        availableForBinding: true,
+      }),
+    ]);
   });
 });

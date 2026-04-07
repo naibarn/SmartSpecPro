@@ -10,6 +10,11 @@ import { validateReferenceUrls, ApiValidationError } from "../services/ssrfValid
 import { incrementDailyCredits } from "../services/apiKeyRateLimiter";
 import { emitPublicApiEvent } from "../services/webhookDeliveryService";
 import { getRedisClient } from "../services/redis";
+import {
+  buildDelegatedWorkerOriginMetadata,
+  DelegatedWorkerPlatformError,
+  runWithDelegatedWorkerExecution,
+} from "../services/delegatedWorkerPlatformService";
 
 // ---------------------------------------------------------------------------
 // Schemas
@@ -68,6 +73,7 @@ export function createPublicMediaRouter(): Router {
       const { prompt, model, width, height, aspect_ratio, reference_image_urls } = parsed.data;
       const auth = req.auth!;
       const userId = (auth as any).userId as number;
+      const idempotencyKey = req.get("Idempotency-Key") || undefined;
 
       // SSRF validation for reference image URLs
       if (reference_image_urls && reference_image_urls.length > 0) {
@@ -84,28 +90,40 @@ export function createPublicMediaRouter(): Router {
       }
 
       try {
-        const userToken = createInternalTokenFromAuth({ userId }, ["media:generate"]);
+        const task = await runWithDelegatedWorkerExecution({
+          auth,
+          actionClass: "media",
+          estimatedCredits: 1,
+          idempotencyKey,
+        }, async () => {
+          const userToken = createInternalTokenFromAuth({ userId }, ["media:generate"]);
+          const size =
+            width && height ? `${width}x${height}` : undefined;
 
-        const size =
-          width && height ? `${width}x${height}` : undefined;
-
-        const task = await mediaGenerationService.generateImageAsync(
-          {
-            prompt,
-            model,
-            size,
-            aspectRatio: aspect_ratio,
-            referenceImageUrls: reference_image_urls,
-            auditContext: { userId, source: "public_api" },
-          },
-          userToken,
-        );
+          return mediaGenerationService.generateImageAsync(
+            {
+              prompt,
+              model,
+              size,
+              aspectRatio: aspect_ratio,
+              referenceImageUrls: reference_image_urls,
+              auditContext: { userId, source: "public_api" },
+            },
+            userToken,
+          );
+        });
 
         await deductCredits({
           userId,
           amount: 1,
           sourceType: "api_media",
           description: `Image generation: ${prompt.slice(0, 50)}`,
+          idempotencyKey,
+          metadata: buildDelegatedWorkerOriginMetadata(auth, "media.generate_image", {
+            endpoint: "/v1/media/images/generate",
+            model: model ?? null,
+            promptPreview: prompt.slice(0, 120),
+          }),
         } as any);
         incrementDailyCredits((auth as any).apiKeyId, 1).catch(() => {});
 
@@ -116,6 +134,10 @@ export function createPublicMediaRouter(): Router {
         res.setHeader("X-Credits-Remaining", String(imageRemaining));
         res.status(202).json({ task_id: task.id, status: task.status });
       } catch (err: any) {
+        if (err instanceof DelegatedWorkerPlatformError) {
+          sendApiError(res, err.statusCode, err.code, err.message, err.type);
+          return;
+        }
         console.error("[PublicMediaApi] image generate error", err);
         if (!res.headersSent) {
           sendApiError(res, 500, "internal_error", "Internal server error");
@@ -146,6 +168,7 @@ export function createPublicMediaRouter(): Router {
         parsed.data;
       const auth = req.auth!;
       const userId = (auth as any).userId as number;
+      const idempotencyKey = req.get("Idempotency-Key") || undefined;
 
       if (reference_image_urls && reference_image_urls.length > 0) {
         try {
@@ -161,25 +184,38 @@ export function createPublicMediaRouter(): Router {
       }
 
       try {
-        const userToken = createInternalTokenFromAuth({ userId }, ["media:generate"]);
+        const task = await runWithDelegatedWorkerExecution({
+          auth,
+          actionClass: "media",
+          estimatedCredits: 2,
+          idempotencyKey,
+        }, async () => {
+          const userToken = createInternalTokenFromAuth({ userId }, ["media:generate"]);
 
-        const task = await mediaGenerationService.generateVideoAsync(
-          {
-            prompt,
-            model,
-            duration: duration_seconds,
-            aspectRatio: aspect_ratio,
-            referenceImageUrls: reference_image_urls,
-            auditContext: { userId, source: "public_api" },
-          },
-          userToken,
-        );
+          return mediaGenerationService.generateVideoAsync(
+            {
+              prompt,
+              model,
+              duration: duration_seconds,
+              aspectRatio: aspect_ratio,
+              referenceImageUrls: reference_image_urls,
+              auditContext: { userId, source: "public_api" },
+            },
+            userToken,
+          );
+        });
 
         await deductCredits({
           userId,
           amount: 2,
           sourceType: "api_media",
           description: `Video generation: ${prompt.slice(0, 50)}`,
+          idempotencyKey,
+          metadata: buildDelegatedWorkerOriginMetadata(auth, "media.generate_video", {
+            endpoint: "/v1/media/videos/generate",
+            model: model ?? null,
+            promptPreview: prompt.slice(0, 120),
+          }),
         } as any);
         incrementDailyCredits((auth as any).apiKeyId, 2).catch(() => {});
 
@@ -190,6 +226,10 @@ export function createPublicMediaRouter(): Router {
         res.setHeader("X-Credits-Remaining", String(videoRemaining));
         res.status(202).json({ task_id: task.id, status: task.status });
       } catch (err: any) {
+        if (err instanceof DelegatedWorkerPlatformError) {
+          sendApiError(res, err.statusCode, err.code, err.message, err.type);
+          return;
+        }
         console.error("[PublicMediaApi] video generate error", err);
         if (!res.headersSent) {
           sendApiError(res, 500, "internal_error", "Internal server error");
@@ -219,26 +259,41 @@ export function createPublicMediaRouter(): Router {
       const { text, voice, model, speed } = parsed.data;
       const auth = req.auth!;
       const userId = (auth as any).userId as number;
+      const idempotencyKey = req.get("Idempotency-Key") || undefined;
 
       try {
-        const userToken = createInternalTokenFromAuth({ userId }, ["media:generate"]);
+        const task = await runWithDelegatedWorkerExecution({
+          auth,
+          actionClass: "media",
+          estimatedCredits: 1,
+          idempotencyKey,
+        }, async () => {
+          const userToken = createInternalTokenFromAuth({ userId }, ["media:generate"]);
 
-        const task = await mediaGenerationService.generateAudioAsync(
-          {
-            text,
-            voice,
-            model,
-            speed,
-            auditContext: { userId, source: "public_api" },
-          },
-          userToken,
-        );
+          return mediaGenerationService.generateAudioAsync(
+            {
+              text,
+              voice,
+              model,
+              speed,
+              auditContext: { userId, source: "public_api" },
+            },
+            userToken,
+          );
+        });
 
         await deductCredits({
           userId,
           amount: 1,
           sourceType: "api_media",
           description: `Audio generation: ${text.slice(0, 50)}`,
+          idempotencyKey,
+          metadata: buildDelegatedWorkerOriginMetadata(auth, "media.generate_audio", {
+            endpoint: "/v1/media/audio/generate",
+            model: model ?? null,
+            textPreview: text.slice(0, 120),
+            voice: voice ?? null,
+          }),
         } as any);
         incrementDailyCredits((auth as any).apiKeyId, 1).catch(() => {});
 
@@ -249,6 +304,10 @@ export function createPublicMediaRouter(): Router {
         res.setHeader("X-Credits-Remaining", String(audioRemaining));
         res.status(202).json({ task_id: task.id, status: task.status });
       } catch (err: any) {
+        if (err instanceof DelegatedWorkerPlatformError) {
+          sendApiError(res, err.statusCode, err.code, err.message, err.type);
+          return;
+        }
         console.error("[PublicMediaApi] audio generate error", err);
         if (!res.headersSent) {
           sendApiError(res, 500, "internal_error", "Internal server error");

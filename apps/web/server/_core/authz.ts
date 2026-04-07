@@ -5,10 +5,28 @@ import { verifyBearerToken } from "./tokens";
 import { isJtiRevoked } from "./revocation";
 import { validateKey } from "../services/apiKeyService";
 import { getRedisClient } from "../services/redis";
+import { getCachedMcpServerToken, getCachedPreferredInternalToken } from "../services/appRuntimeConfig";
+import { verifyDelegatedWorkerBearerToken } from "../services/workerDelegationService";
 
 export type AuthResult =
-  | { ok: true; mode: "bearer"; sub: string; scopes: string[] }
-  | { ok: true; mode: "session"; user: any; sub: string; scopes: string[] }
+  | {
+      ok: true;
+      mode: "bearer";
+      sub: string;
+      scopes: string[];
+      tenantId?: string;
+      userId?: number;
+      apiKeyId?: string;
+    }
+  | {
+      ok: true;
+      mode: "session";
+      user: any;
+      sub: string;
+      scopes: string[];
+      tenantId?: string;
+      userId?: number;
+    }
   | {
       ok: true;
       mode: "api_key";
@@ -23,6 +41,21 @@ export type AuthResult =
       quotaDaily: number | null;
       quotaWeekly: number | null;
       quotaMonthly: number | null;
+    }
+  | {
+      ok: true;
+      mode: "delegated_worker";
+      sub: string;
+      scopes: string[];
+      tenantId: string;
+      userId: number;
+      ownerUserId: number;
+      workerId: string;
+      workerJobId: string;
+      delegatedSessionId: string;
+      runtimeType: string;
+      scopeProfile: string;
+      teamId?: string;
     }
   | { ok: false; error: string };
 
@@ -40,8 +73,10 @@ function parseBearer(req: Request): string | null {
 
 function scopesForStaticToken(token: string): string[] {
   // Least-privilege defaults for server-to-server tokens
-  if (ENV.mcpServerToken && token === ENV.mcpServerToken) return ["mcp:read", "mcp:write"];
-  if (ENV.webGatewayToken && token === ENV.webGatewayToken) return ["llm:chat", "mcp:read", "mcp:write"];
+  const mcpServerToken = getCachedMcpServerToken() || ENV.mcpServerToken;
+  const gatewayToken = getCachedPreferredInternalToken() || ENV.webGatewayToken;
+  if (mcpServerToken && token === mcpServerToken) return ["mcp:read", "mcp:write"];
+  if (gatewayToken && token === gatewayToken) return ["llm:chat", "mcp:read", "mcp:write"];
   return [];
 }
 
@@ -107,12 +142,36 @@ export async function authorizeRequest(
       // Static token shortcut (if configured)
       const staticScopes = scopesForStaticToken(token);
       if (staticScopes.length) {
-        return { ok: true, mode: "bearer", sub: "static", scopes: staticScopes };
+        return {
+          ok: true,
+          mode: "bearer",
+          sub: "static",
+          scopes: staticScopes,
+        };
       }
 
       // Signed JWT bearer token (short-lived)
       try {
-        const claims = await verifyBearerToken(token);
+        const previewClaims = await verifyBearerToken(token);
+        if ((previewClaims as any).tokenUse === "worker_gateway_delegate") {
+          const delegatedAuth = await verifyDelegatedWorkerBearerToken(token);
+          return {
+            ok: true,
+            mode: "delegated_worker",
+            sub: delegatedAuth.subject,
+            scopes: delegatedAuth.scopes,
+            tenantId: delegatedAuth.tenantId,
+            userId: delegatedAuth.userId,
+            ownerUserId: delegatedAuth.ownerUserId,
+            workerId: delegatedAuth.workerId,
+            workerJobId: delegatedAuth.workerJobId,
+            delegatedSessionId: delegatedAuth.delegatedSessionId,
+            runtimeType: delegatedAuth.runtimeType,
+            scopeProfile: delegatedAuth.scopeProfile,
+            ...(delegatedAuth.teamId ? { teamId: delegatedAuth.teamId } : {}),
+          };
+        }
+        const claims = previewClaims;
         const jti = String((claims as any).jti || "");
         if (jti) {
           const revoked = await isJtiRevoked(jti);
@@ -122,7 +181,25 @@ export async function authorizeRequest(
         const sub = claims.sub != null
           ? String(claims.sub)
           : String((claims as any).openId || (claims as any).id || "");
-        return { ok: true, mode: "bearer", sub, scopes: claims.scopes || [] };
+        const tenantId = typeof (claims as any).tenantId === "string"
+          ? (claims as any).tenantId.trim()
+          : "";
+        const userIdCandidate = (claims as any).userId ?? Number.parseInt(sub, 10);
+        const userId = Number.isInteger(userIdCandidate) && Number(userIdCandidate) > 0
+          ? Number(userIdCandidate)
+          : undefined;
+        const apiKeyId = typeof (claims as any).apiKeyId === "string"
+          ? (claims as any).apiKeyId.trim()
+          : "";
+        return {
+          ok: true,
+          mode: "bearer",
+          sub,
+          scopes: claims.scopes || [],
+          ...(tenantId ? { tenantId } : {}),
+          ...(userId ? { userId } : {}),
+          ...(apiKeyId ? { apiKeyId } : {}),
+        };
       } catch (e: any) {
         return { ok: false, error: e?.message || "Invalid token" };
       }
@@ -138,7 +215,17 @@ export async function authorizeRequest(
 
       // Session users are interactive owners/users; allow tools but enforce per-tool policy elsewhere
       const scopes = ["llm:chat", "mcp:read", "mcp:write"];
-      return { ok: true, mode: "session", user, sub, scopes };
+      const tenantId = String((user as any)?.currentTenantId || "").trim();
+      const userId = Number.parseInt(String((user as any)?.id || ""), 10);
+      return {
+        ok: true,
+        mode: "session",
+        user,
+        sub,
+        scopes,
+        ...(tenantId ? { tenantId } : {}),
+        ...(Number.isInteger(userId) && userId > 0 ? { userId } : {}),
+      };
     } catch (e: any) {
       return { ok: false, error: e?.message || "Unauthorized" };
     }

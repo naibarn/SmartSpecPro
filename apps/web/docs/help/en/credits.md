@@ -28,6 +28,22 @@ Your current credit balance is displayed in the top bar. Click **Credits** in th
 - Recent transactions with timestamps and amounts
 - Per-request cost breakdown by model
 
+## Worker Runtime charges
+
+If a supported task runs through an external Claw worker, the transaction history shows it as **Worker Runtime**.
+
+This is useful when you want to confirm:
+
+- the task really used the external worker path
+- credits were consumed by a worker job rather than normal chat
+- a team or workflow is pointing to the expected runtime
+
+Important:
+
+- these charges still come from the worker owner's balance
+- personal worker budget caps can stop more SmartSpecPro-routed usage in the current hour, 5-hour window, day, week, or month
+- if the worker calls an outside service with its own credentials, that outside cost is separate and does not appear as SmartSpecPro worker credit usage
+
 ## Topping up
 
 Click the **Top Up** button on the Credits page to purchase additional credits. Credits are non-expiring and tied to your account.

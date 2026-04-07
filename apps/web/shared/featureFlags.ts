@@ -49,6 +49,9 @@ export interface TenantFeatureFlags {
   mcpStdio: boolean; // F41 — MCP stdio transport (subprocess-based servers)
   mcpOAuth: boolean; // F42 — MCP OAuth 2.1 authentication
   UPLOAD_POST_GATEWAY_ENABLED: boolean; // F43 — Upload-Post Universal Gateway
+  chatAutoModelSelection: boolean; // F44 — Chat Auto/Provider-Auto model selection
+  localClientLlmMode: boolean; // F45 — Local / Client LLM mode
+  openClawExternalRuntime: boolean; // F46 — OpenClaw external worker runtime control plane
 }
 
 export type TenantFeatureFlagKey = keyof TenantFeatureFlags;
@@ -101,12 +104,15 @@ export const ALLOWED_FEATURE_FLAGS: ReadonlySet<string> = new Set<TenantFeatureF
   "mcpStdio",
   "mcpOAuth",
   "UPLOAD_POST_GATEWAY_ENABLED",
+  "chatAutoModelSelection",
+  "localClientLlmMode",
+  "openClawExternalRuntime",
 ]);
 
 /**
  * Default values for each feature flag.
- * All flags default to true — features are enabled by default.
- * Disable individual flags per-tenant via the admin panel if needed.
+ * Most flags default to true, but rollout- or infrastructure-sensitive
+ * capabilities can stay false until explicitly enabled per tenant.
  */
 export const FEATURE_FLAG_DEFAULTS: Readonly<TenantFeatureFlags> = {
   multiChannel: true,
@@ -152,4 +158,7 @@ export const FEATURE_FLAG_DEFAULTS: Readonly<TenantFeatureFlags> = {
   mcpStdio: false,  // Requires OpenSandbox — keep disabled by default
   mcpOAuth: false,  // Requires Express callback route — keep disabled until wired
   UPLOAD_POST_GATEWAY_ENABLED: false, // Requires Upload-Post connection + consent flow
+  chatAutoModelSelection: true, // Enabled by default; admin can still disable per tenant if needed
+  localClientLlmMode: false, // Rollout-gated until local runtime paths are explicitly enabled per tenant
+  openClawExternalRuntime: false, // External worker control plane ships disabled until tenant enablement
 };

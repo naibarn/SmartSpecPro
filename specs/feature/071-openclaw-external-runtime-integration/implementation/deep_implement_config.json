@@ -1,0 +1,31 @@
+{
+  "plugin_root": "/home/dev/projects/SmartSpecPro/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/071-openclaw-external-runtime-integration/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/071-openclaw-external-runtime-integration/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "workflow_backend": "compatible",
+  "task_tracking_backend": "compatible",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-contracts-and-schema-foundation",
+    "section-02-worker-rest-control-plane",
+    "section-03-http-gateway-compatibility-and-docs",
+    "section-04-mcp-llm-parity-and-auth-normalization",
+    "section-05-scheduler-billing-and-artifact-publication",
+    "section-06-team-admin-and-workflow-integration",
+    "section-07-security-observability-and-fleet-operations",
+    "section-08-rollout-migration-and-regression-matrix"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-04-06T06:44:55.111501+00:00"
+}

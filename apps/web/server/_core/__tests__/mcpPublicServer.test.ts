@@ -90,34 +90,55 @@ vi.mock("../../services/orchestratorRoomActionsService", () => ({
 // Test app factory
 // ---------------------------------------------------------------------------
 
-function makeApp(scopes?: string[]) {
+function makeApp(
+  scopesOrAuth?: string[] | Record<string, any>,
+  requestHeaders?: Record<string, string>,
+) {
   const app = express();
   app.use(express.json());
   // Simulate apiKeyAuthMiddleware by setting req.auth before routes
   app.use((req: any, _res: any, next: any) => {
-    req.auth = {
-      ok: true,
-      mode: "api_key",
-      sub: "1",
-      userId: 1,
-      tenantId: "tenant-1",
-      apiKeyId: "key-1",
-      scopes: scopes ?? [
-        "mcp:read",
-        "mcp:write",
-        "skills:list",
-        "skills:execute",
-        "agencies:list",
-        "agencies:invoke",
-        "agency:tools:mcp",
-        "media:generate",
-        "presentations:create",
-        "video_projects:create",
-        "jobs:create",
-        "jobs:read",
-        "llm:chat",
-      ],
-    };
+    const defaultScopes = [
+      "mcp:read",
+      "mcp:write",
+      "skills:list",
+      "skills:execute",
+      "agencies:list",
+      "agencies:invoke",
+      "agency:tools:mcp",
+      "media:generate",
+      "presentations:create",
+      "video_projects:create",
+      "jobs:create",
+      "jobs:read",
+      "llm:chat",
+    ];
+    if (Array.isArray(scopesOrAuth)) {
+      req.auth = {
+        ok: true,
+        mode: "api_key",
+        sub: "1",
+        userId: 1,
+        tenantId: "tenant-1",
+        apiKeyId: "key-1",
+        scopes: scopesOrAuth,
+      };
+    } else {
+      req.auth = scopesOrAuth ?? {
+        ok: true,
+        mode: "api_key",
+        sub: "1",
+        userId: 1,
+        tenantId: "tenant-1",
+        apiKeyId: "key-1",
+        scopes: defaultScopes,
+      };
+    }
+    if (requestHeaders) {
+      for (const [key, value] of Object.entries(requestHeaders)) {
+        req.headers[key.toLowerCase()] = value;
+      }
+    }
     next();
   });
   registerMcpPublicRoutes(app);
@@ -154,6 +175,37 @@ beforeEach(() => {
 // ---------------------------------------------------------------------------
 
 describe("POST /v1/mcp — protocol", () => {
+  it("rejects delegated worker callers for this phase", async () => {
+    const delegatedWorkerApp = makeApp({
+      ok: true,
+      mode: "delegated_worker",
+      sub: "worker-1",
+      userId: 7,
+      ownerUserId: 7,
+      tenantId: "tenant-1",
+      workerId: "worker-1",
+      workerJobId: "job-1",
+      delegatedSessionId: "delegated-session-1",
+      runtimeType: "openclaw_gateway",
+      scopes: ["mcp:read", "mcp:write"],
+    });
+
+    const res = await request(delegatedWorkerApp)
+      .post("/v1/mcp")
+      .send({
+        jsonrpc: "2.0",
+        method: "initialize",
+        params: { protocolVersion: "2025-03-26", capabilities: {}, clientInfo: { name: "test" } },
+        id: 1,
+      });
+
+    expect(res.status).toBe(403);
+    expect(res.body.error).toEqual(expect.objectContaining({
+      code: "mcp_unavailable",
+      message: "Delegated worker MCP access is unavailable in this phase",
+    }));
+  });
+
   it("returns server capabilities on initialize", async () => {
     const res = await request(makeApp())
       .post("/v1/mcp")
@@ -197,6 +249,21 @@ describe("POST /v1/mcp — protocol", () => {
       expect(typeof tool.description).toBe("string");
       expect(typeof tool.inputSchema).toBe("object");
     }
+  });
+
+  it("does not advertise placeholder smartspec.llm.* MCP tools", async () => {
+    const app = makeApp();
+    const sessionId = await initializeSession(app);
+
+    const res = await request(app)
+      .post("/v1/mcp")
+      .set("Mcp-Session-Id", sessionId)
+      .send({ jsonrpc: "2.0", method: "tools/list", params: {}, id: 2 });
+
+    const toolNames = res.body.result.tools.map((tool: any) => tool.name);
+    expect(toolNames).not.toContain("smartspec.llm.chat");
+    expect(toolNames).not.toContain("smartspec.llm.embed");
+    expect(toolNames).not.toContain("smartspec.llm.models");
   });
 
   it("executes tool and returns content array", async () => {
@@ -297,6 +364,23 @@ describe("POST /v1/mcp — protocol", () => {
       .send({ jsonrpc: "2.0", method: "initialize", params: {}, id: 1 });
     expect(res.status).toBe(403);
   });
+
+  it("requires mcp:read scope for bearer callers too", async () => {
+    const res = await request(
+      makeApp({
+        ok: true,
+        mode: "bearer",
+        sub: "42",
+        tenantId: "tenant-bearer",
+        userId: 42,
+        scopes: [],
+      }),
+    )
+      .post("/v1/mcp")
+      .send({ jsonrpc: "2.0", method: "initialize", params: {}, id: 1 });
+
+    expect(res.status).toBe(403);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -317,6 +401,80 @@ describe("Session management", () => {
     expect(stored.state).toBe("ready");
     expect(stored.tenantId).toBe("tenant-1");
     expect(stored.userId).toBe(1);
+  });
+
+  it("normalizes bearer auth into a tenant-safe MCP session", async () => {
+    const app = makeApp({
+      ok: true,
+      mode: "bearer",
+      sub: "42",
+      userId: 42,
+      tenantId: "tenant-bearer",
+      scopes: ["mcp:read", "mcp:write"],
+    });
+    const sessionId = await initializeSession(app);
+    const stored = JSON.parse(mockRedisData[`mcp:session:${sessionId}`]);
+
+    expect(stored.tenantId).toBe("tenant-bearer");
+    expect(stored.userId).toBe(42);
+    expect(stored.apiKeyId).toBeNull();
+  });
+
+  it("normalizes session auth into a tenant-safe MCP session", async () => {
+    const app = makeApp({
+      ok: true,
+      mode: "session",
+      sub: "7",
+      user: { id: 7, currentTenantId: "tenant-session" },
+      scopes: ["mcp:read", "mcp:write"],
+    });
+    const sessionId = await initializeSession(app);
+    const stored = JSON.parse(mockRedisData[`mcp:session:${sessionId}`]);
+
+    expect(stored.tenantId).toBe("tenant-session");
+    expect(stored.userId).toBe(7);
+    expect(stored.apiKeyId).toBeNull();
+  });
+
+  it("allows internal-style bearer sessions only with explicit tenant and user headers", async () => {
+    const app = makeApp(
+      {
+        ok: true,
+        mode: "bearer",
+        sub: "internal",
+        scopes: ["mcp:read", "mcp:write"],
+      },
+      {
+        "x-tenant-id": "tenant-internal",
+        "x-user-id": "91",
+      },
+    );
+    const sessionId = await initializeSession(app);
+    const stored = JSON.parse(mockRedisData[`mcp:session:${sessionId}`]);
+
+    expect(stored.tenantId).toBe("tenant-internal");
+    expect(stored.userId).toBe(91);
+  });
+
+  it("rejects internal-style bearer sessions without explicit tenant/user headers", async () => {
+    const res = await request(
+      makeApp({
+        ok: true,
+        mode: "bearer",
+        sub: "internal",
+        scopes: ["mcp:read", "mcp:write"],
+      }),
+    )
+      .post("/v1/mcp")
+      .send({
+        jsonrpc: "2.0",
+        method: "initialize",
+        params: { protocolVersion: "2025-03-26", capabilities: {}, clientInfo: { name: "test" } },
+        id: 1,
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body.error.code).toBe(-32603);
   });
 
   it("requires Mcp-Session-Id for non-initialize methods", async () => {
@@ -357,7 +515,7 @@ describe("Tool scope enforcement", () => {
       });
 
     expect(res.body.error).toBeDefined();
-    expect(res.body.error.message).toMatch(/scope/i);
+    expect(res.body.error.message).toBe("Internal error");
   });
 
   it("rejects write tool when mcp:write scope is missing", async () => {

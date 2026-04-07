@@ -9,7 +9,15 @@ import { formatNumber } from '@smartspec/shared';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { trpc } from '@/lib/trpc';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { TransactionDetailDialog } from '@/components/analytics/TransactionDetailDialog';
 import MyInviteCode from '@/components/user/MyInviteCode';
 import { LocaleToggle } from '@/components/LocaleToggle';
@@ -49,17 +57,25 @@ import {
   Eye,
   Coins,
   Bot,
+  type LucideIcon,
 } from 'lucide-react';
+import {
+  CREDIT_TRANSACTION_SOURCE_TYPES,
+  type CreditTransactionOriginSurface,
+  type CreditTransactionSourceType,
+  inferCreditTransactionSourceType,
+  resolveCreditTransactionOriginSurface,
+} from '@/lib/creditTransactionSource';
 
 export default function Credits() {
   const { user, isLoading, isAuthenticated } = useAuth();
   const { t, i18n } = useScopedTranslation('billing');
   const [, setLocation] = useLocation();
   const [selectedPackage, setSelectedPackage] = useState<number | null>(null);
+  const [pendingCheckoutPackage, setPendingCheckoutPackage] = useState<any | null>(null);
   const [buyCreditsExpanded, setBuyCreditsExpanded] = useState(false);
   const [page, setPage] = useState(0);
-  type CreditSourceType = "chat" | "skill" | "media_image" | "media_video" | "media_audio" | "indexing" | "rag" | "stt" | "translation" | "brainstorm" | "scheduler" | "admin" | "other";
-  const [sourceFilter, setSourceFilter] = useState<CreditSourceType | "">("");
+  const [sourceFilter, setSourceFilter] = useState<string>("");
   const pageSize = 20;
 
   // Fetch real data from API
@@ -67,11 +83,21 @@ export default function Credits() {
   const { data: history, isLoading: historyLoading, refetch: refetchHistory } = trpc.credits.history.useQuery({
     limit: pageSize,
     offset: page * pageSize,
-    sourceType: sourceFilter || undefined,
+    sourceType: sourceFilter ? (sourceFilter as CreditTransactionSourceType) : undefined,
   });
   const { data: usageStats } = trpc.credits.stats.useQuery({ days: 30 });
   const { data: packages, isLoading: packagesLoading } = trpc.packages.list.useQuery();
-  const sourceLabels = useMemo(() => ({
+  const topupMutation = trpc.billing.createTopupCheckout.useMutation({
+    onError: (error) => {
+      toast.error(error.message || "ไม่สามารถสร้างรายการชำระเงินได้");
+    },
+  });
+  type SourcePresentation = {
+    label: string;
+    color: string;
+    icon: LucideIcon;
+  };
+  const sourceLabels = useMemo<Record<CreditTransactionSourceType, SourcePresentation>>(() => ({
     chat: { label: t('credits.sources.chat'), color: "bg-blue-100 text-blue-700", icon: MessageCircle },
     skill: { label: t('credits.sources.skill'), color: "bg-blue-100 text-blue-700", icon: Sparkles },
     media_image: { label: t('credits.sources.mediaImage'), color: "bg-cyan-100 text-cyan-700", icon: Image },
@@ -86,12 +112,40 @@ export default function Credits() {
     admin: { label: t('credits.sources.admin'), color: "bg-gray-100 text-gray-700", icon: Shield },
     agency: { label: t('credits.sources.agency'), color: "bg-teal-100 text-teal-700", icon: Eye },
     creator_revenue: { label: t('credits.sources.creatorRevenue'), color: "bg-amber-100 text-amber-700", icon: Coins },
-    browser_automation: { label: t('credits.sources.automation'), color: "bg-sky-100 text-sky-700", icon: Bot },
     other: { label: t('credits.sources.other'), color: "bg-slate-100 text-slate-700", icon: Zap },
+    tts: { label: t('credits.sources.tts'), color: "bg-orange-100 text-orange-700", icon: Volume2 },
+    browser_automation: { label: t('credits.sources.automation'), color: "bg-sky-100 text-sky-700", icon: Bot },
+    worker_runtime: { label: t('credits.sources.workerRuntime'), color: "bg-emerald-100 text-emerald-700", icon: Bot },
+    widget_chat: { label: t('credits.sources.widgetChat'), color: "bg-indigo-100 text-indigo-700", icon: MessageCircle },
+    webhook_chat: { label: t('credits.sources.webhookChat'), color: "bg-violet-100 text-violet-700", icon: MessageCircle },
+    webhook_trigger: { label: t('credits.sources.webhookTrigger'), color: "bg-purple-100 text-purple-700", icon: Bell },
+    api_skill: { label: t('credits.sources.apiSkill'), color: "bg-fuchsia-100 text-fuchsia-700", icon: Sparkles },
+    api_agency: { label: t('credits.sources.apiAgency'), color: "bg-teal-100 text-teal-700", icon: Eye },
+    api_job: { label: t('credits.sources.apiJob'), color: "bg-emerald-100 text-emerald-700", icon: Bot },
+    api_media: { label: t('credits.sources.apiMedia'), color: "bg-rose-100 text-rose-700", icon: Film },
+    api_presentation: { label: t('credits.sources.apiPresentation'), color: "bg-sky-100 text-sky-700", icon: Image },
+    api_video_project: { label: t('credits.sources.apiVideoProject'), color: "bg-red-100 text-red-700", icon: Film },
+    api_chat: { label: t('credits.sources.apiChat'), color: "bg-blue-100 text-blue-700", icon: MessageCircle },
+    api_mcp: { label: t('credits.sources.apiMcp'), color: "bg-lime-100 text-lime-700", icon: Bot },
   }), [t]);
-  const getSourceInfo = (sourceType: unknown) => {
-    if (typeof sourceType !== "string") return null;
-    return sourceType in sourceLabels ? sourceLabels[sourceType as keyof typeof sourceLabels] : null;
+  const originSurfaceLabels = useMemo<Record<CreditTransactionOriginSurface, string>>(() => ({
+    media_studio: t('credits.sources.mediaStudio'),
+  }), [t]);
+  const getSourcePresentation = (transaction: {
+    sourceType?: unknown;
+    description?: unknown;
+    metadata?: Record<string, unknown> | null;
+    skillSlug?: unknown;
+  }) => {
+    const effectiveSourceType = inferCreditTransactionSourceType(transaction);
+    const sourceInfo = effectiveSourceType ? sourceLabels[effectiveSourceType] : null;
+    const originSurface = resolveCreditTransactionOriginSurface(transaction);
+    const originLabel = originSurface ? originSurfaceLabels[originSurface] : null;
+
+    return {
+      sourceInfo,
+      originLabel,
+    };
   };
 
   useEffect(() => {
@@ -111,6 +165,51 @@ export default function Credits() {
   if (!user) {
     return null;
   }
+
+  const handleBuyPackage = (pkg: any) => {
+    setSelectedPackage(pkg.id);
+    setPendingCheckoutPackage(pkg);
+  };
+
+  const handleConfirmTopupCheckout = (pkg: any, paymentMethod: "promptpay" | "card") => {
+    const payload = {
+      credits: Number(pkg.credits),
+      basePrice: Number(pkg.priceUsd),
+      currency: "THB",
+      packageCode: `credit-package-${pkg.id}`,
+      description: pkg.name || `Credit top-up (${pkg.credits} credits)`,
+      paymentMethod,
+    };
+    const topupQuery = new URLSearchParams({
+      view: "topup",
+      credits: String(payload.credits),
+      basePrice: String(payload.basePrice),
+      packageCode: payload.packageCode,
+      description: payload.description,
+      packageLabel: pkg.name || `${pkg.credits} credits`,
+      paymentMethod,
+    }).toString();
+
+    topupMutation.mutate(payload, {
+      onSuccess: async (result) => {
+        toast.success("สร้างรายการชำระเงินสำเร็จ");
+        setPendingCheckoutPackage(null);
+
+        const paymentUrl = result?.payment?.rawResponseJson?.paymentUrl;
+        if (typeof paymentUrl === "string" && paymentUrl.trim()) {
+          window.location.href = paymentUrl;
+          return;
+        }
+
+        if (result?.invoice?.id) {
+          setLocation(`/billing/invoices/${result.invoice.id}?${topupQuery}`);
+          return;
+        }
+
+        setLocation(`/billing?${topupQuery}`);
+      },
+    });
+  };
 
 
   // Format date and time for display
@@ -351,9 +450,23 @@ export default function Credits() {
                         ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white'
                         : 'bg-gray-900 text-white'
                     }`}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      handleBuyPackage(pkg);
+                    }}
+                    disabled={topupMutation.isPending}
                   >
-                    {t('credits.buyCredits.cta')}
-                    <ArrowRight className="w-3 h-3 ml-1" />
+                    {topupMutation.isPending && selectedPackage === pkg.id ? (
+                      <>
+                        <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                        กำลังสร้างรายการ
+                      </>
+                    ) : (
+                      <>
+                        {t('credits.buyCredits.cta')}
+                        <ArrowRight className="w-3 h-3 ml-1" />
+                      </>
+                    )}
                   </Button>
                 </motion.div>
               ))}
@@ -379,12 +492,12 @@ export default function Credits() {
               <div className="flex items-center gap-2 flex-wrap">
                 <select
                   value={sourceFilter}
-                  onChange={(e) => { setSourceFilter(e.target.value as CreditSourceType | ""); setPage(0); }}
+                  onChange={(e) => { setSourceFilter(e.target.value); setPage(0); }}
                   className="flex-1 sm:flex-none text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
                 >
                   <option value="">{t('credits.transactionHistory.allSources')}</option>
-                  {Object.entries(sourceLabels).map(([key, { label }]) => (
-                    <option key={key} value={key}>{label}</option>
+                  {CREDIT_TRANSACTION_SOURCE_TYPES.map((key) => (
+                    <option key={key} value={key}>{sourceLabels[key].label}</option>
                   ))}
                 </select>
                 <Button variant="outline" size="sm" onClick={() => refetchHistory()}>
@@ -409,7 +522,7 @@ export default function Credits() {
                 {/* ── Mobile card list (hidden on sm+) ── */}
                 <div className="sm:hidden divide-y divide-gray-100">
                   {history.map((transaction: any) => {
-                    const srcInfo = getSourceInfo(transaction.sourceType);
+                    const { sourceInfo: srcInfo, originLabel } = getSourcePresentation(transaction);
                     const SrcIcon = srcInfo?.icon ?? Zap;
                     const dateStr = transaction.createdAt
                       ? new Date(transaction.createdAt).toISOString().slice(0, 10)
@@ -433,11 +546,18 @@ export default function Credits() {
                                 : transaction.type === 'bonus' ? <><Sparkles className="w-3 h-3" /> Bonus</>
                                 : <><Package className="w-3 h-3" /> {transaction.type}</>}
                             </span>
-                            {srcInfo && (
+                            {srcInfo ? (
                               <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${srcInfo.color}`}>
                                 <SrcIcon className="w-3 h-3" />
-                                {srcInfo.label}
+                                {originLabel ? `${srcInfo.label} • ${originLabel}` : srcInfo.label}
                               </span>
+                            ) : originLabel ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
+                                <Zap className="w-3 h-3" />
+                                {originLabel}
+                              </span>
+                            ) : (
+                              <span className="text-xs text-gray-400">&mdash;</span>
                             )}
                           </div>
                           <span className={`text-base font-bold flex-shrink-0 ${transaction.amount > 0 ? 'text-green-600' : 'text-red-600'}`}>
@@ -486,7 +606,7 @@ export default function Credits() {
                     </thead>
                     <tbody className="divide-y divide-gray-100">
                       {history.map((transaction: any) => {
-                        const srcInfo = getSourceInfo(transaction.sourceType);
+                        const { sourceInfo: srcInfo, originLabel } = getSourcePresentation(transaction);
                         const SrcIcon = srcInfo?.icon ?? Zap;
                         const dateStr = transaction.createdAt
                           ? new Date(transaction.createdAt).toISOString().slice(0, 10)
@@ -509,7 +629,11 @@ export default function Credits() {
                             <td className="px-4 py-3">
                               {srcInfo ? (
                                 <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${srcInfo.color}`}>
-                                  <SrcIcon className="w-3 h-3" />{srcInfo.label}
+                                  <SrcIcon className="w-3 h-3" />{originLabel ? `${srcInfo.label} • ${originLabel}` : srcInfo.label}
+                                </span>
+                              ) : originLabel ? (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
+                                  <Zap className="w-3 h-3" />{originLabel}
                                 </span>
                               ) : <span className="text-xs text-gray-400">&mdash;</span>}
                             </td>
@@ -623,6 +747,82 @@ export default function Credits() {
           </DashboardCard>
         </motion.div>
       </main>
+
+      <Dialog open={!!pendingCheckoutPackage} onOpenChange={(open) => !open && !topupMutation.isPending && setPendingCheckoutPackage(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>เลือกวิธีชำระเงิน</DialogTitle>
+            <DialogDescription>
+              เลือกช่องทางชำระสำหรับแพ็กเกจเครดิตที่คุณเลือก ระบบจะสร้างรายการชำระของ Beam ตามวิธีที่เลือก
+            </DialogDescription>
+          </DialogHeader>
+          {pendingCheckoutPackage ? (
+            <div className="space-y-5">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <div className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Selected package</div>
+                <div className="mt-2 text-xl font-semibold text-slate-900">
+                  {pendingCheckoutPackage.name || `${formatNumber(Number(pendingCheckoutPackage.credits || 0))} credits`}
+                </div>
+                <div className="mt-2 text-sm text-slate-600">
+                  {formatNumber(Number(pendingCheckoutPackage.credits || 0))} เครดิต · ${pendingCheckoutPackage.priceUsd}
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <button
+                  type="button"
+                  className="rounded-2xl border-2 border-cyan-300 bg-cyan-50 p-5 text-left transition hover:border-cyan-400 hover:bg-cyan-100/70"
+                  onClick={() => handleConfirmTopupCheckout(pendingCheckoutPackage, "promptpay")}
+                  disabled={topupMutation.isPending}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-xl bg-cyan-500 p-3 text-white">
+                      <Zap className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <div className="font-semibold text-slate-900">PromptPay QR</div>
+                      <div className="text-sm text-slate-600">แนะนำสำหรับการโอนครั้งเดียว</div>
+                    </div>
+                  </div>
+                  <div className="mt-4 text-sm text-slate-600">
+                    ระบบจะสร้าง QR Code ของ Beam ให้คุณสแกนจ่ายได้ทันทีบนหน้าถัดไป
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  className="rounded-2xl border-2 border-slate-200 bg-white p-5 text-left transition hover:border-slate-300 hover:bg-slate-50"
+                  onClick={() => handleConfirmTopupCheckout(pendingCheckoutPackage, "card")}
+                  disabled={topupMutation.isPending}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-xl bg-slate-900 p-3 text-white">
+                      <CreditCard className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <div className="font-semibold text-slate-900">บัตรเครดิต / เดบิต</div>
+                      <div className="text-sm text-slate-600">ไปที่หน้า Beam checkout</div>
+                    </div>
+                  </div>
+                  <div className="mt-4 text-sm text-slate-600">
+                    ระบบจะพาคุณไปหน้า Beam เพื่อกรอกข้อมูลบัตรและชำระเงินให้เสร็จ
+                  </div>
+                </button>
+              </div>
+
+              <div className="flex justify-end">
+                <Button
+                  variant="ghost"
+                  onClick={() => setPendingCheckoutPackage(null)}
+                  disabled={topupMutation.isPending}
+                >
+                  ยกเลิก
+                </Button>
+              </div>
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

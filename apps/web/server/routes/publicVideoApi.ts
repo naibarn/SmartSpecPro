@@ -7,6 +7,11 @@ import { mediaGenerationService } from "../services/mediaGenerationService";
 import { deductCredits } from "../services/creditService";
 import { createInternalTokenFromAuth } from "../_core/tokens";
 import { resolveExportDownloadTarget } from "./exportDownloadTarget";
+import {
+  buildDelegatedWorkerOriginMetadata,
+  DelegatedWorkerPlatformError,
+  runWithDelegatedWorkerExecution,
+} from "../services/delegatedWorkerPlatformService";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -71,25 +76,41 @@ export function createPublicVideoRouter(): Router {
     const auth = req.auth!;
     const userId = (auth as any).userId as number;
     const tenantId = (auth as any).tenantId as string;
+    const idempotencyKey = req.get("Idempotency-Key") || undefined;
 
     try {
-      await deductCredits({
-        userId,
-        amount: credits,
-        sourceType: "api_video_project",
-        description: `Video project: ${title.slice(0, 50)}`,
-      } as any);
+      const task = await runWithDelegatedWorkerExecution({
+        auth,
+        actionClass: "media",
+        estimatedCredits: credits,
+        idempotencyKey,
+      }, async () => {
+        await deductCredits({
+          userId,
+          amount: credits,
+          sourceType: "api_video_project",
+          description: `Video project: ${title.slice(0, 50)}`,
+          idempotencyKey,
+          metadata: buildDelegatedWorkerOriginMetadata(auth, "video_projects.create", {
+            endpoint: "/v1/video-projects",
+            title,
+            quality,
+            durationMinutes: duration_minutes,
+            model: model ?? null,
+          }),
+        } as any);
 
-      const userToken = createInternalTokenFromAuth({ userId }, ["media:generate"]);
+        const userToken = createInternalTokenFromAuth({ userId }, ["media:generate"]);
 
-      const task = await mediaGenerationService.generateVideoAsync(
-        {
-          prompt: prompt ?? title,
-          model,
-          duration: duration_minutes * 60,
-        },
-        userToken,
-      );
+        return mediaGenerationService.generateVideoAsync(
+          {
+            prompt: prompt ?? title,
+            model,
+            duration: duration_minutes * 60,
+          },
+          userToken,
+        );
+      });
 
       res.setHeader("X-Credits-Used", String(credits));
       res.status(201).json({
@@ -103,6 +124,10 @@ export function createPublicVideoRouter(): Router {
         created_at: task.createdAt,
       });
     } catch (err: any) {
+      if (err instanceof DelegatedWorkerPlatformError) {
+        sendApiError(res, err.statusCode, err.code, err.message, err.type);
+        return;
+      }
       console.error("[PublicVideoApi] create error", err);
       if (!res.headersSent) {
         sendApiError(res, 500, "internal_error", "Internal server error");

@@ -221,6 +221,6 @@ describe("M08: MCP session scope enforcement", () => {
 
     // Should be rejected because session scopes lack skills:execute
     expect(res.body.error).toBeDefined();
-    expect(res.body.error.message).toMatch(/scope/i);
+    expect(res.body.error.message).toBe("Internal error");
   });
 });

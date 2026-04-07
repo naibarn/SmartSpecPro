@@ -12,7 +12,8 @@ declare global {
 
 /**
  * Express middleware factory that enforces API scope requirements.
- * Session and bearer auth bypass scope checks (full access).
+ * Session and generic bearer auth bypass scope checks (full access).
+ * Delegated worker auth is scope-checked like API keys.
  * API key auth requires all listed scopes (AND logic).
  */
 export function requireScopes(...requiredScopes: string[]) {
@@ -30,7 +31,7 @@ export function requireScopes(...requiredScopes: string[]) {
       return;
     }
 
-    // Session and bearer (JWT) auth modes get implicit full scope access
+    // Session and generic bearer (JWT) auth modes get implicit full scope access
     // for web app routes. These represent authenticated web app users.
     // MCP public server enforces scopes separately via its session system.
     if (auth.mode === "session" || auth.mode === "bearer") {

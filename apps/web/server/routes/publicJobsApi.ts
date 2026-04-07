@@ -11,6 +11,11 @@ import {
   VALID_JOB_TYPES,
   MAX_SINGLE_JOB_CREDITS,
 } from "../services/jobAutomationService";
+import {
+  buildDelegatedWorkerOriginMetadata,
+  DelegatedWorkerPlatformError,
+  runWithDelegatedWorkerExecution,
+} from "../services/delegatedWorkerPlatformService";
 
 // ---------------------------------------------------------------------------
 // Schemas
@@ -80,6 +85,7 @@ export function createPublicJobsRouter(): Router {
     const userId = (auth as any).userId as number;
     const tenantId = (auth as any).tenantId as string;
     const apiKeyId = (auth as any).apiKeyId as string;
+    const idempotencyKey = parsed.data.idempotency_key ?? req.get("Idempotency-Key") ?? undefined;
 
     // SSRF protection: validate callbackUrl before storing
     let safeCallbackUrl: string | undefined;
@@ -98,16 +104,28 @@ export function createPublicJobsRouter(): Router {
     }
 
     try {
-      const job = await createJob(
-        {
-          type: parsed.data.type,
-          params: parsed.data.params,
-          idempotencyKey: parsed.data.idempotency_key,
-          callbackUrl: safeCallbackUrl,
-          maxCredits: parsed.data.max_credits,
-        },
-        { userId, tenantId, apiKeyId },
-      );
+      const job = await runWithDelegatedWorkerExecution({
+        auth,
+        actionClass: "compute",
+        estimatedCredits: parsed.data.max_credits ?? 1,
+        idempotencyKey,
+      }, async () =>
+        createJob(
+          {
+            type: parsed.data.type,
+            params: parsed.data.params,
+            idempotencyKey,
+            callbackUrl: safeCallbackUrl,
+            maxCredits: parsed.data.max_credits,
+            metadata: buildDelegatedWorkerOriginMetadata(auth, "jobs.create", {
+              endpoint: "/v1/jobs",
+              jobType: parsed.data.type,
+              callbackUrl: safeCallbackUrl ?? null,
+              maxCredits: parsed.data.max_credits ?? null,
+            }),
+          },
+          { userId, tenantId, apiKeyId },
+        ));
 
       res.status(201).json({
         id: job.id,
@@ -117,6 +135,10 @@ export function createPublicJobsRouter(): Router {
         created_at: job.createdAt,
       });
     } catch (err: any) {
+      if (err instanceof DelegatedWorkerPlatformError) {
+        sendApiError(res, err.statusCode, err.code, err.message, err.type);
+        return;
+      }
       if (mapJobError(err, res)) return;
       console.error("[PublicJobsApi] create error", err);
       if (!res.headersSent) {

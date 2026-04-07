@@ -1075,6 +1075,7 @@ const th: TranslationDictionary = {
   "credits.sources.agency": "เอเจนซี",
   "credits.sources.creatorRevenue": "รายได้ผู้สร้าง",
   "credits.sources.automation": "อัตโนมัติ",
+  "credits.sources.workerRuntime": "รันผ่าน Worker",
   "credits.sources.other": "อื่น ๆ",
   "credits.buyCredits.title": "ซื้อเครดิต",
   "credits.buyCredits.descriptionExpanded": "เลือกแพ็กเกจที่เหมาะกับคุณ (บวก 15% จากอัตราพื้นฐาน)",
@@ -1313,7 +1314,9 @@ const th: TranslationDictionary = {
   "mediaStudio.searchModels": "ค้นหาโมเดล...",
   "mediaStudio.noModelsFound": "ไม่พบโมเดล",
   "mediaStudio.autoSkillRequirements": "✨ อัตโนมัติ (ตามความต้องการของสกิล)",
-  "mediaStudio.autoModelHint": "โหมดอัตโนมัติจะเลือกโมเดลที่เหมาะสมที่สุดตามความต้องการของสกิล หรือคุณสามารถเลือกโมเดลเองได้",
+  "mediaStudio.autoByProvider": "✨ อัตโนมัติ ({{provider}})",
+  "mediaStudio.autoModelHint": "โหมดอัตโนมัติจะเลือกโมเดลที่เหมาะสมที่สุดตามความต้องการของสกิล คุณยังสามารถเลือกโหมด Auto แบบเจาะ provider แล้วให้ provider นั้นเลือกโมเดลของตัวเองได้",
+  "mediaStudio.recommended": "แนะนำ",
   "mediaStudio.advancedModeHint": "สร้างพรอมต์ที่ปรับปรุงแล้วด้วยการตั้งค่า Advanced Mode",
   "mediaStudio.multiVideoModeGenerating": "โหมด Multi Video: กำลังสร้างวิดีโอแยก {{count}} รายการ",
   "mediaStudio.noMultiplePrompts": "ไม่พบพรอมต์หลายรายการ กำลังสร้างวิดีโอเดียว",
@@ -1544,6 +1547,257 @@ const th: TranslationDictionary = {
   "settings.2fa.success.enabled": "เปิดใช้ 2FA สำเร็จ!",
   "settings.2fa.success.disabled": "ปิดใช้งาน 2FA แล้ว",
   "settings.2fa.success.newCodes": "สร้าง recovery codes ใหม่แล้ว",
+  "settings.localAi.title": "Local AI",
+  "settings.localAi.description":
+    "ตั้งค่า Gemma 4 และงานผู้ช่วยแบบ on-device สำหรับแชต เสียง ภาพ และ OCR บนอุปกรณ์ที่รองรับ โดยยังคงเส้นทาง cloud เดิมไว้สำหรับเครื่องที่ไม่พร้อมหรือกรณีที่ไม่เปิดใช้",
+  "settings.localAi.helpButton": "คู่มือ",
+  "settings.localAi.common.enable": "เปิดใช้งาน",
+  "settings.localAi.common.yes": "ใช่",
+  "settings.localAi.common.no": "ไม่ใช่",
+  "settings.localAi.common.ready": "พร้อม",
+  "settings.localAi.common.notReady": "ยังไม่พร้อม",
+  "settings.localAi.common.available": "พร้อมใช้งาน",
+  "settings.localAi.common.unavailable": "ยังใช้ไม่ได้",
+  "settings.localAi.common.notDetected": "ยังไม่พบ",
+  "settings.localAi.common.notRecorded": "ยังไม่มีข้อมูล",
+  "settings.localAi.common.unknown": "ไม่ทราบ",
+  "settings.localAi.platform.browserRuntime": "runtime ของเบราว์เซอร์",
+  "settings.localAi.platform.desktopRuntime": "runtime ของเดสก์ท็อป",
+  "settings.localAi.policy.tenantDisabled":
+    "tenant นี้ปิด Local AI ไว้ แชตแบบ cloud จะทำงานต่อเหมือนเดิม",
+  "settings.localAi.policy.forceCloudOnly":
+    "tenant นี้ถูกบังคับให้ใช้ cloud-only การตั้งค่า local ยังแสดงเพื่ออธิบายได้ แต่แชตจะยังวิ่งบนเส้นทาง cloud ปัจจุบัน",
+  "settings.localAi.policy.unavailable":
+    "ยังไม่สามารถโหลดนโยบาย Local AI ได้ตอนนี้ พฤติกรรมแชตเดิมจะยังไม่เปลี่ยน",
+  "settings.localAi.policy.catalogReady":
+    "Catalog พร้อมแล้ว: มีโปรไฟล์ {{count}} รายการสำหรับ{{surface}}นี้",
+  "settings.localAi.synced.title": "การตั้งค่าที่ sync ตามบัญชี",
+  "settings.localAi.synced.description":
+    "การตั้งค่าส่วนนี้จะติดตามบัญชีของคุณไปยังพื้นผิวที่รองรับ",
+  "settings.localAi.executionMode.label": "Execution mode",
+  "settings.localAi.executionMode.options.off": "ปิด",
+  "settings.localAi.executionMode.options.auto": "อัตโนมัติ",
+  "settings.localAi.executionMode.options.prefer_local": "ให้ local ก่อน",
+  "settings.localAi.executionMode.options.local_only": "local เท่านั้น",
+  "settings.localAi.executionMode.options.cloud_only": "cloud เท่านั้น",
+  "settings.localAi.defaultProfile.label": "Default local profile",
+  "settings.localAi.defaultProfile.none": "ยังไม่ตั้งค่า default local",
+  "settings.localAi.defaultProfile.summary":
+    "{{family}} {{variant}} • {{sizeMb}} MB",
+  "settings.localAi.toggle.generalChat": "ใช้กับการแชตทั่วไป",
+  "settings.localAi.toggle.summaries": "ใช้กับการสรุป",
+  "settings.localAi.toggle.imageTasks":
+    "ใช้กับการอ่านภาพและงานช่วย OCR",
+  "settings.localAi.voiceInput.label": "โหมดรับเสียงจากไมก์",
+  "settings.localAi.voiceInput.options.legacy_stt": "Legacy STT",
+  "settings.localAi.voiceInput.options.gemma4_local": "Gemma 4 local",
+  "settings.localAi.voiceInput.options.auto": "อัตโนมัติ",
+  "settings.localAi.voiceInput.optionUnavailable":
+    "{{label}} (ยังใช้ไม่ได้บนพื้นผิวนี้)",
+  "settings.localAi.voiceInput.privacy.legacy_stt":
+    "เสียงพูดอาจวิ่งผ่าน SmartSpecPro backend และผู้ให้บริการ STT ภายนอก",
+  "settings.localAi.voiceInput.privacy.gemma4_local":
+    "ระบบตั้งใจให้เสียงพูดอยู่บนอุปกรณ์นี้เท่านั้น และเมื่อเลือก local แบบ explicit ต้อง fail-closed แทนการแอบ downgrade ไปใช้ third-party STT",
+  "settings.localAi.voiceInput.privacy.auto":
+    "โหมดอัตโนมัติอาจ fallback ไปยังเส้นทาง STT ที่มี server อยู่เบื้องหลังบนอุปกรณ์ที่ไม่รองรับ",
+  "settings.localAi.voiceInput.desktopReady":
+    "เดสก์ท็อป build นี้สามารถถอดเสียงไมก์แบบสั้นด้วย Gemma 4 บนเครื่องได้แล้ว",
+  "settings.localAi.voiceInput.desktopNeedsModel":
+    "เดสก์ท็อป build นี้รองรับการถอดเสียงด้วย Gemma 4 บนเครื่อง แต่ยังต้องเตรียมโมเดล Gemma 4 ก่อนจึงจะใช้งานได้",
+  "settings.localAi.voiceInput.webReady":
+    "เบราว์เซอร์นี้สามารถถอดเสียงไมก์แบบสั้นด้วย Gemma 4 บนเครื่องได้แล้ว",
+  "settings.localAi.voiceInput.webNeedsModel":
+    "เบราว์เซอร์นี้รองรับการถอดเสียงด้วย Gemma 4 บนเครื่อง แต่ยังต้องเตรียมโมเดล Gemma 4 สำหรับเว็บก่อนจึงจะใช้งานได้",
+  "settings.localAi.voiceInput.webUnavailable":
+    "การถอดเสียงไมก์แบบ local บนเบราว์เซอร์ยังใช้ไม่ได้บนอุปกรณ์นี้ ให้ใช้โหมดอัตโนมัติหรือ Legacy STT บนเว็บแทน",
+  "settings.localAi.voiceInput.blockers":
+    "สาเหตุที่ local voice ยังใช้ไม่ได้: {{reasons}}",
+  "settings.localAi.voiceInput.enableCommands":
+    "เปิดใช้คำสั่งเสียงแบบสั้น",
+  "settings.localAi.voiceReadback.label": "โหมดอ่านคำตอบกลับเป็นเสียง",
+  "settings.localAi.voiceReadback.options.off": "ปิด",
+  "settings.localAi.voiceReadback.options.important_only": "เฉพาะข้อความสำคัญ",
+  "settings.localAi.voiceReadback.options.all_responses": "ทุกคำตอบ",
+  "settings.localAi.voiceReadback.available":
+    "พื้นผิวนี้สามารถอ่านคำยืนยันและสรุปสั้น ๆ กลับเป็นเสียงแบบ local ได้",
+  "settings.localAi.voiceReadback.availableWithBackend":
+    "พื้นผิวนี้สามารถอ่านคำยืนยันและสรุปสั้น ๆ กลับเป็นเสียงแบบ local ได้ผ่าน {{backend}}",
+  "settings.localAi.voiceReadback.unavailable":
+    "พื้นผิวนี้ยังไม่สามารถอ่านคำตอบกลับเป็นเสียงแบบ local ได้ เพราะ runtime ยังไม่เปิด speech synthesis",
+  "settings.localAi.voiceReadback.languageLabel": "ภาษาอ่านออกเสียง",
+  "settings.localAi.voiceReadback.languagePlaceholder":
+    "อัตโนมัติ / th-TH / en-US",
+  "settings.localAi.voiceReadback.languageHelp":
+    "ปล่อยว่างเพื่อให้เครื่องเลือกให้อัตโนมัติ ตัวอย่างเช่น th-TH หรือ en-US",
+  "settings.localAi.voiceReadback.rateLabel": "ความเร็วเสียงอ่านกลับ",
+  "settings.localAi.voiceReadback.onlyVoiceCommands":
+    "อ่านกลับเฉพาะคำตอบที่มาจาก voice command",
+  "settings.localAi.voiceReadback.searchUsesLocation":
+    "ใช้ข้อมูลตำแหน่งกับคำค้นแบบ “ใกล้ฉัน”",
+  "settings.localAi.handsFree.label": "Hands-free mode",
+  "settings.localAi.handsFree.options.off": "ปิด",
+  "settings.localAi.handsFree.options.wake_phrase": "Wake phrase",
+  "settings.localAi.handsFree.wakePhraseLabel": "Wake phrase",
+  "settings.localAi.handsFree.wakePhrasePlaceholder": "hey smartspec",
+  "settings.localAi.handsFree.help":
+    "โหมดฟังแบบ hands-free ใช้ได้เฉพาะเดสก์ท็อปและเป็นแบบ opt-in เท่านั้น หน้าแชตจะเปิดโหมด wake phrase ก็ต่อเมื่อ local voice ของ Gemma 4 พร้อมแล้ว",
+  "settings.localAi.save": "บันทึกการตั้งค่า Local AI",
+  "settings.localAi.device.title": "เฉพาะอุปกรณ์นี้",
+  "settings.localAi.device.description":
+    "สถานะการดาวน์โหลดและพื้นที่เก็บจะผูกกับ tenant, user และ runtime ของอุปกรณ์นี้เท่านั้น",
+  "settings.localAi.device.allowDownloads":
+    "อนุญาตให้ดาวน์โหลดโมเดลบนอุปกรณ์นี้",
+  "settings.localAi.device.wifiOnlyDownloads":
+    "ให้ดาวน์โหลดผ่าน Wi-Fi / เครือข่ายไม่คิดตามปริมาณก่อน",
+  "settings.localAi.device.storageBudget": "งบพื้นที่เก็บ (MB)",
+  "settings.localAi.device.cacheSummary": "สรุป cache ของอุปกรณ์",
+  "settings.localAi.device.consentedModels":
+    "โมเดลที่ยินยอมแล้ว: {{count}}",
+  "settings.localAi.device.installedModels":
+    "โมเดลที่ติดตั้งแล้ว: {{count}}",
+  "settings.localAi.device.lastCapabilityCheck":
+    "ตรวจ capability ล่าสุด: {{value}}",
+  "settings.localAi.device.lastDownloadAction":
+    "การดำเนินการดาวน์โหลดล่าสุด: {{reason}}",
+  "settings.localAi.diagnostics.title": "Runtime diagnostics",
+  "settings.localAi.diagnostics.refresh": "รีเฟรช",
+  "settings.localAi.diagnostics.web.secureContext": "Secure context",
+  "settings.localAi.diagnostics.web.webgpuExposed": "มี WebGPU ให้ใช้",
+  "settings.localAi.diagnostics.web.adapter": "WebGPU adapter",
+  "settings.localAi.diagnostics.web.device": "WebGPU device",
+  "settings.localAi.diagnostics.web.eligibleTextProfiles":
+    "โปรไฟล์ข้อความที่เข้าเกณฑ์: {{count}}",
+  "settings.localAi.diagnostics.web.eligibleVoiceProfiles":
+    "โปรไฟล์เสียงที่เข้าเกณฑ์: {{count}}",
+  "settings.localAi.diagnostics.web.readback": "การอ่านกลับเป็นเสียง",
+  "settings.localAi.diagnostics.web.blockers":
+    "ตัวบล็อกปัจจุบัน: {{reasons}}",
+  "settings.localAi.diagnostics.tauri.runtimeAvailable":
+    "Runtime พร้อมใช้งาน",
+  "settings.localAi.diagnostics.tauri.gemmaText": "Gemma 4 ด้านข้อความ",
+  "settings.localAi.diagnostics.tauri.gemmaVoice": "Gemma 4 ด้านเสียง",
+  "settings.localAi.diagnostics.tauri.litertPath":
+    "พาธ LiteRT-LM: {{value}}",
+  "settings.localAi.diagnostics.tauri.bundledProfiles":
+    "โปรไฟล์ที่มากับ installer: {{count}}",
+  "settings.localAi.diagnostics.tauri.installedProfiles":
+    "โปรไฟล์ที่ติดตั้งแล้ว: {{count}}",
+  "settings.localAi.diagnostics.tauri.readback": "การอ่านกลับเป็นเสียง",
+  "settings.localAi.diagnostics.tauri.runtimeNote":
+    "บันทึก runtime ปัจจุบัน: {{note}}",
+  "settings.localAi.download.disabledUntilReady":
+    "ปุ่มดาวน์โหลดโมเดลจะถูกปิดไว้จนกว่าอุปกรณ์นี้จะผ่านเงื่อนไข secure context, WebGPU และ browser worker ที่จำเป็น",
+  "settings.localAi.download.cacheSelectedModel":
+    "เก็บโมเดลที่เลือกไว้ใน cache",
+  "settings.localAi.download.modelCached": "โมเดลถูก cache แล้ว",
+  "settings.localAi.download.removeSelectedModel": "ลบโมเดลที่เลือก",
+  "settings.localAi.download.pause": "พักการดาวน์โหลด",
+  "settings.localAi.download.resume": "ดาวน์โหลดต่อ",
+  "settings.localAi.download.retry": "ลองใหม่",
+  "settings.localAi.download.verify": "ตรวจสอบ",
+  "settings.localAi.download.repair": "ซ่อมแซม",
+  "settings.localAi.download.update": "อัปเดต",
+  "settings.localAi.download.preparing": "กำลังเตรียม...",
+  "settings.localAi.download.statusLabel": "สถานะการดาวน์โหลด: {{status}}",
+  "settings.localAi.download.status.idle": "ว่าง",
+  "settings.localAi.download.status.blocked": "ถูกบล็อก",
+  "settings.localAi.download.status.downloading": "กำลังดาวน์โหลด",
+  "settings.localAi.download.status.paused": "พักไว้",
+  "settings.localAi.download.status.success": "สำเร็จ",
+  "settings.localAi.download.status.error": "ผิดพลาด",
+  "settings.localAi.download.waitingForStream":
+    "กำลังรอสตรีมดาวน์โหลดจากเบราว์เซอร์",
+  "settings.localAi.download.downloadedBytes":
+    "ดาวน์โหลดแล้ว {{downloadedMb}} MB",
+  "settings.localAi.download.downloadedBytesWithTotal":
+    "ดาวน์โหลดแล้ว {{downloadedMb}} MB / {{totalMb}} MB",
+  "settings.localAi.download.reason.device_scope_unavailable":
+    "ยังไม่สามารถใช้งานพื้นที่เก็บ Local AI แบบผูกกับอุปกรณ์สำหรับบัญชีนี้ได้",
+  "settings.localAi.download.reason.downloads_disabled_for_device":
+    "อุปกรณ์นี้ปิดการดาวน์โหลดโมเดลไว้",
+  "settings.localAi.download.reason.profile_not_allowed":
+    "โปรไฟล์นี้ไม่ได้รับอนุญาตภายใต้นโยบาย Local AI ปัจจุบัน",
+  "settings.localAi.download.reason.profile_not_supported_on_this_surface":
+    "โปรไฟล์นี้ไม่รองรับบนพื้นผิว runtime ปัจจุบัน",
+  "settings.localAi.download.reason.storage_budget_exceeded":
+    "การดาวน์โหลดโมเดลนี้จะเกินงบพื้นที่เก็บของอุปกรณ์",
+  "settings.localAi.download.reason.model_download_cancelled":
+    "การดาวน์โหลดโมเดลบนเบราว์เซอร์ถูกพักหรือยกเลิกก่อนเสร็จ",
+  "settings.localAi.reason.secure_context_required":
+    "ต้องอยู่ใน secure context ก่อน",
+  "settings.localAi.reason.webgpu_unavailable": "ยังไม่มี WebGPU",
+  "settings.localAi.reason.webgpu_adapter_unavailable":
+    "ยังหา WebGPU adapter ไม่เจอ",
+  "settings.localAi.reason.webgpu_device_unavailable":
+    "ยังเปิด WebGPU device ไม่สำเร็จ",
+  "settings.localAi.reason.no_eligible_browser_profiles":
+    "ยังไม่มีโปรไฟล์เบราว์เซอร์ที่เข้าเกณฑ์",
+  "settings.localAi.tauri.bundleSummary.onDemand":
+    "เดสก์ท็อป build นี้มาพร้อม LiteRT-LM runtime เท่านั้น ส่วนโมเดล Gemma 4 จะถูกดาวน์โหลดลง managed storage เมื่อต้องใช้",
+  "settings.localAi.tauri.bundleSummary.withMode":
+    "เดสก์ท็อป build นี้ bundle {{profiles}} มากับ installer ({{mode}})",
+  "settings.localAi.tauri.bundleSummary.withProfiles":
+    "โปรไฟล์ Gemma 4 ที่ bundle มา: {{profiles}}",
+  "settings.localAi.tauri.bundleSummary.none":
+    "เดสก์ท็อป build นี้ยังไม่พบโปรไฟล์ Gemma 4 ที่ bundle มา",
+  "settings.localAi.tauri.runtimePath":
+    "Tauri จะติดตั้งโมเดล Gemma 4 ผ่านเส้นทาง LiteRT-LM runtime โดยเก็บไว้ที่: {{root}}",
+  "settings.localAi.tauri.bundleModeBadge": "Bundle mode: {{mode}}",
+  "settings.localAi.tauri.installerIncludes":
+    "Installer นี้มีโมเดล bundle มา {{count}} รายการ",
+  "settings.localAi.tauri.onDemandInstall": "ติดตั้งโมเดลแบบ on-demand",
+  "settings.localAi.tauri.bundledWithApp": "มากับแอปแล้ว",
+  "settings.localAi.tauri.modelPrepared": "เตรียมโมเดลแล้ว",
+  "settings.localAi.tauri.prepareSelectedModel": "เตรียมโมเดลที่เลือก",
+  "settings.localAi.tauri.bundledModel": "โมเดลที่มากับแอป",
+  "settings.localAi.surfaceProfiles.title": "โปรไฟล์บนพื้นผิวนี้",
+  "settings.localAi.surfaceProfiles.entrySummary":
+    "{{family}} {{variant}} • {{sizeMb}} MB",
+  "settings.localAi.surfaceProfiles.voice": "voice",
+  "settings.localAi.surfaceProfiles.setDefault": "ตั้งเป็นค่าเริ่มต้น",
+  "settings.localAi.surfaceProfiles.prepare": "เตรียม",
+  "settings.localAi.surfaceProfiles.remove": "ลบ",
+  "settings.localAi.badge.bundled": "Bundled",
+  "settings.localAi.badge.installed": "Installed",
+  "settings.localAi.badge.notInstalled": "ยังไม่ติดตั้ง",
+  "settings.localAi.badge.default": "Default",
+  "settings.localAi.clearCache": "ล้าง Local AI cache ของบัญชีนี้",
+  "settings.localAi.toast.preferencesSaved":
+    "บันทึกการตั้งค่า Local AI แล้ว",
+  "settings.localAi.toast.cacheCleared":
+    "ล้าง Local AI cache ของอุปกรณ์สำหรับบัญชีนี้แล้ว",
+  "settings.localAi.toast.diagnosticsRefreshed":
+    "รีเฟรช Local AI diagnostics แล้ว",
+  "settings.localAi.toast.browserModelCached":
+    "เก็บ {{profileId}} ไว้ใน browser cache แล้ว",
+  "settings.localAi.toast.browserModelRemoved":
+    "ลบ {{profileId}} ออกจาก browser cache แล้ว",
+  "settings.localAi.toast.downloadPaused":
+    "พักการดาวน์โหลดโมเดลบนเบราว์เซอร์แล้ว",
+  "settings.localAi.toast.tauriModelPrepared":
+    "เตรียม {{profileId}} สำหรับ local Tauri runtime แล้ว",
+  "settings.localAi.toast.tauriModelRemoved":
+    "ลบ {{profileId}} ออกจาก managed Tauri storage แล้ว",
+  "settings.localAi.toast.modelPreparedOnDevice":
+    "เตรียม {{profileId}} บนอุปกรณ์นี้แล้ว",
+  "settings.localAi.toast.modelRemovedFromDevice":
+    "ลบ {{profileId}} ออกจากอุปกรณ์นี้แล้ว",
+  "settings.localAi.toast.tauriOnlyVerifyRepairUpdate":
+    "การตรวจสอบ ซ่อมแซม และอัปเดตโมเดล ใช้ได้เฉพาะบน Tauri",
+  "settings.localAi.toast.modelVerified":
+    "ตรวจสอบ {{profileId}} สำเร็จ",
+  "settings.localAi.toast.modelVerificationFailed":
+    "ตรวจสอบ {{profileId}} ไม่ผ่าน",
+  "settings.localAi.toast.modelRepaired":
+    "ซ่อมแซม {{profileId}} สำเร็จ",
+  "settings.localAi.toast.modelRepairFailed":
+    "ไม่สามารถซ่อมแซม {{profileId}} ได้",
+  "settings.localAi.toast.modelUpdated":
+    "อัปเดต {{profileId}} สำเร็จ",
+  "settings.localAi.toast.modelUpdatedMetadata":
+    "รีเฟรช {{profileId}} จาก bundle metadata ล่าสุดแล้ว",
+  "settings.localAi.toast.modelUpdateFailed":
+    "ไม่สามารถอัปเดต {{profileId}} ได้",
 };
 
 export default th;

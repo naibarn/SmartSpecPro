@@ -128,6 +128,17 @@ export type AuditEventType =
   | "mcp_server_updated"
   | "mcp_server_deleted"
   | "mcp_server_assigned"
+  | "worker_registered"
+  | "worker_job_claimed"
+  | "worker_job_completed"
+  | "worker_job_failed"
+  | "worker_job_canceled"
+  | "worker_diagnostics_received"
+  | "worker_artifact_published"
+  | "worker_fleet_action"
+  | "worker_budget_updated"
+  | "worker_callback_published"
+  | "worker_legacy_data_redacted"
   | "error";
 
 export interface AuditLogEntry {

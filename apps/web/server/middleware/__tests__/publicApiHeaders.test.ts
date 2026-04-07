@@ -82,13 +82,18 @@ describe("formatApiError", () => {
 
 describe("sendApiError", () => {
   it("sets status and sends formatted error", () => {
+    const headers: Record<string, string> = {};
     const res: any = {
+      setHeader: vi.fn((key: string, value: string) => {
+        headers[key] = value;
+      }),
       status: vi.fn().mockReturnThis(),
       json: vi.fn().mockReturnThis(),
     };
 
     sendApiError(res, 401, "invalid_api_key", "Bad key");
 
+    expect(headers["X-Api-Error-Code"]).toBe("invalid_api_key");
     expect(res.status).toHaveBeenCalledWith(401);
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({

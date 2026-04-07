@@ -3,6 +3,7 @@ import { TRPCError } from "@trpc/server";
 import { and, count, desc, eq, gt, inArray, isNotNull, isNull, ne, or, sql } from "drizzle-orm";
 
 import { getDb } from "../db";
+import { getAppRuntimeConfig } from "./appRuntimeConfig";
 import { storagePut, storageGet, storageDelete } from "../storage";
 import { encrypt as encryptSecret, decrypt as decryptSecret } from "./crypto";
 import {
@@ -18,6 +19,7 @@ import {
 import { normalizeMediaPrompt } from "./mediaPromptNormalization";
 import { isSvgUpload, sanitizeUploadedSvg } from "./uploadContentSafety";
 import {
+  galleryItems,
   libraryChunks,
   libraryContentVersions,
   libraryIndexJobs,
@@ -129,6 +131,21 @@ export interface PublicShareLinkState {
   link: PublicShareLinkDto | null;
 }
 
+export interface LibraryGalleryPublicationState {
+  canManage: boolean;
+  canPublish: boolean;
+  isPublished: boolean;
+  galleryItemId: number | null;
+  supported: boolean;
+  reason: string | null;
+}
+
+export interface PublishLibraryItemToGalleryResult {
+  success: true;
+  galleryItemId: number;
+  created: boolean;
+}
+
 export interface PublicShareDocumentResult {
   item: {
     id: number;
@@ -219,6 +236,7 @@ export interface UploadLibraryFileInput {
   visibility?: LibraryVisibility;
   parentId?: number | null;
   metadata?: Record<string, unknown>;
+  billingMetadata?: Record<string, unknown>;
 }
 
 export interface UploadLibraryFileResult {
@@ -309,7 +327,6 @@ export interface LibrarySearchResponseV1 {
   results: LibrarySearchResultV1[];
 }
 
-const PYTHON_BACKEND_URL = process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
 const DEFAULT_LIBRARY_PGVECTOR_SEARCH_TIMEOUT_MS = 1_500;
 const DEFAULT_LIBRARY_PGVECTOR_CANDIDATE_LIMIT = 1_000;
 const MAX_LIBRARY_PGVECTOR_QUERY_LENGTH = 2_000;
@@ -396,7 +413,8 @@ async function fetchPgvectorLibraryScores(params: {
     return new Map();
   }
 
-  const proxyToken = process.env.SMARTSPEC_PROXY_TOKEN;
+  const runtime = await getAppRuntimeConfig();
+  const proxyToken = runtime.proxyToken;
   if (!proxyToken) {
     return null;
   }
@@ -406,7 +424,7 @@ async function fetchPgvectorLibraryScores(params: {
     const timeoutHandle = setTimeout(() => controller.abort(), LIBRARY_PGVECTOR_SEARCH_TIMEOUT_MS);
     let response: Response;
     try {
-      response = await fetch(`${PYTHON_BACKEND_URL}/api/internal/library/search`, {
+      response = await fetch(`${runtime.pythonBackendUrl}/api/internal/library/search`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -484,6 +502,8 @@ export interface LibraryEnqueueResult {
 }
 
 type DbClient = NonNullable<Awaited<ReturnType<typeof getDb>>>;
+type DbTransaction = Parameters<Parameters<DbClient["transaction"]>[0]>[0];
+type DbLike = DbClient | DbTransaction;
 type LibraryItemRow = typeof libraryItems.$inferSelect;
 type LibraryPublicShareLinkRow = typeof libraryPublicShareLinks.$inferSelect;
 
@@ -1423,6 +1443,137 @@ export function canManageLibraryItem(
   return permissionLevel === "write" || permissionLevel === "delete" || permissionLevel === "owner";
 }
 
+const LIBRARY_GALLERY_LINK_TYPE = "gallery_item";
+
+function mapLibraryItemTypeToGalleryType(
+  itemType: string,
+): "image" | "video" | null {
+  if (itemType === "image") return "image";
+  if (itemType === "video") return "video";
+  return null;
+}
+
+function readNumericMetadata(
+  metadata: Record<string, unknown>,
+  ...keys: string[]
+): number | null {
+  for (const key of keys) {
+    const value = metadata[key];
+    const parsed = typeof value === "number"
+      ? value
+      : typeof value === "string"
+        ? Number.parseFloat(value)
+        : NaN;
+    if (Number.isFinite(parsed) && parsed > 0) {
+      return parsed;
+    }
+  }
+  return null;
+}
+
+function resolveGalleryAspectRatio(
+  itemType: "image" | "video",
+  metadata: Record<string, unknown>,
+): "1:1" | "9:16" | "16:9" {
+  const explicit = typeof metadata.aspectRatio === "string"
+    ? metadata.aspectRatio
+    : typeof metadata.aspect_ratio === "string"
+      ? metadata.aspect_ratio
+      : null;
+  if (explicit === "1:1" || explicit === "9:16" || explicit === "16:9") {
+    return explicit;
+  }
+
+  const width = readNumericMetadata(metadata, "width", "image_width", "video_width");
+  const height = readNumericMetadata(metadata, "height", "image_height", "video_height");
+  if (width && height) {
+    const ratio = width / height;
+    if (ratio <= 0.75) return "9:16";
+    if (ratio >= 1.4) return "16:9";
+    return "1:1";
+  }
+
+  return itemType === "video" ? "16:9" : "1:1";
+}
+
+async function getLibraryGalleryLinkRow(
+  db: DbLike,
+  libraryItemId: number,
+) {
+  const rows = await db
+    .select({
+      id: libraryLinks.id,
+      linkId: libraryLinks.linkId,
+      galleryItemId: galleryItems.id,
+      isPublished: galleryItems.isPublished,
+    })
+    .from(libraryLinks)
+    .leftJoin(galleryItems, eq(galleryItems.id, sql<number>`${libraryLinks.linkId}::int`))
+    .where(
+      and(
+        eq(libraryLinks.libraryItemId, libraryItemId),
+        eq(libraryLinks.linkType, LIBRARY_GALLERY_LINK_TYPE),
+      ),
+    )
+    .limit(1);
+
+  return rows[0] ?? null;
+}
+
+async function removeGalleryPublicationLink(
+  db: DbLike,
+  libraryItemId: number,
+): Promise<void> {
+  const galleryLink = await getLibraryGalleryLinkRow(db, libraryItemId);
+  if (!galleryLink) {
+    return;
+  }
+
+  if (galleryLink.galleryItemId) {
+    await db.delete(galleryItems).where(eq(galleryItems.id, galleryLink.galleryItemId));
+  }
+
+  await db.delete(libraryLinks).where(eq(libraryLinks.id, galleryLink.id));
+}
+
+function buildGalleryPayloadFromLibraryItem(
+  item: LibraryItemRow,
+): typeof galleryItems.$inferInsert {
+  const metadata = normalizeLibraryMetadata(item.metadata as Record<string, unknown>);
+  const galleryType = mapLibraryItemTypeToGalleryType(item.itemType);
+  if (!galleryType) {
+    throw new Error("Only image and video files can be published to the Gallery");
+  }
+  if (!item.sourceUrl) {
+    throw new Error("This file does not have a public source URL yet");
+  }
+
+  const numericTenantId = Number.parseInt(String(item.tenantId), 10);
+  const model = typeof metadata.model === "string"
+    ? metadata.model
+    : typeof metadata.model_name === "string"
+      ? metadata.model_name
+      : null;
+  const tags = normalizeTagList(metadata.tags);
+  const description = item.description
+    || (typeof metadata.prompt === "string" ? metadata.prompt : null)
+    || null;
+
+  return {
+    tenantId: Number.isFinite(numericTenantId) ? numericTenantId : undefined,
+    type: galleryType,
+    title: item.title,
+    description,
+    aspectRatio: resolveGalleryAspectRatio(galleryType, metadata),
+    fileUrl: item.sourceUrl,
+    thumbnailUrl: item.thumbnailUrl || item.sourceUrl,
+    model,
+    tags,
+    isPublished: true,
+    authorId: item.ownerUserId,
+  };
+}
+
 async function getLibraryItemRowById(
   db: DbClient,
   itemId: number,
@@ -1442,6 +1593,164 @@ async function getLibraryItemRowById(
     .limit(1);
 
   return rows[0] ?? null;
+}
+
+function canActorPublishLibraryItem(
+  item: LibraryItemRow,
+  actor: LibraryActor,
+): boolean {
+  return actor.role === "admin" || item.ownerUserId === actor.userId;
+}
+
+export async function getLibraryGalleryPublicationState(
+  itemId: number,
+  actor: LibraryActor,
+  dbClient?: DbClient,
+): Promise<LibraryGalleryPublicationState | null> {
+  const db = await resolveDb(dbClient);
+  const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
+  const item = await getLibraryItemRowById(db, itemId, actorTenantId);
+
+  if (!item) {
+    return null;
+  }
+
+  const permission = await getUserPermissionLevel(db, item.id, actor);
+  const canManage = canManageLibraryItem(item, actor, permission);
+  const galleryType = mapLibraryItemTypeToGalleryType(item.itemType);
+  const galleryLink = await getLibraryGalleryLinkRow(db, item.id);
+
+  let reason: string | null = null;
+  if (!canManage) {
+    reason = "Only users who can manage this file can publish it";
+  } else if (!canActorPublishLibraryItem(item, actor)) {
+    reason = "Only the file owner or an admin can publish to the Gallery";
+  } else if (isPrivateVaultLibraryItem(item)) {
+    reason = "Private vault files cannot be published to the Gallery";
+  } else if (!galleryType) {
+    reason = "Only image and video files can be published to the Gallery";
+  } else if (!item.sourceUrl) {
+    reason = "This file is missing a public source URL";
+  }
+
+  return {
+    canManage,
+    canPublish: reason === null,
+    isPublished: Boolean(galleryLink?.galleryItemId && galleryLink.isPublished),
+    galleryItemId: galleryLink?.galleryItemId ?? null,
+    supported: galleryType !== null,
+    reason,
+  };
+}
+
+export async function publishLibraryItemToGallery(
+  itemId: number,
+  actor: LibraryActor,
+  dbClient?: DbClient,
+): Promise<PublishLibraryItemToGalleryResult> {
+  const db = await resolveDb(dbClient);
+  const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
+  const item = await getLibraryItemRowById(db, itemId, actorTenantId);
+
+  if (!item) {
+    throw new Error("Library item not found");
+  }
+
+  const permission = await getUserPermissionLevel(db, item.id, actor);
+  if (!canManageLibraryItem(item, actor, permission)) {
+    throw new Error("You do not have permission to manage this file");
+  }
+  if (!canActorPublishLibraryItem(item, actor)) {
+    throw new Error("Only the file owner or an admin can publish to the Gallery");
+  }
+  if (isPrivateVaultLibraryItem(item)) {
+    throw new Error("Private vault files cannot be published to the Gallery");
+  }
+
+  const payload = buildGalleryPayloadFromLibraryItem(item);
+
+  return await db.transaction(async (tx) => {
+    const galleryLink = await getLibraryGalleryLinkRow(tx, item.id);
+
+    if (galleryLink?.galleryItemId) {
+      await tx
+        .update(galleryItems)
+        .set({
+          ...payload,
+          updatedAt: new Date(),
+        })
+        .where(eq(galleryItems.id, galleryLink.galleryItemId));
+
+      return {
+        success: true as const,
+        galleryItemId: galleryLink.galleryItemId,
+        created: false,
+      };
+    }
+
+    const inserted = await tx
+      .insert(galleryItems)
+      .values(payload)
+      .returning({ id: galleryItems.id });
+
+    const createdGalleryItemId = inserted[0]?.id;
+    if (!createdGalleryItemId) {
+      throw new Error("Failed to publish file to the Gallery");
+    }
+
+    if (galleryLink?.id) {
+      await tx
+        .update(libraryLinks)
+        .set({
+          linkId: String(createdGalleryItemId),
+          tenantId: actorTenantId,
+          createdAt: new Date(),
+        })
+        .where(eq(libraryLinks.id, galleryLink.id));
+    } else {
+      await tx.insert(libraryLinks).values({
+        libraryItemId: item.id,
+        linkType: LIBRARY_GALLERY_LINK_TYPE,
+        linkId: String(createdGalleryItemId),
+        tenantId: actorTenantId,
+        createdAt: new Date(),
+      });
+    }
+
+    return {
+      success: true as const,
+      galleryItemId: createdGalleryItemId,
+      created: true,
+    };
+  });
+}
+
+export async function unpublishLibraryItemFromGallery(
+  itemId: number,
+  actor: LibraryActor,
+  dbClient?: DbClient,
+): Promise<{ success: true }> {
+  const db = await resolveDb(dbClient);
+  const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
+  const item = await getLibraryItemRowById(db, itemId, actorTenantId);
+
+  if (!item) {
+    throw new Error("Library item not found");
+  }
+
+  const permission = await getUserPermissionLevel(db, item.id, actor);
+  if (!canManageLibraryItem(item, actor, permission)) {
+    throw new Error("You do not have permission to manage this file");
+  }
+  if (!canActorPublishLibraryItem(item, actor)) {
+    throw new Error("Only the file owner or an admin can unpublish from the Gallery");
+  }
+
+  await db.transaction(async (tx) => {
+    await removeGalleryPublicationLink(tx, item.id);
+  });
+
+  return { success: true };
 }
 
 export async function createLibraryItem(
@@ -1814,6 +2123,7 @@ export async function uploadLibraryFile(
           billingStepCredits: billing.stepCredits,
           billingExtraSteps: billing.extraSteps,
           billingSizeStepMb: billing.sizeStepMb,
+          ...(input.billingMetadata ?? {}),
         },
       });
     } catch (error) {
@@ -2585,8 +2895,9 @@ async function recomputeAndPropagateScopes(
     );
 
   // 6. Fire-and-forget: call Python backend for vector store propagation
-  const pyBackendUrl = process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
-  const proxyToken = process.env.SMARTSPEC_PROXY_TOKEN;
+  const runtime = await getAppRuntimeConfig();
+  const pyBackendUrl = runtime.pythonBackendUrl;
+  const proxyToken = runtime.proxyToken;
   if (proxyToken) {
     fetch(`${pyBackendUrl}/api/internal/library/propagate-scopes`, {
       method: "POST",
@@ -3944,7 +4255,7 @@ export async function searchLibraryItems(
   const shouldTryNativePgvector =
     query.length > 0 &&
     resolvedProvider.provider === "pgvector" &&
-    Boolean(process.env.SMARTSPEC_PROXY_TOKEN);
+    Boolean((await getAppRuntimeConfig()).proxyToken);
 
   let pgvectorScores: Map<number, number> | null = null;
   let chunkRows: Array<{ libraryItemId: number; content: string; vectorRefId: string | null }> = [];

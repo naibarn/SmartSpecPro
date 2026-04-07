@@ -15,11 +15,17 @@ vi.mock("../../services/teamService", () => ({
   createFromTemplate: mockCreateFromTemplate,
   createTeamFromBlueprint: mockCreateTeamFromBlueprint,
   listTeamTemplates: vi.fn().mockResolvedValue([]),
+  listBindableWorkers: vi.fn().mockResolvedValue([]),
   listTeams: vi.fn().mockResolvedValue([]),
   getTeam: vi.fn().mockResolvedValue(null),
   archiveTeam: vi.fn().mockResolvedValue(undefined),
   addTeamMember: vi.fn(),
   updateTeamMember: vi.fn(),
+}));
+
+vi.mock("../../services/workerBudgetService", () => ({
+  getWorkerBudgetSettings: vi.fn(),
+  updateWorkerBudgetSettings: vi.fn(),
 }));
 
 vi.mock("../../services/auditLogger", () => ({

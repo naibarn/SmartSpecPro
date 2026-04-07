@@ -210,6 +210,117 @@ describe("monitoringService", () => {
       expect(overview.anomalies).toHaveLength(0);
       expect(overview.summary.totalAnomalies).toBe(0);
     });
+
+    it("downgrades a one-off failed service snapshot when the previous snapshot was healthy", () => {
+      const overview = deriveOpsOverview({
+        latestMetrics: {
+          id: 10,
+          memoryUsedMb: 2_400,
+          memoryTotalMb: 8_192,
+          memoryPercent: 29.3,
+          cpuPercent: 42.1,
+          diskUsedGb: 40,
+          diskTotalGb: 100,
+          serviceStatuses: {
+            web: "failed",
+            backend: "running",
+          },
+          processRestartCounts: {
+            web: 0,
+            backend: 0,
+          },
+          createdAt: new Date("2026-04-01T01:34:58.000Z"),
+        },
+        previousMetrics: {
+          id: 9,
+          memoryUsedMb: 2_200,
+          memoryTotalMb: 8_192,
+          memoryPercent: 26.8,
+          cpuPercent: 31.2,
+          diskUsedGb: 39,
+          diskTotalGb: 100,
+          serviceStatuses: {
+            web: "running",
+            backend: "running",
+          },
+          processRestartCounts: {
+            web: 0,
+            backend: 0,
+          },
+          createdAt: new Date("2026-04-01T01:33:58.000Z"),
+        },
+        baselineMetrics: {
+          id: 8,
+          memoryUsedMb: 2_000,
+          memoryTotalMb: 8_192,
+          memoryPercent: 24.4,
+          cpuPercent: 28.4,
+          diskUsedGb: 38,
+          diskTotalGb: 100,
+          serviceStatuses: {
+            web: "running",
+            backend: "running",
+          },
+          processRestartCounts: {
+            web: 0,
+            backend: 0,
+          },
+          createdAt: new Date("2026-04-01T00:40:00.000Z"),
+        },
+        lastCheckAt: new Date("2026-04-01T01:34:58.000Z"),
+        services: [
+          { name: "web", status: "failed" },
+          { name: "backend", status: "running" },
+        ],
+        unackedAlerts: {
+          critical: 0,
+          warning: 0,
+          error: 0,
+          info: 0,
+        },
+        llmStats: {
+          total: 10,
+          errorCount: 0,
+          serverErrorCount: 0,
+          timeoutCount: 0,
+          fallbackCount: 0,
+          p95LatencyMs: 1_100,
+          avgLatencyMs: 900,
+          lastSeenAt: "2026-04-01T01:34:00.000Z",
+        },
+        mediaStats: {
+          total: 8,
+          errorCount: 0,
+          serverErrorCount: 0,
+          timeoutCount: 0,
+          fallbackCount: 0,
+          p95LatencyMs: 700,
+          avgLatencyMs: 500,
+          lastSeenAt: "2026-04-01T01:34:00.000Z",
+        },
+        orchestrationStats: {
+          totalEvents: 4,
+          classifyCount: 2,
+          fallbackCount: 0,
+          qualityCount: 1,
+          riskyQualityCount: 0,
+          avgClassifyLatencyMs: 300,
+          fallbackRate: 0,
+          qualityRiskRate: 0,
+          topFallbackReason: null,
+          lastSeenAt: "2026-04-01T01:34:00.000Z",
+        },
+        windows: {
+          metricsHours: 6,
+          auditHours: 6,
+          orchestrationHours: 6,
+        },
+        now: new Date("2026-04-01T01:35:30.000Z"),
+      });
+
+      expect(overview.anomalies.some((anomaly) => anomaly.type === "service_unhealthy")).toBe(false);
+      expect(overview.anomalies.some((anomaly) => anomaly.type === "service_degraded")).toBe(true);
+    });
   });
 
   describe("buildOpsIncidentTimeline", () => {

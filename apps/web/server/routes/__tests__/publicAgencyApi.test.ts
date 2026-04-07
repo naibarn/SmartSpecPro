@@ -30,6 +30,7 @@ vi.mock("../../services/creditService", () => ({
 
 vi.mock("../../_core/tokens", () => ({
   signBearerToken: vi.fn().mockReturnValue("mock-bearer-token"),
+  createInternalTokenFromAuth: vi.fn().mockReturnValue("mock-internal-token"),
 }));
 
 import { agencyBridge } from "../../services/agencyBridge";

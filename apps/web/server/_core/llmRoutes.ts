@@ -2,6 +2,7 @@ import type { Express, Request, Response } from "express";
 import crypto from "crypto";
 import { decrypt } from "../services/crypto";
 import { ENV } from "./env";
+import { compareCachedInternalToken, getCachedAppRuntimeConfig } from "../services/appRuntimeConfig";
 import { authorizeRequest, AuthResult } from "./authz";
 import { enforceJsonBodyMaxBytes, rateLimit } from "./limits";
 import { getUserByOpenId, getUserById, getDb, db } from "../db";
@@ -13,15 +14,42 @@ import {
   hasEnoughCredits,
   deductCredits,
   calculateCreditsFromCost,
+  calculateCreditsForLLM,
 } from "../services/creditService";
 import { debugLog, debugError } from "./logger";
 import { handleChatWithRouter, handleStreamWithRouter } from "../services/llmRoutesHandler";
 import { auditLogger } from "../services/auditLogger";
 import { getTraceId } from "../services/traceContext";
+import {
+  acquireDelegatedWorkerConcurrencySlot,
+  buildDelegatedWorkerOriginMetadata,
+  DelegatedWorkerPlatformError,
+  enforceDelegatedWorkerModelSelectionPolicy,
+  enforceDelegatedWorkerSpendGuardrails,
+} from "../services/delegatedWorkerPlatformService";
 import { logRequest as logCostRequest } from "../services/costTracker";
 import { registerResponsesRoutes } from "./responsesRoutes";
-import { resolveEnabledLlmModelId } from "../services/enabledLlmModels";
 import { runPlanner } from "../services/taskPlannerMiddleware";
+import {
+  deriveChatSelectionContext,
+  readStoredChatModelSelectionState,
+  resolveChatModelSelection,
+  storedSelectionStateFromResolved,
+  writeStoredChatModelSelectionState,
+} from "../services/chatModelSelection";
+import {
+  findCatalogModel,
+  isSafeProviderModelId,
+  type AvailableLlmProviderModel,
+  type LlmRequestConfig,
+} from "../services/llmProviderCatalog";
+import {
+  normalizeLlmUsage,
+  type NormalizedLlmUsage,
+} from "../services/llmUsage";
+import { getConversationById, updateConversation } from "../services/chatService";
+import { getTenantFeatureFlags } from "../services/tenantFeatureFlagService";
+import { estimateMessages } from "../utils/tokenEstimator";
 
 // --- Provider-specific Rate Limiter with Queue System ---
 // Uses Bottleneck with Redis for distributed rate limiting when available
@@ -252,16 +280,28 @@ interface LlmProviderConfig {
   baseUrl: string;
   apiKey: string;
   defaultModel: string | null;
+  availableModels?: AvailableLlmProviderModel[] | null;
 }
 
 let cachedProvider: LlmProviderConfig | null = null;
 let cacheTimestamp = 0;
 const CACHE_TTL_MS = 60000; // Refresh every 60 seconds
 
+export function resetLlmRouteStateForTests(): void {
+  cachedProvider = null;
+  cacheTimestamp = 0;
+  providerRateLimiters.clear();
+}
+
 type ResolvedModel = {
   providerModelId: string;
   apiStyle: 'chat-completions' | 'responses' | 'messages' | 'gemini';
 } | null;
+
+type KieValidationError = {
+  status: number;
+  message: string;
+};
 
 /**
  * Resolve the provider-specific model ID and API style from the database
@@ -343,6 +383,7 @@ async function getLlmProviderById(providerId: number): Promise<LlmProviderConfig
         baseUrl: llmProviders.baseUrl,
         apiKeyEncrypted: llmProviders.apiKeyEncrypted,
         defaultModel: llmProviders.defaultModel,
+        availableModels: llmProviders.availableModels,
       })
       .from(llmProviders)
       .where(and(eq(llmProviders.id, providerId), eq(llmProviders.isEnabled, true)))
@@ -364,6 +405,7 @@ async function getLlmProviderById(providerId: number): Promise<LlmProviderConfig
       baseUrl: provider.baseUrl,
       apiKey,
       defaultModel: provider.defaultModel,
+      availableModels: provider.availableModels as AvailableLlmProviderModel[] | null,
     };
   } catch (error) {
     console.error("[LLM] Failed to get provider config by ID:", providerId, error);
@@ -391,6 +433,7 @@ async function getActiveLlmProvider(): Promise<LlmProviderConfig | null> {
         baseUrl: llmProviders.baseUrl,
         apiKeyEncrypted: llmProviders.apiKeyEncrypted,
         defaultModel: llmProviders.defaultModel,
+        availableModels: llmProviders.availableModels,
       })
       .from(llmProviders)
       .where(eq(llmProviders.isEnabled, true))
@@ -417,6 +460,7 @@ async function getActiveLlmProvider(): Promise<LlmProviderConfig | null> {
       baseUrl: provider.baseUrl,
       apiKey,
       defaultModel: provider.defaultModel,
+      availableModels: provider.availableModels as AvailableLlmProviderModel[] | null,
     };
     cacheTimestamp = now;
 
@@ -451,6 +495,143 @@ interface LLMUsageInfo {
  * OpenCode Zen uses different endpoints for different model families
  */
 export type ApiStyle = 'chat-completions' | 'responses' | 'messages' | 'gemini';
+
+function getModelCatalogEntry(
+  provider: Pick<LlmProviderConfig, "availableModels"> | null | undefined,
+  providerModelId: string,
+): AvailableLlmProviderModel | null {
+  return findCatalogModel(provider?.availableModels, providerModelId);
+}
+
+function getModelRequestConfig(
+  provider: Pick<LlmProviderConfig, "availableModels"> | null | undefined,
+  providerModelId: string,
+): LlmRequestConfig | null {
+  return getModelCatalogEntry(provider, providerModelId)?.config ?? null;
+}
+
+function isKieProvider(providerName: string): boolean {
+  return providerName.trim().toLowerCase() === "kie_ai";
+}
+
+function isFunctionTool(tool: unknown): boolean {
+  return !!tool && typeof tool === "object" && (tool as { type?: unknown }).type === "function";
+}
+
+function isWebSearchTool(tool: unknown): boolean {
+  const type = typeof tool === "object" && tool ? String((tool as { type?: unknown }).type ?? "") : "";
+  return type.includes("web_search");
+}
+
+function isGoogleSearchTool(tool: unknown): boolean {
+  const type = typeof tool === "object" && tool ? String((tool as { type?: unknown }).type ?? "") : "";
+  return type.includes("google") && type.includes("search");
+}
+
+function getConfiguredRequestFieldKeys(
+  requestConfig: LlmRequestConfig | null | undefined,
+): Set<string> {
+  return new Set([
+    ...((requestConfig?.inputFields ?? []).map((field) => field.key)),
+    ...(requestConfig?.passthroughFields ?? []),
+  ]);
+}
+
+function hasConflictField(body: any, field: string): boolean {
+  const tools = Array.isArray(body?.tools) ? body.tools : [];
+  const hasFunctionTools = tools.some(isFunctionTool);
+  const hasWebSearch = tools.some(isWebSearchTool);
+  const hasGoogleSearch = tools.some(isGoogleSearchTool);
+
+  switch (field) {
+    case "function_tools":
+      return hasFunctionTools;
+    case "web_search":
+      return hasWebSearch;
+    case "google_search":
+      return hasGoogleSearch;
+    case "response_format":
+      return body?.response_format !== undefined || body?.text?.format !== undefined;
+    default: {
+      const value = body?.[field];
+      if (Array.isArray(value)) {
+        return value.length > 0;
+      }
+      return value !== undefined && value !== null;
+    }
+  }
+}
+
+function validateKieToolConflicts(
+  body: any,
+  apiStyle: ApiStyle | undefined,
+  requestConfig: LlmRequestConfig | null,
+): KieValidationError | null {
+  const tools = Array.isArray(body?.tools) ? body.tools : [];
+  const hasFunctionTools = tools.some(isFunctionTool);
+  const hasWebSearch = tools.some(isWebSearchTool);
+  const hasGoogleSearch = tools.some(isGoogleSearchTool);
+  const hasResponseFormat =
+    body?.response_format !== undefined
+    || body?.text?.format !== undefined;
+
+  for (const conflict of requestConfig?.conflicts ?? []) {
+    const activeFields = conflict.fields.filter((field) => hasConflictField(body, field));
+    if (activeFields.length < 2) {
+      continue;
+    }
+
+    const fieldSet = new Set(activeFields);
+    if (fieldSet.has("web_search") && fieldSet.has("function_tools") && apiStyle === "responses") {
+      return {
+        status: 400,
+        message: "Kie responses models do not allow web-search tools together with function tools.",
+      };
+    }
+
+    if (fieldSet.has("google_search") && fieldSet.has("function_tools") && apiStyle === "chat-completions") {
+      return {
+        status: 400,
+        message: "Kie Gemini models do not allow Google Search and function tools in the same request.",
+      };
+    }
+
+    if (fieldSet.has("response_format") && fieldSet.has("function_tools") && apiStyle === "chat-completions") {
+      return {
+        status: 400,
+        message: "Kie Gemini models do not allow response_format together with function tools.",
+      };
+    }
+
+    return {
+      status: 400,
+      message: `Kie model does not allow ${activeFields.join(" together with ")}.`,
+    };
+  }
+
+  if (apiStyle === "responses" && hasWebSearch && hasFunctionTools) {
+    return {
+      status: 400,
+      message: "Kie responses models do not allow web-search tools together with function tools.",
+    };
+  }
+
+  if (apiStyle === "chat-completions" && hasGoogleSearch && hasFunctionTools) {
+    return {
+      status: 400,
+      message: "Kie Gemini models do not allow Google Search and function tools in the same request.",
+    };
+  }
+
+  if (apiStyle === "chat-completions" && hasResponseFormat && hasFunctionTools) {
+    return {
+      status: 400,
+      message: "Kie Gemini models do not allow response_format together with function tools.",
+    };
+  }
+
+  return null;
+}
 
 function getApiStyleForModel(modelId: string): ApiStyle {
   const id = modelId.toLowerCase();
@@ -492,6 +673,21 @@ export function resolveApiUrl(
 ): string {
   const base = baseUrl.replace(/\/+$/, "");
   const providerLower = providerName.toLowerCase();
+
+  if (providerLower === "kie_ai") {
+    if (apiStyle === "messages") {
+      return `${base}/claude/v1/messages`;
+    }
+    if (apiStyle === "responses") {
+      if (modelId === "gpt-5-4") {
+        return `${base}/codex/v1/responses`;
+      }
+      return `${base}/api/v1/responses`;
+    }
+    if (apiStyle === "chat-completions") {
+      return `${base}/${modelId}/v1/chat/completions`;
+    }
+  }
 
   // OpenCode Zen: Use apiStyle from database for endpoint routing
   if (providerLower.includes('opencode') || providerLower.includes('zen')) {
@@ -583,6 +779,8 @@ function upstreamHeaders(apiKey: string, providerName?: string): Record<string, 
 const INTERNAL_FIELDS = [
   'conversationId',
   'preferredProvider',
+  'modelSelection',
+  'modelSelectionContext',
   'skillUsed',
   'skillArgs',
   'saveMessage',
@@ -593,9 +791,12 @@ const INTERNAL_FIELDS = [
  * Extract only valid OpenAI Chat Completions API fields from request body
  * Filters out internal fields that are not part of the LLM API spec
  */
-function extractOpenAIFields(body: any): Record<string, any> {
+function extractOpenAIFields(
+  body: any,
+  extraAllowedFields: string[] = [],
+): Record<string, any> {
   // Valid OpenAI Chat Completions API fields
-  const validFields = [
+  const validFields = new Set([
     'messages',
     'temperature',
     'top_p',
@@ -615,7 +816,8 @@ function extractOpenAIFields(body: any): Record<string, any> {
     'parallel_tool_calls',
     'service_tier',
     // Note: 'model' and 'stream' are handled separately
-  ];
+    ...extraAllowedFields,
+  ]);
 
   const result: Record<string, any> = {};
   for (const field of validFields) {
@@ -624,6 +826,85 @@ function extractOpenAIFields(body: any): Record<string, any> {
     }
   }
   return result;
+}
+
+export function validateKieRequestFields(
+  body: any,
+  apiStyle: ApiStyle | undefined,
+  requestConfig: LlmRequestConfig | null,
+): KieValidationError | null {
+  const internalAllowed = new Set([
+    "conversationId",
+    "preferredProvider",
+    "skillUsed",
+    "skillArgs",
+    "saveMessage",
+    "_internal",
+  ]);
+
+  const routeAllowedByStyle: Record<string, string[]> = {
+    responses: [
+      "model",
+      "input",
+      "instructions",
+      "text",
+      "temperature",
+      "top_p",
+      "max_output_tokens",
+      "store",
+      "metadata",
+      "stream",
+      "previous_response_id",
+      "max_budget_credits",
+    ],
+    messages: [
+      "model",
+      "messages",
+      "max_tokens",
+      "temperature",
+      "top_p",
+      "metadata",
+      "stream",
+    ],
+    "chat-completions": [
+      "model",
+      "messages",
+      "temperature",
+      "top_p",
+      "max_tokens",
+      "frequency_penalty",
+      "presence_penalty",
+      "stop",
+      "n",
+      "user",
+      "logit_bias",
+      "logprobs",
+      "top_logprobs",
+      "seed",
+      "parallel_tool_calls",
+      "service_tier",
+      "stream",
+    ],
+  };
+
+  const configuredFieldKeys = getConfiguredRequestFieldKeys(requestConfig);
+
+  const allowed = new Set([
+    ...(routeAllowedByStyle[apiStyle ?? "chat-completions"] ?? []),
+    ...configuredFieldKeys,
+    ...INTERNAL_FIELDS,
+    ...internalAllowed,
+  ]);
+
+  const unknownKeys = Object.keys(body).filter((key) => !allowed.has(key));
+  if (unknownKeys.length > 0) {
+    return {
+      status: 400,
+      message: `Unsupported request fields for Kie model: ${unknownKeys.join(", ")}`,
+    };
+  }
+
+  return validateKieToolConflicts(body, apiStyle, requestConfig);
 }
 
 /**
@@ -701,32 +982,297 @@ function estimateMaxTokens(skillUsed?: string, messages?: any[]): number {
  * IMPORTANT: This function filters out internal fields (conversationId, preferredProvider, etc.)
  * to prevent them from being sent to upstream LLM APIs
  */
-function transformRequestBody(
+export function transformRequestBody(
   body: any,
   providerName: string,
   model: string,
-  stream: boolean
+  stream: boolean,
+  apiStyle?: ApiStyle,
+  requestConfig?: LlmRequestConfig | null,
 ): any {
   const providerLower = providerName.toLowerCase();
+  const isKieMessagesProvider = isKieProvider(providerName);
 
-  // Anthropic: Different message format
-  if (providerLower === 'anthropic') {
+  const configuredFieldKeys = getConfiguredRequestFieldKeys(requestConfig);
+
+  const normalizeAnthropicContentValue = (content: unknown): unknown => {
+    if (typeof content === "string") {
+      return content;
+    }
+    if (Array.isArray(content)) {
+      return content.map((part) => {
+        if (typeof part === "string") {
+          return { type: "text", text: part };
+        }
+        if (
+          part
+          && typeof part === "object"
+          && (part as { type?: unknown }).type === "text"
+          && typeof (part as { text?: unknown }).text !== "string"
+          && typeof (part as { content?: unknown }).content === "string"
+        ) {
+          return { type: "text", text: (part as { content: string }).content };
+        }
+        return part;
+      });
+    }
+    if (content && typeof content === "object") {
+      return [content];
+    }
+    return content ?? "";
+  };
+
+  const toAnthropicTextBlocks = (content: unknown): Array<Record<string, unknown>> => {
+    const normalizedContent = normalizeAnthropicContentValue(content);
+    if (typeof normalizedContent === "string") {
+      return normalizedContent.length > 0
+        ? [{ type: "text", text: normalizedContent }]
+        : [];
+    }
+    if (!Array.isArray(normalizedContent)) {
+      return [];
+    }
+    return normalizedContent.flatMap((part) => {
+      if (typeof part === "string") {
+        return part.length > 0 ? [{ type: "text", text: part }] : [];
+      }
+      if (part && typeof part === "object") {
+        return [part as Record<string, unknown>];
+      }
+      return [];
+    });
+  };
+
+  const parseToolCallArguments = (value: unknown): Record<string, unknown> => {
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      return value as Record<string, unknown>;
+    }
+    if (typeof value !== "string" || value.trim().length === 0) {
+      return {};
+    }
+    try {
+      const parsed = JSON.parse(value);
+      return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+        ? parsed as Record<string, unknown>
+        : {};
+    } catch {
+      return {};
+    }
+  };
+
+  const buildAnthropicMessages = (messages: any[]): any[] => {
+    const transformedMessages: any[] = [];
+    let pendingToolResults: Array<Record<string, unknown>> = [];
+
+    const flushPendingToolResults = () => {
+      if (pendingToolResults.length === 0) {
+        return;
+      }
+      transformedMessages.push({
+        role: "user",
+        content: pendingToolResults,
+      });
+      pendingToolResults = [];
+    };
+
+    for (const message of messages) {
+      if (!message || typeof message !== "object") {
+        continue;
+      }
+
+      if (message.role === "tool" || message.role === "function") {
+        pendingToolResults.push({
+          type: "tool_result",
+          tool_use_id:
+            typeof message.tool_call_id === "string" && message.tool_call_id.length > 0
+              ? message.tool_call_id
+              : crypto.randomUUID(),
+          content:
+            typeof message.content === "string"
+              ? message.content
+              : JSON.stringify(message.content ?? ""),
+        });
+        continue;
+      }
+
+      flushPendingToolResults();
+
+      if (message.role === "assistant" && Array.isArray(message.tool_calls) && message.tool_calls.length > 0) {
+        const contentBlocks = [
+          ...toAnthropicTextBlocks(message.content),
+          ...message.tool_calls.flatMap((toolCall: any) => {
+            if (
+              !toolCall
+              || typeof toolCall !== "object"
+              || typeof toolCall.function?.name !== "string"
+            ) {
+              return [];
+            }
+            return [{
+              type: "tool_use",
+              id:
+                typeof toolCall.id === "string" && toolCall.id.length > 0
+                  ? toolCall.id
+                  : crypto.randomUUID(),
+              name: toolCall.function.name,
+              input: parseToolCallArguments(toolCall.function.arguments),
+            }];
+          }),
+        ];
+
+        transformedMessages.push({
+          role: "assistant",
+          content: contentBlocks.length > 0 ? contentBlocks : "",
+        });
+        continue;
+      }
+
+      transformedMessages.push({
+        role: message.role === "assistant" ? "assistant" : "user",
+        content: normalizeAnthropicContentValue(message.content),
+      });
+    }
+
+    flushPendingToolResults();
+    return transformedMessages;
+  };
+
+  const flattenOpenAiContentPart = (part: unknown): string => {
+    if (typeof part === "string") {
+      return part;
+    }
+    if (part && typeof part === "object") {
+      const record = part as Record<string, unknown>;
+      if (typeof record.text === "string") {
+        return record.text;
+      }
+      if (typeof record.content === "string") {
+        return record.content;
+      }
+      if (record.type === "image_url") {
+        return "[image]";
+      }
+    }
+    return "";
+  };
+
+  const flattenOpenAiMessageContent = (content: unknown): string => {
+    if (typeof content === "string") {
+      return content;
+    }
+    if (Array.isArray(content)) {
+      return content
+        .map((part) => flattenOpenAiContentPart(part))
+        .filter((part) => part.length > 0)
+        .join("\n");
+    }
+    if (content && typeof content === "object") {
+      return flattenOpenAiContentPart(content);
+    }
+    return "";
+  };
+
+  if (apiStyle === "responses") {
+    const messages = Array.isArray(body.messages) ? body.messages : [];
+    const instructions = messages
+      .filter((message: any) => message?.role === "system")
+      .map((message: any) => flattenOpenAiMessageContent(message.content))
+      .filter((part: string) => part.length > 0)
+      .join("\n\n");
+
+    const input = messages
+      .filter((message: any) => message?.role !== "system")
+      .map((message: any) => ({
+        role: message?.role === "assistant" ? "assistant" : "user",
+        content: flattenOpenAiMessageContent(message?.content),
+      }));
+
+    const normalizedText = (() => {
+      const incomingText =
+        body.text && typeof body.text === "object" && !Array.isArray(body.text)
+          ? { ...(body.text as Record<string, unknown>) }
+          : undefined;
+
+      if (body.response_format !== undefined) {
+        return {
+          ...(incomingText ?? {}),
+          format: body.response_format,
+        };
+      }
+
+      return incomingText;
+    })();
+
+    const transformed: Record<string, unknown> = {
+      model,
+      input,
+      stream,
+      ...(instructions ? { instructions } : {}),
+      ...(normalizedText ? { text: normalizedText } : {}),
+      ...(body.temperature !== undefined ? { temperature: body.temperature } : {}),
+      ...(body.top_p !== undefined ? { top_p: body.top_p } : {}),
+      ...(body.max_output_tokens !== undefined
+        ? { max_output_tokens: body.max_output_tokens }
+        : body.max_tokens !== undefined
+          ? { max_output_tokens: body.max_tokens }
+          : {}),
+      ...(body.metadata !== undefined ? { metadata: body.metadata } : {}),
+      ...(body.tools !== undefined ? { tools: body.tools } : {}),
+      ...(body.tool_choice !== undefined ? { tool_choice: body.tool_choice } : {}),
+      ...(body.previous_response_id !== undefined ? { previous_response_id: body.previous_response_id } : {}),
+    };
+
+    for (const field of requestConfig?.passthroughFields ?? []) {
+      if (field === "response_format") {
+        continue;
+      }
+      if (field === "text" && normalizedText) {
+        continue;
+      }
+      if (
+        body[field] !== undefined
+        && !Object.prototype.hasOwnProperty.call(transformed, field)
+      ) {
+        transformed[field] = body[field];
+      }
+    }
+
+    return transformed;
+  }
+
+  // Messages-style APIs: Anthropic native and Kie Claude
+  if (apiStyle === "messages" || providerLower === 'anthropic') {
     const messages = body.messages || [];
 
     // Extract system message (Anthropic uses separate 'system' field)
     const systemMessages = messages.filter((m: any) => m.role === 'system');
     const nonSystemMessages = messages.filter((m: any) => m.role !== 'system');
 
-    return {
+    const transformed: Record<string, unknown> = {
       model,
       max_tokens: body.max_tokens || 4096,
       stream,
+      ...(body.temperature !== undefined ? { temperature: body.temperature } : {}),
+      ...(body.top_p !== undefined ? { top_p: body.top_p } : {}),
+      ...(body.metadata !== undefined ? { metadata: body.metadata } : {}),
       system: systemMessages.map((m: any) => m.content).join('\n\n') || undefined,
-      messages: nonSystemMessages.map((m: any) => ({
-        role: m.role === 'assistant' ? 'assistant' : 'user',
-        content: m.content,
-      })),
+      messages: buildAnthropicMessages(nonSystemMessages),
+      ...(body.tools !== undefined && (!isKieMessagesProvider || configuredFieldKeys.has("tools")) ? { tools: body.tools } : {}),
+      ...(body.tool_choice !== undefined && (!isKieMessagesProvider || configuredFieldKeys.has("tool_choice")) ? { tool_choice: body.tool_choice } : {}),
+      ...(body.thinkingFlag !== undefined && (!isKieMessagesProvider || configuredFieldKeys.has("thinkingFlag")) ? { thinkingFlag: body.thinkingFlag } : {}),
+      ...(body.output_config !== undefined && (!isKieMessagesProvider || configuredFieldKeys.has("output_config")) ? { output_config: body.output_config } : {}),
     };
+
+    for (const field of requestConfig?.passthroughFields ?? []) {
+      if (
+        body[field] !== undefined
+        && !Object.prototype.hasOwnProperty.call(transformed, field)
+      ) {
+        transformed[field] = body[field];
+      }
+    }
+
+    return transformed;
   }
 
   // Google AI: Completely different format
@@ -760,8 +1306,675 @@ function transformRequestBody(
 
   // All other providers: Standard OpenAI format
   // Filter out internal fields to prevent validation errors from upstream APIs
-  const cleanBody = extractOpenAIFields(body);
+  const cleanBody = extractOpenAIFields(body, requestConfig?.passthroughFields ?? []);
   return { ...cleanBody, model, stream };
+}
+
+function extractResponsesOutputText(output: unknown): string {
+  if (!Array.isArray(output)) {
+    return "";
+  }
+
+  return output
+    .flatMap((item) => {
+      if (!item || typeof item !== "object") {
+        return [];
+      }
+
+      const record = item as Record<string, unknown>;
+      if (record.type === "message" && Array.isArray(record.content)) {
+        return record.content.flatMap((part) => {
+          if (!part || typeof part !== "object") {
+            return [];
+          }
+          const contentPart = part as Record<string, unknown>;
+          const textValue = contentPart.text;
+          if (typeof textValue === "string") {
+            return [textValue];
+          }
+          return [];
+        });
+      }
+
+      if (record.type === "output_text" && typeof record.text === "string") {
+        return [record.text];
+      }
+
+      return [];
+    })
+    .join("");
+}
+
+function extractAssistantTextFromChatLikeContent(content: unknown): string {
+  if (typeof content === "string") {
+    return content;
+  }
+  if (!Array.isArray(content)) {
+    return "";
+  }
+
+  return content
+    .flatMap((part) => {
+      if (typeof part === "string") {
+        return [part];
+      }
+      if (!part || typeof part !== "object") {
+        return [];
+      }
+      const record = part as Record<string, unknown>;
+      if (typeof record.text === "string") {
+        return [record.text];
+      }
+      if (typeof record.content === "string") {
+        return [record.content];
+      }
+      return [];
+    })
+    .join("");
+}
+
+function extractAnyAssistantText(rawData: any): string {
+  const directOutputText = typeof rawData?.output_text === "string"
+    ? rawData.output_text
+    : typeof rawData?.response?.output_text === "string"
+      ? rawData.response.output_text
+      : "";
+  if (directOutputText) {
+    return directOutputText;
+  }
+
+  const responsesOutputText = extractResponsesOutputText(rawData?.output ?? rawData?.response?.output);
+  if (responsesOutputText) {
+    return responsesOutputText;
+  }
+
+  const chatLikeMessageContent = rawData?.choices?.[0]?.message?.content;
+  const chatLikeText = extractAssistantTextFromChatLikeContent(chatLikeMessageContent);
+  if (chatLikeText) {
+    return chatLikeText;
+  }
+
+  if (typeof chatLikeMessageContent === "string") {
+    return chatLikeMessageContent;
+  }
+
+  if (typeof rawData?.content === "string") {
+    return rawData.content;
+  }
+
+  if (typeof rawData?.response?.content === "string") {
+    return rawData.response.content;
+  }
+
+  return "";
+}
+
+function normalizeResponsesApiResponseToChatCompletion(
+  rawData: any,
+  requestedModelId: string,
+) {
+  const normalizedUsage = normalizeLlmUsage(rawData, "responses");
+  const extractedText = extractAnyAssistantText(rawData);
+
+  return {
+    id: rawData?.id || `chatcmpl-${crypto.randomUUID()}`,
+    object: "chat.completion",
+    created: Math.floor(Date.now() / 1000),
+    model: rawData?.model || requestedModelId,
+    choices: [
+      {
+        index: 0,
+        message: {
+          role: "assistant",
+          content: extractedText,
+        },
+        finish_reason: "stop",
+      },
+    ],
+    usage: {
+      prompt_tokens: normalizedUsage.inputTokens,
+      completion_tokens: normalizedUsage.outputTokens,
+      total_tokens: normalizedUsage.totalTokens,
+      ...(normalizedUsage.providerReportedCostUsd !== undefined
+        ? { cost: normalizedUsage.providerReportedCostUsd }
+        : {}),
+    },
+  };
+}
+
+function mapMessagesStopReasonToChatFinishReason(
+  stopReason: unknown,
+): "stop" | "length" | "tool_calls" | null {
+  switch (stopReason) {
+    case "max_tokens":
+      return "length";
+    case "tool_use":
+      return "tool_calls";
+    case "end_turn":
+    case "stop_sequence":
+    case "pause_turn":
+      return "stop";
+    default:
+      return null;
+  }
+}
+
+function extractMessagesTextContent(content: unknown): string | null {
+  if (!Array.isArray(content)) {
+    return null;
+  }
+
+  const textParts = content.flatMap((part) => {
+    if (!part || typeof part !== "object") {
+      return [];
+    }
+
+    const candidate =
+      (part as { text?: unknown }).text
+      ?? (part as { content?: unknown }).content;
+    if (typeof candidate === "string" && candidate.length > 0) {
+      return [candidate];
+    }
+    return [];
+  });
+
+  return textParts.length > 0 ? textParts.join("\n\n") : null;
+}
+
+function extractMessagesToolCalls(content: unknown): Array<{
+  id: string;
+  type: "function";
+  function: { name: string; arguments: string };
+}> | undefined {
+  if (!Array.isArray(content)) {
+    return undefined;
+  }
+
+  const toolCalls = content.flatMap((part) => {
+    if (!part || typeof part !== "object") {
+      return [];
+    }
+
+    const typedPart = part as {
+      id?: unknown;
+      type?: unknown;
+      name?: unknown;
+      input?: unknown;
+    };
+    if (typedPart.type !== "tool_use" || typeof typedPart.name !== "string") {
+      return [];
+    }
+
+    return [{
+      id: typeof typedPart.id === "string" ? typedPart.id : crypto.randomUUID(),
+      type: "function" as const,
+      function: {
+        name: typedPart.name,
+        arguments: JSON.stringify(typedPart.input ?? {}),
+      },
+    }];
+  });
+
+  return toolCalls.length > 0 ? toolCalls : undefined;
+}
+
+export function normalizeMessagesApiResponseToChatCompletion(
+  data: any,
+  model: string,
+): any {
+  if (!data || typeof data !== "object") {
+    return data;
+  }
+
+  const normalizedUsage = normalizeLlmUsage(data, "messages");
+  const messageContent = extractMessagesTextContent(data.content);
+  const toolCalls = extractMessagesToolCalls(data.content);
+
+  return {
+    id: typeof data.id === "string" ? data.id : `chatcmpl_${crypto.randomUUID()}`,
+    object: "chat.completion",
+    created: Math.floor(Date.now() / 1000),
+    model: typeof data.model === "string" ? data.model : model,
+    choices: [
+      {
+        index: 0,
+        message: {
+          role: "assistant",
+          content: toolCalls && !messageContent ? null : messageContent,
+          ...(toolCalls ? { tool_calls: toolCalls } : {}),
+        },
+        finish_reason: mapMessagesStopReasonToChatFinishReason(data.stop_reason),
+      },
+    ],
+    usage: {
+      prompt_tokens: normalizedUsage.inputTokens,
+      completion_tokens: normalizedUsage.outputTokens,
+      total_tokens: normalizedUsage.totalTokens,
+    },
+  };
+}
+
+function mergeNormalizedUsage(
+  current: NormalizedLlmUsage,
+  next: NormalizedLlmUsage,
+): NormalizedLlmUsage {
+  const inputTokens = Math.max(current.inputTokens, next.inputTokens);
+  const outputTokens = Math.max(current.outputTokens, next.outputTokens);
+  const totalTokens = Math.max(
+    current.totalTokens,
+    next.totalTokens,
+    inputTokens + outputTokens,
+  );
+
+  return {
+    inputTokens,
+    outputTokens,
+    totalTokens,
+    providerReportedCostUsd:
+      next.providerReportedCostUsd ?? current.providerReportedCostUsd,
+    providerReportedCreditsConsumed:
+      next.providerReportedCreditsConsumed
+      ?? current.providerReportedCreditsConsumed,
+  };
+}
+
+function extractUsageFromCandidate(
+  candidate: unknown,
+  apiStyle?: ApiStyle,
+): NormalizedLlmUsage {
+  if (!candidate || typeof candidate !== "object") {
+    return { inputTokens: 0, outputTokens: 0, totalTokens: 0 };
+  }
+  return normalizeLlmUsage(candidate, apiStyle);
+}
+
+export function extractStreamingUsageFromSsePayload(
+  accumulatedData: string,
+  apiStyle?: ApiStyle,
+): NormalizedLlmUsage {
+  let merged: NormalizedLlmUsage = {
+    inputTokens: 0,
+    outputTokens: 0,
+    totalTokens: 0,
+  };
+
+  const dataLines = accumulatedData
+    .split("\n")
+    .filter((line) => line.startsWith("data:"));
+
+  for (const line of dataLines) {
+    const raw = line.slice("data:".length).trim();
+    if (!raw || raw === "[DONE]") {
+      continue;
+    }
+
+    try {
+      const parsed = JSON.parse(raw);
+      merged = mergeNormalizedUsage(
+        merged,
+        extractUsageFromCandidate(parsed, apiStyle),
+      );
+
+      if (apiStyle === "messages" && parsed?.message?.usage) {
+        merged = mergeNormalizedUsage(
+          merged,
+          extractUsageFromCandidate(
+            { usage: parsed.message.usage, cost: parsed.message.cost },
+            "messages",
+          ),
+        );
+      }
+
+      if (apiStyle === "responses" && parsed?.response) {
+        merged = mergeNormalizedUsage(
+          merged,
+          extractUsageFromCandidate(parsed.response, "responses"),
+        );
+      }
+    } catch {
+      // Ignore non-JSON or partial lines.
+    }
+  }
+
+  return {
+    ...merged,
+    totalTokens:
+      merged.totalTokens || merged.inputTokens + merged.outputTokens,
+  };
+}
+
+type MessagesStreamToolState = {
+  id: string;
+  name: string;
+  argumentsText: string;
+  index: number;
+};
+
+type MessagesSseTransformState = {
+  buffer: string;
+  currentEventName: string | null;
+  currentDataLines: string[];
+  roleSent: boolean;
+  completionId: string;
+  created: number;
+  model: string;
+  pendingFinishReason: "stop" | "length" | "tool_calls" | null;
+  toolBlocks: Map<number, MessagesStreamToolState>;
+  doneSent: boolean;
+  sawTerminalEvent: boolean;
+  unsupportedEventCounts: Map<string, number>;
+};
+
+export function createMessagesSseTransformState(
+  fallbackModel: string,
+): MessagesSseTransformState {
+  return {
+    buffer: "",
+    currentEventName: null,
+    currentDataLines: [],
+    roleSent: false,
+    completionId: `chatcmpl_${crypto.randomUUID()}`,
+    created: Math.floor(Date.now() / 1000),
+    model: fallbackModel,
+    pendingFinishReason: null,
+    toolBlocks: new Map(),
+    doneSent: false,
+    sawTerminalEvent: false,
+    unsupportedEventCounts: new Map(),
+  };
+}
+
+function recordUnsupportedMessagesEvent(
+  state: MessagesSseTransformState,
+  key: string,
+  payload: unknown,
+): void {
+  const nextCount = (state.unsupportedEventCounts.get(key) ?? 0) + 1;
+  state.unsupportedEventCounts.set(key, nextCount);
+  if (nextCount === 1) {
+    debugLog("LLM", "Unsupported Claude SSE event encountered", {
+      key,
+      payload,
+    });
+  }
+}
+
+function encodeChatCompletionSseChunk(payload: unknown): string {
+  return `data: ${JSON.stringify(payload)}\n\n`;
+}
+
+function buildChatCompletionChunk(
+  state: MessagesSseTransformState,
+  delta: Record<string, unknown>,
+  finishReason: "stop" | "length" | "tool_calls" | null = null,
+): string {
+  return encodeChatCompletionSseChunk({
+    id: state.completionId,
+    object: "chat.completion.chunk",
+    created: state.created,
+    model: state.model,
+    choices: [
+      {
+        index: 0,
+        delta,
+        finish_reason: finishReason,
+      },
+    ],
+  });
+}
+
+function ensureAssistantRoleChunk(state: MessagesSseTransformState): string {
+  if (state.roleSent) {
+    return "";
+  }
+  state.roleSent = true;
+  return buildChatCompletionChunk(state, { role: "assistant" });
+}
+
+function processMessagesSseEvent(
+  state: MessagesSseTransformState,
+  fallbackModel: string,
+): string {
+  const rawData = state.currentDataLines.join("\n").trim();
+  const currentEventName = state.currentEventName;
+  state.currentEventName = null;
+  state.currentDataLines = [];
+
+  if (!rawData) {
+    return "";
+  }
+
+  if (rawData === "[DONE]") {
+    if (state.doneSent) {
+      return "";
+    }
+    state.sawTerminalEvent = true;
+    state.doneSent = true;
+    return "data: [DONE]\n\n";
+  }
+
+  let parsed: any;
+  try {
+    parsed = JSON.parse(rawData);
+  } catch {
+    return "";
+  }
+
+  const eventType =
+    typeof parsed?.type === "string"
+      ? parsed.type
+      : currentEventName;
+
+  if (typeof parsed?.message?.id === "string") {
+    state.completionId = parsed.message.id;
+  }
+  if (typeof parsed?.model === "string") {
+    state.model = parsed.model;
+  } else if (typeof parsed?.message?.model === "string") {
+    state.model = parsed.message.model;
+  } else {
+    state.model = state.model || fallbackModel;
+  }
+
+  switch (eventType) {
+    case "message_start":
+      return ensureAssistantRoleChunk(state);
+
+    case "content_block_start": {
+      const block = parsed?.content_block;
+      if (!block || typeof block !== "object") {
+        return "";
+      }
+
+      let output = ensureAssistantRoleChunk(state);
+      if (block.type === "tool_use" && typeof parsed?.index === "number") {
+        const serializedInput =
+          block.input && typeof block.input === "object"
+            ? JSON.stringify(block.input)
+            : "";
+        const hasSeedArguments =
+          serializedInput.length > 0 && serializedInput !== "{}";
+        const toolState: MessagesStreamToolState = {
+          id:
+            typeof block.id === "string" && block.id.length > 0
+              ? block.id
+              : crypto.randomUUID(),
+          name: typeof block.name === "string" ? block.name : "tool",
+          argumentsText: serializedInput,
+          index: parsed.index,
+        };
+        state.toolBlocks.set(parsed.index, toolState);
+        output += buildChatCompletionChunk(state, {
+          tool_calls: [
+            {
+              index: toolState.index,
+              id: toolState.id,
+              type: "function",
+              function: {
+                name: toolState.name,
+                arguments: hasSeedArguments ? toolState.argumentsText : "",
+              },
+            },
+          ],
+        });
+      }
+      return output;
+    }
+
+    case "content_block_delta": {
+      const delta = parsed?.delta;
+      if (!delta || typeof delta !== "object") {
+        return "";
+      }
+
+      if (delta.type === "text_delta" && typeof delta.text === "string") {
+        return (
+          ensureAssistantRoleChunk(state)
+          + buildChatCompletionChunk(state, { content: delta.text })
+        );
+      }
+
+      if (
+        delta.type === "input_json_delta"
+        && typeof parsed?.index === "number"
+        && typeof delta.partial_json === "string"
+      ) {
+        const toolState = state.toolBlocks.get(parsed.index);
+        if (!toolState) {
+          return "";
+        }
+        toolState.argumentsText += delta.partial_json;
+        return (
+          ensureAssistantRoleChunk(state)
+          + buildChatCompletionChunk(state, {
+            tool_calls: [
+              {
+                index: toolState.index,
+                id: toolState.id,
+                type: "function",
+                function: {
+                  name: toolState.name,
+                  arguments: delta.partial_json,
+                },
+              },
+            ],
+          })
+        );
+      }
+
+      recordUnsupportedMessagesEvent(
+        state,
+        `content_block_delta:${String((delta as { type?: unknown }).type ?? "unknown")}`,
+        parsed,
+      );
+      return "";
+    }
+
+    case "message_delta":
+      state.pendingFinishReason = mapMessagesStopReasonToChatFinishReason(
+        parsed?.delta?.stop_reason,
+      );
+      return "";
+
+    case "message_stop": {
+      let output = "";
+      state.sawTerminalEvent = true;
+      if (state.pendingFinishReason !== null) {
+        output += buildChatCompletionChunk(
+          state,
+          {},
+          state.pendingFinishReason,
+        );
+      }
+      if (!state.doneSent) {
+        state.doneSent = true;
+        output += "data: [DONE]\n\n";
+      }
+      return output;
+    }
+
+    default:
+      recordUnsupportedMessagesEvent(
+        state,
+        `event:${String(eventType ?? "unknown")}`,
+        parsed,
+      );
+      return "";
+  }
+}
+
+export function transformMessagesSseChunkToOpenAi(
+  rawChunk: string,
+  state: MessagesSseTransformState,
+  fallbackModel: string,
+): string {
+  let output = "";
+  state.buffer += rawChunk;
+
+  while (true) {
+    const newlineIndex = state.buffer.indexOf("\n");
+    if (newlineIndex === -1) {
+      break;
+    }
+
+    const line = state.buffer.slice(0, newlineIndex).replace(/\r$/, "");
+    state.buffer = state.buffer.slice(newlineIndex + 1);
+
+    if (line.length === 0) {
+      output += processMessagesSseEvent(state, fallbackModel);
+      continue;
+    }
+
+    if (line.startsWith("event:")) {
+      state.currentEventName = line.slice("event:".length).trim();
+      continue;
+    }
+
+    if (line.startsWith("data:")) {
+      state.currentDataLines.push(line.slice("data:".length).trim());
+    }
+  }
+
+  return output;
+}
+
+export function finalizeMessagesSseTransformToOpenAi(
+  state: MessagesSseTransformState,
+  fallbackModel: string,
+): { output: string; completedGracefully: boolean } {
+  let output = "";
+
+  const trailingLine = state.buffer.replace(/\r$/, "");
+  state.buffer = "";
+  if (trailingLine) {
+    if (trailingLine.startsWith("event:")) {
+      state.currentEventName = trailingLine.slice("event:".length).trim();
+    } else if (trailingLine.startsWith("data:")) {
+      state.currentDataLines.push(trailingLine.slice("data:".length).trim());
+    }
+  }
+
+  if (state.currentDataLines.length > 0) {
+    output += processMessagesSseEvent(state, fallbackModel);
+  }
+
+  if (!state.sawTerminalEvent) {
+    return { output, completedGracefully: false };
+  }
+
+  if (!state.doneSent) {
+    if (state.pendingFinishReason !== null) {
+      output += buildChatCompletionChunk(
+        state,
+        {},
+        state.pendingFinishReason,
+      );
+    }
+    state.doneSent = true;
+    output += "data: [DONE]\n\n";
+  }
+
+  return { output, completedGracefully: true };
 }
 
 /**
@@ -770,6 +1983,10 @@ function transformRequestBody(
 async function getUserIdFromAuth(auth: AuthResult & { ok: true }): Promise<number | null> {
   // For API key auth, userId is directly available
   if (auth.mode === "api_key") {
+    return auth.userId;
+  }
+
+  if (auth.mode === "delegated_worker") {
     return auth.userId;
   }
 
@@ -898,6 +2115,11 @@ function parseUsageFromResponse(data: any, model: string): LLMUsageInfo {
   };
 }
 
+function getChatSelectionErrorStatus(error: unknown): number {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  return message.includes("not enabled for this tenant") ? 403 : 400;
+}
+
 /**
  * Proxy chat request with credit tracking
  * If conversationId is provided for streaming, saves the assistant message at the end
@@ -929,9 +2151,51 @@ async function proxyChatWithCredits(
     finalizeMs: 0,
   };
   let queuePosition = 0;
+  const allowImplicitResponsesBridge = req.path.startsWith("/api/llm/");
+  const { clientMessageRuntimeMetadataInputSchema, sanitizeMessageRuntimeMetadata } =
+    await import("../services/localAiRuntimeMetadata");
+  const runtimeMetadataHintParsed =
+    clientMessageRuntimeMetadataInputSchema.safeParse(
+      req.body?.runtimeMetadataHint,
+    );
+  const runtimeMetadataHint = runtimeMetadataHintParsed.success
+    ? sanitizeMessageRuntimeMetadata(runtimeMetadataHintParsed.data)
+    : sanitizeMessageRuntimeMetadata(undefined);
+
+  const conversationForSelection = conversationId
+    ? await getConversationById(conversationId, userId)
+    : undefined;
+  const storedSelectionState = readStoredChatModelSelectionState(conversationForSelection?.skillSettings);
+  const tenantId = (req as any).tenantId ?? "default";
+  const autoSelectionEnabled = (await getTenantFeatureFlags(tenantId)).chatAutoModelSelection;
+
+  let resolvedChatSelection;
+  try {
+    resolvedChatSelection = await resolveChatModelSelection({
+      bodyModel: req.body?.model,
+      bodyPreferredProvider: req.body?.preferredProvider ? Number(req.body.preferredProvider) : null,
+      bodyModelSelection: req.body?.modelSelection,
+      storedSelectionState,
+      messages: Array.isArray(req.body?.messages) ? req.body.messages : [],
+      selectionContext: deriveChatSelectionContext(req.body?.modelSelectionContext),
+      autoSelectionEnabled,
+    });
+  } catch (error: any) {
+    const statusCode = getChatSelectionErrorStatus(error);
+    if (mode === "json") {
+      res.status(statusCode).json({ error: { message: error?.message || "Invalid chat model selection" } });
+    } else {
+      res.status(200);
+      res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+      res.write(`event: error\ndata: ${JSON.stringify({ message: error?.message || "Invalid chat model selection", statusCode })}\n\n`);
+      res.write(`data: [DONE]\n\n`);
+      res.end();
+    }
+    return;
+  }
 
   // Check if a specific provider is requested (multi-provider support)
-  const preferredProviderId = req.body?.preferredProvider;
+  const preferredProviderId = resolvedChatSelection.preferredProviderId;
   let provider: LlmProviderConfig | null = null;
 
   const providerLookupStartedAt = Date.now();
@@ -939,6 +2203,9 @@ async function proxyChatWithCredits(
     // Use the specified provider
     provider = await getLlmProviderById(preferredProviderId);
     debugLog("LLM", "Using preferred provider", { providerId: preferredProviderId, found: !!provider });
+    if (!provider && resolvedChatSelection.strictProviderPin) {
+      throw new Error("Pinned provider is not available for this chat selection");
+    }
   }
 
   // Fallback to default provider if no specific provider requested or not found
@@ -955,15 +2222,11 @@ async function proxyChatWithCredits(
   }
 
   const enabledModelLookupStartedAt = Date.now();
-  const legacyModelId = await resolveEnabledLlmModelId([req.body?.model, provider.defaultModel]);
+  const legacyModelId = resolvedChatSelection.resolvedModelId;
   timing.enabledModelLookupMs = Date.now() - enabledModelLookupStartedAt;
-  if (!legacyModelId) {
-    throw new Error("No enabled LLM model configured");
-  }
 
-  // Standard chat must respect the conversation model directly.
-  // Only skill-driven chat flows are allowed to invoke planner-based model routing.
-  const tenantId = (req as any).tenantId ?? "default";
+  // Keep planner telemetry for skill-driven chat flows, but do not allow it to
+  // override resolved chat model selection.
   let plannerResult: Awaited<ReturnType<typeof runPlanner>> = null;
   if (skillUsed) {
     const plannerStartedAt = Date.now();
@@ -979,7 +2242,7 @@ async function proxyChatWithCredits(
   } else {
     timing.plannerMs = 0;
   }
-  const requestedModelId = plannerResult?.resolvedModel ?? legacyModelId;
+  const requestedModelId = legacyModelId;
   debugLog("LLM", "Planner resolution", {
     conversationId,
     legacyModelId,
@@ -1021,18 +2284,73 @@ async function proxyChatWithCredits(
   }
   timing.providerModelLookupMs = Date.now() - providerModelLookupStartedAt;
 
+  enforceDelegatedWorkerModelSelectionPolicy({
+    auth: req.auth,
+    rawRequestedModel: typeof req.body?.model === "string" ? req.body.model : null,
+    resolvedModelId: requestedModelId,
+    preferredProviderId,
+    providerName: provider.providerName,
+  });
+  await enforceDelegatedWorkerSpendGuardrails({
+    auth: req.auth,
+    estimatedCredits: estimateDelegatedChatCredits(
+      req.body?.messages,
+      req.body?.max_tokens,
+      requestedModelId,
+    ),
+    idempotencyKey: req.get("Idempotency-Key") || undefined,
+  });
+  const delegatedExecutionHandle = await acquireDelegatedWorkerConcurrencySlot({
+    auth: req.auth,
+    actionClass: "compute",
+  });
+
+  try {
+  const stream = mode === "stream";
+  const bridgeResponsesForChat = allowImplicitResponsesBridge && apiStyle === "responses";
+  const requestConfig = getModelRequestConfig(provider, model);
+  const requestBody = transformRequestBody(
+    req.body,
+    provider.providerName,
+    model,
+    bridgeResponsesForChat ? false : stream,
+    apiStyle,
+    requestConfig,
+  );
+  if (isKieProvider(provider.providerName)) {
+    if (!isSafeProviderModelId(model)) {
+      res.status(400).json({
+        error: { message: "Invalid provider model identifier for Kie routing." },
+      });
+      return;
+    }
+
+    if (apiStyle === "responses" && !bridgeResponsesForChat) {
+      res.status(400).json({
+        error: { message: "This model requires /v1/responses. Use the Responses API endpoint instead." },
+      });
+      return;
+    }
+
+    const validationError = validateKieRequestFields(
+      bridgeResponsesForChat ? requestBody : req.body,
+      apiStyle,
+      requestConfig,
+    );
+    if (validationError) {
+      res.status(validationError.status).json({ error: { message: validationError.message } });
+      return;
+    }
+  }
+
   // Use the resolved model ID and API style to determine the correct endpoint
   const url = resolveApiUrl(provider.baseUrl, model, provider.providerName, apiStyle);
   debugLog("LLM", "Request details", { url, model, requestedModelId, apiStyle, providerName: provider.providerName });
 
   const controller = new AbortController();
-  req.on("close", () => controller.abort());
-
-  const stream = mode === "stream";
+  req.on("aborted", () => controller.abort());
 
   // Transform request body for provider-specific API format
-  const requestBody = transformRequestBody(req.body, provider.providerName, model, stream);
-
   // Apply provider-specific rate limiting with queue system to avoid API rate limit errors
   const isFreeModel = model.toLowerCase().includes('free') || model.toLowerCase().includes('-free');
   const queueWaitStartedAt = Date.now();
@@ -1075,23 +2393,250 @@ async function proxyChatWithCredits(
     return;
   }
 
+  if (bridgeResponsesForChat && stream) {
+    releaseProviderSlot(provider.providerName);
+
+    const text = await upstream.text();
+    let rawData: any;
+    try {
+      rawData = JSON.parse(text);
+    } catch {
+      rawData = {};
+    }
+
+    const data = normalizeResponsesApiResponseToChatCompletion(rawData, requestedModelId);
+    const normalizedUsage = normalizeLlmUsage(rawData, "responses");
+    const inputTokens = normalizedUsage.inputTokens;
+    const outputTokens = normalizedUsage.outputTokens;
+    const providerCostUsd = normalizedUsage.providerReportedCostUsd;
+    const fullContent = data?.choices?.[0]?.message?.content ?? "";
+    const {
+      deductCreditsForModel,
+      calculateCreditsForLLM,
+      calculateCreditsFromCost,
+      calculateLLMCostUsd,
+    } = await import("../services/creditService");
+    const bridgedCreditsUsed = (providerCostUsd && providerCostUsd > 0)
+      ? calculateCreditsFromCost(providerCostUsd)
+      : calculateCreditsForLLM(inputTokens, outputTokens, model);
+    const trackedCostUsd = providerCostUsd && providerCostUsd > 0
+      ? providerCostUsd
+      : calculateLLMCostUsd(inputTokens, outputTokens, requestedModelId);
+    await enforceDelegatedWorkerSpendGuardrails({
+      auth: req.auth,
+      estimatedCredits: bridgedCreditsUsed,
+      idempotencyKey: req.get("Idempotency-Key") || undefined,
+    });
+
+    res.status(200);
+    res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+    res.setHeader("Cache-Control", "no-cache, no-transform");
+    res.setHeader("Connection", "keep-alive");
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("X-Frame-Options", "DENY");
+    res.flushHeaders?.();
+
+    recordModelUsage(provider.providerName, requestedModelId, true, inputTokens, outputTokens);
+
+    debugLog("LLM", "Bridged responses chat payload ready", {
+      requestedModelId,
+      providerName: provider.providerName,
+      inputTokens,
+      outputTokens,
+      fullContentLength: fullContent.length,
+      bridgedCreditsUsed,
+      rawResponseKeys: rawData && typeof rawData === "object" ? Object.keys(rawData).slice(0, 12) : [],
+    });
+
+    if (!fullContent) {
+      debugLog("LLM", "Bridged responses payload had no assistant text", {
+        requestedModelId,
+        providerName: provider.providerName,
+        outputText: rawData?.output_text ?? rawData?.response?.output_text ?? null,
+        choicesPreview:
+          typeof rawData?.choices?.[0]?.message?.content === "string"
+            ? rawData.choices[0].message.content.slice(0, 200)
+            : Array.isArray(rawData?.choices?.[0]?.message?.content)
+              ? JSON.stringify(rawData.choices[0].message.content).slice(0, 200)
+              : null,
+        outputPreview: Array.isArray(rawData?.output)
+          ? JSON.stringify(rawData.output).slice(0, 200)
+          : Array.isArray(rawData?.response?.output)
+            ? JSON.stringify(rawData.response.output).slice(0, 200)
+            : null,
+      });
+    }
+
+    if (fullContent) {
+      res.write(`data: ${JSON.stringify({
+        id: data.id,
+        object: "chat.completion.chunk",
+        created: data.created,
+        model: data.model,
+        choices: [
+          {
+            index: 0,
+            delta: {
+              role: "assistant",
+              content: fullContent,
+            },
+            finish_reason: null,
+          },
+        ],
+      })}\n\n`);
+    }
+
+    res.write(`data: ${JSON.stringify({
+      id: data.id,
+      object: "chat.completion.chunk",
+      created: data.created,
+      model: data.model,
+      choices: [
+        {
+          index: 0,
+          delta: {},
+          finish_reason: "stop",
+        },
+      ],
+    })}\n\n`);
+
+    res.write(`event: message_complete\ndata: ${JSON.stringify({
+      content: fullContent,
+      creditsUsed: bridgedCreditsUsed,
+      resolvedModelId: requestedModelId,
+      resolvedProviderId: provider.providerId ?? preferredProviderId ?? null,
+      resolvedProviderName: provider.providerName,
+      routeFamily: resolvedChatSelection.routeFamily,
+      selectionMode: resolvedChatSelection.selectionMode,
+    })}\n\n`);
+
+    res.write("data: [DONE]\n\n");
+    res.end();
+
+    void (async () => {
+      try {
+        await deductCreditsForModel({
+          userId,
+          model: requestedModelId,
+          provider: provider.providerName,
+          inputTokens,
+          outputTokens,
+          costUsd: trackedCostUsd,
+          sourceType: "chat",
+          conversationId,
+        });
+
+        if (conversationId && fullContent) {
+          const { createMessage, getConversationById, updateConversationCredits } = await import("../services/chatService");
+          const conversation = await getConversationById(conversationId, userId);
+          if (conversation) {
+            if (bridgedCreditsUsed > 0) {
+              await updateConversationCredits(conversationId, bridgedCreditsUsed);
+            }
+
+            if (resolvedChatSelection.shouldPersistSelectionState) {
+              const nextSkillSettings = writeStoredChatModelSelectionState(
+                (conversationForSelection?.skillSettings as Record<string, unknown> | null | undefined) ?? {},
+                storedSelectionStateFromResolved({
+                  selection: resolvedChatSelection.selection,
+                  resolvedModelId: requestedModelId,
+                  resolvedProviderId: provider.providerId ?? preferredProviderId ?? null,
+                  resolvedProviderName: provider.providerName,
+                  routeFamily: resolvedChatSelection.routeFamily,
+                }),
+              );
+              await updateConversation(conversationId, userId, {
+                model: resolvedChatSelection.selection.mode === "explicit" ? requestedModelId : null,
+                skillSettings: nextSkillSettings as any,
+              });
+            }
+
+            await createMessage({
+              conversationId,
+              role: "assistant",
+              content: fullContent,
+              inputTokens,
+              outputTokens,
+              creditsUsed: String(bridgedCreditsUsed),
+              modelUsed: model || conversation.model || undefined,
+              skillUsed,
+              traceId: getTraceId(),
+            });
+          }
+        }
+
+        logCostRequest({
+          userId,
+          providerId: provider.providerId ?? preferredProviderId ?? 0,
+          modelUsed: model,
+          inputTokens,
+          outputTokens,
+          costUsd: trackedCostUsd,
+          creditsCharged: bridgedCreditsUsed,
+          responseTimeMs: Date.now() - requestStartedAt,
+          statusCode: 200,
+          wasFallback: false,
+          traceId: getTraceId(),
+        }).catch((err: any) => debugError("LLM", "Failed to log bridged responses request:", err.message));
+
+        auditLogger.log({
+          eventType: "llm_stream_end",
+          userId,
+          providerId: provider.providerId ?? preferredProviderId ?? null,
+          providerName: provider.providerName,
+          model,
+          requestType: "chat_stream",
+          inputTokens,
+          outputTokens,
+          costUsd: trackedCostUsd || undefined,
+          statusCode: 200,
+          metadata: {
+            route: "/api/llm/stream",
+            conversationId,
+            skillUsed: skillUsed || null,
+            queuePosition,
+            bridgedResponsesFamily: true,
+            fullContentLength: fullContent.length,
+          },
+        });
+      } catch (backgroundError: any) {
+        debugError("LLM", "Bridged responses background finalize failed", backgroundError);
+      }
+    })();
+    return;
+  }
+
   if (!stream) {
     // Non-streaming: parse response, deduct credits, return
     // Release slot immediately since we have the response
     releaseProviderSlot(provider.providerName);
 
     const text = await upstream.text();
-    let data: any;
+    let rawData: any;
     try {
-      data = JSON.parse(text);
+      rawData = JSON.parse(text);
     } catch {
-      data = {};
+      rawData = {};
     }
 
-    // Deduct credits based on usage
-    const inputTokens = data?.usage?.prompt_tokens ?? 0;
-    const outputTokens = data?.usage?.completion_tokens ?? 0;
-    const costUsd = data?.usage?.cost;
+    // Deduct credits based on normalized usage
+    const normalizedUsage = normalizeLlmUsage(rawData, apiStyle);
+    const inputTokens = normalizedUsage.inputTokens;
+    const outputTokens = normalizedUsage.outputTokens;
+    const costUsd = normalizedUsage.providerReportedCostUsd;
+    const data = apiStyle === "messages"
+      ? normalizeMessagesApiResponseToChatCompletion(rawData, requestedModelId)
+      : apiStyle === "responses"
+        ? normalizeResponsesApiResponseToChatCompletion(rawData, requestedModelId)
+        : rawData;
+    const actualCreditsUsed = costUsd && costUsd > 0
+      ? calculateCreditsFromCost(costUsd)
+      : calculateCreditsForLLM(inputTokens, outputTokens, requestedModelId);
+    await enforceDelegatedWorkerSpendGuardrails({
+      auth: req.auth,
+      estimatedCredits: actualCreditsUsed,
+      idempotencyKey: req.get("Idempotency-Key") || undefined,
+    });
 
     const { deductCreditsForModel } = await import("../services/creditService");
     await deductCreditsForModel({
@@ -1103,6 +2648,12 @@ async function proxyChatWithCredits(
       costUsd,
       sourceType: "chat",
       conversationId,
+      idempotencyKey: req.get("Idempotency-Key") || undefined,
+      metadata: buildDelegatedWorkerOriginMetadata(req.auth, "llm.chat_completions", {
+        endpoint: "/v1/chat/completions",
+        providerName: provider.providerName,
+        requestedModelId,
+      }),
     });
 
     // Record model usage for analytics
@@ -1110,13 +2661,49 @@ async function proxyChatWithCredits(
 
     // Add credit info to response (optional, for client awareness)
     if (userId > 0) {
-      const { calculateCreditsForLLM } = await import("../services/creditService");
       const balance = await getCreditBalance(userId);
+      const creditsUsed = costUsd && costUsd > 0
+        ? calculateCreditsFromCost(costUsd)
+        : calculateCreditsForLLM(inputTokens, outputTokens, requestedModelId);
       if (data && typeof data === "object") {
         data._credits = {
-          used: calculateCreditsForLLM(inputTokens, outputTokens, model),
+          used: creditsUsed,
           remaining: balance?.credits ?? 0,
         };
+        data._resolvedModel = {
+          modelId: requestedModelId,
+          providerId: provider.providerId ?? preferredProviderId ?? null,
+          providerName: provider.providerName,
+          routeFamily: resolvedChatSelection.routeFamily,
+          selectionMode: resolvedChatSelection.selectionMode,
+        };
+        data._meta = {
+          ...(data._meta && typeof data._meta === "object" ? data._meta : {}),
+          normalizedUsage: {
+            inputTokens,
+            outputTokens,
+            totalTokens: normalizedUsage.totalTokens,
+            providerReportedCostUsd: normalizedUsage.providerReportedCostUsd,
+            providerReportedCreditsConsumed: normalizedUsage.providerReportedCreditsConsumed,
+          },
+        };
+      }
+
+      if (conversationId && resolvedChatSelection.shouldPersistSelectionState) {
+        const nextSkillSettings = writeStoredChatModelSelectionState(
+          (conversationForSelection?.skillSettings as Record<string, unknown> | null | undefined) ?? {},
+          storedSelectionStateFromResolved({
+            selection: resolvedChatSelection.selection,
+            resolvedModelId: requestedModelId,
+            resolvedProviderId: provider.providerId ?? preferredProviderId ?? null,
+            resolvedProviderName: provider.providerName,
+            routeFamily: resolvedChatSelection.routeFamily,
+          }),
+        );
+        await updateConversation(conversationId, userId, {
+          model: resolvedChatSelection.selection.mode === "explicit" ? requestedModelId : null,
+          skillSettings: nextSkillSettings as any,
+        });
       }
     }
 
@@ -1138,6 +2725,13 @@ async function proxyChatWithCredits(
   res.setHeader("Connection", "keep-alive");
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("X-Frame-Options", "DENY");
+  let clientDisconnected = false;
+  res.on("close", () => {
+    if (!res.writableEnded) {
+      clientDisconnected = true;
+      controller.abort();
+    }
+  });
 
   const reader = upstream.body.getReader();
   let totalChunks = 0;
@@ -1147,7 +2741,72 @@ async function proxyChatWithCredits(
   let nonContentDeltaCount = 0;
   let reasoningDeltaCount = 0;
   let reasoningTextChars = 0;
+  const messagesStreamState = apiStyle === "messages"
+    ? createMessagesSseTransformState(requestedModelId)
+    : null;
+  let streamCompletedSuccessfully = false;
   const streamReadStartedAt = Date.now();
+
+  const writeNormalizedStreamChunk = (proxiedChunkStr: string) => {
+    if (!proxiedChunkStr) {
+      return;
+    }
+
+    const chunk = Buffer.from(proxiedChunkStr);
+    res.write(chunk);
+    totalStreamBytes += chunk.length;
+
+    const lines = proxiedChunkStr.split("\n");
+    for (const line of lines) {
+      if (line.startsWith("data:")) {
+        const data = line.slice("data:".length).trim();
+        if (data && data !== "[DONE]") {
+          try {
+            const j = JSON.parse(data);
+            const deltaPayload = j?.choices?.[0]?.delta;
+            const deltaContent = deltaPayload?.content;
+            if (typeof deltaContent === "string") {
+              if (timing.firstVisibleContentMs == null) {
+                timing.firstVisibleContentMs = Date.now() - upstreamFetchStartedAt;
+                timing.firstVisibleContentFromRequestMs = Date.now() - requestStartedAt;
+                debugLog("LLM", "First visible content received", {
+                  provider: provider.providerName,
+                  model,
+                  conversationId,
+                  firstVisibleContentMs: timing.firstVisibleContentMs,
+                  firstVisibleContentFromRequestMs: timing.firstVisibleContentFromRequestMs,
+                });
+              }
+              fullContent += deltaContent;
+            } else if (deltaPayload && typeof deltaPayload === "object") {
+              nonContentDeltaCount++;
+
+              const reasoningValue =
+                (deltaPayload as Record<string, unknown>).reasoning
+                ?? (deltaPayload as Record<string, unknown>).reasoning_content
+                ?? (deltaPayload as Record<string, unknown>).reasoningContent;
+              if (typeof reasoningValue === "string" && reasoningValue.length > 0) {
+                reasoningDeltaCount++;
+                reasoningTextChars += reasoningValue.length;
+              } else if (Array.isArray(reasoningValue)) {
+                reasoningDeltaCount++;
+                reasoningTextChars += reasoningValue.reduce((sum: number, part: unknown) => {
+                  if (typeof part === "string") return sum + part.length;
+                  if (part && typeof part === "object" && "text" in part) {
+                    const text = (part as { text?: unknown }).text;
+                    return typeof text === "string" ? sum + text.length : sum;
+                  }
+                  return sum;
+                }, 0);
+              }
+            }
+          } catch {
+            // Not JSON, ignore
+          }
+        }
+      }
+    }
+  };
 
   try {
     while (true) {
@@ -1166,66 +2825,45 @@ async function proxyChatWithCredits(
             queueWaitMs: timing.queueWaitMs,
           });
         }
-        const chunk = Buffer.from(value);
-        res.write(chunk);
+        const rawChunk = Buffer.from(value);
         totalChunks++;
-        totalStreamBytes += chunk.length;
+        accumulatedData += rawChunk.toString();
 
-        // Accumulate data to parse usage at the end
-        const chunkStr = chunk.toString();
-        accumulatedData += chunkStr;
+        const proxiedChunkStr = messagesStreamState
+          ? transformMessagesSseChunkToOpenAi(
+            rawChunk.toString(),
+            messagesStreamState,
+            requestedModelId,
+          )
+          : rawChunk.toString();
 
-        // Extract content from SSE data for saving
-        const lines = chunkStr.split("\n");
-        for (const line of lines) {
-          if (line.startsWith("data:")) {
-            const data = line.slice("data:".length).trim();
-            if (data && data !== "[DONE]") {
-              try {
-                const j = JSON.parse(data);
-                const deltaPayload = j?.choices?.[0]?.delta;
-                const deltaContent = deltaPayload?.content;
-                if (typeof deltaContent === "string") {
-                  if (timing.firstVisibleContentMs == null) {
-                    timing.firstVisibleContentMs = Date.now() - upstreamFetchStartedAt;
-                    timing.firstVisibleContentFromRequestMs = Date.now() - requestStartedAt;
-                    debugLog("LLM", "First visible content received", {
-                      provider: provider.providerName,
-                      model,
-                      conversationId,
-                      firstVisibleContentMs: timing.firstVisibleContentMs,
-                      firstVisibleContentFromRequestMs: timing.firstVisibleContentFromRequestMs,
-                    });
-                  }
-                  fullContent += deltaContent;
-                } else if (deltaPayload && typeof deltaPayload === "object") {
-                  nonContentDeltaCount++;
+        writeNormalizedStreamChunk(proxiedChunkStr);
+      }
+    }
 
-                  const reasoningValue =
-                    (deltaPayload as Record<string, unknown>).reasoning
-                    ?? (deltaPayload as Record<string, unknown>).reasoning_content
-                    ?? (deltaPayload as Record<string, unknown>).reasoningContent;
-                  if (typeof reasoningValue === "string" && reasoningValue.length > 0) {
-                    reasoningDeltaCount++;
-                    reasoningTextChars += reasoningValue.length;
-                  } else if (Array.isArray(reasoningValue)) {
-                    reasoningDeltaCount++;
-                    reasoningTextChars += reasoningValue.reduce((sum: number, part: unknown) => {
-                      if (typeof part === "string") return sum + part.length;
-                      if (part && typeof part === "object" && "text" in part) {
-                        const text = (part as { text?: unknown }).text;
-                        return typeof text === "string" ? sum + text.length : sum;
-                      }
-                      return sum;
-                    }, 0);
-                  }
-                }
-              } catch {
-                // Not JSON, ignore
-              }
-            }
-          }
-        }
+    if (messagesStreamState) {
+      const finalized = finalizeMessagesSseTransformToOpenAi(
+        messagesStreamState,
+        requestedModelId,
+      );
+      streamCompletedSuccessfully = finalized.completedGracefully;
+      writeNormalizedStreamChunk(finalized.output);
+      if (!streamCompletedSuccessfully && !clientDisconnected) {
+        res.write(
+          `event: error\ndata: ${JSON.stringify({ error: "Upstream Claude stream ended before a terminal event was received." })}\n\n`,
+        );
+      }
+    } else {
+      streamCompletedSuccessfully = true;
+    }
+  } catch (streamError: any) {
+    streamCompletedSuccessfully = false;
+    if (!clientDisconnected) {
+      debugError("LLM", "Streaming read failed", streamError);
+      if (!res.writableEnded) {
+        res.write(
+          `event: error\ndata: ${JSON.stringify({ error: streamError?.message || "Streaming read failed" })}\n\n`,
+        );
       }
     }
   } finally {
@@ -1237,30 +2875,21 @@ async function proxyChatWithCredits(
     // Release provider slot after streaming completes
     releaseProviderSlot(provider.providerName);
 
-    // Try to extract usage from the last SSE message
-    // OpenAI/OpenRouter sends usage in the final chunk before [DONE]
+    // Try to extract usage from the accumulated SSE transcript.
     let inputTokens = 0;
     let outputTokens = 0;
     let providerCostUsd = 0;
     try {
-      // Parse each SSE data line — last occurrence with usage wins
-      const dataLines = accumulatedData.split("\n").filter(l => l.startsWith("data:"));
-      for (const line of dataLines) {
-        const raw = line.slice("data:".length).trim();
-        if (raw && raw !== "[DONE]") {
-          try {
-            const parsed = JSON.parse(raw);
-            if (parsed?.usage) {
-              inputTokens = parsed.usage.prompt_tokens || 0;
-              outputTokens = parsed.usage.completion_tokens || parsed.usage.total_tokens || 0;
-              // OpenRouter returns actual cost in usage.cost (USD cents or USD depending on version)
-              if (typeof parsed.usage.cost === "number" && parsed.usage.cost > 0) {
-                providerCostUsd = parsed.usage.cost;
-              }
-            }
-          } catch {}
-        }
-      }
+      const normalizedUsage = extractStreamingUsageFromSsePayload(
+        accumulatedData,
+        apiStyle,
+      );
+      inputTokens = normalizedUsage.inputTokens;
+      outputTokens =
+        normalizedUsage.outputTokens
+        || Math.max(0, normalizedUsage.totalTokens - normalizedUsage.inputTokens)
+        || 0;
+      providerCostUsd = normalizedUsage.providerReportedCostUsd ?? 0;
       if (outputTokens === 0) {
         // Estimate based on chunks (rough approximation)
         outputTokens = Math.max(100, totalChunks * 10);
@@ -1268,8 +2897,54 @@ async function proxyChatWithCredits(
     } catch {
       outputTokens = Math.max(100, totalChunks * 10);
     }
+    const actualStreamCredits = providerCostUsd > 0
+      ? calculateCreditsFromCost(providerCostUsd)
+      : calculateCreditsForLLM(inputTokens, outputTokens, requestedModelId);
+
+    if (!streamCompletedSuccessfully || clientDisconnected) {
+      recordModelUsage(provider.providerName, requestedModelId, false);
+      auditLogger.log({
+        eventType: "llm_stream_end",
+        userId,
+        providerId: provider.providerId ?? preferredProviderId ?? null,
+        providerName: provider.providerName,
+        model,
+        requestType: "chat_stream",
+        timing: {
+          queueWaitMs: timing.queueWaitMs,
+          networkMs: timing.upstreamConnectMs,
+          parseMs: 0,
+          totalMs: Date.now() - requestStartedAt,
+        },
+        inputTokens,
+        outputTokens,
+        costUsd: providerCostUsd || undefined,
+        statusCode: clientDisconnected ? 499 : 502,
+        metadata: {
+          route: "/api/llm/stream",
+          conversationId,
+          skillUsed: skillUsed || null,
+          queuePosition,
+          streamCompletedSuccessfully,
+          clientDisconnected,
+          unsupportedMessagesEventKeys: messagesStreamState
+            ? Array.from(messagesStreamState.unsupportedEventCounts.keys())
+            : [],
+          totalChunks,
+          totalStreamBytes,
+          fullContentLength: fullContent.length,
+        },
+      });
+      res.end();
+      return;
+    }
 
     // Deduct credits for streaming
+    await enforceDelegatedWorkerSpendGuardrails({
+      auth: req.auth,
+      estimatedCredits: actualStreamCredits,
+      idempotencyKey: req.get("Idempotency-Key") || undefined,
+    });
     const { deductCreditsForModel } = await import("../services/creditService");
     const creditsDeductionStartedAt = Date.now();
     await deductCreditsForModel({
@@ -1281,6 +2956,12 @@ async function proxyChatWithCredits(
       costUsd: providerCostUsd,
       sourceType: "chat",
       conversationId,
+      idempotencyKey: req.get("Idempotency-Key") || undefined,
+      metadata: buildDelegatedWorkerOriginMetadata(req.auth, "llm.chat_completions", {
+        endpoint: "/v1/chat/completions",
+        providerName: provider.providerName,
+        requestedModelId,
+      }),
     });
     timing.creditsDeductionMs = Date.now() - creditsDeductionStartedAt;
 
@@ -1293,7 +2974,6 @@ async function proxyChatWithCredits(
       try {
         const { createMessage, getConversationById, updateConversationCredits } = await import("../services/chatService");
         const { calculateCreditsForLLM, calculateCreditsFromCost } = await import("../services/creditService");
-
         // Verify conversation ownership
         const conversation = await getConversationById(conversationId, userId);
         if (conversation) {
@@ -1308,6 +2988,23 @@ async function proxyChatWithCredits(
           // Get traceId for cost correlation
           const traceId = getTraceId();
 
+          if (resolvedChatSelection.shouldPersistSelectionState) {
+            const nextSkillSettings = writeStoredChatModelSelectionState(
+              (conversationForSelection?.skillSettings as Record<string, unknown> | null | undefined) ?? {},
+              storedSelectionStateFromResolved({
+                selection: resolvedChatSelection.selection,
+                resolvedModelId: requestedModelId,
+                resolvedProviderId: provider.providerId ?? preferredProviderId ?? null,
+                resolvedProviderName: provider.providerName,
+                routeFamily: resolvedChatSelection.routeFamily,
+              }),
+            );
+            await updateConversation(conversationId, userId, {
+              model: resolvedChatSelection.selection.mode === "explicit" ? requestedModelId : null,
+              skillSettings: nextSkillSettings as any,
+            });
+          }
+
           const message = await createMessage({
             conversationId,
             role: "assistant",
@@ -1317,6 +3014,15 @@ async function proxyChatWithCredits(
             creditsUsed: creditsUsed.toString(),
             modelUsed: model || conversation.model || undefined,
             skillUsed,
+            runtimeMetadata: sanitizeMessageRuntimeMetadata({
+              source: runtimeMetadataHint.source,
+              taskClass: runtimeMetadataHint.taskClass,
+              profileId: runtimeMetadataHint.profileId,
+              tokenSavedEstimate: runtimeMetadataHint.tokenSavedEstimate,
+              voiceInputMode: runtimeMetadataHint.voiceInputMode,
+              provider: provider.providerName,
+              model: requestedModelId,
+            }),
             traceId,
           });
 
@@ -1339,7 +3045,26 @@ async function proxyChatWithCredits(
 
           // Send final event with saved message info
           res.write(`event: message_saved\n`);
-          res.write(`data: ${JSON.stringify({ id: message.id, creditsUsed, inputTokens, outputTokens })}\n\n`);
+          res.write(`data: ${JSON.stringify({
+            id: message.id,
+            creditsUsed,
+            inputTokens,
+            outputTokens,
+            resolvedModelId: requestedModelId,
+            resolvedProviderId: provider.providerId ?? preferredProviderId ?? null,
+            resolvedProviderName: provider.providerName,
+            routeFamily: resolvedChatSelection.routeFamily,
+            selectionMode: resolvedChatSelection.selectionMode,
+            runtimeMetadata: sanitizeMessageRuntimeMetadata({
+              source: runtimeMetadataHint.source,
+              taskClass: runtimeMetadataHint.taskClass,
+              profileId: runtimeMetadataHint.profileId,
+              tokenSavedEstimate: runtimeMetadataHint.tokenSavedEstimate,
+              voiceInputMode: runtimeMetadataHint.voiceInputMode,
+              provider: provider.providerName,
+              model: requestedModelId,
+            }),
+          })}\n\n`);
         } else {
           debugLog("LLM", "Conversation not found for saving", { conversationId, userId });
         }
@@ -1393,6 +3118,9 @@ async function proxyChatWithCredits(
         nonContentDeltaCount,
         reasoningDeltaCount,
         reasoningTextChars,
+        unsupportedMessagesEventKeys: messagesStreamState
+          ? Array.from(messagesStreamState.unsupportedEventCounts.keys())
+          : [],
       },
     });
     timing.finalizeMs = Date.now() - finalizeStartedAt;
@@ -1413,6 +3141,9 @@ async function proxyChatWithCredits(
 
     res.end();
   }
+  } finally {
+    await delegatedExecutionHandle.release();
+  }
 }
 
 function unauthorized(res: Response) {
@@ -1426,6 +3157,39 @@ function insufficientCredits(res: Response) {
       code: "insufficient_credits",
     },
   });
+}
+
+function respondDelegatedWorkerPlatformError(
+  res: Response,
+  error: DelegatedWorkerPlatformError,
+): void {
+  res.status(error.statusCode).json({
+    error: {
+      message: error.message,
+      code: error.code,
+      type: error.type,
+    },
+  });
+}
+
+function estimateDelegatedChatCredits(
+  messages: unknown,
+  maxTokens: unknown,
+  requestedModelId: string,
+): number {
+  const estimatedInputTokens = Array.isArray(messages) ? estimateMessages(messages as any[]) : 0;
+  const estimatedOutputTokens = Math.max(
+    64,
+    Number.isFinite(Number(maxTokens)) ? Number(maxTokens) : 512,
+  );
+  return Math.max(
+    MIN_CREDITS_REQUIRED,
+    calculateCreditsForLLM(
+      estimatedInputTokens,
+      estimatedOutputTokens,
+      requestedModelId,
+    ),
+  );
 }
 
 export function registerLLMRoutes(app: Express) {
@@ -1455,17 +3219,11 @@ export function registerLLMRoutes(app: Express) {
    * Returns true if the token is valid, false otherwise.
    */
   const verifyInternalToken = (req: Request): boolean => {
-    const expected = ENV.webGatewayToken;
-    if (!expected) return false;
     const token = req.headers["x-internal-token"] as string | undefined;
-    if (!token) return false;
-    const tokenBuf = Buffer.from(token);
-    const expectedBuf = Buffer.from(expected);
-    if (tokenBuf.length !== expectedBuf.length) return false;
-    return crypto.timingSafeEqual(tokenBuf, expectedBuf);
+    return compareCachedInternalToken(token);
   };
 
-  const SERVICE_ACCOUNT_ID = parseInt(process.env.LLM_GATEWAY_SERVICE_ACCOUNT_ID || "1", 10);
+  const SERVICE_ACCOUNT_ID = getCachedAppRuntimeConfig().llmGatewayServiceAccountId || 1;
 
   /**
    * Auth wrapper that accepts either X-Internal-Token (service-to-service)
@@ -1534,6 +3292,17 @@ export function registerLLMRoutes(app: Express) {
       try {
         await proxyChatWithCredits(req, res, stream ? "stream" : "json", check.userId);
       } catch (err: any) {
+        if (err instanceof DelegatedWorkerPlatformError) {
+          respondDelegatedWorkerPlatformError(res, err);
+          return;
+        }
+        if (res.headersSent) {
+          debugError("LLM", "Streaming route failed after headers were sent", err);
+          if (!res.writableEnded) {
+            res.end();
+          }
+          return;
+        }
         res.status(500).json({ error: { message: err?.message || "LLM error" } });
       }
     }
@@ -1651,6 +3420,10 @@ export function registerLLMRoutes(app: Express) {
         }
         await proxyChatWithCredits(req, res, "json", check.userId);
       } catch (err: any) {
+        if (err instanceof DelegatedWorkerPlatformError) {
+          respondDelegatedWorkerPlatformError(res, err);
+          return;
+        }
         res.status(500).json({ error: { message: err?.message || "LLM error" } });
       }
     }
@@ -1796,6 +3569,10 @@ export function registerLLMRoutes(app: Express) {
       try {
         await proxyChatWithCredits(req, res, "stream", check.userId, conversationId, skillUsed);
       } catch (err: any) {
+        if (err instanceof DelegatedWorkerPlatformError) {
+          respondDelegatedWorkerPlatformError(res, err);
+          return;
+        }
         // Best-effort SSE error
         res.status(200);
         res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
@@ -1833,8 +3610,10 @@ export function registerLLMRoutes(app: Express) {
 
         // Forward to Whisper API — try env vars first, then fall back to DB provider
         const { ENV } = await import("./env");
-        let sttApiUrl = ENV.forgeApiUrl;
-        let sttApiKey = ENV.forgeApiKey;
+        const { getCachedAppRuntimeConfig } = await import("../services/appRuntimeConfig");
+        const runtimeConfig = getCachedAppRuntimeConfig();
+        let sttApiUrl = runtimeConfig.forgeApiUrl || ENV.forgeApiUrl;
+        let sttApiKey = runtimeConfig.forgeApiKey || ENV.forgeApiKey;
         let sttModel = "whisper-1";
 
         // Credit cost per minute (default 6 for OpenAI Whisper)
@@ -2069,6 +3848,7 @@ export function registerLLMRoutes(app: Express) {
 
         const { createMessage, getConversationById, updateConversationCredits } = await import("../services/chatService");
         const { calculateCreditsForLLM } = await import("../services/creditService");
+        const { sanitizeMessageRuntimeMetadata } = await import("../services/localAiRuntimeMetadata");
 
         debugLog("LLM API", "Looking up conversation", {
           conversationId,
@@ -2100,6 +3880,10 @@ export function registerLLMRoutes(app: Express) {
           creditsUsed: creditsUsed.toString(),
           modelUsed: effectiveModel,
           skillUsed,
+          runtimeMetadata: sanitizeMessageRuntimeMetadata({
+            source: "cloud",
+            model: effectiveModel,
+          }),
         });
 
         debugLog("LLM API", "Message saved", { messageId: message.id });
@@ -2154,6 +3938,7 @@ export function registerLLMRoutes(app: Express) {
         // Dynamic import to avoid circular dependencies
         const { createMessage, getConversationById, updateConversationCredits } = await import("../services/chatService");
         const { calculateCreditsForLLM } = await import("../services/creditService");
+        const { sanitizeMessageRuntimeMetadata } = await import("../services/localAiRuntimeMetadata");
 
         // Verify conversation ownership
         const conversation = await getConversationById(conversationId, userId);
@@ -2181,6 +3966,10 @@ export function registerLLMRoutes(app: Express) {
           creditsUsed: creditsUsed.toString(),
           modelUsed: effectiveModel,
           skillUsed,
+          runtimeMetadata: sanitizeMessageRuntimeMetadata({
+            source: "cloud",
+            model: effectiveModel,
+          }),
         });
 
         debugLog("Chat API", "Message saved", { messageId: message.id, creditsUsed });
@@ -2234,10 +4023,16 @@ export function registerLLMRoutes(app: Express) {
           tenantId: (req as any).tenantId || "default",
           conversationId: req.body?.conversationId ? Number(req.body.conversationId) : undefined,
           preferredProvider: req.body?.preferredProvider ? Number(req.body.preferredProvider) : undefined,
+          modelSelection: req.body?.modelSelection,
+          modelSelectionContext: req.body?.modelSelectionContext,
           skillUsed: req.body?.skillUsed,
           res,
         });
       } catch (err: any) {
+        if (err instanceof DelegatedWorkerPlatformError) {
+          respondDelegatedWorkerPlatformError(res, err);
+          return;
+        }
         if (!res.headersSent) {
           res.status(500).json({ error: { message: err?.message || "LLM error" } });
         }
@@ -2261,6 +4056,8 @@ export function registerLLMRoutes(app: Express) {
           tenantId: (req as any).tenantId || "default",
           conversationId: req.body?.conversationId ? Number(req.body.conversationId) : undefined,
           preferredProvider: req.body?.preferredProvider ? Number(req.body.preferredProvider) : undefined,
+          modelSelection: req.body?.modelSelection,
+          modelSelectionContext: req.body?.modelSelectionContext,
           skillUsed: req.body?.skillUsed,
           res,
         });

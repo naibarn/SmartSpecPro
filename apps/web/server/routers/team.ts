@@ -8,6 +8,7 @@ import { router, protectedProcedure } from "../_core/trpc";
 import { createRateLimitMiddleware } from "../_core/rateLimitedProcedure";
 import { resolveTenantIdVarchar } from "../services/tenantContext";
 import * as teamService from "../services/teamService";
+import * as workerBudgetService from "../services/workerBudgetService";
 import { TEAM_BLUEPRINTS } from "@shared/teamBlueprints";
 import { auditLogger } from "../services/auditLogger";
 
@@ -19,6 +20,7 @@ const memberInputSchema = z.object({
   blueprintMemberId: z.string().min(1).optional(),
   humanUserId: z.number().int().positive().optional(),
   externalRef: z.string().min(1).max(255).optional(),
+  externalWorkerId: z.string().uuid().optional(),
   externalConfigJson: z.record(z.string(), z.unknown()).optional(),
   displayName: z.string().min(1).max(255),
   nickname: z.string().max(100).optional(),
@@ -186,6 +188,50 @@ export const teamRouter = router({
       return teamService.listTeamTemplates(tenantId);
     }),
 
+  listBindableWorkers: protectedProcedure
+    .input(z.object({ teamId: z.string().min(1).optional() }).optional())
+    .query(async ({ input, ctx }) => {
+      const tenantId = requireTenantId(ctx);
+      return teamService.listBindableWorkers(tenantId, ctx.user!.id, input?.teamId ?? null);
+    }),
+
+  getOwnedWorkerBudget: protectedProcedure
+    .input(z.object({ workerId: z.string().min(1) }))
+    .query(async ({ input, ctx }) => {
+      const tenantId = requireTenantId(ctx);
+      return workerBudgetService.getWorkerBudgetSettings({
+        tenantId,
+        workerId: input.workerId,
+        ownerUserId: ctx.user!.id,
+      });
+    }),
+
+  updateOwnedWorkerBudget: protectedProcedure
+    .input(z.object({
+      workerId: z.string().min(1),
+      hourlyCredits: z.number().int().positive().nullable().optional(),
+      fiveHourCredits: z.number().int().positive().nullable().optional(),
+      dailyCredits: z.number().int().positive().nullable().optional(),
+      weeklyCredits: z.number().int().positive().nullable().optional(),
+      monthlyCredits: z.number().int().positive().nullable().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const tenantId = requireTenantId(ctx);
+      return workerBudgetService.updateWorkerBudgetSettings({
+        tenantId,
+        workerId: input.workerId,
+        ownerUserId: ctx.user!.id,
+        actorUserId: ctx.user!.id,
+        budgets: {
+          hourlyCredits: input.hourlyCredits ?? null,
+          fiveHourCredits: input.fiveHourCredits ?? null,
+          dailyCredits: input.dailyCredits ?? null,
+          weeklyCredits: input.weeklyCredits ?? null,
+          monthlyCredits: input.monthlyCredits ?? null,
+        },
+      });
+    }),
+
   listBlueprints: protectedProcedure
     .query(() => TEAM_BLUEPRINTS),
 
@@ -216,6 +262,7 @@ export const teamRouter = router({
       memberRole: z.enum(["orchestrator", "researcher", "reviewer", "publisher", "specialist"]).optional(),
       humanUserId: z.number().int().positive().optional(),
       externalRef: z.string().max(255).optional(),
+      externalWorkerId: z.string().uuid().nullable().optional(),
       externalConfigJson: z.record(z.string(), z.unknown()).optional(),
       instructions: z.string().optional(),
       model: z.string().max(100).optional(),

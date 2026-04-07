@@ -5,7 +5,7 @@
  * and per-agent budget tracking.
  */
 
-import { eq, and, sql, count, desc, inArray } from "drizzle-orm";
+import { eq, and, sql, count, desc, inArray, isNull, or } from "drizzle-orm";
 import { getDb } from "../db";
 import {
   teamRuns,
@@ -24,11 +24,13 @@ import { getCoordinatorProfile } from "./turnOrderEngine";
 import * as workItemService from "./workItemService";
 import * as roomService from "./roomService";
 import * as monitoringService from "./monitoringService";
+import { queueOpenClawWorkerJob } from "./workerSchedulerService";
 import { agencyAgents, personaTemplates } from "../../drizzle/schema";
 import { getNextSpeaker, type TurnStrategy } from "./turnOrderEngine";
 import type { WorkItemStatus } from "./workItemService";
 import { routeRoomIntent } from "./roomIntentRouter";
 import { executeTeamRunSkillTurn } from "./teamRunSkillExecutor";
+import { sanitizeMessageRuntimeMetadata } from "./localAiRuntimeMetadata";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -81,6 +83,16 @@ export interface AutoTeamLoopDecision {
   continueLoop: boolean;
   pauseRun: boolean;
   reason: "awaiting_human_approval" | "awaiting_external_member" | "no_actionable_work_items" | null;
+}
+
+export interface ExternalConnectorDispatchCandidate {
+  workItemId: string;
+  externalWorkerId: string;
+  memberId: string;
+  title: string;
+  objective: string | null;
+  status: WorkItemStatus;
+  threadRootMessageId: string | null;
 }
 
 // ─── Constants ──────────────────────────────────────────────────────────────
@@ -168,6 +180,26 @@ function getResponsibleMemberKind(
   }
 }
 
+function getResponsibleMemberId(workItem: {
+  status: WorkItemStatus;
+  assignedMemberId: string | null;
+  reviewerMemberId: string | null;
+  approverMemberId: string | null;
+}): string | null {
+  switch (workItem.status) {
+    case "in_review":
+      return workItem.reviewerMemberId ?? null;
+    case "awaiting_approval":
+      return workItem.approverMemberId ?? null;
+    case "planned":
+    case "in_progress":
+    case "needs_revision":
+    case "blocked":
+    default:
+      return workItem.assignedMemberId ?? null;
+  }
+}
+
 function isAssistantActionableWorkItem(workItem: AutoLoopWorkItemSnapshot): boolean {
   const responsibleMemberKind = getResponsibleMemberKind(workItem);
   switch (workItem.status) {
@@ -221,6 +253,51 @@ export function evaluateAutoTeamLoopDecision(params: {
   }
 
   return { continueLoop: false, pauseRun: false, reason: "no_actionable_work_items" };
+}
+
+export function resolveExternalConnectorDispatchCandidates(params: {
+  workItems: Array<{
+    id: string;
+    title: string;
+    objective: string | null;
+    status: WorkItemStatus;
+    threadRootMessageId: string | null;
+    assignedMemberId: string | null;
+    reviewerMemberId: string | null;
+    approverMemberId: string | null;
+  }>;
+  memberBindings: Record<string, { memberKind: "assistant" | "human" | "external_connector"; externalWorkerId: string | null }>;
+}): ExternalConnectorDispatchCandidate[] {
+  const candidates: ExternalConnectorDispatchCandidate[] = [];
+  const seen = new Set<string>();
+
+  for (const workItem of params.workItems) {
+    const memberId = getResponsibleMemberId(workItem);
+    if (!memberId) continue;
+
+    const binding = params.memberBindings[memberId];
+    if (!binding || binding.memberKind !== "external_connector" || !binding.externalWorkerId) {
+      continue;
+    }
+
+    const dedupeKey = `${workItem.id}:${binding.externalWorkerId}`;
+    if (seen.has(dedupeKey)) {
+      continue;
+    }
+    seen.add(dedupeKey);
+
+    candidates.push({
+      workItemId: workItem.id,
+      externalWorkerId: binding.externalWorkerId,
+      memberId,
+      title: workItem.title,
+      objective: workItem.objective ?? null,
+      status: workItem.status,
+      threadRootMessageId: workItem.threadRootMessageId ?? null,
+    });
+  }
+
+  return candidates;
 }
 
 function normalizeAssistantTurnContent(content: string | null | undefined): string {
@@ -565,6 +642,108 @@ async function autoPauseRunForDependency(params: {
   });
 
   try {
+    if (params.reason === "awaiting_external_member") {
+      const workItems = await db
+        .select({
+          id: teamWorkItems.id,
+          title: teamWorkItems.title,
+          objective: teamWorkItems.objective,
+          status: teamWorkItems.status,
+          threadRootMessageId: teamWorkItems.threadRootMessageId,
+          assignedMemberId: teamWorkItems.assignedMemberId,
+          reviewerMemberId: teamWorkItems.reviewerMemberId,
+          approverMemberId: teamWorkItems.approverMemberId,
+        })
+        .from(teamWorkItems)
+        .where(
+          and(
+            eq(teamWorkItems.roomId, params.run.roomId),
+            eq(teamWorkItems.tenantId, params.tenantId),
+            or(eq(teamWorkItems.runId, params.run.id), isNull(teamWorkItems.runId)),
+          ),
+        );
+
+      const memberIds = Array.from(new Set(
+        workItems.flatMap((workItem) => [
+          workItem.assignedMemberId,
+          workItem.reviewerMemberId,
+          workItem.approverMemberId,
+        ]).filter((value): value is string => Boolean(value)),
+      ));
+
+      const memberBindings = memberIds.length === 0
+        ? []
+        : await db
+            .select({
+              id: assistantProfiles.id,
+              memberKind: assistantProfiles.memberKind,
+              externalWorkerId: assistantProfiles.externalWorkerId,
+            })
+            .from(assistantProfiles)
+            .where(
+              and(
+                eq(assistantProfiles.tenantId, params.tenantId),
+                inArray(assistantProfiles.id, memberIds),
+              ),
+            );
+
+      const dispatchCandidates = resolveExternalConnectorDispatchCandidates({
+        workItems: workItems.map((workItem) => ({
+          ...workItem,
+          status: workItem.status as WorkItemStatus,
+        })),
+        memberBindings: Object.fromEntries(
+          memberBindings.map((member) => [
+            member.id,
+            {
+              memberKind: member.memberKind as "assistant" | "human" | "external_connector",
+              externalWorkerId: member.externalWorkerId ?? null,
+            },
+          ]),
+        ),
+      });
+
+      await Promise.all(
+        dispatchCandidates.map((candidate) =>
+          queueOpenClawWorkerJob({
+            tenantId: params.tenantId,
+            teamId: params.run.teamId,
+            workflowRunId: params.run.id,
+            requestedByUserId: params.run.initiatedByUserId,
+            requestedBySystemComponent: "run_engine",
+            jobType: "external_agent_task",
+            title: candidate.title,
+            description: candidate.objective ?? `External connector follow-up for ${candidate.title}`,
+            priority: 50,
+            capabilityFamilies: ["artifact-producing-session"],
+            inputJson: {
+              roomId: params.run.roomId,
+              runId: params.run.id,
+              teamId: params.run.teamId,
+              workItemId: candidate.workItemId,
+              threadRootMessageId: candidate.threadRootMessageId,
+              workItemStatus: candidate.status,
+            },
+            instructionsJson: {
+              intent: "external_connector_follow_up",
+              externalWorkerId: candidate.externalWorkerId,
+            },
+            idempotencyKey: `run:${params.run.id}:work-item:${candidate.workItemId}:worker:${candidate.externalWorkerId}`,
+            preferredWorkerId: candidate.externalWorkerId,
+            reservedCredits: 10,
+          }).catch((error) => {
+            console.warn("External connector worker dispatch failed", {
+              runId: params.run.id,
+              workItemId: candidate.workItemId,
+              workerId: candidate.externalWorkerId,
+              error: error instanceof Error ? error.message : String(error),
+            });
+            return null;
+          }),
+        ),
+      );
+    }
+
     const { publishEvent, createEvent } = await import("./orchestratorEventBus");
     await publishEvent(createEvent("status_change", {
       tenantId: params.tenantId,
@@ -937,6 +1116,9 @@ export async function runNextTurn(runId: string, tenantId?: string): Promise<Run
     });
 
     const content = normalizeAssistantTurnContent(turnResponse.content);
+    const normalizedRuntimeMetadata = sanitizeMessageRuntimeMetadata(
+      turnResponse.metadata ?? {},
+    );
     const message = await roomService.postWorkUpdate({
       roomId: run.roomId,
       tenantId,
@@ -947,6 +1129,13 @@ export async function runNextTurn(runId: string, tenantId?: string): Promise<Run
       metadataJson: {
         nextSpeakerHint: turnResponse.nextSpeakerHint ?? null,
         toolLoopEnabled: Boolean(turnResponse.metadata?.toolLoopEnabled),
+        runtimeDisclosure: {
+          source: normalizedRuntimeMetadata.source,
+          taskClass: normalizedRuntimeMetadata.taskClass,
+          profileId: normalizedRuntimeMetadata.profileId,
+          fallbackReason: normalizedRuntimeMetadata.fallbackReason,
+          voiceInputMode: normalizedRuntimeMetadata.voiceInputMode,
+        },
         runtimeMetadata: turnResponse.metadata ?? {},
       },
       tokenUsageJson: {

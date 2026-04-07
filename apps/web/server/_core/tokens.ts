@@ -18,7 +18,19 @@ const JWT_SECRET: string = jwtSecretEnv;
 export interface TokenClaims {
   sub: string;
   tenantId?: string;
+  teamId?: string;
+  workerId?: string;
+  workerJobId?: string;
+  runtimeType?: string;
+  aud?: string | string[];
   type?: string; // "access" or "refresh" - required by Python backend
+  tokenUse?: string;
+  userId?: number;
+  ownerUserId?: number;
+  delegatedSessionId?: string;
+  scopeProfile?: string;
+  registeredByUserId?: number;
+  externalReference?: string;
   scopes?: string[];
   jti?: string;
   exp?: number;

@@ -207,6 +207,31 @@ describe("teamService", () => {
 
       expect(() => teamService.validateTeamInput(duplicateExternal as any)).toThrow("duplicate members");
     });
+
+    it("throws when the same bound external worker is included twice", () => {
+      const duplicateBoundWorker = {
+        ...baseInput,
+        members: [
+          { ...baseInput.members[0] },
+          {
+            memberKind: "external_connector" as const,
+            externalRef: "openclaw://desk-1",
+            externalWorkerId: "11111111-1111-1111-1111-111111111111",
+            displayName: "Desk A",
+            isLead: false,
+          },
+          {
+            memberKind: "external_connector" as const,
+            externalRef: "openclaw://desk-2",
+            externalWorkerId: "11111111-1111-1111-1111-111111111111",
+            displayName: "Desk B",
+            isLead: false,
+          },
+        ],
+      };
+
+      expect(() => teamService.validateTeamInput(duplicateBoundWorker as any)).toThrow("duplicate members");
+    });
   });
 
   describe("generateTeamSlug", () => {

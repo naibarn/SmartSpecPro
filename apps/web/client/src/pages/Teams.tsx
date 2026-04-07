@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect, useRef } from "react";
+import { skipToken } from "@tanstack/react-query";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLocation, useRoute } from "wouter";
@@ -99,6 +100,7 @@ interface NewMemberEntry {
   reusedPersonaName?: string;
   humanUserId?: number;
   externalRef?: string;
+  externalWorkerId?: string | null;
   externalConfigJson?: Record<string, unknown>;
   displayName: string;
   roleTitle?: string;
@@ -110,6 +112,7 @@ interface NewMemberEntry {
 interface ExternalMemberDraft {
   displayName: string;
   externalRef: string;
+  externalWorkerId: string;
   roleTitle: string;
   instructions: string;
 }
@@ -122,9 +125,57 @@ interface MemberEditForm {
   roleTitle: string;
   instructions: string;
   externalRef: string;
+  externalWorkerId: string;
   humanUserId: number | null;
   currentLead: boolean;
   promoteToLead: boolean;
+}
+
+interface BindableWorkerOption {
+  id: string;
+  displayName: string;
+  status: string;
+  runtimeType: string;
+  runtimeVersion: string;
+  externalReference: string;
+  teamId: string | null;
+  lastSeenAt: string | Date | null;
+  warningFlagsJson: string[];
+  boundProfileCount: number;
+  availableForBinding: boolean;
+  bindingReason?: string | null;
+}
+
+interface WorkerBudgetWindowSummary {
+  label: "hourly" | "five_hour" | "daily" | "weekly" | "monthly";
+  capCredits: number | null;
+  usedCredits: number;
+  remainingCredits: number | null;
+  blocked: boolean;
+}
+
+interface WorkerBudgetSummary {
+  workerId: string;
+  displayName: string;
+  runtimeType: string;
+  ownerUserId: number | null;
+  budgets: {
+    hourlyCredits?: number | null;
+    fiveHourCredits?: number | null;
+    dailyCredits?: number | null;
+    weeklyCredits?: number | null;
+    monthlyCredits?: number | null;
+  };
+  windows: WorkerBudgetWindowSummary[];
+  blockedByBudget: boolean;
+}
+
+interface WorkerBudgetDraft {
+  hourlyCredits: string;
+  fiveHourCredits: string;
+  dailyCredits: string;
+  weeklyCredits: string;
+  monthlyCredits: string;
 }
 
 const DRAFT_MEMBER_KIND_OPTIONS: DraftMemberKind[] = [
@@ -145,6 +196,7 @@ const TEAM_CATEGORY_OPTIONS = [
 const createEmptyExternalMemberDraft = (): ExternalMemberDraft => ({
   displayName: "",
   externalRef: "",
+  externalWorkerId: "",
   roleTitle: "",
   instructions: "",
 });
@@ -193,9 +245,63 @@ function normalizeExternalMemberRef(externalRef: string | undefined): string {
   return externalRef?.trim().toLowerCase() ?? "";
 }
 
-function getDraftMemberKey(member: Pick<NewMemberEntry, "memberKind" | "personaId" | "humanUserId" | "externalRef">): string {
+function createWorkerBudgetDraft(summary?: WorkerBudgetSummary | null): WorkerBudgetDraft {
+  return {
+    hourlyCredits: summary?.budgets.hourlyCredits != null ? String(summary.budgets.hourlyCredits) : "",
+    fiveHourCredits: summary?.budgets.fiveHourCredits != null ? String(summary.budgets.fiveHourCredits) : "",
+    dailyCredits: summary?.budgets.dailyCredits != null ? String(summary.budgets.dailyCredits) : "",
+    weeklyCredits: summary?.budgets.weeklyCredits != null ? String(summary.budgets.weeklyCredits) : "",
+    monthlyCredits: summary?.budgets.monthlyCredits != null ? String(summary.budgets.monthlyCredits) : "",
+  };
+}
+
+function parseWorkerBudgetDraft(draft: WorkerBudgetDraft): {
+  hourlyCredits: number | null;
+  fiveHourCredits: number | null;
+  dailyCredits: number | null;
+  weeklyCredits: number | null;
+  monthlyCredits: number | null;
+} {
+  const parseValue = (value: string): number | null => {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    const parsed = Number(trimmed);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      throw new Error("Budget values must be positive numbers or blank");
+    }
+    return Math.floor(parsed);
+  };
+
+  return {
+    hourlyCredits: parseValue(draft.hourlyCredits),
+    fiveHourCredits: parseValue(draft.fiveHourCredits),
+    dailyCredits: parseValue(draft.dailyCredits),
+    weeklyCredits: parseValue(draft.weeklyCredits),
+    monthlyCredits: parseValue(draft.monthlyCredits),
+  };
+}
+
+function workerBudgetWindowLabel(label: WorkerBudgetWindowSummary["label"]): string {
+  switch (label) {
+    case "hourly":
+      return "Hourly";
+    case "five_hour":
+      return "5-hour";
+    case "daily":
+      return "Daily";
+    case "weekly":
+      return "Weekly";
+    case "monthly":
+      return "Monthly";
+  }
+}
+
+function getDraftMemberKey(
+  member: Pick<NewMemberEntry, "memberKind" | "personaId" | "humanUserId" | "externalRef" | "externalWorkerId">,
+): string {
   if (member.memberKind === "assistant") return `assistant:${member.personaId ?? ""}`;
   if (member.memberKind === "human") return `human:${member.humanUserId ?? ""}`;
+  if (member.externalWorkerId?.trim()) return `external-worker:${member.externalWorkerId.trim()}`;
   return `external:${normalizeExternalMemberRef(member.externalRef)}`;
 }
 
@@ -404,11 +510,66 @@ export default function Teams() {
     { teamId: selectedTeamId! },
     { enabled: !!selectedTeamId },
   );
+  const { data: bindableWorkers } = trpc.team.listBindableWorkers.useQuery(
+    selectedTeamId ? { teamId: selectedTeamId } : undefined,
+    {
+      enabled: Boolean(isAuthenticated && (selectedTeamId || createTeamOpen || addMemberOpen)),
+      staleTime: 30_000,
+    },
+  );
+  const bindableWorkerList = (bindableWorkers ?? []) as BindableWorkerOption[];
+  const bindableWorkerMap = new Map(bindableWorkerList.map((worker) => [worker.id, worker]));
+  const [workerBudgetDrafts, setWorkerBudgetDrafts] = useState<Record<string, WorkerBudgetDraft>>({});
+  const selectedBudgetWorkerId = (
+    editingMember?.memberKind === "external_connector" && editingMember.externalWorkerId.trim()
+      ? editingMember.externalWorkerId.trim()
+      : addMemberOpen && addExternalDraft.externalWorkerId.trim()
+        ? addExternalDraft.externalWorkerId.trim()
+        : createTeamOpen && createMemberKind === "external_connector" && createExternalDraft.externalWorkerId.trim()
+          ? createExternalDraft.externalWorkerId.trim()
+          : ""
+  ) || null;
+  const ownedWorkerBudgetQuery = trpc.team.getOwnedWorkerBudget.useQuery(
+    selectedBudgetWorkerId ? { workerId: selectedBudgetWorkerId } : skipToken,
+    {
+      enabled: Boolean(isAuthenticated && selectedBudgetWorkerId),
+      staleTime: 30_000,
+    },
+  );
+  const updateOwnedWorkerBudgetMutation = trpc.team.updateOwnedWorkerBudget.useMutation({
+    onSuccess: async (result) => {
+      setWorkerBudgetDrafts((prev) => ({
+        ...prev,
+        [result.workerId]: createWorkerBudgetDraft(result as WorkerBudgetSummary),
+      }));
+      await Promise.all([
+        utils.team.getOwnedWorkerBudget.invalidate({ workerId: result.workerId }),
+        utils.team.listBindableWorkers.invalidate(selectedTeamId ? { teamId: selectedTeamId } : undefined),
+      ]);
+      toast.success("Worker budget guardrails saved");
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to save worker budget");
+    },
+  });
 
   const selectedTeam = teams.find((t: any) => t.id === selectedTeamId);
   const selectedRoom = teamRooms?.find((room: any) => room.id === selectedRoomId) ?? null;
   const selectedRoomType = normalizeCreatableRoomType((selectedRoom?.roomType as CreateRoomState["roomType"] | undefined) ?? "team");
   const selectedRoomExecutionMode = mapRoomTypeToExecutionMode(selectedRoomType);
+  const selectedBudgetSummary = (ownedWorkerBudgetQuery.data as WorkerBudgetSummary | undefined) ?? null;
+  const selectedBudgetDraft = selectedBudgetWorkerId
+    ? workerBudgetDrafts[selectedBudgetWorkerId] ?? createWorkerBudgetDraft(selectedBudgetSummary)
+    : null;
+
+  useEffect(() => {
+    if (!selectedBudgetSummary) return;
+    setWorkerBudgetDrafts((prev) => (
+      prev[selectedBudgetSummary.workerId]
+        ? prev
+        : { ...prev, [selectedBudgetSummary.workerId]: createWorkerBudgetDraft(selectedBudgetSummary) }
+    ));
+  }, [selectedBudgetSummary]);
 
   useEffect(() => {
     if (selectedRoom?.lastRunId) {
@@ -584,7 +745,11 @@ export default function Teams() {
   const existingTeamMemberKeys = new Set(
     (teamDetail?.members ?? []).map((member: any) => {
       if (member.memberKind === "human") return `human:${member.humanUserId ?? ""}`;
-      if (member.memberKind === "external_connector") return `external:${normalizeExternalMemberRef(member.externalRef)}`;
+      if (member.memberKind === "external_connector") {
+        return member.externalWorkerId
+          ? `external-worker:${member.externalWorkerId}`
+          : `external:${normalizeExternalMemberRef(member.externalRef)}`;
+      }
       return `assistant:${member.personaId ?? ""}`;
     }),
   );
@@ -692,7 +857,12 @@ export default function Teams() {
       toast.error(t("teams.error.connectorFieldsRequired"));
       return;
     }
-    const memberKey = getDraftMemberKey({ memberKind: "external_connector", externalRef: ref });
+    const selectedWorkerId = createExternalDraft.externalWorkerId.trim() || undefined;
+    const memberKey = getDraftMemberKey({
+      memberKind: "external_connector",
+      externalRef: ref,
+      externalWorkerId: selectedWorkerId,
+    });
     if (newTeamMembers.some((member) => member.memberKey === memberKey)) {
       toast.error(t("teams.error.connectorAlreadyAdded"));
       return;
@@ -704,6 +874,7 @@ export default function Teams() {
         memberKind: "external_connector",
         memberRole: createMemberRole,
         externalRef: ref,
+        externalWorkerId: selectedWorkerId,
         externalConfigJson: {
           instructions: createExternalDraft.instructions.trim() || undefined,
         },
@@ -798,7 +969,10 @@ export default function Teams() {
       toast.error(t("teams.error.connectorFieldsRequired"));
       return;
     }
-    const memberKey = `external:${normalizeExternalMemberRef(ref)}`;
+    const selectedWorkerId = addExternalDraft.externalWorkerId.trim() || undefined;
+    const memberKey = selectedWorkerId
+      ? `external-worker:${selectedWorkerId}`
+      : `external:${normalizeExternalMemberRef(ref)}`;
     if (existingTeamMemberKeys.has(memberKey)) {
       toast.error(t("teams.error.connectorAlreadyInTeam"));
       return;
@@ -809,6 +983,7 @@ export default function Teams() {
         memberKind: "external_connector",
         memberRole: addMemberRole,
         externalRef: ref,
+        externalWorkerId: selectedWorkerId,
         externalConfigJson: {
           instructions: addExternalDraft.instructions.trim() || undefined,
         },
@@ -831,6 +1006,7 @@ export default function Teams() {
           ? member.instructions ?? ""
           : getConnectorInstructions(member.externalConfigJson),
       externalRef: member.externalRef ?? "",
+      externalWorkerId: member.externalWorkerId ?? "",
       humanUserId: member.humanUserId ?? null,
       currentLead: member.isLead ?? false,
       promoteToLead: member.isLead ?? false,
@@ -866,12 +1042,149 @@ export default function Teams() {
         return;
       }
       payload.externalRef = externalRef;
+      payload.externalWorkerId = editingMember.externalWorkerId.trim() || null;
       payload.externalConfigJson = {
         instructions: editingMember.instructions.trim() || undefined,
       };
     }
 
     updateMemberMutation.mutate(payload as any);
+  };
+
+  const setSelectedWorkerBudgetField = (field: keyof WorkerBudgetDraft, value: string) => {
+    if (!selectedBudgetWorkerId) return;
+    setWorkerBudgetDrafts((prev) => ({
+      ...prev,
+      [selectedBudgetWorkerId]: {
+        ...(prev[selectedBudgetWorkerId] ?? createWorkerBudgetDraft(selectedBudgetSummary)),
+        [field]: value,
+      },
+    }));
+  };
+
+  const saveSelectedWorkerBudget = () => {
+    if (!selectedBudgetWorkerId || !selectedBudgetDraft) return;
+    try {
+      updateOwnedWorkerBudgetMutation.mutate({
+        workerId: selectedBudgetWorkerId,
+        ...parseWorkerBudgetDraft(selectedBudgetDraft),
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Invalid worker budget");
+    }
+  };
+
+  const clearSelectedWorkerBudget = () => {
+    if (!selectedBudgetWorkerId) return;
+    const emptyDraft = createWorkerBudgetDraft(null);
+    setWorkerBudgetDrafts((prev) => ({
+      ...prev,
+      [selectedBudgetWorkerId]: emptyDraft,
+    }));
+    updateOwnedWorkerBudgetMutation.mutate({
+      workerId: selectedBudgetWorkerId,
+      hourlyCredits: null,
+      fiveHourCredits: null,
+      dailyCredits: null,
+      weeklyCredits: null,
+      monthlyCredits: null,
+    });
+  };
+
+  const renderSelectedWorkerBudgetPanel = () => {
+    if (!selectedBudgetWorkerId) return null;
+
+    const worker = bindableWorkerMap.get(selectedBudgetWorkerId);
+    const draft = selectedBudgetDraft ?? createWorkerBudgetDraft(selectedBudgetSummary);
+    const budgetFields: Array<{ key: keyof WorkerBudgetDraft; label: string }> = [
+      { key: "hourlyCredits", label: "Hourly cap" },
+      { key: "fiveHourCredits", label: "5-hour cap" },
+      { key: "dailyCredits", label: "Daily cap" },
+      { key: "weeklyCredits", label: "Weekly cap" },
+      { key: "monthlyCredits", label: "Monthly cap" },
+    ];
+
+    return (
+      <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <p className="text-sm font-medium">Worker credit guardrails</p>
+            <p className="text-xs text-muted-foreground">
+              Personal safety caps for {worker?.displayName ?? selectedBudgetWorkerId}. Charges still come from your own SmartSpecPro balance.
+            </p>
+          </div>
+          {selectedBudgetSummary?.blockedByBudget ? (
+            <Badge variant="destructive">Currently blocked by budget</Badge>
+          ) : (
+            <Badge variant="outline">Personal worker budget</Badge>
+          )}
+        </div>
+
+        {ownedWorkerBudgetQuery.isLoading ? (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Loading worker budget…
+          </div>
+        ) : (
+          <>
+            <div className="grid gap-3 md:grid-cols-2">
+              {budgetFields.map((field) => (
+                <div key={field.key}>
+                  <Label>{field.label}</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    inputMode="numeric"
+                    value={draft[field.key]}
+                    placeholder="Unlimited"
+                    onChange={(event) => setSelectedWorkerBudgetField(field.key, event.target.value)}
+                    className="mt-1"
+                  />
+                </div>
+              ))}
+            </div>
+
+            {selectedBudgetSummary?.windows?.length ? (
+              <div className="space-y-1 rounded-md border bg-white p-3 text-xs text-slate-700">
+                {selectedBudgetSummary.windows.map((window) => (
+                  <div key={window.label} className="flex items-center justify-between gap-3">
+                    <span>{workerBudgetWindowLabel(window.label)}</span>
+                    <span className={cn(window.blocked ? "font-medium text-red-600" : "text-muted-foreground")}>
+                      {window.usedCredits} used
+                      {window.capCredits != null ? ` / ${window.capCredits} cap` : " / unlimited"}
+                      {window.remainingCredits != null ? ` · ${window.remainingCredits} left` : ""}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+
+            <div className="flex flex-wrap justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={clearSelectedWorkerBudget}
+                disabled={updateOwnedWorkerBudgetMutation.isPending}
+              >
+                Clear caps
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={saveSelectedWorkerBudget}
+                disabled={updateOwnedWorkerBudgetMutation.isPending}
+              >
+                {updateOwnedWorkerBudgetMutation.isPending ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : null}
+                Save worker budget
+              </Button>
+            </div>
+          </>
+        )}
+      </div>
+    );
   };
 
   const applyTeamBlueprint = (blueprintId: string) => {
@@ -935,6 +1248,7 @@ export default function Teams() {
           blueprintMemberId: m.memberKind === "assistant" ? m.blueprintMemberId : undefined,
           humanUserId: m.humanUserId,
           externalRef: m.externalRef,
+          externalWorkerId: m.externalWorkerId ?? undefined,
           externalConfigJson: m.externalConfigJson,
           displayName: m.displayName,
           roleTitle: m.roleTitle,
@@ -1712,6 +2026,15 @@ export default function Teams() {
                               {member.memberKind === "external_connector" && member.externalRef && (
                                 <p className="truncate">{member.externalRef}</p>
                               )}
+                              {member.memberKind === "external_connector" && member.externalWorkerId && (
+                                <p className="truncate">
+                                  {(() => {
+                                    const boundWorker = bindableWorkerMap.get(member.externalWorkerId);
+                                    if (!boundWorker) return `Worker ${member.externalWorkerId}`;
+                                    return `${boundWorker.displayName} · ${boundWorker.status}`;
+                                  })()}
+                                </p>
+                              )}
                             </div>
                           </div>
                           <Button
@@ -2125,6 +2448,33 @@ export default function Teams() {
                     />
                   </div>
                   <div>
+                    <Label>Bound Worker</Label>
+                    <select
+                      value={editingMember.externalWorkerId}
+                      onChange={(e) =>
+                        setEditingMember((prev) => (prev ? { ...prev, externalWorkerId: e.target.value } : prev))
+                      }
+                      className="mt-1 flex h-10 w-full rounded-md border bg-background px-3 py-2 text-sm"
+                    >
+                      <option value="">Leave unresolved</option>
+                      {bindableWorkerList.map((worker) => (
+                        <option
+                          key={worker.id}
+                          value={worker.id}
+                          disabled={!worker.availableForBinding && worker.id !== editingMember.externalWorkerId}
+                        >
+                          {worker.displayName} ({worker.status})
+                        </option>
+                      ))}
+                    </select>
+                    {editingMember.externalWorkerId && bindableWorkerMap.get(editingMember.externalWorkerId)?.bindingReason ? (
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        {bindableWorkerMap.get(editingMember.externalWorkerId)?.bindingReason}
+                      </p>
+                    ) : null}
+                  </div>
+                  {renderSelectedWorkerBudgetPanel()}
+                  <div>
                     <Label>{t("teams.edit.connectorInstructions")}</Label>
                     <Textarea
                       value={editingMember.instructions}
@@ -2342,6 +2692,29 @@ export default function Teams() {
                     className="mt-1"
                   />
                 </div>
+                <div>
+                  <Label>Bound Worker</Label>
+                  <select
+                    value={addExternalDraft.externalWorkerId}
+                    onChange={(e) =>
+                      setAddExternalDraft((prev) => ({ ...prev, externalWorkerId: e.target.value }))
+                    }
+                    className="mt-1 flex h-10 w-full rounded-md border bg-background px-3 py-2 text-sm"
+                  >
+                    <option value="">Leave unresolved</option>
+                    {bindableWorkerList.map((worker) => (
+                      <option key={worker.id} value={worker.id} disabled={!worker.availableForBinding}>
+                        {worker.displayName} ({worker.status})
+                      </option>
+                    ))}
+                  </select>
+                  {addExternalDraft.externalWorkerId && bindableWorkerMap.get(addExternalDraft.externalWorkerId)?.bindingReason ? (
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      {bindableWorkerMap.get(addExternalDraft.externalWorkerId)?.bindingReason}
+                    </p>
+                  ) : null}
+                </div>
+                {renderSelectedWorkerBudgetPanel()}
                 <div>
                   <Label>{t("teams.edit.roleTitle")}</Label>
                   <Input
@@ -2741,6 +3114,29 @@ export default function Teams() {
                               />
                             </div>
                             <div>
+                              <Label>Bound Worker</Label>
+                              <select
+                                value={createExternalDraft.externalWorkerId}
+                                onChange={(e) =>
+                                  setCreateExternalDraft((prev) => ({ ...prev, externalWorkerId: e.target.value }))
+                                }
+                                className="mt-1 flex h-10 w-full rounded-md border bg-background px-3 py-2 text-sm"
+                              >
+                                <option value="">Leave unresolved</option>
+                                {bindableWorkerList.map((worker) => (
+                                  <option key={worker.id} value={worker.id} disabled={!worker.availableForBinding}>
+                                    {worker.displayName} ({worker.status})
+                                  </option>
+                                ))}
+                              </select>
+                              {createExternalDraft.externalWorkerId && bindableWorkerMap.get(createExternalDraft.externalWorkerId)?.bindingReason ? (
+                                <p className="mt-2 text-xs text-muted-foreground">
+                                  {bindableWorkerMap.get(createExternalDraft.externalWorkerId)?.bindingReason}
+                                </p>
+                              ) : null}
+                            </div>
+                            {renderSelectedWorkerBudgetPanel()}
+                            <div>
                               <Label>{t("teams.create.titleInTeam")}</Label>
                               <Input
                                 placeholder={t("teams.create.titleInTeamPlaceholder")}
@@ -2863,6 +3259,15 @@ export default function Teams() {
                                       ? m.externalRef
                                       : getMemberRoleLabel(m.memberRole))}
                               </p>
+                              {m.memberKind === "external_connector" && m.externalWorkerId && (
+                                <p className="truncate text-xs text-muted-foreground">
+                                  {(() => {
+                                    const boundWorker = bindableWorkerMap.get(m.externalWorkerId ?? "");
+                                    if (!boundWorker) return `Worker ${m.externalWorkerId}`;
+                                    return `${boundWorker.displayName} · ${boundWorker.status}`;
+                                  })()}
+                                </p>
+                              )}
                               {m.isLead && (
                                 <Badge variant="secondary" className="ml-2 text-xs">
                                   {t("teams.create.leadShort")}

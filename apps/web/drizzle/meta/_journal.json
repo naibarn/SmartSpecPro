@@ -855,6 +855,76 @@
       "when": 1774684800000,
       "tag": "0121_add_slide_generation_category",
       "breakpoints": true
+    },
+    {
+      "idx": 122,
+      "version": "7",
+      "when": 1775005200000,
+      "tag": "0125_beam_billing_phase1_foundation",
+      "breakpoints": true
+    },
+    {
+      "idx": 123,
+      "version": "7",
+      "when": 1775005201000,
+      "tag": "0126_billing_webhook_evidence_history",
+      "breakpoints": true
+    },
+    {
+      "idx": 124,
+      "version": "7",
+      "when": 1775005202000,
+      "tag": "0127_billing_payment_attempt_snapshots",
+      "breakpoints": true
+    },
+    {
+      "idx": 125,
+      "version": "7",
+      "when": 1775005203000,
+      "tag": "0128_billing_phase2_payment_methods",
+      "breakpoints": true
+    },
+    {
+      "idx": 126,
+      "version": "7",
+      "when": 1775005204000,
+      "tag": "0129_billing_phase2_rollout_and_setup_sessions",
+      "breakpoints": true
+    },
+    {
+      "idx": 127,
+      "version": "7",
+      "when": 1775005205000,
+      "tag": "0130_structured_output_capability_matrix",
+      "breakpoints": true
+    },
+    {
+      "idx": 128,
+      "version": "7",
+      "when": 1775005206000,
+      "tag": "0131_local_client_llm_runtime_metadata",
+      "breakpoints": true
+    },
+    {
+      "idx": 129,
+      "version": "7",
+      "when": 1775005207000,
+      "tag": "0132_openclaw_worker_runtime_foundation",
+      "breakpoints": true
+    },
+    {
+      "idx": 130,
+      "version": "7",
+      "when": 1775005208000,
+      "tag": "0133_worker_runtime_credit_source",
+      "breakpoints": true
+    },
+    {
+      "idx": 131,
+      "version": "7",
+      "when": 1775529600000,
+      "tag": "0134_worker_delegated_sessions",
+      "breakpoints": true
     }
   ]
 }

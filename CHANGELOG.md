@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **OpenClaw External Runtime Integration**
+  - Tenant-gated OpenClaw worker support via `openClawExternalRuntime`
+  - Worker fleet visibility and control actions in Admin Monitoring
+  - Team binding with External Connector and Bound Worker
+  - Worker credit visibility as `Worker Runtime`
+  - Legacy worker data redaction for older diagnostics and artifact metadata
+- **Claw Worker Platform Access**
+  - Personal worker ownership with owner-only, same-tenant delegated access
+  - Delegated worker sessions for supported gateway routes
+  - Worker budget caps across hourly, 5-hour, daily, weekly, and monthly windows
+  - Owner-scoped Library search, Library upload, and RAG search for delegated workers
+  - Worker callbacks back into rooms, workflow history, and user notifications
+
 #### Phase 1: Core Features
 - **Sprint 1.1: SQLite per Workspace**
   - Workspace database manager with connection pooling

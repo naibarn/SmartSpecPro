@@ -5,7 +5,7 @@
  * and integrates with template instantiation.
  */
 
-import { eq, and, or, isNull, sql, count, getTableColumns } from "drizzle-orm";
+import { eq, and, or, isNull, sql, count, getTableColumns, asc, desc } from "drizzle-orm";
 import { getDb } from "../db";
 import {
   agencies,
@@ -15,6 +15,7 @@ import {
   assistantTeamTemplates,
   personaTemplates,
   teamRooms,
+  workers,
   type AssistantTeam,
   type AssistantProfile,
   type PersonaTemplate,
@@ -47,6 +48,7 @@ export interface CreateTeamMemberInput {
   blueprintMemberId?: string;
   humanUserId?: number;
   externalRef?: string;
+  externalWorkerId?: string;
   externalConfigJson?: Record<string, unknown>;
   displayName: string;
   nickname?: string;
@@ -91,6 +93,7 @@ export interface UpdateTeamMemberInput {
   specialtyTags?: string[];
   humanUserId?: number;
   externalRef?: string;
+  externalWorkerId?: string | null;
   externalConfigJson?: Record<string, unknown>;
   preferredModelId?: string;
   modelSelectionPolicy?: "fixed" | "cost_optimized" | "quality_optimized" | "auto";
@@ -116,6 +119,7 @@ export interface CreateTeamResult {
     agencyAgentId: string | null;
     humanUserId: number | null;
     externalRef: string | null;
+    externalWorkerId: string | null;
     displayName: string;
   }>;
 }
@@ -139,6 +143,21 @@ export interface TeamSummary {
   createdAt: Date;
 }
 
+export interface BindableWorkerSummary {
+  id: string;
+  displayName: string;
+  status: string;
+  runtimeType: string;
+  runtimeVersion: string;
+  externalReference: string;
+  teamId: string | null;
+  lastSeenAt: Date | null;
+  warningFlagsJson: string[];
+  boundProfileCount: number;
+  availableForBinding: boolean;
+  bindingReason: string | null;
+}
+
 function normalizeExternalRef(externalRef: string): string {
   return externalRef.trim().toLowerCase();
 }
@@ -154,6 +173,9 @@ function resolveMemberIdentityKey(member: CreateTeamMemberInput): string | null 
   }
   if (kind === "human") {
     return member.humanUserId ? `human:${member.humanUserId}` : null;
+  }
+  if (member.externalWorkerId?.trim()) {
+    return `external-worker:${member.externalWorkerId.trim()}`;
   }
   return member.externalRef?.trim() ? `external:${normalizeExternalRef(member.externalRef)}` : null;
 }
@@ -209,10 +231,64 @@ function validateTeamMember(member: CreateTeamMemberInput): void {
     if (!member.humanUserId) {
       throw new Error("Every human member must have a humanUserId");
     }
+    if (member.externalWorkerId) {
+      throw new Error("Only external connector members can bind an external worker");
+    }
     return;
   }
   if (!member.externalRef?.trim()) {
     throw new Error("Every external connector member must have an externalRef");
+  }
+  return;
+}
+
+function workerSupportsBoundConnector(worker: {
+  runtimeType?: string | null;
+  capabilitiesJson?: Record<string, unknown> | null;
+}): boolean {
+  if (worker.runtimeType === "openclaw_gateway") {
+    return true;
+  }
+  const capabilityFlag = worker.capabilitiesJson && typeof worker.capabilitiesJson === "object"
+    ? (worker.capabilitiesJson as Record<string, unknown>).supportsBoundConnector
+    : undefined;
+  return capabilityFlag === true;
+}
+
+async function assertExternalWorkerBinding(
+  tx: DbTransaction,
+  tenantId: string,
+  ownerUserId: number,
+  externalWorkerId: string | null | undefined,
+): Promise<void> {
+  if (!externalWorkerId?.trim()) {
+    return;
+  }
+
+  const [worker] = await tx
+    .select({
+      id: workers.id,
+      tenantId: workers.tenantId,
+      runtimeType: workers.runtimeType,
+      status: workers.status,
+      registeredByUserId: workers.registeredByUserId,
+      capabilitiesJson: workers.capabilitiesJson,
+    })
+    .from(workers)
+    .where(and(eq(workers.id, externalWorkerId.trim()), eq(workers.tenantId, tenantId)))
+    .limit(1);
+
+  if (!worker) {
+    throw new Error("Bound external worker was not found");
+  }
+  if (worker.registeredByUserId !== ownerUserId) {
+    throw new Error("You can only bind your own personal workers");
+  }
+  if (!workerSupportsBoundConnector(worker)) {
+    throw new Error("This worker runtime is not eligible for bound-connector flows");
+  }
+  if (worker.status === "disabled") {
+    throw new Error("Disabled workers cannot be bound to external connectors");
   }
 }
 
@@ -404,19 +480,34 @@ async function assertNoDuplicateMemberInTeam(
       )
       .limit(1);
   } else if (kind === "external_connector" && member.externalRef?.trim()) {
-    const normalizedExternalRef = normalizeExternalRef(member.externalRef);
-    rows = await tx
-      .select({ id: assistantProfiles.id })
-      .from(assistantProfiles)
-      .where(
-        and(
-          eq(assistantProfiles.teamId, teamId),
-          eq(assistantProfiles.memberKind, "external_connector"),
-          sql`lower(${assistantProfiles.externalRef}) = ${normalizedExternalRef}`,
-          excludeProfileId ? sql`${assistantProfiles.id} != ${excludeProfileId}` : sql`true`,
-        ),
-      )
-      .limit(1);
+    if (member.externalWorkerId?.trim()) {
+      rows = await tx
+        .select({ id: assistantProfiles.id })
+        .from(assistantProfiles)
+        .where(
+          and(
+            eq(assistantProfiles.teamId, teamId),
+            eq(assistantProfiles.memberKind, "external_connector"),
+            eq(assistantProfiles.externalWorkerId, member.externalWorkerId.trim()),
+            excludeProfileId ? sql`${assistantProfiles.id} != ${excludeProfileId}` : sql`true`,
+          ),
+        )
+        .limit(1);
+    } else {
+      const normalizedExternalRef = normalizeExternalRef(member.externalRef);
+      rows = await tx
+        .select({ id: assistantProfiles.id })
+        .from(assistantProfiles)
+        .where(
+          and(
+            eq(assistantProfiles.teamId, teamId),
+            eq(assistantProfiles.memberKind, "external_connector"),
+            sql`lower(${assistantProfiles.externalRef}) = ${normalizedExternalRef}`,
+            excludeProfileId ? sql`${assistantProfiles.id} != ${excludeProfileId}` : sql`true`,
+          ),
+        )
+        .limit(1);
+    }
   }
 
   if (rows.length > 0) {
@@ -471,6 +562,15 @@ async function createTeamRecords(
     const agentId = memberKind === "assistant" ? crypto.randomUUID() : null;
     const profileId = crypto.randomUUID();
 
+    if (memberKind === "external_connector") {
+      await assertExternalWorkerBinding(
+        tx as DbTransaction,
+        input.tenantId,
+        input.ownerUserId,
+        member.externalWorkerId ?? null,
+      );
+    }
+
     if (memberKind === "assistant") {
       await tx.insert(agencyAgents).values({
         id: agentId!,
@@ -496,6 +596,8 @@ async function createTeamRecords(
         memberKind === "external_connector" && member.externalRef
           ? normalizeExternalRef(member.externalRef)
           : null,
+      externalWorkerId:
+        memberKind === "external_connector" ? member.externalWorkerId?.trim() ?? null : null,
       externalConfigJson: memberKind === "external_connector" ? member.externalConfigJson ?? null : null,
       displayName: member.displayName,
       nickname: member.nickname ?? null,
@@ -525,6 +627,8 @@ async function createTeamRecords(
         memberKind === "external_connector" && member.externalRef
           ? normalizeExternalRef(member.externalRef)
           : null,
+      externalWorkerId:
+        memberKind === "external_connector" ? member.externalWorkerId?.trim() ?? null : null,
       displayName: member.displayName,
     });
   }
@@ -676,6 +780,14 @@ export async function updateTeamMember(
   }
 
   await db.transaction(async (tx) => {
+    const [team] = await tx
+      .select({ ownerUserId: assistantTeams.ownerUserId })
+      .from(assistantTeams)
+      .where(and(eq(assistantTeams.id, profile.teamId), eq(assistantTeams.tenantId, tenantId)))
+      .limit(1);
+    if (!team) {
+      throw new Error(`Team ${profile.teamId} not found`);
+    }
     await assertNoDuplicateMemberInTeam(
       tx as DbTransaction,
       profile.teamId,
@@ -684,12 +796,22 @@ export async function updateTeamMember(
         personaId: profile.personaId ?? undefined,
         humanUserId: updates.humanUserId ?? profile.humanUserId ?? undefined,
         externalRef: updates.externalRef ?? profile.externalRef ?? undefined,
+        externalWorkerId: updates.externalWorkerId ?? profile.externalWorkerId ?? undefined,
         displayName: updates.displayName ?? profile.displayName ?? "Member",
         isLead: updates.isLead ?? profile.isLead,
         instructions: updates.instructions ?? "Follow team objectives",
       },
       profileId,
     );
+
+    if (profile.memberKind === "external_connector") {
+      await assertExternalWorkerBinding(
+        tx as DbTransaction,
+        tenantId,
+        team.ownerUserId,
+        updates.externalWorkerId ?? profile.externalWorkerId ?? null,
+      );
+    }
 
     // Update profile fields
     const profileUpdates: Record<string, unknown> = { updatedAt: new Date() };
@@ -701,6 +823,9 @@ export async function updateTeamMember(
     if (updates.specialtyTags !== undefined) profileUpdates.specialtyTags = updates.specialtyTags;
     if (updates.humanUserId !== undefined) profileUpdates.humanUserId = updates.humanUserId;
     if (updates.externalRef !== undefined) profileUpdates.externalRef = normalizeExternalRef(updates.externalRef);
+    if (updates.externalWorkerId !== undefined) {
+      profileUpdates.externalWorkerId = updates.externalWorkerId?.trim() ? updates.externalWorkerId.trim() : null;
+    }
     if (updates.externalConfigJson !== undefined) profileUpdates.externalConfigJson = updates.externalConfigJson;
     if (updates.preferredModelId !== undefined) profileUpdates.preferredModelId = updates.preferredModelId;
     if (updates.modelSelectionPolicy !== undefined) profileUpdates.modelSelectionPolicy = updates.modelSelectionPolicy;
@@ -815,6 +940,7 @@ export async function addTeamMember(
   agencyAgentId: string | null;
   humanUserId: number | null;
   externalRef: string | null;
+  externalWorkerId: string | null;
 }> {
   validateTeamMember(member);
 
@@ -854,6 +980,15 @@ export async function addTeamMember(
     const agentId = resolvedMemberKind === "assistant" ? crypto.randomUUID() : null;
     const profileId = crypto.randomUUID();
 
+    if (resolvedMemberKind === "external_connector") {
+      await assertExternalWorkerBinding(
+        tx as DbTransaction,
+        tenantId,
+        team.ownerUserId,
+        resolvedMember.externalWorkerId ?? null,
+      );
+    }
+
     if (resolvedMemberKind === "assistant") {
       await tx.insert(agencyAgents).values({
         id: agentId!,
@@ -879,6 +1014,8 @@ export async function addTeamMember(
         resolvedMemberKind === "external_connector" && resolvedMember.externalRef
           ? normalizeExternalRef(resolvedMember.externalRef)
           : null,
+      externalWorkerId:
+        resolvedMemberKind === "external_connector" ? resolvedMember.externalWorkerId?.trim() ?? null : null,
       externalConfigJson: resolvedMemberKind === "external_connector" ? resolvedMember.externalConfigJson ?? null : null,
       displayName: resolvedMember.displayName,
       nickname: resolvedMember.nickname ?? null,
@@ -930,6 +1067,8 @@ export async function addTeamMember(
         resolvedMemberKind === "external_connector" && resolvedMember.externalRef
           ? normalizeExternalRef(resolvedMember.externalRef)
           : null,
+      externalWorkerId:
+        resolvedMemberKind === "external_connector" ? resolvedMember.externalWorkerId?.trim() ?? null : null,
     };
   });
 }
@@ -1036,6 +1175,86 @@ export async function listTeams(
     memberCount: countMap.get(t.id) ?? 0,
     roomCount: roomCountMap.get(t.id) ?? 0,
   }));
+}
+
+export async function listBindableWorkers(
+  tenantId: string,
+  ownerUserId: number,
+  teamId?: string | null,
+): Promise<BindableWorkerSummary[]> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const rows = await db
+    .select({
+      id: workers.id,
+      displayName: workers.displayName,
+      status: workers.status,
+      runtimeType: workers.runtimeType,
+      runtimeVersion: workers.runtimeVersion,
+      externalReference: workers.externalReference,
+      teamId: workers.teamId,
+      registeredByUserId: workers.registeredByUserId,
+      capabilitiesJson: workers.capabilitiesJson,
+      lastSeenAt: workers.lastSeenAt,
+      warningFlagsJson: workers.warningFlagsJson,
+      boundProfileCount: count(assistantProfiles.id),
+    })
+    .from(workers)
+    .leftJoin(
+      assistantProfiles,
+      and(
+        eq(assistantProfiles.externalWorkerId, workers.id),
+        eq(assistantProfiles.tenantId, tenantId),
+      ),
+    )
+    .where(
+      and(
+        eq(workers.tenantId, tenantId),
+        eq(workers.registeredByUserId, ownerUserId),
+      ),
+    )
+    .groupBy(
+      workers.id,
+      workers.displayName,
+      workers.status,
+      workers.runtimeType,
+      workers.runtimeVersion,
+      workers.externalReference,
+      workers.teamId,
+      workers.registeredByUserId,
+      workers.capabilitiesJson,
+      workers.lastSeenAt,
+      workers.warningFlagsJson,
+    )
+    .orderBy(desc(workers.lastSeenAt), asc(workers.displayName));
+
+  return rows.map((row) => {
+    const boundProfileCount = Number(row.boundProfileCount ?? 0);
+    const isTeamCompatible = !row.teamId || !teamId || row.teamId === teamId;
+    const isRuntimeEligible = workerSupportsBoundConnector(row);
+    const bindingReason = !isRuntimeEligible
+      ? "Runtime is not eligible for bound connector use yet"
+      : row.status === "disabled"
+        ? "Worker is disabled"
+        : !isTeamCompatible
+          ? "Worker is pinned to another team"
+          : null;
+    return {
+      id: row.id,
+      displayName: row.displayName,
+      status: row.status,
+      runtimeType: row.runtimeType,
+      runtimeVersion: row.runtimeVersion,
+      externalReference: row.externalReference,
+      teamId: row.teamId ?? null,
+      lastSeenAt: row.lastSeenAt ?? null,
+      warningFlagsJson: Array.isArray(row.warningFlagsJson) ? row.warningFlagsJson : [],
+      boundProfileCount,
+      availableForBinding: !bindingReason,
+      bindingReason,
+    };
+  });
 }
 
 export async function listTeamTemplates(tenantId: string) {

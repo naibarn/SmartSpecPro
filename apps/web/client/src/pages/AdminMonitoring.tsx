@@ -5,13 +5,17 @@
  * Tabs: Checks | Alerts | Metrics
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { skipToken } from "@tanstack/react-query";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { DashboardCard, DashboardKpiCard } from "@/components/dashboard";
 import { OpsEarlyWarningPanel, type OpsOverview } from "@/components/admin/OpsEarlyWarningPanel";
 import { HelpButton } from "@/components/help/HelpButton";
+import { LocaleToggle } from "@/components/LocaleToggle";
 import { Badge } from "@/components/ui/badge";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import { getOpsIncidentGuidance } from "@/lib/opsMonitoringGuidance";
@@ -180,6 +184,64 @@ type MetricPoint = {
   diskTotalGb: number | null;
   createdAt: Date;
 };
+type WorkerFleetRow = {
+  id: string;
+  displayName: string;
+  runtimeType: string;
+  runtimeVersion: string;
+  status: string;
+  teamId: string | null;
+  externalReference: string;
+  lastSeenAt: Date | string | null;
+  healthState: string;
+  warningFlagsJson: string[];
+  boundProfileCount: number;
+  activeJobCount: number;
+  diagnosticsAvailable: boolean;
+  dashboardUrl: string | null;
+  revokedAt: string | null;
+};
+type WorkerDiagnosticsSnapshot = {
+  workerId: string;
+  displayName: string;
+  runtimeType: string;
+  status: string;
+  capturedAt: string | null;
+  summaryJson: Record<string, unknown>;
+  detailsJson: Record<string, unknown>;
+  warningFlagsJson: string[];
+  dashboardUrl: string | null;
+  revokedAt: string | null;
+};
+type WorkerBudgetWindowSummary = {
+  label: "hourly" | "five_hour" | "daily" | "weekly" | "monthly";
+  capCredits: number | null;
+  usedCredits: number;
+  remainingCredits: number | null;
+  blocked: boolean;
+};
+type WorkerBudgetSummary = {
+  workerId: string;
+  displayName: string;
+  runtimeType: string;
+  ownerUserId: number | null;
+  budgets: {
+    hourlyCredits?: number | null;
+    fiveHourCredits?: number | null;
+    dailyCredits?: number | null;
+    weeklyCredits?: number | null;
+    monthlyCredits?: number | null;
+  };
+  windows: WorkerBudgetWindowSummary[];
+  blockedByBudget: boolean;
+};
+type WorkerBudgetDraft = {
+  hourlyCredits: string;
+  fiveHourCredits: string;
+  dailyCredits: string;
+  weeklyCredits: string;
+  monthlyCredits: string;
+};
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -199,6 +261,51 @@ const statusColor: Record<string, string> = {
   failed: "text-red-600 bg-red-50 border-red-200",
   unknown: "text-gray-500 bg-gray-50 border-gray-200",
 };
+
+function createWorkerBudgetDraft(summary?: WorkerBudgetSummary | null): WorkerBudgetDraft {
+  return {
+    hourlyCredits: summary?.budgets.hourlyCredits != null ? String(summary.budgets.hourlyCredits) : "",
+    fiveHourCredits: summary?.budgets.fiveHourCredits != null ? String(summary.budgets.fiveHourCredits) : "",
+    dailyCredits: summary?.budgets.dailyCredits != null ? String(summary.budgets.dailyCredits) : "",
+    weeklyCredits: summary?.budgets.weeklyCredits != null ? String(summary.budgets.weeklyCredits) : "",
+    monthlyCredits: summary?.budgets.monthlyCredits != null ? String(summary.budgets.monthlyCredits) : "",
+  };
+}
+
+function parseWorkerBudgetDraft(draft: WorkerBudgetDraft) {
+  const parseValue = (value: string): number | null => {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    const parsed = Number(trimmed);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      throw new Error("Budget values must be positive numbers or blank");
+    }
+    return Math.floor(parsed);
+  };
+
+  return {
+    hourlyCredits: parseValue(draft.hourlyCredits),
+    fiveHourCredits: parseValue(draft.fiveHourCredits),
+    dailyCredits: parseValue(draft.dailyCredits),
+    weeklyCredits: parseValue(draft.weeklyCredits),
+    monthlyCredits: parseValue(draft.monthlyCredits),
+  };
+}
+
+function workerBudgetWindowLabel(label: WorkerBudgetWindowSummary["label"]): string {
+  switch (label) {
+    case "hourly":
+      return "Hourly";
+    case "five_hour":
+      return "5-hour";
+    case "daily":
+      return "Daily";
+    case "weekly":
+      return "Weekly";
+    case "monthly":
+      return "Monthly";
+  }
+}
 
 const severityColor: Record<string, string> = {
   critical: "text-red-600 bg-red-50 border-red-200",
@@ -1465,9 +1572,17 @@ type Tab = "checks" | "alerts" | "metrics";
 export default function AdminMonitoring() {
   const { user, loading: authLoading } = useAuth();
   const { locale } = useScopedTranslation("admin");
+  const utils = trpc.useUtils();
   const [location, setLocation] = useLocation();
+  const tabsSectionRef = useRef<HTMLDivElement | null>(null);
+  const incidentSummaryRef = useRef<HTMLDivElement | null>(null);
+  const autoFreshCheckScheduledRef = useRef(false);
+  const freshCheckSourceRef = useRef<"auto" | "manual">("manual");
+  const [flashTarget, setFlashTarget] = useState<"tabs" | "incident" | null>(null);
+  const [autoFreshCheckState, setAutoFreshCheckState] = useState<"idle" | "waiting" | "checking" | "done">("idle");
   const routeState = useMemo(() => parseMonitoringRoute(location), [location]);
   const [activeTab, setActiveTab] = useState<Tab>(routeState.tab ?? (routeState.incidentKey ? "alerts" : "checks"));
+  const [selectedWorkerId, setSelectedWorkerId] = useState<string | null>(null);
 
   useEffect(() => {
     setActiveTab(routeState.tab ?? (routeState.incidentKey ? "alerts" : "checks"));
@@ -1493,19 +1608,110 @@ export default function AdminMonitoring() {
     refetchOnWindowFocus: false,
     staleTime: 60_000,
   });
+  const workerFleetQuery = trpc.monitoring.listWorkers.useQuery(undefined, {
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: false,
+  });
+  const workerDiagnosticsQuery = trpc.monitoring.getWorkerDiagnostics.useQuery(
+    selectedWorkerId ? { workerId: selectedWorkerId } : skipToken,
+    {
+      enabled: Boolean(selectedWorkerId),
+      refetchInterval: 30_000,
+      refetchOnWindowFocus: false,
+    },
+  );
+  const workerBudgetQuery = trpc.monitoring.getWorkerBudget.useQuery(
+    selectedWorkerId ? { workerId: selectedWorkerId } : skipToken,
+    {
+      enabled: Boolean(selectedWorkerId),
+      refetchInterval: 30_000,
+      refetchOnWindowFocus: false,
+    },
+  );
+  const [workerBudgetDrafts, setWorkerBudgetDrafts] = useState<Record<string, WorkerBudgetDraft>>({});
+  const updateWorkerStateMutation = trpc.monitoring.updateWorkerState.useMutation({
+    onSuccess: async () => {
+      await Promise.all([
+        utils.monitoring.listWorkers.invalidate(),
+        selectedWorkerId ? utils.monitoring.getWorkerDiagnostics.invalidate({ workerId: selectedWorkerId }) : Promise.resolve(),
+      ]);
+      toast.success("Worker state updated");
+    },
+    onError: (error: { message: string }) => {
+      toast.error(error.message || "Failed to update worker state");
+    },
+  });
+  const redactLegacyWorkerDataMutation = trpc.monitoring.redactLegacyWorkerData.useMutation({
+    onSuccess: async (result: {
+      scannedWorkers: number;
+      updatedWorkers: number;
+      scannedArtifacts: number;
+      updatedArtifacts: number;
+    }) => {
+      await Promise.all([
+        utils.monitoring.listWorkers.invalidate(),
+        selectedWorkerId ? utils.monitoring.getWorkerDiagnostics.invalidate({ workerId: selectedWorkerId }) : Promise.resolve(),
+      ]);
+      toast.success(
+        `Legacy worker data redacted: ${result.updatedWorkers}/${result.scannedWorkers} workers, ${result.updatedArtifacts}/${result.scannedArtifacts} artifacts`,
+      );
+    },
+    onError: (error: { message: string }) => {
+      toast.error(error.message || "Failed to redact legacy worker data");
+    },
+  });
+  const updateWorkerBudgetMutation = trpc.monitoring.updateWorkerBudget.useMutation({
+    onSuccess: async (result: WorkerBudgetSummary) => {
+      setWorkerBudgetDrafts((prev) => ({
+        ...prev,
+        [result.workerId]: createWorkerBudgetDraft(result),
+      }));
+      await Promise.all([
+        utils.monitoring.getWorkerBudget.invalidate({ workerId: result.workerId }),
+        utils.monitoring.listWorkers.invalidate(),
+      ]);
+      toast.success("Worker budget guardrails updated");
+    },
+    onError: (error: { message: string }) => {
+      toast.error(error.message || "Failed to update worker budget");
+    },
+  });
   const forceFreshCheckMutation = trpc.monitoring.forceFreshCheck.useMutation({
     onSuccess: async () => {
-      toast.success("Fresh monitoring check recorded");
+      const source = freshCheckSourceRef.current;
+      setAutoFreshCheckState("done");
+      if (source === "manual") {
+        toast.success("Fresh monitoring check recorded");
+      }
       await Promise.all([
-        statusQuery.refetch(),
-        opsOverviewQuery.refetch(),
-        ...(routeState.incidentKey ? [focusedIncidentQuery.refetch()] : []),
+        utils.monitoring.getCurrentStatus.invalidate(),
+        utils.monitoring.getOpsOverview.invalidate(),
+        utils.monitoring.getChecks.invalidate(),
+        utils.monitoring.getAlerts.invalidate(),
+        utils.monitoring.getMetricsHistory.invalidate(),
+        utils.monitoring.getOpsIncidentTimeline.invalidate(),
       ]);
     },
     onError: (error: { message: string }) => {
+      setAutoFreshCheckState("idle");
       toast.error(error.message || "Failed to force a fresh check");
     },
   });
+
+  useEffect(() => {
+    if (authLoading || !user || user.role !== "admin") return;
+    if (autoFreshCheckScheduledRef.current) return;
+    autoFreshCheckScheduledRef.current = true;
+    setAutoFreshCheckState("waiting");
+
+    const timeoutId = window.setTimeout(() => {
+      freshCheckSourceRef.current = "auto";
+      setAutoFreshCheckState("checking");
+      forceFreshCheckMutation.mutate();
+    }, 900);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [authLoading, forceFreshCheckMutation, user]);
 
   // Auth guard
   if (authLoading) {
@@ -1534,15 +1740,59 @@ export default function AdminMonitoring() {
   const lastCheck = statusQuery.data?.lastCheck ?? null;
   const focusedIncident = ((focusedIncidentQuery.data?.items as OpsIncidentTimelineItem[] | undefined) ?? [])[0] ?? null;
   const anomalies = opsOverviewQuery.data?.anomalies ?? [];
+  const workerFleet = (workerFleetQuery.data as WorkerFleetRow[] | undefined) ?? [];
+  const selectedWorkerDiagnostics = (workerDiagnosticsQuery.data as WorkerDiagnosticsSnapshot | undefined) ?? null;
+  const selectedWorkerBudget = (workerBudgetQuery.data as WorkerBudgetSummary | undefined) ?? null;
+  const selectedWorkerBudgetDraft = selectedWorkerId
+    ? workerBudgetDrafts[selectedWorkerId] ?? createWorkerBudgetDraft(selectedWorkerBudget)
+    : null;
   const adminUsers = ((adminUsersQuery.data?.users as AdminUserOption[] | undefined) ?? [])
     .filter((candidate) => candidate.role === "admin" || candidate.role === "domain_admin");
   const focusedAnomaly = routeState.incidentKey
     ? anomalies.find((anomaly) => incidentKeyFromAnomaly(anomaly) === routeState.incidentKey) ?? null
     : anomalies[0] ?? null;
+  const staleServiceCount = services.filter((svc) => String(svc.status).toLowerCase() === "stale").length;
+  const suggestedIncidentKey = !routeState.incidentKey ? incidentKeyFromAnomaly(focusedAnomaly ?? null) : null;
+  const heroGuidance = getOpsIncidentGuidance({
+    locale,
+    title: focusedIncident?.title ?? focusedAnomaly?.title ?? null,
+    message: focusedIncident?.latestMessage ?? focusedAnomaly?.message ?? null,
+    category: focusedAnomaly?.category ?? focusedIncident?.category ?? null,
+    signal: focusedIncident?.signal ?? focusedAnomaly?.signal ?? null,
+    recommendation: focusedIncident?.recommendation ?? focusedAnomaly?.recommendation ?? null,
+    groupKey: focusedIncident?.groupKey ?? suggestedIncidentKey,
+    severity: focusedIncident?.severity ?? focusedAnomaly?.severity ?? null,
+  });
+  const heroSummary = staleServiceCount > 0 && staleServiceCount === services.length
+    ? locale === "th"
+      ? "ตอนนี้ service cards ทั้งหมดเป็น Stale แปลว่าข้อมูล monitoring ที่แสดงอาจเก่า ขั้นแรกให้กด Force Fresh Check ก่อน แล้วค่อยตรวจแท็บ Checks ถ้ายังไม่อัปเดต"
+      : "All service cards are stale right now, which means the monitoring view may be showing old data. Start with Force Fresh Check, then inspect Checks if the page still does not refresh."
+    : heroGuidance.summary;
 
   const navigateToTab = (tab: Tab) => {
     setActiveTab(tab);
     setLocation(buildMonitoringPath(tab, routeState.incidentKey));
+  };
+
+  const revealSection = (target: "tabs" | "incident") => {
+    const node = target === "incident" ? incidentSummaryRef.current : tabsSectionRef.current;
+    if (!node) return;
+    node.scrollIntoView({ behavior: "smooth", block: "start" });
+    setFlashTarget(target);
+    window.setTimeout(() => {
+      setFlashTarget((current) => (current === target ? null : current));
+    }, 1800);
+  };
+
+  const navigateToTabAndReveal = (tab: Tab) => {
+    navigateToTab(tab);
+    window.setTimeout(() => revealSection("tabs"), 80);
+  };
+
+  const focusIncidentAndReveal = (incidentKey: string) => {
+    setActiveTab("alerts");
+    setLocation(buildMonitoringPath("alerts", incidentKey));
+    window.setTimeout(() => revealSection("incident"), 120);
   };
 
   const clearIncidentFocus = () => {
@@ -1559,6 +1809,55 @@ export default function AdminMonitoring() {
     }
     await Promise.all(refetches);
   };
+
+  const setSelectedWorkerBudgetField = (field: keyof WorkerBudgetDraft, value: string) => {
+    if (!selectedWorkerId) return;
+    setWorkerBudgetDrafts((prev) => ({
+      ...prev,
+      [selectedWorkerId]: {
+        ...(prev[selectedWorkerId] ?? createWorkerBudgetDraft(selectedWorkerBudget)),
+        [field]: value,
+      },
+    }));
+  };
+
+  const saveSelectedWorkerBudget = () => {
+    if (!selectedWorkerId || !selectedWorkerBudgetDraft) return;
+    try {
+      updateWorkerBudgetMutation.mutate({
+        workerId: selectedWorkerId,
+        ...parseWorkerBudgetDraft(selectedWorkerBudgetDraft),
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Invalid worker budget");
+    }
+  };
+
+  const clearSelectedWorkerBudget = () => {
+    if (!selectedWorkerId) return;
+    const emptyDraft = createWorkerBudgetDraft(null);
+    setWorkerBudgetDrafts((prev) => ({
+      ...prev,
+      [selectedWorkerId]: emptyDraft,
+    }));
+    updateWorkerBudgetMutation.mutate({
+      workerId: selectedWorkerId,
+      hourlyCredits: null,
+      fiveHourCredits: null,
+      dailyCredits: null,
+      weeklyCredits: null,
+      monthlyCredits: null,
+    });
+  };
+
+  useEffect(() => {
+    if (!selectedWorkerBudget) return;
+    setWorkerBudgetDrafts((prev) => (
+      prev[selectedWorkerBudget.workerId]
+        ? prev
+        : { ...prev, [selectedWorkerBudget.workerId]: createWorkerBudgetDraft(selectedWorkerBudget) }
+    ));
+  }, [selectedWorkerBudget]);
 
   const tabs: { id: Tab; label: string }[] = [
     { id: "checks", label: "Checks" },
@@ -1596,6 +1895,17 @@ export default function AdminMonitoring() {
                     timeAgo(lastCheck)
                   )}
                 </p>
+                {autoFreshCheckState === "waiting" || autoFreshCheckState === "checking" ? (
+                  <p className="mt-1 text-xs text-sky-600">
+                    {locale === "th"
+                      ? autoFreshCheckState === "waiting"
+                        ? "กำลังเตรียมตรวจ runtime ล่าสุดอัตโนมัติ..."
+                        : "กำลังเช็ก runtime ล่าสุดอัตโนมัติ..."
+                      : autoFreshCheckState === "waiting"
+                        ? "Preparing an automatic runtime refresh..."
+                        : "Checking the latest runtime automatically..."}
+                  </p>
+                ) : null}
                 {routeState.incidentKey && (
                   <p className="text-xs text-slate-500 mt-1">
                     Incident focus: {routeState.incidentKey}
@@ -1603,39 +1913,121 @@ export default function AdminMonitoring() {
                 )}
               </div>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => void Promise.all([
-                statusQuery.refetch(),
-                opsOverviewQuery.refetch(),
-                ...(routeState.incidentKey ? [focusedIncidentQuery.refetch()] : []),
-              ])}
-              disabled={statusQuery.isLoading || opsOverviewQuery.isLoading}
-            >
-              {statusQuery.isLoading || opsOverviewQuery.isLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <RefreshCw className="h-4 w-4" />
-              )}
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => forceFreshCheckMutation.mutate()}
-              disabled={forceFreshCheckMutation.isPending}
-            >
-              {forceFreshCheckMutation.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : (
-                <CheckCheck className="h-4 w-4 mr-2" />
-              )}
-              Force Fresh Check
-            </Button>
+            <div className="flex items-center gap-2">
+              <LocaleToggle className="hidden sm:inline-flex" />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void Promise.all([
+                  statusQuery.refetch(),
+                  opsOverviewQuery.refetch(),
+                  ...(routeState.incidentKey ? [focusedIncidentQuery.refetch()] : []),
+                ])}
+                disabled={statusQuery.isLoading || opsOverviewQuery.isLoading}
+              >
+                {statusQuery.isLoading || opsOverviewQuery.isLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4" />
+                )}
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => {
+                  freshCheckSourceRef.current = "manual";
+                  setAutoFreshCheckState("checking");
+                  forceFreshCheckMutation.mutate();
+                }}
+                disabled={forceFreshCheckMutation.isPending}
+              >
+                {forceFreshCheckMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <CheckCheck className="h-4 w-4 mr-2" />
+                )}
+                Force Fresh Check
+              </Button>
+            </div>
           </div>
         </div>
       </div>
 
       <div className="flex-1 overflow-auto px-4 py-6 space-y-6">
+        {(focusedIncident || focusedAnomaly || staleServiceCount > 0 || criticalCount > 0) && (
+          <DashboardCard
+            title={locale === "th" ? "เริ่มจากตรงนี้" : "Start Here"}
+            description={heroSummary}
+            leading={<AlertTriangle className="h-5 w-5 text-amber-500" />}
+          >
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-700">
+                  {staleServiceCount > 0
+                    ? locale === "th"
+                      ? `${staleServiceCount} service stale`
+                      : `${staleServiceCount} stale services`
+                    : heroGuidance.headline}
+                </Badge>
+                {criticalCount > 0 ? (
+                  <Badge variant="outline" className="border-rose-200 bg-rose-50 text-rose-700">
+                    {locale === "th" ? `${criticalCount} critical ที่ยังเปิด` : `${criticalCount} critical still open`}
+                  </Badge>
+                ) : null}
+                <Badge variant="outline" className="border-slate-200 bg-slate-50 text-slate-700">
+                  {locale === "th" ? `ตรวจล่าสุด ${timeAgo(lastCheck)}` : `Last check ${timeAgo(lastCheck)}`}
+                </Badge>
+              </div>
+
+              <div className="space-y-2 text-sm text-slate-700">
+                {heroGuidance.checkNow.slice(0, 3).map((step) => (
+                  <p key={step}>• {step}</p>
+                ))}
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    freshCheckSourceRef.current = "manual";
+                    setAutoFreshCheckState("checking");
+                    forceFreshCheckMutation.mutate();
+                  }}
+                  disabled={forceFreshCheckMutation.isPending}
+                >
+                  {forceFreshCheckMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <CheckCheck className="h-4 w-4 mr-2" />
+                  )}
+                  {locale === "th" ? "เช็กใหม่ทันที" : "Force Fresh Check"}
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => navigateToTabAndReveal("checks")}>
+                  {locale === "th" ? "เปิด Checks" : "Open Checks"}
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => navigateToTabAndReveal("alerts")}>
+                  {locale === "th" ? "เปิด Alert Inbox" : "Open Alert Inbox"}
+                </Button>
+                {suggestedIncidentKey ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => focusIncidentAndReveal(suggestedIncidentKey)}
+                  >
+                    {locale === "th" ? "โฟกัส incident นี้" : "Focus This Incident"}
+                  </Button>
+                ) : null}
+                <HelpButton
+                  page="/admin/monitoring"
+                  topic={heroGuidance.helpTopicSlug}
+                  variant="outline"
+                  size="sm"
+                  label={heroGuidance.helpLabel}
+                />
+              </div>
+            </div>
+          </DashboardCard>
+        )}
+
         {/* Status Cards */}
         {statusQuery.isLoading ? (
           <div className="flex items-center gap-2 text-muted-foreground text-sm">
@@ -1658,17 +2050,258 @@ export default function AdminMonitoring() {
           description="Normalized anomaly feed across service metrics, alert backlog, audit failures, and orchestration fallback patterns."
         />
 
+        <DashboardCard
+          title="Claw Workers"
+          description="Control-plane view of registered OpenClaw workers, current load, and diagnostics availability."
+          leading={<Server className="h-5 w-5 text-sky-600" />}
+          trailing={(
+            <div className="flex items-center gap-2">
+              <HelpButton
+                page="/admin/monitoring"
+                topic="openclaw-workers"
+                variant="outline"
+                size="sm"
+                label={locale === "th" ? "คู่มือ Worker" : "Worker Help"}
+              />
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => redactLegacyWorkerDataMutation.mutate()}
+                disabled={redactLegacyWorkerDataMutation.isPending}
+              >
+                {redactLegacyWorkerDataMutation.isPending ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                )}
+                Redact Legacy Data
+              </Button>
+            </div>
+          )}
+        >
+          <div className="space-y-3">
+            {workerFleetQuery.isLoading ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading worker fleet…
+              </div>
+            ) : workerFleet.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No registered Claw workers for this tenant yet.
+              </p>
+            ) : (
+              workerFleet.map((worker) => (
+                <div key={worker.id} className="rounded-xl border p-3">
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="space-y-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-medium">{worker.displayName}</span>
+                        <Badge className={cn("border", statusColor[worker.healthState] ?? statusColor.unknown)}>
+                          {serviceStatusLabel(worker.healthState)}
+                        </Badge>
+                        <Badge variant="outline">{worker.status}</Badge>
+                        {worker.revokedAt ? <Badge variant="destructive">Revoked</Badge> : null}
+                      </div>
+                      <p className="text-xs text-muted-foreground">{worker.externalReference}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Runtime {worker.runtimeVersion} · {worker.activeJobCount} active jobs · {worker.boundProfileCount} bound connectors
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Last seen {timeAgo(worker.lastSeenAt)}{worker.dashboardUrl ? " · dashboard available" : ""}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setSelectedWorkerId(worker.id)}
+                      >
+                        Inspect
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => updateWorkerStateMutation.mutate({ workerId: worker.id, action: "drain" })}
+                        disabled={updateWorkerStateMutation.isPending || worker.status === "draining" || Boolean(worker.revokedAt)}
+                      >
+                        Drain
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => updateWorkerStateMutation.mutate({ workerId: worker.id, action: "disable" })}
+                        disabled={updateWorkerStateMutation.isPending || worker.status === "disabled"}
+                      >
+                        Disable
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => updateWorkerStateMutation.mutate({ workerId: worker.id, action: "resume" })}
+                        disabled={updateWorkerStateMutation.isPending || (worker.status === "online" && !worker.revokedAt) || Boolean(worker.revokedAt)}
+                      >
+                        Resume
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => updateWorkerStateMutation.mutate({ workerId: worker.id, action: "revoke" })}
+                        disabled={updateWorkerStateMutation.isPending || Boolean(worker.revokedAt)}
+                      >
+                        Revoke
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+
+            {selectedWorkerId && (
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-medium">Worker diagnostics</p>
+                    <p className="text-xs text-muted-foreground">
+                      Redacted control-plane snapshot for {selectedWorkerDiagnostics?.displayName ?? selectedWorkerId}
+                    </p>
+                  </div>
+                  <Button size="sm" variant="ghost" onClick={() => setSelectedWorkerId(null)}>
+                    Close
+                  </Button>
+                </div>
+                {workerDiagnosticsQuery.isLoading ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Loading diagnostics…
+                  </div>
+                ) : selectedWorkerDiagnostics ? (
+                  <div className="space-y-2 text-xs text-slate-700">
+                    <p>
+                      Captured {selectedWorkerDiagnostics.capturedAt ? formatAbsoluteDateTime(selectedWorkerDiagnostics.capturedAt) : "No record"}
+                    </p>
+                    <pre className="max-h-64 overflow-auto rounded-md bg-white p-3 text-[11px] leading-5">
+                      {JSON.stringify({
+                        summary: selectedWorkerDiagnostics.summaryJson,
+                        details: selectedWorkerDiagnostics.detailsJson,
+                        warningFlags: selectedWorkerDiagnostics.warningFlagsJson,
+                        dashboardUrl: selectedWorkerDiagnostics.dashboardUrl,
+                        revokedAt: selectedWorkerDiagnostics.revokedAt,
+                      }, null, 2)}
+                    </pre>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No diagnostics available yet.</p>
+                )}
+
+                <div className="mt-4 rounded-lg border bg-white p-3">
+                  <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-medium">Worker credit guardrails</p>
+                      <p className="text-xs text-muted-foreground">
+                        Safety caps for this personal worker. Charges still come from the acting user's SmartSpecPro balance.
+                      </p>
+                    </div>
+                    {selectedWorkerBudget?.blockedByBudget ? (
+                      <Badge variant="destructive">Blocked by budget</Badge>
+                    ) : (
+                      <Badge variant="outline">Personal worker budget</Badge>
+                    )}
+                  </div>
+
+                  {workerBudgetQuery.isLoading ? (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Loading worker budget…
+                    </div>
+                  ) : selectedWorkerBudgetDraft ? (
+                    <div className="space-y-3">
+                      <div className="grid gap-3 md:grid-cols-2">
+                        {([
+                          ["hourlyCredits", "Hourly cap"],
+                          ["fiveHourCredits", "5-hour cap"],
+                          ["dailyCredits", "Daily cap"],
+                          ["weeklyCredits", "Weekly cap"],
+                          ["monthlyCredits", "Monthly cap"],
+                        ] as Array<[keyof WorkerBudgetDraft, string]>).map(([key, label]) => (
+                          <div key={key}>
+                            <Label>{label}</Label>
+                            <Input
+                              type="number"
+                              min={1}
+                              inputMode="numeric"
+                              value={selectedWorkerBudgetDraft[key]}
+                              placeholder="Unlimited"
+                              onChange={(event) => setSelectedWorkerBudgetField(key, event.target.value)}
+                              className="mt-1"
+                            />
+                          </div>
+                        ))}
+                      </div>
+
+                      {selectedWorkerBudget?.windows?.length ? (
+                        <div className="space-y-1 rounded-md border bg-slate-50 p-3 text-xs text-slate-700">
+                          {selectedWorkerBudget.windows.map((window) => (
+                            <div key={window.label} className="flex items-center justify-between gap-3">
+                              <span>{workerBudgetWindowLabel(window.label)}</span>
+                              <span className={cn(window.blocked ? "font-medium text-red-600" : "text-muted-foreground")}>
+                                {window.usedCredits} used
+                                {window.capCredits != null ? ` / ${window.capCredits} cap` : " / unlimited"}
+                                {window.remainingCredits != null ? ` · ${window.remainingCredits} left` : ""}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
+
+                      <div className="flex flex-wrap justify-end gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={clearSelectedWorkerBudget}
+                          disabled={updateWorkerBudgetMutation.isPending}
+                        >
+                          Clear caps
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={saveSelectedWorkerBudget}
+                          disabled={updateWorkerBudgetMutation.isPending}
+                        >
+                          {updateWorkerBudgetMutation.isPending ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          ) : null}
+                          Save worker budget
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No worker budget data available yet.</p>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </DashboardCard>
+
         {(focusedIncident || focusedAnomaly) && (
-          <IncidentSummaryCard
-            locale={locale}
-            incident={focusedIncident}
-            anomaly={focusedAnomaly}
-            lastCheck={lastCheck}
-            onOpenAlerts={() => navigateToTab("alerts")}
-            onOpenChecks={() => navigateToTab("checks")}
-            onOpenMetrics={() => navigateToTab("metrics")}
-            onClearFocus={routeState.incidentKey ? clearIncidentFocus : null}
-          />
+          <div
+            ref={incidentSummaryRef}
+            className={cn(
+              "rounded-3xl transition-all duration-500",
+              flashTarget === "incident" ? "ring-2 ring-sky-300 ring-offset-2" : "",
+            )}
+          >
+            <IncidentSummaryCard
+              locale={locale}
+              incident={focusedIncident}
+              anomaly={focusedAnomaly}
+              lastCheck={lastCheck}
+              onOpenAlerts={() => navigateToTabAndReveal("alerts")}
+              onOpenChecks={() => navigateToTabAndReveal("checks")}
+              onOpenMetrics={() => navigateToTabAndReveal("metrics")}
+              onClearFocus={routeState.incidentKey ? clearIncidentFocus : null}
+            />
+          </div>
         )}
 
         {focusedIncident && (
@@ -1700,7 +2333,7 @@ export default function AdminMonitoring() {
               variant="outline"
               size="sm"
               className="ml-auto"
-              onClick={() => navigateToTab("alerts")}
+              onClick={() => navigateToTabAndReveal("alerts")}
             >
               View Alerts
             </Button>
@@ -1708,7 +2341,13 @@ export default function AdminMonitoring() {
         )}
 
         {/* Tabs */}
-        <div>
+        <div
+          ref={tabsSectionRef}
+          className={cn(
+            "rounded-3xl transition-all duration-500",
+            flashTarget === "tabs" ? "ring-2 ring-sky-300 ring-offset-2" : "",
+          )}
+        >
           <div className="flex border-b mb-4">
             {tabs.map((tab) => (
               <button

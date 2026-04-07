@@ -77,6 +77,28 @@ Each member is a persona (an AI assistant with a configured system prompt and mo
 
 > **Tip:** A team works best with one Lead and two to four Members. Larger teams increase token usage without always improving quality.
 
+## External Connectors and Bound Workers
+
+Some teams include an **External Connector** member instead of a normal assistant or human member. This is used when work should be handed to an outside runtime such as an OpenClaw worker.
+
+For these members, set the two key fields carefully:
+
+- **External Reference** — the stable connector ID or name
+- **Bound Worker** — the registered worker that should receive that connector's work
+
+Use a stable reference format that your team can recognize easily, such as `openclaw://main-office`.
+
+If **Bound Worker** is left unresolved, runs that depend on that connector may pause or stay incomplete until the binding is fixed.
+
+Important defaults:
+
+- the user adds their own worker
+- the worker acts only for that owner
+- the worker cannot use another user's data
+- the worker cannot cross tenants
+
+When you choose a **Bound Worker**, the dialog can also show worker budget guardrails. These caps protect the owner's SmartSpecPro balance for work routed through that worker.
+
 ## Team Rooms
 
 Each team has one or more **rooms** — discussion spaces where agents exchange messages during a run.

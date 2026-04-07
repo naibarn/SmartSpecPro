@@ -37,6 +37,11 @@ const ERROR_TYPE_MAP: Record<string, string> = {
   job_not_cancellable: "invalid_request_error",
   circular_pipeline_reference: "invalid_request_error",
   max_template_depth_exceeded: "invalid_request_error",
+  worker_auth_invalid: "auth_error",
+  worker_scope_mismatch: "auth_error",
+  protocol_incompatible: "invalid_request_error",
+  worker_state_invalid: "invalid_request_error",
+  stale_worker_lease: "invalid_request_error",
 };
 
 /**

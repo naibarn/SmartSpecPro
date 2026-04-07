@@ -653,6 +653,7 @@ export interface OpsOverview {
 
 export interface OpsOverviewInput {
   latestMetrics: MetricPoint | null;
+  previousMetrics?: MetricPoint | null;
   baselineMetrics: MetricPoint | null;
   lastCheckAt: Date | null;
   services: ServiceStatus[];
@@ -778,28 +779,30 @@ function asOpsIncidentResponseState(value: unknown): OpsIncidentResponseState {
 
 function normalizeResponseHistory(value: unknown): OpsIncidentResponseEntry[] {
   if (!Array.isArray(value)) return [];
-  return value
-    .map((item) => {
-      const record = asRecord(item);
-      const type = record?.type;
-      const at = record?.at;
-      if (typeof type !== "string" || typeof at !== "string") {
-        return null;
-      }
-      return {
-        type: type as OpsIncidentResponseActionType,
-        at,
-        actorId: typeof record.actorId === "number" ? record.actorId : null,
-        actorName: typeof record.actorName === "string" ? record.actorName : null,
-        actorEmail: typeof record.actorEmail === "string" ? record.actorEmail : null,
-        note: typeof record.note === "string" ? record.note : null,
-        ownerId: typeof record.ownerId === "number" ? record.ownerId : null,
-        ownerName: typeof record.ownerName === "string" ? record.ownerName : null,
-        ownerEmail: typeof record.ownerEmail === "string" ? record.ownerEmail : null,
-      };
-    })
-    .filter((item): item is OpsIncidentResponseEntry => item != null)
-    .sort((left, right) => new Date(right.at).getTime() - new Date(left.at).getTime());
+  const normalized: OpsIncidentResponseEntry[] = [];
+  for (const item of value) {
+    const record = asRecord(item);
+    if (!record) {
+      continue;
+    }
+    const type = record.type;
+    const at = record.at;
+    if (typeof type !== "string" || typeof at !== "string") {
+      continue;
+    }
+    normalized.push({
+      type: type as OpsIncidentResponseActionType,
+      at,
+      actorId: typeof record.actorId === "number" ? record.actorId : null,
+      actorName: typeof record.actorName === "string" ? record.actorName : null,
+      actorEmail: typeof record.actorEmail === "string" ? record.actorEmail : null,
+      note: typeof record.note === "string" ? record.note : null,
+      ownerId: typeof record.ownerId === "number" ? record.ownerId : null,
+      ownerName: typeof record.ownerName === "string" ? record.ownerName : null,
+      ownerEmail: typeof record.ownerEmail === "string" ? record.ownerEmail : null,
+    });
+  }
+  return normalized.sort((left, right) => new Date(right.at).getTime() - new Date(left.at).getTime());
 }
 
 function dedupeResponseHistory(entries: OpsIncidentResponseEntry[]): OpsIncidentResponseEntry[] {
@@ -1247,10 +1250,22 @@ export function deriveOpsOverview(input: OpsOverviewInput): OpsOverview {
     input.baselineMetrics?.processRestartCounts ?? null,
   );
 
+  const previousServiceStatuses = extractServices(
+    (input.previousMetrics?.serviceStatuses as Record<string, unknown> | null | undefined) ?? null,
+  ).reduce((acc, service) => {
+    acc[service.name] = String(service.status ?? "unknown").trim().toLowerCase();
+    return acc;
+  }, {} as Record<string, string>);
+
   const serviceBuckets = input.services.reduce(
     (acc, service) => {
       const normalized = String(service.status ?? "unknown").trim().toLowerCase();
-      if (CRITICAL_SERVICE_STATUSES.has(normalized)) acc.critical.push(service.name);
+      const previousStatus = previousServiceStatuses[service.name] ?? null;
+      const hadPreviousCritical = previousStatus != null && CRITICAL_SERVICE_STATUSES.has(previousStatus);
+      if (CRITICAL_SERVICE_STATUSES.has(normalized)) {
+        if (previousStatus == null || hadPreviousCritical) acc.critical.push(service.name);
+        else acc.warning.push(service.name);
+      }
       else if (!HEALTHY_SERVICE_STATUSES.has(normalized)) acc.warning.push(service.name);
       return acc;
     },
@@ -1724,16 +1739,33 @@ export function deriveOpsOverview(input: OpsOverviewInput): OpsOverview {
 
 async function getAlertCounts(db: Awaited<ReturnType<typeof getDb>>): Promise<AlertCounts> {
   const rows = await db
-    .select({ severity: monitoringAlerts.severity, cnt: count() })
+    .select({
+      id: monitoringAlerts.id,
+      severity: monitoringAlerts.severity,
+      dedupeKey: sql<string | null>`${monitoringAlerts.metadata}->>'dedupeKey'`,
+      anomalyType: sql<string | null>`${monitoringAlerts.metadata}->>'anomalyType'`,
+    })
     .from(monitoringAlerts)
     .where(eq(monitoringAlerts.acknowledged, false))
-    .groupBy(monitoringAlerts.severity);
+    .orderBy(desc(monitoringAlerts.createdAt));
 
   const counts: AlertCounts = { critical: 0, warning: 0, error: 0, info: 0 };
+  const seenIncidentKeys = new Set<string>();
   for (const row of rows) {
+    const anomalyType = String(row.anomalyType ?? "").trim().toLowerCase();
+    if (anomalyType === "alert_backlog") {
+      continue;
+    }
+
+    const incidentKey = String(row.dedupeKey ?? "").trim() || `legacy:${row.id}`;
+    if (seenIncidentKeys.has(incidentKey)) {
+      continue;
+    }
+    seenIncidentKeys.add(incidentKey);
+
     const severity = String(row.severity ?? "").toLowerCase() as keyof AlertCounts;
     if (severity in counts) {
-      counts[severity] = Number(row.cnt ?? 0);
+      counts[severity] += 1;
     }
   }
   return counts;
@@ -1938,6 +1970,7 @@ export async function getOpsOverview(opts?: {
 
   return deriveOpsOverview({
     latestMetrics,
+    previousMetrics: (metricRows[1] as MetricPoint | undefined) ?? null,
     baselineMetrics,
     lastCheckAt: latestCheck?.checkedAt ?? null,
     services: extractServices((latestMetrics?.serviceStatuses as Record<string, unknown> | null | undefined) ?? null),
@@ -2184,19 +2217,9 @@ export async function getCurrentStatus(): Promise<{
     .orderBy(desc(monitoringChecks.createdAt))
     .limit(1);
 
-  // Count unacknowledged alerts by severity
-  const alertCounts = await db
-    .select({ severity: monitoringAlerts.severity, cnt: count() })
-    .from(monitoringAlerts)
-    .where(eq(monitoringAlerts.acknowledged, false))
-    .groupBy(monitoringAlerts.severity);
-
-  let critical = 0;
-  let warning = 0;
-  for (const row of alertCounts) {
-    if (row.severity === "critical") critical = Number(row.cnt);
-    if (row.severity === "warning") warning = Number(row.cnt);
-  }
+  const alertCounts = await getAlertCounts(db);
+  const critical = alertCounts.critical + alertCounts.error;
+  const warning = alertCounts.warning;
 
   // Extract service statuses from latest metrics
   let services = extractServices((latestMetrics?.serviceStatuses as Record<string, unknown> | null | undefined) ?? null);

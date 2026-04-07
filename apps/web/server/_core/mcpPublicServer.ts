@@ -1,7 +1,9 @@
 import { Express, Request, Response } from "express";
 import { randomUUID } from "crypto";
-import { requireScopes } from "../middleware/requireScopes";
 import { getRedisClient } from "../services/redis";
+import { getAppRuntimeConfig } from "../services/appRuntimeConfig";
+import { hasScope } from "./tokens";
+import type { AuthResult } from "./authz";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -25,7 +27,7 @@ interface McpSession {
   state: "ready" | "error";
   tenantId: string;
   userId: number;
-  apiKeyId: string;
+  apiKeyId: string | null;
   scopes: string[];
   createdAt: string;
 }
@@ -37,6 +39,8 @@ interface McpToolDef {
   requiredScope: string;
   readWrite: "Read" | "Write";
 }
+
+type SuccessfulAuthResult = AuthResult & { ok: true };
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -50,8 +54,111 @@ const MAX_BATCH_SIZE = 100; // DoS protection: max items per batch request
 const SUPPORTED_PROTOCOL_VERSIONS = ["2025-03-26"];
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+function normalizeString(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function normalizePositiveInteger(value: unknown): number | null {
+  const parsed = typeof value === "number"
+    ? value
+    : Number.parseInt(String(value ?? ""), 10);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+function requireMcpScope(requiredScope: string) {
+  return (req: Request, res: Response, next: (err?: unknown) => void) => {
+    const auth = req.auth;
+    if (!auth) {
+      res.status(401).json({
+        error: {
+          code: "invalid_api_key",
+          message: "Authentication required",
+          type: "auth_error",
+        },
+      });
+      return;
+    }
+
+    if (auth.mode === "delegated_worker") {
+      res.status(403).json({
+        error: {
+          code: "mcp_unavailable",
+          message: "Delegated worker MCP access is unavailable in this phase",
+          type: "feature_disabled_error",
+        },
+      });
+      return;
+    }
+
+    if (!hasScope(auth.scopes, requiredScope)) {
+      res.status(403).json({
+        error: {
+          code: "insufficient_scopes",
+          message: `Missing required scope: ${requiredScope}`,
+          type: "auth_error",
+        },
+      });
+      return;
+    }
+
+    next();
+  };
+}
+
+function normalizeMcpSessionAuth(
+  req: Request,
+  auth: SuccessfulAuthResult,
+): Pick<McpSession, "tenantId" | "userId" | "apiKeyId" | "scopes"> {
+  const headerTenantId = normalizeString(req.headers["x-tenant-id"]);
+  const headerUserId = normalizePositiveInteger(req.headers["x-user-id"]);
+
+  if (auth.mode === "api_key") {
+    const tenantId = normalizeString(auth.tenantId);
+    const userId = normalizePositiveInteger(auth.userId);
+    if (!tenantId || !userId) {
+      throw new Error("Missing tenant or user context for MCP session");
+    }
+    return {
+      tenantId,
+      userId,
+      apiKeyId: normalizeString(auth.apiKeyId) || null,
+      scopes: auth.scopes ?? [],
+    };
+  }
+
+  if (auth.mode === "session") {
+    const tenantId = normalizeString(auth.tenantId || auth.user?.currentTenantId);
+    const userId = normalizePositiveInteger(auth.userId || auth.user?.id);
+    if (!tenantId || !userId) {
+      throw new Error("Missing tenant or user context for MCP session");
+    }
+    return {
+      tenantId,
+      userId,
+      apiKeyId: null,
+      scopes: auth.scopes ?? [],
+    };
+  }
+
+  const allowHeaderContext = auth.sub === "static" || auth.sub === "internal";
+  const tenantId = normalizeString((auth as any).tenantId)
+    || (allowHeaderContext ? headerTenantId : "");
+  const userId = normalizePositiveInteger((auth as any).userId)
+    || normalizePositiveInteger(auth.sub)
+    || (allowHeaderContext ? headerUserId : null);
+  if (!tenantId || !userId) {
+    throw new Error("Missing tenant or user context for MCP session");
+  }
+  return {
+    tenantId,
+    userId,
+    apiKeyId: normalizeString((auth as any).apiKeyId) || null,
+    scopes: auth.scopes ?? [],
+  };
+}
+
 // ---------------------------------------------------------------------------
-// Tool Registry (28 tools)
+// Tool Registry
 // ---------------------------------------------------------------------------
 
 const TOOL_REGISTRY: McpToolDef[] = [
@@ -169,44 +276,6 @@ const TOOL_REGISTRY: McpToolDef[] = [
         arguments: { type: "object" },
       },
     },
-  },
-  // LLM
-  {
-    name: "smartspec.llm.chat",
-    description: "Send a chat completion request through SmartSpecPro's LLM router",
-    requiredScope: "llm:chat",
-    readWrite: "Write",
-    inputSchema: {
-      type: "object",
-      required: ["messages"],
-      properties: {
-        messages: { type: "array" },
-        model: { type: "string" },
-        max_tokens: { type: "integer" },
-        temperature: { type: "number" },
-      },
-    },
-  },
-  {
-    name: "smartspec.llm.embed",
-    description: "Generate text embeddings",
-    requiredScope: "llm:chat",
-    readWrite: "Read",
-    inputSchema: {
-      type: "object",
-      required: ["text"],
-      properties: {
-        text: { type: "string" },
-        model: { type: "string" },
-      },
-    },
-  },
-  {
-    name: "smartspec.llm.models",
-    description: "List available LLM models",
-    requiredScope: "llm:chat",
-    readWrite: "Read",
-    inputSchema: { type: "object", properties: {} },
   },
   // Media
   {
@@ -696,12 +765,13 @@ async function dispatchToolCall(
       throw { code: -32602, message: "Agency not found or access denied" };
     }
     // M07: Proxy to Python backend with proxy auth token
-    const pythonUrl = process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
+    const runtime = await getAppRuntimeConfig();
+    const pythonUrl = runtime.pythonBackendUrl;
     const response = await fetch(`${pythonUrl}/api/internal/agency/tool/execute`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-proxy-token": process.env.SMARTSPEC_PROXY_TOKEN || "",
+        ...(runtime.proxyToken ? { "x-proxy-token": runtime.proxyToken } : {}),
       },
       body: JSON.stringify({
         agency_id: agencyId,
@@ -734,17 +804,6 @@ async function dispatchToolCall(
   }
   if (toolName === "smartspec.agencies.status") {
     return { status: "unknown", message: "Run status via /v1/agencies/:id/runs/:runId" };
-  }
-
-  // LLM
-  if (toolName === "smartspec.llm.chat") {
-    return { choices: [], message: "LLM chat available via OpenAI-compatible gateway" };
-  }
-  if (toolName === "smartspec.llm.embed") {
-    return { embedding: [], message: "Embeddings available via embedding service" };
-  }
-  if (toolName === "smartspec.llm.models") {
-    return { models: [], message: "Model list available via LLM router" };
   }
 
   // Media
@@ -863,14 +922,15 @@ async function dispatchToolCall(
 async function handleInitialize(
   req: Request,
   params: Record<string, unknown>,
-  auth: any,
+  auth: SuccessfulAuthResult,
 ): Promise<{ result: unknown; sessionId: string }> {
+  const normalizedAuth = normalizeMcpSessionAuth(req, auth);
   const session: McpSession = {
     state: "ready",
-    tenantId: auth.tenantId,
-    userId: auth.userId,
-    apiKeyId: auth.apiKeyId,
-    scopes: auth.scopes ?? [],
+    tenantId: normalizedAuth.tenantId,
+    userId: normalizedAuth.userId,
+    apiKeyId: normalizedAuth.apiKeyId,
+    scopes: normalizedAuth.scopes,
     createdAt: new Date().toISOString(),
   };
 
@@ -1175,18 +1235,18 @@ function mcpDiscoveryHandler(_req: Request, res: Response): void {
 // ---------------------------------------------------------------------------
 
 export function registerMcpPublicRoutes(app: Express): void {
-  // M07: Warn at startup if required backend env vars are not set.
-  // These are needed for agency tool proxying and inter-service auth.
-  if (!process.env.PYTHON_BACKEND_URL) {
-    console.warn(
-      "[MCP] PYTHON_BACKEND_URL is not set — agency tool calls will fall back to http://localhost:8000",
-    );
-  }
-  if (!process.env.SMARTSPEC_PROXY_TOKEN) {
-    console.warn(
-      "[MCP] SMARTSPEC_PROXY_TOKEN is not set — inter-service requests to Python backend will be unauthenticated",
-    );
-  }
+  void getAppRuntimeConfig().then((runtimeConfig) => {
+    if (!runtimeConfig.pythonBackendUrl) {
+      console.warn(
+        "[MCP] Python backend URL is not configured in UI settings — agency tool calls will fall back to localhost",
+      );
+    }
+    if (!runtimeConfig.proxyToken && !runtimeConfig.webGatewayToken) {
+      console.warn(
+        "[MCP] Internal proxy/web gateway token is not configured in UI settings — inter-service requests may be unauthenticated",
+      );
+    }
+  }).catch(() => {});
 
   // NOTE: /v1/mcp relies on the shared app.use("/v1", ...) middleware chain for
   // CORS, headers, auth, feature guard, rate limiting, idempotency, and audit.
@@ -1194,14 +1254,14 @@ export function registerMcpPublicRoutes(app: Express): void {
   // it caused double auth lookups and made the audit middleware run twice.
   app.post(
     "/v1/mcp",
-    requireScopes("mcp:read"),
+    requireMcpScope("mcp:read"),
     mcpHandler,
   );
 
   // Session termination per MCP spec 2025-03-26
   app.delete(
     "/v1/mcp",
-    requireScopes("mcp:read"),
+    requireMcpScope("mcp:read"),
     mcpDeleteHandler,
   );
 

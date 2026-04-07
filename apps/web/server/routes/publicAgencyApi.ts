@@ -11,6 +11,15 @@ import { createInternalTokenFromAuth } from "../_core/tokens";
 import { db } from "../db";
 import { agencies, agencyConversations } from "../../drizzle/schema";
 import { emitPublicApiEvent } from "../services/webhookDeliveryService";
+import {
+  assertDelegatedWorkerGrant,
+  WorkerDelegationError,
+} from "../services/workerDelegationService";
+import {
+  buildDelegatedWorkerOriginMetadata,
+  DelegatedWorkerPlatformError,
+  runWithDelegatedWorkerExecution,
+} from "../services/delegatedWorkerPlatformService";
 
 // ---------------------------------------------------------------------------
 // Validation
@@ -176,6 +185,10 @@ export function createPublicAgencyRouter(): Router {
         const userId = (auth as any).userId as number;
         const tenantId = (auth as any).tenantId as string;
         const apiKeyId = (auth as any).apiKeyId as string;
+        await assertDelegatedWorkerGrant(auth, {
+          grantType: "agency",
+          resourceId: agencyId,
+        });
 
         // Verify agency exists AND belongs to this tenant (IDOR: 404, not 403)
         const agencyExists = await verifyAgencyTenant(agencyId, tenantId);
@@ -197,73 +210,85 @@ export function createPublicAgencyRouter(): Router {
         }
 
         const { message, conversation_id, max_credits, stream } = parsed.data;
-
-        // Get or create conversation
-        let conversationId: string;
-        if (conversation_id) {
-          // Validate caller-supplied conversation_id belongs to this user+agency+tenant
-          const owned = await db.instance
-            .select({ id: agencyConversations.id })
-            .from(agencyConversations)
-            .innerJoin(agencies, eq(agencyConversations.agencyId, agencies.id))
-            .where(
-              and(
-                eq(agencyConversations.id, conversation_id),
-                eq(agencyConversations.agencyId, agencyId),
-                eq(agencyConversations.userId, userId),
-                eq(agencies.tenantId, tenantId),
-              ),
-            )
-            .limit(1);
-          if (!owned.length) {
-            sendApiError(res, 404, "not_found", "Conversation not found");
-            return;
+        const { conversationId, result, reservedCredits } = await runWithDelegatedWorkerExecution({
+          auth,
+          actionClass: "compute",
+          estimatedCredits: max_credits ?? 1,
+          idempotencyKey: req.get("Idempotency-Key"),
+        }, async () => {
+          let conversationId: string;
+          if (conversation_id) {
+            const owned = await db.instance
+              .select({ id: agencyConversations.id })
+              .from(agencyConversations)
+              .innerJoin(agencies, eq(agencyConversations.agencyId, agencies.id))
+              .where(
+                and(
+                  eq(agencyConversations.id, conversation_id),
+                  eq(agencyConversations.agencyId, agencyId),
+                  eq(agencyConversations.userId, userId),
+                  eq(agencies.tenantId, tenantId),
+                ),
+              )
+              .limit(1);
+            if (!owned.length) {
+              sendApiError(res, 404, "not_found", "Conversation not found");
+              throw new Error("conversation_not_found");
+            }
+            conversationId = conversation_id;
+          } else {
+            conversationId = await getOrCreateAgencyApiConversation(agencyId, {
+              userId,
+              tenantId,
+              apiKeyId,
+            });
           }
-          conversationId = conversation_id;
-        } else {
-          conversationId = await getOrCreateAgencyApiConversation(agencyId, {
-            userId,
-            tenantId,
-            apiKeyId,
-          });
-        }
 
-        // Credit reservation if max_credits specified
-        let reservedCredits = 0;
-        if (max_credits) {
-          reservedCredits = max_credits;
-          // Reserve credits upfront
-          await deductCredits({
-            userId,
-            amount: reservedCredits,
-            sourceType: "api_agency",
-            description: `Agency invocation reservation: ${agencyId}`,
-          } as any);
-        }
-
-        // Generate a short-lived (15 min) bearer token for the agency bridge
-        const userToken = createInternalTokenFromAuth({ userId });
-
-        // Execute run — if this throws and we had a reservation, refund it
-        let result: Awaited<ReturnType<typeof agencyBridge.executeRun>>;
-        try {
-          result = await agencyBridge.executeRun({
-            agencyId,
-            conversationId,
-            message,
-            userToken,
-            tenantId,
-            userId,
-          });
-        } catch (runErr) {
-          if (reservedCredits > 0) {
-            await refundCredits({
+          let reservedCredits = 0;
+          if (max_credits) {
+            reservedCredits = max_credits;
+            await deductCredits({
               userId,
               amount: reservedCredits,
-              reason: `Agency invocation failed — full reservation refund: ${agencyId}`,
-            } as any).catch(() => {});
+              sourceType: "api_agency",
+              description: `Agency invocation reservation: ${agencyId}`,
+              idempotencyKey: req.get("Idempotency-Key") || undefined,
+              metadata: buildDelegatedWorkerOriginMetadata(auth, "agencies.invoke", {
+                endpoint: "/v1/agencies/:agencyId/invoke",
+                agencyId,
+                conversationId,
+                reservedCredits,
+                maxCredits: max_credits ?? null,
+              }),
+            } as any);
           }
-          throw runErr;
+
+          const userToken = createInternalTokenFromAuth({ userId });
+
+          try {
+            const result = await agencyBridge.executeRun({
+              agencyId,
+              conversationId,
+              message,
+              userToken,
+              tenantId,
+              userId,
+            });
+            return { conversationId, result, reservedCredits };
+          } catch (runErr) {
+            if (reservedCredits > 0) {
+              await refundCredits({
+                userId,
+                amount: reservedCredits,
+                reason: `Agency invocation failed — full reservation refund: ${agencyId}`,
+              } as any).catch(() => {});
+            }
+            throw runErr;
+          }
+        });
+
+        if (res.headersSent) {
+          return;
         }
 
         const creditsUsed = result.creditsUsed ?? 0;
@@ -287,6 +312,13 @@ export function createPublicAgencyRouter(): Router {
               amount: creditsUsed,
               sourceType: "api_agency",
               description: `Agency invocation: ${agencyId}`,
+              idempotencyKey: req.get("Idempotency-Key") || undefined,
+              metadata: buildDelegatedWorkerOriginMetadata(auth, "agencies.invoke", {
+                endpoint: "/v1/agencies/:agencyId/invoke",
+                agencyId,
+                conversationId,
+                actualCreditsUsed: creditsUsed,
+              }),
             } as any);
           }
         }
@@ -338,6 +370,10 @@ export function createPublicAgencyRouter(): Router {
           });
         }
       } catch (err) {
+        if (err instanceof WorkerDelegationError || err instanceof DelegatedWorkerPlatformError) {
+          sendApiError(res, err.statusCode, err.code, err.message, err.type);
+          return;
+        }
         console.error("[PublicAgencyApi] POST invoke error", err);
         if (!res.headersSent) {
           sendApiError(res, 500, "internal_error", "Internal server error");

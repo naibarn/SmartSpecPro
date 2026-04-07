@@ -17,6 +17,15 @@ import {
 } from "../services/creditService";
 import { incrementDailyCredits } from "../services/apiKeyRateLimiter";
 import { createInternalTokenFromAuth } from "../_core/tokens";
+import {
+  assertDelegatedWorkerGrant,
+  WorkerDelegationError,
+} from "../services/workerDelegationService";
+import {
+  buildDelegatedWorkerOriginMetadata,
+  DelegatedWorkerPlatformError,
+  runWithDelegatedWorkerExecution,
+} from "../services/delegatedWorkerPlatformService";
 
 // ---------------------------------------------------------------------------
 // Input schema cache
@@ -220,6 +229,10 @@ export function createPublicSkillsRouter(): Router {
           sendApiError(res, 404, "not_found", "Skill not found");
           return;
         }
+        await assertDelegatedWorkerGrant(req.auth, {
+          grantType: "skill",
+          resourceId: req.params.skillId,
+        });
 
         const parsed = ExecuteBodySchema.safeParse(req.body);
         if (!parsed.success) {
@@ -249,36 +262,47 @@ export function createPublicSkillsRouter(): Router {
           );
           return;
         }
+        const result = await runWithDelegatedWorkerExecution({
+          auth,
+          actionClass: "compute",
+          estimatedCredits: estimatedCost,
+          idempotencyKey: req.get("Idempotency-Key"),
+        }, async () => {
+          // Deduct credits BEFORE execution so the user cannot get output for free
+          // if deductCredits fails. If execution subsequently fails, credits are NOT
+          // refunded — this is intentional (the service cost was incurred).
+          await deductCredits({
+            userId,
+            amount: estimatedCost,
+            sourceType: "api_skill",
+            description: `Skill execution: ${skill.id}`,
+            idempotencyKey: req.get("Idempotency-Key") || undefined,
+            metadata: buildDelegatedWorkerOriginMetadata(auth, "skills.execute", {
+              endpoint: "/v1/skills/:skillId/execute",
+              skillId: skill.id,
+              estimatedCredits: estimatedCost,
+              model: model ?? skill.defaultModel ?? null,
+            }),
+          } as any);
+          incrementDailyCredits((auth as any).apiKeyId, estimatedCost).catch(() => {});
 
-        // Deduct credits BEFORE execution so the user cannot get output for free
-        // if deductCredits fails. If execution subsequently fails, credits are NOT
-        // refunded — this is intentional (the service cost was incurred).
-        await deductCredits({
-          userId,
-          amount: estimatedCost,
-          sourceType: "api_skill",
-          description: `Skill execution: ${skill.id}`,
-        } as any);
-        incrementDailyCredits((auth as any).apiKeyId, estimatedCost).catch(() => {});
+          const prompt =
+            typeof inputs.prompt === "string" ? inputs.prompt : "";
+          const { prompt: _p, ...rest } = inputs as Record<string, unknown>;
+          const execParams = {
+            prompt,
+            model: model ?? skill.defaultModel,
+            extraParams: rest,
+          };
 
-        // Build execution params
-        const prompt =
-          typeof inputs.prompt === "string" ? inputs.prompt : "";
-        const { prompt: _p, ...rest } = inputs as Record<string, unknown>;
-        const execParams = {
-          prompt,
-          model: model ?? skill.defaultModel,
-          extraParams: rest,
-        };
-
-        // Execute
-        const result = await executeSkill(
-          skill,
-          execParams as any,
-          userId,
-          createInternalTokenFromAuth({ userId }),
-          tenantId,
-        );
+          return executeSkill(
+            skill,
+            execParams as any,
+            userId,
+            createInternalTokenFromAuth({ userId }),
+            tenantId,
+          );
+        });
 
         const creditsUsed = estimatedCost;
 
@@ -314,6 +338,10 @@ export function createPublicSkillsRouter(): Router {
           });
         }
       } catch (err) {
+        if (err instanceof WorkerDelegationError || err instanceof DelegatedWorkerPlatformError) {
+          sendApiError(res, err.statusCode, err.code, err.message, err.type);
+          return;
+        }
         console.error(
           "[PublicSkillsApi] POST /v1/skills/:skillId/execute error",
           err,

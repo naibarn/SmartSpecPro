@@ -83,6 +83,23 @@ export function buildOpenApiSpec() {
         "- **Spec URL**: `https://smartaihub.app/v1/openapi.json`",
         "- **Auth**: `X-Api-Key: sk-ssp_<your_key>` or `Authorization: Bearer sk-ssp_<your_key>`",
         "",
+        "## Claw Runtime HTTP Gateway Profile",
+        "The Claw-compatible HTTP gateway contract currently includes:",
+        "- `POST /v1/chat/completions`",
+        "- `POST /v1/responses`",
+        "- `GET /v1/models`",
+        "- `GET /v1/credits`",
+        "- `POST /v1/knowledge/library/search`",
+        "- `POST /v1/knowledge/library/upload`",
+        "- `POST /v1/knowledge/rag/search`",
+        "- `GET /v1/events` for SSE observation",
+        "",
+        "Use tenant-bound API keys or equivalent bearer API-key auth for external runtimes.",
+        "SmartSpec-managed internal tokens may call these routes with additional internal headers, but that is not the public integration profile.",
+        "Delegated personal workers should treat `/v1/openapi.json` as the static HTTP contract and their delegated manifest as the per-job runtime truth.",
+        "Delegated worker MCP is intentionally unavailable in this phase, so `/v1/mcp` should not be treated as a ready delegated-worker path.",
+        "Embeddings are **not** supported on the public Claw gateway in this phase, so `/v1/embeddings` is intentionally absent from this spec.",
+        "",
         "## SDK Generation",
         "```",
         "npx @openapitools/openapi-generator-cli generate \\",
@@ -867,6 +884,317 @@ export function buildOpenApiSpec() {
         },
       },
       // -----------------------------------------------------------------------
+      // LLM Gateway
+      // -----------------------------------------------------------------------
+      "/v1/chat/completions": {
+        post: {
+          operationId: "gatewayChatCompletions",
+          tags: ["Gateway"],
+          summary: "OpenAI-compatible chat completions gateway",
+          description: [
+            "Primary chat-completions route for external runtimes and OpenAI-compatible clients.",
+            "Authenticate with a tenant-bound API key via `X-Api-Key` or `Authorization: Bearer sk-ssp_...`.",
+            "Supports streaming with `stream: true`.",
+          ].join(" "),
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  required: ["model", "messages"],
+                  properties: {
+                    model: { type: "string", example: "gpt-5.4" },
+                    messages: {
+                      type: "array",
+                      items: {
+                        type: "object",
+                        required: ["role", "content"],
+                        properties: {
+                          role: { type: "string", enum: ["system", "user", "assistant", "tool"] },
+                          content: { oneOf: [{ type: "string" }, { type: "array" }, { type: "object" }] },
+                        },
+                      },
+                    },
+                    stream: { type: "boolean", default: false },
+                    temperature: { type: "number" },
+                    max_tokens: { type: "integer" },
+                    tools: { type: "array", items: { type: "object" } },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            "200": {
+              description: "Chat completion response",
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    properties: {
+                      id: { type: "string" },
+                      object: { type: "string", example: "chat.completion" },
+                      model: { type: "string" },
+                      choices: { type: "array", items: { type: "object" } },
+                      usage: { type: "object" },
+                    },
+                  },
+                },
+                "text/event-stream": {
+                  schema: { type: "string", description: "Streaming chat completion events when `stream: true`." },
+                },
+              },
+            },
+            ...commonErrorResponses,
+          },
+        },
+      },
+      "/v1/responses": {
+        post: {
+          operationId: "gatewayResponses",
+          tags: ["Gateway"],
+          summary: "OpenAI-compatible responses gateway",
+          description: [
+            "Responses-family route for models and tool loops that use the OpenAI Responses API surface.",
+            "External callers must authenticate with a tenant-bound API key or equivalent bearer API-key auth.",
+            "Internal SmartSpec-managed callers may additionally supply `X-Tenant-Id` when using internal service auth.",
+          ].join(" "),
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  required: ["model", "input"],
+                  properties: {
+                    model: { type: "string", example: "gpt-5.4" },
+                    input: { oneOf: [{ type: "string" }, { type: "array" }, { type: "object" }] },
+                    stream: { type: "boolean", default: false },
+                    instructions: { type: "string" },
+                    tools: { type: "array", items: { type: "object" } },
+                    tool_choice: { oneOf: [{ type: "string" }, { type: "object" }] },
+                    max_output_tokens: { type: "integer" },
+                    temperature: { type: "number" },
+                    metadata: { type: "object" },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            "200": {
+              description: "Responses API result",
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    properties: {
+                      id: { type: "string" },
+                      object: { type: "string", example: "response" },
+                      model: { type: "string" },
+                      output: { type: "array", items: { type: "object" } },
+                      usage: { type: "object" },
+                    },
+                  },
+                },
+                "text/event-stream": {
+                  schema: { type: "string", description: "Streaming response events when `stream: true`." },
+                },
+              },
+            },
+            ...commonErrorResponses,
+          },
+        },
+      },
+      "/v1/models": {
+        get: {
+          operationId: "gatewayModels",
+          tags: ["Gateway"],
+          summary: "List gateway-available models",
+          description: "Returns models currently available through the public HTTP LLM gateway.",
+          responses: {
+            "200": {
+              description: "Gateway model catalog",
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    properties: {
+                      object: { type: "string", example: "list" },
+                      data: { type: "array", items: { type: "object" } },
+                    },
+                  },
+                },
+              },
+            },
+            ...commonErrorResponses,
+          },
+        },
+      },
+      "/v1/credits": {
+        get: {
+          operationId: "gatewayCredits",
+          tags: ["Gateway"],
+          summary: "Get current credit balance",
+          description: "Returns the current credit balance visible to the authenticated tenant/user context.",
+          responses: {
+            "200": {
+              description: "Credit balance",
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    properties: {
+                      credits: { type: "integer" },
+                      plan: { type: "string", nullable: true },
+                    },
+                  },
+                },
+              },
+            },
+            ...commonErrorResponses,
+          },
+        },
+      },
+      // -----------------------------------------------------------------------
+      // Knowledge
+      // -----------------------------------------------------------------------
+      "/v1/knowledge/library/search": {
+        post: {
+          operationId: "searchOwnerLibrary",
+          tags: ["Knowledge"],
+          summary: "Search the authenticated user's library",
+          description: "Searches the caller's own library scope. Requires scope: `library:search`.",
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    query: { type: "string" },
+                    limit: { type: "integer", minimum: 1, maximum: 50 },
+                    offset: { type: "integer", minimum: 0 },
+                    itemType: { type: "string" },
+                    folderId: { type: "integer", nullable: true },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            "200": {
+              description: "Library search results",
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    properties: {
+                      results: { type: "array", items: { type: "object" } },
+                      total: { type: "integer" },
+                      limit: { type: "integer" },
+                      offset: { type: "integer" },
+                      has_more: { type: "boolean" },
+                    },
+                  },
+                },
+              },
+            },
+            ...commonErrorResponses,
+          },
+        },
+      },
+      "/v1/knowledge/library/upload": {
+        post: {
+          operationId: "uploadOwnerLibraryFile",
+          tags: ["Knowledge"],
+          summary: "Upload a file into the authenticated user's library",
+          description: "Uploads an allowed file type into the caller's own library scope. Requires scope: `library:upload`.",
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  required: ["fileName", "fileType", "fileBase64"],
+                  properties: {
+                    fileName: { type: "string" },
+                    fileType: { type: "string" },
+                    fileBase64: { type: "string", description: "Base64-encoded file contents" },
+                    title: { type: "string" },
+                    visibility: { type: "string", enum: ["private", "team", "public"] },
+                    parentId: { type: "integer", nullable: true },
+                    metadata: { type: "object", additionalProperties: true },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            "201": {
+              description: "Library item created",
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    properties: {
+                      item: { type: "object" },
+                      storageKey: { type: "string" },
+                      indexJob: { type: "object", nullable: true },
+                      billing: { type: "object" },
+                    },
+                  },
+                },
+              },
+            },
+            ...commonErrorResponses,
+          },
+        },
+      },
+      "/v1/knowledge/rag/search": {
+        post: {
+          operationId: "searchOwnerRag",
+          tags: ["Knowledge"],
+          summary: "Run a RAG-style semantic search on the authenticated user's knowledge",
+          description: "Searches the caller's own indexed knowledge scope. Requires scope: `rag:search`.",
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  required: ["query"],
+                  properties: {
+                    query: { type: "string" },
+                    limit: { type: "integer", minimum: 1, maximum: 20 },
+                    offset: { type: "integer", minimum: 0 },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            "200": {
+              description: "RAG search results",
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    properties: {
+                      query: { type: "string" },
+                      results: { type: "array", items: { type: "object" } },
+                      credits_used: { type: "integer" },
+                    },
+                  },
+                },
+              },
+            },
+            ...commonErrorResponses,
+          },
+        },
+      },
+      // -----------------------------------------------------------------------
       // MCP
       // -----------------------------------------------------------------------
       "/v1/mcp": {
@@ -874,7 +1202,7 @@ export function buildOpenApiSpec() {
           operationId: "mcpEndpoint",
           tags: ["MCP"],
           summary: "MCP protocol endpoint",
-          description: "Handles Model Context Protocol tool calls. Requires scope: `mcp:read`.",
+          description: "Handles Model Context Protocol tool calls. Requires scope: `mcp:read`. Delegated personal workers should treat MCP as unavailable in this phase.",
           requestBody: {
             required: true,
             content: {

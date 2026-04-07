@@ -21,6 +21,7 @@ import { registerMediaJobRoutes } from "../routers/mediaJobs";
 import { registerFeedbackUploadRoutes } from "../routers/feedback";
 import { registerAgencyStreamRoutes } from "./agencyStreamProxy";
 import { registerLiveBrowserStreamRoutes } from "./liveBrowserStreamProxy";
+import { registerWorkerRuntimeRoutes } from "../routes/workerRuntime";
 import { registerContentAutomationRoutes } from "../routers/contentAutomationRoutes";
 import { registerContentManifestImportRoutes } from "../routers/contentManifestImport";
 import { registerAutoDraftToolRoute } from "../routers/autoDraftTool";
@@ -36,6 +37,14 @@ import { createWebhookRouter } from "../routes/webhooks";
 import { createWebhookTriggerRouter } from "../routes/webhookTrigger";
 import { createTelegramWebhookRouter } from "../routes/telegramWebhook";
 import { createChannelWebhookRouter } from "../routes/channelWebhook";
+import { createBeamWebhookRouter } from "../routes/beamWebhook";
+import { createBeamPaymentMethodSetupRouter } from "../routes/beamPaymentMethodSetup";
+import {
+  compareCachedInternalToken,
+  getAppRuntimeConfig,
+  refreshAppRuntimeConfigCache,
+} from "../services/appRuntimeConfig";
+import { processBeamWebhookEvent } from "../services/billing/paymentProcessing";
 import { createVoiceSessionRouter, handleVoiceUpgrade, shutdownVoiceGateway } from "../routes/voiceGateway";
 import { createWidgetInitRouter, handleWidgetUpgrade } from "../routes/widgetGateway";
 import browserPolicyRouter from "../routes/browserPolicy";
@@ -78,6 +87,7 @@ import { initializeGDriveCleanupJob, shutdownGDriveCleanupWorker } from "../jobs
 import { initializeUploadPostCleanupJob, shutdownUploadPostCleanupWorker } from "../jobs/uploadPostCleanup";
 import { initializePendingApprovalAlertJob } from "../jobs/pendingApprovalAlert";
 import { initializeNotificationJobs } from "../jobs/notificationJobs";
+import { initializeBillingJobs, shutdownBillingJobs } from "../jobs/billingJobs";
 import { initializeMemoryMaintenanceJobs, shutdownMemoryMaintenanceJobs } from "../jobs/memoryMaintenanceJobs";
 import { initializeContentRefreshJob } from "../jobs/contentRefreshJob";
 import { initializeInactiveUserJob } from "../jobs/inactiveUserJob";
@@ -98,7 +108,7 @@ import { getRedisClient } from "../services/redis";
 import { sql, eq, and } from "drizzle-orm";
 import crypto from "crypto";
 import { channelGateway } from "../services/channelGateway";
-import { channelConnections } from "../../drizzle/schema";
+import { channelConnections, creditSourceTypeEnum } from "../../drizzle/schema";
 import type { ChatIngressEvent } from "@shared/channelTypes";
 import { COOKIE_NAME } from "@shared/const";
 import { createPublicSkillsRouter } from "../routes/publicSkillsApi";
@@ -107,6 +117,7 @@ import { createPresentationPublicRouter } from "../routes/publicPresentationsApi
 import { createPublicVideoRouter } from "../routes/publicVideoApi";
 import { createPublicMediaRouter } from "../routes/publicMediaApi";
 import { createPublicJobsRouter } from "../routes/publicJobsApi";
+import { createPublicKnowledgeRouter } from "../routes/publicKnowledgeApi";
 import { initAutomationJobsQueue, closeAutomationJobsQueue } from "../services/jobAutomationService";
 import { createPublicWebhooksRouter } from "../routes/publicWebhooksApi";
 import { createPublicEventsRouter } from "../routes/publicEventsApi";
@@ -133,6 +144,7 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 app.disable("x-powered-by");
+void refreshAppRuntimeConfigCache().catch(() => {});
 
 // Sentry: expressIntegration() (registered in initSentry) handles request instrumentation automatically in v10+
 
@@ -189,10 +201,15 @@ app.use((_req, res, next) => {
   res.setHeader("X-Frame-Options", "DENY");
   res.setHeader("Referrer-Policy", "no-referrer");
   res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
-  res.setHeader("Permissions-Policy", "camera=(self), microphone=(self), geolocation=(), payment=(), usb=()");
-  res.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' https:; font-src 'self' data: https://fonts.gstatic.com; worker-src 'self' blob:; frame-ancestors 'none';");
+  res.setHeader("Permissions-Policy", "camera=(self), microphone=(self), geolocation=(self), payment=(), usb=()");
+  res.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://static.cloudflareinsights.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' https:; font-src 'self' data: https://fonts.gstatic.com; worker-src 'self' blob:; frame-ancestors 'none';");
   next();
 });
+
+// Beam payment webhook ingress must run before the global JSON parser so
+// request-local verify can capture the original body bytes for HMAC verification.
+app.use("/api/payments", createBeamWebhookRouter({ processEvent: processBeamWebhookEvent }));
+app.use("/api/payments", createBeamPaymentMethodSetupRouter());
 
 // Default JSON body limit — 10MB covers all normal API requests.
 // Upload routes use raw body or multipart, not JSON, so they're unaffected.
@@ -479,6 +496,7 @@ app.use("/v1/presentations", createPresentationPublicRouter());
 app.use("/v1/video-projects", createPublicVideoRouter());
 app.use("/v1/media", createPublicMediaRouter());
 app.use("/v1/jobs", createPublicJobsRouter());
+app.use("/v1/knowledge", createPublicKnowledgeRouter());
 app.use("/v1/webhooks", createPublicWebhooksRouter());
 app.use("/v1/events", createPublicEventsRouter());
 app.use("/v1/agency-tools", createAgencyToolsApiRouter());
@@ -495,6 +513,7 @@ registerMediaJobRoutes(app);
 registerFeedbackUploadRoutes(app);
 registerAgencyStreamRoutes(app);
 registerLiveBrowserStreamRoutes(app);
+registerWorkerRuntimeRoutes(app);
 registerContentAutomationRoutes(app);
 registerContentManifestImportRoutes(app);
 registerAutoDraftToolRoute(app);
@@ -533,24 +552,13 @@ app.get("/api/media/image-proxy", async (req, res) => {
 });
 
 // Valid credit source types — must match creditSourceTypeEnum in schema.ts
-const VALID_SOURCE_TYPES = new Set([
-  "chat", "skill", "media_image", "media_video", "media_audio",
-  "indexing", "rag", "stt", "translation", "brainstorm",
-  "scheduler", "admin", "agency", "creator_revenue", "other",
-  // ClawFeature additions
-  "tts", "browser_automation", "widget_chat", "webhook_chat", "webhook_trigger",
-]);
+const VALID_SOURCE_TYPES = new Set(creditSourceTypeEnum.enumValues);
 
 // Helper: timing-safe Bearer token validation for internal endpoints
 function verifyInternalBearerToken(authHeader: string): boolean {
-  if (!authHeader.startsWith("Bearer ") || !ENV.webGatewayToken) return false;
+  if (!authHeader.startsWith("Bearer ")) return false;
   const token = authHeader.slice(7);
-  // Enforce minimum token length to prevent empty-string bypass
-  if (token.length < 32 || ENV.webGatewayToken.length < 32) return false;
-  const tokenBuf = Buffer.from(token);
-  const expectedBuf = Buffer.from(ENV.webGatewayToken);
-  if (tokenBuf.length !== expectedBuf.length) return false;
-  return crypto.timingSafeEqual(tokenBuf, expectedBuf);
+  return compareCachedInternalToken(token);
 }
 
 // Helper: derive sourceType from service tag when not explicitly provided
@@ -896,12 +904,7 @@ app.post("/api/internal/presentation-import/callback", presentationImportCallbac
 // ── Internal: Resolve best LLM model from capability requirements ──────────
 app.get("/api/internal/models/resolve", async (req, res) => {
   const internalToken = req.headers["x-internal-token"] as string | undefined;
-  if (!internalToken || !ENV.webGatewayToken) {
-    return res.status(401).json({ error: "Unauthorized" });
-  }
-  const tokenBuf = Buffer.from(internalToken);
-  const expectedBuf = Buffer.from(ENV.webGatewayToken);
-  if (tokenBuf.length !== expectedBuf.length || !crypto.timingSafeEqual(tokenBuf, expectedBuf)) {
+  if (!compareCachedInternalToken(internalToken)) {
     return res.status(401).json({ error: "Invalid token" });
   }
 
@@ -934,18 +937,12 @@ app.post("/api/internal/agency/create", async (req, res) => {
 
   // Primary: X-Internal-Token auth (service-to-service from Python/Celery)
   const internalToken = req.headers["x-internal-token"] as string | undefined;
-  if (internalToken && ENV.webGatewayToken) {
-    const tokenBuf = Buffer.from(internalToken);
-    const expectedBuf = Buffer.from(ENV.webGatewayToken);
-    if (tokenBuf.length === expectedBuf.length) {
-      if (crypto.timingSafeEqual(tokenBuf, expectedBuf)) {
-        const userIdHeader = req.headers["x-user-id"] as string | undefined;
-        const userId = userIdHeader ? parseInt(userIdHeader, 10) : 0;
-        if (userId > 0) {
-          // Create a minimal user-like object for the downstream code
-          user = { id: userId, currentTenantId: null, __internalAuth: true } as any;
-        }
-      }
+  if (compareCachedInternalToken(internalToken)) {
+    const userIdHeader = req.headers["x-user-id"] as string | undefined;
+    const userId = userIdHeader ? parseInt(userIdHeader, 10) : 0;
+    if (userId > 0) {
+      // Create a minimal user-like object for the downstream code
+      user = { id: userId, currentTenantId: null, __internalAuth: true } as any;
     }
   }
 
@@ -993,6 +990,8 @@ app.post("/api/internal/agency/create", async (req, res) => {
         supportsThinking: z.boolean().optional(),
         supportsFunctionTools: z.boolean().optional(),
         supportsStructuredOutputs: z.boolean().optional(),
+        supportsJsonMode: z.boolean().optional(),
+        supportsStrictToolSchema: z.boolean().optional(),
         supportsWebSearch: z.boolean().optional(),
         supportsCodeExecution: z.boolean().optional(),
         supportsComputerUse: z.boolean().optional(),
@@ -1166,9 +1165,9 @@ registerBlogRoutes(app);
 // This catches remaining /api/v1/ paths (media, generation, etc.) so they work
 // even when requests bypass nginx and hit Express/Vite directly.
 // Auth: validates session cookie → generates short-lived JWT for Python.
-const PY_BACKEND = process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
 app.all("/api/v1/*", async (req, res) => {
-  const target = new URL(PY_BACKEND);
+  const runtime = await getAppRuntimeConfig();
+  const target = new URL(runtime.pythonBackendUrl);
   const headers: Record<string, string> = {};
   for (const key of ["content-type", "accept"]) {
     const val = req.headers[key];
@@ -1481,6 +1480,12 @@ async function main() {
     console.error("[Startup] Failed to initialize notification jobs:", error);
   }
 
+  try {
+    await initializeBillingJobs();
+  } catch (error) {
+    console.error("[Startup] Failed to initialize billing jobs:", error);
+  }
+
   // Initialize chat memory maintenance jobs (daily/weekly recurring cleanup)
   try {
     await initializeMemoryMaintenanceJobs();
@@ -1618,6 +1623,7 @@ process.on("SIGTERM", async () => {
   await shutdownGDriveCleanupWorker().catch(() => {});
   await shutdownUploadPostCleanupWorker().catch(() => {});
   await shutdownTrashPurgeWorker().catch(() => {});
+  await shutdownBillingJobs().catch(() => {});
   await shutdownTelegramWorker().catch(() => {});
   await closeDeliveryQueue().catch(() => {});
   await closeWebhookDispatchQueue().catch(() => {});
@@ -1676,6 +1682,7 @@ process.on("SIGINT", async () => {
   await shutdownGDriveCleanupWorker().catch(() => {});
   await shutdownUploadPostCleanupWorker().catch(() => {});
   await shutdownTrashPurgeWorker().catch(() => {});
+  await shutdownBillingJobs().catch(() => {});
   await shutdownTelegramWorker().catch(() => {});
   await closeDeliveryQueue().catch(() => {});
   await closeWebhookDispatchQueue().catch(() => {});

@@ -1,5 +1,11 @@
 import { integer, pgEnum, pgTable, text, timestamp, varchar, json, jsonb, boolean, numeric, serial, uniqueIndex, index, foreignKey, bigint, bigserial, check, doublePrecision, real, type AnyPgColumn, customType } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
+import type {
+  LocalAiConversationOverride,
+  LocalAiSyncedPreferences,
+  MessageRuntimeMetadata,
+  TeamRoomMessageMetadata,
+} from "../../../packages/local-ai-core/src/index";
 
 /**
  * pgvector custom column type for 1536-dimension embeddings (OpenAI text-embedding-3-small).
@@ -249,6 +255,7 @@ export const creditSourceTypeEnum = pgEnum("credit_source_type", [
   // ClawFeature additions
   "tts",
   "browser_automation",
+  "worker_runtime",
   "widget_chat",
   "webhook_chat",
   "webhook_trigger",
@@ -376,6 +383,7 @@ export const users = pgTable("users", {
       notifyOnApprovalRequests?: boolean;
       notifyOnPolicyIncidents?: boolean;
     };
+    localAi?: LocalAiSyncedPreferences;
   }>().default({}),
 
   // Recovery contacts
@@ -660,7 +668,39 @@ export const llmProviders = pgTable("llm_providers", {
     id: string;
     name: string;
     contextLength?: number;
+    createdAt?: number;
     pricing?: { input: number; output: number };
+    apiStyle?: "chat-completions" | "responses" | "messages" | "gemini";
+    supportsVision?: boolean;
+    supportsThinking?: boolean;
+    supportsWebSearch?: boolean;
+    supportsFunctionTools?: boolean;
+    supportsStructuredOutputs?: boolean;
+    supportsJsonMode?: boolean;
+    supportsStrictToolSchema?: boolean;
+    supportsCodeExecution?: boolean;
+    supportsComputerUse?: boolean;
+    supportsBackground?: boolean;
+    supportsResponses?: boolean;
+    config?: {
+      requestBodyFormat?: "responses" | "anthropic-messages" | "openai-chat-completions";
+      apiEndpoint?: string;
+      apiEndpointTemplate?: string;
+      authStrategy?: "provider-default";
+      supportsStreaming?: boolean;
+      inputFields?: Array<{
+        key: string;
+        label: string;
+        type: "boolean" | "number" | "text" | "select" | "json" | "messages" | "input" | "tools";
+        required?: boolean;
+        documented?: boolean;
+        default?: string | number | boolean;
+        options?: Array<{ value: string; label: string }>;
+        description?: string;
+      }>;
+      passthroughFields?: string[];
+      conflicts?: Array<{ type: "xor"; fields: string[] }>;
+    };
   }>>(),
 
   /** Additional configuration */
@@ -738,8 +778,14 @@ export const modelProviderMap = pgTable("model_provider_map", {
   /** Supports OpenAI Responses API */
   supportsResponses: boolean("supportsResponses").default(false),
 
-  /** Supports structured output / JSON mode */
+  /** Supports strict schema-constrained final responses */
   supportsStructuredOutputs: boolean("supportsStructuredOutputs").default(false),
+
+  /** Supports valid JSON mode without strict schema adherence */
+  supportsJsonMode: boolean("supportsJsonMode").default(false),
+
+  /** Supports strict schema validation for tool/function arguments */
+  supportsStrictToolSchema: boolean("supportsStrictToolSchema").default(false),
 
   /** Supports built-in web search */
   supportsWebSearch: boolean("supportsWebSearch").default(false),
@@ -1368,6 +1414,18 @@ export const conversations = pgTable("conversations", {
     autoDetect: boolean;
     enabledSkills: string[];
     detectionMode: "ask" | "auto" | "explicit";
+    llmSelection?: {
+      mode: "explicit" | "auto-global" | "auto-provider";
+      modelId?: string | null;
+      providerId?: number | null;
+      providerName?: string | null;
+      lastResolvedModelId?: string | null;
+      lastResolvedProviderId?: number | null;
+      lastResolvedProviderName?: string | null;
+      lastResolvedRouteFamily?: "chat-completions" | "messages" | "responses" | "unknown" | null;
+      updatedAt?: string | null;
+    };
+    localAiConversation?: LocalAiConversationOverride;
   }>().default({ autoDetect: true, enabledSkills: [], detectionMode: "auto" }),
 
   /** Whether conversation is archived */
@@ -1498,6 +1556,9 @@ export const messages = pgTable("messages", {
 
   /** Trace ID for cost correlation with providerUsageLog */
   traceId: varchar("traceId", { length: 32 }),
+
+  /** Authoritative runtime disclosure for reload-safe chat badges */
+  runtimeMetadata: jsonb("runtimeMetadata").$type<MessageRuntimeMetadata | null>(),
 
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
@@ -3174,6 +3235,750 @@ export const invoiceConfig = pgTable("invoice_config", {
 
 export type InvoiceConfig = typeof invoiceConfig.$inferSelect;
 export type InsertInvoiceConfig = typeof invoiceConfig.$inferInsert;
+
+// ============================================================
+// Billing Domain — Feature 066
+// ============================================================
+
+export const billingSubscriptionStatusEnum = pgEnum("billing_subscription_status", [
+  "pending_migration",
+  "active",
+  "past_due",
+  "downgraded_to_free",
+  "canceled",
+]);
+
+export const billingSubscriptionSourceEnum = pgEnum("billing_subscription_source", [
+  "legacy_backfill",
+  "beam_manual_invoice",
+  "admin_created",
+]);
+
+export const invoiceStreamEnum = pgEnum("invoice_stream", ["domestic", "international"]);
+export const invoiceTypeEnum = pgEnum("invoice_type", ["subscription_renewal", "topup", "manual", "replacement"]);
+export const invoiceStatusEnum = pgEnum("invoice_status", [
+  "draft",
+  "issued",
+  "payment_pending",
+  "paid",
+  "expired",
+  "canceled",
+  "canceled_overdue",
+  "replaced",
+]);
+export const documentLanguageEnum = pgEnum("document_language", ["th", "en", "bilingual"]);
+export const invoiceDocumentRenderReasonEnum = pgEnum("invoice_document_render_reason", [
+  "initial_issue",
+  "sync_header",
+  "language_variant",
+  "reissue_render",
+  "manual_regeneration",
+]);
+export const renderedByTypeEnum = pgEnum("rendered_by_type", ["system", "admin", "user"]);
+export const paymentProviderEnum = pgEnum("payment_provider", ["beam"]);
+export const providerPaymentTypeEnum = pgEnum("provider_payment_type", ["charge", "payment_link"]);
+export const paymentMethodTypeEnum = pgEnum("payment_method_type", ["card"]);
+export const billingPaymentMethodStatusEnum = pgEnum("billing_payment_method_status", [
+  "active",
+  "requires_verification",
+  "expired",
+  "revoked",
+  "provider_unavailable",
+]);
+export const renewalModeEnum = pgEnum("renewal_mode", ["manual_invoice", "auto_charge"]);
+export const renewalAttemptStatusEnum = pgEnum("renewal_attempt_status", [
+  "scheduled",
+  "charge_in_progress",
+  "retry_scheduled",
+  "grace_period_active",
+  "requires_new_card",
+  "manual_fallback_active",
+  "paused_dunning",
+  "settled",
+  "terminal_failure",
+  "manual_review_required",
+]);
+export const declineCategoryEnum = pgEnum("decline_category", [
+  "soft_decline",
+  "hard_decline",
+  "provider_unknown",
+  "manual_review_required",
+]);
+export const paymentMethodSetupSessionStatusEnum = pgEnum("payment_method_setup_session_status", [
+  "pending",
+  "confirmed",
+  "abandoned",
+  "failed",
+]);
+export const paymentStatusEnum = pgEnum("payment_status", [
+  "pending_provider_creation",
+  "payment_pending",
+  "provider_pending_unknown",
+  "reconciliation_required",
+  "paid",
+  "paid_unapplied",
+  "paid_recovered",
+  "grant_pending_recovery",
+  "downgraded_pending_reversal",
+  "manual_review_required",
+  "expired",
+  "expired_internal",
+  "canceled",
+  "canceled_overdue",
+]);
+export const paymentReconciliationStatusEnum = pgEnum("payment_reconciliation_status", [
+  "not_required",
+  "pending",
+  "in_progress",
+  "fixed",
+  "manual_review_required",
+  "failed",
+]);
+export const paymentBusinessEffectStatusEnum = pgEnum("payment_business_effect_status", [
+  "not_started",
+  "pending",
+  "applied",
+  "reversed",
+  "failed",
+]);
+export const amountMatchStatusEnum = pgEnum("amount_match_status", [
+  "unknown",
+  "matched",
+  "underpaid",
+  "overpaid",
+  "currency_mismatch",
+  "mismatch",
+]);
+export const paymentAttemptStatusEnum = pgEnum("payment_attempt_status", [
+  "pending_provider_creation",
+  "provider_pending_unknown",
+  "active",
+  "paid",
+  "expired",
+  "expired_internal",
+  "canceled",
+  "canceled_overdue",
+  "reconciliation_required",
+]);
+export const webhookProcessingStatusEnum = pgEnum("webhook_processing_status", [
+  "pending",
+  "processed",
+  "ignored_duplicate",
+  "schema_invalid",
+  "manual_review_required",
+  "failed",
+]);
+export const reconciliationEntityTypeEnum = pgEnum("reconciliation_entity_type", ["payment", "invoice", "subscription"]);
+export const reconciliationTriggerTypeEnum = pgEnum("reconciliation_trigger_type", ["webhook", "schedule", "admin", "support_case"]);
+export const reconciliationResultEnum = pgEnum("reconciliation_result", ["no_change", "fixed", "manual_review_required", "failed"]);
+export const supportRecoveryCaseStatusEnum = pgEnum("support_recovery_case_status", [
+  "open",
+  "in_progress",
+  "waiting_for_customer",
+  "resolved",
+  "closed",
+]);
+export const supportRecoveryIssueTypeEnum = pgEnum("support_recovery_issue_type", [
+  "payment_not_applied",
+  "wrong_downgrade",
+  "amount_mismatch",
+  "missing_document",
+  "duplicate_charge_review",
+  "other",
+]);
+export const supportRecoveryResolutionTypeEnum = pgEnum("support_recovery_resolution_type", [
+  "reconciled",
+  "manual_mark_paid",
+  "reverse_downgrade",
+  "invoice_reopened",
+  "invoice_replaced",
+  "not_billable",
+  "other",
+]);
+export const billingMigrationRunStatusEnum = pgEnum("billing_migration_run_status", [
+  "pending",
+  "running",
+  "completed",
+  "completed_with_warnings",
+  "failed",
+]);
+export const billingEffectTypeEnum = pgEnum("billing_effect_type", [
+  "grant_credits",
+  "renew_subscription",
+  "downgrade_subscription",
+  "reverse_downgrade",
+]);
+
+export const billingSubscriptions = pgTable("billing_subscriptions", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).references(() => tenants.id, { onDelete: "cascade" }),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  planCode: varchar("planCode", { length: 64 }).notNull(),
+  status: billingSubscriptionStatusEnum("status").notNull().default("pending_migration"),
+  source: billingSubscriptionSourceEnum("source").notNull().default("legacy_backfill"),
+  billingPeriod: billingPeriodEnum("billingPeriod").notNull().default("monthly"),
+  renewalMode: renewalModeEnum("renewalMode").notNull().default("manual_invoice"),
+  defaultPaymentMethodId: integer("defaultPaymentMethodId").references(() => billingPaymentMethods.id, { onDelete: "set null" }),
+  autoRenewEnabled: boolean("autoRenewEnabled").notNull().default(false),
+  billingAnchorAt: timestamp("billingAnchorAt", { withTimezone: true }),
+  currentPeriodStart: timestamp("currentPeriodStart", { withTimezone: true }),
+  currentPeriodEnd: timestamp("currentPeriodEnd", { withTimezone: true }),
+  nextInvoiceAt: timestamp("nextInvoiceAt", { withTimezone: true }),
+  nextRetryAt: timestamp("nextRetryAt", { withTimezone: true }),
+  graceEndsAt: timestamp("graceEndsAt", { withTimezone: true }),
+  legacyPlanSnapshot: json("legacyPlanSnapshot").$type<Record<string, any>>(),
+  migratedFromUserPlan: boolean("migratedFromUserPlan").notNull().default(false),
+  migrationRunId: integer("migrationRunId"),
+  downgradedAt: timestamp("downgradedAt", { withTimezone: true }),
+  downgradeReason: varchar("downgradeReason", { length: 128 }),
+  lastRecoveryActionAt: timestamp("lastRecoveryActionAt", { withTimezone: true }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("billing_subscriptions_user_idx").on(t.userId),
+  index("billing_subscriptions_tenant_status_idx").on(t.tenantId, t.status),
+]);
+
+export type BillingSubscription = typeof billingSubscriptions.$inferSelect;
+export type InsertBillingSubscription = typeof billingSubscriptions.$inferInsert;
+
+export const subscriptionPaymentSettings = pgTable("subscription_payment_settings", {
+  id: serial("id").primaryKey(),
+  subscriptionId: integer("subscriptionId").notNull().references(() => billingSubscriptions.id, { onDelete: "cascade" }),
+  renewalMode: renewalModeEnum("renewalMode").notNull().default("manual_invoice"),
+  defaultPaymentMethodId: integer("defaultPaymentMethodId").references(() => billingPaymentMethods.id, { onDelete: "set null" }),
+  retryPolicyJson: json("retryPolicyJson").$type<Record<string, any>>(),
+  dunningPolicyJson: json("dunningPolicyJson").$type<Record<string, any>>(),
+  autoRenewEnabled: boolean("autoRenewEnabled").notNull().default(false),
+  consentWithdrawnAt: timestamp("consentWithdrawnAt", { withTimezone: true }),
+  rolloutCohort: varchar("rolloutCohort", { length: 128 }),
+  updatedBy: integer("updatedBy").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("subscription_payment_settings_subscription_unique").on(t.subscriptionId),
+  index("subscription_payment_settings_default_method_idx").on(t.defaultPaymentMethodId),
+]);
+
+export type SubscriptionPaymentSettings = typeof subscriptionPaymentSettings.$inferSelect;
+export type InsertSubscriptionPaymentSettings = typeof subscriptionPaymentSettings.$inferInsert;
+
+export const paymentMethodAuditLogs = pgTable("payment_method_audit_logs", {
+  id: serial("id").primaryKey(),
+  paymentMethodId: integer("paymentMethodId").notNull().references(() => billingPaymentMethods.id, { onDelete: "cascade" }),
+  action: varchar("action", { length: 128 }).notNull(),
+  actorType: renderedByTypeEnum("actorType").notNull(),
+  actorId: integer("actorId"),
+  reason: text("reason"),
+  beforeJson: json("beforeJson").$type<Record<string, any>>(),
+  afterJson: json("afterJson").$type<Record<string, any>>(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("payment_method_audit_logs_method_idx").on(t.paymentMethodId, t.createdAt),
+]);
+
+export type PaymentMethodAuditLog = typeof paymentMethodAuditLogs.$inferSelect;
+export type InsertPaymentMethodAuditLog = typeof paymentMethodAuditLogs.$inferInsert;
+
+export const paymentMethodSetupSessions = pgTable("payment_method_setup_sessions", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  tenantId: varchar("tenantId", { length: 36 }).references(() => tenants.id, { onDelete: "cascade" }),
+  provider: paymentProviderEnum("provider").notNull().default("beam"),
+  setupSessionId: varchar("setupSessionId", { length: 128 }).notNull(),
+  status: paymentMethodSetupSessionStatusEnum("status").notNull().default("pending"),
+  returnUrl: varchar("returnUrl", { length: 2048 }),
+  providerCustomerId: varchar("providerCustomerId", { length: 128 }),
+  providerPaymentMethodId: varchar("providerPaymentMethodId", { length: 128 }),
+  payloadJson: json("payloadJson").$type<Record<string, any>>(),
+  errorMessage: text("errorMessage"),
+  expiresAt: timestamp("expiresAt", { withTimezone: true }),
+  confirmedAt: timestamp("confirmedAt", { withTimezone: true }),
+  abandonedAt: timestamp("abandonedAt", { withTimezone: true }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("payment_method_setup_sessions_setup_unique").on(t.provider, t.setupSessionId),
+  index("payment_method_setup_sessions_user_idx").on(t.userId, t.status, t.createdAt),
+]);
+
+export type PaymentMethodSetupSession = typeof paymentMethodSetupSessions.$inferSelect;
+export type InsertPaymentMethodSetupSession = typeof paymentMethodSetupSessions.$inferInsert;
+
+export const billingMigrationRuns = pgTable("billing_migration_runs", {
+  id: serial("id").primaryKey(),
+  status: billingMigrationRunStatusEnum("status").notNull().default("pending"),
+  startedAt: timestamp("startedAt", { withTimezone: true }),
+  completedAt: timestamp("completedAt", { withTimezone: true }),
+  cutoverReadyAt: timestamp("cutoverReadyAt", { withTimezone: true }),
+  totalCandidates: integer("totalCandidates").notNull().default(0),
+  migratedCount: integer("migratedCount").notNull().default(0),
+  skippedCount: integer("skippedCount").notNull().default(0),
+  ambiguousCount: integer("ambiguousCount").notNull().default(0),
+  reportJson: json("reportJson").$type<Record<string, any>>(),
+  notes: text("notes"),
+  createdBy: integer("createdBy").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type BillingMigrationRun = typeof billingMigrationRuns.$inferSelect;
+export type InsertBillingMigrationRun = typeof billingMigrationRuns.$inferInsert;
+
+export const billingProfiles = pgTable("billing_profiles", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).references(() => tenants.id, { onDelete: "cascade" }),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  legalNameTh: varchar("legalNameTh", { length: 256 }),
+  legalNameEn: varchar("legalNameEn", { length: 256 }),
+  taxId: varchar("taxId", { length: 64 }),
+  phone: varchar("phone", { length: 64 }),
+  email: varchar("email", { length: 256 }),
+  addressLine1: varchar("addressLine1", { length: 256 }),
+  addressLine2: varchar("addressLine2", { length: 256 }),
+  subdistrict: varchar("subdistrict", { length: 128 }),
+  district: varchar("district", { length: 128 }),
+  province: varchar("province", { length: 128 }),
+  postalCode: varchar("postalCode", { length: 32 }),
+  country: varchar("country", { length: 128 }),
+  contactName: varchar("contactName", { length: 256 }),
+  invoiceNote: text("invoiceNote"),
+  updatedBy: integer("updatedBy").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("billing_profiles_user_unique").on(t.userId),
+  index("billing_profiles_tenant_idx").on(t.tenantId),
+]);
+
+export type BillingProfile = typeof billingProfiles.$inferSelect;
+export type InsertBillingProfile = typeof billingProfiles.$inferInsert;
+
+export const sellerProfiles = pgTable("seller_profiles", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).references(() => tenants.id, { onDelete: "cascade" }),
+  entityNameTh: varchar("entityNameTh", { length: 256 }),
+  entityNameEn: varchar("entityNameEn", { length: 256 }),
+  taxId: varchar("taxId", { length: 64 }),
+  phone: varchar("phone", { length: 64 }),
+  email: varchar("email", { length: 256 }),
+  addressLine1: varchar("addressLine1", { length: 256 }),
+  addressLine2: varchar("addressLine2", { length: 256 }),
+  subdistrict: varchar("subdistrict", { length: 128 }),
+  district: varchar("district", { length: 128 }),
+  province: varchar("province", { length: 128 }),
+  postalCode: varchar("postalCode", { length: 32 }),
+  country: varchar("country", { length: 128 }),
+  signerName: varchar("signerName", { length: 256 }),
+  signerTitle: varchar("signerTitle", { length: 256 }),
+  branchType: varchar("branchType", { length: 64 }),
+  footerNoteTh: text("footerNoteTh"),
+  footerNoteEn: text("footerNoteEn"),
+  autoGeneratedDocumentNoteTh: text("autoGeneratedDocumentNoteTh"),
+  autoGeneratedDocumentNoteEn: text("autoGeneratedDocumentNoteEn"),
+  logoUrl: varchar("logoUrl", { length: 512 }),
+  revision: integer("revision").notNull().default(1),
+  updatedBy: integer("updatedBy").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("seller_profiles_tenant_unique")
+    .on(t.tenantId)
+    .where(sql`"tenantId" IS NOT NULL`),
+]);
+
+export type SellerProfile = typeof sellerProfiles.$inferSelect;
+export type InsertSellerProfile = typeof sellerProfiles.$inferInsert;
+
+export const sellerProfileRevisions = pgTable("seller_profile_revisions", {
+  id: serial("id").primaryKey(),
+  sellerProfileId: integer("sellerProfileId").notNull().references(() => sellerProfiles.id, { onDelete: "cascade" }),
+  tenantId: varchar("tenantId", { length: 36 }).references(() => tenants.id, { onDelete: "cascade" }),
+  revision: integer("revision").notNull(),
+  snapshotJson: json("snapshotJson").$type<Record<string, any>>().notNull(),
+  diffJson: json("diffJson").$type<Record<string, any>>(),
+  updatedBy: integer("updatedBy").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("seller_profile_revisions_profile_idx").on(t.sellerProfileId, t.revision),
+]);
+
+export type SellerProfileRevision = typeof sellerProfileRevisions.$inferSelect;
+export type InsertSellerProfileRevision = typeof sellerProfileRevisions.$inferInsert;
+
+export const billingPaymentMethods = pgTable("billing_payment_methods", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).references(() => tenants.id, { onDelete: "cascade" }),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  provider: paymentProviderEnum("provider").notNull().default("beam"),
+  providerCustomerId: varchar("providerCustomerId", { length: 128 }),
+  providerPaymentMethodId: varchar("providerPaymentMethodId", { length: 128 }).notNull(),
+  methodType: paymentMethodTypeEnum("methodType").notNull().default("card"),
+  brand: varchar("brand", { length: 64 }),
+  last4: varchar("last4", { length: 8 }),
+  expMonth: integer("expMonth"),
+  expYear: integer("expYear"),
+  cardholderName: varchar("cardholderName", { length: 256 }),
+  isDefault: boolean("isDefault").notNull().default(false),
+  status: billingPaymentMethodStatusEnum("status").notNull().default("active"),
+  autoRenewEligible: boolean("autoRenewEligible").notNull().default(false),
+  consentVersion: varchar("consentVersion", { length: 128 }),
+  consentedAt: timestamp("consentedAt", { withTimezone: true }),
+  revokedAt: timestamp("revokedAt", { withTimezone: true }),
+  metadataJson: json("metadataJson").$type<Record<string, any>>(),
+  consentSnapshotJson: json("consentSnapshotJson").$type<Record<string, any>>(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("billing_payment_methods_provider_ref_unique")
+    .on(t.provider, t.providerCustomerId, t.providerPaymentMethodId),
+  uniqueIndex("billing_payment_methods_default_scope_unique")
+    .on(t.userId, t.tenantId, t.provider)
+    .where(sql`"isDefault" = true AND "status" IN ('active', 'requires_verification')`),
+  index("billing_payment_methods_user_idx").on(t.userId, t.createdAt),
+  index("billing_payment_methods_tenant_idx").on(t.tenantId, t.userId),
+]);
+
+export type BillingPaymentMethod = typeof billingPaymentMethods.$inferSelect;
+export type InsertBillingPaymentMethod = typeof billingPaymentMethods.$inferInsert;
+
+export const taxPolicies = pgTable("tax_policies", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).references(() => tenants.id, { onDelete: "cascade" }),
+  stream: invoiceStreamEnum("stream").notNull(),
+  taxName: varchar("taxName", { length: 128 }).notNull(),
+  taxRatePercent: numeric("taxRatePercent", { precision: 7, scale: 4 }).notNull().default("0"),
+  isEnabled: boolean("isEnabled").notNull().default(false),
+  effectiveFrom: timestamp("effectiveFrom", { withTimezone: true }).notNull(),
+  effectiveTo: timestamp("effectiveTo", { withTimezone: true }),
+  roundingPolicy: varchar("roundingPolicy", { length: 64 }).notNull().default("half_up_2dp"),
+  createdBy: integer("createdBy").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("tax_policies_stream_effective_idx").on(t.stream, t.effectiveFrom),
+  index("tax_policies_tenant_stream_idx").on(t.tenantId, t.stream),
+]);
+
+export type TaxPolicy = typeof taxPolicies.$inferSelect;
+export type InsertTaxPolicy = typeof taxPolicies.$inferInsert;
+
+export const documentNumberSequences = pgTable("document_number_sequences", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).references(() => tenants.id, { onDelete: "cascade" }),
+  stream: invoiceStreamEnum("stream").notNull(),
+  documentType: varchar("documentType", { length: 32 }).notNull().default("invoice"),
+  prefix: varchar("prefix", { length: 64 }).notNull(),
+  yearMode: varchar("yearMode", { length: 32 }).notNull().default("gregorian"),
+  currentRunningNo: integer("currentRunningNo").notNull().default(0),
+  isActive: boolean("isActive").notNull().default(true),
+  updatedBy: integer("updatedBy").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("document_number_sequences_scope_unique").on(t.tenantId, t.stream, t.documentType, t.prefix),
+]);
+
+export type DocumentNumberSequence = typeof documentNumberSequences.$inferSelect;
+export type InsertDocumentNumberSequence = typeof documentNumberSequences.$inferInsert;
+
+export const invoices = pgTable("invoices", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).references(() => tenants.id, { onDelete: "cascade" }),
+  invoiceNumber: varchar("invoiceNumber", { length: 64 }),
+  invoiceStream: invoiceStreamEnum("invoiceStream").notNull(),
+  taxPolicyId: integer("taxPolicyId").references(() => taxPolicies.id, { onDelete: "set null" }),
+  invoiceType: invoiceTypeEnum("invoiceType").notNull(),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  subscriptionId: integer("subscriptionId").references(() => billingSubscriptions.id, { onDelete: "set null" }),
+  orderId: varchar("orderId", { length: 128 }),
+  status: invoiceStatusEnum("status").notNull().default("draft"),
+  currency: varchar("currency", { length: 16 }).notNull().default("THB"),
+  subtotal: numeric("subtotal", { precision: 12, scale: 2 }).notNull().default("0"),
+  taxAmount: numeric("taxAmount", { precision: 12, scale: 2 }).notNull().default("0"),
+  totalAmount: numeric("totalAmount", { precision: 12, scale: 2 }).notNull().default("0"),
+  issuedAt: timestamp("issuedAt", { withTimezone: true }),
+  dueAt: timestamp("dueAt", { withTimezone: true }),
+  paidAt: timestamp("paidAt", { withTimezone: true }),
+  canceledAt: timestamp("canceledAt", { withTimezone: true }),
+  cancelReason: varchar("cancelReason", { length: 128 }),
+  headerVersion: integer("headerVersion").notNull().default(1),
+  sellerSnapshotJson: json("sellerSnapshotJson").$type<Record<string, any>>(),
+  buyerSnapshotJson: json("buyerSnapshotJson").$type<Record<string, any>>(),
+  totalsSnapshotJson: json("totalsSnapshotJson").$type<Record<string, any>>(),
+  defaultDocumentLanguage: documentLanguageEnum("defaultDocumentLanguage").notNull().default("th"),
+  replacedByInvoiceId: integer("replacedByInvoiceId"),
+  supersedesInvoiceId: integer("supersedesInvoiceId"),
+  billingCycleStart: timestamp("billingCycleStart", { withTimezone: true }),
+  billingCycleEnd: timestamp("billingCycleEnd", { withTimezone: true }),
+  documentAccessScope: varchar("documentAccessScope", { length: 32 }).notNull().default("owner_or_admin"),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("invoices_invoice_number_unique")
+    .on(t.invoiceNumber)
+    .where(sql`"invoiceNumber" IS NOT NULL`),
+  uniqueIndex("invoices_subscription_cycle_unique")
+    .on(t.subscriptionId, t.billingCycleStart, t.billingCycleEnd, t.invoiceType)
+    .where(sql`"subscriptionId" IS NOT NULL AND "supersedesInvoiceId" IS NULL`),
+  index("invoices_user_status_idx").on(t.userId, t.status),
+  index("invoices_tenant_status_idx").on(t.tenantId, t.status),
+  index("invoices_subscription_idx").on(t.subscriptionId),
+]);
+
+export type Invoice = typeof invoices.$inferSelect;
+export type InsertInvoice = typeof invoices.$inferInsert;
+
+export const invoiceLineItems = pgTable("invoice_line_items", {
+  id: serial("id").primaryKey(),
+  invoiceId: integer("invoiceId").notNull().references(() => invoices.id, { onDelete: "cascade" }),
+  itemType: varchar("itemType", { length: 64 }).notNull(),
+  description: text("description").notNull(),
+  quantity: numeric("quantity", { precision: 10, scale: 2 }).notNull().default("1"),
+  unitPrice: numeric("unitPrice", { precision: 12, scale: 2 }).notNull().default("0"),
+  amount: numeric("amount", { precision: 12, scale: 2 }).notNull().default("0"),
+  metadataJson: json("metadataJson").$type<Record<string, any>>(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type InvoiceLineItem = typeof invoiceLineItems.$inferSelect;
+export type InsertInvoiceLineItem = typeof invoiceLineItems.$inferInsert;
+
+export const invoiceDocuments = pgTable("invoice_documents", {
+  id: serial("id").primaryKey(),
+  invoiceId: integer("invoiceId").notNull().references(() => invoices.id, { onDelete: "cascade" }),
+  documentLanguage: documentLanguageEnum("documentLanguage").notNull(),
+  documentVersion: integer("documentVersion").notNull().default(1),
+  templateVersion: varchar("templateVersion", { length: 64 }),
+  pdfFileUrl: varchar("pdfFileUrl", { length: 1024 }),
+  renderReason: invoiceDocumentRenderReasonEnum("renderReason").notNull(),
+  renderedByType: renderedByTypeEnum("renderedByType").notNull().default("system"),
+  renderedById: integer("renderedById"),
+  isLatestForLanguage: boolean("isLatestForLanguage").notNull().default(true),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("invoice_documents_invoice_language_idx").on(t.invoiceId, t.documentLanguage),
+]);
+
+export type InvoiceDocument = typeof invoiceDocuments.$inferSelect;
+export type InsertInvoiceDocument = typeof invoiceDocuments.$inferInsert;
+
+export const payments = pgTable("payments", {
+  id: serial("id").primaryKey(),
+  invoiceId: integer("invoiceId").notNull().references(() => invoices.id, { onDelete: "cascade" }),
+  paymentMethodId: integer("paymentMethodId").references(() => billingPaymentMethods.id, { onDelete: "set null" }),
+  provider: paymentProviderEnum("provider").notNull().default("beam"),
+  providerPaymentType: providerPaymentTypeEnum("providerPaymentType").notNull().default("charge"),
+  providerPaymentId: varchar("providerPaymentId", { length: 128 }),
+  providerReferenceId: varchar("providerReferenceId", { length: 128 }),
+  status: paymentStatusEnum("status").notNull().default("pending_provider_creation"),
+  amount: numeric("amount", { precision: 12, scale: 2 }).notNull().default("0"),
+  currency: varchar("currency", { length: 16 }).notNull().default("THB"),
+  offSession: boolean("offSession").notNull().default(false),
+  declineCode: varchar("declineCode", { length: 128 }),
+  declineCategory: declineCategoryEnum("declineCategory"),
+  expectedAmount: numeric("expectedAmount", { precision: 12, scale: 2 }),
+  expectedCurrency: varchar("expectedCurrency", { length: 16 }),
+  settledAmount: numeric("settledAmount", { precision: 12, scale: 2 }),
+  settledCurrency: varchar("settledCurrency", { length: 16 }),
+  amountMatchStatus: amountMatchStatusEnum("amountMatchStatus").notNull().default("unknown"),
+  expiresAt: timestamp("expiresAt", { withTimezone: true }),
+  paidAt: timestamp("paidAt", { withTimezone: true }),
+  rawResponseJson: json("rawResponseJson").$type<Record<string, any>>(),
+  reconciliationStatus: paymentReconciliationStatusEnum("reconciliationStatus").notNull().default("not_required"),
+  lastReconciledAt: timestamp("lastReconciledAt", { withTimezone: true }),
+  providerStatusLastSeen: varchar("providerStatusLastSeen", { length: 64 }),
+  providerEventLastSeenId: varchar("providerEventLastSeenId", { length: 128 }),
+  businessEffectStatus: paymentBusinessEffectStatusEnum("businessEffectStatus").notNull().default("not_started"),
+  manualRecoveryRequired: boolean("manualRecoveryRequired").notNull().default(false),
+  manualRecoveryResolvedAt: timestamp("manualRecoveryResolvedAt", { withTimezone: true }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("payments_provider_payment_id_unique")
+    .on(t.providerPaymentId)
+    .where(sql`"providerPaymentId" IS NOT NULL`),
+  uniqueIndex("payments_invoice_active_unique")
+    .on(t.invoiceId)
+    .where(sql`"status" IN ('pending_provider_creation', 'payment_pending', 'provider_pending_unknown', 'reconciliation_required', 'manual_review_required')`),
+  index("payments_invoice_status_idx").on(t.invoiceId, t.status),
+]);
+
+export type Payment = typeof payments.$inferSelect;
+export type InsertPayment = typeof payments.$inferInsert;
+
+export const paymentAttempts = pgTable("payment_attempts", {
+  id: serial("id").primaryKey(),
+  paymentId: integer("paymentId").notNull().references(() => payments.id, { onDelete: "cascade" }),
+  attemptNo: integer("attemptNo").notNull(),
+  status: paymentAttemptStatusEnum("status").notNull().default("pending_provider_creation"),
+  providerPaymentId: varchar("providerPaymentId", { length: 128 }),
+  providerReferenceId: varchar("providerReferenceId", { length: 128 }),
+  expectedAmount: numeric("expectedAmount", { precision: 12, scale: 2 }),
+  expectedCurrency: varchar("expectedCurrency", { length: 16 }),
+  settledAmount: numeric("settledAmount", { precision: 12, scale: 2 }),
+  settledCurrency: varchar("settledCurrency", { length: 16 }),
+  expiresAt: timestamp("expiresAt", { withTimezone: true }),
+  providerPayloadJson: json("providerPayloadJson").$type<Record<string, any>>(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("payment_attempts_payment_attempt_no_unique").on(t.paymentId, t.attemptNo),
+]);
+
+export type PaymentAttempt = typeof paymentAttempts.$inferSelect;
+export type InsertPaymentAttempt = typeof paymentAttempts.$inferInsert;
+
+export const renewalAttempts = pgTable("renewal_attempts", {
+  id: serial("id").primaryKey(),
+  subscriptionId: integer("subscriptionId").notNull().references(() => billingSubscriptions.id, { onDelete: "cascade" }),
+  invoiceId: integer("invoiceId").references(() => invoices.id, { onDelete: "cascade" }),
+  cycleKey: varchar("cycleKey", { length: 128 }).notNull(),
+  renewalModeSnapshot: renewalModeEnum("renewalModeSnapshot").notNull().default("manual_invoice"),
+  paymentMethodId: integer("paymentMethodId").references(() => billingPaymentMethods.id, { onDelete: "set null" }),
+  attemptNo: integer("attemptNo").notNull().default(1),
+  status: renewalAttemptStatusEnum("status").notNull().default("scheduled"),
+  retryClassification: varchar("retryClassification", { length: 64 }),
+  scheduledAt: timestamp("scheduledAt", { withTimezone: true }),
+  executedAt: timestamp("executedAt", { withTimezone: true }),
+  failureCode: varchar("failureCode", { length: 128 }),
+  failureMessage: text("failureMessage"),
+  nextRetryAt: timestamp("nextRetryAt", { withTimezone: true }),
+  finalOutcome: varchar("finalOutcome", { length: 128 }),
+  metadataJson: json("metadataJson").$type<Record<string, any>>(),
+  supersededByAttemptId: integer("supersededByAttemptId"),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("renewal_attempts_subscription_cycle_attempt_unique").on(t.subscriptionId, t.cycleKey, t.attemptNo),
+  uniqueIndex("renewal_attempts_active_cycle_unique")
+    .on(t.subscriptionId, t.cycleKey)
+    .where(sql`"status" IN ('scheduled', 'charge_in_progress', 'retry_scheduled', 'grace_period_active', 'paused_dunning', 'manual_review_required')`),
+  index("renewal_attempts_invoice_idx").on(t.invoiceId),
+  index("renewal_attempts_payment_method_idx").on(t.paymentMethodId),
+]);
+
+export type RenewalAttempt = typeof renewalAttempts.$inferSelect;
+export type InsertRenewalAttempt = typeof renewalAttempts.$inferInsert;
+
+export const webhookEvents = pgTable("webhook_events", {
+  id: serial("id").primaryKey(),
+  provider: paymentProviderEnum("provider").notNull().default("beam"),
+  invoiceId: integer("invoiceId").references(() => invoices.id, { onDelete: "cascade" }),
+  paymentId: integer("paymentId").references(() => payments.id, { onDelete: "cascade" }),
+  eventType: varchar("eventType", { length: 128 }).notNull(),
+  eventId: varchar("eventId", { length: 128 }),
+  signatureValid: boolean("signatureValid").notNull().default(false),
+  payloadJson: json("payloadJson").$type<Record<string, any>>(),
+  processingStatus: webhookProcessingStatusEnum("processingStatus").notNull().default("pending"),
+  processedAt: timestamp("processedAt", { withTimezone: true }),
+  errorMessage: text("errorMessage"),
+  validatedSecretVersion: varchar("validatedSecretVersion", { length: 64 }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("webhook_events_provider_event_unique")
+    .on(t.provider, t.eventId)
+    .where(sql`"eventId" IS NOT NULL`),
+]);
+
+export type WebhookEvent = typeof webhookEvents.$inferSelect;
+export type InsertWebhookEvent = typeof webhookEvents.$inferInsert;
+
+export const invoiceAuditLogs = pgTable("invoice_audit_logs", {
+  id: serial("id").primaryKey(),
+  invoiceId: integer("invoiceId").notNull().references(() => invoices.id, { onDelete: "cascade" }),
+  action: varchar("action", { length: 128 }).notNull(),
+  actorType: renderedByTypeEnum("actorType").notNull(),
+  actorId: integer("actorId"),
+  reason: text("reason"),
+  beforeJson: json("beforeJson").$type<Record<string, any>>(),
+  afterJson: json("afterJson").$type<Record<string, any>>(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("invoice_audit_logs_invoice_idx").on(t.invoiceId, t.createdAt),
+]);
+
+export type InvoiceAuditLog = typeof invoiceAuditLogs.$inferSelect;
+export type InsertInvoiceAuditLog = typeof invoiceAuditLogs.$inferInsert;
+
+export const notificationDispatches = pgTable("notification_dispatches", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId").references(() => users.id, { onDelete: "set null" }),
+  invoiceId: integer("invoiceId").references(() => invoices.id, { onDelete: "cascade" }),
+  renewalAttemptId: integer("renewalAttemptId").references(() => renewalAttempts.id, { onDelete: "set null" }),
+  notificationType: varchar("notificationType", { length: 64 }).notNull(),
+  channel: varchar("channel", { length: 32 }).notNull(),
+  dedupeKey: varchar("dedupeKey", { length: 256 }).notNull(),
+  status: varchar("status", { length: 32 }).notNull().default("pending"),
+  sentAt: timestamp("sentAt", { withTimezone: true }),
+  suppressedReason: varchar("suppressedReason", { length: 256 }),
+  metadataJson: json("metadataJson").$type<Record<string, any>>(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("notification_dispatches_dedupe_unique").on(t.dedupeKey),
+  index("notification_dispatches_invoice_idx").on(t.invoiceId, t.notificationType),
+]);
+
+export type NotificationDispatch = typeof notificationDispatches.$inferSelect;
+export type InsertNotificationDispatch = typeof notificationDispatches.$inferInsert;
+
+export const billingEffects = pgTable("billing_effects", {
+  id: serial("id").primaryKey(),
+  effectKey: varchar("effectKey", { length: 256 }).notNull(),
+  effectType: billingEffectTypeEnum("effectType").notNull(),
+  invoiceId: integer("invoiceId").references(() => invoices.id, { onDelete: "cascade" }),
+  paymentId: integer("paymentId").references(() => payments.id, { onDelete: "cascade" }),
+  subscriptionId: integer("subscriptionId").references(() => billingSubscriptions.id, { onDelete: "cascade" }),
+  metadataJson: json("metadataJson").$type<Record<string, any>>(),
+  appliedAt: timestamp("appliedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("billing_effects_effect_key_unique").on(t.effectKey),
+]);
+
+export type BillingEffect = typeof billingEffects.$inferSelect;
+export type InsertBillingEffect = typeof billingEffects.$inferInsert;
+
+export const reconciliationRuns = pgTable("reconciliation_runs", {
+  id: serial("id").primaryKey(),
+  entityType: reconciliationEntityTypeEnum("entityType").notNull(),
+  entityId: integer("entityId").notNull(),
+  renewalAttemptId: integer("renewalAttemptId").references(() => renewalAttempts.id, { onDelete: "set null" }),
+  triggerType: reconciliationTriggerTypeEnum("triggerType").notNull(),
+  result: reconciliationResultEnum("result").notNull(),
+  beforeJson: json("beforeJson").$type<Record<string, any>>(),
+  afterJson: json("afterJson").$type<Record<string, any>>(),
+  notes: text("notes"),
+  createdBy: integer("createdBy").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("reconciliation_runs_entity_idx").on(t.entityType, t.entityId, t.createdAt),
+]);
+
+export type ReconciliationRun = typeof reconciliationRuns.$inferSelect;
+export type InsertReconciliationRun = typeof reconciliationRuns.$inferInsert;
+
+export const supportRecoveryCases = pgTable("support_recovery_cases", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).references(() => tenants.id, { onDelete: "cascade" }),
+  userId: integer("userId").references(() => users.id, { onDelete: "set null" }),
+  invoiceId: integer("invoiceId").references(() => invoices.id, { onDelete: "cascade" }),
+  paymentId: integer("paymentId").references(() => payments.id, { onDelete: "cascade" }),
+  status: supportRecoveryCaseStatusEnum("status").notNull().default("open"),
+  issueType: supportRecoveryIssueTypeEnum("issueType").notNull(),
+  customerReportedAt: timestamp("customerReportedAt", { withTimezone: true }),
+  assignedAdminId: integer("assignedAdminId").references(() => users.id, { onDelete: "set null" }),
+  resolutionType: supportRecoveryResolutionTypeEnum("resolutionType"),
+  resolutionNote: text("resolutionNote"),
+  evidenceJson: json("evidenceJson").$type<Record<string, any>>(),
+  resolvedAt: timestamp("resolvedAt", { withTimezone: true }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("support_recovery_cases_invoice_idx").on(t.invoiceId, t.status),
+  index("support_recovery_cases_payment_idx").on(t.paymentId, t.status),
+]);
+
+export type SupportRecoveryCase = typeof supportRecoveryCases.$inferSelect;
+export type InsertSupportRecoveryCase = typeof supportRecoveryCases.$inferInsert;
 
 /**
  * Blog Posts - Multi-tenant blog system
@@ -5120,6 +5925,8 @@ export const agencyAgents = pgTable("agency_agents", {
     supportsThinking?: boolean;
     supportsFunctionTools?: boolean;
     supportsStructuredOutputs?: boolean;
+    supportsJsonMode?: boolean;
+    supportsStrictToolSchema?: boolean;
     supportsWebSearch?: boolean;
     supportsCodeExecution?: boolean;
     supportsComputerUse?: boolean;
@@ -6784,6 +7591,266 @@ export const teamMemberRoleEnum = pgEnum("team_member_role", [
   "specialist",
 ]);
 
+export const workerRuntimeTypeEnum = pgEnum("worker_runtime_type", [
+  "openclaw_gateway",
+  "desktop_zeroclaw_managed",
+  "nemoclaw_sandbox",
+  "hiclaw_cluster",
+]);
+
+export const workerStatusEnum = pgEnum("worker_status", [
+  "online",
+  "offline",
+  "unhealthy",
+  "disabled",
+  "draining",
+]);
+
+export const workerJobStatusEnum = pgEnum("worker_job_status", [
+  "queued",
+  "claimed",
+  "preparing",
+  "running",
+  "uploading",
+  "publishing",
+  "indexing",
+  "completed",
+  "failed",
+  "canceled",
+  "expired",
+]);
+
+export const workerModeEnum = pgEnum("worker_mode", [
+  "per_user",
+  "shared_department",
+  "dedicated_gpu",
+  "external_runtime",
+]);
+
+export const workerRuntimeModeEnum = pgEnum("worker_runtime_mode", [
+  "native_constrained",
+  "wsl2_managed",
+  "docker_isolated",
+  "external_managed",
+]);
+
+export const workerFileScopeModeEnum = pgEnum("worker_file_scope_mode", [
+  "workspace_scoped",
+  "team_drive",
+  "full_machine",
+]);
+
+export const workerResourceProfileEnum = pgEnum("worker_resource_profile", [
+  "cpu_light",
+  "cpu_heavy",
+  "gpu_required",
+  "large_disk_temp",
+  "network_heavy",
+  "long_running",
+  "sandbox_required",
+  "human_observable",
+]);
+
+export const workerPolicies = pgTable("worker_policies", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 255 }).notNull(),
+  runtimeType: workerRuntimeTypeEnum("runtimeType").notNull(),
+  rulesJson: jsonb("rulesJson").$type<Record<string, unknown>>().notNull().default({}),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("worker_policies_tenant_name_unique").on(t.tenantId, t.name),
+  index("worker_policies_runtime_type_idx").on(t.tenantId, t.runtimeType),
+]);
+
+export type WorkerPolicy = typeof workerPolicies.$inferSelect;
+export type InsertWorkerPolicy = typeof workerPolicies.$inferInsert;
+
+export const runtimeProfiles = pgTable("runtime_profiles", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  runtimeType: workerRuntimeTypeEnum("runtimeType").notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  profileJson: jsonb("profileJson").$type<Record<string, unknown>>().notNull().default({}),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("runtime_profiles_runtime_type_name_unique").on(t.runtimeType, t.name),
+]);
+
+export type RuntimeProfile = typeof runtimeProfiles.$inferSelect;
+export type InsertRuntimeProfile = typeof runtimeProfiles.$inferInsert;
+
+export const workers = pgTable("workers", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  teamId: varchar("teamId", { length: 36 }).references(() => assistantTeams.id, { onDelete: "set null" }),
+  runtimeType: workerRuntimeTypeEnum("runtimeType").notNull(),
+  workerMode: workerModeEnum("workerMode").notNull().default("external_runtime"),
+  machineId: varchar("machineId", { length: 255 }),
+  machineName: varchar("machineName", { length: 255 }),
+  displayName: varchar("displayName", { length: 255 }).notNull(),
+  status: workerStatusEnum("status").notNull().default("offline"),
+  runtimeVersion: varchar("runtimeVersion", { length: 100 }).notNull(),
+  runtimeMode: workerRuntimeModeEnum("runtimeMode").notNull().default("external_managed"),
+  runtimeProfileId: varchar("runtimeProfileId", { length: 36 }).references(() => runtimeProfiles.id, { onDelete: "set null" }),
+  policyProfileId: varchar("policyProfileId", { length: 36 }).references(() => workerPolicies.id, { onDelete: "set null" }),
+  externalReference: varchar("externalReference", { length: 255 }).notNull(),
+  dashboardUrl: text("dashboardUrl"),
+  capabilitiesJson: jsonb("capabilitiesJson").$type<Record<string, unknown>>().notNull().default({}),
+  hardwareJson: jsonb("hardwareJson").$type<Record<string, unknown>>().notNull().default({}),
+  healthSummaryJson: jsonb("healthSummaryJson").$type<Record<string, unknown>>().notNull().default({}),
+  warningFlagsJson: jsonb("warningFlagsJson").$type<string[]>().notNull().default([]),
+  fileScopeMode: workerFileScopeModeEnum("fileScopeMode").notNull().default("workspace_scoped"),
+  lastSeenAt: timestamp("lastSeenAt", { withTimezone: true }),
+  registeredByUserId: integer("registeredByUserId").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("workers_tenant_external_reference_unique").on(t.tenantId, t.externalReference),
+  index("workers_tenant_status_idx").on(t.tenantId, t.status),
+  index("workers_runtime_type_status_idx").on(t.runtimeType, t.status),
+  index("workers_team_status_idx").on(t.teamId, t.status),
+]);
+
+export type Worker = typeof workers.$inferSelect;
+export type InsertWorker = typeof workers.$inferInsert;
+
+export const workerHeartbeats = pgTable("worker_heartbeats", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  workerId: varchar("workerId", { length: 36 }).notNull().references(() => workers.id, { onDelete: "cascade" }),
+  runtimeType: workerRuntimeTypeEnum("runtimeType").notNull(),
+  status: workerStatusEnum("status").notNull(),
+  metricsJson: jsonb("metricsJson").$type<Record<string, unknown>>().notNull().default({}),
+  warningsJson: jsonb("warningsJson").$type<string[]>().notNull().default([]),
+  currentJobCount: integer("currentJobCount").notNull().default(0),
+  queueDepth: integer("queueDepth").notNull().default(0),
+  freeDiskBytes: bigint("freeDiskBytes", { mode: "number" }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("worker_heartbeats_worker_created_idx").on(t.workerId, t.createdAt),
+  index("worker_heartbeats_status_created_idx").on(t.status, t.createdAt),
+]);
+
+export type WorkerHeartbeat = typeof workerHeartbeats.$inferSelect;
+export type InsertWorkerHeartbeat = typeof workerHeartbeats.$inferInsert;
+
+export const workerJobs = pgTable("worker_jobs", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  teamId: varchar("teamId", { length: 36 }).references(() => assistantTeams.id, { onDelete: "set null" }),
+  workerId: varchar("workerId", { length: 36 }).references(() => workers.id, { onDelete: "set null" }),
+  runtimeType: workerRuntimeTypeEnum("runtimeType").notNull(),
+  workflowRunId: varchar("workflowRunId", { length: 36 }),
+  requestedByUserId: integer("requestedByUserId").references(() => users.id, { onDelete: "set null" }),
+  requestedByPersonaId: varchar("requestedByPersonaId", { length: 36 }),
+  requestedBySystemComponent: varchar("requestedBySystemComponent", { length: 100 }),
+  jobType: varchar("jobType", { length: 100 }).notNull(),
+  status: workerJobStatusEnum("status").notNull().default("queued"),
+  statusReason: text("statusReason"),
+  priority: integer("priority").notNull().default(0),
+  resourceProfile: workerResourceProfileEnum("resourceProfile").notNull().default("cpu_light"),
+  capabilityRequirementsJson: jsonb("capabilityRequirementsJson").$type<Record<string, unknown>>().notNull().default({}),
+  inputJson: jsonb("inputJson").$type<Record<string, unknown>>().notNull().default({}),
+  instructionsJson: jsonb("instructionsJson").$type<Record<string, unknown>>().notNull().default({}),
+  outputJson: jsonb("outputJson").$type<Record<string, unknown>>(),
+  failureReason: text("failureReason"),
+  timeoutSeconds: integer("timeoutSeconds").notNull().default(3600),
+  retryPolicyJson: jsonb("retryPolicyJson").$type<Record<string, unknown>>().notNull().default({}),
+  idempotencyKey: varchar("idempotencyKey", { length: 128 }),
+  leaseOwnerToken: varchar("leaseOwnerToken", { length: 128 }),
+  leaseExpiresAt: timestamp("leaseExpiresAt", { withTimezone: true }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  startedAt: timestamp("startedAt", { withTimezone: true }),
+  finishedAt: timestamp("finishedAt", { withTimezone: true }),
+}, (t) => [
+  uniqueIndex("worker_jobs_tenant_idempotency_key_unique").on(t.tenantId, t.idempotencyKey),
+  index("worker_jobs_tenant_status_priority_idx").on(t.tenantId, t.status, t.priority),
+  index("worker_jobs_worker_status_idx").on(t.workerId, t.status),
+  index("worker_jobs_lease_expires_idx").on(t.leaseExpiresAt),
+]);
+
+export type WorkerJob = typeof workerJobs.$inferSelect;
+export type InsertWorkerJob = typeof workerJobs.$inferInsert;
+
+export const workerJobEvents = pgTable("worker_job_events", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  workerJobId: varchar("workerJobId", { length: 36 }).notNull().references(() => workerJobs.id, { onDelete: "cascade" }),
+  eventType: varchar("eventType", { length: 100 }).notNull(),
+  payloadJson: jsonb("payloadJson").$type<Record<string, unknown>>().notNull().default({}),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("worker_job_events_job_created_idx").on(t.workerJobId, t.createdAt),
+  index("worker_job_events_type_created_idx").on(t.eventType, t.createdAt),
+]);
+
+export type WorkerJobEvent = typeof workerJobEvents.$inferSelect;
+export type InsertWorkerJobEvent = typeof workerJobEvents.$inferInsert;
+
+export const workerArtifacts = pgTable("worker_artifacts", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  workerJobId: varchar("workerJobId", { length: 36 }).notNull().references(() => workerJobs.id, { onDelete: "cascade" }),
+  artifactType: varchar("artifactType", { length: 100 }).notNull(),
+  storageRef: varchar("storageRef", { length: 512 }).notNull(),
+  metadataJson: jsonb("metadataJson").$type<Record<string, unknown>>().notNull().default({}),
+  publishedItemId: integer("publishedItemId").references(() => libraryItems.id, { onDelete: "set null" }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("worker_artifacts_job_storage_ref_unique").on(t.workerJobId, t.storageRef),
+  index("worker_artifacts_job_type_idx").on(t.workerJobId, t.artifactType),
+  index("worker_artifacts_published_item_idx").on(t.publishedItemId),
+]);
+
+export type WorkerArtifact = typeof workerArtifacts.$inferSelect;
+export type InsertWorkerArtifact = typeof workerArtifacts.$inferInsert;
+
+export const workerDelegatedSessions = pgTable("worker_delegated_sessions", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  teamId: varchar("teamId", { length: 36 }).references(() => assistantTeams.id, { onDelete: "set null" }),
+  workerId: varchar("workerId", { length: 36 }).notNull().references(() => workers.id, { onDelete: "cascade" }),
+  workerJobId: varchar("workerJobId", { length: 36 }).notNull().references(() => workerJobs.id, { onDelete: "cascade" }),
+  actingUserId: integer("actingUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  ownerUserId: integer("ownerUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  runtimeType: workerRuntimeTypeEnum("runtimeType").notNull(),
+  scopeProfile: varchar("scopeProfile", { length: 100 }).notNull(),
+  grantedScopesJson: jsonb("grantedScopesJson").$type<string[]>().notNull().default([]),
+  manifestJson: jsonb("manifestJson").$type<Record<string, unknown>>().notNull().default({}),
+  leaseOwnerToken: varchar("leaseOwnerToken", { length: 128 }).notNull(),
+  tokenJti: varchar("tokenJti", { length: 128 }).notNull(),
+  expiresAt: timestamp("expiresAt", { withTimezone: true }).notNull(),
+  revokedAt: timestamp("revokedAt", { withTimezone: true }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("worker_delegated_sessions_token_jti_unique").on(t.tokenJti),
+  index("worker_delegated_sessions_job_idx").on(t.workerJobId, t.expiresAt),
+  index("worker_delegated_sessions_worker_idx").on(t.workerId, t.expiresAt),
+  index("worker_delegated_sessions_owner_idx").on(t.ownerUserId, t.expiresAt),
+]);
+
+export type WorkerDelegatedSession = typeof workerDelegatedSessions.$inferSelect;
+export type InsertWorkerDelegatedSession = typeof workerDelegatedSessions.$inferInsert;
+
+export const workerJobGrants = pgTable("worker_job_grants", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  workerJobId: varchar("workerJobId", { length: 36 }).notNull().references(() => workerJobs.id, { onDelete: "cascade" }),
+  delegatedSessionId: varchar("delegatedSessionId", { length: 36 }).references(() => workerDelegatedSessions.id, { onDelete: "cascade" }),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  grantType: varchar("grantType", { length: 64 }).notNull(),
+  resourceId: varchar("resourceId", { length: 255 }),
+  resourceScopeJson: jsonb("resourceScopeJson").$type<Record<string, unknown>>().notNull().default({}),
+  expiresAt: timestamp("expiresAt", { withTimezone: true }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("worker_job_grants_job_type_idx").on(t.workerJobId, t.grantType),
+  index("worker_job_grants_session_type_idx").on(t.delegatedSessionId, t.grantType),
+  index("worker_job_grants_resource_idx").on(t.grantType, t.resourceId),
+]);
+
+export type WorkerJobGrant = typeof workerJobGrants.$inferSelect;
+export type InsertWorkerJobGrant = typeof workerJobGrants.$inferInsert;
+
 /**
  * assistant_profiles — per-member assistant identity.
  * Wraps one agency_agent + one persona_template, providing orchestration persona.
@@ -6800,6 +7867,7 @@ export const assistantProfiles = pgTable("assistant_profiles", {
   personaId: varchar("personaId", { length: 36 }).references(() => personaTemplates.id, { onDelete: "set null" }),
   humanUserId: integer("humanUserId").references(() => users.id, { onDelete: "set null" }),
   externalRef: varchar("externalRef", { length: 255 }),
+  externalWorkerId: varchar("externalWorkerId", { length: 36 }).references(() => workers.id, { onDelete: "set null" }),
   externalConfigJson: jsonb("externalConfigJson"),
   displayName: varchar("displayName", { length: 255 }),
   nickname: varchar("nickname", { length: 100 }),
@@ -6826,6 +7894,7 @@ export const assistantProfiles = pgTable("assistant_profiles", {
   index("assistant_profiles_member_kind_idx").on(t.teamId, t.memberKind),
   index("assistant_profiles_member_role_idx").on(t.teamId, t.memberRole),
   index("assistant_profiles_human_user_idx").on(t.humanUserId),
+  index("assistant_profiles_external_worker_idx").on(t.externalWorkerId),
 ]);
 
 export type AssistantProfile = typeof assistantProfiles.$inferSelect;
@@ -7107,7 +8176,7 @@ export const teamRoomMessages = pgTable("team_room_messages", {
   summaryContent: text("summaryContent"),
   artifactRefsJson: jsonb("artifactRefsJson"),
   memoryRefsJson: jsonb("memoryRefsJson"),
-  metadataJson: jsonb("metadataJson"),
+  metadataJson: jsonb("metadataJson").$type<TeamRoomMessageMetadata | null>(),
   tokenUsageJson: jsonb("tokenUsageJson").$type<{ inputTokens?: number; outputTokens?: number; model?: string }>(),
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [

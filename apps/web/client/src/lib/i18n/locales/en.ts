@@ -1100,6 +1100,7 @@ const en: TranslationDictionary = {
   "credits.sources.agency": "Agency",
   "credits.sources.creatorRevenue": "Creator Revenue",
   "credits.sources.automation": "Automation",
+  "credits.sources.workerRuntime": "Worker Runtime",
   "credits.sources.other": "Other",
   "credits.buyCredits.title": "Buy Credits",
   "credits.buyCredits.descriptionExpanded": "Choose a package that fits your needs (15% markup from base rate)",
@@ -1338,7 +1339,9 @@ const en: TranslationDictionary = {
   "mediaStudio.searchModels": "Search models...",
   "mediaStudio.noModelsFound": "No models found",
   "mediaStudio.autoSkillRequirements": "✨ Auto (skill requirements)",
-  "mediaStudio.autoModelHint": "Auto mode selects the best model based on skill requirements. Or pick a specific model manually.",
+  "mediaStudio.autoByProvider": "✨ Auto ({{provider}})",
+  "mediaStudio.autoModelHint": "Auto mode selects the best model based on skill requirements. You can also choose Auto by provider and let that provider pick its own model.",
+  "mediaStudio.recommended": "Recommended",
   "mediaStudio.advancedModeHint": "Generate enhanced prompt using Advanced Mode settings",
   "mediaStudio.multiVideoModeGenerating": "Multi Video Mode: Generating {{count}} separate videos",
   "mediaStudio.noMultiplePrompts": "No multiple prompts detected. Generating single video.",
@@ -1569,6 +1572,255 @@ const en: TranslationDictionary = {
   "settings.2fa.success.enabled": "2FA enabled successfully!",
   "settings.2fa.success.disabled": "2FA disabled",
   "settings.2fa.success.newCodes": "New recovery codes generated",
+  "settings.localAi.title": "Local AI",
+  "settings.localAi.description":
+    "Configure on-device Gemma 4 chat, local-safe helpers, voice input, image assist, and device-scoped model controls without changing the legacy cloud path on unsupported devices.",
+  "settings.localAi.helpButton": "Help",
+  "settings.localAi.common.enable": "Enable",
+  "settings.localAi.common.yes": "yes",
+  "settings.localAi.common.no": "no",
+  "settings.localAi.common.ready": "ready",
+  "settings.localAi.common.notReady": "not ready",
+  "settings.localAi.common.available": "available",
+  "settings.localAi.common.unavailable": "unavailable",
+  "settings.localAi.common.notDetected": "not detected",
+  "settings.localAi.common.notRecorded": "not recorded",
+  "settings.localAi.common.unknown": "unknown",
+  "settings.localAi.platform.browserRuntime": "browser runtime",
+  "settings.localAi.platform.desktopRuntime": "desktop runtime",
+  "settings.localAi.policy.tenantDisabled":
+    "This tenant has Local AI disabled. Cloud chat continues unchanged.",
+  "settings.localAi.policy.forceCloudOnly":
+    "This tenant is locked to cloud-only routing. Local settings remain visible for explanation, but chat will stay on the current cloud path.",
+  "settings.localAi.policy.unavailable":
+    "Local AI policy is not available right now. Existing chat behavior is unchanged.",
+  "settings.localAi.policy.catalogReady":
+    "Catalog ready: {{count}} profile(s) available for this {{surface}}.",
+  "settings.localAi.synced.title": "Synced account preferences",
+  "settings.localAi.synced.description":
+    "These preferences follow your account across supported surfaces.",
+  "settings.localAi.executionMode.label": "Execution mode",
+  "settings.localAi.executionMode.options.off": "Off",
+  "settings.localAi.executionMode.options.auto": "Auto",
+  "settings.localAi.executionMode.options.prefer_local": "Prefer local",
+  "settings.localAi.executionMode.options.local_only": "Local only",
+  "settings.localAi.executionMode.options.cloud_only": "Cloud only",
+  "settings.localAi.defaultProfile.label": "Default local profile",
+  "settings.localAi.defaultProfile.none": "No local default",
+  "settings.localAi.defaultProfile.summary":
+    "{{family}} {{variant}} • {{sizeMb}} MB",
+  "settings.localAi.toggle.generalChat": "Use for general chat",
+  "settings.localAi.toggle.summaries": "Use for summaries",
+  "settings.localAi.toggle.imageTasks":
+    "Use for image understanding and OCR assist",
+  "settings.localAi.voiceInput.label": "Voice input mode",
+  "settings.localAi.voiceInput.options.legacy_stt": "Legacy STT",
+  "settings.localAi.voiceInput.options.gemma4_local": "Gemma 4 local",
+  "settings.localAi.voiceInput.options.auto": "Auto",
+  "settings.localAi.voiceInput.optionUnavailable":
+    "{{label}} (unavailable on this surface)",
+  "settings.localAi.voiceInput.privacy.legacy_stt":
+    "Voice audio may travel through SmartSpecPro backend and external STT providers.",
+  "settings.localAi.voiceInput.privacy.gemma4_local":
+    "Voice audio is intended to stay on this device; explicit local mode must fail closed instead of silently downgrading to third-party STT when local runtime is unavailable.",
+  "settings.localAi.voiceInput.privacy.auto":
+    "Auto mode may fall back to the current server-backed STT path on unsupported devices.",
+  "settings.localAi.voiceInput.desktopReady":
+    "This desktop build can transcribe short microphone recordings locally with Gemma 4.",
+  "settings.localAi.voiceInput.desktopNeedsModel":
+    "This desktop build supports local Gemma 4 voice transcription, but you still need to prepare a Gemma 4 model before it can run.",
+  "settings.localAi.voiceInput.webReady":
+    "This browser can transcribe short microphone recordings locally with Gemma 4.",
+  "settings.localAi.voiceInput.webNeedsModel":
+    "This browser supports local Gemma 4 voice transcription, but you still need to prepare a Gemma 4 web model before it can run.",
+  "settings.localAi.voiceInput.webUnavailable":
+    "Browser local microphone transcription is unavailable on this device right now. Use Auto or Legacy STT on the web.",
+  "settings.localAi.voiceInput.blockers":
+    "Local voice unavailable: {{reasons}}",
+  "settings.localAi.voiceInput.enableCommands": "Enable short voice commands",
+  "settings.localAi.voiceReadback.label": "Voice readback mode",
+  "settings.localAi.voiceReadback.options.off": "Off",
+  "settings.localAi.voiceReadback.options.important_only": "Important only",
+  "settings.localAi.voiceReadback.options.all_responses": "All responses",
+  "settings.localAi.voiceReadback.available":
+    "Assistant confirmations and short summaries can be spoken back locally on this surface.",
+  "settings.localAi.voiceReadback.availableWithBackend":
+    "Assistant confirmations and short summaries can be spoken back locally on this surface via {{backend}}.",
+  "settings.localAi.voiceReadback.unavailable":
+    "Local voice readback is unavailable on this surface right now because speech synthesis is not exposed by the runtime.",
+  "settings.localAi.voiceReadback.languageLabel": "Voice readback language",
+  "settings.localAi.voiceReadback.languagePlaceholder":
+    "Auto / th-TH / en-US",
+  "settings.localAi.voiceReadback.languageHelp":
+    "Leave blank to let the device choose automatically. Examples: th-TH, en-US.",
+  "settings.localAi.voiceReadback.rateLabel": "Voice readback rate",
+  "settings.localAi.voiceReadback.onlyVoiceCommands":
+    "Read back only voice-command responses",
+  "settings.localAi.voiceReadback.searchUsesLocation":
+    "Use location context for “near me” searches",
+  "settings.localAi.handsFree.label": "Hands-free mode",
+  "settings.localAi.handsFree.options.off": "Off",
+  "settings.localAi.handsFree.options.wake_phrase": "Wake phrase",
+  "settings.localAi.handsFree.wakePhraseLabel": "Wake phrase",
+  "settings.localAi.handsFree.wakePhrasePlaceholder": "hey smartspec",
+  "settings.localAi.handsFree.help":
+    "Hands-free listening is desktop-only and stays opt-in. The chat view will only arm wake-phrase mode when Gemma 4 local voice is ready.",
+  "settings.localAi.save": "Save Local AI preferences",
+  "settings.localAi.device.title": "This device only",
+  "settings.localAi.device.description":
+    "Download and storage state is scoped to tenant, user, and the current runtime surface.",
+  "settings.localAi.device.allowDownloads":
+    "Allow model downloads on this device",
+  "settings.localAi.device.wifiOnlyDownloads":
+    "Prefer Wi-Fi / unmetered downloads",
+  "settings.localAi.device.storageBudget": "Storage budget (MB)",
+  "settings.localAi.device.cacheSummary": "Device cache summary",
+  "settings.localAi.device.consentedModels":
+    "Consented models: {{count}}",
+  "settings.localAi.device.installedModels":
+    "Installed models: {{count}}",
+  "settings.localAi.device.lastCapabilityCheck":
+    "Last capability check: {{value}}",
+  "settings.localAi.device.lastDownloadAction":
+    "Last download action: {{reason}}",
+  "settings.localAi.diagnostics.title": "Runtime diagnostics",
+  "settings.localAi.diagnostics.refresh": "Refresh",
+  "settings.localAi.diagnostics.web.secureContext": "Secure context",
+  "settings.localAi.diagnostics.web.webgpuExposed": "WebGPU exposed",
+  "settings.localAi.diagnostics.web.adapter": "WebGPU adapter",
+  "settings.localAi.diagnostics.web.device": "WebGPU device",
+  "settings.localAi.diagnostics.web.eligibleTextProfiles":
+    "Eligible text profiles: {{count}}",
+  "settings.localAi.diagnostics.web.eligibleVoiceProfiles":
+    "Eligible voice profiles: {{count}}",
+  "settings.localAi.diagnostics.web.readback": "Voice readback",
+  "settings.localAi.diagnostics.web.blockers":
+    "Current blockers: {{reasons}}",
+  "settings.localAi.diagnostics.tauri.runtimeAvailable":
+    "Runtime available",
+  "settings.localAi.diagnostics.tauri.gemmaText": "Gemma 4 text",
+  "settings.localAi.diagnostics.tauri.gemmaVoice": "Gemma 4 voice",
+  "settings.localAi.diagnostics.tauri.litertPath":
+    "LiteRT-LM path: {{value}}",
+  "settings.localAi.diagnostics.tauri.bundledProfiles":
+    "Bundled profiles: {{count}}",
+  "settings.localAi.diagnostics.tauri.installedProfiles":
+    "Installed profiles: {{count}}",
+  "settings.localAi.diagnostics.tauri.readback": "Voice readback",
+  "settings.localAi.diagnostics.tauri.runtimeNote":
+    "Current runtime note: {{note}}",
+  "settings.localAi.download.disabledUntilReady":
+    "Model download controls stay disabled until secure-context, WebGPU, and browser worker requirements are satisfied on this device.",
+  "settings.localAi.download.cacheSelectedModel": "Cache selected model",
+  "settings.localAi.download.modelCached": "Model cached",
+  "settings.localAi.download.removeSelectedModel": "Remove selected model",
+  "settings.localAi.download.pause": "Pause download",
+  "settings.localAi.download.resume": "Resume",
+  "settings.localAi.download.retry": "Retry download",
+  "settings.localAi.download.verify": "Verify",
+  "settings.localAi.download.repair": "Repair",
+  "settings.localAi.download.update": "Update",
+  "settings.localAi.download.preparing": "Preparing...",
+  "settings.localAi.download.statusLabel": "Download status: {{status}}",
+  "settings.localAi.download.status.idle": "idle",
+  "settings.localAi.download.status.blocked": "blocked",
+  "settings.localAi.download.status.downloading": "downloading",
+  "settings.localAi.download.status.paused": "paused",
+  "settings.localAi.download.status.success": "success",
+  "settings.localAi.download.status.error": "error",
+  "settings.localAi.download.waitingForStream":
+    "Waiting for browser download stream",
+  "settings.localAi.download.downloadedBytes":
+    "{{downloadedMb}} MB downloaded",
+  "settings.localAi.download.downloadedBytesWithTotal":
+    "{{downloadedMb}} MB downloaded / {{totalMb}} MB",
+  "settings.localAi.download.reason.device_scope_unavailable":
+    "Device-scoped Local AI storage is unavailable for this account.",
+  "settings.localAi.download.reason.downloads_disabled_for_device":
+    "Model downloads are disabled on this device.",
+  "settings.localAi.download.reason.profile_not_allowed":
+    "This profile is not allowed by the current Local AI policy.",
+  "settings.localAi.download.reason.profile_not_supported_on_this_surface":
+    "This profile is not supported on the current runtime surface.",
+  "settings.localAi.download.reason.storage_budget_exceeded":
+    "Downloading this model would exceed the device storage budget.",
+  "settings.localAi.download.reason.model_download_cancelled":
+    "The browser model download was paused before completion.",
+  "settings.localAi.reason.secure_context_required":
+    "Secure context is required",
+  "settings.localAi.reason.webgpu_unavailable": "WebGPU is unavailable",
+  "settings.localAi.reason.webgpu_adapter_unavailable":
+    "WebGPU adapter is unavailable",
+  "settings.localAi.reason.webgpu_device_unavailable":
+    "WebGPU device is unavailable",
+  "settings.localAi.reason.no_eligible_browser_profiles":
+    "No eligible browser profiles are available",
+  "settings.localAi.tauri.bundleSummary.onDemand":
+    "This desktop build ships the LiteRT-LM runtime only. Gemma 4 models are downloaded into managed storage on demand.",
+  "settings.localAi.tauri.bundleSummary.withMode":
+    "This desktop build bundles {{profiles}} with the installer ({{mode}}).",
+  "settings.localAi.tauri.bundleSummary.withProfiles":
+    "Bundled Gemma 4 profiles: {{profiles}}.",
+  "settings.localAi.tauri.bundleSummary.none":
+    "This desktop build has no bundled Gemma 4 profiles detected yet.",
+  "settings.localAi.tauri.runtimePath":
+    "Tauri installs Gemma 4 models through the LiteRT-LM runtime path. Managed model root: {{root}}.",
+  "settings.localAi.tauri.bundleModeBadge": "Bundle mode: {{mode}}",
+  "settings.localAi.tauri.installerIncludes":
+    "Installer includes {{count}} bundled model(s)",
+  "settings.localAi.tauri.onDemandInstall": "On-demand model install",
+  "settings.localAi.tauri.bundledWithApp": "Bundled with app",
+  "settings.localAi.tauri.modelPrepared": "Model prepared",
+  "settings.localAi.tauri.prepareSelectedModel": "Prepare selected model",
+  "settings.localAi.tauri.bundledModel": "Bundled model",
+  "settings.localAi.surfaceProfiles.title": "Profiles on this surface",
+  "settings.localAi.surfaceProfiles.entrySummary":
+    "{{family}} {{variant}} • {{sizeMb}} MB",
+  "settings.localAi.surfaceProfiles.voice": "voice",
+  "settings.localAi.surfaceProfiles.setDefault": "Set default",
+  "settings.localAi.surfaceProfiles.prepare": "Prepare",
+  "settings.localAi.surfaceProfiles.remove": "Remove",
+  "settings.localAi.badge.bundled": "Bundled",
+  "settings.localAi.badge.installed": "Installed",
+  "settings.localAi.badge.notInstalled": "Not installed",
+  "settings.localAi.badge.default": "Default",
+  "settings.localAi.clearCache": "Clear Local AI cache for this account",
+  "settings.localAi.toast.preferencesSaved":
+    "Local AI preferences saved",
+  "settings.localAi.toast.cacheCleared":
+    "Local AI device cache cleared for this account",
+  "settings.localAi.toast.diagnosticsRefreshed":
+    "Local AI diagnostics refreshed",
+  "settings.localAi.toast.browserModelCached":
+    "{{profileId}} cached for this browser",
+  "settings.localAi.toast.browserModelRemoved":
+    "{{profileId}} removed from browser cache",
+  "settings.localAi.toast.downloadPaused":
+    "Browser model download paused",
+  "settings.localAi.toast.tauriModelPrepared":
+    "{{profileId}} prepared for local Tauri runtime",
+  "settings.localAi.toast.tauriModelRemoved":
+    "{{profileId}} removed from managed Tauri storage",
+  "settings.localAi.toast.modelPreparedOnDevice":
+    "{{profileId}} prepared on this device",
+  "settings.localAi.toast.modelRemovedFromDevice":
+    "{{profileId}} removed from this device",
+  "settings.localAi.toast.tauriOnlyVerifyRepairUpdate":
+    "Model verification, repair, and updates are only available on Tauri.",
+  "settings.localAi.toast.modelVerified":
+    "{{profileId}} verified successfully",
+  "settings.localAi.toast.modelVerificationFailed":
+    "{{profileId}} failed verification",
+  "settings.localAi.toast.modelRepaired":
+    "{{profileId}} repaired successfully",
+  "settings.localAi.toast.modelRepairFailed":
+    "{{profileId}} could not be repaired",
+  "settings.localAi.toast.modelUpdated":
+    "{{profileId}} updated successfully",
+  "settings.localAi.toast.modelUpdatedMetadata":
+    "{{profileId}} refreshed from the latest bundle metadata",
+  "settings.localAi.toast.modelUpdateFailed":
+    "{{profileId}} could not be updated",
 };
 
 export default en;

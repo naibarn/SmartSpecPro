@@ -144,6 +144,53 @@ describe("RunEngine", () => {
       });
     });
 
+    it("resolves bound external connector work items into scheduler dispatch candidates", () => {
+      expect(runEngine.resolveExternalConnectorDispatchCandidates({
+        workItems: [
+          {
+            id: "work-1",
+            title: "Review partner reply",
+            objective: "Wait for external review",
+            status: "awaiting_approval",
+            threadRootMessageId: "msg-1",
+            assignedMemberId: null,
+            reviewerMemberId: null,
+            approverMemberId: "member-external",
+          },
+          {
+            id: "work-2",
+            title: "Assistant task",
+            objective: null,
+            status: "in_progress",
+            threadRootMessageId: null,
+            assignedMemberId: "member-assistant",
+            reviewerMemberId: null,
+            approverMemberId: null,
+          },
+        ],
+        memberBindings: {
+          "member-external": {
+            memberKind: "external_connector",
+            externalWorkerId: "worker-1",
+          },
+          "member-assistant": {
+            memberKind: "assistant",
+            externalWorkerId: null,
+          },
+        },
+      })).toEqual([
+        {
+          workItemId: "work-1",
+          externalWorkerId: "worker-1",
+          memberId: "member-external",
+          title: "Review partner reply",
+          objective: "Wait for external review",
+          status: "awaiting_approval",
+          threadRootMessageId: "msg-1",
+        },
+      ]);
+    });
+
     it("stops queueing more turns when no actionable work is left", () => {
       expect(runEngine.evaluateAutoTeamLoopDecision({
         runStatus: "running",

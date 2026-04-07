@@ -55,11 +55,37 @@ describe("OpenAPI Spec", () => {
 
   it("contains paths for all /v1/* endpoint groups", () => {
     const paths = Object.keys(spec.paths || {});
-    const groups = ["skills", "agencies", "presentations", "video-projects", "media", "mcp", "jobs", "webhooks", "events"];
+    const groups = [
+      "skills",
+      "agencies",
+      "presentations",
+      "video-projects",
+      "media",
+      "chat/completions",
+      "responses",
+      "models",
+      "credits",
+      "knowledge",
+      "mcp",
+      "jobs",
+      "webhooks",
+      "events",
+    ];
     for (const group of groups) {
       const hasGroup = paths.some((p) => p.includes(`/v1/${group}`));
       expect(hasGroup, `expected path group /v1/${group}`).toBe(true);
     }
+  });
+
+  it("documents the public Claw HTTP gateway routes and leaves embeddings absent", () => {
+    expect((spec.paths as any)["/v1/chat/completions"]?.post).toBeDefined();
+    expect((spec.paths as any)["/v1/responses"]?.post).toBeDefined();
+    expect((spec.paths as any)["/v1/models"]?.get).toBeDefined();
+    expect((spec.paths as any)["/v1/credits"]?.get).toBeDefined();
+    expect((spec.paths as any)["/v1/knowledge/library/search"]?.post).toBeDefined();
+    expect((spec.paths as any)["/v1/knowledge/library/upload"]?.post).toBeDefined();
+    expect((spec.paths as any)["/v1/knowledge/rag/search"]?.post).toBeDefined();
+    expect((spec.paths as any)["/v1/embeddings"]).toBeUndefined();
   });
 
   it("each path operation has at least one response schema defined", () => {

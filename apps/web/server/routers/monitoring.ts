@@ -11,6 +11,8 @@ import * as notificationService from "../services/orchestratorNotificationServic
 import * as unifiedNotificationService from "../services/unifiedNotificationService";
 import { checkNotificationHealth } from "../services/notificationHealthChecks";
 import { collectServiceRuntimeSnapshot } from "./services";
+import * as workerFleetService from "../services/workerFleetService";
+import * as workerBudgetService from "../services/workerBudgetService";
 
 function requireTenantId(ctx: { tenantId: string | null; user?: { currentTenantId?: number | null } | null }): string {
   const tid = resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId);
@@ -249,6 +251,89 @@ export const monitoringRouter = router({
   getCurrentStatus: adminProcedure.query(async () => {
     return monitoringService.getCurrentStatus();
   }),
+
+  listWorkers: adminProcedure
+    .query(async ({ ctx }) => {
+      const tenantId = requireTenantId(ctx);
+      return workerFleetService.listWorkerFleet(tenantId);
+    }),
+
+  getWorkerDiagnostics: adminProcedure
+    .input(z.object({ workerId: z.string().min(1) }))
+    .query(async ({ input, ctx }) => {
+      const tenantId = requireTenantId(ctx);
+      return workerFleetService.getWorkerDiagnosticsSnapshot(tenantId, input.workerId);
+    }),
+
+  updateWorkerState: adminProcedure
+    .input(z.object({
+      workerId: z.string().min(1),
+      action: z.enum(["disable", "drain", "resume", "revoke"]),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const tenantId = requireTenantId(ctx);
+      const worker = await workerFleetService.updateWorkerFleetState({
+        tenantId,
+        workerId: input.workerId,
+        action: input.action,
+        actorUserId: ctx.user?.id ?? null,
+      });
+      return {
+        success: true,
+        workerId: worker.id,
+        status: worker.status,
+      };
+    }),
+
+  cleanupWorkerRetention: adminProcedure
+    .mutation(async ({ ctx }) => {
+      const tenantId = requireTenantId(ctx);
+      return workerFleetService.cleanupWorkerFleetRetention({ tenantId });
+    }),
+
+  redactLegacyWorkerData: adminProcedure
+    .mutation(async ({ ctx }) => {
+      const tenantId = requireTenantId(ctx);
+      return workerFleetService.redactLegacyWorkerData({
+        tenantId,
+        actorUserId: ctx.user?.id ?? null,
+      });
+    }),
+
+  getWorkerBudget: adminProcedure
+    .input(z.object({ workerId: z.string().min(1) }))
+    .query(async ({ input, ctx }) => {
+      const tenantId = requireTenantId(ctx);
+      return workerBudgetService.getWorkerBudgetSettings({
+        tenantId,
+        workerId: input.workerId,
+      });
+    }),
+
+  updateWorkerBudget: adminProcedure
+    .input(z.object({
+      workerId: z.string().min(1),
+      hourlyCredits: z.number().int().positive().nullable().optional(),
+      fiveHourCredits: z.number().int().positive().nullable().optional(),
+      dailyCredits: z.number().int().positive().nullable().optional(),
+      weeklyCredits: z.number().int().positive().nullable().optional(),
+      monthlyCredits: z.number().int().positive().nullable().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const tenantId = requireTenantId(ctx);
+      return workerBudgetService.updateWorkerBudgetSettings({
+        tenantId,
+        workerId: input.workerId,
+        actorUserId: ctx.user?.id ?? null,
+        budgets: {
+          hourlyCredits: input.hourlyCredits ?? null,
+          fiveHourCredits: input.fiveHourCredits ?? null,
+          dailyCredits: input.dailyCredits ?? null,
+          weeklyCredits: input.weeklyCredits ?? null,
+          monthlyCredits: input.monthlyCredits ?? null,
+        },
+      });
+    }),
 
   /**
    * Unified early-warning summary for admin monitoring surfaces.
