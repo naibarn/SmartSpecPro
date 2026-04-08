@@ -168,6 +168,14 @@ if (options.bundleMode !== "skip") {
 log("Building SmartSpec Web assets...");
 run("npm", ["--workspace", "apps/web", "run", "build"]);
 
+const ffmpegArgs = ["--workspace", "apps/tauri-shell", "run", "tauri:prepare:ffmpeg"];
+if (options.target) {
+  ffmpegArgs.push("--", "--target", options.target);
+}
+
+log("Preparing FFmpeg sidecars for the desktop bundle...");
+run("npm", ffmpegArgs);
+
 const tauriArgs = ["--workspace", "apps/tauri-shell", "run", "tauri:build"];
 if (options.target) {
   tauriArgs.push("--", "--target", options.target);

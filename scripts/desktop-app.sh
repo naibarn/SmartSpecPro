@@ -128,6 +128,12 @@ cmd_build() {
         npm --workspace "$WEB_WORKSPACE" run build
     )
 
+    log "Preparing FFmpeg sidecars for the desktop shell..."
+    (
+        cd "$ROOT"
+        npm --workspace "$DESKTOP_WORKSPACE" run tauri:prepare:ffmpeg
+    )
+
     log "Building Tauri desktop bundle..."
     (
         cd "$ROOT"

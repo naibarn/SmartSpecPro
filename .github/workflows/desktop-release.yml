@@ -106,6 +106,9 @@ jobs:
       - name: Install npm dependencies
         run: npm install --legacy-peer-deps
 
+      - name: Prepare FFmpeg sidecars
+        run: npm --workspace=@smartspec/tauri-shell run tauri:prepare:ffmpeg -- --target ${{ matrix.target }}
+
       - name: Prepare LiteRT-LM and Gemma 4 bundle
         shell: bash
         run: python apps/tauri-shell/scripts/prepare-litert-lm-bundle.py --bundle-mode "${{ github.event.inputs.bundle_mode || 'on-demand' }}"

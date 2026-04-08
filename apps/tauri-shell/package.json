@@ -3,6 +3,7 @@
   "private": true,
   "scripts": {
     "test": "cargo test --manifest-path src-tauri/Cargo.toml",
+    "tauri:prepare:ffmpeg": "node scripts/prepare-ffmpeg-sidecars.mjs",
     "tauri:prepare:litert": "uv run python scripts/prepare-litert-lm-bundle.py --bundle-mode on-demand",
     "tauri:prepare:gemma4:on-demand": "uv run python scripts/prepare-litert-lm-bundle.py --bundle-mode on-demand",
     "tauri:prepare:gemma4:e2b": "uv run python scripts/prepare-litert-lm-bundle.py --bundle-mode e2b",
@@ -11,15 +12,17 @@
     "tauri:smoke:gemma4:e2b": "uv run python scripts/smoke-test-litert-lm-stream.py --binary src-tauri/resources/litert-lm-runtime/venv/bin/litert-lm --model src-tauri/resources/litert-lm-models/gemma4-e2b-tauri-fast/gemma-4-E2B-it.litertlm",
     "tauri:smoke:gemma4:e4b": "uv run python scripts/smoke-test-litert-lm-stream.py --binary src-tauri/resources/litert-lm-runtime/venv/bin/litert-lm --model src-tauri/resources/litert-lm-models/gemma4-e4b-tauri-balanced/gemma-4-E4B-it.litertlm",
     "tauri:smoke:gemma4:voice:e2b": "uv run python scripts/smoke-test-litert-lm-transcription.py --python src-tauri/resources/litert-lm-runtime/venv/bin/python --helper src-tauri/resources/litert-lm-runtime/transcribe_audio.py --model src-tauri/resources/litert-lm-models/gemma4-e2b-tauri-fast/gemma-4-E2B-it.litertlm --audio ../web/uploads/media-jobs/assets/d7Me3WJ3JQQ_5olQkuBS5/NaibarnVoice1.wav --ffmpeg ${SMARTSPEC_FFMPEG_PATH:-ffmpeg} --expect-substring PM",
-    "tauri:build:gemma4:on-demand": "uv run python scripts/prepare-litert-lm-bundle.py --bundle-mode on-demand && tauri build",
-    "tauri:build:gemma4:e2b": "uv run python scripts/prepare-litert-lm-bundle.py --bundle-mode e2b && tauri build",
-    "tauri:build:gemma4:e4b": "uv run python scripts/prepare-litert-lm-bundle.py --bundle-mode e4b && tauri build",
-    "tauri:build:gemma4:all": "uv run python scripts/prepare-litert-lm-bundle.py --bundle-mode all && tauri build",
+    "tauri:build:gemma4:on-demand": "npm run tauri:prepare:ffmpeg && uv run python scripts/prepare-litert-lm-bundle.py --bundle-mode on-demand && tauri build",
+    "tauri:build:gemma4:e2b": "npm run tauri:prepare:ffmpeg && uv run python scripts/prepare-litert-lm-bundle.py --bundle-mode e2b && tauri build",
+    "tauri:build:gemma4:e4b": "npm run tauri:prepare:ffmpeg && uv run python scripts/prepare-litert-lm-bundle.py --bundle-mode e4b && tauri build",
+    "tauri:build:gemma4:all": "npm run tauri:prepare:ffmpeg && uv run python scripts/prepare-litert-lm-bundle.py --bundle-mode all && tauri build",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2.5.0"
+    "@tauri-apps/cli": "^2.5.0",
+    "ffmpeg-static": "^5.3.0",
+    "ffprobe-static": "^3.1.0"
   }
 }
