@@ -31,27 +31,46 @@ permissions:
   contents: write
 
 jobs:
+  resolve-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Resolve target matrix
+        id: set-matrix
+        shell: bash
+        run: |
+          platform="${{ github.event.inputs.platform }}"
+
+          case "$platform" in
+            windows)
+              matrix='{"include":[{"os":"windows-latest","target":"x86_64-pc-windows-msvc","label":"Windows"}]}'
+              ;;
+            macos)
+              matrix='{"include":[{"os":"macos-latest","target":"universal-apple-darwin","label":"macOS"}]}'
+              ;;
+            linux)
+              matrix='{"include":[{"os":"ubuntu-22.04","target":"x86_64-unknown-linux-gnu","label":"Linux"}]}'
+              ;;
+            all)
+              matrix='{"include":[{"os":"macos-latest","target":"universal-apple-darwin","label":"macOS"},{"os":"windows-latest","target":"x86_64-pc-windows-msvc","label":"Windows"},{"os":"ubuntu-22.04","target":"x86_64-unknown-linux-gnu","label":"Linux"}]}'
+              ;;
+            *)
+              echo "Unsupported platform input: $platform" >&2
+              exit 1
+              ;;
+          esac
+
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+
   build:
+    needs: resolve-matrix
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - os: macos-latest
-            target: universal-apple-darwin
-            label: macOS
-            platform: macos
-          - os: windows-latest
-            target: x86_64-pc-windows-msvc
-            label: Windows
-            platform: windows
-          - os: ubuntu-22.04
-            target: x86_64-unknown-linux-gnu
-            label: Linux
-            platform: linux
+      matrix: ${{ fromJson(needs.resolve-matrix.outputs.matrix) }}
 
     runs-on: ${{ matrix.os }}
     name: Build (${{ matrix.label }})
-    if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == matrix.platform }}
 
     steps:
       - uses: actions/checkout@v4
