@@ -32,6 +32,7 @@ Claw workers เหมาะกับงานแบบ:
 
 - มีสวิตช์ระดับ tenant สำหรับเปิดใช้ external Claw workers
 - มีแผง **Claw Workers** ในหน้า **Admin Monitoring**
+- มีภาพรวม MCP ระดับ tenant ในหน้า **Admin Monitoring** เพื่อดู usage รวม, สาเหตุที่ถูกบล็อก, และ worker ที่ active มากที่สุดได้ในจุดเดียว
 - มี personal worker ที่ผูกกับเจ้าของชัดเจน
 - มีคำสั่งควบคุม worker คือ **Inspect**, **Drain**, **Disable**, **Resume** และ **Revoke**
 - มีปุ่ม **Redact Legacy Data** สำหรับ cleanup ข้อมูลเก่า
@@ -113,12 +114,14 @@ manifest จะบอกว่า:
 - knowledge หรือ upload action ไหนได้รับอนุญาต
 - callback target ไหนได้รับอนุญาต
 - model alias ไหนที่ profile ของ job นี้ใช้ได้
+- HTTP route จริงที่พร้อมใช้ตอนนี้มีอะไรบ้าง รวมถึง RAG ingest ถ้า job นั้นได้ grant
 - ความพร้อมของ capability ว่าพร้อม จำกัด หรือยังไม่เปิด
 
 กฎของเฟสนี้คือ:
 
 - delegated worker ให้ใช้เส้นทาง HTTP เป็นหลัก
-- delegated worker MCP ยังไม่เปิดในเฟสนี้
+- delegated worker ใช้ MCP ได้เมื่อ delegated manifest ของ job นั้นระบุว่า MCP เป็น `ready`
+- `/v1/mcp/catalog` ใช้ดู catalog MCP แบบคงที่ แต่ delegated manifest ยังเป็นตัวบอกความจริงของ job นั้นอยู่
 
 ## Library และ RAG
 
@@ -129,6 +132,8 @@ worker ใช้ความรู้ของเจ้าของได้เ�
 - ค้นหา Library ของเจ้าของ
 - อัปโหลดไฟล์ที่ระบบอนุญาตเข้า Library ของเจ้าของ
 - ค้นหา RAG ของเจ้าของ
+- อัปโหลดไฟล์ใหม่เข้า `POST /v1/knowledge/rag/ingest` เพื่อให้เข้า RAG ของเจ้าของ
+- สั่ง re-index ไฟล์ใน Library ของเจ้าของผ่าน `POST /v1/knowledge/rag/ingest`
 
 สิ่งที่ทำไม่ได้:
 
@@ -168,6 +173,12 @@ worker ใช้ความรู้ของเจ้าของได้เ�
 ### Inspect
 
 เปิดดู snapshot การวินิจฉัยล่าสุดของ worker ที่ถูก redacted แล้ว
+
+ถ้า worker ตัวนั้นมี delegated MCP activity อยู่ panel เดียวกันนี้จะแสดงเพิ่มด้วย:
+
+- สถานะ MCP manifest ล่าสุดของ worker
+- family MCP ที่ใช้ได้จริงและข้อจำกัดจาก operator
+- tool ที่ถูกใช้บ่อย, สาเหตุที่ถูก deny, และ recent MCP events ของ worker ตัวนั้น
 
 เหมาะกับการใช้ตรวจว่า:
 
@@ -236,7 +247,7 @@ worker ใช้ความรู้ของเจ้าของได้เ�
 - เข้าถึงข้อมูลของ user คนอื่นได้
 - ข้าม tenant ได้
 - กลายเป็น web login แบบใช้งานได้ทุกอย่าง
-- ใช้ MCP ใน delegated mode ได้ทันทีในเฟสนี้
+- ใช้ MCP ได้ทุก tool แบบอัตโนมัติ
 
 worker ใช้ได้เฉพาะสิ่งที่ delegated job manifest และ grants ระบุให้เท่านั้น
 
@@ -276,11 +287,11 @@ worker ใช้ได้เฉพาะสิ่งที่ delegated job mani
 
 - delegated worker ใช้เส้นทาง HTTP gateway ที่รองรับได้จริงและหักเครดิตถูกต้องเมื่อ route นั้นได้รับอนุญาต
 - Library search, Library upload และ RAG search ใช้งานได้ผ่าน delegated HTTP path
-- MCP ใช้ได้สำหรับ caller ปกติของแพลตฟอร์ม แต่ delegated worker MCP ยังถูกปิดไว้ในเฟสนี้
+- delegated worker MCP ใช้ได้แล้วแบบจำกัดตาม grant และ namespace สำหรับ tool family ที่รองรับ เช่น gateway, knowledge, skills, agencies, media, jobs, presentations และ video projects
 
 สรุปง่าย ๆ:
 
-- ถ้าเป็น delegated worker ตอนนี้ ให้ยึด HTTP gateway + delegated manifest
+- ถ้าเป็น delegated worker ตอนนี้ ให้เริ่มจาก HTTP gateway ก่อน และใช้ MCP เมื่อ delegated manifest ระบุว่า MCP พร้อมใช้สำหรับ job นั้น
 - อย่าถือว่าแค่ตั้ง `Bound Worker` แล้วจะใช้ฟังก์ชันของแพลตฟอร์มได้ทุกอย่างเอง
 
 ## เช็กลิสต์สั้น ๆ ก่อนบอกว่าใช้งานได้แล้ว

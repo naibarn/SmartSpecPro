@@ -213,6 +213,157 @@ type WorkerDiagnosticsSnapshot = {
   dashboardUrl: string | null;
   revokedAt: string | null;
 };
+type WorkerMcpInsightTotals = {
+  sessionInitializations: number;
+  toolListCalls: number;
+  toolCalls: number;
+  successCount: number;
+  deniedCount: number;
+  budgetDeniedCount: number;
+  approvalRequiredCount: number;
+  replayHitCount: number;
+  failureCount: number;
+};
+type WorkerMcpFamilyMetric = {
+  family: string;
+  totalCalls: number;
+  successCount: number;
+  deniedCount: number;
+  lastSeenAt: string | null;
+};
+type WorkerMcpToolMetric = {
+  toolName: string;
+  family: string;
+  totalCalls: number;
+  successCount: number;
+  deniedCount: number;
+  budgetDeniedCount: number;
+  approvalRequiredCount: number;
+  replayHitCount: number;
+  lastSeenAt: string | null;
+};
+type WorkerMcpRecentEvent = {
+  timestamp: string;
+  traceId: string;
+  event: string;
+  toolName: string | null;
+  family: string | null;
+  reason: string | null;
+};
+type WorkerMcpInsights = {
+  workerId: string;
+  displayName: string;
+  runtimeType: string;
+  generatedAt: string;
+  hours: number;
+  manifestStatus: "ready" | "stale" | "unavailable";
+  manifestReason: string | null;
+  activeDelegatedSession: {
+    sessionId: string;
+    workerJobId: string;
+    scopeProfile: string;
+    createdAt: string;
+    expiresAt: string;
+    revokedAt: string | null;
+  } | null;
+  manifest: {
+    availability: {
+      http: string;
+      mcp: string;
+      knowledge: string;
+    };
+    mcp: {
+      enabled: boolean;
+      availableFamilies: string[];
+      families: Array<{
+        family: string;
+        enabled: boolean;
+        availableToolCount: number;
+        reason: string | null;
+      }>;
+      availableTools: Array<{
+        name: string;
+        family: string;
+        toolGroup: string;
+        availability: string;
+        reason: string | null;
+      }>;
+      experimentalTools: Array<{
+        name: string;
+        family: string;
+        toolGroup: string;
+        availability: string;
+        reason: string | null;
+      }>;
+      disabledTools: Array<{
+        name: string;
+        family: string;
+        toolGroup: string;
+        availability: string;
+        reason: string | null;
+      }>;
+      operatorPolicy: {
+        enabled: boolean;
+        disabledFamilies: string[];
+        disabledToolGroups: string[];
+        approvalRequiredToolGroups: string[];
+      };
+    };
+    discovery: {
+      catalogUrl: string;
+      manifestPath: string;
+    };
+    scopeProfile: string;
+    workerJobId: string;
+    expiresAt: string;
+  } | null;
+  totals: WorkerMcpInsightTotals;
+  familyMetrics: WorkerMcpFamilyMetric[];
+  toolMetrics: WorkerMcpToolMetric[];
+  denialReasons: Array<{ reason: string; count: number }>;
+  recentEvents: WorkerMcpRecentEvent[];
+};
+type TenantWorkerMcpOverviewWorkerMetric = {
+  workerId: string;
+  displayName: string;
+  runtimeType: string;
+  status: string;
+  healthState: string;
+  manifestStatus: "ready" | "stale" | "unavailable";
+  toolCalls: number;
+  blockedCount: number;
+  lastSeenAt: string | null;
+  lastEventAt: string | null;
+};
+type TenantWorkerMcpOverviewRecentEvent = WorkerMcpRecentEvent & {
+  workerId: string | null;
+  workerDisplayName: string | null;
+};
+type TenantWorkerMcpOverview = {
+  tenantId: string;
+  generatedAt: string;
+  hours: number;
+  totalWorkers: number;
+  workersWithRecentMcpCalls: number;
+  workersWithActiveDelegatedSessions: number;
+  manifestStatusCounts: {
+    ready: number;
+    stale: number;
+    unavailable: number;
+  };
+  operatorPolicy: {
+    enabled: boolean;
+    disabledFamilies: string[];
+    disabledToolGroups: string[];
+    approvalRequiredToolGroups: string[];
+  };
+  totals: WorkerMcpInsightTotals;
+  familyMetrics: WorkerMcpFamilyMetric[];
+  toolMetrics: WorkerMcpToolMetric[];
+  denialReasons: Array<{ reason: string; count: number }>;
+  workerMetrics: TenantWorkerMcpOverviewWorkerMetric[];
+  recentEvents: TenantWorkerMcpOverviewRecentEvent[];
+};
 type WorkerBudgetWindowSummary = {
   label: "hourly" | "five_hour" | "daily" | "weekly" | "monthly";
   capCredits: number | null;
@@ -290,6 +441,15 @@ function parseWorkerBudgetDraft(draft: WorkerBudgetDraft) {
     weeklyCredits: parseValue(draft.weeklyCredits),
     monthlyCredits: parseValue(draft.monthlyCredits),
   };
+}
+
+function humanizeMachineLabel(value: string | null | undefined): string {
+  if (!value) return "Unknown";
+  return value
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
 function workerBudgetWindowLabel(label: WorkerBudgetWindowSummary["label"]): string {
@@ -1612,8 +1772,23 @@ export default function AdminMonitoring() {
     refetchInterval: 30_000,
     refetchOnWindowFocus: false,
   });
+  const tenantWorkerMcpOverviewQuery = trpc.monitoring.getTenantWorkerMcpOverview.useQuery(
+    { hours: 24 },
+    {
+      refetchInterval: 30_000,
+      refetchOnWindowFocus: false,
+    },
+  );
   const workerDiagnosticsQuery = trpc.monitoring.getWorkerDiagnostics.useQuery(
     selectedWorkerId ? { workerId: selectedWorkerId } : skipToken,
+    {
+      enabled: Boolean(selectedWorkerId),
+      refetchInterval: 30_000,
+      refetchOnWindowFocus: false,
+    },
+  );
+  const workerMcpInsightsQuery = trpc.monitoring.getWorkerMcpInsights.useQuery(
+    selectedWorkerId ? { workerId: selectedWorkerId, hours: 24 } : skipToken,
     {
       enabled: Boolean(selectedWorkerId),
       refetchInterval: 30_000,
@@ -1633,7 +1808,9 @@ export default function AdminMonitoring() {
     onSuccess: async () => {
       await Promise.all([
         utils.monitoring.listWorkers.invalidate(),
+        utils.monitoring.getTenantWorkerMcpOverview.invalidate(),
         selectedWorkerId ? utils.monitoring.getWorkerDiagnostics.invalidate({ workerId: selectedWorkerId }) : Promise.resolve(),
+        selectedWorkerId ? utils.monitoring.getWorkerMcpInsights.invalidate({ workerId: selectedWorkerId, hours: 24 }) : Promise.resolve(),
       ]);
       toast.success("Worker state updated");
     },
@@ -1650,7 +1827,9 @@ export default function AdminMonitoring() {
     }) => {
       await Promise.all([
         utils.monitoring.listWorkers.invalidate(),
+        utils.monitoring.getTenantWorkerMcpOverview.invalidate(),
         selectedWorkerId ? utils.monitoring.getWorkerDiagnostics.invalidate({ workerId: selectedWorkerId }) : Promise.resolve(),
+        selectedWorkerId ? utils.monitoring.getWorkerMcpInsights.invalidate({ workerId: selectedWorkerId, hours: 24 }) : Promise.resolve(),
       ]);
       toast.success(
         `Legacy worker data redacted: ${result.updatedWorkers}/${result.scannedWorkers} workers, ${result.updatedArtifacts}/${result.scannedArtifacts} artifacts`,
@@ -1741,7 +1920,9 @@ export default function AdminMonitoring() {
   const focusedIncident = ((focusedIncidentQuery.data?.items as OpsIncidentTimelineItem[] | undefined) ?? [])[0] ?? null;
   const anomalies = opsOverviewQuery.data?.anomalies ?? [];
   const workerFleet = (workerFleetQuery.data as WorkerFleetRow[] | undefined) ?? [];
+  const tenantWorkerMcpOverview = (tenantWorkerMcpOverviewQuery.data as TenantWorkerMcpOverview | undefined) ?? null;
   const selectedWorkerDiagnostics = (workerDiagnosticsQuery.data as WorkerDiagnosticsSnapshot | undefined) ?? null;
+  const selectedWorkerMcpInsights = (workerMcpInsightsQuery.data as WorkerMcpInsights | undefined) ?? null;
   const selectedWorkerBudget = (workerBudgetQuery.data as WorkerBudgetSummary | undefined) ?? null;
   const selectedWorkerBudgetDraft = selectedWorkerId
     ? workerBudgetDrafts[selectedWorkerId] ?? createWorkerBudgetDraft(selectedWorkerBudget)
@@ -2080,6 +2261,162 @@ export default function AdminMonitoring() {
           )}
         >
           <div className="space-y-3">
+            <div className="rounded-xl border bg-slate-50 p-3">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <p className="text-sm font-medium">Tenant MCP overview</p>
+                  <p className="text-xs text-muted-foreground">
+                    Last 24 hours of delegated MCP activity across all personal Claw workers in this tenant.
+                  </p>
+                </div>
+                {tenantWorkerMcpOverview ? (
+                  <Badge variant="outline">
+                    Updated {timeAgo(tenantWorkerMcpOverview.generatedAt)}
+                  </Badge>
+                ) : null}
+              </div>
+
+              {tenantWorkerMcpOverviewQuery.isLoading ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Loading MCP overview…
+                </div>
+              ) : tenantWorkerMcpOverview ? (
+                <div className="space-y-4">
+                  <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+                    <div className="rounded-md border bg-white p-3">
+                      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Workers</p>
+                      <p className="mt-1 text-sm font-medium">{tenantWorkerMcpOverview.totalWorkers}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {tenantWorkerMcpOverview.workersWithActiveDelegatedSessions} active delegated sessions
+                      </p>
+                    </div>
+                    <div className="rounded-md border bg-white p-3">
+                      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Tool calls</p>
+                      <p className="mt-1 text-sm font-medium">{tenantWorkerMcpOverview.totals.toolCalls}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {tenantWorkerMcpOverview.totals.successCount} succeeded, {tenantWorkerMcpOverview.totals.deniedCount + tenantWorkerMcpOverview.totals.budgetDeniedCount + tenantWorkerMcpOverview.totals.approvalRequiredCount} blocked
+                      </p>
+                    </div>
+                    <div className="rounded-md border bg-white p-3">
+                      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Workers using MCP</p>
+                      <p className="mt-1 text-sm font-medium">{tenantWorkerMcpOverview.workersWithRecentMcpCalls}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {tenantWorkerMcpOverview.manifestStatusCounts.ready} ready · {tenantWorkerMcpOverview.manifestStatusCounts.stale} stale · {tenantWorkerMcpOverview.manifestStatusCounts.unavailable} unavailable
+                      </p>
+                    </div>
+                    <div className="rounded-md border bg-white p-3">
+                      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Operator policy</p>
+                      <p className="mt-1 text-sm font-medium">
+                        {tenantWorkerMcpOverview.operatorPolicy.enabled ? "Enabled" : "Disabled"}
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {tenantWorkerMcpOverview.operatorPolicy.disabledFamilies.length + tenantWorkerMcpOverview.operatorPolicy.disabledToolGroups.length + tenantWorkerMcpOverview.operatorPolicy.approvalRequiredToolGroups.length} active restrictions
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    {!tenantWorkerMcpOverview.operatorPolicy.enabled ? (
+                      <Badge variant="destructive">Delegated MCP disabled globally</Badge>
+                    ) : null}
+                    {tenantWorkerMcpOverview.operatorPolicy.disabledFamilies.map((family) => (
+                      <Badge key={`tenant-family-${family}`} variant="destructive">
+                        Family off: {family}
+                      </Badge>
+                    ))}
+                    {tenantWorkerMcpOverview.operatorPolicy.disabledToolGroups.map((group) => (
+                      <Badge key={`tenant-group-${group}`} variant="destructive">
+                        Group off: {group}
+                      </Badge>
+                    ))}
+                    {tenantWorkerMcpOverview.operatorPolicy.approvalRequiredToolGroups.map((group) => (
+                      <Badge key={`tenant-approval-${group}`} className="border border-amber-200 bg-amber-50 text-amber-800">
+                        Approval: {group}
+                      </Badge>
+                    ))}
+                    {tenantWorkerMcpOverview.operatorPolicy.enabled
+                      && tenantWorkerMcpOverview.operatorPolicy.disabledFamilies.length === 0
+                      && tenantWorkerMcpOverview.operatorPolicy.disabledToolGroups.length === 0
+                      && tenantWorkerMcpOverview.operatorPolicy.approvalRequiredToolGroups.length === 0 ? (
+                        <p className="text-xs text-muted-foreground">No tenant-wide MCP restrictions are active right now.</p>
+                      ) : null}
+                  </div>
+
+                  <div className="grid gap-3 xl:grid-cols-3">
+                    <div className="rounded-md border bg-white p-3 xl:col-span-1">
+                      <p className="text-xs font-medium text-slate-700">Top MCP families</p>
+                      <div className="mt-2 space-y-2">
+                        {tenantWorkerMcpOverview.familyMetrics.slice(0, 5).map((family) => (
+                          <div key={family.family} className="flex items-center justify-between rounded-md border border-dashed px-3 py-2 text-xs">
+                            <div>
+                              <div className="font-medium">{family.family}</div>
+                              <div className="text-muted-foreground">
+                                {family.successCount} success · {family.deniedCount} blocked
+                              </div>
+                            </div>
+                            <Badge variant="outline">{family.totalCalls}</Badge>
+                          </div>
+                        ))}
+                        {tenantWorkerMcpOverview.familyMetrics.length === 0 ? (
+                          <p className="text-xs text-muted-foreground">No delegated MCP family activity recorded yet.</p>
+                        ) : null}
+                      </div>
+                    </div>
+
+                    <div className="rounded-md border bg-white p-3 xl:col-span-1">
+                      <p className="text-xs font-medium text-slate-700">Most active workers</p>
+                      <div className="mt-2 space-y-2">
+                        {tenantWorkerMcpOverview.workerMetrics.slice(0, 5).map((worker) => (
+                          <div key={worker.workerId} className="rounded-md border border-dashed p-2 text-xs">
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <div className="font-medium">{worker.displayName}</div>
+                                <div className="text-muted-foreground">
+                                  {worker.runtimeType} · {humanizeMachineLabel(worker.healthState)} · {humanizeMachineLabel(worker.manifestStatus)}
+                                </div>
+                              </div>
+                              <Button
+                                size="sm"
+                                variant={selectedWorkerId === worker.workerId ? "default" : "outline"}
+                                onClick={() => setSelectedWorkerId(worker.workerId)}
+                              >
+                                Inspect
+                              </Button>
+                            </div>
+                            <div className="mt-2 text-muted-foreground">
+                              {worker.toolCalls} calls · {worker.blockedCount} blocked
+                              {worker.lastEventAt ? ` · last ${formatAbsoluteDateTime(worker.lastEventAt)}` : ""}
+                            </div>
+                          </div>
+                        ))}
+                        {tenantWorkerMcpOverview.workerMetrics.every((worker) => worker.toolCalls === 0) ? (
+                          <p className="text-xs text-muted-foreground">No workers have used delegated MCP in the selected window yet.</p>
+                        ) : null}
+                      </div>
+                    </div>
+
+                    <div className="rounded-md border bg-white p-3 xl:col-span-1">
+                      <p className="text-xs font-medium text-slate-700">Top denial reasons</p>
+                      <div className="mt-2 space-y-2">
+                        {tenantWorkerMcpOverview.denialReasons.slice(0, 5).map((entry) => (
+                          <div key={entry.reason} className="flex items-center justify-between rounded-md border border-dashed px-3 py-2 text-xs">
+                            <span>{humanizeMachineLabel(entry.reason)}</span>
+                            <Badge variant="outline">{entry.count}</Badge>
+                          </div>
+                        ))}
+                        {tenantWorkerMcpOverview.denialReasons.length === 0 ? (
+                          <p className="text-xs text-muted-foreground">No denied delegated MCP actions recorded in the selected window.</p>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">No tenant MCP overview is available yet.</p>
+              )}
+            </div>
+
             {workerFleetQuery.isLoading ? (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -2091,7 +2428,13 @@ export default function AdminMonitoring() {
               </p>
             ) : (
               workerFleet.map((worker) => (
-                <div key={worker.id} className="rounded-xl border p-3">
+                <div
+                  key={worker.id}
+                  className={cn(
+                    "rounded-xl border p-3",
+                    selectedWorkerId === worker.id ? "border-sky-300 bg-sky-50/40" : "",
+                  )}
+                >
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                     <div className="space-y-1">
                       <div className="flex flex-wrap items-center gap-2">
@@ -2192,6 +2535,215 @@ export default function AdminMonitoring() {
                 ) : (
                   <p className="text-sm text-muted-foreground">No diagnostics available yet.</p>
                 )}
+
+                <div className="mt-4 rounded-lg border bg-white p-3">
+                  <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-medium">Worker MCP insights</p>
+                      <p className="text-xs text-muted-foreground">
+                        Runtime truth for delegated MCP plus the last 24 hours of worker MCP usage.
+                      </p>
+                    </div>
+                    {selectedWorkerMcpInsights ? (
+                      <Badge
+                        className={cn(
+                          "border",
+                          selectedWorkerMcpInsights.manifestStatus === "ready"
+                            ? statusColor.healthy
+                            : selectedWorkerMcpInsights.manifestStatus === "stale"
+                              ? statusColor.stale
+                              : statusColor.failed,
+                        )}
+                      >
+                        {humanizeMachineLabel(selectedWorkerMcpInsights.manifestStatus)}
+                      </Badge>
+                    ) : null}
+                  </div>
+
+                  {workerMcpInsightsQuery.isLoading ? (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Loading MCP insights…
+                    </div>
+                  ) : selectedWorkerMcpInsights ? (
+                    <div className="space-y-4">
+                      <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+                        <div className="rounded-md border p-3">
+                          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Manifest</p>
+                          <p className="mt-1 text-sm font-medium">
+                            {humanizeMachineLabel(selectedWorkerMcpInsights.manifestStatus)}
+                          </p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {selectedWorkerMcpInsights.manifestReason ?? "Delegated MCP manifest is current."}
+                          </p>
+                        </div>
+                        <div className="rounded-md border p-3">
+                          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Operator policy</p>
+                          <p className="mt-1 text-sm font-medium">
+                            {selectedWorkerMcpInsights.manifest?.mcp.operatorPolicy.enabled === false ? "Disabled" : "Enabled"}
+                          </p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {selectedWorkerMcpInsights.manifest?.mcp.operatorPolicy.approvalRequiredToolGroups.length ?? 0} approval-gated groups
+                          </p>
+                        </div>
+                        <div className="rounded-md border p-3">
+                          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Tool calls</p>
+                          <p className="mt-1 text-sm font-medium">{selectedWorkerMcpInsights.totals.toolCalls}</p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {selectedWorkerMcpInsights.totals.successCount} succeeded, {selectedWorkerMcpInsights.totals.deniedCount + selectedWorkerMcpInsights.totals.budgetDeniedCount + selectedWorkerMcpInsights.totals.approvalRequiredCount} blocked
+                          </p>
+                        </div>
+                        <div className="rounded-md border p-3">
+                          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Delegated session</p>
+                          <p className="mt-1 text-sm font-medium">
+                            {selectedWorkerMcpInsights.activeDelegatedSession ? "Observed" : "None"}
+                          </p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {selectedWorkerMcpInsights.activeDelegatedSession
+                              ? `Job ${selectedWorkerMcpInsights.activeDelegatedSession.workerJobId} · expires ${formatAbsoluteDateTime(selectedWorkerMcpInsights.activeDelegatedSession.expiresAt)}`
+                              : "No recent delegated session for this worker."}
+                          </p>
+                        </div>
+                      </div>
+
+                      {selectedWorkerMcpInsights.manifest ? (
+                        <div className="rounded-md border p-3">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Badge variant="outline">
+                              MCP {humanizeMachineLabel(selectedWorkerMcpInsights.manifest.availability.mcp)}
+                            </Badge>
+                            <Badge variant="outline">
+                              Scope {humanizeMachineLabel(selectedWorkerMcpInsights.manifest.scopeProfile)}
+                            </Badge>
+                            <Badge variant="outline">
+                              {selectedWorkerMcpInsights.manifest.mcp.availableFamilies.length} active families
+                            </Badge>
+                            <Badge variant="outline">
+                              {selectedWorkerMcpInsights.manifest.mcp.disabledTools.length} hidden tools
+                            </Badge>
+                          </div>
+                          <div className="mt-3 grid gap-3 lg:grid-cols-2">
+                            <div>
+                              <p className="text-xs font-medium text-slate-700">Available families</p>
+                              <div className="mt-2 flex flex-wrap gap-2">
+                                {selectedWorkerMcpInsights.manifest.mcp.families
+                                  .filter((family) => family.enabled)
+                                  .map((family) => (
+                                    <Badge key={family.family} variant="secondary">
+                                      {family.family} · {family.availableToolCount}
+                                    </Badge>
+                                  ))}
+                              </div>
+                            </div>
+                            <div>
+                              <p className="text-xs font-medium text-slate-700">Operator restrictions</p>
+                              <div className="mt-2 flex flex-wrap gap-2">
+                                {selectedWorkerMcpInsights.manifest.mcp.operatorPolicy.disabledFamilies.map((family) => (
+                                  <Badge key={`family-${family}`} variant="destructive">
+                                    Family off: {family}
+                                  </Badge>
+                                ))}
+                                {selectedWorkerMcpInsights.manifest.mcp.operatorPolicy.disabledToolGroups.map((group) => (
+                                  <Badge key={`group-${group}`} variant="destructive">
+                                    Group off: {group}
+                                  </Badge>
+                                ))}
+                                {selectedWorkerMcpInsights.manifest.mcp.operatorPolicy.approvalRequiredToolGroups.map((group) => (
+                                  <Badge key={`approval-${group}`} className="border border-amber-200 bg-amber-50 text-amber-800">
+                                    Approval: {group}
+                                  </Badge>
+                                ))}
+                                {selectedWorkerMcpInsights.manifest.mcp.operatorPolicy.disabledFamilies.length === 0
+                                  && selectedWorkerMcpInsights.manifest.mcp.operatorPolicy.disabledToolGroups.length === 0
+                                  && selectedWorkerMcpInsights.manifest.mcp.operatorPolicy.approvalRequiredToolGroups.length === 0 ? (
+                                    <p className="text-xs text-muted-foreground">No active MCP operator restrictions.</p>
+                                  ) : null}
+                              </div>
+                            </div>
+                          </div>
+
+                          {selectedWorkerMcpInsights.manifest.mcp.disabledTools.length > 0 ? (
+                            <div className="mt-3">
+                              <p className="text-xs font-medium text-slate-700">Hidden or denied tools</p>
+                              <div className="mt-2 space-y-2">
+                                {selectedWorkerMcpInsights.manifest.mcp.disabledTools.slice(0, 8).map((tool) => (
+                                  <div key={tool.name} className="rounded-md border border-dashed p-2 text-xs">
+                                    <div className="font-medium">{tool.name}</div>
+                                    <div className="text-muted-foreground">
+                                      {tool.family} · {tool.toolGroup} · {humanizeMachineLabel(tool.reason)}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ) : null}
+                        </div>
+                      ) : null}
+
+                      <div className="grid gap-3 lg:grid-cols-2">
+                        <div className="rounded-md border p-3">
+                          <p className="text-xs font-medium text-slate-700">Top MCP tools</p>
+                          <div className="mt-2 space-y-2">
+                            {selectedWorkerMcpInsights.toolMetrics.slice(0, 8).map((tool) => (
+                              <div key={tool.toolName} className="rounded-md border border-dashed p-2 text-xs">
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="font-medium">{tool.toolName}</span>
+                                  <Badge variant="outline">{tool.totalCalls} calls</Badge>
+                                </div>
+                                <div className="mt-1 text-muted-foreground">
+                                  {tool.family} · {tool.successCount} success · {tool.deniedCount + tool.budgetDeniedCount + tool.approvalRequiredCount} blocked
+                                  {tool.lastSeenAt ? ` · last ${formatAbsoluteDateTime(tool.lastSeenAt)}` : ""}
+                                </div>
+                              </div>
+                            ))}
+                            {selectedWorkerMcpInsights.toolMetrics.length === 0 ? (
+                              <p className="text-xs text-muted-foreground">No MCP tool execution recorded for this worker in the selected window.</p>
+                            ) : null}
+                          </div>
+                        </div>
+
+                        <div className="rounded-md border p-3">
+                          <p className="text-xs font-medium text-slate-700">Denied reasons</p>
+                          <div className="mt-2 space-y-2">
+                            {selectedWorkerMcpInsights.denialReasons.slice(0, 8).map((entry) => (
+                              <div key={entry.reason} className="flex items-center justify-between rounded-md border border-dashed px-3 py-2 text-xs">
+                                <span>{humanizeMachineLabel(entry.reason)}</span>
+                                <Badge variant="outline">{entry.count}</Badge>
+                              </div>
+                            ))}
+                            {selectedWorkerMcpInsights.denialReasons.length === 0 ? (
+                              <p className="text-xs text-muted-foreground">No denied MCP actions recorded in the current window.</p>
+                            ) : null}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="rounded-md border p-3">
+                        <p className="text-xs font-medium text-slate-700">Recent MCP events</p>
+                        <div className="mt-2 space-y-2">
+                          {selectedWorkerMcpInsights.recentEvents.map((event) => (
+                            <div key={`${event.traceId}-${event.timestamp}-${event.event}`} className="rounded-md border border-dashed p-2 text-xs">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <Badge variant="outline">{humanizeMachineLabel(event.event)}</Badge>
+                                {event.family ? <Badge variant="secondary">{event.family}</Badge> : null}
+                                <span className="text-muted-foreground">{formatAbsoluteDateTime(event.timestamp)}</span>
+                              </div>
+                              <div className="mt-1 font-medium">{event.toolName ?? "Session-level event"}</div>
+                              {event.reason ? (
+                                <div className="mt-1 text-muted-foreground">{humanizeMachineLabel(event.reason)}</div>
+                              ) : null}
+                            </div>
+                          ))}
+                          {selectedWorkerMcpInsights.recentEvents.length === 0 ? (
+                            <p className="text-xs text-muted-foreground">No recent MCP audit events for this worker.</p>
+                          ) : null}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No MCP insights available yet.</p>
+                  )}
+                </div>
 
                 <div className="mt-4 rounded-lg border bg-white p-3">
                   <div className="mb-3 flex flex-wrap items-center justify-between gap-2">

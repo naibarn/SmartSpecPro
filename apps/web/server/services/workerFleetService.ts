@@ -4,6 +4,7 @@ import { getDb } from "../db";
 import {
   assistantProfiles,
   workerArtifacts,
+  workerDelegatedSessions,
   workerHeartbeats,
   workerJobEvents,
   workerJobs,
@@ -11,12 +12,18 @@ import {
 } from "../../drizzle/schema";
 import { auditLogger } from "./auditLogger";
 import {
+  delegatedCapabilityManifestSchema,
+  type DelegatedCapabilityManifest,
+} from "../../shared/workerDelegation";
+import {
   sanitizeWorkerPayload,
   sanitizeWorkerWarningFlags,
 } from "./workerPayloadSanitizer";
+import type { AuditLogEntry } from "./auditLogger";
 
 type WorkerRecord = Record<string, any>;
 type WorkerArtifactRecord = Record<string, any>;
+type WorkerDelegatedSessionRecord = Record<string, any>;
 
 const STALE_WORKER_THRESHOLD_MS = 10 * 60 * 1000;
 const TERMINAL_JOB_STATUSES = new Set(["completed", "failed", "canceled", "expired"]);
@@ -28,6 +35,7 @@ const RECLAIMABLE_JOB_STATUSES = [
   "publishing",
   "indexing",
 ] as const;
+const MAX_MCP_AUDIT_READ_PER_DAY = 4000;
 
 export type WorkerFleetAction = "disable" | "drain" | "resume" | "revoke";
 
@@ -62,6 +70,114 @@ export interface WorkerDiagnosticsSnapshot {
   revokedAt: string | null;
 }
 
+export interface WorkerMcpInsightTotals {
+  sessionInitializations: number;
+  toolListCalls: number;
+  toolCalls: number;
+  successCount: number;
+  deniedCount: number;
+  budgetDeniedCount: number;
+  approvalRequiredCount: number;
+  replayHitCount: number;
+  failureCount: number;
+}
+
+export interface WorkerMcpFamilyMetric {
+  family: string;
+  totalCalls: number;
+  successCount: number;
+  deniedCount: number;
+  lastSeenAt: string | null;
+}
+
+export interface WorkerMcpToolMetric {
+  toolName: string;
+  family: string;
+  totalCalls: number;
+  successCount: number;
+  deniedCount: number;
+  budgetDeniedCount: number;
+  approvalRequiredCount: number;
+  replayHitCount: number;
+  lastSeenAt: string | null;
+}
+
+export interface WorkerMcpRecentEvent {
+  timestamp: string;
+  traceId: string;
+  event: string;
+  toolName: string | null;
+  family: string | null;
+  reason: string | null;
+}
+
+export interface WorkerMcpInsights {
+  workerId: string;
+  displayName: string;
+  runtimeType: string;
+  generatedAt: string;
+  hours: number;
+  manifestStatus: "ready" | "stale" | "unavailable";
+  manifestReason: string | null;
+  activeDelegatedSession: {
+    sessionId: string;
+    workerJobId: string;
+    scopeProfile: string;
+    createdAt: string;
+    expiresAt: string;
+    revokedAt: string | null;
+  } | null;
+  manifest: Pick<
+    DelegatedCapabilityManifest,
+    "availability" | "mcp" | "discovery" | "scopeProfile" | "workerJobId" | "expiresAt"
+  > | null;
+  totals: WorkerMcpInsightTotals;
+  familyMetrics: WorkerMcpFamilyMetric[];
+  toolMetrics: WorkerMcpToolMetric[];
+  denialReasons: Array<{ reason: string; count: number }>;
+  recentEvents: WorkerMcpRecentEvent[];
+}
+
+export interface TenantWorkerMcpOverviewWorkerMetric {
+  workerId: string;
+  displayName: string;
+  runtimeType: string;
+  status: string;
+  healthState: WorkerFleetSummary["healthState"];
+  manifestStatus: WorkerMcpInsights["manifestStatus"];
+  toolCalls: number;
+  blockedCount: number;
+  lastSeenAt: string | null;
+  lastEventAt: string | null;
+}
+
+export interface TenantWorkerMcpOverviewRecentEvent extends WorkerMcpRecentEvent {
+  workerId: string | null;
+  workerDisplayName: string | null;
+}
+
+export interface TenantWorkerMcpOverview {
+  tenantId: string;
+  generatedAt: string;
+  hours: number;
+  totalWorkers: number;
+  workersWithRecentMcpCalls: number;
+  workersWithActiveDelegatedSessions: number;
+  manifestStatusCounts: Record<WorkerMcpInsights["manifestStatus"], number>;
+  operatorPolicy: {
+    enabled: boolean;
+    disabledFamilies: string[];
+    disabledToolGroups: string[];
+    approvalRequiredToolGroups: string[];
+  };
+  totals: WorkerMcpInsightTotals;
+  familyMetrics: WorkerMcpFamilyMetric[];
+  toolMetrics: WorkerMcpToolMetric[];
+  denialReasons: Array<{ reason: string; count: number }>;
+  workerMetrics: TenantWorkerMcpOverviewWorkerMetric[];
+  recentEvents: TenantWorkerMcpOverviewRecentEvent[];
+}
+
 export interface WorkerRetentionCleanupResult {
   deletedHeartbeats: number;
   deletedJobEvents: number;
@@ -83,6 +199,10 @@ interface WorkerFleetRepository {
   cleanupUnpublishedArtifactsBefore: (tenantId: string, cutoff: Date) => Promise<number>;
   expireStaleJobsBefore: (tenantId: string, cutoff: Date) => Promise<number>;
   getWorkerById: (tenantId: string, workerId: string) => Promise<WorkerRecord | null>;
+  getLatestDelegatedSessionForWorker: (
+    tenantId: string,
+    workerId: string,
+  ) => Promise<WorkerDelegatedSessionRecord | null>;
   listArtifactsByTenant: (tenantId: string) => Promise<WorkerArtifactRecord[]>;
   listActiveJobCounts: (tenantId: string) => Promise<Array<{ workerId: string | null; activeJobCount: number }>>;
   listBindingCounts: (tenantId: string) => Promise<Array<{ workerId: string | null; boundProfileCount: number }>>;
@@ -93,6 +213,10 @@ interface WorkerFleetRepository {
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return isPlainObject(value) ? value : null;
 }
 
 function sanitizeDashboardUrl(url: unknown): string | null {
@@ -142,6 +266,122 @@ function readAffectedRowCount(result: unknown): number {
     return typeof rowCount === "number" ? rowCount : 0;
   }
   return 0;
+}
+
+function enumerateDatesBetween(start: Date, end: Date): Date[] {
+  const dates: Date[] = [];
+  const cursor = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate()));
+  const finish = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), end.getUTCDate()));
+
+  while (cursor.getTime() <= finish.getTime()) {
+    dates.push(new Date(cursor));
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+
+  return dates;
+}
+
+function deriveMcpFamily(toolName: string | null | undefined): string | null {
+  if (!toolName) {
+    return null;
+  }
+  const normalized = String(toolName).trim();
+  const match = /^smartspec\.([^.]+)\./.exec(normalized);
+  return match?.[1] ?? null;
+}
+
+function coerceManifest(value: unknown): Pick<
+  DelegatedCapabilityManifest,
+  "availability" | "mcp" | "discovery" | "scopeProfile" | "workerJobId" | "expiresAt"
+> | null {
+  const parsed = delegatedCapabilityManifestSchema.safeParse(value);
+  if (!parsed.success) {
+    return null;
+  }
+  return {
+    availability: parsed.data.availability,
+    mcp: parsed.data.mcp,
+    discovery: parsed.data.discovery,
+    scopeProfile: parsed.data.scopeProfile,
+    workerJobId: parsed.data.workerJobId,
+    expiresAt: parsed.data.expiresAt,
+  };
+}
+
+async function getRecentMcpAuditEntriesForWorker(
+  tenantId: string,
+  workerId: string,
+  hours: number,
+): Promise<AuditLogEntry[]> {
+  const entries = await getRecentMcpAuditEntriesForTenant(tenantId, hours);
+  return entries.filter((entry) => {
+    const metadata = asRecord(entry.metadata);
+    return metadata?.workerId === workerId;
+  });
+}
+
+async function getRecentMcpAuditEntriesForTenant(
+  tenantId: string,
+  hours: number,
+): Promise<AuditLogEntry[]> {
+  const now = new Date();
+  const since = new Date(now.getTime() - hours * 60 * 60 * 1000);
+  const dates = enumerateDatesBetween(since, now);
+  const entries = (await Promise.all(
+    dates.map((date) => auditLogger.readEntries({
+      date,
+      eventType: "mcp_tool_call",
+      limit: MAX_MCP_AUDIT_READ_PER_DAY,
+      sortOrder: "desc",
+    })),
+  )).flat();
+
+  return entries
+    .filter((entry) => {
+      const timestamp = entry?.timestamp ? new Date(entry.timestamp).getTime() : 0;
+      if (!timestamp || timestamp < since.getTime()) {
+        return false;
+      }
+      const metadata = asRecord(entry.metadata);
+      return metadata?.tenantId === tenantId;
+    })
+    .sort((a, b) => {
+      const left = a?.timestamp ? new Date(a.timestamp).getTime() : 0;
+      const right = b?.timestamp ? new Date(b.timestamp).getTime() : 0;
+      return right - left;
+    });
+}
+
+function summarizeLatestSessionManifest(
+  latestSession: WorkerDelegatedSessionRecord | null,
+): {
+  manifestStatus: WorkerMcpInsights["manifestStatus"];
+  activeDelegatedSession: boolean;
+  manifest: WorkerMcpInsights["manifest"];
+} {
+  if (!latestSession) {
+    return {
+      manifestStatus: "unavailable",
+      activeDelegatedSession: false,
+      manifest: null,
+    };
+  }
+
+  const manifest = coerceManifest(latestSession.manifestJson);
+  const isActive = !latestSession.revokedAt && new Date(latestSession.expiresAt).getTime() > Date.now();
+  if (isActive && manifest) {
+    return {
+      manifestStatus: "ready",
+      activeDelegatedSession: true,
+      manifest,
+    };
+  }
+
+  return {
+    manifestStatus: manifest ? "stale" : "unavailable",
+    activeDelegatedSession: isActive,
+    manifest,
+  };
 }
 
 const defaultRepo: WorkerFleetRepository = {
@@ -226,6 +466,19 @@ const defaultRepo: WorkerFleetRepository = {
       .where(and(eq(workers.tenantId, tenantId), eq(workers.id, workerId)))
       .limit(1);
     return worker ?? null;
+  },
+  async getLatestDelegatedSessionForWorker(tenantId, workerId) {
+    const db = await getDb();
+    const [session] = await db
+      .select()
+      .from(workerDelegatedSessions)
+      .where(and(
+        eq(workerDelegatedSessions.tenantId, tenantId),
+        eq(workerDelegatedSessions.workerId, workerId),
+      ))
+      .orderBy(desc(workerDelegatedSessions.createdAt))
+      .limit(1);
+    return session ?? null;
   },
   async listArtifactsByTenant(tenantId) {
     const db = await getDb();
@@ -379,6 +632,382 @@ export async function getWorkerDiagnosticsSnapshot(
     warningFlagsJson: sanitizeWorkerWarningFlags(worker.warningFlagsJson),
     dashboardUrl: sanitizeDashboardUrl(worker.dashboardUrl),
     revokedAt: readRevokedAt(worker),
+  };
+}
+
+export async function getWorkerMcpInsights(
+  tenantId: string,
+  workerId: string,
+  input: {
+    hours?: number;
+  } = {},
+  deps: { repo?: WorkerFleetRepository } = {},
+): Promise<WorkerMcpInsights> {
+  const repo = deps.repo ?? defaultRepo;
+  const hours = Math.min(168, Math.max(1, Math.floor(input.hours ?? 24)));
+  const [worker, latestSession, auditEntries] = await Promise.all([
+    repo.getWorkerById(tenantId, workerId),
+    repo.getLatestDelegatedSessionForWorker(tenantId, workerId),
+    getRecentMcpAuditEntriesForWorker(tenantId, workerId, hours),
+  ]);
+
+  if (!worker) {
+    throw new Error(`Worker ${workerId} not found`);
+  }
+
+  const storedManifest = latestSession ? coerceManifest(latestSession.manifestJson) : null;
+  let manifest: WorkerMcpInsights["manifest"] = storedManifest;
+  let manifestStatus: WorkerMcpInsights["manifestStatus"] = summarizeLatestSessionManifest(latestSession).manifestStatus;
+  let manifestReason: string | null = latestSession ? null : "No delegated worker session has been observed yet";
+
+  if (latestSession && !latestSession.revokedAt && new Date(latestSession.expiresAt).getTime() > Date.now()) {
+    try {
+      const { getDelegatedWorkerManifestBySessionId } = await import("./workerDelegationService");
+      manifest = coerceManifest(await getDelegatedWorkerManifestBySessionId({
+        delegatedSessionId: String(latestSession.id),
+      }));
+      manifestStatus = manifest ? "ready" : "unavailable";
+      manifestReason = manifest ? null : "Active delegated session does not have a readable manifest";
+    } catch (error) {
+      manifestStatus = storedManifest ? "stale" : "unavailable";
+      manifestReason = error instanceof Error ? error.message : "Unable to rebuild delegated MCP manifest";
+    }
+  } else if (latestSession?.revokedAt) {
+    manifestReason = "Latest delegated worker session has been revoked";
+  } else if (latestSession) {
+    manifestReason = "Latest delegated worker session has expired";
+  }
+
+  const totals: WorkerMcpInsightTotals = {
+    sessionInitializations: 0,
+    toolListCalls: 0,
+    toolCalls: 0,
+    successCount: 0,
+    deniedCount: 0,
+    budgetDeniedCount: 0,
+    approvalRequiredCount: 0,
+    replayHitCount: 0,
+    failureCount: 0,
+  };
+  const familyMetrics = new Map<string, WorkerMcpFamilyMetric>();
+  const toolMetrics = new Map<string, WorkerMcpToolMetric>();
+  const denialReasons = new Map<string, number>();
+
+  for (const entry of auditEntries) {
+    const metadata = asRecord(entry.metadata) ?? {};
+    const event = typeof metadata.event === "string" ? metadata.event : "unknown";
+    const toolName = typeof metadata.toolName === "string" && metadata.toolName.trim()
+      ? metadata.toolName.trim()
+      : null;
+    const family = deriveMcpFamily(toolName);
+    const reason = typeof metadata.reason === "string" && metadata.reason.trim()
+      ? metadata.reason.trim()
+      : null;
+
+    if (event === "initialize") totals.sessionInitializations += 1;
+    if (event === "tools_list") totals.toolListCalls += 1;
+    if (toolName) totals.toolCalls += 1;
+    if (event === "execute_success") totals.successCount += 1;
+    if (event === "execution_denied" || event === "owner_resource_denied") totals.deniedCount += 1;
+    if (event === "budget_denied") totals.budgetDeniedCount += 1;
+    if (event === "approval_required") totals.approvalRequiredCount += 1;
+    if (event === "idempotency_replay_hit") totals.replayHitCount += 1;
+    if (event === "execution_failed" || event === "tools_list_failed" || event === "idempotency_rejected") {
+      totals.failureCount += 1;
+    }
+    if (reason && (event === "execution_denied" || event === "owner_resource_denied" || event === "budget_denied" || event === "approval_required")) {
+      denialReasons.set(reason, (denialReasons.get(reason) ?? 0) + 1);
+    }
+
+    if (!toolName || !family) {
+      continue;
+    }
+
+    const familyMetric = familyMetrics.get(family) ?? {
+      family,
+      totalCalls: 0,
+      successCount: 0,
+      deniedCount: 0,
+      lastSeenAt: null,
+    };
+    familyMetric.totalCalls += 1;
+    if (event === "execute_success") familyMetric.successCount += 1;
+    if (event === "execution_denied" || event === "owner_resource_denied" || event === "budget_denied" || event === "approval_required") {
+      familyMetric.deniedCount += 1;
+    }
+    familyMetric.lastSeenAt = familyMetric.lastSeenAt && familyMetric.lastSeenAt > entry.timestamp
+      ? familyMetric.lastSeenAt
+      : entry.timestamp;
+    familyMetrics.set(family, familyMetric);
+
+    const toolMetric = toolMetrics.get(toolName) ?? {
+      toolName,
+      family,
+      totalCalls: 0,
+      successCount: 0,
+      deniedCount: 0,
+      budgetDeniedCount: 0,
+      approvalRequiredCount: 0,
+      replayHitCount: 0,
+      lastSeenAt: null,
+    };
+    toolMetric.totalCalls += 1;
+    if (event === "execute_success") toolMetric.successCount += 1;
+    if (event === "execution_denied" || event === "owner_resource_denied") toolMetric.deniedCount += 1;
+    if (event === "budget_denied") toolMetric.budgetDeniedCount += 1;
+    if (event === "approval_required") toolMetric.approvalRequiredCount += 1;
+    if (event === "idempotency_replay_hit") toolMetric.replayHitCount += 1;
+    toolMetric.lastSeenAt = toolMetric.lastSeenAt && toolMetric.lastSeenAt > entry.timestamp
+      ? toolMetric.lastSeenAt
+      : entry.timestamp;
+    toolMetrics.set(toolName, toolMetric);
+  }
+
+  return {
+    workerId: worker.id,
+    displayName: worker.displayName,
+    runtimeType: worker.runtimeType,
+    generatedAt: new Date().toISOString(),
+    hours,
+    manifestStatus,
+    manifestReason,
+    activeDelegatedSession: latestSession
+      ? {
+          sessionId: String(latestSession.id),
+          workerJobId: String(latestSession.workerJobId),
+          scopeProfile: String(latestSession.scopeProfile),
+          createdAt: new Date(latestSession.createdAt).toISOString(),
+          expiresAt: new Date(latestSession.expiresAt).toISOString(),
+          revokedAt: latestSession.revokedAt ? new Date(latestSession.revokedAt).toISOString() : null,
+        }
+      : null,
+    manifest,
+    totals,
+    familyMetrics: [...familyMetrics.values()].sort((left, right) =>
+      right.totalCalls - left.totalCalls || left.family.localeCompare(right.family)),
+    toolMetrics: [...toolMetrics.values()].sort((left, right) =>
+      right.totalCalls - left.totalCalls || left.toolName.localeCompare(right.toolName)),
+    denialReasons: [...denialReasons.entries()]
+      .map(([reason, count]) => ({ reason, count }))
+      .sort((left, right) => right.count - left.count || left.reason.localeCompare(right.reason)),
+    recentEvents: auditEntries.slice(0, 12).map((entry) => {
+      const metadata = asRecord(entry.metadata) ?? {};
+      const toolName = typeof metadata.toolName === "string" && metadata.toolName.trim()
+        ? metadata.toolName.trim()
+        : null;
+      return {
+        timestamp: entry.timestamp,
+        traceId: entry.traceId,
+        event: typeof metadata.event === "string" ? metadata.event : "unknown",
+        toolName,
+        family: deriveMcpFamily(toolName),
+        reason: typeof metadata.reason === "string" && metadata.reason.trim()
+          ? metadata.reason.trim()
+          : null,
+      };
+    }),
+  };
+}
+
+export async function getTenantWorkerMcpOverview(
+  tenantId: string,
+  input: {
+    hours?: number;
+  } = {},
+  deps: { repo?: WorkerFleetRepository } = {},
+): Promise<TenantWorkerMcpOverview> {
+  const repo = deps.repo ?? defaultRepo;
+  const hours = Math.min(168, Math.max(1, Math.floor(input.hours ?? 24)));
+  const workerRows = await repo.listWorkersByTenant(tenantId);
+  const [latestSessions, auditEntries, operatorPolicy] = await Promise.all([
+    Promise.all(workerRows.map((worker) => repo.getLatestDelegatedSessionForWorker(tenantId, worker.id))),
+    getRecentMcpAuditEntriesForTenant(tenantId, hours),
+    import("../_core/mcpRegistry").then((mod) => mod.getDelegatedMcpOperatorPolicySnapshot()),
+  ]);
+
+  const latestSessionByWorkerId = new Map<string, WorkerDelegatedSessionRecord | null>();
+  for (let index = 0; index < workerRows.length; index += 1) {
+    latestSessionByWorkerId.set(workerRows[index]!.id, latestSessions[index] ?? null);
+  }
+
+  const totals: WorkerMcpInsightTotals = {
+    sessionInitializations: 0,
+    toolListCalls: 0,
+    toolCalls: 0,
+    successCount: 0,
+    deniedCount: 0,
+    budgetDeniedCount: 0,
+    approvalRequiredCount: 0,
+    replayHitCount: 0,
+    failureCount: 0,
+  };
+  const familyMetrics = new Map<string, WorkerMcpFamilyMetric>();
+  const toolMetrics = new Map<string, WorkerMcpToolMetric>();
+  const denialReasons = new Map<string, number>();
+  const workerMetricMap = new Map<string, TenantWorkerMcpOverviewWorkerMetric>();
+  const activeWorkerIds = new Set<string>();
+  const manifestStatusCounts: TenantWorkerMcpOverview["manifestStatusCounts"] = {
+    ready: 0,
+    stale: 0,
+    unavailable: 0,
+  };
+
+  for (const worker of workerRows) {
+    const summary = summarizeLatestSessionManifest(latestSessionByWorkerId.get(worker.id) ?? null);
+    manifestStatusCounts[summary.manifestStatus] += 1;
+    if (summary.activeDelegatedSession) {
+      activeWorkerIds.add(worker.id);
+    }
+    workerMetricMap.set(worker.id, {
+      workerId: worker.id,
+      displayName: worker.displayName,
+      runtimeType: worker.runtimeType,
+      status: worker.status,
+      healthState: deriveHealthState(worker),
+      manifestStatus: summary.manifestStatus,
+      toolCalls: 0,
+      blockedCount: 0,
+      lastSeenAt: worker.lastSeenAt ? new Date(worker.lastSeenAt).toISOString() : null,
+      lastEventAt: null,
+    });
+  }
+
+  for (const entry of auditEntries) {
+    const metadata = asRecord(entry.metadata) ?? {};
+    const workerId = typeof metadata.workerId === "string" && metadata.workerId.trim()
+      ? metadata.workerId.trim()
+      : null;
+    const event = typeof metadata.event === "string" ? metadata.event : "unknown";
+    const toolName = typeof metadata.toolName === "string" && metadata.toolName.trim()
+      ? metadata.toolName.trim()
+      : null;
+    const family = deriveMcpFamily(toolName);
+    const reason = typeof metadata.reason === "string" && metadata.reason.trim()
+      ? metadata.reason.trim()
+      : null;
+
+    if (event === "initialize") totals.sessionInitializations += 1;
+    if (event === "tools_list") totals.toolListCalls += 1;
+    if (toolName) totals.toolCalls += 1;
+    if (event === "execute_success") totals.successCount += 1;
+    if (event === "execution_denied" || event === "owner_resource_denied") totals.deniedCount += 1;
+    if (event === "budget_denied") totals.budgetDeniedCount += 1;
+    if (event === "approval_required") totals.approvalRequiredCount += 1;
+    if (event === "idempotency_replay_hit") totals.replayHitCount += 1;
+    if (event === "execution_failed" || event === "tools_list_failed" || event === "idempotency_rejected") {
+      totals.failureCount += 1;
+    }
+
+    if (reason && (event === "execution_denied" || event === "owner_resource_denied" || event === "budget_denied" || event === "approval_required")) {
+      denialReasons.set(reason, (denialReasons.get(reason) ?? 0) + 1);
+    }
+
+    if (workerId) {
+      const workerMetric = workerMetricMap.get(workerId);
+      if (workerMetric) {
+        if (toolName) {
+          workerMetric.toolCalls += 1;
+        }
+        if (event === "execution_denied" || event === "owner_resource_denied" || event === "budget_denied" || event === "approval_required") {
+          workerMetric.blockedCount += 1;
+        }
+        workerMetric.lastEventAt = workerMetric.lastEventAt && workerMetric.lastEventAt > entry.timestamp
+          ? workerMetric.lastEventAt
+          : entry.timestamp;
+      }
+    }
+
+    if (!toolName || !family) {
+      continue;
+    }
+
+    const familyMetric = familyMetrics.get(family) ?? {
+      family,
+      totalCalls: 0,
+      successCount: 0,
+      deniedCount: 0,
+      lastSeenAt: null,
+    };
+    familyMetric.totalCalls += 1;
+    if (event === "execute_success") familyMetric.successCount += 1;
+    if (event === "execution_denied" || event === "owner_resource_denied" || event === "budget_denied" || event === "approval_required") {
+      familyMetric.deniedCount += 1;
+    }
+    familyMetric.lastSeenAt = familyMetric.lastSeenAt && familyMetric.lastSeenAt > entry.timestamp
+      ? familyMetric.lastSeenAt
+      : entry.timestamp;
+    familyMetrics.set(family, familyMetric);
+
+    const toolMetric = toolMetrics.get(toolName) ?? {
+      toolName,
+      family,
+      totalCalls: 0,
+      successCount: 0,
+      deniedCount: 0,
+      budgetDeniedCount: 0,
+      approvalRequiredCount: 0,
+      replayHitCount: 0,
+      lastSeenAt: null,
+    };
+    toolMetric.totalCalls += 1;
+    if (event === "execute_success") toolMetric.successCount += 1;
+    if (event === "execution_denied" || event === "owner_resource_denied") toolMetric.deniedCount += 1;
+    if (event === "budget_denied") toolMetric.budgetDeniedCount += 1;
+    if (event === "approval_required") toolMetric.approvalRequiredCount += 1;
+    if (event === "idempotency_replay_hit") toolMetric.replayHitCount += 1;
+    toolMetric.lastSeenAt = toolMetric.lastSeenAt && toolMetric.lastSeenAt > entry.timestamp
+      ? toolMetric.lastSeenAt
+      : entry.timestamp;
+    toolMetrics.set(toolName, toolMetric);
+  }
+
+  return {
+    tenantId,
+    generatedAt: new Date().toISOString(),
+    hours,
+    totalWorkers: workerRows.length,
+    workersWithRecentMcpCalls: [...workerMetricMap.values()].filter((worker) => worker.toolCalls > 0).length,
+    workersWithActiveDelegatedSessions: activeWorkerIds.size,
+    manifestStatusCounts,
+    operatorPolicy: {
+      enabled: operatorPolicy.enabled,
+      disabledFamilies: [...operatorPolicy.disabledFamilies],
+      disabledToolGroups: [...operatorPolicy.disabledToolGroups],
+      approvalRequiredToolGroups: [...operatorPolicy.approvalRequiredToolGroups],
+    },
+    totals,
+    familyMetrics: [...familyMetrics.values()].sort((left, right) =>
+      right.totalCalls - left.totalCalls || left.family.localeCompare(right.family)),
+    toolMetrics: [...toolMetrics.values()].sort((left, right) =>
+      right.totalCalls - left.totalCalls || left.toolName.localeCompare(right.toolName)),
+    denialReasons: [...denialReasons.entries()]
+      .map(([reason, count]) => ({ reason, count }))
+      .sort((left, right) => right.count - left.count || left.reason.localeCompare(right.reason)),
+    workerMetrics: [...workerMetricMap.values()].sort((left, right) =>
+      right.toolCalls - left.toolCalls
+      || right.blockedCount - left.blockedCount
+      || left.displayName.localeCompare(right.displayName)),
+    recentEvents: auditEntries.slice(0, 12).map((entry) => {
+      const metadata = asRecord(entry.metadata) ?? {};
+      const toolName = typeof metadata.toolName === "string" && metadata.toolName.trim()
+        ? metadata.toolName.trim()
+        : null;
+      const workerId = typeof metadata.workerId === "string" && metadata.workerId.trim()
+        ? metadata.workerId.trim()
+        : null;
+      return {
+        timestamp: entry.timestamp,
+        traceId: entry.traceId,
+        event: typeof metadata.event === "string" ? metadata.event : "unknown",
+        toolName,
+        family: deriveMcpFamily(toolName),
+        reason: typeof metadata.reason === "string" && metadata.reason.trim()
+          ? metadata.reason.trim()
+          : null,
+        workerId,
+        workerDisplayName: workerId ? workerMetricMap.get(workerId)?.displayName ?? null : null,
+      };
+    }),
   };
 }
 

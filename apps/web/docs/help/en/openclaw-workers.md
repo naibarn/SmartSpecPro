@@ -32,6 +32,7 @@ This phase adds:
 
 - a tenant switch to turn external Claw workers on
 - a worker fleet panel in **Admin Monitoring**
+- a tenant MCP overview inside **Admin Monitoring** so admins can see total delegated MCP usage, blocked reasons, and the most active workers without opening each worker first
 - owner-bound personal workers
 - team binding with **External Reference** and **Bound Worker**
 - delegated worker sessions so supported jobs can call SmartSpecPro through the system gateway
@@ -113,12 +114,14 @@ The delegated manifest is the source that tells the worker:
 - which knowledge or upload actions are allowed
 - which callback targets are allowed
 - which model aliases are approved for that job profile
+- which concrete HTTP routes are ready right now, including RAG ingest when granted
 - whether a capability is ready, limited, or unavailable
 
 Current rule:
 
 - delegated workers should use HTTP-first integration
-- delegated worker MCP access is unavailable in this phase
+- delegated workers may also use MCP when the delegated manifest reports MCP as `ready`
+- `/v1/mcp/catalog` is the static MCP catalog, but the delegated manifest is still the per-job source of truth
 
 ## Library and RAG access
 
@@ -129,6 +132,8 @@ Today that means a delegated worker can:
 - search the owner's Library
 - upload allowed files into the owner's Library
 - search the owner's RAG content
+- upload a new allowed file directly to `POST /v1/knowledge/rag/ingest`
+- re-index an existing owner Library item through `POST /v1/knowledge/rag/ingest`
 
 It cannot:
 
@@ -168,6 +173,12 @@ You can set these caps:
 ### Inspect
 
 Shows the latest redacted diagnostics snapshot for that worker.
+
+When the worker has delegated MCP activity, the same panel also shows:
+
+- the worker's latest MCP manifest state
+- visible MCP families and current operator restrictions
+- top tools, denied reasons, and recent MCP events for that worker
 
 Use it when you want to confirm:
 
@@ -236,7 +247,7 @@ A binding alone does not automatically:
 - grant cross-user access
 - grant cross-tenant access
 - turn the worker into a full web login
-- enable MCP for delegated mode in this phase
+- enable every MCP tool automatically
 
 The worker can only use what the delegated job manifest and grants allow.
 
@@ -276,11 +287,11 @@ Current status:
 
 - Supported delegated workers use the HTTP gateway and deduct credits correctly when the route is granted.
 - Library search, Library upload, and RAG search are available through the delegated HTTP path.
-- MCP is available for normal platform callers, but delegated worker MCP is intentionally unavailable in this phase.
+- Delegated worker MCP is available in a limited, grant-aware way for supported tool families such as gateway, knowledge, skills, agencies, media, jobs, presentations, and video projects.
 
 Simple rule:
 
-- for delegated workers today, use the HTTP gateway plus the delegated manifest
+- for delegated workers today, prefer the HTTP gateway first and use MCP when the delegated manifest reports MCP as ready for that job
 - do not assume that a Bound Worker alone unlocks every platform function
 
 ## Quick checklist

@@ -29,12 +29,16 @@ vi.mock("../../services/tenantContext", () => ({
 const {
   mockListWorkerFleet,
   mockGetWorkerDiagnosticsSnapshot,
+  mockGetWorkerMcpInsights,
+  mockGetTenantWorkerMcpOverview,
   mockUpdateWorkerFleetState,
   mockCleanupWorkerFleetRetention,
   mockRedactLegacyWorkerData,
 } = vi.hoisted(() => ({
   mockListWorkerFleet: vi.fn(),
   mockGetWorkerDiagnosticsSnapshot: vi.fn(),
+  mockGetWorkerMcpInsights: vi.fn(),
+  mockGetTenantWorkerMcpOverview: vi.fn(),
   mockUpdateWorkerFleetState: vi.fn(),
   mockCleanupWorkerFleetRetention: vi.fn(),
   mockRedactLegacyWorkerData: vi.fn(),
@@ -43,6 +47,8 @@ const {
 vi.mock("../../services/workerFleetService", () => ({
   listWorkerFleet: mockListWorkerFleet,
   getWorkerDiagnosticsSnapshot: mockGetWorkerDiagnosticsSnapshot,
+  getWorkerMcpInsights: mockGetWorkerMcpInsights,
+  getTenantWorkerMcpOverview: mockGetTenantWorkerMcpOverview,
   updateWorkerFleetState: mockUpdateWorkerFleetState,
   cleanupWorkerFleetRetention: mockCleanupWorkerFleetRetention,
   redactLegacyWorkerData: mockRedactLegacyWorkerData,
@@ -142,6 +148,98 @@ describe("monitoringRouter worker fleet", () => {
     expect(mockGetWorkerDiagnosticsSnapshot).toHaveBeenCalledWith("tenant-1", "worker-1");
     expect(result).toEqual(expect.objectContaining({
       workerId: "worker-1",
+    }));
+  });
+
+  it("returns worker MCP insights for admins", async () => {
+    mockGetWorkerMcpInsights.mockResolvedValue({
+      workerId: "worker-1",
+      manifestStatus: "ready",
+      hours: 24,
+      totals: {
+        sessionInitializations: 1,
+        toolListCalls: 2,
+        toolCalls: 3,
+        successCount: 2,
+        deniedCount: 1,
+        budgetDeniedCount: 0,
+        approvalRequiredCount: 0,
+        replayHitCount: 0,
+        failureCount: 0,
+      },
+      familyMetrics: [],
+      toolMetrics: [],
+      denialReasons: [],
+      recentEvents: [],
+    });
+
+    const result = await monitoringRouter.getWorkerMcpInsights({
+      input: { workerId: "worker-1", hours: 24 },
+      ctx: {
+        tenantId: "tenant-1",
+        user: { id: 7, role: "admin", currentTenantId: 1 },
+      },
+    } as any);
+
+    expect(mockGetWorkerMcpInsights).toHaveBeenCalledWith("tenant-1", "worker-1", {
+      hours: 24,
+    });
+    expect(result).toEqual(expect.objectContaining({
+      workerId: "worker-1",
+      manifestStatus: "ready",
+    }));
+  });
+
+  it("returns tenant worker MCP overview for admins", async () => {
+    mockGetTenantWorkerMcpOverview.mockResolvedValue({
+      tenantId: "tenant-1",
+      hours: 24,
+      totalWorkers: 3,
+      workersWithRecentMcpCalls: 2,
+      workersWithActiveDelegatedSessions: 1,
+      manifestStatusCounts: {
+        ready: 1,
+        stale: 1,
+        unavailable: 1,
+      },
+      operatorPolicy: {
+        enabled: true,
+        disabledFamilies: [],
+        disabledToolGroups: [],
+        approvalRequiredToolGroups: [],
+      },
+      totals: {
+        sessionInitializations: 1,
+        toolListCalls: 2,
+        toolCalls: 5,
+        successCount: 4,
+        deniedCount: 1,
+        budgetDeniedCount: 0,
+        approvalRequiredCount: 0,
+        replayHitCount: 0,
+        failureCount: 0,
+      },
+      familyMetrics: [],
+      toolMetrics: [],
+      denialReasons: [],
+      workerMetrics: [],
+      recentEvents: [],
+    });
+
+    const result = await monitoringRouter.getTenantWorkerMcpOverview({
+      input: { hours: 24 },
+      ctx: {
+        tenantId: "tenant-1",
+        user: { id: 7, role: "admin", currentTenantId: 1 },
+      },
+    } as any);
+
+    expect(mockGetTenantWorkerMcpOverview).toHaveBeenCalledWith("tenant-1", {
+      hours: 24,
+    });
+    expect(result).toEqual(expect.objectContaining({
+      tenantId: "tenant-1",
+      totalWorkers: 3,
     }));
   });
 
