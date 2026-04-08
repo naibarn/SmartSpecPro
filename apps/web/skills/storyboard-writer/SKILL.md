@@ -57,10 +57,12 @@ The user's message will contain "Form inputs:" followed by key-value pairs. Use 
 - `language: en` → write everything in **English**.
 - `language: th` → write everything in **Thai** (ภาษาไทย), including scene titles and all labels.
 - If the topic is in a different language than the output language, translate/adapt it naturally.
+- If `maxPromptLength` is provided, keep the full storyboard under that character limit and stay concise.
 
 ### Length policy
 - If `word_count` is provided: keep total output at or below that number of words.
 - If `word_count` is not provided: follow `length` preset behavior (`short`/`medium`/`long`).
+- If `maxPromptLength` is provided: treat it as a hard cap and prefer shorter phrasing to stay safely under the limit.
 - If `total_scenes` is provided: aim for that exact number of scenes.
 - Regardless of length, keep each scene description focused and visually specific.
 
