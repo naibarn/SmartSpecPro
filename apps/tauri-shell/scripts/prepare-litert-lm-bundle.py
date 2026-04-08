@@ -43,6 +43,10 @@ BUNDLE_MODE_TO_PROFILES = {
 }
 
 
+def supports_bundled_litert_runtime(target: str) -> bool:
+    return "windows" not in target.lower()
+
+
 def detect_target_triple() -> str:
     machine = platform.machine().lower()
     system = platform.system().lower()
@@ -267,6 +271,28 @@ def write_runtime_manifest(
     )
 
 
+def write_unavailable_runtime_manifest(
+    target: str,
+    bundle_mode: str,
+    profiles: list[str],
+    reason: str,
+) -> None:
+    RUNTIME_METADATA_DIR.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "runtimeKind": "unavailable",
+        "runtimePackageSpec": LITERT_LM_PYPI_SPEC,
+        "binaryTarget": target,
+        "bundleMode": bundle_mode,
+        "bundledProfiles": profiles,
+        "unavailableReason": reason,
+        "preparedAt": datetime.datetime.now(datetime.UTC).isoformat().replace("+00:00", "Z"),
+    }
+    RUNTIME_METADATA_PATH.write_text(
+        json.dumps(payload, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Prepare bundled LiteRT-LM runtime resources and optional Gemma 4 models for Tauri."
@@ -296,6 +322,32 @@ def main() -> None:
     args = parser.parse_args()
 
     target = args.target or detect_target_triple()
+    bundle_mode, profiles = resolve_bundle_mode(args)
+
+    if not supports_bundled_litert_runtime(target):
+        if profiles:
+            raise SystemExit(
+                "Bundled Gemma 4 profiles are not supported for "
+                f"{target} because LiteRT-LM wheels are unavailable on this platform. "
+                "Use --bundle-mode on-demand for Windows desktop builds."
+            )
+        if RUNTIME_VENV_DIR.exists():
+            shutil.rmtree(RUNTIME_VENV_DIR)
+        prune_model_resources(profiles)
+        reason = (
+            f"LiteRT-LM Python wheels are not published for target {target}; "
+            "the desktop app will build without a bundled LiteRT runtime."
+        )
+        write_unavailable_runtime_manifest(
+            target,
+            bundle_mode,
+            profiles,
+            reason,
+        )
+        print(reason)
+        print("Bundle mode is on-demand; no Gemma model files are embedded in this build.")
+        return
+
     if args.binary:
         print(
             "--binary is deprecated for Tauri Gemma 4 bundling; preparing a self-contained uv runtime instead."
@@ -303,8 +355,6 @@ def main() -> None:
     runtime_executable, runtime_library_dir = prepare_runtime_venv()
     print(f"Bundled LiteRT-LM runtime executable: {runtime_executable}")
     print(f"Bundled LiteRT-LM runtime libraries: {runtime_library_dir}")
-
-    bundle_mode, profiles = resolve_bundle_mode(args)
     prune_model_resources(profiles)
 
     if profiles:
