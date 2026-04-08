@@ -116,6 +116,9 @@ jobs:
           npm --workspace=@smartspec/tauri-shell run tauri:smoke:gemma4:e2b
           npm --workspace=@smartspec/tauri-shell run tauri:smoke:gemma4:voice:e2b
 
+      - name: Build SmartSpec Web assets
+        run: npm --workspace=@smartspec/web run build
+
       - name: Build desktop app
         uses: tauri-apps/tauri-action@v0
         env:
