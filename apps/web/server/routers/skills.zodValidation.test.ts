@@ -8,8 +8,11 @@ import { z } from "zod";
  */
 const requirementsSchema = z.object({
   supportsVision: z.boolean().optional(),
+  supportsThinking: z.boolean().optional(),
   supportsFunctionTools: z.boolean().optional(),
   supportsStructuredOutputs: z.boolean().optional(),
+  supportsJsonMode: z.boolean().optional(),
+  supportsStrictToolSchema: z.boolean().optional(),
   supportsWebSearch: z.boolean().optional(),
   supportsCodeExecution: z.boolean().optional(),
   supportsComputerUse: z.boolean().optional(),
@@ -107,6 +110,15 @@ describe("skills.update executionPolicy.requirements — Zod validation", () => 
     };
     const result = executionPolicySchema.parse(input);
     expect(result!.requirements!.supportsVision).toBe(true);
+  });
+
+  it("accepts refined structured output capability flags", () => {
+    const input = {
+      requirements: { supportsJsonMode: true, supportsStrictToolSchema: true },
+    };
+    const result = executionPolicySchema.parse(input);
+    expect(result!.requirements!.supportsJsonMode).toBe(true);
+    expect(result!.requirements!.supportsStrictToolSchema).toBe(true);
   });
 
   it("accepts allowConversationOverride boolean", () => {

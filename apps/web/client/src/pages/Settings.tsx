@@ -58,6 +58,7 @@ import {
   Send,
   Link2,
   UserCog,
+  Cpu,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { GoogleDrivePanel } from '@/components/settings/GoogleDrivePanel';
@@ -70,11 +71,13 @@ import { BudgetPanel } from '@/components/settings/BudgetPanel';
 import { PersonasPanel } from '@/components/settings/PersonasPanel';
 import { UserAutomationPreferencesPanel } from '@/components/settings/UserAutomationPreferencesPanel';
 import { NotificationPreferencesPanel } from '@/components/settings/NotificationPreferencesPanel';
+import { LocalAiSettingsSection } from '@/features/local-ai/components/LocalAiSettingsSection';
 import { clearPrivateVaultAccessToken, getPrivateVaultAccessToken, setPrivateVaultAccessToken } from '@/lib/privateVault';
 import { LocaleToggle } from '@/components/LocaleToggle';
 import { useScopedTranslation } from '@/i18n/useScopedTranslation';
+import { useTenantFeatureFlag } from '@/hooks/useTenantFeatureFlag';
 
-type SettingsTab = 'profile' | 'account' | 'security' | 'privateVault' | 'preferences' | 'notifications' | 'automation' | 'api' | 'billing' | 'integrations' | 'personas';
+type SettingsTab = 'profile' | 'account' | 'security' | 'privateVault' | 'preferences' | 'localAi' | 'notifications' | 'automation' | 'api' | 'billing' | 'integrations' | 'personas';
 
 type TwoFAStep = 'idle' | 'setup' | 'verify' | 'done' | 'disable' | 'regen';
 
@@ -435,6 +438,7 @@ export default function Settings() {
   const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab);
   const [showPassword, setShowPassword] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const localClientLlmModeEnabled = useTenantFeatureFlag("localClientLlmMode");
 
   // Delete account states
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -674,6 +678,12 @@ export default function Settings() {
   }, [isLoading, isAuthenticated, setLocation]);
 
   useEffect(() => {
+    if (activeTab === "localAi" && !localClientLlmModeEnabled) {
+      setActiveTab("preferences");
+    }
+  }, [activeTab, localClientLlmModeEnabled]);
+
+  useEffect(() => {
     if (typeof window === 'undefined') return;
     const syncVaultToken = () => setPrivateVaultTokenState(getPrivateVaultAccessToken());
     syncVaultToken();
@@ -711,7 +721,7 @@ export default function Settings() {
   const currentUiLanguage = (SUPPORTED_LANGUAGES as readonly string[]).find(
     (lng) => (i18n.resolvedLanguage || i18n.language || 'en').startsWith(lng),
   ) ?? 'en';
-  const currentUiLanguageLabel = LANGUAGE_LABELS[currentUiLanguage];
+  const currentUiLanguageLabel = LANGUAGE_LABELS[currentUiLanguage as keyof typeof LANGUAGE_LABELS] ?? LANGUAGE_LABELS.en;
 
   const tabs: Array<{ id: SettingsTab; label: string; icon: any }> = [
     { id: 'profile', label: t('settings.tabs.profile'), icon: User },
@@ -719,6 +729,9 @@ export default function Settings() {
     { id: 'security', label: t('settings.tabs.security'), icon: Shield },
     { id: 'privateVault', label: t('settings.tabs.privateVault'), icon: Lock },
     { id: 'preferences', label: t('settings.tabs.preferences'), icon: Palette },
+    ...(localClientLlmModeEnabled
+      ? [{ id: 'localAi' as const, label: t('settings.tabs.localAi'), icon: Cpu }]
+      : []),
     { id: 'notifications', label: t('settings.tabs.notifications'), icon: Bell },
     { id: 'automation', label: t('settings.tabs.automation'), icon: Bot },
     { id: 'api', label: t('settings.tabs.apiKeys'), icon: Key },
@@ -1690,6 +1703,33 @@ export default function Settings() {
                 </div>
               )}
 
+              {activeTab === 'localAi' && localClientLlmModeEnabled && (
+                <div className="space-y-6">
+                  <div className="flex flex-col gap-3 rounded-2xl border border-sky-100 bg-sky-50/70 p-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <div className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-700">
+                        {t('settings.tabs.localAi')}
+                      </div>
+                      <h2 className="mt-1 text-xl font-semibold text-slate-900">
+                        {t('settings.localAi.title')}
+                      </h2>
+                      <p className="mt-2 max-w-3xl text-sm text-slate-600">
+                        {t('settings.localAi.description')}
+                      </p>
+                    </div>
+                    <HelpButton
+                      page="/settings"
+                      topic="local-ai"
+                      variant="outline"
+                      size="sm"
+                      label={t('settings.localAi.helpButton')}
+                    />
+                  </div>
+
+                  <LocalAiSettingsSection hideHeading />
+                </div>
+              )}
+
               {activeTab === 'automation' && (
                 <div className="space-y-6">
                   <DashboardSectionHeader
@@ -1834,6 +1874,24 @@ export default function Settings() {
                   </div>
 
                   <BudgetPanel />
+
+                  <div className="rounded-2xl border border-cyan-200 bg-gradient-to-r from-cyan-50 to-sky-50 p-4">
+                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                      <div>
+                        <div className="text-sm font-semibold text-slate-900">Beam Billing Center</div>
+                        <div className="text-sm text-slate-600">
+                          Manage your billing profile, create PromptPay top-up checkout, and open invoice PDFs from one place.
+                        </div>
+                      </div>
+                      <Button
+                        variant="outline"
+                        className="border-cyan-300 bg-white text-cyan-700 hover:bg-cyan-50"
+                        onClick={() => setLocation("/billing")}
+                      >
+                        Open billing center
+                      </Button>
+                    </div>
+                  </div>
 
                   <div>
                     <h3 className="font-semibold text-gray-900 mb-4">{t('settings.billing.recentInvoices')}</h3>

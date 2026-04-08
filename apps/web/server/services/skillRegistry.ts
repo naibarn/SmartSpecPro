@@ -186,8 +186,11 @@ function dbSkillToDefinition(dbSkill: {
 /** Known capability keys for model_requirements frontmatter (Feature 041) */
 const KNOWN_REQUIREMENT_KEYS = new Set([
   "supportsVision",
+  "supportsThinking",
   "supportsFunctionTools",
   "supportsStructuredOutputs",
+  "supportsJsonMode",
+  "supportsStrictToolSchema",
   "supportsWebSearch",
   "supportsCodeExecution",
   "supportsComputerUse",

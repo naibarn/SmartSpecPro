@@ -15,9 +15,19 @@ import { useSkillForm } from '@/components/chat/skill/hooks/useSkillForm';
 import { useSkillExecution } from '@/components/chat/skill/hooks/useSkillExecution';
 import { Button } from '@/components/ui/button';
 import { DashboardCard } from '@/components/dashboard';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Minimize2, X, Settings, Loader2, Clock } from 'lucide-react';
 import { toast } from 'sonner';
+import { describeSkillLocalExecution } from '@/features/local-ai/skills/skillLocalExecutionPolicy';
+import { useTauriLocalSkillRuntimeStatus } from '@/features/local-ai/skills/useTauriLocalSkillRuntimeStatus';
+import {
+  shouldAllowExternalLocalBackend,
+  shouldAllowOnDeviceLocalEngine,
+  useExternalLocalTextBackendAvailability,
+} from '@/features/local-ai/adapters/externalLocalTextBackend';
+import type {
+  LocalAiExecutionMode,
+  ResolvedLocalSkillPolicy,
+} from '@/features/local-ai/types/capability';
 
 export interface SkillFormState {
   skillId: string;
@@ -25,6 +35,7 @@ export interface SkillFormState {
   schema: SkillInputSchema;
   isOpen: boolean;
   isMinimized: boolean;
+  localExecutionPolicy: ResolvedLocalSkillPolicy | null;
 }
 
 export interface UseChatSkillFormReturn {
@@ -54,9 +65,19 @@ export interface UseChatSkillFormReturn {
   renderSkillSelector: () => React.ReactNode;
 }
 
+export interface ChatSkillLocalAiContext {
+  featureEnabled: boolean;
+  forceCloudOnly: boolean;
+  localAiEnabled: boolean;
+  executionMode: LocalAiExecutionMode;
+  preferredLocalProfileId?: string | null;
+  platform?: 'web' | 'tauri';
+}
+
 export function useChatSkillForm(
   conversationId: number,
-  onSendMessage?: (content: string, skillContext?: any) => void
+  onSendMessage?: (content: string, skillContext?: any) => void,
+  localAiContext?: ChatSkillLocalAiContext,
 ): UseChatSkillFormReturn {
   const [skillFormState, setSkillFormState] = useState<SkillFormState | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -64,6 +85,15 @@ export function useChatSkillForm(
   const [isLoadingSchema, setIsLoadingSchema] = useState(false);
   const [pendingPrefill, setPendingPrefill] = useState<Record<string, any> | null>(null);
   const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false);
+  const skillRuntimePlatform =
+    localAiContext?.platform
+      ? localAiContext.platform
+      : typeof window !== 'undefined' && (window as any).__TAURI__ != null
+      ? 'tauri'
+      : 'web';
+  const tauriRuntimeStatus = useTauriLocalSkillRuntimeStatus();
+  const externalLocalTextBackend =
+    useExternalLocalTextBackendAvailability(skillRuntimePlatform);
 
   const utils = trpc.useUtils();
 
@@ -73,7 +103,6 @@ export function useChatSkillForm(
     setValue,
     validate,
     reset: resetForm,
-    errors,
     hasChanges
   } = useSkillForm({
     schema: skillFormState?.schema || { title: '', sections: [] },
@@ -82,6 +111,12 @@ export function useChatSkillForm(
   // Skill execution
   const { execute, isLoading: isSubmitting, error: executionError } = useSkillExecution({
     conversationId,
+    platform: skillRuntimePlatform,
+    localAiEnabled: localAiContext?.featureEnabled === true && localAiContext?.localAiEnabled === true,
+    localAiExecutionMode: localAiContext?.executionMode ?? 'off',
+    forceCloudOnly: localAiContext?.forceCloudOnly === true,
+    localExecutionPolicy: skillFormState?.localExecutionPolicy ?? null,
+    preferredLocalProfileId: localAiContext?.preferredLocalProfileId ?? null,
   });
 
   // Schedule mutation
@@ -109,20 +144,28 @@ export function useChatSkillForm(
     if (initialValues) setPendingPrefill(initialValues);
     setIsLoadingSchema(true);
     try {
+      let skillName = skillId;
+      let localExecutionPolicy: ResolvedLocalSkillPolicy | null = null;
+      try {
+        const skill = await utils.skills.get.fetch({
+          id: skillId,
+          platform: skillRuntimePlatform,
+          origin: 'chat',
+          ...(conversationId > 0 ? { conversationId } : {}),
+        });
+        skillName = skill.name;
+        localExecutionPolicy = skill.localExecutionPolicy ?? null;
+      } catch {
+        // fall back to schema title or slug below
+      }
+
       // Check if skill has schema
       const schemaData = await utils.skills.getInputSchema.fetch({ skillId });
 
       if (schemaData.hasSchema) {
-        // Try to get skill details - first try by slug, then use schema data
-        let skillName = skillId;
-        try {
-          const skill = await utils.skills.get.fetch({ id: skillId });
-          skillName = skill.name;
-        } catch {
-          // If skills.get fails, try to extract name from schema or use skillId
-          if (schemaData.schema && 'title' in schemaData.schema) {
-            skillName = schemaData.schema.title;
-          }
+        // If skills.get fails, try to extract name from schema or use skillId
+        if (skillName === skillId && schemaData.schema && 'title' in schemaData.schema) {
+          skillName = schemaData.schema.title;
         }
 
         // Open form
@@ -132,12 +175,17 @@ export function useChatSkillForm(
           schema: schemaData.schema as SkillInputSchema,
           isOpen: true,
           isMinimized: false,
+          localExecutionPolicy,
         });
         setIsFormOpen(true);
         resetForm();
       } else {
         // Execute immediately
-        await execute({ skillId, dynamicParams: {} });
+        await execute({
+          skillId,
+          dynamicParams: {},
+          localExecutionPolicy,
+        });
       }
     } catch (error) {
       console.error('[openSkillForm] Error:', error);
@@ -145,7 +193,7 @@ export function useChatSkillForm(
     } finally {
       setIsLoadingSchema(false);
     }
-  }, [utils, execute, resetForm]);
+  }, [utils, execute, resetForm, skillRuntimePlatform]);
 
   // Close form
   const closeSkillForm = useCallback(() => {
@@ -257,10 +305,26 @@ export function useChatSkillForm(
   // Render skill form
   const renderSkillForm = useCallback(() => {
     if (!skillFormState?.isOpen || skillFormState.isMinimized) return null;
+    const localExecutionState = skillFormState.localExecutionPolicy
+      ? describeSkillLocalExecution(skillFormState.localExecutionPolicy, skillRuntimePlatform, {
+          scriptBundleAvailable: tauriRuntimeStatus.supportsScriptBundle,
+          gemma4TextAvailable: shouldAllowOnDeviceLocalEngine(
+            externalLocalTextBackend.localEnginePreference,
+          )
+            ? tauriRuntimeStatus.supportsGemma4Text
+            : false,
+          installedGemmaProfileIds:
+            tauriRuntimeStatus.installedGemmaProfileIds,
+          externalTextBackendAvailable:
+            shouldAllowExternalLocalBackend(
+              externalLocalTextBackend.localEnginePreference,
+            ) && externalLocalTextBackend.backend != null,
+        })
+      : null;
 
     return (
       <>
-        <DashboardCard className="mb-4 flex flex-col relative" style={{ maxHeight: '70vh' }}>
+        <DashboardCard className="mb-4 flex max-h-[70vh] flex-col relative">
           {/* Execution overlay */}
           {isSubmitting && (
             <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm rounded-lg">
@@ -281,6 +345,20 @@ export function useChatSkillForm(
                 <Settings className="h-4 w-4" />
               )}
               {skillFormState.skillName}
+              {localExecutionState &&
+                localExecutionState.badgeLabel !== 'Cloud' &&
+                (localExecutionState.canRunLocally || localExecutionState.canUseLocalPreprocess) && (
+                <span
+                  className={
+                    localExecutionState.badgeLabel === 'Local Safe'
+                      ? 'rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-emerald-700 dark:text-emerald-300'
+                      : 'rounded-full bg-sky-500/15 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-sky-700 dark:text-sky-300'
+                  }
+                  title={localExecutionState.reason ?? undefined}
+                >
+                  {localExecutionState.badgeLabel}
+                </span>
+              )}
               {isSubmitting && (
                 <span className="text-xs font-normal text-muted-foreground ml-1">
                   (กำลังทำงาน)
@@ -363,7 +441,26 @@ export function useChatSkillForm(
         )}
       </>
     );
-  }, [skillFormState, values, executionError, isSubmitting, minimizeSkillForm, closeSkillForm, handleSkillFormSubmit, conversationId, setValue, isScheduleDialogOpen, handleSchedule, createScheduleMutation.isPending]);
+  }, [
+    conversationId,
+    createScheduleMutation.isPending,
+    executionError,
+    externalLocalTextBackend.backend,
+    externalLocalTextBackend.localEnginePreference,
+    handleSchedule,
+    handleSkillFormSubmit,
+    isScheduleDialogOpen,
+    isSubmitting,
+    minimizeSkillForm,
+    closeSkillForm,
+    setValue,
+    skillFormState,
+    skillRuntimePlatform,
+    tauriRuntimeStatus.installedGemmaProfileIds,
+    tauriRuntimeStatus.supportsGemma4Text,
+    tauriRuntimeStatus.supportsScriptBundle,
+    values,
+  ]);
 
   // Render minimized chip
   const renderSkillChip = useCallback(() => {
@@ -417,6 +514,7 @@ export function useChatSkillForm(
       <SkillSelector
         open={showSkillSelector}
         onClose={() => setShowSkillSelector(false)}
+        conversationId={conversationId > 0 ? conversationId : undefined}
         onSelect={(skillId) => {
           setShowSkillSelector(false);
           openSkillForm(skillId);

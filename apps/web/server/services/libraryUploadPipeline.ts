@@ -1,9 +1,7 @@
 import crypto from "crypto";
 
-import { ENV } from "../_core/env";
+import { getAppRuntimeConfig, getPreferredInternalToken } from "./appRuntimeConfig";
 import { MAX_AUDIO_BYTES, transcribe } from "./sttService";
-
-const PYTHON_BACKEND_URL = (ENV.pythonBackendUrl || "http://localhost:8000").replace(/\/+$/, "");
 const INTERNAL_REQUEST_TIMEOUT_MS = 30_000;
 
 const COMPLEX_DOCUMENT_EXTENSIONS = new Set(["pdf", "docx", "pptx", "xlsx", "doc", "ppt", "xls"]);
@@ -89,13 +87,8 @@ function nowIsoString(): string {
   return new Date().toISOString();
 }
 
-function getInternalProxyToken(): string {
-  return (
-    process.env.SMARTSPEC_PROXY_TOKEN
-    || process.env.SMARTSPEC_WEB_GATEWAY_TOKEN
-    || ENV.webGatewayToken
-    || ""
-  );
+async function getInternalProxyToken(): Promise<string> {
+  return getPreferredInternalToken();
 }
 
 export function buildUploadPipelineState(
@@ -225,7 +218,10 @@ async function postInternalJson<TResponse>(
   path: string,
   body: Record<string, unknown>,
 ): Promise<TResponse> {
-  const internalProxyToken = getInternalProxyToken();
+  const [internalProxyToken, runtime] = await Promise.all([
+    getInternalProxyToken(),
+    getAppRuntimeConfig(),
+  ]);
   if (!internalProxyToken) {
     throw new Error("SMARTSPEC proxy token is not configured");
   }
@@ -233,7 +229,7 @@ async function postInternalJson<TResponse>(
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), INTERNAL_REQUEST_TIMEOUT_MS);
   try {
-    const response = await fetch(`${PYTHON_BACKEND_URL}${path}`, {
+    const response = await fetch(`${runtime.pythonBackendUrl}${path}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

@@ -511,6 +511,7 @@ function SecretRevealDialog({
   secret: string;
   onClose: () => void;
 }) {
+  const { t } = useScopedTranslation("common");
   const { toast } = useToast();
   return (
     <AlertDialog open onOpenChange={(v) => !v && onClose()}>

@@ -27,6 +27,8 @@ export interface AgencyNodeData {
     supportsThinking?: boolean;
     supportsFunctionTools?: boolean;
     supportsStructuredOutputs?: boolean;
+    supportsJsonMode?: boolean;
+    supportsStrictToolSchema?: boolean;
     supportsWebSearch?: boolean;
     supportsCodeExecution?: boolean;
     supportsComputerUse?: boolean;

@@ -19,3 +19,4 @@ Last updated: 2026-04-07
 - **068-billing-phase2-cards-autorenew**: saved cards, auto-renew subscription charging, retry/dunning policy, and customer/admin payment-method management on top of Feature 066
 - **071-openclaw-external-runtime-integration**: OpenClaw worker registration, worker/job/artifact control plane, team binding, capability routing, and fleet admin visibility as the first canonical external runtime extension after Feature 059
 - **072-claw-worker-platform-access**: delegated worker gateway sessions, runtime-aware Bound Worker expansion, worker-driven platform automation, and credit-correct API/MCP access beyond the control-plane foundation from Feature 071
+- **074-claw-worker-mcp-platform-completion**: canonical `/v1/mcp` completion for delegated workers, truthful MCP tool discovery, high-value tool parity across platform families, and consolidation of legacy MCP implementations into one budgeted and secure execution model

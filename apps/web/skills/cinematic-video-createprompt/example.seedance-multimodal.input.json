@@ -1,0 +1,64 @@
+{
+  "topic": "A cinematic street-dance hero sequence in a rain-lit underpass with synchronized beats and controlled camera movement",
+  "prompt_goal": "Create one premium single-video cinematic prompt for Seedance 2 that uses multimodal references: multiple character and style images, motion references from short clips, and one beat guide from audio.",
+  "project_title": "Seedance Street-Dance Multimodal Demo",
+  "creative_direction_mode": "manual_guided",
+  "storytelling_preset": "action_showdown",
+  "generation_mode": "image_to_video",
+  "target_model_profile": "seedance_2_kie",
+  "seedance_input_mode": "multimodal_reference",
+  "delivery_mode": "multi_shot_single_video",
+  "language": "en",
+  "response_format": "structured_json",
+  "aspect_ratio": "16:9",
+  "background_mode": "normal_background",
+  "duration_seconds": 10,
+  "audio_mode": "music_led_feel",
+  "dialogue_language": "auto",
+  "dialogue_density": "none",
+  "story_shape": "escalation",
+  "ending_style": "visual_reveal",
+  "performance_style": "heroic_action",
+  "imagination_level": "stylized",
+  "scene_arc": "action_sequence",
+  "subject_count": "single_subject",
+  "continuity_mode": "invisible_cut_flow",
+  "motion_realism": "dynamic_but_controlled",
+  "main_subject": "An athletic young adult street dancer in a black reflective jacket, graphite cargo pants, and LED-accent sneakers.",
+  "setting": "A wet urban underpass at night with reflective pavement, practical overhead lights, drifting mist, and bold depth lines.",
+  "action": "The dancer steps into frame, builds into a sharp rhythmic performance with readable footwork and controlled spins, then lands on a powerful final pose timed to the last beat.",
+  "blocking_and_staging": "Keep the dancer centered but mobile, with strong floor contact, controlled lateral movement, and a clean final hero pose facing camera.",
+  "foreground_midground_background": "Foreground mist and rain particles, dancer in the midground, layered tunnel lights and reflective depth in the background.",
+  "reference_images": [
+    "https://example.com/seedance-character-front.jpg",
+    "https://example.com/seedance-character-side.jpg",
+    "https://example.com/seedance-lighting-style.jpg",
+    "https://example.com/seedance-underpass-composition.jpg",
+    "https://example.com/seedance-shoes-prop.jpg"
+  ],
+  "reference_image_1_role": "character_reference",
+  "reference_image_2_role": "character_reference",
+  "reference_image_3_role": "style_reference",
+  "reference_image_4_role": "scene_composition_reference",
+  "reference_image_5_role": "product_or_prop_reference",
+  "reference_videos": [
+    {
+      "url": "https://example.com/seedance-motion-reference-1.mp4",
+      "guidance_focus": "Use as the main motion reference for footwork rhythm and camera-follow energy."
+    },
+    {
+      "url": "https://example.com/seedance-motion-reference-2.mp4",
+      "guidance_focus": "Use as the transition and spin reference for controlled circular motion."
+    }
+  ],
+  "reference_audios": [
+    {
+      "url": "https://example.com/seedance-beat-reference.mp3",
+      "guidance_focus": "Use as the beat and accent reference for edit rhythm and movement timing."
+    }
+  ],
+  "reference_image_notes": "@Image1 and @Image2 define the dancer identity and outfit silhouette, @Image3 defines the wet-lighting treatment, @Image4 defines the underpass layout, and @Image5 locks the sneaker design.",
+  "character_consistency": true,
+  "must_include": "stable identity, clean footwork, readable spins, reflective wet pavement, strong final pose",
+  "avoid": "extra limbs, unstable floor contact, muddy motion blur, generic flat staging"
+}

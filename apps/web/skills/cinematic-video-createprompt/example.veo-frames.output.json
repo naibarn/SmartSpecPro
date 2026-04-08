@@ -1,0 +1,93 @@
+{
+  "skill_name": "cinematic-video-createprompt",
+  "skill_version": "5.7.0",
+  "response_format": "structured_json",
+  "language": "en",
+  "target_model_profile": "veo_3_1_kie",
+  "generation_mode": "image_to_video",
+  "delivery_mode": "multi_shot_single_video",
+  "multi_video_strategy": "not_applicable",
+  "video_count": 1,
+  "dialogue_language": {
+    "requested": "auto",
+    "resolved": "none",
+    "source": "no_dialogue",
+    "rationale": "The scene is a silent tabletop action with no spoken content."
+  },
+  "storytelling_resolution": {
+    "preset_requested": "product_beauty_story",
+    "preset_resolved": "product_beauty_story",
+    "multi_shot_timing_mode_requested": "untimed_or_auto",
+    "multi_shot_timing_mode_resolved": "untimed_or_auto",
+    "audio_mode_resolved": "ambience_only",
+    "dialogue_density_resolved": "none",
+    "story_shape_resolved": "reveal_payoff",
+    "ending_style_resolved": "visual_reveal",
+    "performance_style_resolved": "naturalistic",
+    "imagination_level_resolved": "grounded",
+    "scene_arc_resolved": "product_showcase",
+    "continuity_mode_resolved": "single_continuous_shot",
+    "motion_realism_resolved": "grounded_and_believable",
+    "background_mode": "normal_background",
+    "narrative_intent": "Create one Veo 3.1 compatible first-and-last-frame transition clip that begins on cookies and ends with a glass of milk placed beside them."
+  },
+  "continuity_package": {
+    "continuity_notes": "Keep the same rustic plate, the same cookie arrangement, the same tabletop lighting, and the same warm kitchen atmosphere from start to finish.",
+    "continuity_notes_origin": "auto_generated",
+    "reference_notes": "Use @FirstFrame to anchor the opening cookie composition and use @LastFrame to anchor the final arrangement with the milk glass beside the plate. Keep object scale, table angle, lighting warmth, and food styling stable across the transition.",
+    "reference_notes_origin": "auto_generated"
+  },
+  "final_prompt": "Use @FirstFrame as the opening-frame anchor for the cookie arrangement, tabletop angle, and warm kitchen mood, and use @LastFrame as the ending-frame anchor for the completed composition with the milk glass placed beside the plate. Begin on the rustic plate of cookies under soft warm morning light, then let a hand enter naturally and place a clear glass of milk beside the plate with realistic finger motion, grounded object weight, and clean commercial food-tabletop elegance, preserving the same table angle, cookie styling, and cozy domestic atmosphere across the entire short transition.\n\nContinuity Notes:\nKeep the same rustic plate, the same cookie arrangement, the same tabletop lighting, and the same warm kitchen atmosphere from start to finish.\n\nReference Notes:\nUse @FirstFrame to anchor the opening cookie composition and use @LastFrame to anchor the final arrangement with the milk glass beside the plate. Keep object scale, table angle, lighting warmth, and food styling stable across the transition.",
+  "short_prompt": "A Veo 3.1 first-and-last-frame tabletop transition from a cookie plate to a finished cookies-and-milk composition with warm food-commercial realism.",
+  "prompt_sequence": [
+    {
+      "prompt_id": "Prompt 1",
+      "video_number": 1,
+      "duration_seconds": 8,
+      "prompt_role": "Single Video Prompt",
+      "prompt": "Use @FirstFrame as the opening-frame anchor for the cookie arrangement, tabletop angle, and warm kitchen mood, and use @LastFrame as the ending-frame anchor for the completed composition with the milk glass placed beside the plate. Begin on the rustic plate of cookies under soft warm morning light, then let a hand enter naturally and place a clear glass of milk beside the plate with realistic finger motion, grounded object weight, and clean commercial food-tabletop elegance, preserving the same table angle, cookie styling, and cozy domestic atmosphere across the entire short transition.",
+      "continuity_notes": "Keep the same rustic plate, the same cookie arrangement, the same tabletop lighting, and the same warm kitchen atmosphere from start to finish.",
+      "reference_notes": "Use @FirstFrame to anchor the opening cookie composition and use @LastFrame to anchor the final arrangement with the milk glass beside the plate. Keep object scale, table angle, lighting warmth, and food styling stable across the transition."
+    }
+  ],
+  "cinematic_plan": {
+    "opening_frame": "A rustic plate of cookies sits alone on a warm wooden tabletop under soft kitchen light.",
+    "subject_focus": "The scene focuses on the clean transformation from the cookie-only opening composition to the finished cookies-and-milk arrangement.",
+    "staging_blocking": "The cookies stay anchored while a hand enters cleanly, places the milk glass beside the plate, and exits without disturbing the scene.",
+    "motion_arc": "A gentle tabletop action carries the clip from stillness to a clean final reveal.",
+    "camera_language": "Use refined food-commercial framing with stable perspective and readable hand motion.",
+    "focus_depth": "Keep the cookies and milk composition crisp while the background remains softly supportive.",
+    "atmosphere_time": "Warm morning kitchen light and subtle domestic calm define the clip.",
+    "production_design": "A rustic wooden tabletop, simple cookie plate, clear milk glass, and restrained cozy kitchen styling.",
+    "lighting_color": "Warm natural light and gentle neutral tones keep the scene clean, appetizing, and premium.",
+    "continuity_pacing": "One simple transition clip with stable perspective and grounded tabletop realism.",
+    "continuity_guardrails": "Preserve object scale, table angle, lighting warmth, cookie styling, glass placement realism, and clean finger anatomy."
+  },
+  "reference_usage": {
+    "reference_input_mode": "veo_first_and_last_frames",
+    "reference_image_count": 0,
+    "assignments": [],
+    "reference_video_count": 0,
+    "video_assignments": [],
+    "reference_audio_count": 0,
+    "audio_assignments": [],
+    "first_frame_present": true,
+    "last_frame_present": true,
+    "applied_focus": [
+      "@FirstFrame opening composition",
+      "@LastFrame ending composition",
+      "grounded tabletop realism"
+    ],
+    "notes": "Veo 3.1 uses first and last frame anchors here rather than separate reference images, videos, or audio."
+  },
+  "validation": {
+    "is_valid": true,
+    "warnings": [],
+    "safety_notes": [
+      "The output stays within a neutral food-commercial scene with no risky content."
+    ],
+    "suggestions": [
+      "If the hand motion feels too busy, shorten the action to a simpler single placement beat."
+    ]
+  }
+}

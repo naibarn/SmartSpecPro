@@ -6,6 +6,7 @@ import { storageGet } from "../storage";
 import { authorizeRequest } from "./authz";
 import { rateLimit } from "./limits";
 import { hasScope } from "./tokens";
+import { getAppRuntimeConfig } from "../services/appRuntimeConfig";
 
 type ToolDef = {
   name: string;
@@ -23,7 +24,7 @@ const EXT_ALLOW = new Set(
   (process.env.MCP_EXT_ALLOWLIST ||
     ".md,.txt,.json,.yaml,.yml,.ts,.tsx,.js,.py,.css,.html")
     .split(",")
-    .map((s) => s.trim())
+    .map((s) => s.trim().toLowerCase())
     .filter(Boolean)
 );
 
@@ -31,13 +32,8 @@ const REQUIRE_WRITE_TOKEN = process.env.MCP_REQUIRE_WRITE_TOKEN === "1";
 const WRITE_TOKEN = process.env.MCP_WRITE_TOKEN || "";
 const MCP_RPM = parseInt(process.env.WEB_MCP_RPM || "240");
 
-import { ENV } from "./env";
-
-const PYTHON_BACKEND_URL = ENV.pythonBackendUrl || "http://localhost:8000";
-const PROXY_TOKEN = process.env.SMARTSPEC_PROXY_TOKEN || "";
-
 // Simple TTL cache for Python-native tools
-let _pythonToolsCache: { tools: ToolDef[]; ts: number } | null = null;
+const _pythonToolsCache = new Map<string, { tools: ToolDef[]; ts: number }>();
 const PYTHON_TOOLS_CACHE_TTL = 60_000; // 60 seconds
 
 const DRIVE_TOOL_NAMES = new Set([
@@ -58,8 +54,12 @@ function safeJoin(rel: string): string {
 }
 
 function assertExtAllowed(p: string) {
-  const ext = path.extname(p).toLowerCase();
-  if (ext && !EXT_ALLOW.has(ext)) throw new Error(`Extension not allowed: ${ext}`);
+  const base = path.basename(p);
+  if (base.startsWith(".")) {
+    throw new Error("Extension not allowed: <hidden>");
+  }
+  const ext = path.extname(base).toLowerCase();
+  if (!ext || !EXT_ALLOW.has(ext)) throw new Error(`Extension not allowed: ${ext || "<none>"}`);
 }
 
 function writeAudit(entry: any) {
@@ -70,6 +70,13 @@ function writeAudit(entry: any) {
   } catch {
     // ignore
   }
+}
+
+function sanitizeTraceId(value: string | undefined) {
+  const normalized = String(value || "")
+    .replace(/[^A-Za-z0-9_-]/g, "")
+    .slice(0, 128);
+  return normalized || crypto.randomUUID();
 }
 
 const tools: ToolDef[] = [
@@ -189,7 +196,7 @@ function requiredScopeForTool(name: string): string {
 }
 
 async function callTool(name: string, args: any, req: Request, auth: any) {
-  const traceId = (req.headers["x-trace-id"] as string) || crypto.randomUUID();
+  const traceId = sanitizeTraceId(req.headers["x-trace-id"] as string | undefined);
   const argsHash = crypto.createHash("sha256").update(JSON.stringify(args || {})).digest("hex");
 
   const baseAudit = {
@@ -249,13 +256,12 @@ async function callTool(name: string, args: any, req: Request, auth: any) {
     }
 
     if (name.startsWith("smartspec.orchestrator.")) {
-      const tenantId =
-        (typeof auth?.tenantId === "string" && auth.tenantId) ||
-        String(req.headers["x-tenant-id"] || "");
-      const actorUserIdHeader = String(req.headers["x-user-id"] || "");
+      const tenantId = typeof auth?.tenantId === "string" && auth.tenantId
+        ? auth.tenantId
+        : "";
       const actorUserId =
-        Number.isFinite(Number(actorUserIdHeader)) && Number(actorUserIdHeader) > 0
-          ? Number(actorUserIdHeader)
+        Number.isFinite(Number(auth?.userId)) && Number(auth.userId) > 0
+          ? Number(auth.userId)
           : Number.parseInt(String(auth?.sub || ""), 10);
 
       if (!tenantId) {
@@ -333,25 +339,29 @@ async function callTool(name: string, args: any, req: Request, auth: any) {
   }
 }
 
-async function fetchPythonMcpTools(userId: number): Promise<ToolDef[]> {
+async function fetchPythonMcpTools(userId: number, tenantId: string): Promise<ToolDef[]> {
   try {
-    if (_pythonToolsCache && Date.now() - _pythonToolsCache.ts < PYTHON_TOOLS_CACHE_TTL) {
-      return _pythonToolsCache.tools;
+    const cacheKey = `${tenantId}:${userId}`;
+    const cached = _pythonToolsCache.get(cacheKey);
+    if (cached && Date.now() - cached.ts < PYTHON_TOOLS_CACHE_TTL) {
+      return cached.tools;
     }
+    const runtime = await getAppRuntimeConfig();
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 2000);
     const resp = await fetch(
-      `${PYTHON_BACKEND_URL}/api/internal/mcp/tools?user_id=${userId}`,
+      `${runtime.pythonBackendUrl}/api/internal/mcp/tools?user_id=${userId}`,
       {
-        headers: { "x-proxy-token": PROXY_TOKEN },
+        headers: runtime.proxyToken ? { "x-proxy-token": runtime.proxyToken } : undefined,
         signal: controller.signal,
       },
     );
     clearTimeout(timeout);
     if (!resp.ok) return [];
     const data = (await resp.json()) as { tools: ToolDef[] };
-    _pythonToolsCache = { tools: data.tools || [], ts: Date.now() };
-    return _pythonToolsCache.tools;
+    const cachedTools = data.tools || [];
+    _pythonToolsCache.set(cacheKey, { tools: cachedTools, ts: Date.now() });
+    return cachedTools;
   } catch {
     return [];
   }
@@ -363,11 +373,12 @@ async function forwardToolCallToPython(
   userId: number,
   tenantId: string,
 ): Promise<any> {
-  const resp = await fetch(`${PYTHON_BACKEND_URL}/api/internal/mcp/tools/call`, {
+  const runtime = await getAppRuntimeConfig();
+  const resp = await fetch(`${runtime.pythonBackendUrl}/api/internal/mcp/tools/call`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "x-proxy-token": PROXY_TOKEN,
+      ...(runtime.proxyToken ? { "x-proxy-token": runtime.proxyToken } : {}),
     },
     body: JSON.stringify({
       name,
@@ -389,6 +400,10 @@ async function requireMcpAuth(req: Request): Promise<any | null> {
   return auth;
 }
 
+function isLegacyMcpDisallowedForDelegatedWorker(auth: any): boolean {
+  return auth?.mode === "delegated_worker";
+}
+
 export function registerMCPRoutes(app: Express) {
   const limiter = rateLimit("mcp", { rpm: MCP_RPM });
 
@@ -397,7 +412,7 @@ export function registerMCPRoutes(app: Express) {
     if (!auth) {
       writeAudit({
         ts: new Date().toISOString(),
-        traceId: (req.headers["x-trace-id"] as string) || crypto.randomUUID(),
+        traceId: sanitizeTraceId(req.headers["x-trace-id"] as string | undefined),
         tool: "__list_tools__",
         ok: false,
         error: "Unauthorized",
@@ -407,9 +422,28 @@ export function registerMCPRoutes(app: Express) {
       res.status(401).json({ ok: false, error: { message: "Unauthorized" } });
       return;
     }
+    if (isLegacyMcpDisallowedForDelegatedWorker(auth)) {
+      writeAudit({
+        ts: new Date().toISOString(),
+        traceId: sanitizeTraceId(req.headers["x-trace-id"] as string | undefined),
+        tool: "__list_tools__",
+        ok: false,
+        error: "Delegated workers must use /v1/mcp",
+        sub: auth?.sub || null,
+        authMode: auth?.mode || null,
+        ip: req.ip,
+        ua: req.headers["user-agent"] || "",
+      });
+      res.status(403).json({
+        ok: false,
+        error: { message: "Delegated workers must use /v1/mcp; legacy /api/mcp/* is unavailable" },
+      });
+      return;
+    }
     // Merge Python-native Drive tools if user is authenticated
     const userId = parseInt(auth.sub, 10);
-    const driveTools = userId ? await fetchPythonMcpTools(userId) : [];
+    const tenantId = typeof auth?.tenantId === "string" ? auth.tenantId : "";
+    const driveTools = userId && tenantId ? await fetchPythonMcpTools(userId, tenantId) : [];
     const allTools = [...tools, ...driveTools];
     res.json({ tools: allTools });
   };
@@ -429,6 +463,24 @@ export function registerMCPRoutes(app: Express) {
       res.status(401).json({ ok: false, error: { message: "Unauthorized" } });
       return;
     }
+    if (isLegacyMcpDisallowedForDelegatedWorker(auth)) {
+      writeAudit({
+        ts: new Date().toISOString(),
+        traceId: sanitizeTraceId(req.headers["x-trace-id"] as string | undefined),
+        tool: "__call__",
+        ok: false,
+        error: "Delegated workers must use /v1/mcp",
+        sub: auth?.sub || null,
+        authMode: auth?.mode || null,
+        ip: req.ip,
+        ua: req.headers["user-agent"] || "",
+      });
+      res.status(403).json({
+        ok: false,
+        error: { message: "Delegated workers must use /v1/mcp; legacy /api/mcp/* is unavailable" },
+      });
+      return;
+    }
     try {
       const { name, arguments: args } = req.body || {};
       const toolName = String(name || "");
@@ -436,7 +488,7 @@ export function registerMCPRoutes(app: Express) {
       if (!hasScope(auth.scopes, required)) {
         writeAudit({
           ts: new Date().toISOString(),
-          traceId: (req.headers["x-trace-id"] as string) || crypto.randomUUID(),
+          traceId: sanitizeTraceId(req.headers["x-trace-id"] as string | undefined),
           tool: toolName,
           ok: false,
           error: `Missing scope: ${required}`,
@@ -467,6 +519,4 @@ export function registerMCPRoutes(app: Express) {
 
   app.get("/api/mcp/tools", limiter, toolsHandler);
   app.post("/api/mcp/call", limiter, callHandler);
-  app.get("/mcp/tools", limiter, toolsHandler);
-  app.post("/mcp/call", limiter, callHandler);
 }

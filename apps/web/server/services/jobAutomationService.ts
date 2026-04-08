@@ -204,6 +204,7 @@ export interface CreateJobParams {
   idempotencyKey?: string;
   callbackUrl?: string;
   maxCredits?: number;
+  metadata?: Record<string, unknown>;
 }
 
 export interface JobAuth {
@@ -216,7 +217,7 @@ export async function createJob(
   input: CreateJobParams,
   auth: JobAuth,
 ): Promise<AutomationJob> {
-  const { type, params, idempotencyKey, callbackUrl, maxCredits } = input;
+  const { type, params, idempotencyKey, callbackUrl, maxCredits, metadata } = input;
 
   // Validate job type
   if (!VALID_JOB_TYPES.includes(type as JobType)) {
@@ -293,6 +294,8 @@ export async function createJob(
     amount: estimated,
     sourceType: "api_job",
     description: `Job reservation: ${type}`,
+    idempotencyKey,
+    metadata,
   });
 
   // Insert job record

@@ -41,7 +41,7 @@ function makePolicy(overrides: Partial<SkillExecutionPolicyResult> = {}): SkillE
   return {
     modelId: "gpt-4o",
     allowFreeModels: false,
-    modelSource: "skill_llmModelId",
+    modelSource: "system_default",
     ...overrides,
   };
 }
@@ -135,6 +135,22 @@ describe("executeSkillLlmWithFallback", () => {
     expect(result.attempts[0].errorType).toBe("http_429");
     expect(result.attempts[1].success).toBe(true);
     expect(result.attempts[1].modelId).toBe("gpt-4o-mini");
+  });
+
+  it("does not fall back to a different model when the skill explicitly configured the model", async () => {
+    mockExecute.mockResolvedValueOnce(errorResult(429));
+
+    const result = await executeSkillLlmWithFallback(
+      makeRequest({
+        executionPolicy: makePolicy({
+          modelSource: "skill_llmModelId",
+        }),
+      }),
+    );
+
+    expect(result.success).toBe(false);
+    expect(result.attempts).toHaveLength(1);
+    expect(result.attempts[0].modelId).toBe("gpt-4o");
   });
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -413,6 +429,7 @@ describe("executeSkillLlmWithFallback", () => {
     await executeSkillLlmWithFallback(makeRequest({ executionPolicy: policy }));
 
     expect(mockSelectCandidates).not.toHaveBeenCalled();
+    expect(mockExecute).toHaveBeenCalledTimes(1);
   });
 
   it("filters free models out of the fallback chain by default", async () => {

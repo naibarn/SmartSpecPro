@@ -28,6 +28,8 @@ vi.mock("../../services/mediaGenerationService", () => ({
 
 vi.mock("../../services/modelRegistry", () => ({
   clearModelCache: vi.fn(),
+  getStaticFallbackModels: vi.fn(),
+  getStaticModelById: vi.fn(),
   getModelRegistryCounters: mockGetModelRegistryCounters,
   resetModelRegistryCounters: mockResetModelRegistryCounters,
 }));

@@ -1,13 +1,31 @@
 name: Desktop Release
 
 on:
-  push:
-    tags: ['v*']
   workflow_dispatch:
     inputs:
       tag:
         description: 'Release tag (e.g. v0.1.0)'
         required: true
+      platform:
+        description: 'Desktop platform to build'
+        required: false
+        default: 'windows'
+        type: choice
+        options:
+          - windows
+          - macos
+          - linux
+          - all
+      bundle_mode:
+        description: 'Gemma 4 packaging mode for the Tauri installer'
+        required: false
+        default: 'on-demand'
+        type: choice
+        options:
+          - on-demand
+          - e2b
+          - e4b
+          - all
 
 permissions:
   contents: write
@@ -21,15 +39,19 @@ jobs:
           - os: macos-latest
             target: universal-apple-darwin
             label: macOS
+            platform: macos
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             label: Windows
+            platform: windows
           - os: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
             label: Linux
+            platform: linux
 
     runs-on: ${{ matrix.os }}
     name: Build (${{ matrix.label }})
+    if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == matrix.platform }}
 
     steps:
       - uses: actions/checkout@v4
@@ -45,6 +67,11 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
       - name: Install dependencies (Ubuntu)
         if: matrix.os == 'ubuntu-22.04'
         run: |
@@ -54,6 +81,17 @@ jobs:
       - name: Install npm dependencies
         run: npm install --legacy-peer-deps
 
+      - name: Prepare LiteRT-LM and Gemma 4 bundle
+        run: |
+          BUNDLE_MODE="${{ github.event.inputs.bundle_mode || 'on-demand' }}"
+          python apps/tauri-shell/scripts/prepare-litert-lm-bundle.py --bundle-mode "$BUNDLE_MODE"
+
+      - name: Smoke test bundled Gemma 4 runtime
+        if: matrix.os == 'ubuntu-22.04' && (github.event.inputs.bundle_mode == 'e2b' || github.event.inputs.bundle_mode == 'all')
+        run: |
+          npm --workspace=@smartspec/tauri-shell run tauri:smoke:gemma4:e2b
+          npm --workspace=@smartspec/tauri-shell run tauri:smoke:gemma4:voice:e2b
+
       - name: Build desktop app
         uses: tauri-apps/tauri-action@v0
         env:
@@ -61,7 +99,7 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
-          projectPath: apps/desktop
+          projectPath: apps/tauri-shell
           tagName: ${{ github.event.inputs.tag || github.ref_name }}
           releaseName: 'SmartSpec Pro ${{ github.event.inputs.tag || github.ref_name }}'
           releaseBody: 'See [CHANGELOG](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details.'

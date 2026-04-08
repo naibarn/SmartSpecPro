@@ -753,7 +753,7 @@ export const mediaModelsRouter = router({
         model: {
           ...created,
           configJson: mergeStaticModelConfigJson(
-            created.modelId,
+            String(created.modelId ?? ""),
             created.configJson as Record<string, unknown> | null | undefined,
           ),
         },

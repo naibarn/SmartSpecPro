@@ -64,6 +64,7 @@ function inferInputTypes(properties: Record<string, Record<string, unknown>> | u
  * Get a compact skill catalog for the LLM classifier.
  *
  * Filters by user authorization and caches per user/tenant.
+ * Explicit-only/manual skills are excluded because this catalog feeds auto-routing.
  */
 export async function getSkillCatalogSummary(
   userId: number,
@@ -98,6 +99,7 @@ export async function getSkillCatalogSummary(
   const entries: SkillCatalogEntry[] = [];
   for (const skill of allSkills) {
     if (skill.internalOnly) continue;
+    if (skill.requiresExplicit) continue;
     if (restrictedSkillIds.has(skill.id)) continue;
 
     const category = skill.category || skill.type || "specialist";
@@ -142,6 +144,7 @@ export async function getSkillCatalogSummary(
       outputTypes: inferOutputTypes(category),
       hasInputSchema,
       requiredFields,
+      requiresExplicit: Boolean(skill.requiresExplicit),
       webSearchCapable,
     });
   }

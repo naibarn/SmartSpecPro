@@ -371,6 +371,56 @@ describe("media router DB-first model contract", () => {
     );
   });
 
+  it("generateVideoAsync keeps Media Studio source context in credits and task params", async () => {
+    const db = makeDbWithSequentialSelectResults([
+      [{ modelType: "video", provider: "kie.ai", isEnabled: true }],
+      [{ creditCost: 50, configJson: { pricingTiers: { default: 50 } } }],
+    ]);
+    mockGetDb.mockResolvedValue(db as any);
+    mockCalculateCreditCost.mockReturnValue(50);
+
+    const fn = mediaRouter.generateVideoAsync as Function;
+    const result = await fn({
+      ctx: {
+        user: { id: 123, role: "user", currentTenantId: 1 },
+        userToken: "user-token",
+        tenantId: 1,
+        publicUrl: "https://tenant.example.com",
+      },
+      input: {
+        prompt: "media studio prompt",
+        model: "veo-3-1",
+        duration: 10,
+        originSurface: "media_studio",
+        extraParams: {
+          quality: "high",
+        },
+      },
+    });
+
+    expect(result.success).toBe(true);
+    expect(mockDeductCredits).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceType: "media_video",
+        metadata: expect.objectContaining({
+          endpoint: "generateVideoAsync",
+          originSurface: "media_studio",
+        }),
+      }),
+    );
+    expect(mockGenerateVideoAsync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        extraParams: expect.objectContaining({
+          quality: "high",
+          __reserved_credits: 50,
+          __reserved_duration: 10,
+          __origin_surface: "media_studio",
+        }),
+      }),
+      "user-token",
+    );
+  });
+
   it("generateVideoAsync rejects a fifth reference image only for the WaveSpeed launch model", async () => {
     const wavespeedConfig = {
       maxReferenceImages: 4,
@@ -1301,5 +1351,63 @@ describe("media router DB-first model contract", () => {
     expect(result.source).toBe("static");
     expect(result.options).toEqual([{ value: "Jessica", label: "Jessica" }]);
     expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("generateVideoAsync requires a reference image for WaveSpeed image-to-video models without affecting cinematic", async () => {
+    const wavespeedI2vConfig = {
+      maxReferenceImages: 4,
+      requiresReferenceImages: true,
+      inputFields: [
+        { key: "image_urls", type: "image_urls", syncWith: "reference_images", required: true, maxItems: 4 },
+        { key: "aspect_ratio", type: "select", options: [{ value: "21:9", label: "21:9" }, { value: "16:9", label: "16:9" }] },
+        { key: "duration", type: "select", options: [{ value: "5", label: "5s" }] },
+      ],
+    };
+    const fn = mediaRouter.generateVideoAsync as Function;
+
+    mockGetDb.mockResolvedValue(makeDbWithSequentialSelectResults([
+      [{ modelType: "video", provider: "wavespeed_ai", isEnabled: true }],
+      [{ creditCost: 900, configJson: wavespeedI2vConfig }],
+    ]) as any);
+    await expect(
+      fn({
+        ctx: {
+          user: { id: 123, role: "user", currentTenantId: 1 },
+          userToken: "user-token",
+          tenantId: 1,
+          publicUrl: "https://tenant.example.com",
+        },
+        input: {
+          prompt: "test prompt",
+          model: "bytedance/seedance-2.0/image-to-video",
+          duration: 5,
+          aspectRatio: "21:9",
+        },
+      }),
+    ).rejects.toMatchObject({
+      message: 'The selected model "bytedance/seedance-2.0/image-to-video" requires at least one reference image.',
+    });
+
+    mockGetDb.mockResolvedValue(makeDbWithSequentialSelectResults([
+      [{ modelType: "video", provider: "wavespeed_ai", isEnabled: true }],
+      [{ creditCost: 900, configJson: wavespeedI2vConfig }],
+    ]) as any);
+    await expect(
+      fn({
+        ctx: {
+          user: { id: 123, role: "user", currentTenantId: 1 },
+          userToken: "user-token",
+          tenantId: 1,
+          publicUrl: "https://tenant.example.com",
+        },
+        input: {
+          prompt: "test prompt",
+          model: "bytedance/seedance-2.0/image-to-video",
+          duration: 5,
+          aspectRatio: "21:9",
+          referenceImageUrls: ["/uploads/reference.png"],
+        },
+      }),
+    ).resolves.toMatchObject({ success: true });
   });
 });

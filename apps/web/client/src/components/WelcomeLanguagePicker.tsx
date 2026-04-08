@@ -67,8 +67,8 @@ export function WelcomeLanguagePicker() {
     if (!isAuthenticated || alreadyChosen) return;
     if (!isSuccess && !isError) return; // still loading
     const hasPreference =
-      (typeof prefs?.displayLocale === "string" && prefs.displayLocale !== "") ||
-      (typeof prefs?.translationLanguage === "string" && prefs.translationLanguage !== "");
+      typeof prefs?.displayLocale === "string" ||
+      typeof prefs?.translationLanguage === "string";
     if (!hasPreference) setOpen(true);
   }, [isAuthenticated, alreadyChosen, isSuccess, isError, prefs?.translationLanguage]);
 

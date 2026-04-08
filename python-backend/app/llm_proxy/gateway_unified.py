@@ -1,5 +1,5 @@
 import base64
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from typing import Dict, Any, Optional, List, Literal, Union
 import re
 import math
@@ -169,6 +169,127 @@ class LLMGateway:
                 if normalized in falsy:
                     return False
         return None
+
+    @staticmethod
+    def _get_request_extra_params(
+        request: Union[LLMRequest, ImageGenerationRequest, VideoGenerationRequest, AudioGenerationRequest],
+    ) -> Dict[str, Any]:
+        extra_params = getattr(request, "extra_params", None)
+        return extra_params if isinstance(extra_params, dict) else {}
+
+    @classmethod
+    def _get_reserved_credit_amount(
+        cls,
+        request: Union[LLMRequest, ImageGenerationRequest, VideoGenerationRequest, AudioGenerationRequest],
+    ) -> Optional[Decimal]:
+        reserved_value = cls._get_request_extra_params(request).get("__reserved_credits")
+        if reserved_value is None:
+            return None
+
+        try:
+            reserved_credits = Decimal(str(reserved_value))
+        except (InvalidOperation, TypeError, ValueError):
+            return None
+
+        return reserved_credits if reserved_credits > 0 else None
+
+    @classmethod
+    def _get_reserved_cost_usd(
+        cls,
+        request: Union[LLMRequest, ImageGenerationRequest, VideoGenerationRequest, AudioGenerationRequest],
+    ) -> Optional[Decimal]:
+        reserved_credits = cls._get_reserved_credit_amount(request)
+        if reserved_credits is None:
+            return None
+        return credits_to_usd(int(reserved_credits))
+
+    @staticmethod
+    def _get_pricing_value_by_path(source: Dict[str, Any], path: str) -> Any:
+        if not path:
+            return None
+
+        current: Any = source
+        for segment in str(path).split("."):
+            if not segment:
+                continue
+            if not isinstance(current, dict):
+                return None
+            current = current.get(segment)
+        return current
+
+    @classmethod
+    def _build_media_pricing_tier_key(cls, config: Dict[str, Any], request_payload: Dict[str, Any]) -> str:
+        formula = str(config.get("pricingFormula", "flat") or "flat")
+        pricing_tiers = config.get("pricingTiers")
+        if not isinstance(pricing_tiers, dict):
+            pricing_tiers = {}
+
+        raw_input_fields = config.get("inputFields")
+        indexed_pricing_fields: List[tuple[int, Dict[str, Any]]] = []
+        if isinstance(raw_input_fields, list):
+            for index, field in enumerate(raw_input_fields):
+                if isinstance(field, dict) and field.get("affectsPricing"):
+                    indexed_pricing_fields.append((index, field))
+
+        indexed_pricing_fields.sort(
+            key=lambda item: (
+                {"resolution": 0, "quality": 1, "duration": 2}.get(str(item[1].get("key", "")), 99),
+                item[0],
+            )
+        )
+
+        if formula == "per_unit":
+            return "default"
+
+        if formula == "per_duration":
+            duration = cls._get_pricing_value_by_path(request_payload, "duration")
+            if duration is None:
+                duration_field = next(
+                    (field for _, field in indexed_pricing_fields if str(field.get("key")) == "duration"),
+                    None,
+                )
+                duration = duration_field.get("default") if duration_field else None
+            if duration not in (None, ""):
+                duration_key = str(duration)
+                return duration_key if duration_key.endswith("s") else f"{duration_key}s"
+            return "default"
+
+        if formula == "matrix":
+            parts: List[str] = []
+            for _, field in indexed_pricing_fields:
+                field_key = str(field.get("key") or "").strip()
+                if not field_key:
+                    continue
+                value = cls._get_pricing_value_by_path(request_payload, field_key)
+                if value is None:
+                    value = field.get("default")
+                if value in (None, ""):
+                    continue
+                value_str = str(value)
+                if field_key == "duration" and not value_str.endswith("s"):
+                    value_str = f"{value_str}s"
+                parts.append(value_str)
+            return "-".join(parts) if parts else "default"
+
+        if len(indexed_pricing_fields) == 1:
+            field = indexed_pricing_fields[0][1]
+            field_key = str(field.get("key") or "").strip()
+            value = cls._get_pricing_value_by_path(request_payload, field_key)
+            if value is None:
+                value = field.get("default")
+            if value in (None, ""):
+                return "default"
+            value_str = str(value)
+            if field_key == "duration" and not value_str.endswith("s"):
+                value_str = f"{value_str}s"
+            return value_str
+
+        if formula == "flat":
+            resolution = cls._get_pricing_value_by_path(request_payload, "resolution")
+            if resolution is not None and str(resolution) in pricing_tiers:
+                return str(resolution)
+
+        return "default"
 
     @staticmethod
     def _apply_text_affix_once(text: str, prefix: str, suffix: str) -> str:
@@ -1062,9 +1183,20 @@ class LLMGateway:
         """
         logger.info("video_generation_request", user_id=user.id, model=request.model)
 
-        # Estimate cost via Web Gateway or use local estimate
-        estimated_cost = await self._estimate_cost(request, False)
-        await self._check_credits(user, estimated_cost)
+        reserved_credit_amount = self._get_reserved_credit_amount(request)
+        if reserved_credit_amount is not None:
+            estimated_cost = self._get_reserved_cost_usd(request) or Decimal("0")
+            logger.info(
+                "video_generation_using_reserved_credits",
+                user_id=user.id,
+                model=request.model,
+                reserved_credits=float(reserved_credit_amount),
+                wait_for_completion=wait_for_completion,
+            )
+        else:
+            # Estimate cost via Web Gateway or use local estimate
+            estimated_cost = await self._estimate_cost(request, False)
+            await self._check_credits(user, estimated_cost)
 
         # --- BytePlus ModelArk routing ---
         from app.llm_proxy.providers.byteplus_modelark_provider import BytePlusModelArkProvider
@@ -1141,6 +1273,7 @@ class LLMGateway:
                     reference_image_urls=request.reference_image_urls,
                     aspect_ratio=aspect_ratio,
                     duration=duration,
+                    resolution=resolution,
                 )
                 response = VideoGenerationResponse(
                     id=submit_result["provider_task_id"],
@@ -1159,6 +1292,10 @@ class LLMGateway:
                             "WaveSpeed completed without a final media URL"
                         )
                     response.data = [{"url": completion.result_url}]
+
+                if reserved_credit_amount is not None:
+                    response.credits_used = reserved_credit_amount
+                    return response
 
                 transaction = await self._deduct_credits(
                     user,
@@ -1244,6 +1381,9 @@ class LLMGateway:
                     created=0,
                     data=[],
                 )
+                if reserved_credit_amount is not None:
+                    response.credits_used = reserved_credit_amount
+                    return response
                 transaction = await self._deduct_credits(user, estimated_cost, request, response, estimated_cost, False)
                 response.credits_used = abs(transaction.amount)
                 response.credits_balance = transaction.balance_after
@@ -1372,6 +1512,10 @@ class LLMGateway:
                         raise ValueError("KNPLabs video completed without a result URL")
                     response.data = [{"url": result_url}]
 
+                if reserved_credit_amount is not None:
+                    response.credits_used = reserved_credit_amount
+                    return response
+
                 transaction = await self._deduct_credits(user, estimated_cost, request, response, estimated_cost, False)
                 response.credits_used = abs(transaction.amount)
                 response.credits_balance = transaction.balance_after
@@ -1428,6 +1572,9 @@ class LLMGateway:
                 logger.info("video_actual_cost_from_kie", kie_credits=kie_credits, actual_cost_usd=float(actual_cost), estimated_cost_usd=float(estimated_cost))
             else:
                 actual_cost = estimated_cost
+            if reserved_credit_amount is not None:
+                response.credits_used = reserved_credit_amount
+                return response
             transaction = await self._deduct_credits(user, actual_cost, request, response, estimated_cost, False)
             response.credits_used = abs(transaction.amount)  # Return positive value for credits used
             response.credits_balance = transaction.balance_after
@@ -1841,16 +1988,6 @@ class LLMGateway:
                                     request_payload.update(extra_params)
                                 ignore_whitespace_for_pricing = config.get("pricingIgnoreWhitespace") is True
 
-                                def _get_by_path(source: dict, path: str):
-                                    current = source
-                                    for segment in str(path).split("."):
-                                        if not segment:
-                                            continue
-                                        if not isinstance(current, dict):
-                                            return None
-                                        current = current.get(segment)
-                                    return current
-
                                 def _count_characters(value):
                                     if value is None:
                                         return 0
@@ -1878,37 +2015,8 @@ class LLMGateway:
                                         return 1 if value.strip() else 0
                                     return 1
 
-                                formula = config.get("pricingFormula", "flat")
-                                tier_key = "default"
-
-                                if formula == "flat":
-                                    resolution = _get_by_path(request_payload, "resolution")
-                                    if resolution and resolution in pricing_tiers:
-                                        tier_key = str(resolution)
-                                elif formula == "per_duration":
-                                    duration = _get_by_path(request_payload, "duration")
-                                    if duration:
-                                        tier_key = f"{duration}s"
-                                elif formula == "matrix":
-                                    parts = []
-                                    for field in sorted(
-                                        config.get("inputFields", []),
-                                        key=lambda f: {"resolution": 0, "quality": 1, "duration": 2}.get(f.get("key", ""), 99),
-                                    ):
-                                        if field.get("affectsPricing"):
-                                            field_key = field.get("key")
-                                            if not field_key:
-                                                continue
-                                            val = _get_by_path(request_payload, field_key)
-                                            if val is None:
-                                                val = field.get("default")
-                                            if val is not None:
-                                                s = str(val)
-                                                if field_key == "duration" and not s.endswith("s"):
-                                                    s += "s"
-                                                parts.append(s)
-                                    if parts:
-                                        tier_key = "-".join(parts)
+                                formula = str(config.get("pricingFormula", "flat") or "flat")
+                                tier_key = self._build_media_pricing_tier_key(config, request_payload)
 
                                 base_tier_cost = pricing_tiers.get(tier_key)
                                 if base_tier_cost is None:
@@ -1942,7 +2050,7 @@ class LLMGateway:
                                     if min_units < 0:
                                         min_units = 0
 
-                                    source_value = _get_by_path(request_payload, unit_field)
+                                    source_value = self._get_pricing_value_by_path(request_payload, unit_field)
                                     if source_value is None and unit_field == "text":
                                         source_value = request_payload.get("prompt") or request_payload.get("text")
 
@@ -1981,7 +2089,6 @@ class LLMGateway:
 
             try:
                 from app.llm_proxy.providers.wavespeed_media_provider import (
-                    WAVESPEED_PRICING_TIERS,
                     WaveSpeedMediaProvider,
                 )
 
@@ -1997,7 +2104,15 @@ class LLMGateway:
                         duration = request.duration or int(
                             self._get_api_config_string(extra_params, "duration", "seconds") or 5
                         )
-                        credit_cost = WAVESPEED_PRICING_TIERS.get(f"{duration}s")
+                        credit_cost = WaveSpeedMediaProvider.get_pricing_tiers(
+                            provider_model_id=WaveSpeedMediaProvider.resolve_provider_model_id(
+                                request.model,
+                                request.api_config if isinstance(request.api_config, dict) else {},
+                            ),
+                            submit_endpoint=WaveSpeedMediaProvider.resolve_submit_endpoint(
+                                request.api_config if isinstance(request.api_config, dict) else {},
+                            ),
+                        ).get(f"{duration}s")
                         if credit_cost is not None:
                             db_cost = Decimal(str(credit_cost)) / Decimal("1000")
                             logger.info(

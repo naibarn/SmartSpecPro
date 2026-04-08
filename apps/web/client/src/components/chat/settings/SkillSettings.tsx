@@ -26,11 +26,15 @@ import {
   Loader2,
   Settings2,
   Zap,
+  Cpu,
   Info,
   Check,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLocation } from "wouter";
+import { useTenantFeatureFlag } from "@/hooks/useTenantFeatureFlag";
+import { resolveLocalAiSyncedPreferences } from "@/features/local-ai/state/localAiSettingsStore";
+import { mergeClientConversationSkillSettings, readClientConversationSkillSettings } from "@shared/localAiConversationSettings";
 
 const iconMap: Record<string, React.ElementType> = {
   image: Wand2,
@@ -41,6 +45,7 @@ const iconMap: Record<string, React.ElementType> = {
 };
 
 type DetectionMode = "ask" | "auto" | "explicit";
+type SessionRuntimeMode = "account_default" | "local_only" | "cloud_only";
 
 interface SkillSettingsProps {
   conversationId: number;
@@ -49,16 +54,28 @@ interface SkillSettingsProps {
 
 export function SkillSettings({ conversationId, onClose }: SkillSettingsProps) {
   const [, navigate] = useLocation();
+  const runtimePlatform =
+    typeof window !== "undefined" && (window as any).__TAURI__ != null
+      ? "tauri"
+      : "web";
+  const localClientLlmModeEnabled = useTenantFeatureFlag("localClientLlmMode");
   const [detectionMode, setDetectionMode] = useState<DetectionMode>("auto");
   const [autoDetect, setAutoDetect] = useState(true);
   const [skillStates, setSkillStates] = useState<Record<string, boolean>>({});
+  const [sessionRuntimeMode, setSessionRuntimeMode] =
+    useState<SessionRuntimeMode>("account_default");
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const utils = trpc.useUtils();
 
   // Fetch user's visible skills only
-  const { data: visibleData, isLoading: loadingSkills } = trpc.skills.getUserVisibleSkills.useQuery({ limit: 100 });
+  const { data: visibleData, isLoading: loadingSkills } = trpc.skills.getUserVisibleSkills.useQuery({
+    limit: 100,
+    platform: runtimePlatform,
+    origin: "chat",
+    conversationId,
+  });
   const skills = visibleData?.skills?.map((s) => ({
     id: String(s.id),
     name: s.name,
@@ -79,6 +96,11 @@ export function SkillSettings({ conversationId, onClose }: SkillSettingsProps) {
 
   // Fetch conversation to get skill settings
   const { data: conversation } = trpc.chat.getConversation.useQuery({ id: conversationId });
+  const localAiPreferencesQuery = trpc.users.getPreferences.useQuery();
+  const localAiCatalogQuery = trpc.localAi.getPolicyAndCatalog.useQuery(
+    { platform: runtimePlatform },
+    { enabled: localClientLlmModeEnabled },
+  );
 
   // Update conversation mutation
   const updateConversationMutation = trpc.chat.updateConversation.useMutation({
@@ -97,15 +119,30 @@ export function SkillSettings({ conversationId, onClose }: SkillSettingsProps) {
   // Initialize states from conversation settings
   useEffect(() => {
     if (conversation?.skillSettings) {
-      const settings = conversation.skillSettings as {
-        autoDetect?: boolean;
-        detectionMode?: DetectionMode;
-        enabledSkills?: string[];
-      };
-      setAutoDetect(settings.autoDetect ?? true);
-      setDetectionMode(settings.detectionMode ?? "auto");
+      const settings = readClientConversationSkillSettings(conversation.skillSettings);
+      setAutoDetect(settings.autoDetect);
+      setDetectionMode(settings.detectionMode);
+      if (settings.localAiConversation?.disableForConversation) {
+        setSessionRuntimeMode("cloud_only");
+      } else if (settings.localAiConversation?.mode === "local_only") {
+        setSessionRuntimeMode("local_only");
+      } else if (settings.localAiConversation?.mode === "cloud_only") {
+        setSessionRuntimeMode("cloud_only");
+      } else {
+        setSessionRuntimeMode("account_default");
+      }
     }
   }, [conversation]);
+
+  const localAiPreferencesData = (
+    localAiPreferencesQuery.data as { localAi?: unknown } | undefined
+  )?.localAi;
+  const localAiPreferences = resolveLocalAiSyncedPreferences(localAiPreferencesData);
+  const localAiFeatureReady =
+    localClientLlmModeEnabled &&
+    localAiCatalogQuery.data?.policy.featureEnabled === true &&
+    localAiCatalogQuery.data?.policy.forceCloudOnly !== true &&
+    localAiPreferences.enabled;
 
   // Initialize skill states from preferences or defaults
   useEffect(() => {
@@ -130,18 +167,34 @@ export function SkillSettings({ conversationId, onClose }: SkillSettingsProps) {
     newAutoDetect: boolean,
     newDetectionMode: DetectionMode,
     newSkillStates: Record<string, boolean>,
+    newSessionRuntimeMode: SessionRuntimeMode,
   ) => {
     setSaveStatus("saving");
     try {
+      const localAiConversation =
+        newSessionRuntimeMode === "account_default"
+          ? null
+          : {
+              mode:
+                (newSessionRuntimeMode === "local_only"
+                  ? "local_only"
+                  : "cloud_only") as "local_only" | "cloud_only",
+              disableForConversation: newSessionRuntimeMode === "cloud_only",
+              updatedAt: new Date().toISOString(),
+            };
       await updateConversationMutation.mutateAsync({
         id: conversationId,
-        skillSettings: {
-          autoDetect: newAutoDetect,
-          detectionMode: newDetectionMode,
-          enabledSkills: Object.entries(newSkillStates)
-            .filter(([_, enabled]) => enabled)
-            .map(([id]) => id),
-        },
+        skillSettings: mergeClientConversationSkillSettings(
+          conversation?.skillSettings,
+          {
+            autoDetect: newAutoDetect,
+            detectionMode: newDetectionMode,
+            enabledSkills: Object.entries(newSkillStates)
+              .filter(([_, enabled]) => enabled)
+              .map(([id]) => id),
+            localAiConversation,
+          },
+        ),
       });
 
       const prefsToUpdate = Object.entries(newSkillStates).map(([skillId, enabled]) => ({
@@ -160,22 +213,27 @@ export function SkillSettings({ conversationId, onClose }: SkillSettingsProps) {
     } catch {
       setSaveStatus("idle");
     }
-  }, [conversationId, updateConversationMutation, batchUpdateMutation]);
+  }, [batchUpdateMutation, conversation?.skillSettings, conversationId, updateConversationMutation]);
 
   const handleSkillToggle = (skillId: string, enabled: boolean) => {
     const newStates = { ...skillStates, [skillId]: enabled };
     setSkillStates(newStates);
-    autoSave(autoDetect, detectionMode, newStates);
+    autoSave(autoDetect, detectionMode, newStates, sessionRuntimeMode);
   };
 
   const handleAutoDetectToggle = (enabled: boolean) => {
     setAutoDetect(enabled);
-    autoSave(enabled, detectionMode, skillStates);
+    autoSave(enabled, detectionMode, skillStates, sessionRuntimeMode);
   };
 
   const handleDetectionModeChange = (mode: DetectionMode) => {
     setDetectionMode(mode);
-    autoSave(autoDetect, mode, skillStates);
+    autoSave(autoDetect, mode, skillStates, sessionRuntimeMode);
+  };
+
+  const handleSessionRuntimeModeChange = (mode: SessionRuntimeMode) => {
+    setSessionRuntimeMode(mode);
+    autoSave(autoDetect, detectionMode, skillStates, mode);
   };
 
   const handleResetDefaults = () => {
@@ -188,7 +246,8 @@ export function SkillSettings({ conversationId, onClose }: SkillSettingsProps) {
     setSkillStates(defaultStates);
     setAutoDetect(true);
     setDetectionMode("auto");
-    autoSave(true, "auto", defaultStates);
+    setSessionRuntimeMode("account_default");
+    autoSave(true, "auto", defaultStates, "account_default");
   };
 
   const isLoading = loadingSkills || loadingPreferences;
@@ -218,6 +277,53 @@ export function SkillSettings({ conversationId, onClose }: SkillSettingsProps) {
           </div>
         ) : (
           <div className="space-y-6 px-4 pb-4">
+            {/* Auto-detect toggle */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Session LLM Runtime</label>
+              <div className="rounded-lg border p-4">
+                <div className="mb-3 flex items-start gap-2">
+                  <Cpu className="mt-0.5 h-4 w-4 text-primary" />
+                  <div className="space-y-1">
+                    <div className="font-medium">Override this chat session</div>
+                    <p className="text-sm text-muted-foreground">
+                      Keep server persistence and memory flows as usual, but force this conversation to use local Gemma 4 for text chat and local-safe text skills when selected.
+                    </p>
+                  </div>
+                </div>
+                <Select
+                  value={sessionRuntimeMode}
+                  onValueChange={(value) =>
+                    handleSessionRuntimeModeChange(value as SessionRuntimeMode)
+                  }
+                  disabled={isSaving}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="account_default">
+                      Use account default
+                    </SelectItem>
+                    <SelectItem value="local_only">
+                      Force local Gemma 4
+                    </SelectItem>
+                    <SelectItem value="cloud_only">
+                      Force cloud/API path
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                {!localAiFeatureReady ? (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Enable Local AI in account settings and prepare a compatible local model before forcing this session to local Gemma 4.
+                  </p>
+                ) : (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Media, image, and video generation skills continue to use their existing cloud/API route.
+                  </p>
+                )}
+              </div>
+            </div>
+
             {/* Auto-detect toggle */}
             <div className="flex items-center justify-between rounded-lg border p-4">
               <div className="space-y-0.5">

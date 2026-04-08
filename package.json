@@ -7,7 +7,12 @@
   ],
   "scripts": {
     "dev:web": "turbo run dev --filter=@smartspec/web",
-    "dev:desktop": "turbo run dev --filter=@smartspec/desktop",
+    "dev:desktop": "bash ./scripts/desktop-app.sh dev",
+    "build:desktop": "bash ./scripts/desktop-app.sh build",
+    "build:desktop:local": "node ./scripts/desktop-build-local.mjs",
+    "build:desktop:windows-local": "node ./scripts/desktop-build-local.mjs --target x86_64-pc-windows-msvc --bundle-mode on-demand",
+    "desktop:info": "bash ./scripts/desktop-app.sh info",
+    "release:desktop:gh": "node ./scripts/desktop-release-gh.mjs",
     "build": "turbo run build",
     "typecheck": "turbo run typecheck"
   },

@@ -78,6 +78,18 @@ describe("promptEnhancementService", () => {
     expect(prompt).toContain("Reference notes: The attached image shows a small yellow dog with a blue collar and a red bandana.");
   });
 
+  it("adds a language-aware character limit for video prompt skills", () => {
+    const prompt = buildSystemPrompt({
+      skillId: "video-prompt-engineer",
+      userInput: "บรรยายคนเดินตลาดตอนเย็น",
+      language: "th",
+      maxPromptLength: 1200,
+    });
+
+    expect(prompt).toContain("Keep the total prompt under 1200 characters.");
+    expect(prompt).toContain("The output is Thai, so keep phrasing especially compact");
+  });
+
   it("keeps image prompt behavior for image prompt skills", () => {
     const prompt = buildSystemPrompt({
       skillId: "image_prompt_engineer",

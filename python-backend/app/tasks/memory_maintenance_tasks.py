@@ -9,6 +9,7 @@ from sqlalchemy import create_engine, text
 
 from app.core.celery_app import celery_app
 from app.core.config import settings
+from app.core.sqlalchemy_sync import to_sync_sqlalchemy_url
 
 logger = logging.getLogger(__name__)
 
@@ -21,12 +22,7 @@ INDEX_NAMES = (
 
 
 def _get_sync_db_url() -> str:
-    url = settings.DATABASE_URL
-    if "+asyncpg" in url:
-        return url.replace("+asyncpg", "")
-    if url.startswith("postgresql+asyncpg"):
-        return url.replace("postgresql+asyncpg", "postgresql")
-    return url
+    return to_sync_sqlalchemy_url(settings.DATABASE_URL)
 
 
 @contextmanager

@@ -12,9 +12,8 @@ import { socialConversations, socialMessages, socialPages } from "../../drizzle/
 import { getDb } from "../db";
 import { auditLogger } from "./auditLogger";
 import { getCacheClient } from "./redisClients";
+import { getAppRuntimeConfig, getPreferredInternalToken } from "./appRuntimeConfig";
 
-const PYTHON_BACKEND_URL = (process.env.PYTHON_BACKEND_URL || "http://localhost:8000").replace(/\/+$/, "");
-const INTERNAL_TOKEN = process.env.SMARTSPEC_WEB_GATEWAY_TOKEN || process.env.SMARTSPEC_PROXY_TOKEN || "";
 const PY_TIMEOUT_MS = 30_000;
 
 export type SocialConversationStatus = "open" | "pending" | "closed" | "spam";
@@ -78,15 +77,17 @@ async function callPythonBackend(
   options: { method: "GET" | "POST"; body?: unknown; timeoutMs?: number },
 ): Promise<Response> {
   const { method, body, timeoutMs = PY_TIMEOUT_MS } = options;
+  const runtime = await getAppRuntimeConfig();
+  const internalToken = await getPreferredInternalToken();
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    return await fetch(`${PYTHON_BACKEND_URL}${path}`, {
+    return await fetch(`${runtime.pythonBackendUrl}${path}`, {
       method,
       headers: {
         "Content-Type": "application/json",
-        ...(INTERNAL_TOKEN ? { "x-internal-token": INTERNAL_TOKEN } : {}),
+        ...(internalToken ? { "x-internal-token": internalToken } : {}),
       },
       body: body ? JSON.stringify(body) : undefined,
       signal: controller.signal,

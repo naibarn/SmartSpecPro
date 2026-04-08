@@ -1,0 +1,128 @@
+{
+  "skill_name": "cinematic-video-createprompt",
+  "skill_version": "5.7.0",
+  "response_format": "structured_json",
+  "language": "en",
+  "target_model_profile": "generic_video_models",
+  "generation_mode": "image_to_video",
+  "delivery_mode": "multi_video",
+  "multi_video_strategy": "creative_variations",
+  "video_count": 3,
+  "dialogue_language": {
+    "requested": "auto",
+    "resolved": "th",
+    "source": "explicit_text_instruction",
+    "rationale": "The brief says any spoken dialogue should be in Thai, so the spoken language resolves to Thai even though the prompt package itself is written in English."
+  },
+  "storytelling_resolution": {
+    "preset_requested": "auto_popular",
+    "preset_resolved": "auto_popular",
+    "multi_shot_timing_mode_requested": "untimed_or_auto",
+    "multi_shot_timing_mode_resolved": "untimed_or_auto",
+    "audio_mode_resolved": "music_led_feel",
+    "dialogue_density_resolved": "none",
+    "story_shape_resolved": "reveal_payoff",
+    "ending_style_resolved": "visual_reveal",
+    "performance_style_resolved": "naturalistic",
+    "imagination_level_resolved": "stylized",
+    "scene_arc_resolved": "reveal",
+    "continuity_mode_resolved": "editorial_montage",
+    "motion_realism_resolved": "polished_stylized",
+    "background_mode": "normal_background",
+    "narrative_intent": "Offer three clearly different cinematic versions of the same Bangkok courier premise while preserving the same character identity, prop anchors, and neon-rain world."
+  },
+  "continuity_package": {
+    "continuity_notes": "Keep the same Thai male courier, the same black technical coat with subtle neon trim, the same glowing data capsule, and the same rain-soaked futuristic Bangkok world across all three variations.",
+    "continuity_notes_origin": "auto_generated",
+    "reference_notes": "Use @Image1 and @Image2 to preserve the courier's facial identity, hairstyle, and coat silhouette. Use @Image3 to preserve the neon-alley world, wet reflections, and spatial logic across every variation.",
+    "reference_notes_origin": "auto_generated"
+  },
+  "final_prompt": "Prompt 1:\nUse @Image1 and @Image2 as the character references for the courier's facial identity, hairstyle, outfit silhouette, and distinctive wardrobe details. Use @Image3 as the scene composition reference for the alley layout, wet reflections, subject placement, and framing balance. Create a restrained noir version of the courier concept in a rain-soaked futuristic Bangkok alley, emphasizing stillness, tension, and quiet vigilance as steam drifts through the foreground and Thai neon signage glows in the distance. Keep the frame elegant, grounded, and emotionally controlled, with Thai dialogue only if a very short spoken line genuinely strengthens the mood.\nContinuity Notes:\nKeep the same Thai male courier, the same black technical coat with subtle neon trim, the same glowing data capsule, and the same rain-soaked futuristic Bangkok world across all three variations.\nReference Notes:\nUse @Image1 and @Image2 to preserve the courier's facial identity, hairstyle, and coat silhouette. Use @Image3 to preserve the neon-alley world, wet reflections, and spatial logic across every variation.\n\nPrompt 2:\nUse @Image1 and @Image2 as the character references for the courier's identity and wardrobe, and use @Image3 to preserve the same Bangkok environment while shifting the cinematic treatment. Create a more dynamic pursuit-driven variation from the same topic, with readable forward motion, sharper pacing, and urgent energy as the courier cuts through rain, reflections, and colored light without losing clean anatomy or environmental coherence. Keep the same core world and same courier, but make this version feel more kinetic and immediate than the first.\nContinuity Notes:\nKeep the same Thai male courier, the same black technical coat with subtle neon trim, the same glowing data capsule, and the same rain-soaked futuristic Bangkok world across all three variations.\nReference Notes:\nUse @Image1 and @Image2 to preserve the courier's facial identity, hairstyle, and coat silhouette. Use @Image3 to preserve the neon-alley world, wet reflections, and spatial logic across every variation.\n\nPrompt 3:\nUse @Image1 and @Image2 as the character references for the courier's identity, and use @Image3 to keep the same neon-rain world while presenting a quieter alternative mood. Create a poetic rooftop variation of the same concept, where the courier slows into stillness above the city, the glowing capsule becomes a soft focal anchor, and the atmosphere feels reflective, spacious, and emotionally restrained under rain-dark neon light. Keep the cinematography refined, the identity stable, and any spoken line minimal and in Thai if used at all.\nContinuity Notes:\nKeep the same Thai male courier, the same black technical coat with subtle neon trim, the same glowing data capsule, and the same rain-soaked futuristic Bangkok world across all three variations.\nReference Notes:\nUse @Image1 and @Image2 to preserve the courier's facial identity, hairstyle, and coat silhouette. Use @Image3 to preserve the neon-alley world, wet reflections, and spatial logic across every variation.",
+  "short_prompt": "Create three alternative cinematic video prompts from the same futuristic Bangkok courier topic, using @Image1 and @Image2 for identity continuity and @Image3 for environmental continuity, with Thai dialogue only if dialogue is used and with each version clearly distinct in mood and treatment.",
+  "prompt_sequence": [
+    {
+      "prompt_id": "Prompt 1",
+      "video_number": 1,
+      "duration_seconds": 8,
+      "prompt_role": "Noir Suspense Variation",
+      "prompt": "Use @Image1 and @Image2 as the character references for the courier's facial identity, hairstyle, outfit silhouette, and distinctive wardrobe details. Use @Image3 as the scene composition reference for the alley layout, wet reflections, subject placement, and framing balance. Create a restrained noir version of the courier concept in a rain-soaked futuristic Bangkok alley, emphasizing stillness, tension, and quiet vigilance as steam drifts through the foreground and Thai neon signage glows in the distance. Keep the frame elegant, grounded, and emotionally controlled, with Thai dialogue only if a very short spoken line genuinely strengthens the mood.",
+      "continuity_notes": "Keep the same Thai male courier, the same black technical coat with subtle neon trim, the same glowing data capsule, and the same rain-soaked futuristic Bangkok world across all three variations.",
+      "reference_notes": "Use @Image1 and @Image2 to preserve the courier's facial identity, hairstyle, and coat silhouette. Use @Image3 to preserve the neon-alley world, wet reflections, and spatial logic across every variation."
+    },
+    {
+      "prompt_id": "Prompt 2",
+      "video_number": 2,
+      "duration_seconds": 8,
+      "prompt_role": "Kinetic Pursuit Variation",
+      "prompt": "Use @Image1 and @Image2 as the character references for the courier's identity and wardrobe, and use @Image3 to preserve the same Bangkok environment while shifting the cinematic treatment. Create a more dynamic pursuit-driven variation from the same topic, with readable forward motion, sharper pacing, and urgent energy as the courier cuts through rain, reflections, and colored light without losing clean anatomy or environmental coherence. Keep the same core world and same courier, but make this version feel more kinetic and immediate than the first.",
+      "continuity_notes": "Keep the same Thai male courier, the same black technical coat with subtle neon trim, the same glowing data capsule, and the same rain-soaked futuristic Bangkok world across all three variations.",
+      "reference_notes": "Use @Image1 and @Image2 to preserve the courier's facial identity, hairstyle, and coat silhouette. Use @Image3 to preserve the neon-alley world, wet reflections, and spatial logic across every variation."
+    },
+    {
+      "prompt_id": "Prompt 3",
+      "video_number": 3,
+      "duration_seconds": 10,
+      "prompt_role": "Poetic Rooftop Variation",
+      "prompt": "Use @Image1 and @Image2 as the character references for the courier's identity, and use @Image3 to keep the same neon-rain world while presenting a quieter alternative mood. Create a poetic rooftop variation of the same concept, where the courier slows into stillness above the city, the glowing capsule becomes a soft focal anchor, and the atmosphere feels reflective, spacious, and emotionally restrained under rain-dark neon light. Keep the cinematography refined, the identity stable, and any spoken line minimal and in Thai if used at all.",
+      "continuity_notes": "Keep the same Thai male courier, the same black technical coat with subtle neon trim, the same glowing data capsule, and the same rain-soaked futuristic Bangkok world across all three variations.",
+      "reference_notes": "Use @Image1 and @Image2 to preserve the courier's facial identity, hairstyle, and coat silhouette. Use @Image3 to preserve the neon-alley world, wet reflections, and spatial logic across every variation."
+    }
+  ],
+  "cinematic_plan": {
+    "opening_frame": "A guarded Thai courier stands in a rain-soaked neon Bangkok world with the glowing data capsule immediately readable against steam and reflections.",
+    "subject_focus": "The same courier, same capsule, and same futuristic Bangkok world remain the anchor across all three alternative prompt versions.",
+    "staging_blocking": "Each version keeps the courier readable and grounded while varying the emotional posture, spatial emphasis, and movement treatment.",
+    "motion_arc": "The package offers three alternative motion treatments: restrained stillness, dynamic urgency, and reflective quiet.",
+    "camera_language": "All three prompts maintain premium cinematic framing while varying tempo and treatment enough to create meaningful choice.",
+    "focus_depth": "The courier and capsule remain dominant visual anchors while atmospheric depth and city layering support the different versions.",
+    "atmosphere_time": "Night rain, steam, wet surfaces, and neon haze define the world consistently across every variation.",
+    "production_design": "A connected futuristic Bangkok environment with glowing Thai signage, reflective concrete, rooftop silhouettes, steam vents, and premium technical wardrobe textures.",
+    "lighting_color": "Neon-noir lighting with cool reflective contrast and practical glow remains consistent while each variation shifts tone and emphasis.",
+    "continuity_pacing": "The package is not a sequential story; it is a controlled set of distinct cinematic options built from the same topic and visual anchors.",
+    "continuity_guardrails": "Preserve face identity, coat silhouette, capsule design, Bangkok environment logic, stable anatomy, and clear reference usage across all three prompts."
+  },
+  "reference_usage": {
+    "reference_input_mode": "generic_images",
+    "reference_image_count": 3,
+    "assignments": [
+      {
+        "image_id": "@Image1",
+        "role": "character_reference",
+        "prompt_text": "Use @Image1 as the primary facial identity reference for the courier across every prompt."
+      },
+      {
+        "image_id": "@Image2",
+        "role": "character_reference",
+        "prompt_text": "Use @Image2 as the supporting character reference for coat silhouette, wardrobe material, and secondary identity details."
+      },
+      {
+        "image_id": "@Image3",
+        "role": "scene_composition_reference",
+        "prompt_text": "Use @Image3 as the environment and composition reference for the same neon Bangkok world, wet reflections, and framing logic."
+      }
+    ],
+    "reference_video_count": 0,
+    "video_assignments": [],
+    "reference_audio_count": 0,
+    "audio_assignments": [],
+    "first_frame_present": false,
+    "last_frame_present": false,
+    "applied_focus": [
+      "@Image1 character identity",
+      "@Image2 wardrobe silhouette",
+      "@Image3 environment continuity",
+      "creative multi-video variation control"
+    ],
+    "notes": "@Image1 and @Image2 preserve the courier identity across all three alternative prompts, while @Image3 keeps the same Bangkok environment and visual geography from drifting."
+  },
+  "validation": {
+    "is_valid": true,
+    "warnings": [],
+    "safety_notes": [
+      "Kept the prompt package original, brand-neutral, and broadly safe for general media models."
+    ],
+    "suggestions": [
+      "If the target workflow supports reference weighting, make @Image1 the strongest identity anchor for every variation."
+    ]
+  }
+}

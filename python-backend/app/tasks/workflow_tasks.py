@@ -4,8 +4,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 import structlog
-from croniter import croniter
-from sqlalchemy import select
+from sqlalchemy import String, cast, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.celery_app import celery_app
@@ -16,6 +15,16 @@ from app.models.workflow_event_subscription import WorkflowEventSubscription
 from app.orchestrator.langgraph_runtime import get_langgraph_runtime
 
 logger = structlog.get_logger(__name__)
+
+try:
+    from croniter import croniter
+except ModuleNotFoundError:  # pragma: no cover - runtime dependency guard
+    croniter = None
+
+
+def _active_workflow_clause():
+    """Compare workflow status safely even when the database column is an enum."""
+    return cast(Workflow.status, String) == "active"
 
 
 @celery_app.task(name="app.tasks.workflow_tasks.check_scheduled_workflows")
@@ -31,6 +40,14 @@ def check_scheduled_workflows():
 
 async def _check_scheduled_workflows_async():
     """Async implementation of schedule checking."""
+    if croniter is None:
+        logger.error(
+            "schedule_check_dependency_missing",
+            dependency="croniter",
+            recommendation="Rebuild the Python Celery image so scheduled workflow checks can run.",
+        )
+        return
+
     async with get_db_context() as db:
         now = datetime.now(timezone.utc)
 
@@ -41,7 +58,7 @@ async def _check_scheduled_workflows_async():
             .where(
                 WorkflowSchedule.isActive == True,
                 WorkflowSchedule.nextRun <= now,
-                Workflow.status == "active",
+                _active_workflow_clause(),
             )
         )
         due_schedules = result.all()
@@ -156,7 +173,7 @@ async def _process_system_event_async(event_type: str, event_data: dict[str, Any
             .where(
                 WorkflowEventSubscription.isActive == True,
                 WorkflowEventSubscription.eventType == event_type,
-                Workflow.status == "active",
+                _active_workflow_clause(),
             )
         )
         subscriptions = result.all()
@@ -267,7 +284,7 @@ async def _process_queue_message_async(queue_name: str, messages: list[dict[str,
         # Query all active workflows and find those with queue_trigger nodes for this queue
         result = await db.execute(
             select(Workflow).where(
-                Workflow.status == "active",
+                _active_workflow_clause(),
             )
         )
         workflows = result.scalars().all()

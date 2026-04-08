@@ -29,6 +29,8 @@ import {
 } from "@/components/ui/collapsible";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
+import { useSkillExecution } from "@/components/chat/skill/hooks/useSkillExecution";
+import { useLocalSkillExecutionContext } from "@/features/local-ai/skills/useLocalSkillExecutionContext";
 import {
   BUILT_IN_PRESETS,
   getBuiltInPreset,
@@ -413,11 +415,20 @@ export function AIDraftModal({
   const lastProgressAtRef = useRef<number>(Date.now());
   const lastProgressMarkerRef = useRef<string>("");
   const completionHandledRef = useRef<string | null>(null);
+  const skillRuntimePlatform =
+    typeof window !== "undefined" && (window as any).__TAURI__ != null
+      ? "tauri"
+      : "web";
+  const localSkillExecutionContext = useLocalSkillExecutionContext();
 
   const utils = trpc.useUtils();
 
   // Fetch skills
-  const skillsQuery = trpc.skills.getUserVisibleSkills.useQuery({ limit: 100 });
+  const skillsQuery = trpc.skills.getUserVisibleSkills.useQuery({
+    limit: 100,
+    platform: skillRuntimePlatform,
+    origin: "chat",
+  });
   const skills = (skillsQuery.data?.skills ?? []) as VisibleSkillOption[];
 
   // Available LLM models for text model override
@@ -849,7 +860,17 @@ export function AIDraftModal({
   const resolveAutoDraftMutation = trpc.presentation.ai.resolveAutoDraft.useMutation();
   const cancelDraft = trpc.presentation.ai.cancelDraft.useMutation();
   const uploadReferenceMutation = trpc.ai.upload.useMutation();
-  const executeSkillMutation = trpc.chat.executeSkill.useMutation();
+  const articleSkillExecution = useSkillExecution({
+    conversationId: undefined,
+    platform: localSkillExecutionContext.platform,
+    origin: "chat",
+    localAiEnabled:
+      localSkillExecutionContext.featureEnabled
+      && localSkillExecutionContext.localAiEnabled,
+    localAiExecutionMode: localSkillExecutionContext.executionMode,
+    forceCloudOnly: localSkillExecutionContext.forceCloudOnly,
+    preferredLocalProfileId: localSkillExecutionContext.preferredLocalProfileId,
+  });
 
   // Content automation feature flag + agency integration
   const { data: contentAutomationData } = trpc.infrastructure.getContentAutomationEnabled.useQuery(
@@ -863,30 +884,31 @@ export function AIDraftModal({
     if (!articleGenSkill || isGeneratingArticle) return;
     setIsGeneratingArticle(true);
     try {
-      const result = await executeSkillMutation.mutateAsync({
+      const result = await articleSkillExecution.execute({
         skillId: articleGenSkill,
         prompt: topic.trim() || undefined,
-        model: textModel || undefined,
         dynamicParams: Object.keys(articleGenParams).length > 0
           ? articleGenParams
-          : undefined,
-        referenceImageUrls:
-          normalizedReferenceImageUrls.length > 0
-            ? normalizedReferenceImageUrls
-            : undefined,
+          : {},
+        mutationInput: {
+          ...(textModel ? { model: textModel } : {}),
+          ...(normalizedReferenceImageUrls.length > 0
+            ? { referenceImageUrls: normalizedReferenceImageUrls }
+            : {}),
+        },
       });
-      if (result.success && result.message) {
+      if (result?.success && result.message) {
         setCustomArticleText(result.message);
         toast.success("Article generated successfully");
       } else {
-        toast.error(result.error || "Failed to generate article");
+        toast.error(result?.error || "Failed to generate article");
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to generate article");
     } finally {
       setIsGeneratingArticle(false);
     }
-  }, [articleGenSkill, isGeneratingArticle, topic, textModel, articleGenParams, normalizedReferenceImageUrls, executeSkillMutation]);
+  }, [articleGenSkill, articleSkillExecution, isGeneratingArticle, topic, textModel, articleGenParams, normalizedReferenceImageUrls]);
 
   // Polling progress
   const progressQuery = trpc.presentation.ai.getDraftProgress.useQuery(

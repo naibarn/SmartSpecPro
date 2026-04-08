@@ -160,10 +160,30 @@ function validateFieldValue(
 function isFieldVisible(field: SkillInputField, values: Record<string, any>): boolean {
   if (!field.dependsOn) return true;
 
+  if (Array.isArray(field.dependsOn.all) && field.dependsOn.all.length > 0) {
+    return field.dependsOn.all.every((dependency) =>
+      isFieldVisible({ ...field, dependsOn: dependency }, values),
+    );
+  }
+
+  if (Array.isArray(field.dependsOn.any) && field.dependsOn.any.length > 0) {
+    return field.dependsOn.any.some((dependency) =>
+      isFieldVisible({ ...field, dependsOn: dependency }, values),
+    );
+  }
+
+  if (!field.dependsOn.field) {
+    return true;
+  }
+
   const dependentValue = values[field.dependsOn.field];
 
   if (field.dependsOn.notEmpty) {
     return !!dependentValue && dependentValue !== '';
+  }
+
+  if (field.dependsOn.minItems !== undefined) {
+    return Array.isArray(dependentValue) && dependentValue.length >= field.dependsOn.minItems;
   }
 
   if (field.dependsOn.value !== undefined) {

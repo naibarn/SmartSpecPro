@@ -737,7 +737,7 @@ class KieAIProvider:
                     "Unknown error"
                 )
                 raise Exception(f"Task failed: {fail_msg}")
-            elif task_state in ["pending", "processing", "running", "created", ""]:
+            elif task_state in ["pending", "processing", "running", "created", "waiting", ""]:
                 await asyncio.sleep(poll_interval)
                 elapsed += poll_interval
             else:

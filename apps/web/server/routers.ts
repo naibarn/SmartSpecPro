@@ -101,6 +101,9 @@ import { notificationPreferencesRouter } from "./routers/notificationPreferences
 import { alertRulesRouter } from "./routers/alertRules";
 import { notificationWebhooksRouter } from "./routers/notificationWebhooks";
 import { socialInboxRouter } from "./routers/socialInbox";
+import { billingRouter } from "./routers/billing";
+import { adminBillingRouter } from "./routers/adminBilling";
+import { localAiRouter } from "./routers/localAi";
 
 // Zod schemas for validation
 const strongPasswordSchema = z.string().min(8).refine(
@@ -144,6 +147,9 @@ const galleryFiltersSchema = z.object({
 export const appRouter = router({
   // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
   system: systemRouter,
+  billing: billingRouter,
+  adminBilling: adminBillingRouter,
+  localAi: localAiRouter,
   
   auth: router({
     me: publicProcedure.query(opts => {
@@ -164,7 +170,11 @@ export const appRouter = router({
         avatar: user.email ? `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.email}` : undefined,
         plan: user.plan || 'free',
         credits: user.credits || 0,
-        role: user.role
+        role: user.role,
+        currentTenantId:
+          user.currentTenantId !== null && user.currentTenantId !== undefined
+            ? String(user.currentTenantId)
+            : null,
       };
     }),
     /** Check which OAuth providers are configured (public — no auth required) */
@@ -336,7 +346,18 @@ export const appRouter = router({
         const cookieOptions = getSessionCookieOptions(ctx.req);
         ctx.res.cookie(COOKIE_NAME, token, { ...cookieOptions, maxAge: THIRTY_DAYS_MS });
 
-        return { success: true, user: { id: user.id, email: user.email, name: user.name } };
+        return {
+          success: true,
+          user: {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            currentTenantId:
+              user.currentTenantId !== null && user.currentTenantId !== undefined
+                ? String(user.currentTenantId)
+                : null,
+          },
+        };
       }),
 
     register: registerProcedure
@@ -536,7 +557,18 @@ export const appRouter = router({
         const cookieOptions = getSessionCookieOptions(ctx.req);
         ctx.res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: THIRTY_DAYS_MS });
 
-        return { success: true, user: { id: user.id, email: user.email, name: user.name } };
+        return {
+          success: true,
+          user: {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            currentTenantId:
+              user.currentTenantId !== null && user.currentTenantId !== undefined
+                ? String(user.currentTenantId)
+                : null,
+          },
+        };
       }),
 
     resendVerification: publicProcedure
@@ -1251,7 +1283,18 @@ export const appRouter = router({
         const cookieOptions = getSessionCookieOptions(ctx.req);
         ctx.res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: THIRTY_DAYS_MS });
 
-        return { success: true, user: { id: user.id, email: user.email, name: user.name } };
+        return {
+          success: true,
+          user: {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            currentTenantId:
+              user.currentTenantId !== null && user.currentTenantId !== undefined
+                ? String(user.currentTenantId)
+                : null,
+          },
+        };
       }),
 
     resetPassword: resetPasswordProcedure
@@ -1308,11 +1351,13 @@ export const appRouter = router({
         const { getUserByEmail } = await import("./db");
         const { getDb } = await import("./db");
         const { sdk } = await import("./_core/sdk");
+        const { getAppRuntimeConfig } = await import("./services/appRuntimeConfig");
         const { users, systemSettings, tenants } = await import("../drizzle/schema");
         const { eq, and } = await import("drizzle-orm");
 
         // 1. Verify the Python OAuth token by calling Python backend
-        const PYTHON_BACKEND = process.env.PYTHON_BACKEND_URL || 'http://localhost:8000';
+        const runtime = await getAppRuntimeConfig();
+        const PYTHON_BACKEND = runtime.pythonBackendUrl;
         let pythonUser: { id: string; email: string; full_name: string | null; is_admin: boolean; email_verified: boolean };
 
         try {
@@ -1350,7 +1395,19 @@ export const appRouter = router({
           const cookieOptions = getSessionCookieOptions(ctx.req);
           ctx.res.cookie(COOKIE_NAME, token, { ...cookieOptions, maxAge: THIRTY_DAYS_MS });
 
-          return { success: true, user: { id: existing.id, email: existing.email, name: existing.name } };
+          return {
+            success: true,
+            user: {
+              id: existing.id,
+              email: existing.email,
+              name: existing.name,
+              currentTenantId:
+                existing.currentTenantId !== null &&
+                existing.currentTenantId !== undefined
+                  ? String(existing.currentTenantId)
+                  : null,
+            },
+          };
         }
 
         // 3. New user — insert into Node.js users table
@@ -1402,7 +1459,18 @@ export const appRouter = router({
         const cookieOptions = getSessionCookieOptions(ctx.req);
         ctx.res.cookie(COOKIE_NAME, token, { ...cookieOptions, maxAge: THIRTY_DAYS_MS });
 
-        return { success: true, user: { id: 0, email: pythonUser.email, name: pythonUser.full_name } };
+        return {
+          success: true,
+          user: {
+            id: 0,
+            email: pythonUser.email,
+            name: pythonUser.full_name,
+            currentTenantId:
+              tenantId !== null && tenantId !== undefined
+                ? String(tenantId)
+                : null,
+          },
+        };
       }),
   }),
 

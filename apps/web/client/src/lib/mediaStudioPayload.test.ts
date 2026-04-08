@@ -53,4 +53,14 @@ describe("buildMediaStudioCommonPayload", () => {
       "https://cdn.example.com/ref-video-2.mp4",
     ]);
   });
+
+  it("marks payloads as coming from Media Studio", () => {
+    const payload = buildMediaStudioCommonPayload({
+      prompt: "A polished brand campaign visual",
+      aspectRatio: "9:16",
+      referenceImages: [],
+    });
+
+    expect(payload.originSurface).toBe("media_studio");
+  });
 });

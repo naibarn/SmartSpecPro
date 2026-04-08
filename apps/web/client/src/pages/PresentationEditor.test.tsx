@@ -308,6 +308,10 @@ const queryState = {
   } as any,
   sandboxJobStatus: null as any,
   skillCatalog: buildSkillCatalog(),
+  mediaGetTaskFetch: vi.fn().mockResolvedValue({
+    status: "completed",
+    resultUrl: "https://cdn.example.com/generated-asset.png",
+  }),
 };
 
 vi.mock("wouter", () => ({
@@ -339,10 +343,7 @@ vi.mock("@/lib/trpc", () => ({
       },
       media: {
         getTask: {
-          fetch: vi.fn().mockResolvedValue({
-            status: "completed",
-            resultUrl: "https://cdn.example.com/generated-asset.png",
-          }),
+          fetch: (...args: any[]) => queryState.mediaGetTaskFetch(...args),
         },
       },
     }),
@@ -1017,6 +1018,10 @@ describe("PresentationEditor", () => {
     queryState.presentationVersions = buildPresentationVersions();
     queryState.customBlocks = [];
     queryState.skillCatalog = buildSkillCatalog();
+    queryState.mediaGetTaskFetch = vi.fn().mockResolvedValue({
+      status: "completed",
+      resultUrl: "https://cdn.example.com/generated-asset.png",
+    });
     queryState.customBlockPreview = {
       artifactKey: "",
       artifactUrl: "",
@@ -1036,7 +1041,7 @@ describe("PresentationEditor", () => {
     expect(screen.getByRole("button", { name: /move slide up/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /move slide down/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /add text element/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /save slide/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /header\.saveSlide/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /play slideshow/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^export$/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /play mode/i })).toBeInTheDocument();
@@ -1209,7 +1214,7 @@ describe("PresentationEditor", () => {
     rerender(<PresentationEditor />);
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /save slide/i })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /header\.saveSlide/i })).toBeInTheDocument();
     });
   });
 
@@ -4140,6 +4145,10 @@ describe("PresentationEditor", () => {
     render(<PresentationEditor />);
 
     fireEvent.click(screen.getByRole("button", { name: "header.articleBuilder" }));
+    const articleBuilderDialog = await screen.findByRole("dialog");
+    const comboboxes = within(articleBuilderDialog).getAllByRole("combobox");
+    fireEvent.click(comboboxes[1] as HTMLElement);
+    fireEvent.click(screen.getByRole("option", { name: "Editorial Layout Planner" }));
     fireEvent.click(screen.getByRole("button", { name: "dialog.articleBuilder.generateSlideJson" }));
 
     await waitFor(() => {
@@ -4189,7 +4198,947 @@ describe("PresentationEditor", () => {
     expect(screen.getByDisplayValue("{\"slides\":[]}")).toBeInTheDocument();
   });
 
-  it("switches to an artifact-capable slide skill for PPTX output and imports the generated slides", async () => {
+  it("replans the slide bundle while reusing compatible generated images by page slot", async () => {
+    localStorage.setItem(
+      "presentation-article-builder-draft:7",
+      JSON.stringify({
+        topic: "Product Pitch",
+        article: "Generated presentation article",
+        executionSource: "skill",
+        skillId: "article-writer",
+        agencyId: "",
+        agencyName: "",
+        requiresWebSearch: false,
+        requiresThinking: false,
+        targetImageCount: 8,
+        imageModel: "flux-2.0",
+        canvasRatio: "16:9",
+        advancedMediaOptionsEnabled: false,
+        mediaModelExtraParams: {},
+        imagePromptContext: "",
+        slideSkillId: "modern-editorial-slide",
+        slideOutputFormat: "json",
+        preparedBundle: {
+          maxPages: 1,
+          plannedImageCount: 1,
+          slideSkillLabel: "Modern Editorial Slide",
+          imagePrompts: [
+            {
+              id: "img-1-1-old",
+              pageNumber: 1,
+              imageIndex: 1,
+              placementRole: "hero",
+              shortLabel: "cover hero",
+              prompt: "Old cover image prompt",
+            },
+          ],
+          slidePayloadJson: "{\"request\":{\"projectTitle\":\"Product Pitch\"}}",
+          modelId: "gpt-5.4",
+        },
+        generatedImages: [
+          {
+            id: "img-1-1-old",
+            pageNumber: 1,
+            imageIndex: 1,
+            placementRole: "hero",
+            shortLabel: "cover hero",
+            prompt: "Old cover image prompt",
+            url: "https://cdn.example.com/reused-cover.png",
+          },
+        ],
+        generatedSlideDraft: null,
+        slidePayloadEditorJson: "{\"request\":{\"projectTitle\":\"Product Pitch\"}}",
+        slidePayloadEditorDirty: false,
+      }),
+    );
+
+    mutationMocks.prepareSlideBundle.mockResolvedValueOnce({
+      maxPages: 1,
+      plannedImageCount: 1,
+      slideSkillLabel: "Modern Editorial Slide",
+      imagePrompts: [
+        {
+          id: "img-1-1-new",
+          pageNumber: 1,
+          imageIndex: 1,
+          placementRole: "hero",
+          shortLabel: "cover hero",
+          prompt: "New cover image prompt",
+        },
+      ],
+      slidePayloadJson: "{\"request\":{\"projectTitle\":\"Product Pitch\"}}",
+      modelId: "gpt-5.4",
+    });
+
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: "header.articleBuilder" }));
+
+    expect(screen.getByAltText("Page 1 · cover hero")).toHaveAttribute("src", "https://cdn.example.com/reused-cover.png");
+
+    fireEvent.click(screen.getByRole("button", { name: "dialog.articleBuilder.prepareBundle" }));
+
+    await waitFor(() => {
+      expect(mutationMocks.prepareSlideBundle).toHaveBeenCalledWith(expect.objectContaining({
+        existingImageAssets: [
+          expect.objectContaining({
+            id: "img-1-1-old",
+            pageNumber: 1,
+            imageIndex: 1,
+            placementRole: "hero",
+            url: "https://cdn.example.com/reused-cover.png",
+          }),
+        ],
+      }));
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "dialog.articleBuilder.generateSlideJson" }));
+
+    await waitFor(() => {
+      expect(mutationMocks.generateSlideDraft).toHaveBeenCalledWith(expect.objectContaining({
+        imageAssets: [
+          expect.objectContaining({
+            id: "img-1-1-new",
+            pageNumber: 1,
+            imageIndex: 1,
+            url: "https://cdn.example.com/reused-cover.png",
+          }),
+        ],
+      }));
+    });
+  });
+
+  it("shows generated image thumbnails and regenerates only missing slots after removing one image", async () => {
+    localStorage.setItem(
+      "presentation-article-builder-draft:7",
+      JSON.stringify({
+        topic: "Product Pitch",
+        article: "Generated presentation article",
+        executionSource: "skill",
+        skillId: "article-writer",
+        agencyId: "",
+        agencyName: "",
+        requiresWebSearch: false,
+        requiresThinking: false,
+        targetImageCount: 8,
+        imageModel: "flux-2.0",
+        canvasRatio: "16:9",
+        advancedMediaOptionsEnabled: false,
+        mediaModelExtraParams: {},
+        imagePromptContext: "",
+        slideSkillId: "modern-editorial-slide",
+        slideOutputFormat: "json",
+        preparedBundle: {
+          maxPages: 2,
+          plannedImageCount: 2,
+          slideSkillLabel: "Modern Editorial Slide",
+          imagePrompts: [
+            {
+              id: "img-1-1",
+              pageNumber: 1,
+              imageIndex: 1,
+              placementRole: "hero",
+              shortLabel: "cover hero",
+              prompt: "Cover image prompt",
+            },
+            {
+              id: "img-2-1",
+              pageNumber: 2,
+              imageIndex: 1,
+              placementRole: "supporting",
+              shortLabel: "section visual",
+              prompt: "Section image prompt",
+            },
+          ],
+          slidePayloadJson: "{\"request\":{\"projectTitle\":\"Product Pitch\"}}",
+          modelId: "gpt-5.4",
+        },
+        generatedImages: [
+          {
+            id: "img-1-1",
+            pageNumber: 1,
+            imageIndex: 1,
+            placementRole: "hero",
+            shortLabel: "cover hero",
+            prompt: "Cover image prompt",
+            url: "https://cdn.example.com/generated-cover.png",
+          },
+          {
+            id: "img-2-1",
+            pageNumber: 2,
+            imageIndex: 1,
+            placementRole: "supporting",
+            shortLabel: "section visual",
+            prompt: "Section image prompt",
+            url: "https://cdn.example.com/generated-section.png",
+          },
+        ],
+        generatedSlideDraft: null,
+        slidePayloadEditorJson: "{\"request\":{\"projectTitle\":\"Product Pitch\"}}",
+        slidePayloadEditorDirty: false,
+      }),
+    );
+
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: "header.articleBuilder" }));
+
+    expect(screen.getByAltText("Page 1 · cover hero")).toBeInTheDocument();
+    expect(screen.getByAltText("Page 2 · section visual")).toBeInTheDocument();
+
+    fireEvent.click(screen.getAllByRole("button", { name: "dialog.articleBuilder.removeImage" })[1]!);
+
+    await waitFor(() => {
+      expect(screen.queryByAltText("Page 2 · section visual")).not.toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "dialog.articleBuilder.generateMissingImages" }));
+
+    await waitFor(() => {
+      expect(mutationMocks.generateImageAsync).toHaveBeenCalledTimes(1);
+    });
+
+    expect(mutationMocks.generateImageAsync).toHaveBeenCalledWith(expect.objectContaining({
+      prompt: "Section image prompt",
+    }));
+
+    await waitFor(() => {
+      expect(mutationMocks.generateSlideDraft).toHaveBeenCalledWith(expect.objectContaining({
+        imageAssets: expect.arrayContaining([
+          expect.objectContaining({
+            prompt: "Cover image prompt",
+            url: "https://cdn.example.com/generated-cover.png",
+          }),
+          expect.objectContaining({
+            prompt: "Section image prompt",
+            url: "https://cdn.example.com/generated-asset.png",
+          }),
+        ]),
+      }));
+    });
+  });
+
+  it("allows removing an extra missing image slot from the planner", async () => {
+    localStorage.setItem(
+      "presentation-article-builder-draft:7",
+      JSON.stringify({
+        topic: "Product Pitch",
+        article: "Generated presentation article",
+        executionSource: "skill",
+        skillId: "article-writer",
+        agencyId: "",
+        agencyName: "",
+        requiresWebSearch: false,
+        requiresThinking: false,
+        targetImageCount: 8,
+        imageModel: "flux-2.0",
+        canvasRatio: "16:9",
+        advancedMediaOptionsEnabled: false,
+        mediaModelExtraParams: {},
+        imagePromptContext: "",
+        slideSkillId: "modern-editorial-slide",
+        slideOutputFormat: "json",
+        preparedBundle: {
+          maxPages: 2,
+          plannedImageCount: 2,
+          slideSkillLabel: "Modern Editorial Slide",
+          imagePrompts: [
+            {
+              id: "img-1-1",
+              pageNumber: 1,
+              imageIndex: 1,
+              placementRole: "hero",
+              shortLabel: "cover hero",
+              prompt: "Cover image prompt",
+            },
+            {
+              id: "img-2-2",
+              pageNumber: 2,
+              imageIndex: 2,
+              placementRole: "supporting",
+              shortLabel: "supporting visual",
+              prompt: "Supporting image prompt",
+            },
+          ],
+          slidePayloadJson: "{\"request\":{\"projectTitle\":\"Product Pitch\"}}",
+          modelId: "gpt-5.4",
+        },
+        generatedImages: [
+          {
+            id: "img-1-1",
+            pageNumber: 1,
+            imageIndex: 1,
+            placementRole: "hero",
+            shortLabel: "cover hero",
+            prompt: "Cover image prompt",
+            url: "https://cdn.example.com/generated-cover.png",
+          },
+        ],
+        generatedSlideDraft: null,
+        slidePayloadEditorJson: "{\"request\":{\"projectTitle\":\"Product Pitch\"}}",
+        slidePayloadEditorDirty: false,
+      }),
+    );
+
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: "header.articleBuilder" }));
+
+    expect(screen.getByText("Page 2 · supporting visual")).toBeInTheDocument();
+
+    fireEvent.click(screen.getAllByRole("button", { name: "dialog.articleBuilder.removeImageSlot" }).at(-1)!);
+
+    await waitFor(() => {
+      expect(screen.queryByText("Page 2 · supporting visual")).not.toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "dialog.articleBuilder.generateImages" }));
+
+    await waitFor(() => {
+      expect(mutationMocks.generateSlideDraft).toHaveBeenCalledWith(expect.objectContaining({
+        imageAssets: [
+          expect.objectContaining({
+            id: "img-1-1",
+            url: "https://cdn.example.com/generated-cover.png",
+          }),
+        ],
+      }));
+    });
+
+    expect(mutationMocks.generateImageAsync).not.toHaveBeenCalled();
+  });
+
+  it("shows the actual planned slot count in preflight instead of the archetype default", async () => {
+    mutationMocks.prepareSlideBundle.mockResolvedValueOnce({
+      maxPages: 1,
+      plannedImageCount: 1,
+      slideSkillLabel: "Modern Editorial Slide",
+      imagePrompts: [
+        {
+          id: "img-1-1",
+          pageNumber: 1,
+          imageIndex: 1,
+          placementRole: "hero",
+          shortLabel: "cover hero",
+          prompt: "Cover image prompt",
+        },
+      ],
+      slidePayloadJson: "{\"request\":{\"projectTitle\":\"Product Pitch\"}}",
+      modelId: "gpt-5.4",
+      preflightPages: [
+        {
+          pageNumber: 1,
+          titleHint: "Sleep Training Basics",
+          compiledText: "Overview: Build a steady bedtime rhythm.",
+          pageIntentHint: "strategy_overview",
+          preferredArchetype: "title_hero_split",
+          forceArchetype: null,
+          archetypeMode: "guided",
+          recommendedImageCount: 2,
+          maxImagesOverride: 2,
+          warnings: [],
+          structure: {
+            paragraphCount: 1,
+            bulletCount: 1,
+            workflowStepCount: 0,
+            timelinePhaseCount: 0,
+            sectionCount: 1,
+          },
+        },
+      ],
+    });
+
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: "header.articleBuilder" }));
+    fireEvent.click(screen.getByRole("button", { name: "dialog.articleBuilder.generate" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("1 images")).toBeInTheDocument();
+    });
+  });
+
+  it("can add a slot, assign a history image to it, and send page-level image slot overrides", async () => {
+    localStorage.setItem(
+      "presentation-article-builder-draft:7",
+      JSON.stringify({
+        topic: "Product Pitch",
+        article: "Generated presentation article",
+        executionSource: "skill",
+        skillId: "article-writer",
+        agencyId: "",
+        agencyName: "",
+        requiresWebSearch: false,
+        requiresThinking: false,
+        targetImageCount: 8,
+        imageModel: "flux-2.0",
+        canvasRatio: "16:9",
+        advancedMediaOptionsEnabled: false,
+        mediaModelExtraParams: {},
+        imagePromptContext: "",
+        slideSkillId: "modern-editorial-slide",
+        slideOutputFormat: "json",
+        preparedBundle: {
+          maxPages: 1,
+          plannedImageCount: 1,
+          slideSkillLabel: "Modern Editorial Slide",
+          imagePrompts: [
+            {
+              id: "img-1-1",
+              pageNumber: 1,
+              imageIndex: 1,
+              placementRole: "hero",
+              shortLabel: "cover hero",
+              prompt: "Cover image prompt",
+            },
+          ],
+          slidePayloadJson: "{\"request\":{\"projectTitle\":\"Product Pitch\"}}",
+          modelId: "gpt-5.4",
+          preflightPages: [
+            {
+              pageNumber: 1,
+              titleHint: "Sleep Training Basics",
+              compiledText: "Overview: Build a steady bedtime rhythm.",
+              pageIntentHint: "strategy_overview",
+              preferredArchetype: "title_hero_split",
+              forceArchetype: null,
+              archetypeMode: "guided",
+              recommendedImageCount: 1,
+              maxImagesOverride: 1,
+              warnings: [],
+              structure: {
+                paragraphCount: 1,
+                bulletCount: 1,
+                workflowStepCount: 0,
+                timelinePhaseCount: 0,
+                sectionCount: 1,
+              },
+            },
+          ],
+        },
+        generatedImages: [
+          {
+            id: "img-1-1",
+            pageNumber: 1,
+            imageIndex: 1,
+            placementRole: "hero",
+            shortLabel: "cover hero",
+            prompt: "Cover image prompt",
+            url: "https://cdn.example.com/generated-cover.png",
+          },
+        ],
+        generatedSlideDraft: null,
+        slidePayloadEditorJson: "{\"request\":{\"projectTitle\":\"Product Pitch\"}}",
+        slidePayloadEditorDirty: false,
+      }),
+    );
+
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: "header.articleBuilder" }));
+
+    fireEvent.click(screen.getAllByRole("button", { name: "dialog.articleBuilder.addImageSlot" })[0]!);
+
+    await waitFor(() => {
+      expect(screen.getByText("Page 1 · supporting")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getAllByRole("button", { name: "dialog.articleBuilder.pickSlotImage" }).at(-1)!);
+    fireEvent.click(screen.getByRole("button", { name: "dialog.articleBuilder.assetPickerHistory" }));
+    fireEvent.click(screen.getByRole("button", { name: "dialog.articleBuilder.useThisImage" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "dialog.articleBuilder.generateSlideJson" }));
+
+    await waitFor(() => {
+      expect(mutationMocks.generateSlideDraft).toHaveBeenCalledWith(expect.objectContaining({
+        pageImagePlanOverrides: [
+          {
+            pageNumber: 1,
+            maxImagesOverride: 2,
+          },
+        ],
+        imageAssets: expect.arrayContaining([
+          expect.objectContaining({
+            id: "img-1-1",
+            url: "https://cdn.example.com/generated-cover.png",
+          }),
+          expect.objectContaining({
+            pageNumber: 1,
+            imageIndex: 2,
+            url: "https://cdn.example.com/history-hero.png",
+          }),
+        ]),
+      }));
+    });
+  });
+
+  it("regenerates a single slot without regenerating the whole bundle", async () => {
+    localStorage.setItem(
+      "presentation-article-builder-draft:7",
+      JSON.stringify({
+        topic: "Product Pitch",
+        article: "Generated presentation article",
+        executionSource: "skill",
+        skillId: "article-writer",
+        agencyId: "",
+        agencyName: "",
+        requiresWebSearch: false,
+        requiresThinking: false,
+        targetImageCount: 8,
+        imageModel: "flux-2.0",
+        canvasRatio: "16:9",
+        advancedMediaOptionsEnabled: false,
+        mediaModelExtraParams: {},
+        imagePromptContext: "",
+        slideSkillId: "modern-editorial-slide",
+        slideOutputFormat: "json",
+        preparedBundle: {
+          maxPages: 1,
+          plannedImageCount: 1,
+          slideSkillLabel: "Modern Editorial Slide",
+          imagePrompts: [
+            {
+              id: "img-1-1",
+              pageNumber: 1,
+              imageIndex: 1,
+              placementRole: "hero",
+              shortLabel: "cover hero",
+              prompt: "Cover image prompt",
+            },
+          ],
+          slidePayloadJson: "{\"request\":{\"projectTitle\":\"Product Pitch\"}}",
+          modelId: "gpt-5.4",
+          preflightPages: [
+            {
+              pageNumber: 1,
+              titleHint: "Sleep Training Basics",
+              compiledText: "Overview: Build a steady bedtime rhythm.",
+              pageIntentHint: "strategy_overview",
+              preferredArchetype: "title_hero_split",
+              forceArchetype: null,
+              archetypeMode: "guided",
+              recommendedImageCount: 1,
+              maxImagesOverride: 1,
+              warnings: [],
+              structure: {
+                paragraphCount: 1,
+                bulletCount: 1,
+                workflowStepCount: 0,
+                timelinePhaseCount: 0,
+                sectionCount: 1,
+              },
+            },
+          ],
+        },
+        generatedImages: [],
+        generatedSlideDraft: null,
+        slidePayloadEditorJson: "{\"request\":{\"projectTitle\":\"Product Pitch\"}}",
+        slidePayloadEditorDirty: false,
+      }),
+    );
+
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: "header.articleBuilder" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "dialog.articleBuilder.regenerateSlot" })[0]!);
+
+    await waitFor(() => {
+      expect(mutationMocks.generateImageAsync).toHaveBeenCalledTimes(1);
+    });
+
+    expect(mutationMocks.generateImageAsync).toHaveBeenCalledWith(expect.objectContaining({
+      prompt: "Cover image prompt",
+    }));
+
+    await waitFor(() => {
+      expect(screen.getByAltText("Page 1 · cover hero")).toHaveAttribute("src", "https://cdn.example.com/generated-asset.png");
+    });
+  });
+
+  it("shows regenerate actions in skill preflight and regenerates the lead slot without adding a new slot", async () => {
+    localStorage.setItem(
+      "presentation-article-builder-draft:7",
+      JSON.stringify({
+        topic: "Product Pitch",
+        article: "Generated presentation article",
+        executionSource: "skill",
+        skillId: "article-writer",
+        agencyId: "",
+        agencyName: "",
+        requiresWebSearch: false,
+        requiresThinking: false,
+        targetImageCount: 8,
+        imageModel: "flux-2.0",
+        canvasRatio: "16:9",
+        advancedMediaOptionsEnabled: false,
+        mediaModelExtraParams: {},
+        imagePromptContext: "",
+        slideSkillId: "modern-editorial-slide",
+        slideOutputFormat: "json",
+        preparedBundle: {
+          maxPages: 1,
+          plannedImageCount: 1,
+          slideSkillLabel: "Modern Editorial Slide",
+          imagePrompts: [
+            {
+              id: "img-1-1",
+              pageNumber: 1,
+              imageIndex: 1,
+              placementRole: "hero",
+              shortLabel: "cover hero",
+              prompt: "Cover image prompt",
+            },
+          ],
+          slidePayloadJson: "{\"request\":{\"projectTitle\":\"Product Pitch\"}}",
+          modelId: "gpt-5.4",
+          preflightPages: [
+            {
+              pageNumber: 1,
+              titleHint: "Sleep Training Basics",
+              compiledText: "Overview: Build a steady bedtime rhythm.",
+              pageIntentHint: "strategy_overview",
+              preferredArchetype: "title_hero_split",
+              forceArchetype: null,
+              archetypeMode: "guided",
+              recommendedImageCount: 1,
+              maxImagesOverride: 1,
+              warnings: [],
+              structure: {
+                paragraphCount: 1,
+                bulletCount: 1,
+                workflowStepCount: 0,
+                timelinePhaseCount: 0,
+                sectionCount: 1,
+              },
+            },
+          ],
+        },
+        generatedImages: [
+          {
+            id: "img-1-1",
+            pageNumber: 1,
+            imageIndex: 1,
+            placementRole: "hero",
+            shortLabel: "cover hero",
+            prompt: "Cover image prompt",
+            url: "https://cdn.example.com/generated-cover.png",
+          },
+        ],
+        generatedSlideDraft: null,
+        slidePayloadEditorJson: "{\"request\":{\"projectTitle\":\"Product Pitch\"}}",
+        slidePayloadEditorDirty: false,
+      }),
+    );
+
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: "header.articleBuilder" }));
+
+    expect(screen.getAllByRole("button", { name: "dialog.articleBuilder.regenerateSlot" }).length).toBeGreaterThanOrEqual(2);
+
+    fireEvent.click(screen.getAllByRole("button", { name: "dialog.articleBuilder.regenerateSlot" }).at(-1)!);
+
+    await waitFor(() => {
+      expect(mutationMocks.generateImageAsync).toHaveBeenCalledTimes(1);
+    });
+
+    expect(mutationMocks.generateImageAsync).toHaveBeenCalledWith(expect.objectContaining({
+      prompt: "Cover image prompt",
+    }));
+
+    expect(screen.queryByText("Page 1 · supporting")).not.toBeInTheDocument();
+  });
+
+  it("keeps polling slower slot regeneration tasks until a later completed result arrives", async () => {
+    localStorage.setItem(
+        "presentation-article-builder-draft:7",
+        JSON.stringify({
+          topic: "Product Pitch",
+          article: "Generated presentation article",
+          executionSource: "skill",
+          skillId: "article-writer",
+          agencyId: "",
+          agencyName: "",
+          requiresWebSearch: false,
+          requiresThinking: false,
+          targetImageCount: 8,
+          imageModel: "flux-2.0",
+          canvasRatio: "16:9",
+          advancedMediaOptionsEnabled: false,
+          mediaModelExtraParams: {},
+          imagePromptContext: "",
+          slideSkillId: "modern-editorial-slide",
+          slideOutputFormat: "json",
+          preparedBundle: {
+            maxPages: 1,
+            plannedImageCount: 1,
+            slideSkillLabel: "Modern Editorial Slide",
+            imagePrompts: [
+              {
+                id: "img-1-1",
+                pageNumber: 1,
+                imageIndex: 1,
+                placementRole: "hero",
+                shortLabel: "cover hero",
+                prompt: "Cover image prompt",
+              },
+            ],
+            slidePayloadJson: "{\"request\":{\"projectTitle\":\"Product Pitch\"}}",
+            modelId: "gpt-5.4",
+            preflightPages: [
+              {
+                pageNumber: 1,
+                titleHint: "Sleep Training Basics",
+                compiledText: "Overview: Build a steady bedtime rhythm.",
+                pageIntentHint: "strategy_overview",
+                preferredArchetype: "title_hero_split",
+                forceArchetype: null,
+                archetypeMode: "guided",
+                recommendedImageCount: 1,
+                maxImagesOverride: 1,
+                warnings: [],
+                structure: {
+                  paragraphCount: 1,
+                  bulletCount: 1,
+                  workflowStepCount: 0,
+                  timelinePhaseCount: 0,
+                  sectionCount: 1,
+                },
+              },
+            ],
+          },
+          generatedImages: [],
+          generatedSlideDraft: null,
+          slidePayloadEditorJson: "{\"request\":{\"projectTitle\":\"Product Pitch\"}}",
+          slidePayloadEditorDirty: false,
+        }),
+      );
+
+    mutationMocks.generateImageAsync.mockResolvedValue({
+      taskId: "media-task-slow-1",
+      status: "queued",
+    });
+    queryState.mediaGetTaskFetch = vi
+      .fn()
+      .mockResolvedValueOnce({ status: "processing" })
+      .mockResolvedValueOnce({ status: "processing" })
+      .mockResolvedValueOnce({
+        status: "completed",
+        resultData: {
+          output: {
+            url: "https://cdn.example.com/generated-slow-asset.png",
+          },
+        },
+      });
+
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: "header.articleBuilder" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "dialog.articleBuilder.regenerateSlot" })[0]!);
+
+    await waitFor(() => {
+      expect(mutationMocks.generateImageAsync).toHaveBeenCalledTimes(1);
+    });
+
+    await waitFor(() => {
+      expect(queryState.mediaGetTaskFetch).toHaveBeenCalledTimes(3);
+    }, { timeout: 10_000 });
+    expect(toastMocks.error).not.toHaveBeenCalledWith(expect.stringContaining("timeout"));
+  }, 15_000);
+
+  it("sends the edited skill input json override when generating slide json", async () => {
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: "header.articleBuilder" }));
+    fireEvent.click(screen.getByRole("button", { name: "dialog.articleBuilder.generate" }));
+
+    await waitFor(() => {
+      expect(mutationMocks.prepareSlideBundle).toHaveBeenCalledTimes(1);
+    });
+
+    const overrideJson = JSON.stringify({
+      request: {
+        designStyle: "soft-wellness",
+        randomizeLayouts: false,
+        seed: "sleep-9-pages-20260330-v2",
+        content: {
+          pages: [
+            {
+              pageIntentHint: "editorial_cover",
+              forceArchetype: "editorial_cover_split",
+            },
+          ],
+        },
+      },
+    }, null, 2);
+
+    fireEvent.change(screen.getByLabelText("Skill Input JSON"), {
+      target: { value: overrideJson },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "dialog.articleBuilder.generateImages" }));
+
+    await waitFor(() => {
+      expect(mutationMocks.generateSlideDraft).toHaveBeenCalledWith(expect.objectContaining({
+        slidePayloadOverrideJson: overrideJson,
+      }));
+    });
+  });
+
+  it("keeps the last valid skill input json when the server returns html instead of json", async () => {
+    localStorage.setItem(
+      "presentation-article-builder-draft:7",
+      JSON.stringify({
+        topic: "Product Pitch",
+        article: "Generated presentation article",
+        executionSource: "skill",
+        skillId: "article-writer",
+        agencyId: "",
+        agencyName: "",
+        requiresWebSearch: false,
+        requiresThinking: false,
+        targetImageCount: 8,
+        imageModel: "flux-2.0",
+        canvasRatio: "16:9",
+        advancedMediaOptionsEnabled: false,
+        mediaModelExtraParams: {},
+        imagePromptContext: "",
+        slideSkillId: "modern-editorial-slide",
+        slideOutputFormat: "json",
+        preparedBundle: {
+          maxPages: 1,
+          plannedImageCount: 1,
+          slideSkillLabel: "Modern Editorial Slide",
+          imagePrompts: [
+            {
+              id: "img-1-1",
+              pageNumber: 1,
+              imageIndex: 1,
+              placementRole: "hero",
+              shortLabel: "cover hero",
+              prompt: "Cover image prompt",
+            },
+          ],
+          slidePayloadJson: "{\"request\":{\"projectTitle\":\"Product Pitch\"}}",
+          modelId: "gpt-5.4",
+        },
+        generatedImages: [],
+        generatedSlideDraft: null,
+        slidePayloadEditorJson: "{\"request\":{\"projectTitle\":\"Product Pitch\"}}",
+        slidePayloadEditorDirty: false,
+      }),
+    );
+
+    mutationMocks.prepareSlideBundle.mockResolvedValueOnce({
+      maxPages: 1,
+      plannedImageCount: 1,
+      slideSkillLabel: "Modern Editorial Slide",
+      imagePrompts: [
+        {
+          id: "img-1-1",
+          pageNumber: 1,
+          imageIndex: 1,
+          placementRole: "hero",
+          shortLabel: "cover hero",
+          prompt: "Cover image prompt",
+        },
+      ],
+      slidePayloadJson: "<!DOCTYPE html><html><body>500</body></html>",
+      modelId: "gpt-5.4",
+    });
+
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: "header.articleBuilder" }));
+    fireEvent.click(screen.getByRole("button", { name: "dialog.articleBuilder.prepareBundle" }));
+
+    await waitFor(() => {
+      expect(mutationMocks.prepareSlideBundle).toHaveBeenCalledTimes(1);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Skill Input JSON")).toHaveValue("{\"request\":{\"projectTitle\":\"Product Pitch\"}}");
+    });
+    expect(toastMocks.error).toHaveBeenCalledWith("Skill input JSON response was invalid. Kept the previous valid JSON instead.");
+  });
+
+  it("does not send the auto-generated skill input json as an override unless the user edits it", async () => {
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: "header.articleBuilder" }));
+    fireEvent.click(screen.getByRole("button", { name: "dialog.articleBuilder.generate" }));
+
+    await waitFor(() => {
+      expect(mutationMocks.prepareSlideBundle).toHaveBeenCalledTimes(1);
+    });
+
+    expect(screen.getByLabelText("Skill Input JSON")).toHaveValue("{\"request\":{\"projectTitle\":\"Product Pitch\"}}");
+
+    fireEvent.click(screen.getByRole("button", { name: "dialog.articleBuilder.generateImages" }));
+
+    await waitFor(() => {
+      expect(mutationMocks.generateSlideDraft).toHaveBeenCalledWith(expect.objectContaining({
+        slidePayloadOverrideJson: null,
+      }));
+    });
+  });
+
+  it("shows per-page skill preflight details from the prepared slide bundle", async () => {
+    mutationMocks.prepareSlideBundle.mockResolvedValueOnce({
+      maxPages: 2,
+      plannedImageCount: 3,
+      slideSkillLabel: "Modern Editorial Slide",
+      imagePrompts: [
+        {
+          id: "img-1-1",
+          pageNumber: 1,
+          imageIndex: 1,
+          placementRole: "hero",
+          shortLabel: "cover hero",
+          prompt: "Cover image prompt",
+        },
+      ],
+      slidePayloadJson: "{\"request\":{\"projectTitle\":\"Product Pitch\"}}",
+      modelId: "gpt-5.4",
+      preflightWarnings: ["Some pages required synthesized structure before sending them to the skill."],
+      preflightPages: [
+        {
+          pageNumber: 1,
+          titleHint: "Sleep Training Basics",
+          compiledText: "Sleep Training Basics\n\nOverview: Build a steady bedtime rhythm.\n\nKey Points:\n• Keep the room calm",
+          pageIntentHint: "strategy_overview",
+          preferredArchetype: "executive_summary_dashboard",
+          forceArchetype: null,
+          archetypeMode: "guided",
+          recommendedImageCount: 1,
+          maxImagesOverride: 1,
+          warnings: ["Synthesized key points from prose because the page did not contain explicit bullets."],
+          structure: {
+            paragraphCount: 2,
+            bulletCount: 0,
+            workflowStepCount: 0,
+            timelinePhaseCount: 0,
+            sectionCount: 1,
+          },
+        },
+      ],
+    });
+
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: "header.articleBuilder" }));
+    fireEvent.click(screen.getByRole("button", { name: "dialog.articleBuilder.generate" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Skill Preflight")).toBeInTheDocument();
+    });
+
+    expect(screen.getByText("strategy_overview")).toBeInTheDocument();
+    expect(screen.getByText(/Guided: executive_summary_dashboard/)).toBeInTheDocument();
+    expect(screen.getByDisplayValue(/Overview: Build a steady bedtime rhythm/)).toBeInTheDocument();
+  });
+
+  it("keeps the selected slide skill and downgrades to JSON import when artifacts are unavailable for that skill", async () => {
     queryState.skillCatalog = [
       ...buildSkillCatalog(),
       {
@@ -4293,13 +5242,16 @@ describe("PresentationEditor", () => {
     await waitFor(() => {
       expect(mutationMocks.generateSlideDraft).toHaveBeenCalledWith(expect.objectContaining({
         deckId: 7,
-        slideSkillId: "sandbox-slide-builder",
+        slideSkillId: "modern-editorial-slide",
+        outputFormats: ["json"],
       }));
     });
 
     await waitFor(() => {
-      expect(mutationMocks.addSlide).toHaveBeenCalledTimes(1);
+      expect(screen.getByRole("button", { name: "dialog.articleBuilder.insertSlides" })).toBeEnabled();
     });
+
+    expect(mutationMocks.addSlide).not.toHaveBeenCalled();
   });
 
   it("falls back to JSON import when PPTX is requested but no sandbox slide skill is available", async () => {
@@ -4387,6 +5339,172 @@ describe("PresentationEditor", () => {
         outputFormats: ["json"],
       }));
     });
+
+    await waitFor(() => {
+      expect(mutationMocks.addSlide).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it("keeps insert disabled when generated slide json contains only empty slides", async () => {
+    localStorage.setItem(
+      "presentation-article-builder-draft:7",
+      JSON.stringify({
+        topic: "Product Pitch",
+        article: "Generated presentation article",
+        executionSource: "skill",
+        skillId: "article-writer",
+        agencyId: "",
+        agencyName: "",
+        requiresWebSearch: false,
+        requiresThinking: false,
+        targetImageCount: 8,
+        imageModel: "flux-2.0",
+        canvasRatio: "16:9",
+        advancedMediaOptionsEnabled: false,
+        mediaModelExtraParams: {},
+        imagePromptContext: "",
+        slideSkillId: "modern-editorial-slide",
+        slideOutputFormat: "json",
+        preparedBundle: {
+          maxPages: 1,
+          plannedImageCount: 1,
+          slideSkillLabel: "Modern Editorial Slide",
+          imagePrompts: [],
+          slidePayloadJson: "{\"request\":{\"projectTitle\":\"Product Pitch\"}}",
+          modelId: "gpt-5.4",
+        },
+        generatedImages: [],
+        generatedSlideDraft: null,
+      }),
+    );
+    mutationMocks.generateSlideDraft.mockResolvedValue({
+      maxPages: 1,
+      slideSkillLabel: "Modern Editorial Slide",
+      slidePayloadJson: "{\"request\":{\"projectTitle\":\"Product Pitch\"}}",
+      slideJson: JSON.stringify({
+        slides: [
+          {
+            title: "Empty slide",
+            elements: [],
+          },
+        ],
+      }),
+      modelId: "gpt-5.4",
+    });
+
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: "header.articleBuilder" }));
+    fireEvent.click(screen.getByRole("button", { name: "dialog.articleBuilder.generateSlideJson" }));
+
+    await waitFor(() => {
+      expect(mutationMocks.generateSlideDraft).toHaveBeenCalledTimes(1);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "dialog.articleBuilder.insertSlides" })).toBeDisabled();
+    });
+
+    expect(screen.getByText("Empty slides 1")).toBeInTheDocument();
+    expect(screen.getByText(/Debug trace: total slides = 1, importable slides = 0/)).toBeInTheDocument();
+
+    expect(mutationMocks.addSlide).not.toHaveBeenCalled();
+  });
+
+  it("lets users generate slide json directly from a prepared manual-only bundle even when no images have been attached yet", async () => {
+    localStorage.setItem(
+      "presentation-article-builder-draft:7",
+      JSON.stringify({
+        topic: "Product Pitch",
+        article: "Generated presentation article",
+        executionSource: "skill",
+        skillId: "article-writer",
+        agencyId: "",
+        agencyName: "",
+        requiresWebSearch: false,
+        requiresThinking: false,
+        targetImageCount: 8,
+        imageModel: "flux-2.0",
+        canvasRatio: "9:16",
+        advancedMediaOptionsEnabled: false,
+        mediaModelExtraParams: {},
+        imagePromptContext: "",
+        slideSkillId: "modern-editorial-slide",
+        slideOutputFormat: "json",
+        preparedBundle: {
+          maxPages: 2,
+          plannedImageCount: 2,
+          slideSkillLabel: "Modern Editorial Slide",
+          imagePrompts: [
+            {
+              id: "img-1-1",
+              pageNumber: 1,
+              imageIndex: 1,
+              placementRole: "hero",
+              shortLabel: "cover hero",
+              prompt: "Cover image prompt",
+            },
+            {
+              id: "img-2-1",
+              pageNumber: 2,
+              imageIndex: 1,
+              placementRole: "hero",
+              shortLabel: "section hero",
+              prompt: "Section image prompt",
+            },
+          ],
+          slidePayloadJson: "{\"request\":{\"projectTitle\":\"Product Pitch\"}}",
+          modelId: "gpt-5.4",
+        },
+        generatedImages: [],
+        generatedSlideDraft: null,
+        slidePayloadEditorJson: "{\"request\":{\"projectTitle\":\"Product Pitch\"}}",
+        slidePayloadEditorDirty: false,
+      }),
+    );
+    mutationMocks.generateSlideDraft.mockResolvedValue({
+      maxPages: 2,
+      slideSkillLabel: "Modern Editorial Slide",
+      slidePayloadJson: "{\"request\":{\"projectTitle\":\"Product Pitch\"}}",
+      slideJson: JSON.stringify({
+        canvas: { ratio: "9:16" },
+        slides: [
+          {
+            elements: [
+              {
+                kind: "text",
+                role: "title",
+                text: "Manual-only slide",
+                xPct: 10,
+                yPct: 10,
+                wPct: 60,
+                hPct: 12,
+                fontFace: "Inter",
+                fontSize: 28,
+                color: "#111827",
+                align: "left",
+                bold: true,
+              },
+            ],
+          },
+        ],
+      }),
+      modelId: "gpt-5.4",
+    });
+    mutationMocks.addSlide.mockResolvedValueOnce({ id: 904 });
+
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: "header.articleBuilder" }));
+    fireEvent.click(screen.getByRole("button", { name: "dialog.articleBuilder.generateSlideJson" }));
+
+    await waitFor(() => {
+      expect(mutationMocks.generateSlideDraft).toHaveBeenCalledWith(expect.objectContaining({
+        imageAssets: [],
+      }));
+    });
+
+    expect(mutationMocks.generateImageAsync).not.toHaveBeenCalled();
 
     await waitFor(() => {
       expect(mutationMocks.addSlide).toHaveBeenCalledTimes(1);
@@ -4525,6 +5643,37 @@ describe("PresentationEditor", () => {
   });
 
   it("falls back to the sandbox JSON artifact when the immediate slide json would import as empty slides", async () => {
+    localStorage.setItem(
+      "presentation-article-builder-draft:7",
+      JSON.stringify({
+        topic: "Product Pitch",
+        article: "Generated presentation article",
+        executionSource: "skill",
+        skillId: "article-writer",
+        agencyId: "",
+        agencyName: "",
+        requiresWebSearch: false,
+        requiresThinking: false,
+        targetImageCount: 8,
+        imageModel: "flux-2.0",
+        canvasRatio: "16:9",
+        advancedMediaOptionsEnabled: false,
+        mediaModelExtraParams: {},
+        imagePromptContext: "",
+        slideSkillId: "modern-editorial-slide",
+        slideOutputFormat: "pptx",
+        preparedBundle: {
+          maxPages: 1,
+          plannedImageCount: 1,
+          slideSkillLabel: "Modern Editorial Slide",
+          imagePrompts: [],
+          slidePayloadJson: "{\"request\":{\"projectTitle\":\"Product Pitch\"}}",
+          modelId: "gpt-5.4",
+        },
+        generatedImages: [],
+        generatedSlideDraft: null,
+      }),
+    );
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       text: async () => JSON.stringify({
@@ -4599,25 +5748,28 @@ describe("PresentationEditor", () => {
     render(<PresentationEditor />);
 
     fireEvent.click(screen.getByRole("button", { name: "header.articleBuilder" }));
-    fireEvent.click(screen.getByRole("button", { name: "dialog.articleBuilder.generate" }));
+    fireEvent.click(screen.getByRole("button", { name: "dialog.articleBuilder.generateSlideJson" }));
 
     await waitFor(() => {
       expect(mutationMocks.generateSlideDraft).toHaveBeenCalledTimes(1);
     });
 
-    await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith("https://cdn.example.com/manifest.json", { credentials: "omit" });
-    });
-
-    await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith("https://cdn.example.com/layout-spec.json", { credentials: "omit" });
-    });
+    const insertSlidesButton = await screen.findByRole("button", { name: "dialog.articleBuilder.insertSlides" });
+    fireEvent.click(insertSlidesButton);
 
     await waitFor(() => {
       expect(mutationMocks.addSlide).toHaveBeenCalledWith(expect.objectContaining({
         title: "Artifact-backed Slide",
       }));
     });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledWith("https://cdn.example.com/layout-spec.json", { credentials: "omit" });
+    await waitFor(() => {
+      expect((screen.getByLabelText("dialog.articleBuilder.slideJsonLabel") as HTMLTextAreaElement).value).toContain("Artifact-backed Slide");
+    });
+    expect(screen.getByText("Payload shown: JSON artifact that was actually imported into this deck.")).toBeInTheDocument();
+    expect(screen.getByText(/Imported JSON artifact:/)).toBeInTheDocument();
   });
 
   it("imports wrapped layoutSpec slide json returned by newer GenJS-style skills", async () => {
@@ -4694,6 +5846,7 @@ describe("PresentationEditor", () => {
                   hPct: 12,
                   fontFace: "Inter",
                   fontSize: 28,
+                  lineHeight: 1.5,
                   color: "#111827",
                   align: "left",
                   bold: true,
@@ -4713,12 +5866,25 @@ describe("PresentationEditor", () => {
     fireEvent.click(screen.getByRole("button", { name: "dialog.articleBuilder.generateSlideJson" }));
 
     await waitFor(() => {
+      expect(mutationMocks.generateSlideDraft).toHaveBeenCalledTimes(1);
+    });
+    fireEvent.click(await screen.findByRole("button", { name: "dialog.articleBuilder.insertSlides" }));
+    await waitFor(() => {
       expect(mutationMocks.addSlide).toHaveBeenCalledTimes(1);
     });
 
     expect(mutationMocks.addSlide).toHaveBeenCalledWith(expect.objectContaining({
       title: "Wrapped Layout Slide",
       notes: "Wrapped notes",
+      slideContent: expect.objectContaining({
+        elements: expect.arrayContaining([
+          expect.objectContaining({
+            type: "text",
+            text: "Wrapped Layout Slide",
+            lineHeight: 1.5,
+          }),
+        ]),
+      }),
     }));
   });
 
@@ -5448,7 +6614,7 @@ describe("PresentationEditor", () => {
 
     render(<PresentationEditor />);
 
-    expect(screen.getByRole("button", { name: /save slide/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /header\.saveSlide/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /play slideshow/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /more actions/i })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^import$/i })).not.toBeInTheDocument();
@@ -5728,7 +6894,7 @@ describe("PresentationEditor", () => {
 
     render(<PresentationEditor />);
 
-    fireEvent.click(screen.getByRole("button", { name: /save slide/i }));
+    fireEvent.click(screen.getByRole("button", { name: /header\.saveSlide/i }));
     await waitFor(() => {
       expect(screen.getByText(/save: saved/i)).toBeInTheDocument();
     });
@@ -5767,7 +6933,7 @@ describe("PresentationEditor", () => {
     });
     expect(mutationMocks.updateSlide).toHaveBeenCalledTimes(2);
 
-    fireEvent.click(screen.getByRole("button", { name: /save slide/i }));
+    fireEvent.click(screen.getByRole("button", { name: /header\.saveSlide/i }));
     await act(async () => {
       await Promise.resolve();
     });
@@ -5776,6 +6942,47 @@ describe("PresentationEditor", () => {
       saveMode: "manual",
     }));
     expect(screen.queryByRole("button", { name: /reload latest slide/i })).not.toBeInTheDocument();
+  });
+
+  it("cancels a queued autosave when manual save starts first", async () => {
+    vi.useFakeTimers();
+    try {
+      mutationMocks.updateSlide.mockImplementationOnce(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 1200));
+        return { version: 4 };
+      });
+
+      render(<PresentationEditor />);
+
+      fireEvent.keyDown(window, { key: "ArrowRight" });
+      fireEvent.click(screen.getByRole("button", { name: /header\.saveSlide/i }));
+
+      expect(mutationMocks.updateSlide).toHaveBeenCalledTimes(1);
+      expect(mutationMocks.updateSlide).toHaveBeenLastCalledWith(expect.objectContaining({
+        saveMode: "manual",
+      }));
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(800);
+      });
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(mutationMocks.updateSlide).toHaveBeenCalledTimes(1);
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(400);
+      });
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(toastMocks.success).toHaveBeenCalledWith("Presentation saved.");
+      expect(mutationMocks.updateSlide).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   describe("Import button integration", () => {

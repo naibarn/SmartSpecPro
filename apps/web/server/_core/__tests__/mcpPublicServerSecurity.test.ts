@@ -62,6 +62,26 @@ vi.mock("../../services/featureFlags", () => ({
   getTenantFeatureFlag: vi.fn(async () => true),
 }));
 
+vi.mock("../../services/appRuntimeConfig", async () => {
+  const actual = await vi.importActual<typeof import("../../services/appRuntimeConfig")>(
+    "../../services/appRuntimeConfig",
+  );
+  return {
+    ...actual,
+    getAppRuntimeConfig: vi.fn(async () => ({
+      pythonBackendUrl: "http://localhost:4000",
+      proxyToken: "test-proxy-token",
+      webGatewayToken: "test-web-gateway-token",
+    })),
+    getCachedPythonBackendUrl: vi.fn(() => "http://localhost:4000"),
+  };
+});
+
+vi.mock("../../services/skillRegistry", () => ({
+  getAvailableSkillsAsync: vi.fn(async () => []),
+  getSkillByIdAsync: vi.fn(async () => null),
+}));
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------

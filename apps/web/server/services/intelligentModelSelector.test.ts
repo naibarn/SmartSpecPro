@@ -181,6 +181,7 @@ function makeRow(
     priority: 50,
     priorityLocked: false,
     isFree: false,
+    catalogEligibility: "public-chat",
     ...overrides,
   };
 }
@@ -196,6 +197,23 @@ describe("selectBestLlmModel", () => {
       rows,
     );
     expect(result).toBe("claude-3");
+  });
+
+  it("filters manual-only rows out before scoring", () => {
+    const rows = [
+      makeRow("manual-review", {
+        priority: 1,
+        catalogEligibility: "manual-only",
+        supportsFunctionTools: true,
+      }),
+      makeRow("public-auto", {
+        priority: 20,
+        catalogEligibility: "public-chat",
+        supportsFunctionTools: true,
+      }),
+    ];
+
+    expect(selectBestLlmModel({ supportsFunctionTools: true }, rows)).toBe("public-auto");
   });
 
   it("returns null when no row satisfies requirements", () => {
@@ -221,6 +239,27 @@ describe("selectBestLlmModel", () => {
       rows,
     );
     expect(result).toBeNull();
+  });
+
+  it("filters by refined structured-output requirements", () => {
+    const rows = [
+      makeRow("json-only", {
+        supportsStructuredOutputs: true,
+        supportsJsonMode: true,
+        supportsStrictToolSchema: false,
+      }),
+      makeRow("strict-tools", {
+        supportsStructuredOutputs: true,
+        supportsJsonMode: true,
+        supportsStrictToolSchema: true,
+        priority: 20,
+      }),
+    ];
+    const result = selectBestLlmModel(
+      { supportsJsonMode: true, supportsStrictToolSchema: true },
+      rows,
+    );
+    expect(result).toBe("strict-tools");
   });
 
   it("false requirements do not filter out capable models", () => {

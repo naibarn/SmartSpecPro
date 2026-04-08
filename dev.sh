@@ -434,34 +434,32 @@ cmd_shell() {
 
 cmd_desktop() {
     log_step "Starting desktop app in development mode..."
-    
-    # Check if Tauri CLI is installed
-    if ! command -v cargo &> /dev/null; then
-        log_error "Rust/Cargo is not installed. Please install Rust first."
+
+    if [ ! -x "./scripts/desktop-app.sh" ]; then
+        log_error "Desktop helper script not found: ./scripts/desktop-app.sh"
         exit 1
     fi
-    
-    cd apps/desktop
-    
-    # Install dependencies if needed
-    if [ ! -d "node_modules" ]; then
-        log_step "Installing dependencies..."
-        pnpm install
-    fi
-    
-    log_info "Starting Tauri development server..."
-    pnpm tauri dev
+
+    log_info "Using desktop helper to ensure SmartSpec Web is ready before launching Tauri."
+    ./scripts/desktop-app.sh dev
 }
 
 cmd_sandbox() {
     check_docker
     
     local action=$1
+    local sandbox_dir="apps/tauri-shell/sandbox-images"
+
+    if [ ! -d "$sandbox_dir" ]; then
+        log_warn "Sandbox images are not present in the current desktop shell checkout."
+        log_warn "Expected directory: $sandbox_dir"
+        return 0
+    fi
     
     case "$action" in
         build)
             log_step "Building sandbox images..."
-            cd apps/desktop/sandbox-images
+            cd "$sandbox_dir"
             ./build.sh all
             ;;
         list)

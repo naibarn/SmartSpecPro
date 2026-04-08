@@ -7,6 +7,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { clearPrivateVaultAccessToken } from '@/lib/privateVault';
+import { clearLocalAiDeviceState } from '@/features/local-ai/state/localAiDeviceStateStorage';
 
 export interface User {
   id: string;
@@ -79,7 +80,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             plan: userData.role === 'admin' ? 'enterprise' : 'free',
             credits: userData.credits ?? 100,
             role: userData.role,
-            currentTenantId: userData.currentTenantId ?? null,
+            currentTenantId:
+              userData.currentTenantId !== null &&
+              userData.currentTenantId !== undefined
+                ? String(userData.currentTenantId)
+                : null,
           });
         } else {
           // No valid session
@@ -132,7 +137,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${result.user.email}`,
           plan: 'free',
           credits: 100,
-          currentTenantId: result.user.currentTenantId ?? null,
+          currentTenantId:
+            result.user.currentTenantId !== null &&
+            result.user.currentTenantId !== undefined
+              ? String(result.user.currentTenantId)
+              : null,
         });
       } else {
         const errorMessage = result?.message || data.error?.json?.message || 'Login failed';
@@ -195,6 +204,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
+      if (user?.id) {
+        clearLocalAiDeviceState({
+          tenantId: user.currentTenantId ?? null,
+          userId: user.id,
+          runtimeNamespace: 'web',
+        });
+      }
       clearPrivateVaultAccessToken();
       setUser(null);
     }
@@ -247,7 +263,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           plan: userData.role === 'admin' ? 'enterprise' : 'free',
           credits: userData.credits ?? 100,
           role: userData.role,
-          currentTenantId: userData.currentTenantId ?? null,
+          currentTenantId:
+            userData.currentTenantId !== null &&
+            userData.currentTenantId !== undefined
+              ? String(userData.currentTenantId)
+              : null,
         });
         }
       }

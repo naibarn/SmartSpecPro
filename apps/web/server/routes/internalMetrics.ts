@@ -12,11 +12,10 @@
  *   Body:  PushMetricsBody (JSON)
  */
 
-import crypto from "crypto";
 import type { Application, Request, Response } from "express";
 import { z } from "zod";
 import * as monitoringService from "../services/monitoringService";
-import { ENV } from "../_core/env";
+import { compareCachedInternalToken } from "../services/appRuntimeConfig";
 
 // Simple in-process rate limiter: max 10 req/min for this endpoint
 const _rateBucket = { count: 0, resetAt: Date.now() + 60_000 };
@@ -57,9 +56,6 @@ const pushMetricsBodySchema = z.object({
  * SMARTSPEC_WEB_GATEWAY_TOKEN using a timing-safe comparison.
  */
 function verifyMetricsToken(req: Request): boolean {
-  const expected = ENV.webGatewayToken;
-  if (!expected || expected.length < 32) return false;
-
   // Accept both X-Internal-Token and Authorization: Bearer
   const headerToken =
     (req.headers["x-internal-token"] as string | undefined) ??
@@ -68,13 +64,7 @@ function verifyMetricsToken(req: Request): boolean {
       return auth.startsWith("Bearer ") ? auth.slice(7) : "";
     })();
 
-  if (!headerToken || headerToken.length < 32) return false;
-
-  const tokenBuf = Buffer.from(headerToken);
-  const expectedBuf = Buffer.from(expected);
-  if (tokenBuf.length !== expectedBuf.length) return false;
-
-  return crypto.timingSafeEqual(tokenBuf, expectedBuf);
+  return compareCachedInternalToken(headerToken);
 }
 
 // ─── Route registration ───────────────────────────────────────────────────────

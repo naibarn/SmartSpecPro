@@ -102,6 +102,8 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
 import { trpc } from "@/lib/trpc";
+import { useSkillExecution } from "@/components/chat/skill/hooks/useSkillExecution";
+import { useLocalSkillExecutionContext } from "@/features/local-ai/skills/useLocalSkillExecutionContext";
 import { buildPresentationBlockPreset, PRESENTATION_BLOCK_PRESETS } from "@/lib/presentationBlockPresets";
 import {
   clonePresentationCustomBlock,
@@ -160,6 +162,7 @@ import { AIDraftModal } from "@/components/presentation/AIDraftModal";
 import {
   PresentationArticleGeneratorDialog,
   type PresentationGeneratedSlideDraft,
+  type PresentationInsertSlidesResult,
 } from "@/components/presentation/PresentationArticleGeneratorDialog";
 import { SearchableCombobox } from "@/components/presentation/SearchableCombobox";
 import { SlideAudioPanel } from "@/components/presentation/SlideAudioPanel";
@@ -313,6 +316,7 @@ type ImportedSlideLayoutElement = {
   hPct?: number;
   fontFace?: string;
   fontSize?: number;
+  lineHeight?: number;
   color?: string;
   align?: string;
   bold?: boolean;
@@ -496,7 +500,9 @@ function convertImportedLayoutElement(
       fontStyle: "normal",
       textDecoration: "none",
       textAlign: align,
-      lineHeight: 1.2,
+      lineHeight: typeof element.lineHeight === "number" && Number.isFinite(element.lineHeight)
+        ? Math.max(0.6, Math.min(10, element.lineHeight))
+        : 1.2,
       letterSpacing: 0,
       backgroundColor: "transparent",
     };
@@ -617,11 +623,17 @@ function convertGeneratedSlideJsonToPresentationSlides(
 async function resolveImportableGeneratedSlideJson(
   draft: PresentationGeneratedSlideDraft,
   fallbackCanvas: PresentationCanvasSize,
-): Promise<string> {
+): Promise<{
+  slideJson: string;
+  artifactUrl: string | null;
+}> {
   const rawSlideJson = draft.slideJson.trim();
   try {
     if (convertGeneratedSlideJsonToPresentationSlides(rawSlideJson, fallbackCanvas).length > 0) {
-      return rawSlideJson;
+      return {
+        slideJson: rawSlideJson,
+        artifactUrl: null,
+      };
     }
   } catch {
     // Fall back to any JSON artifact produced by the sandbox slide skill.
@@ -637,7 +649,10 @@ async function resolveImportableGeneratedSlideJson(
       return leftScore - rightScore;
     });
   if (jsonArtifacts.length === 0) {
-    return rawSlideJson;
+    return {
+      slideJson: rawSlideJson,
+      artifactUrl: null,
+    };
   }
 
   try {
@@ -651,14 +666,23 @@ async function resolveImportableGeneratedSlideJson(
         continue;
       }
       if (convertGeneratedSlideJsonToPresentationSlides(artifactJson, fallbackCanvas).length > 0) {
-        return artifactJson;
+        return {
+          slideJson: artifactJson,
+          artifactUrl: jsonArtifact.url,
+        };
       }
     }
   } catch {
-    return rawSlideJson;
+    return {
+      slideJson: rawSlideJson,
+      artifactUrl: null,
+    };
   }
 
-  return rawSlideJson;
+  return {
+    slideJson: rawSlideJson,
+    artifactUrl: null,
+  };
 }
 
 function resolvePresentationModeForRecipe(
@@ -2799,9 +2823,27 @@ export default function PresentationEditor() {
   const generateLayoutFromDeckNoteMutation = trpc.presentation.ai.generateLayoutFromDeckNote.useMutation();
   const resolvePendingMediaMutation = trpc.presentation.ai.resolvePendingMedia.useMutation();
   const updateItemMutation = trpc.library.updateItem.useMutation();
+  const skillRuntimePlatform =
+    typeof window !== "undefined" && (window as any).__TAURI__ != null
+      ? "tauri"
+      : "web";
+  const localSkillExecutionContext = useLocalSkillExecutionContext();
   // Skills for slide note AI content generator
-  const noteGenSkillsQuery = trpc.skills.list.useQuery(undefined, { staleTime: 300_000 });
-  const noteGenExecuteMutation = trpc.chat.executeSkill.useMutation();
+  const noteGenSkillsQuery = trpc.skills.list.useQuery(
+    { platform: skillRuntimePlatform, origin: "chat" },
+    { staleTime: 300_000 }
+  );
+  const noteGenSkillExecution = useSkillExecution({
+    conversationId: undefined,
+    platform: localSkillExecutionContext.platform,
+    origin: "chat",
+    localAiEnabled:
+      localSkillExecutionContext.featureEnabled
+      && localSkillExecutionContext.localAiEnabled,
+    localAiExecutionMode: localSkillExecutionContext.executionMode,
+    forceCloudOnly: localSkillExecutionContext.forceCloudOnly,
+    preferredLocalProfileId: localSkillExecutionContext.preferredLocalProfileId,
+  });
   const noteGenSkillItems = useMemo(() => {
     const skills = noteGenSkillsQuery.data ?? [];
     return skills
@@ -6816,7 +6858,7 @@ export default function PresentationEditor() {
   }, [deck, draftContent, expectedSlideVersion, selectedSlide, slideNoteDraft, updateSlideMutation]);
 
   const autosaveController = useAutosaveController({
-    enabled: Boolean(deck && selectedSlide && draftSignature),
+    enabled: Boolean(deck && selectedSlide && draftSignature) && saveState !== "pending",
     draftSignature,
     onAutosave: () => performSave("autosave"),
   });
@@ -6844,6 +6886,9 @@ export default function PresentationEditor() {
       return false;
     }
 
+    // Manual save takes precedence over any queued autosave attempt so both
+    // paths never race the same optimistic-lock version against each other.
+    autosaveController.clear();
     const result = await performSave("manual");
     if (result === "saved") {
       autosaveController.markPersisted(draftSignature);
@@ -7456,15 +7501,16 @@ export default function PresentationEditor() {
         ? `${currentNote}${wordLimitInstruction}`
         : `Write content for this slide.${wordLimitInstruction}`;
 
-      const result = await noteGenExecuteMutation.mutateAsync({
+      const result = await noteGenSkillExecution.execute({
         skillId: noteGenSkill,
         prompt,
+        dynamicParams: {},
       });
-      if (result.success && result.message) {
+      if (result?.success && result.message) {
         setSlideNoteDraft(result.message);
         toast.success("Content generated — review and save the note.");
       } else {
-        toast.error((result as any).error || "Failed to generate content.");
+        toast.error(result?.error || "Failed to generate content.");
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to generate content.");
@@ -7556,16 +7602,17 @@ export default function PresentationEditor() {
   async function handleInsertGeneratedSlides(
     draft: PresentationGeneratedSlideDraft,
     options?: { closeDialog?: boolean; showSuccessToast?: boolean },
-  ): Promise<boolean> {
+  ): Promise<PresentationInsertSlidesResult> {
     if (!deck) {
       toast.error(t("dialog.articleBuilder.noActiveDeck"));
-      return false;
+      return { inserted: false };
     }
 
-    const rawSlideJson = (await resolveImportableGeneratedSlideJson(draft, activeCanvasSize)).trim();
+    const resolvedSlideJson = await resolveImportableGeneratedSlideJson(draft, activeCanvasSize);
+    const rawSlideJson = resolvedSlideJson.slideJson.trim();
     if (!rawSlideJson) {
       toast.error(t("dialog.articleBuilder.noGeneratedSlideData"));
-      return false;
+      return { inserted: false };
     }
 
     let preparedSlides: PreparedImportedSlide[] = [];
@@ -7573,12 +7620,12 @@ export default function PresentationEditor() {
       preparedSlides = convertGeneratedSlideJsonToPresentationSlides(rawSlideJson, activeCanvasSize);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t("dialog.articleBuilder.readSlideJsonError"));
-      return false;
+      return { inserted: false };
     }
 
     if (!preparedSlides.length) {
       toast.error(t("dialog.articleBuilder.noSlidesToInsert"));
-      return false;
+      return { inserted: false };
     }
 
     setDeckMutationBusy(true);
@@ -7630,10 +7677,16 @@ export default function PresentationEditor() {
       if (options?.showSuccessToast !== false) {
         toast.success(t("dialog.articleBuilder.insertSlidesSuccess", { count: preparedSlides.length }));
       }
-      return true;
+      return {
+        inserted: true,
+        importedSlideJson: rawSlideJson,
+        importedAt: new Date().toISOString(),
+        importedFromArtifact: Boolean(resolvedSlideJson.artifactUrl),
+        importedArtifactUrl: resolvedSlideJson.artifactUrl,
+      };
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t("dialog.articleBuilder.insertSlidesError"));
-      return false;
+      return { inserted: false };
     } finally {
       setDeckMutationBusy(false);
     }

@@ -9,6 +9,7 @@ import { createInternalTokenFromAuth } from "../_core/tokens";
 import { getDb } from "../db";
 import { getTenantFeatureFlag } from "../services/featureFlags";
 import { agencyBridge } from "../services/agencyBridge";
+import { getAppRuntimeConfig } from "../services/appRuntimeConfig";
 import { generateComposerCaption } from "../services/contentComposerPublishService";
 import { resolveEnabledLlmModelId } from "../services/enabledLlmModels";
 import { getSkillByIdAsync } from "../services/skillRegistry";
@@ -28,10 +29,6 @@ const streamInputSchema = z.object({
 });
 
 const CAPTION_MARKER = "[[CAPTION]]";
-const INTERNAL_NODE_BASE_URL =
-  process.env.SMARTSPEC_INTERNAL_URL ||
-  process.env.NODE_SERVER_INTERNAL_URL ||
-  "http://localhost:3000";
 const ARTICLE_SANITIZE: sanitizeHtml.IOptions = {
   allowedTags: ["article", "section", "h1", "h2", "h3", "h4", "p", "ul", "ol", "li", "blockquote", "pre", "code", "a", "b", "i", "em", "strong", "br", "img", "figure", "figcaption"],
   allowedAttributes: {
@@ -137,6 +134,11 @@ function parseSseBlock(block: string): { event: string; data: string } | null {
     event,
     data: dataParts.join("\n"),
   };
+}
+
+async function getInternalNodeBaseUrl(): Promise<string> {
+  const runtime = await getAppRuntimeConfig();
+  return runtime.smartspecInternalUrl || runtime.internalNodeUrl;
 }
 
 export const contentComposerStreamRouter = Router();
@@ -331,7 +333,7 @@ contentComposerStreamRouter.post("/api/content-composer/generate-stream", async 
       return res.end();
     }
 
-    const requestUrl = new URL("/api/llm/stream", INTERNAL_NODE_BASE_URL);
+    const requestUrl = new URL("/api/llm/stream", await getInternalNodeBaseUrl());
     const requestBody = {
       model,
       stream: true,

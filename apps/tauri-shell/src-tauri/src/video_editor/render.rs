@@ -1,7 +1,7 @@
 use std::process::{Command, Stdio, Child};
 use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use serde::{Deserialize, Serialize};
 
 /// Sanitize file path to prevent command injection
@@ -368,8 +368,9 @@ impl RenderEngine {
         // Spawn render task
         let jobs_clone = Arc::clone(&jobs);
         let processes_clone = Arc::clone(&processes);
+        let spawned_job_id = job_id.clone();
         tokio::spawn(async move {
-            Self::execute_render(jobs_clone, processes_clone, job_id, project, output_path).await;
+            Self::execute_render(jobs_clone, processes_clone, spawned_job_id, project, output_path).await;
         });
 
         Ok(job_id)
@@ -577,7 +578,7 @@ impl RenderEngine {
 
     fn build_filter_complex(
         project: &VideoEditorProject,
-        inputs: &[Asset],
+        inputs: &[&Asset],
     ) -> Result<String, String> {
         // Collect all clips in timeline order across video and audio tracks
         let all_clips: Vec<(&Clip, &Track)> = project
@@ -600,8 +601,6 @@ impl RenderEngine {
 
         let width = sanitize_numeric(project.settings.width)?;
         let height = sanitize_numeric(project.settings.height)?;
-        let sample_rate = sanitize_numeric(project.settings.sample_rate)?;
-
         // Group clips by video tracks only for the filter graph
         let video_clips: Vec<&Clip> = project
             .timeline
@@ -702,9 +701,10 @@ pub async fn start_render(
     project_json: String,
     output_path: String
 ) -> Result<String, String> {
-    let engine = state.lock().unwrap();
-    let jobs = Arc::clone(&engine.jobs);
-    let processes = Arc::clone(&engine.processes);
+    let (jobs, processes) = {
+        let engine = state.lock().unwrap();
+        (Arc::clone(&engine.jobs), Arc::clone(&engine.processes))
+    };
 
     RenderEngine::start_render_internal(jobs, processes, project_json, output_path).await
 }

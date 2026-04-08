@@ -24,6 +24,11 @@ import {
   validatePrivateVaultAccessToken,
   verifyPrivateVaultPin,
 } from "../services/privateVaultService";
+import {
+  localAiPreferencesSchema,
+  mergeLocalAiPreferences,
+  sanitizeUserPreferencesWithLocalAi,
+} from "../services/localAiPreferences";
 
 // Zod schemas
 const userFiltersSchema = z.object({
@@ -64,6 +69,29 @@ const unlockPrivateVaultSchema = z.object({
 const disablePrivateVaultSchema = z.object({
   currentPin: privateVaultPinSchema,
 });
+
+const updatePreferencesSchema = z.object({
+  translationLanguage: z.enum(SUPPORTED_LANGUAGES).optional(),
+  translationModel: z.string().max(100).optional(),
+  displayLocale: z.enum(SUPPORTED_LANGUAGES).optional(),
+  localAi: localAiPreferencesSchema.partial().optional(),
+});
+
+const userPreferencesOutputSchema = z
+  .object({
+    translationLanguage: z.enum(SUPPORTED_LANGUAGES).optional(),
+    translationModel: z.string().max(100).optional(),
+    displayLocale: z.enum(SUPPORTED_LANGUAGES).optional(),
+    privateVault: z
+      .object({
+        enabled: z.boolean().optional(),
+        pinVersion: z.number().optional(),
+        pinUpdatedAt: z.string().optional(),
+      })
+      .optional(),
+    localAi: localAiPreferencesSchema.optional(),
+  })
+  .passthrough();
 
 export const usersRouter = router({
   /**
@@ -745,19 +773,22 @@ export const usersRouter = router({
   // User Preferences
   // ============================================================
 
-  getPreferences: protectedProcedure.query(async ({ ctx }) => {
+  getPreferences: protectedProcedure
+    .output(userPreferencesOutputSchema)
+    .query(async ({ ctx }) => {
     const db = await getDb();
     if (!db) return {};
     const [user] = await db.select({ userPreferences: users.userPreferences }).from(users).where(eq(users.id, ctx.user.id)).limit(1);
-    return sanitizeUserPreferences((user?.userPreferences as Record<string, any>) || {});
+    return sanitizeUserPreferencesWithLocalAi(
+      sanitizeUserPreferences(
+        (user?.userPreferences as Record<string, any>) || {},
+      ),
+    );
   }),
 
   updatePreferences: protectedProcedure
-    .input(z.object({
-      translationLanguage: z.enum(SUPPORTED_LANGUAGES).optional(),
-      translationModel: z.string().max(100).optional(),
-      displayLocale: z.enum(SUPPORTED_LANGUAGES).optional(),
-    }))
+    .input(updatePreferencesSchema)
+    .output(userPreferencesOutputSchema)
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
@@ -773,9 +804,12 @@ export const usersRouter = router({
         updated.translationModel =
           (await resolveEnabledLlmModelId([input.translationModel])) || undefined;
       }
+      if (input.localAi !== undefined) {
+        updated.localAi = mergeLocalAiPreferences(current.localAi, input.localAi);
+      }
 
       await db.update(users).set({ userPreferences: updated }).where(eq(users.id, ctx.user.id));
-      return sanitizeUserPreferences(updated);
+      return sanitizeUserPreferencesWithLocalAi(sanitizeUserPreferences(updated));
     }),
 
   setPrivateVaultPin: protectedProcedure

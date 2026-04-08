@@ -201,21 +201,53 @@ def _normalize_kie_task_state(status_response: dict) -> tuple[str, str]:
     if not isinstance(data, dict):
         data = {}
 
-    success_flag = data.get("successFlag")
-    if success_flag in (1, True):
-        return "success", "successflag"
-    if success_flag in (0, False):
+    def _normalize_success_flag(value: Any) -> Any:
+        if isinstance(value, bool):
+            return int(value)
+        if isinstance(value, str):
+            normalized = value.strip().lower()
+            if normalized.isdigit():
+                return int(normalized)
+            if normalized == "true":
+                return 1
+            if normalized == "false":
+                return 0
+        return value
+
+    result_url = _extract_first_kie_result_url(status_response)
+    if result_url:
+        return "success", "result_url"
+
+    success_flag = _normalize_success_flag(data.get("successFlag"))
+    if success_flag == 1:
+        return "success", "successflag_1"
+    if success_flag in (2, 3):
+        return "fail", f"successflag_{success_flag}"
+    if success_flag == 0:
         error_code = data.get("errorCode")
         error_message = data.get("errorMessage")
         if error_code or error_message:
             return "fail", "successflag_error"
-        return "processing", "successflag_pending"
+        return "processing", "successflag_0"
+
+    error_code = data.get("errorCode")
+    error_message = data.get("errorMessage")
+    if error_code or error_message:
+        return "fail", "provider_error"
+
+    complete_time = data.get("completeTime") or data.get("complete_time")
+    if complete_time:
+        return "success", "complete_time"
 
     raw_state = str(
         status_response.get("state", "")
         or data.get("state", "")
         or status_response.get("status", "")
         or data.get("status", "")
+        or (data.get("response", {}) if isinstance(data.get("response"), dict) else {}).get("state", "")
+        or (data.get("response", {}) if isinstance(data.get("response"), dict) else {}).get("status", "")
+        or (data.get("taskResult", {}) if isinstance(data.get("taskResult"), dict) else {}).get("state", "")
+        or (data.get("taskResult", {}) if isinstance(data.get("taskResult"), dict) else {}).get("status", "")
     ).strip().lower()
 
     if raw_state in {"success", "completed", "complete", "done", "finished", "finish"}:

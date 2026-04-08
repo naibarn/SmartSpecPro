@@ -142,6 +142,12 @@ export interface SkillDefinition {
    */
   executionPolicy?: SkillExecutionPolicyConfig;
 
+  /**
+   * Optional local-execution hint used by Tauri/local-runtime policy resolution.
+   * This does not bypass server policy by itself.
+   */
+  localExecution?: SkillLocalExecutionConfig;
+
   /** Content quality constraints for citation-gated publishing */
   contentQuality?: SkillContentQuality;
 }
@@ -163,6 +169,8 @@ export interface SkillExecutionPolicyConfig {
     supportsThinking?: boolean;
     supportsResponses?: boolean;
     supportsStructuredOutputs?: boolean;
+    supportsJsonMode?: boolean;
+    supportsStrictToolSchema?: boolean;
     supportsWebSearch?: boolean;
     supportsFunctionTools?: boolean;
     supportsCodeExecution?: boolean;
@@ -220,6 +228,14 @@ export interface SkillExecutionPolicyConfig {
 
   /** Hint for max tokens to request from the model */
   max_tokens_hint?: number;
+}
+
+export interface SkillLocalExecutionConfig {
+  tier?: "cloud_required" | "local_preprocess_only" | "local_safe";
+  reviewed?: boolean;
+  allow_offline?: boolean;
+  allowOffline?: boolean;
+  runtime?: "gemma4_text" | "script_bundle";
 }
 
 /**
@@ -283,6 +299,8 @@ export interface SkillMetadata {
   requires_browser?: boolean;
   max_runtime_seconds?: number;
   max_input_mb?: number;
+  local_execution?: SkillLocalExecutionConfig;
+  localExecution?: SkillLocalExecutionConfig;
   // Content quality constraints (Spec 038)
   content_quality?: SkillContentQuality;
   // Model requirements convenience alias (Feature 041)

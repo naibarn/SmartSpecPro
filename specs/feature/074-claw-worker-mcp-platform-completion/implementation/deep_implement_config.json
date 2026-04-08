@@ -1,0 +1,29 @@
+{
+  "plugin_root": "/home/dev/projects/SmartSpecPro/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/074-claw-worker-mcp-platform-completion/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/074-claw-worker-mcp-platform-completion/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-canonical-registry-and-discovery-foundation",
+    "section-02-delegated-worker-mcp-auth-and-session-enablement",
+    "section-03-billing-budget-idempotency-and-concurrency",
+    "section-04-gateway-and-knowledge-tool-parity",
+    "section-05-skills-agencies-media-and-jobs-parity",
+    "section-06-presentations-video-and-artifact-safe-results",
+    "section-07-legacy-mcp-migration-and-browser-gating",
+    "section-08-docs-observability-and-rollout"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-04-07T12:49:11.799442+00:00"
+}

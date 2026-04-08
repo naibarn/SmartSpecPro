@@ -253,31 +253,48 @@ describe("GlobalNotificationBell occurrence badge", () => {
 
     const bellRoot = screen.getByTestId("global-notification-bell");
     const bellButton = screen.getByLabelText(/unread notification/i);
-    const startLeft = Number.parseFloat(bellRoot.style.left);
-    const startTop = Number.parseFloat(bellRoot.style.top);
+
+    expect(bellRoot.style.right).toBe("12px");
+    expect(bellRoot.style.top).toBe("12px");
 
     await act(async () => {
       fireEvent.pointerDown(bellButton, {
         pointerId: 1,
-        clientX: startLeft + 8,
-        clientY: startTop + 8,
+        clientX: 980,
+        clientY: 20,
         buttons: 1,
       });
       fireEvent.pointerMove(document, {
         pointerId: 1,
-        clientX: startLeft + 84,
-        clientY: startTop + 36,
+        clientX: 1060,
+        clientY: 56,
         buttons: 1,
       });
       fireEvent.pointerUp(document, {
         pointerId: 1,
-        clientX: startLeft + 84,
-        clientY: startTop + 36,
+        clientX: 1060,
+        clientY: 56,
       });
     });
 
-    expect(Number.parseFloat(bellRoot.style.left)).toBeGreaterThan(startLeft);
-    expect(Number.parseFloat(bellRoot.style.top)).toBeGreaterThan(startTop);
+    expect(Number.parseFloat(bellRoot.style.left)).toBeGreaterThan(0);
+    expect(Number.parseFloat(bellRoot.style.top)).toBeGreaterThan(0);
+    expect(bellRoot.style.right).toBe("");
+  });
+
+  it("ignores legacy stored absolute positions and docks the bell to the top right", () => {
+    notificationCountData = { count: 2 };
+    localStorage.setItem(
+      "global-notification-bell-position",
+      JSON.stringify({ x: 420, y: 24 }),
+    );
+
+    render(<GlobalAlerts />);
+
+    const bellRoot = screen.getByTestId("global-notification-bell");
+    expect(bellRoot.style.right).toBe("12px");
+    expect(bellRoot.style.top).toBe("12px");
+    expect(bellRoot.style.left).toBe("");
   });
 
   it("uses actionUrl for urgent monitoring reminders instead of falling back to chat", async () => {
@@ -314,6 +331,45 @@ describe("GlobalNotificationBell occurrence badge", () => {
       "noopener,noreferrer",
     );
     expect(setLocationMock).not.toHaveBeenCalled();
+  });
+
+  it("treats billing invoice due reminders as billing reminders instead of incident guidance", async () => {
+    urgentRemindersData = [
+      {
+        id: 100,
+        title: "Invoice due reminder",
+        content: "Invoice TH-INV-2026-000001 is still awaiting payment.",
+        priority: "high",
+        scheduledMessageId: 55,
+        conversationId: null,
+        actionUrl: "/billing/invoices/55",
+        relatedResourceType: "scheduled_message",
+        metadata: {
+          source: "billing",
+          relatedItems: {
+            invoiceId: "55",
+            invoiceNumber: "TH-INV-2026-000001",
+            notificationType: "invoice_due_reminder",
+          },
+        },
+      },
+    ];
+
+    render(<GlobalAlerts />);
+
+    expect(await screen.findByText("Billing Reminder")).toBeTruthy();
+    expect(screen.getByText("Invoice due reminder")).toBeTruthy();
+    expect(screen.getByText("Invoice TH-INV-2026-000001 is still awaiting payment.")).toBeTruthy();
+    expect(screen.queryByText("Check Now")).toBeNull();
+    expect(screen.queryByText("Open Monitoring")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: /open invoice/i }));
+
+    expect(openWindowMock).toHaveBeenCalledWith(
+      "/billing/invoices/55",
+      "_blank",
+      "noopener,noreferrer",
+    );
   });
 
   it("dismisses an urgent reminder modal when the dismiss button is clicked", async () => {

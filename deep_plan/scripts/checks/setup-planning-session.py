@@ -16,6 +16,7 @@ Usage:
 import argparse
 import json
 import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -228,6 +229,73 @@ def build_semantic_to_position_map() -> dict[str, int]:
     return semantic_to_position
 
 
+def _fallback_to_codex_setup(
+    *,
+    file_path: Path,
+    plugin_root: Path,
+    review_mode: str,
+) -> tuple[int, dict]:
+    """Run the Codex/file-based setup when no task list is available.
+
+    This preserves the file-based resume/recovery behavior without requiring
+    a Claude task list/session hook to be active.
+    """
+    codex_setup_script = Path(__file__).with_name("setup-codex-session.py")
+    if not codex_setup_script.exists():
+        return 1, {
+            "success": False,
+            "mode": "no_task_list",
+            "workflow_backend": "task_list",
+            "task_list_required": True,
+            "planning_dir": str(file_path.parent),
+            "initial_file": str(file_path),
+            "plugin_root": str(plugin_root),
+            "error": "No task list ID available and setup-codex-session.py was not found.",
+        }
+
+    cmd = [
+        sys.executable,
+        str(codex_setup_script),
+        "--file",
+        str(file_path),
+        "--plugin-root",
+        str(plugin_root),
+        "--review-mode",
+        review_mode,
+    ]
+    completed = subprocess.run(
+        cmd,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    stdout = completed.stdout.strip()
+    try:
+        result = json.loads(stdout) if stdout else {}
+    except json.JSONDecodeError:
+        result = {
+            "success": False,
+            "error": "setup-codex-session.py returned invalid JSON",
+            "raw_stdout": stdout,
+            "raw_stderr": completed.stderr.strip(),
+        }
+
+    if result.get("success"):
+        result.setdefault("workflow_backend", "file_based")
+        result.setdefault("task_list_required", False)
+        result.setdefault("task_list_id", None)
+        result.setdefault("task_list_source", "none")
+        result.setdefault("tasks_written", 0)
+        result["fallback_reason"] = "missing_task_list_id"
+        message = result.get("message") or "Started file-based Codex workflow"
+        result["message"] = (
+            f"No task list ID available; using file-based Codex workflow. {message}"
+        )
+
+    return completed.returncode, result
+
+
 def main():
     parser = argparse.ArgumentParser(description="Setup planning session for deep-plan workflow")
     parser.add_argument(
@@ -242,7 +310,7 @@ def main():
     )
     parser.add_argument(
         "--review-mode",
-        choices=["external_llm", "opus_subagent", "skip"],
+        choices=["external_llm", "opus_subagent", "skip", "self_review"],
         default="external_llm",
         help="How plan review should be performed (default: external_llm)"
     )
@@ -545,25 +613,13 @@ def main():
 
     # CRITICAL: Must have task_list_id to proceed
     if not context.task_list_id:
-        result = {
-            "success": False,
-            "mode": "no_task_list",
-            "planning_dir": str(planning_dir),
-            "initial_file": str(file_path),
-            "plugin_root": str(plugin_root),
-            "error": "No task list ID available. Cannot write tasks.",
-            "error_details": {
-                "cause": "Neither CLAUDE_CODE_TASK_LIST_ID nor DEEP_SESSION_ID is set.",
-                "likely_reason": "The SessionStart hook did not run or failed to capture the session ID.",
-                "troubleshooting": [
-                    "1. Verify the plugin is loaded: check that /deep-plan skill is available",
-                    "2. Check hooks/hooks.json exists in the plugin directory",
-                    "3. Try starting a fresh Claude session (the hook runs on session start)",
-                ],
-            },
-        }
+        returncode, result = _fallback_to_codex_setup(
+            file_path=file_path.resolve(),
+            plugin_root=plugin_root.resolve(),
+            review_mode=review_mode,
+        )
         print(json.dumps(result, indent=2))
-        return 1
+        return returncode
 
     write_result = write_tasks(
         context.task_list_id,
@@ -578,6 +634,8 @@ def main():
     # Build output
     result = {
         "success": True,
+        "workflow_backend": "task_list",
+        "task_list_required": True,
         "mode": mode,
         "planning_dir": str(planning_dir),
         "initial_file": str(file_path),

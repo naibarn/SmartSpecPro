@@ -1,0 +1,93 @@
+{
+  "skill_name": "cinematic-video-createprompt",
+  "skill_version": "5.7.0",
+  "response_format": "structured_json",
+  "language": "en",
+  "target_model_profile": "generic_video_models",
+  "generation_mode": "text_to_video",
+  "delivery_mode": "multi_shot_single_video",
+  "multi_video_strategy": "not_applicable",
+  "video_count": 1,
+  "dialogue_language": {
+    "requested": "auto",
+    "resolved": "none",
+    "source": "no_dialogue",
+    "rationale": "The relax ambient preset and ambience-only audio mode call for atmosphere without spoken content."
+  },
+  "storytelling_resolution": {
+    "preset_requested": "relax_ambient",
+    "preset_resolved": "relax_ambient",
+    "multi_shot_timing_mode_requested": "untimed_or_auto",
+    "multi_shot_timing_mode_resolved": "untimed_or_auto",
+    "audio_mode_resolved": "ambience_only",
+    "dialogue_density_resolved": "ambient_only",
+    "story_shape_resolved": "single_moment",
+    "ending_style_resolved": "soft_resolve",
+    "performance_style_resolved": "naturalistic",
+    "imagination_level_resolved": "grounded",
+    "scene_arc_resolved": "single_moment",
+    "continuity_mode_resolved": "single_continuous_shot",
+    "motion_realism_resolved": "restrained_naturalism",
+    "background_mode": "normal_background",
+    "narrative_intent": "Create one calm loop-friendly comfort moment where the sleeping cat, rain, and warm room atmosphere remain soothing and stable."
+  },
+  "continuity_package": {
+    "continuity_notes": "Keep the same curled ginger cat, the same window seat, the same warm lamp glow, and the same rainy bedroom mood throughout the clip.",
+    "continuity_notes_origin": "auto_generated",
+    "reference_notes": "Use the written brief itself as the reference bible: preserve the ginger fur color, curled sleeping pose, soft cushions, rain-streaked glass, warm lamp glow, and gentle curtain drift that define the cozy room atmosphere.",
+    "reference_notes_origin": "auto_generated"
+  },
+  "final_prompt": "In a cozy bedroom corner at night, a curled ginger cat sleeps peacefully on a cushioned window seat while soft lamplight warms the room and rain trails slowly down the glass behind it. Keep the camera calm and observant as the clip lingers on the cat's still body, the tiny rise and fall of rest, the gentle sway of curtains, and the layered soundless feeling of rain and shelter, with no spoken dialogue and no sudden story beat. Let the whole scene feel soothing, loop-friendly, and visually soft, using subtle environmental movement to keep the image alive without disturbing the cat's restful calm.\n\nContinuity Notes:\nKeep the same curled ginger cat, the same window seat, the same warm lamp glow, and the same rainy bedroom mood throughout the clip.\n\nReference Notes:\nUse the written brief itself as the reference bible: preserve the ginger fur color, curled sleeping pose, soft cushions, rain-streaked glass, warm lamp glow, and gentle curtain drift that define the cozy room atmosphere.",
+  "short_prompt": "A cozy ambient scene where a ginger cat sleeps by a rainy bedroom window in warm lamplight while curtains move softly.",
+  "prompt_sequence": [
+    {
+      "prompt_id": "Prompt 1",
+      "video_number": 1,
+      "duration_seconds": 8,
+      "prompt_role": "Single Video Prompt",
+      "prompt": "In a cozy bedroom corner at night, a curled ginger cat sleeps peacefully on a cushioned window seat while soft lamplight warms the room and rain trails slowly down the glass behind it. Keep the camera calm and observant as the clip lingers on the cat's still body, the tiny rise and fall of rest, the gentle sway of curtains, and the layered soundless feeling of rain and shelter, with no spoken dialogue and no sudden story beat. Let the whole scene feel soothing, loop-friendly, and visually soft, using subtle environmental movement to keep the image alive without disturbing the cat's restful calm.",
+      "continuity_notes": "Keep the same curled ginger cat, the same window seat, the same warm lamp glow, and the same rainy bedroom mood throughout the clip.",
+      "reference_notes": "Use the written brief itself as the reference bible: preserve the ginger fur color, curled sleeping pose, soft cushions, rain-streaked glass, warm lamp glow, and gentle curtain drift that define the cozy room atmosphere."
+    }
+  ],
+  "cinematic_plan": {
+    "opening_frame": "A sleeping ginger cat rests on a window seat beside rain-streaked glass and warm lamplight.",
+    "subject_focus": "The cat's peaceful stillness is the emotional center while the room atmosphere provides gentle life around it.",
+    "staging_blocking": "Keep the cat settled in one stable curled pose while curtains and rain create subtle peripheral movement.",
+    "motion_arc": "The clip stays intentionally low-pressure, using environmental motion instead of plot progression.",
+    "camera_language": "Use calm steady framing with a soft observational drift if any movement is used at all.",
+    "focus_depth": "Keep the cat gently prioritized while rain and room details remain soft and comforting in depth.",
+    "atmosphere_time": "Rainy indoor evening comfort with warm shelter against cool window weather.",
+    "production_design": "A soft bedroom nook with blankets, rain-glass texture, and a warm practical lamp creates the comfort world.",
+    "lighting_color": "Warm amber lamp light against cool rainy window tones creates a restful contrast.",
+    "continuity_pacing": "A single ambient comfort moment designed to feel smooth, stable, and replayable.",
+    "continuity_guardrails": "Preserve fur color, sleeping pose, window-seat layout, rain rhythm, curtain softness, and warm-cool room contrast."
+  },
+  "reference_usage": {
+    "reference_input_mode": "brief_only",
+    "reference_image_count": 0,
+    "assignments": [],
+    "reference_video_count": 0,
+    "video_assignments": [],
+    "reference_audio_count": 0,
+    "audio_assignments": [],
+    "first_frame_present": false,
+    "last_frame_present": false,
+    "applied_focus": [
+      "written brief as subject reference bible",
+      "comfort atmosphere continuity",
+      "loop-friendly stability"
+    ],
+    "notes": "Reference stability comes from the written cat and room anchors in the brief."
+  },
+  "validation": {
+    "is_valid": true,
+    "warnings": [],
+    "safety_notes": [
+      "Kept the output calm, non-graphic, and broadly safe for general media models."
+    ],
+    "suggestions": [
+      "If a specific cat face or room decor matters later, add one reference image for tighter continuity."
+    ]
+  }
+}

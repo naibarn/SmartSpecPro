@@ -7,6 +7,7 @@
  */
 
 import { ENV } from "../_core/env";
+import { getAppRuntimeConfig } from "./appRuntimeConfig";
 
 const EMBEDDING_CACHE_TTL_MS = 5_000;
 
@@ -32,8 +33,9 @@ export async function generateQueryEmbedding(text: string): Promise<number[] | n
   }
 
   try {
-    const backendUrl = (ENV.pythonBackendUrl || process.env.PYTHON_BACKEND_URL || "http://localhost:8000").replace(/\/+$/, "");
-    const proxyToken = process.env.SMARTSPEC_PROXY_TOKEN || "";
+    const runtime = await getAppRuntimeConfig();
+    const backendUrl = (runtime.pythonBackendUrl || ENV.pythonBackendUrl || "http://localhost:8000").replace(/\/+$/, "");
+    const proxyToken = runtime.proxyToken;
     const response = await fetch(`${backendUrl}/api/internal/embeddings`, {
       method: "POST",
       headers: {

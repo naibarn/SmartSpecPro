@@ -5,6 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { trpc } from "../lib/trpc";
 import { Button } from "@/components/ui/button";
 import { HelpButton } from "@/components/help";
+import { LocaleToggle } from "@/components/LocaleToggle";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { DashboardCard, DashboardKpiCard } from "@/components/dashboard";
@@ -66,6 +67,7 @@ import {
   Clock,
   ChevronLeft,
 } from "lucide-react";
+import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 
 interface ModelVersion {
   id: string;
@@ -103,6 +105,7 @@ interface ProviderTemplate {
 export default function AdminLLMProviders() {
   const { user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
+  const { t } = useScopedTranslation("admin");
   const queryClient = useQueryClient();
   const [editingProvider, setEditingProvider] = useState<Provider | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -439,24 +442,25 @@ export default function AdminLLMProviders() {
         className="text-gray-600 mb-4"
       >
         <ChevronLeft className="w-5 h-5 mr-1" />
-        Back to Dashboard
+        {t("admin.llmProviders.backToDashboard")}
       </Button>
       <div className="mb-8">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <h1 className="text-3xl font-bold flex items-center gap-2">
               <Settings className="h-8 w-8" />
-              LLM Provider Configuration
+              {t("admin.llmProviders.title")}
             </h1>
             <p className="text-muted-foreground mt-2">
-              Configure API keys, endpoints, and provider-level defaults for LLM providers
+              {t("admin.llmProviders.subtitle")}
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <LocaleToggle className="shrink-0" />
             <HelpButton page="/admin/providers" variant="outline" size="sm" />
             <Button onClick={() => setLocation("/admin/llm-models")}>
               <Cpu className="h-4 w-4 mr-2" />
-              Manage LLM Models
+              {t("admin.llmProviders.manageModels")}
             </Button>
           </div>
         </div>
@@ -464,11 +468,11 @@ export default function AdminLLMProviders() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
-        <DashboardKpiCard icon={Settings} label="Total Providers" value={stats?.total || providers.length} />
-        <DashboardKpiCard icon={Key} label="Configured" value={stats?.configured || 0} />
-        <DashboardKpiCard icon={Check} label="Enabled" value={stats?.enabled || 0} valueClassName="text-green-600" />
-        <DashboardKpiCard icon={CheckCircle2} label="Ready" value={stats?.ready || 0} valueClassName="text-blue-600" />
-        <DashboardKpiCard icon={Cpu} label="Total Models" value={totalModels} valueClassName="text-purple-600" />
+        <DashboardKpiCard icon={Settings} label={t("admin.llmProviders.kpis.totalProviders")} value={stats?.total || providers.length} />
+        <DashboardKpiCard icon={Key} label={t("admin.llmProviders.kpis.configured")} value={stats?.configured || 0} />
+        <DashboardKpiCard icon={Check} label={t("admin.llmProviders.kpis.enabled")} value={stats?.enabled || 0} valueClassName="text-green-600" />
+        <DashboardKpiCard icon={CheckCircle2} label={t("admin.llmProviders.kpis.ready")} value={stats?.ready || 0} valueClassName="text-blue-600" />
+        <DashboardKpiCard icon={Cpu} label={t("admin.llmProviders.kpis.totalModels")} value={totalModels} valueClassName="text-purple-600" />
       </div>
 
       {/* Sync Result Notification */}

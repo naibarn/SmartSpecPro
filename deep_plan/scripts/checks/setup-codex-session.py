@@ -203,12 +203,22 @@ def main() -> int:
     files = scan_planning_files(planning_dir)
     section_progress = check_section_progress(planning_dir)
     section_progress["planning_dir"] = str(planning_dir)
-    resume_step, message = infer_resume_step(files, section_progress)
+    resume_step, resume_note = infer_resume_step(files, section_progress)
 
-    mode = "resume" if build_files_summary(files, section_progress) else "new"
+    files_summary = build_files_summary(files, section_progress)
+    mode = "resume" if files_summary else "new"
+
+    if resume_step is None:
+        message = "Planning workflow complete - all sections written"
+    elif mode == "resume":
+        message = f"Resuming from step {resume_step}. Last completed: {resume_note}"
+    else:
+        message = f"Starting new planning session in: {planning_dir}"
 
     result = {
         "success": True,
+        "workflow_backend": "file_based",
+        "task_list_required": False,
         "mode": mode,
         "planning_dir": str(planning_dir),
         "initial_file": str(file_path.resolve()),
@@ -216,7 +226,10 @@ def main() -> int:
         "review_mode": review_mode,
         "resume_from_step": resume_step,
         "message": message,
-        "files_found": build_files_summary(files, section_progress),
+        "files_found": files_summary,
+        "task_list_id": None,
+        "task_list_source": "none",
+        "tasks_written": 0,
         "section_progress": {
             "state": section_progress["state"],
             "progress": section_progress["progress"],

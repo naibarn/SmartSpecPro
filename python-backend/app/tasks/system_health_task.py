@@ -9,6 +9,8 @@ import logging
 import os
 import subprocess
 from typing import Any
+from urllib import error as urllib_error
+from urllib import request as urllib_request
 
 from app.core.celery_app import celery_app
 
@@ -85,7 +87,7 @@ def _collect_metrics() -> dict[str, Any]:
     restart_counts: dict[str, int] = {}
 
     for alias, unit in _MONITORED_SERVICES.items():
-        services[alias] = _get_service_status(unit)
+        services[alias] = _get_service_status(alias, unit)
         restart_counts[alias] = _get_service_restart_count(unit)
 
     return {
@@ -100,7 +102,42 @@ def _collect_metrics() -> dict[str, Any]:
     }
 
 
-def _get_service_status(service_name: str) -> str:
+def _default_service_probe_url(alias: str) -> str | None:
+    """Return an HTTP probe URL for services that are not visible via systemd."""
+    if alias == "web":
+        base_url = (
+            os.environ.get("SMARTSPEC_WEB_HEALTH_URL")
+            or os.environ.get("WEB_APP_URL")
+            or os.environ.get("SMARTSPEC_WEB_GATEWAY_URL")
+        )
+        if base_url:
+            return base_url.rstrip("/") + "/"
+        return None
+
+    if alias == "backend":
+        return (
+            os.environ.get("SMARTSPEC_BACKEND_HEALTH_URL")
+            or "http://host.docker.internal:8000/health"
+        )
+
+    return None
+
+
+def _probe_service_status(alias: str) -> str:
+    probe_url = _default_service_probe_url(alias)
+    if not probe_url:
+        return "unknown"
+
+    try:
+        with urllib_request.urlopen(probe_url, timeout=5) as response:
+            return "active" if 200 <= response.status < 400 else "failed"
+    except urllib_error.HTTPError:
+        return "failed"
+    except Exception:
+        return "unknown"
+
+
+def _get_service_status(alias: str, service_name: str) -> str:
     """Return 'active', 'failed', 'inactive', or 'unknown'."""
     try:
         result = subprocess.run(
@@ -109,9 +146,13 @@ def _get_service_status(service_name: str) -> str:
             text=True,
             timeout=5,
         )
-        return result.stdout.strip() or "unknown"
+        status = result.stdout.strip() or "unknown"
+        if status != "unknown":
+            return status
     except Exception:
-        return "unknown"
+        pass
+
+    return _probe_service_status(alias)
 
 
 def _get_service_restart_count(service_name: str) -> int:

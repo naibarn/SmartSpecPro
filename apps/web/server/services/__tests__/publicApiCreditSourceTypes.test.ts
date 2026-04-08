@@ -23,4 +23,9 @@ describe("CreditSourceType includes api_* source types", () => {
   it("has all 8 api source types", () => {
     expect(apiSourceTypes).toHaveLength(8);
   });
+
+  it("includes worker_runtime for external worker scheduling flows", () => {
+    const workerSource: CreditSourceType = "worker_runtime";
+    expect(workerSource).toBe("worker_runtime");
+  });
 });

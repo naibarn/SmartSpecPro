@@ -24,11 +24,8 @@ import { getRedisClient, isRedisAvailable } from "../services/redis";
 import { buildAutomationCopilotBrowserPolicyContext } from "../services/browserPolicyRuntime";
 import { getTenantFeatureFlag } from "../services/featureFlags";
 import { assertBrowserPolicySurfaceReady } from "../services/browserPolicyReleaseControl";
+import { getAppRuntimeConfig, getPreferredInternalToken } from "../services/appRuntimeConfig";
 import { loadLegacyAutomationSettings } from "../services/browserPolicySettingsBridge";
-
-const PY_URL =
-  process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
-const INTERNAL_TOKEN = process.env.SMARTSPEC_WEB_GATEWAY_TOKEN || process.env.SMARTSPEC_PROXY_TOKEN || "";
 const AUTOMATION_PREFIX = "/api/v1/automation-copilot";
 const CREDIT_RESERVE_AMOUNT = 100;
 const MIN_CREDITS_TO_START = 10;
@@ -38,15 +35,17 @@ async function callPythonBackend(
   options: { method: "GET" | "POST"; body?: unknown; timeoutMs?: number },
 ): Promise<Response> {
   const { method, body, timeoutMs = 30_000 } = options;
+  const runtime = await getAppRuntimeConfig();
+  const internalToken = await getPreferredInternalToken();
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    return await fetch(`${PY_URL}${path}`, {
+    return await fetch(`${runtime.pythonBackendUrl}${path}`, {
       method,
       headers: {
         "Content-Type": "application/json",
-        ...(INTERNAL_TOKEN ? { "x-internal-token": INTERNAL_TOKEN } : {}),
+        ...(internalToken ? { "x-internal-token": internalToken } : {}),
       },
       body: body ? JSON.stringify(body) : undefined,
       signal: controller.signal,

@@ -24,6 +24,7 @@ from app.core.exceptions import register_exception_handlers
 
 from app.api import (
     health,
+    virtual_admin,
     llm_proxy,
     orchestrator,
     workflows,
@@ -392,6 +393,7 @@ register_exception_handlers(app)
 
 # Include routers
 app.include_router(health.router, prefix="/health", tags=["Health"])
+app.include_router(virtual_admin.router, tags=["Virtual Admin"])
 app.include_router(csrf.router, tags=["CSRF Protection"])
 app.include_router(auth.router, tags=["Authentication"])
 app.include_router(credits.router, tags=["Credits"])

@@ -36,6 +36,13 @@ interface TeamRoomMessageMetadata {
   workItemId?: string | null;
   replyToMessageId?: string | null;
   threadRootMessageId?: string | null;
+  runtimeDisclosure?: {
+    source?: "cloud" | "hybrid" | null;
+    taskClass?: string | null;
+    profileId?: string | null;
+    fallbackReason?: string | null;
+    voiceInputMode?: string | null;
+  } | null;
   citationRefs?: Array<{ id?: string; title?: string; url?: string; note?: string }>;
 }
 
@@ -121,6 +128,35 @@ function normalizeMessageMetadata(value: unknown): TeamRoomMessageMetadata {
     workItemId: typeof metadata.workItemId === "string" ? metadata.workItemId : null,
     replyToMessageId: typeof metadata.replyToMessageId === "string" ? metadata.replyToMessageId : null,
     threadRootMessageId: typeof metadata.threadRootMessageId === "string" ? metadata.threadRootMessageId : null,
+    runtimeDisclosure:
+      metadata.runtimeDisclosure &&
+      typeof metadata.runtimeDisclosure === "object"
+        ? {
+            source:
+              metadata.runtimeDisclosure &&
+              typeof (metadata.runtimeDisclosure as Record<string, unknown>).source === "string"
+                ? ((metadata.runtimeDisclosure as Record<string, unknown>).source as
+                    | "cloud"
+                    | "hybrid")
+                : null,
+            taskClass:
+              typeof (metadata.runtimeDisclosure as Record<string, unknown>).taskClass === "string"
+                ? ((metadata.runtimeDisclosure as Record<string, unknown>).taskClass as string)
+                : null,
+            profileId:
+              typeof (metadata.runtimeDisclosure as Record<string, unknown>).profileId === "string"
+                ? ((metadata.runtimeDisclosure as Record<string, unknown>).profileId as string)
+                : null,
+            fallbackReason:
+              typeof (metadata.runtimeDisclosure as Record<string, unknown>).fallbackReason === "string"
+                ? ((metadata.runtimeDisclosure as Record<string, unknown>).fallbackReason as string)
+                : null,
+            voiceInputMode:
+              typeof (metadata.runtimeDisclosure as Record<string, unknown>).voiceInputMode === "string"
+                ? ((metadata.runtimeDisclosure as Record<string, unknown>).voiceInputMode as string)
+                : null,
+          }
+        : null,
     citationRefs: Array.isArray(metadata.citationRefs) ? (metadata.citationRefs as TeamRoomMessageMetadata["citationRefs"]) : [],
   };
 }
@@ -978,6 +1014,12 @@ export function TeamRoomView({
             const citationCount = Array.isArray(metadata.citationRefs) ? metadata.citationRefs.length : 0;
             const isThreadReply = Boolean(metadata.replyToMessageId);
             const isWorkLinked = Boolean(workItem);
+            const runtimeSource =
+              metadata.runtimeDisclosure?.source === "hybrid"
+                ? "hybrid"
+                : metadata.runtimeDisclosure?.source === "cloud"
+                  ? "cloud"
+                  : null;
             const messageId = typeof eventData.messageId === "string" ? eventData.messageId : null;
             const nextStep = getNextWorkflowStep(workItem?.status);
             const approverMemberId = workItem?.approverMemberId ?? coordinatorMemberId;
@@ -1040,8 +1082,21 @@ export function TeamRoomView({
                       </span>
                     )}
                   </div>
-                  {(messageTypeLabel || workItem || citationCount > 0) && (
+                  {(messageTypeLabel || workItem || citationCount > 0 || runtimeSource) && (
                     <div className="mb-2 flex flex-wrap gap-1.5">
+                      {runtimeSource && (
+                        <Badge
+                          title={
+                            runtimeSource === "hybrid"
+                              ? "Local preprocessing or compaction was used before the cloud/team response."
+                              : "This team-room turn used the existing cloud runtime path."
+                          }
+                          variant="outline"
+                          className="text-[10px]"
+                        >
+                          {runtimeSource === "hybrid" ? "Hybrid" : "Cloud"}
+                        </Badge>
+                      )}
                       {messageTypeLabel && (
                         <Badge variant="outline" className="text-[10px]">
                           {messageTypeLabel}

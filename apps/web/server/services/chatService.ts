@@ -23,23 +23,20 @@ import {
 } from "../../drizzle/schema";
 import { buildModelProviderMapLookupCondition } from "./modelLookup";
 import { resolveEnabledLlmModelId } from "./enabledLlmModels";
+import { getAppRuntimeConfig } from "./appRuntimeConfig";
 import { estimateTokens, estimateMessages } from "../utils/tokenEstimator";
 
 // ==================== Google Drive Integration ====================
 
-import { ENV } from "../_core/env";
-
-const PY_BACKEND = ENV.pythonBackendUrl || "http://localhost:8000";
-const PY_PROXY_TOKEN = process.env.SMARTSPEC_PROXY_TOKEN || "";
-
 async function checkUserHasDriveTools(userId: number): Promise<boolean> {
   try {
+    const runtime = await getAppRuntimeConfig();
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 2000);
     const resp = await fetch(
-      `${PY_BACKEND}/api/internal/mcp/tools?user_id=${userId}`,
+      `${runtime.pythonBackendUrl}/api/internal/mcp/tools?user_id=${userId}`,
       {
-        headers: { "x-proxy-token": PY_PROXY_TOKEN },
+        headers: runtime.proxyToken ? { "x-proxy-token": runtime.proxyToken } : undefined,
         signal: controller.signal,
       },
     );
@@ -70,6 +67,7 @@ export async function createConversation(data: {
   userId: number;
   title?: string;
   model?: string;
+  skillSettings?: InsertConversation["skillSettings"];
   systemPrompt?: string;
   projectId?: string;
   tenantId?: string | null;
@@ -85,6 +83,7 @@ export async function createConversation(data: {
       userId: data.userId,
       title: data.title || "New Chat",
       model: resolvedModel || null,
+      skillSettings: data.skillSettings,
       systemPrompt: data.systemPrompt,
       projectId: data.projectId,
       tenantId: data.tenantId || null,

@@ -1,0 +1,3523 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/skills/cinematic-video-createprompt/schemas/output.schema.json",
+  "title": "Cinematic Video Prompt Builder Output",
+  "description": "Structured JSON output contract for a polished cinematic video prompt package. This schema applies only when response_format = structured_json.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "skill_name",
+    "skill_version",
+    "response_format",
+    "language",
+    "target_model_profile",
+    "generation_mode",
+    "delivery_mode",
+    "multi_video_strategy",
+    "video_count",
+    "dialogue_language",
+    "storytelling_resolution",
+    "continuity_package",
+    "final_prompt",
+    "short_prompt",
+    "prompt_sequence",
+    "cinematic_plan",
+    "reference_usage",
+    "validation"
+  ],
+  "properties": {
+    "skill_name": {
+      "type": "string",
+      "const": "cinematic-video-createprompt"
+    },
+    "skill_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "response_format": {
+      "type": "string",
+      "const": "structured_json"
+    },
+    "language": {
+      "type": "string",
+      "enum": [
+        "en",
+        "th"
+      ]
+    },
+    "target_model_profile": {
+      "type": "string",
+      "enum": [
+        "generic_video_models",
+        "seedance_2_kie",
+        "veo_3_1_kie"
+      ]
+    },
+    "generation_mode": {
+      "type": "string",
+      "enum": [
+        "text_to_video",
+        "image_to_video",
+        "video_edit"
+      ]
+    },
+    "delivery_mode": {
+      "type": "string",
+      "enum": [
+        "multi_shot_single_video",
+        "multi_video"
+      ]
+    },
+    "multi_video_strategy": {
+      "type": "string",
+      "enum": [
+        "not_applicable",
+        "continuous_story",
+        "creative_variations"
+      ]
+    },
+    "video_count": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 6
+    },
+    "dialogue_language": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requested",
+        "resolved",
+        "source",
+        "rationale"
+      ],
+      "properties": {
+        "requested": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "th",
+            "en",
+            "mixed",
+            "ja",
+            "ko",
+            "zh",
+            "es",
+            "fr",
+            "de"
+          ]
+        },
+        "resolved": {
+          "type": "string",
+          "enum": [
+            "th",
+            "en",
+            "mixed",
+            "ja",
+            "ko",
+            "zh",
+            "es",
+            "fr",
+            "de",
+            "none",
+            "other"
+          ]
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "explicit_field",
+            "explicit_text_instruction",
+            "user_text_language",
+            "dialogue_content",
+            "no_dialogue"
+          ]
+        },
+        "rationale": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "storytelling_resolution": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Machine-readable resolution of the storytelling controls after auto-inference, conflict repair, and cinematic consolidation.",
+      "required": [
+        "preset_requested",
+        "preset_resolved",
+        "multi_shot_timing_mode_requested",
+        "multi_shot_timing_mode_resolved",
+        "audio_mode_resolved",
+        "dialogue_density_resolved",
+        "story_shape_resolved",
+        "ending_style_resolved",
+        "performance_style_resolved",
+        "imagination_level_resolved",
+        "scene_arc_resolved",
+        "continuity_mode_resolved",
+        "motion_realism_resolved",
+        "background_mode",
+        "narrative_intent"
+      ],
+      "properties": {
+        "preset_requested": {
+          "type": "string",
+          "enum": [
+            "auto_popular",
+            "dialogue_skit",
+            "voiceover_story",
+            "silent_visual_story",
+            "asmr_sensory",
+            "relax_ambient",
+            "dreamlike_poetic",
+            "surreal_impossible",
+            "cartoon_dialogue",
+            "cartoon_sfx_only",
+            "action_showdown",
+            "pov_vlog",
+            "documentary_observational",
+            "explainer_edutainment",
+            "product_beauty_story"
+          ]
+        },
+        "preset_resolved": {
+          "type": "string",
+          "enum": [
+            "auto_popular",
+            "dialogue_skit",
+            "voiceover_story",
+            "silent_visual_story",
+            "asmr_sensory",
+            "relax_ambient",
+            "dreamlike_poetic",
+            "surreal_impossible",
+            "cartoon_dialogue",
+            "cartoon_sfx_only",
+            "action_showdown",
+            "pov_vlog",
+            "documentary_observational",
+            "explainer_edutainment",
+            "product_beauty_story"
+          ]
+        },
+        "multi_shot_timing_mode_requested": {
+          "type": "string",
+          "enum": [
+            "untimed_or_auto",
+            "timed_shot_timeline"
+          ]
+        },
+        "multi_shot_timing_mode_resolved": {
+          "type": "string",
+          "enum": [
+            "untimed_or_auto",
+            "timed_shot_timeline"
+          ]
+        },
+        "audio_mode_resolved": {
+          "type": "string",
+          "enum": [
+            "spoken_dialogue",
+            "voiceover",
+            "ambience_only",
+            "sfx_only",
+            "music_led_feel",
+            "near_silent"
+          ]
+        },
+        "dialogue_density_resolved": {
+          "type": "string",
+          "enum": [
+            "none",
+            "single_line",
+            "brief_exchange",
+            "ambient_only"
+          ]
+        },
+        "story_shape_resolved": {
+          "type": "string",
+          "enum": [
+            "single_moment",
+            "three_beat_micro_story",
+            "reveal_payoff",
+            "conversation_loop",
+            "escalation",
+            "transformation",
+            "cliffhanger",
+            "seamless_loop"
+          ]
+        },
+        "ending_style_resolved": {
+          "type": "string",
+          "enum": [
+            "punchline",
+            "soft_resolve",
+            "emotional_release",
+            "visual_reveal",
+            "cliffhanger",
+            "loop_back"
+          ]
+        },
+        "performance_style_resolved": {
+          "type": "string",
+          "enum": [
+            "naturalistic",
+            "playful",
+            "deadpan",
+            "comedic_exaggerated",
+            "cartoon_expressive",
+            "heroic_action"
+          ]
+        },
+        "imagination_level_resolved": {
+          "type": "string",
+          "enum": [
+            "grounded",
+            "stylized",
+            "dreamlike",
+            "surreal",
+            "impossible"
+          ]
+        },
+        "scene_arc_resolved": {
+          "type": "string",
+          "enum": [
+            "single_moment",
+            "reveal",
+            "mini_story",
+            "product_showcase",
+            "action_sequence",
+            "performance_loop"
+          ]
+        },
+        "continuity_mode_resolved": {
+          "type": "string",
+          "enum": [
+            "single_continuous_shot",
+            "invisible_cut_flow",
+            "three_beat_sequence",
+            "editorial_montage"
+          ]
+        },
+        "motion_realism_resolved": {
+          "type": "string",
+          "enum": [
+            "grounded_and_believable",
+            "polished_stylized",
+            "restrained_naturalism",
+            "dynamic_but_controlled"
+          ]
+        },
+        "background_mode": {
+          "type": "string",
+          "enum": [
+            "normal_background",
+            "green_screen"
+          ]
+        },
+        "narrative_intent": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "continuity_package": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "continuity_notes",
+        "continuity_notes_origin",
+        "reference_notes",
+        "reference_notes_origin"
+      ],
+      "properties": {
+        "continuity_notes": {
+          "type": "string",
+          "minLength": 1
+        },
+        "continuity_notes_origin": {
+          "type": "string",
+          "enum": [
+            "user_provided",
+            "auto_generated",
+            "user_provided_plus_refined"
+          ]
+        },
+        "reference_notes": {
+          "type": "string",
+          "description": "Reference notes used to keep identity, character traits, environment anchors, props, or composition stable. This may refer to uploaded @ImageN handles, or to inferred character/environment details when no images were attached.",
+          "minLength": 1
+        },
+        "reference_notes_origin": {
+          "type": "string",
+          "enum": [
+            "user_provided",
+            "auto_generated",
+            "user_provided_plus_refined"
+          ]
+        }
+      }
+    },
+    "final_prompt": {
+      "type": "string",
+      "title": "Final Prompt",
+      "minLength": 1
+    },
+    "short_prompt": {
+      "type": "string",
+      "title": "Short Prompt",
+      "minLength": 1
+    },
+    "prompt_sequence": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 6,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "prompt_id",
+          "video_number",
+          "duration_seconds",
+          "prompt_role",
+          "prompt",
+          "continuity_notes",
+          "reference_notes"
+        ],
+        "properties": {
+          "prompt_id": {
+            "type": "string",
+            "pattern": "^Prompt [1-9][0-9]*$"
+          },
+          "video_number": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 6
+          },
+          "duration_seconds": {
+            "type": "integer",
+            "minimum": 4,
+            "maximum": 15
+          },
+          "prompt_role": {
+            "type": "string",
+            "minLength": 1
+          },
+          "prompt": {
+            "type": "string",
+            "minLength": 1
+          },
+          "continuity_notes": {
+            "type": "string",
+            "minLength": 1
+          },
+          "reference_notes": {
+            "type": "string",
+            "description": "Per-prompt reference notes. Use uploaded @ImageN handles only when images exist; otherwise preserve the scene through concise character or environment anchor details inferred from the brief.",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "cinematic_plan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "opening_frame",
+        "subject_focus",
+        "staging_blocking",
+        "motion_arc",
+        "camera_language",
+        "focus_depth",
+        "atmosphere_time",
+        "production_design",
+        "lighting_color",
+        "continuity_pacing",
+        "continuity_guardrails"
+      ],
+      "properties": {
+        "opening_frame": {
+          "type": "string",
+          "minLength": 1
+        },
+        "subject_focus": {
+          "type": "string",
+          "minLength": 1
+        },
+        "staging_blocking": {
+          "type": "string",
+          "minLength": 1
+        },
+        "motion_arc": {
+          "type": "string",
+          "minLength": 1
+        },
+        "camera_language": {
+          "type": "string",
+          "minLength": 1
+        },
+        "focus_depth": {
+          "type": "string",
+          "minLength": 1
+        },
+        "atmosphere_time": {
+          "type": "string",
+          "minLength": 1
+        },
+        "production_design": {
+          "type": "string",
+          "minLength": 1
+        },
+        "lighting_color": {
+          "type": "string",
+          "minLength": 1
+        },
+        "continuity_pacing": {
+          "type": "string",
+          "minLength": 1
+        },
+        "continuity_guardrails": {
+          "type": "string",
+          "minLength": 1
+        },
+        "shot_timeline": {
+          "type": "array",
+          "description": "Optional internal timed shot breakdown for a single multi-shot video. Present this when the user provided explicit timed shots or when the resolved output would clearly benefit from exposing the inferred internal shot schedule.",
+          "minItems": 1,
+          "maxItems": 8,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "shot_number",
+              "start_second",
+              "end_second",
+              "shot_summary"
+            ],
+            "properties": {
+              "shot_number": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 8
+              },
+              "shot_label": {
+                "type": "string",
+                "minLength": 1
+              },
+              "start_second": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 15
+              },
+              "end_second": {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "maximum": 15
+              },
+              "shot_summary": {
+                "type": "string",
+                "minLength": 1
+              },
+              "camera_note": {
+                "type": "string",
+                "minLength": 1
+              },
+              "audio_or_dialogue_cue": {
+                "type": "string",
+                "minLength": 1
+              },
+              "transition_note": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    "reference_usage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reference_input_mode",
+        "reference_image_count",
+        "assignments",
+        "reference_video_count",
+        "video_assignments",
+        "reference_audio_count",
+        "audio_assignments",
+        "first_frame_present",
+        "last_frame_present",
+        "applied_focus",
+        "notes"
+      ],
+      "properties": {
+        "reference_input_mode": {
+          "type": "string",
+          "enum": [
+            "brief_only",
+            "generic_images",
+            "seedance_first_frame_only",
+            "seedance_first_and_last_frames",
+            "seedance_multimodal_reference",
+            "veo_first_frame_only",
+            "veo_first_and_last_frames",
+            "veo_reference_to_video"
+          ]
+        },
+        "reference_image_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9
+        },
+        "assignments": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 9,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "image_id",
+              "role",
+              "prompt_text"
+            ],
+            "properties": {
+              "image_id": {
+                "type": "string",
+                "enum": [
+                  "@Image1",
+                  "@Image2",
+                  "@Image3",
+                  "@Image4",
+                  "@Image5",
+                  "@Image6",
+                  "@Image7",
+                  "@Image8",
+                  "@Image9"
+                ]
+              },
+              "role": {
+                "type": "string",
+                "enum": [
+                  "character_reference",
+                  "style_reference",
+                  "scene_composition_reference",
+                  "product_or_prop_reference",
+                  "supporting_reference",
+                  "unused"
+                ]
+              },
+              "prompt_text": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "default": []
+        },
+        "reference_video_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 3
+        },
+        "video_assignments": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 3,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "video_id",
+              "prompt_text"
+            ],
+            "properties": {
+              "video_id": {
+                "type": "string",
+                "enum": [
+                  "@Video1",
+                  "@Video2",
+                  "@Video3"
+                ]
+              },
+              "guidance_focus": {
+                "type": "string",
+                "minLength": 1
+              },
+              "prompt_text": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "default": []
+        },
+        "reference_audio_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 3
+        },
+        "audio_assignments": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 3,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "audio_id",
+              "prompt_text"
+            ],
+            "properties": {
+              "audio_id": {
+                "type": "string",
+                "enum": [
+                  "@Audio1",
+                  "@Audio2",
+                  "@Audio3"
+                ]
+              },
+              "guidance_focus": {
+                "type": "string",
+                "minLength": 1
+              },
+              "prompt_text": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "default": []
+        },
+        "first_frame_present": {
+          "type": "boolean"
+        },
+        "last_frame_present": {
+          "type": "boolean"
+        },
+        "applied_focus": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "default": []
+        },
+        "notes": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "validation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "is_valid",
+        "warnings",
+        "safety_notes",
+        "suggestions"
+      ],
+      "properties": {
+        "is_valid": {
+          "type": "boolean"
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "default": []
+        },
+        "safety_notes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "default": []
+        },
+        "suggestions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "default": []
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "delivery_mode": {
+            "const": "multi_video"
+          }
+        },
+        "required": [
+          "delivery_mode"
+        ]
+      },
+      "then": {
+        "properties": {
+          "multi_video_strategy": {
+            "enum": [
+              "continuous_story",
+              "creative_variations"
+            ]
+          },
+          "video_count": {
+            "minimum": 2
+          },
+          "prompt_sequence": {
+            "minItems": 2
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "delivery_mode": {
+            "const": "multi_video"
+          },
+          "video_count": {
+            "const": 2
+          }
+        },
+        "required": [
+          "delivery_mode",
+          "video_count"
+        ]
+      },
+      "then": {
+        "properties": {
+          "prompt_sequence": {
+            "minItems": 2,
+            "maxItems": 2
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "delivery_mode": {
+            "const": "multi_video"
+          },
+          "video_count": {
+            "const": 3
+          }
+        },
+        "required": [
+          "delivery_mode",
+          "video_count"
+        ]
+      },
+      "then": {
+        "properties": {
+          "prompt_sequence": {
+            "minItems": 3,
+            "maxItems": 3
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "delivery_mode": {
+            "const": "multi_video"
+          },
+          "video_count": {
+            "const": 4
+          }
+        },
+        "required": [
+          "delivery_mode",
+          "video_count"
+        ]
+      },
+      "then": {
+        "properties": {
+          "prompt_sequence": {
+            "minItems": 4,
+            "maxItems": 4
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "delivery_mode": {
+            "const": "multi_video"
+          },
+          "video_count": {
+            "const": 5
+          }
+        },
+        "required": [
+          "delivery_mode",
+          "video_count"
+        ]
+      },
+      "then": {
+        "properties": {
+          "prompt_sequence": {
+            "minItems": 5,
+            "maxItems": 5
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "delivery_mode": {
+            "const": "multi_video"
+          },
+          "video_count": {
+            "const": 6
+          }
+        },
+        "required": [
+          "delivery_mode",
+          "video_count"
+        ]
+      },
+      "then": {
+        "properties": {
+          "prompt_sequence": {
+            "minItems": 6,
+            "maxItems": 6
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "delivery_mode": {
+            "const": "multi_shot_single_video"
+          }
+        },
+        "required": [
+          "delivery_mode"
+        ]
+      },
+      "then": {
+        "properties": {
+          "multi_video_strategy": {
+            "const": "not_applicable"
+          },
+          "video_count": {
+            "const": 1
+          },
+          "prompt_sequence": {
+            "minItems": 1,
+            "maxItems": 1
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "reference_usage": {
+            "properties": {
+              "reference_image_count": {
+                "const": 0
+              }
+            },
+            "required": [
+              "reference_image_count"
+            ]
+          }
+        },
+        "required": [
+          "reference_usage"
+        ]
+      },
+      "then": {
+        "properties": {
+          "reference_usage": {
+            "properties": {
+              "assignments": {
+                "minItems": 0,
+                "maxItems": 0
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "target_model_profile": {
+            "const": "generic_video_models"
+          }
+        },
+        "required": [
+          "target_model_profile"
+        ]
+      },
+      "then": {
+        "properties": {
+          "reference_usage": {
+            "properties": {
+              "reference_input_mode": {
+                "enum": [
+                  "brief_only",
+                  "generic_images"
+                ]
+              },
+              "reference_image_count": {
+                "maximum": 4
+              },
+              "reference_video_count": {
+                "const": 0
+              },
+              "reference_audio_count": {
+                "const": 0
+              },
+              "first_frame_present": {
+                "const": false
+              },
+              "last_frame_present": {
+                "const": false
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "target_model_profile": {
+            "const": "seedance_2_kie"
+          }
+        },
+        "required": [
+          "target_model_profile"
+        ]
+      },
+      "then": {
+        "properties": {
+          "reference_usage": {
+            "properties": {
+              "reference_input_mode": {
+                "enum": [
+                  "brief_only",
+                  "seedance_first_frame_only",
+                  "seedance_first_and_last_frames",
+                  "seedance_multimodal_reference"
+                ]
+              },
+              "reference_image_count": {
+                "maximum": 9
+              },
+              "reference_video_count": {
+                "maximum": 3
+              },
+              "reference_audio_count": {
+                "maximum": 3
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "target_model_profile": {
+            "const": "veo_3_1_kie"
+          }
+        },
+        "required": [
+          "target_model_profile"
+        ]
+      },
+      "then": {
+        "properties": {
+          "reference_usage": {
+            "properties": {
+              "reference_input_mode": {
+                "enum": [
+                  "brief_only",
+                  "veo_first_frame_only",
+                  "veo_first_and_last_frames",
+                  "veo_reference_to_video"
+                ]
+              },
+              "reference_image_count": {
+                "maximum": 3
+              },
+              "reference_video_count": {
+                "const": 0
+              },
+              "reference_audio_count": {
+                "const": 0
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "reference_usage": {
+            "properties": {
+              "reference_input_mode": {
+                "const": "brief_only"
+              }
+            },
+            "required": [
+              "reference_input_mode"
+            ]
+          }
+        },
+        "required": [
+          "reference_usage"
+        ]
+      },
+      "then": {
+        "properties": {
+          "reference_usage": {
+            "properties": {
+              "reference_image_count": {
+                "const": 0
+              },
+              "reference_video_count": {
+                "const": 0
+              },
+              "reference_audio_count": {
+                "const": 0
+              },
+              "first_frame_present": {
+                "const": false
+              },
+              "last_frame_present": {
+                "const": false
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "reference_usage": {
+            "properties": {
+              "reference_input_mode": {
+                "const": "generic_images"
+              }
+            },
+            "required": [
+              "reference_input_mode"
+            ]
+          }
+        },
+        "required": [
+          "reference_usage"
+        ]
+      },
+      "then": {
+        "properties": {
+          "target_model_profile": {
+            "const": "generic_video_models"
+          },
+          "reference_usage": {
+            "properties": {
+              "reference_image_count": {
+                "minimum": 1,
+                "maximum": 4
+              },
+              "reference_video_count": {
+                "const": 0
+              },
+              "reference_audio_count": {
+                "const": 0
+              },
+              "first_frame_present": {
+                "const": false
+              },
+              "last_frame_present": {
+                "const": false
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "reference_usage": {
+            "properties": {
+              "reference_input_mode": {
+                "const": "seedance_first_frame_only"
+              }
+            },
+            "required": [
+              "reference_input_mode"
+            ]
+          }
+        },
+        "required": [
+          "reference_usage"
+        ]
+      },
+      "then": {
+        "properties": {
+          "target_model_profile": {
+            "const": "seedance_2_kie"
+          },
+          "reference_usage": {
+            "properties": {
+              "reference_video_count": {
+                "const": 0
+              },
+              "reference_audio_count": {
+                "const": 0
+              },
+              "first_frame_present": {
+                "const": true
+              },
+              "last_frame_present": {
+                "const": false
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "reference_usage": {
+            "properties": {
+              "reference_input_mode": {
+                "const": "seedance_first_and_last_frames"
+              }
+            },
+            "required": [
+              "reference_input_mode"
+            ]
+          }
+        },
+        "required": [
+          "reference_usage"
+        ]
+      },
+      "then": {
+        "properties": {
+          "target_model_profile": {
+            "const": "seedance_2_kie"
+          },
+          "reference_usage": {
+            "properties": {
+              "reference_video_count": {
+                "const": 0
+              },
+              "reference_audio_count": {
+                "const": 0
+              },
+              "first_frame_present": {
+                "const": true
+              },
+              "last_frame_present": {
+                "const": true
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "reference_usage": {
+            "properties": {
+              "reference_input_mode": {
+                "const": "seedance_multimodal_reference"
+              }
+            },
+            "required": [
+              "reference_input_mode"
+            ]
+          }
+        },
+        "required": [
+          "reference_usage"
+        ]
+      },
+      "then": {
+        "properties": {
+          "target_model_profile": {
+            "const": "seedance_2_kie"
+          },
+          "reference_usage": {
+            "properties": {
+              "first_frame_present": {
+                "const": false
+              },
+              "last_frame_present": {
+                "const": false
+              }
+            }
+          }
+        },
+        "anyOf": [
+          {
+            "properties": {
+              "reference_usage": {
+                "properties": {
+                  "reference_image_count": {
+                    "minimum": 1
+                  }
+                }
+              }
+            }
+          },
+          {
+            "properties": {
+              "reference_usage": {
+                "properties": {
+                  "reference_video_count": {
+                    "minimum": 1
+                  }
+                }
+              }
+            }
+          },
+          {
+            "properties": {
+              "reference_usage": {
+                "properties": {
+                  "reference_audio_count": {
+                    "minimum": 1
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "reference_usage": {
+            "properties": {
+              "reference_input_mode": {
+                "const": "veo_first_frame_only"
+              }
+            },
+            "required": [
+              "reference_input_mode"
+            ]
+          }
+        },
+        "required": [
+          "reference_usage"
+        ]
+      },
+      "then": {
+        "properties": {
+          "target_model_profile": {
+            "const": "veo_3_1_kie"
+          },
+          "reference_usage": {
+            "properties": {
+              "reference_video_count": {
+                "const": 0
+              },
+              "reference_audio_count": {
+                "const": 0
+              },
+              "first_frame_present": {
+                "const": true
+              },
+              "last_frame_present": {
+                "const": false
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "reference_usage": {
+            "properties": {
+              "reference_input_mode": {
+                "const": "veo_first_and_last_frames"
+              }
+            },
+            "required": [
+              "reference_input_mode"
+            ]
+          }
+        },
+        "required": [
+          "reference_usage"
+        ]
+      },
+      "then": {
+        "properties": {
+          "target_model_profile": {
+            "const": "veo_3_1_kie"
+          },
+          "reference_usage": {
+            "properties": {
+              "reference_image_count": {
+                "const": 0
+              },
+              "reference_video_count": {
+                "const": 0
+              },
+              "reference_audio_count": {
+                "const": 0
+              },
+              "first_frame_present": {
+                "const": true
+              },
+              "last_frame_present": {
+                "const": true
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "reference_usage": {
+            "properties": {
+              "reference_input_mode": {
+                "const": "veo_reference_to_video"
+              }
+            },
+            "required": [
+              "reference_input_mode"
+            ]
+          }
+        },
+        "required": [
+          "reference_usage"
+        ]
+      },
+      "then": {
+        "properties": {
+          "target_model_profile": {
+            "const": "veo_3_1_kie"
+          },
+          "reference_usage": {
+            "properties": {
+              "reference_image_count": {
+                "minimum": 1,
+                "maximum": 3
+              },
+              "reference_video_count": {
+                "const": 0
+              },
+              "reference_audio_count": {
+                "const": 0
+              },
+              "first_frame_present": {
+                "const": false
+              },
+              "last_frame_present": {
+                "const": false
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "reference_usage": {
+            "properties": {
+              "reference_image_count": {
+                "const": 5
+              }
+            },
+            "required": [
+              "reference_image_count"
+            ]
+          }
+        },
+        "required": [
+          "reference_usage"
+        ]
+      },
+      "then": {
+        "properties": {
+          "reference_usage": {
+            "properties": {
+              "assignments": {
+                "minItems": 5,
+                "maxItems": 5,
+                "allOf": [
+                  {
+                    "contains": {
+                      "type": "object",
+                      "required": [
+                        "image_id"
+                      ],
+                      "properties": {
+                        "image_id": {
+                          "const": "@Image1"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "contains": {
+                      "type": "object",
+                      "required": [
+                        "image_id"
+                      ],
+                      "properties": {
+                        "image_id": {
+                          "const": "@Image2"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "contains": {
+                      "type": "object",
+                      "required": [
+                        "image_id"
+                      ],
+                      "properties": {
+                        "image_id": {
+                          "const": "@Image3"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "contains": {
+                      "type": "object",
+                      "required": [
+                        "image_id"
+                      ],
+                      "properties": {
+                        "image_id": {
+                          "const": "@Image4"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "contains": {
+                      "type": "object",
+                      "required": [
+                        "image_id"
+                      ],
+                      "properties": {
+                        "image_id": {
+                          "const": "@Image5"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "not": {
+                      "contains": {
+                        "type": "object",
+                        "required": [
+                          "image_id"
+                        ],
+                        "properties": {
+                          "image_id": {
+                            "const": "@Image6"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "not": {
+                      "contains": {
+                        "type": "object",
+                        "required": [
+                          "image_id"
+                        ],
+                        "properties": {
+                          "image_id": {
+                            "const": "@Image7"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "not": {
+                      "contains": {
+                        "type": "object",
+                        "required": [
+                          "image_id"
+                        ],
+                        "properties": {
+                          "image_id": {
+                            "const": "@Image8"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "not": {
+                      "contains": {
+                        "type": "object",
+                        "required": [
+                          "image_id"
+                        ],
+                        "properties": {
+                          "image_id": {
+                            "const": "@Image9"
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "reference_usage": {
+            "properties": {
+              "reference_image_count": {
+                "const": 6
+              }
+            },
+            "required": [
+              "reference_image_count"
+            ]
+          }
+        },
+        "required": [
+          "reference_usage"
+        ]
+      },
+      "then": {
+        "properties": {
+          "reference_usage": {
+            "properties": {
+              "assignments": {
+                "minItems": 6,
+                "maxItems": 6,
+                "allOf": [
+                  {
+                    "contains": {
+                      "type": "object",
+                      "required": [
+                        "image_id"
+                      ],
+                      "properties": {
+                        "image_id": {
+                          "const": "@Image1"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "contains": {
+                      "type": "object",
+                      "required": [
+                        "image_id"
+                      ],
+                      "properties": {
+                        "image_id": {
+                          "const": "@Image2"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "contains": {
+                      "type": "object",
+                      "required": [
+                        "image_id"
+                      ],
+                      "properties": {
+                        "image_id": {
+                          "const": "@Image3"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "contains": {
+                      "type": "object",
+                      "required": [
+                        "image_id"
+                      ],
+                      "properties": {
+                        "image_id": {
+                          "const": "@Image4"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "contains": {
+                      "type": "object",
+                      "required": [
+                        "image_id"
+                      ],
+                      "properties": {
+                        "image_id": {
+                          "const": "@Image5"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "contains": {
+                      "type": "object",
+                      "required": [
+                        "image_id"
+                      ],
+                      "properties": {
+                        "image_id": {
+                          "const": "@Image6"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "not": {
+                      "contains": {
+                        "type": "object",
+                        "required": [
+                          "image_id"
+                        ],
+                        "properties": {
+                          "image_id": {
+                            "const": "@Image7"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "not": {
+                      "contains": {
+                        "type": "object",
+                        "required": [
+                          "image_id"
+                        ],
+                        "properties": {
+                          "image_id": {
+                            "const": "@Image8"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "not": {
+                      "contains": {
+                        "type": "object",
+                        "required": [
+                          "image_id"
+                        ],
+                        "properties": {
+                          "image_id": {
+                            "const": "@Image9"
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "reference_usage": {
+            "properties": {
+              "reference_image_count": {
+                "const": 7
+              }
+            },
+            "required": [
+              "reference_image_count"
+            ]
+          }
+        },
+        "required": [
+          "reference_usage"
+        ]
+      },
+      "then": {
+        "properties": {
+          "reference_usage": {
+            "properties": {
+              "assignments": {
+                "minItems": 7,
+                "maxItems": 7,
+                "allOf": [
+                  {
+                    "contains": {
+                      "type": "object",
+                      "required": [
+                        "image_id"
+                      ],
+                      "properties": {
+                        "image_id": {
+                          "const": "@Image1"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "contains": {
+                      "type": "object",
+                      "required": [
+                        "image_id"
+                      ],
+                      "properties": {
+                        "image_id": {
+                          "const": "@Image2"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "contains": {
+                      "type": "object",
+                      "required": [
+                        "image_id"
+                      ],
+                      "properties": {
+                        "image_id": {
+                          "const": "@Image3"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "contains": {
+                      "type": "object",
+                      "required": [
+                        "image_id"
+                      ],
+                      "properties": {
+                        "image_id": {
+                          "const": "@Image4"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "contains": {
+                      "type": "object",
+                      "required": [
+                        "image_id"
+                      ],
+                      "properties": {
+                        "image_id": {
+                          "const": "@Image5"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "contains": {
+                      "type": "object",
+                      "required": [
+                        "image_id"
+                      ],
+                      "properties": {
+                        "image_id": {
+                          "const": "@Image6"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "contains": {
+                      "type": "object",
+                      "required": [
+                        "image_id"
+                      ],
+                      "properties": {
+                        "image_id": {
+                          "const": "@Image7"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "not": {
+                      "contains": {
+                        "type": "object",
+                        "required": [
+                          "image_id"
+                        ],
+                        "properties": {
+                          "image_id": {
+                            "const": "@Image8"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "not": {
+                      "contains": {
+                        "type": "object",
+                        "required": [
+                          "image_id"
+                        ],
+                        "properties": {
+                          "image_id": {
+                            "const": "@Image9"
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "reference_usage": {
+            "properties": {
+              "reference_image_count": {
+                "const": 8
+              }
+            },
+            "required": [
+              "reference_image_count"
+            ]
+          }
+        },
+        "required": [
+          "reference_usage"
+        ]
+      },
+      "then": {
+        "properties": {
+          "reference_usage": {
+            "properties": {
+              "assignments": {
+                "minItems": 8,
+                "maxItems": 8,
+                "allOf": [
+                  {
+                    "contains": {
+                      "type": "object",
+                      "required": [
+                        "image_id"
+                      ],
+                      "properties": {
+                        "image_id": {
+                          "const": "@Image1"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "contains": {
+                      "type": "object",
+                      "required": [
+                        "image_id"
+                      ],
+                      "properties": {
+                        "image_id": {
+                          "const": "@Image2"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "contains": {
+                      "type": "object",
+                      "required": [
+                        "image_id"
+                      ],
+                      "properties": {
+                        "image_id": {
+                          "const": "@Image3"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "contains": {
+                      "type": "object",
+                      "required": [
+                        "image_id"
+                      ],
+                      "properties": {
+                        "image_id": {
+                          "const": "@Image4"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "contains": {
+                      "type": "object",
+                      "required": [
+                        "image_id"
+                      ],
+                      "properties": {
+                        "image_id": {
+                          "const": "@Image5"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "contains": {
+                      "type": "object",
+                      "required": [
+                        "image_id"
+                      ],
+                      "properties": {
+                        "image_id": {
+                          "const": "@Image6"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "contains": {
+                      "type": "object",
+                      "required": [
+                        "image_id"
+                      ],
+                      "properties": {
+                        "image_id": {
+                          "const": "@Image7"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "contains": {
+                      "type": "object",
+                      "required": [
+                        "image_id"
+                      ],
+                      "properties": {
+                        "image_id": {
+                          "const": "@Image8"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "not": {
+                      "contains": {
+                        "type": "object",
+                        "required": [
+                          "image_id"
+                        ],
+                        "properties": {
+                          "image_id": {
+                            "const": "@Image9"
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "reference_usage": {
+            "properties": {
+              "reference_image_count": {
+                "const": 9
+              }
+            },
+            "required": [
+              "reference_image_count"
+            ]
+          }
+        },
+        "required": [
+          "reference_usage"
+        ]
+      },
+      "then": {
+        "properties": {
+          "reference_usage": {
+            "properties": {
+              "assignments": {
+                "minItems": 9,
+                "maxItems": 9,
+                "allOf": [
+                  {
+                    "contains": {
+                      "type": "object",
+                      "required": [
+                        "image_id"
+                      ],
+                      "properties": {
+                        "image_id": {
+                          "const": "@Image1"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "contains": {
+                      "type": "object",
+                      "required": [
+                        "image_id"
+                      ],
+                      "properties": {
+                        "image_id": {
+                          "const": "@Image2"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "contains": {
+                      "type": "object",
+                      "required": [
+                        "image_id"
+                      ],
+                      "properties": {
+                        "image_id": {
+                          "const": "@Image3"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "contains": {
+                      "type": "object",
+                      "required": [
+                        "image_id"
+                      ],
+                      "properties": {
+                        "image_id": {
+                          "const": "@Image4"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "contains": {
+                      "type": "object",
+                      "required": [
+                        "image_id"
+                      ],
+                      "properties": {
+                        "image_id": {
+                          "const": "@Image5"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "contains": {
+                      "type": "object",
+                      "required": [
+                        "image_id"
+                      ],
+                      "properties": {
+                        "image_id": {
+                          "const": "@Image6"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "contains": {
+                      "type": "object",
+                      "required": [
+                        "image_id"
+                      ],
+                      "properties": {
+                        "image_id": {
+                          "const": "@Image7"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "contains": {
+                      "type": "object",
+                      "required": [
+                        "image_id"
+                      ],
+                      "properties": {
+                        "image_id": {
+                          "const": "@Image8"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "contains": {
+                      "type": "object",
+                      "required": [
+                        "image_id"
+                      ],
+                      "properties": {
+                        "image_id": {
+                          "const": "@Image9"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "reference_usage": {
+            "properties": {
+              "reference_image_count": {
+                "const": 1
+              }
+            },
+            "required": [
+              "reference_image_count"
+            ]
+          }
+        },
+        "required": [
+          "reference_usage"
+        ]
+      },
+      "then": {
+        "properties": {
+          "reference_usage": {
+            "properties": {
+              "assignments": {
+                "minItems": 1,
+                "maxItems": 1,
+                "allOf": [
+                  {
+                    "contains": {
+                      "type": "object",
+                      "required": [
+                        "image_id"
+                      ],
+                      "properties": {
+                        "image_id": {
+                          "const": "@Image1"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "not": {
+                      "contains": {
+                        "type": "object",
+                        "required": [
+                          "image_id"
+                        ],
+                        "properties": {
+                          "image_id": {
+                            "const": "@Image2"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "not": {
+                      "contains": {
+                        "type": "object",
+                        "required": [
+                          "image_id"
+                        ],
+                        "properties": {
+                          "image_id": {
+                            "const": "@Image3"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "not": {
+                      "contains": {
+                        "type": "object",
+                        "required": [
+                          "image_id"
+                        ],
+                        "properties": {
+                          "image_id": {
+                            "const": "@Image4"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "not": {
+                      "contains": {
+                        "type": "object",
+                        "required": [
+                          "image_id"
+                        ],
+                        "properties": {
+                          "image_id": {
+                            "const": "@Image5"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "not": {
+                      "contains": {
+                        "type": "object",
+                        "required": [
+                          "image_id"
+                        ],
+                        "properties": {
+                          "image_id": {
+                            "const": "@Image6"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "not": {
+                      "contains": {
+                        "type": "object",
+                        "required": [
+                          "image_id"
+                        ],
+                        "properties": {
+                          "image_id": {
+                            "const": "@Image7"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "not": {
+                      "contains": {
+                        "type": "object",
+                        "required": [
+                          "image_id"
+                        ],
+                        "properties": {
+                          "image_id": {
+                            "const": "@Image8"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "not": {
+                      "contains": {
+                        "type": "object",
+                        "required": [
+                          "image_id"
+                        ],
+                        "properties": {
+                          "image_id": {
+                            "const": "@Image9"
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "reference_usage": {
+            "properties": {
+              "reference_image_count": {
+                "const": 2
+              }
+            },
+            "required": [
+              "reference_image_count"
+            ]
+          }
+        },
+        "required": [
+          "reference_usage"
+        ]
+      },
+      "then": {
+        "properties": {
+          "reference_usage": {
+            "properties": {
+              "assignments": {
+                "minItems": 2,
+                "maxItems": 2,
+                "allOf": [
+                  {
+                    "contains": {
+                      "type": "object",
+                      "required": [
+                        "image_id"
+                      ],
+                      "properties": {
+                        "image_id": {
+                          "const": "@Image1"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "contains": {
+                      "type": "object",
+                      "required": [
+                        "image_id"
+                      ],
+                      "properties": {
+                        "image_id": {
+                          "const": "@Image2"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "not": {
+                      "contains": {
+                        "type": "object",
+                        "required": [
+                          "image_id"
+                        ],
+                        "properties": {
+                          "image_id": {
+                            "const": "@Image3"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "not": {
+                      "contains": {
+                        "type": "object",
+                        "required": [
+                          "image_id"
+                        ],
+                        "properties": {
+                          "image_id": {
+                            "const": "@Image4"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "not": {
+                      "contains": {
+                        "type": "object",
+                        "required": [
+                          "image_id"
+                        ],
+                        "properties": {
+                          "image_id": {
+                            "const": "@Image5"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "not": {
+                      "contains": {
+                        "type": "object",
+                        "required": [
+                          "image_id"
+                        ],
+                        "properties": {
+                          "image_id": {
+                            "const": "@Image6"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "not": {
+                      "contains": {
+                        "type": "object",
+                        "required": [
+                          "image_id"
+                        ],
+                        "properties": {
+                          "image_id": {
+                            "const": "@Image7"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "not": {
+                      "contains": {
+                        "type": "object",
+                        "required": [
+                          "image_id"
+                        ],
+                        "properties": {
+                          "image_id": {
+                            "const": "@Image8"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "not": {
+                      "contains": {
+                        "type": "object",
+                        "required": [
+                          "image_id"
+                        ],
+                        "properties": {
+                          "image_id": {
+                            "const": "@Image9"
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "reference_usage": {
+            "properties": {
+              "reference_image_count": {
+                "const": 3
+              }
+            },
+            "required": [
+              "reference_image_count"
+            ]
+          }
+        },
+        "required": [
+          "reference_usage"
+        ]
+      },
+      "then": {
+        "properties": {
+          "reference_usage": {
+            "properties": {
+              "assignments": {
+                "minItems": 3,
+                "maxItems": 3,
+                "allOf": [
+                  {
+                    "contains": {
+                      "type": "object",
+                      "required": [
+                        "image_id"
+                      ],
+                      "properties": {
+                        "image_id": {
+                          "const": "@Image1"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "contains": {
+                      "type": "object",
+                      "required": [
+                        "image_id"
+                      ],
+                      "properties": {
+                        "image_id": {
+                          "const": "@Image2"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "contains": {
+                      "type": "object",
+                      "required": [
+                        "image_id"
+                      ],
+                      "properties": {
+                        "image_id": {
+                          "const": "@Image3"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "not": {
+                      "contains": {
+                        "type": "object",
+                        "required": [
+                          "image_id"
+                        ],
+                        "properties": {
+                          "image_id": {
+                            "const": "@Image4"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "not": {
+                      "contains": {
+                        "type": "object",
+                        "required": [
+                          "image_id"
+                        ],
+                        "properties": {
+                          "image_id": {
+                            "const": "@Image5"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "not": {
+                      "contains": {
+                        "type": "object",
+                        "required": [
+                          "image_id"
+                        ],
+                        "properties": {
+                          "image_id": {
+                            "const": "@Image6"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "not": {
+                      "contains": {
+                        "type": "object",
+                        "required": [
+                          "image_id"
+                        ],
+                        "properties": {
+                          "image_id": {
+                            "const": "@Image7"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "not": {
+                      "contains": {
+                        "type": "object",
+                        "required": [
+                          "image_id"
+                        ],
+                        "properties": {
+                          "image_id": {
+                            "const": "@Image8"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "not": {
+                      "contains": {
+                        "type": "object",
+                        "required": [
+                          "image_id"
+                        ],
+                        "properties": {
+                          "image_id": {
+                            "const": "@Image9"
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "reference_usage": {
+            "properties": {
+              "reference_image_count": {
+                "const": 4
+              }
+            },
+            "required": [
+              "reference_image_count"
+            ]
+          }
+        },
+        "required": [
+          "reference_usage"
+        ]
+      },
+      "then": {
+        "properties": {
+          "reference_usage": {
+            "properties": {
+              "assignments": {
+                "minItems": 4,
+                "maxItems": 4,
+                "allOf": [
+                  {
+                    "contains": {
+                      "type": "object",
+                      "required": [
+                        "image_id"
+                      ],
+                      "properties": {
+                        "image_id": {
+                          "const": "@Image1"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "contains": {
+                      "type": "object",
+                      "required": [
+                        "image_id"
+                      ],
+                      "properties": {
+                        "image_id": {
+                          "const": "@Image2"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "contains": {
+                      "type": "object",
+                      "required": [
+                        "image_id"
+                      ],
+                      "properties": {
+                        "image_id": {
+                          "const": "@Image3"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "contains": {
+                      "type": "object",
+                      "required": [
+                        "image_id"
+                      ],
+                      "properties": {
+                        "image_id": {
+                          "const": "@Image4"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "not": {
+                      "contains": {
+                        "type": "object",
+                        "required": [
+                          "image_id"
+                        ],
+                        "properties": {
+                          "image_id": {
+                            "const": "@Image5"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "not": {
+                      "contains": {
+                        "type": "object",
+                        "required": [
+                          "image_id"
+                        ],
+                        "properties": {
+                          "image_id": {
+                            "const": "@Image6"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "not": {
+                      "contains": {
+                        "type": "object",
+                        "required": [
+                          "image_id"
+                        ],
+                        "properties": {
+                          "image_id": {
+                            "const": "@Image7"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "not": {
+                      "contains": {
+                        "type": "object",
+                        "required": [
+                          "image_id"
+                        ],
+                        "properties": {
+                          "image_id": {
+                            "const": "@Image8"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "not": {
+                      "contains": {
+                        "type": "object",
+                        "required": [
+                          "image_id"
+                        ],
+                        "properties": {
+                          "image_id": {
+                            "const": "@Image9"
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "reference_usage": {
+            "properties": {
+              "reference_video_count": {
+                "const": 0
+              }
+            },
+            "required": [
+              "reference_video_count"
+            ]
+          }
+        },
+        "required": [
+          "reference_usage"
+        ]
+      },
+      "then": {
+        "properties": {
+          "reference_usage": {
+            "properties": {
+              "video_assignments": {
+                "minItems": 0,
+                "maxItems": 0
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "reference_usage": {
+            "properties": {
+              "reference_video_count": {
+                "const": 1
+              }
+            },
+            "required": [
+              "reference_video_count"
+            ]
+          }
+        },
+        "required": [
+          "reference_usage"
+        ]
+      },
+      "then": {
+        "properties": {
+          "reference_usage": {
+            "properties": {
+              "video_assignments": {
+                "minItems": 1,
+                "maxItems": 1,
+                "allOf": [
+                  {
+                    "contains": {
+                      "type": "object",
+                      "required": [
+                        "video_id"
+                      ],
+                      "properties": {
+                        "video_id": {
+                          "const": "@Video1"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "not": {
+                      "contains": {
+                        "type": "object",
+                        "required": [
+                          "video_id"
+                        ],
+                        "properties": {
+                          "video_id": {
+                            "const": "@Video2"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "not": {
+                      "contains": {
+                        "type": "object",
+                        "required": [
+                          "video_id"
+                        ],
+                        "properties": {
+                          "video_id": {
+                            "const": "@Video3"
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "reference_usage": {
+            "properties": {
+              "reference_video_count": {
+                "const": 2
+              }
+            },
+            "required": [
+              "reference_video_count"
+            ]
+          }
+        },
+        "required": [
+          "reference_usage"
+        ]
+      },
+      "then": {
+        "properties": {
+          "reference_usage": {
+            "properties": {
+              "video_assignments": {
+                "minItems": 2,
+                "maxItems": 2,
+                "allOf": [
+                  {
+                    "contains": {
+                      "type": "object",
+                      "required": [
+                        "video_id"
+                      ],
+                      "properties": {
+                        "video_id": {
+                          "const": "@Video1"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "contains": {
+                      "type": "object",
+                      "required": [
+                        "video_id"
+                      ],
+                      "properties": {
+                        "video_id": {
+                          "const": "@Video2"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "not": {
+                      "contains": {
+                        "type": "object",
+                        "required": [
+                          "video_id"
+                        ],
+                        "properties": {
+                          "video_id": {
+                            "const": "@Video3"
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "reference_usage": {
+            "properties": {
+              "reference_video_count": {
+                "const": 3
+              }
+            },
+            "required": [
+              "reference_video_count"
+            ]
+          }
+        },
+        "required": [
+          "reference_usage"
+        ]
+      },
+      "then": {
+        "properties": {
+          "reference_usage": {
+            "properties": {
+              "video_assignments": {
+                "minItems": 3,
+                "maxItems": 3,
+                "allOf": [
+                  {
+                    "contains": {
+                      "type": "object",
+                      "required": [
+                        "video_id"
+                      ],
+                      "properties": {
+                        "video_id": {
+                          "const": "@Video1"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "contains": {
+                      "type": "object",
+                      "required": [
+                        "video_id"
+                      ],
+                      "properties": {
+                        "video_id": {
+                          "const": "@Video2"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "contains": {
+                      "type": "object",
+                      "required": [
+                        "video_id"
+                      ],
+                      "properties": {
+                        "video_id": {
+                          "const": "@Video3"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "reference_usage": {
+            "properties": {
+              "reference_audio_count": {
+                "const": 0
+              }
+            },
+            "required": [
+              "reference_audio_count"
+            ]
+          }
+        },
+        "required": [
+          "reference_usage"
+        ]
+      },
+      "then": {
+        "properties": {
+          "reference_usage": {
+            "properties": {
+              "audio_assignments": {
+                "minItems": 0,
+                "maxItems": 0
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "reference_usage": {
+            "properties": {
+              "reference_audio_count": {
+                "const": 1
+              }
+            },
+            "required": [
+              "reference_audio_count"
+            ]
+          }
+        },
+        "required": [
+          "reference_usage"
+        ]
+      },
+      "then": {
+        "properties": {
+          "reference_usage": {
+            "properties": {
+              "audio_assignments": {
+                "minItems": 1,
+                "maxItems": 1,
+                "allOf": [
+                  {
+                    "contains": {
+                      "type": "object",
+                      "required": [
+                        "audio_id"
+                      ],
+                      "properties": {
+                        "audio_id": {
+                          "const": "@Audio1"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "not": {
+                      "contains": {
+                        "type": "object",
+                        "required": [
+                          "audio_id"
+                        ],
+                        "properties": {
+                          "audio_id": {
+                            "const": "@Audio2"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "not": {
+                      "contains": {
+                        "type": "object",
+                        "required": [
+                          "audio_id"
+                        ],
+                        "properties": {
+                          "audio_id": {
+                            "const": "@Audio3"
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "reference_usage": {
+            "properties": {
+              "reference_audio_count": {
+                "const": 2
+              }
+            },
+            "required": [
+              "reference_audio_count"
+            ]
+          }
+        },
+        "required": [
+          "reference_usage"
+        ]
+      },
+      "then": {
+        "properties": {
+          "reference_usage": {
+            "properties": {
+              "audio_assignments": {
+                "minItems": 2,
+                "maxItems": 2,
+                "allOf": [
+                  {
+                    "contains": {
+                      "type": "object",
+                      "required": [
+                        "audio_id"
+                      ],
+                      "properties": {
+                        "audio_id": {
+                          "const": "@Audio1"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "contains": {
+                      "type": "object",
+                      "required": [
+                        "audio_id"
+                      ],
+                      "properties": {
+                        "audio_id": {
+                          "const": "@Audio2"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "not": {
+                      "contains": {
+                        "type": "object",
+                        "required": [
+                          "audio_id"
+                        ],
+                        "properties": {
+                          "audio_id": {
+                            "const": "@Audio3"
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "reference_usage": {
+            "properties": {
+              "reference_audio_count": {
+                "const": 3
+              }
+            },
+            "required": [
+              "reference_audio_count"
+            ]
+          }
+        },
+        "required": [
+          "reference_usage"
+        ]
+      },
+      "then": {
+        "properties": {
+          "reference_usage": {
+            "properties": {
+              "audio_assignments": {
+                "minItems": 3,
+                "maxItems": 3,
+                "allOf": [
+                  {
+                    "contains": {
+                      "type": "object",
+                      "required": [
+                        "audio_id"
+                      ],
+                      "properties": {
+                        "audio_id": {
+                          "const": "@Audio1"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "contains": {
+                      "type": "object",
+                      "required": [
+                        "audio_id"
+                      ],
+                      "properties": {
+                        "audio_id": {
+                          "const": "@Audio2"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "contains": {
+                      "type": "object",
+                      "required": [
+                        "audio_id"
+                      ],
+                      "properties": {
+                        "audio_id": {
+                          "const": "@Audio3"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "reference_usage": {
+            "properties": {
+              "last_frame_present": {
+                "const": true
+              }
+            },
+            "required": [
+              "last_frame_present"
+            ]
+          }
+        },
+        "required": [
+          "reference_usage"
+        ]
+      },
+      "then": {
+        "properties": {
+          "reference_usage": {
+            "properties": {
+              "first_frame_present": {
+                "const": true
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

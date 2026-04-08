@@ -121,6 +121,40 @@ jobs:
           name: coverage-smartspecweb
           path: apps/web/coverage/coverage-summary.json
 
+  local_ai_runtime:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install desktop runtime dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libssl-dev espeak ffmpeg
+      - name: Install npm dependencies
+        run: npm install --legacy-peer-deps
+      - name: Run targeted Local AI tests
+        run: |
+          npm run --workspace=@smartspec/web test -- \
+            client/src/features/local-ai/adapters/browserLocalRuntime.test.ts \
+            client/src/features/local-ai/voice/chatMicProvider.test.ts \
+            client/src/features/local-ai/voice/localVoiceRuntime.test.ts \
+            client/src/features/local-ai/voice/voiceCommandRouter.test.ts \
+            client/src/features/local-ai/voice/localVoiceReadback.test.ts \
+            server/services/__tests__/voiceActionResolver.test.ts
+      - name: Build SmartSpecWeb local AI surfaces
+        run: npm run --workspace=@smartspec/web build
+      - name: Cargo check Tauri local AI runtime
+        working-directory: apps/tauri-shell/src-tauri
+        run: cargo check
+      - name: Verify Tauri bundle helper scripts compile
+        run: |
+          python3 -m py_compile apps/tauri-shell/scripts/prepare-litert-lm-bundle.py
+          python3 -m py_compile apps/tauri-shell/scripts/smoke-test-litert-lm-stream.py
+          python3 -m py_compile apps/tauri-shell/scripts/smoke-test-litert-lm-transcription.py
+
   turbo_build:
     runs-on: ubuntu-latest
     steps:

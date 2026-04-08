@@ -910,7 +910,7 @@ export default function AgencyBrowser() {
           <AlertDialogHeader>
             <AlertDialogTitle>{t("browser.delete.title")}</AlertDialogTitle>
             <AlertDialogDescription>
-              {t("browser.delete.description", { name: deleteTarget?.name })}
+                  {t("browser.delete.description", { name: deleteTarget?.name ?? "" })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -943,7 +943,7 @@ export default function AgencyBrowser() {
             <AlertDialogDescription asChild>
               <div className="space-y-3">
                 <p>
-                  {t("browser.publish.submitName", { name: publishTarget?.name })}
+                  {t("browser.publish.submitName", { name: publishTarget?.name ?? "" })}
                 </p>
                 <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800 space-y-1.5">
                   <p className="font-medium flex items-center gap-1.5">

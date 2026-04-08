@@ -1,4 +1,3 @@
-import crypto from "node:crypto";
 import { Router } from "express";
 import type { Express, Request, Response } from "express";
 import { z } from "zod";
@@ -11,6 +10,7 @@ import {
   SocialBackgroundError,
   SOCIAL_ACTIONS,
 } from "../services/socialBackgroundFacade";
+import { compareCachedInternalToken } from "../services/appRuntimeConfig";
 
 const SOCIAL_ACTION_SCHEMA = z.object({
   provider: z.string().trim().min(1).default("meta"),
@@ -27,17 +27,8 @@ const SOCIAL_ACTION_SCHEMA = z.object({
 });
 
 function verifyInternalToken(req: Request): boolean {
-  const expected = ENV.webGatewayToken;
-  if (!expected) return false;
   const token = req.headers["x-internal-token"] as string | undefined;
-  if (!token) return false;
-  try {
-    const tokenHash = crypto.createHash("sha256").update(token).digest();
-    const expectedHash = crypto.createHash("sha256").update(expected).digest();
-    return crypto.timingSafeEqual(tokenHash, expectedHash);
-  } catch {
-    return false;
-  }
+  return compareCachedInternalToken(token) || (!!token && token === ENV.webGatewayToken);
 }
 
 function getHeaderValue(req: Request, name: string): string | null {

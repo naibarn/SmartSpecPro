@@ -1,4 +1,3 @@
-import crypto from "crypto";
 import type { Request, Response } from "express";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
@@ -8,6 +7,7 @@ import { libraryItems, presentationConversionRecords } from "../../drizzle/schem
 import { createDeckFromImportResult } from "../services/presentationImportService";
 import { debugLog, debugError } from "../_core/logger";
 import { ENV } from "../_core/env";
+import { compareCachedInternalToken } from "../services/appRuntimeConfig";
 
 // Max 201 so a 200-slide payload is accepted (truncated in service); 202+ rejected at boundary
 const callbackBodySchema = z.object({
@@ -22,7 +22,7 @@ const callbackBodySchema = z.object({
  * Handler for: POST /api/internal/presentation-import/callback
  *
  * Python calls this after a Celery import task completes (success or failure).
- * Auth: Bearer token matched against ENV.webGatewayToken.
+ * Auth: Bearer token matched against the UI-managed internal gateway token.
  * Security: auth check BEFORE body parsing; actor constructed from DB record,
  * never from the untrusted callback body.
  */
@@ -32,18 +32,12 @@ export async function presentationImportCallbackHandler(
 ): Promise<void> {
   // Auth check BEFORE body parsing — do not parse the body for unauthenticated requests
   const authHeader = req.headers.authorization || "";
-  if (!authHeader.startsWith("Bearer ") || !ENV.webGatewayToken) {
+  if (!authHeader.startsWith("Bearer ")) {
     res.status(401).end();
     return;
   }
   const token = authHeader.slice(7);
-  // Timing-safe comparison to prevent side-channel leaks on token prefix bytes
-  const tokenBuf = Buffer.from(token);
-  const expectedBuf = Buffer.from(ENV.webGatewayToken);
-  if (
-    tokenBuf.length !== expectedBuf.length ||
-    !crypto.timingSafeEqual(tokenBuf, expectedBuf)
-  ) {
+  if (!compareCachedInternalToken(token) && token !== ENV.webGatewayToken) {
     res.status(401).end();
     return;
   }

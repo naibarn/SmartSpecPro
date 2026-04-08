@@ -25,6 +25,10 @@ type BellPosition = {
   y: number;
 };
 
+type BellPlacement =
+  | { mode: "docked" }
+  | ({ mode: "custom" } & BellPosition);
+
 type BellDragState = {
   pointerId: number;
   startX: number;
@@ -42,27 +46,41 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
 
-function getInitialBellPosition(): BellPosition {
+function getDockedBellPosition(
+  viewportWidth: number,
+  viewportHeight: number,
+  size: { width: number; height: number } = {
+    width: BELL_DEFAULT_WIDTH,
+    height: BELL_DEFAULT_HEIGHT,
+  },
+): BellPosition {
+  return {
+    x: Math.max(BELL_MARGIN, viewportWidth - size.width - BELL_MARGIN),
+    y: clamp(BELL_MARGIN, BELL_MARGIN, Math.max(BELL_MARGIN, viewportHeight - size.height - BELL_MARGIN)),
+  };
+}
+
+function getInitialBellPlacement(): BellPlacement {
   if (typeof window === "undefined") {
-    return { x: BELL_MARGIN, y: BELL_MARGIN };
+    return { mode: "docked" };
   }
 
   try {
     const saved = window.localStorage.getItem(BELL_STORAGE_KEY);
     if (saved) {
-      const parsed = JSON.parse(saved) as Partial<BellPosition>;
-      if (typeof parsed.x === "number" && typeof parsed.y === "number") {
-        return clampBellPosition({ x: parsed.x, y: parsed.y }, window.innerWidth, window.innerHeight);
+      const parsed = JSON.parse(saved) as Partial<BellPlacement>;
+      if (parsed.mode === "custom" && typeof parsed.x === "number" && typeof parsed.y === "number") {
+        return {
+          mode: "custom",
+          ...clampBellPosition({ x: parsed.x, y: parsed.y }, window.innerWidth, window.innerHeight),
+        };
       }
     }
   } catch {
     // Ignore malformed storage and fall back to the default docked position.
   }
 
-  return {
-    x: Math.max(BELL_MARGIN, window.innerWidth - BELL_DEFAULT_WIDTH - BELL_MARGIN),
-    y: BELL_MARGIN,
-  };
+  return { mode: "docked" };
 }
 
 function clampBellPosition(
@@ -80,9 +98,18 @@ function clampBellPosition(
   };
 }
 
-function persistBellPosition(position: BellPosition) {
+function persistBellPlacement(placement: BellPlacement) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
   try {
-    window.localStorage.setItem(BELL_STORAGE_KEY, JSON.stringify(position));
+    if (placement.mode === "custom") {
+      window.localStorage.setItem(BELL_STORAGE_KEY, JSON.stringify(placement));
+      return;
+    }
+
+    window.localStorage.removeItem(BELL_STORAGE_KEY);
   } catch {
     // Ignore storage failures in private mode / restricted environments.
   }
@@ -534,21 +561,27 @@ function GlobalUrgentReminders({
 
   if (!modalReminder) return null;
 
+  const metadata = modalReminder.metadata ?? null;
+  const metadataSource = typeof metadata?.source === "string" ? metadata.source.toLowerCase() : null;
+  const billingNotificationType = typeof metadata?.relatedItems?.notificationType === "string"
+    ? metadata.relatedItems.notificationType.toLowerCase()
+    : null;
+  const invoiceNumber = typeof metadata?.relatedItems?.invoiceNumber === "string"
+    ? metadata.relatedItems.invoiceNumber
+    : null;
+  const isBillingReminder =
+    modalReminder.relatedResourceType === "scheduled_message" &&
+    (
+      metadataSource === "billing" ||
+      Boolean(billingNotificationType?.startsWith("invoice_")) ||
+      Boolean(modalReminder.actionUrl?.startsWith("/billing"))
+    );
   const isOpsIncidentReminder =
-    typeof modalReminder.groupKey === "string" ||
-    typeof modalReminder.metadata?.source === "string" ||
-    typeof modalReminder.metadata?.relatedItems?.category === "string";
+    !isBillingReminder &&
+    (modalReminder.relatedResourceType === "system_health" || modalReminder.relatedResourceType === "incident");
   const isCritical = modalReminder.priority === "critical";
   const borderColor = isCritical ? "#ef4444" : "#f59e0b";
   const badgeColor = isCritical ? "#ef4444" : "#f59e0b";
-  const badgeText = isCritical ? "Critical" : "Important";
-  const metadata = modalReminder.metadata ?? null;
-  const detailRows = [
-    metadata?.source ? { label: "Source", value: String(metadata.source) } : null,
-    metadata?.relatedItems?.category ? { label: "Category", value: String(metadata.relatedItems.category) } : null,
-    modalReminder.relatedResourceType ? { label: "Resource", value: String(modalReminder.relatedResourceType).replace(/_/g, " ") } : null,
-    modalReminder.groupKey ? { label: "Incident", value: modalReminder.groupKey } : null,
-  ].filter(Boolean) as Array<{ label: string; value: string }>;
   const recommendation = typeof metadata?.recommendation === "string" ? metadata.recommendation : null;
   const signal = typeof metadata?.signal === "string" ? metadata.signal : null;
   const observedAt = typeof metadata?.observedAt === "string" ? metadata.observedAt : null;
@@ -563,7 +596,50 @@ function GlobalUrgentReminders({
     severity: modalReminder.priority,
   });
   const technicalTitle = modalReminder.title.trim() !== guidance.headline.trim() ? modalReminder.title : null;
+  const actionLabel = modalReminder.actionLabel || (isBillingReminder
+    ? (locale === "th" ? "เปิดใบแจ้งหนี้" : "Open invoice")
+    : isOpsIncidentReminder
+      ? guidance.monitoringActionLabel
+      : (locale === "th" ? "เปิดรายละเอียด" : "Open details"));
+  const badgeText = isBillingReminder
+    ? (locale === "th" ? "แจ้งเตือน" : "Reminder")
+    : isCritical
+      ? "Critical"
+      : "Important";
+  const reminderLabel = isBillingReminder
+    ? (locale === "th" ? "การแจ้งเตือนใบแจ้งหนี้" : "Billing Reminder")
+    : guidance.reminderLabel;
+  const title = isOpsIncidentReminder
+    ? guidance.headline
+    : billingNotificationType === "invoice_due_reminder" && locale === "th"
+      ? `ใบแจ้งหนี้ค้างชำระ${invoiceNumber ? `: ${invoiceNumber}` : ""}`
+      : modalReminder.title;
+  const summary = isOpsIncidentReminder
+    ? guidance.summary
+    : billingNotificationType === "invoice_due_reminder" && locale === "th"
+      ? `พบใบแจ้งหนี้${invoiceNumber ? ` ${invoiceNumber}` : ""} ที่ยังค้างชำระ โปรดตรวจสอบสถานะและติดตามการชำระเงิน`
+      : modalReminder.content && modalReminder.content !== modalReminder.title
+        ? modalReminder.content
+        : null;
+  const detailReferenceLabel = isOpsIncidentReminder
+    ? "Incident"
+    : isBillingReminder
+      ? (locale === "th" ? "รหัสอ้างอิง" : "Reference")
+      : (locale === "th" ? "อ้างอิง" : "Reference");
+  const detailRows = [
+    metadata?.source ? { label: "Source", value: String(metadata.source) } : null,
+    isBillingReminder && invoiceNumber ? { label: locale === "th" ? "ใบแจ้งหนี้" : "Invoice", value: invoiceNumber } : null,
+    metadata?.relatedItems?.category ? { label: "Category", value: String(metadata.relatedItems.category) } : null,
+    modalReminder.relatedResourceType ? { label: "Resource", value: String(modalReminder.relatedResourceType).replace(/_/g, " ") } : null,
+    modalReminder.groupKey ? { label: detailReferenceLabel, value: modalReminder.groupKey } : null,
+  ].filter(Boolean) as Array<{ label: string; value: string }>;
   const openHelpGuide = () => {
+    if (modalReminder) {
+      setDismissedId(modalReminder.id);
+      markRead.mutate({ id: modalReminder.id });
+    }
+    setModalReminder(null);
+    releaseUrgentSurface("reminder");
     safeOpenInNewTab(guidance.helpHref);
   };
 
@@ -636,7 +712,7 @@ function GlobalUrgentReminders({
               : badgeText}
           </span>
           <span style={{ fontSize: "13px", color: "var(--muted-foreground, #888)" }}>
-            {guidance.reminderLabel}
+            {reminderLabel}
           </span>
         </div>
 
@@ -649,10 +725,10 @@ function GlobalUrgentReminders({
             marginBottom: "8px",
           }}
         >
-          {isOpsIncidentReminder ? guidance.headline : modalReminder.title}
+          {title}
         </h3>
 
-        {isOpsIncidentReminder ? (
+        {summary ? (
           <p
             style={{
               fontSize: "14px",
@@ -663,20 +739,7 @@ function GlobalUrgentReminders({
               opacity: 0.85,
             }}
           >
-            {guidance.summary}
-          </p>
-        ) : modalReminder.content && modalReminder.content !== modalReminder.title ? (
-          <p
-            style={{
-              fontSize: "14px",
-              lineHeight: 1.5,
-              color: "var(--foreground, #e0e0e0)",
-              marginBottom: "20px",
-              wordBreak: "break-word",
-              opacity: 0.85,
-            }}
-          >
-            {modalReminder.content}
+            {summary}
           </p>
         ) : null}
 
@@ -799,7 +862,7 @@ function GlobalUrgentReminders({
               fontWeight: 600,
             }}
           >
-            {modalReminder.actionLabel || guidance.monitoringActionLabel}
+            {actionLabel}
           </button>
         </div>
       </div>
@@ -1067,7 +1130,7 @@ function GlobalNotificationBell() {
   const bellRootRef = useRef<HTMLDivElement>(null);
   const dragStateRef = useRef<BellDragState | null>(null);
   const suppressNextClickRef = useRef(false);
-  const [bellPosition, setBellPosition] = useState<BellPosition>(() => getInitialBellPosition());
+  const [bellPlacement, setBellPlacement] = useState<BellPlacement>(() => getInitialBellPlacement());
   const [isBellDragging, setIsBellDragging] = useState(false);
 
   useEffect(() => {
@@ -1088,20 +1151,22 @@ function GlobalNotificationBell() {
       }
 
       event.preventDefault();
-      setBellPosition(
-        clampBellPosition(
-          {
-            x: dragState.originX + deltaX,
-            y: dragState.originY + deltaY,
-          },
-          window.innerWidth,
-          window.innerHeight,
-          {
-            width: dragState.width,
-            height: dragState.height,
-          },
-        ),
+      const nextPosition = clampBellPosition(
+        {
+          x: dragState.originX + deltaX,
+          y: dragState.originY + deltaY,
+        },
+        window.innerWidth,
+        window.innerHeight,
+        {
+          width: dragState.width,
+          height: dragState.height,
+        },
       );
+      setBellPlacement({
+        mode: "custom",
+        ...nextPosition,
+      });
     };
 
     const handlePointerUp = (event: PointerEvent) => {
@@ -1126,12 +1191,31 @@ function GlobalNotificationBell() {
   }, []);
 
   useEffect(() => {
-    persistBellPosition(bellPosition);
-  }, [bellPosition]);
+    persistBellPlacement(bellPlacement);
+  }, [bellPlacement]);
 
   useEffect(() => {
     const handleResize = () => {
-      setBellPosition((current) => clampBellPosition(current, window.innerWidth, window.innerHeight));
+      const rect = bellRootRef.current?.getBoundingClientRect();
+      setBellPlacement((current) => {
+        if (current.mode !== "custom") {
+          return current;
+        }
+
+        const nextPosition = clampBellPosition(
+          { x: current.x, y: current.y },
+          window.innerWidth,
+          window.innerHeight,
+          {
+            width: rect?.width ?? BELL_DEFAULT_WIDTH,
+            height: rect?.height ?? BELL_DEFAULT_HEIGHT,
+          },
+        );
+        return {
+          mode: "custom",
+          ...nextPosition,
+        };
+      });
     };
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
@@ -1233,12 +1317,18 @@ function GlobalNotificationBell() {
     suppressNextClickRef.current = false;
     setIsBellDragging(true);
     const rect = bellRootRef.current?.getBoundingClientRect();
+    const fallbackPosition = bellPlacement.mode === "custom"
+      ? { x: bellPlacement.x, y: bellPlacement.y }
+      : getDockedBellPosition(window.innerWidth, window.innerHeight, {
+        width: rect?.width ?? BELL_DEFAULT_WIDTH,
+        height: rect?.height ?? BELL_DEFAULT_HEIGHT,
+      });
     dragStateRef.current = {
       pointerId: event.pointerId,
       startX: event.clientX,
       startY: event.clientY,
-      originX: bellPosition.x,
-      originY: bellPosition.y,
+      originX: rect?.left ?? fallbackPosition.x,
+      originY: rect?.top ?? fallbackPosition.y,
       width: rect?.width ?? BELL_DEFAULT_WIDTH,
       height: rect?.height ?? BELL_DEFAULT_HEIGHT,
       moved: false,
@@ -1263,6 +1353,16 @@ function GlobalNotificationBell() {
     return null;
   }
 
+  const bellPositionStyle = bellPlacement.mode === "custom"
+    ? {
+      left: `${bellPlacement.x}px`,
+      top: `${bellPlacement.y}px`,
+    }
+    : {
+      right: `${BELL_MARGIN}px`,
+      top: `${BELL_MARGIN}px`,
+    };
+
   return (
     <div
       ref={(node) => {
@@ -1272,9 +1372,8 @@ function GlobalNotificationBell() {
       data-testid="global-notification-bell"
       style={{
         position: "fixed",
-        left: `${bellPosition.x}px`,
-        top: `${bellPosition.y}px`,
         zIndex: 9990,
+        ...bellPositionStyle,
       }}
     >
       <button

@@ -9,6 +9,7 @@
 
 import { eq, and, desc, inArray, gt } from "drizzle-orm";
 import { getDb } from "../db";
+import { getAppRuntimeConfig } from "./appRuntimeConfig";
 import {
   teamRuns,
   teamRoomMessages,
@@ -174,7 +175,8 @@ export async function generateSummary(
   const { decisions, findings, artifacts } = extractKeyPoints(messages);
 
   try {
-    const PY = process.env.PYTHON_BACKEND_URL ?? "http://localhost:8000";
+    const runtime = await getAppRuntimeConfig();
+    const PY = runtime.pythonBackendUrl;
 
     // Find lead persona context for agent_generated method
     let personaContext: string | undefined;

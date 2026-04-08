@@ -1,0 +1,156 @@
+{
+  "skill_name": "cinematic-video-createprompt",
+  "skill_version": "5.7.0",
+  "response_format": "structured_json",
+  "language": "en",
+  "target_model_profile": "generic_video_models",
+  "generation_mode": "text_to_video",
+  "delivery_mode": "multi_shot_single_video",
+  "multi_video_strategy": "not_applicable",
+  "video_count": 1,
+  "dialogue_language": {
+    "requested": "en",
+    "resolved": "none",
+    "source": "no_dialogue",
+    "rationale": "Even though the input named English, the resolved clip design uses ambience only with no spoken dialogue, so the spoken-language result becomes none."
+  },
+  "storytelling_resolution": {
+    "preset_requested": "action_showdown",
+    "preset_resolved": "action_showdown",
+    "multi_shot_timing_mode_requested": "timed_shot_timeline",
+    "multi_shot_timing_mode_resolved": "timed_shot_timeline",
+    "audio_mode_resolved": "ambience_only",
+    "dialogue_density_resolved": "none",
+    "story_shape_resolved": "escalation",
+    "ending_style_resolved": "punchline",
+    "performance_style_resolved": "naturalistic",
+    "imagination_level_resolved": "stylized",
+    "scene_arc_resolved": "action_sequence",
+    "continuity_mode_resolved": "editorial_montage",
+    "motion_realism_resolved": "dynamic_but_controlled",
+    "background_mode": "normal_background",
+    "narrative_intent": "Build one tightly timed multi-shot subway panic fakeout that escalates like a zombie attack and flips into absurd relief when the heroine realizes she is being ignored."
+  },
+  "continuity_package": {
+    "continuity_notes": "Keep the same futuristic commuter woman, the same subway platform architecture, the same crowd wardrobe language, and the same zombie-horde threat logic from the first shot through the final laugh payoff. Preserve her facial identity, outfit silhouette, and isolated center-frame positioning once the crowd clears around her.",
+    "continuity_notes_origin": "auto_generated",
+    "reference_notes": "Use the written brief as the reference bible: the heroine should remain the same expressive young woman in a futuristic commuter outfit, surrounded by the same metallic subway world, panicked crowd energy, and rushing zombie flow. Keep the zombies intense but media-safe, avoid gore, and preserve the visual fakeout that they pass her without contact.",
+    "reference_notes_origin": "auto_generated"
+  },
+  "final_prompt": "Create one 12-second cinematic multi-shot video set in a crowded underground subway station in a futuristic megacity, with tense handheld energy, intercutting between wide crowd geography and tighter reaction shots, cold metallic atmosphere, and a thrilling setup that turns into absurd dark-comedy relief without graphic violence.\n\n0-2s: The heroine walks with the commuter crowd through the busy platform, framed in a handheld medium-wide shot that weaves naturally through bodies, metallic columns, and flickering transit light while the station ambience and distant train rumble establish a normal rush-hour rhythm.\n2-4s: Reveal a zombie horde charging from deep in the tunnel as panic detonates across the crowd, intercutting a wide reveal with a tighter shaky reaction insert so the platform suddenly breaks into fleeing waves.\n4-5s: Push in quickly as she freezes in shock at center frame while everyone else runs away, isolating her face and posture for one suspended beat of disbelief.\n5-8s: Let the zombies thunder past her on both sides as if she does not exist, keeping her centered while wide and close intercutting preserves the surreal fakeout and the violent rush of movement without gore.\n8-10s: She turns and watches them recede with confused curiosity, the panic noise falling away into hollow echoes as the scene shifts from terror toward stunned absurdity.\n10-12s: End on a closer handheld reaction as she bursts out laughing in total disbelief, with the camera catching a slight human wobble that makes the punchline feel immediate and real.\n\nContinuity Notes:\nKeep the same futuristic commuter woman, the same subway platform architecture, the same crowd wardrobe language, and the same zombie-horde threat logic from the first shot through the final laugh payoff. Preserve her facial identity, outfit silhouette, and isolated center-frame positioning once the crowd clears around her.\n\nReference Notes:\nUse the written brief as the reference bible: the heroine should remain the same expressive young woman in a futuristic commuter outfit, surrounded by the same metallic subway world, panicked crowd energy, and rushing zombie flow. Keep the zombies intense but media-safe, avoid gore, and preserve the visual fakeout that they pass her without contact.",
+  "short_prompt": "A 12-second futuristic subway panic fakeout told as one timed multi-shot video: crowd walk, zombie-horde reveal, frozen shock, zombies rushing past her, curious turn, and a final laugh payoff.",
+  "prompt_sequence": [
+    {
+      "prompt_id": "Prompt 1",
+      "video_number": 1,
+      "duration_seconds": 12,
+      "prompt_role": "Single Video Prompt",
+      "prompt": "Create one 12-second cinematic multi-shot video set in a crowded underground subway station in a futuristic megacity, with tense handheld energy, intercutting between wide crowd geography and tighter reaction shots, cold metallic atmosphere, and a thrilling setup that turns into absurd dark-comedy relief without graphic violence. 0-2s: The heroine walks with the commuter crowd through the busy platform. 2-4s: Reveal a zombie horde charging from deep in the tunnel as panic detonates across the crowd. 4-5s: Push in quickly as she freezes in shock at center frame while everyone else runs away. 5-8s: Let the zombies thunder past her on both sides as if she does not exist. 8-10s: She turns and watches them recede with confused curiosity. 10-12s: End on a closer handheld reaction as she bursts out laughing in total disbelief.",
+      "continuity_notes": "Keep the same futuristic commuter woman, the same subway platform architecture, the same crowd wardrobe language, and the same zombie-horde threat logic from the first shot through the final laugh payoff. Preserve her facial identity, outfit silhouette, and isolated center-frame positioning once the crowd clears around her.",
+      "reference_notes": "Use the written brief as the reference bible: the heroine should remain the same expressive young woman in a futuristic commuter outfit, surrounded by the same metallic subway world, panicked crowd energy, and rushing zombie flow. Keep the zombies intense but media-safe, avoid gore, and preserve the visual fakeout that they pass her without contact."
+    }
+  ],
+  "cinematic_plan": {
+    "opening_frame": "A futuristic subway platform packed with commuters as the heroine moves through the crowd under cold metallic light.",
+    "subject_focus": "The emotional anchor is the heroine's shift from ordinary commuter, to frozen shock, to disbelieving laughter.",
+    "staging_blocking": "Use crowd flow to surround her first, isolate her once the panic breaks, and then keep her centered while the zombies rush past in opposing streams.",
+    "motion_arc": "Normal crowd rhythm breaks into mass panic, peaks in suspended shock, then resolves into a comic fakeout and laughter release.",
+    "camera_language": "Natural handheld shakiness, readable intercutting between wide geography and close reactions, and a fast but controlled sense of escalation.",
+    "focus_depth": "Use selective focus to isolate the heroine during the shock beat while keeping enough depth to read the crowd and horde geography.",
+    "atmosphere_time": "Nighttime subway tension with cold haze, metallic reflections, steam, and deep tunnel menace.",
+    "production_design": "Metallic subway architecture, transit signage, commuter textures, cold tunnel depth, and a cleanly readable zombie-horde silhouette wave.",
+    "lighting_color": "Moody low-key platform lighting with teal-magenta neon accents and cool-warm contrast that keeps the heroine legible amid the panic.",
+    "continuity_pacing": "A tightly controlled 12-second timed multi-shot progression that escalates quickly and lands on an absurd punchline.",
+    "continuity_guardrails": "Preserve the heroine's identity, outfit silhouette, subway geography, crowd logic, and media-safe zombie intensity across the entire clip.",
+    "shot_timeline": [
+      {
+        "shot_number": 1,
+        "shot_label": "Crowd Walk",
+        "start_second": 0,
+        "end_second": 2,
+        "shot_summary": "She walks among the commuter crowd through the futuristic platform.",
+        "camera_note": "Handheld medium-wide weaving with the crowd.",
+        "audio_or_dialogue_cue": "Dense station ambience and distant train rumble.",
+        "transition_note": "Draw the viewer deeper into the tunnel before the reveal."
+      },
+      {
+        "shot_number": 2,
+        "shot_label": "Horde Reveal",
+        "start_second": 2,
+        "end_second": 4,
+        "shot_summary": "A zombie horde charges in the distance and the crowd panics instantly.",
+        "camera_note": "Intercut wide reveal and shaky reaction insert.",
+        "audio_or_dialogue_cue": "Panic swells over the station ambience.",
+        "transition_note": "Spike the intensity abruptly."
+      },
+      {
+        "shot_number": 3,
+        "shot_label": "Freeze",
+        "start_second": 4,
+        "end_second": 5,
+        "shot_summary": "She freezes in shock while the rest of the crowd flees.",
+        "camera_note": "Quick handheld push-in for isolation.",
+        "audio_or_dialogue_cue": "Brief tunnel-vision emphasis on her breathing.",
+        "transition_note": "Hold one suspended beat before the fakeout."
+      },
+      {
+        "shot_number": 4,
+        "shot_label": "Ignored",
+        "start_second": 5,
+        "end_second": 8,
+        "shot_summary": "The zombies rush past her without noticing her.",
+        "camera_note": "Close and wide intercutting while she remains centered.",
+        "audio_or_dialogue_cue": "Heavy rushing movement, no speech.",
+        "transition_note": "Shift from horror into disbelief."
+      },
+      {
+        "shot_number": 5,
+        "shot_label": "Curious Turn",
+        "start_second": 8,
+        "end_second": 10,
+        "shot_summary": "She turns to watch them run away, confused and curious.",
+        "camera_note": "Loose handheld turn into an over-shoulder reaction.",
+        "audio_or_dialogue_cue": "Panic fades into receding echoes.",
+        "transition_note": "Release the tension and set up the laugh."
+      },
+      {
+        "shot_number": 6,
+        "shot_label": "Laugh Payoff",
+        "start_second": 10,
+        "end_second": 12,
+        "shot_summary": "She bursts out laughing in total disbelief.",
+        "camera_note": "Closer handheld reaction with slight stumble for comic realism.",
+        "audio_or_dialogue_cue": "Her laughter becomes the emotional release.",
+        "transition_note": "End on a memorable punchline expression."
+      }
+    ]
+  },
+  "reference_usage": {
+    "reference_input_mode": "brief_only",
+    "reference_image_count": 0,
+    "assignments": [],
+    "reference_video_count": 0,
+    "video_assignments": [],
+    "reference_audio_count": 0,
+    "audio_assignments": [],
+    "first_frame_present": false,
+    "last_frame_present": false,
+    "applied_focus": [
+      "timed multi-shot structure",
+      "heroine continuity",
+      "subway geography",
+      "media-safe zombie intensity"
+    ],
+    "notes": "The internal shot schedule and the written brief together define the reference logic for staging, timing, and continuity."
+  },
+  "validation": {
+    "is_valid": true,
+    "warnings": [],
+    "safety_notes": [
+      "Kept the zombie threat tense and thrilling while avoiding gore or graphic violence."
+    ],
+    "suggestions": [
+      "If the target model struggles with too many cuts, merge Shots 2 and 3 into one reveal-and-freeze move while preserving the same 12-second timeline."
+    ]
+  }
+}

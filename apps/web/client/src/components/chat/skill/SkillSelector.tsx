@@ -8,9 +8,16 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { describeSkillLocalExecution } from '@/features/local-ai/skills/skillLocalExecutionPolicy';
+import { useTauriLocalSkillRuntimeStatus } from '@/features/local-ai/skills/useTauriLocalSkillRuntimeStatus';
+import {
+  shouldAllowExternalLocalBackend,
+  shouldAllowOnDeviceLocalEngine,
+  useExternalLocalTextBackendAvailability,
+} from '@/features/local-ai/adapters/externalLocalTextBackend';
+import type { ResolvedLocalSkillPolicy } from '@/features/local-ai/types/capability';
 import {
   Wand2,
   Settings,
@@ -44,6 +51,7 @@ interface SkillSelectorProps {
   open: boolean;
   onClose: () => void;
   onSelect: (skillId: string, hasSchema: boolean) => void;
+  conversationId?: number;
 }
 
 interface SkillWithSchema {
@@ -55,16 +63,38 @@ interface SkillWithSchema {
   category: string;
   priority: number;
   hasSchema: boolean;
+  localExecutionPolicy?: ResolvedLocalSkillPolicy | null;
+  localExecutionBadge?: 'Local Assist' | 'Local Safe' | null;
+  localExecutionReason?: string | null;
 }
 
-export function SkillSelector({ open, onClose, onSelect }: SkillSelectorProps) {
+export function SkillSelector({
+  open,
+  onClose,
+  onSelect,
+  conversationId,
+}: SkillSelectorProps) {
   const [search, setSearch] = useState('');
   const [selectedSkillId, setSelectedSkillId] = useState<string | null>(null);
   const [schemaStatus, setSchemaStatus] = useState<Record<string, boolean>>({});
+  const runtimePlatform =
+    typeof window !== 'undefined' && (window as any).__TAURI__ != null
+      ? 'tauri'
+      : 'web';
+  const tauriRuntimeStatus = useTauriLocalSkillRuntimeStatus();
+  const externalLocalTextBackend =
+    useExternalLocalTextBackendAvailability(runtimePlatform);
 
   // Fetch visible skills
   const { data: skillsData, isLoading: isLoadingSkills } = trpc.skills.getUserVisibleSkills.useQuery(
-    { limit: 100 },
+    {
+      limit: 100,
+      platform: runtimePlatform,
+      origin: 'chat',
+      ...(typeof conversationId === 'number' && conversationId > 0
+        ? { conversationId }
+        : {}),
+    },
     { enabled: open }
   );
 
@@ -98,16 +128,44 @@ export function SkillSelector({ open, onClose, onSelect }: SkillSelectorProps) {
     if (!skillsData?.skills) return [];
 
     // Filter by search
-    let skills = skillsData.skills.map((skill) => ({
-      id: String(skill.id),
-      slug: skill.slug,
-      name: skill.name,
-      description: skill.description || '',
-      icon: skill.icon || 'sparkles',
-      category: skill.category || 'Other',
-      priority: skill.priority || 50,
-      hasSchema: schemaStatus[skill.slug] || false,
-    }));
+    let skills = skillsData.skills.map((skill) => {
+      const localExecutionPolicy = skill.localExecutionPolicy ?? null;
+      const localExecutionState = localExecutionPolicy
+        ? describeSkillLocalExecution(localExecutionPolicy, runtimePlatform, {
+            scriptBundleAvailable: tauriRuntimeStatus.supportsScriptBundle,
+            gemma4TextAvailable: shouldAllowOnDeviceLocalEngine(
+              externalLocalTextBackend.localEnginePreference,
+            )
+              ? tauriRuntimeStatus.supportsGemma4Text
+              : false,
+            installedGemmaProfileIds:
+              tauriRuntimeStatus.installedGemmaProfileIds,
+            externalTextBackendAvailable:
+              shouldAllowExternalLocalBackend(
+                externalLocalTextBackend.localEnginePreference,
+              ) && externalLocalTextBackend.backend != null,
+          })
+        : null;
+
+      return {
+        id: String(skill.id),
+        slug: skill.slug,
+        name: skill.name,
+        description: skill.description || '',
+        icon: skill.icon || 'sparkles',
+        category: skill.category || 'Other',
+        priority: skill.priority || 50,
+        hasSchema: schemaStatus[skill.slug] || false,
+        localExecutionPolicy,
+        localExecutionBadge:
+          localExecutionState &&
+          localExecutionState.badgeLabel !== 'Cloud' &&
+          (localExecutionState.canRunLocally || localExecutionState.canUseLocalPreprocess)
+            ? localExecutionState.badgeLabel
+            : null,
+        localExecutionReason: localExecutionState?.reason ?? null,
+      };
+    });
 
     if (search.trim()) {
       const searchLower = search.toLowerCase();
@@ -134,7 +192,17 @@ export function SkillSelector({ open, onClose, onSelect }: SkillSelectorProps) {
         category,
         skills: skills.sort((a, b) => b.priority - a.priority),
       }));
-  }, [skillsData, search, schemaStatus]);
+  }, [
+    externalLocalTextBackend.backend,
+    externalLocalTextBackend.localEnginePreference,
+    runtimePlatform,
+    schemaStatus,
+    search,
+    skillsData,
+    tauriRuntimeStatus.installedGemmaProfileIds,
+    tauriRuntimeStatus.supportsGemma4Text,
+    tauriRuntimeStatus.supportsScriptBundle,
+  ]);
 
   // Handle skill selection
   const handleSelect = useCallback(
@@ -320,6 +388,19 @@ function SkillItem({ skill, isSelected, onClick }: SkillItemProps) {
           <span className="font-medium truncate">{skill.name}</span>
           {skill.hasSchema && (
             <Settings className="h-3 w-3 text-muted-foreground shrink-0" />
+          )}
+          {skill.localExecutionBadge && (
+            <span
+              className={cn(
+                'shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide',
+                skill.localExecutionBadge === 'Local Safe'
+                  ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
+                  : 'bg-sky-500/15 text-sky-700 dark:text-sky-300'
+              )}
+              title={skill.localExecutionReason ?? undefined}
+            >
+              {skill.localExecutionBadge}
+            </span>
           )}
         </div>
         <p className="text-sm text-muted-foreground line-clamp-1 sm:line-clamp-2">

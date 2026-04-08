@@ -11,6 +11,7 @@ so that LangGraph can load the checkpoint and continue execution.
 """
 
 import asyncio
+import inspect
 from datetime import datetime, timezone
 from typing import Any
 
@@ -19,6 +20,20 @@ import structlog
 from app.core.celery_app import celery_app
 
 logger = structlog.get_logger(__name__)
+
+
+async def _close_redis_client(redis_client: Any) -> None:
+    """Close a redis client across redis-py compatibility boundaries."""
+    close_method = getattr(redis_client, "aclose", None)
+    if callable(close_method):
+        await close_method()
+        return
+
+    close_method = getattr(redis_client, "close", None)
+    if callable(close_method):
+        maybe_result = close_method()
+        if inspect.isawaitable(maybe_result):
+            await maybe_result
 
 
 @celery_app.task(
@@ -174,7 +189,7 @@ async def _expire_redis_interrupts() -> int:
         logger.exception("Failed to scan Redis for expired interrupts")
     finally:
         if redis_client:
-            await redis_client.aclose()
+            await _close_redis_client(redis_client)
 
     return resumed
 

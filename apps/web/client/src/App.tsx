@@ -61,6 +61,7 @@ const AdminSkillRepositories = lazy(() => import("./pages/AdminSkillRepositories
 const AdminTenants = lazy(() => import("./pages/AdminTenants"));
 const AdminServices = lazy(() => import("./pages/AdminServices"));
 const AdminSettings = lazy(() => import("./pages/AdminSettings"));
+const AdminBillingCenter = lazy(() => import("./pages/AdminBillingCenter"));
 const AdminQueueDashboard = lazy(() => import("./pages/AdminQueueDashboard"));
 const AdminQueueLLM = lazy(() => import("./pages/AdminQueueLLM"));
 const AdminQueueMedia = lazy(() => import("./pages/AdminQueueMedia"));
@@ -90,6 +91,7 @@ const Notifications = lazy(() => import("./pages/Notifications"));
 const Generate = lazy(() => import("./pages/Generate"));
 const MediaStudio = lazy(() => import("./pages/MediaStudio"));
 const Credits = lazy(() => import("./pages/Credits"));
+const BillingCenter = lazy(() => import("./pages/BillingCenter"));
 const MediaHistory = lazy(() => import("./pages/MediaHistory"));
 const DocumentManagement = lazy(() => import("./pages/DocumentManagement"));
 const GroupManagement = lazy(() => import("./pages/GroupManagement"));
@@ -271,6 +273,9 @@ function Router() {
         <Route path="/admin/settings">
           <RequireAdmin><AdminSettings /></RequireAdmin>
         </Route>
+        <Route path="/admin/billing">
+          <RequireAdmin><AdminBillingCenter /></RequireAdmin>
+        </Route>
         <Route path="/admin/queues">
           <RequireAdmin><AdminQueueDashboard /></RequireAdmin>
         </Route>
@@ -382,6 +387,8 @@ function Router() {
         <Route path="/generate/:type?"><RequireAuth><Generate /></RequireAuth></Route>
         <Route path="/media-studio"><RequireAuth><MediaStudio /></RequireAuth></Route>
         <Route path="/credits"><RequireAuth><Credits /></RequireAuth></Route>
+        <Route path="/billing/invoices/:invoiceId"><RequireAuth><BillingCenter /></RequireAuth></Route>
+        <Route path="/billing"><RequireAuth><BillingCenter /></RequireAuth></Route>
         <Route path="/usage"><RequireAuth><UsageAnalytics /></RequireAuth></Route>
         <Route path="/tasks"><RequireAuth><TaskQueueMonitor /></RequireAuth></Route>
         <Route path="/media-history"><RequireAuth><MediaHistory /></RequireAuth></Route>

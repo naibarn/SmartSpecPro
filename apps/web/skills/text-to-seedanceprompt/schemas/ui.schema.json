@@ -1,0 +1,328 @@
+{
+  "ui:order": [
+    "request_name",
+    "mode",
+    "language",
+    "aspect_ratio",
+    "duration_seconds",
+    "multi_shot_mode",
+    "narrative_goal",
+    "global_context",
+    "reference_assets",
+    "reference_directives",
+    "edit_operations",
+    "shots",
+    "global_constraints",
+    "render_options",
+    "notes"
+  ],
+  "request_name": {
+    "ui:placeholder": "Cyberpunk assassin multi-shot prompt"
+  },
+  "mode": {
+    "ui:widget": "radio"
+  },
+  "language": {
+    "ui:widget": "radio"
+  },
+  "aspect_ratio": {
+    "ui:widget": "select"
+  },
+  "duration_seconds": {
+    "ui:widget": "updown"
+  },
+  "multi_shot_mode": {
+    "ui:widget": "radio",
+    "ui:help": "Use 'single_prompt_multi_shot' for multiple shots rendered into one Seedance prompt."
+  },
+  "narrative_goal": {
+    "ui:widget": "textarea",
+    "ui:options": {
+      "rows": 3
+    }
+  },
+  "global_context": {
+    "ui:field": "LayoutSectionField",
+    "ui:title": "Global context",
+    "subject": {
+      "ui:widget": "textarea",
+      "ui:options": {
+        "rows": 2
+      }
+    },
+    "action": {
+      "ui:widget": "textarea",
+      "ui:options": {
+        "rows": 3
+      }
+    },
+    "camera": {
+      "ui:widget": "textarea",
+      "ui:options": {
+        "rows": 2
+      }
+    },
+    "style": {
+      "ui:widget": "textarea",
+      "ui:options": {
+        "rows": 2
+      }
+    },
+    "audio": {
+      "ui:widget": "textarea",
+      "ui:options": {
+        "rows": 2
+      }
+    }
+  },
+  "reference_assets": {
+    "ui:options": {
+      "addable": true,
+      "orderable": true,
+      "removable": true,
+      "copyable": true,
+      "itemTitle": "Reference asset"
+    },
+    "items": {
+      "asset_id": {
+        "ui:placeholder": "@Image1 / @Video1 / @Audio1"
+      },
+      "description": {
+        "ui:widget": "textarea",
+        "ui:options": {
+          "rows": 2
+        }
+      }
+    }
+  },
+  "reference_directives": {
+    "ui:field": "LayoutSectionField",
+    "ui:title": "Global reference directives",
+    "ui:options": {
+      "addable": true,
+      "orderable": true,
+      "removable": true,
+      "itemTitle": "Directive"
+    },
+    "items": {
+      "kind": {
+        "ui:widget": "select",
+        "ui:help": "Supported patterns include first frame, motion reference, camera copy, music/rhythm, extend video, replace character, and universal reference."
+      },
+      "reference_target": {
+        "ui:placeholder": "the fighting choreography"
+      },
+      "custom_instruction": {
+        "ui:widget": "textarea",
+        "ui:options": {
+          "rows": 2
+        }
+      },
+      "target_description": {
+        "ui:placeholder": "the woman"
+      }
+    }
+  },
+  "edit_operations": {
+    "ui:options": {
+      "addable": true,
+      "orderable": true,
+      "removable": true,
+      "itemTitle": "Edit operation"
+    },
+    "items": {
+      "instruction": {
+        "ui:widget": "textarea",
+        "ui:options": {
+          "rows": 2
+        }
+      }
+    }
+  },
+  "shots": {
+    "ui:field": "LayoutSectionField",
+    "ui:title": "Shot plan",
+    "ui:description": "Each shot will be rendered into the same final prompt. Keep each shot in subject → action → camera → style → constraints order.",
+    "ui:options": {
+      "addable": true,
+      "orderable": true,
+      "removable": true,
+      "itemTitle": "Shot"
+    },
+    "items": {
+      "ui:field": "LayoutCardField",
+      "shot_id": {
+        "ui:widget": "text"
+      },
+      "beat_range": {
+        "ui:placeholder": "0-3s / opening beat / final beat"
+      },
+      "subject": {
+        "ui:widget": "textarea",
+        "ui:options": {
+          "rows": 2
+        }
+      },
+      "action": {
+        "ui:widget": "textarea",
+        "ui:options": {
+          "rows": 4
+        }
+      },
+      "camera": {
+        "ui:title": "Camera",
+        "framing_notes": {
+          "ui:widget": "textarea",
+          "ui:options": {
+            "rows": 2
+          }
+        },
+        "movement_notes": {
+          "ui:widget": "textarea",
+          "ui:options": {
+            "rows": 2
+          }
+        }
+      },
+      "style": {
+        "ui:title": "Style",
+        "visual_anchor": {
+          "ui:widget": "textarea",
+          "ui:options": {
+            "rows": 2
+          }
+        },
+        "lighting": {
+          "ui:widget": "textarea",
+          "ui:options": {
+            "rows": 2
+          }
+        },
+        "color_treatment": {
+          "ui:widget": "textarea",
+          "ui:options": {
+            "rows": 2
+          }
+        }
+      },
+      "audio": {
+        "ui:title": "Audio",
+        "music_direction": {
+          "ui:widget": "textarea",
+          "ui:options": {
+            "rows": 2
+          }
+        },
+        "rhythm_notes": {
+          "ui:widget": "textarea",
+          "ui:options": {
+            "rows": 2
+          }
+        },
+        "dialogue": {
+          "ui:widget": "textarea",
+          "ui:options": {
+            "rows": 3
+          }
+        },
+        "sound_effects": {
+          "ui:widget": "textarea",
+          "ui:options": {
+            "rows": 2
+          }
+        }
+      },
+      "reference_directives": {
+        "ui:title": "Shot-level reference directives",
+        "ui:options": {
+          "addable": true,
+          "orderable": true,
+          "removable": true
+        }
+      },
+      "constraints": {
+        "ui:title": "Constraints",
+        "must_keep": {
+          "ui:widget": "textarea",
+          "ui:options": {
+            "rows": 2
+          }
+        },
+        "must_avoid": {
+          "ui:widget": "textarea",
+          "ui:options": {
+            "rows": 2
+          }
+        },
+        "timing_notes": {
+          "ui:widget": "textarea",
+          "ui:options": {
+            "rows": 2
+          }
+        },
+        "consistency_notes": {
+          "ui:widget": "textarea",
+          "ui:options": {
+            "rows": 2
+          }
+        },
+        "physics_notes": {
+          "ui:widget": "textarea",
+          "ui:options": {
+            "rows": 2
+          }
+        }
+      },
+      "transition_to_next": {
+        "ui:widget": "textarea",
+        "ui:options": {
+          "rows": 2
+        }
+      }
+    }
+  },
+  "global_constraints": {
+    "ui:field": "LayoutSectionField",
+    "ui:title": "Global constraints",
+    "must_keep": {
+      "ui:widget": "textarea",
+      "ui:options": {
+        "rows": 2
+      }
+    },
+    "must_avoid": {
+      "ui:widget": "textarea",
+      "ui:options": {
+        "rows": 2
+      }
+    },
+    "timing_notes": {
+      "ui:widget": "textarea",
+      "ui:options": {
+        "rows": 2
+      }
+    },
+    "consistency_notes": {
+      "ui:widget": "textarea",
+      "ui:options": {
+        "rows": 2
+      }
+    },
+    "physics_notes": {
+      "ui:widget": "textarea",
+      "ui:options": {
+        "rows": 2
+      }
+    }
+  },
+  "render_options": {
+    "ui:field": "LayoutSectionField",
+    "ui:title": "Render options"
+  },
+  "notes": {
+    "ui:widget": "textarea",
+    "ui:options": {
+      "rows": 4
+    }
+  }
+}

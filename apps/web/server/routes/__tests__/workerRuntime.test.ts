@@ -26,6 +26,7 @@ describe("workerRuntime routes", () => {
 
   async function makeApp(overrides: Partial<{
     workerCallbacks: Record<string, any>;
+    workerDelegation: Record<string, any>;
     workerRegistry: Record<string, any>;
     workerPolicy: Record<string, any>;
   }> = {}) {
@@ -42,6 +43,170 @@ describe("workerRuntime routes", () => {
           publishedArtifactCount: 1,
         }),
         ...(overrides.workerCallbacks ?? {}),
+      },
+      workerDelegation: {
+        createDelegatedWorkerSession: vi.fn().mockResolvedValue({
+          sessionId: "session-1",
+          token: "delegate-token",
+          audience: "smartspec-worker-gateway",
+          tokenUse: "worker_gateway_delegate",
+          scopeProfile: "worker_gateway_hybrid_executor",
+          grantedScopes: ["llm:chat"],
+          expiresAt: "2026-04-07T12:00:00.000Z",
+          manifest: {
+            sessionId: "session-1",
+            workerId: "worker-1",
+            workerJobId: "job-1",
+            tenantId: "tenant-1",
+            actingUserId: 7,
+            ownerUserId: 7,
+            runtimeType: "openclaw_gateway",
+            scopeProfile: "worker_gateway_hybrid_executor",
+            grantedScopes: ["llm:chat"],
+            routeFamilies: ["llm"],
+            allowedMcpNamespaces: [],
+            allowedModelAliases: ["gpt-5.4-mini"],
+            allowedProviderProfiles: [],
+            knowledgeAccess: {
+              libraryRead: false,
+              librarySearch: false,
+              libraryUpload: false,
+              ragSearch: false,
+              ragIngest: false,
+            },
+            grantSummary: {
+              skills: [],
+              agencies: [],
+              libraryItemIds: [],
+              mcpNamespaces: [],
+            },
+            uploadPolicy: {
+              enabled: false,
+              allowedItemTypes: [],
+              maxFileBytes: null,
+            },
+            callbackTargets: {
+              roomUpdate: false,
+              workflowUpdate: false,
+              userNotification: false,
+            },
+            availability: {
+              http: "ready",
+              mcp: "unavailable",
+              knowledge: "unavailable",
+            },
+            mcp: {
+              enabled: false,
+              availableFamilies: [],
+              families: [],
+              availableTools: [],
+              experimentalTools: [],
+              disabledTools: [],
+              familyFlags: {
+                browserEnabled: false,
+                workspaceEnabled: false,
+                driveEnabled: false,
+                orchestratorEnabled: false,
+              },
+              operatorPolicy: {
+                enabled: true,
+                disabledFamilies: [],
+                disabledToolGroups: [],
+                approvalRequiredToolGroups: [],
+              },
+            },
+            discovery: {
+              openApiUrl: "/v1/openapi.json",
+              docsUrl: "/v1/docs",
+              catalogUrl: "/v1/mcp/catalog",
+              manifestPath: "/api/worker-jobs/job-1/delegated-manifest",
+              recommendedAuthMode: "bearer",
+              routeHints: [],
+            },
+            expiresAt: "2026-04-07T12:00:00.000Z",
+          },
+        }),
+        getDelegatedWorkerManifest: vi.fn().mockResolvedValue({
+          sessionId: "session-1",
+          workerId: "worker-1",
+          workerJobId: "job-1",
+          tenantId: "tenant-1",
+          actingUserId: 7,
+          ownerUserId: 7,
+          runtimeType: "openclaw_gateway",
+          scopeProfile: "worker_gateway_hybrid_executor",
+          grantedScopes: ["llm:chat", "rag:ingest"],
+          routeFamilies: ["llm", "rag"],
+          allowedMcpNamespaces: [],
+          allowedModelAliases: ["gpt-5.4-mini"],
+          allowedProviderProfiles: [],
+          knowledgeAccess: {
+            libraryRead: true,
+            librarySearch: true,
+            libraryUpload: true,
+            ragSearch: true,
+            ragIngest: true,
+          },
+          grantSummary: {
+            skills: [],
+            agencies: [],
+            libraryItemIds: [],
+            mcpNamespaces: [],
+          },
+          uploadPolicy: {
+            enabled: true,
+            allowedItemTypes: ["document"],
+            maxFileBytes: 52428800,
+          },
+          callbackTargets: {
+            roomUpdate: true,
+            workflowUpdate: true,
+            userNotification: true,
+          },
+          availability: {
+            http: "ready",
+            mcp: "unavailable",
+            knowledge: "ready",
+          },
+          mcp: {
+            enabled: false,
+            availableFamilies: [],
+            families: [],
+            availableTools: [],
+            experimentalTools: [],
+            disabledTools: [],
+            familyFlags: {
+              browserEnabled: false,
+              workspaceEnabled: false,
+              driveEnabled: false,
+              orchestratorEnabled: false,
+            },
+            operatorPolicy: {
+              enabled: true,
+              disabledFamilies: [],
+              disabledToolGroups: [],
+              approvalRequiredToolGroups: [],
+            },
+          },
+          discovery: {
+            openApiUrl: "/v1/openapi.json",
+            docsUrl: "/v1/docs",
+            catalogUrl: "/v1/mcp/catalog",
+            manifestPath: "/api/worker-jobs/job-1/delegated-manifest",
+            recommendedAuthMode: "bearer",
+            routeHints: [
+              {
+                family: "rag",
+                method: "POST",
+                path: "/v1/knowledge/rag/ingest",
+                availability: "ready",
+                purpose: "Upload or re-index owner files for RAG ingestion",
+              },
+            ],
+          },
+          expiresAt: "2026-04-07T12:00:00.000Z",
+        }),
+        ...(overrides.workerDelegation ?? {}),
       },
       workerRegistry: {
         registerWorker: vi.fn().mockResolvedValue({
@@ -191,6 +356,36 @@ describe("workerRuntime routes", () => {
 
     expect(res.status).toBe(403);
     expect(res.body.error.code).toBe("worker_scope_mismatch");
+  });
+
+  it("returns delegated manifests with discovery guidance for the worker runtime", async () => {
+    const { issueWorkerAccessTokens } = await import("../../services/workerAuthService");
+    const app = await makeApp();
+
+    const tokens = issueWorkerAccessTokens({
+      tenantId: "tenant-1",
+      workerId: "worker-1",
+      runtimeType: "openclaw_gateway",
+    });
+
+    const res = await request(app)
+      .get("/api/worker-jobs/job-1/delegated-manifest")
+      .set("Authorization", `Bearer ${tokens.executionToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.manifest.discovery.openApiUrl).toBe("/v1/openapi.json");
+    expect(res.body.manifest.discovery.routeHints).toEqual(expect.arrayContaining([
+      expect.objectContaining({ path: "/v1/knowledge/rag/ingest" }),
+    ]));
+    expect(res.body.manifest.mcp).toEqual(expect.objectContaining({
+      enabled: false,
+      operatorPolicy: expect.objectContaining({
+        enabled: true,
+        disabledFamilies: [],
+        disabledToolGroups: [],
+        approvalRequiredToolGroups: [],
+      }),
+    }));
   });
 
   it("publishes worker room updates with idempotency keys through the callback service", async () => {

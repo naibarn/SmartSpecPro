@@ -8,6 +8,7 @@
  */
 
 import { ENV } from "./env";
+import { getCachedAppRuntimeConfig } from "../services/appRuntimeConfig";
 
 // ============================================================================
 // Configuration
@@ -19,8 +20,9 @@ type MapsConfig = {
 };
 
 function getMapsConfig(): MapsConfig {
-  const baseUrl = ENV.forgeApiUrl;
-  const apiKey = ENV.forgeApiKey;
+  const runtimeConfig = getCachedAppRuntimeConfig();
+  const baseUrl = runtimeConfig.forgeApiUrl || ENV.forgeApiUrl;
+  const apiKey = runtimeConfig.forgeApiKey || ENV.forgeApiKey;
 
   if (!baseUrl || !apiKey) {
     throw new Error(
@@ -313,7 +315,6 @@ export type RoadsResult = {
  * Output: Image URL (not JSON) - use directly in <img src={url} />
  * Note: Construct URL manually with getMapsConfig() for auth
  */
-
 
 
 

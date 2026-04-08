@@ -92,12 +92,13 @@ export function buildOpenApiSpec() {
         "- `POST /v1/knowledge/library/search`",
         "- `POST /v1/knowledge/library/upload`",
         "- `POST /v1/knowledge/rag/search`",
+        "- `POST /v1/knowledge/rag/ingest`",
         "- `GET /v1/events` for SSE observation",
         "",
         "Use tenant-bound API keys or equivalent bearer API-key auth for external runtimes.",
         "SmartSpec-managed internal tokens may call these routes with additional internal headers, but that is not the public integration profile.",
-        "Delegated personal workers should treat `/v1/openapi.json` as the static HTTP contract and their delegated manifest as the per-job runtime truth.",
-        "Delegated worker MCP is intentionally unavailable in this phase, so `/v1/mcp` should not be treated as a ready delegated-worker path.",
+        "Delegated personal workers should treat `/v1/openapi.json` as the static HTTP contract, `/v1/mcp/catalog` as the static MCP catalog, and their delegated manifest as the per-job runtime truth.",
+        "Delegated worker MCP is available only when the delegated manifest reports MCP as ready and the granted MCP namespaces include the requested tool family.",
         "Embeddings are **not** supported on the public Claw gateway in this phase, so `/v1/embeddings` is intentionally absent from this spec.",
         "",
         "## SDK Generation",
@@ -1194,6 +1195,85 @@ export function buildOpenApiSpec() {
           },
         },
       },
+      "/v1/knowledge/rag/ingest": {
+        post: {
+          operationId: "ingestOwnerKnowledge",
+          tags: ["Knowledge"],
+          summary: "Ingest owner content into indexed knowledge",
+          description: "Either upload a new owner-scoped file for indexing or re-enqueue indexing for an existing owner library item. Requires scope: `rag:ingest`.",
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: {
+                  oneOf: [
+                    {
+                      type: "object",
+                      required: ["sourceType", "fileName", "fileType", "fileBase64"],
+                      properties: {
+                        sourceType: { type: "string", enum: ["upload"] },
+                        fileName: { type: "string" },
+                        fileType: { type: "string" },
+                        fileBase64: { type: "string", description: "Base64-encoded file contents" },
+                        title: { type: "string" },
+                        visibility: { type: "string", enum: ["private", "team", "public"] },
+                        parentId: { type: "integer", nullable: true },
+                        metadata: { type: "object", additionalProperties: true },
+                      },
+                    },
+                    {
+                      type: "object",
+                      required: ["sourceType", "libraryItemId"],
+                      properties: {
+                        sourceType: { type: "string", enum: ["library_item"] },
+                        libraryItemId: { type: "integer" },
+                      },
+                    },
+                  ],
+                },
+              },
+            },
+          },
+          responses: {
+            "201": {
+              description: "File uploaded and queued for indexing",
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    properties: {
+                      source_type: { type: "string", enum: ["upload"] },
+                      ingest_target: { type: "string", enum: ["rag"] },
+                      item: { type: "object" },
+                      storageKey: { type: "string" },
+                      indexJob: { type: "object", nullable: true },
+                      billing: { type: "object" },
+                    },
+                  },
+                },
+              },
+            },
+            "202": {
+              description: "Existing library item queued for re-indexing",
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    properties: {
+                      source_type: { type: "string", enum: ["library_item"] },
+                      ingest_target: { type: "string", enum: ["rag"] },
+                      item: { type: "object" },
+                      indexJob: { type: "object", nullable: true },
+                      credits_used: { type: "integer" },
+                    },
+                  },
+                },
+              },
+            },
+            ...commonErrorResponses,
+          },
+        },
+      },
       // -----------------------------------------------------------------------
       // MCP
       // -----------------------------------------------------------------------
@@ -1202,7 +1282,7 @@ export function buildOpenApiSpec() {
           operationId: "mcpEndpoint",
           tags: ["MCP"],
           summary: "MCP protocol endpoint",
-          description: "Handles Model Context Protocol tool calls. Requires scope: `mcp:read`. Delegated personal workers should treat MCP as unavailable in this phase.",
+          description: "Handles Model Context Protocol tool calls. Requires scope: `mcp:read`. Delegated personal workers may use this endpoint only when their delegated manifest reports MCP as ready and the job grants the requested MCP namespaces.",
           requestBody: {
             required: true,
             content: {
@@ -1230,6 +1310,33 @@ export function buildOpenApiSpec() {
               },
             },
             ...commonErrorResponses,
+          },
+        },
+      },
+      "/v1/mcp/catalog": {
+        get: {
+          operationId: "getMcpCatalog",
+          tags: ["MCP"],
+          summary: "Read the static MCP tool catalog",
+          description: "Returns the canonical SmartSpecPro MCP tool catalog, including tool families, idempotency expectations, and execution modes. Use this for static discovery guidance; delegated workers must still honor their per-job delegated manifest.",
+          responses: {
+            "200": {
+              description: "Static MCP catalog",
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    properties: {
+                      version: { type: "string" },
+                      canonicalEndpoint: { type: "string" },
+                      capabilities: { type: "object" },
+                      families: { type: "array", items: { type: "object" } },
+                      tools: { type: "array", items: { type: "object" } },
+                    },
+                  },
+                },
+              },
+            },
           },
         },
       },

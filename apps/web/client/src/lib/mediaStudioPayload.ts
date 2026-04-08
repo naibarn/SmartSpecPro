@@ -25,6 +25,7 @@ export function buildMediaStudioCommonPayload(
   const payload: Record<string, unknown> = {
     prompt: params.prompt,
     model: params.model || undefined,
+    originSurface: "media_studio",
     aspectRatio: params.aspectRatio,
     referenceImageUrls: params.referenceImages.length > 0
       ? params.referenceImages.map((image) => image.url)

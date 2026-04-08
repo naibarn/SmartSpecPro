@@ -174,6 +174,17 @@ describe("PROVIDER_TEMPLATES — WaveSpeed entry", () => {
   it("uses the official API root and launch model", () => {
     expect(wavespeedTemplate?.baseUrl).toBe("https://api.wavespeed.ai/api/v3");
     expect(wavespeedTemplate?.defaultModel).toBe("wavespeed-ai/cinematic-video-generator");
+    expect(wavespeedTemplate?.availableModels).toHaveLength(5);
+    expect(wavespeedTemplate?.availableModels).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: "bytedance/seedance-2.0/text-to-video",
+        type: "video",
+      }),
+      expect.objectContaining({
+        id: "bytedance/seedance-2.0-fast/image-to-video",
+        type: "video",
+      }),
+    ]));
   });
 });
 

@@ -29,10 +29,12 @@ vi.mock("../../server/services/redis", () => ({
 
 describe("resolveApiUrl — apiStyle responses routing", () => {
   let resolveApiUrl: typeof import("../../server/_core/llmRoutes").resolveApiUrl;
+  let normalizeMessagesApiResponseToChatCompletion: typeof import("../../server/_core/llmRoutes").normalizeMessagesApiResponseToChatCompletion;
 
   beforeEach(async () => {
     const mod = await import("../../server/_core/llmRoutes");
     resolveApiUrl = mod.resolveApiUrl;
+    normalizeMessagesApiResponseToChatCompletion = mod.normalizeMessagesApiResponseToChatCompletion;
   });
 
   it("routes OpenCode provider with apiStyle responses to /v1/responses", () => {
@@ -92,6 +94,90 @@ describe("resolveApiUrl — apiStyle responses routing", () => {
       "DeepSeek",
     );
     expect(url).toBe("https://api.deepseek.com/v1/chat/completions");
+  });
+
+  it("routes Kie GPT-5.4 responses traffic to the codex responses endpoint", () => {
+    const url = resolveApiUrl(
+      "https://api.kie.ai",
+      "gpt-5-4",
+      "kie_ai",
+      "responses",
+    );
+    expect(url).toBe("https://api.kie.ai/codex/v1/responses");
+  });
+
+  it("routes Kie Codex responses traffic to the shared responses endpoint", () => {
+    const url = resolveApiUrl(
+      "https://api.kie.ai",
+      "gpt-5.3-codex",
+      "kie_ai",
+      "responses",
+    );
+    expect(url).toBe("https://api.kie.ai/api/v1/responses");
+  });
+
+  it("routes Kie Claude traffic to the shared messages endpoint", () => {
+    const url = resolveApiUrl(
+      "https://api.kie.ai",
+      "claude-sonnet-4-6",
+      "kie_ai",
+      "messages",
+    );
+    expect(url).toBe("https://api.kie.ai/claude/v1/messages");
+  });
+
+  it("routes Kie Gemini traffic to the model-specific chat-completions endpoint", () => {
+    const url = resolveApiUrl(
+      "https://api.kie.ai",
+      "gemini-3.1-pro",
+      "kie_ai",
+      "chat-completions",
+    );
+    expect(url).toBe("https://api.kie.ai/gemini-3.1-pro/v1/chat/completions");
+  });
+
+  it("normalizes messages-style responses back into OpenAI chat completion shape", () => {
+    const normalized = normalizeMessagesApiResponseToChatCompletion(
+      {
+        id: "msg_123",
+        model: "claude-sonnet-4-6",
+        stop_reason: "tool_use",
+        content: [
+          { type: "text", text: "Need a tool call." },
+          {
+            type: "tool_use",
+            id: "toolu_123",
+            name: "lookup_weather",
+            input: { city: "Bangkok" },
+          },
+        ],
+        usage: {
+          input_tokens: 11,
+          output_tokens: 7,
+        },
+      },
+      "claude-sonnet-4-6",
+    );
+
+    expect(normalized.object).toBe("chat.completion");
+    expect(normalized.choices[0].message.role).toBe("assistant");
+    expect(normalized.choices[0].message.content).toBe("Need a tool call.");
+    expect(normalized.choices[0].message.tool_calls).toEqual([
+      {
+        id: "toolu_123",
+        type: "function",
+        function: {
+          name: "lookup_weather",
+          arguments: JSON.stringify({ city: "Bangkok" }),
+        },
+      },
+    ]);
+    expect(normalized.choices[0].finish_reason).toBe("tool_calls");
+    expect(normalized.usage).toEqual({
+      prompt_tokens: 11,
+      completion_tokens: 7,
+      total_tokens: 18,
+    });
   });
 });
 

@@ -4,9 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
-import { FileImage, FileText, Film, Loader2, Search } from "lucide-react";
+import { FileImage, FileText, Film, Loader2, Plus, Search } from "lucide-react";
 
-import type { LibrarySearchResultItem } from "@/lib/libraryUi";
+import type { LibraryItemTypeFilter, LibrarySearchResultItem } from "@/lib/libraryUi";
 import { getLibraryStatusMeta } from "@/lib/libraryUi";
 
 type LibraryRecentDaysFilter = "all" | 1 | 3 | 7 | 15 | 30;
@@ -22,6 +22,11 @@ interface LibrarySearchPanelProps {
   hasMore?: boolean;
   errorMessage?: string;
   selectedItemId?: number | null;
+  itemTypeFilter?: LibraryItemTypeFilter;
+  onItemTypeFilterChange?: (value: LibraryItemTypeFilter) => void;
+  addToReferenceLabel?: string;
+  canAddToReferenceItem?: (item: LibrarySearchResultItem) => boolean;
+  onAddToReference?: (item: LibrarySearchResultItem) => void;
   onSelect: (item: LibrarySearchResultItem) => void;
 }
 
@@ -36,9 +41,43 @@ export default function LibrarySearchPanel({
   hasMore = false,
   errorMessage,
   selectedItemId,
+  itemTypeFilter = "all",
+  onItemTypeFilterChange,
+  addToReferenceLabel = "Use as reference",
+  canAddToReferenceItem,
+  onAddToReference,
   onSelect,
 }: LibrarySearchPanelProps) {
-  const hasActiveSearchCriteria = query.trim().length > 0 || recentDays !== "all";
+  const showItemTypeFilter = typeof onItemTypeFilterChange === "function";
+  const showAddToReference = typeof onAddToReference === "function";
+  const hasActiveSearchCriteria = query.trim().length > 0 || recentDays !== "all" || itemTypeFilter !== "all";
+
+  const getItemDragUrl = (item: LibrarySearchResultItem): string | null => {
+    const itemType = item.item_type.toLowerCase();
+    const sourceUrl = item.source_url?.trim() || null;
+    const thumbnailUrl = item.thumbnail_url?.trim() || null;
+
+    if (itemType === "video") {
+      return sourceUrl;
+    }
+
+    return sourceUrl || thumbnailUrl;
+  };
+
+  const handleItemDragStart = (event: React.DragEvent, item: LibrarySearchResultItem) => {
+    const dragUrl = getItemDragUrl(item);
+    if (!dragUrl) {
+      event.preventDefault();
+      return;
+    }
+
+    const mediaType = item.item_type.toLowerCase() === "video" ? "video" : "image";
+    event.dataTransfer.setData("text/uri-list", dragUrl);
+    event.dataTransfer.setData("text/plain", dragUrl);
+    event.dataTransfer.setData("application/x-smartspec-media-type", mediaType);
+    event.dataTransfer.setData("text/x-smartspec-media-type", mediaType);
+    event.dataTransfer.effectAllowed = "copy";
+  };
 
   const renderItemPreview = (item: LibrarySearchResultItem) => {
     const itemType = item.item_type.toLowerCase();
@@ -106,6 +145,34 @@ export default function LibrarySearchPanel({
         placeholder="Search reusable assets..."
       />
 
+      {showItemTypeFilter && (
+        <div className="grid grid-cols-3 gap-2">
+          {(
+            [
+              { value: "all", label: "All", icon: FileText },
+              { value: "image", label: "Image", icon: FileImage },
+              { value: "video", label: "Video", icon: Film },
+            ] as const
+          ).map(({ value, label, icon: Icon }) => {
+            const active = itemTypeFilter === value;
+            return (
+              <Button
+                key={value}
+                size="sm"
+                type="button"
+                variant={active ? "default" : "outline"}
+                className="h-9 gap-1.5"
+                aria-pressed={active}
+                onClick={() => onItemTypeFilterChange?.(value)}
+              >
+                <Icon className="h-4 w-4" />
+                {label}
+              </Button>
+            );
+          })}
+        </div>
+      )}
+
       <div className="flex items-center gap-2">
         <span className="text-xs text-muted-foreground">Updated in:</span>
         <select
@@ -142,7 +209,7 @@ export default function LibrarySearchPanel({
 
       {!hasActiveSearchCriteria && !isLoading && (
         <p className="text-sm text-muted-foreground">
-          Pick a timeframe or type to search indexed library items for reuse.
+          Pick a timeframe, type, or media kind to search indexed library items for reuse.
         </p>
       )}
 
@@ -162,13 +229,20 @@ export default function LibrarySearchPanel({
             {results.map((item) => {
               const status = getLibraryStatusMeta(item.status);
               const isSelected = selectedItemId === item.item_id;
+              const dragUrl = getItemDragUrl(item);
+              const canDrag = Boolean(dragUrl);
+              const canAddToReference = showAddToReference && (canAddToReferenceItem ? canAddToReferenceItem(item) : true);
               return (
                 <div
                   key={item.item_id}
                   className={cn(
                     "rounded-lg border p-2 space-y-2",
                     isSelected ? "border-purple-400 bg-purple-50/60" : "border-slate-200",
+                    canDrag && "cursor-grab active:cursor-grabbing",
+                    !canDrag && "cursor-default",
                   )}
+                  draggable={canDrag}
+                  onDragStart={canDrag ? (event) => handleItemDragStart(event, item) : undefined}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex min-w-0 items-start gap-2">
@@ -193,13 +267,27 @@ export default function LibrarySearchPanel({
                     ) : (
                       <span className="text-xs text-muted-foreground">Ready to reuse</span>
                     )}
-                    <Button
-                      size="sm"
-                      variant={isSelected ? "secondary" : "outline"}
-                      onClick={() => onSelect(item)}
-                    >
-                      Select
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      {showAddToReference && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => onAddToReference?.(item)}
+                          disabled={!canAddToReference}
+                          title={addToReferenceLabel}
+                        >
+                          <Plus className="mr-1 h-4 w-4" />
+                          {addToReferenceLabel}
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        variant={isSelected ? "secondary" : "outline"}
+                        onClick={() => onSelect(item)}
+                      >
+                        Select
+                      </Button>
+                    </div>
                   </div>
                 </div>
               );

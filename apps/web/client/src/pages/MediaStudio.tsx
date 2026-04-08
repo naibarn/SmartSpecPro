@@ -156,7 +156,9 @@ import {
   resolveMediaStudioAutoPromptSelection,
   type MediaStudioVisionModelOption,
 } from "@/lib/mediaStudioAutoPromptSelection";
-import { applySharedContextToMultiVideoText, parseMultiVideoPrompts, splitMultiVideoPromptOutput } from "@/lib/mediaStudioPromptParsing";
+import { buildMediaStudioAutoPromptIdea } from "@/lib/mediaStudioAutoPromptIdea";
+import { composePromptWithNotes, parseMediaStudioPromptPackage } from "@/lib/mediaStudioPromptPackage";
+import { parseMultiVideoPrompts, splitMultiVideoPromptOutput } from "@/lib/mediaStudioPromptParsing";
 import { buildStoryboardVideoProject } from "@/lib/storyboardVideoProject";
 import {
   clampReferenceImagesToModelLimit,
@@ -194,6 +196,7 @@ type MediaType = "image" | "video" | "audio";
 type LibraryRecentDaysFilter = "all" | 1 | 3 | 7 | 15 | 30;
 type StudioSidebarTab = "history" | "library";
 type HistoryGalleryTab = "image" | "video";
+const MEDIA_STUDIO_CREDIT_ORIGIN = "media_studio" as const;
 
 interface ReferenceImage {
   url: string;
@@ -269,6 +272,10 @@ interface SearchableFieldOption {
 interface TabState {
   prompt: string;
   enhancedPrompt: string;
+  referenceNotes: string;
+  continuityNotes: string;
+  autoReferenceNotes: string;
+  autoContinuityNotes: string;
   referenceImages: ReferenceImage[];
   referenceVideos: ReferenceVideo[];
   selectedSkillId: string;
@@ -294,6 +301,10 @@ interface TabState {
 const createDefaultTabState = (mediaType: MediaType): TabState => ({
   prompt: "",
   enhancedPrompt: "",
+  referenceNotes: "",
+  continuityNotes: "",
+  autoReferenceNotes: "",
+  autoContinuityNotes: "",
   referenceImages: [],
   referenceVideos: [],
   selectedSkillId: "",
@@ -735,7 +746,7 @@ function getQueueProgress(status: QueueGenerationTask["status"]): number {
 
 export default function MediaStudio() {
   const { user, isLoading, isAuthenticated } = useAuth();
-  const { t: tNs } = useScopedTranslation(["media", "common", "billing"]);
+  const { t: tNs, locale } = useScopedTranslation(["media", "common", "billing"]);
   const [, setLocation] = useLocation();
   const t = (key: string, params?: Record<string, string | number>) => {
     if (key.startsWith("mediaStudio.")) {
@@ -1000,6 +1011,10 @@ export default function MediaStudio() {
   const currentTabState = tabStates[activeTab];
   const prompt = currentTabState.prompt;
   const enhancedPrompt = currentTabState.enhancedPrompt;
+  const referenceNotes = currentTabState.referenceNotes;
+  const continuityNotes = currentTabState.continuityNotes;
+  const autoReferenceNotes = currentTabState.autoReferenceNotes;
+  const autoContinuityNotes = currentTabState.autoContinuityNotes;
   const referenceImages = currentTabState.referenceImages;
   const referenceVideos = currentTabState.referenceVideos;
   const selectedSkillId = currentTabState.selectedSkillId;
@@ -1019,9 +1034,27 @@ export default function MediaStudio() {
   const selectedLlmModel = currentTabState.selectedLlmModel;
   const skillInitialized = currentTabState.skillInitialized;
   const modelInitialized = currentTabState.modelInitialized;
-  const currentPromptBundle = useMemo(() => splitMultiVideoPromptOutput((enhancedPrompt || prompt).trim()), [enhancedPrompt, prompt]);
+  const parsedCurrentPromptPackage = useMemo(
+    () => parseMediaStudioPromptPackage((enhancedPrompt || prompt).trim()),
+    [enhancedPrompt, prompt],
+  );
+  const visibleReferenceNotes = referenceNotes.trim() || parsedCurrentPromptPackage.referenceNotes;
+  const visibleContinuityNotes = continuityNotes.trim() || parsedCurrentPromptPackage.continuityNotes;
   const [referenceNotesEditorOpen, setReferenceNotesEditorOpen] = useState(false);
   const [referenceNotesDraft, setReferenceNotesDraft] = useState("");
+  const [continuityNotesEditorOpen, setContinuityNotesEditorOpen] = useState(false);
+  const [continuityNotesDraft, setContinuityNotesDraft] = useState("");
+  const hasPromptSupportNotes =
+    activeTab !== "audio" && (
+      Boolean(visibleReferenceNotes) ||
+      Boolean(visibleContinuityNotes) ||
+      referenceNotesEditorOpen ||
+      continuityNotesEditorOpen
+    );
+  const hasDetectedReferenceNotes = Boolean(autoReferenceNotes || parsedCurrentPromptPackage.referenceNotes);
+  const hasDetectedContinuityNotes = Boolean(autoContinuityNotes || parsedCurrentPromptPackage.continuityNotes);
+  const isReferenceNotesCustom = Boolean(referenceNotes.trim()) && referenceNotes.trim() !== (autoReferenceNotes || parsedCurrentPromptPackage.referenceNotes).trim();
+  const isContinuityNotesCustom = Boolean(continuityNotes.trim()) && continuityNotes.trim() !== (autoContinuityNotes || parsedCurrentPromptPackage.continuityNotes).trim();
 
   // Setter functions that update the current tab's state
   const setPrompt = useCallback((value: string | ((prev: string) => string)) => {
@@ -1044,6 +1077,10 @@ export default function MediaStudio() {
     }));
   }, [activeTab]);
 
+  const setReferenceNotes = useCallback((value: string) => updateTabState('referenceNotes', value), [updateTabState]);
+  const setContinuityNotes = useCallback((value: string) => updateTabState('continuityNotes', value), [updateTabState]);
+  const setAutoReferenceNotes = useCallback((value: string) => updateTabState('autoReferenceNotes', value), [updateTabState]);
+  const setAutoContinuityNotes = useCallback((value: string) => updateTabState('autoContinuityNotes', value), [updateTabState]);
   const setReferenceImages = useCallback((value: ReferenceImage[] | ((prev: ReferenceImage[]) => ReferenceImage[])) => {
     setTabStates(prev => ({
       ...prev,
@@ -1089,32 +1126,63 @@ export default function MediaStudio() {
   const setSelectedLlmModel = useCallback((value: string) => updateTabState('selectedLlmModel', value), [updateTabState]);
   const setSkillInitialized = useCallback((value: boolean) => updateTabState('skillInitialized', value), [updateTabState]);
   const setModelInitialized = useCallback((value: boolean) => updateTabState('modelInitialized', value), [updateTabState]);
+  const applyPromptPackageToCurrentTab = useCallback((rawText: string, target: "prompt" | "enhancedPrompt" = "enhancedPrompt") => {
+    const parsed = parseMediaStudioPromptPackage(rawText);
+    const cleanedPrompt = parsed.promptText || rawText.trim();
 
-  const applySharedReferenceNotes = useCallback((sharedContext: string) => {
-    const currentText = promptTextareaRef.current?.value?.trim() || (enhancedPrompt || prompt).trim();
-    const updatedText = applySharedContextToMultiVideoText(currentText, sharedContext);
-
-    if (enhancedPrompt) {
-      setEnhancedPrompt(updatedText);
+    if (target === "enhancedPrompt") {
+      setEnhancedPrompt(cleanedPrompt);
     } else {
-      setPrompt(updatedText);
+      setPrompt(cleanedPrompt);
     }
-  }, [enhancedPrompt, prompt, setEnhancedPrompt, setPrompt]);
+
+    setReferenceNotes(parsed.referenceNotes);
+    setContinuityNotes(parsed.continuityNotes);
+    setAutoReferenceNotes(parsed.referenceNotes);
+    setAutoContinuityNotes(parsed.continuityNotes);
+    setReferenceNotesDraft(parsed.referenceNotes);
+    setContinuityNotesDraft(parsed.continuityNotes);
+    setReferenceNotesEditorOpen(false);
+    setContinuityNotesEditorOpen(false);
+  }, [
+    setAutoContinuityNotes,
+    setAutoReferenceNotes,
+    setContinuityNotes,
+    setEnhancedPrompt,
+    setPrompt,
+    setReferenceNotes,
+  ]);
+
+  const clearPromptSupportNotes = useCallback(() => {
+    setReferenceNotes("");
+    setContinuityNotes("");
+    setAutoReferenceNotes("");
+    setAutoContinuityNotes("");
+    setReferenceNotesDraft("");
+    setContinuityNotesDraft("");
+    setReferenceNotesEditorOpen(false);
+    setContinuityNotesEditorOpen(false);
+  }, [setAutoContinuityNotes, setAutoReferenceNotes, setContinuityNotes, setReferenceNotes]);
 
   const openReferenceNotesEditor = useCallback(() => {
-    setReferenceNotesDraft(currentPromptBundle.sharedContext);
+    setReferenceNotesDraft(visibleReferenceNotes);
     setReferenceNotesEditorOpen(true);
-  }, [currentPromptBundle.sharedContext]);
-
-  const regenerateReferenceNotes = useCallback(() => {
-    setReferenceNotesDraft(currentPromptBundle.sharedContext);
-    setReferenceNotesEditorOpen(true);
-  }, [currentPromptBundle.sharedContext]);
+  }, [visibleReferenceNotes]);
 
   const saveReferenceNotes = useCallback(() => {
-    applySharedReferenceNotes(referenceNotesDraft);
+    setReferenceNotes(referenceNotesDraft.trim());
     setReferenceNotesEditorOpen(false);
-  }, [applySharedReferenceNotes, referenceNotesDraft]);
+  }, [referenceNotesDraft, setReferenceNotes]);
+
+  const openContinuityNotesEditor = useCallback(() => {
+    setContinuityNotesDraft(visibleContinuityNotes);
+    setContinuityNotesEditorOpen(true);
+  }, [visibleContinuityNotes]);
+
+  const saveContinuityNotes = useCallback(() => {
+    setContinuityNotes(continuityNotesDraft.trim());
+    setContinuityNotesEditorOpen(false);
+  }, [continuityNotesDraft, setContinuityNotes]);
 
   // Loading state (global)
   const [isEnhancing, setIsEnhancing] = useState(false);
@@ -1273,8 +1341,15 @@ export default function MediaStudio() {
   const { data: credits } = trpc.credits.balance.useQuery();
   const { data: styleCategories } = trpc.skills.getStyleCategories.useQuery();
   const { data: vfxCategories } = trpc.skills.getVFXCategories.useQuery();
+  const skillRuntimePlatform =
+    typeof window !== "undefined" && (window as any).__TAURI__ != null
+      ? "tauri"
+      : "web";
   // Fetch user-visible skills (respects per-user visibility settings)
-  const { data: userVisibleSkillsRaw } = trpc.skills.getUserVisibleSkills.useQuery({});
+  const { data: userVisibleSkillsRaw } = trpc.skills.getUserVisibleSkills.useQuery({
+    platform: skillRuntimePlatform,
+    origin: "chat",
+  });
   // Map to the shape expected by SkillSelectorDialog and skill selection logic
   const skillsList = useMemo(() => {
     if (!userVisibleSkillsRaw?.skills) return undefined;
@@ -1815,13 +1890,13 @@ export default function MediaStudio() {
   // Sync split prompts when switching tabs (for image_video_generation skills with outputType="both")
   useEffect(() => {
     if (activeTab === "image" && imageTabPrompt) {
-      setEnhancedPrompt(imageTabPrompt);
+      applyPromptPackageToCurrentTab(imageTabPrompt, "enhancedPrompt");
     } else if (activeTab === "video" && videoTabPrompt) {
-      setEnhancedPrompt(videoTabPrompt);
+      applyPromptPackageToCurrentTab(videoTabPrompt, "enhancedPrompt");
     }
     // Don't clear enhancedPrompt when switching to a tab without split prompt
     // User may have typed their own prompt
-  }, [activeTab, imageTabPrompt, videoTabPrompt, setEnhancedPrompt]);
+  }, [activeTab, applyPromptPackageToCurrentTab, imageTabPrompt, videoTabPrompt]);
 
   // Reset dynamic form values when skill changes (per-tab)
   useEffect(() => {
@@ -2296,14 +2371,16 @@ export default function MediaStudio() {
     // In Advanced Mode: combine main Prompt with "Your Idea" (request field) for expanded context
     const mainPrompt = prompt.trim();
     const advancedRequest = useAdvancedMode ? (dynamicFormValues.request as string || "") : "";
+    const inlinePromptContext = mainPrompt && advancedRequest
+      ? `${mainPrompt}\n\nAdditional details: ${advancedRequest}`
+      : mainPrompt || advancedRequest;
 
-    // Combine both fields: Prompt is primary, Your Idea expands on it
-    let userIdea = "";
-    if (mainPrompt && advancedRequest) {
-      userIdea = `${mainPrompt}\n\nAdditional details: ${advancedRequest}`;
-    } else {
-      userIdea = mainPrompt || advancedRequest;
-    }
+    const userIdea = buildMediaStudioAutoPromptIdea({
+      mainPrompt,
+      advancedRequest,
+      dynamicFormValues: useAdvancedMode ? dynamicFormValues : undefined,
+      skillSchema: useAdvancedMode ? skillSchema : undefined,
+    });
 
     if (!userIdea && referenceImages.length === 0) return;
     if (!currentSkill) {
@@ -2394,14 +2471,22 @@ export default function MediaStudio() {
         }
 
         // Always combine Basic Mode prompt with Advanced Mode field value
-        if (promptField && userIdea) {
+        if (promptField && inlinePromptContext) {
           const advancedModeValue = mappedValues[promptField.outputKey];
           if (hasUsableSkillValue(advancedModeValue)) {
-            // Both Basic and Advanced filled: combine them
-            mappedValues[promptField.outputKey] = `${userIdea}\n\n${advancedModeValue}`;
+            const advancedModeText = String(advancedModeValue).trim();
+            if (!advancedModeText) {
+              mappedValues[promptField.outputKey] = inlinePromptContext;
+            } else if (inlinePromptContext.includes(advancedModeText)) {
+              mappedValues[promptField.outputKey] = inlinePromptContext;
+            } else if (advancedModeText.includes(inlinePromptContext)) {
+              mappedValues[promptField.outputKey] = advancedModeText;
+            } else {
+              // Both inline prompt text and the skill field are filled: combine them without duplication.
+              mappedValues[promptField.outputKey] = `${inlinePromptContext}\n\n${advancedModeText}`;
+            }
           } else {
-            // Only Basic Mode prompt provided
-            mappedValues[promptField.outputKey] = userIdea;
+            mappedValues[promptField.outputKey] = inlinePromptContext;
           }
         }
 
@@ -2450,6 +2535,7 @@ export default function MediaStudio() {
           userInputs: sanitizedInputs,
           ...(selectedLlmModelSelection.resolvedModelId ? { model: selectedLlmModelSelection.resolvedModelId } : {}),
           referenceImages: referenceImages.map((r: any) => r.url),
+          originSurface: MEDIA_STUDIO_CREDIT_ORIGIN,
         });
 
         if (result.success && result.content) {
@@ -2470,11 +2556,11 @@ export default function MediaStudio() {
 
               // Set the appropriate prompt based on current tab
               if (activeTab === "image") {
-                setEnhancedPrompt(parsed.imagePrompt);
+                applyPromptPackageToCurrentTab(parsed.imagePrompt, "enhancedPrompt");
               } else if (activeTab === "video") {
-                setEnhancedPrompt(parsed.videoPrompt);
+                applyPromptPackageToCurrentTab(parsed.videoPrompt, "enhancedPrompt");
               } else {
-                setEnhancedPrompt(result.content);
+                applyPromptPackageToCurrentTab(result.content, "enhancedPrompt");
               }
 
               toast.success(t('mediaStudio.skillExecutedSuccessfully', { skillName: result.skillName }), {
@@ -2482,7 +2568,7 @@ export default function MediaStudio() {
               });
             } else {
               // Parsing failed (no image/video sections found), use full content
-              setEnhancedPrompt(result.content);
+              applyPromptPackageToCurrentTab(result.content, "enhancedPrompt");
               setImageTabPrompt(null);
               setVideoTabPrompt(null);
               toast.success(t('mediaStudio.skillExecutedSuccessfully', { skillName: result.skillName }), {
@@ -2491,7 +2577,7 @@ export default function MediaStudio() {
             }
           } else {
             // Use the skill's generated content as the prompt (normal mode)
-            setEnhancedPrompt(result.content);
+            applyPromptPackageToCurrentTab(result.content, "enhancedPrompt");
             setImageTabPrompt(null);
             setVideoTabPrompt(null);
             toast.success(t('mediaStudio.skillExecutedSuccessfully', { skillName: result.skillName }), {
@@ -2524,6 +2610,7 @@ export default function MediaStudio() {
             skillId: selectedSkillId,
             userInput: userIdea || "Create a prompt based on the reference images",
             referenceImages: referenceImages.map((r: any) => r.url),
+            originSurface: MEDIA_STUDIO_CREDIT_ORIGIN,
             // Include selected LLM model for Auto Prompt (from Advanced Mode selector)
             ...(selectedLlmModelSelection.resolvedModelId ? { model: selectedLlmModelSelection.resolvedModelId } : {}),
             ...(skillHasMaxPromptLengthField && selectedMediaModelMaxPromptLength !== null
@@ -2547,6 +2634,7 @@ export default function MediaStudio() {
             skillId: selectedSkillId,
             userInput: userIdea || "Create a prompt based on the reference images",
             referenceImages: referenceImages.map((r: any) => r.url),
+            originSurface: MEDIA_STUDIO_CREDIT_ORIGIN,
             // Include selected LLM model for Auto Prompt (from Advanced Mode selector)
             ...(selectedLlmModelSelection.resolvedModelId ? { model: selectedLlmModelSelection.resolvedModelId } : {}),
             ...(skillHasMaxPromptLengthField && selectedMediaModelMaxPromptLength !== null
@@ -2575,6 +2663,7 @@ export default function MediaStudio() {
         if (result.success && result.promptEn) {
           // Use the enhanced English prompt
           setEnhancedPrompt(result.promptEn);
+          clearPromptSupportNotes();
         } else {
           const description =
             "error" in result && typeof result.error === "string"
@@ -2616,14 +2705,22 @@ export default function MediaStudio() {
       } else {
         setPrompt(UPSCALE_DEFAULT_PROMPT);
       }
+      clearPromptSupportNotes();
       toast.success(t('mediaStudio.promptAutoFilledForUpscale'), {
         description: t('mediaStudio.promptAutoFilledForUpscaleDesc'),
       });
     }
-  }, [t, useAdvancedMode]);
+  }, [clearPromptSupportNotes, setDynamicFormValues, setPrompt, t, useAdvancedMode]);
 
   // Get current skill info
   const currentSkill = skillsList?.find(s => s.id === selectedSkillId);
+  const autoPromptIdea = useMemo(() => buildMediaStudioAutoPromptIdea({
+    mainPrompt: prompt.trim(),
+    advancedRequest: useAdvancedMode ? (dynamicFormValues.request as string || "") : "",
+    dynamicFormValues: useAdvancedMode ? dynamicFormValues : undefined,
+    skillSchema: useAdvancedMode ? skillSchema : undefined,
+  }), [dynamicFormValues, prompt, skillSchema, useAdvancedMode]);
+  const canRunAutoPrompt = Boolean(autoPromptIdea.trim()) || referenceImages.length > 0;
 
   // Generate media with loop for multiple images
   const handleGenerate = async () => {
@@ -2636,18 +2733,26 @@ export default function MediaStudio() {
     // any edits made after Auto Prompt, regardless of React state timing
     const currentTextareaValue = promptTextareaRef.current?.value ?? "";
 
-    // Use the current textarea value as the final prompt if available
-    // This ensures any user edits after Auto Prompt are captured
+    // Use the current textarea value as the prompt source if available.
+    // This ensures any user edits after Auto Prompt are captured.
     const advancedFallback = useAdvancedMode ? (dynamicFormValues.request as string || "") : "";
     const combinedFallback = prompt || advancedFallback;
     const stateBasedPrompt = enhancedPrompt || combinedFallback;
+    const rawPromptText = currentTextareaValue.trim() || stateBasedPrompt;
+    const parsedGenerationPromptPackage = parseMediaStudioPromptPackage(rawPromptText);
+    const promptText = parsedGenerationPromptPackage.promptText || rawPromptText.trim();
+    const effectiveReferenceNotes = referenceNotes.trim() || parsedGenerationPromptPackage.referenceNotes;
+    const effectiveContinuityNotes = continuityNotes.trim() || parsedGenerationPromptPackage.continuityNotes;
+    const finalPrompt = composePromptWithNotes({
+      prompt: promptText,
+      referenceNotes: effectiveReferenceNotes,
+      continuityNotes: effectiveContinuityNotes,
+    });
 
-    // Prefer textarea ref value (most current) over state (may be stale)
-    const finalPrompt = currentTextareaValue.trim() || stateBasedPrompt;
-    console.log('[handleGenerate] finalPrompt length:', finalPrompt?.length || 0);
-    console.log('[handleGenerate] finalPrompt preview:', finalPrompt?.substring(0, 100));
+    console.log('[handleGenerate] promptText length:', promptText?.length || 0);
+    console.log('[handleGenerate] promptText preview:', promptText?.substring(0, 100));
 
-    if (!finalPrompt?.trim()) {
+    if (!promptText?.trim()) {
       console.log('[handleGenerate] ERROR: No prompt provided, exiting');
       return;
     }
@@ -2667,14 +2772,16 @@ export default function MediaStudio() {
     // Parse prompts if Multi Video mode
     let promptsToGenerate: string[] = [finalPrompt];
     if (isMultiVideo) {
-      const parsed = splitMultiVideoPromptOutput(finalPrompt);
-      const parsedPrompts = parsed.prompts.length > 0 ? parsed.prompts : parseMultiVideoPrompts(finalPrompt);
+      const parsed = splitMultiVideoPromptOutput(promptText);
+      const parsedPrompts = parsed.prompts.length > 0 ? parsed.prompts : parseMultiVideoPrompts(promptText);
       console.log('[Multi Video] Shared context length:', parsed.sharedContext.length);
       console.log('[Multi Video] Parsed prompts count:', parsedPrompts.length);
       if (parsedPrompts.length > 0) {
-        promptsToGenerate = parsedPrompts.map((prompt) =>
-          parsed.sharedContext ? `${parsed.sharedContext}\n\n${prompt}` : prompt
-        );
+        promptsToGenerate = parsedPrompts.map((prompt) => composePromptWithNotes({
+          prompt,
+          referenceNotes: effectiveReferenceNotes,
+          continuityNotes: effectiveContinuityNotes,
+        }));
         console.log(`[Multi Video] Using ${parsedPrompts.length} prompts`);
         toast.info(t('mediaStudio.multiVideoModeGenerating', { count: parsedPrompts.length }), { duration: 3000 });
       } else {
@@ -2704,6 +2811,8 @@ export default function MediaStudio() {
     const apiConfig: Record<string, string> = buildApiConfigFromModelConfig(
       (modelConfig as Record<string, unknown>) ?? null,
     );
+    let promptSyncedFields: any[] = [];
+    let resolveRuntimeFieldValue: ((field: any, value: unknown) => unknown) | null = null;
     const templateBaseContext = {
       prompt: finalPrompt,
       aspectRatio: finalAspectRatio,
@@ -2718,6 +2827,7 @@ export default function MediaStudio() {
         }
         return value;
       };
+      resolveRuntimeFieldValue = resolveFieldValue;
 
       // Populate extraParams — syncWith fields get their value from the live runtime state;
       // unsynchronised fields get the value from modelInputValues (user's direct input).
@@ -2739,6 +2849,7 @@ export default function MediaStudio() {
         }
 
         if (syncWith === "prompt") {
+          promptSyncedFields.push(field);
           extraParams[field.key] = resolveFieldValue(field, finalPrompt);
           continue;
         }
@@ -2830,6 +2941,12 @@ export default function MediaStudio() {
 
       // Get the appropriate prompt for this iteration
       const currentPrompt = isMultiVideo ? promptsToGenerate[i] : finalPrompt;
+      const currentExtraParams = { ...extraParams };
+      if (promptSyncedFields.length > 0 && resolveRuntimeFieldValue) {
+        for (const field of promptSyncedFields) {
+          currentExtraParams[field.key] = resolveRuntimeFieldValue(field, currentPrompt);
+        }
+      }
       console.log(`[Generate] Iteration ${i + 1}/${imageCount}, Prompt length:`, currentPrompt.length);
       console.log(`[Generate] Model:`, selectedModel);
       console.log(`[Generate] Duration:`, activeTab === "video" ? selectedVideoDuration : undefined);
@@ -2846,7 +2963,7 @@ export default function MediaStudio() {
           aspectRatio: finalAspectRatio,
           referenceImages: effectiveReferenceImages,
           referenceVideos: activeTab === "video" ? effectiveReferenceVideos : [],
-          extraParams: Object.keys(extraParams).length > 0 ? extraParams : undefined,
+          extraParams: Object.keys(currentExtraParams).length > 0 ? currentExtraParams : undefined,
           apiConfig: Object.keys(apiConfig).length > 0 ? apiConfig : undefined,
           resolution: modelInputValues.resolution || undefined,
         });
@@ -2878,7 +2995,8 @@ export default function MediaStudio() {
           const result = await generateAudioMutation.mutateAsync({
             text: currentPrompt,
             model: selectedModel || undefined,
-            ...(Object.keys(extraParams).length > 0 ? { extraParams } : {}),
+            originSurface: MEDIA_STUDIO_CREDIT_ORIGIN,
+            ...(Object.keys(currentExtraParams).length > 0 ? { extraParams: currentExtraParams } : {}),
             ...(Object.keys(apiConfig).length > 0 ? { apiConfig } : {}),
           });
 
@@ -3087,7 +3205,7 @@ export default function MediaStudio() {
   // Use prompt from lightbox (copy to input)
   const usePromptFromLightbox = () => {
     if (lightboxImage?.prompt) {
-      setPrompt(lightboxImage.prompt);
+      applyPromptPackageToCurrentTab(lightboxImage.prompt, "prompt");
       setEnhancedPrompt("");
       setImageTabPrompt(null);
       setVideoTabPrompt(null);
@@ -3601,6 +3719,7 @@ export default function MediaStudio() {
         const result = await generateAudioMutation.mutateAsync({
           text: retryPrompt,
           model: retryModel || undefined,
+          originSurface: MEDIA_STUDIO_CREDIT_ORIGIN,
           ...(Object.keys(extraParams).length > 0 ? { extraParams } : {}),
           ...(Object.keys(apiConfig).length > 0 ? { apiConfig } : {}),
         });
@@ -4843,7 +4962,7 @@ export default function MediaStudio() {
                           variant="outline"
                           size="sm"
                           onClick={handleAutoPrompt}
-                          disabled={(!prompt.trim() && referenceImages.length === 0) || isEnhancing}
+                          disabled={!canRunAutoPrompt || isEnhancing}
                         >
                           {isEnhancing ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
@@ -4872,6 +4991,7 @@ export default function MediaStudio() {
                             onClick={() => {
                               setPrompt("");
                               setEnhancedPrompt("");
+                              clearPromptSupportNotes();
                               setImageTabPrompt(null);
                               setVideoTabPrompt(null);
                             }}
@@ -4904,105 +5024,217 @@ export default function MediaStudio() {
                 className="min-h-[120px] resize-y"
               />
 
-              {activeTab === "video" && (currentPromptBundle.sharedContext || referenceNotesEditorOpen) && (
-                <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-3 shadow-sm">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 text-sm font-semibold text-emerald-900">
-                      <CheckCircle className="h-4 w-4" />
-                      REFERENCE NOTES
+              {hasPromptSupportNotes && (
+                <div className="space-y-3">
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-3 shadow-sm">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 text-sm font-semibold text-emerald-900">
+                        <CheckCircle className="h-4 w-4" />
+                        {t('mediaStudio.promptSupportNotes.referenceTitle')}
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {!referenceNotesEditorOpen ? (
+                          <>
+                            <Badge variant="outline" className="border-emerald-200 bg-white text-emerald-700">
+                              {isReferenceNotesCustom
+                                ? t('mediaStudio.promptSupportNotes.custom')
+                                : hasDetectedReferenceNotes
+                                  ? t('mediaStudio.promptSupportNotes.autoSynced')
+                                  : t('mediaStudio.promptSupportNotes.custom')}
+                            </Badge>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="border-emerald-200 text-emerald-800 hover:bg-emerald-100"
+                              onClick={openReferenceNotesEditor}
+                            >
+                              <Pencil className="h-4 w-4 mr-1" />
+                              {t('common.edit')}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-emerald-800 hover:bg-emerald-100"
+                              onClick={() => {
+                                const resetValue = autoReferenceNotes || parsedCurrentPromptPackage.referenceNotes;
+                                setReferenceNotes(resetValue);
+                                setReferenceNotesDraft(resetValue);
+                              }}
+                            >
+                              <RefreshCw className="h-4 w-4 mr-1" />
+                              {t('mediaStudio.promptSupportNotes.resync')}
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <Badge variant="outline" className="border-emerald-200 bg-white text-emerald-700">
+                              {t('mediaStudio.promptSupportNotes.editing')}
+                            </Badge>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-emerald-800 hover:bg-emerald-100"
+                              onClick={() => {
+                                setReferenceNotesDraft(visibleReferenceNotes);
+                              }}
+                            >
+                              {t('mediaStudio.promptSupportNotes.resetDraft')}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-emerald-800 hover:bg-emerald-100"
+                              onClick={() => setReferenceNotesEditorOpen(false)}
+                            >
+                              {t('common.cancel')}
+                            </Button>
+                          </>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      {!referenceNotesEditorOpen ? (
-                        <>
-                          <Badge variant="outline" className="border-emerald-200 bg-white text-emerald-700">
-                            Auto-synced
-                          </Badge>
+
+                    {!referenceNotesEditorOpen ? (
+                      <>
+                        <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-emerald-950/90">
+                          {visibleReferenceNotes || t('mediaStudio.promptSupportNotes.referenceEmpty')}
+                        </p>
+                        <p className="mt-2 text-xs text-emerald-700/80">
+                          {t('mediaStudio.promptSupportNotes.referenceHelp')}
+                        </p>
+                      </>
+                    ) : (
+                      <div className="mt-3 space-y-2">
+                        <Textarea
+                          value={referenceNotesDraft}
+                          onChange={(e) => setReferenceNotesDraft(e.target.value)}
+                          className="min-h-[120px] bg-white/90"
+                          placeholder={t('mediaStudio.promptSupportNotes.referencePlaceholder')}
+                        />
+                        <div className="flex items-center justify-end gap-2">
                           <Button
                             variant="outline"
                             size="sm"
                             className="border-emerald-200 text-emerald-800 hover:bg-emerald-100"
-                            onClick={openReferenceNotesEditor}
-                          >
-                            <Pencil className="h-4 w-4 mr-1" />
-                            Edit
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-emerald-800 hover:bg-emerald-100"
-                            onClick={regenerateReferenceNotes}
-                          >
-                            <RefreshCw className="h-4 w-4 mr-1" />
-                            Regenerate
-                          </Button>
-                        </>
-                      ) : (
-                        <>
-                          <Badge variant="outline" className="border-emerald-200 bg-white text-emerald-700">
-                            Editing
-                          </Badge>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-emerald-800 hover:bg-emerald-100"
-                            onClick={() => {
-                              setReferenceNotesDraft(currentPromptBundle.sharedContext);
-                            }}
-                          >
-                            Reset
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-emerald-800 hover:bg-emerald-100"
                             onClick={() => setReferenceNotesEditorOpen(false)}
                           >
-                            Cancel
+                            {t('common.cancel')}
                           </Button>
-                        </>
-                      )}
-                    </div>
+                          <Button
+                            size="sm"
+                            className="bg-emerald-600 text-white hover:bg-emerald-700"
+                            onClick={saveReferenceNotes}
+                          >
+                            {t('mediaStudio.promptSupportNotes.saveReference')}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
-                  {!referenceNotesEditorOpen ? (
-                    <>
-                      <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-emerald-950/90">
-                        {currentPromptBundle.sharedContext || "No shared continuity notes detected yet."}
-                      </p>
-                      <p className="mt-2 text-xs text-emerald-700/80">
-                        This shared block will be merged into every prompt before Media Studio generates the videos.
-                      </p>
-                    </>
-                  ) : (
-                    <div className="mt-3 space-y-2">
-                      <Textarea
-                        value={referenceNotesDraft}
-                        onChange={(e) => setReferenceNotesDraft(e.target.value)}
-                        className="min-h-[120px] bg-white/90"
-                        placeholder="Summarize the recurring character, location, props, and visual anchors here..."
-                      />
-                      <div className="flex items-center justify-end gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="border-emerald-200 text-emerald-800 hover:bg-emerald-100"
-                          onClick={() => setReferenceNotesEditorOpen(false)}
-                        >
-                          Cancel
-                        </Button>
-                        <Button
-                          size="sm"
-                          className="bg-emerald-600 text-white hover:bg-emerald-700"
-                          onClick={saveReferenceNotes}
-                        >
-                          Apply to all prompts
-                        </Button>
+                  <div className="rounded-xl border border-sky-200 bg-sky-50/70 p-3 shadow-sm">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 text-sm font-semibold text-sky-900">
+                        <CheckCircle className="h-4 w-4" />
+                        {t('mediaStudio.promptSupportNotes.continuityTitle')}
                       </div>
-                      <p className="text-xs text-emerald-700/80 text-right">
-                        Applies the shared continuity notes to every prompt in this batch.
-                      </p>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {!continuityNotesEditorOpen ? (
+                          <>
+                            <Badge variant="outline" className="border-sky-200 bg-white text-sky-700">
+                              {isContinuityNotesCustom
+                                ? t('mediaStudio.promptSupportNotes.custom')
+                                : hasDetectedContinuityNotes
+                                  ? t('mediaStudio.promptSupportNotes.autoSynced')
+                                  : t('mediaStudio.promptSupportNotes.custom')}
+                            </Badge>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="border-sky-200 text-sky-800 hover:bg-sky-100"
+                              onClick={openContinuityNotesEditor}
+                            >
+                              <Pencil className="h-4 w-4 mr-1" />
+                              {t('common.edit')}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-sky-800 hover:bg-sky-100"
+                              onClick={() => {
+                                const resetValue = autoContinuityNotes || parsedCurrentPromptPackage.continuityNotes;
+                                setContinuityNotes(resetValue);
+                                setContinuityNotesDraft(resetValue);
+                              }}
+                            >
+                              <RefreshCw className="h-4 w-4 mr-1" />
+                              {t('mediaStudio.promptSupportNotes.resync')}
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <Badge variant="outline" className="border-sky-200 bg-white text-sky-700">
+                              {t('mediaStudio.promptSupportNotes.editing')}
+                            </Badge>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-sky-800 hover:bg-sky-100"
+                              onClick={() => {
+                                setContinuityNotesDraft(visibleContinuityNotes);
+                              }}
+                            >
+                              {t('mediaStudio.promptSupportNotes.resetDraft')}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-sky-800 hover:bg-sky-100"
+                              onClick={() => setContinuityNotesEditorOpen(false)}
+                            >
+                              {t('common.cancel')}
+                            </Button>
+                          </>
+                        )}
+                      </div>
                     </div>
-                  )}
+
+                    {!continuityNotesEditorOpen ? (
+                      <>
+                        <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-sky-950/90">
+                          {visibleContinuityNotes || t('mediaStudio.promptSupportNotes.continuityEmpty')}
+                        </p>
+                        <p className="mt-2 text-xs text-sky-700/80">
+                          {t('mediaStudio.promptSupportNotes.continuityHelp')}
+                        </p>
+                      </>
+                    ) : (
+                      <div className="mt-3 space-y-2">
+                        <Textarea
+                          value={continuityNotesDraft}
+                          onChange={(e) => setContinuityNotesDraft(e.target.value)}
+                          className="min-h-[120px] bg-white/90"
+                          placeholder={t('mediaStudio.promptSupportNotes.continuityPlaceholder')}
+                        />
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="border-sky-200 text-sky-800 hover:bg-sky-100"
+                            onClick={() => setContinuityNotesEditorOpen(false)}
+                          >
+                            {t('common.cancel')}
+                          </Button>
+                          <Button
+                            size="sm"
+                            className="bg-sky-600 text-white hover:bg-sky-700"
+                            onClick={saveContinuityNotes}
+                          >
+                            {t('mediaStudio.promptSupportNotes.saveContinuity')}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -5060,6 +5292,7 @@ export default function MediaStudio() {
                     size="sm"
                     onClick={() => {
                       setEnhancedPrompt("");
+                      clearPromptSupportNotes();
                       setImageTabPrompt(null);
                       setVideoTabPrompt(null);
                     }}
@@ -5863,6 +6096,7 @@ export default function MediaStudio() {
                                     // Auto-fill prompt for Upscale style
                                     if (style.name === "Upscale") {
                                       setPrompt(UPSCALE_DEFAULT_PROMPT);
+                                      clearPromptSupportNotes();
                                       toast.success(t('mediaStudio.upscaleAutoFilled'), {
                                         description: t('mediaStudio.upscaleAutoFilledDesc'),
                                       });
@@ -6337,7 +6571,7 @@ export default function MediaStudio() {
 
                   <DynamicSkillForm
                     schema={skillSchema}
-                    language="en"
+                    language={locale.startsWith("th") ? "th" : "en"}
                     values={dynamicFormValues}
                     onChange={setDynamicFormValues}
                     excludeFields={["aspectRatio", "aspect_ratio"]}
@@ -6380,7 +6614,7 @@ export default function MediaStudio() {
                             variant="outline"
                             className="w-full gap-2 border-blue-200 hover:border-blue-400 hover:bg-blue-50"
                             onClick={handleAutoPrompt}
-                            disabled={(!prompt.trim() && !dynamicFormValues.request && referenceImages.length === 0) || isEnhancing}
+                            disabled={!canRunAutoPrompt || isEnhancing}
                           >
                             {isEnhancing ? (
                               <Loader2 className="h-4 w-4 animate-spin" />

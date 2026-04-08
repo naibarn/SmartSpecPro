@@ -14,11 +14,20 @@ describe("seed-media-providers", () => {
       defaultModel: "wavespeed-ai/cinematic-video-generator",
       isEnabled: false,
     });
-    expect(wavespeed?.availableModels).toEqual([
+    expect(wavespeed?.availableModels).toHaveLength(5);
+    expect(wavespeed?.availableModels).toEqual(expect.arrayContaining([
       expect.objectContaining({
         id: "wavespeed-ai/cinematic-video-generator",
         type: "video",
       }),
-    ]);
+      expect.objectContaining({
+        id: "bytedance/seedance-2.0/text-to-video",
+        type: "video",
+      }),
+      expect.objectContaining({
+        id: "bytedance/seedance-2.0-fast/image-to-video",
+        type: "video",
+      }),
+    ]));
   });
 });

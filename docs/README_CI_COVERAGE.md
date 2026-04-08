@@ -5,7 +5,7 @@ This repo runs tests and coverage gates per package:
 - **python-backend**: `pytest` with coverage gate (see `python-backend/pytest.ini` and `.coveragerc`)
 - **api-generator**: Jest coverage gate (`npm run test:coverage`)
 - **control-plane**: Vitest coverage gate (`npm run test:coverage`)
-- **desktop-app**: Vitest coverage gate (`npm run test:coverage`)
+- **apps/tauri-shell**: Cargo test smoke gate (`npm test`)
 
 Run everything locally:
 

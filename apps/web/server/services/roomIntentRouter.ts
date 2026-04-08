@@ -48,14 +48,45 @@ export interface RoomIntentDecision {
 const TASK_SIGNAL_RE = /\b(ทำ|ช่วย|สร้าง|เขียน|สรุป|วิเคราะห์|รีวิว|review|draft|plan|research|generate|compose|design|build|fix|analyze|compare|evaluate|outline)\b/i;
 const CHAT_SIGNAL_RE = /\b(hi|hello|สวัสดี|ขอบคุณ|thanks|how are you|เป็นไง|คุย|chat)\b/i;
 const AGENCY_SIGNAL_RE = /\b(agency|multi[- ]step|หลายขั้น|workflow|orchestrate|delegate|coordinate|escalate|escalation)\b/i;
+const MODEL_QUERY_TOPIC_RE = /(llm|model|models|โมเดล|รุ่น|provider|providers|พรอไวเดอร์|openrouter|openai|claude|gemini|qwen)/i;
+const MODEL_QUERY_QUESTION_RE = /(\?|อะไร|ยังไง|แบบไหน|ตัวไหน|ไหนดี|รุ่นไหนดี|แนะนำ|เลือก|ใช้อะไร|หรือไม่|ไหม|มั้ย|หรือเปล่า|what|which|best|how|recommend|choose|should i use)/i;
+const MODEL_QUERY_SUITABILITY_RE = /(เหมาะ(?:กับ|สำหรับ)|ใช้กับงาน|สำหรับงาน|good for|suitable for|fit for|works for|best for)/i;
+const AUTOMATION_ACTION_RE = /\b(agency|workflow|automate|automation|browser session|schedule|scheduled|cron|alert|remind|delegate|orchestrate|swarm|เอเจนซี|เวิร์กโฟลว์|อัตโนมัติ|ตั้งเวลา|แจ้งเตือน|เตือน)\b/i;
 
 /** High-confidence regex threshold — skip LLM call */
 const REGEX_AUTO_ROUTE_THRESHOLD = 0.82;
+
+function isConversationalModelQuery(message: string): boolean {
+  if (!MODEL_QUERY_TOPIC_RE.test(message) || !MODEL_QUERY_QUESTION_RE.test(message)) {
+    return false;
+  }
+
+  if (AUTOMATION_ACTION_RE.test(message)) {
+    return false;
+  }
+
+  // Questions like "Qwen เหมาะกับงานสร้างภาพไหม" describe a use case,
+  // but are still conversational model-selection queries, not execution requests.
+  if (MODEL_QUERY_SUITABILITY_RE.test(message)) {
+    return true;
+  }
+
+  return !TASK_SIGNAL_RE.test(message);
+}
 
 export async function routeRoomIntent(input: RoomIntentRouterInput): Promise<RoomIntentDecision> {
   const normalized = input.message.trim();
   if (!normalized) {
     return { route: "chat", reason: "empty_message", confidence: 0, source: "rules" };
+  }
+
+  if (isConversationalModelQuery(normalized)) {
+    return {
+      route: "chat",
+      reason: "model_selection_query",
+      confidence: 0.78,
+      source: "rules",
+    };
   }
 
   // Check F21 feature flag — use advanced routing when enabled
@@ -311,36 +342,40 @@ async function routeLegacy(
     normalized.length > 30;
 
   if (shouldClassify) {
-    const classification = await classifyIntent(
-      normalized,
-      input.userId,
-      input.tenantId,
-      input.conversationId,
-      undefined,
-      { hasImages: input.hasImages },
-    );
+    try {
+      const classification = await classifyIntent(
+        normalized,
+        input.userId,
+        input.tenantId,
+        input.conversationId,
+        undefined,
+        { hasImages: input.hasImages },
+      );
 
-    if (classification) {
-      const topSkill = classification.skills[0];
-      if (classification.level === "complex") {
-        return {
-          route: "agency",
-          reason: `classifier_complex:${classification.strategy}`,
-          confidence: topSkill?.confidence ?? 0.7,
-          source: "classifier",
-          agencyEscalation: true,
-        };
-      }
+      if (classification) {
+        const topSkill = classification.skills[0];
+        if (classification.level === "complex") {
+          return {
+            route: "agency",
+            reason: `classifier_complex:${classification.strategy}`,
+            confidence: topSkill?.confidence ?? 0.7,
+            source: "classifier",
+            agencyEscalation: true,
+          };
+        }
 
-      if (topSkill && topSkill.confidence >= 0.65) {
-        return {
-          route: "skill",
-          reason: `classifier_skill:${topSkill.skillId}`,
-          selectedSkillId: topSkill.skillId,
-          confidence: topSkill.confidence,
-          source: "classifier",
-        };
+        if (topSkill && topSkill.confidence >= 0.65) {
+          return {
+            route: "skill",
+            reason: `classifier_skill:${topSkill.skillId}`,
+            selectedSkillId: topSkill.skillId,
+            confidence: topSkill.confidence,
+            source: "classifier",
+          };
+        }
       }
+    } catch {
+      // Classifier unavailable — gracefully continue to deterministic chat fallback.
     }
   }
 

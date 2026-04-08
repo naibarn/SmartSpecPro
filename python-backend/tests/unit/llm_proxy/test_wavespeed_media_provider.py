@@ -8,6 +8,8 @@ import pytest
 from app.llm_proxy.providers.wavespeed_media_provider import (
     WAVESPEED_DEFAULT_RESULT_ENDPOINT_TEMPLATE,
     WAVESPEED_DEFAULT_SUBMIT_ENDPOINT,
+    WAVESPEED_SEEDANCE_2_FAST_IMAGE_TO_VIDEO_MODEL_ID,
+    WAVESPEED_SEEDANCE_2_TEXT_TO_VIDEO_MODEL_ID,
     WaveSpeedError,
     WaveSpeedMediaProvider,
     normalize_relative_media_endpoint_path,
@@ -77,6 +79,35 @@ def test_build_submit_payload_rejects_more_than_four_images():
         )
 
 
+def test_build_submit_payload_requires_reference_images_for_image_to_video_models():
+    with pytest.raises(WaveSpeedError, match="require at least one reference image"):
+        WaveSpeedMediaProvider.build_submit_payload(
+            prompt="Animate this still",
+            reference_image_urls=[],
+            aspect_ratio="21:9",
+            duration=5,
+            provider_model_id=WAVESPEED_SEEDANCE_2_FAST_IMAGE_TO_VIDEO_MODEL_ID,
+        )
+
+
+def test_build_submit_payload_supports_extended_aspect_ratios_for_seedance_2_models():
+    payload = WaveSpeedMediaProvider.build_submit_payload(
+        prompt="A neon city at dusk",
+        reference_image_urls=None,
+        aspect_ratio="21:9",
+        duration=15,
+        provider_model_id=WAVESPEED_SEEDANCE_2_TEXT_TO_VIDEO_MODEL_ID,
+        resolution="1080p",
+    )
+
+    assert payload == {
+        "prompt": "A neon city at dusk",
+        "aspect_ratio": "21:9",
+        "duration": 15,
+        "resolution": "1080p",
+    }
+
+
 def test_build_submission_record_stores_sanitized_request_summary_only():
     provider = WaveSpeedMediaProvider(api_key="test-key")
     try:
@@ -103,6 +134,7 @@ def test_build_submission_record_stores_sanitized_request_summary_only():
     assert submission["used_sync_mode"] is False
     assert submission["request_summary"] == {
         "prompt_length": len("Sensitive prompt text"),
+        "generate_type": "text-to-video",
         "has_reference_images": True,
         "reference_image_count": 2,
         "aspect_ratio": "9:16",
@@ -118,11 +150,6 @@ def test_build_submission_record_stores_sanitized_request_summary_only():
         ({"data": {"id": "pred-1", "status": "created"}}, "processing", "created"),
         ({"data": {"id": "pred-1", "status": "processing"}}, "processing", "processing"),
         (
-            {"data": {"id": "pred-1", "status": "completed", "outputs": ["https://example.com/video.mp4"]}},
-            "success",
-            "completed",
-        ),
-        (
             {"data": {"id": "pred-1", "status": "failed", "error": {"message": "quota exceeded"}}},
             "failure",
             "failed",
@@ -133,6 +160,26 @@ def test_normalize_wavespeed_poll_response_maps_upstream_statuses(payload, expec
     result = normalize_wavespeed_poll_response(payload)
     assert result.state == expected_state
     assert result.raw_status == expected_status
+
+
+def test_normalize_wavespeed_poll_response_maps_completed_to_success_when_output_url_is_valid(monkeypatch):
+    monkeypatch.setattr(
+        "app.llm_proxy.providers.wavespeed_media_provider.validate_uri_strict",
+        lambda url: url,
+    )
+    payload = {
+        "data": {
+            "id": "pred-1",
+            "status": "completed",
+            "outputs": ["https://storage.googleapis.com/wavespeed-tests/video.mp4"],
+        }
+    }
+
+    result = normalize_wavespeed_poll_response(payload)
+
+    assert result.state == "success"
+    assert result.raw_status == "completed"
+    assert result.result_url == "https://storage.googleapis.com/wavespeed-tests/video.mp4"
 
 
 def test_normalize_wavespeed_poll_response_requires_outputs_not_urls_get():
@@ -190,6 +237,40 @@ async def test_create_prediction_posts_to_normalized_submit_endpoint():
     assert called_url == "https://api.wavespeed.ai/api/v3/wavespeed-ai/cinematic-video-generator"
     assert called_json["images"] == ["https://cdn.example.com/1.png"]
     assert called_json["duration"] == 5
+
+
+@pytest.mark.asyncio
+async def test_create_prediction_uses_model_specific_endpoint_for_seedance_2_fast_i2v():
+    provider = WaveSpeedMediaProvider(
+        api_key="test-key",
+        provider_model_id=WAVESPEED_SEEDANCE_2_FAST_IMAGE_TO_VIDEO_MODEL_ID,
+    )
+    response = MagicMock()
+    response.raise_for_status = MagicMock()
+    response.json.return_value = {"data": {"id": "pred-456", "status": "created"}}
+    provider.client.post = AsyncMock(return_value=response)
+
+    try:
+        await provider.create_prediction(
+            prompt="Animate this portrait",
+            reference_image_urls=["https://cdn.example.com/start.png"],
+            aspect_ratio="21:9",
+            duration=5,
+            resolution="720p",
+        )
+    finally:
+        await provider.aclose()
+
+    called_url = provider.client.post.await_args.args[0]
+    called_json = provider.client.post.await_args.kwargs["json"]
+    assert called_url == "https://api.wavespeed.ai/api/v3/bytedance/seedance-2.0-fast/image-to-video"
+    assert called_json == {
+        "prompt": "Animate this portrait",
+        "images": ["https://cdn.example.com/start.png"],
+        "aspect_ratio": "21:9",
+        "duration": 5,
+        "resolution": "720p",
+    }
 
 
 @pytest.mark.asyncio

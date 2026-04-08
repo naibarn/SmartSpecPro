@@ -1,3 +1,5 @@
+import { getAppRuntimeConfig, getCachedInternalNodeUrl } from "./appRuntimeConfig";
+
 /**
  * SSRF Validator — validates URLs to prevent Server-Side Request Forgery.
  * Mirrors the Python `_validate_tool_url` pattern in agency_tools.py.
@@ -50,7 +52,7 @@ function isIPv6(host: string): boolean {
  * Allows the configured SMARTSPEC_INTERNAL_URL.
  * @throws Error if URL is blocked.
  */
-export function validateSsrfUrl(url: string): void {
+function validateSsrfUrlInternal(url: string, internalUrl?: string | null): void {
   if (!url || typeof url !== "string") {
     throw new Error("SSRF validation failed: empty or invalid URL");
   }
@@ -63,7 +65,6 @@ export function validateSsrfUrl(url: string): void {
   }
 
   // Allow the configured internal service URL (compare parsed origins to prevent bypass)
-  const internalUrl = process.env.SMARTSPEC_INTERNAL_URL;
   if (internalUrl) {
     try {
       const internalParsed = new URL(internalUrl);
@@ -113,4 +114,13 @@ export function validateSsrfUrl(url: string): void {
       throw new Error(`SSRF validation failed: blocked IPv6 address '${hostname}'`);
     }
   }
+}
+
+export function validateSsrfUrl(url: string): void {
+  validateSsrfUrlInternal(url, getCachedInternalNodeUrl());
+}
+
+export async function validateSsrfUrlWithRuntime(url: string): Promise<void> {
+  const runtime = await getAppRuntimeConfig();
+  validateSsrfUrlInternal(url, runtime.smartspecInternalUrl);
 }

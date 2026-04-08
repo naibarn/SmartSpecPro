@@ -217,6 +217,10 @@ function GroupSharingPanel({ skillId }: { skillId: number }) {
 export default function SkillBrowser() {
   const [, navigate] = useLocation();
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+  const runtimePlatform =
+    typeof window !== "undefined" && (window as any).__TAURI__ != null
+      ? "tauri"
+      : "web";
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [category, setCategory] = useState("all");
@@ -246,11 +250,13 @@ export default function SkillBrowser() {
       category: category !== "all" ? category : undefined,
       limit: PAGE_SIZE,
       offset: page * PAGE_SIZE,
+      platform: runtimePlatform,
+      origin: "chat",
     },
     { enabled: isAuthenticated }
   );
   const { data: studioSkillsData } = trpc.skills.browseAllSkills.useQuery(
-    { limit: 100, offset: 0 },
+    { limit: 100, offset: 0, platform: runtimePlatform, origin: "chat" },
     { enabled: isAuthenticated }
   );
 

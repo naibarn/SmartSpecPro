@@ -6,6 +6,10 @@
 
 set -e
 
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+DESKTOP_APP_DIR="$ROOT/apps/tauri-shell"
+DESKTOP_TAURI_DIR="$DESKTOP_APP_DIR/src-tauri"
+
 # Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -57,7 +61,7 @@ echo "1. Checking Rust dependencies..."
 echo "--------------------------------"
 
 if command_exists cargo-audit; then
-    cd apps/desktop/src-tauri
+    pushd "$DESKTOP_TAURI_DIR" >/dev/null
     if cargo audit 2>/dev/null; then
         print_status 0 "Rust dependencies: No vulnerabilities found"
     else
@@ -67,7 +71,7 @@ if command_exists cargo-audit; then
             cargo update
         fi
     fi
-    cd ../../..
+    popd >/dev/null
 else
     echo -e "${YELLOW}⚠ cargo-audit not installed. Install with: cargo install cargo-audit${NC}"
     if [ "$CI_MODE" = true ]; then
@@ -81,17 +85,15 @@ echo ""
 echo "2. Checking NPM dependencies..."
 echo "-------------------------------"
 
-cd apps/desktop
-if npm audit --audit-level=moderate 2>/dev/null; then
+if (cd "$ROOT" && npm audit --workspace apps/tauri-shell --audit-level=moderate 2>/dev/null); then
     print_status 0 "NPM dependencies: No vulnerabilities found"
 else
     print_status 1 "NPM dependencies: Vulnerabilities detected"
     if [ "$FIX_MODE" = true ]; then
         echo "   Attempting to fix vulnerabilities..."
-        npm audit fix || true
+        (cd "$ROOT" && npm audit fix --workspace apps/tauri-shell) || true
     fi
 fi
-cd ../..
 
 echo ""
 
@@ -114,7 +116,7 @@ SECRET_PATTERNS=(
 for pattern in "${SECRET_PATTERNS[@]}"; do
     if grep -rniE "$pattern" --include="*.ts" --include="*.tsx" --include="*.rs" --include="*.json" \
         --exclude-dir=node_modules --exclude-dir=target --exclude="*.lock" \
-        apps/desktop/ 2>/dev/null | grep -v "test" | grep -v "example" | grep -v "placeholder"; then
+        "$DESKTOP_APP_DIR"/ 2>/dev/null | grep -v "test" | grep -v "example" | grep -v "placeholder"; then
         SECRETS_FOUND=1
     fi
 done
@@ -131,8 +133,8 @@ echo ""
 echo "4. Checking CSP configuration..."
 echo "--------------------------------"
 
-if grep -q '"csp":' apps/desktop/src-tauri/tauri.conf.json; then
-    CSP_VALUE=$(grep '"csp":' apps/desktop/src-tauri/tauri.conf.json)
+if grep -q '"csp":' "$DESKTOP_TAURI_DIR/tauri.conf.json"; then
+    CSP_VALUE=$(grep '"csp":' "$DESKTOP_TAURI_DIR/tauri.conf.json")
     if echo "$CSP_VALUE" | grep -q "null"; then
         print_status 1 "CSP is disabled (null)"
     elif echo "$CSP_VALUE" | grep -q "unsafe-eval"; then
@@ -150,8 +152,8 @@ echo ""
 echo "5. Checking for unsafe Rust patterns..."
 echo "---------------------------------------"
 
-UNSAFE_COUNT=$(grep -r "unsafe" --include="*.rs" apps/desktop/src-tauri/src/ 2>/dev/null | wc -l)
-UNWRAP_COUNT=$(grep -r "\.unwrap()" --include="*.rs" apps/desktop/src-tauri/src/ 2>/dev/null | wc -l)
+UNSAFE_COUNT=$(grep -r "unsafe" --include="*.rs" "$DESKTOP_TAURI_DIR/src/" 2>/dev/null | wc -l)
+UNWRAP_COUNT=$(grep -r "\.unwrap()" --include="*.rs" "$DESKTOP_TAURI_DIR/src/" 2>/dev/null | wc -l)
 
 echo "   Unsafe blocks: $UNSAFE_COUNT"
 echo "   .unwrap() calls: $UNWRAP_COUNT"
@@ -189,26 +191,24 @@ echo "7. Checking for outdated dependencies..."
 echo "----------------------------------------"
 
 if command_exists cargo-outdated; then
-    cd apps/desktop/src-tauri
+    pushd "$DESKTOP_TAURI_DIR" >/dev/null
     OUTDATED=$(cargo outdated -R 2>/dev/null | grep -c "^[a-z]" || echo "0")
     if [ "$OUTDATED" -gt 10 ]; then
         echo -e "${YELLOW}⚠ $OUTDATED outdated Rust dependencies${NC}"
     else
         print_status 0 "Rust dependencies are reasonably up to date"
     fi
-    cd ../../..
+    popd >/dev/null
 else
     echo -e "${YELLOW}⚠ cargo-outdated not installed${NC}"
 fi
 
-cd apps/desktop
-OUTDATED_NPM=$(npm outdated 2>/dev/null | wc -l)
+OUTDATED_NPM=$(cd "$ROOT" && npm outdated --workspace apps/tauri-shell 2>/dev/null | wc -l || true)
 if [ "$OUTDATED_NPM" -gt 20 ]; then
     echo -e "${YELLOW}⚠ $OUTDATED_NPM outdated NPM dependencies${NC}"
 else
     print_status 0 "NPM dependencies are reasonably up to date"
 fi
-cd ../..
 
 echo ""
 

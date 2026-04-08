@@ -295,6 +295,8 @@ pub fn dispatch_job(
     Ok(job_id)
 }
 
+use tauri::Emitter;
+
 fn emit_progress(app: &tauri::AppHandle, progress: &MediaJobProgress) {
     let _ = app.emit("media-job-progress", progress);
 }
@@ -306,7 +308,7 @@ fn emit_progress(app: &tauri::AppHandle, progress: &MediaJobProgress) {
 async fn handle_probe(
     spec: &MediaJobSpec,
     app: &tauri::AppHandle,
-    store: &Arc<Mutex<JobStore>>,
+    _store: &Arc<Mutex<JobStore>>,
 ) -> Result<MediaJobResult, String> {
     let assets = spec.inputs.assets.as_ref().ok_or("No assets for probe")?;
     let asset = assets.first().ok_or("No asset provided")?;

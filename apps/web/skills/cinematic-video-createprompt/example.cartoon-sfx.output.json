@@ -1,0 +1,93 @@
+{
+  "skill_name": "cinematic-video-createprompt",
+  "skill_version": "5.7.0",
+  "response_format": "structured_json",
+  "language": "en",
+  "target_model_profile": "generic_video_models",
+  "generation_mode": "text_to_video",
+  "delivery_mode": "multi_shot_single_video",
+  "multi_video_strategy": "not_applicable",
+  "video_count": 1,
+  "dialogue_language": {
+    "requested": "auto",
+    "resolved": "none",
+    "source": "no_dialogue",
+    "rationale": "The cartoon SFX-only preset and explicit no-dialogue brief require visual comedy without spoken lines."
+  },
+  "storytelling_resolution": {
+    "preset_requested": "cartoon_sfx_only",
+    "preset_resolved": "cartoon_sfx_only",
+    "multi_shot_timing_mode_requested": "untimed_or_auto",
+    "multi_shot_timing_mode_resolved": "untimed_or_auto",
+    "audio_mode_resolved": "sfx_only",
+    "dialogue_density_resolved": "none",
+    "story_shape_resolved": "escalation",
+    "ending_style_resolved": "punchline",
+    "performance_style_resolved": "cartoon_expressive",
+    "imagination_level_resolved": "stylized",
+    "scene_arc_resolved": "performance_loop",
+    "continuity_mode_resolved": "three_beat_sequence",
+    "motion_realism_resolved": "dynamic_but_controlled",
+    "background_mode": "green_screen",
+    "narrative_intent": "Create one compositing-friendly cartoon gag where the mascot stays fully readable against green screen while the banana-peel fall lands on a clean punchline pose."
+  },
+  "continuity_package": {
+    "continuity_notes": "Keep the same orange mascot design, the same white gloves, the same large shoes, the same banana peel, and the same clean evenly lit green-screen setup throughout the clip.",
+    "continuity_notes_origin": "auto_generated",
+    "reference_notes": "Use the written brief itself as the reference bible: preserve the mascot's orange body, white gloves, oversized shoes, clear eye shape, readable full-body silhouette, banana-peel prop, clean floor contact, and even chroma-green background with minimal spill or edge noise.",
+    "reference_notes_origin": "auto_generated"
+  },
+  "final_prompt": "On a clean evenly lit chroma-green stage designed for easy compositing, a cheerful orange cartoon mascot with white gloves, big shoes, and highly readable expressive eyes bounces into frame with a clear full-body silhouette and open safe margins around the character. Let the motion escalate through pure visual comedy with no spoken dialogue as the mascot steps on a banana peel, slips, spins in a controlled exaggerated cartoon burst, and lands in a funny victory pose that feels like the punchline. Keep the green screen clean and uncluttered, avoid scenic background elements, preserve sharp subject separation and floor contact, and make every pose readable for later keying and reuse.\n\nContinuity Notes:\nKeep the same orange mascot design, the same white gloves, the same large shoes, the same banana peel, and the same clean evenly lit green-screen setup throughout the clip.\n\nReference Notes:\nUse the written brief itself as the reference bible: preserve the mascot's orange body, white gloves, oversized shoes, clear eye shape, readable full-body silhouette, banana-peel prop, clean floor contact, and even chroma-green background with minimal spill or edge noise.",
+  "short_prompt": "A cheerful orange cartoon mascot performs a banana-peel slip gag on a clean green screen, ending in a funny victory pose with no dialogue.",
+  "prompt_sequence": [
+    {
+      "prompt_id": "Prompt 1",
+      "video_number": 1,
+      "duration_seconds": 6,
+      "prompt_role": "Single Video Prompt",
+      "prompt": "On a clean evenly lit chroma-green stage designed for easy compositing, a cheerful orange cartoon mascot with white gloves, big shoes, and highly readable expressive eyes bounces into frame with a clear full-body silhouette and open safe margins around the character. Let the motion escalate through pure visual comedy with no spoken dialogue as the mascot steps on a banana peel, slips, spins in a controlled exaggerated cartoon burst, and lands in a funny victory pose that feels like the punchline. Keep the green screen clean and uncluttered, avoid scenic background elements, preserve sharp subject separation and floor contact, and make every pose readable for later keying and reuse.",
+      "continuity_notes": "Keep the same orange mascot design, the same white gloves, the same large shoes, the same banana peel, and the same clean evenly lit green-screen setup throughout the clip.",
+      "reference_notes": "Use the written brief itself as the reference bible: preserve the mascot's orange body, white gloves, oversized shoes, clear eye shape, readable full-body silhouette, banana-peel prop, clean floor contact, and even chroma-green background with minimal spill or edge noise."
+    }
+  ],
+  "cinematic_plan": {
+    "opening_frame": "A bright orange cartoon mascot hops into a clean green-screen frame with a full readable silhouette.",
+    "subject_focus": "The mascot and banana peel are the only important visual anchors, with no scenic background competing for attention.",
+    "staging_blocking": "Keep the character centered with room to slip, spin, and land cleanly while maintaining full-body readability.",
+    "motion_arc": "The gag escalates from playful entrance, to sudden slip, to spinning chaos, to a punchline victory pose.",
+    "camera_language": "Use a clean frontal setup that favors compositing-friendly readability over complex camera flair.",
+    "focus_depth": "Keep the entire mascot and prop sharp enough for easy keying and comedic clarity.",
+    "atmosphere_time": "Studio-clean chroma environment with no scenic atmosphere required.",
+    "production_design": "A minimal green-screen stage with even lighting, clear floor contact, and no background clutter.",
+    "lighting_color": "Even neutral subject lighting against a stable chroma-green background with controlled separation.",
+    "continuity_pacing": "A crisp three-beat gag built for short-form replay and easy downstream compositing.",
+    "continuity_guardrails": "Preserve mascot silhouette, prop readability, clean green screen, edge clarity, and controlled cartoon timing."
+  },
+  "reference_usage": {
+    "reference_input_mode": "brief_only",
+    "reference_image_count": 0,
+    "assignments": [],
+    "reference_video_count": 0,
+    "video_assignments": [],
+    "reference_audio_count": 0,
+    "audio_assignments": [],
+    "first_frame_present": false,
+    "last_frame_present": false,
+    "applied_focus": [
+      "written brief as character reference bible",
+      "green-screen cleanliness",
+      "prop continuity"
+    ],
+    "notes": "Reference stability comes from the written mascot, prop, and compositing constraints in the brief."
+  },
+  "validation": {
+    "is_valid": true,
+    "warnings": [],
+    "safety_notes": [
+      "Kept the clip non-violent, non-graphic, and broadly safe for general media models."
+    ],
+    "suggestions": [
+      "If the mascot must match an existing design later, add one character reference image for tighter silhouette locking."
+    ]
+  }
+}

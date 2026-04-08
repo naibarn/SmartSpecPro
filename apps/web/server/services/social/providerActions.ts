@@ -6,9 +6,7 @@ import { decrypt } from "../crypto";
 import { listConversationsByTenant, resetConversationUnreadCount, sendMessageViaPythonBackend } from "../socialInboxService";
 import { publishSocialContentViaPythonBackend, readPythonBackendError } from "../socialPublishGateway";
 import { SocialBackgroundError } from "./providerRegistry";
-
-const PYTHON_BACKEND_URL = (process.env.PYTHON_BACKEND_URL || "http://localhost:8000").replace(/\/+$/, "");
-const INTERNAL_TOKEN = process.env.SMARTSPEC_WEB_GATEWAY_TOKEN || process.env.SMARTSPEC_PROXY_TOKEN || "";
+import { getAppRuntimeConfig, getPreferredInternalToken } from "../appRuntimeConfig";
 
 export interface LoadedSocialPage {
   id: number;
@@ -326,13 +324,15 @@ export async function replyComment(
   }
 
   const pageAccessToken = decrypt(page.encryptedPageAccessToken);
+  const runtime = await getAppRuntimeConfig();
+  const internalToken = await getPreferredInternalToken();
   const response = await fetch(
-    `${PYTHON_BACKEND_URL}/api/internal/meta/comments/reply`,
+    `${runtime.pythonBackendUrl}/api/internal/meta/comments/reply`,
     {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        ...(INTERNAL_TOKEN ? { "x-internal-token": INTERNAL_TOKEN } : {}),
+        ...(internalToken ? { "x-internal-token": internalToken } : {}),
       },
       body: JSON.stringify({
         object_id: providerCommentId,

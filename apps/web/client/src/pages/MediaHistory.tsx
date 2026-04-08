@@ -145,7 +145,7 @@ function getMediaTypeMeta(mediaType: string | undefined) {
   return mediaTypeConfig[mediaType as MediaType] || fallbackMediaTypeConfig;
 }
 
-function canManuallyFetchTaskResult(task: MediaTask | null | undefined): task is MediaTask {
+function canManuallyFetchTaskResult(task: MediaTask | null | undefined): boolean {
   return Boolean(task?.taskId && !task?.resultUrl && task?.status !== 'cancelled');
 }
 
@@ -866,7 +866,7 @@ export default function MediaHistory() {
           if (result.task?.resultUrl) {
             toast.success('Synced result URL from provider.');
           } else {
-            toast.info(result.message || 'Checked provider status.');
+            toast.info('Checked provider status.');
           }
         }
 
@@ -1140,7 +1140,10 @@ export default function MediaHistory() {
           await runFetchTaskResult(task, { silent: true });
         } else {
           const refreshed = await refetch();
-          const updatedTask = refreshed.data?.tasks.find((t) => t.id === task.id);
+          const refreshedTasks = Array.isArray(refreshed.data?.tasks)
+            ? refreshed.data.tasks as MediaTask[]
+            : [];
+          const updatedTask = refreshedTasks.find((t) => t.id === task.id);
           if (updatedTask) {
             setSelectedTask(updatedTask as MediaTask);
           }

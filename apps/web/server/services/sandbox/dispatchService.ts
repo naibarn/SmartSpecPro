@@ -4,6 +4,7 @@
  */
 
 import { ENV } from "../../_core/env";
+import { getCachedPreferredInternalToken, getCachedPythonBackendUrl } from "../appRuntimeConfig";
 
 const INTERNAL_TIMEOUT_MS = 30_000; // 30 seconds
 
@@ -42,7 +43,7 @@ function internalHeaders(): Record<string, string> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
   };
-  const token = ENV.webGatewayToken;
+  const token = getCachedPreferredInternalToken() || ENV.webGatewayToken;
   if (token) {
     headers["X-Internal-Token"] = token;
   }
@@ -86,7 +87,7 @@ export function shouldUseSandbox(executionMode: string): boolean {
 export async function dispatchToSandbox(
   request: SandboxDispatchRequest,
 ): Promise<SandboxDispatchResult> {
-  const baseUrl = ENV.pythonBackendUrl || "http://localhost:8000";
+  const baseUrl = getCachedPythonBackendUrl() || ENV.pythonBackendUrl || "http://localhost:8000";
   const url = `${baseUrl}/api/internal/sandbox/dispatch`;
 
   const response = await internalFetch(url, {

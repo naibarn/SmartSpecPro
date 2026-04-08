@@ -189,6 +189,7 @@ export const DEFAULT_CLAW_GATEWAY_COMPATIBILITY = workerGatewayCompatibilityMeta
     { method: "POST", path: "/v1/knowledge/library/search", purpose: "Owner library search" },
     { method: "POST", path: "/v1/knowledge/library/upload", purpose: "Owner library upload" },
     { method: "POST", path: "/v1/knowledge/rag/search", purpose: "Owner RAG search" },
+    { method: "POST", path: "/v1/knowledge/rag/ingest", purpose: "Owner RAG ingest" },
   ],
 });
 

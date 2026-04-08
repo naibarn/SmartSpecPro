@@ -20,6 +20,7 @@ import {
 import { isCacheHealthy, isRealtimeHealthy } from "../services/redisClients";
 import { isRedisHealthy, getRedisStatus } from "../services/redis";
 import { encrypt, decrypt } from "../services/crypto";
+import { refreshAppRuntimeConfigCache } from "../services/appRuntimeConfig";
 import {
   SCALE_TIERS,
   SCALE_TIER_IDS,
@@ -119,6 +120,51 @@ const MONITORING_SENSITIVE_KEYS = new Set([
   "posthog_api_key_python",
   "ga4_api_secret",
   "firebase_api_key",
+]);
+
+const APP_RUNTIME_CONFIG_KEYS = [
+  "python_backend_url",
+  "smartspec_proxy_token",
+  "smartspec_web_gateway_token",
+  "smartspec_mcp_token",
+  "smartspec_internal_url",
+  "node_server_internal_url",
+  "upload_post_api_base_url",
+  "public_url",
+  "app_public_url",
+  "app_url",
+  "s3_endpoint",
+  "r2_public_url",
+  "oauth_server_url",
+  "forge_api_url",
+  "forge_api_key",
+  "llm_gateway_service_account_id",
+] as const;
+
+const APP_RUNTIME_ENV_FALLBACK: Record<string, string> = {
+  python_backend_url: "PYTHON_BACKEND_URL",
+  smartspec_proxy_token: "SMARTSPEC_PROXY_TOKEN",
+  smartspec_web_gateway_token: "SMARTSPEC_WEB_GATEWAY_TOKEN",
+  smartspec_mcp_token: "SMARTSPEC_MCP_TOKEN",
+  smartspec_internal_url: "SMARTSPEC_INTERNAL_URL",
+  node_server_internal_url: "NODE_SERVER_INTERNAL_URL",
+  upload_post_api_base_url: "UPLOAD_POST_API_BASE_URL",
+  public_url: "PUBLIC_URL",
+  app_public_url: "APP_PUBLIC_URL",
+  app_url: "APP_URL",
+  s3_endpoint: "S3_ENDPOINT",
+  r2_public_url: "R2_PUBLIC_URL",
+  oauth_server_url: "OAUTH_SERVER_URL",
+  forge_api_url: "FORGE_API_URL",
+  forge_api_key: "FORGE_API_KEY",
+  llm_gateway_service_account_id: "LLM_GATEWAY_SERVICE_ACCOUNT_ID",
+};
+
+const APP_RUNTIME_SENSITIVE_KEYS = new Set([
+  "smartspec_proxy_token",
+  "smartspec_web_gateway_token",
+  "smartspec_mcp_token",
+  "forge_api_key",
 ]);
 
 // ============================================================
@@ -259,6 +305,83 @@ export const infrastructureRouter = router({
           await upsertSetting(db, key, value, ctx.user?.id);
         }
       }
+
+      return { success: true };
+    }),
+
+  getAppRuntimeConfig: adminProcedure.query(async () => {
+    const db = await getDb();
+    const dbValues: Record<string, { value: string; isSensitive: boolean }> = {};
+    if (db) {
+      const rows = await db.select().from(systemSettings).where(eq(systemSettings.category, CATEGORY));
+      for (const row of rows) {
+        if (APP_RUNTIME_CONFIG_KEYS.includes(row.key as any)) {
+          dbValues[row.key] = {
+            value: readSettingValue(row as any),
+            isSensitive: row.isSensitive ?? false,
+          };
+        }
+      }
+    }
+
+    const result: Record<string, { value: string; maskedValue: string; source: "db" | "env" | "none" }> = {};
+    for (const key of APP_RUNTIME_CONFIG_KEYS) {
+      const isSensitive = APP_RUNTIME_SENSITIVE_KEYS.has(key);
+      if (dbValues[key]?.value) {
+        const val = dbValues[key].value;
+        result[key] = {
+          value: isSensitive ? "" : val,
+          maskedValue: isSensitive ? maskApiKey(val) : val,
+          source: "db",
+        };
+      } else if (process.env[APP_RUNTIME_ENV_FALLBACK[key]]) {
+        const val = process.env[APP_RUNTIME_ENV_FALLBACK[key]]!;
+        result[key] = {
+          value: isSensitive ? "" : val,
+          maskedValue: isSensitive ? maskApiKey(val) : val,
+          source: "env",
+        };
+      } else {
+        result[key] = { value: "", maskedValue: "", source: "none" };
+      }
+    }
+
+    return result;
+  }),
+
+  updateAppRuntimeConfig: rateLimitedAdminProcedure
+    .input(z.object({
+      python_backend_url: z.string().url().or(z.literal("")).optional(),
+      smartspec_proxy_token: z.string().max(512).optional(),
+      smartspec_web_gateway_token: z.string().max(512).optional(),
+      smartspec_mcp_token: z.string().max(512).optional(),
+      smartspec_internal_url: z.string().url().or(z.literal("")).optional(),
+      node_server_internal_url: z.string().url().or(z.literal("")).optional(),
+      upload_post_api_base_url: z.string().url().or(z.literal("")).optional(),
+      public_url: z.string().url().or(z.literal("")).optional(),
+      app_public_url: z.string().url().or(z.literal("")).optional(),
+      app_url: z.string().url().or(z.literal("")).optional(),
+      s3_endpoint: z.string().url().or(z.literal("")).optional(),
+      r2_public_url: z.string().url().or(z.literal("")).optional(),
+      oauth_server_url: z.string().url().or(z.literal("")).optional(),
+      forge_api_url: z.string().url().or(z.literal("")).optional(),
+      forge_api_key: z.string().max(512).optional(),
+      llm_gateway_service_account_id: z.string().regex(/^\d*$/).optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      for (const key of APP_RUNTIME_CONFIG_KEYS) {
+        const value = input[key];
+        if (value !== undefined) {
+          const sensitive = APP_RUNTIME_SENSITIVE_KEYS.has(key);
+          if (sensitive && value === "") continue;
+          await upsertSetting(db, key, value, ctx.user?.id, sensitive);
+        }
+      }
+
+      await refreshAppRuntimeConfigCache();
 
       return { success: true };
     }),

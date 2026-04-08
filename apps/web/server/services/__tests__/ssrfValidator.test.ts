@@ -1,4 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+
+vi.mock("../appRuntimeConfig", () => ({
+  getAppRuntimeConfig: vi.fn(async () => ({ smartspecInternalUrl: "http://localhost:3000" })),
+  getCachedInternalNodeUrl: vi.fn(() => process.env.SMARTSPEC_INTERNAL_URL || "http://localhost:3000"),
+}));
+
 import { validateSsrfUrl } from "../ssrfValidator";
 
 describe("ssrfValidator", () => {

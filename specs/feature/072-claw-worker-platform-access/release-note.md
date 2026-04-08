@@ -26,6 +26,7 @@ This means a personal worker can now receive delegated platform access for suppo
   - Workers can search the owner's Library.
   - Workers can upload allowed files into the owner's Library.
   - Workers can search the owner's RAG content.
+  - Workers can now use `POST /v1/knowledge/rag/ingest` to upload a new file for indexing or re-index an existing owner library item.
 - Result callbacks:
   - Workers can publish room updates.
   - Workers can publish workflow updates.
@@ -33,6 +34,7 @@ This means a personal worker can now receive delegated platform access for suppo
 - Discovery and truthfulness:
   - Workers should use `/v1/openapi.json` for the static HTTP contract.
   - Workers should use the delegated manifest for per-job capability truth.
+  - The delegated manifest now includes concrete route hints so Claw runtimes can see which HTTP actions are ready for that specific job.
   - Delegated LLM calls should use approved model aliases from the manifest instead of raw provider model IDs.
 
 ### Supported platform paths in this phase
@@ -57,8 +59,8 @@ When granted by the delegated session, workers can use supported routes for:
 
 ### Current limits
 
-- Delegated worker MCP access is intentionally unavailable in this phase.
-- Workers should use the HTTP gateway plus the delegated manifest.
+- Delegated worker MCP is available only when the delegated manifest reports MCP as ready and the job grants the required MCP namespaces.
+- Workers should prefer the HTTP gateway first and use MCP when the delegated manifest says it is ready.
 - External services that a worker calls with its own credentials are outside SmartSpecPro credit billing.
 - Raw provider model IDs are denied for delegated LLM calls; workers should follow the approved aliases in the delegated manifest.
 
@@ -128,8 +130,8 @@ Feature 072 ทำให้ Bound Worker กลายเป็นผู้ปฏ
 
 ### ข้อจำกัดปัจจุบัน
 
-- delegated worker MCP ยังปิดไว้ตั้งใจในเฟสนี้
-- worker ควรใช้ HTTP gateway ร่วมกับ delegated manifest
+- delegated worker MCP ใช้ได้เฉพาะเมื่อ delegated manifest ของ job นั้นระบุว่า MCP พร้อมและ grant namespace ที่ต้องใช้มาให้แล้ว
+- worker ควรใช้ HTTP gateway เป็นค่าเริ่มต้น และใช้ MCP เมื่อ manifest บอกว่าพร้อม
 - ถ้า worker ไปใช้บริการภายนอกด้วย credential ของตัวเอง ค่าใช้จ่ายส่วนนั้นจะไม่ถูกคิดเป็นเครดิตของ SmartSpecPro
 - raw provider model IDs สำหรับ delegated LLM calls ถูกปฏิเสธโดยค่าเริ่มต้น ให้ใช้ alias ที่ระบบอนุญาตแทน
 

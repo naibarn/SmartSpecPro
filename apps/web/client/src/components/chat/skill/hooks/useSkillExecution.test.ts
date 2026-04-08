@@ -5,6 +5,50 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useSkillExecution } from './useSkillExecution';
 
+const mockExecuteTauriLocalSkill = vi.fn();
+const mockExecuteTauriLocalGemmaText = vi.fn();
+const mockExecuteExternalLocalTextCompletion = vi.fn();
+const mockReadConfiguredExternalLocalTextBackend = vi.fn();
+vi.mock('@/features/local-ai/skills/tauriSkillRuntime', () => ({
+  executeTauriLocalSkill: (...args: any[]) => mockExecuteTauriLocalSkill(...args),
+  executeTauriLocalGemmaText: (...args: any[]) =>
+    mockExecuteTauriLocalGemmaText(...args),
+  buildGemma4LocalSkillPrompt: vi.fn((input: { prompt?: string }) =>
+    input.prompt || 'generated-local-prompt'
+  ),
+}));
+
+vi.mock('@/features/local-ai/adapters/externalLocalTextBackend', () => ({
+  executeExternalLocalTextCompletion: (...args: any[]) =>
+    mockExecuteExternalLocalTextCompletion(...args),
+  readConfiguredExternalLocalTextBackend: (...args: any[]) =>
+    mockReadConfiguredExternalLocalTextBackend(...args),
+  useExternalLocalTextBackendAvailability: () => ({
+    scope: {
+      tenantId: 'tenant-1',
+      userId: 'user-1',
+      runtimeNamespace: 'web',
+    },
+    backend: null,
+  }),
+}));
+
+vi.mock('@/features/local-ai/skills/useTauriLocalSkillRuntimeStatus', () => ({
+  useTauriLocalSkillRuntimeStatus: () => ({
+    available: true,
+    supportsScriptBundle: true,
+    supportsGemma4Text: true,
+    supportsGemma4Voice: true,
+    nodePath: '/usr/bin/node',
+    litertLmPath: '/usr/bin/litert-lm',
+    runtimeRoot: '/tmp/local-runtime',
+    managedModelRoot: '/tmp/local-runtime/models',
+    gemmaProfileIds: ['gemma4-e4b-tauri-balanced', 'gemma4-e2b-tauri-fast'],
+    installedGemmaProfileIds: ['gemma4-e4b-tauri-balanced'],
+    reason: null,
+  }),
+}));
+
 // Mock PostHog
 vi.mock('@/lib/posthog', () => ({
   getPostHog: vi.fn(() => ({
@@ -14,12 +58,24 @@ vi.mock('@/lib/posthog', () => ({
 
 // Mock tRPC with proper hook behavior
 const mockMutateAsync = vi.fn();
+const mockSaveAssistantMessageMutateAsync = vi.fn();
+const mockGetSkillTaskResultFetch = vi.fn();
+const mockSandboxGetJobStatusFetch = vi.fn();
+const mockGetSkillFetch = vi.fn();
 let mockSuccessCallback: ((data: any) => void) | null = null;
 let mockErrorCallback: ((error: Error) => void) | null = null;
 
 vi.mock('@/lib/trpc', () => ({
   trpc: {
     chat: {
+      saveAssistantMessage: {
+        useMutation: vi.fn(() => ({
+          mutateAsync: (...args: any[]) =>
+            mockSaveAssistantMessageMutateAsync(...args),
+          isPending: false,
+          error: null,
+        })),
+      },
       executeSkill: {
         useMutation: vi.fn((options?: { onSuccess?: (data: any) => void; onError?: (error: Error) => void }) => {
           if (options?.onSuccess) mockSuccessCallback = options.onSuccess;
@@ -33,9 +89,22 @@ vi.mock('@/lib/trpc', () => ({
       },
     },
     useUtils: vi.fn(() => ({
+      skills: {
+        get: {
+          fetch: (...args: any[]) => mockGetSkillFetch(...args),
+        },
+      },
       chat: {
         getMessages: {
           invalidate: vi.fn(),
+        },
+        getSkillTaskResult: {
+          fetch: (...args: any[]) => mockGetSkillTaskResultFetch(...args),
+        },
+      },
+      sandbox: {
+        getJobStatus: {
+          fetch: (...args: any[]) => mockSandboxGetJobStatusFetch(...args),
         },
       },
     })),
@@ -47,6 +116,38 @@ describe('useSkillExecution', () => {
     vi.clearAllMocks();
     mockSuccessCallback = null;
     mockErrorCallback = null;
+    mockSaveAssistantMessageMutateAsync.mockReset();
+    mockSaveAssistantMessageMutateAsync.mockResolvedValue({
+      id: 999,
+      runtimeMetadata: {
+        source: 'hybrid',
+        taskClass: 'json_extraction',
+      },
+    });
+    mockGetSkillTaskResultFetch.mockReset();
+    mockSandboxGetJobStatusFetch.mockReset();
+    mockGetSkillFetch.mockReset();
+    mockExecuteTauriLocalSkill.mockReset();
+    mockExecuteTauriLocalGemmaText.mockReset();
+    mockExecuteExternalLocalTextCompletion.mockReset();
+    mockReadConfiguredExternalLocalTextBackend.mockReset();
+    mockExecuteTauriLocalSkill.mockResolvedValue({
+      success: false,
+      skillId: 'test-skill',
+      type: 'text',
+      error: 'Local runtime unavailable',
+    });
+    mockExecuteTauriLocalGemmaText.mockResolvedValue({
+      success: false,
+      profileId: 'gemma4-e4b-tauri-balanced',
+      text: '',
+      error: 'Local runtime unavailable',
+    });
+    mockReadConfiguredExternalLocalTextBackend.mockReturnValue(null);
+    mockGetSkillFetch.mockResolvedValue({
+      skillFilePath: "/tmp/test-skill/SKILL.md",
+      localExecutionPolicy: null,
+    });
   });
 
   it('returns initial state', () => {
@@ -84,6 +185,9 @@ describe('useSkillExecution', () => {
       prompt: undefined,
       dynamicParams: { key: 'value' },
       conversationId: 123,
+      platform: 'web',
+      origin: 'chat',
+      requestedExecutionRoute: 'cloud',
     });
   });
 
@@ -129,6 +233,346 @@ describe('useSkillExecution', () => {
 
     // Should return undefined when error occurs
     expect(executionResult).toBeUndefined();
+  });
+
+  it('fails closed in local_only mode when the skill cannot run locally', async () => {
+    const { result } = renderHook(() =>
+      useSkillExecution({
+        conversationId: 123,
+        platform: 'web',
+        localAiEnabled: true,
+        localAiExecutionMode: 'local_only',
+        localExecutionPolicy: {
+          tier: 'local_safe',
+          runtimeKind: 'gemma4_text',
+          eligible: false,
+          reviewed: true,
+          allowOffline: true,
+          requiresTauri: true,
+          reason: 'local_safe_requires_tauri',
+          warnings: [],
+          derivedFrom: ['frontmatter'],
+          signals: {
+            requiresNetwork: false,
+            requiresBrowser: false,
+            maxRuntimeSeconds: null,
+            maxInputMb: null,
+            sandboxProfileSlug: null,
+          },
+          localScriptManifest: null,
+        },
+      })
+    );
+
+    let executionResult;
+    await act(async () => {
+      executionResult = await result.current.execute({
+        skillId: 'test-skill',
+        dynamicParams: {},
+      });
+    });
+
+    expect(mockMutateAsync).not.toHaveBeenCalled();
+    expect(executionResult).toEqual({
+      success: false,
+      skillId: 'test-skill',
+      type: 'text',
+      error: 'This skill can only run locally inside the Tauri desktop app.',
+    });
+  });
+
+  it('runs local-safe text skills through the configured external local backend on web', async () => {
+    mockReadConfiguredExternalLocalTextBackend.mockReturnValue({
+      baseUrl: 'http://localhost:8000',
+      apiKey: 'local-dev-token',
+      model: 'HauhauCS/Gemma-4-E2B',
+      requestTimeoutMs: 30000,
+    });
+    mockExecuteExternalLocalTextCompletion.mockResolvedValue({
+      text: 'Local backend reply',
+      model: 'HauhauCS/Gemma-4-E2B',
+      provider: 'openai_compatible_local',
+    });
+
+    const { result } = renderHook(() =>
+      useSkillExecution({
+        conversationId: 123,
+        platform: 'web',
+        localAiEnabled: true,
+        localAiExecutionMode: 'prefer_local',
+        localExecutionPolicy: {
+          tier: 'local_safe',
+          runtimeKind: 'gemma4_text',
+          eligible: true,
+          reviewed: true,
+          allowOffline: true,
+          requiresTauri: false,
+          reason: 'local_safe_text_skill',
+          warnings: [],
+          derivedFrom: ['frontmatter'],
+          signals: {
+            requiresNetwork: false,
+            requiresBrowser: false,
+            maxRuntimeSeconds: null,
+            maxInputMb: null,
+            sandboxProfileSlug: null,
+          },
+          localScriptManifest: null,
+        },
+      })
+    );
+
+    let executionResult;
+    await act(async () => {
+      executionResult = await result.current.execute({
+        skillId: 'test-skill',
+        prompt: 'hello',
+        dynamicParams: { topic: 'ocean' },
+      });
+    });
+
+    expect(mockExecuteExternalLocalTextCompletion).toHaveBeenCalledTimes(1);
+    expect(mockMutateAsync).not.toHaveBeenCalled();
+    expect(executionResult).toEqual({
+      success: true,
+      skillId: 'test-skill',
+      type: 'text',
+      message: 'Local backend reply',
+    });
+  });
+
+  it('falls back to cloud execution in prefer_local mode when no local runtime is bundled', async () => {
+    const mockResult = {
+      success: true,
+      skillId: 'test-skill',
+      type: 'text',
+      message: 'cloud fallback',
+    };
+    mockMutateAsync.mockResolvedValue(mockResult);
+
+    const { result } = renderHook(() =>
+      useSkillExecution({
+        conversationId: 123,
+        platform: 'tauri',
+        localAiEnabled: true,
+        localAiExecutionMode: 'prefer_local',
+        localExecutionPolicy: {
+          tier: 'local_safe',
+          runtimeKind: 'script_bundle',
+          eligible: true,
+          reviewed: true,
+          allowOffline: true,
+          requiresTauri: true,
+          reason: 'local_safe_script_skill',
+          warnings: [],
+          derivedFrom: ['frontmatter', 'bundle_manifest'],
+          signals: {
+            requiresNetwork: false,
+            requiresBrowser: false,
+            maxRuntimeSeconds: null,
+            maxInputMb: null,
+            sandboxProfileSlug: null,
+          },
+          localScriptManifest: {
+            runtimeKind: 'node_bundle',
+            reviewedEntry: 'dist/index.mjs',
+            artifactDigestSha256: 'a'.repeat(64),
+            permissionProfile: 'tauri-local-safe-default',
+            inputRoots: ['inputs'],
+            outputRoots: ['outputs'],
+            maxOutputMb: 24,
+            provenance: {},
+          },
+        },
+      })
+    );
+
+    let executionResult;
+    await act(async () => {
+      executionResult = await result.current.execute({
+        skillId: 'test-skill',
+        dynamicParams: { topic: 'ocean' },
+      });
+    });
+
+    expect(mockMutateAsync).toHaveBeenCalledWith({
+      skillId: 'test-skill',
+      prompt: undefined,
+      dynamicParams: { topic: 'ocean' },
+      conversationId: 123,
+      platform: 'tauri',
+      origin: 'chat',
+      requestedExecutionRoute: 'cloud_fallback',
+    });
+    expect(executionResult).toEqual(mockResult);
+  });
+
+  it('uses the Tauri local runner before cloud when a reviewed local-safe script skill is available', async () => {
+    mockExecuteTauriLocalSkill.mockResolvedValue({
+      success: true,
+      skillId: 'test-skill',
+      type: 'text',
+      message: 'local success',
+    });
+
+    const { result } = renderHook(() =>
+      useSkillExecution({
+        conversationId: 123,
+        platform: 'tauri',
+        localAiEnabled: true,
+        localAiExecutionMode: 'prefer_local',
+        localExecutionPolicy: {
+          tier: 'local_safe',
+          runtimeKind: 'script_bundle',
+          eligible: true,
+          reviewed: true,
+          allowOffline: true,
+          requiresTauri: true,
+          reason: 'local_safe_script_skill',
+          warnings: [],
+          derivedFrom: ['frontmatter', 'bundle_manifest'],
+          signals: {
+            requiresNetwork: false,
+            requiresBrowser: false,
+            maxRuntimeSeconds: null,
+            maxInputMb: null,
+            sandboxProfileSlug: null,
+          },
+          localScriptManifest: {
+            runtimeKind: 'node_bundle',
+            reviewedEntry: 'dist/index.mjs',
+            artifactDigestSha256: 'a'.repeat(64),
+            permissionProfile: 'tauri-local-safe-default',
+            inputRoots: ['inputs'],
+            outputRoots: ['outputs'],
+            maxOutputMb: 24,
+            provenance: {},
+          },
+        },
+      })
+    );
+
+    let executionResult;
+    await act(async () => {
+      executionResult = await result.current.execute({
+        skillId: 'test-skill',
+        dynamicParams: { topic: 'ocean' },
+      });
+    });
+
+    expect(mockExecuteTauriLocalSkill).toHaveBeenCalled();
+    expect(mockMutateAsync).not.toHaveBeenCalled();
+    expect(executionResult).toEqual({
+      success: true,
+      skillId: 'test-skill',
+      type: 'text',
+      message: 'local success',
+    });
+  });
+
+  it('uses Gemma 4 local text execution for reviewed local-safe text skills on Tauri', async () => {
+    mockExecuteTauriLocalGemmaText.mockResolvedValue({
+      success: true,
+      profileId: 'gemma4-e4b-tauri-balanced',
+      text: 'local gemma answer',
+    });
+
+    const { result } = renderHook(() =>
+      useSkillExecution({
+        conversationId: 123,
+        platform: 'tauri',
+        localAiEnabled: true,
+        localAiExecutionMode: 'prefer_local',
+        preferredLocalProfileId: 'gemma4-e4b-tauri-balanced',
+        localExecutionPolicy: {
+          tier: 'local_safe',
+          runtimeKind: 'gemma4_text',
+          eligible: true,
+          reviewed: true,
+          allowOffline: true,
+          requiresTauri: true,
+          reason: 'local_safe_text_skill',
+          warnings: [],
+          derivedFrom: ['frontmatter'],
+          signals: {
+            requiresNetwork: false,
+            requiresBrowser: false,
+            maxRuntimeSeconds: null,
+            maxInputMb: null,
+            sandboxProfileSlug: null,
+          },
+          localScriptManifest: null,
+        },
+      })
+    );
+
+    let executionResult;
+    await act(async () => {
+      executionResult = await result.current.execute({
+        skillId: 'test-skill',
+        prompt: 'Summarize this',
+        dynamicParams: { audience: 'exec' },
+      });
+    });
+
+    expect(mockExecuteTauriLocalGemmaText).toHaveBeenCalledWith({
+      profileId: 'gemma4-e4b-tauri-balanced',
+      prompt: 'Summarize this',
+    });
+    expect(mockMutateAsync).not.toHaveBeenCalled();
+    expect(executionResult).toEqual({
+      success: true,
+      skillId: 'test-skill',
+      type: 'text',
+      message: 'local gemma answer',
+    });
+  });
+
+  it('polls sandbox media jobs and returns generated image urls', async () => {
+    vi.useFakeTimers();
+    mockMutateAsync.mockResolvedValue({
+      success: true,
+      skillId: 'image-creator',
+      type: 'sandbox-job',
+      isAsync: true,
+      jobId: 'job-123',
+      message: 'Job dispatched',
+    });
+    mockSandboxGetJobStatusFetch.mockResolvedValue({
+      jobId: 'job-123',
+      status: 'completed',
+      artifacts: [
+        { url: 'https://example.com/out.png', mimeType: 'image/png', key: 'out.png' },
+      ],
+    });
+
+    const { result } = renderHook(() =>
+      useSkillExecution({ conversationId: 123 })
+    );
+
+    let executionResult: any;
+    const executionPromise = result.current.execute({
+      skillId: 'image-creator',
+      dynamicParams: {},
+    });
+
+    await vi.advanceTimersByTimeAsync(3000);
+    await act(async () => {
+      executionResult = await executionPromise;
+    });
+
+    expect(mockSandboxGetJobStatusFetch).toHaveBeenCalledWith({ jobId: 'job-123' });
+    expect(executionResult).toEqual({
+      success: true,
+      skillId: 'image-creator',
+      type: 'image',
+      resultUrl: 'https://example.com/out.png',
+      resultUrls: ['https://example.com/out.png'],
+      message: 'Image generated successfully!',
+      isAsync: true,
+      jobId: 'job-123',
+    });
+    vi.useRealTimers();
   });
 
   it.skip('isLoading is true during execution', async () => {

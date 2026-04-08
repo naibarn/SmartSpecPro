@@ -14,13 +14,11 @@ import { eq, and, desc, sql, count, asc, max, inArray, type SQL } from "drizzle-
 import { createRateLimitMiddleware } from "../_core/rateLimitedProcedure";
 import { createHash } from "crypto";
 import { getTenantFeatureFlags } from "../services/tenantFeatureFlagService";
+import { getAppRuntimeConfig } from "../services/appRuntimeConfig";
 import {
   assertWorkflowBrowserSessionNodesAllowed,
   filterWorkflowNodeRegistryForFlags,
 } from "../services/workflowBrowserSessionFlags";
-
-// Python backend URL from environment (default to localhost:8000)
-const PYTHON_BACKEND_URL = process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
 
 // Loose but structural Zod schemas for workflow nodes/edges.
 // Enforce minimum shape to prevent prototype pollution and unbounded payloads
@@ -73,7 +71,8 @@ async function fetchPythonBackend(
   options: RequestInit,
   userToken: string | null
 ): Promise<Response> {
-  const url = `${PYTHON_BACKEND_URL}${endpoint}`;
+  const runtime = await getAppRuntimeConfig();
+  const url = `${runtime.pythonBackendUrl}${endpoint}`;
   const headers = new Headers(options.headers);
   headers.set("Content-Type", "application/json");
 

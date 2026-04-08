@@ -89,4 +89,3 @@ describe("Custom Tools Backend — Schema validation", () => {
     expect(result.success).toBe(false); // maxRetries max is 5
   });
 });
-

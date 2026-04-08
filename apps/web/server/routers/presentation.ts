@@ -118,6 +118,33 @@ const DOCUMENT_MANAGEMENT_ROUTE_BASE =
   "/document-management?scope=my_library&sort=updated_desc&mode=editor&doc=";
 // 50MB binary file + base64 overhead.
 const MAX_PRESENTATION_UPLOAD_BASE64_LENGTH = 68_000_000;
+const presentationEditorialPlannerOptionsSchema = z.object({
+  targetAudience: z.enum(["parents", "educators", "healthcare"]).optional(),
+  tonePreset: z.enum(["warm_parenting", "premium_editorial", "clinical_guidance"]).optional(),
+  fitPreset: z.enum(["balanced", "image_forward", "text_safe"]).optional(),
+  pageCountMode: z.enum(["auto", "fixed"]).optional(),
+  requestedPageCount: z.number().int().min(1).max(20).optional(),
+  globalStylePrompt: z.string().trim().max(4_000).optional().nullable(),
+  renderSafety: z.record(z.unknown()).optional().nullable(),
+  pageFillRules: z.record(z.unknown()).optional().nullable(),
+  qualityOptimizer: z.record(z.unknown()).optional().nullable(),
+  imageAssets: z.array(z.discriminatedUnion("assetType", [
+    z.object({
+      assetType: z.literal("image_prompt"),
+      label: z.string().trim().min(1).max(255),
+      pageHint: z.number().int().min(1).max(20).optional(),
+      prompt: z.string().trim().min(1).max(4_000),
+      reference: z.string().trim().max(4_000).optional().nullable(),
+    }),
+    z.object({
+      assetType: z.literal("uploaded_image"),
+      label: z.string().trim().min(1).max(255),
+      pageHint: z.number().int().min(1).max(20).optional(),
+      prompt: z.string().trim().max(4_000).optional().nullable(),
+      reference: z.string().trim().url().max(4_000),
+    }),
+  ])).max(60).optional(),
+}).optional();
 const AI_DRAFT_STALLED_PROGRESS_MS = 60_000;
 const AI_DRAFT_STALLED_LOCK_TTL_SECONDS = 240;
 const PRESENTATION_SLIDE_CANVAS_RATIOS = ["16:9", "9:16", "4:5", "5:4"] as const;
@@ -851,6 +878,16 @@ export const presentationRouter = router({
         canvasRatio: z.enum(PRESENTATION_SLIDE_CANVAS_RATIOS).default("16:9"),
         outputFormats: z.array(z.enum(PRESENTATION_SLIDE_OUTPUT_FORMATS)).min(1).max(4).default(["json"]),
         imagePromptContext: z.string().trim().max(1_500).optional().nullable(),
+        editorialPlannerOptions: presentationEditorialPlannerOptionsSchema,
+        existingImageAssets: z.array(z.object({
+          id: z.string().trim().min(1).max(128),
+          pageNumber: z.number().int().min(1).max(20),
+          imageIndex: z.number().int().min(1).max(3),
+          placementRole: z.enum(["hero", "supporting", "detail"]),
+          shortLabel: z.string().trim().min(1).max(255),
+          prompt: z.string().trim().min(1).max(4_000),
+          url: z.string().trim().url(),
+        })).max(60).optional(),
       }))
       .mutation(async ({ input, ctx }) => {
         try {
@@ -871,6 +908,17 @@ export const presentationRouter = router({
             canvasRatio: input.canvasRatio,
             outputFormats: input.outputFormats,
             imagePromptContext: input.imagePromptContext ?? undefined,
+            editorialPlannerOptions: input.editorialPlannerOptions ? {
+              ...input.editorialPlannerOptions,
+              imageAssets: input.editorialPlannerOptions.imageAssets?.map((asset) => ({
+                asset_type: asset.assetType,
+                label: asset.label,
+                page_hint: asset.pageHint,
+                prompt: asset.prompt ?? undefined,
+                reference: asset.reference ?? undefined,
+              })),
+            } : undefined,
+            existingImageAssets: input.existingImageAssets,
           });
         } catch (err) {
           if (err instanceof PresentationServiceError) {
@@ -900,6 +948,12 @@ export const presentationRouter = router({
         outputFormats: z.array(z.enum(PRESENTATION_SLIDE_OUTPUT_FORMATS)).min(1).max(4).default(["json"]),
         maxPages: z.number().int().min(1).max(20),
         imagePromptContext: z.string().trim().max(1_500).optional().nullable(),
+        editorialPlannerOptions: presentationEditorialPlannerOptionsSchema,
+        slidePayloadOverrideJson: z.string().trim().max(120_000).optional().nullable(),
+        pageImagePlanOverrides: z.array(z.object({
+          pageNumber: z.number().int().min(1).max(20),
+          maxImagesOverride: z.number().int().min(0).max(3),
+        })).max(60).optional(),
         imageAssets: z.array(z.object({
           id: z.string().trim().min(1).max(128),
           pageNumber: z.number().int().min(1).max(20),
@@ -908,7 +962,7 @@ export const presentationRouter = router({
           shortLabel: z.string().trim().min(1).max(255),
           prompt: z.string().trim().min(1).max(4_000),
           url: z.string().trim().url(),
-        })).min(1).max(60),
+        })).max(60).default([]),
       }))
       .mutation(async ({ input, ctx }) => {
         try {
@@ -931,6 +985,18 @@ export const presentationRouter = router({
             outputFormats: input.outputFormats,
             maxPages: input.maxPages,
             imagePromptContext: input.imagePromptContext ?? undefined,
+            editorialPlannerOptions: input.editorialPlannerOptions ? {
+              ...input.editorialPlannerOptions,
+              imageAssets: input.editorialPlannerOptions.imageAssets?.map((asset) => ({
+                asset_type: asset.assetType,
+                label: asset.label,
+                page_hint: asset.pageHint,
+                prompt: asset.prompt ?? undefined,
+                reference: asset.reference ?? undefined,
+              })),
+            } : undefined,
+            pageImagePlanOverrides: input.pageImagePlanOverrides,
+            slidePayloadOverrideJson: input.slidePayloadOverrideJson ?? undefined,
             imageAssets: input.imageAssets,
           });
         } catch (err) {

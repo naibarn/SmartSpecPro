@@ -7,6 +7,7 @@
 
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
 import yaml from "js-yaml";
 import { marked } from "marked";
 
@@ -97,7 +98,11 @@ function cacheGet<T>(map: Map<string, CacheEntry<T>>, key: string): T | null {
   return entry.value;
 }
 
-function cacheSet<T>(map: Map<string, CacheEntry<T>>, key: string, value: T): void {
+function cacheSet<T>(
+  map: Map<string, CacheEntry<T>>,
+  key: string,
+  value: T
+): void {
   map.set(key, { value, expiresAt: Date.now() + CACHE_TTL_MS });
 }
 
@@ -106,7 +111,50 @@ function cacheSet<T>(map: Map<string, CacheEntry<T>>, key: string, value: T): vo
 // ---------------------------------------------------------------------------
 
 function getHelpBasePath(): string {
-  return path.resolve(process.cwd(), "docs/help");
+  const moduleRelativePath = fileURLToPath(
+    new URL("../../docs/help", import.meta.url)
+  );
+  const candidates = [
+    moduleRelativePath,
+    path.resolve(process.cwd(), "apps/web/docs/help"),
+    path.resolve(process.cwd(), "docs/help"),
+    path.resolve(process.cwd(), "../docs/help"),
+    path.resolve(process.cwd(), "../../docs/help"),
+  ];
+
+  let bestCandidate: string | null = null;
+  let bestScore = -1;
+
+  for (const candidate of candidates) {
+    if (!fs.existsSync(candidate)) continue;
+
+    let score = 0;
+    const manifestPath = path.join(candidate, "_manifest.json");
+    if (fs.existsSync(manifestPath)) {
+      score += 10;
+    }
+
+    for (const locale of ["en", "th"]) {
+      const localeDir = path.join(candidate, locale);
+      if (!fs.existsSync(localeDir)) continue;
+
+      score += 5;
+      try {
+        score += fs
+          .readdirSync(localeDir)
+          .filter(file => file.endsWith(".md")).length;
+      } catch {
+        // Ignore unreadable locale directories and keep evaluating other candidates.
+      }
+    }
+
+    if (score > bestScore) {
+      bestCandidate = candidate;
+      bestScore = score;
+    }
+  }
+
+  return bestCandidate ?? moduleRelativePath;
 }
 
 function getManifestPath(): string {
@@ -132,7 +180,10 @@ function markdownToHtml(md: string): string {
 }
 
 function stripHtml(html: string): string {
-  return html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  return html
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function makeExcerpt(html: string, maxLen = 200): string {
@@ -196,7 +247,7 @@ function loadTopicsFromLocale(locale: string): HelpTopic[] {
 
   let files: string[];
   try {
-    files = fs.readdirSync(localeDir).filter((f) => f.endsWith(".md"));
+    files = fs.readdirSync(localeDir).filter(f => f.endsWith(".md"));
   } catch {
     return [];
   }
@@ -249,15 +300,17 @@ export async function getHelpManifest(locale: string): Promise<HelpManifest> {
 
   const manifest: HelpManifest = {
     sections: manifestFile.sections ?? [],
-    topics: topics.map(({ slug, title, description, icon, section, order, pages }) => ({
-      slug,
-      title,
-      description,
-      icon,
-      section,
-      order,
-      pages,
-    })),
+    topics: topics.map(
+      ({ slug, title, description, icon, section, order, pages }) => ({
+        slug,
+        title,
+        description,
+        icon,
+        section,
+        order,
+        pages,
+      })
+    ),
   };
 
   cacheSet(manifestCache, cacheKey, manifest);
@@ -266,7 +319,7 @@ export async function getHelpManifest(locale: string): Promise<HelpManifest> {
 
 export async function getHelpTopic(
   slug: string,
-  locale: string,
+  locale: string
 ): Promise<HelpTopic | null> {
   const cacheKey = `topic:${locale}:${slug}`;
   const cached = cacheGet(topicCache, cacheKey);
@@ -312,9 +365,7 @@ export async function getHelpTopic(
   return topic;
 }
 
-export async function getHelpSearchIndex(
-  locale: string,
-): Promise<
+export async function getHelpSearchIndex(locale: string): Promise<
   Array<{
     slug: string;
     title: string;
@@ -343,14 +394,27 @@ export async function getHelpSearchIndex(
 
 export async function getContextualHelpTopics(
   page: string,
-  locale: string,
-): Promise<Array<{ slug: string; title: string; description: string; icon: string }>> {
+  locale: string
+): Promise<
+  Array<{ slug: string; title: string; description: string; icon: string }>
+> {
   const topics = loadTopicsFromLocale(locale);
 
   // Return topics whose `pages` array contains this page name
   const matched = topics
-    .filter((t) => t.pages.includes(page))
-    .map(({ slug, title, description, icon }) => ({ slug, title, description, icon }));
+    .filter(t => t.pages.includes(page))
+    .map(({ slug, title, description, icon }) => ({
+      slug,
+      title,
+      description,
+      icon,
+    }));
 
   return matched;
+}
+
+export function resetHelpContentCachesForTests(): void {
+  manifestCache.clear();
+  topicCache.clear();
+  searchIndexCache.clear();
 }

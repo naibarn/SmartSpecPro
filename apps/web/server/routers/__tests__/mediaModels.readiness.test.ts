@@ -5,15 +5,21 @@ const {
   mockClearSkillRegistryCache,
   mockDbSelect,
   mockDbUpdate,
+  mockGetStaticFallbackModels,
+  mockGetStaticModelById,
 } = vi.hoisted(() => ({
   mockClearModelCache: vi.fn(),
   mockClearSkillRegistryCache: vi.fn(),
   mockDbSelect: vi.fn(),
   mockDbUpdate: vi.fn(),
+  mockGetStaticFallbackModels: vi.fn(),
+  mockGetStaticModelById: vi.fn(),
 }));
 
 vi.mock("../../services/modelRegistry", () => ({
   clearModelCache: mockClearModelCache,
+  getStaticFallbackModels: mockGetStaticFallbackModels,
+  getStaticModelById: mockGetStaticModelById,
   getModelRegistryCounters: vi.fn(),
   resetModelRegistryCounters: vi.fn(),
 }));
@@ -86,6 +92,8 @@ function makeSelectImmediate(result: unknown) {
 describe("mediaModels readiness helpers", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetStaticFallbackModels.mockReturnValue([]);
+    mockGetStaticModelById.mockReturnValue(undefined);
   });
 
   it("annotates adminList rows with provider readiness details", async () => {
@@ -239,5 +247,109 @@ describe("mediaModels readiness helpers", () => {
     expect(whereMock).toHaveBeenCalledTimes(1);
     expect(mockClearModelCache).toHaveBeenCalledTimes(1);
     expect(mockClearSkillRegistryCache).toHaveBeenCalledTimes(1);
+  });
+
+  it("merges static config fallback into DB model config when legacy rows are missing maxPromptLength", async () => {
+    mockGetStaticModelById.mockImplementation((lookupKey: string) => {
+      if (lookupKey === "veo3/generate-veo-3-video-fast" || lookupKey === "veo3_fast") {
+        return {
+          id: "veo_3_1-fast",
+          configJson: { maxPromptLength: 5000 },
+        };
+      }
+      return undefined;
+    });
+
+    const modelRows = [
+      {
+        id: 1,
+        modelId: "veo3/generate-veo-3-video-fast",
+        name: "Veo 3.1 Fast",
+        description: null,
+        modelType: "video",
+        provider: "knplabai",
+        aliases: [],
+        creditCost: 35,
+        aspectRatios: null,
+        sizes: null,
+        durations: null,
+        voices: null,
+        configJson: { kieModelId: "veo3_fast", pricingTiers: { default: 35 } },
+        isEnabled: true,
+        priority: 1,
+        sortOrder: 0,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+    ];
+
+    const providerRows = [
+      {
+        providerName: "knplabai",
+        displayName: "KNPLabs AI",
+        isEnabled: true,
+        hasApiKey: true,
+        lastTestResult: { success: true, message: "OK" },
+      },
+    ];
+
+    mockDbSelect
+      .mockReturnValueOnce(makeSelectBuilder(modelRows))
+      .mockReturnValueOnce(makeSelectBuilder(providerRows));
+
+    const fn = mediaModelsRouter.adminList as Function;
+    const result = await fn({ input: { includeDisabled: true } });
+
+    expect(result[0]).toMatchObject({
+      modelId: "veo3/generate-veo-3-video-fast",
+      configJson: {
+        kieModelId: "veo3_fast",
+        pricingTiers: { default: 35 },
+        maxPromptLength: 5000,
+      },
+    });
+  });
+
+  it("lists importable static templates that are missing from the DB catalog", async () => {
+    mockGetStaticFallbackModels.mockReturnValue([
+      {
+        id: "wavespeed-ai/cinematic-video-generator",
+        type: "video",
+        name: "Seedance 2.0 Grade Cinematic Video Generator",
+        provider: "wavespeed_ai",
+        description: "WaveSpeed launch model",
+        aliases: ["seedance 2"],
+        creditCost: 800,
+        aspectRatios: ["16:9", "9:16"],
+        durations: [5, 10],
+        isEnabled: true,
+        priority: 6,
+        configJson: { apiPayloadFormat: "wavespeed" },
+      },
+    ]);
+
+    mockDbSelect
+      .mockReturnValueOnce(makeSelectImmediate([]))
+      .mockReturnValueOnce(makeSelectBuilder([
+        {
+          providerName: "wavespeed_ai",
+          displayName: "WaveSpeedAI",
+          isEnabled: true,
+          hasApiKey: true,
+          lastTestResult: { success: true, message: "OK" },
+        },
+      ]));
+
+    const fn = mediaModelsRouter.adminTemplates as Function;
+    const result = await fn({ input: { type: "video", includeDisabled: true } });
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      modelId: "wavespeed-ai/cinematic-video-generator",
+      name: "Seedance 2.0 Grade Cinematic Video Generator",
+      provider: "wavespeed_ai",
+      providerReady: true,
+      providerDisplayName: "WaveSpeedAI",
+    });
   });
 });

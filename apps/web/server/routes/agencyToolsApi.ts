@@ -9,7 +9,7 @@
 
 import { Router, type Request, type Response } from "express";
 import { eq, and } from "drizzle-orm";
-import Ajv from "ajv";
+import Ajv from "../services/simpleJsonSchemaValidator";
 import { requireScopes } from "../middleware/requireScopes";
 import { sendApiError } from "../middleware/publicApiHeaders";
 import { isFeatureEnabled } from "../services/tenantFeatureFlagService";

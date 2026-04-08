@@ -5,6 +5,10 @@
 
 import postgres from "postgres";
 import crypto from "crypto";
+import {
+  getWaveSpeedProviderAvailableModels,
+  WAVESPEED_LAUNCH_MODEL_ID,
+} from "../server/services/mediaProviderUtils";
 
 const DATABASE_URL = process.env.DATABASE_URL || "postgresql://smartspec:smartspec_dev@localhost:5432/smartspec";
 const ENCRYPTION_KEY = process.env.MEDIA_ENCRYPTION_KEY || process.env.LLM_ENCRYPTION_KEY || "smartspec-media-key-32chars!";
@@ -82,18 +86,11 @@ export const DEFAULT_PROVIDERS = [
   {
     providerName: "wavespeed_ai",
     displayName: "WaveSpeedAI",
-    description: "WaveSpeed media-generation provider for cinematic text-to-video and image-guided video generation",
+    description: "WaveSpeed media-generation provider for cinematic and ByteDance Seedance 2.0 text-to-video / image-to-video generation",
     providerType: "multimodal",
     baseUrl: "https://api.wavespeed.ai/api/v3",
-    defaultModel: "wavespeed-ai/cinematic-video-generator",
-    availableModels: [
-      {
-        id: "wavespeed-ai/cinematic-video-generator",
-        name: "Seedance 2.0 Grade Cinematic Video Generator",
-        type: "video",
-        description: "Cinematic async video generation with optional image guidance and native audio",
-      },
-    ],
+    defaultModel: WAVESPEED_LAUNCH_MODEL_ID,
+    availableModels: getWaveSpeedProviderAvailableModels(),
     isEnabled: false,
     isPrimary: false,
     priority: 12,

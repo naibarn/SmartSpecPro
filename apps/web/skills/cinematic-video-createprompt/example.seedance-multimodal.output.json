@@ -1,0 +1,141 @@
+{
+  "skill_name": "cinematic-video-createprompt",
+  "skill_version": "5.7.0",
+  "response_format": "structured_json",
+  "language": "en",
+  "target_model_profile": "seedance_2_kie",
+  "generation_mode": "image_to_video",
+  "delivery_mode": "multi_shot_single_video",
+  "multi_video_strategy": "not_applicable",
+  "video_count": 1,
+  "dialogue_language": {
+    "requested": "auto",
+    "resolved": "none",
+    "source": "no_dialogue",
+    "rationale": "The brief is movement- and beat-led, with no need for spoken dialogue."
+  },
+  "storytelling_resolution": {
+    "preset_requested": "action_showdown",
+    "preset_resolved": "action_showdown",
+    "multi_shot_timing_mode_requested": "untimed_or_auto",
+    "multi_shot_timing_mode_resolved": "untimed_or_auto",
+    "audio_mode_resolved": "music_led_feel",
+    "dialogue_density_resolved": "none",
+    "story_shape_resolved": "escalation",
+    "ending_style_resolved": "visual_reveal",
+    "performance_style_resolved": "heroic_action",
+    "imagination_level_resolved": "stylized",
+    "scene_arc_resolved": "action_sequence",
+    "continuity_mode_resolved": "invisible_cut_flow",
+    "motion_realism_resolved": "dynamic_but_controlled",
+    "background_mode": "normal_background",
+    "narrative_intent": "Create one premium rhythmic dance-performance video for Seedance 2 using multimodal references to keep identity, motion, lighting, and beat timing tightly aligned."
+  },
+  "continuity_package": {
+    "continuity_notes": "Keep the same dancer identity, the same reflective black jacket, the same graphite cargo pants, the same LED-accent sneakers, and the same wet underpass world from opening move to final pose.",
+    "continuity_notes_origin": "auto_generated",
+    "reference_notes": "Use @Image1 and @Image2 to preserve facial identity, haircut, body silhouette, and outfit continuity. Use @Image3 to preserve the rain-lit wet-lighting treatment, @Image4 to preserve the underpass framing logic, and @Image5 to preserve the sneaker design. Use @Video1 and @Video2 to guide rhythmic motion, spin transitions, and controlled camera-follow energy. Use @Audio1 to guide beat accents and edit rhythm.",
+    "reference_notes_origin": "auto_generated"
+  },
+  "final_prompt": "Use @Image1 and @Image2 as the character references for the dancer's facial identity, haircut, outfit silhouette, and full-body continuity. Use @Image3 as the style reference for rain-lit reflections, contrast, and wet-night texture. Use @Image4 as the scene composition reference for the underpass layout, vanishing depth, and practical-light spacing. Use @Image5 as the prop and wardrobe-detail reference for the LED-accent sneakers. Use @Video1 and @Video2 as motion references for precise footwork rhythm, spin transitions, and controlled camera-follow energy, and use @Audio1 as the beat reference for timing, impact accents, and editorial rhythm. In a wet urban underpass at night, the dancer steps into frame with grounded confidence, builds through sharp readable footwork and controlled spinning movement, and lands on a powerful final hero pose timed to the last beat, keeping floor contact stable, anatomy clean, and every movement cinematic, energetic, and tightly synchronized.\n\nContinuity Notes:\nKeep the same dancer identity, the same reflective black jacket, the same graphite cargo pants, the same LED-accent sneakers, and the same wet underpass world from opening move to final pose.\n\nReference Notes:\nUse @Image1 and @Image2 to preserve facial identity, haircut, body silhouette, and outfit continuity. Use @Image3 to preserve the rain-lit wet-lighting treatment, @Image4 to preserve the underpass framing logic, and @Image5 to preserve the sneaker design. Use @Video1 and @Video2 to guide rhythmic motion, spin transitions, and controlled camera-follow energy. Use @Audio1 to guide beat accents and edit rhythm.",
+  "short_prompt": "A rhythmic dance-performance video in a rain-lit underpass, using @Image1 to @Image5 for identity, style, composition, and sneaker continuity, plus @Video1, @Video2, and @Audio1 for motion and beat guidance.",
+  "prompt_sequence": [
+    {
+      "prompt_id": "Prompt 1",
+      "video_number": 1,
+      "duration_seconds": 10,
+      "prompt_role": "Single Video Prompt",
+      "prompt": "Use @Image1 and @Image2 as the character references for the dancer's facial identity, haircut, outfit silhouette, and full-body continuity. Use @Image3 as the style reference for rain-lit reflections, contrast, and wet-night texture. Use @Image4 as the scene composition reference for the underpass layout, vanishing depth, and practical-light spacing. Use @Image5 as the prop and wardrobe-detail reference for the LED-accent sneakers. Use @Video1 and @Video2 as motion references for precise footwork rhythm, spin transitions, and controlled camera-follow energy, and use @Audio1 as the beat reference for timing, impact accents, and editorial rhythm. In a wet urban underpass at night, the dancer steps into frame with grounded confidence, builds through sharp readable footwork and controlled spinning movement, and lands on a powerful final hero pose timed to the last beat, keeping floor contact stable, anatomy clean, and every movement cinematic, energetic, and tightly synchronized.",
+      "continuity_notes": "Keep the same dancer identity, the same reflective black jacket, the same graphite cargo pants, the same LED-accent sneakers, and the same wet underpass world from opening move to final pose.",
+      "reference_notes": "Use @Image1 and @Image2 to preserve facial identity, haircut, body silhouette, and outfit continuity. Use @Image3 to preserve the rain-lit wet-lighting treatment, @Image4 to preserve the underpass framing logic, and @Image5 to preserve the sneaker design. Use @Video1 and @Video2 to guide rhythmic motion, spin transitions, and controlled camera-follow energy. Use @Audio1 to guide beat accents and edit rhythm."
+    }
+  ],
+  "cinematic_plan": {
+    "opening_frame": "The dancer steps into a rain-lit underpass with wet reflections already alive under practical overhead lights.",
+    "subject_focus": "The visual anchor is the dancer's stable identity, wardrobe silhouette, and LED-accent sneakers performing precise readable movement.",
+    "staging_blocking": "The dancer remains centered and readable while advancing through controlled footwork, lateral travel, and a clean final front-facing pose.",
+    "motion_arc": "The clip escalates from poised entry, to rhythmic build, to a sharp final landing on the last beat.",
+    "camera_language": "Use premium follow energy and readable perspective shifts that feel dynamic without losing body clarity.",
+    "focus_depth": "Keep the dancer dominant while preserving reflective tunnel depth and wet atmosphere behind the performance.",
+    "atmosphere_time": "Night rain, mist, and practical tunnel light define the whole sequence.",
+    "production_design": "A wet underpass with reflective pavement, overhead lighting, tunnel geometry, and bold urban depth lines.",
+    "lighting_color": "High-contrast rain-lit reflections, cool highlights, and controlled practical glow keep the sequence premium and rhythmic.",
+    "continuity_pacing": "One continuous performance clip with escalating movement energy and tightly controlled beat timing.",
+    "continuity_guardrails": "Preserve face identity, wardrobe silhouette, sneaker design, floor contact, readable hands, and controlled motion from start to finish."
+  },
+  "reference_usage": {
+    "reference_input_mode": "seedance_multimodal_reference",
+    "reference_image_count": 5,
+    "assignments": [
+      {
+        "image_id": "@Image1",
+        "role": "character_reference",
+        "prompt_text": "Use @Image1 as the primary facial identity and haircut reference for the dancer."
+      },
+      {
+        "image_id": "@Image2",
+        "role": "character_reference",
+        "prompt_text": "Use @Image2 as the supporting full-body silhouette and outfit continuity reference."
+      },
+      {
+        "image_id": "@Image3",
+        "role": "style_reference",
+        "prompt_text": "Use @Image3 as the wet-lighting and contrast reference."
+      },
+      {
+        "image_id": "@Image4",
+        "role": "scene_composition_reference",
+        "prompt_text": "Use @Image4 as the underpass framing and depth reference."
+      },
+      {
+        "image_id": "@Image5",
+        "role": "product_or_prop_reference",
+        "prompt_text": "Use @Image5 as the sneaker-detail and LED-accent reference."
+      }
+    ],
+    "reference_video_count": 2,
+    "video_assignments": [
+      {
+        "video_id": "@Video1",
+        "guidance_focus": "footwork rhythm and camera-follow energy",
+        "prompt_text": "Use @Video1 to guide the main dance rhythm and camera-follow feel."
+      },
+      {
+        "video_id": "@Video2",
+        "guidance_focus": "spin transitions and controlled circular motion",
+        "prompt_text": "Use @Video2 to guide spin transitions and controlled circular movement."
+      }
+    ],
+    "reference_audio_count": 1,
+    "audio_assignments": [
+      {
+        "audio_id": "@Audio1",
+        "guidance_focus": "beat accents and editorial timing",
+        "prompt_text": "Use @Audio1 to guide beat timing, accent placement, and edit rhythm."
+      }
+    ],
+    "first_frame_present": false,
+    "last_frame_present": false,
+    "applied_focus": [
+      "@Image1 facial identity",
+      "@Image2 outfit silhouette",
+      "@Image3 lighting treatment",
+      "@Image4 underpass framing",
+      "@Image5 sneaker design",
+      "@Video1 motion rhythm",
+      "@Video2 spin transitions",
+      "@Audio1 beat timing"
+    ],
+    "notes": "Seedance 2 multimodal references lock identity, style, composition, motion language, and beat timing into one coherent single-video package."
+  },
+  "validation": {
+    "is_valid": true,
+    "warnings": [],
+    "safety_notes": [
+      "The prompt stays brand-neutral, non-graphic, and suitable for general cinematic video generation."
+    ],
+    "suggestions": [
+      "If the beat matching needs to be even tighter, shorten the performance arc to one fewer major motion phrase."
+    ]
+  }
+}

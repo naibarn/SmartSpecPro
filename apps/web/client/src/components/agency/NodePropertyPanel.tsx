@@ -14,6 +14,7 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
+import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
@@ -115,6 +116,7 @@ function normalizeLibraryPickerDocs(rows: unknown): Array<{ id: number; title: s
 
 export function NodePropertyPanel({ node, nodeId, siblingNodes = [], agencyId, onChange, onClose, onDelete }: NodePropertyPanelProps) {
   const nodeType = node.nodeType ?? "agent";
+  const { t } = useScopedTranslation("agency");
 
   // ── Resizable width ──────────────────────────────────────────────────────
   const [width, setWidth] = useState(() => {
@@ -155,20 +157,20 @@ export function NodePropertyPanel({ node, nodeId, siblingNodes = [], agencyId, o
   }, [width]);
 
   const TITLES: Record<string, string> = {
-    agent: "Agent Properties",
-    supervisor: "Supervisor Properties",
-    router: "Router Properties",
-    aggregator: "Aggregator Properties",
-    knowledge_base: "Knowledge Base Properties",
-    skill_call: "Skill Call Properties",
-    browser_session: "Browser Session Properties",
-    human_approval: "Human Approval Properties",
-    conditional_branch: "Conditional Branch Properties",
-    parallel_fan_out: "Parallel Fan-Out Properties",
-    loop_retry: "Loop / Retry Properties",
-    skill_discovery: "Skill Discovery Properties",
-    data_transform: "Data Transform Properties",
-    error_handler: "Error Handler Properties",
+    agent: t("builder.agentProperties"),
+    supervisor: t("builder.supervisorProperties"),
+    router: t("builder.routerProperties"),
+    aggregator: t("builder.aggregatorProperties"),
+    knowledge_base: t("builder.knowledgeBaseProperties"),
+    skill_call: t("builder.skillCallProperties"),
+    browser_session: t("builder.browserSessionProperties"),
+    human_approval: t("builder.humanApprovalProperties"),
+    conditional_branch: t("builder.conditionalBranchProperties"),
+    parallel_fan_out: t("builder.parallelFanOutProperties"),
+    loop_retry: t("builder.loopRetryProperties"),
+    skill_discovery: t("builder.skillDiscoveryProperties"),
+    data_transform: t("builder.dataTransformProperties"),
+    error_handler: t("builder.errorHandlerProperties"),
   };
 
   return (
@@ -182,14 +184,14 @@ export function NodePropertyPanel({ node, nodeId, siblingNodes = [], agencyId, o
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
-        title="Drag to resize"
+        title={t("builder.dragToResize")}
       >
         <GripVertical className="h-5 w-3 text-muted-foreground/50" />
       </div>
 
       {/* Header */}
       <div className="flex items-center justify-between border-b px-4 py-3 shrink-0">
-        <span className="text-sm font-medium truncate mr-2">{TITLES[nodeType] ?? "Node Properties"}</span>
+        <span className="text-sm font-medium truncate mr-2">{TITLES[nodeType] ?? t("builder.nodeProperties")}</span>
         <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={onClose}>
           <X className="h-4 w-4" />
         </Button>
@@ -225,7 +227,7 @@ export function NodePropertyPanel({ node, nodeId, siblingNodes = [], agencyId, o
             onClick={onDelete}
           >
             <Trash2 className="mr-2 h-4 w-4" />
-            Delete Node
+            {t("builder.deleteNode")}
           </Button>
         </div>
       </ScrollArea>
@@ -3586,13 +3588,15 @@ function DataTransformForm({
 // ── Smart Model Config ───────────────────────────────────────────────────────
 
 const CAPABILITY_OPTIONS = [
-  { key: "supportsVision" as const, label: "Vision", description: "Image analysis" },
-  { key: "supportsThinking" as const, label: "Thinking", description: "Extended reasoning" },
-  { key: "supportsFunctionTools" as const, label: "Function Tools", description: "Tool calling" },
-  { key: "supportsStructuredOutputs" as const, label: "Structured Outputs", description: "JSON schema output" },
-  { key: "supportsWebSearch" as const, label: "Web Search", description: "Live web search" },
-  { key: "supportsCodeExecution" as const, label: "Code Execution", description: "Run code" },
-  { key: "supportsComputerUse" as const, label: "Computer Use", description: "Browser control" },
+  { key: "supportsVision" as const, labelKey: "admin.capabilities.vision.label", descriptionKey: "admin.capabilities.vision.description" },
+  { key: "supportsThinking" as const, labelKey: "admin.capabilities.thinking.label", descriptionKey: "admin.capabilities.thinking.description" },
+  { key: "supportsFunctionTools" as const, labelKey: "admin.capabilities.functionTools.label", descriptionKey: "admin.capabilities.functionTools.description" },
+  { key: "supportsStructuredOutputs" as const, labelKey: "admin.capabilities.structuredOutputs.label", descriptionKey: "admin.capabilities.structuredOutputs.description" },
+  { key: "supportsJsonMode" as const, labelKey: "admin.capabilities.jsonMode.label", descriptionKey: "admin.capabilities.jsonMode.description" },
+  { key: "supportsStrictToolSchema" as const, labelKey: "admin.capabilities.strictToolSchema.label", descriptionKey: "admin.capabilities.strictToolSchema.description" },
+  { key: "supportsWebSearch" as const, labelKey: "admin.capabilities.webSearch.label", descriptionKey: "admin.capabilities.webSearch.description" },
+  { key: "supportsCodeExecution" as const, labelKey: "admin.capabilities.codeExecution.label", descriptionKey: "admin.capabilities.codeExecution.description" },
+  { key: "supportsComputerUse" as const, labelKey: "admin.capabilities.computerUse.label", descriptionKey: "admin.capabilities.computerUse.description" },
 ] as const;
 
 type ModelReqs = NonNullable<import("./nodes/types").AgencyNodeData["modelRequirements"]>;
@@ -3604,6 +3608,7 @@ function SmartModelConfig({
   requirements: ModelReqs;
   onChange: (reqs: ModelReqs) => void;
 }) {
+  const { t } = useScopedTranslation(["agency", "admin"]);
   const resolveQuery = trpc.agency.resolveModel.useQuery(
     { requirements },
     { staleTime: 10_000, placeholderData: (previous) => previous },
@@ -3613,25 +3618,25 @@ function SmartModelConfig({
     <div className="space-y-3">
       {/* Strategy */}
       <div>
-        <Label className="text-xs font-medium">Strategy</Label>
+        <Label className="text-xs font-medium">{t("builder.modelSelection.strategyLabel")}</Label>
         <Select
           value={requirements.strategy ?? "cheapest"}
           onValueChange={(v) => onChange({ ...requirements, strategy: v as ModelReqs["strategy"] })}
         >
           <SelectTrigger className="mt-1 h-8 text-xs"><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="cheapest">Cheapest matching model</SelectItem>
-            <SelectItem value="balanced">Balanced (cost + quality)</SelectItem>
-            <SelectItem value="best">Best quality (highest priority)</SelectItem>
+            <SelectItem value="cheapest">{t("builder.modelSelection.strategies.cheapest")}</SelectItem>
+            <SelectItem value="balanced">{t("builder.modelSelection.strategies.balanced")}</SelectItem>
+            <SelectItem value="best">{t("builder.modelSelection.strategies.best")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
       {/* Capabilities */}
       <div>
-        <Label className="text-xs font-medium mb-1.5 block">Required Capabilities</Label>
+        <Label className="text-xs font-medium mb-1.5 block">{t("builder.modelSelection.requiredCapabilities")}</Label>
         <div className="grid grid-cols-2 gap-1.5">
-          {CAPABILITY_OPTIONS.map(({ key, label, description }) => {
+          {CAPABILITY_OPTIONS.map(({ key, labelKey, descriptionKey }) => {
             const checked = requirements[key] === true;
             return (
               <label
@@ -3651,8 +3656,8 @@ function SmartModelConfig({
                   className="rounded border-gray-300 h-3.5 w-3.5"
                 />
                 <div>
-                  <div className="font-medium">{label}</div>
-                  <div className="text-[10px] text-muted-foreground">{description}</div>
+                  <div className="font-medium">{t(labelKey)}</div>
+                  <div className="text-[10px] text-muted-foreground">{t(descriptionKey)}</div>
                 </div>
               </label>
             );
@@ -3662,16 +3667,16 @@ function SmartModelConfig({
 
       {/* Resolved Model Preview */}
       <div className="rounded-md border bg-muted/30 px-3 py-2">
-        <div className="text-[10px] text-muted-foreground mb-0.5">Auto-selected model</div>
+        <div className="text-[10px] text-muted-foreground mb-0.5">{t("builder.modelSelection.autoSelectedModel")}</div>
         {resolveQuery.isLoading ? (
-          <div className="text-xs text-muted-foreground">Resolving...</div>
+          <div className="text-xs text-muted-foreground">{t("builder.modelSelection.resolving")}</div>
         ) : resolveQuery.data?.modelId ? (
           <div className="flex items-center gap-1.5">
             <span className="text-sm font-medium">{resolveQuery.data.modelId}</span>
             <Badge variant="outline" className="text-[10px] px-1 py-0">{resolveQuery.data.provider}</Badge>
           </div>
         ) : (
-          <div className="text-xs text-destructive">No matching model found — adjust capabilities</div>
+          <div className="text-xs text-destructive">{t("builder.modelSelection.noMatchingModel")}</div>
         )}
       </div>
     </div>

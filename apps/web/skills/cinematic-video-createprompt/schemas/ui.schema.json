@@ -1,0 +1,2856 @@
+{
+  "version": "1.0",
+  "skillId": "cinematic-video-createprompt",
+  "title": "Cinematic Video Story Prompt Builder",
+  "titleTh": "ตัวช่วยสร้างพรอมต์เล่าเรื่องวิดีโอแบบภาพยนตร์",
+  "description": "Build a polished cinematic video prompt from a simple idea, with support for multi-shot single-video output, optional second-by-second multi-shot timelines, multi-video story packs, multi-video creative variations, storytelling presets such as ASMR, dialogue-driven, silent visual, dreamlike, cartoon, action, and relaxing ambient modes, spoken-language detection, optional reference images, provider-specific profiles for generic models, Seedance 2, and Veo 3.1, plus either normal-background or green-screen output.",
+  "descriptionTh": "สร้างพรอมต์วิดีโอสไตล์ภาพยนตร์จากไอเดียหลัก รองรับทั้งวิดีโอเดียวหลายช็อต การกำหนดไทม์ไลน์ช็อตแบบระบุวินาที หลายวิดีโอแบบเรื่องต่อเนื่อง หลายวิดีโอแบบหลายเวอร์ชัน พร้อม preset การเล่าเรื่อง เช่น ASMR แนวบทพูด เล่าเรื่องด้วยภาพ ฝันละมุน การ์ตูน แอ็กชัน หรือบรรยากาศผ่อนคลาย รวมถึงการตรวจจับภาษาบทพูด รูปภาพอ้างอิง โปรไฟล์โมเดลแบบ Generic, Seedance 2, และ Veo 3.1 ตลอดจนการเลือกระหว่างพื้นหลังปกติกับกรีนสกรีน",
+  "sections": [
+    {
+      "id": "brief",
+      "title": "Brief & Setup",
+      "titleTh": "บรีฟและการตั้งค่า",
+      "icon": "film",
+      "fields": [
+        {
+          "id": "topic",
+          "type": "textarea",
+          "label": "Topic / Core Idea",
+          "labelTh": "หัวข้อ / ไอเดียหลัก",
+          "placeholder": "e.g., A luxury perfume reveal in a rain-lit city, A lone courier crossing a neon alley, A slow cinematic coffee ritual at dawn",
+          "placeholderTh": "เช่น เปิดตัวน้ำหอมในเมืองฝนพรำ, ผู้ส่งสารคนเดียวเดินผ่านตรอกนีออน, พิธีชงกาแฟยามรุ่งเช้าแบบภาพยนตร์",
+          "helpText": "The main idea, scene, product, or story moment. If this is the only field you fill, the skill will infer the best cinematic treatment automatically.",
+          "helpTextTh": "ไอเดียหลัก ฉาก สินค้า หรือโมเมนต์ของเรื่อง หากกรอกแค่ช่องนี้ skill จะคิดแนวทาง cinematic ที่เหมาะที่สุดให้อัตโนมัติ",
+          "required": true,
+          "rows": 4
+        },
+        {
+          "id": "prompt_goal",
+          "type": "textarea",
+          "label": "Prompt Goal",
+          "labelTh": "เป้าหมายของวิดีโอ",
+          "placeholder": "Optional: describe the video you want in more detail...",
+          "placeholderTh": "ไม่บังคับ: อธิบายวิดีโอเพิ่มเติมให้ละเอียดขึ้น...",
+          "helpText": "Optional expansion of the topic. Add this if you want more control over what happens, what feeling it should create, or what kind of story treatment you want.",
+          "helpTextTh": "คำอธิบายเสริมของหัวข้อ หากต้องการควบคุมสิ่งที่เกิดขึ้น อารมณ์ที่อยากได้ หรือแนวการเล่าเรื่องที่ต้องการให้ชัดขึ้น",
+          "rows": 4
+        },
+        {
+          "id": "project_title",
+          "type": "text",
+          "label": "Project Title",
+          "labelTh": "ชื่อโปรเจกต์",
+          "placeholder": "e.g., Neon alley courier reveal",
+          "placeholderTh": "เช่น ผู้ส่งสารกลางตรอกนีออน",
+          "helpText": "Optional short internal name for this prompt request. You can leave this blank if you only care about the generated prompt.",
+          "helpTextTh": "ชื่อสั้น ๆ สำหรับงานพรอมต์นี้ หากสนใจแค่ผลลัพธ์พรอมต์จะเว้นว่างไว้ก็ได้"
+        },
+        {
+          "id": "creative_direction_mode",
+          "type": "select",
+          "label": "Cinematic Decision Mode",
+          "labelTh": "โหมดตัดสินใจแบบภาพยนตร์",
+          "helpText": "Recommended: Auto Best. You can fill only Topic and Storytelling Preset, then let the skill choose the strongest cinematic treatment for you.",
+          "helpTextTh": "แนะนำ: Auto Best คุณสามารถกรอกแค่ Topic และ Storytelling Preset แล้วให้ skill เลือกแนว cinematic ที่เหมาะที่สุดให้อัตโนมัติ",
+          "default": "auto_best",
+          "options": [
+            {
+              "value": "auto_best",
+              "label": "Auto Best / LLM Best (Recommended)",
+              "labelTh": "ให้ AI เลือกดีที่สุด (แนะนำ)"
+            },
+            {
+              "value": "random_cinematic",
+              "label": "Random Cinematic",
+              "labelTh": "สุ่มแนวภาพยนตร์"
+            },
+            {
+              "value": "manual_guided",
+              "label": "Manual Guided",
+              "labelTh": "กำหนดเองแบบมีผู้ช่วย"
+            }
+          ]
+        },
+        {
+          "id": "storytelling_preset",
+          "type": "select",
+          "label": "Storytelling Preset",
+          "labelTh": "แนวการเล่าเรื่อง",
+          "helpText": "Choose the overall storytelling style you want, such as ASMR, dialogue, silent visual, dreamlike, cartoon, action, relax, or let the skill choose automatically.",
+          "helpTextTh": "เลือกแนวการเล่าเรื่องหลักที่ต้องการ เช่น ASMR แนวบทพูด เล่าเรื่องด้วยภาพ ฝันละมุน การ์ตูน แอ็กชัน ผ่อนคลาย หรือปล่อยให้ skill เลือกให้อัตโนมัติ",
+          "default": "auto_popular",
+          "options": [
+            {
+              "value": "auto_popular",
+              "label": "Auto Popular (Recommended)",
+              "labelTh": "ให้ AI เลือกแนวยอดนิยมที่เหมาะที่สุด (แนะนำ)"
+            },
+            {
+              "value": "dialogue_skit",
+              "label": "Dialogue Skit",
+              "labelTh": "ฉากสั้นแบบบทสนทนา"
+            },
+            {
+              "value": "voiceover_story",
+              "label": "Voiceover Story",
+              "labelTh": "เล่าเรื่องด้วยเสียงบรรยาย"
+            },
+            {
+              "value": "silent_visual_story",
+              "label": "Silent Visual Story",
+              "labelTh": "เล่าเรื่องด้วยภาพโดยไม่พูด"
+            },
+            {
+              "value": "asmr_sensory",
+              "label": "ASMR / Sensory",
+              "labelTh": "ASMR / เน้นประสาทสัมผัส"
+            },
+            {
+              "value": "relax_ambient",
+              "label": "Relax / Ambient",
+              "labelTh": "ผ่อนคลาย / บรรยากาศชิล"
+            },
+            {
+              "value": "dreamlike_poetic",
+              "label": "Dreamlike / Poetic",
+              "labelTh": "ฝันละมุน / เชิงกวี"
+            },
+            {
+              "value": "surreal_impossible",
+              "label": "Surreal / Impossible",
+              "labelTh": "เหนือจริง / เกินจินตนาการ"
+            },
+            {
+              "value": "cartoon_dialogue",
+              "label": "Cartoon Dialogue",
+              "labelTh": "การ์ตูนพูดคุยกัน"
+            },
+            {
+              "value": "cartoon_sfx_only",
+              "label": "Cartoon SFX Only",
+              "labelTh": "การ์ตูนใช้แต่เสียงเอฟเฟกต์"
+            },
+            {
+              "value": "action_showdown",
+              "label": "Action Showdown",
+              "labelTh": "ฉากปะทะ / ฉากสู้"
+            },
+            {
+              "value": "pov_vlog",
+              "label": "POV / Vlog",
+              "labelTh": "POV / วล็อก"
+            },
+            {
+              "value": "documentary_observational",
+              "label": "Documentary / Observational",
+              "labelTh": "สารคดี / สังเกตการณ์"
+            },
+            {
+              "value": "explainer_edutainment",
+              "label": "Explainer / Edutainment",
+              "labelTh": "อธิบายความรู้แบบสนุก"
+            },
+            {
+              "value": "product_beauty_story",
+              "label": "Product / Beauty Story",
+              "labelTh": "สินค้า / เล่าแบบสวยพรีเมียม"
+            }
+          ]
+        },
+        {
+          "id": "generation_mode",
+          "type": "select",
+          "label": "Generation Mode",
+          "labelTh": "โหมดการสร้าง",
+          "helpText": "Leave on Auto if you want the skill to choose the workflow from your topic and references.",
+          "helpTextTh": "ปล่อยเป็น Auto ได้ หากต้องการให้ skill เลือก workflow จากหัวข้อและภาพอ้างอิง",
+          "default": "auto",
+          "options": [
+            {
+              "value": "auto",
+              "label": "Auto",
+              "labelTh": "อัตโนมัติ"
+            },
+            {
+              "value": "text_to_video",
+              "label": "Text to Video",
+              "labelTh": "ข้อความเป็นวิดีโอ"
+            },
+            {
+              "value": "image_to_video",
+              "label": "Image to Video",
+              "labelTh": "ภาพเป็นวิดีโอ"
+            },
+            {
+              "value": "video_edit",
+              "label": "Video Edit",
+              "labelTh": "แก้วิดีโอเดิม"
+            }
+          ]
+        },
+        {
+          "id": "target_model_profile",
+          "type": "select",
+          "label": "Target Model Profile",
+          "labelTh": "โปรไฟล์โมเดลเป้าหมาย",
+          "helpText": "Choose Generic for broad compatibility, Seedance 2 for multimodal image/video/audio references and first/last-frame workflows, or Veo 3.1 for text-to-video, first/last-frame anchoring, and 1 to 3 image references.",
+          "helpTextTh": "เลือก Generic หากต้องการใช้ได้กว้างกับหลายโมเดล, เลือก Seedance 2 หากต้องการ image/video/audio references และโหมด first/last frame, หรือเลือก Veo 3.1 หากต้องการ text-to-video, การล็อก first/last frame, และการใช้ภาพอ้างอิง 1 ถึง 3 รูป",
+          "default": "generic_video_models",
+          "options": [
+            {
+              "value": "generic_video_models",
+              "label": "Generic Video Models (Recommended)",
+              "labelTh": "Generic Video Models (แนะนำ)"
+            },
+            {
+              "value": "seedance_2_kie",
+              "label": "Seedance 2 (Kie.ai)",
+              "labelTh": "Seedance 2 (Kie.ai)"
+            },
+            {
+              "value": "veo_3_1_kie",
+              "label": "Veo 3.1 (Kie.ai)",
+              "labelTh": "Veo 3.1 (Kie.ai)"
+            }
+          ]
+        },
+        {
+          "id": "seedance_input_mode",
+          "type": "select",
+          "label": "Seedance Input Mode",
+          "labelTh": "โหมดอินพุตของ Seedance",
+          "helpText": "Choose how Seedance 2 should use your materials: first frame only, first and last frames, or multimodal references from images, videos, and audio.",
+          "helpTextTh": "เลือกวิธีที่ Seedance 2 จะใช้สื่ออ้างอิงของคุณ: ใช้ภาพเฟรมแรกอย่างเดียว, ใช้ทั้งเฟรมแรกและเฟรมสุดท้าย, หรือใช้ multimodal references จากภาพ วิดีโอ และเสียง",
+          "default": "auto",
+          "dependsOn": {
+            "field": "target_model_profile",
+            "value": "seedance_2_kie"
+          },
+          "options": [
+            {
+              "value": "auto",
+              "label": "Auto",
+              "labelTh": "อัตโนมัติ"
+            },
+            {
+              "value": "first_frame_only",
+              "label": "First Frame Only",
+              "labelTh": "ใช้เฟรมแรกเท่านั้น"
+            },
+            {
+              "value": "first_and_last_frames",
+              "label": "First and Last Frames",
+              "labelTh": "ใช้เฟรมแรกและเฟรมสุดท้าย"
+            },
+            {
+              "value": "multimodal_reference",
+              "label": "Multimodal Reference",
+              "labelTh": "อ้างอิงหลายสื่อ"
+            }
+          ]
+        },
+        {
+          "id": "veo_input_mode",
+          "type": "select",
+          "label": "Veo Input Mode",
+          "labelTh": "โหมดอินพุตของ Veo",
+          "helpText": "Choose how Veo 3.1 should use your materials: first frame only, first and last frames, or reference-to-video with 1 to 3 images.",
+          "helpTextTh": "เลือกวิธีที่ Veo 3.1 จะใช้สื่ออ้างอิงของคุณ: ใช้เฟรมแรกอย่างเดียว, ใช้ทั้งเฟรมแรกและเฟรมสุดท้าย, หรือใช้ reference-to-video ด้วยภาพ 1 ถึง 3 รูป",
+          "default": "auto",
+          "dependsOn": {
+            "field": "target_model_profile",
+            "value": "veo_3_1_kie"
+          },
+          "options": [
+            {
+              "value": "auto",
+              "label": "Auto",
+              "labelTh": "อัตโนมัติ"
+            },
+            {
+              "value": "first_frame_only",
+              "label": "First Frame Only",
+              "labelTh": "ใช้เฟรมแรกเท่านั้น"
+            },
+            {
+              "value": "first_and_last_frames",
+              "label": "First and Last Frames",
+              "labelTh": "ใช้เฟรมแรกและเฟรมสุดท้าย"
+            },
+            {
+              "value": "reference_to_video",
+              "label": "Reference to Video",
+              "labelTh": "อ้างอิงภาพเพื่อสร้างวิดีโอ"
+            }
+          ]
+        },
+        {
+          "id": "delivery_mode",
+          "type": "select",
+          "label": "Result Type",
+          "labelTh": "ประเภทผลลัพธ์",
+          "helpText": "Default: Multi Shot. Use Multi Shot for one video with several internal beats. Use Multi Video when you want several separate prompts.",
+          "helpTextTh": "ค่าเริ่มต้น: Multi Shot ใช้เมื่ออยากได้วิดีโอเดียวที่มีหลายจังหวะภายในคลิป และใช้ Multi Video เมื่อต้องการหลายพรอมต์แยกเป็นหลายคลิป",
+          "default": "multi_shot_single_video",
+          "options": [
+            {
+              "value": "multi_shot_single_video",
+              "label": "Multi Shot (Single Video)",
+              "labelTh": "Multi Shot (วิดีโอเดียว หลายช็อต)"
+            },
+            {
+              "value": "multi_video",
+              "label": "Multi Video (Separate Clips)",
+              "labelTh": "Multi Video (แยกวิดีโอเป็นชิ้น)"
+            }
+          ]
+        },
+        {
+          "id": "multi_video_strategy",
+          "type": "select",
+          "label": "Multi Video Type",
+          "labelTh": "ประเภทของ Multi Video",
+          "helpText": "Required when Result Type is Multi Video. Choose one of the 2 Multi Video types: Continuous Story for one ongoing narrative, or Creative Variations for multiple different versions from the same topic.",
+          "helpTextTh": "จำเป็นเมื่อเลือก Result Type เป็น Multi Video ให้เลือก 1 ใน 2 แบบ คือ เรื่องต่อเนื่อง สำหรับเล่าเรื่องเดียวต่อกันหลายคลิป หรือ หลายเวอร์ชัน สำหรับทำหลายแนวคิดจากหัวข้อเดียวกัน",
+          "default": "continuous_story",
+          "dependsOn": {
+            "field": "delivery_mode",
+            "value": "multi_video"
+          },
+          "options": [
+            {
+              "value": "continuous_story",
+              "label": "Continuous Story",
+              "labelTh": "เรื่องต่อเนื่อง"
+            },
+            {
+              "value": "creative_variations",
+              "label": "Creative Variations",
+              "labelTh": "หลายเวอร์ชันสร้างสรรค์"
+            }
+          ]
+        },
+        {
+          "id": "duration_seconds",
+          "type": "slider",
+          "label": "Preferred Duration (seconds)",
+          "labelTh": "ความยาวที่ต้องการ (วินาที)",
+          "helpText": "Used for Multi Shot mode. In Multi Video mode, set the duration for each clip below. If Target Model Profile is Veo 3.1 (Kie.ai), the actual generated clip length is currently fixed at 8 seconds.",
+          "helpTextTh": "ใช้กับโหมด Multi Shot ส่วนโหมด Multi Video ให้กำหนดความยาวของแต่ละคลิปด้านล่าง หาก Target Model Profile เป็น Veo 3.1 (Kie.ai) ความยาวคลิปที่สร้างจริงปัจจุบันจะถูกล็อกไว้ที่ 8 วินาที",
+          "default": 8,
+          "dependsOn": {
+            "field": "delivery_mode",
+            "value": "multi_shot_single_video"
+          },
+          "min": 4,
+          "max": 15,
+          "step": 1
+        },
+        {
+          "id": "multi_shot_timing_mode",
+          "type": "select",
+          "label": "Multi-Shot Timing Detail",
+          "labelTh": "ระดับรายละเอียดเวลาใน Multi Shot",
+          "helpText": "Only for Multi Shot mode. Leave this on Untimed / Auto for normal use, or switch to Timed Shot Timeline if you want to map each internal shot with exact second ranges inside the total clip duration.",
+          "helpTextTh": "ใช้เฉพาะโหมด Multi Shot หากใช้งานทั่วไปให้ปล่อยเป็น Untimed / Auto แต่ถ้าต้องการกำหนดแต่ละช็อตเป็นช่วงวินาทีภายในความยาวรวมของคลิป ให้เลือก Timed Shot Timeline",
+          "default": "untimed_or_auto",
+          "dependsOn": {
+            "field": "delivery_mode",
+            "value": "multi_shot_single_video"
+          },
+          "options": [
+            {
+              "value": "untimed_or_auto",
+              "label": "Untimed / Auto (Recommended)",
+              "labelTh": "ไม่ระบุวินาที / อัตโนมัติ (แนะนำ)"
+            },
+            {
+              "value": "timed_shot_timeline",
+              "label": "Timed Shot Timeline",
+              "labelTh": "กำหนดไทม์ไลน์ช็อตตามวินาที"
+            }
+          ]
+        },
+        {
+          "id": "background_mode",
+          "type": "select",
+          "label": "Background Mode",
+          "labelTh": "โหมดพื้นหลัง",
+          "helpText": "Choose whether the final video should use a normal scenic background or a clean green-screen setup for later compositing.",
+          "helpTextTh": "เลือกว่าคลิปสุดท้ายควรใช้พื้นหลังปกติที่เป็นส่วนหนึ่งของฉาก หรือใช้กรีนสกรีนสะอาดสำหรับนำไปคอมโพสิตต่อภายหลัง",
+          "default": "normal_background",
+          "options": [
+            {
+              "value": "normal_background",
+              "label": "Normal Background",
+              "labelTh": "พื้นหลังปกติ"
+            },
+            {
+              "value": "green_screen",
+              "label": "Green Screen",
+              "labelTh": "กรีนสกรีน"
+            }
+          ]
+        },
+        {
+          "id": "language",
+          "type": "select",
+          "label": "Output Language",
+          "labelTh": "ภาษาเอาต์พุต",
+          "helpText": "Language used for the generated prompt package and note fields. The form should preselect the current page language automatically.",
+          "helpTextTh": "ภาษาที่ใช้สร้างแพ็กพรอมต์และช่อง note ต่าง ๆ โดยฟอร์มควรเลือกให้ตรงกับภาษาของหน้าปัจจุบันโดยอัตโนมัติ",
+          "default": "en",
+          "options": [
+            {
+              "value": "en",
+              "label": "English",
+              "labelTh": "อังกฤษ"
+            },
+            {
+              "value": "th",
+              "label": "Thai (ภาษาไทย)",
+              "labelTh": "ไทย"
+            }
+          ]
+        },
+        {
+          "id": "response_format",
+          "type": "select",
+          "label": "Response Format",
+          "labelTh": "รูปแบบผลลัพธ์",
+          "helpText": "Default: Plain Text. Best for most users because the result is ready to paste directly into a video model. Choose Structured JSON only if you need a machine-readable package for automation or debugging.",
+          "helpTextTh": "ค่าเริ่มต้น: Plain Text เหมาะกับผู้ใช้ส่วนใหญ่ เพราะได้ผลลัพธ์เป็นพรอมต์พร้อมนำไปใช้ทันที เลือก Structured JSON เฉพาะเมื่ออยากได้ข้อมูลแบบอ่านด้วยระบบเพื่อใช้ต่อใน automation หรือ debug",
+          "default": "plain_text",
+          "options": [
+            {
+              "value": "plain_text",
+              "label": "Plain Text (Recommended)",
+              "labelTh": "ข้อความธรรมดา (แนะนำ)"
+            },
+            {
+              "value": "structured_json",
+              "label": "Structured JSON",
+              "labelTh": "JSON แบบมีโครงสร้าง"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "multi_video_package",
+      "title": "Packaging & Continuity",
+      "titleTh": "การจัดแพ็กและความต่อเนื่อง",
+      "icon": "video",
+      "collapsible": true,
+      "collapsed": false,
+      "fields": [
+        {
+          "id": "continuity_notes",
+          "type": "textarea",
+          "label": "Continuity Notes",
+          "labelTh": "บันทึกความต่อเนื่อง",
+          "placeholder": "e.g., Keep the same courier face, the same black technical coat, and the same glowing data capsule throughout the single clip or every video in the package.",
+          "placeholderTh": "เช่น ให้คงใบหน้าผู้ส่งสาร เสื้อโค้ทเทคนิคสีดำ และแคปซูลเรืองแสงเดิมตลอดทั้งคลิปเดียวหรือทุกวิดีโอในแพ็ก",
+          "helpText": "Optional fixed details that must stay consistent. Works for both a single video and a multi-video package. If left blank, the skill will generate continuity notes automatically.",
+          "helpTextTh": "รายละเอียดที่ต้องคงเดิม ใช้ได้ทั้งกรณีวิดีโอเดียวและแพ็กหลายวิดีโอ หากเว้นว่าง skill จะสร้าง continuity notes ให้อัตโนมัติ",
+          "rows": 3
+        },
+        {
+          "id": "reference_notes",
+          "type": "textarea",
+          "label": "Reference Notes",
+          "labelTh": "บันทึกภาพอ้างอิง",
+          "placeholder": "e.g., Keep the same brown dog with floppy ears and the same black-and-white cat with playful expressions across the whole result. If images are attached, mention @Image1 to @Image9 when helpful.",
+          "placeholderTh": "เช่น ให้คงสุนัขสีน้ำตาลหูตกและแมวขาวดำสีหน้าเล่นสนุกตัวเดิมตลอดผลลัพธ์ทั้งหมด หากมีภาพแนบค่อยอ้าง @Image1 ถึง @Image9 ตามความเหมาะสม",
+          "helpText": "Optional notes explaining what visual anchors must stay stable. Works for both a single video and a multi-video package. If no images are attached, the skill should still generate a compact character or environment reference bible automatically.",
+          "helpTextTh": "ไม่บังคับ ใช้อธิบายว่าส่วนใดของภาพต้องคงเดิม ใช้ได้ทั้งกรณีวิดีโอเดียวและแพ็กหลายวิดีโอ หากไม่มีรูปแนบ skill ก็ควรสร้าง reference notes ที่เป็นรายละเอียดตัวละครหรือฉากให้เองโดยอัตโนมัติ",
+          "rows": 3
+        },
+        {
+          "id": "video_count",
+          "type": "slider",
+          "label": "Number of Videos",
+          "labelTh": "จำนวนวิดีโอ",
+          "helpText": "How many separate video prompts to generate in the same package.",
+          "helpTextTh": "จำนวนพรอมต์วิดีโอแยกที่ต้องการให้สร้างในแพ็กเดียวกัน",
+          "default": 3,
+          "dependsOn": {
+            "field": "delivery_mode",
+            "value": "multi_video"
+          },
+          "min": 2,
+          "max": 6,
+          "step": 1
+        },
+        {
+          "id": "video_segments",
+          "type": "array",
+          "label": "Video Segments",
+          "labelTh": "รายละเอียดแต่ละวิดีโอ",
+          "helpText": "Add one item per video. Each item must define its own duration and can include an optional story focus or creative angle.",
+          "helpTextTh": "เพิ่มให้ครบตามจำนวนวิดีโอ แต่ละรายการต้องกำหนดความยาวของคลิปเอง และสามารถใส่โฟกัสของตอนหรือแนวคิดของเวอร์ชันนั้นได้",
+          "itemLabel": "Video",
+          "dependsOn": {
+            "field": "delivery_mode",
+            "value": "multi_video"
+          },
+          "minItems": 2,
+          "maxItems": 6,
+          "itemFields": [
+            {
+              "id": "segment_title",
+              "type": "text",
+              "label": "Segment Title",
+              "labelTh": "ชื่อตอน",
+              "helpText": "Optional label such as Setup, Pursuit, Reveal, or Ending.",
+              "helpTextTh": "ชื่อสั้น ๆ เช่น เริ่มเรื่อง ไล่ล่า เปิดเผย หรือจบเรื่อง"
+            },
+            {
+              "id": "duration_seconds",
+              "type": "number",
+              "label": "Duration (seconds)",
+              "labelTh": "ความยาว (วินาที)",
+              "helpText": "Required duration for this specific video clip. If Target Model Profile is Veo 3.1 (Kie.ai), each generated clip is effectively 8 seconds.",
+              "helpTextTh": "ความยาวที่ต้องมีของคลิปนี้ หาก Target Model Profile เป็น Veo 3.1 (Kie.ai) คลิปที่สร้างจริงแต่ละคลิปจะเป็น 8 วินาที",
+              "required": true,
+              "min": 4,
+              "max": 15,
+              "step": 1
+            },
+            {
+              "id": "segment_focus",
+              "type": "textarea",
+              "label": "Segment Focus",
+              "labelTh": "โฟกัสของตอน",
+              "helpText": "Optional story note for what this clip should emphasize.",
+              "helpTextTh": "หมายเหตุเสริมว่าแต่ละคลิปควรเน้นอะไรเป็นหลัก"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "storytelling",
+      "title": "Storytelling Style",
+      "titleTh": "สไตล์การเล่าเรื่อง",
+      "icon": "sparkles",
+      "collapsible": true,
+      "collapsed": false,
+      "fields": [
+        {
+          "id": "audio_mode",
+          "type": "select",
+          "label": "Audio Mode",
+          "labelTh": "รูปแบบเสียงของการเล่าเรื่อง",
+          "helpText": "Choose whether the scene should feel driven by spoken dialogue, voiceover, ambience, sound effects, music-led energy, or near-silence.",
+          "helpTextTh": "เลือกว่าคลิปควรขับเคลื่อนด้วยบทพูด เสียงบรรยาย บรรยากาศ เสียงเอฟเฟกต์ ความรู้สึกแบบมีดนตรีนำ หรือเกือบไร้เสียง",
+          "default": "auto",
+          "options": [
+            {
+              "value": "auto",
+              "label": "Auto",
+              "labelTh": "อัตโนมัติ"
+            },
+            {
+              "value": "spoken_dialogue",
+              "label": "Spoken Dialogue",
+              "labelTh": "บทพูดของตัวละคร"
+            },
+            {
+              "value": "voiceover",
+              "label": "Voiceover",
+              "labelTh": "เสียงบรรยาย"
+            },
+            {
+              "value": "ambience_only",
+              "label": "Ambience Only",
+              "labelTh": "มีแต่บรรยากาศ"
+            },
+            {
+              "value": "sfx_only",
+              "label": "SFX Only",
+              "labelTh": "ใช้แต่เสียงเอฟเฟกต์"
+            },
+            {
+              "value": "music_led_feel",
+              "label": "Music-Led Feel",
+              "labelTh": "อารมณ์แบบมีดนตรีนำ"
+            },
+            {
+              "value": "near_silent",
+              "label": "Near Silent",
+              "labelTh": "เกือบเงียบ"
+            }
+          ]
+        },
+        {
+          "id": "dialogue_language",
+          "type": "select",
+          "label": "Dialogue Language",
+          "labelTh": "ภาษาบทพูด",
+          "helpText": "Auto detects from the language the user writes in, or from any explicit language instruction inside the brief.",
+          "helpTextTh": "Auto จะดูจากภาษาที่ user พิมพ์ หรือจากคำสั่งที่ระบุภาษาไว้ในข้อความบรีฟโดยตรง",
+          "default": "auto",
+          "options": [
+            {
+              "value": "auto",
+              "label": "Auto Detect",
+              "labelTh": "ตรวจจับอัตโนมัติ"
+            },
+            {
+              "value": "th",
+              "label": "Thai",
+              "labelTh": "ไทย"
+            },
+            {
+              "value": "en",
+              "label": "English",
+              "labelTh": "อังกฤษ"
+            },
+            {
+              "value": "mixed",
+              "label": "Mixed",
+              "labelTh": "ผสม"
+            },
+            {
+              "value": "ja",
+              "label": "Japanese",
+              "labelTh": "ญี่ปุ่น"
+            },
+            {
+              "value": "ko",
+              "label": "Korean",
+              "labelTh": "เกาหลี"
+            },
+            {
+              "value": "zh",
+              "label": "Chinese",
+              "labelTh": "จีน"
+            },
+            {
+              "value": "es",
+              "label": "Spanish",
+              "labelTh": "สเปน"
+            },
+            {
+              "value": "fr",
+              "label": "French",
+              "labelTh": "ฝรั่งเศส"
+            },
+            {
+              "value": "de",
+              "label": "German",
+              "labelTh": "เยอรมัน"
+            }
+          ]
+        },
+        {
+          "id": "dialogue_density",
+          "type": "select",
+          "label": "Dialogue Density",
+          "labelTh": "ความหนาแน่นของบทพูด",
+          "helpText": "Optional. Controls how much spoken content the clip should carry. Combine with Audio Mode if you want no speech, voiceover, or only short exchanges.",
+          "helpTextTh": "ไม่บังคับ ใช้กำหนดว่าคลิปควรมีบทพูดมากน้อยแค่ไหน และสามารถใช้คู่กับ Audio Mode เพื่อบอกว่าไม่พูดเลย ใช้เสียงบรรยาย หรือพูดสั้น ๆ",
+          "default": "auto",
+          "options": [
+            {
+              "value": "auto",
+              "label": "Auto",
+              "labelTh": "อัตโนมัติ"
+            },
+            {
+              "value": "none",
+              "label": "None",
+              "labelTh": "ไม่มี"
+            },
+            {
+              "value": "single_line",
+              "label": "Single Line",
+              "labelTh": "หนึ่งประโยค"
+            },
+            {
+              "value": "brief_exchange",
+              "label": "Brief Exchange",
+              "labelTh": "โต้ตอบสั้น ๆ"
+            },
+            {
+              "value": "ambient_only",
+              "label": "Ambient Only",
+              "labelTh": "มีแค่บรรยากาศ"
+            }
+          ]
+        },
+        {
+          "id": "story_shape",
+          "type": "select",
+          "label": "Story Shape",
+          "labelTh": "รูปแบบการเดินเรื่อง",
+          "helpText": "Controls how the clip progresses internally: a single moment, a reveal, a micro-story, escalation, transformation, a loop, and more.",
+          "helpTextTh": "กำหนดว่าคลิปจะเดินเรื่องภายในอย่างไร เช่น โมเมนต์เดียว เปิดเผย มีเรื่องย่อสั้น ๆ ยกระดับความเข้มข้น เปลี่ยนสภาพ หรือวนลูป",
+          "default": "auto",
+          "options": [
+            {
+              "value": "auto",
+              "label": "Auto",
+              "labelTh": "อัตโนมัติ"
+            },
+            {
+              "value": "single_moment",
+              "label": "Single Moment",
+              "labelTh": "โมเมนต์เดียว"
+            },
+            {
+              "value": "three_beat_micro_story",
+              "label": "Three-Beat Micro Story",
+              "labelTh": "เรื่องสั้น 3 จังหวะ"
+            },
+            {
+              "value": "reveal_payoff",
+              "label": "Reveal and Payoff",
+              "labelTh": "ค่อยเปิดเผยแล้วจบแบบได้ผลตอบแทน"
+            },
+            {
+              "value": "conversation_loop",
+              "label": "Conversation Loop",
+              "labelTh": "บทสนทนาแบบวนดูซ้ำได้"
+            },
+            {
+              "value": "escalation",
+              "label": "Escalation",
+              "labelTh": "ยกระดับความเข้มข้น"
+            },
+            {
+              "value": "transformation",
+              "label": "Transformation",
+              "labelTh": "การเปลี่ยนสภาพ"
+            },
+            {
+              "value": "cliffhanger",
+              "label": "Cliffhanger",
+              "labelTh": "ค้างปลายให้อยากดูต่อ"
+            },
+            {
+              "value": "seamless_loop",
+              "label": "Seamless Loop",
+              "labelTh": "จบแบบวนลูปได้"
+            }
+          ]
+        },
+        {
+          "id": "ending_style",
+          "type": "select",
+          "label": "Ending Style",
+          "labelTh": "สไตล์ตอนจบ",
+          "helpText": "Choose how the clip should land at the end: with a punchline, soft resolve, visual reveal, emotional release, cliffhanger, or loop-back.",
+          "helpTextTh": "เลือกว่าคลิปควรลงท้ายแบบไหน เช่น มุกปิดท้าย จบละมุน เปิดเผยภาพสำคัญ ปล่อยอารมณ์ จบค้าง หรือจบแบบย้อนกลับไปต้นคลิป",
+          "default": "auto",
+          "options": [
+            {
+              "value": "auto",
+              "label": "Auto",
+              "labelTh": "อัตโนมัติ"
+            },
+            {
+              "value": "punchline",
+              "label": "Punchline",
+              "labelTh": "มุกปิดท้าย"
+            },
+            {
+              "value": "soft_resolve",
+              "label": "Soft Resolve",
+              "labelTh": "จบละมุน"
+            },
+            {
+              "value": "emotional_release",
+              "label": "Emotional Release",
+              "labelTh": "ปล่อยอารมณ์"
+            },
+            {
+              "value": "visual_reveal",
+              "label": "Visual Reveal",
+              "labelTh": "จบด้วยภาพเปิดเผย"
+            },
+            {
+              "value": "cliffhanger",
+              "label": "Cliffhanger",
+              "labelTh": "จบค้าง"
+            },
+            {
+              "value": "loop_back",
+              "label": "Loop Back",
+              "labelTh": "จบแบบย้อนกลับไปต้นคลิป"
+            }
+          ]
+        },
+        {
+          "id": "performance_style",
+          "type": "select",
+          "label": "Performance Style",
+          "labelTh": "สไตล์การแสดง / ปฏิกิริยา",
+          "helpText": "Choose how characters or animated subjects should behave and react, from natural to playful, deadpan, cartoonish, or heroic.",
+          "helpTextTh": "เลือกว่าตัวละครหรือสิ่งมีชีวิตในฉากควรแสดงออกและตอบสนองแบบไหน ตั้งแต่ธรรมชาติ สนุก เฉยนิ่ง การ์ตูนจัดจ้าน หรือฮีโร่แอ็กชัน",
+          "default": "auto",
+          "options": [
+            {
+              "value": "auto",
+              "label": "Auto",
+              "labelTh": "อัตโนมัติ"
+            },
+            {
+              "value": "naturalistic",
+              "label": "Naturalistic",
+              "labelTh": "ธรรมชาติสมจริง"
+            },
+            {
+              "value": "playful",
+              "label": "Playful",
+              "labelTh": "ขี้เล่น"
+            },
+            {
+              "value": "deadpan",
+              "label": "Deadpan",
+              "labelTh": "นิ่งแห้งแบบมีชั้นเชิง"
+            },
+            {
+              "value": "comedic_exaggerated",
+              "label": "Comedic Exaggerated",
+              "labelTh": "ตลกแบบเล่นใหญ่"
+            },
+            {
+              "value": "cartoon_expressive",
+              "label": "Cartoon Expressive",
+              "labelTh": "การ์ตูนสีหน้าชัด"
+            },
+            {
+              "value": "heroic_action",
+              "label": "Heroic Action",
+              "labelTh": "ฮีโร่พร้อมแอ็กชัน"
+            }
+          ]
+        },
+        {
+          "id": "imagination_level",
+          "type": "select",
+          "label": "Imagination Level",
+          "labelTh": "ระดับความเกินจริง",
+          "helpText": "Choose how close to reality or how dreamlike, surreal, or impossible the imagery may become.",
+          "helpTextTh": "เลือกระดับความใกล้ความจริงหรือความฝัน เหนือจริง และเกินจินตนาการของภาพ",
+          "default": "auto",
+          "options": [
+            {
+              "value": "auto",
+              "label": "Auto",
+              "labelTh": "อัตโนมัติ"
+            },
+            {
+              "value": "grounded",
+              "label": "Grounded",
+              "labelTh": "อยู่บนพื้นฐานความจริง"
+            },
+            {
+              "value": "stylized",
+              "label": "Stylized",
+              "labelTh": "มีสไตล์"
+            },
+            {
+              "value": "dreamlike",
+              "label": "Dreamlike",
+              "labelTh": "คล้ายความฝัน"
+            },
+            {
+              "value": "surreal",
+              "label": "Surreal",
+              "labelTh": "เหนือจริง"
+            },
+            {
+              "value": "impossible",
+              "label": "Impossible",
+              "labelTh": "เกินจินตนาการ"
+            }
+          ]
+        },
+        {
+          "id": "scene_arc",
+          "type": "select",
+          "label": "Scene Arc",
+          "labelTh": "รูปแบบการเล่าในคลิป",
+          "helpText": "Optional. This is the broad cinematic arc of the clip. Leave on Auto if you want the skill to infer it from the topic and storytelling preset.",
+          "helpTextTh": "ไม่บังคับ นี่คือโครง arc เชิงภาพยนตร์โดยรวมของคลิป หากต้องการให้ skill คิดจากหัวข้อและ preset การเล่าเรื่องให้เอง ให้ปล่อยเป็น Auto",
+          "default": "auto",
+          "options": [
+            {
+              "value": "auto",
+              "label": "Auto",
+              "labelTh": "อัตโนมัติ"
+            },
+            {
+              "value": "single_moment",
+              "label": "Single Moment",
+              "labelTh": "โมเมนต์เดียวเด่นชัด"
+            },
+            {
+              "value": "reveal",
+              "label": "Reveal",
+              "labelTh": "ค่อย ๆ เปิดเผย"
+            },
+            {
+              "value": "mini_story",
+              "label": "Mini Story",
+              "labelTh": "เรื่องสั้นย่อ"
+            },
+            {
+              "value": "product_showcase",
+              "label": "Product Showcase",
+              "labelTh": "โชว์สินค้า"
+            },
+            {
+              "value": "action_sequence",
+              "label": "Action Sequence",
+              "labelTh": "ฉากแอ็กชัน"
+            },
+            {
+              "value": "performance_loop",
+              "label": "Performance / Loop",
+              "labelTh": "เพอร์ฟอร์แมนซ์ / ลูป"
+            }
+          ]
+        },
+        {
+          "id": "subject_count",
+          "type": "select",
+          "label": "Subject Count",
+          "labelTh": "จำนวนตัวแบบสำคัญ",
+          "helpText": "Optional. Keep the number of important on-screen subjects realistic for a short cinematic clip.",
+          "helpTextTh": "ไม่บังคับ กำหนดจำนวนตัวแบบหลักในฉากให้เหมาะกับคลิปสั้นแบบภาพยนตร์",
+          "default": "auto",
+          "options": [
+            {
+              "value": "auto",
+              "label": "Auto",
+              "labelTh": "อัตโนมัติ"
+            },
+            {
+              "value": "single_subject",
+              "label": "Single Subject",
+              "labelTh": "ตัวแบบเดียว"
+            },
+            {
+              "value": "two_subjects",
+              "label": "Two Subjects",
+              "labelTh": "สองตัวแบบ"
+            },
+            {
+              "value": "small_group",
+              "label": "Small Group",
+              "labelTh": "กลุ่มเล็ก"
+            }
+          ]
+        },
+        {
+          "id": "continuity_mode",
+          "type": "select",
+          "label": "Continuity Mode",
+          "labelTh": "รูปแบบความต่อเนื่อง",
+          "helpText": "Optional. Choose whether the clip should feel like one take, invisible edits, or a beat-based sequence.",
+          "helpTextTh": "ไม่บังคับ เลือกว่าคลิปควรรู้สึกเหมือนช็อตเดียว ต่อเนื่องแบบเนียนตา หรือเป็นลำดับจังหวะชัดเจน",
+          "default": "auto",
+          "options": [
+            {
+              "value": "auto",
+              "label": "Auto",
+              "labelTh": "อัตโนมัติ"
+            },
+            {
+              "value": "single_continuous_shot",
+              "label": "Single Continuous Shot",
+              "labelTh": "ช็อตเดียวต่อเนื่อง"
+            },
+            {
+              "value": "invisible_cut_flow",
+              "label": "Invisible-Cut Flow",
+              "labelTh": "ต่อเนื่องแบบคัตเนียน"
+            },
+            {
+              "value": "three_beat_sequence",
+              "label": "Three-Beat Sequence",
+              "labelTh": "ลำดับ 3 จังหวะ"
+            },
+            {
+              "value": "editorial_montage",
+              "label": "Editorial Montage",
+              "labelTh": "มอนทาจแบบตัดต่อ"
+            }
+          ]
+        },
+        {
+          "id": "motion_realism",
+          "type": "select",
+          "label": "Motion Realism",
+          "labelTh": "ความสมจริงของการเคลื่อนไหว",
+          "helpText": "Optional. Choose how grounded or stylized movement should feel.",
+          "helpTextTh": "ไม่บังคับ เลือกว่าการเคลื่อนไหวควรดูสมจริงหรือสไตล์จัดมากน้อยแค่ไหน",
+          "default": "auto",
+          "options": [
+            {
+              "value": "auto",
+              "label": "Auto",
+              "labelTh": "อัตโนมัติ"
+            },
+            {
+              "value": "grounded_and_believable",
+              "label": "Grounded and Believable",
+              "labelTh": "สมจริงและน่าเชื่อ"
+            },
+            {
+              "value": "polished_stylized",
+              "label": "Polished Stylized",
+              "labelTh": "มีสไตล์แต่เนี้ยบ"
+            },
+            {
+              "value": "restrained_naturalism",
+              "label": "Restrained Naturalism",
+              "labelTh": "ธรรมชาติแบบยับยั้ง"
+            },
+            {
+              "value": "dynamic_but_controlled",
+              "label": "Dynamic but Controlled",
+              "labelTh": "มีพลังแต่คุมได้"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "story",
+      "title": "Story Details",
+      "titleTh": "รายละเอียดเนื้อหา",
+      "icon": "video",
+      "collapsible": true,
+      "collapsed": true,
+      "fields": [
+        {
+          "id": "main_subject",
+          "type": "textarea",
+          "label": "Main Subject",
+          "labelTh": "ตัวแบบหลัก",
+          "placeholder": "Who or what should the viewer focus on?",
+          "placeholderTh": "ผู้ชมควรโฟกัสที่ใครหรืออะไร",
+          "helpText": "Describe the main character, product, creature, or object with memorable visual detail.",
+          "helpTextTh": "อธิบายตัวละคร สินค้า สิ่งมีชีวิต หรือวัตถุหลักให้เห็นภาพชัด",
+          "rows": 3
+        },
+        {
+          "id": "setting",
+          "type": "textarea",
+          "label": "Setting / Environment",
+          "labelTh": "ฉาก / สภาพแวดล้อม",
+          "placeholder": "Where does the scene happen?",
+          "placeholderTh": "เหตุการณ์เกิดขึ้นที่ไหน",
+          "helpText": "Describe the location, background, weather, and surrounding atmosphere.",
+          "helpTextTh": "อธิบายสถานที่ ฉากหลัง สภาพอากาศ และบรรยากาศโดยรอบ",
+          "rows": 3
+        },
+        {
+          "id": "action",
+          "type": "textarea",
+          "label": "Action / Motion",
+          "labelTh": "การกระทำ / การเคลื่อนไหว",
+          "placeholder": "What should happen over time?",
+          "placeholderTh": "อยากให้เกิดอะไรขึ้นตามลำดับเวลา",
+          "helpText": "Describe what happens in the video from the opening frame to the ending image.",
+          "helpTextTh": "อธิบายสิ่งที่เกิดขึ้นในวิดีโอตั้งแต่ต้นจนจบ",
+          "rows": 4
+        },
+        {
+          "id": "blocking_and_staging",
+          "type": "textarea",
+          "label": "Blocking and Staging",
+          "labelTh": "การวางตำแหน่งและการกำกับการเคลื่อน",
+          "placeholder": "Where does the subject start, how do they move, and how is the frame staged?",
+          "placeholderTh": "ตัวแบบเริ่มตรงไหน เคลื่อนอย่างไร และควรวางฉากอย่างไร",
+          "helpText": "Describe entrances, exits, body orientation, hero pose, and spatial staging.",
+          "helpTextTh": "อธิบายการเข้าฉาก ออกจากฉาก ทิศทางร่างกาย ท่าเด่น และการวางพื้นที่ในภาพ",
+          "rows": 3
+        },
+        {
+          "id": "foreground_midground_background",
+          "type": "textarea",
+          "label": "Foreground / Midground / Background",
+          "labelTh": "ระยะหน้า / กลาง / หลัง",
+          "placeholder": "Foreground particles, subject in midground, layered city depth in background...",
+          "placeholderTh": "มีองค์ประกอบด้านหน้า ตัวแบบอยู่ระยะกลาง และฉากลึกด้านหลัง...",
+          "helpText": "Describe visual layers to create depth and cinematic separation.",
+          "helpTextTh": "อธิบายการแบ่งระยะในภาพเพื่อให้เฟรมลึกและดูเป็นภาพยนตร์มากขึ้น",
+          "rows": 3
+        },
+        {
+          "id": "scene_beats",
+          "type": "array",
+          "label": "Scene Beats (Optional)",
+          "labelTh": "จังหวะฉาก (ไม่บังคับ)",
+          "helpText": "Break the clip into simple beats if you want tighter control over progression without assigning exact second ranges. If you also use Timed Shot Timeline, these beats become supporting context only.",
+          "helpTextTh": "แบ่งคลิปเป็นจังหวะย่อย ๆ หากต้องการคุมลำดับเหตุการณ์โดยไม่ต้องกำหนดช่วงวินาที และถ้าใช้ Timed Shot Timeline ด้วย ระบบจะใช้ Scene Beats เป็นบริบทเสริมเท่านั้น",
+          "itemLabel": "Beat",
+          "maxItems": 4,
+          "itemFields": [
+            {
+              "id": "beat_label",
+              "type": "text",
+              "label": "Beat Label",
+              "helpText": "Short label such as Opening, Middle, Ending.",
+              "labelTh": "ชื่อจังหวะ",
+              "helpTextTh": "ชื่อสั้น ๆ เช่น เปิดเรื่อง กลางเรื่อง หรือจบเรื่อง"
+            },
+            {
+              "id": "beat_description",
+              "type": "textarea",
+              "label": "Beat Description",
+              "helpText": "What happens in this beat?",
+              "labelTh": "รายละเอียดจังหวะ",
+              "helpTextTh": "ในจังหวะนี้ควรเกิดอะไรขึ้น"
+            },
+            {
+              "id": "camera_note",
+              "type": "textarea",
+              "label": "Camera Note",
+              "helpText": "Optional framing or movement note.",
+              "labelTh": "หมายเหตุกล้อง",
+              "helpTextTh": "หมายเหตุเสริมเกี่ยวกับมุมหรือการเคลื่อนกล้อง"
+            },
+            {
+              "id": "transition_note",
+              "type": "textarea",
+              "label": "Transition / Ending Note",
+              "helpText": "Optional cue for how this beat flows to the next image.",
+              "labelTh": "หมายเหตุการเปลี่ยนภาพ / ตอนจบ",
+              "helpTextTh": "แนะแนวว่าจังหวะนี้ควรเชื่อมไปภาพถัดไปหรือจบอย่างไร"
+            }
+          ]
+        },
+        {
+          "id": "timed_shot_plan",
+          "type": "array",
+          "label": "Timed Shot Timeline",
+          "labelTh": "ไทม์ไลน์ช็อตตามวินาที",
+          "helpText": "Use this when you want one single video with multiple internal shots mapped by exact second ranges, such as 0-2s, 2-4s, 4-5s, and so on. The total timeline should fit inside the Preferred Duration.",
+          "helpTextTh": "ใช้เมื่อคุณต้องการวิดีโอเดียวที่มีหลายช็อตภายในคลิป และอยากกำหนดเป็นช่วงวินาทีชัดเจน เช่น 0-2s, 2-4s, 4-5s เป็นต้น โดยไทม์ไลน์รวมควรอยู่ภายในความยาวรวมของคลิป",
+          "itemLabel": "Shot",
+          "dependsOn": {
+            "all": [
+              {
+                "field": "delivery_mode",
+                "value": "multi_shot_single_video"
+              },
+              {
+                "field": "multi_shot_timing_mode",
+                "value": "timed_shot_timeline"
+              }
+            ]
+          },
+          "minItems": 2,
+          "maxItems": 8,
+          "itemFields": [
+            {
+              "id": "shot_label",
+              "type": "text",
+              "label": "Shot Label",
+              "labelTh": "ชื่อช็อต",
+              "helpText": "Optional short name such as Opening Walk, Panic Reveal, Freeze, or Laughing Payoff.",
+              "helpTextTh": "ชื่อสั้น ๆ เช่น เดินเปิดเรื่อง เปิดเผยความตื่นตระหนก ช็อตหยุดชะงัก หรือช็อตหัวเราะปิดท้าย"
+            },
+            {
+              "id": "start_second",
+              "type": "number",
+              "label": "Start Second",
+              "labelTh": "วินาทีเริ่มต้น",
+              "helpText": "When this shot begins from the start of the clip.",
+              "helpTextTh": "ช็อตนี้เริ่มต้นที่วินาทีเท่าไรนับจากต้นคลิป",
+              "required": true,
+              "min": 0,
+              "max": 15,
+              "step": 0.1
+            },
+            {
+              "id": "end_second",
+              "type": "number",
+              "label": "End Second",
+              "labelTh": "วินาทีสิ้นสุด",
+              "helpText": "When this shot ends. This should be later than Start Second and still fit inside the total clip duration.",
+              "helpTextTh": "ช็อตนี้จบที่วินาทีเท่าไร โดยควรมากกว่าเวลาเริ่มต้นและยังอยู่ภายในความยาวรวมของคลิป",
+              "required": true,
+              "min": 0.1,
+              "max": 15,
+              "step": 0.1
+            },
+            {
+              "id": "shot_description",
+              "type": "textarea",
+              "label": "Shot Description",
+              "labelTh": "รายละเอียดช็อต",
+              "helpText": "Describe what happens during this specific timed shot.",
+              "helpTextTh": "อธิบายว่าในช็อตช่วงเวลานี้ควรเกิดอะไรขึ้น",
+              "required": true
+            },
+            {
+              "id": "camera_note",
+              "type": "textarea",
+              "label": "Camera Note",
+              "labelTh": "หมายเหตุกล้อง",
+              "helpText": "Optional framing, lens, or camera movement note for this shot.",
+              "helpTextTh": "หมายเหตุเสริมเกี่ยวกับเฟรม เลนส์ หรือการเคลื่อนกล้องของช็อตนี้"
+            },
+            {
+              "id": "audio_or_dialogue_cue",
+              "type": "textarea",
+              "label": "Audio / Dialogue Cue",
+              "labelTh": "คิวเสียง / บทพูด",
+              "helpText": "Optional cue for spoken dialogue, narration, ambience, sound effects, or music emphasis during this shot.",
+              "helpTextTh": "คิวเสริมเกี่ยวกับบทพูด เสียงบรรยาย บรรยากาศ เสียงเอฟเฟกต์ หรือจังหวะดนตรีของช็อตนี้"
+            },
+            {
+              "id": "transition_note",
+              "type": "textarea",
+              "label": "Transition Note",
+              "labelTh": "หมายเหตุการเปลี่ยนช็อต",
+              "helpText": "Optional note for how this shot should cut, intercut, escalate, or flow into the next shot.",
+              "helpTextTh": "หมายเหตุเสริมว่าช็อตนี้ควรคัต สลับภาพ ยกระดับ หรือไหลต่อไปช็อตถัดไปอย่างไร"
+            }
+          ]
+        },
+        {
+          "id": "dialogue_or_text",
+          "type": "textarea",
+          "label": "Dialogue or On-Screen Text",
+          "labelTh": "บทพูดหรือข้อความบนจอ",
+          "placeholder": "Optional spoken line, narration cue, or title card text...",
+          "placeholderTh": "บทพูด คำบรรยาย หรือข้อความบนจอ (ไม่บังคับ)",
+          "helpText": "Use this only if the clip needs spoken lines, narration cues, or text on screen. Otherwise leave it blank and let the storytelling preset guide the output.",
+          "helpTextTh": "กรอกเมื่อคลิปต้องมีบทพูด เสียงบรรยาย หรือข้อความบนจอ หากไม่จำเป็นสามารถเว้นว่างและให้ preset การเล่าเรื่องช่วยกำหนดให้เองได้",
+          "rows": 2
+        }
+      ]
+    },
+    {
+      "id": "look",
+      "title": "Cinematic Look & Camera",
+      "titleTh": "ลุคภาพยนตร์และกล้อง",
+      "icon": "camera",
+      "collapsible": true,
+      "collapsed": true,
+      "fields": [
+        {
+          "id": "aspect_ratio",
+          "type": "select",
+          "label": "Aspect Ratio",
+          "labelTh": "อัตราส่วนภาพ",
+          "helpText": "Optional. Leave on Auto if you want the skill to choose the most natural framing for the topic.",
+          "helpTextTh": "ไม่บังคับ ปล่อยเป็น Auto ได้ หากต้องการให้ skill เลือกสัดส่วนภาพที่เหมาะกับหัวข้อ",
+          "default": "auto",
+          "options": [
+            {
+              "value": "auto",
+              "label": "Auto",
+              "labelTh": "อัตโนมัติ"
+            },
+            {
+              "value": "16:9",
+              "label": "16:9 Landscape",
+              "labelTh": "16:9 แนวนอน"
+            },
+            {
+              "value": "9:16",
+              "label": "9:16 Vertical",
+              "labelTh": "9:16 แนวตั้ง"
+            },
+            {
+              "value": "1:1",
+              "label": "1:1 Square",
+              "labelTh": "1:1 จัตุรัส"
+            },
+            {
+              "value": "4:5",
+              "label": "4:5 Portrait",
+              "labelTh": "4:5 แนวตั้ง"
+            }
+          ]
+        },
+        {
+          "id": "visual_style",
+          "type": "select",
+          "label": "Visual Style",
+          "labelTh": "สไตล์ภาพ",
+          "default": "auto",
+          "options": [
+            {
+              "value": "auto",
+              "label": "Auto",
+              "labelTh": "อัตโนมัติ"
+            },
+            {
+              "value": "cinematic_live_action",
+              "label": "Cinematic Live Action",
+              "labelTh": "ภาพยนตร์ไลฟ์แอ็กชัน"
+            },
+            {
+              "value": "luxury_commercial",
+              "label": "Luxury Commercial",
+              "labelTh": "โฆษณาหรู"
+            },
+            {
+              "value": "dark_noir",
+              "label": "Dark Noir",
+              "labelTh": "นัวร์หม่น"
+            },
+            {
+              "value": "dreamy_poetic",
+              "label": "Dreamy / Poetic",
+              "labelTh": "ฝันละมุน / กวี"
+            },
+            {
+              "value": "epic_fantasy",
+              "label": "Epic Fantasy",
+              "labelTh": "แฟนตาซียิ่งใหญ่"
+            },
+            {
+              "value": "sci_fi_future",
+              "label": "Sci-Fi Future",
+              "labelTh": "ไซไฟอนาคต"
+            },
+            {
+              "value": "documentary_cinematic",
+              "label": "Documentary Cinematic",
+              "labelTh": "สารคดีแบบภาพยนตร์"
+            },
+            {
+              "value": "music_video",
+              "label": "Music Video",
+              "labelTh": "มิวสิกวิดีโอ"
+            },
+            {
+              "value": "anime_cinematic",
+              "label": "Anime Cinematic",
+              "labelTh": "อนิเมะเชิงภาพยนตร์"
+            },
+            {
+              "value": "social_short_cinematic",
+              "label": "Social Short Cinematic",
+              "labelTh": "คลิปสั้นเชิงภาพยนตร์"
+            }
+          ],
+          "helpText": "Optional. Overall production flavor. Leave on Auto if you want the skill to infer the best match from the topic and storytelling preset.",
+          "helpTextTh": "ไม่บังคับ ใช้กำหนดรสชาติของงานภาพโดยรวม หากต้องการให้ skill เลือกจากหัวข้อและ preset การเล่าเรื่อง ให้ปล่อยเป็น Auto"
+        },
+        {
+          "id": "mood",
+          "type": "select",
+          "label": "Mood",
+          "labelTh": "อารมณ์",
+          "default": "auto",
+          "options": [
+            {
+              "value": "auto",
+              "label": "Auto",
+              "labelTh": "อัตโนมัติ"
+            },
+            {
+              "value": "dramatic",
+              "label": "Dramatic",
+              "labelTh": "ดรามาติก"
+            },
+            {
+              "value": "tense",
+              "label": "Tense",
+              "labelTh": "ตึงเครียด"
+            },
+            {
+              "value": "romantic",
+              "label": "Romantic",
+              "labelTh": "โรแมนติก"
+            },
+            {
+              "value": "mysterious",
+              "label": "Mysterious",
+              "labelTh": "ลึกลับ"
+            },
+            {
+              "value": "hopeful",
+              "label": "Hopeful",
+              "labelTh": "มีความหวัง"
+            },
+            {
+              "value": "melancholic",
+              "label": "Melancholic",
+              "labelTh": "หม่นเศร้า"
+            },
+            {
+              "value": "energetic",
+              "label": "Energetic",
+              "labelTh": "มีพลัง"
+            },
+            {
+              "value": "luxurious",
+              "label": "Luxurious",
+              "labelTh": "หรูหรา"
+            },
+            {
+              "value": "playful",
+              "label": "Playful",
+              "labelTh": "สนุก"
+            }
+          ],
+          "helpText": "Optional. Emotional tone of the clip. Leave on Auto if you want the skill to infer the strongest mood from the brief.",
+          "helpTextTh": "ไม่บังคับ ใช้กำหนดอารมณ์ของคลิป หากต้องการให้ skill เลือกมู้ดที่เหมาะที่สุดจาก brief ให้ปล่อยเป็น Auto"
+        },
+        {
+          "id": "camera_movement",
+          "type": "select",
+          "label": "Camera Movement",
+          "labelTh": "การเคลื่อนกล้อง",
+          "default": "auto",
+          "options": [
+            {
+              "value": "auto",
+              "label": "Auto",
+              "labelTh": "อัตโนมัติ"
+            },
+            {
+              "value": "static",
+              "label": "Static",
+              "labelTh": "นิ่ง"
+            },
+            {
+              "value": "slow_push_in",
+              "label": "Slow Push In",
+              "labelTh": "ค่อย ๆ ดันเข้า"
+            },
+            {
+              "value": "pull_back",
+              "label": "Pull Back",
+              "labelTh": "ถอยออก"
+            },
+            {
+              "value": "tracking",
+              "label": "Tracking",
+              "labelTh": "ตามวัตถุ"
+            },
+            {
+              "value": "orbit",
+              "label": "Orbit",
+              "labelTh": "หมุนรอบ"
+            },
+            {
+              "value": "handheld",
+              "label": "Handheld",
+              "labelTh": "แฮนด์เฮลด์"
+            },
+            {
+              "value": "gimbal_follow",
+              "label": "Gimbal Follow",
+              "labelTh": "กิมบอลติดตาม"
+            },
+            {
+              "value": "drone_glide",
+              "label": "Drone Glide",
+              "labelTh": "โดรนลื่นไหล"
+            },
+            {
+              "value": "mixed",
+              "label": "Mixed / Adaptive",
+              "labelTh": "ผสม / ปรับตามจังหวะ"
+            }
+          ]
+        },
+        {
+          "id": "camera_angle",
+          "type": "select",
+          "label": "Camera Angle",
+          "labelTh": "มุมกล้อง",
+          "default": "auto",
+          "options": [
+            {
+              "value": "auto",
+              "label": "Auto",
+              "labelTh": "อัตโนมัติ"
+            },
+            {
+              "value": "eye_level",
+              "label": "Eye Level",
+              "labelTh": "ระดับสายตา"
+            },
+            {
+              "value": "low_angle",
+              "label": "Low Angle",
+              "labelTh": "เสยต่ำ"
+            },
+            {
+              "value": "high_angle",
+              "label": "High Angle",
+              "labelTh": "กดสูง"
+            },
+            {
+              "value": "overhead",
+              "label": "Overhead",
+              "labelTh": "มุมบน"
+            },
+            {
+              "value": "pov",
+              "label": "Point of View",
+              "labelTh": "มุมมองตัวละคร"
+            },
+            {
+              "value": "mixed",
+              "label": "Mixed / Adaptive",
+              "labelTh": "ผสม / ปรับตามจังหวะ"
+            }
+          ]
+        },
+        {
+          "id": "shot_composition",
+          "type": "select",
+          "label": "Shot Composition",
+          "labelTh": "การจัดเฟรม",
+          "default": "auto",
+          "options": [
+            {
+              "value": "auto",
+              "label": "Auto",
+              "labelTh": "อัตโนมัติ"
+            },
+            {
+              "value": "close_up",
+              "label": "Close-Up Focus",
+              "labelTh": "โคลสอัป"
+            },
+            {
+              "value": "medium",
+              "label": "Medium Shot",
+              "labelTh": "มีเดียมช็อต"
+            },
+            {
+              "value": "wide",
+              "label": "Wide Cinematic Frame",
+              "labelTh": "เฟรมกว้าง"
+            },
+            {
+              "value": "portrait_focus",
+              "label": "Portrait Focus",
+              "labelTh": "เน้นตัวแบบ"
+            },
+            {
+              "value": "mixed",
+              "label": "Mixed Framing",
+              "labelTh": "ผสมหลายเฟรม"
+            }
+          ]
+        },
+        {
+          "id": "lens_look",
+          "type": "select",
+          "label": "Lens Look",
+          "labelTh": "อารมณ์ของเลนส์",
+          "default": "auto",
+          "options": [
+            {
+              "value": "auto",
+              "label": "Auto",
+              "labelTh": "อัตโนมัติ"
+            },
+            {
+              "value": "24mm_wide",
+              "label": "24mm Wide",
+              "labelTh": "24mm กว้าง"
+            },
+            {
+              "value": "35mm_cinematic",
+              "label": "35mm Cinematic",
+              "labelTh": "35mm ภาพยนตร์"
+            },
+            {
+              "value": "50mm_natural",
+              "label": "50mm Natural",
+              "labelTh": "50mm ธรรมชาติ"
+            },
+            {
+              "value": "85mm_portrait",
+              "label": "85mm Portrait",
+              "labelTh": "85mm พอร์ตเทรต"
+            },
+            {
+              "value": "anamorphic",
+              "label": "Anamorphic",
+              "labelTh": "อนามอร์ฟิก"
+            },
+            {
+              "value": "telephoto",
+              "label": "Telephoto",
+              "labelTh": "เทเลโฟโต้"
+            },
+            {
+              "value": "macro",
+              "label": "Macro Detail",
+              "labelTh": "มาโครรายละเอียด"
+            }
+          ]
+        },
+        {
+          "id": "focus_strategy",
+          "type": "select",
+          "label": "Focus Strategy",
+          "labelTh": "กลยุทธ์โฟกัส",
+          "default": "auto",
+          "options": [
+            {
+              "value": "auto",
+              "label": "Auto",
+              "labelTh": "อัตโนมัติ"
+            },
+            {
+              "value": "shallow_subject_isolation",
+              "label": "Shallow Subject Isolation",
+              "labelTh": "ละลายฉากหลังเน้นตัวแบบ"
+            },
+            {
+              "value": "deep_focus_environmental",
+              "label": "Deep Focus Environmental",
+              "labelTh": "คมชัดลึกเห็นสภาพแวดล้อม"
+            },
+            {
+              "value": "rack_focus_transition",
+              "label": "Rack Focus Transition",
+              "labelTh": "เปลี่ยนโฟกัสระหว่างจุดสนใจ"
+            },
+            {
+              "value": "balanced_depth",
+              "label": "Balanced Depth",
+              "labelTh": "ระยะชัดลึกสมดุล"
+            }
+          ]
+        },
+        {
+          "id": "lighting_style",
+          "type": "select",
+          "label": "Lighting Style",
+          "labelTh": "สไตล์แสง",
+          "default": "auto",
+          "options": [
+            {
+              "value": "auto",
+              "label": "Auto",
+              "labelTh": "อัตโนมัติ"
+            },
+            {
+              "value": "soft_natural",
+              "label": "Soft Natural",
+              "labelTh": "ธรรมชาตินุ่ม"
+            },
+            {
+              "value": "golden_hour",
+              "label": "Golden Hour",
+              "labelTh": "โกลเดนอะวร์"
+            },
+            {
+              "value": "studio_clean",
+              "label": "Studio Clean",
+              "labelTh": "สตูดิโอสะอาด"
+            },
+            {
+              "value": "neon_noir",
+              "label": "Neon Noir",
+              "labelTh": "นีออนนัวร์"
+            },
+            {
+              "value": "high_contrast",
+              "label": "High Contrast",
+              "labelTh": "คอนทราสต์จัด"
+            },
+            {
+              "value": "moody_low_key",
+              "label": "Moody Low-Key",
+              "labelTh": "มู้ดดี้โลว์คีย์"
+            },
+            {
+              "value": "backlit_silhouette",
+              "label": "Backlit Silhouette",
+              "labelTh": "ย้อนแสงซิลูเอต"
+            }
+          ]
+        },
+        {
+          "id": "time_of_day",
+          "type": "select",
+          "label": "Time of Day",
+          "labelTh": "ช่วงเวลา",
+          "default": "auto",
+          "options": [
+            {
+              "value": "auto",
+              "label": "Auto",
+              "labelTh": "อัตโนมัติ"
+            },
+            {
+              "value": "dawn",
+              "label": "Dawn",
+              "labelTh": "รุ่งเช้า"
+            },
+            {
+              "value": "morning",
+              "label": "Morning",
+              "labelTh": "เช้า"
+            },
+            {
+              "value": "midday",
+              "label": "Midday",
+              "labelTh": "กลางวัน"
+            },
+            {
+              "value": "golden_hour",
+              "label": "Golden Hour",
+              "labelTh": "โกลเดนอะวร์"
+            },
+            {
+              "value": "blue_hour",
+              "label": "Blue Hour",
+              "labelTh": "บลูอะวร์"
+            },
+            {
+              "value": "night",
+              "label": "Night",
+              "labelTh": "กลางคืน"
+            }
+          ]
+        },
+        {
+          "id": "atmospherics",
+          "type": "multiselect",
+          "label": "Atmospherics",
+          "labelTh": "องค์ประกอบบรรยากาศ",
+          "helpText": "Add atmospheric elements that create cinematic mood and depth.",
+          "helpTextTh": "เพิ่มองค์ประกอบบรรยากาศที่ช่วยให้ภาพมีมู้ดและความลึกแบบภาพยนตร์",
+          "options": [
+            {
+              "value": "mist",
+              "label": "Mist",
+              "labelTh": "หมอกบาง"
+            },
+            {
+              "value": "light_rain",
+              "label": "Light Rain",
+              "labelTh": "ฝนโปรย"
+            },
+            {
+              "value": "fog",
+              "label": "Fog",
+              "labelTh": "หมอกหนา"
+            },
+            {
+              "value": "steam",
+              "label": "Steam",
+              "labelTh": "ไอน้ำ"
+            },
+            {
+              "value": "dust_particles",
+              "label": "Dust Particles",
+              "labelTh": "ฝุ่นลอย"
+            },
+            {
+              "value": "wind_movement",
+              "label": "Wind Movement",
+              "labelTh": "ลมพัด"
+            },
+            {
+              "value": "wet_surfaces",
+              "label": "Wet Surfaces",
+              "labelTh": "พื้นผิวเปียก"
+            },
+            {
+              "value": "soft_haze",
+              "label": "Soft Haze",
+              "labelTh": "เฮซบาง"
+            },
+            {
+              "value": "sunbeams",
+              "label": "Sunbeams",
+              "labelTh": "ลำแสงอาทิตย์"
+            },
+            {
+              "value": "practical_smoke",
+              "label": "Practical Smoke",
+              "labelTh": "ควันจากฉาก"
+            }
+          ]
+        },
+        {
+          "id": "production_design",
+          "type": "textarea",
+          "label": "Production Design / Mise-en-Scene",
+          "labelTh": "องค์ประกอบฉาก / Mise-en-Scene",
+          "placeholder": "Architecture, props, wardrobe texture, set dressing, materials...",
+          "placeholderTh": "สถาปัตยกรรม พร็อพ พื้นผิวเสื้อผ้า การจัดฉาก วัสดุ...",
+          "helpText": "Describe the visual world: props, surfaces, costume texture, architecture, and set dressing.",
+          "helpTextTh": "อธิบายโลกของภาพ เช่น พร็อพ พื้นผิว วัสดุ เสื้อผ้า สถาปัตยกรรม และการจัดฉาก",
+          "rows": 3
+        },
+        {
+          "id": "color_palette",
+          "type": "select",
+          "label": "Color Palette",
+          "labelTh": "โทนสี",
+          "default": "auto",
+          "options": [
+            {
+              "value": "auto",
+              "label": "Auto",
+              "labelTh": "อัตโนมัติ"
+            },
+            {
+              "value": "warm_amber",
+              "label": "Warm Amber",
+              "labelTh": "อำพันอบอุ่น"
+            },
+            {
+              "value": "cinematic_neutral",
+              "label": "Cinematic Neutral",
+              "labelTh": "สมดุลแบบภาพยนตร์"
+            },
+            {
+              "value": "cool_blue",
+              "label": "Cool Blue",
+              "labelTh": "ฟ้าเย็น"
+            },
+            {
+              "value": "teal_orange",
+              "label": "Teal and Orange",
+              "labelTh": "ทีลและส้ม"
+            },
+            {
+              "value": "teal_magenta_neon",
+              "label": "Teal and Magenta Neon",
+              "labelTh": "ทีลและแมเจนตานีออน"
+            },
+            {
+              "value": "monochrome",
+              "label": "Monochrome",
+              "labelTh": "สีเดียว"
+            },
+            {
+              "value": "pastel_dream",
+              "label": "Pastel Dream",
+              "labelTh": "พาสเทลฝัน"
+            }
+          ]
+        },
+        {
+          "id": "color_contrast_strategy",
+          "type": "select",
+          "label": "Color Contrast Strategy",
+          "labelTh": "กลยุทธ์คอนทราสต์สี",
+          "default": "auto",
+          "options": [
+            {
+              "value": "auto",
+              "label": "Auto",
+              "labelTh": "อัตโนมัติ"
+            },
+            {
+              "value": "cool_warm_contrast",
+              "label": "Cool vs Warm Contrast",
+              "labelTh": "ตัดกันระหว่างโทนเย็นและอุ่น"
+            },
+            {
+              "value": "muted_monochrome",
+              "label": "Muted Monochrome",
+              "labelTh": "สีเดียวแบบหม่น"
+            },
+            {
+              "value": "soft_low_contrast",
+              "label": "Soft Low Contrast",
+              "labelTh": "คอนทราสต์ต่ำแบบนุ่ม"
+            },
+            {
+              "value": "rich_saturation_controlled",
+              "label": "Rich but Controlled Saturation",
+              "labelTh": "สีแน่นแต่คุมได้"
+            },
+            {
+              "value": "practical_light_contrast",
+              "label": "Practical-Light Contrast",
+              "labelTh": "คอนทราสต์จากแสงในฉาก"
+            }
+          ]
+        },
+        {
+          "id": "editing_rhythm",
+          "type": "select",
+          "label": "Editing Rhythm",
+          "labelTh": "จังหวะการตัดต่อ",
+          "default": "auto",
+          "options": [
+            {
+              "value": "auto",
+              "label": "Auto",
+              "labelTh": "อัตโนมัติ"
+            },
+            {
+              "value": "slow_atmospheric",
+              "label": "Slow Atmospheric",
+              "labelTh": "ช้าและมีบรรยากาศ"
+            },
+            {
+              "value": "steady_cinematic",
+              "label": "Steady Cinematic",
+              "labelTh": "นิ่งแบบภาพยนตร์"
+            },
+            {
+              "value": "dynamic",
+              "label": "Dynamic",
+              "labelTh": "ไดนามิก"
+            },
+            {
+              "value": "fast_punchy",
+              "label": "Fast and Punchy",
+              "labelTh": "เร็วและหนักแน่น"
+            },
+            {
+              "value": "loopable",
+              "label": "Loopable / Seamless",
+              "labelTh": "วนลูปได้"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "references",
+      "title": "References",
+      "titleTh": "ภาพอ้างอิงและสื่อประกอบ",
+      "icon": "image",
+      "collapsible": true,
+      "collapsed": false,
+      "fields": [
+        {
+          "id": "first_frame_url",
+          "type": "text",
+          "label": "First Frame URL",
+          "labelTh": "URL ของเฟรมแรก",
+          "placeholder": "https://example.com/first-frame.png",
+          "placeholderTh": "https://example.com/first-frame.png",
+          "helpText": "Use this for Seedance 2 or Veo 3.1 when you want the generated clip to begin from a specific opening frame. In first-and-last-frame mode, this is the required starting frame anchor.",
+          "helpTextTh": "ใช้กับ Seedance 2 หรือ Veo 3.1 เมื่อคุณต้องการให้คลิปเริ่มต้นจากภาพเปิดเฉพาะเจาะจง และถ้าเลือกโหมด first-and-last-frame ช่องนี้คือภาพเริ่มต้นที่ต้องมี",
+          "dependsOn": {
+            "any": [
+              {
+                "all": [
+                  {
+                    "field": "target_model_profile",
+                    "value": "seedance_2_kie"
+                  },
+                  {
+                    "field": "seedance_input_mode",
+                    "values": [
+                      "auto",
+                      "first_frame_only",
+                      "first_and_last_frames"
+                    ]
+                  }
+                ]
+              },
+              {
+                "all": [
+                  {
+                    "field": "target_model_profile",
+                    "value": "veo_3_1_kie"
+                  },
+                  {
+                    "field": "veo_input_mode",
+                    "values": [
+                      "auto",
+                      "first_frame_only",
+                      "first_and_last_frames"
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "last_frame_url",
+          "type": "text",
+          "label": "Last Frame URL",
+          "labelTh": "URL ของเฟรมสุดท้าย",
+          "placeholder": "https://example.com/last-frame.png",
+          "placeholderTh": "https://example.com/last-frame.png",
+          "helpText": "Optional closing-frame anchor for Seedance 2 or Veo 3.1. Use it only when you want the ending frame pinned as well.",
+          "helpTextTh": "ภาพยึดปลายทางสำหรับ Seedance 2 หรือ Veo 3.1 ใช้เมื่อคุณต้องการล็อกเฟรมสุดท้ายของคลิปด้วย",
+          "dependsOn": {
+            "any": [
+              {
+                "all": [
+                  {
+                    "field": "target_model_profile",
+                    "value": "seedance_2_kie"
+                  },
+                  {
+                    "field": "seedance_input_mode",
+                    "values": [
+                      "auto",
+                      "first_and_last_frames"
+                    ]
+                  }
+                ]
+              },
+              {
+                "all": [
+                  {
+                    "field": "target_model_profile",
+                    "value": "veo_3_1_kie"
+                  },
+                  {
+                    "field": "veo_input_mode",
+                    "values": [
+                      "auto",
+                      "first_and_last_frames"
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "reference_images",
+          "type": "images",
+          "label": "Reference Images (Optional)",
+          "labelTh": "รูปภาพอ้างอิง (ไม่บังคับ)",
+          "helpText": "Generic profile only. Upload up to 4 reference images to guide characters, style, or composition. Upload order becomes @Image1, @Image2, and so on. If you do not upload images, the skill should still infer usable character or environment reference notes from the brief itself.",
+          "helpTextTh": "ใช้กับ Generic profile เท่านั้น แนบรูปภาพอ้างอิงได้สูงสุด 4 รูปเพื่อช่วยกำหนดตัวละคร สไตล์ภาพ หรือองค์ประกอบฉาก ระบบจะกำหนดลำดับเป็น @Image1, @Image2 และต่อไปเรื่อย ๆ หากไม่แนบรูป skill ก็ควรสรุป reference notes จากรายละเอียดตัวละครหรือฉากใน brief ให้อัตโนมัติ",
+          "dependsOn": {
+            "field": "target_model_profile",
+            "value": "generic_video_models"
+          },
+          "multiple": true,
+          "accept": "image/*",
+          "maxImages": 4
+        },
+        {
+          "id": "reference_images",
+          "type": "images",
+          "label": "Reference Images (Optional)",
+          "labelTh": "รูปภาพอ้างอิง (ไม่บังคับ)",
+          "helpText": "Seedance 2 multimodal mode. Upload up to 9 reference images to guide identity, style, composition, products, or supporting details. Upload order becomes @Image1 to @Image9.",
+          "helpTextTh": "ใช้กับ Seedance 2 แบบ multimodal แนบรูปภาพอ้างอิงได้สูงสุด 9 รูปเพื่อช่วยกำหนดตัวตน สไตล์ องค์ประกอบ สินค้า หรือรายละเอียดเสริม ระบบจะกำหนดลำดับเป็น @Image1 ถึง @Image9",
+          "dependsOn": {
+            "all": [
+              {
+                "field": "target_model_profile",
+                "value": "seedance_2_kie"
+              },
+              {
+                "field": "seedance_input_mode",
+                "values": [
+                  "auto",
+                  "multimodal_reference"
+                ]
+              }
+            ]
+          },
+          "multiple": true,
+          "accept": "image/*",
+          "maxImages": 9
+        },
+        {
+          "id": "reference_images",
+          "type": "images",
+          "label": "Reference Images (Optional)",
+          "labelTh": "รูปภาพอ้างอิง (ไม่บังคับ)",
+          "helpText": "Veo 3.1 reference-to-video mode. Upload 1 to 3 images to guide the generated clip. Upload order becomes @Image1, @Image2, and @Image3.",
+          "helpTextTh": "ใช้กับ Veo 3.1 แบบ reference-to-video แนบรูปภาพอ้างอิงได้ 1 ถึง 3 รูปเพื่อช่วยกำหนดคลิปที่สร้าง ระบบจะกำหนดลำดับเป็น @Image1, @Image2 และ @Image3",
+          "dependsOn": {
+            "all": [
+              {
+                "field": "target_model_profile",
+                "value": "veo_3_1_kie"
+              },
+              {
+                "field": "veo_input_mode",
+                "values": [
+                  "auto",
+                  "reference_to_video"
+                ]
+              }
+            ]
+          },
+          "multiple": true,
+          "accept": "image/*",
+          "maxImages": 3
+        },
+        {
+          "id": "reference_image_1_role",
+          "type": "select",
+          "label": "@Image1 Role",
+          "labelTh": "บทบาทของ @Image1",
+          "helpText": "Maps only to the first uploaded image. Upload order is canonical: image 1 = @Image1. The role setting is the main rule the skill will follow.",
+          "helpTextTh": "ใช้กับภาพที่อัปโหลดลำดับแรกเท่านั้น โดยระบบยึดลำดับอัปโหลดเป็นหลัก: รูปที่ 1 = @Image1 และ skill จะยึดค่าบทบาทนี้เป็นกติกาหลัก",
+          "default": "character_reference",
+          "dependsOn": {
+            "field": "reference_images",
+            "minItems": 1
+          },
+          "options": [
+            {
+              "value": "character_reference",
+              "label": "Character Reference",
+              "labelTh": "อ้างอิงตัวละคร"
+            },
+            {
+              "value": "style_reference",
+              "label": "Style Reference",
+              "labelTh": "อ้างอิงสไตล์ภาพ"
+            },
+            {
+              "value": "scene_composition_reference",
+              "label": "Scene Composition Reference",
+              "labelTh": "อ้างอิงองค์ประกอบฉาก"
+            },
+            {
+              "value": "product_or_prop_reference",
+              "label": "Product / Prop Reference",
+              "labelTh": "อ้างอิงสินค้า / พร็อพ"
+            },
+            {
+              "value": "supporting_reference",
+              "label": "Supporting Reference",
+              "labelTh": "อ้างอิงเสริม"
+            },
+            {
+              "value": "unused",
+              "label": "Unused",
+              "labelTh": "ไม่ใช้"
+            }
+          ]
+        },
+        {
+          "id": "reference_image_2_role",
+          "type": "select",
+          "label": "@Image2 Role",
+          "labelTh": "บทบาทของ @Image2",
+          "helpText": "Maps only to the second uploaded image. If fewer than 2 images are uploaded, this slot is ignored. You can choose Character Reference again if you want multiple character images.",
+          "helpTextTh": "ใช้กับภาพที่อัปโหลดลำดับที่สองเท่านั้น หากอัปโหลดไม่ถึง 2 รูป ช่องนี้จะถูกละไว้ และสามารถเลือกอ้างอิงตัวละครซ้ำได้หากต้องการหลายภาพของตัวละคร",
+          "default": "character_reference",
+          "dependsOn": {
+            "field": "reference_images",
+            "minItems": 2
+          },
+          "options": [
+            {
+              "value": "character_reference",
+              "label": "Character Reference",
+              "labelTh": "อ้างอิงตัวละคร"
+            },
+            {
+              "value": "style_reference",
+              "label": "Style Reference",
+              "labelTh": "อ้างอิงสไตล์ภาพ"
+            },
+            {
+              "value": "scene_composition_reference",
+              "label": "Scene Composition Reference",
+              "labelTh": "อ้างอิงองค์ประกอบฉาก"
+            },
+            {
+              "value": "product_or_prop_reference",
+              "label": "Product / Prop Reference",
+              "labelTh": "อ้างอิงสินค้า / พร็อพ"
+            },
+            {
+              "value": "supporting_reference",
+              "label": "Supporting Reference",
+              "labelTh": "อ้างอิงเสริม"
+            },
+            {
+              "value": "unused",
+              "label": "Unused",
+              "labelTh": "ไม่ใช้"
+            }
+          ]
+        },
+        {
+          "id": "reference_image_3_role",
+          "type": "select",
+          "label": "@Image3 Role",
+          "labelTh": "บทบาทของ @Image3",
+          "helpText": "Maps only to the third uploaded image. If fewer than 3 images are uploaded, this slot is ignored. A common use is Scene Composition Reference.",
+          "helpTextTh": "ใช้กับภาพที่อัปโหลดลำดับที่สามเท่านั้น หากอัปโหลดไม่ถึง 3 รูป ช่องนี้จะถูกละไว้ และมักใช้เป็นภาพอ้างอิงองค์ประกอบฉาก",
+          "default": "scene_composition_reference",
+          "dependsOn": {
+            "field": "reference_images",
+            "minItems": 3
+          },
+          "options": [
+            {
+              "value": "character_reference",
+              "label": "Character Reference",
+              "labelTh": "อ้างอิงตัวละคร"
+            },
+            {
+              "value": "style_reference",
+              "label": "Style Reference",
+              "labelTh": "อ้างอิงสไตล์ภาพ"
+            },
+            {
+              "value": "scene_composition_reference",
+              "label": "Scene Composition Reference",
+              "labelTh": "อ้างอิงองค์ประกอบฉาก"
+            },
+            {
+              "value": "product_or_prop_reference",
+              "label": "Product / Prop Reference",
+              "labelTh": "อ้างอิงสินค้า / พร็อพ"
+            },
+            {
+              "value": "supporting_reference",
+              "label": "Supporting Reference",
+              "labelTh": "อ้างอิงเสริม"
+            },
+            {
+              "value": "unused",
+              "label": "Unused",
+              "labelTh": "ไม่ใช้"
+            }
+          ]
+        },
+        {
+          "id": "reference_image_4_role",
+          "type": "select",
+          "label": "@Image4 Role",
+          "labelTh": "บทบาทของ @Image4",
+          "helpText": "Maps only to the fourth uploaded image. If fewer than 4 images are uploaded, this slot is ignored. Use Unused if you do not want the fourth image referenced.",
+          "helpTextTh": "ใช้กับภาพที่อัปโหลดลำดับที่สี่เท่านั้น หากอัปโหลดไม่ถึง 4 รูป ช่องนี้จะถูกละไว้ และหากไม่ต้องการอ้างอิงรูปที่สี่ให้เลือกไม่ใช้",
+          "default": "supporting_reference",
+          "dependsOn": {
+            "field": "reference_images",
+            "minItems": 4
+          },
+          "options": [
+            {
+              "value": "character_reference",
+              "label": "Character Reference",
+              "labelTh": "อ้างอิงตัวละคร"
+            },
+            {
+              "value": "style_reference",
+              "label": "Style Reference",
+              "labelTh": "อ้างอิงสไตล์ภาพ"
+            },
+            {
+              "value": "scene_composition_reference",
+              "label": "Scene Composition Reference",
+              "labelTh": "อ้างอิงองค์ประกอบฉาก"
+            },
+            {
+              "value": "product_or_prop_reference",
+              "label": "Product / Prop Reference",
+              "labelTh": "อ้างอิงสินค้า / พร็อพ"
+            },
+            {
+              "value": "supporting_reference",
+              "label": "Supporting Reference",
+              "labelTh": "อ้างอิงเสริม"
+            },
+            {
+              "value": "unused",
+              "label": "Unused",
+              "labelTh": "ไม่ใช้"
+            }
+          ]
+        },
+        {
+          "id": "reference_image_5_role",
+          "type": "select",
+          "label": "@Image5 Role",
+          "labelTh": "บทบาทของ @Image5",
+          "helpText": "Seedance-oriented extra image slot. Use this only when you upload 5 or more images. If the fifth image does not exist, this slot is ignored.",
+          "helpTextTh": "ช่องภาพเสริมสำหรับ Seedance ใช้เมื่อคุณอัปโหลดตั้งแต่ 5 รูปขึ้นไปเท่านั้น หากไม่มีรูปที่ห้า ระบบจะละช่องนี้โดยอัตโนมัติ",
+          "default": "supporting_reference",
+          "dependsOn": {
+            "all": [
+              {
+                "field": "target_model_profile",
+                "value": "seedance_2_kie"
+              },
+              {
+                "field": "reference_images",
+                "minItems": 5
+              }
+            ]
+          },
+          "options": [
+            {
+              "value": "character_reference",
+              "label": "Character Reference",
+              "labelTh": "อ้างอิงตัวละคร"
+            },
+            {
+              "value": "style_reference",
+              "label": "Style Reference",
+              "labelTh": "อ้างอิงสไตล์ภาพ"
+            },
+            {
+              "value": "scene_composition_reference",
+              "label": "Scene Composition Reference",
+              "labelTh": "อ้างอิงองค์ประกอบฉาก"
+            },
+            {
+              "value": "product_or_prop_reference",
+              "label": "Product / Prop Reference",
+              "labelTh": "อ้างอิงสินค้า / พร็อพ"
+            },
+            {
+              "value": "supporting_reference",
+              "label": "Supporting Reference",
+              "labelTh": "อ้างอิงเสริม"
+            },
+            {
+              "value": "unused",
+              "label": "Unused",
+              "labelTh": "ไม่ใช้"
+            }
+          ]
+        },
+        {
+          "id": "reference_image_6_role",
+          "type": "select",
+          "label": "@Image6 Role",
+          "labelTh": "บทบาทของ @Image6",
+          "helpText": "Seedance-oriented extra image slot. Use this only when you upload 6 or more images. If the sixth image does not exist, this slot is ignored.",
+          "helpTextTh": "ช่องภาพเสริมสำหรับ Seedance ใช้เมื่อคุณอัปโหลดตั้งแต่ 6 รูปขึ้นไปเท่านั้น หากไม่มีรูปที่หก ระบบจะละช่องนี้โดยอัตโนมัติ",
+          "default": "supporting_reference",
+          "dependsOn": {
+            "all": [
+              {
+                "field": "target_model_profile",
+                "value": "seedance_2_kie"
+              },
+              {
+                "field": "reference_images",
+                "minItems": 6
+              }
+            ]
+          },
+          "options": [
+            {
+              "value": "character_reference",
+              "label": "Character Reference",
+              "labelTh": "อ้างอิงตัวละคร"
+            },
+            {
+              "value": "style_reference",
+              "label": "Style Reference",
+              "labelTh": "อ้างอิงสไตล์ภาพ"
+            },
+            {
+              "value": "scene_composition_reference",
+              "label": "Scene Composition Reference",
+              "labelTh": "อ้างอิงองค์ประกอบฉาก"
+            },
+            {
+              "value": "product_or_prop_reference",
+              "label": "Product / Prop Reference",
+              "labelTh": "อ้างอิงสินค้า / พร็อพ"
+            },
+            {
+              "value": "supporting_reference",
+              "label": "Supporting Reference",
+              "labelTh": "อ้างอิงเสริม"
+            },
+            {
+              "value": "unused",
+              "label": "Unused",
+              "labelTh": "ไม่ใช้"
+            }
+          ]
+        },
+        {
+          "id": "reference_image_7_role",
+          "type": "select",
+          "label": "@Image7 Role",
+          "labelTh": "บทบาทของ @Image7",
+          "helpText": "Seedance-oriented extra image slot. Use this only when you upload 7 or more images. If the seventh image does not exist, this slot is ignored.",
+          "helpTextTh": "ช่องภาพเสริมสำหรับ Seedance ใช้เมื่อคุณอัปโหลดตั้งแต่ 7 รูปขึ้นไปเท่านั้น หากไม่มีรูปที่เจ็ด ระบบจะละช่องนี้โดยอัตโนมัติ",
+          "default": "supporting_reference",
+          "dependsOn": {
+            "all": [
+              {
+                "field": "target_model_profile",
+                "value": "seedance_2_kie"
+              },
+              {
+                "field": "reference_images",
+                "minItems": 7
+              }
+            ]
+          },
+          "options": [
+            {
+              "value": "character_reference",
+              "label": "Character Reference",
+              "labelTh": "อ้างอิงตัวละคร"
+            },
+            {
+              "value": "style_reference",
+              "label": "Style Reference",
+              "labelTh": "อ้างอิงสไตล์ภาพ"
+            },
+            {
+              "value": "scene_composition_reference",
+              "label": "Scene Composition Reference",
+              "labelTh": "อ้างอิงองค์ประกอบฉาก"
+            },
+            {
+              "value": "product_or_prop_reference",
+              "label": "Product / Prop Reference",
+              "labelTh": "อ้างอิงสินค้า / พร็อพ"
+            },
+            {
+              "value": "supporting_reference",
+              "label": "Supporting Reference",
+              "labelTh": "อ้างอิงเสริม"
+            },
+            {
+              "value": "unused",
+              "label": "Unused",
+              "labelTh": "ไม่ใช้"
+            }
+          ]
+        },
+        {
+          "id": "reference_image_8_role",
+          "type": "select",
+          "label": "@Image8 Role",
+          "labelTh": "บทบาทของ @Image8",
+          "helpText": "Seedance-oriented extra image slot. Use this only when you upload 8 or more images. If the eighth image does not exist, this slot is ignored.",
+          "helpTextTh": "ช่องภาพเสริมสำหรับ Seedance ใช้เมื่อคุณอัปโหลดตั้งแต่ 8 รูปขึ้นไปเท่านั้น หากไม่มีรูปที่แปด ระบบจะละช่องนี้โดยอัตโนมัติ",
+          "default": "supporting_reference",
+          "dependsOn": {
+            "all": [
+              {
+                "field": "target_model_profile",
+                "value": "seedance_2_kie"
+              },
+              {
+                "field": "reference_images",
+                "minItems": 8
+              }
+            ]
+          },
+          "options": [
+            {
+              "value": "character_reference",
+              "label": "Character Reference",
+              "labelTh": "อ้างอิงตัวละคร"
+            },
+            {
+              "value": "style_reference",
+              "label": "Style Reference",
+              "labelTh": "อ้างอิงสไตล์ภาพ"
+            },
+            {
+              "value": "scene_composition_reference",
+              "label": "Scene Composition Reference",
+              "labelTh": "อ้างอิงองค์ประกอบฉาก"
+            },
+            {
+              "value": "product_or_prop_reference",
+              "label": "Product / Prop Reference",
+              "labelTh": "อ้างอิงสินค้า / พร็อพ"
+            },
+            {
+              "value": "supporting_reference",
+              "label": "Supporting Reference",
+              "labelTh": "อ้างอิงเสริม"
+            },
+            {
+              "value": "unused",
+              "label": "Unused",
+              "labelTh": "ไม่ใช้"
+            }
+          ]
+        },
+        {
+          "id": "reference_image_9_role",
+          "type": "select",
+          "label": "@Image9 Role",
+          "labelTh": "บทบาทของ @Image9",
+          "helpText": "Seedance-oriented extra image slot. Use this only when you upload 9 images. If the ninth image does not exist, this slot is ignored.",
+          "helpTextTh": "ช่องภาพเสริมสำหรับ Seedance ใช้เมื่อคุณอัปโหลดครบ 9 รูปเท่านั้น หากไม่มีรูปที่เก้า ระบบจะละช่องนี้โดยอัตโนมัติ",
+          "default": "supporting_reference",
+          "dependsOn": {
+            "all": [
+              {
+                "field": "target_model_profile",
+                "value": "seedance_2_kie"
+              },
+              {
+                "field": "reference_images",
+                "minItems": 9
+              }
+            ]
+          },
+          "options": [
+            {
+              "value": "character_reference",
+              "label": "Character Reference",
+              "labelTh": "อ้างอิงตัวละคร"
+            },
+            {
+              "value": "style_reference",
+              "label": "Style Reference",
+              "labelTh": "อ้างอิงสไตล์ภาพ"
+            },
+            {
+              "value": "scene_composition_reference",
+              "label": "Scene Composition Reference",
+              "labelTh": "อ้างอิงองค์ประกอบฉาก"
+            },
+            {
+              "value": "product_or_prop_reference",
+              "label": "Product / Prop Reference",
+              "labelTh": "อ้างอิงสินค้า / พร็อพ"
+            },
+            {
+              "value": "supporting_reference",
+              "label": "Supporting Reference",
+              "labelTh": "อ้างอิงเสริม"
+            },
+            {
+              "value": "unused",
+              "label": "Unused",
+              "labelTh": "ไม่ใช้"
+            }
+          ]
+        },
+        {
+          "id": "reference_image_notes",
+          "type": "textarea",
+          "label": "Reference Image Guidance",
+          "labelTh": "คำอธิบายการใช้ภาพอ้างอิง",
+          "placeholder": "@Image1 = face identity, @Image2 = second character angle, @Image3 = alley composition, @Image5 = product macro detail...",
+          "placeholderTh": "@Image1 = ใบหน้า, @Image2 = มุมเสริมของตัวละคร, @Image3 = องค์ประกอบฉาก, @Image5 = รายละเอียดสินค้าแบบมาโคร...",
+          "helpText": "Add extra notes for how @Image1 to @Image9 should influence the prompt. Mention handles directly when helpful. Handles always follow upload order, and role fields above take priority.",
+          "helpTextTh": "เพิ่มคำอธิบายว่า @Image1 ถึง @Image9 ควรมีผลต่อพรอมต์อย่างไร โดยสามารถอ้างอิง handle ได้ตรง ๆ ทั้งนี้ handle จะยึดตามลำดับอัปโหลดเสมอ และระบบจะยึดค่าบทบาทด้านบนเป็นหลัก",
+          "dependsOn": {
+            "field": "reference_images",
+            "minItems": 1
+          },
+          "rows": 3
+        },
+        {
+          "id": "reference_videos",
+          "type": "array",
+          "label": "Reference Video URLs",
+          "labelTh": "URL วิดีโออ้างอิง",
+          "helpText": "Seedance 2 only. Add up to 3 reference videos to guide motion, blocking, camera paths, transition logic, or editing rhythm. These are not the same as the editable source video.",
+          "helpTextTh": "ใช้กับ Seedance 2 เท่านั้น เพิ่มวิดีโออ้างอิงได้สูงสุด 3 ไฟล์เพื่อช่วยกำหนดการเคลื่อนไหว การบล็อก การเดินกล้อง ทรานซิชัน หรือจังหวะการตัดต่อ โดยไม่ใช่วิดีโอต้นฉบับที่จะแก้ไข",
+          "dependsOn": {
+            "all": [
+              {
+                "field": "target_model_profile",
+                "value": "seedance_2_kie"
+              },
+              {
+                "field": "seedance_input_mode",
+                "values": [
+                  "auto",
+                  "multimodal_reference"
+                ]
+              }
+            ]
+          },
+          "itemLabel": "Reference Video",
+          "maxItems": 3,
+          "itemFields": [
+            {
+              "id": "url",
+              "type": "text",
+              "label": "Video URL",
+              "labelTh": "URL วิดีโอ",
+              "required": true,
+              "helpText": "Public URL for the reference video.",
+              "helpTextTh": "ลิงก์สาธารณะของวิดีโออ้างอิง"
+            },
+            {
+              "id": "guidance_focus",
+              "type": "textarea",
+              "label": "What Should This Video Guide?",
+              "labelTh": "วิดีโอนี้ควรใช้ชี้นำอะไร",
+              "helpText": "Optional note such as camera path, motion energy, blocking rhythm, transition style, or action timing.",
+              "helpTextTh": "ไม่บังคับ เช่น ใช้เป็นแนวทางการเดินกล้อง จังหวะการเคลื่อน การบล็อก ทรานซิชัน หรือการจับเวลาแอ็กชัน"
+            }
+          ]
+        },
+        {
+          "id": "reference_audios",
+          "type": "array",
+          "label": "Reference Audio URLs",
+          "labelTh": "URL เสียงอ้างอิง",
+          "helpText": "Seedance 2 only. Add up to 3 audio references to guide beat, dialogue cadence, lip-sync intent, mood, or sonic pacing.",
+          "helpTextTh": "ใช้กับ Seedance 2 เท่านั้น เพิ่มเสียงอ้างอิงได้สูงสุด 3 ไฟล์เพื่อช่วยกำหนดจังหวะ บทพูด การลิปซิงก์ อารมณ์ หรือความเร็วของเสียง",
+          "dependsOn": {
+            "all": [
+              {
+                "field": "target_model_profile",
+                "value": "seedance_2_kie"
+              },
+              {
+                "field": "seedance_input_mode",
+                "values": [
+                  "auto",
+                  "multimodal_reference"
+                ]
+              }
+            ]
+          },
+          "itemLabel": "Reference Audio",
+          "maxItems": 3,
+          "itemFields": [
+            {
+              "id": "url",
+              "type": "text",
+              "label": "Audio URL",
+              "labelTh": "URL เสียง",
+              "required": true,
+              "helpText": "Public URL for the reference audio.",
+              "helpTextTh": "ลิงก์สาธารณะของไฟล์เสียงอ้างอิง"
+            },
+            {
+              "id": "guidance_focus",
+              "type": "textarea",
+              "label": "What Should This Audio Guide?",
+              "labelTh": "เสียงนี้ควรใช้ชี้นำอะไร",
+              "helpText": "Optional note such as rhythm, beat, dialogue pacing, lip-sync style, or overall sonic mood.",
+              "helpTextTh": "ไม่บังคับ เช่น ใช้เป็นแนวทางเรื่องจังหวะ บีต ความเร็วบทพูด สไตล์ลิปซิงก์ หรืออารมณ์เสียงโดยรวม"
+            }
+          ]
+        },
+        {
+          "id": "reference_asset_rights_confirmed",
+          "type": "boolean",
+          "label": "I Have Rights to Use External Reference Assets",
+          "labelTh": "ฉันมีสิทธิ์ใช้สื่ออ้างอิงภายนอกเหล่านี้",
+          "helpText": "Turn this on when you have permission to use any public URLs you provide for reference images, videos, audios, or first/last-frame assets. If left off, the skill should warn rather than assume permission.",
+          "helpTextTh": "เปิดตัวเลือกนี้เมื่อคุณมีสิทธิ์ใช้ URL สาธารณะที่นำมาเป็นภาพ วิดีโอ เสียง หรือเฟรมอ้างอิง หากไม่เปิด skill ควรเตือนแทนที่จะสมมติว่ามีสิทธิ์ใช้งาน",
+          "default": false
+        },
+        {
+          "id": "character_consistency",
+          "type": "boolean",
+          "label": "Protect Character Consistency",
+          "labelTh": "คงความต่อเนื่องของตัวละคร",
+          "helpText": "Reinforce face, outfit, and identity stability when relevant.",
+          "helpTextTh": "เน้นความคงที่ของใบหน้า เสื้อผ้า และตัวตนเมื่อเกี่ยวข้อง",
+          "default": true
+        },
+        {
+          "id": "source_video_url",
+          "type": "text",
+          "label": "Source Video URL",
+          "labelTh": "URL วิดีโอต้นฉบับ",
+          "placeholder": "https://example.com/source.mp4",
+          "placeholderTh": "https://example.com/source.mp4",
+          "helpText": "Only used when Generation Mode is Video Edit.",
+          "helpTextTh": "ใช้เฉพาะเมื่อเลือกโหมดแก้วิดีโอเดิม",
+          "dependsOn": {
+            "field": "generation_mode",
+            "value": "video_edit"
+          }
+        }
+      ]
+    },
+    {
+      "id": "guardrails",
+      "title": "Guardrails",
+      "titleTh": "ข้อกำกับและเงื่อนไข",
+      "icon": "settings",
+      "collapsible": true,
+      "collapsed": true,
+      "fields": [
+        {
+          "id": "must_include",
+          "type": "textarea",
+          "label": "Must Include",
+          "labelTh": "สิ่งที่ต้องมี",
+          "placeholder": "Key details that must appear clearly...",
+          "placeholderTh": "รายละเอียดสำคัญที่ต้องเห็นชัด...",
+          "helpText": "List key elements that should stay present and readable in the final prompt.",
+          "helpTextTh": "ระบุองค์ประกอบสำคัญที่ต้องมีและต้องอ่านออกชัดในพรอมต์",
+          "rows": 3
+        },
+        {
+          "id": "avoid",
+          "type": "textarea",
+          "label": "Avoid / Guardrails",
+          "labelTh": "สิ่งที่ควรหลีกเลี่ยง",
+          "placeholder": "flicker, extra limbs, warped hands, generic stock look...",
+          "placeholderTh": "ภาพกระพริบ แขนขาเกิน มือบิดเบี้ยว ลุคโฆษณาทั่วไป...",
+          "helpText": "Describe problems the prompt should guard against.",
+          "helpTextTh": "ระบุปัญหาหรือข้อผิดพลาดที่ต้องการให้พรอมต์ช่วยป้องกัน",
+          "rows": 3
+        },
+        {
+          "id": "additional_notes",
+          "type": "textarea",
+          "label": "Additional Notes",
+          "labelTh": "หมายเหตุเพิ่มเติม",
+          "placeholder": "Any extra direction that would make the prompt stronger...",
+          "placeholderTh": "คำแนะนำเพิ่มเติมที่จะทำให้พรอมต์สมบูรณ์ขึ้น...",
+          "helpText": "Optional extra direction for polish, realism, continuity, or brand tone.",
+          "helpTextTh": "คำแนะนำเพิ่มเติมด้านความสมจริง ความต่อเนื่อง ความพรีเมียม หรือโทนแบรนด์",
+          "rows": 3
+        },
+        {
+          "id": "safety_rewrite_mode",
+          "type": "select",
+          "label": "Safety Rewrite Mode",
+          "labelTh": "โหมดปรับคำให้ปลอดภัย",
+          "helpText": "Controls how strongly the skill rewrites risky named references into safe, original cinematic wording.",
+          "helpTextTh": "กำหนดระดับการปรับคำอ้างอิงที่เสี่ยงให้เป็นถ้อยคำ cinematic ที่ปลอดภัยและเป็นต้นฉบับ",
+          "default": "strict_media_safe",
+          "options": [
+            {
+              "value": "strict_media_safe",
+              "label": "Strict Media-Safe",
+              "labelTh": "ปลอดภัยเข้มงวด"
+            },
+            {
+              "value": "balanced_media_safe",
+              "label": "Balanced Media-Safe",
+              "labelTh": "ปลอดภัยแบบสมดุล"
+            }
+          ]
+        },
+        {
+          "id": "youth_depiction_policy",
+          "type": "select",
+          "label": "Youth / Child Subject Policy",
+          "labelTh": "นโยบายตัวละครเด็ก / ผู้เยาว์",
+          "helpText": "Choose whether babies, children, and teenagers may appear in safe age-appropriate contexts. This never allows sexualized or suggestive youth content.",
+          "helpTextTh": "เลือกได้ว่าจะอนุญาตให้มีทารก เด็ก หรือวัยรุ่นในบริบทที่ปลอดภัยและเหมาะสมกับวัยหรือไม่ โดยจะไม่มีการอนุญาตเนื้อหาชวนส่อหรือเชิงทางเพศกับผู้เยาว์เด็ดขาด",
+          "default": "allow_safe_youth",
+          "options": [
+            {
+              "value": "allow_safe_youth",
+              "label": "Allow Safe Youth Contexts",
+              "labelTh": "อนุญาตในบริบทปลอดภัย"
+            },
+            {
+              "value": "block_youth_subjects",
+              "label": "Block Youth Subjects",
+              "labelTh": "บล็อกตัวละครเด็ก / ผู้เยาว์"
+            }
+          ]
+        },
+        {
+          "id": "adult_sensuality_policy",
+          "type": "select",
+          "label": "Adult Sensuality Policy",
+          "labelTh": "นโยบายความเซ็กซี่ของผู้ใหญ่",
+          "helpText": "Choose whether clearly adult, non-explicit sensual or glamour cues may remain in the final prompt.",
+          "helpTextTh": "เลือกได้ว่าจะอนุญาตให้คงโทนเซ็กซี่หรือเสน่ห์แบบผู้ใหญ่ที่ไม่โจ่งแจ้งไว้ในพรอมต์สุดท้ายหรือไม่",
+          "default": "block_adult_sensuality",
+          "options": [
+            {
+              "value": "block_adult_sensuality",
+              "label": "Block Adult Sensuality",
+              "labelTh": "บล็อกโทนเซ็กซี่"
+            },
+            {
+              "value": "allow_tasteful_adult_sensuality",
+              "label": "Allow Tasteful Adult Sensuality",
+              "labelTh": "อนุญาตแบบผู้ใหญ่ที่สุภาพ"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "outputMapping": {
+    "topic": "topic",
+    "prompt_goal": "prompt_goal",
+    "project_title": "project_title",
+    "creative_direction_mode": "creative_direction_mode",
+    "storytelling_preset": "storytelling_preset",
+    "generation_mode": "generation_mode",
+    "target_model_profile": "target_model_profile",
+    "seedance_input_mode": "seedance_input_mode",
+    "veo_input_mode": "veo_input_mode",
+    "delivery_mode": "delivery_mode",
+    "multi_video_strategy": "multi_video_strategy",
+    "video_count": "video_count",
+    "video_segments": "video_segments",
+    "background_mode": "background_mode",
+    "language": "language",
+    "response_format": "response_format",
+    "aspect_ratio": "aspect_ratio",
+    "duration_seconds": "duration_seconds",
+    "multi_shot_timing_mode": "multi_shot_timing_mode",
+    "audio_mode": "audio_mode",
+    "dialogue_language": "dialogue_language",
+    "dialogue_density": "dialogue_density",
+    "story_shape": "story_shape",
+    "ending_style": "ending_style",
+    "performance_style": "performance_style",
+    "imagination_level": "imagination_level",
+    "scene_arc": "scene_arc",
+    "subject_count": "subject_count",
+    "continuity_mode": "continuity_mode",
+    "motion_realism": "motion_realism",
+    "continuity_notes": "continuity_notes",
+    "reference_notes": "reference_notes",
+    "main_subject": "main_subject",
+    "setting": "setting",
+    "action": "action",
+    "blocking_and_staging": "blocking_and_staging",
+    "foreground_midground_background": "foreground_midground_background",
+    "scene_beats": "scene_beats",
+    "timed_shot_plan": "timed_shot_plan",
+    "dialogue_or_text": "dialogue_or_text",
+    "visual_style": "visual_style",
+    "mood": "mood",
+    "camera_movement": "camera_movement",
+    "camera_angle": "camera_angle",
+    "shot_composition": "shot_composition",
+    "lens_look": "lens_look",
+    "focus_strategy": "focus_strategy",
+    "lighting_style": "lighting_style",
+    "time_of_day": "time_of_day",
+    "atmospherics": "atmospherics",
+    "production_design": "production_design",
+    "color_palette": "color_palette",
+    "color_contrast_strategy": "color_contrast_strategy",
+    "editing_rhythm": "editing_rhythm",
+    "first_frame_url": "first_frame_url",
+    "last_frame_url": "last_frame_url",
+    "reference_images": "reference_images",
+    "reference_image_1_role": "reference_image_1_role",
+    "reference_image_2_role": "reference_image_2_role",
+    "reference_image_3_role": "reference_image_3_role",
+    "reference_image_4_role": "reference_image_4_role",
+    "reference_image_5_role": "reference_image_5_role",
+    "reference_image_6_role": "reference_image_6_role",
+    "reference_image_7_role": "reference_image_7_role",
+    "reference_image_8_role": "reference_image_8_role",
+    "reference_image_9_role": "reference_image_9_role",
+    "reference_image_notes": "reference_image_notes",
+    "reference_videos": "reference_videos",
+    "reference_audios": "reference_audios",
+    "reference_asset_rights_confirmed": "reference_asset_rights_confirmed",
+    "character_consistency": "character_consistency",
+    "source_video_url": "source_video_url",
+    "must_include": "must_include",
+    "avoid": "avoid",
+    "additional_notes": "additional_notes",
+    "safety_rewrite_mode": "safety_rewrite_mode",
+    "youth_depiction_policy": "youth_depiction_policy",
+    "adult_sensuality_policy": "adult_sensuality_policy"
+  }
+}

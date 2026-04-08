@@ -5,11 +5,13 @@ const {
   mockDeductCreditsForModel,
   mockIsModelFree,
   mockLogRequest,
+  mockResolveChatModelSelection,
 } = vi.hoisted(() => ({
   mockExecuteWithFallback: vi.fn(),
   mockDeductCreditsForModel: vi.fn(),
   mockIsModelFree: vi.fn(),
   mockLogRequest: vi.fn(),
+  mockResolveChatModelSelection: vi.fn(),
 }));
 
 vi.mock("./services/llmRouter", () => ({
@@ -29,6 +31,27 @@ vi.mock("./services/costTracker", () => ({
   logRequest: mockLogRequest.mockResolvedValue(undefined),
 }));
 
+vi.mock("./services/chatModelSelection", () => ({
+  deriveChatSelectionContext: vi.fn().mockReturnValue(null),
+  readStoredChatModelSelectionState: vi.fn().mockReturnValue(null),
+  resolveChatModelSelection: (...args: unknown[]) => mockResolveChatModelSelection(...args),
+  storedSelectionStateFromResolved: vi.fn().mockReturnValue({
+    mode: "explicit",
+    modelId: "gpt-4o",
+  }),
+}));
+
+vi.mock("./services/chatService", () => ({
+  getConversationById: vi.fn().mockResolvedValue(undefined),
+  updateConversation: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock("./services/tenantFeatureFlagService", () => ({
+  getTenantFeatureFlags: vi.fn().mockResolvedValue({
+    chatAutoModelSelection: true,
+  }),
+}));
+
 import {
   handleChatWithRouter,
   handleStreamWithRouter,
@@ -38,6 +61,20 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockIsModelFree.mockResolvedValue(false);
   mockDeductCreditsForModel.mockResolvedValue({ creditsUsed: 1, wasFree: false });
+  mockResolveChatModelSelection.mockResolvedValue({
+    selectionMode: "explicit",
+    selection: { mode: "explicit", modelId: "gpt-4o", providerId: null },
+    requestedModelId: "gpt-4o",
+    resolvedModelId: "gpt-4o",
+    resolvedProviderId: undefined,
+    resolvedProviderName: undefined,
+    preferredProviderId: undefined,
+    strictProviderPin: false,
+    routeFamily: "chat-completions",
+    requirements: {},
+    continuityApplied: false,
+    shouldPersistSelectionState: true,
+  });
 });
 
 // --- Mock Express helpers ---
@@ -97,6 +134,20 @@ describe("handleChatWithRouter", () => {
   });
 
   it("preferredProvider is passed through to executeWithFallback", async () => {
+    mockResolveChatModelSelection.mockResolvedValue({
+      selectionMode: "explicit",
+      selection: { mode: "explicit", modelId: "gpt-4o", providerId: 5 },
+      requestedModelId: "gpt-4o",
+      resolvedModelId: "gpt-4o",
+      resolvedProviderId: 5,
+      resolvedProviderName: "openrouter",
+      preferredProviderId: 5,
+      strictProviderPin: false,
+      routeFamily: "chat-completions",
+      requirements: {},
+      continuityApplied: false,
+      shouldPersistSelectionState: true,
+    });
     mockExecuteWithFallback.mockResolvedValue({
       type: "success",
       response: { choices: [{ message: { content: "OK" } }] },
@@ -114,6 +165,32 @@ describe("handleChatWithRouter", () => {
 
     expect(mockExecuteWithFallback).toHaveBeenCalledWith(
       expect.objectContaining({ preferredProvider: 5 })
+    );
+  });
+
+  it("passes tenant auto-selection flag state through to the resolver", async () => {
+    mockExecuteWithFallback.mockResolvedValue({
+      type: "success",
+      response: { choices: [{ message: { content: "OK" } }], usage: { prompt_tokens: 1, completion_tokens: 1 } },
+      providerId: 1,
+    });
+
+    const { getTenantFeatureFlags } = await import("./services/tenantFeatureFlagService");
+    vi.mocked(getTenantFeatureFlags).mockResolvedValueOnce({
+      chatAutoModelSelection: false,
+    } as any);
+
+    const res = mockRes();
+    await handleChatWithRouter({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: "Hi" }],
+      userId: 1,
+      tenantId: "tenant-1",
+      res,
+    });
+
+    expect(mockResolveChatModelSelection).toHaveBeenCalledWith(
+      expect.objectContaining({ autoSelectionEnabled: false }),
     );
   });
 
@@ -152,6 +229,20 @@ describe("handleChatWithRouter", () => {
   it("free model deduction is 0 credits", async () => {
     mockIsModelFree.mockResolvedValue(true);
     mockDeductCreditsForModel.mockResolvedValue({ creditsUsed: 0, wasFree: true });
+    mockResolveChatModelSelection.mockResolvedValue({
+      selectionMode: "explicit",
+      selection: { mode: "explicit", modelId: "kimi-k2.5", providerId: null },
+      requestedModelId: "kimi-k2.5",
+      resolvedModelId: "kimi-k2.5",
+      resolvedProviderId: undefined,
+      resolvedProviderName: undefined,
+      preferredProviderId: undefined,
+      strictProviderPin: false,
+      routeFamily: "chat-completions",
+      requirements: {},
+      continuityApplied: false,
+      shouldPersistSelectionState: true,
+    });
     mockExecuteWithFallback.mockResolvedValue({
       type: "success",
       response: { choices: [{ message: { content: "Hello" } }], usage: { prompt_tokens: 10, completion_tokens: 5 } },

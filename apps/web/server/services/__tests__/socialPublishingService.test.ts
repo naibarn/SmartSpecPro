@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => {
   return {
@@ -75,6 +75,7 @@ describe("socialPublishingService", () => {
     vi.clearAllMocks();
     process.env.PYTHON_BACKEND_URL = "http://python.test";
     process.env.SMARTSPEC_WEB_GATEWAY_TOKEN = "test-internal-token";
+    vi.spyOn(Date, "now").mockReturnValue(new Date("2026-03-24T12:15:00.000Z").getTime());
     mocks.mockGetDb.mockReset();
     mockFetch.mockReset();
     mocks.mockDecrypt.mockReturnValue("decrypted-token");
@@ -91,6 +92,10 @@ describe("socialPublishingService", () => {
       encryptedPageAccessToken: "encrypted-token",
       tokenExpiresAt: null,
     });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it("createPublishingDraft inserts a draft for the tenant and logs the action", async () => {
@@ -158,7 +163,7 @@ describe("socialPublishingService", () => {
           pageStatus: "active",
           selectedForPublishing: true,
           encryptedPageAccessToken: "encrypted-token",
-          tokenExpiresAt: new Date("2026-03-24T13:00:00.000Z"),
+          tokenExpiresAt: new Date("2026-05-24T13:00:00.000Z"),
         },
       ])),
       update: vi.fn(() => createUpdateChain()),
@@ -257,7 +262,7 @@ describe("socialPublishingService", () => {
           pageStatus: "active",
           selectedForPublishing: true,
           encryptedPageAccessToken: "encrypted-token",
-          tokenExpiresAt: new Date("2026-03-24T13:00:00.000Z"),
+          tokenExpiresAt: new Date("2026-05-24T13:00:00.000Z"),
         },
       ])),
       update: vi.fn(() => createUpdateChain()),
@@ -306,7 +311,7 @@ describe("socialPublishingService", () => {
           pageStatus: "active",
           selectedForPublishing: true,
           encryptedPageAccessToken: "encrypted-token",
-          tokenExpiresAt: new Date("2026-03-24T13:00:00.000Z"),
+          tokenExpiresAt: new Date("2026-05-24T13:00:00.000Z"),
         },
       ])),
       update: vi.fn(() => createUpdateChain()),
@@ -355,7 +360,7 @@ describe("socialPublishingService", () => {
           encryptedPageAccessToken: null,
           encryptedAccessToken: "encrypted-token",
           tokenExpiresAt: null,
-          connectionTokenExpiresAt: new Date("2026-03-24T13:00:00.000Z"),
+          connectionTokenExpiresAt: new Date("2026-05-24T13:00:00.000Z"),
         },
       ])),
       update: vi.fn(() => createUpdateChain()),
@@ -397,7 +402,7 @@ describe("socialPublishingService", () => {
           pageStatus: "active",
           selectedForPublishing: true,
           encryptedPageAccessToken: "encrypted-token",
-          tokenExpiresAt: new Date("2026-03-24T13:00:00.000Z"),
+          tokenExpiresAt: new Date("2026-05-24T13:00:00.000Z"),
         },
       ])),
       update: vi.fn(() => createUpdateChain()),

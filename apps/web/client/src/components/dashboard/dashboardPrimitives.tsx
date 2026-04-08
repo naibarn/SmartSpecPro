@@ -1,4 +1,4 @@
-import type { ElementType, ReactNode } from 'react';
+import type { ComponentPropsWithoutRef, ElementType, ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
 export const dashboardSurfaceClass =
@@ -66,15 +66,16 @@ type DashboardSurfaceProps<T extends ElementType = 'div'> = {
   as?: T;
   className?: string;
   children: ReactNode;
-};
+} & Omit<ComponentPropsWithoutRef<T>, 'as' | 'className' | 'children' | 'title'>;
 
 export function DashboardSurface<T extends ElementType = 'div'>({
   as,
   className,
   children,
+  ...rest
 }: DashboardSurfaceProps<T>) {
   const Component = as ?? 'div';
-  return <Component className={cn(dashboardSurfaceClass, className)}>{children}</Component>;
+  return <Component {...rest} className={cn(dashboardSurfaceClass, className)}>{children}</Component>;
 }
 
 type DashboardCardProps<T extends ElementType = 'div'> = {
@@ -92,7 +93,7 @@ type DashboardCardProps<T extends ElementType = 'div'> = {
   footer?: ReactNode;
   titleClassName?: string;
   descriptionClassName?: string;
-};
+} & Omit<ComponentPropsWithoutRef<T>, 'as' | 'className' | 'children' | 'title'>;
 
 export function DashboardCard<T extends ElementType = 'div'>({
   as,
@@ -109,12 +110,14 @@ export function DashboardCard<T extends ElementType = 'div'>({
   footer,
   titleClassName = dashboardCardTitleLgClass,
   descriptionClassName = dashboardCardDescriptionClass,
+  ...rest
 }: DashboardCardProps<T>) {
-  const Component = as ?? 'div';
+  const Component = (as ?? 'div') as ElementType;
   const hasHeader = Boolean(eyebrow || title || description || leading || trailing);
+  const componentProps = rest as Omit<ComponentPropsWithoutRef<T>, 'as' | 'className' | 'children' | 'title'>;
 
   return (
-    <DashboardSurface as={Component} className={cn('overflow-hidden', className)}>
+    <Component {...componentProps} className={cn(dashboardSurfaceClass, 'overflow-hidden', className)}>
       {hasHeader ? (
         <div className={cn('flex items-start justify-between gap-4 px-5 pt-5 sm:px-6 sm:pt-6', headerClassName)}>
           <div className="min-w-0 flex-1">
@@ -144,7 +147,7 @@ export function DashboardCard<T extends ElementType = 'div'>({
           {footer}
         </div>
       ) : null}
-    </DashboardSurface>
+    </Component>
   );
 }
 

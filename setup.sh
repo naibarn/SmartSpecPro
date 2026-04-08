@@ -167,7 +167,7 @@ log_step "Creating necessary directories..."
 
 mkdir -p scripts
 mkdir -p logs
-mkdir -p apps/desktop/sandbox-images/workspace
+mkdir -p apps/tauri-shell/binaries/.downloads
 
 log_info "Directories created."
 
@@ -205,9 +205,8 @@ log_step "Making scripts executable..."
 
 chmod +x dev.sh 2>/dev/null || true
 chmod +x setup.sh 2>/dev/null || true
-chmod +x apps/desktop/build.sh 2>/dev/null || true
-chmod +x apps/desktop/sandbox-images/build.sh 2>/dev/null || true
-chmod +x apps/desktop/sandbox-images/*.sh 2>/dev/null || true
+chmod +x scripts/desktop-app.sh 2>/dev/null || true
+chmod +x apps/tauri-shell/scripts/*.sh 2>/dev/null || true
 
 log_info "Scripts are now executable."
 
@@ -243,17 +242,15 @@ fi
 # Step 9: Desktop app setup (optional)
 # ============================================
 
-if command -v node &> /dev/null && command -v pnpm &> /dev/null; then
+if command -v node &> /dev/null && command -v npm &> /dev/null; then
     echo ""
     echo -n "Set up desktop app dependencies? (y/N): "
     read -r answer
     
     if [ "$answer" = "y" ] || [ "$answer" = "Y" ]; then
         log_step "Installing desktop app dependencies..."
-        
-        cd apps/desktop
-        pnpm install
-        cd ../..
+
+        npm install
         
         log_info "Desktop app dependencies installed."
     fi

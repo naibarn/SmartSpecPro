@@ -14,6 +14,7 @@ import { decrypt } from "./crypto";
 import { auditLogger } from "./auditLogger";
 import { verifyPageAccess } from "./socialAccessService";
 import { publishSocialContentViaPythonBackend, readPythonBackendError } from "./socialPublishGateway";
+import { getAppRuntimeConfig, getPreferredInternalToken } from "./appRuntimeConfig";
 
 const PY_TIMEOUT_MS = 15_000;
 
@@ -295,13 +296,13 @@ async function callPythonBackend(
   options: { method: "GET" | "POST"; body?: unknown; timeoutMs?: number },
 ): Promise<Response> {
   const { method, body, timeoutMs = PY_TIMEOUT_MS } = options;
-  const pythonBackendUrl = (process.env.PYTHON_BACKEND_URL || "http://localhost:8000").replace(/\/+$/, "");
-  const internalToken = process.env.SMARTSPEC_WEB_GATEWAY_TOKEN || process.env.SMARTSPEC_PROXY_TOKEN || "";
+  const runtime = await getAppRuntimeConfig();
+  const internalToken = await getPreferredInternalToken();
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    return await fetch(`${pythonBackendUrl}${path}`, {
+    return await fetch(`${runtime.pythonBackendUrl}${path}`, {
       method,
       headers: {
         "Content-Type": "application/json",

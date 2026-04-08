@@ -3,7 +3,7 @@ import { getTenantFeatureFlags } from "../services/tenantFeatureFlagService";
 
 /**
  * Express middleware that checks the tenant `publicApi` feature flag.
- * Only applies to API key auth — session and bearer auth bypass this check.
+ * Only applies to API key auth — session, bearer, and delegated worker auth bypass this check.
  */
 export async function publicApiFeatureGuard(
   req: Request,
@@ -23,8 +23,9 @@ export async function publicApiFeatureGuard(
     return;
   }
 
-  // Session and bearer auth bypass feature flag check
-  if (auth.mode === "session" || auth.mode === "bearer") {
+  // Session, bearer, and delegated worker auth bypass this public API flag check.
+  // Delegated workers are gated separately by worker-runtime feature controls.
+  if (auth.mode === "session" || auth.mode === "bearer" || auth.mode === "delegated_worker") {
     next();
     return;
   }

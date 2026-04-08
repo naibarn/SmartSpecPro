@@ -1,0 +1,11 @@
+{
+  "binarySourceName": "litert-lm",
+  "binaryTarget": "x86_64-unknown-linux-gnu",
+  "bundleMode": "on-demand",
+  "bundledProfiles": [],
+  "preparedAt": "2026-04-08T12:47:06.439520Z",
+  "relativeExecutablePath": "venv/bin/litert-lm",
+  "relativeLibraryDir": "venv/lib/python3.13/site-packages/litert_lm",
+  "runtimeKind": "uv_venv",
+  "runtimePackageSpec": "litert-lm==0.10.1"
+}

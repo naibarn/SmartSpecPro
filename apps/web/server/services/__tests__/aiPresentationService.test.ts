@@ -197,6 +197,7 @@ import {
   finalizeSlideContentBeforeDraftInsert,
   finalizeSlideContentAfterRelayout,
   finalizeSlideContentAfterRepair,
+  makeFallbackHistoryEntry,
   repairSlideFromSavedNote,
   relayoutExistingSlideAsync,
   relayoutExistingSlide,
@@ -591,6 +592,60 @@ describe("relayoutExistingSlide", () => {
     expect(output.slideContent.transition).toBe("fade");
     expect(output.slideContent.durationMs).toBe(5000);
     expect(output.applied.reusedImage).toBe(true);
+  });
+
+  it("stabilizes stale fallback history metadata before relayout parsing", () => {
+    mockGetBuiltInPreset.mockReturnValue({
+      id: "dark-professional",
+      name: "Dark Professional",
+      colors: { background: "#1a1a2e", backgroundAlt: "#16213e", primary: "#e94560", secondary: "#0f3460", text: "#ffffff", textMuted: "#a0a0b0", cardBg: ["#16213e", "#0f3460", "#1a1a3e"], overlay: "rgba(0,0,0,0.55)" },
+      typography: { titleFontFamily: "Inter", bodyFontFamily: "Inter", titleFontWeight: 700, bodyFontWeight: 400 },
+    });
+    mockPickRandomSvg.mockReturnValue(MOCK_SVG);
+    mockGenerateSlide.mockReturnValue({
+      slideContent: {
+        elements: [
+          { id: "new-image-1", type: "image", x: 0, y: 0, width: 1280, height: 720, src: "https://cdn.example.com/existing.jpg", alt: "cover" },
+          { id: "new-text-1", type: "text", x: 100, y: 100, width: 700, height: 120, text: "Relayout title", color: "#ffffff" },
+        ],
+      },
+      warnings: [],
+    });
+
+    const output = relayoutExistingSlide({
+      slideTitle: "Original title",
+      deckTitle: "Deck",
+      slideIndex: 1,
+      totalSlides: 5,
+      slideContent: {
+        elements: [
+          { id: "bg", type: "rect", x: 0, y: 0, width: 1280, height: 720, fill: "#1a1a2e" },
+          { id: "img-1", type: "image", x: 0, y: 0, width: 1280, height: 720, src: "https://cdn.example.com/existing.jpg", alt: "hero", imagePrompt: "prompt", imageModelId: "flux-2.0" },
+          { id: "t-1", type: "text", x: 120, y: 110, width: 900, height: 130, text: "Original title", color: "#ffffff", fontSize: 58, fontWeight: "700" },
+        ],
+        canvas: { width: 1280, height: 720, preset: "16:9" },
+        aiDesign: {
+          source: "draft-with-ai",
+          selectionMode: "llm",
+          fallbackHistory: [
+            {
+              step: "switch_mode",
+              from: "llm_layout_dsl",
+              to: "llm_layout_dsl_local_fallback",
+              reason: `Repeated DSL failure ${"x".repeat(900)}`,
+              timestamp: "2026-04-02T00:00:00.000Z",
+            },
+          ],
+        } as any,
+      },
+      includeSvg: true,
+      layoutSeed: 2,
+    });
+
+    expect(presentationSlideContentSchema.safeParse(output.slideContent).success).toBe(true);
+    expect(output.slideContent.aiDesign?.fallbackHistory).toHaveLength(1);
+    expect(output.slideContent.aiDesign?.fallbackHistory?.[0].reason).toContain("Repeated DSL failure");
+    expect((output.slideContent.aiDesign?.fallbackHistory?.[0].reason ?? "").length).toBeLessThanOrEqual(512);
   });
 
   it("expands component fallback content so auto layout can reuse block text and media", () => {
@@ -5457,7 +5512,7 @@ describe("generateAIDraft - Phase 2", () => {
       slideContent?: { aiDesign?: { componentRecipeId?: string; compactionLevel?: string } };
     };
     expect(secondInsertPayload.slideContent?.aiDesign?.componentRecipeId).toBe("poster-spotlight");
-    expect(secondInsertPayload.slideContent?.aiDesign?.compactionLevel).toBe("balanced");
+    expect(secondInsertPayload.slideContent?.aiDesign?.compactionLevel).toBe("compact");
   });
 
   it("applies recipe-aware compaction for feature-highlights slides through structured_block prompts", async () => {
@@ -6239,7 +6294,7 @@ describe("generateAIDraft - Phase 2", () => {
     ]));
   });
 
-  it("rebuilds slides with a local DSL fallback when generated media exists but the compiled slide does not consume it", async () => {
+  it("saves slides with a local DSL fallback when generated media exists but the compiled slide does not consume it", async () => {
     setupHappyPath();
     process.env.PRESENTATION_AI_LAYOUT_DSL_ENABLED = "true";
     mockGetSkillByIdAsync.mockResolvedValue({
@@ -6328,16 +6383,42 @@ describe("generateAIDraft - Phase 2", () => {
       delete process.env.PRESENTATION_AI_LAYOUT_DSL_ENABLED;
     }
 
-    expect(mockAddSlideToDeck).not.toHaveBeenCalled();
+    expect(mockAddSlideToDeck).toHaveBeenCalledTimes(1);
+
+    const insertPayload = mockAddSlideToDeck.mock.calls[0]?.[0] as {
+      slideContent?: {
+        elements?: Array<{ type?: string; src?: string }>;
+        aiDesign?: {
+          mode?: string;
+          layoutExecution?: { resolvedBy?: string };
+          fallbackHistory?: Array<{ to?: string; reason?: string }>;
+        };
+      };
+    };
+    expect(insertPayload.slideContent?.aiDesign?.mode).toBe("llm_layout_dsl");
+    expect(insertPayload.slideContent?.aiDesign?.layoutExecution?.resolvedBy).toBe("local_dsl_fallback");
+    expect(insertPayload.slideContent?.aiDesign?.fallbackHistory).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        to: "llm_layout_dsl_local_fallback",
+        reason: expect.stringMatching(/did not consume the resolved media url/i),
+      }),
+    ]));
+    expect(insertPayload.slideContent?.elements).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        type: "image",
+        src: "https://cdn.example.com/image.jpg",
+      }),
+    ]));
 
     const progressCalls = mockRedisSet.mock.calls.filter(
       (c: unknown[]) => typeof c[0] === "string" && (c[0] as string).includes("ai_draft_progress"),
     );
     const lastProgress = JSON.parse(progressCalls[progressCalls.length - 1][1] as string);
-    expect(lastProgress.phaseLabel).toBe("Compiling layouts failed");
-    expect(lastProgress.error.message).toMatch(/still required fallback/i);
-    expect(lastProgress.error.message).toMatch(/slide 1/i);
-    expect(lastProgress.error.message).toMatch(/did not consume the resolved media url|use at least one provided media token/i);
+    expect(lastProgress.phaseLabel).toBe("Complete");
+    expect(lastProgress.result?.warnings ?? []).toEqual(expect.arrayContaining([
+      expect.stringMatching(/saved with a local dsl fallback/i),
+      expect.stringMatching(/did not consume the resolved media url|use at least one provided media token/i),
+    ]));
   });
 
   it("retries the layout DSL with repair feedback before settling on a final slide", async () => {
@@ -6505,7 +6586,7 @@ describe("generateAIDraft - Phase 2", () => {
     }));
   });
 
-  it("fails the draft instead of saving local fallback slides when advanced layout DSL times out", async () => {
+  it("saves local fallback slides when advanced layout DSL times out", async () => {
     setupHappyPath();
     process.env.PRESENTATION_AI_LAYOUT_DSL_ENABLED = "true";
     process.env.AI_DRAFT_LAYOUT_DSL_TIMEOUT_MS = "2000";
@@ -6567,16 +6648,45 @@ describe("generateAIDraft - Phase 2", () => {
       delete process.env.AI_DRAFT_LAYOUT_DSL_TIMEOUT_MS;
     }
 
-    expect(mockAddSlideToDeck).not.toHaveBeenCalled();
+    expect(mockAddSlideToDeck).toHaveBeenCalledTimes(2);
+
+    const firstInsertPayload = mockAddSlideToDeck.mock.calls[0]?.[0] as {
+      slideContent?: {
+        aiDesign?: {
+          mode?: string;
+          layoutExecution?: { resolvedBy?: string; attemptCount?: number };
+        };
+      };
+    };
+    expect(firstInsertPayload.slideContent?.aiDesign?.mode).toBe("llm_layout_dsl");
+    expect(firstInsertPayload.slideContent?.aiDesign?.layoutExecution).toEqual(expect.objectContaining({
+      resolvedBy: "local_dsl_fallback",
+      attemptCount: expect.any(Number),
+    }));
 
     const progressCalls = mockRedisSet.mock.calls.filter(
       (c: unknown[]) => typeof c[0] === "string" && (c[0] as string).includes("ai_draft_progress"),
     );
     expect(progressCalls.some(([, value]) => JSON.parse(String(value)).phaseLabel.includes("Applying advanced layouts"))).toBe(true);
     const lastProgress = JSON.parse(progressCalls[progressCalls.length - 1][1] as string);
-    expect(lastProgress.phaseLabel).toBe("Compiling layouts failed");
-    expect(lastProgress.error.message).toMatch(/slide 1/i);
-    expect(lastProgress.error.message).toMatch(/layout_dsl_timeout|usable layout|did not consume the resolved media url/i);
+    expect(lastProgress.phaseLabel).toBe("Complete");
+    expect(lastProgress.result?.warnings ?? []).toEqual(expect.arrayContaining([
+      expect.stringMatching(/saved with a local dsl fallback/i),
+      expect.stringMatching(/layout_dsl_timeout|usable layout|did not consume the resolved media url/i),
+    ]));
+  });
+
+  it("truncates fallback history reasons to schema-safe length", () => {
+    const entry = makeFallbackHistoryEntry({
+      step: "switch_mode",
+      from: "llm_layout_dsl",
+      to: "llm_layout_dsl_local_fallback",
+      reason: `Repeated DSL failure ${"x".repeat(900)}`,
+    });
+
+    expect(entry.step).toBe("switch_mode");
+    expect(entry.reason).toContain("Repeated DSL failure");
+    expect(entry.reason.length).toBeLessThanOrEqual(512);
   });
 
   it("uses full-slide-media mode when the visual-first flag is enabled and Thai text risk is acceptable", async () => {

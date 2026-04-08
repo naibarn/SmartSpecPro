@@ -6,11 +6,14 @@ import { useAuth } from "@/contexts/AuthContext";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { MultiProviderAdmin } from "@/components/admin/MultiProviderAdmin";
+import { LocaleToggle } from "@/components/LocaleToggle";
 import { DashboardCard, DashboardKpiCard } from "@/components/dashboard";
+import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 
 export default function AdminLLMModels() {
   const { user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
+  const { t } = useScopedTranslation("admin");
 
   useEffect(() => {
     if (!authLoading && (!user || user.role !== "admin")) {
@@ -40,7 +43,7 @@ export default function AdminLLMModels() {
   if (authLoading || !user || user.role !== "admin") {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <div className="text-sm text-muted-foreground">Loading...</div>
+        <div className="text-sm text-muted-foreground">{t("admin.multiProvider.loading")}</div>
       </div>
     );
   }
@@ -54,38 +57,41 @@ export default function AdminLLMModels() {
         className="mb-4 text-gray-600"
       >
         <ChevronLeft className="mr-1 h-5 w-5" />
-        Back to LLM Providers
+        {t("admin.llmModels.backToProviders")}
       </Button>
 
       <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <h1 className="flex items-center gap-2 text-3xl font-bold">
             <Cpu className="h-8 w-8" />
-            LLM Model Configuration
+            {t("admin.llmModels.title")}
           </h1>
           <p className="mt-2 text-muted-foreground">
-            The default view shows all LLM models in a single list so you can enable or disable them quickly, with separate group controls available for bulk management.
+            {t("admin.llmModels.subtitle")}
           </p>
         </div>
-        <Button variant="outline" onClick={() => setLocation("/admin/llm-providers")}>
-          Manage Providers
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <LocaleToggle className="shrink-0" />
+          <Button variant="outline" onClick={() => setLocation("/admin/llm-providers")}>
+            {t("admin.llmModels.manageProviders")}
+          </Button>
+        </div>
       </div>
 
       <div className="mb-8 grid gap-4 md:grid-cols-3">
         <DashboardKpiCard
           icon={Layers}
-          label="Unique Models"
+          label={t("admin.llmModels.kpis.uniqueModels")}
           value={summary.modelGroups}
         />
         <DashboardKpiCard
           icon={Cpu}
-          label="Manageable Models"
+          label={t("admin.llmModels.kpis.manageableModels")}
           value={summary.mappings}
         />
         <DashboardKpiCard
           icon={ToggleLeft}
-          label="Enabled Mappings"
+          label={t("admin.llmModels.kpis.enabledMappings")}
           value={summary.enabled}
           valueClassName="text-green-600"
           iconContainerClassName="bg-green-50 text-green-600 ring-green-100"
@@ -94,11 +100,11 @@ export default function AdminLLMModels() {
       </div>
 
       <DashboardCard
-        title="Model Availability"
-        description="Start with the full model list, then switch to group controls when you need to enable or disable entire sets at once."
+        title={t("admin.llmModels.card.title")}
+        description={t("admin.llmModels.card.description")}
       >
         {isLoading ? (
-          <div className="py-8 text-sm text-muted-foreground">Loading model mappings...</div>
+          <div className="py-8 text-sm text-muted-foreground">{t("admin.llmModels.card.loading")}</div>
         ) : (
           <MultiProviderAdmin tabs={["mappings"]} defaultTab="mappings" />
         )}

@@ -1,0 +1,2954 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/skills/cinematic-video-createprompt/schemas/input.schema.json",
+  "title": "Cinematic Video Prompt Builder Input",
+  "description": "User-friendly input contract for building polished cinematic video prompts from a simple brief, with support for multi-shot single-video output, optional second-by-second timed multi-shot planning, continuous multi-video stories, multi-video creative variations, storytelling presets such as ASMR, dialogue-driven, silent visual, dreamlike, cartoon, action, and relaxing ambient modes, dialogue-language detection, provider-specific profiles for generic video models, Seedance 2 multimodal references, Veo 3.1 frame and image guidance, and either normal-background or green-screen video output.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "topic"
+  ],
+  "properties": {
+    "topic": {
+      "type": "string",
+      "title": "Topic / Core Idea",
+      "description": "The main idea, scene, product, or story moment. If this is the only field the user gives, the skill should infer the best cinematic treatment automatically.",
+      "minLength": 3,
+      "maxLength": 1000
+    },
+    "prompt_goal": {
+      "type": "string",
+      "title": "Prompt Goal",
+      "description": "Optional expansion of the topic. Describe the video you want to create in plain language. Focus on the main subject, what happens, and the feeling you want.",
+      "maxLength": 2000
+    },
+    "project_title": {
+      "type": "string",
+      "title": "Project Title",
+      "description": "Optional short name for this prompt request.",
+      "maxLength": 120
+    },
+    "creative_direction_mode": {
+      "type": "string",
+      "title": "Cinematic Decision Mode",
+      "description": "Choose whether the skill should let the LLM decide the best cinematic treatment for you, pick a more random but still context-appropriate cinematic direction, or follow your manual selections more closely. If omitted, it should behave as Auto Best.",
+      "default": "auto_best",
+      "oneOf": [
+        {
+          "const": "auto_best",
+          "title": "Auto Best / LLM Best",
+          "description": "Recommended. The skill chooses the most fitting cinematic treatment automatically from the topic, context, and references."
+        },
+        {
+          "const": "random_cinematic",
+          "title": "Random Cinematic",
+          "description": "The skill chooses a bolder and less expected cinematic interpretation automatically, while still staying relevant to the topic."
+        },
+        {
+          "const": "surprise_me",
+          "title": "Surprise Me (Legacy Alias)",
+          "description": "Legacy alias for Random Cinematic. Keeps compatibility with earlier inputs while using the same behavior."
+        },
+        {
+          "const": "manual_guided",
+          "title": "Manual Guided",
+          "description": "The skill respects your explicit controls more closely, while still polishing wording and filling gaps."
+        }
+      ]
+    },
+    "storytelling_preset": {
+      "type": "string",
+      "title": "Storytelling Preset",
+      "description": "Choose the overall storytelling flavor you want. Leave on Auto Popular if you want the skill to pick the most suitable narrative style from the topic.",
+      "default": "auto_popular",
+      "oneOf": [
+        {
+          "const": "auto_popular",
+          "title": "Auto Popular",
+          "description": "Recommended. Choose the most suitable storytelling style automatically from the topic and current short-form video patterns."
+        },
+        {
+          "const": "dialogue_skit",
+          "title": "Dialogue Skit",
+          "description": "Character-led short scene driven by short spoken exchanges, reactions, and timing."
+        },
+        {
+          "const": "voiceover_story",
+          "title": "Voiceover Story",
+          "description": "Narration-led storytelling where voiceover or guided commentary carries the scene."
+        },
+        {
+          "const": "silent_visual_story",
+          "title": "Silent Visual Story",
+          "description": "Tell the story mainly through action, staging, camera, and atmosphere without spoken dialogue."
+        },
+        {
+          "const": "asmr_sensory",
+          "title": "ASMR / Sensory",
+          "description": "Focus on tactile details, close-up micro-actions, soothing texture, and sensory satisfaction."
+        },
+        {
+          "const": "relax_ambient",
+          "title": "Relax / Ambient",
+          "description": "Create a calming atmospheric clip with soft motion, comfort, and environmental presence."
+        },
+        {
+          "const": "dreamlike_poetic",
+          "title": "Dreamlike / Poetic",
+          "description": "Use lyrical, soft, floating, or emotionally dreamlike storytelling."
+        },
+        {
+          "const": "surreal_impossible",
+          "title": "Surreal / Impossible",
+          "description": "Create original, imaginative imagery that goes beyond reality in a readable cinematic way."
+        },
+        {
+          "const": "cartoon_dialogue",
+          "title": "Cartoon Dialogue",
+          "description": "Animated or cartoon-style characters talk, react, and perform with clear expressive timing."
+        },
+        {
+          "const": "cartoon_sfx_only",
+          "title": "Cartoon SFX Only",
+          "description": "Animated or cartoon-style storytelling driven by motion, comic timing, and sound-effect energy instead of speech."
+        },
+        {
+          "const": "action_showdown",
+          "title": "Action Showdown",
+          "description": "Create a readable confrontation, chase, or fight-oriented scene with clear cinematic geography."
+        },
+        {
+          "const": "pov_vlog",
+          "title": "POV / Vlog",
+          "description": "A social-native or first-person-feeling version with immediacy and relatable presence."
+        },
+        {
+          "const": "documentary_observational",
+          "title": "Documentary / Observational",
+          "description": "Grounded observational storytelling that feels lived-in, authentic, and cinematic."
+        },
+        {
+          "const": "explainer_edutainment",
+          "title": "Explainer / Edutainment",
+          "description": "Educational storytelling that remains engaging, clear, and visually appealing."
+        },
+        {
+          "const": "product_beauty_story",
+          "title": "Product / Beauty Story",
+          "description": "Premium product-led storytelling with tactile detail, beauty framing, and aspirational mood."
+        }
+      ]
+    },
+    "generation_mode": {
+      "type": "string",
+      "title": "Generation Mode",
+      "description": "Choose the workflow this cinematic prompt should support. Leave on Auto if you want the skill to decide from the topic and references.",
+      "default": "auto",
+      "oneOf": [
+        {
+          "const": "auto",
+          "title": "Auto",
+          "description": "If source video is present, use video edit. If reference images or first/last-frame anchors are present, use image to video. Otherwise use text to video."
+        },
+        {
+          "const": "text_to_video",
+          "title": "Text to Video",
+          "description": "Create a cinematic prompt from text only."
+        },
+        {
+          "const": "image_to_video",
+          "title": "Image to Video",
+          "description": "Use reference images, first/last-frame anchors, or other image-based guidance to anchor style, character, composition, or opening/ending frames."
+        },
+        {
+          "const": "video_edit",
+          "title": "Video Edit",
+          "description": "Rewrite an existing clip while preserving its core structure."
+        }
+      ]
+    },
+    "target_model_profile": {
+      "type": "string",
+      "title": "Target Model Profile",
+      "description": "Choose whether the prompt package should stay broadly compatible with generic video models, follow Seedance 2 specific multimodal reference behavior, or follow Veo 3.1 compatible image-reference behavior. If omitted by a programmatic caller, the schema should treat the request as generic compatibility mode.",
+      "default": "generic_video_models",
+      "oneOf": [
+        {
+          "const": "generic_video_models",
+          "title": "Generic Video Models",
+          "description": "Recommended default. Keep the prompt broadly portable across many video models. Image references stay within the standard 4-image workflow."
+        },
+        {
+          "const": "seedance_2_kie",
+          "title": "Seedance 2 (Kie.ai)",
+          "description": "Enable Seedance 2 oriented multimodal guidance, including up to 9 image references and optional video/audio reference URLs."
+        },
+        {
+          "const": "veo_3_1_kie",
+          "title": "Veo 3.1 (Kie.ai)",
+          "description": "Enable Veo 3.1 compatible image-guided behavior, including first-frame or first-and-last-frame anchoring and reference-to-video with 1 to 3 images."
+        }
+      ]
+    },
+    "seedance_input_mode": {
+      "type": "string",
+      "title": "Seedance Input Mode",
+      "description": "Only relevant when Target Model Profile is Seedance 2. Choose whether the request should use first-frame anchoring, first-and-last-frame anchoring, or Seedance's multimodal reference mode.",
+      "default": "auto",
+      "oneOf": [
+        {
+          "const": "auto",
+          "title": "Auto",
+          "description": "Infer the best Seedance 2 input mode from the references you provide."
+        },
+        {
+          "const": "first_frame_only",
+          "title": "First Frame Only",
+          "description": "Anchor the clip from a provided first frame image."
+        },
+        {
+          "const": "first_and_last_frames",
+          "title": "First and Last Frames",
+          "description": "Anchor both the opening and final frame from two provided images."
+        },
+        {
+          "const": "multimodal_reference",
+          "title": "Multimodal Reference",
+          "description": "Use Seedance 2 style mixed image, video, and audio references instead of first/last-frame mode."
+        }
+      ]
+    },
+    "veo_input_mode": {
+      "type": "string",
+      "title": "Veo Input Mode",
+      "description": "Only relevant when Target Model Profile is Veo 3.1. Choose whether the request should use a first frame, first and last frames, or Veo's reference-to-video mode.",
+      "default": "auto",
+      "oneOf": [
+        {
+          "const": "auto",
+          "title": "Auto",
+          "description": "Infer the best Veo 3.1 input mode from the references you provide."
+        },
+        {
+          "const": "first_frame_only",
+          "title": "First Frame Only",
+          "description": "Anchor the clip from a provided first frame image."
+        },
+        {
+          "const": "first_and_last_frames",
+          "title": "First and Last Frames",
+          "description": "Anchor both the opening and closing frame from two provided images."
+        },
+        {
+          "const": "reference_to_video",
+          "title": "Reference to Video",
+          "description": "Use Veo 3.1 reference-to-video behavior with 1 to 3 reference images."
+        }
+      ]
+    },
+    "delivery_mode": {
+      "type": "string",
+      "title": "Result Type",
+      "description": "Choose whether the skill should create one video with multiple cinematic shots inside the same prompt, or a package of separate video prompts. If you choose Multi Video, you must also choose whether the package is a continuous story or a set of creative variations.",
+      "default": "multi_shot_single_video",
+      "oneOf": [
+        {
+          "const": "multi_shot_single_video",
+          "title": "Multi Shot (Single Video)",
+          "description": "Default. Create one video prompt that may contain multiple shots or beats inside the same clip."
+        },
+        {
+          "const": "multi_video",
+          "title": "Multi Video",
+          "description": "Create several separate video prompts. Use Multi Video Strategy to choose whether they continue the same story or act as different creative versions of the same topic."
+        }
+      ]
+    },
+    "multi_video_strategy": {
+      "type": "string",
+      "title": "Multi Video Type",
+      "description": "Only relevant when Result Type is Multi Video. Choose one of the two Multi Video types: a continuous story package, or a package of creative variations from the same topic.",
+      "oneOf": [
+        {
+          "const": "continuous_story",
+          "title": "Continuous Story",
+          "description": "Create separate prompts that continue the same character, environment, and narrative arc across clips."
+        },
+        {
+          "const": "creative_variations",
+          "title": "Creative Variations",
+          "description": "Create separate prompts that present the same topic in different moods, concepts, or cinematic angles for the user to choose from later."
+        }
+      ]
+    },
+    "video_count": {
+      "type": "integer",
+      "title": "Number of Videos",
+      "description": "How many separate videos to generate when Result Type is Multi Video.",
+      "minimum": 2,
+      "maximum": 6
+    },
+    "video_segments": {
+      "type": "array",
+      "title": "Video Segments",
+      "description": "Define each separate video clip for Multi Video mode. Each item must include its own duration. Optional focus notes help the skill shape either the story progression or the creative variation direction across clips.",
+      "minItems": 2,
+      "maxItems": 6,
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/multiVideoSegment"
+      }
+    },
+    "language": {
+      "type": "string",
+      "title": "Output Language",
+      "description": "Language used for the generated prompt and notes.",
+      "default": "en",
+      "oneOf": [
+        {
+          "const": "en",
+          "title": "English"
+        },
+        {
+          "const": "th",
+          "title": "Thai (ภาษาไทย)"
+        }
+      ]
+    },
+    "response_format": {
+      "type": "string",
+      "title": "Response Format",
+      "description": "Choose whether the skill should return a plain text prompt package ready to use directly, or a structured JSON package for debugging, downstream parsing, or automation. Default is Plain Text because it is the most convenient for normal use.",
+      "default": "plain_text",
+      "oneOf": [
+        {
+          "const": "plain_text",
+          "title": "Plain Text",
+          "description": "Recommended default. Return only the final prompt text or prompt pack, ready to paste into a video model."
+        },
+        {
+          "const": "structured_json",
+          "title": "Structured JSON",
+          "description": "Return a full JSON object matching the structured output contract for advanced workflows, automation, or debugging."
+        }
+      ]
+    },
+    "aspect_ratio": {
+      "type": "string",
+      "title": "Aspect Ratio",
+      "description": "Frame shape for the cinematic composition. Leave on Auto if you want the skill to choose the most natural framing from the topic and context.",
+      "default": "auto",
+      "oneOf": [
+        {
+          "const": "auto",
+          "title": "Auto",
+          "description": "Choose the framing automatically from the topic, use case, and composition cues."
+        },
+        {
+          "const": "16:9",
+          "title": "16:9 Landscape",
+          "description": "Best for cinematic horizontal video."
+        },
+        {
+          "const": "9:16",
+          "title": "9:16 Vertical",
+          "description": "Best for reels, shorts, and mobile-first video."
+        },
+        {
+          "const": "1:1",
+          "title": "1:1 Square",
+          "description": "Balanced square framing."
+        },
+        {
+          "const": "4:5",
+          "title": "4:5 Portrait",
+          "description": "Social-friendly portrait framing."
+        }
+      ]
+    },
+    "duration_seconds": {
+      "type": "integer",
+      "title": "Preferred Duration (seconds)",
+      "description": "Recommended range is 4 to 15 seconds for a single video prompt. When Result Type is Multi Video, use video_segments to define each clip duration separately. For the Veo 3.1 (Kie.ai) profile, treat the actual runtime as 8 seconds per generated clip.",
+      "minimum": 4,
+      "maximum": 15,
+      "default": 8
+    },
+    "multi_shot_timing_mode": {
+      "type": "string",
+      "title": "Multi-Shot Timing Detail",
+      "description": "Only relevant when Result Type is Multi Shot. Choose whether to leave shot timing untimed and let the skill infer pacing naturally, or provide an explicit second-by-second shot timeline inside the total clip duration.",
+      "default": "untimed_or_auto",
+      "oneOf": [
+        {
+          "const": "untimed_or_auto",
+          "title": "Untimed / Auto",
+          "description": "Default. Do not specify exact second ranges. The skill may infer internal pacing or use Scene Beats if you provide them."
+        },
+        {
+          "const": "timed_shot_timeline",
+          "title": "Timed Shot Timeline",
+          "description": "Specify each internal shot with explicit start and end seconds inside the total duration of the single video."
+        }
+      ]
+    },
+    "background_mode": {
+      "type": "string",
+      "title": "Background Mode",
+      "description": "Choose whether the video should use a normal scenic background or a clean green-screen setup for later compositing. Default is Normal Background.",
+      "default": "normal_background",
+      "oneOf": [
+        {
+          "const": "normal_background",
+          "title": "Normal Background",
+          "description": "Use a normal scenic, designed, or environmental background that belongs inside the final video."
+        },
+        {
+          "const": "green_screen",
+          "title": "Green Screen",
+          "description": "Use a clean chroma-green background for compositing. Prioritize the subject, props, framing, and keying-friendly separation over scenic environment detail."
+        }
+      ]
+    },
+    "audio_mode": {
+      "type": "string",
+      "title": "Audio Mode",
+      "description": "Choose how the clip should feel sonically. This guides how the prompt talks about speech, narration, ambience, or sound effects.",
+      "default": "auto",
+      "oneOf": [
+        {
+          "const": "auto",
+          "title": "Auto",
+          "description": "Infer the most suitable sound approach from the topic and storytelling preset."
+        },
+        {
+          "const": "spoken_dialogue",
+          "title": "Spoken Dialogue",
+          "description": "Characters speak on screen and dialogue helps carry the scene."
+        },
+        {
+          "const": "voiceover",
+          "title": "Voiceover",
+          "description": "Narration or voiceover leads the storytelling more than on-screen conversation."
+        },
+        {
+          "const": "ambience_only",
+          "title": "Ambience Only",
+          "description": "No spoken dialogue. Let atmosphere and environmental cues carry the clip."
+        },
+        {
+          "const": "sfx_only",
+          "title": "SFX Only",
+          "description": "No spoken dialogue. Use tactile, comic, or impact-oriented sound-effect cues instead."
+        },
+        {
+          "const": "music_led_feel",
+          "title": "Music-Led Feel",
+          "description": "The scene should feel rhythmic or music-driven, with spoken content kept minimal."
+        },
+        {
+          "const": "near_silent",
+          "title": "Near Silent",
+          "description": "Almost no sound cues besides minimal subtle atmosphere."
+        }
+      ]
+    },
+    "dialogue_language": {
+      "type": "string",
+      "title": "Dialogue Language",
+      "description": "Language spoken by the characters. Auto detects from the user's writing language, or from any explicit language instruction found in the topic, prompt goal, dialogue, or notes.",
+      "default": "auto",
+      "oneOf": [
+        {
+          "const": "auto",
+          "title": "Auto Detect"
+        },
+        {
+          "const": "th",
+          "title": "Thai"
+        },
+        {
+          "const": "en",
+          "title": "English"
+        },
+        {
+          "const": "mixed",
+          "title": "Mixed"
+        },
+        {
+          "const": "ja",
+          "title": "Japanese"
+        },
+        {
+          "const": "ko",
+          "title": "Korean"
+        },
+        {
+          "const": "zh",
+          "title": "Chinese"
+        },
+        {
+          "const": "es",
+          "title": "Spanish"
+        },
+        {
+          "const": "fr",
+          "title": "French"
+        },
+        {
+          "const": "de",
+          "title": "German"
+        }
+      ]
+    },
+    "dialogue_density": {
+      "type": "string",
+      "title": "Dialogue Density",
+      "description": "How much spoken dialogue or vocal exchange the scene should carry. Leave on Auto if you want the skill to infer the best approach from the topic, storytelling preset, and audio mode.",
+      "default": "auto",
+      "oneOf": [
+        {
+          "const": "auto",
+          "title": "Auto"
+        },
+        {
+          "const": "none",
+          "title": "None"
+        },
+        {
+          "const": "single_line",
+          "title": "Single Line"
+        },
+        {
+          "const": "brief_exchange",
+          "title": "Brief Exchange"
+        },
+        {
+          "const": "ambient_only",
+          "title": "Ambient Only"
+        }
+      ]
+    },
+    "story_shape": {
+      "type": "string",
+      "title": "Story Shape",
+      "description": "Choose how the internal progression of the clip should unfold. Leave on Auto if you want the skill to infer the cleanest narrative shape.",
+      "default": "auto",
+      "oneOf": [
+        {
+          "const": "auto",
+          "title": "Auto",
+          "description": "Infer the best shape from the topic, preset, and duration."
+        },
+        {
+          "const": "single_moment",
+          "title": "Single Moment",
+          "description": "One clear moment or emotional beat without major change."
+        },
+        {
+          "const": "three_beat_micro_story",
+          "title": "Three-Beat Micro Story",
+          "description": "A compact beginning, middle, and payoff structure."
+        },
+        {
+          "const": "reveal_payoff",
+          "title": "Reveal and Payoff",
+          "description": "Build anticipation, then land on a clear reveal or satisfying payoff."
+        },
+        {
+          "const": "conversation_loop",
+          "title": "Conversation Loop",
+          "description": "Dialogue or reaction-led loop that feels replayable or episodic."
+        },
+        {
+          "const": "escalation",
+          "title": "Escalation",
+          "description": "Start controlled, then intensify tension, movement, or drama."
+        },
+        {
+          "const": "transformation",
+          "title": "Transformation",
+          "description": "Show a clear before-and-after or visible change over time."
+        },
+        {
+          "const": "cliffhanger",
+          "title": "Cliffhanger",
+          "description": "End on a question, unresolved beat, or anticipation hook."
+        },
+        {
+          "const": "seamless_loop",
+          "title": "Seamless Loop",
+          "description": "Land in a way that can loop smoothly back to the start."
+        }
+      ]
+    },
+    "ending_style": {
+      "type": "string",
+      "title": "Ending Style",
+      "description": "Choose how the clip should land emotionally or structurally at the end.",
+      "default": "auto",
+      "oneOf": [
+        {
+          "const": "auto",
+          "title": "Auto",
+          "description": "Choose the best ending style from the topic, preset, and duration."
+        },
+        {
+          "const": "punchline",
+          "title": "Punchline",
+          "description": "End with a comedic beat, payoff, or memorable joke moment."
+        },
+        {
+          "const": "soft_resolve",
+          "title": "Soft Resolve",
+          "description": "End gently and satisfyingly without a dramatic spike."
+        },
+        {
+          "const": "emotional_release",
+          "title": "Emotional Release",
+          "description": "End with a strong emotional breath, relief, warmth, or catharsis."
+        },
+        {
+          "const": "visual_reveal",
+          "title": "Visual Reveal",
+          "description": "End on a strong image, hero frame, transformation, or reveal shot."
+        },
+        {
+          "const": "cliffhanger",
+          "title": "Cliffhanger",
+          "description": "End on suspense, anticipation, or an unfinished turn."
+        },
+        {
+          "const": "loop_back",
+          "title": "Loop Back",
+          "description": "End in a way that loops naturally back into the opening beat."
+        }
+      ]
+    },
+    "performance_style": {
+      "type": "string",
+      "title": "Performance Style",
+      "description": "Choose how characters or animated subjects should behave, emote, and react on screen.",
+      "default": "auto",
+      "oneOf": [
+        {
+          "const": "auto",
+          "title": "Auto",
+          "description": "Infer the strongest performance style from the topic and preset."
+        },
+        {
+          "const": "naturalistic",
+          "title": "Naturalistic",
+          "description": "Subtle, believable, lived-in behavior."
+        },
+        {
+          "const": "playful",
+          "title": "Playful",
+          "description": "Light, charming, expressive, and friendly interaction."
+        },
+        {
+          "const": "deadpan",
+          "title": "Deadpan",
+          "description": "Calm, restrained, dry, or intentionally underplayed performance."
+        },
+        {
+          "const": "comedic_exaggerated",
+          "title": "Comedic Exaggerated",
+          "description": "More animated reactions and comedic emphasis while staying readable."
+        },
+        {
+          "const": "cartoon_expressive",
+          "title": "Cartoon Expressive",
+          "description": "Highly readable animated posing, reactions, and cartoon-style timing."
+        },
+        {
+          "const": "heroic_action",
+          "title": "Heroic Action",
+          "description": "Confident, driven, physical, and action-ready performance."
+        }
+      ]
+    },
+    "imagination_level": {
+      "type": "string",
+      "title": "Imagination Level",
+      "description": "Choose how far the scene may go from realistic logic into stylized, dreamlike, or impossible imagery.",
+      "default": "auto",
+      "oneOf": [
+        {
+          "const": "auto",
+          "title": "Auto",
+          "description": "Infer the best imagination level from the topic and preset."
+        },
+        {
+          "const": "grounded",
+          "title": "Grounded",
+          "description": "Stay close to realistic or physically believable imagery."
+        },
+        {
+          "const": "stylized",
+          "title": "Stylized",
+          "description": "Polished and artistic, but still readable and coherent."
+        },
+        {
+          "const": "dreamlike",
+          "title": "Dreamlike",
+          "description": "Soft, lyrical, floating, or emotionally unreal."
+        },
+        {
+          "const": "surreal",
+          "title": "Surreal",
+          "description": "Unexpected combinations, symbolic imagery, or reality-bending visuals."
+        },
+        {
+          "const": "impossible",
+          "title": "Impossible",
+          "description": "Push into visually impossible but still cinematic, original, and readable imagery."
+        }
+      ]
+    },
+    "scene_arc": {
+      "type": "string",
+      "title": "Scene Arc",
+      "description": "Choose the overall structure of the clip. Leave on Auto if you want the skill to infer the most cinematic arc from the topic, storytelling preset, and context.",
+      "default": "auto",
+      "oneOf": [
+        {
+          "const": "auto",
+          "title": "Auto",
+          "description": "Infer the most fitting cinematic arc from the topic and context."
+        },
+        {
+          "const": "single_moment",
+          "title": "Single Moment",
+          "description": "One striking cinematic moment."
+        },
+        {
+          "const": "reveal",
+          "title": "Reveal",
+          "description": "Build toward a visual reveal or character introduction."
+        },
+        {
+          "const": "mini_story",
+          "title": "Mini Story",
+          "description": "Short beginning, middle, and ending."
+        },
+        {
+          "const": "product_showcase",
+          "title": "Product Showcase",
+          "description": "Feature a product or object in a premium way."
+        },
+        {
+          "const": "action_sequence",
+          "title": "Action Sequence",
+          "description": "Fast motion and dynamic beats."
+        },
+        {
+          "const": "performance_loop",
+          "title": "Performance / Loop",
+          "description": "Stylized motion meant to feel rhythmic or loopable."
+        }
+      ]
+    },
+    "subject_count": {
+      "type": "string",
+      "title": "Subject Count",
+      "description": "How many important on-screen subjects need to remain readable. Leave on Auto if you want the skill to infer this from the topic.",
+      "default": "auto",
+      "oneOf": [
+        {
+          "const": "auto",
+          "title": "Auto"
+        },
+        {
+          "const": "single_subject",
+          "title": "Single Subject"
+        },
+        {
+          "const": "two_subjects",
+          "title": "Two Subjects"
+        },
+        {
+          "const": "small_group",
+          "title": "Small Group"
+        }
+      ]
+    },
+    "continuity_mode": {
+      "type": "string",
+      "title": "Continuity Mode",
+      "description": "How the clip should feel structurally across time. Leave on Auto if you want the skill to choose the best cinematic flow.",
+      "default": "auto",
+      "oneOf": [
+        {
+          "const": "auto",
+          "title": "Auto"
+        },
+        {
+          "const": "single_continuous_shot",
+          "title": "Single Continuous Shot"
+        },
+        {
+          "const": "invisible_cut_flow",
+          "title": "Invisible-Cut Flow"
+        },
+        {
+          "const": "three_beat_sequence",
+          "title": "Three-Beat Sequence"
+        },
+        {
+          "const": "editorial_montage",
+          "title": "Editorial Montage"
+        }
+      ]
+    },
+    "motion_realism": {
+      "type": "string",
+      "title": "Motion Realism",
+      "description": "How grounded or stylized the movement should feel. Leave on Auto if you want the skill to match the topic naturally.",
+      "default": "auto",
+      "oneOf": [
+        {
+          "const": "auto",
+          "title": "Auto"
+        },
+        {
+          "const": "grounded_and_believable",
+          "title": "Grounded and Believable"
+        },
+        {
+          "const": "polished_stylized",
+          "title": "Polished Stylized"
+        },
+        {
+          "const": "restrained_naturalism",
+          "title": "Restrained Naturalism"
+        },
+        {
+          "const": "dynamic_but_controlled",
+          "title": "Dynamic but Controlled"
+        }
+      ]
+    },
+    "continuity_notes": {
+      "type": "string",
+      "title": "Continuity Notes",
+      "description": "Optional fixed character, wardrobe, prop, environment, or story details that must stay consistent across prompts. If omitted, the skill must generate strong continuity notes automatically from the topic, prompt, and references.",
+      "maxLength": 2000
+    },
+    "reference_notes": {
+      "type": "string",
+      "title": "Reference Notes",
+      "description": "Optional notes about attached reference images or other stable visual anchors, especially identity, costume, props, and location details. If omitted, the skill must generate reference notes automatically from the image roles, image handles, topic, and any clearly implied character or scene details. If no images are attached, the generated reference notes should still act as a compact character or environment reference bible rather than merely stating that no reference images were provided.",
+      "maxLength": 2000
+    },
+    "main_subject": {
+      "type": "string",
+      "title": "Main Subject",
+      "description": "Who or what is the main focus? Include appearance, wardrobe, product identity, or signature details.",
+      "maxLength": 1000
+    },
+    "setting": {
+      "type": "string",
+      "title": "Setting / Environment",
+      "description": "Describe the location, background, weather, production design, or surrounding atmosphere.",
+      "maxLength": 1000
+    },
+    "action": {
+      "type": "string",
+      "title": "Action / Motion",
+      "description": "Describe what happens in the video and how the motion should unfold over time.",
+      "maxLength": 1500
+    },
+    "blocking_and_staging": {
+      "type": "string",
+      "title": "Blocking and Staging",
+      "description": "Describe where the subject starts, how they move through the frame, and how the scene should be staged spatially.",
+      "maxLength": 1200
+    },
+    "foreground_midground_background": {
+      "type": "string",
+      "title": "Foreground / Midground / Background",
+      "description": "Describe the visual layers of the frame to create depth and cinematic separation.",
+      "maxLength": 1200
+    },
+    "scene_beats": {
+      "type": "array",
+      "title": "Scene Beats",
+      "description": "Optional simple beat-by-beat plan. Use this when you want the prompt to follow a specific progression without assigning exact seconds. If a Timed Shot Timeline is also provided, treat Scene Beats as supporting context only.",
+      "maxItems": 4,
+      "default": [],
+      "items": {
+        "type": "object",
+        "title": "Scene Beat",
+        "additionalProperties": false,
+        "required": [
+          "beat_description"
+        ],
+        "properties": {
+          "beat_label": {
+            "type": "string",
+            "title": "Beat Label",
+            "description": "Short name such as Opening, Middle, Ending, or Product Reveal.",
+            "maxLength": 80
+          },
+          "beat_description": {
+            "type": "string",
+            "title": "Beat Description",
+            "description": "What happens in this beat?",
+            "minLength": 1,
+            "maxLength": 800
+          },
+          "camera_note": {
+            "type": "string",
+            "title": "Camera Note",
+            "description": "Optional shot, framing, or camera movement note for this beat.",
+            "maxLength": 500
+          },
+          "transition_note": {
+            "type": "string",
+            "title": "Transition / Ending Note",
+            "description": "Optional cue for how this beat should flow into the next image or ending.",
+            "maxLength": 500
+          }
+        }
+      }
+    },
+    "timed_shot_plan": {
+      "type": "array",
+      "title": "Timed Shot Timeline",
+      "description": "Optional second-by-second multi-shot plan for a single video. Use this when you want to map the clip as explicit shot ranges such as 0-2s, 2-4s, 4-5s, and so on within the total duration.",
+      "minItems": 2,
+      "maxItems": 8,
+      "default": [],
+      "items": {
+        "type": "object",
+        "title": "Timed Shot",
+        "additionalProperties": false,
+        "required": [
+          "start_second",
+          "end_second",
+          "shot_description"
+        ],
+        "properties": {
+          "shot_label": {
+            "type": "string",
+            "title": "Shot Label",
+            "description": "Optional short name such as Shot 1, Opening Wide, Panic Push-In, or Laughing Payoff.",
+            "maxLength": 80
+          },
+          "start_second": {
+            "type": "number",
+            "title": "Start Second",
+            "description": "When this shot should begin, measured from the start of the clip.",
+            "minimum": 0,
+            "maximum": 15,
+            "multipleOf": 0.1
+          },
+          "end_second": {
+            "type": "number",
+            "title": "End Second",
+            "description": "When this shot should end. This should be later than Start Second and should stay within the total clip duration.",
+            "exclusiveMinimum": 0,
+            "maximum": 15,
+            "multipleOf": 0.1
+          },
+          "shot_description": {
+            "type": "string",
+            "title": "Shot Description",
+            "description": "What happens in this timed shot?",
+            "minLength": 1,
+            "maxLength": 800
+          },
+          "camera_note": {
+            "type": "string",
+            "title": "Camera Note",
+            "description": "Optional framing, lens, or camera movement note for this shot.",
+            "maxLength": 500
+          },
+          "audio_or_dialogue_cue": {
+            "type": "string",
+            "title": "Audio / Dialogue Cue",
+            "description": "Optional cue for spoken dialogue, sound effects, ambience, or musical emphasis during this shot.",
+            "maxLength": 400
+          },
+          "transition_note": {
+            "type": "string",
+            "title": "Transition Note",
+            "description": "Optional note for how this shot should cut, intercut, escalate, or flow into the next shot.",
+            "maxLength": 500
+          }
+        }
+      }
+    },
+    "dialogue_or_text": {
+      "type": "string",
+      "title": "Dialogue or On-Screen Text",
+      "description": "Optional spoken line, narration cue, or on-screen text. Leave blank if you want the skill to infer or suppress speech from the storytelling preset and audio mode.",
+      "maxLength": 500
+    },
+    "visual_style": {
+      "type": "string",
+      "title": "Visual Style",
+      "description": "Overall cinematic style or production flavor. Leave on Auto if you want the skill to infer the strongest match from the topic, storytelling preset, and references.",
+      "default": "auto",
+      "oneOf": [
+        {
+          "const": "auto",
+          "title": "Auto"
+        },
+        {
+          "const": "cinematic_live_action",
+          "title": "Cinematic Live Action"
+        },
+        {
+          "const": "luxury_commercial",
+          "title": "Luxury Commercial"
+        },
+        {
+          "const": "dark_noir",
+          "title": "Dark Noir"
+        },
+        {
+          "const": "dreamy_poetic",
+          "title": "Dreamy / Poetic"
+        },
+        {
+          "const": "epic_fantasy",
+          "title": "Epic Fantasy"
+        },
+        {
+          "const": "sci_fi_future",
+          "title": "Sci-Fi Future"
+        },
+        {
+          "const": "documentary_cinematic",
+          "title": "Documentary Cinematic"
+        },
+        {
+          "const": "music_video",
+          "title": "Music Video"
+        },
+        {
+          "const": "anime_cinematic",
+          "title": "Anime Cinematic"
+        },
+        {
+          "const": "social_short_cinematic",
+          "title": "Social Short Cinematic"
+        }
+      ]
+    },
+    "mood": {
+      "type": "string",
+      "title": "Mood",
+      "description": "Overall emotional atmosphere. Leave on Auto if you want the skill to infer the strongest mood from the topic, storytelling preset, and cinematic context.",
+      "default": "auto",
+      "oneOf": [
+        {
+          "const": "auto",
+          "title": "Auto"
+        },
+        {
+          "const": "dramatic",
+          "title": "Dramatic"
+        },
+        {
+          "const": "tense",
+          "title": "Tense"
+        },
+        {
+          "const": "romantic",
+          "title": "Romantic"
+        },
+        {
+          "const": "mysterious",
+          "title": "Mysterious"
+        },
+        {
+          "const": "hopeful",
+          "title": "Hopeful"
+        },
+        {
+          "const": "melancholic",
+          "title": "Melancholic"
+        },
+        {
+          "const": "energetic",
+          "title": "Energetic"
+        },
+        {
+          "const": "luxurious",
+          "title": "Luxurious"
+        },
+        {
+          "const": "playful",
+          "title": "Playful"
+        }
+      ]
+    },
+    "camera_movement": {
+      "type": "string",
+      "title": "Camera Movement",
+      "description": "Dominant camera behavior for the prompt. Leave on Auto if you want the skill to choose the best move for the topic.",
+      "default": "auto",
+      "oneOf": [
+        {
+          "const": "auto",
+          "title": "Auto"
+        },
+        {
+          "const": "static",
+          "title": "Static"
+        },
+        {
+          "const": "slow_push_in",
+          "title": "Slow Push In"
+        },
+        {
+          "const": "pull_back",
+          "title": "Pull Back"
+        },
+        {
+          "const": "tracking",
+          "title": "Tracking"
+        },
+        {
+          "const": "orbit",
+          "title": "Orbit"
+        },
+        {
+          "const": "handheld",
+          "title": "Handheld"
+        },
+        {
+          "const": "gimbal_follow",
+          "title": "Gimbal Follow"
+        },
+        {
+          "const": "drone_glide",
+          "title": "Drone Glide"
+        },
+        {
+          "const": "mixed",
+          "title": "Mixed / Adaptive"
+        }
+      ]
+    },
+    "camera_angle": {
+      "type": "string",
+      "title": "Camera Angle",
+      "description": "Primary angle perspective for the scene. Leave on Auto if you want the skill to infer the strongest angle.",
+      "default": "auto",
+      "oneOf": [
+        {
+          "const": "auto",
+          "title": "Auto"
+        },
+        {
+          "const": "eye_level",
+          "title": "Eye Level"
+        },
+        {
+          "const": "low_angle",
+          "title": "Low Angle"
+        },
+        {
+          "const": "high_angle",
+          "title": "High Angle"
+        },
+        {
+          "const": "overhead",
+          "title": "Overhead"
+        },
+        {
+          "const": "pov",
+          "title": "Point of View"
+        },
+        {
+          "const": "mixed",
+          "title": "Mixed / Adaptive"
+        }
+      ]
+    },
+    "shot_composition": {
+      "type": "string",
+      "title": "Shot Composition",
+      "description": "How the subject should generally be framed. Leave on Auto if you want the skill to infer the most cinematic framing.",
+      "default": "auto",
+      "oneOf": [
+        {
+          "const": "auto",
+          "title": "Auto"
+        },
+        {
+          "const": "close_up",
+          "title": "Close-Up Focus"
+        },
+        {
+          "const": "medium",
+          "title": "Medium Shot"
+        },
+        {
+          "const": "wide",
+          "title": "Wide Cinematic Frame"
+        },
+        {
+          "const": "portrait_focus",
+          "title": "Portrait Focus"
+        },
+        {
+          "const": "mixed",
+          "title": "Mixed Framing"
+        }
+      ]
+    },
+    "lens_look": {
+      "type": "string",
+      "title": "Lens Look",
+      "description": "Select the lens feeling to translate into natural cinematic language. Leave on Auto if you want the skill to choose the best lens feel.",
+      "default": "auto",
+      "oneOf": [
+        {
+          "const": "auto",
+          "title": "Auto"
+        },
+        {
+          "const": "24mm_wide",
+          "title": "24mm Wide"
+        },
+        {
+          "const": "35mm_cinematic",
+          "title": "35mm Cinematic"
+        },
+        {
+          "const": "50mm_natural",
+          "title": "50mm Natural"
+        },
+        {
+          "const": "85mm_portrait",
+          "title": "85mm Portrait"
+        },
+        {
+          "const": "anamorphic",
+          "title": "Anamorphic"
+        },
+        {
+          "const": "telephoto",
+          "title": "Telephoto"
+        },
+        {
+          "const": "macro",
+          "title": "Macro Detail"
+        }
+      ]
+    },
+    "focus_strategy": {
+      "type": "string",
+      "title": "Focus Strategy",
+      "description": "How focus and depth of field should guide attention. Leave on Auto if you want the skill to infer the most natural cinematic focus.",
+      "default": "auto",
+      "oneOf": [
+        {
+          "const": "auto",
+          "title": "Auto"
+        },
+        {
+          "const": "shallow_subject_isolation",
+          "title": "Shallow Subject Isolation"
+        },
+        {
+          "const": "deep_focus_environmental",
+          "title": "Deep Focus Environmental"
+        },
+        {
+          "const": "rack_focus_transition",
+          "title": "Rack Focus Transition"
+        },
+        {
+          "const": "balanced_depth",
+          "title": "Balanced Depth"
+        }
+      ]
+    },
+    "lighting_style": {
+      "type": "string",
+      "title": "Lighting Style",
+      "description": "Primary lighting direction for the scene. Leave on Auto if you want the skill to infer the strongest lighting setup.",
+      "default": "auto",
+      "oneOf": [
+        {
+          "const": "auto",
+          "title": "Auto"
+        },
+        {
+          "const": "soft_natural",
+          "title": "Soft Natural"
+        },
+        {
+          "const": "golden_hour",
+          "title": "Golden Hour"
+        },
+        {
+          "const": "studio_clean",
+          "title": "Studio Clean"
+        },
+        {
+          "const": "neon_noir",
+          "title": "Neon Noir"
+        },
+        {
+          "const": "high_contrast",
+          "title": "High Contrast"
+        },
+        {
+          "const": "moody_low_key",
+          "title": "Moody Low-Key"
+        },
+        {
+          "const": "backlit_silhouette",
+          "title": "Backlit Silhouette"
+        }
+      ]
+    },
+    "time_of_day": {
+      "type": "string",
+      "title": "Time of Day",
+      "description": "Choose the time-of-day mood for the scene. Leave on Auto if you want the skill to infer it from the topic and lighting context.",
+      "default": "auto",
+      "oneOf": [
+        {
+          "const": "auto",
+          "title": "Auto"
+        },
+        {
+          "const": "dawn",
+          "title": "Dawn"
+        },
+        {
+          "const": "morning",
+          "title": "Morning"
+        },
+        {
+          "const": "midday",
+          "title": "Midday"
+        },
+        {
+          "const": "golden_hour",
+          "title": "Golden Hour"
+        },
+        {
+          "const": "blue_hour",
+          "title": "Blue Hour"
+        },
+        {
+          "const": "night",
+          "title": "Night"
+        }
+      ]
+    },
+    "atmospherics": {
+      "type": "array",
+      "title": "Atmospherics",
+      "description": "Optional atmospheric elements that add mood, depth, and realism.",
+      "items": {
+        "type": "string",
+        "enum": [
+          "mist",
+          "light_rain",
+          "fog",
+          "steam",
+          "dust_particles",
+          "wind_movement",
+          "wet_surfaces",
+          "soft_haze",
+          "sunbeams",
+          "practical_smoke"
+        ]
+      },
+      "uniqueItems": true,
+      "default": []
+    },
+    "production_design": {
+      "type": "string",
+      "title": "Production Design / Mise-en-Scene",
+      "description": "Describe architecture, props, wardrobe texture, set dressing, materials, and other visual design details.",
+      "maxLength": 1200
+    },
+    "color_palette": {
+      "type": "string",
+      "title": "Color Palette",
+      "description": "Dominant color treatment or grading direction. Leave on Auto if you want the skill to infer the strongest cinematic palette.",
+      "default": "auto",
+      "oneOf": [
+        {
+          "const": "auto",
+          "title": "Auto"
+        },
+        {
+          "const": "warm_amber",
+          "title": "Warm Amber"
+        },
+        {
+          "const": "cinematic_neutral",
+          "title": "Cinematic Neutral"
+        },
+        {
+          "const": "cool_blue",
+          "title": "Cool Blue"
+        },
+        {
+          "const": "teal_orange",
+          "title": "Teal and Orange"
+        },
+        {
+          "const": "teal_magenta_neon",
+          "title": "Teal and Magenta Neon"
+        },
+        {
+          "const": "monochrome",
+          "title": "Monochrome"
+        },
+        {
+          "const": "pastel_dream",
+          "title": "Pastel Dream"
+        }
+      ]
+    },
+    "color_contrast_strategy": {
+      "type": "string",
+      "title": "Color Contrast Strategy",
+      "description": "How color contrast should support the cinematic look. Leave on Auto if you want the skill to infer it.",
+      "default": "auto",
+      "oneOf": [
+        {
+          "const": "auto",
+          "title": "Auto"
+        },
+        {
+          "const": "cool_warm_contrast",
+          "title": "Cool vs Warm Contrast"
+        },
+        {
+          "const": "muted_monochrome",
+          "title": "Muted Monochrome"
+        },
+        {
+          "const": "soft_low_contrast",
+          "title": "Soft Low Contrast"
+        },
+        {
+          "const": "rich_saturation_controlled",
+          "title": "Rich but Controlled Saturation"
+        },
+        {
+          "const": "practical_light_contrast",
+          "title": "Practical-Light Contrast"
+        }
+      ]
+    },
+    "editing_rhythm": {
+      "type": "string",
+      "title": "Editing Rhythm",
+      "description": "How the clip should feel in pacing and cut energy, even if the model renders it as one continuous scene. Leave on Auto if you want the skill to decide.",
+      "default": "auto",
+      "oneOf": [
+        {
+          "const": "auto",
+          "title": "Auto"
+        },
+        {
+          "const": "slow_atmospheric",
+          "title": "Slow Atmospheric"
+        },
+        {
+          "const": "steady_cinematic",
+          "title": "Steady Cinematic"
+        },
+        {
+          "const": "dynamic",
+          "title": "Dynamic"
+        },
+        {
+          "const": "fast_punchy",
+          "title": "Fast and Punchy"
+        },
+        {
+          "const": "loopable",
+          "title": "Loopable / Seamless"
+        }
+      ]
+    },
+    "reference_images": {
+      "type": "array",
+      "title": "Reference Images",
+      "description": "Optional reference images to guide the visual style, characters, or scene composition. In the default generic profile, use up to 4 images. In the Seedance 2 profile, use up to 9 images. In the Veo 3.1 reference-to-video profile, use up to 3 images. Upload order becomes @Image1, @Image2, and so on. Supports uploaded image paths, public URLs, or data URIs when provided programmatically.",
+      "maxItems": 9,
+      "default": [],
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "reference_image_1_role": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/referenceImageRole"
+        }
+      ],
+      "title": "@Image1 Role",
+      "description": "Choose how the first uploaded image should be used in the prompt. Ignored if no first image is uploaded."
+    },
+    "reference_image_2_role": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/referenceImageRole"
+        }
+      ],
+      "title": "@Image2 Role",
+      "description": "Choose how the second uploaded image should be used in the prompt. You may set this to character_reference as well when you want multiple character reference images. Ignored if no second image is uploaded."
+    },
+    "reference_image_3_role": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/referenceImageRole"
+        }
+      ],
+      "title": "@Image3 Role",
+      "description": "Choose how the third uploaded image should be used in the prompt. Ignored if no third image is uploaded."
+    },
+    "reference_image_4_role": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/referenceImageRole"
+        }
+      ],
+      "title": "@Image4 Role",
+      "description": "Choose how the fourth uploaded image should be used in the prompt. Ignored if no fourth image is uploaded."
+    },
+    "reference_image_5_role": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/referenceImageRole"
+        }
+      ],
+      "title": "@Image5 Role",
+      "description": "Choose how the fifth uploaded image should be used in the prompt. Mainly for Seedance 2 style multimodal workflows. Ignored if no fifth image is uploaded."
+    },
+    "reference_image_6_role": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/referenceImageRole"
+        }
+      ],
+      "title": "@Image6 Role",
+      "description": "Choose how the sixth uploaded image should be used in the prompt. Mainly for Seedance 2 style multimodal workflows. Ignored if no sixth image is uploaded."
+    },
+    "reference_image_7_role": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/referenceImageRole"
+        }
+      ],
+      "title": "@Image7 Role",
+      "description": "Choose how the seventh uploaded image should be used in the prompt. Mainly for Seedance 2 style multimodal workflows. Ignored if no seventh image is uploaded."
+    },
+    "reference_image_8_role": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/referenceImageRole"
+        }
+      ],
+      "title": "@Image8 Role",
+      "description": "Choose how the eighth uploaded image should be used in the prompt. Mainly for Seedance 2 style multimodal workflows. Ignored if no eighth image is uploaded."
+    },
+    "reference_image_9_role": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/referenceImageRole"
+        }
+      ],
+      "title": "@Image9 Role",
+      "description": "Choose how the ninth uploaded image should be used in the prompt. Mainly for Seedance 2 style multimodal workflows. Ignored if no ninth image is uploaded."
+    },
+    "reference_image_notes": {
+      "type": "string",
+      "title": "Reference Image Guidance",
+      "description": "Add extra guidance for how @Image1 to @Image9 should influence the prompt. Mention handles directly when helpful. Role fields take priority over these notes.",
+      "maxLength": 1200
+    },
+    "reference_videos": {
+      "type": "array",
+      "title": "Reference Video URLs",
+      "description": "Optional Seedance 2 style reference video URLs. Use these to guide motion, camera movement, blocking, editing rhythm, or scene dynamics without treating them as the editable source clip itself.",
+      "maxItems": 3,
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/referenceVideoSource"
+      }
+    },
+    "reference_audios": {
+      "type": "array",
+      "title": "Reference Audio URLs",
+      "description": "Optional Seedance 2 style reference audio URLs. Use these to guide rhythm, beat, lip-sync intent, dialogue pacing, or sonic mood.",
+      "maxItems": 3,
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/referenceAudioSource"
+      }
+    },
+    "first_frame_url": {
+      "type": "string",
+      "title": "First Frame URL",
+      "description": "Optional first-frame image URL for Seedance 2 or Veo 3.1. Use this when you want the generated video to start from a specific opening frame.",
+      "maxLength": 500
+    },
+    "last_frame_url": {
+      "type": "string",
+      "title": "Last Frame URL",
+      "description": "Optional last-frame image URL for Seedance 2 or Veo 3.1. Use this together with First Frame URL when you want both the start and end frame anchored.",
+      "maxLength": 500
+    },
+    "reference_asset_rights_confirmed": {
+      "type": "boolean",
+      "title": "Reference Asset Rights Confirmed",
+      "description": "Confirm that you have the right to use any public reference images, videos, audios, or frame URLs that you provide.",
+      "default": false
+    },
+    "character_consistency": {
+      "type": "boolean",
+      "title": "Protect Character Consistency",
+      "description": "When enabled, the prompt should explicitly reinforce face, outfit, and identity stability.",
+      "default": true
+    },
+    "source_video_url": {
+      "type": "string",
+      "title": "Source Video URL",
+      "description": "Optional source video URL. Only relevant when Generation Mode is Video Edit.",
+      "maxLength": 500
+    },
+    "must_include": {
+      "type": "string",
+      "title": "Must Include",
+      "description": "Key elements that absolutely must appear or remain clear in the final prompt.",
+      "maxLength": 1000
+    },
+    "avoid": {
+      "type": "string",
+      "title": "Avoid / Guardrails",
+      "description": "Things the prompt should minimize or guard against, such as flicker, extra limbs, warped hands, weak motion, or generic styling.",
+      "maxLength": 1000
+    },
+    "additional_notes": {
+      "type": "string",
+      "title": "Additional Notes",
+      "description": "Optional extra direction for polish, realism, continuity, brand tone, or storytelling nuance.",
+      "maxLength": 1500
+    },
+    "safety_rewrite_mode": {
+      "type": "string",
+      "title": "Safety Rewrite Mode",
+      "description": "How aggressively the skill should rewrite risky references into safe, original, media-model-friendly language.",
+      "default": "strict_media_safe",
+      "oneOf": [
+        {
+          "const": "strict_media_safe",
+          "title": "Strict Media-Safe"
+        },
+        {
+          "const": "balanced_media_safe",
+          "title": "Balanced Media-Safe"
+        }
+      ]
+    },
+    "youth_depiction_policy": {
+      "type": "string",
+      "title": "Youth / Child Subject Policy",
+      "description": "Choose whether babies, children, and teenagers may appear in safe age-appropriate contexts. This never permits sexualized or suggestive youth content.",
+      "default": "allow_safe_youth",
+      "oneOf": [
+        {
+          "const": "allow_safe_youth",
+          "title": "Allow Safe Youth Contexts",
+          "description": "Allow babies, children, and teenagers only in non-sexual, age-appropriate, educational, family, parenting, documentary, health, or everyday-life contexts."
+        },
+        {
+          "const": "block_youth_subjects",
+          "title": "Block Youth Subjects",
+          "description": "Do not generate prompts centered on babies, children, or teenagers. Rewrite toward adult or neutral alternatives when needed."
+        }
+      ]
+    },
+    "adult_sensuality_policy": {
+      "type": "string",
+      "title": "Adult Sensuality Policy",
+      "description": "Choose whether the skill may keep tasteful adult sensual or glamour cues in a media-safe, non-explicit way.",
+      "default": "block_adult_sensuality",
+      "oneOf": [
+        {
+          "const": "block_adult_sensuality",
+          "title": "Block Adult Sensuality",
+          "description": "Rewrite sexy or sensual requests toward fashion, confidence, romance, or editorial polish without sensual emphasis."
+        },
+        {
+          "const": "allow_tasteful_adult_sensuality",
+          "title": "Allow Tasteful Adult Sensuality",
+          "description": "Allow clearly adult, non-explicit sensual, glamorous, romantic, or fashion-editorial framing when it remains media-safe and age-unambiguous."
+        }
+      ]
+    }
+  },
+  "$defs": {
+    "multiVideoSegment": {
+      "type": "object",
+      "title": "Multi Video Segment",
+      "additionalProperties": false,
+      "required": [
+        "duration_seconds"
+      ],
+      "properties": {
+        "segment_title": {
+          "type": "string",
+          "title": "Segment Title",
+          "description": "Optional short label such as Setup, Escalation, Reveal, or Ending.",
+          "maxLength": 120
+        },
+        "duration_seconds": {
+          "type": "integer",
+          "title": "Duration (seconds)",
+          "description": "Length of this separate video clip. For the Veo 3.1 (Kie.ai) profile, treat each clip as 8 seconds.",
+          "minimum": 4,
+          "maximum": 15
+        },
+        "segment_focus": {
+          "type": "string",
+          "title": "Segment Focus",
+          "description": "Optional note describing what story beat or cinematic focus this specific clip should carry.",
+          "maxLength": 1000
+        }
+      }
+    },
+    "referenceImageRole": {
+      "type": "string",
+      "oneOf": [
+        {
+          "const": "character_reference",
+          "title": "Character Reference",
+          "description": "Use this image for facial identity, hairstyle, wardrobe silhouette, and character continuity. Multiple images may share this role."
+        },
+        {
+          "const": "style_reference",
+          "title": "Style Reference",
+          "description": "Use this image for lighting, color palette, texture, and overall visual treatment."
+        },
+        {
+          "const": "scene_composition_reference",
+          "title": "Scene Composition Reference",
+          "description": "Use this image for framing, environment layout, camera distance, and subject placement."
+        },
+        {
+          "const": "product_or_prop_reference",
+          "title": "Product / Prop Reference",
+          "description": "Use this image for product shape, materials, hero details, or a key prop."
+        },
+        {
+          "const": "supporting_reference",
+          "title": "Supporting Reference",
+          "description": "Use this image for secondary art direction, mood support, or supporting details."
+        },
+        {
+          "const": "unused",
+          "title": "Unused",
+          "description": "Ignore this image in the final prompt."
+        }
+      ]
+    },
+    "referenceVideoSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "url"
+      ],
+      "properties": {
+        "url": {
+          "type": "string",
+          "title": "Reference Video URL",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "guidance_focus": {
+          "type": "string",
+          "title": "Guidance Focus",
+          "description": "Optional note describing what this video reference should guide, such as camera path, action timing, transition logic, or motion energy.",
+          "maxLength": 500
+        }
+      }
+    },
+    "referenceAudioSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "url"
+      ],
+      "properties": {
+        "url": {
+          "type": "string",
+          "title": "Reference Audio URL",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "guidance_focus": {
+          "type": "string",
+          "title": "Guidance Focus",
+          "description": "Optional note describing what this audio reference should guide, such as beat, lip-sync style, dialogue cadence, emotional tone, or pacing.",
+          "maxLength": 500
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "anyOf": [
+          {
+            "not": {
+              "required": [
+                "target_model_profile"
+              ]
+            }
+          },
+          {
+            "properties": {
+              "target_model_profile": {
+                "const": "generic_video_models"
+              }
+            },
+            "required": [
+              "target_model_profile"
+            ]
+          }
+        ]
+      },
+      "then": {
+        "properties": {
+          "reference_images": {
+            "maxItems": 4
+          }
+        },
+        "allOf": [
+          {
+            "not": {
+              "required": [
+                "reference_image_5_role"
+              ]
+            }
+          },
+          {
+            "not": {
+              "required": [
+                "reference_image_6_role"
+              ]
+            }
+          },
+          {
+            "not": {
+              "required": [
+                "reference_image_7_role"
+              ]
+            }
+          },
+          {
+            "not": {
+              "required": [
+                "reference_image_8_role"
+              ]
+            }
+          },
+          {
+            "not": {
+              "required": [
+                "reference_image_9_role"
+              ]
+            }
+          },
+          {
+            "not": {
+              "required": [
+                "reference_videos"
+              ]
+            }
+          },
+          {
+            "not": {
+              "required": [
+                "reference_audios"
+              ]
+            }
+          },
+          {
+            "not": {
+              "required": [
+                "seedance_input_mode"
+              ]
+            }
+          },
+          {
+            "not": {
+              "required": [
+                "veo_input_mode"
+              ]
+            }
+          },
+          {
+            "not": {
+              "required": [
+                "first_frame_url"
+              ]
+            }
+          },
+          {
+            "not": {
+              "required": [
+                "last_frame_url"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "target_model_profile": {
+            "const": "seedance_2_kie"
+          }
+        },
+        "required": [
+          "target_model_profile"
+        ]
+      },
+      "then": {
+        "properties": {
+          "reference_images": {
+            "maxItems": 9
+          },
+          "reference_videos": {
+            "maxItems": 3
+          },
+          "reference_audios": {
+            "maxItems": 3
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "target_model_profile": {
+            "const": "veo_3_1_kie"
+          }
+        },
+        "required": [
+          "target_model_profile"
+        ]
+      },
+      "then": {
+        "properties": {
+          "reference_images": {
+            "maxItems": 3
+          }
+        },
+        "allOf": [
+          {
+            "not": {
+              "required": [
+                "reference_image_4_role"
+              ]
+            }
+          },
+          {
+            "not": {
+              "required": [
+                "reference_image_5_role"
+              ]
+            }
+          },
+          {
+            "not": {
+              "required": [
+                "reference_image_6_role"
+              ]
+            }
+          },
+          {
+            "not": {
+              "required": [
+                "reference_image_7_role"
+              ]
+            }
+          },
+          {
+            "not": {
+              "required": [
+                "reference_image_8_role"
+              ]
+            }
+          },
+          {
+            "not": {
+              "required": [
+                "reference_image_9_role"
+              ]
+            }
+          },
+          {
+            "not": {
+              "required": [
+                "reference_videos"
+              ]
+            }
+          },
+          {
+            "not": {
+              "required": [
+                "reference_audios"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "target_model_profile": {
+            "const": "seedance_2_kie"
+          },
+          "seedance_input_mode": {
+            "const": "first_frame_only"
+          }
+        },
+        "required": [
+          "target_model_profile",
+          "seedance_input_mode"
+        ]
+      },
+      "then": {
+        "required": [
+          "first_frame_url"
+        ],
+        "allOf": [
+          {
+            "not": {
+              "required": [
+                "last_frame_url"
+              ]
+            }
+          },
+          {
+            "not": {
+              "required": [
+                "reference_images"
+              ]
+            }
+          },
+          {
+            "not": {
+              "required": [
+                "reference_videos"
+              ]
+            }
+          },
+          {
+            "not": {
+              "required": [
+                "reference_audios"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "target_model_profile": {
+            "const": "veo_3_1_kie"
+          },
+          "veo_input_mode": {
+            "const": "first_frame_only"
+          }
+        },
+        "required": [
+          "target_model_profile",
+          "veo_input_mode"
+        ]
+      },
+      "then": {
+        "required": [
+          "first_frame_url"
+        ],
+        "allOf": [
+          {
+            "not": {
+              "required": [
+                "last_frame_url"
+              ]
+            }
+          },
+          {
+            "not": {
+              "required": [
+                "reference_images"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "target_model_profile": {
+            "const": "veo_3_1_kie"
+          },
+          "veo_input_mode": {
+            "const": "first_and_last_frames"
+          }
+        },
+        "required": [
+          "target_model_profile",
+          "veo_input_mode"
+        ]
+      },
+      "then": {
+        "required": [
+          "first_frame_url",
+          "last_frame_url"
+        ],
+        "allOf": [
+          {
+            "not": {
+              "required": [
+                "reference_images"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "target_model_profile": {
+            "const": "veo_3_1_kie"
+          },
+          "veo_input_mode": {
+            "const": "reference_to_video"
+          }
+        },
+        "required": [
+          "target_model_profile",
+          "veo_input_mode"
+        ]
+      },
+      "then": {
+        "required": [
+          "reference_images"
+        ],
+        "properties": {
+          "reference_images": {
+            "minItems": 1,
+            "maxItems": 3
+          }
+        },
+        "allOf": [
+          {
+            "not": {
+              "required": [
+                "first_frame_url"
+              ]
+            }
+          },
+          {
+            "not": {
+              "required": [
+                "last_frame_url"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "target_model_profile": {
+            "const": "seedance_2_kie"
+          },
+          "seedance_input_mode": {
+            "const": "first_and_last_frames"
+          }
+        },
+        "required": [
+          "target_model_profile",
+          "seedance_input_mode"
+        ]
+      },
+      "then": {
+        "required": [
+          "first_frame_url",
+          "last_frame_url"
+        ],
+        "allOf": [
+          {
+            "not": {
+              "required": [
+                "reference_images"
+              ]
+            }
+          },
+          {
+            "not": {
+              "required": [
+                "reference_videos"
+              ]
+            }
+          },
+          {
+            "not": {
+              "required": [
+                "reference_audios"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "target_model_profile": {
+            "const": "seedance_2_kie"
+          },
+          "seedance_input_mode": {
+            "const": "multimodal_reference"
+          }
+        },
+        "required": [
+          "target_model_profile",
+          "seedance_input_mode"
+        ]
+      },
+      "then": {
+        "anyOf": [
+          {
+            "required": [
+              "reference_images"
+            ]
+          },
+          {
+            "required": [
+              "reference_videos"
+            ]
+          },
+          {
+            "required": [
+              "reference_audios"
+            ]
+          }
+        ],
+        "allOf": [
+          {
+            "not": {
+              "required": [
+                "first_frame_url"
+              ]
+            }
+          },
+          {
+            "not": {
+              "required": [
+                "last_frame_url"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "last_frame_url": {
+            "minLength": 1
+          }
+        },
+        "required": [
+          "last_frame_url"
+        ]
+      },
+      "then": {
+        "required": [
+          "first_frame_url"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "delivery_mode": {
+            "const": "multi_video"
+          }
+        },
+        "required": [
+          "delivery_mode"
+        ]
+      },
+      "then": {
+        "required": [
+          "multi_video_strategy",
+          "video_count",
+          "video_segments"
+        ],
+        "properties": {
+          "multi_video_strategy": {
+            "enum": [
+              "continuous_story",
+              "creative_variations"
+            ]
+          },
+          "video_count": {
+            "minimum": 2,
+            "maximum": 6
+          },
+          "video_segments": {
+            "minItems": 2,
+            "maxItems": 6
+          }
+        },
+        "allOf": [
+          {
+            "not": {
+              "required": [
+                "multi_shot_timing_mode"
+              ]
+            }
+          },
+          {
+            "not": {
+              "required": [
+                "timed_shot_plan"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "multi_shot_timing_mode": {
+            "const": "timed_shot_timeline"
+          }
+        },
+        "required": [
+          "multi_shot_timing_mode"
+        ]
+      },
+      "then": {
+        "required": [
+          "delivery_mode",
+          "duration_seconds",
+          "timed_shot_plan"
+        ],
+        "properties": {
+          "delivery_mode": {
+            "const": "multi_shot_single_video"
+          },
+          "timed_shot_plan": {
+            "minItems": 2,
+            "maxItems": 8
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "timed_shot_plan"
+        ]
+      },
+      "then": {
+        "required": [
+          "delivery_mode",
+          "multi_shot_timing_mode"
+        ],
+        "properties": {
+          "delivery_mode": {
+            "const": "multi_shot_single_video"
+          },
+          "multi_shot_timing_mode": {
+            "const": "timed_shot_timeline"
+          },
+          "timed_shot_plan": {
+            "minItems": 2,
+            "maxItems": 8
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "delivery_mode": {
+            "const": "multi_video"
+          },
+          "video_count": {
+            "const": 2
+          }
+        },
+        "required": [
+          "delivery_mode",
+          "video_count"
+        ]
+      },
+      "then": {
+        "properties": {
+          "video_segments": {
+            "minItems": 2,
+            "maxItems": 2
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "delivery_mode": {
+            "const": "multi_video"
+          },
+          "video_count": {
+            "const": 3
+          }
+        },
+        "required": [
+          "delivery_mode",
+          "video_count"
+        ]
+      },
+      "then": {
+        "properties": {
+          "video_segments": {
+            "minItems": 3,
+            "maxItems": 3
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "delivery_mode": {
+            "const": "multi_video"
+          },
+          "video_count": {
+            "const": 4
+          }
+        },
+        "required": [
+          "delivery_mode",
+          "video_count"
+        ]
+      },
+      "then": {
+        "properties": {
+          "video_segments": {
+            "minItems": 4,
+            "maxItems": 4
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "delivery_mode": {
+            "const": "multi_video"
+          },
+          "video_count": {
+            "const": 5
+          }
+        },
+        "required": [
+          "delivery_mode",
+          "video_count"
+        ]
+      },
+      "then": {
+        "properties": {
+          "video_segments": {
+            "minItems": 5,
+            "maxItems": 5
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "delivery_mode": {
+            "const": "multi_video"
+          },
+          "video_count": {
+            "const": 6
+          }
+        },
+        "required": [
+          "delivery_mode",
+          "video_count"
+        ]
+      },
+      "then": {
+        "properties": {
+          "video_segments": {
+            "minItems": 6,
+            "maxItems": 6
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "generation_mode": {
+            "const": "image_to_video"
+          }
+        },
+        "required": [
+          "generation_mode"
+        ]
+      },
+      "then": {
+        "anyOf": [
+          {
+            "required": [
+              "reference_images"
+            ],
+            "properties": {
+              "reference_images": {
+                "minItems": 1
+              }
+            }
+          },
+          {
+            "required": [
+              "first_frame_url"
+            ],
+            "properties": {
+              "first_frame_url": {
+                "minLength": 1
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "generation_mode": {
+            "const": "video_edit"
+          }
+        },
+        "required": [
+          "generation_mode"
+        ]
+      },
+      "then": {
+        "required": [
+          "source_video_url"
+        ],
+        "properties": {
+          "source_video_url": {
+            "minLength": 1
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "delivery_mode": {
+            "const": "multi_shot_single_video"
+          }
+        },
+        "required": [
+          "delivery_mode"
+        ]
+      },
+      "then": {
+        "allOf": [
+          {
+            "not": {
+              "required": [
+                "multi_video_strategy"
+              ]
+            }
+          },
+          {
+            "not": {
+              "required": [
+                "video_count"
+              ]
+            }
+          },
+          {
+            "not": {
+              "required": [
+                "video_segments"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "audio_mode": {
+            "const": "ambience_only"
+          }
+        },
+        "required": [
+          "audio_mode"
+        ]
+      },
+      "then": {
+        "properties": {
+          "dialogue_density": {
+            "enum": [
+              "auto",
+              "none",
+              "ambient_only"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "audio_mode": {
+            "const": "sfx_only"
+          }
+        },
+        "required": [
+          "audio_mode"
+        ]
+      },
+      "then": {
+        "properties": {
+          "dialogue_density": {
+            "enum": [
+              "auto",
+              "none",
+              "ambient_only"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "audio_mode": {
+            "const": "near_silent"
+          }
+        },
+        "required": [
+          "audio_mode"
+        ]
+      },
+      "then": {
+        "properties": {
+          "dialogue_density": {
+            "enum": [
+              "auto",
+              "none",
+              "ambient_only"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "audio_mode": {
+            "const": "spoken_dialogue"
+          }
+        },
+        "required": [
+          "audio_mode"
+        ]
+      },
+      "then": {
+        "properties": {
+          "dialogue_density": {
+            "enum": [
+              "auto",
+              "single_line",
+              "brief_exchange"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "audio_mode": {
+            "const": "voiceover"
+          }
+        },
+        "required": [
+          "audio_mode"
+        ]
+      },
+      "then": {
+        "properties": {
+          "dialogue_density": {
+            "enum": [
+              "auto",
+              "none",
+              "single_line",
+              "ambient_only"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "storytelling_preset": {
+            "const": "silent_visual_story"
+          }
+        },
+        "required": [
+          "storytelling_preset"
+        ]
+      },
+      "then": {
+        "properties": {
+          "audio_mode": {
+            "enum": [
+              "auto",
+              "ambience_only",
+              "sfx_only",
+              "music_led_feel",
+              "near_silent"
+            ]
+          },
+          "dialogue_density": {
+            "enum": [
+              "auto",
+              "none",
+              "ambient_only"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "storytelling_preset": {
+            "const": "cartoon_sfx_only"
+          }
+        },
+        "required": [
+          "storytelling_preset"
+        ]
+      },
+      "then": {
+        "properties": {
+          "audio_mode": {
+            "enum": [
+              "auto",
+              "ambience_only",
+              "sfx_only",
+              "music_led_feel",
+              "near_silent"
+            ]
+          },
+          "dialogue_density": {
+            "enum": [
+              "auto",
+              "none",
+              "ambient_only"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "storytelling_preset": {
+            "const": "voiceover_story"
+          }
+        },
+        "required": [
+          "storytelling_preset"
+        ]
+      },
+      "then": {
+        "properties": {
+          "audio_mode": {
+            "enum": [
+              "auto",
+              "voiceover",
+              "music_led_feel"
+            ]
+          },
+          "dialogue_density": {
+            "enum": [
+              "auto",
+              "none",
+              "single_line",
+              "ambient_only"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "storytelling_preset": {
+            "const": "dialogue_skit"
+          }
+        },
+        "required": [
+          "storytelling_preset"
+        ]
+      },
+      "then": {
+        "properties": {
+          "audio_mode": {
+            "enum": [
+              "auto",
+              "spoken_dialogue",
+              "music_led_feel"
+            ]
+          },
+          "dialogue_density": {
+            "enum": [
+              "auto",
+              "single_line",
+              "brief_exchange"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "storytelling_preset": {
+            "const": "cartoon_dialogue"
+          }
+        },
+        "required": [
+          "storytelling_preset"
+        ]
+      },
+      "then": {
+        "properties": {
+          "audio_mode": {
+            "enum": [
+              "auto",
+              "spoken_dialogue",
+              "music_led_feel"
+            ]
+          },
+          "dialogue_density": {
+            "enum": [
+              "auto",
+              "single_line",
+              "brief_exchange"
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "examples": [
+    {
+      "topic": "A lone night courier carrying a glowing data capsule through rain-soaked futuristic Bangkok",
+      "prompt_goal": "Create three different cinematic versions of the same courier concept. All spoken dialogue should be in Thai if dialogue is used, but each version should present a different mood and cinematic angle while keeping the same courier identity and futuristic Bangkok world.",
+      "project_title": "Bangkok Courier Micro-Series",
+      "creative_direction_mode": "auto_best",
+      "storytelling_preset": "auto_popular",
+      "generation_mode": "auto",
+      "target_model_profile": "generic_video_models",
+      "delivery_mode": "multi_video",
+      "multi_video_strategy": "creative_variations",
+      "video_count": 3,
+      "video_segments": [
+        {
+          "segment_title": "Noir Suspense",
+          "duration_seconds": 8,
+          "segment_focus": "A restrained noir version focused on mood, tension, and stillness."
+        },
+        {
+          "segment_title": "Kinetic Pursuit",
+          "duration_seconds": 8,
+          "segment_focus": "A more dynamic version with readable movement and pursuit energy."
+        },
+        {
+          "segment_title": "Poetic Rooftop",
+          "duration_seconds": 10,
+          "segment_focus": "A more poetic version with quiet atmosphere and a reflective final pose."
+        }
+      ],
+      "language": "en",
+      "aspect_ratio": "16:9",
+      "background_mode": "normal_background",
+      "audio_mode": "music_led_feel",
+      "dialogue_language": "auto",
+      "dialogue_density": "auto",
+      "story_shape": "reveal_payoff",
+      "ending_style": "visual_reveal",
+      "performance_style": "naturalistic",
+      "imagination_level": "stylized",
+      "scene_arc": "auto",
+      "subject_count": "auto",
+      "continuity_mode": "auto",
+      "motion_realism": "auto",
+      "main_subject": "A Thai male night courier in his late 20s with sharp features, black technical coat with subtle neon trim, calm but alert expression.",
+      "setting": "Rain-soaked neon alley in futuristic Bangkok at night, wet pavement, drifting steam, glowing Thai signs.",
+      "action": "Create three separate cinematic versions from the same courier topic: one restrained and tense, one dynamic and urgent, and one quiet and reflective.",
+      "blocking_and_staging": "Keep the courier's body language controlled, alert, and readable in every version, while allowing each prompt to present a different cinematic angle.",
+      "foreground_midground_background": "Foreground steam and rain droplets, courier in the midground, layered neon signs and wet alley depth in the background.",
+      "dialogue_or_text": "A short Thai line may appear only if it strengthens the scene, otherwise let the visuals carry the emotion.",
+      "reference_images": [
+        "/uploads/courier-face.png",
+        "/uploads/courier-wardrobe.png",
+        "/uploads/neon-alley-composition.png"
+      ],
+      "reference_image_1_role": "character_reference",
+      "reference_image_2_role": "character_reference",
+      "reference_image_3_role": "scene_composition_reference",
+      "reference_image_4_role": "unused",
+      "reference_image_notes": "@Image1 is the primary face and identity reference. @Image2 is a second character reference for coat silhouette and distinctive wardrobe details. @Image3 should guide alley composition, wet reflections, and neon atmosphere.",
+      "character_consistency": true,
+      "must_include": "stable face identity, readable hand interaction with the data capsule, cinematic rain atmosphere, and clearly different creative treatments across the three videos",
+      "avoid": "flicker, extra limbs, deformed hands, chaotic background warping, messy object motion",
+      "additional_notes": "Keep the result premium and believable, like alternate teaser concepts from the same streaming-series world. Each prompt should stand alone as an option the user can choose later.",
+      "safety_rewrite_mode": "strict_media_safe",
+      "youth_depiction_policy": "allow_safe_youth",
+      "adult_sensuality_policy": "block_adult_sensuality"
+    }
+  ]
+}

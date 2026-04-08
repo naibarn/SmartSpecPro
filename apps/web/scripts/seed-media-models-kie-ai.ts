@@ -276,6 +276,7 @@ const VIDEO_MODELS = [
       generateType: "text-to-video",
       hasAudio: true,
       maxDuration: 8,
+      maxPromptLength: 5000,
       inputFields: [
         { key: "aspect_ratio", label: "Aspect Ratio", type: "select",
           options: [{ value: "16:9", label: "16:9" }, { value: "9:16", label: "9:16" }, { value: "1:1", label: "1:1" }],
@@ -302,6 +303,7 @@ const VIDEO_MODELS = [
       generateType: "text-to-video",
       hasAudio: true,
       maxDuration: 8,
+      maxPromptLength: 5000,
       inputFields: [
         { key: "aspect_ratio", label: "Aspect Ratio", type: "select",
           options: [{ value: "16:9", label: "16:9" }, { value: "9:16", label: "9:16" }, { value: "1:1", label: "1:1" }],
@@ -326,6 +328,7 @@ const VIDEO_MODELS = [
       apiPayloadFormat: "veo",
       kieModelId: "veo3",
       generateType: "video-extend",
+      maxPromptLength: 5000,
       inputFields: [
         { key: "video_urls", label: "Source Video", type: "video_urls", required: true },
       ],

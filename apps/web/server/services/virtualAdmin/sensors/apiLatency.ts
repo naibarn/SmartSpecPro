@@ -19,13 +19,13 @@ const apiLatencySensor: Sensor = {
     const errors: string[] = [];
 
     try {
-      webLatencyMs = await pingEndpoint("http://localhost:3000/api/health");
+      webLatencyMs = await pingEndpoint("http://localhost:3000/healthz");
     } catch (err) {
       errors.push(`web: ${err instanceof Error ? err.message : "failed"}`);
     }
 
     try {
-      pythonLatencyMs = await pingEndpoint("http://localhost:8000/api/health");
+      pythonLatencyMs = await pingEndpoint("http://localhost:8000/health");
     } catch (err) {
       errors.push(`python: ${err instanceof Error ? err.message : "failed"}`);
     }

@@ -8,6 +8,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import express from "express";
 import request from "supertest";
 import { sanitizeResponsesBody, registerResponsesRoutes } from "../_core/responsesRoutes";
+import { buildKieLlmAvailableModels } from "../services/llmProviderCatalog";
+import { DelegatedWorkerPlatformError } from "../services/delegatedWorkerPlatformService";
 
 // ── Env stubs (MUST be before any imports) ──────────────────
 process.env.JWT_SECRET =
@@ -15,9 +17,22 @@ process.env.JWT_SECRET =
 process.env.SMARTSPEC_WEB_GATEWAY_TOKEN = "test-internal-token-value";
 process.env.LLM_GATEWAY_SERVICE_ACCOUNT_ID = "99";
 
+const { mockAuthorizeRequest } = vi.hoisted(() => ({
+  mockAuthorizeRequest: vi.fn(),
+}));
+const {
+  mockAcquireDelegatedWorkerConcurrencySlot,
+  mockEnforceDelegatedWorkerSpendGuardrails,
+  mockEnforceDelegatedWorkerModelSelectionPolicy,
+} = vi.hoisted(() => ({
+  mockAcquireDelegatedWorkerConcurrencySlot: vi.fn(),
+  mockEnforceDelegatedWorkerSpendGuardrails: vi.fn(),
+  mockEnforceDelegatedWorkerModelSelectionPolicy: vi.fn(),
+}));
+
 // ── Mock authz (to prevent tokens.ts from crashing) ─────────
 vi.mock("../_core/authz", () => ({
-  authorizeRequest: vi.fn().mockResolvedValue({ ok: true, userId: 42 }),
+  authorizeRequest: (...args: any[]) => mockAuthorizeRequest(...args),
   AuthResult: {},
 }));
 
@@ -32,6 +47,46 @@ vi.mock("../_core/llmRoutes", () => ({
   resolveApiUrl: vi.fn().mockReturnValue("https://api.openai.com/v1/responses"),
 }));
 
+vi.mock("../../server/services/delegatedWorkerPlatformService", () => ({
+  acquireDelegatedWorkerConcurrencySlot: (...args: any[]) =>
+    mockAcquireDelegatedWorkerConcurrencySlot(...args),
+  buildDelegatedWorkerOriginMetadata: vi.fn((_auth, _surface, extra) => extra ?? {}),
+  enforceDelegatedWorkerSpendGuardrails: (...args: any[]) =>
+    mockEnforceDelegatedWorkerSpendGuardrails(...args),
+  enforceDelegatedWorkerModelSelectionPolicy: (...args: any[]) =>
+    mockEnforceDelegatedWorkerModelSelectionPolicy(...args),
+  DelegatedWorkerPlatformError: class DelegatedWorkerPlatformError extends Error {
+    code: string;
+    statusCode: number;
+    type: string;
+
+    constructor(code: string, statusCode: number, message: string, type = "invalid_request_error") {
+      super(message);
+      this.code = code;
+      this.statusCode = statusCode;
+      this.type = type;
+    }
+  },
+}));
+
+// ── Mock enabled model resolution ────────────────────────────
+vi.mock("../../server/services/enabledLlmModels", () => ({
+  resolveEnabledLlmModelId: vi.fn(async (candidates: Array<string | null | undefined>) =>
+    candidates.find((value) => typeof value === "string" && value.trim().length > 0) ?? null,
+  ),
+}));
+
+// ── Mock planner middleware ──────────────────────────────────
+const { mockRunPlanner, mockRecordStepAttempt } = vi.hoisted(() => ({
+  mockRunPlanner: vi.fn().mockResolvedValue(null),
+  mockRecordStepAttempt: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock("../../server/services/taskPlannerMiddleware", () => ({
+  runPlanner: (...args: any[]) => mockRunPlanner(...args),
+  recordStepAttempt: (...args: any[]) => mockRecordStepAttempt(...args),
+}));
+
 // ── Mock Redis ──────────────────────────────────────────────
 vi.mock("../../server/services/redis", () => ({
   getRedisClient: () => ({
@@ -39,7 +94,7 @@ vi.mock("../../server/services/redis", () => ({
     set: vi.fn().mockResolvedValue("OK"),
     del: vi.fn().mockResolvedValue(1),
   }),
-  isRedisAvailable: () => true,
+  isRedisAvailable: () => false,
 }));
 
 // ── Mock credit service ─────────────────────────────────────
@@ -255,6 +310,39 @@ describe("sanitizeResponsesBody", () => {
       expect(result.maxBudgetCredits).toBe(500);
     }
   });
+
+  it("rejects unknown top-level fields in strict mode", () => {
+    const result = sanitizeResponsesBody(
+      {
+        model: "gpt-5.4",
+        input: [{ role: "user", content: "hi" }],
+        unsupported: true,
+      },
+      { strictUnknownFields: true },
+    );
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.status).toBe(400);
+      expect(result.error).toContain("unsupported");
+    }
+  });
+
+  it("preserves allowlisted passthrough fields in strict mode", () => {
+    const result = sanitizeResponsesBody(
+      {
+        model: "gpt-5.4",
+        input: [{ role: "user", content: "hi" }],
+        reasoning: { effort: "high" },
+      },
+      { strictUnknownFields: true, passthroughFields: ["reasoning"] },
+    );
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.body.reasoning).toEqual({ effort: "high" });
+    }
+  });
 });
 
 describe("/v1/responses endpoint", () => {
@@ -265,11 +353,35 @@ describe("/v1/responses endpoint", () => {
     mockFetch.mockReset();
     mockAuditLog.mockClear();
     mockLogRequest.mockResolvedValue(undefined);
+    mockRunPlanner.mockReset();
+    mockRunPlanner.mockResolvedValue(null);
+    mockRecordStepAttempt.mockReset();
+    mockRecordStepAttempt.mockResolvedValue(undefined);
+    mockAcquireDelegatedWorkerConcurrencySlot.mockReset();
+    mockAcquireDelegatedWorkerConcurrencySlot.mockResolvedValue({ release: vi.fn().mockResolvedValue(undefined) });
+    mockEnforceDelegatedWorkerSpendGuardrails.mockReset();
+    mockEnforceDelegatedWorkerSpendGuardrails.mockResolvedValue(undefined);
+    mockEnforceDelegatedWorkerModelSelectionPolicy.mockReset();
     mockGetFeatureFlag.mockResolvedValue(true);
     mockGetTenantFeatureFlag.mockResolvedValue(true);
     mockHasEnoughCredits.mockResolvedValue(true);
     mockDeductCreditsForModel.mockResolvedValue({ creditsUsed: 10, wasFree: false });
     mockGetCreditBalance.mockResolvedValue({ credits: 900 });
+    mockAuthorizeRequest.mockResolvedValue({
+      ok: true,
+      mode: "api_key",
+      sub: "42",
+      userId: 42,
+      tenantId: "tenant-api",
+      apiKeyId: "key-1",
+      scopes: ["llm:chat"],
+      rateLimit: 60,
+      creditLimit: null,
+      quotaHourly: null,
+      quotaDaily: null,
+      quotaWeekly: null,
+      quotaMonthly: null,
+    });
 
     deps = createMockDeps();
     app = createApp(deps);
@@ -316,6 +428,74 @@ describe("/v1/responses endpoint", () => {
     });
   });
 
+  describe("tenant normalization", () => {
+    it("derives tenant context from API-key auth instead of default", async () => {
+      mockFetch.mockResolvedValue(makeFetchResponse(makeResponsesApiResponse()));
+
+      const res = await request(app)
+        .post("/v1/responses")
+        .send({ model: "gpt-5.4", input: [{ role: "user", content: "hi" }] });
+
+      expect(res.status).toBe(200);
+      expect(mockGetTenantFeatureFlag).toHaveBeenCalledWith("responsesApi", "tenant-api");
+    });
+
+    it("derives tenant context from bearer auth when available", async () => {
+      mockAuthorizeRequest.mockResolvedValueOnce({
+        ok: true,
+        mode: "bearer",
+        sub: "84",
+        userId: 84,
+        tenantId: "tenant-bearer",
+        scopes: ["llm:chat"],
+      });
+      mockFetch.mockResolvedValue(makeFetchResponse(makeResponsesApiResponse()));
+
+      const res = await request(app)
+        .post("/v1/responses")
+        .send({ model: "gpt-5.4", input: [{ role: "user", content: "hi" }] });
+
+      expect(res.status).toBe(200);
+      expect(mockGetTenantFeatureFlag).toHaveBeenCalledWith("responsesApi", "tenant-bearer");
+    });
+
+    it("uses explicit X-Tenant-Id for internal service callers", async () => {
+      deps = createMockDeps({
+        guardWithCreditsOrInternalToken: vi
+          .fn()
+          .mockResolvedValue({ ok: true, userId: 42, isInternal: true }),
+      });
+      app = createApp(deps);
+      mockFetch.mockResolvedValue(makeFetchResponse(makeResponsesApiResponse()));
+
+      const res = await request(app)
+        .post("/v1/responses")
+        .set("X-Tenant-Id", "tenant-internal")
+        .send({ model: "gpt-5.4", input: [{ role: "user", content: "hi" }] });
+
+      expect(res.status).toBe(200);
+      expect(mockGetTenantFeatureFlag).toHaveBeenCalledWith("responsesApi", "tenant-internal");
+    });
+
+    it("rejects internal callers that omit tenant context", async () => {
+      deps = createMockDeps({
+        guardWithCreditsOrInternalToken: vi
+          .fn()
+          .mockResolvedValue({ ok: true, userId: 42, isInternal: true }),
+      });
+      app = createApp(deps);
+      mockGetTenantFeatureFlag.mockClear();
+
+      const res = await request(app)
+        .post("/v1/responses")
+        .send({ model: "gpt-5.4", input: [{ role: "user", content: "hi" }] });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error.message).toContain("tenant");
+      expect(mockGetTenantFeatureFlag).not.toHaveBeenCalled();
+    });
+  });
+
   // === Request Validation ===
 
   describe("request validation", () => {
@@ -350,6 +530,211 @@ describe("/v1/responses endpoint", () => {
 
       expect(res.status).toBe(200);
       expect(res.body.id).toBe("resp_test123");
+    });
+
+    it("returns delegated worker policy errors when model selection is rejected", async () => {
+      mockAuthorizeRequest.mockResolvedValueOnce({
+        ok: true,
+        mode: "delegated_worker",
+        sub: "worker-delegate:test",
+        userId: 42,
+        ownerUserId: 42,
+        workerId: "worker-1",
+        workerJobId: "job-1",
+        delegatedSessionId: "session-1",
+        runtimeType: "openclaw_gateway",
+        scopeProfile: "worker_gateway_hybrid_executor",
+        tenantId: "tenant-api",
+        scopes: ["llm:chat"],
+      });
+      mockEnforceDelegatedWorkerModelSelectionPolicy.mockImplementationOnce(() => {
+        throw new DelegatedWorkerPlatformError(
+          "worker_model_not_allowed",
+          403,
+          "The selected model is not allowed for this delegated worker session",
+          "auth_error",
+        );
+      });
+
+      const res = await request(app)
+        .post("/v1/responses")
+        .send({ model: "unsupported-model", input: [{ role: "user", content: "hi" }] });
+
+      expect(res.status).toBe(403);
+      expect(res.body.error.code).toBe("worker_model_not_allowed");
+    });
+
+    it("rejects Kie requests with unknown top-level fields outside the allowlist", async () => {
+      deps = createMockDeps({
+        getActiveLlmProvider: vi.fn().mockResolvedValue({
+          providerId: 9,
+          providerName: "kie_ai",
+          baseUrl: "https://api.kie.ai",
+          apiKey: "kie-key",
+          defaultModel: "gpt-5-4",
+          availableModels: buildKieLlmAvailableModels(),
+        }),
+        resolveProviderModelAny: vi.fn().mockResolvedValue({
+          providerModelId: "gpt-5-4",
+          apiStyle: "responses" as const,
+        }),
+      });
+      app = createApp(deps);
+
+      const res = await request(app)
+        .post("/v1/responses")
+        .send({
+          model: "gpt-5.4",
+          input: [{ role: "user", content: "hello" }],
+          unsupported: true,
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error.message).toContain("unsupported");
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it("rejects Kie responses requests that resolve to non-responses models", async () => {
+      deps = createMockDeps({
+        getActiveLlmProvider: vi.fn().mockResolvedValue({
+          providerId: 9,
+          providerName: "kie_ai",
+          baseUrl: "https://api.kie.ai",
+          apiKey: "kie-key",
+          defaultModel: "claude-sonnet-4-6",
+          availableModels: buildKieLlmAvailableModels(),
+        }),
+        resolveProviderModelAny: vi.fn().mockResolvedValue({
+          providerModelId: "claude-sonnet-4-6",
+          apiStyle: "messages" as const,
+        }),
+      });
+      app = createApp(deps);
+
+      const res = await request(app)
+        .post("/v1/responses")
+        .send({
+          model: "claude-sonnet-4-6",
+          input: [{ role: "user", content: "hello" }],
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error.message).toContain("does not support /v1/responses");
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it("rejects Kie responses requests that mix web search and function tools", async () => {
+      deps = createMockDeps({
+        getActiveLlmProvider: vi.fn().mockResolvedValue({
+          providerId: 9,
+          providerName: "kie_ai",
+          baseUrl: "https://api.kie.ai",
+          apiKey: "kie-key",
+          defaultModel: "gpt-5-4",
+          availableModels: buildKieLlmAvailableModels(),
+        }),
+        resolveProviderModelAny: vi.fn().mockResolvedValue({
+          providerModelId: "gpt-5-4",
+          apiStyle: "responses" as const,
+        }),
+      });
+      app = createApp(deps);
+
+      const res = await request(app)
+        .post("/v1/responses")
+        .send({
+          model: "gpt-5.4",
+          input: [{ role: "user", content: "hello" }],
+          tools: [{ type: "web_search_preview" }, { type: "function", name: "lookup_weather" }],
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error.message).toContain("do not allow web-search tools together with function tools");
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it("re-resolves planner-selected Kie responses models before sending upstream", async () => {
+      mockRunPlanner.mockResolvedValue({
+        resolvedModel: "gpt-5.4",
+        taskRunId: "task-1",
+        plan: null,
+        snapshot: null,
+      });
+
+      deps = createMockDeps({
+        getActiveLlmProvider: vi.fn().mockResolvedValue({
+          providerId: 9,
+          providerName: "kie_ai",
+          baseUrl: "https://api.kie.ai",
+          apiKey: "kie-key",
+          defaultModel: "gpt-5.3-codex",
+          availableModels: buildKieLlmAvailableModels(),
+        }),
+        resolveProviderModelAny: vi.fn()
+          .mockResolvedValueOnce({
+            providerModelId: "gpt-5.3-codex",
+            apiStyle: "responses" as const,
+          })
+          .mockResolvedValueOnce({
+            providerModelId: "gpt-5-4",
+            apiStyle: "responses" as const,
+          }),
+      });
+      app = createApp(deps);
+      mockFetch.mockResolvedValue(makeFetchResponse(makeResponsesApiResponse()));
+
+      const res = await request(app)
+        .post("/v1/responses")
+        .send({
+          model: "gpt-5.3-codex",
+          input: [{ role: "user", content: "hello" }],
+        });
+
+      expect(res.status).toBe(200);
+      const upstreamBody = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(upstreamBody.model).toBe("gpt-5-4");
+    });
+
+    it("ignores planner overrides that switch the route to a non-responses family", async () => {
+      mockRunPlanner.mockResolvedValue({
+        resolvedModel: "claude-sonnet-4-6",
+        taskRunId: "task-2",
+        plan: null,
+        snapshot: null,
+      });
+
+      deps = createMockDeps({
+        getActiveLlmProvider: vi.fn().mockResolvedValue({
+          providerId: 9,
+          providerName: "kie_ai",
+          baseUrl: "https://api.kie.ai",
+          apiKey: "kie-key",
+          defaultModel: "gpt-5-4",
+          availableModels: buildKieLlmAvailableModels(),
+        }),
+        resolveProviderModelAny: vi.fn()
+          .mockResolvedValueOnce({
+            providerModelId: "gpt-5-4",
+            apiStyle: "responses" as const,
+          })
+          .mockResolvedValueOnce({
+            providerModelId: "claude-sonnet-4-6",
+            apiStyle: "messages" as const,
+          }),
+      });
+      app = createApp(deps);
+      mockFetch.mockResolvedValue(makeFetchResponse(makeResponsesApiResponse()));
+
+      const res = await request(app)
+        .post("/v1/responses")
+        .send({
+          model: "gpt-5.4",
+          input: [{ role: "user", content: "hello" }],
+        });
+
+      expect(res.status).toBe(200);
+      const upstreamBody = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(upstreamBody.model).toBe("gpt-5-4");
     });
   });
 
@@ -389,6 +774,38 @@ describe("/v1/responses endpoint", () => {
           sourceType: "browser_automation",
         }),
       );
+    });
+
+    it("prefers normalized provider-reported cost for billing and response metadata", async () => {
+      mockFetch.mockResolvedValue(
+        makeFetchResponse(
+          makeResponsesApiResponse({
+            usage: {
+              input_tokens: 12,
+              output_tokens: 8,
+              total_tokens: 20,
+              cost: 0.045,
+            },
+            credits_consumed: 45,
+          }),
+        ),
+      );
+
+      const res = await request(app)
+        .post("/v1/responses")
+        .send({
+          model: "gpt-5.4",
+          input: [{ role: "user", content: "hello" }],
+        });
+
+      expect(res.status).toBe(200);
+      expect(mockDeductCreditsForModel).toHaveBeenCalledWith(
+        expect.objectContaining({
+          costUsd: 0.045,
+        }),
+      );
+      expect(res.body._meta.providerReportedCostUsd).toBe(0.045);
+      expect(res.body._meta.providerReportedCreditsConsumed).toBe(45);
     });
 
     it("adds _credits and _meta to response", async () => {

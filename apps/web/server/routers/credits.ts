@@ -15,6 +15,7 @@ import {
   getUsageStats,
   type TransactionType,
 } from "../services/creditService";
+import { creditSourceTypeEnum } from "../../drizzle/schema";
 import {
   getUserBudget,
   setBudgetConfig,
@@ -31,11 +32,48 @@ const transactionTypeSchema = z.enum([
   "subscription",
 ]);
 
-const creditSourceTypeSchema = z.enum([
-  "chat", "skill", "media_image", "media_video", "media_audio",
-  "indexing", "rag", "stt", "translation", "brainstorm",
-  "scheduler", "admin", "other",
-]);
+const creditSourceTypeSchema = z.enum(creditSourceTypeEnum.enumValues);
+
+const SAFE_METADATA_KEYS = [
+  "model",
+  "modelId",
+  "provider",
+  "tokensUsed",
+  "costUsd",
+  "inputTokens",
+  "outputTokens",
+  "skill",
+  "reason",
+  "operation",
+  "phase",
+  "stage",
+  "deckId",
+  "taskId",
+  "slideIndex",
+  "slideNumber",
+  "totalSlides",
+  "mediaType",
+  "mediaTaskId",
+  "providerTaskId",
+  "taskStatus",
+  "promptPreview",
+  "billingBasis",
+  "providerReportedCredits",
+  "fallbackCredits",
+  "requestType",
+  "structured",
+  "attempt",
+  "endpoint",
+  "originSurface",
+  "creditCost",
+  "duration",
+  "textLength",
+  "type",
+  "actualCost",
+  "reservedCost",
+  "actualDuration",
+  "actualResolution",
+] as const;
 
 const historyFiltersSchema = z.object({
   limit: z.number().min(1).max(100).default(50),
@@ -74,42 +112,12 @@ export const creditsRouter = router({
         endDate: input.endDate,
       });
 
-      // Allowlist safe metadata fields — strip internal/sensitive keys
-      const safeMetadataKeys = [
-        "model",
-        "modelId",
-        "provider",
-        "tokensUsed",
-        "costUsd",
-        "inputTokens",
-        "outputTokens",
-        "skill",
-        "reason",
-        "operation",
-        "phase",
-        "stage",
-        "deckId",
-        "taskId",
-        "slideIndex",
-        "slideNumber",
-        "totalSlides",
-        "mediaType",
-        "mediaTaskId",
-        "providerTaskId",
-        "taskStatus",
-        "promptPreview",
-        "billingBasis",
-        "providerReportedCredits",
-        "fallbackCredits",
-        "requestType",
-        "structured",
-        "attempt",
-      ];
-
       return transactions.map((t: (typeof transactions)[number]) => {
         const safeMeta = t.metadata
           ? Object.fromEntries(
-              Object.entries(t.metadata).filter(([k]) => safeMetadataKeys.includes(k))
+              Object.entries(t.metadata).filter(([k]) =>
+                (SAFE_METADATA_KEYS as readonly string[]).includes(k),
+              )
             )
           : null;
 
@@ -231,42 +239,12 @@ export const creditsRouter = router({
         type: filters.type as TransactionType | undefined,
       });
 
-      // Apply same sanitization as user-facing endpoint
-      const safeMetadataKeys = [
-        "model",
-        "modelId",
-        "provider",
-        "tokensUsed",
-        "costUsd",
-        "inputTokens",
-        "outputTokens",
-        "skill",
-        "reason",
-        "operation",
-        "phase",
-        "stage",
-        "deckId",
-        "taskId",
-        "slideIndex",
-        "slideNumber",
-        "totalSlides",
-        "mediaType",
-        "mediaTaskId",
-        "providerTaskId",
-        "taskStatus",
-        "promptPreview",
-        "billingBasis",
-        "providerReportedCredits",
-        "fallbackCredits",
-        "requestType",
-        "structured",
-        "attempt",
-      ];
-
       return transactions.map((t: (typeof transactions)[number]) => {
         const safeMeta = t.metadata
           ? Object.fromEntries(
-              Object.entries(t.metadata).filter(([k]) => safeMetadataKeys.includes(k))
+              Object.entries(t.metadata).filter(([k]) =>
+                (SAFE_METADATA_KEYS as readonly string[]).includes(k),
+              )
             )
           : null;
 

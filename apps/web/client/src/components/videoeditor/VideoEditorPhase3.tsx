@@ -3,7 +3,7 @@
  * Complete editor with UX improvements and aspect ratio selector
  */
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import MediaLibraryPanel from './MediaLibraryPanel';
 import Timeline from './Timeline';
 import PreviewPlayer, { type ActiveClipInfo, type ActiveTextClipInfo } from './PreviewPlayer';
@@ -333,6 +333,8 @@ export const VideoEditorPhase3: React.FC = () => {
   const [confirmDialog, setConfirmDialog] = useState<Omit<ConfirmDialogProps, 'onConfirm' | 'onCancel'> | null>(null);
   const [confirmCallback, setConfirmCallback] = useState<(() => void) | null>(null);
   const [pendingDeleteClipId, setPendingDeleteClipId] = useState<string | null>(null);
+  const initialProjectLoadIdRef = useRef<number | null>(null);
+  const initialProjectShouldFocusNameRef = useRef(false);
 
   // Sidebar view
   const [sidebarView, setSidebarView] = useState<'library' | 'ducking' | 'aspectRatio' | 'history' | 'transitions' | 'overlay' | 'draftAi' | 'silence' | 'text'>('library');
@@ -585,6 +587,58 @@ export const VideoEditorPhase3: React.FC = () => {
       alert(`Failed to load: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    const projectIdParam = params.get("projectId");
+    if (!projectIdParam) {
+      return;
+    }
+
+    const projectId = Number.parseInt(projectIdParam, 10);
+    if (!Number.isFinite(projectId) || projectId <= 0) {
+      return;
+    }
+
+    if (initialProjectLoadIdRef.current === projectId) {
+      return;
+    }
+
+    initialProjectLoadIdRef.current = projectId;
+    let cancelled = false;
+
+    const loadInitialProject = async () => {
+      try {
+        const loaded = await trpcUtils.videoEditorProjects.get.fetch({ id: projectId });
+        if (cancelled || !loaded) {
+          return;
+        }
+        setProject(loaded.projectData as VideoEditorProject);
+        setCurrentProjectId(loaded.id);
+        setHistory([loaded.projectData as VideoEditorProject]);
+        setHistoryIndex(0);
+        setIsDirty(false);
+        setCurrentTime(0);
+        setSelectedClipId(null);
+        setSelectedClipIds([]);
+        initialProjectShouldFocusNameRef.current = true;
+        setEditingProjectName(true);
+      } catch (error) {
+        if (!cancelled) {
+          alert(`Failed to open project: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+      }
+    };
+
+    void loadInitialProject();
+    return () => {
+      cancelled = true;
+    };
+  }, [trpcUtils.videoEditorProjects.get]);
 
   const handleOpenProject = (projectId: number) => {
     if (isDirty) {
@@ -3583,6 +3637,13 @@ export const VideoEditorPhase3: React.FC = () => {
               className="project-title-input"
               autoFocus
               defaultValue={project.name}
+              ref={(element) => {
+                if (element && initialProjectShouldFocusNameRef.current) {
+                  element.focus();
+                  element.select();
+                  initialProjectShouldFocusNameRef.current = false;
+                }
+              }}
               maxLength={100}
               onBlur={(e) => {
                 const newName = e.target.value.trim() || 'Untitled Project';

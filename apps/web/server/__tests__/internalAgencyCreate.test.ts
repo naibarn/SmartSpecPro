@@ -30,6 +30,8 @@ const agencyCreateSchema = z.object({
             supportsThinking: z.boolean().optional(),
             supportsFunctionTools: z.boolean().optional(),
             supportsStructuredOutputs: z.boolean().optional(),
+            supportsJsonMode: z.boolean().optional(),
+            supportsStrictToolSchema: z.boolean().optional(),
             supportsWebSearch: z.boolean().optional(),
             supportsCodeExecution: z.boolean().optional(),
             supportsComputerUse: z.boolean().optional(),

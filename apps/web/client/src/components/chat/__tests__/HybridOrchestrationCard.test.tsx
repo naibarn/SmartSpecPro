@@ -29,6 +29,29 @@ vi.mock("@/lib/trpc", () => ({
   },
 }));
 
+vi.mock("@/i18n/useScopedTranslation", () => ({
+  useScopedTranslation: () => ({
+    t: (key: string) => {
+      const translations: Record<string, string> = {
+        "chat.hybridCard.confirmTitle": "Use Hybrid Flow?",
+        "chat.hybridCard.confirmDescription": "I found a possible hybrid workflow for this request. Please confirm whether you want to open the hybrid flow or keep this as a normal chat question.",
+        "chat.hybridCard.confirmHybrid": "Yes, Open Hybrid Flow",
+        "chat.hybridCard.answerInChat": "Answer in Chat Instead",
+        "chat.hybridCard.approvalRequired": "Approval required",
+        "chat.hybridCard.stages": "Stages",
+        "chat.hybridCard.routing": "Routing",
+        "chat.hybridCard.instructionsPreview": "Hybrid instructions preview",
+        "chat.hybridCard.openingPreview": "Opening preview...",
+        "hybridPreview.workflowAnchor": "Workflow anchor",
+        "hybridPreview.owner.workflow": "Workflow",
+        "hybridPreview.owner.swarm": "Swarm",
+        "hybridPreview.owner.human": "Human",
+      };
+      return translations[key] ?? key;
+    },
+  }),
+}));
+
 const plan: HybridOrchestrationPlan = {
   mode: "hybrid",
   blendMode: "balanced-mixed",
@@ -111,10 +134,31 @@ describe("HybridOrchestrationCard", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /preview hybrid flow/i }));
+    expect(screen.getByText(/use hybrid flow\\?/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /yes, open hybrid flow/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /answer in chat instead/i })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /yes, open hybrid flow/i }));
 
     await waitFor(() => {
       expect(setLocation).toHaveBeenCalledWith("/agencies/agency-1/hybrid-preview?hybridPreviewToken=preview-token-123");
     });
+  });
+
+  it("lets the user keep the request in chat", () => {
+    const onKeepInChat = vi.fn();
+
+    render(
+      <HybridOrchestrationCard
+        message="Build a hybrid flow"
+        reason="cooperative request"
+        plan={plan}
+        onKeepInChat={onKeepInChat}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /answer in chat instead/i }));
+
+    expect(onKeepInChat).toHaveBeenCalledTimes(1);
   });
 });

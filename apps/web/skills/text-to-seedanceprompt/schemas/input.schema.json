@@ -1,0 +1,834 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/skills/seedance-2-prompt-builder/input.schema.json",
+  "title": "Seedance 2.0 Prompt Builder Input",
+  "description": "Input contract for building complete Seedance 2.0 prompts, including multi-shot prompts in a single natural-language block and multimodal reference instructions.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "request_name",
+    "mode",
+    "language",
+    "aspect_ratio",
+    "duration_seconds",
+    "shots"
+  ],
+  "properties": {
+    "request_name": {
+      "type": "string",
+      "title": "Request name",
+      "minLength": 1,
+      "maxLength": 120
+    },
+    "mode": {
+      "type": "string",
+      "title": "Generation mode",
+      "enum": [
+        "text_to_video",
+        "image_to_video",
+        "universal_reference",
+        "video_extension",
+        "video_edit"
+      ]
+    },
+    "language": {
+      "type": "string",
+      "title": "Prompt language",
+      "enum": [
+        "en",
+        "th"
+      ]
+    },
+    "aspect_ratio": {
+      "type": "string",
+      "title": "Aspect ratio",
+      "enum": [
+        "16:9",
+        "9:16",
+        "4:3",
+        "3:4"
+      ]
+    },
+    "duration_seconds": {
+      "type": "integer",
+      "title": "Duration (seconds)",
+      "minimum": 4,
+      "maximum": 15
+    },
+    "multi_shot_mode": {
+      "type": "string",
+      "title": "Continuity style",
+      "default": "single_prompt_multi_shot",
+      "enum": [
+        "single_shot",
+        "single_prompt_multi_shot",
+        "one_continuous_take"
+      ]
+    },
+    "narrative_goal": {
+      "type": "string",
+      "title": "Narrative goal",
+      "maxLength": 1000
+    },
+    "global_context": {
+      "$ref": "#/$defs/globalContext"
+    },
+    "reference_assets": {
+      "type": "array",
+      "title": "Reference assets",
+      "items": {
+        "$ref": "#/$defs/referenceAsset"
+      },
+      "maxItems": 12,
+      "default": []
+    },
+    "reference_directives": {
+      "type": "array",
+      "title": "Global reference directives",
+      "items": {
+        "$ref": "#/$defs/referenceDirective"
+      },
+      "default": []
+    },
+    "edit_operations": {
+      "type": "array",
+      "title": "Edit operations",
+      "items": {
+        "$ref": "#/$defs/editOperation"
+      },
+      "default": []
+    },
+    "shots": {
+      "type": "array",
+      "title": "Shots",
+      "minItems": 1,
+      "maxItems": 12,
+      "items": {
+        "$ref": "#/$defs/shot"
+      }
+    },
+    "global_constraints": {
+      "$ref": "#/$defs/constraintBlock"
+    },
+    "render_options": {
+      "$ref": "#/$defs/renderOptions"
+    },
+    "notes": {
+      "type": "string",
+      "title": "Additional notes",
+      "maxLength": 2000
+    }
+  },
+  "$defs": {
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1
+    },
+    "stringArray": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true,
+      "default": []
+    },
+    "referenceAsset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "asset_id",
+        "asset_type"
+      ],
+      "properties": {
+        "asset_id": {
+          "type": "string",
+          "title": "Asset handle",
+          "pattern": "^@(Image|Video|Audio)[1-9][0-9]*$",
+          "examples": [
+            "@Image1",
+            "@Video1",
+            "@Audio1"
+          ]
+        },
+        "asset_type": {
+          "type": "string",
+          "title": "Asset type",
+          "enum": [
+            "image",
+            "video",
+            "audio"
+          ]
+        },
+        "label": {
+          "type": "string",
+          "title": "Label",
+          "maxLength": 120
+        },
+        "description": {
+          "type": "string",
+          "title": "Description",
+          "maxLength": 1000
+        },
+        "priority": {
+          "type": "string",
+          "title": "Priority",
+          "enum": [
+            "primary",
+            "secondary",
+            "supporting"
+          ],
+          "default": "supporting"
+        }
+      }
+    },
+    "referenceDirective": {
+      "title": "Reference directive",
+      "description": "Typed instruction that will be rendered into the final natural-language prompt using Seedance 2.0's @ mention syntax.",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "asset_id"
+          ],
+          "properties": {
+            "kind": {
+              "const": "first_frame"
+            },
+            "asset_id": {
+              "type": "string",
+              "pattern": "^@Image[1-9][0-9]*$"
+            },
+            "placement": {
+              "type": "string",
+              "enum": [
+                "global",
+                "shot"
+              ],
+              "default": "global"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "asset_id",
+            "reference_target"
+          ],
+          "properties": {
+            "kind": {
+              "const": "motion_reference"
+            },
+            "asset_id": {
+              "type": "string",
+              "pattern": "^@Video[1-9][0-9]*$"
+            },
+            "reference_target": {
+              "type": "string",
+              "title": "What motion to copy",
+              "minLength": 1,
+              "examples": [
+                "the fighting choreography"
+              ]
+            },
+            "mode_hint": {
+              "type": "string",
+              "enum": [
+                "universal_reference_mode"
+              ],
+              "default": "universal_reference_mode"
+            },
+            "placement": {
+              "type": "string",
+              "enum": [
+                "global",
+                "shot"
+              ],
+              "default": "global"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "asset_id"
+          ],
+          "properties": {
+            "kind": {
+              "const": "camera_reference"
+            },
+            "asset_id": {
+              "type": "string",
+              "pattern": "^@Video[1-9][0-9]*$"
+            },
+            "placement": {
+              "type": "string",
+              "enum": [
+                "global",
+                "shot"
+              ],
+              "default": "global"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "asset_id",
+            "audio_role"
+          ],
+          "properties": {
+            "kind": {
+              "const": "audio_reference"
+            },
+            "asset_id": {
+              "type": "string",
+              "pattern": "^@Audio[1-9][0-9]*$"
+            },
+            "audio_role": {
+              "type": "string",
+              "enum": [
+                "background_music",
+                "rhythm",
+                "sound_effects",
+                "dialogue_timing"
+              ]
+            },
+            "placement": {
+              "type": "string",
+              "enum": [
+                "global",
+                "shot"
+              ],
+              "default": "global"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "asset_id",
+            "extend_by_seconds"
+          ],
+          "properties": {
+            "kind": {
+              "const": "extend_video"
+            },
+            "asset_id": {
+              "type": "string",
+              "pattern": "^@Video[1-9][0-9]*$"
+            },
+            "extend_by_seconds": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 15
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "video_asset_id",
+            "replacement_asset_id",
+            "target_description"
+          ],
+          "properties": {
+            "kind": {
+              "const": "replace_character"
+            },
+            "video_asset_id": {
+              "type": "string",
+              "pattern": "^@Video[1-9][0-9]*$"
+            },
+            "replacement_asset_id": {
+              "type": "string",
+              "pattern": "^@Image[1-9][0-9]*$"
+            },
+            "target_description": {
+              "type": "string",
+              "minLength": 1,
+              "examples": [
+                "the woman",
+                "the man in the foreground"
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "asset_id",
+            "reference_elements"
+          ],
+          "properties": {
+            "kind": {
+              "const": "universal_reference"
+            },
+            "asset_id": {
+              "type": "string",
+              "pattern": "^@(Image|Video|Audio)[1-9][0-9]*$"
+            },
+            "reference_elements": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "enum": [
+                  "appearance",
+                  "style",
+                  "setting",
+                  "motion",
+                  "choreography",
+                  "camera",
+                  "transitions",
+                  "rhythm",
+                  "music",
+                  "sound_effects",
+                  "dialogue",
+                  "timing"
+                ]
+              },
+              "uniqueItems": true
+            },
+            "custom_instruction": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "placement": {
+              "type": "string",
+              "enum": [
+                "global",
+                "shot"
+              ],
+              "default": "global"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "asset_id",
+            "appearance_scope"
+          ],
+          "properties": {
+            "kind": {
+              "const": "appearance_reference"
+            },
+            "asset_id": {
+              "type": "string",
+              "pattern": "^@Image[1-9][0-9]*$"
+            },
+            "appearance_scope": {
+              "type": "string",
+              "enum": [
+                "main_character",
+                "supporting_character",
+                "object",
+                "product"
+              ]
+            },
+            "placement": {
+              "type": "string",
+              "enum": [
+                "global",
+                "shot"
+              ],
+              "default": "global"
+            }
+          }
+        }
+      ]
+    },
+    "editOperation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "extend_video",
+            "replace_character",
+            "edit_existing_video",
+            "generate_from_references"
+          ]
+        },
+        "instruction": {
+          "type": "string",
+          "maxLength": 500
+        }
+      }
+    },
+    "globalContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "subject": {
+          "type": "string",
+          "title": "Global subject",
+          "maxLength": 500
+        },
+        "action": {
+          "type": "string",
+          "title": "Global action",
+          "maxLength": 1000
+        },
+        "camera": {
+          "type": "string",
+          "title": "Global camera",
+          "maxLength": 800
+        },
+        "style": {
+          "type": "string",
+          "title": "Global style",
+          "maxLength": 800
+        },
+        "audio": {
+          "type": "string",
+          "title": "Global audio",
+          "maxLength": 800
+        }
+      }
+    },
+    "cameraBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "shot_size": {
+          "type": "string",
+          "enum": [
+            "extreme_wide",
+            "wide",
+            "full",
+            "medium",
+            "medium_close",
+            "close_up",
+            "extreme_close_up",
+            "over_the_shoulder",
+            "aerial",
+            "tracking"
+          ]
+        },
+        "movement": {
+          "type": "string",
+          "enum": [
+            "static",
+            "dolly_in",
+            "dolly_out",
+            "track_left",
+            "track_right",
+            "crane_up",
+            "crane_down",
+            "pan_left",
+            "pan_right",
+            "tilt_up",
+            "tilt_down",
+            "orbit",
+            "push_in",
+            "pull_back",
+            "handheld",
+            "gimbal_follow",
+            "whip_pan",
+            "hitchcock_zoom",
+            "mixed"
+          ]
+        },
+        "angle": {
+          "type": "string",
+          "enum": [
+            "eye_level",
+            "low_angle",
+            "high_angle",
+            "top_down",
+            "front",
+            "rear",
+            "side",
+            "three_quarter",
+            "overhead",
+            "mixed"
+          ]
+        },
+        "lens": {
+          "type": "string",
+          "enum": [
+            "wide",
+            "normal",
+            "telephoto",
+            "fisheye",
+            "macro",
+            "mixed"
+          ]
+        },
+        "framing_notes": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "movement_notes": {
+          "type": "string",
+          "maxLength": 500
+        }
+      }
+    },
+    "styleBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "visual_anchor": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "lighting": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "color_treatment": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "mood": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "realism_level": {
+          "type": "string",
+          "enum": [
+            "stylized",
+            "cinematic_realism",
+            "photoreal",
+            "mixed"
+          ]
+        },
+        "texture_notes": {
+          "type": "string",
+          "maxLength": 300
+        }
+      }
+    },
+    "audioBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "music_direction": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "rhythm_notes": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "dialogue": {
+          "type": "string",
+          "maxLength": 1000
+        },
+        "sound_effects": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "lip_sync_required": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "constraintBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "must_keep": {
+          "$ref": "#/$defs/stringArray",
+          "title": "Must keep"
+        },
+        "must_avoid": {
+          "$ref": "#/$defs/stringArray",
+          "title": "Must avoid"
+        },
+        "timing_notes": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "consistency_notes": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "physics_notes": {
+          "type": "string",
+          "maxLength": 500
+        }
+      }
+    },
+    "shot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "shot_id",
+        "subject",
+        "action"
+      ],
+      "properties": {
+        "shot_id": {
+          "type": "string",
+          "pattern": "^Shot [1-9][0-9]*$",
+          "examples": [
+            "Shot 1",
+            "Shot 2"
+          ]
+        },
+        "beat_range": {
+          "type": "string",
+          "title": "Beat range",
+          "maxLength": 80,
+          "examples": [
+            "0-3s",
+            "3-7s",
+            "opening beat",
+            "final beat"
+          ]
+        },
+        "duration_hint_seconds": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 15
+        },
+        "subject": {
+          "type": "string",
+          "title": "Subject",
+          "maxLength": 700
+        },
+        "action": {
+          "type": "string",
+          "title": "Action",
+          "maxLength": 1200
+        },
+        "camera": {
+          "$ref": "#/$defs/cameraBlock"
+        },
+        "style": {
+          "$ref": "#/$defs/styleBlock"
+        },
+        "audio": {
+          "$ref": "#/$defs/audioBlock"
+        },
+        "reference_directives": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/referenceDirective"
+          },
+          "default": []
+        },
+        "constraints": {
+          "$ref": "#/$defs/constraintBlock"
+        },
+        "transition_to_next": {
+          "type": "string",
+          "maxLength": 500
+        }
+      }
+    },
+    "renderOptions": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "output_format": {
+          "type": "string",
+          "enum": [
+            "single_prompt",
+            "single_prompt_with_breakdown",
+            "api_ready_bundle"
+          ],
+          "default": "api_ready_bundle"
+        },
+        "include_shot_labels": {
+          "type": "boolean",
+          "default": true
+        },
+        "include_provider_hints": {
+          "type": "boolean",
+          "default": true
+        },
+        "merge_constraints_into_main_prompt": {
+          "type": "boolean",
+          "const": true,
+          "default": true,
+          "description": "Seedance 2.0 prompts should keep avoid/constraint language inside the main prompt, not as a separate negative prompt block."
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "properties": {
+        "reference_assets": {
+          "contains": {
+            "type": "object",
+            "required": [
+              "asset_type"
+            ],
+            "properties": {
+              "asset_type": {
+                "const": "image"
+              }
+            }
+          },
+          "minContains": 0,
+          "maxContains": 9
+        }
+      }
+    },
+    {
+      "properties": {
+        "reference_assets": {
+          "contains": {
+            "type": "object",
+            "required": [
+              "asset_type"
+            ],
+            "properties": {
+              "asset_type": {
+                "const": "video"
+              }
+            }
+          },
+          "minContains": 0,
+          "maxContains": 3
+        }
+      }
+    },
+    {
+      "properties": {
+        "reference_assets": {
+          "contains": {
+            "type": "object",
+            "required": [
+              "asset_type"
+            ],
+            "properties": {
+              "asset_type": {
+                "const": "audio"
+              }
+            }
+          },
+          "minContains": 0,
+          "maxContains": 3
+        }
+      }
+    }
+  ]
+}

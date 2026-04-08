@@ -19,14 +19,9 @@ import {
 } from "./appRuntimeConfig";
 import {
   assertRelativeUploadMediaReferencePath,
-  buildWaveSpeedLaunchModelConfigJson,
+  buildWaveSpeedModelSeeds,
   getReferenceImageLimitFromConfig,
   normalizeMediaProviderName,
-  WAVESPEED_ALLOWED_ASPECT_RATIOS,
-  WAVESPEED_ALLOWED_DURATIONS,
-  WAVESPEED_LAUNCH_MODEL_DESCRIPTION,
-  WAVESPEED_LAUNCH_MODEL_ID,
-  WAVESPEED_LAUNCH_MODEL_NAME,
   WAVESPEED_PROVIDER,
 } from "./mediaProviderUtils";
 
@@ -60,6 +55,23 @@ export interface ModelMetadata {
   configJson?: Record<string, unknown>;
 }
 export { normalizeMediaPrompt } from "./mediaPromptNormalization";
+
+const wavespeedModelMetadata: Record<string, ModelMetadata> = Object.fromEntries(
+  buildWaveSpeedModelSeeds().map((seed) => [
+    seed.modelId,
+    {
+      id: seed.modelId,
+      type: seed.modelType,
+      name: seed.name,
+      provider: seed.provider,
+      description: seed.description,
+      supportsDurations: [...seed.durations],
+      supportsAspectRatios: [...seed.aspectRatios],
+      creditCost: seed.creditCost,
+      configJson: seed.configJson,
+    } satisfies ModelMetadata,
+  ]),
+);
 
 const RETRYABLE_MEDIA_SETTINGS_ERROR = /\bSETTINGS_KEY_NOT_FOUND\b/i;
 const MEDIA_SUBMIT_RETRY_DELAY_MS = 250;
@@ -236,17 +248,7 @@ export const MEDIA_MODELS: Record<string, ModelMetadata> = {
     supportsAspectRatios: ["16:9", "9:16", "1:1"],
     creditCost: 36,
   },
-  [WAVESPEED_LAUNCH_MODEL_ID]: {
-    id: WAVESPEED_LAUNCH_MODEL_ID,
-    type: "video",
-    name: WAVESPEED_LAUNCH_MODEL_NAME,
-    provider: WAVESPEED_PROVIDER,
-    description: WAVESPEED_LAUNCH_MODEL_DESCRIPTION,
-    supportsDurations: [...WAVESPEED_ALLOWED_DURATIONS],
-    supportsAspectRatios: [...WAVESPEED_ALLOWED_ASPECT_RATIOS],
-    creditCost: 800,
-    configJson: buildWaveSpeedLaunchModelConfigJson(),
-  },
+  ...wavespeedModelMetadata,
   // ========== BytePlus ModelArk — Seedream Image Models ==========
   "seedream-4-5-251128": {
     id: "seedream-4-5-251128",

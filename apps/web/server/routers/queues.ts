@@ -11,6 +11,7 @@
 import { z } from 'zod';
 import { router, adminProcedure } from '../_core/trpc';
 import { getRedisStatus, isRedisAvailable } from '../services/redis';
+import { getAppRuntimeConfig, getPreferredInternalToken } from '../services/appRuntimeConfig';
 import {
   getAllLimiterCounts,
   getLimiterStats,
@@ -479,8 +480,9 @@ export const queuesRouter = router({
   // ── Scheduled Job Monitoring ────────────────────────────────────
 
   getScheduledJobs: adminProcedure.query(async () => {
-    const baseUrl = process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
-    const token = process.env.SMARTSPEC_WEB_GATEWAY_TOKEN || "";
+    const runtime = await getAppRuntimeConfig();
+    const token = await getPreferredInternalToken();
+    const baseUrl = runtime.pythonBackendUrl;
     const resp = await fetch(`${baseUrl}/api/v1/scheduled-jobs/schedule`, {
       headers: { "X-Internal-Token": token },
     });
@@ -496,8 +498,9 @@ export const queuesRouter = router({
       offset: z.number().int().min(0).default(0),
     }))
     .query(async ({ input }) => {
-      const baseUrl = process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
-      const token = process.env.SMARTSPEC_WEB_GATEWAY_TOKEN || "";
+      const runtime = await getAppRuntimeConfig();
+      const token = await getPreferredInternalToken();
+      const baseUrl = runtime.pythonBackendUrl;
       const params = new URLSearchParams();
       if (input.taskName) params.set("task_name", input.taskName);
       if (input.status) params.set("status", input.status);
@@ -511,8 +514,9 @@ export const queuesRouter = router({
     }),
 
   getScheduledJobStats: adminProcedure.query(async () => {
-    const baseUrl = process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
-    const token = process.env.SMARTSPEC_WEB_GATEWAY_TOKEN || "";
+    const runtime = await getAppRuntimeConfig();
+    const token = await getPreferredInternalToken();
+    const baseUrl = runtime.pythonBackendUrl;
     const resp = await fetch(`${baseUrl}/api/v1/scheduled-jobs/stats`, {
       headers: { "X-Internal-Token": token },
     });

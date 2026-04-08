@@ -4,7 +4,7 @@
  * Admin panel for toggling feature flags on a per-tenant basis.
  * Used within the tenant edit dialog in AdminTenants.
  *
- * - 43 flags organized in 7 collapsible groups
+ * - 44 flags organized in 7 collapsible groups
  * - Search filter to quickly find flags
  * - Shows "X/Y enabled" summary per group
  * - Optimistic updates with rollback on error
@@ -15,100 +15,7 @@ import { useState, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import type { TenantFeatureFlags, TenantFeatureFlagKey } from "@shared/featureFlags";
 import { FEATURE_FLAG_DEFAULTS } from "@shared/featureFlags";
-
-interface FlagInfo {
-  key: TenantFeatureFlagKey;
-  label: string;
-  description: string;
-}
-
-const FLAG_GROUPS: { title: string; icon: string; flags: FlagInfo[] }[] = [
-  {
-    title: "Channels & Social",
-    icon: "📡",
-    flags: [
-      { key: "multiChannel", label: "Multi-Channel Adapters", description: "Telegram, WhatsApp, LINE, Slack, Discord" },
-      { key: "chatWidget", label: "Embeddable Chat Widget", description: "Embed chat on external websites" },
-      { key: "channelRouter", label: "Channel Routing Rules", description: "Route messages based on rules" },
-      { key: "META_CHANNELS_ENABLED", label: "Meta Channels", description: "Facebook/Instagram Pages — inbox, publishing, comments" },
-      { key: "UPLOAD_POST_GATEWAY_ENABLED", label: "Upload-Post Gateway", description: "Universal upload-post publishing bridge" },
-    ],
-  },
-  {
-    title: "AI Tools & Browser",
-    icon: "🌐",
-    flags: [
-      { key: "browserTool", label: "Browser Automation", description: "AI-controlled web browsing" },
-      { key: "liveBrowser", label: "Live Browser", description: "Real-time shared browser sessions" },
-      { key: "automationCopilot", label: "Automation Copilot", description: "LLM-driven browser task planner" },
-      { key: "chatBrowserSessionEntry", label: "Chat Browser Session", description: "Browser Sessions from Chat" },
-      { key: "agencyBrowserSessionUi", label: "Agency Browser Session", description: "Browser nodes in Agency" },
-      { key: "workflowBrowserSessionNodes", label: "Workflow Browser Session", description: "Browser nodes in Workflow" },
-      { key: "canvas", label: "Canvas / AI Artifacts", description: "Interactive artifact rendering" },
-      { key: "voiceChat", label: "Voice Chat Mode", description: "Real-time voice conversation" },
-      { key: "personaSystem", label: "AI Persona System", description: "Custom AI personalities" },
-    ],
-  },
-  {
-    title: "Agency & Agents",
-    icon: "🤖",
-    flags: [
-      { key: "crossAgency", label: "Cross-Agency Calls", description: "Agents calling other agencies" },
-      { key: "agencyCustomTools", label: "Custom Tools", description: "Create custom agency tools" },
-      { key: "agencyGuardrails", label: "Guardrails", description: "Safety rules for agent outputs" },
-      { key: "agencyStreaming", label: "Streaming Responses", description: "Real-time token streaming" },
-      { key: "agencyMcpBridge", label: "MCP Bridge (per-agent)", description: "Inline MCP server on agent nodes" },
-      { key: "agencyToolApi", label: "Tool API", description: "Standalone tool execution API" },
-      { key: "agencyAgenticModeEnabled", label: "Agentic Mode (L1)", description: "Basic agentic execution with tool use" },
-      { key: "agencyReactExecutorEnabled", label: "ReAct Executor (L2)", description: "Reasoning + Acting loop" },
-      { key: "agencyAutonomousAgentEnabled", label: "Autonomous Agent (L3)", description: "Self-planning autonomous agents" },
-      { key: "agencyLongTermMemoryEnabled", label: "Long-Term Memory", description: "Persistent memory across runs" },
-    ],
-  },
-  {
-    title: "MCP Server Registry",
-    icon: "🔌",
-    flags: [
-      { key: "mcpServerRegistry", label: "MCP Server Registry", description: "Centralized MCP tool server management" },
-      { key: "mcpStdio", label: "MCP stdio Transport", description: "MCP via OpenSandbox containers" },
-      { key: "mcpOAuth", label: "MCP OAuth 2.1", description: "OAuth for MCP server connections" },
-    ],
-  },
-  {
-    title: "Planner & Orchestrator",
-    icon: "🎯",
-    flags: [
-      { key: "taskPlannerEnabled", label: "Task Planner", description: "Active model selection planner" },
-      { key: "taskPlannerAgencyEscalation", label: "Planner Escalation", description: "Escalate to agency for multi-step" },
-      { key: "orchestratorEnabled", label: "Workflow Orchestrator", description: "Visual workflow engine" },
-      { key: "skillOrchestrator", label: "Skill Orchestrator", description: "Automated skill chaining" },
-      { key: "unifiedSkillExecution", label: "Unified Skill Execution", description: "Unified skill pipeline" },
-    ],
-  },
-  {
-    title: "Integration & API",
-    icon: "🔗",
-    flags: [
-      { key: "responsesApi", label: "Responses API Gateway", description: "OpenAI-compatible proxy" },
-      { key: "publicApi", label: "Public API", description: "External API access" },
-      { key: "webhookTriggers", label: "Webhook Triggers", description: "Inbound webhook triggers" },
-      { key: "costDisplay", label: "Cost Display", description: "Show per-response costs" },
-      { key: "multimodalMemory", label: "Multimodal Memory", description: "Image/audio in memory" },
-    ],
-  },
-  {
-    title: "Notifications",
-    icon: "🔔",
-    flags: [
-      { key: "notificationUnifiedCenter", label: "Notification Center", description: "Unified inbox" },
-      { key: "notificationPreferencesEnabled", label: "Preferences", description: "User notification settings" },
-      { key: "notificationDedupEnabled", label: "Dedup", description: "Suppress duplicates" },
-      { key: "notificationEscalationEnabled", label: "Escalation", description: "Escalate unacknowledged" },
-      { key: "notificationEmailDelivery", label: "Email Delivery", description: "Notifications via email" },
-      { key: "notificationWebhookDelivery", label: "Webhook Delivery", description: "Notifications via webhook" },
-    ],
-  },
-];
+import { buildTenantFeatureFlagGroups } from "./tenantFeatureFlagGroups";
 
 interface TenantFeatureFlagsPanelProps {
   tenantId: string;
@@ -119,6 +26,7 @@ export function TenantFeatureFlagsPanel({ tenantId, canEdit = false }: TenantFea
   const utils = trpc.useUtils();
   const [search, setSearch] = useState("");
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const allFlagGroups = useMemo(() => buildTenantFeatureFlagGroups(), []);
 
   const { data: flags, isLoading } = trpc.tenantFeatureFlags.getFeatureFlags.useQuery(
     { tenantId },
@@ -168,9 +76,9 @@ export function TenantFeatureFlagsPanel({ tenantId, canEdit = false }: TenantFea
 
   // Filter groups by search
   const filteredGroups = useMemo(() => {
-    if (!search.trim()) return FLAG_GROUPS;
+    if (!search.trim()) return allFlagGroups;
     const q = search.toLowerCase();
-    return FLAG_GROUPS.map((g) => ({
+    return allFlagGroups.map((g) => ({
       ...g,
       flags: g.flags.filter(
         (f) =>
@@ -179,14 +87,14 @@ export function TenantFeatureFlagsPanel({ tenantId, canEdit = false }: TenantFea
           f.key.toLowerCase().includes(q),
       ),
     })).filter((g) => g.flags.length > 0);
-  }, [search]);
+  }, [allFlagGroups, search]);
 
   if (isLoading) {
     return <div className="p-4 text-sm text-gray-500">Loading feature flags...</div>;
   }
 
-  const totalFlags = FLAG_GROUPS.reduce((n, g) => n + g.flags.length, 0);
-  const enabledCount = FLAG_GROUPS.reduce(
+  const totalFlags = allFlagGroups.reduce((n, g) => n + g.flags.length, 0);
+  const enabledCount = allFlagGroups.reduce(
     (n, g) => n + g.flags.filter((f) => resolvedFlags[f.key]).length,
     0,
   );

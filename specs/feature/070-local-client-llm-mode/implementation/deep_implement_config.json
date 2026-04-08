@@ -1,0 +1,32 @@
+{
+  "plugin_root": "/home/dev/projects/SmartSpecPro/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/070-local-client-llm-mode/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/070-local-client-llm-mode/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "workflow_backend": "compatible",
+  "task_tracking_backend": "compatible",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-contracts-and-policy-foundation",
+    "section-02-user-settings-and-device-state",
+    "section-03-local-model-catalog-and-capability-contracts",
+    "section-04-chat-routing-and-runtime-metadata",
+    "section-05-browser-download-and-runtime-adapter",
+    "section-06-tauri-adapter-and-device-storage",
+    "section-07-ocr-security-and-observability",
+    "section-08-teams-ui-and-team-room-parity",
+    "section-09-regression-tests-and-rollout"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-04-04T10:00:04.036436+00:00"
+}

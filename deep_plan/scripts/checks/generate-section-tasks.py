@@ -64,6 +64,8 @@ def generate_section_tasks(
     state = progress["state"]
 
     base_result = {
+        "workflow_backend": "task_list",
+        "task_list_required": True,
         "task_list_id": context.task_list_id,
         "task_list_source": str(context.source),
         "session_id_matched": context.session_id_matched,

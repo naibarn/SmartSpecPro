@@ -14,16 +14,10 @@ import { createRateLimitMiddleware } from "../_core/rateLimitedProcedure";
 import { getDb } from "../db";
 import { socialPages } from "../../drizzle/schema";
 import { getTenantFeatureFlag } from "../services/featureFlags";
+import { getAppRuntimeConfig, getPreferredInternalToken } from "../services/appRuntimeConfig";
 import { verifyPageAccess } from "../services/socialAccessService";
 import { resolveTenantIdVarchar } from "../services/tenantContext";
-
-const PYTHON_BACKEND_URL = (process.env.PYTHON_BACKEND_URL || "http://localhost:8000").replace(/\/+$/, "");
-const INTERNAL_TOKEN = process.env.SMARTSPEC_WEB_GATEWAY_TOKEN || process.env.SMARTSPEC_PROXY_TOKEN || "";
 const PY_TIMEOUT_MS = 15_000;
-
-if (!INTERNAL_TOKEN) {
-  console.warn("[metaChannels] SMARTSPEC_WEB_GATEWAY_TOKEN / SMARTSPEC_PROXY_TOKEN is not set — internal Meta API calls will be unauthenticated");
-}
 
 function resolveMetaTenantId(ctx: { tenantId: unknown; user: { currentTenantId?: unknown } }): string {
   const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
@@ -57,11 +51,16 @@ async function callPythonBackend(
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    return await fetch(`${PYTHON_BACKEND_URL}${path}`, {
+    const runtime = await getAppRuntimeConfig();
+    const internalToken = await getPreferredInternalToken();
+    if (!internalToken) {
+      console.warn("[metaChannels] internal gateway token is not configured — internal Meta API calls will be unauthenticated");
+    }
+    return await fetch(`${runtime.pythonBackendUrl}${path}`, {
       method,
       headers: {
         "Content-Type": "application/json",
-        ...(INTERNAL_TOKEN ? { "x-internal-token": INTERNAL_TOKEN } : {}),
+        ...(internalToken ? { "x-internal-token": internalToken } : {}),
       },
       body: body ? JSON.stringify(body) : undefined,
       signal: controller.signal,

@@ -1,0 +1,93 @@
+{
+  "skill_name": "cinematic-video-createprompt",
+  "skill_version": "5.7.0",
+  "response_format": "structured_json",
+  "language": "en",
+  "target_model_profile": "generic_video_models",
+  "generation_mode": "text_to_video",
+  "delivery_mode": "multi_shot_single_video",
+  "multi_video_strategy": "not_applicable",
+  "video_count": 1,
+  "dialogue_language": {
+    "requested": "auto",
+    "resolved": "none",
+    "source": "no_dialogue",
+    "rationale": "The ASMR brief calls for sound-effect-led sensory detail without spoken dialogue."
+  },
+  "storytelling_resolution": {
+    "preset_requested": "asmr_sensory",
+    "preset_resolved": "asmr_sensory",
+    "multi_shot_timing_mode_requested": "untimed_or_auto",
+    "multi_shot_timing_mode_resolved": "untimed_or_auto",
+    "audio_mode_resolved": "sfx_only",
+    "dialogue_density_resolved": "none",
+    "story_shape_resolved": "reveal_payoff",
+    "ending_style_resolved": "soft_resolve",
+    "performance_style_resolved": "naturalistic",
+    "imagination_level_resolved": "grounded",
+    "scene_arc_resolved": "product_showcase",
+    "continuity_mode_resolved": "single_continuous_shot",
+    "motion_realism_resolved": "restrained_naturalism",
+    "background_mode": "normal_background",
+    "narrative_intent": "Deliver one tactile coffee ASMR reveal where the drink remains pristine, readable, and sensorially satisfying from first crack to final swirl."
+  },
+  "continuity_package": {
+    "continuity_notes": "Keep the same clear glass latte, the same caramel top texture, the same creamy swirl behavior, and the same clean sunlit cafe styling throughout the clip.",
+    "continuity_notes_origin": "auto_generated",
+    "reference_notes": "Use the written brief itself as the product reference bible: preserve the clear glass shape, glossy cream texture, golden caramel shell, visible ice, slow stirring hand precision, and premium coffee-table styling.",
+    "reference_notes_origin": "auto_generated"
+  },
+  "final_prompt": "In a clean sunlit cafe close-up, a chilled caramel latte sits in a clear glass with glossy cream, visible ice, and a delicate caramel shell ready to crack, immediately presenting a premium tactile hero image. A careful hand taps and breaks the caramel surface, then slowly stirs the cream downward so the textures curl through the drink in silky controlled motion, with condensation, glass reflections, and syrup detail staying crisp and satisfying from start to finish. Keep the framing intimate, the motion restrained, the drink pristine, and the entire clip focused on close sensory payoff rather than dialogue or extra story clutter.\n\nContinuity Notes:\nKeep the same clear glass latte, the same caramel top texture, the same creamy swirl behavior, and the same clean sunlit cafe styling throughout the clip.\n\nReference Notes:\nUse the written brief itself as the product reference bible: preserve the clear glass shape, glossy cream texture, golden caramel shell, visible ice, slow stirring hand precision, and premium coffee-table styling.",
+  "short_prompt": "A premium caramel latte ASMR close-up where the caramel top cracks and the cream swirls slowly through the chilled drink in one satisfying cinematic reveal.",
+  "prompt_sequence": [
+    {
+      "prompt_id": "Prompt 1",
+      "video_number": 1,
+      "duration_seconds": 8,
+      "prompt_role": "Single Video Prompt",
+      "prompt": "In a clean sunlit cafe close-up, a chilled caramel latte sits in a clear glass with glossy cream, visible ice, and a delicate caramel shell ready to crack, immediately presenting a premium tactile hero image. A careful hand taps and breaks the caramel surface, then slowly stirs the cream downward so the textures curl through the drink in silky controlled motion, with condensation, glass reflections, and syrup detail staying crisp and satisfying from start to finish. Keep the framing intimate, the motion restrained, the drink pristine, and the entire clip focused on close sensory payoff rather than dialogue or extra story clutter.",
+      "continuity_notes": "Keep the same clear glass latte, the same caramel top texture, the same creamy swirl behavior, and the same clean sunlit cafe styling throughout the clip.",
+      "reference_notes": "Use the written brief itself as the product reference bible: preserve the clear glass shape, glossy cream texture, golden caramel shell, visible ice, slow stirring hand precision, and premium coffee-table styling."
+    }
+  ],
+  "cinematic_plan": {
+    "opening_frame": "A pristine caramel latte in a clear glass fills the frame under soft cafe sunlight.",
+    "subject_focus": "The tactile hero is the drink itself, especially the caramel shell, cream texture, and visible condensation.",
+    "staging_blocking": "Keep the drink centered while one careful hand enters only to crack and stir without obscuring the glass.",
+    "motion_arc": "The clip moves from poised anticipation, to a satisfying crack, to a slow textural swirl payoff.",
+    "camera_language": "Use intimate macro-adjacent close framing with stable, calm camera behavior.",
+    "focus_depth": "Maintain crisp focus on the caramel shell, cream, and glass surface while the background falls softly away.",
+    "atmosphere_time": "Warm morning cafe light with a clean, calm tabletop atmosphere.",
+    "production_design": "A premium cafe tabletop, soft reflections, and uncluttered styling support the sensory coffee hero shot.",
+    "lighting_color": "Warm natural highlights, creamy neutrals, amber caramel, and clean glass reflections create appetizing contrast.",
+    "continuity_pacing": "One controlled sensory reveal with no dialogue and no abrupt motion spikes.",
+    "continuity_guardrails": "Preserve the same glass silhouette, caramel texture, cream behavior, hand precision, and clean premium coffee styling."
+  },
+  "reference_usage": {
+    "reference_input_mode": "brief_only",
+    "reference_image_count": 0,
+    "assignments": [],
+    "reference_video_count": 0,
+    "video_assignments": [],
+    "reference_audio_count": 0,
+    "audio_assignments": [],
+    "first_frame_present": false,
+    "last_frame_present": false,
+    "applied_focus": [
+      "written brief as product reference bible",
+      "texture continuity",
+      "clean beverage styling"
+    ],
+    "notes": "Reference stability comes from the written drink and styling anchors in the brief."
+  },
+  "validation": {
+    "is_valid": true,
+    "warnings": [],
+    "safety_notes": [
+      "Kept the output product-focused, brand-neutral, and broadly safe for general media models."
+    ],
+    "suggestions": [
+      "If a specific cup silhouette matters later, add one product reference image for even tighter glass continuity."
+    ]
+  }
+}

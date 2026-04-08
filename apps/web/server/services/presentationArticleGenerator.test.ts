@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import fs from "node:fs/promises";
 
 vi.mock("./skillRegistry", () => ({
   getSkillByIdAsync: vi.fn(),
+  syncSingleSkillIfChanged: vi.fn(),
 }));
 vi.mock("./skillExecutionPolicy", () => ({
   resolveSkillExecutionPolicy: vi.fn(),
@@ -24,22 +26,29 @@ vi.mock("../storage", () => ({
 vi.mock("../_core/tokens", () => ({
   createInternalTokenFromAuth: vi.fn(() => "internal-token"),
 }));
+vi.mock("./creditService", () => ({
+  deductCredits: vi.fn(),
+  deductCreditsForModel: vi.fn(),
+}));
 
 import {
   buildPresentationArticlePrompt,
   buildPresentationImagePromptPlanPrompt,
   buildPresentationSlideRequestPayload,
   estimatePresentationMaxPages,
+  generatePresentationArticle,
   generatePresentationSlideDraft,
   normalizeGeneratedPresentationArticle,
+  preparePresentationSlideBundle,
 } from "./presentationArticleGenerator";
-import { getSkillByIdAsync } from "./skillRegistry";
+import { getSkillByIdAsync, syncSingleSkillIfChanged } from "./skillRegistry";
 import { resolveSkillExecutionPolicy } from "./skillExecutionPolicy";
 import { executeSkillLlmWithFallback } from "./skillModelFallback";
 import { executeSkill } from "./skillExecutor";
 import { getDb } from "../db";
 import { getJobArtifactUrls } from "./sandbox/artifactAccess";
 import { storageReadText } from "../storage";
+import { deductCredits, deductCreditsForModel } from "./creditService";
 
 function makeSlideSkill(overrides: Record<string, unknown> = {}) {
   return {
@@ -83,6 +92,7 @@ function makeSlideDraftInput() {
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(getSkillByIdAsync).mockResolvedValue(makeSlideSkill() as any);
+  vi.mocked(syncSingleSkillIfChanged).mockResolvedValue({ synced: false } as any);
   vi.mocked(resolveSkillExecutionPolicy).mockResolvedValue({ modelId: "gpt-5.4" } as any);
   vi.mocked(executeSkill).mockResolvedValue({
     success: true,
@@ -152,6 +162,20 @@ beforeEach(() => {
       ],
     }),
     modelId: "gpt-5.4",
+    provider: { providerName: "OpenAI" },
+    inputTokens: 1200,
+    outputTokens: 800,
+    rawData: { usage: { cost: 0.012 } },
+  } as any);
+  vi.mocked(deductCredits).mockResolvedValue({
+    success: true,
+    creditsUsed: 2,
+    newBalance: 998,
+    transactionId: 101,
+  } as any);
+  vi.mocked(deductCreditsForModel).mockResolvedValue({
+    creditsUsed: 12,
+    wasFree: false,
   } as any);
 });
 
@@ -237,6 +261,7 @@ describe("presentationArticleGenerator", () => {
     expect(prompt).toContain("Canvas ratio: 9:16");
     expect(prompt).toContain("Slide skill: Modern Editorial Slide");
     expect(prompt).toContain("Language code: th");
+    expect(prompt).toContain("forbid text, letters, captions, subtitles, logos, signage, labels, watermarks, UI, and embedded typography");
   });
 
   it("builds slide skill payloads with image pool and always includes json output", () => {
@@ -279,6 +304,871 @@ describe("presentationArticleGenerator", () => {
     expect(payload.request.content.pages?.[0]?.images?.[0]?.source).toBe("https://cdn.example.com/cover.png");
     expect(payload.request.content.pages?.[0]?.images?.[0]?.roleHint).toBe("hero");
     expect(payload.request.content.sharedImagePool?.images[0]?.source).toBe("https://cdn.example.com/cover.png");
+  });
+
+  it("builds editorial-layout-planner payloads with the render_manifest_json contract", () => {
+    const payload = buildPresentationSlideRequestPayload({
+      topic: "แนวทางการฝึกทารกหกเดือนให้นอนยาว",
+      article: [
+        "แนวทางการฝึกทารกหกเดือนให้นอนยาว",
+        "",
+        "เริ่มจากความเข้าใจความต้องการของลูกน้อย และค่อยๆ สร้างกิจวัตรการนอนที่คงที่",
+      ].join("\n"),
+      slideSkillId: "editorial-layout-planner",
+      preferredLanguage: "th",
+      canvasRatio: "9:16",
+      outputFormats: ["json"],
+      maxPages: 6,
+      imagePromptContext: "เด็กทารกไทย คุณแม่ชาวไทย บรรยากาศอบอุ่นในบ้าน",
+      editorialPlannerOptions: {
+        targetAudience: "healthcare",
+        tonePreset: "premium_editorial",
+        fitPreset: "image_forward",
+        pageCountMode: "fixed",
+        requestedPageCount: 6,
+        imageAssets: [
+          {
+            asset_type: "image_prompt",
+            label: "Understanding baby needs",
+            page_hint: 2,
+            prompt: "A close, intimate moment of a Thai mother observing her six-month-old baby's expressions.",
+          },
+        ],
+      },
+      imageAssets: [
+        {
+          id: "img-1-1",
+          pageNumber: 1,
+          imageIndex: 1,
+          placementRole: "hero",
+          shortLabel: "Cover hero",
+          prompt: "Thai mother holding a six-month-old baby in a warm nursery",
+          url: "https://cdn.example.com/cover.png",
+        },
+      ],
+    });
+
+    expect(payload).toEqual(expect.objectContaining({
+      article_language: "th",
+      page_size_or_ratio: "1080x1920",
+      page_count_mode: "fixed",
+      requested_page_count: 6,
+      output_format: "render_manifest_json",
+    }));
+    expect(payload.page_briefs).toEqual([
+      expect.objectContaining({
+        page_number: 1,
+        page_role: "cover",
+        title_hint: expect.any(String),
+        text: expect.any(String),
+      }),
+    ]);
+    expect(payload.image_assets).toEqual([
+      expect.objectContaining({
+        asset_type: "image_prompt",
+        label: "Understanding baby needs",
+        page_hint: 2,
+      }),
+      expect.objectContaining({
+        asset_type: "uploaded_image",
+        label: "Cover hero",
+        page_hint: 1,
+        reference: "https://cdn.example.com/cover.png",
+      }),
+    ]);
+  });
+
+  it("defaults editorial-layout-planner payloads to top-level llm planner settings", () => {
+    const payload = buildPresentationSlideRequestPayload({
+      topic: "Baby sleep guide",
+      article: "Baby sleep guide\n\nCreate a calm bedtime routine for infants.",
+      slideSkillId: "editorial-layout-planner",
+      preferredLanguage: "en",
+      canvasRatio: "4:5",
+      outputFormats: ["json"],
+      maxPages: 8,
+    });
+
+    expect(payload).toEqual(expect.objectContaining({
+      article_title: "Baby sleep guide",
+      article_language: "en",
+      page_size_or_ratio: "1080x1350",
+      page_count_mode: "fixed",
+      requested_page_count: 1,
+      output_format: "render_manifest_json",
+    }));
+    expect(payload).not.toHaveProperty("request");
+    expect(payload.page_briefs).toEqual([
+      expect.objectContaining({
+        page_number: 1,
+        page_role: "cover",
+        title_hint: expect.any(String),
+        text: expect.any(String),
+      }),
+    ]);
+    expect(payload.image_assets).toEqual([]);
+  });
+
+  it("routes editorial-layout-planner through its top-level llm render_manifest_json runtime", async () => {
+    vi.mocked(getSkillByIdAsync).mockImplementation(async (skillId: string) => {
+      if (skillId === "editorial-layout-planner") {
+        return makeSlideSkill({
+          id: "editorial-layout-planner",
+          name: "Editorial Layout Planner",
+          executionMode: "llm-only",
+          skillFilePath: "apps/web/skills/editorial-layout-planner/SKILL.md",
+          systemPrompt: "Return clean render_manifest_json only.",
+        }) as any;
+      }
+      return null as any;
+    });
+    vi.mocked(resolveSkillExecutionPolicy).mockResolvedValue({
+      modelId: "gpt-4o-mini",
+      allowFreeModels: false,
+      modelSource: "skill_defaultModel",
+    } as any);
+    vi.mocked(executeSkillLlmWithFallback).mockResolvedValue({
+      success: true,
+      content: JSON.stringify({
+        output_format: "render_manifest_json",
+        canvas: {
+          width_px: 1080,
+          height_px: 1920,
+          background: { color: "#F4EEE7" },
+        },
+        pages: [
+          {
+            page: 1,
+            role: "cover",
+            title: "LLM Editorial Slide",
+            layout: "hero_text_stack",
+            quality: { occupancy: 0.81, whitespace: 0.19, fitness: 90 },
+            blocks: [
+              {
+                type: "title",
+                x: 72,
+                y: 68,
+                w: 936,
+                h: 140,
+                size: 62,
+                weight: 700,
+                align: "center",
+                text: "LLM Editorial Slide",
+              },
+              {
+                type: "image",
+                x: 88,
+                y: 244,
+                w: 904,
+                h: 576,
+                label: "cover hero",
+                radius: 0,
+              },
+            ],
+            note: "Top-level llm planner output",
+          },
+          {
+            page: 2,
+            role: "content",
+            title: "Supporting slide",
+            layout: "text_panel",
+            quality: { occupancy: 0.78, whitespace: 0.22, fitness: 88 },
+            blocks: [
+              {
+                type: "title",
+                x: 72,
+                y: 68,
+                w: 936,
+                h: 120,
+                size: 56,
+                weight: 700,
+                align: "left",
+                text: "Supporting slide",
+              },
+            ],
+            note: "Second page",
+          },
+        ],
+      }),
+      modelId: "gpt-4o-mini",
+      provider: { providerName: "OpenAI" },
+      inputTokens: 900,
+      outputTokens: 700,
+      rawData: { usage: { cost: 0.01 } },
+    } as any);
+
+    const result = await generatePresentationSlideDraft({
+      ...makeSlideDraftInput(),
+      slideSkillId: "editorial-layout-planner",
+      canvasRatio: "9:16",
+      outputFormats: ["json"],
+    });
+
+    expect(JSON.parse(result.slideJson)).toEqual(expect.objectContaining({
+      slides: expect.arrayContaining([
+        expect.objectContaining({
+          elements: expect.arrayContaining([
+            expect.objectContaining({ text: "LLM Editorial Slide" }),
+            expect.objectContaining({ source: "https://cdn.example.com/cover.png" }),
+          ]),
+        }),
+      ]),
+    }));
+
+    const llmCall = vi.mocked(executeSkillLlmWithFallback).mock.calls[0]?.[0];
+    const policyCall = vi.mocked(resolveSkillExecutionPolicy).mock.calls[0]?.[0];
+    expect(policyCall?.skill.executionMode).toBe("llm-only");
+    expect(policyCall?.skill.executionPolicy?.requirements?.supportsStructuredOutputs).toBe(true);
+    expect(llmCall?.extraBodyParams).toEqual(expect.objectContaining({
+      response_format: expect.objectContaining({
+        type: "json_schema",
+      }),
+    }));
+    expect(llmCall?.messages[0]?.content).toContain("output must remain render_manifest_json");
+    expect(llmCall?.messages[0]?.content).not.toContain("top-level object containing slides as an array");
+    expect(vi.mocked(executeSkill)).not.toHaveBeenCalled();
+    expect(vi.mocked(syncSingleSkillIfChanged)).toHaveBeenCalledWith("editorial-layout-planner");
+    expect(result.selectedSkillId).toBe("editorial-layout-planner");
+    expect(result.selectedSkillName).toBe("Editorial Layout Planner");
+    expect(result.runtimeBundleSkillId).toBe("editorial-layout-planner");
+    expect(result.runtimeBundleSkillName).toBe("Editorial Layout Planner");
+    expect(result.runtimeAliasApplied).toBe(false);
+    expect(result.generatedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+    expect(result.debugTracePath).toMatch(/^\/tmp\/presentation-slide-debug\/.+\.json$/);
+    await expect(fs.readFile(result.debugTracePath!, "utf8")).resolves.toContain("\"runtimeBundleSkillId\": \"editorial-layout-planner\"");
+    await expect(fs.readFile(result.debugTracePath!, "utf8")).resolves.toContain("\"usesSandboxSkill\": false");
+  });
+
+  it("repairs editorial render manifests that under-produce the requested page count", async () => {
+    const makeRenderManifest = (pageCount: number, labelPrefix: string) => ({
+      output_format: "render_manifest_json",
+      canvas: {
+        width_px: 1080,
+        height_px: 1920,
+        background: { color: "#F4EEE7" },
+      },
+      pages: Array.from({ length: pageCount }, (_, index) => {
+        const pageNumber = index + 1;
+        return {
+          page_number: pageNumber,
+          page_role: pageNumber === 1
+            ? "cover"
+            : pageNumber === pageCount
+              ? "closing"
+              : "content",
+          title: `${labelPrefix} ${pageNumber}`,
+          layout: "text_panel",
+          quality: { occupancy: 0.81, whitespace: 0.19, fitness: 90 },
+          blocks: [
+            {
+              type: "title",
+              x: 72,
+              y: 64,
+              w: 936,
+              h: 138,
+              text: `${labelPrefix} ${pageNumber}`,
+            },
+          ],
+          note: `${labelPrefix} page ${pageNumber}`,
+        };
+      }),
+      global_validation: [],
+    });
+
+    vi.mocked(getSkillByIdAsync).mockResolvedValue(makeSlideSkill({
+      id: "editorial-layout-planner",
+      name: "Editorial Layout Planner",
+      executionMode: "llm-only",
+      skillFilePath: "apps/web/skills/editorial-layout-planner/SKILL.md",
+      systemPrompt: "Return clean render_manifest_json only.",
+    }) as any);
+    vi.mocked(executeSkillLlmWithFallback)
+      .mockResolvedValueOnce({
+        success: true,
+        content: JSON.stringify(makeRenderManifest(3, "Initial editorial slide")),
+        modelId: "gpt-4o-mini",
+        provider: { providerName: "OpenAI" },
+        inputTokens: 900,
+        outputTokens: 700,
+        rawData: { usage: { cost: 0.01 } },
+      } as any)
+      .mockResolvedValueOnce({
+        success: true,
+        content: JSON.stringify(makeRenderManifest(9, "Repaired editorial slide")),
+        modelId: "gpt-4o-mini",
+        provider: { providerName: "OpenAI" },
+        inputTokens: 900,
+        outputTokens: 700,
+        rawData: { usage: { cost: 0.01 } },
+      } as any);
+
+    const result = await generatePresentationSlideDraft({
+      ...makeSlideDraftInput(),
+      article: [
+        "Product Pitch",
+        "",
+        "1. Problem",
+        "",
+        "The current workflow is slow.",
+        "",
+        "2. Solution",
+        "",
+        "A unified workspace keeps the team aligned.",
+        "",
+        "3. Differentiation",
+        "",
+        "Clear positioning helps the pitch stand out.",
+        "",
+        "4. Traction",
+        "",
+        "Early adoption proves the need.",
+        "",
+        "5. Market",
+        "",
+        "The market is large and ready.",
+        "",
+        "6. Pricing",
+        "",
+        "Flexible pricing supports adoption.",
+        "",
+        "7. Go to market",
+        "",
+        "Channels are straightforward.",
+        "",
+        "8. Roadmap",
+        "",
+        "The next steps are sequenced.",
+        "",
+        "9. Ask",
+        "",
+        "A clear ask closes the story.",
+      ].join("\n"),
+      slideSkillId: "editorial-layout-planner",
+      outputFormats: ["json"],
+      canvasRatio: "9:16",
+      maxPages: 9,
+    });
+
+    const parsed = JSON.parse(result.slideJson);
+    expect(parsed.slides).toHaveLength(9);
+    expect(parsed.slides[0]).toEqual(expect.objectContaining({
+      elements: expect.arrayContaining([
+        expect.objectContaining({ text: "Repaired editorial slide 1" }),
+      ]),
+    }));
+    expect(parsed.slides[8]).toEqual(expect.objectContaining({
+      elements: expect.arrayContaining([
+        expect.objectContaining({ text: "Repaired editorial slide 9" }),
+      ]),
+    }));
+    expect(vi.mocked(executeSkillLlmWithFallback)).toHaveBeenCalledTimes(2);
+  });
+
+  it("repairs non-importable llm slide output into importable slide json", async () => {
+    vi.mocked(getSkillByIdAsync).mockResolvedValue(makeSlideSkill({
+      id: "llm-slide-skill",
+      name: "LLM Slide Skill",
+      executionMode: "llm",
+    }) as any);
+    vi.mocked(executeSkillLlmWithFallback)
+      .mockResolvedValueOnce({
+        success: true,
+        content: JSON.stringify({
+          request: {
+            projectTitle: "Product Pitch",
+          },
+        }),
+        modelId: "gpt-5.4",
+        provider: { providerName: "OpenAI" },
+        inputTokens: 1200,
+        outputTokens: 400,
+        rawData: { usage: { cost: 0.01 } },
+      } as any)
+      .mockResolvedValueOnce({
+        success: true,
+        content: JSON.stringify({
+          canvas: { ratio: "16:9" },
+          slides: [
+            {
+              elements: [
+                {
+                  kind: "text",
+                  role: "title",
+                  text: "Repaired slide",
+                  xPct: 10,
+                  yPct: 10,
+                  wPct: 60,
+                  hPct: 12,
+                },
+              ],
+            },
+          ],
+        }),
+        modelId: "gpt-5.4",
+        provider: { providerName: "OpenAI" },
+        inputTokens: 800,
+        outputTokens: 700,
+        rawData: { usage: { cost: 0.008 } },
+      } as any);
+
+    const result = await generatePresentationSlideDraft({
+      ...makeSlideDraftInput(),
+      slideSkillId: "llm-slide-skill",
+      outputFormats: ["json"],
+    });
+
+    expect(JSON.parse(result.slideJson)).toEqual(expect.objectContaining({
+      slides: expect.any(Array),
+    }));
+    expect(vi.mocked(executeSkillLlmWithFallback)).toHaveBeenCalledTimes(2);
+    expect(result.debugTracePath).toMatch(/^\/tmp\/presentation-slide-debug\/.+\.json$/);
+    await expect(fs.readFile(result.debugTracePath!, "utf8")).resolves.toContain("\"finalState\": \"success\"");
+  });
+
+  it("treats empty slides as non-importable and repairs them before returning", async () => {
+    vi.mocked(getSkillByIdAsync).mockResolvedValue(makeSlideSkill({
+      id: "llm-slide-skill",
+      name: "LLM Slide Skill",
+      executionMode: "llm",
+    }) as any);
+    vi.mocked(executeSkillLlmWithFallback)
+      .mockResolvedValueOnce({
+        success: true,
+        content: JSON.stringify({
+          slides: [
+            {
+              title: "Empty slide",
+              elements: [],
+            },
+          ],
+        }),
+        modelId: "gpt-5.4",
+        provider: { providerName: "OpenAI" },
+        inputTokens: 1200,
+        outputTokens: 400,
+        rawData: { usage: { cost: 0.01 } },
+      } as any)
+      .mockResolvedValueOnce({
+        success: true,
+        content: JSON.stringify({
+          canvas: { ratio: "16:9" },
+          slides: [
+            {
+              elements: [
+                {
+                  kind: "text",
+                  role: "title",
+                  text: "Recovered slide",
+                  xPct: 10,
+                  yPct: 10,
+                  wPct: 60,
+                  hPct: 12,
+                },
+              ],
+            },
+          ],
+        }),
+        modelId: "gpt-5.4",
+        provider: { providerName: "OpenAI" },
+        inputTokens: 800,
+        outputTokens: 700,
+        rawData: { usage: { cost: 0.008 } },
+      } as any);
+
+    const result = await generatePresentationSlideDraft({
+      ...makeSlideDraftInput(),
+      slideSkillId: "llm-slide-skill",
+      outputFormats: ["json"],
+    });
+
+    expect(JSON.parse(result.slideJson)).toEqual(expect.objectContaining({
+      slides: [
+        expect.objectContaining({
+          elements: expect.arrayContaining([
+            expect.objectContaining({ text: "Recovered slide" }),
+          ]),
+        }),
+      ],
+    }));
+    expect(vi.mocked(executeSkillLlmWithFallback)).toHaveBeenCalledTimes(2);
+  });
+
+  it("reports why slide json was not importable when both passes return empty slides", async () => {
+    vi.mocked(getSkillByIdAsync).mockResolvedValue(makeSlideSkill({
+      id: "llm-slide-skill",
+      name: "LLM Slide Skill",
+      executionMode: "llm",
+    }) as any);
+    vi.mocked(executeSkillLlmWithFallback)
+      .mockResolvedValueOnce({
+        success: true,
+        content: JSON.stringify({
+          slides: [
+            {
+              title: "Empty slide",
+              elements: [],
+            },
+          ],
+        }),
+        modelId: "gpt-5.4",
+        provider: { providerName: "OpenAI" },
+        inputTokens: 1200,
+        outputTokens: 400,
+        rawData: { usage: { cost: 0.01 } },
+      } as any)
+      .mockResolvedValueOnce({
+        success: true,
+        content: JSON.stringify({
+          slides: [
+            {
+              title: "Still empty",
+              elements: [],
+            },
+          ],
+        }),
+        modelId: "gpt-5.4",
+        provider: { providerName: "OpenAI" },
+        inputTokens: 800,
+        outputTokens: 700,
+        rawData: { usage: { cost: 0.008 } },
+      } as any);
+
+    await expect(generatePresentationSlideDraft({
+      ...makeSlideDraftInput(),
+      slideSkillId: "llm-slide-skill",
+      outputFormats: ["json"],
+    })).rejects.toThrow(/\[debug trace: \/tmp\/presentation-slide-debug\/.+\.json\]/);
+  });
+
+  it("prefers render_manifest_json pages over empty summary slides when both are present", async () => {
+    vi.mocked(getSkillByIdAsync).mockResolvedValue(makeSlideSkill({
+      id: "llm-slide-skill",
+      name: "LLM Slide Skill",
+      executionMode: "llm",
+    }) as any);
+    vi.mocked(executeSkillLlmWithFallback).mockResolvedValueOnce({
+      success: true,
+      content: JSON.stringify({
+        output_format: "render_manifest_json",
+        canvas: {
+          width_px: 1080,
+          height_px: 1920,
+          background: {
+            color: "#F4EEE7",
+          },
+        },
+        slides: [
+          { title: "summary 1", elements: [] },
+          { title: "summary 2", elements: [] },
+        ],
+        pages: [
+          {
+            page_role: "cover",
+            render_notes: "Page 1",
+            text_blocks: [
+              {
+                id: "p1_title",
+                role: "title",
+                content: "Imported from manifest",
+                bounds: { x: 72, y: 64, w: 936, h: 138 },
+                typography: { font_size_px: 62, weight: 700, align: "left" },
+              },
+            ],
+            image_blocks: [],
+          },
+        ],
+      }),
+      modelId: "gpt-5.4",
+      provider: { providerName: "OpenAI" },
+      inputTokens: 1200,
+      outputTokens: 400,
+      rawData: { usage: { cost: 0.01 } },
+    } as any);
+
+    const result = await generatePresentationSlideDraft({
+      ...makeSlideDraftInput(),
+      slideSkillId: "llm-slide-skill",
+      outputFormats: ["json"],
+    });
+
+    expect(JSON.parse(result.slideJson)).toEqual(expect.objectContaining({
+      slides: [
+        expect.objectContaining({
+          elements: expect.arrayContaining([
+            expect.objectContaining({ text: "Imported from manifest" }),
+          ]),
+        }),
+      ],
+    }));
+    expect(vi.mocked(executeSkillLlmWithFallback)).toHaveBeenCalledTimes(1);
+  });
+
+  it("prefers nested manifest candidates over empty top-level slides", async () => {
+    vi.mocked(getSkillByIdAsync).mockResolvedValue(makeSlideSkill({
+      id: "llm-slide-skill",
+      name: "LLM Slide Skill",
+      executionMode: "llm",
+    }) as any);
+    vi.mocked(executeSkillLlmWithFallback).mockResolvedValueOnce({
+      success: true,
+      content: JSON.stringify({
+        slides: Array.from({ length: 9 }, (_, index) => ({
+          title: `Summary ${index + 1}`,
+          elements: [],
+        })),
+        result: {
+          output_format: "render_manifest_json",
+          canvas: {
+            width_px: 1080,
+            height_px: 1920,
+            background: {
+              color: "#F4EEE7",
+            },
+          },
+          pages: [
+            {
+              page_role: "cover",
+              render_notes: "Nested page 1",
+              text_blocks: [
+                {
+                  id: "p1_title",
+                  role: "title",
+                  content: "Nested manifest slide",
+                  bounds: { x: 72, y: 64, w: 936, h: 138 },
+                  typography: { font_size_px: 62, weight: 700, align: "left" },
+                },
+              ],
+              image_blocks: [],
+            },
+          ],
+        },
+      }),
+      modelId: "gpt-5.4",
+      provider: { providerName: "OpenAI" },
+      inputTokens: 1200,
+      outputTokens: 400,
+      rawData: { usage: { cost: 0.01 } },
+    } as any);
+
+    const result = await generatePresentationSlideDraft({
+      ...makeSlideDraftInput(),
+      slideSkillId: "llm-slide-skill",
+      outputFormats: ["json"],
+    });
+
+    expect(JSON.parse(result.slideJson)).toEqual(expect.objectContaining({
+      slides: [
+        expect.objectContaining({
+          elements: expect.arrayContaining([
+            expect.objectContaining({ text: "Nested manifest slide" }),
+          ]),
+        }),
+      ],
+    }));
+    expect(vi.mocked(executeSkillLlmWithFallback)).toHaveBeenCalledTimes(1);
+  });
+
+  it("shrinks oversized Thai render_manifest_json text blocks before import", async () => {
+    vi.mocked(getSkillByIdAsync).mockResolvedValue(makeSlideSkill({
+      id: "llm-slide-skill",
+      name: "LLM Slide Skill",
+      executionMode: "llm",
+    }) as any);
+    vi.mocked(executeSkillLlmWithFallback).mockResolvedValueOnce({
+      success: true,
+      content: JSON.stringify({
+        output_format: "render_manifest_json",
+        canvas: {
+          width_px: 1080,
+          height_px: 1920,
+          background: {
+            color: "#FFFFFF",
+          },
+        },
+        pages: [
+          {
+            page_number: 1,
+            page_role: "content",
+            title: "Routine",
+            layout: "image_top_text_bottom",
+            blocks: [
+              {
+                type: "image",
+                x: 60,
+                y: 60,
+                w: 960,
+                h: 800,
+                label: "cover hero",
+              },
+              {
+                type: "headline",
+                x: 60,
+                y: 900,
+                w: 960,
+                h: 100,
+                size: 60,
+                weight: 600,
+                align: "left",
+                text: "3. กำหนดเวลานอนที่สม่ำเสมอ",
+              },
+              {
+                type: "body",
+                x: 60,
+                y: 1020,
+                w: 960,
+                h: 700,
+                size: 36,
+                weight: 400,
+                align: "left",
+                text: "การกำหนดเวลานอนที่ชัดเจนและสม่ำเสมอช่วยให้ทารกรู้สึกปลอดภัย ควรเริ่มต้นด้วยการสร้างกิจวัตรก่อนนอน เช่น อ่านนิทาน หรือทำกิจกรรมที่สงบ",
+              },
+            ],
+          },
+        ],
+      }),
+      modelId: "gpt-5.4",
+      provider: { providerName: "OpenAI" },
+      inputTokens: 1200,
+      outputTokens: 400,
+      rawData: { usage: { cost: 0.01 } },
+    } as any);
+
+    const result = await generatePresentationSlideDraft({
+      ...makeSlideDraftInput(),
+      slideSkillId: "llm-slide-skill",
+      canvasRatio: "9:16",
+      outputFormats: ["json"],
+    });
+
+    const parsed = JSON.parse(result.slideJson);
+    const slide = parsed.slides[0];
+    const titleElement = slide.elements.find((element: any) => element.kind === "text" && element.role === "title");
+    const bodyElement = slide.elements.find((element: any) => element.kind === "text" && element.role === "body");
+
+    expect(titleElement).toEqual(expect.objectContaining({
+      text: "3. กำหนดเวลานอนที่สม่ำเสมอ",
+      lineHeight: 1.5,
+    }));
+    expect(titleElement.fontSize).toBeLessThan(60);
+    expect(titleElement.fontSize).toBeGreaterThanOrEqual(24);
+    expect(bodyElement).toEqual(expect.objectContaining({
+      fontSize: 36,
+      lineHeight: 1.5,
+    }));
+  });
+
+  it("converts summary slides from editorial-layout-planner into importable slide json", async () => {
+    vi.mocked(getSkillByIdAsync).mockResolvedValue(makeSlideSkill({
+      id: "llm-slide-skill",
+      name: "LLM Slide Skill",
+      executionMode: "llm",
+    }) as any);
+    vi.mocked(executeSkillLlmWithFallback).mockResolvedValueOnce({
+      success: true,
+      content: JSON.stringify({
+        page_size_or_ratio: "1080x1920",
+        slides: [
+          {
+            page_number: 1,
+            headline: "เข้าใจความต้องการของทารก",
+            body_text: "ทารกในวัยหกเดือนยังต้องการการดูแลอย่างใกล้ชิด",
+            image: {
+              reference: "https://cdn.example.com/hero.png",
+            },
+          },
+        ],
+      }),
+      modelId: "gpt-5.4",
+      provider: { providerName: "OpenAI" },
+      inputTokens: 1200,
+      outputTokens: 400,
+      rawData: { usage: { cost: 0.01 } },
+    } as any);
+
+    const result = await generatePresentationSlideDraft({
+      ...makeSlideDraftInput(),
+      slideSkillId: "llm-slide-skill",
+      outputFormats: ["json"],
+    });
+
+    expect(JSON.parse(result.slideJson)).toEqual(expect.objectContaining({
+      canvas: expect.objectContaining({ ratio: "9:16" }),
+      slides: [
+        expect.objectContaining({
+          elements: expect.arrayContaining([
+            expect.objectContaining({ kind: "text", text: "เข้าใจความต้องการของทารก" }),
+            expect.objectContaining({ kind: "image", source: "https://cdn.example.com/hero.png" }),
+          ]),
+        }),
+      ],
+    }));
+    expect(vi.mocked(executeSkillLlmWithFallback)).toHaveBeenCalledTimes(1);
+  });
+
+  it("converts stringified render manifest pages into importable slide json", async () => {
+    vi.mocked(getSkillByIdAsync).mockResolvedValue(makeSlideSkill({
+      id: "llm-slide-skill",
+      name: "LLM Slide Skill",
+      executionMode: "llm",
+    }) as any);
+    vi.mocked(executeSkillLlmWithFallback).mockResolvedValueOnce({
+      success: true,
+      content: JSON.stringify({
+        output_format: "render_manifest_json",
+        canvas: {
+          width_px: 1080,
+          height_px: 1920,
+          background: {
+            color: "#F4EEE7",
+          },
+        },
+        pages: [
+          JSON.stringify({
+            page_number: 1,
+            layout: "hero_cover",
+            headline: "เข้าใจความต้องการของทารก",
+            image_asset: "https://cdn.example.com/hero.png",
+          }),
+          JSON.stringify({
+            page_number: 2,
+            layout: "text_with_image",
+            content: "กิจวัตรก่อนนอน: สร้างสัญญาณที่สม่ำเสมอให้ลูกผ่อนคลายก่อนหลับ",
+            image_asset: "https://cdn.example.com/routine.png",
+          }),
+        ],
+      }),
+      modelId: "google/gemini-3.1-flash-lite-preview",
+      provider: { providerName: "OpenRouter" },
+      inputTokens: 1200,
+      outputTokens: 400,
+      rawData: { usage: { cost: 0.01 } },
+    } as any);
+
+    const result = await generatePresentationSlideDraft({
+      ...makeSlideDraftInput(),
+      slideSkillId: "llm-slide-skill",
+      outputFormats: ["json"],
+    });
+
+    expect(JSON.parse(result.slideJson)).toEqual(expect.objectContaining({
+      canvas: expect.objectContaining({ ratio: "9:16" }),
+      slides: [
+        expect.objectContaining({
+          elements: expect.arrayContaining([
+            expect.objectContaining({ kind: "text", text: "เข้าใจความต้องการของทารก" }),
+            expect.objectContaining({ kind: "image", source: "https://cdn.example.com/hero.png" }),
+          ]),
+        }),
+        expect.objectContaining({
+          elements: expect.arrayContaining([
+            expect.objectContaining({ kind: "text", text: "กิจวัตรก่อนนอน" }),
+            expect.objectContaining({ kind: "text", text: "สร้างสัญญาณที่สม่ำเสมอให้ลูกผ่อนคลายก่อนหลับ" }),
+            expect.objectContaining({ kind: "image", source: "https://cdn.example.com/routine.png" }),
+          ]),
+        }),
+      ],
+    }));
+    expect(vi.mocked(executeSkillLlmWithFallback)).toHaveBeenCalledTimes(1);
   });
 
   it("pins generated images to their matching slide pages instead of using a global pool only", () => {
@@ -341,7 +1231,7 @@ describe("presentationArticleGenerator", () => {
     expect(payload.request.content.pages?.[2]?.text).toContain("จัดการการหลับกลางวัน");
   });
 
-  it("assigns different forced archetypes across manual pages so slide layouts do not collapse into one repeated shape", () => {
+  it("passes only page content and page-bound images into the slide skill payload", () => {
     const payload = buildPresentationSlideRequestPayload({
       topic: "คู่มือการนอนของทารก",
       article: [
@@ -405,13 +1295,314 @@ describe("presentationArticleGenerator", () => {
       ],
     });
 
-    expect(payload.request.randomizeLayouts).toBe(false);
-    expect(payload.request.content.pages?.map((page) => page.forceArchetype)).toEqual([
-      "editorial_cover_split",
-      "product_overview_report",
-      "title_hero_split",
-      "two_column_editorial",
+    expect(payload.request).not.toHaveProperty("randomizeLayouts");
+    expect(payload.request.content.pages?.every((page) => !("forceArchetype" in page))).toBe(true);
+    expect(payload.request.content.pages?.every((page) => !("pageIntentHint" in page))).toBe(true);
+    expect(payload.request.content.pages?.map((page) => ({
+      titleHint: page.titleHint,
+      imageCount: page.images?.length ?? 0,
+    }))).toEqual([
+      { titleHint: "คู่มือการนอนของทารก", imageCount: 1 },
+      { titleHint: "สร้างสภาพแวดล้อมที่เหมาะสม", imageCount: 1 },
+      { titleHint: "กำหนดเวลานอนที่สม่ำเสมอ", imageCount: 1 },
+      { titleHint: "จัดการการหลับกลางวัน", imageCount: 1 },
     ]);
+  });
+
+  it("applies modern-editorial-slide deck defaults and selective page presets", () => {
+    const payload = buildPresentationSlideRequestPayload({
+      topic: "Thai Baby Sleep Training Guide - 6 Months",
+      article: [
+        "Thai Baby Sleep Training Guide - 6 Months",
+        "",
+        "บทนำเกี่ยวกับการฝึกการนอนของทารก",
+        "",
+        "1. สร้างสภาพแวดล้อมที่เหมาะสม",
+        "",
+        "ห้องนอนควรเงียบ แสงน้อย และอุณหภูมิสบาย",
+        "",
+        "2. กำหนดเวลานอนที่สม่ำเสมอ",
+        "",
+        "Overview: การกำหนดเวลานอนที่ชัดเจนช่วยให้ลูกเรียนรู้ช่วงพักผ่อน",
+        "",
+        "Key Points:",
+        "• สร้างกิจวัตรก่อนนอน",
+        "• ลดสิ่งกระตุ้น",
+        "• ทำต่อเนื่อง",
+        "",
+        "3. สงวนมื้อดึก",
+        "",
+        "Planning: เริ่มลดการให้นมกลางคืน",
+        "Development: ใช้วิธีปลอบแทนการให้นม",
+        "Evaluation: สังเกตว่าลูกกลับไปนอนได้เร็วขึ้น",
+        "Review: ปรับวิธีตามความพร้อมของลูก",
+      ].join("\n"),
+      slideSkillId: "modern-editorial-slide",
+      preferredLanguage: "th",
+      canvasRatio: "9:16",
+      outputFormats: ["json", "pptx"],
+      maxPages: 4,
+      imageAssets: [
+        {
+          id: "img-1-1",
+          pageNumber: 1,
+          imageIndex: 1,
+          placementRole: "hero",
+          shortLabel: "cover hero",
+          prompt: "Cover image prompt",
+          url: "https://cdn.example.com/cover.png",
+        },
+      ],
+    });
+
+    expect(payload.request.designStyle).toBe("soft-wellness");
+    expect(payload.request.density).toBe("balanced");
+    expect(payload.request.randomizeLayouts).toBe(false);
+    expect(payload.request.seed).toMatch(/thai-baby-sleep-training-guide-6-months-9x16-4/);
+    expect(payload.request.pagination.allowFewerPages).toBe(true);
+    expect(payload.request.theme).toEqual(expect.objectContaining({
+      paletteMode: "soft-pastel",
+      roundedCorners: true,
+    }));
+    expect(payload.request.renderOptions).toEqual(expect.objectContaining({
+      pptxFileName: "thai-baby-sleep-training-guide-6-months.pptx",
+      pdfEngine: "libreoffice",
+    }));
+    expect(payload.request.content.pages?.every((page) => typeof page.pageIntentHint === "string" && page.pageIntentHint.length > 0)).toBe(true);
+    expect(payload.request.content.pages?.[0]?.forceArchetype).toBe("editorial_cover_split");
+    expect((payload.request.content.pages?.length ?? 0)).toBeGreaterThanOrEqual(1);
+    expect((payload.request.content.pages?.length ?? 0)).toBeLessThanOrEqual(4);
+    expect(payload.request.content.pages?.some((page) => typeof page.forceArchetype === "string" && page.forceArchetype.length > 0)).toBe(true);
+    expect(payload.request.content.pages?.some((page) => page.text.includes("Overview:") || page.text.includes("Context:") || page.text.includes("การกำหนดเวลานอน"))).toBe(true);
+    expect(payload.request.content.pages?.some((page) => page.text.includes("•") || page.text.includes("1."))).toBe(true);
+  });
+
+  it("does not re-force modern-editorial pages that already include compiler-provided intent guidance", () => {
+    const payload = buildPresentationSlideRequestPayload({
+      topic: "คู่มือฝึกลูกนอน",
+      article: [
+        "คู่มือฝึกลูกนอน",
+        "",
+        "เข้าใจความต้องการของทารก",
+        "",
+        "ทารกในวัยหกเดือนยังต้องการการดูแลอย่างใกล้ชิด ขณะเดียวกันก็เริ่มมีความสามารถในการสร้างนิสัยการนอนเองได้",
+        "",
+        "สร้างสภาพแวดล้อมที่เหมาะสม",
+        "",
+        "สภาพแวดล้อมการนอนมีความสำคัญมาก พ่อแม่ควรจัดเตรียมห้องนอนให้เป็นที่ร่ม เงียบสงบ และมีอุณหภูมิที่เหมาะสม",
+      ].join("\n"),
+      slideSkillId: "modern-editorial-slide",
+      preferredLanguage: "th",
+      canvasRatio: "9:16",
+      outputFormats: ["json"],
+      maxPages: 4,
+      imageAssets: [],
+    });
+
+    const pages = payload.request.content.pages ?? [];
+    expect(pages[0]?.forceArchetype).toBe("editorial_cover_split");
+    expect(pages.slice(1).every((page) => !page.forceArchetype)).toBe(true);
+    expect(pages.slice(1).every((page) => typeof page.pageIntentHint === "string" && page.pageIntentHint.length > 0)).toBe(true);
+  });
+
+  it("uses explicit page image slot overrides when building the slide request payload", () => {
+    const payload = buildPresentationSlideRequestPayload({
+      topic: "คู่มือฝึกลูกนอน",
+      article: [
+        "คู่มือฝึกลูกนอน",
+        "",
+        "ย่อหน้าเกริ่นนำ",
+        "",
+        "1. เข้าใจความต้องการของทารก",
+        "",
+        "ทารกในวัยหกเดือนยังต้องการการดูแลอย่างใกล้ชิด",
+        "",
+        "2. สร้างสภาพแวดล้อมที่เหมาะสม",
+        "",
+        "สภาพแวดล้อมการนอนควรเงียบและแสงน้อย",
+        "",
+        "3. กำหนดเวลานอนที่สม่ำเสมอ",
+        "",
+        "ควรมีเวลานอนสม่ำเสมอและกิจวัตรก่อนนอน",
+      ].join("\n"),
+      preferredLanguage: "th",
+      canvasRatio: "9:16",
+      outputFormats: ["json"],
+      maxPages: 3,
+      pageImagePlanOverrides: [
+        { pageNumber: 1, maxImagesOverride: 1 },
+        { pageNumber: 2, maxImagesOverride: 2 },
+        { pageNumber: 3, maxImagesOverride: 0 },
+      ],
+      imageAssets: [
+        {
+          id: "img-1-1",
+          pageNumber: 1,
+          imageIndex: 1,
+          placementRole: "hero",
+          shortLabel: "cover hero",
+          prompt: "Cover image prompt",
+          url: "https://cdn.example.com/cover.png",
+        },
+        {
+          id: "img-2-1",
+          pageNumber: 2,
+          imageIndex: 1,
+          placementRole: "hero",
+          shortLabel: "page 2 hero",
+          prompt: "Page 2 hero prompt",
+          url: "https://cdn.example.com/page2-hero.png",
+        },
+        {
+          id: "img-2-2",
+          pageNumber: 2,
+          imageIndex: 2,
+          placementRole: "supporting",
+          shortLabel: "page 2 supporting",
+          prompt: "Page 2 supporting prompt",
+          url: "https://cdn.example.com/page2-supporting.png",
+        },
+        {
+          id: "img-3-1",
+          pageNumber: 3,
+          imageIndex: 1,
+          placementRole: "hero",
+          shortLabel: "page 3 hero",
+          prompt: "Page 3 hero prompt",
+          url: "https://cdn.example.com/page3-hero.png",
+        },
+      ],
+    });
+
+    const pages = payload.request.content.pages ?? [];
+    expect(pages[0]?.maxImagesOverride).toBe(1);
+    expect(pages[0]?.images?.length).toBe(1);
+    expect(pages[1]?.maxImagesOverride).toBe(2);
+    expect(pages[1]?.images?.length).toBe(2);
+    expect(pages[2]?.maxImagesOverride).toBe(0);
+    expect(pages[2]?.images?.length ?? 0).toBe(0);
+  });
+
+  it("allows slide draft generation to proceed with manual-only pages even when no image assets are attached", async () => {
+    const result = await generatePresentationSlideDraft({
+      ...makeSlideDraftInput(),
+      imageAssets: [],
+      pageImagePlanOverrides: [
+        { pageNumber: 1, maxImagesOverride: 1 },
+        { pageNumber: 2, maxImagesOverride: 1 },
+      ],
+    });
+
+    expect(executeSkill).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        extraParams: expect.objectContaining({
+          request: expect.objectContaining({
+            content: expect.objectContaining({
+              pages: expect.arrayContaining([
+                expect.objectContaining({
+                  imageSelectionMode: "manual-only",
+                  maxImagesOverride: 1,
+                  images: [],
+                }),
+              ]),
+            }),
+          }),
+        }),
+      }),
+      7,
+      "internal-token",
+      "tenant-1",
+    );
+    expect(result.slideJson).toContain("\"slides\"");
+  });
+
+  it("allows sandbox-backed slide draft generation with pptx output when manual-only pages have no attached images", async () => {
+    const result = await generatePresentationSlideDraft({
+      ...makeSlideDraftInput(),
+      outputFormats: ["json", "pptx"],
+      imageAssets: [],
+      pageImagePlanOverrides: [
+        { pageNumber: 1, maxImagesOverride: 1 },
+        { pageNumber: 2, maxImagesOverride: 1 },
+      ],
+    });
+
+    expect(executeSkill).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        extraParams: expect.objectContaining({
+          request: expect.objectContaining({
+            outputFormats: ["json", "pptx"],
+            content: expect.objectContaining({
+              pages: expect.arrayContaining([
+                expect.objectContaining({
+                  imageSelectionMode: "manual-only",
+                  maxImagesOverride: 1,
+                  images: [],
+                }),
+              ]),
+            }),
+          }),
+        }),
+      }),
+      7,
+      "internal-token",
+      "tenant-1",
+    );
+    expect(result.slideJson).toContain("\"slides\"");
+    expect(result.artifacts.some((artifact) => artifact.format === "pptx")).toBe(true);
+  });
+
+  it("merges edited skill input overrides before dispatching the slide skill", async () => {
+    const result = await generatePresentationSlideDraft({
+      ...makeSlideDraftInput(),
+      slidePayloadOverrideJson: JSON.stringify({
+        request: {
+          designStyle: "soft-wellness",
+          randomizeLayouts: false,
+          seed: "sleep-9-pages-20260330-v2",
+          content: {
+            pages: [
+              {
+                pageIntentHint: "editorial_cover",
+                forceArchetype: "editorial_cover_split",
+              },
+            ],
+          },
+        },
+      }),
+    });
+
+    expect(executeSkill).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        extraParams: expect.objectContaining({
+          request: expect.objectContaining({
+            designStyle: "soft-wellness",
+            randomizeLayouts: false,
+            seed: "sleep-9-pages-20260330-v2",
+            content: expect.objectContaining({
+              pages: expect.arrayContaining([
+                expect.objectContaining({
+                  pageIntentHint: "editorial_cover",
+                  forceArchetype: "editorial_cover_split",
+                  images: expect.arrayContaining([
+                    expect.objectContaining({
+                      source: "https://cdn.example.com/cover.png",
+                    }),
+                  ]),
+                }),
+              ]),
+            }),
+          }),
+        }),
+      }),
+      7,
+      "internal-token",
+      "tenant-1",
+    );
+    expect(result.slidePayloadJson).toContain("\"seed\": \"sleep-9-pages-20260330-v2\"");
   });
 
   it("returns importable slide json even when PPTX artifact generation fails", async () => {
@@ -436,9 +1627,198 @@ describe("presentationArticleGenerator", () => {
     });
 
     expect(executeSkill).toHaveBeenCalledTimes(1);
+    expect(deductCredits).toHaveBeenCalledWith(expect.objectContaining({
+      userId: 7,
+      sourceType: "skill",
+      skillSlug: "modern-editorial-slide",
+      description: "Presentation slide skill execution: modern-editorial-slide",
+      metadata: expect.objectContaining({
+        operation: "presentation.generate_slide_draft",
+        stage: "sandbox_dispatch",
+      }),
+    }));
     expect(executeSkillLlmWithFallback).not.toHaveBeenCalled();
     expect(result.slideJson).toContain("Sandbox Layout Slide");
     expect(result.artifactJobId).toBeNull();
+  });
+
+  it("falls back to llm slide json when sandbox json artifacts are not importable for json-only requests", async () => {
+    vi.mocked(getJobArtifactUrls).mockResolvedValue([
+      {
+        artifactId: 1,
+        url: "https://cdn.example.com/manifest.json",
+        key: "sandbox-artifacts/job-default-slide-artifact/000-manifest.json",
+        mimeType: "application/json",
+        isPrimary: false,
+      },
+      {
+        artifactId: 2,
+        url: "https://cdn.example.com/generated-layout.json",
+        key: "sandbox-artifacts/job-default-slide-artifact/001-generated-layout.json",
+        mimeType: "application/json",
+        isPrimary: false,
+      },
+    ] as any);
+    vi.mocked(storageReadText).mockImplementation(async (key: string) => {
+      if (key.endsWith("manifest.json")) {
+        return JSON.stringify({
+          outputs: {
+            json: "generated-layout.json",
+          },
+        });
+      }
+      if (key.endsWith("generated-layout.json")) {
+        return JSON.stringify({
+          status: "ok",
+          payload: {
+            summary: "not an importable slide bundle",
+          },
+        });
+      }
+      return "";
+    });
+    vi.mocked(executeSkillLlmWithFallback).mockResolvedValue({
+      success: true,
+      content: JSON.stringify({
+        layoutSpec: {
+          canvas: { ratio: "16:9" },
+          slides: [
+            {
+              elements: [
+                {
+                  kind: "text",
+                  role: "title",
+                  text: "Recovered From LLM Fallback",
+                  xPct: 10,
+                  yPct: 10,
+                  wPct: 50,
+                  hPct: 10,
+                },
+              ],
+            },
+          ],
+        },
+      }),
+      modelId: "gpt-5.4",
+    } as any);
+
+    const result = await generatePresentationSlideDraft({
+      ...makeSlideDraftInput(),
+      outputFormats: ["json"] as const,
+    });
+
+    expect(result.slideJson).toContain("Recovered From LLM Fallback");
+    expect(result.artifactJobId).toBeNull();
+    expect(result.artifacts).toEqual([]);
+    expect(result.downloadUrl).toBeNull();
+    expect(result.artifactFailureMessage)
+      .toContain("Sandbox slide skill completed but did not produce importable slide JSON");
+  });
+
+  it("charges credits for article generation through the selected skill model", async () => {
+    const result = await generatePresentationArticle({
+      tenantId: "tenant-1",
+      userId: 7,
+      topic: "คู่มือฝึกลูกนอน",
+      preferredLanguage: "th",
+      executionSource: "skill",
+      skillId: "modern-editorial-slide",
+      requiresThinking: false,
+      requiresWebSearch: false,
+      targetImageCount: 8,
+    });
+
+    expect(deductCreditsForModel).toHaveBeenCalledWith(expect.objectContaining({
+      userId: 7,
+      tenantId: "tenant-1",
+      skillSlug: "modern-editorial-slide",
+      sourceType: "skill",
+      metadata: expect.objectContaining({
+        operation: "presentation.generate_article",
+        service: "presentation.article_builder",
+      }),
+    }));
+    expect(result.article.length).toBeGreaterThan(0);
+  });
+
+  it("charges credits when preparing page-bound image prompts for the slide skill", async () => {
+    const result = await preparePresentationSlideBundle({
+      userId: 7,
+      topic: "คู่มือฝึกลูกนอน",
+      article: "คู่มือฝึกลูกนอน\n\n1. สร้างสภาพแวดล้อมที่เหมาะสม\n\n2. กำหนดเวลานอนให้สม่ำเสมอ",
+      slideSkillId: "modern-editorial-slide",
+      preferredLanguage: "th",
+      requiresThinking: false,
+      targetImageCount: 8,
+      canvasRatio: "4:5",
+      outputFormats: ["json"],
+      imagePromptContext: "บ้านไทย",
+    });
+
+    expect(deductCreditsForModel).toHaveBeenCalledWith(expect.objectContaining({
+      userId: 7,
+      skillSlug: "modern-editorial-slide",
+      sourceType: "skill",
+      metadata: expect.objectContaining({
+        operation: "presentation.prepare_slide_bundle",
+      }),
+    }));
+    expect(result.preflightPages?.length).toBeGreaterThan(0);
+    expect(result.preflightPages?.[0]).toEqual(expect.objectContaining({
+      pageIntentHint: expect.any(String),
+      preferredArchetype: expect.any(String),
+      recommendedImageCount: expect.any(Number),
+    }));
+    expect(result.imagePrompts.length).toBe(result.plannedImageCount);
+  });
+
+  it("keeps the existing image slot count when replanning with reusable generated images", async () => {
+    const result = await preparePresentationSlideBundle({
+      userId: 7,
+      topic: "คู่มือฝึกลูกนอน",
+      article: [
+        "คู่มือฝึกลูกนอน",
+        "",
+        "1. เข้าใจความต้องการของทารก",
+        "",
+        "ทารกในวัยหกเดือนยังต้องการการดูแลอย่างใกล้ชิด",
+        "",
+        "2. สร้างสภาพแวดล้อมที่เหมาะสม",
+        "",
+        "ห้องนอนควรเงียบและแสงน้อย",
+        "",
+        "3. กำหนดเวลานอนที่สม่ำเสมอ",
+        "",
+        "สร้างกิจวัตรก่อนนอนอย่างสงบ",
+      ].join("\n"),
+      slideSkillId: "modern-editorial-slide",
+      preferredLanguage: "th",
+      requiresThinking: false,
+      targetImageCount: 12,
+      canvasRatio: "9:16",
+      outputFormats: ["json"],
+      existingImageAssets: [
+        {
+          id: "img-1-1-existing",
+          pageNumber: 1,
+          imageIndex: 1,
+          placementRole: "hero",
+          shortLabel: "cover hero",
+          prompt: "Existing cover image prompt",
+          url: "https://cdn.example.com/existing-cover.png",
+        },
+      ],
+    });
+
+    expect(result.plannedImageCount).toBe(1);
+    expect(result.imagePrompts).toEqual([
+      expect.objectContaining({
+        pageNumber: 1,
+        imageIndex: 1,
+        placementRole: "hero",
+        shortLabel: "cover hero",
+      }),
+    ]);
   });
 
   it("still throws when artifact generation fails and the returned slide json is not importable", async () => {
@@ -453,7 +1833,7 @@ describe("presentationArticleGenerator", () => {
     } as any);
 
     await expect(generatePresentationSlideDraft(makeSlideDraftInput()))
-      .rejects.toThrow("Slide artifact generation failed (failed)");
+      .rejects.toThrow("Slide skill did not return importable slide JSON");
   });
 
   it("normalizes wrapped layoutSpec json into importable slide json", async () => {
@@ -499,6 +1879,84 @@ describe("presentationArticleGenerator", () => {
     expect(result.slideJson).toContain("\"slides\"");
     expect(result.slideJson).not.toContain("\"layoutSpec\"");
     expect(result.slideJson).toContain("Wrapped Layout Slide");
+  });
+
+  it("normalizes editorial render manifests into importable slide json", async () => {
+    vi.mocked(getSkillByIdAsync).mockResolvedValue(makeSlideSkill({
+      id: "editorial-layout-planner",
+      name: "Editorial Layout Planner",
+      executionMode: "llm-only",
+      systemPrompt: "Return render manifests.",
+    }) as any);
+    vi.mocked(executeSkillLlmWithFallback).mockResolvedValue({
+      success: true,
+      content: JSON.stringify({
+        output_format: "render_manifest_json",
+        canvas: {
+          width_px: 1080,
+          height_px: 1350,
+          background: {
+            color: "#F4EEE7",
+          },
+        },
+        pages: [
+          {
+            page_number: 1,
+            render_notes: "Converted from render manifest",
+            text_blocks: [
+              {
+                id: "p1_title",
+                role: "title",
+                content: "Editorial Planner Slide",
+                bounds: { x: 72, y: 64, w: 936, h: 138 },
+                typography: { font_size_px: 62, align: "left", weight: 700 },
+              },
+            ],
+            image_blocks: [
+              {
+                id: "p1_image",
+                reference: "https://cdn.example.com/cover.png",
+                bounds: { x: 88, y: 244, w: 904, h: 576 },
+                crop_mode: "cover",
+                corner_radius_px: 0,
+              },
+            ],
+          },
+          {
+            page_number: 2,
+            render_notes: "Converted from render manifest",
+            text_blocks: [
+              {
+                id: "p2_title",
+                role: "title",
+                content: "Editorial Planner Slide 2",
+                bounds: { x: 72, y: 64, w: 936, h: 138 },
+                typography: { font_size_px: 60, align: "left", weight: 700 },
+              },
+            ],
+            image_blocks: [],
+          },
+        ],
+        global_validation: [],
+      }),
+      modelId: "gpt-5.4",
+      provider: { providerName: "OpenAI" },
+      inputTokens: 600,
+      outputTokens: 700,
+      rawData: { usage: { cost: 0.01 } },
+    } as any);
+
+    const result = await generatePresentationSlideDraft({
+      ...makeSlideDraftInput(),
+      slideSkillId: "editorial-layout-planner",
+      outputFormats: ["json"] as const,
+      canvasRatio: "4:5",
+    });
+
+    expect(result.slideJson).toContain("\"slides\"");
+    expect(result.slideJson).toContain("Editorial Planner Slide");
+    expect(result.slideJson).toContain("https://cdn.example.com/cover.png");
+    expect(result.slideJson).not.toContain("\"output_format\": \"render_manifest_json\"");
   });
 
   it("prefers an importable layout json artifact over manifest.json", async () => {

@@ -1,5 +1,6 @@
 import AdmZip from "adm-zip";
 import { marked } from "marked";
+import { getAppRuntimeConfig } from "./appRuntimeConfig";
 
 const DOCX_MIME_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 const DOCX_MAIN_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml";
@@ -427,9 +428,10 @@ export function buildMarkdownPlainText(markdown: string): string {
   return `${lines.join("\n").replace(/\n{3,}/g, "\n\n").trimEnd()}\n`;
 }
 
-async function renderPdfFromHtml(html: string): Promise<Buffer> {
-  const pythonBackendUrl = (process.env.PYTHON_BACKEND_URL || "http://localhost:8000").replace(/\/+$/, "");
-  const proxyToken = process.env.SMARTSPEC_PROXY_TOKEN || "";
+export async function renderPdfFromHtml(html: string): Promise<Buffer> {
+  const runtime = await getAppRuntimeConfig();
+  const pythonBackendUrl = runtime.pythonBackendUrl;
+  const proxyToken = runtime.proxyToken;
 
   if (!proxyToken) {
     throw new Error("SMARTSPEC proxy token is not configured");

@@ -11,7 +11,7 @@ import { db } from "../db";
 import { mediaModels } from "../../drizzle/schema";
 import { eq, asc } from "drizzle-orm";
 import {
-  buildWaveSpeedLaunchModelSeed,
+  buildWaveSpeedModelSeeds,
 } from "./mediaProviderUtils";
 
 export type MediaType = "image" | "video" | "audio";
@@ -55,7 +55,7 @@ export interface ModelDefinition {
  * Static fallback registry - used when database is unavailable
  * This ensures the system works even without database connection
  */
-const wavespeedLaunchModelSeed = buildWaveSpeedLaunchModelSeed();
+const wavespeedModelSeeds = buildWaveSpeedModelSeeds();
 
 const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
   // ==================== Image Models ====================
@@ -248,20 +248,20 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
     isEnabled: true,
     priority: 5,
   },
-  {
-    id: wavespeedLaunchModelSeed.modelId,
-    type: wavespeedLaunchModelSeed.modelType,
-    name: wavespeedLaunchModelSeed.name,
-    provider: wavespeedLaunchModelSeed.provider,
-    description: wavespeedLaunchModelSeed.description,
-    aliases: wavespeedLaunchModelSeed.aliases,
-    creditCost: wavespeedLaunchModelSeed.creditCost,
-    durations: wavespeedLaunchModelSeed.durations,
-    aspectRatios: wavespeedLaunchModelSeed.aspectRatios,
-    configJson: wavespeedLaunchModelSeed.configJson,
-    isEnabled: wavespeedLaunchModelSeed.isEnabled,
-    priority: wavespeedLaunchModelSeed.priority,
-  },
+  ...wavespeedModelSeeds.map((seed) => ({
+    id: seed.modelId,
+    type: seed.modelType,
+    name: seed.name,
+    provider: seed.provider,
+    description: seed.description,
+    aliases: seed.aliases,
+    creditCost: seed.creditCost,
+    durations: seed.durations,
+    aspectRatios: seed.aspectRatios,
+    configJson: seed.configJson,
+    isEnabled: seed.isEnabled,
+    priority: seed.priority,
+  })),
 
   // ==================== Audio Models ====================
   {

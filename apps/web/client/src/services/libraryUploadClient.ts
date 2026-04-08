@@ -1,10 +1,11 @@
 import { createTRPCClient, httpLink } from "@trpc/client";
+import type { TRPCClient } from "@trpc/client";
 import superjson from "superjson";
 import type { AppRouter } from "@server/routers";
 
-let client: ReturnType<typeof createTRPCClient<AppRouter>> | null = null;
+let client: TRPCClient<AppRouter> | null = null;
 
-function createClient() {
+function createClient(): TRPCClient<AppRouter> {
   return createTRPCClient<AppRouter>({
     links: [
       httpLink({
@@ -21,10 +22,9 @@ function createClient() {
   });
 }
 
-export function getLibraryUploadClient() {
+export function getLibraryUploadClient(): TRPCClient<AppRouter> {
   if (!client) {
     client = createClient();
   }
   return client;
 }
-

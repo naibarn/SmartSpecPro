@@ -1,0 +1,32 @@
+export type {
+  CapabilityResult,
+  LocalAiCatalogEntry,
+  LocalAiPolicy,
+  LocalAiPolicyCatalogResponse,
+  LocalAiPlatform,
+  LocalAiTaskClass,
+  LocalAiConversationOverride,
+  LocalAiExecutionMode,
+  LocalAiHandsFreeMode,
+  LocalAiSyncedPreferences,
+  LocalAiVoiceInputMode,
+  LocalAiVoiceReadbackMode,
+  LocalSkillExecutionEnvelope,
+  LocalSkillExecutionTier,
+  LocalSkillOutputContract,
+  LocalSkillRuntimeKind,
+  LocalSkillStagedFileDescriptor,
+  LocalScriptManifestContract,
+  MessageRuntimeMetadata,
+  ResolvedLocalSkillPolicy,
+} from "@smartspec/local-ai-core";
+
+export {
+  DEFAULT_LOCAL_AI_SYNCED_PREFERENCES,
+  LOCAL_AI_EXECUTION_MODES,
+  LOCAL_SKILL_EXECUTION_TIERS,
+  LOCAL_AI_TASK_CLASSES,
+  LOCAL_AI_VOICE_INPUT_MODES,
+  LOCAL_AI_VOICE_READBACK_MODES,
+  LOCAL_AI_HANDS_FREE_MODES,
+} from "@smartspec/local-ai-core";

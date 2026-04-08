@@ -7,18 +7,8 @@ import { protectedProcedure, router } from "../_core/trpc";
 import { isPresentationFeatureEnabled } from "@shared/presentation/constants";
 import { getDb } from "../db";
 import { presentationConversionRecords } from "../../drizzle/schema";
+import { getAppRuntimeConfig, getPreferredInternalToken } from "../services/appRuntimeConfig";
 import { resolveTenantIdVarchar } from "../services/tenantContext";
-
-const PYTHON_BACKEND_URL =
-  process.env.PYTHON_BACKEND_URL ?? "http://localhost:8000";
-
-// Log a warning at startup if the gateway token is not configured.
-// Python's import endpoints require this token for authentication.
-if (!process.env.SMARTSPEC_WEB_GATEWAY_TOKEN) {
-  console.warn(
-    "[presentationImport] SMARTSPEC_WEB_GATEWAY_TOKEN is not set — internal Python calls will be unauthenticated",
-  );
-}
 
 // ── Local helpers (same pattern as presentation.ts) ───────────────────────
 
@@ -141,13 +131,15 @@ export const presentationImportRouter = router({
       // using the user_id — no access token is ever forwarded from Node.
       let pyRes: Response;
       try {
+        const runtime = await getAppRuntimeConfig();
+        const gatewayToken = await getPreferredInternalToken();
         pyRes = await fetch(
-          `${PYTHON_BACKEND_URL}/api/v1/presentation-import/start`,
+          `${runtime.pythonBackendUrl}/api/v1/presentation-import/start`,
           {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              Authorization: `Bearer ${process.env.SMARTSPEC_WEB_GATEWAY_TOKEN ?? ""}`,
+              Authorization: `Bearer ${gatewayToken}`,
             },
             body: JSON.stringify({
               conversion_id: conversionId,
@@ -315,12 +307,14 @@ export const presentationImportRouter = router({
 
       // Best-effort Celery task revocation — do not throw if this fails
       try {
+        const runtime = await getAppRuntimeConfig();
+        const gatewayToken = await getPreferredInternalToken();
         await fetch(
-          `${PYTHON_BACKEND_URL}/api/v1/presentation-import/${input.conversionId}`,
+          `${runtime.pythonBackendUrl}/api/v1/presentation-import/${input.conversionId}`,
           {
             method: "DELETE",
             headers: {
-              Authorization: `Bearer ${process.env.SMARTSPEC_WEB_GATEWAY_TOKEN ?? ""}`,
+              Authorization: `Bearer ${gatewayToken}`,
             },
           },
         );

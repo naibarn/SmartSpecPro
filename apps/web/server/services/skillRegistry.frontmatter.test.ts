@@ -8,8 +8,11 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 /** Known capability keys — must match KNOWN_REQUIREMENT_KEYS in skillRegistry.ts */
 const KNOWN_REQUIREMENT_KEYS = new Set([
   "supportsVision",
+  "supportsThinking",
   "supportsFunctionTools",
   "supportsStructuredOutputs",
+  "supportsJsonMode",
+  "supportsStrictToolSchema",
   "supportsWebSearch",
   "supportsCodeExecution",
   "supportsComputerUse",
@@ -67,6 +70,14 @@ describe("skillRegistry frontmatter model_requirements parsing", () => {
   it("accepts supportsVision", () => {
     const result = parseSkillRequirements({ supportsVision: true }, "vision-skill");
     expect(result).toEqual({ supportsVision: true });
+  });
+
+  it("accepts refined structured output capability keys", () => {
+    const result = parseSkillRequirements(
+      { supportsJsonMode: true, supportsStrictToolSchema: true },
+      "structured-skill",
+    );
+    expect(result).toEqual({ supportsJsonMode: true, supportsStrictToolSchema: true });
   });
 
   it("skill without model_requirements returns undefined", () => {

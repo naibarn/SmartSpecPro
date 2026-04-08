@@ -3,6 +3,8 @@ import express from "express";
 import request from "supertest";
 
 vi.mock("../../services/libraryService", () => ({
+  getLibraryItemById: vi.fn(),
+  safeEnqueueLibraryIndexJob: vi.fn(),
   searchLibraryItems: vi.fn(),
   uploadLibraryFile: vi.fn(),
 }));
@@ -47,7 +49,12 @@ vi.mock("../../services/delegatedWorkerPlatformService", () => ({
 }));
 
 import { createPublicKnowledgeRouter } from "../publicKnowledgeApi";
-import { searchLibraryItems, uploadLibraryFile } from "../../services/libraryService";
+import {
+  getLibraryItemById,
+  safeEnqueueLibraryIndexJob,
+  searchLibraryItems,
+  uploadLibraryFile,
+} from "../../services/libraryService";
 import {
   calculateLibraryUploadCreditCost,
   chargeForRagQuery,
@@ -58,6 +65,8 @@ import { runWithDelegatedWorkerExecution } from "../../services/delegatedWorkerP
 
 const mockSearchLibraryItems = vi.mocked(searchLibraryItems);
 const mockUploadLibraryFile = vi.mocked(uploadLibraryFile);
+const mockGetLibraryItemById = vi.mocked(getLibraryItemById);
+const mockSafeEnqueueLibraryIndexJob = vi.mocked(safeEnqueueLibraryIndexJob);
 const mockCalculateLibraryUploadCreditCost = vi.mocked(calculateLibraryUploadCreditCost);
 const mockChargeForRagQuery = vi.mocked(chargeForRagQuery);
 const mockGetCreditBalance = vi.mocked(getCreditBalance);
@@ -72,7 +81,7 @@ function makeApp(authOverrides: Record<string, unknown> = {}) {
       ok: true,
       mode: "delegated_worker",
       sub: "worker-delegate:test",
-      scopes: ["library:search", "library:upload", "rag:search"],
+      scopes: ["library:search", "library:upload", "rag:search", "rag:ingest"],
       userId: 7,
       ownerUserId: 7,
       tenantId: "tenant-1",
@@ -119,6 +128,30 @@ describe("publicKnowledgeApi", () => {
     } as any);
     mockChargeForRagQuery.mockResolvedValue({ creditsUsed: 1, transactionId: 99 });
     mockGetCreditBalance.mockResolvedValue({ credits: 42 } as any);
+    mockGetLibraryItemById.mockResolvedValue({
+      id: 55,
+      tenantId: "tenant-1",
+      ownerUserId: 7,
+      itemType: "document",
+      source: "document_upload",
+      title: "Research Notes",
+      description: null,
+      status: "ready",
+      visibility: "private",
+      metadata: {},
+      sourceUrl: null,
+      thumbnailUrl: null,
+      deletedAt: null,
+      createdAt: new Date("2026-04-07T10:00:00.000Z"),
+      updatedAt: new Date("2026-04-07T10:00:00.000Z"),
+    } as any);
+    mockSafeEnqueueLibraryIndexJob.mockResolvedValue({
+      jobId: 401,
+      status: "pending",
+      created: true,
+      payloadVersion: "v1",
+      dedupeKey: "rag-ingest-55",
+    } as any);
   });
 
   it("searches only the owner library scope", async () => {
@@ -183,5 +216,62 @@ describe("publicKnowledgeApi", () => {
       }),
     );
     expect(res.body.credits_used).toBe(1);
+  });
+
+  it("uploads directly into owner RAG knowledge when the worker requests rag ingest", async () => {
+    const res = await request(makeApp())
+      .post("/v1/knowledge/rag/ingest")
+      .set("Idempotency-Key", "rag-upload-1")
+      .send({
+        sourceType: "upload",
+        fileName: "knowledge.pdf",
+        fileType: "application/pdf",
+        fileBase64: Buffer.from("hello").toString("base64"),
+      });
+
+    expect(res.status).toBe(201);
+    expect(mockAssertDelegatedWorkerGrant).toHaveBeenCalledWith(
+      expect.objectContaining({ mode: "delegated_worker" }),
+      expect.objectContaining({ grantType: "rag_scope", requireScopeFlag: "ingest" }),
+    );
+    expect(mockUploadLibraryFile).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          requestedKnowledgeTarget: "rag",
+        }),
+        billingMetadata: expect.objectContaining({
+          endpoint: "/v1/knowledge/rag/ingest",
+          sourceType: "upload",
+        }),
+      }),
+      expect.objectContaining({ userId: 7, tenantId: "tenant-1" }),
+    );
+    expect(res.headers["x-credits-used"]).toBe("3");
+    expect(res.body.ingest_target).toBe("rag");
+  });
+
+  it("re-enqueues indexing for an owner library item during rag ingest", async () => {
+    const res = await request(makeApp())
+      .post("/v1/knowledge/rag/ingest")
+      .set("Idempotency-Key", "rag-item-1")
+      .send({
+        sourceType: "library_item",
+        libraryItemId: 55,
+      });
+
+    expect(res.status).toBe(202);
+    expect(mockGetLibraryItemById).toHaveBeenCalledWith(
+      55,
+      expect.objectContaining({ userId: 7, tenantId: "tenant-1" }),
+    );
+    expect(mockSafeEnqueueLibraryIndexJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        libraryItemId: 55,
+        tenantId: "tenant-1",
+        source: "public_api.rag_ingest",
+      }),
+    );
+    expect(res.headers["x-credits-used"]).toBe("0");
+    expect(res.body.indexJob.jobId).toBe(401);
   });
 });

@@ -45,16 +45,20 @@ By participating in this project, you agree to abide by our [Code of Conduct](CO
 ### Desktop App
 
 ```bash
-cd desktop-app
+# From repo root
+npm install
 
-# Install dependencies
-pnpm install
+# Run SmartSpec Web + Tauri shell together
+npm run dev:desktop
 
-# Run development server
-pnpm tauri:dev
+# Build desktop bundle
+npm run build:desktop
 
-# Build for production
-pnpm tauri:build
+# Trigger one-off GitHub Actions desktop release build
+npm run release:desktop:gh -- --tag v0.1.0 --platform windows --watch
+
+# Build a Windows bundle locally from a Windows machine
+npm run build:desktop:windows-local
 ```
 
 ### Python Backend
@@ -215,13 +219,9 @@ src/
 ### Running Tests
 
 ```bash
-# Frontend tests
-cd desktop-app
-pnpm test
-
-# Backend tests (Rust)
-cd desktop-app/src-tauri
-cargo test
+# Desktop shell tests
+cd apps/tauri-shell
+npm test
 
 # Python backend tests
 cd python-backend

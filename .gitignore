@@ -191,3 +191,22 @@ load-tests/metrics-*.json
 # Orchestra runtime artifacts (session/archive data, not source code)
 # ============================================================================
 orchestra/archive/
+
+# ============================================================================
+# Local AI / build caches and large runtime artifacts (do not commit)
+# ============================================================================
+.turbo/
+.codex
+.codex/
+default.profraw
+apps/tauri-shell/default.profraw
+apps/tauri-shell/binaries/.downloads/
+apps/tauri-shell/binaries/litert-lm-*
+apps/tauri-shell/resources/litert-lm-models/
+apps/tauri-shell/src-tauri/binaries/ffmpeg-*
+apps/tauri-shell/src-tauri/binaries/ffprobe-*
+apps/tauri-shell/src-tauri/resources/litert-lm-models/
+python-backend/media_storage/
+python-backend/coverage.xml
+apps/web/data/chat-memory-archives/
+coverage.xml

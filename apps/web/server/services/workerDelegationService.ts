@@ -68,8 +68,8 @@ const DEFAULT_LLM_MODEL_ALLOWLIST = [
 
 const PROFILE_DEFINITIONS: Record<DelegatedScopeProfile, ProfileDefinition> = {
   worker_gateway_readonly: {
-    scopes: ["llm:chat", "skills:list", "agencies:list", "jobs:read", "library:read", "library:search"],
-    routeFamilies: ["llm", "skills", "agencies", "jobs", "library"],
+    scopes: ["llm:chat", "skills:list", "agencies:list", "jobs:read", "library:read", "library:search", "mcp:read"],
+    routeFamilies: ["llm", "skills", "agencies", "jobs", "library", "mcp"],
     allowedModelAliases: [...DEFAULT_LLM_MODEL_ALLOWLIST],
     allowedProviderProfiles: [],
     knowledgeDefaults: {
@@ -95,8 +95,10 @@ const PROFILE_DEFINITIONS: Record<DelegatedScopeProfile, ProfileDefinition> = {
       "library:read",
       "library:search",
       "library:upload",
+      "mcp:read",
+      "mcp:write",
     ],
-    routeFamilies: ["llm", "skills", "agencies", "media", "presentations", "video_projects", "jobs", "library"],
+    routeFamilies: ["llm", "skills", "agencies", "media", "presentations", "video_projects", "jobs", "library", "mcp"],
     allowedModelAliases: [...DEFAULT_LLM_MODEL_ALLOWLIST],
     allowedProviderProfiles: [],
     knowledgeDefaults: {
@@ -119,8 +121,10 @@ const PROFILE_DEFINITIONS: Record<DelegatedScopeProfile, ProfileDefinition> = {
       "library:read",
       "library:search",
       "rag:search",
+      "mcp:read",
+      "mcp:write",
     ],
-    routeFamilies: ["llm", "skills", "agencies", "jobs", "library", "rag"],
+    routeFamilies: ["llm", "skills", "agencies", "jobs", "library", "rag", "mcp"],
     allowedModelAliases: [...DEFAULT_LLM_MODEL_ALLOWLIST],
     allowedProviderProfiles: [],
     knowledgeDefaults: {
@@ -140,8 +144,10 @@ const PROFILE_DEFINITIONS: Record<DelegatedScopeProfile, ProfileDefinition> = {
       "jobs:create",
       "jobs:read",
       "library:upload",
+      "mcp:read",
+      "mcp:write",
     ],
-    routeFamilies: ["llm", "media", "presentations", "video_projects", "jobs", "library"],
+    routeFamilies: ["llm", "media", "presentations", "video_projects", "jobs", "library", "mcp"],
     allowedModelAliases: [...DEFAULT_LLM_MODEL_ALLOWLIST],
     allowedProviderProfiles: [],
     knowledgeDefaults: {
@@ -169,8 +175,10 @@ const PROFILE_DEFINITIONS: Record<DelegatedScopeProfile, ProfileDefinition> = {
       "library:upload",
       "rag:search",
       "rag:ingest",
+      "mcp:read",
+      "mcp:write",
     ],
-    routeFamilies: ["llm", "skills", "agencies", "media", "presentations", "video_projects", "jobs", "library", "rag", "callbacks"],
+    routeFamilies: ["llm", "skills", "agencies", "media", "presentations", "video_projects", "jobs", "library", "rag", "mcp", "callbacks"],
     allowedModelAliases: [...DEFAULT_LLM_MODEL_ALLOWLIST],
     allowedProviderProfiles: [],
     knowledgeDefaults: {
@@ -413,7 +421,128 @@ function hasGrantResource(grants: GrantRecord[], grantType: DelegatedGrantType):
   );
 }
 
-function buildManifest(
+function buildDiscoveryRouteHints(
+  session: {
+    workerJobId: string;
+    grantedScopes: DelegatedWorkerScope[];
+    scopeProfile: DelegatedScopeProfile;
+  },
+  grants: GrantRecord[],
+): Array<{
+  family: DelegatedRouteFamily;
+  method: "GET" | "POST";
+  path: string;
+  availability: "ready" | "experimental" | "unavailable";
+  purpose: string;
+}> {
+  const profile = getProfileDefinition(session.scopeProfile);
+  const hints: Array<{
+    family: DelegatedRouteFamily;
+    method: "GET" | "POST";
+    path: string;
+    availability: "ready" | "experimental" | "unavailable";
+    purpose: string;
+  }> = [];
+
+  const addHint = (
+    family: DelegatedRouteFamily,
+    method: "GET" | "POST",
+    path: string,
+    purpose: string,
+    availability: "ready" | "experimental" | "unavailable" = "ready",
+  ) => {
+    if (!profile.routeFamilies.includes(family)) {
+      return;
+    }
+    hints.push({ family, method, path, purpose, availability });
+  };
+
+  addHint("llm", "GET", "/v1/models", "List gateway models allowed for this worker session");
+  addHint("llm", "GET", "/v1/credits", "Read the owner's current SmartSpecPro credit balance");
+  if (session.grantedScopes.includes("llm:chat")) {
+    addHint("llm", "POST", "/v1/chat/completions", "Run OpenAI-compatible chat completions");
+    addHint("llm", "POST", "/v1/responses", "Run Responses API style multi-turn execution");
+  }
+  if (session.grantedScopes.includes("mcp:read")) {
+    const allowedNamespaces = readGrantIds(grants, "mcp_server");
+    const mcpAvailability = allowedNamespaces.length > 0 ? "ready" : "experimental";
+    addHint(
+      "mcp",
+      "POST",
+      "/v1/mcp",
+      allowedNamespaces.length > 0
+        ? "Use the authenticated MCP endpoint with the worker-scoped tool namespaces granted for this job"
+        : "MCP is enabled for this session but no tool namespaces were granted yet",
+      mcpAvailability,
+    );
+    addHint("mcp", "GET", "/v1/mcp/catalog", "Read the static MCP tool catalog for developer guidance", "ready");
+  }
+
+  if (session.grantedScopes.includes("skills:list")) {
+    addHint("skills", "GET", "/v1/skills", "List skills visible to the worker owner");
+    addHint("skills", "GET", "/v1/skills/{skillId}", "Inspect a specific skill before execution");
+  }
+  if (session.grantedScopes.includes("skills:execute")) {
+    addHint("skills", "POST", "/v1/skills/{skillId}/execute", "Run an allowed skill for this job");
+  }
+
+  if (session.grantedScopes.includes("agencies:list")) {
+    addHint("agencies", "GET", "/v1/agencies", "List agencies visible to the worker owner");
+  }
+  if (session.grantedScopes.includes("agencies:invoke")) {
+    addHint("agencies", "POST", "/v1/agencies/{agencyId}/invoke", "Invoke an allowed agency");
+  }
+
+  if (session.grantedScopes.includes("media:generate")) {
+    addHint("media", "POST", "/v1/media/images/generate", "Generate images through the platform media stack");
+    addHint("media", "POST", "/v1/media/videos/generate", "Generate videos through the platform media stack");
+    addHint("media", "POST", "/v1/media/audio/generate", "Generate audio through the platform media stack");
+    addHint("media", "GET", "/v1/media/{taskId}/status", "Check asynchronous media generation status");
+  }
+
+  if (session.grantedScopes.includes("presentations:create")) {
+    addHint("presentations", "POST", "/v1/presentations", "Create a presentation for the owner");
+  }
+
+  if (session.grantedScopes.includes("video_projects:create")) {
+    addHint("video_projects", "POST", "/v1/video-projects", "Create a video project for the owner");
+  }
+
+  if (session.grantedScopes.includes("jobs:create")) {
+    addHint("jobs", "POST", "/v1/jobs", "Create an asynchronous platform job");
+  }
+  if (session.grantedScopes.includes("jobs:read")) {
+    addHint("jobs", "GET", "/v1/jobs", "List jobs created by the owner");
+    addHint("jobs", "GET", "/v1/jobs/{jobId}", "Inspect a specific asynchronous job");
+  }
+
+  if (session.grantedScopes.includes("library:search") && hasScopedGrant(grants, "library_search_scope")) {
+    addHint("library", "POST", "/v1/knowledge/library/search", "Search the owner's private library scope");
+  }
+  if (session.grantedScopes.includes("library:upload") && hasScopedGrant(grants, "library_upload_policy")) {
+    addHint("library", "POST", "/v1/knowledge/library/upload", "Upload a file into the owner's library");
+  }
+  if (session.grantedScopes.includes("rag:search") && hasScopedGrant(grants, "rag_scope", "search")) {
+    addHint("rag", "POST", "/v1/knowledge/rag/search", "Run semantic search over the owner's indexed knowledge");
+  }
+  if (session.grantedScopes.includes("rag:ingest") && hasScopedGrant(grants, "rag_scope", "ingest")) {
+    addHint("rag", "POST", "/v1/knowledge/rag/ingest", "Upload or re-index owner files for RAG ingestion");
+  }
+
+  if (profile.routeFamilies.includes("callbacks") && hasGrantResource(grants, "room_target")) {
+    addHint("callbacks", "POST", `/api/worker-jobs/${session.workerJobId}/publish-room-update`, "Send a room update back into SmartSpecPro");
+  }
+  if (profile.routeFamilies.includes("callbacks") && hasGrantResource(grants, "workflow_target")) {
+    addHint("callbacks", "POST", `/api/worker-jobs/${session.workerJobId}/publish-workflow-update`, "Send a workflow update back into SmartSpecPro");
+  }
+  if (profile.routeFamilies.includes("callbacks") && session.grantedScopes.includes("llm:chat")) {
+    addHint("callbacks", "POST", `/api/worker-jobs/${session.workerJobId}/publish-user-notification`, "Notify the owner when delegated work completes");
+  }
+
+  return hints;
+}
+
+async function buildManifest(
   session: {
     id: string;
     tenantId: string;
@@ -428,10 +557,23 @@ function buildManifest(
     expiresAt: Date;
   },
   grants: GrantRecord[],
-): DelegatedCapabilityManifest {
+): Promise<DelegatedCapabilityManifest> {
   const profile = getProfileDefinition(session.scopeProfile);
+  const hasLibrarySearch = session.grantedScopes.includes("library:search") && hasScopedGrant(grants, "library_search_scope");
+  const hasLibraryUpload = session.grantedScopes.includes("library:upload") && hasScopedGrant(grants, "library_upload_policy");
+  const hasRagSearch = session.grantedScopes.includes("rag:search") && hasScopedGrant(grants, "rag_scope", "search");
+  const hasRagIngest = session.grantedScopes.includes("rag:ingest") && hasScopedGrant(grants, "rag_scope", "ingest");
+  const allowedMcpNamespaces = readGrantIds(grants, "mcp_server");
+  const hasMcpReadScope = session.grantedScopes.includes("mcp:read");
+  const hasMcpWriteScope = session.grantedScopes.includes("mcp:write");
+  const mcpAvailability =
+    hasMcpReadScope && allowedMcpNamespaces.length > 0
+      ? "ready"
+      : hasMcpReadScope || hasMcpWriteScope
+        ? "experimental"
+        : "unavailable";
 
-  return {
+  const manifestPreview: DelegatedCapabilityManifest = {
     sessionId: session.id,
     workerId: session.workerId,
     workerJobId: session.workerJobId,
@@ -442,26 +584,26 @@ function buildManifest(
     scopeProfile: session.scopeProfile,
     grantedScopes: session.grantedScopes,
     routeFamilies: profile.routeFamilies,
-    allowedMcpNamespaces: readGrantIds(grants, "mcp_server"),
+    allowedMcpNamespaces,
     allowedModelAliases: profile.allowedModelAliases,
     allowedProviderProfiles: profile.allowedProviderProfiles,
     knowledgeAccess: {
       libraryRead: session.grantedScopes.includes("library:read"),
-      librarySearch: session.grantedScopes.includes("library:search") && hasScopedGrant(grants, "library_search_scope"),
-      libraryUpload: session.grantedScopes.includes("library:upload") && hasScopedGrant(grants, "library_upload_policy"),
-      ragSearch: session.grantedScopes.includes("rag:search") && hasScopedGrant(grants, "rag_scope", "search"),
-      ragIngest: session.grantedScopes.includes("rag:ingest") && hasScopedGrant(grants, "rag_scope", "ingest"),
+      librarySearch: hasLibrarySearch,
+      libraryUpload: hasLibraryUpload,
+      ragSearch: hasRagSearch,
+      ragIngest: hasRagIngest,
     },
     grantSummary: {
       skills: readGrantIds(grants, "skill"),
       agencies: readGrantIds(grants, "agency"),
       libraryItemIds: readGrantIds(grants, "library_item").map((value) => Number(value)).filter(Number.isFinite),
-      mcpNamespaces: readGrantIds(grants, "mcp_server"),
+      mcpNamespaces: allowedMcpNamespaces,
     },
     uploadPolicy: {
-      enabled: hasScopedGrant(grants, "library_upload_policy"),
-      allowedItemTypes: hasScopedGrant(grants, "library_upload_policy") ? [...KNOWLEDGE_UPLOAD_ITEM_TYPES] : [],
-      maxFileBytes: hasScopedGrant(grants, "library_upload_policy") ? MAX_LIBRARY_UPLOAD_BYTES : null,
+      enabled: hasLibraryUpload,
+      allowedItemTypes: hasLibraryUpload ? [...KNOWLEDGE_UPLOAD_ITEM_TYPES] : [],
+      maxFileBytes: hasLibraryUpload ? MAX_LIBRARY_UPLOAD_BYTES : null,
     },
     callbackTargets: {
       roomUpdate: profile.routeFamilies.includes("callbacks") && hasGrantResource(grants, "room_target"),
@@ -470,12 +612,78 @@ function buildManifest(
     },
     availability: {
       http: "ready",
-      mcp: "unavailable",
-      knowledge: hasScopedGrant(grants, "library_search_scope") || hasScopedGrant(grants, "rag_scope")
-        ? "ready"
-        : "unavailable",
+      mcp: mcpAvailability,
+      knowledge: hasLibrarySearch || hasLibraryUpload || hasRagSearch || hasRagIngest ? "ready" : "unavailable",
+    },
+    mcp: {
+      enabled: false,
+      availableFamilies: [],
+      families: [],
+      availableTools: [],
+      experimentalTools: [],
+      disabledTools: [],
+      familyFlags: {
+        browserEnabled: false,
+        workspaceEnabled: false,
+        driveEnabled: false,
+        orchestratorEnabled: false,
+      },
+      operatorPolicy: {
+        enabled: true,
+        disabledFamilies: [],
+        disabledToolGroups: [],
+        approvalRequiredToolGroups: [],
+      },
+    },
+    discovery: {
+      openApiUrl: "/v1/openapi.json",
+      docsUrl: "/v1/docs",
+      catalogUrl: "/v1/mcp/catalog",
+      manifestPath: `/api/worker-jobs/${session.workerJobId}/delegated-manifest`,
+      recommendedAuthMode: "bearer",
+      routeHints: buildDiscoveryRouteHints(session, grants),
     },
     expiresAt: session.expiresAt.toISOString(),
+  };
+
+  const {
+    describeDelegatedMcpSurface,
+  } = await import("../_core/mcpRegistry");
+  const mcpSurface = await describeDelegatedMcpSurface({
+    tenantId: session.tenantId,
+    teamId: session.teamId,
+    actingUserId: session.actingUserId,
+    ownerUserId: session.ownerUserId,
+    workerId: session.workerId,
+    workerJobId: session.workerJobId,
+    delegatedSessionId: session.id,
+    runtimeType: session.runtimeType,
+    scopeProfile: session.scopeProfile,
+    grantedScopes: session.grantedScopes,
+    manifestPreview,
+  });
+
+  return {
+    ...manifestPreview,
+    availability: {
+      ...manifestPreview.availability,
+      mcp: mcpSurface.operatorPolicy.enabled
+        ? manifestPreview.availability.mcp
+        : "unavailable",
+    },
+    mcp: {
+      enabled:
+        mcpSurface.operatorPolicy.enabled
+        && manifestPreview.availability.mcp === "ready"
+        && mcpSurface.availableTools.length > 0,
+      availableFamilies: mcpSurface.availableFamilies,
+      families: mcpSurface.families,
+      availableTools: mcpSurface.availableTools,
+      experimentalTools: mcpSurface.experimentalTools,
+      disabledTools: mcpSurface.disabledTools,
+      familyFlags: mcpSurface.familyFlags,
+      operatorPolicy: mcpSurface.operatorPolicy,
+    },
   };
 }
 
@@ -704,7 +912,7 @@ export async function createDelegatedWorkerSession(
     expiresAt,
   );
 
-  const manifest = buildManifest(
+  const manifest = await buildManifest(
     {
       id: sessionId,
       tenantId: input.auth.tenantId,
@@ -800,6 +1008,69 @@ export async function getDelegatedWorkerManifest(
       teamId: session.teamId ? String(session.teamId) : null,
       workerId: session.workerId,
       workerJobId: session.workerJobId,
+      actingUserId: Number(session.actingUserId),
+      ownerUserId: Number(session.ownerUserId),
+      runtimeType: session.runtimeType as WorkerRuntimeType,
+      scopeProfile: session.scopeProfile as DelegatedScopeProfile,
+      grantedScopes: normalizeScopes(Array.isArray(session.grantedScopesJson) ? session.grantedScopesJson : []),
+      expiresAt: new Date(session.expiresAt),
+    },
+    grants,
+  );
+}
+
+export async function getDelegatedWorkerManifestBySessionId(
+  input: { delegatedSessionId: string },
+  deps: {
+    repo?: WorkerDelegationRepository;
+    getFeatureFlags?: typeof getTenantFeatureFlags;
+  } = {},
+): Promise<DelegatedCapabilityManifest> {
+  const repo = deps.repo ?? defaultRepo;
+  const getFeatureFlags = deps.getFeatureFlags ?? getTenantFeatureFlags;
+  const session = await repo.getDelegatedSessionById(input.delegatedSessionId);
+  if (!session) {
+    throw new WorkerDelegationError("worker_auth_invalid", 401, "Delegated worker session is invalid");
+  }
+  if (session.revokedAt) {
+    throw new WorkerDelegationError("worker_auth_invalid", 401, "Delegated worker session has been revoked");
+  }
+  if (new Date(session.expiresAt).getTime() <= Date.now()) {
+    throw new WorkerDelegationError("worker_auth_invalid", 401, "Delegated worker session has expired");
+  }
+
+  assertDelegatedWorkerAccessEnabled();
+  const flags = await getFeatureFlags(String(session.tenantId));
+  assertWorkerFeatureEnabled(flags, String(session.tenantId));
+
+  const [worker, job] = await Promise.all([
+    repo.getWorkerById(String(session.tenantId), String(session.workerId)),
+    repo.getWorkerJobById(String(session.tenantId), String(session.workerJobId)),
+  ]);
+  requireOwnerAligned(worker, job);
+  assertLeaseAndJobState(
+    {
+      audience: "",
+      runtimeType: session.runtimeType as WorkerRuntimeType,
+      scopes: [],
+      subject: "",
+      teamId: session.teamId ? String(session.teamId) : null,
+      tenantId: String(session.tenantId),
+      tokenUse: "worker_execution",
+      workerId: String(session.workerId),
+    },
+    job as WorkerJobRecord,
+    String(session.leaseOwnerToken),
+  );
+
+  const grants = await repo.listActiveGrantsForSession(session.id);
+  return buildManifest(
+    {
+      id: session.id,
+      tenantId: String(session.tenantId),
+      teamId: session.teamId ? String(session.teamId) : null,
+      workerId: String(session.workerId),
+      workerJobId: String(session.workerJobId),
       actingUserId: Number(session.actingUserId),
       ownerUserId: Number(session.ownerUserId),
       runtimeType: session.runtimeType as WorkerRuntimeType,

@@ -7,6 +7,33 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { SkillSelector } from './SkillSelector';
 
+vi.mock('@/features/local-ai/skills/useTauriLocalSkillRuntimeStatus', () => ({
+  useTauriLocalSkillRuntimeStatus: () => ({
+    available: true,
+    supportsScriptBundle: true,
+    supportsGemma4Text: true,
+    supportsGemma4Voice: true,
+    nodePath: '/usr/bin/node',
+    litertLmPath: '/usr/bin/litert-lm',
+    runtimeRoot: '/tmp/local-skill-runtime',
+    managedModelRoot: '/tmp/local-skill-runtime/models',
+    gemmaProfileIds: ['gemma4-e4b-tauri-balanced'],
+    installedGemmaProfileIds: ['gemma4-e4b-tauri-balanced'],
+    reason: null,
+  }),
+}));
+
+vi.mock('@/features/local-ai/adapters/externalLocalTextBackend', () => ({
+  useExternalLocalTextBackendAvailability: () => ({
+    scope: {
+      tenantId: 'tenant-1',
+      userId: 'user-1',
+      runtimeNamespace: 'web',
+    },
+    backend: null,
+  }),
+}));
+
 // Mock tRPC
 const mockUseQuery = vi.fn();
 const mockUseUtils = vi.fn();
@@ -28,6 +55,7 @@ const mockOnSelect = vi.fn();
 const mockSkills = [
   {
     id: 1,
+    slug: 'image-generator',
     name: 'Image Generator',
     description: 'Generate images from text',
     icon: 'image',
@@ -36,6 +64,7 @@ const mockSkills = [
   },
   {
     id: 2,
+    slug: 'code-assistant',
     name: 'Code Assistant',
     description: 'Help with coding',
     icon: 'code',
@@ -44,6 +73,7 @@ const mockSkills = [
   },
   {
     id: 3,
+    slug: 'text-summarizer',
     name: 'Text Summarizer',
     description: 'Summarize long text',
     icon: 'file-text',
@@ -66,6 +96,7 @@ describe('SkillSelector', () => {
         },
       },
     });
+    delete (window as any).__TAURI__;
   });
 
   describe('Rendering', () => {
@@ -163,7 +194,7 @@ describe('SkillSelector', () => {
         skills: {
           getInputSchema: {
             fetch: vi.fn().mockImplementation(({ skillId }: { skillId: string }) => {
-              return Promise.resolve({ hasSchema: skillId === '1' });
+              return Promise.resolve({ hasSchema: skillId === 'image-generator' });
             }),
           },
         },
@@ -201,7 +232,7 @@ describe('SkillSelector', () => {
       await user.click(screen.getByText('Image Generator'));
 
       await waitFor(() => {
-        expect(mockOnSelect).toHaveBeenCalledWith('1', expect.any(Boolean));
+        expect(mockOnSelect).toHaveBeenCalledWith('image-generator', expect.any(Boolean));
       });
     });
 
@@ -231,8 +262,95 @@ describe('SkillSelector', () => {
       await user.click(screen.getByText('Image Generator'));
 
       await waitFor(() => {
-        expect(mockOnSelect).toHaveBeenCalledWith('1', true);
+        expect(mockOnSelect).toHaveBeenCalledWith('image-generator', true);
       });
+    });
+  });
+
+  describe('Local execution badges', () => {
+    it('does not render a local-safe badge on web-only sessions', () => {
+      mockUseQuery.mockReturnValue({
+        data: {
+          skills: [
+            {
+              ...mockSkills[1],
+              localExecutionPolicy: {
+                tier: 'local_safe',
+                runtimeKind: 'gemma4_text',
+                eligible: false,
+                reviewed: true,
+                allowOffline: true,
+                requiresTauri: true,
+                reason: 'local_safe_requires_tauri',
+                warnings: [],
+                derivedFrom: ['frontmatter'],
+                signals: {
+                  requiresNetwork: false,
+                  requiresBrowser: false,
+                  maxRuntimeSeconds: null,
+                  maxInputMb: null,
+                  sandboxProfileSlug: null,
+                },
+                localScriptManifest: null,
+              },
+            },
+          ],
+        },
+        isLoading: false,
+      });
+
+      render(
+        <SkillSelector
+          open={true}
+          onClose={mockOnClose}
+          onSelect={mockOnSelect}
+        />
+      );
+
+      expect(screen.queryByText('Local Safe')).not.toBeInTheDocument();
+    });
+
+    it('renders a local-safe badge for tauri-safe skills', () => {
+      (window as any).__TAURI__ = {};
+      mockUseQuery.mockReturnValue({
+        data: {
+          skills: [
+            {
+              ...mockSkills[1],
+              localExecutionPolicy: {
+                tier: 'local_safe',
+                runtimeKind: 'gemma4_text',
+                eligible: true,
+                reviewed: true,
+                allowOffline: true,
+                requiresTauri: true,
+                reason: 'local_safe_text_skill',
+                warnings: [],
+                derivedFrom: ['frontmatter'],
+                signals: {
+                  requiresNetwork: false,
+                  requiresBrowser: false,
+                  maxRuntimeSeconds: null,
+                  maxInputMb: null,
+                  sandboxProfileSlug: null,
+                },
+                localScriptManifest: null,
+              },
+            },
+          ],
+        },
+        isLoading: false,
+      });
+
+      render(
+        <SkillSelector
+          open={true}
+          onClose={mockOnClose}
+          onSelect={mockOnSelect}
+        />
+      );
+
+      expect(screen.getByText('Local Safe')).toBeInTheDocument();
     });
   });
 

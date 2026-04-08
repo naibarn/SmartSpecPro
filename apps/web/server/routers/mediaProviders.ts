@@ -6,11 +6,11 @@ import { eq, asc, desc, sql } from "drizzle-orm";
 import { encrypt, decrypt } from "../services/crypto";
 import {
   assertPublicSafeHttpUrl,
+  getWaveSpeedProviderAvailableModels,
   normalizeMediaProviderName,
   normalizePersistedMediaProviderBaseUrl,
   normalizeWaveSpeedBaseUrl,
   WAVESPEED_LAUNCH_MODEL_ID,
-  WAVESPEED_LAUNCH_MODEL_NAME,
   WAVESPEED_PROVIDER,
 } from "../services/mediaProviderUtils";
 
@@ -112,18 +112,11 @@ export const PROVIDER_TEMPLATES = [
   {
     providerName: WAVESPEED_PROVIDER,
     displayName: "WaveSpeedAI",
-    description: "WaveSpeed media-generation provider for cinematic text-to-video and image-guided video generation",
+    description: "WaveSpeed media-generation provider for cinematic and ByteDance Seedance 2.0 text-to-video / image-to-video generation",
     providerType: "multimodal" as const,
     baseUrl: "https://api.wavespeed.ai/api/v3",
     defaultModel: WAVESPEED_LAUNCH_MODEL_ID,
-    availableModels: [
-      {
-        id: WAVESPEED_LAUNCH_MODEL_ID,
-        name: WAVESPEED_LAUNCH_MODEL_NAME,
-        type: "video" as const,
-        description: "Cinematic async video generation with optional image guidance and native audio",
-      },
-    ],
+    availableModels: getWaveSpeedProviderAvailableModels(),
   },
   {
     providerName: "uvoice",

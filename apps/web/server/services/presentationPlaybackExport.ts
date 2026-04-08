@@ -33,6 +33,7 @@ import type { DrizzleDB } from "../db";
 import { ENV } from "../_core/env";
 import { signBearerToken } from "../_core/tokens";
 import { storagePresignGet } from "../storage";
+import { getCachedAppRuntimeConfig } from "./appRuntimeConfig";
 import {
   createExportRecord,
   updateExportRecord,
@@ -182,8 +183,10 @@ function nextExportId(): number {
 }
 
 function resolvePythonBackendBaseUrl(): string {
+  const runtimeConfig = getCachedAppRuntimeConfig();
   const candidate =
-    ENV.pythonBackendUrl?.trim()
+    runtimeConfig.pythonBackendUrl?.trim()
+    || ENV.pythonBackendUrl?.trim()
     || DEFAULT_PYTHON_BACKEND_URL;
   return candidate.replace(/\/+$/, "");
 }
@@ -394,13 +397,17 @@ function resolveRenderDimensions(input: BuildRenderSpecInput): { width: number; 
   }
 
   if (hasExplicitWidth && hasExplicitHeight) {
+    const width = input.width;
+    const height = input.height;
     if (
-      !Number.isFinite(input.width)
-      || !Number.isFinite(input.height)
-      || input.width <= 0
-      || input.height <= 0
-      || input.width > PRESENTATION_EXPORT_MAX_WIDTH
-      || input.height > PRESENTATION_EXPORT_MAX_HEIGHT
+      typeof width !== "number"
+      || typeof height !== "number"
+      || !Number.isFinite(width)
+      || !Number.isFinite(height)
+      || width <= 0
+      || height <= 0
+      || width > PRESENTATION_EXPORT_MAX_WIDTH
+      || height > PRESENTATION_EXPORT_MAX_HEIGHT
     ) {
       throw new PresentationServiceError(
         PRESENTATION_ERROR_CODE.VALIDATION_FAILED,
@@ -408,13 +415,13 @@ function resolveRenderDimensions(input: BuildRenderSpecInput): { width: number; 
         {
           maxWidth: PRESENTATION_EXPORT_MAX_WIDTH,
           maxHeight: PRESENTATION_EXPORT_MAX_HEIGHT,
-          width: input.width,
-          height: input.height,
+          width,
+          height,
         },
       );
     }
 
-    return { width: input.width, height: input.height };
+    return { width, height };
   }
 
   // Prefer deck canvas size from the first slide (ordered) when explicit size is not provided.

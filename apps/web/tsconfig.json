@@ -7,7 +7,8 @@
     "drizzle/**/*",
     "skills/**/*",
     "vite.config.ts",
-    "../../packages/ui/src/**/*"
+    "../../packages/ui/src/**/*",
+    "../../packages/local-ai-core/src/**/*"
   ],
   "exclude": ["node_modules", "build", "dist", "**/*.test.ts", "**/*.test.tsx", "**/__tests__/**"],
   "compilerOptions": {
@@ -29,7 +30,8 @@
       "@shared/*": ["./shared/*"],
       "@db/*": ["./drizzle/*"],
       "@server/*": ["./server/*"],
-      "@smartspec/ui/src/*": ["../../packages/ui/src/*"]
+      "@smartspec/ui/src/*": ["../../packages/ui/src/*"],
+      "@smartspec/local-ai-core": ["../../packages/local-ai-core/src/index.ts"]
     }
   }
 }

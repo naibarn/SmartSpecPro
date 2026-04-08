@@ -82,9 +82,12 @@ describe("OpenAPI Spec", () => {
     expect((spec.paths as any)["/v1/responses"]?.post).toBeDefined();
     expect((spec.paths as any)["/v1/models"]?.get).toBeDefined();
     expect((spec.paths as any)["/v1/credits"]?.get).toBeDefined();
+    expect((spec.paths as any)["/v1/mcp"]?.post).toBeDefined();
+    expect((spec.paths as any)["/v1/mcp/catalog"]?.get).toBeDefined();
     expect((spec.paths as any)["/v1/knowledge/library/search"]?.post).toBeDefined();
     expect((spec.paths as any)["/v1/knowledge/library/upload"]?.post).toBeDefined();
     expect((spec.paths as any)["/v1/knowledge/rag/search"]?.post).toBeDefined();
+    expect((spec.paths as any)["/v1/knowledge/rag/ingest"]?.post).toBeDefined();
     expect((spec.paths as any)["/v1/embeddings"]).toBeUndefined();
   });
 
@@ -164,8 +167,9 @@ describe("MCP Manifest", () => {
         name: "SmartSpecPro",
         url: "https://smartaihub.app/v1/mcp",
         auth: { type: "bearer" },
-        capabilities: { tools: true },
+        capabilities: { tools: true, prompts: false, resources: false },
         docs: "https://smartaihub.app/v1/docs",
+        catalog: "https://smartaihub.app/v1/mcp/catalog",
       });
     });
     const res = await request(app).get("/.well-known/mcp.json");
@@ -191,5 +195,9 @@ describe("MCP Manifest", () => {
 
   it("docs field is 'https://smartaihub.app/v1/docs'", () => {
     expect(manifest.docs).toBe("https://smartaihub.app/v1/docs");
+  });
+
+  it("catalog field points to the MCP catalog endpoint", () => {
+    expect(manifest.catalog).toBe("https://smartaihub.app/v1/mcp/catalog");
   });
 });

@@ -21,14 +21,12 @@ import { runPlanner, recordStepAttempt } from "./taskPlannerMiddleware";
 import { buildAgencyTaskMetadata } from "./agencyEscalation";
 import { stripSecrets } from "./webhookTriggerService";
 import { auditLogger } from "./auditLogger";
-import { ENV } from "../_core/env";
+import { getAppRuntimeConfig, getPreferredInternalToken } from "./appRuntimeConfig";
 
 // ── Constants ────────────────────────────────────────────────────────────
 
 const QUEUE_NAME = "webhook-dispatch";
 const MAX_ATTEMPTS = 4;
-const PYTHON_BACKEND_URL = (ENV.pythonBackendUrl || "http://localhost:8000").replace(/\/+$/, "");
-const GATEWAY_TOKEN = ENV.webGatewayToken;
 
 // ── Job interface ─────────────────────────────────────────────────────────
 
@@ -119,13 +117,15 @@ export async function processWebhookDispatch(job: Job<WebhookDispatchJob>): Prom
     });
 
   } else if (targetType === "workflow" && targetWorkflowId) {
+    const runtime = await getAppRuntimeConfig();
+    const gatewayToken = await getPreferredInternalToken();
     const response = await fetch(
-      `${PYTHON_BACKEND_URL}/api/v1/workflows/internal/${targetWorkflowId}/webhook-trigger`,
+      `${runtime.pythonBackendUrl}/api/v1/workflows/internal/${targetWorkflowId}/webhook-trigger`,
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${GATEWAY_TOKEN}`,
+          "Authorization": `Bearer ${gatewayToken}`,
         },
         body: JSON.stringify({
           input_data: payload,

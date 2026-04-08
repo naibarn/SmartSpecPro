@@ -92,6 +92,7 @@ MODEL_METADATA: Dict[str, Dict[str, Any]] = {
         "description": "Google's video generation model",
         "supports_durations": [5, 10, 15],
         "supports_aspect_ratios": ["16:9", "9:16", "1:1"],
+        "max_prompt_length": 5000,
     },
     VideoModel.SORA_2.value: {
         "type": "video",

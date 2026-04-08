@@ -30,6 +30,7 @@ WAVESPEED_DEFAULT_SUBMIT_ENDPOINT = "/wavespeed-ai/cinematic-video-generator"
 WAVESPEED_DEFAULT_RESULT_ENDPOINT_TEMPLATE = "/predictions/{requestId}/result"
 WAVESPEED_LAUNCH_MODEL_ID = "wavespeed-ai/cinematic-video-generator"
 WAVESPEED_ALLOWED_ASPECT_RATIOS = frozenset({"16:9", "9:16", "4:3", "3:4"})
+WAVESPEED_SEEDANCE_ALLOWED_ASPECT_RATIOS = frozenset({"16:9", "9:16", "4:3", "3:4", "1:1", "21:9"})
 WAVESPEED_ALLOWED_DURATIONS = frozenset({5, 10, 15})
 WAVESPEED_MAX_REFERENCE_IMAGES = 4
 WAVESPEED_POLL_INITIAL_SECONDS = 3
@@ -41,6 +42,20 @@ WAVESPEED_PRICING_TIERS = {
     "10s": 1600,
     "15s": 2400,
 }
+WAVESPEED_SEEDANCE_STANDARD_PRICING_TIERS = {
+    "5s": 900,
+    "10s": 1800,
+    "15s": 2700,
+}
+WAVESPEED_SEEDANCE_FAST_PRICING_TIERS = {
+    "5s": 600,
+    "10s": 1200,
+    "15s": 1800,
+}
+WAVESPEED_SEEDANCE_2_FAST_TEXT_TO_VIDEO_MODEL_ID = "bytedance/seedance-2.0-fast/text-to-video"
+WAVESPEED_SEEDANCE_2_FAST_IMAGE_TO_VIDEO_MODEL_ID = "bytedance/seedance-2.0-fast/image-to-video"
+WAVESPEED_SEEDANCE_2_TEXT_TO_VIDEO_MODEL_ID = "bytedance/seedance-2.0/text-to-video"
+WAVESPEED_SEEDANCE_2_IMAGE_TO_VIDEO_MODEL_ID = "bytedance/seedance-2.0/image-to-video"
 
 
 class WaveSpeedError(ValueError):
@@ -61,6 +76,75 @@ class WaveSpeedRetryablePollingError(RuntimeError):
     def __init__(self, message: str, retry_after_seconds: Optional[int] = None) -> None:
         super().__init__(message)
         self.retry_after_seconds = retry_after_seconds
+
+
+@dataclass(frozen=True, slots=True)
+class WaveSpeedModelSpec:
+    model_id: str
+    submit_endpoint: str
+    generate_type: str
+    allowed_aspect_ratios: frozenset[str]
+    allowed_durations: frozenset[int]
+    max_reference_images: int
+    reference_images_required: bool
+    pricing_tiers: dict[str, int]
+
+
+WAVESPEED_MODEL_SPECS: dict[str, WaveSpeedModelSpec] = {
+    WAVESPEED_LAUNCH_MODEL_ID: WaveSpeedModelSpec(
+        model_id=WAVESPEED_LAUNCH_MODEL_ID,
+        submit_endpoint=WAVESPEED_DEFAULT_SUBMIT_ENDPOINT,
+        generate_type="text-to-video",
+        allowed_aspect_ratios=WAVESPEED_ALLOWED_ASPECT_RATIOS,
+        allowed_durations=WAVESPEED_ALLOWED_DURATIONS,
+        max_reference_images=WAVESPEED_MAX_REFERENCE_IMAGES,
+        reference_images_required=False,
+        pricing_tiers=dict(WAVESPEED_PRICING_TIERS),
+    ),
+    WAVESPEED_SEEDANCE_2_TEXT_TO_VIDEO_MODEL_ID: WaveSpeedModelSpec(
+        model_id=WAVESPEED_SEEDANCE_2_TEXT_TO_VIDEO_MODEL_ID,
+        submit_endpoint="/bytedance/seedance-2.0/text-to-video",
+        generate_type="text-to-video",
+        allowed_aspect_ratios=WAVESPEED_SEEDANCE_ALLOWED_ASPECT_RATIOS,
+        allowed_durations=WAVESPEED_ALLOWED_DURATIONS,
+        max_reference_images=WAVESPEED_MAX_REFERENCE_IMAGES,
+        reference_images_required=False,
+        pricing_tiers=dict(WAVESPEED_SEEDANCE_STANDARD_PRICING_TIERS),
+    ),
+    WAVESPEED_SEEDANCE_2_IMAGE_TO_VIDEO_MODEL_ID: WaveSpeedModelSpec(
+        model_id=WAVESPEED_SEEDANCE_2_IMAGE_TO_VIDEO_MODEL_ID,
+        submit_endpoint="/bytedance/seedance-2.0/image-to-video",
+        generate_type="image-to-video",
+        allowed_aspect_ratios=WAVESPEED_SEEDANCE_ALLOWED_ASPECT_RATIOS,
+        allowed_durations=WAVESPEED_ALLOWED_DURATIONS,
+        max_reference_images=WAVESPEED_MAX_REFERENCE_IMAGES,
+        reference_images_required=True,
+        pricing_tiers=dict(WAVESPEED_SEEDANCE_STANDARD_PRICING_TIERS),
+    ),
+    WAVESPEED_SEEDANCE_2_FAST_TEXT_TO_VIDEO_MODEL_ID: WaveSpeedModelSpec(
+        model_id=WAVESPEED_SEEDANCE_2_FAST_TEXT_TO_VIDEO_MODEL_ID,
+        submit_endpoint="/bytedance/seedance-2.0-fast/text-to-video",
+        generate_type="text-to-video",
+        allowed_aspect_ratios=WAVESPEED_SEEDANCE_ALLOWED_ASPECT_RATIOS,
+        allowed_durations=WAVESPEED_ALLOWED_DURATIONS,
+        max_reference_images=WAVESPEED_MAX_REFERENCE_IMAGES,
+        reference_images_required=False,
+        pricing_tiers=dict(WAVESPEED_SEEDANCE_FAST_PRICING_TIERS),
+    ),
+    WAVESPEED_SEEDANCE_2_FAST_IMAGE_TO_VIDEO_MODEL_ID: WaveSpeedModelSpec(
+        model_id=WAVESPEED_SEEDANCE_2_FAST_IMAGE_TO_VIDEO_MODEL_ID,
+        submit_endpoint="/bytedance/seedance-2.0-fast/image-to-video",
+        generate_type="image-to-video",
+        allowed_aspect_ratios=WAVESPEED_SEEDANCE_ALLOWED_ASPECT_RATIOS,
+        allowed_durations=WAVESPEED_ALLOWED_DURATIONS,
+        max_reference_images=WAVESPEED_MAX_REFERENCE_IMAGES,
+        reference_images_required=True,
+        pricing_tiers=dict(WAVESPEED_SEEDANCE_FAST_PRICING_TIERS),
+    ),
+}
+WAVESPEED_ENDPOINT_MODEL_SPECS = {
+    spec.submit_endpoint: spec for spec in WAVESPEED_MODEL_SPECS.values()
+}
 
 
 @dataclass(slots=True)
@@ -85,6 +169,37 @@ def _decode_path_for_validation(value: str, label: str) -> str:
             break
         decoded = next_value
     return decoded
+
+
+def _normalize_model_lookup_key(value: Optional[str]) -> str:
+    return str(value or "").strip().lower()
+
+
+def _get_wavespeed_model_spec(
+    provider_model_id: Optional[str],
+    submit_endpoint: Optional[str],
+) -> WaveSpeedModelSpec:
+    normalized_model_id = _normalize_model_lookup_key(provider_model_id)
+    if normalized_model_id and normalized_model_id in WAVESPEED_MODEL_SPECS:
+        return WAVESPEED_MODEL_SPECS[normalized_model_id]
+
+    normalized_endpoint = str(submit_endpoint or "").strip()
+    if normalized_endpoint:
+        normalized_endpoint = normalize_relative_media_endpoint_path(normalized_endpoint)
+        matched = WAVESPEED_ENDPOINT_MODEL_SPECS.get(normalized_endpoint)
+        if matched is not None:
+            return matched
+
+    inferred = f"{normalized_model_id} {normalized_endpoint}".lower()
+    if "seedance-2.0-fast" in inferred and "image-to-video" in inferred:
+        return WAVESPEED_MODEL_SPECS[WAVESPEED_SEEDANCE_2_FAST_IMAGE_TO_VIDEO_MODEL_ID]
+    if "seedance-2.0-fast" in inferred and "text-to-video" in inferred:
+        return WAVESPEED_MODEL_SPECS[WAVESPEED_SEEDANCE_2_FAST_TEXT_TO_VIDEO_MODEL_ID]
+    if "seedance-2.0" in inferred and "image-to-video" in inferred:
+        return WAVESPEED_MODEL_SPECS[WAVESPEED_SEEDANCE_2_IMAGE_TO_VIDEO_MODEL_ID]
+    if "seedance-2.0" in inferred and "text-to-video" in inferred:
+        return WAVESPEED_MODEL_SPECS[WAVESPEED_SEEDANCE_2_TEXT_TO_VIDEO_MODEL_ID]
+    return WAVESPEED_MODEL_SPECS[WAVESPEED_LAUNCH_MODEL_ID]
 
 
 def _assert_public_https_url(value: str, label: str) -> None:
@@ -337,6 +452,7 @@ class WaveSpeedMediaProvider:
     POLL_MAX_SECONDS = WAVESPEED_POLL_MAX_SECONDS
     POLL_TIMEOUT_SECONDS = WAVESPEED_POLL_TIMEOUT_SECONDS
     PRICING_TIERS = WAVESPEED_PRICING_TIERS
+    MODEL_SPECS = WAVESPEED_MODEL_SPECS
 
     def __init__(
         self,
@@ -348,20 +464,47 @@ class WaveSpeedMediaProvider:
         provider_model_id: Optional[str] = None,
     ) -> None:
         self.base_url = normalize_wavespeed_base_url(base_url)
+        self.model_spec = self.get_model_spec(
+            provider_model_id=provider_model_id,
+            submit_endpoint=submit_endpoint,
+        )
         self.submit_endpoint = normalize_relative_media_endpoint_path(
-            submit_endpoint or self.DEFAULT_SUBMIT_ENDPOINT,
+            submit_endpoint or self.model_spec.submit_endpoint,
         )
         self.result_endpoint_template = normalize_relative_media_endpoint_path(
             result_endpoint_template or self.DEFAULT_RESULT_ENDPOINT_TEMPLATE,
             allow_request_id_placeholder=True,
         )
-        self.provider_model_id = str(provider_model_id or self.LAUNCH_MODEL_ID).strip() or self.LAUNCH_MODEL_ID
+        self.provider_model_id = str(provider_model_id or self.model_spec.model_id).strip() or self.model_spec.model_id
         self._headers = {
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
             "Accept": "application/json",
         }
         self.client = httpx.AsyncClient(timeout=httpx.Timeout(60.0, connect=10.0))
+
+    @classmethod
+    def get_model_spec(
+        cls,
+        *,
+        provider_model_id: Optional[str] = None,
+        submit_endpoint: Optional[str] = None,
+    ) -> WaveSpeedModelSpec:
+        return _get_wavespeed_model_spec(provider_model_id, submit_endpoint)
+
+    @classmethod
+    def get_pricing_tiers(
+        cls,
+        *,
+        provider_model_id: Optional[str] = None,
+        submit_endpoint: Optional[str] = None,
+    ) -> dict[str, int]:
+        return dict(
+            cls.get_model_spec(
+                provider_model_id=provider_model_id,
+                submit_endpoint=submit_endpoint,
+            ).pricing_tiers
+        )
 
     @staticmethod
     def resolve_submit_endpoint(api_config: Optional[dict[str, Any]]) -> str:
@@ -423,19 +566,33 @@ class WaveSpeedMediaProvider:
         reference_image_urls: Optional[list[str]],
         aspect_ratio: str,
         duration: int,
+        resolution: Optional[str] = None,
+        provider_model_id: Optional[str] = None,
+        submit_endpoint: Optional[str] = None,
     ) -> None:
+        model_spec = cls.get_model_spec(
+            provider_model_id=provider_model_id,
+            submit_endpoint=submit_endpoint,
+        )
+
         if not isinstance(prompt, str) or not prompt.strip():
             raise WaveSpeedError("WaveSpeed prompt is required")
-        if reference_image_urls and len(reference_image_urls) > cls.MAX_REFERENCE_IMAGES:
-            raise WaveSpeedError(f"WaveSpeed supports at most {cls.MAX_REFERENCE_IMAGES} reference images")
-        if aspect_ratio not in cls.ALLOWED_ASPECT_RATIOS:
+        if model_spec.reference_images_required and not reference_image_urls:
+            raise WaveSpeedError("WaveSpeed image-to-video models require at least one reference image")
+        if reference_image_urls and len(reference_image_urls) > model_spec.max_reference_images:
             raise WaveSpeedError(
-                f"WaveSpeed aspect_ratio must be one of {sorted(cls.ALLOWED_ASPECT_RATIOS)}"
+                f"WaveSpeed supports at most {model_spec.max_reference_images} reference images"
             )
-        if duration not in cls.ALLOWED_DURATIONS:
+        if aspect_ratio not in model_spec.allowed_aspect_ratios:
             raise WaveSpeedError(
-                f"WaveSpeed duration must be one of {sorted(cls.ALLOWED_DURATIONS)}"
+                f"WaveSpeed aspect_ratio must be one of {sorted(model_spec.allowed_aspect_ratios)}"
             )
+        if duration not in model_spec.allowed_durations:
+            raise WaveSpeedError(
+                f"WaveSpeed duration must be one of {sorted(model_spec.allowed_durations)}"
+            )
+        if resolution is not None and not str(resolution).strip():
+            raise WaveSpeedError("WaveSpeed resolution may not be empty")
 
     @classmethod
     def build_request_summary(
@@ -446,9 +603,16 @@ class WaveSpeedMediaProvider:
         aspect_ratio: str,
         duration: int,
         resolution: Optional[str] = None,
+        provider_model_id: Optional[str] = None,
+        submit_endpoint: Optional[str] = None,
     ) -> dict[str, Any]:
+        model_spec = cls.get_model_spec(
+            provider_model_id=provider_model_id,
+            submit_endpoint=submit_endpoint,
+        )
         summary: dict[str, Any] = {
             "prompt_length": len(prompt or ""),
+            "generate_type": model_spec.generate_type,
             "has_reference_images": bool(reference_image_urls),
             "reference_image_count": len(reference_image_urls or []),
             "aspect_ratio": aspect_ratio,
@@ -467,20 +631,32 @@ class WaveSpeedMediaProvider:
         reference_image_urls: Optional[list[str]],
         aspect_ratio: str,
         duration: int,
+        resolution: Optional[str] = None,
+        provider_model_id: Optional[str] = None,
+        submit_endpoint: Optional[str] = None,
     ) -> dict[str, Any]:
+        model_spec = cls.get_model_spec(
+            provider_model_id=provider_model_id,
+            submit_endpoint=submit_endpoint,
+        )
         cls.validate_request(
             prompt=prompt,
             reference_image_urls=reference_image_urls,
             aspect_ratio=aspect_ratio,
             duration=duration,
+            resolution=resolution,
+            provider_model_id=model_spec.model_id,
+            submit_endpoint=model_spec.submit_endpoint,
         )
         payload: dict[str, Any] = {
             "prompt": prompt.strip(),
             "aspect_ratio": aspect_ratio,
             "duration": duration,
         }
+        if resolution and str(resolution).strip():
+            payload["resolution"] = str(resolution).strip()
         if reference_image_urls:
-            payload["images"] = reference_image_urls[: cls.MAX_REFERENCE_IMAGES]
+            payload["images"] = reference_image_urls[: model_spec.max_reference_images]
         return payload
 
     def build_submission_record(
@@ -508,6 +684,8 @@ class WaveSpeedMediaProvider:
                 aspect_ratio=aspect_ratio,
                 duration=duration,
                 resolution=resolution,
+                provider_model_id=self.provider_model_id,
+                submit_endpoint=self.submit_endpoint,
             ),
         }
 
@@ -518,12 +696,16 @@ class WaveSpeedMediaProvider:
         reference_image_urls: Optional[list[str]],
         aspect_ratio: str,
         duration: int,
+        resolution: Optional[str] = None,
     ) -> dict[str, Any]:
         payload = self.build_submit_payload(
             prompt=prompt,
             reference_image_urls=reference_image_urls,
             aspect_ratio=aspect_ratio,
             duration=duration,
+            resolution=resolution,
+            provider_model_id=self.provider_model_id,
+            submit_endpoint=self.submit_endpoint,
         )
 
         response = await self.client.post(

@@ -1,0 +1,93 @@
+{
+  "skill_name": "cinematic-video-createprompt",
+  "skill_version": "5.7.0",
+  "response_format": "structured_json",
+  "language": "en",
+  "target_model_profile": "generic_video_models",
+  "generation_mode": "text_to_video",
+  "delivery_mode": "multi_shot_single_video",
+  "multi_video_strategy": "not_applicable",
+  "video_count": 1,
+  "dialogue_language": {
+    "requested": "auto",
+    "resolved": "none",
+    "source": "no_dialogue",
+    "rationale": "The silent visual preset and near-silent audio mode indicate that the scene should carry meaning without speech."
+  },
+  "storytelling_resolution": {
+    "preset_requested": "silent_visual_story",
+    "preset_resolved": "silent_visual_story",
+    "multi_shot_timing_mode_requested": "untimed_or_auto",
+    "multi_shot_timing_mode_resolved": "untimed_or_auto",
+    "audio_mode_resolved": "near_silent",
+    "dialogue_density_resolved": "none",
+    "story_shape_resolved": "transformation",
+    "ending_style_resolved": "emotional_release",
+    "performance_style_resolved": "naturalistic",
+    "imagination_level_resolved": "dreamlike",
+    "scene_arc_resolved": "mini_story",
+    "continuity_mode_resolved": "invisible_cut_flow",
+    "motion_realism_resolved": "restrained_naturalism",
+    "background_mode": "normal_background",
+    "narrative_intent": "Create one wordless emotional release where the woman, lantern, and dawn pier atmosphere evolve gently toward a quiet visual letting-go."
+  },
+  "continuity_package": {
+    "continuity_notes": "Keep the same woman in the yellow raincoat, the same paper lantern, the same misty riverside pier, and the same soft dawn atmosphere from opening walk to final release.",
+    "continuity_notes_origin": "auto_generated",
+    "reference_notes": "Use the written brief itself as the reference bible: preserve the yellow raincoat silhouette, solitary body language, softly glowing lantern, damp wooden pier, pale river haze, and calm emotionally restrained movement.",
+    "reference_notes_origin": "auto_generated"
+  },
+  "final_prompt": "At blue dawn on a misty riverside pier, a solitary woman in a yellow raincoat walks slowly toward the far edge while holding a softly glowing paper lantern, with the first frame immediately establishing pale fog, still water, and quiet emotional distance. Let the scene unfold without spoken dialogue as her movement stays restrained and natural, the camera following her with gentle invisible-cut flow until she pauses, breathes, and releases the lantern into the morning haze, turning the clip from quiet anticipation into a soft visual release. Keep the atmosphere lyrical but readable, the mist layered, the lantern glow delicate, and the ending tender rather than dramatic.\n\nContinuity Notes:\nKeep the same woman in the yellow raincoat, the same paper lantern, the same misty riverside pier, and the same soft dawn atmosphere from opening walk to final release.\n\nReference Notes:\nUse the written brief itself as the reference bible: preserve the yellow raincoat silhouette, solitary body language, softly glowing lantern, damp wooden pier, pale river haze, and calm emotionally restrained movement.",
+  "short_prompt": "A wordless dawn scene where a woman in a yellow raincoat walks to the end of a misty pier and releases a glowing paper lantern into the river haze.",
+  "prompt_sequence": [
+    {
+      "prompt_id": "Prompt 1",
+      "video_number": 1,
+      "duration_seconds": 10,
+      "prompt_role": "Single Video Prompt",
+      "prompt": "At blue dawn on a misty riverside pier, a solitary woman in a yellow raincoat walks slowly toward the far edge while holding a softly glowing paper lantern, with the first frame immediately establishing pale fog, still water, and quiet emotional distance. Let the scene unfold without spoken dialogue as her movement stays restrained and natural, the camera following her with gentle invisible-cut flow until she pauses, breathes, and releases the lantern into the morning haze, turning the clip from quiet anticipation into a soft visual release. Keep the atmosphere lyrical but readable, the mist layered, the lantern glow delicate, and the ending tender rather than dramatic.",
+      "continuity_notes": "Keep the same woman in the yellow raincoat, the same paper lantern, the same misty riverside pier, and the same soft dawn atmosphere from opening walk to final release.",
+      "reference_notes": "Use the written brief itself as the reference bible: preserve the yellow raincoat silhouette, solitary body language, softly glowing lantern, damp wooden pier, pale river haze, and calm emotionally restrained movement."
+    }
+  ],
+  "cinematic_plan": {
+    "opening_frame": "A lone woman in a yellow raincoat enters a misty dawn pier with a glowing lantern in hand.",
+    "subject_focus": "The emotional anchor is the woman's restrained movement and the lantern she carries toward release.",
+    "staging_blocking": "She walks away from camera, pauses at the pier edge, and releases the lantern with one small controlled gesture.",
+    "motion_arc": "The clip moves from quiet approach, to suspended stillness, to a gentle visual letting-go.",
+    "camera_language": "Use graceful, unobtrusive camera movement that feels observant and continuous rather than showy.",
+    "focus_depth": "Keep the woman and lantern readable while mist and water soften the surrounding depth.",
+    "atmosphere_time": "Blue dawn fog, cool water air, and a hushed early-morning stillness define the scene.",
+    "production_design": "Damp wooden boards, pale river haze, and a minimal dawn-world palette support the intimate visual story.",
+    "lighting_color": "Soft cool dawn light with a gentle lantern glow and muted reflective surfaces.",
+    "continuity_pacing": "A slow, wordless mini-story with smooth visual progression and a restrained emotional payoff.",
+    "continuity_guardrails": "Preserve raincoat color, lantern design, pier geometry, mist density, and understated emotional performance."
+  },
+  "reference_usage": {
+    "reference_input_mode": "brief_only",
+    "reference_image_count": 0,
+    "assignments": [],
+    "reference_video_count": 0,
+    "video_assignments": [],
+    "reference_audio_count": 0,
+    "audio_assignments": [],
+    "first_frame_present": false,
+    "last_frame_present": false,
+    "applied_focus": [
+      "written brief as character reference bible",
+      "lantern continuity",
+      "pier atmosphere continuity"
+    ],
+    "notes": "Reference stability comes from the written character, prop, and environment anchors in the brief."
+  },
+  "validation": {
+    "is_valid": true,
+    "warnings": [],
+    "safety_notes": [
+      "Kept the scene original, non-graphic, and broadly safe for general media models."
+    ],
+    "suggestions": [
+      "If the lantern design must match a specific look later, add one prop reference image."
+    ]
+  }
+}

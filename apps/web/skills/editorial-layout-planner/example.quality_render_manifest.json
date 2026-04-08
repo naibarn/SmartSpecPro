@@ -1,0 +1,962 @@
+{
+  "output_format": "render_manifest_json",
+  "document_meta": {
+    "title": "แนวทางการฝึกทารกหกเดือนให้นอนยาวและงดมื้อดึกอย่างเข้าใจ",
+    "language": "th",
+    "page_count": 6,
+    "output_kind": "render_manifest_json"
+  },
+  "canvas": {
+    "width_px": 1080,
+    "height_px": 1350,
+    "background": {
+      "color": "#F4EEE7",
+      "texture": "soft_warm_paper"
+    },
+    "safe_area": {
+      "x": 48,
+      "y": 48,
+      "w": 984,
+      "h": 1254
+    }
+  },
+  "render_safety_applied": {
+    "min_body_font_px": 28,
+    "min_headline_font_px": 52,
+    "max_chars_per_line": 28,
+    "strict_no_overlap": true,
+    "fit_strategy": "balanced"
+  },
+  "page_fill_rules_applied": {
+    "target_occupancy_min": 0.78,
+    "target_occupancy_max": 0.92,
+    "whitespace_ceiling": 0.18
+  },
+  "pages": [
+    {
+      "page_number": 1,
+      "page_role": "cover",
+      "layout_pattern": "hero_text_stack",
+      "background_style": "warm_minimal_editorial",
+      "initial_layout_pattern": "hero_image_top_with_text_panel",
+      "template_switched": true,
+      "text_blocks": [
+        {
+          "id": "p1_title",
+          "role": "title",
+          "content": "แนวทางการฝึกทารกหกเดือนให้นอนยาวและงดมื้อดึกอย่างเข้าใจ",
+          "bounds": {
+            "x": 72,
+            "y": 64,
+            "w": 936,
+            "h": 138
+          },
+          "typography": {
+            "font_size_px": 62,
+            "line_height": 1.1,
+            "weight": 700,
+            "align": "left",
+            "min_font_size_px": 50,
+            "max_font_size_px": 64,
+            "max_lines": 3,
+            "max_chars_per_line": 24
+          },
+          "fitting": {
+            "overflow_strategy": "repaginate",
+            "allow_wrap": true,
+            "allow_continue_to_next_page": true,
+            "strict_no_overlap": true
+          },
+          "computed_metrics": {
+            "estimated_line_count": 3,
+            "fit_status": "fit",
+            "overflow_detected": false
+          }
+        },
+        {
+          "id": "p1_intro",
+          "role": "body",
+          "content": "การฝึกทารกให้นอนยาวและหยุดมื้อดึกเป็นหนึ่งในขั้นตอนสำคัญที่ช่วยให้พ่อแม่สร้างนิสัยการนอนที่ดีให้ลูกน้อยได้",
+          "bounds": {
+            "x": 108,
+            "y": 872,
+            "w": 864,
+            "h": 144
+          },
+          "typography": {
+            "font_size_px": 31,
+            "line_height": 1.42,
+            "weight": 400,
+            "align": "left",
+            "min_font_size_px": 28,
+            "max_font_size_px": 34,
+            "max_lines": 4,
+            "max_chars_per_line": 27
+          },
+          "fitting": {
+            "overflow_strategy": "continue_to_next_page",
+            "allow_wrap": true,
+            "allow_continue_to_next_page": true,
+            "strict_no_overlap": true
+          },
+          "computed_metrics": {
+            "estimated_line_count": 3,
+            "fit_status": "fit",
+            "overflow_detected": false
+          }
+        }
+      ],
+      "image_blocks": [
+        {
+          "id": "p1_image",
+          "source_type": "image_prompt",
+          "reference": "Cover hero",
+          "bounds": {
+            "x": 88,
+            "y": 244,
+            "w": 904,
+            "h": 576
+          },
+          "crop_mode": "cover",
+          "focal_point": "face",
+          "corner_radius_px": 0
+        }
+      ],
+      "overflow_strategy": "none",
+      "page_quality": {
+        "occupancy_ratio": 0.81,
+        "whitespace_ratio": 0.19,
+        "balance_score": 89,
+        "readability_score": 93,
+        "fitness_score": 90,
+        "underfill_detected": false,
+        "overfill_detected": false,
+        "switch_reason": "Expanded hero image slightly and tightened text panel stack",
+        "recommended_alternative_layouts": [
+          "top_full_width",
+          "full_bleed_soft_with_text_panel"
+        ]
+      },
+      "page_validation": [
+        {
+          "check": "safe_area_respected",
+          "status": "pass",
+          "message": "All blocks inside safe area."
+        },
+        {
+          "check": "text_overflow",
+          "status": "pass",
+          "message": "No overflow detected."
+        },
+        {
+          "check": "page_fill",
+          "status": "pass",
+          "message": "Cover occupancy is within relaxed cover target."
+        }
+      ],
+      "render_notes": "Cover allowed slightly higher breathing room than content pages."
+    },
+    {
+      "page_number": 2,
+      "page_role": "content",
+      "layout_pattern": "split_text_card_image",
+      "background_style": "warm_minimal_editorial",
+      "initial_layout_pattern": "text_left_image_right_60_40",
+      "template_switched": true,
+      "text_blocks": [
+        {
+          "id": "p2_title",
+          "role": "title",
+          "content": "เริ่มจากความเข้าใจพื้นฐานของลูกน้อย",
+          "bounds": {
+            "x": 72,
+            "y": 92,
+            "w": 630,
+            "h": 94
+          },
+          "typography": {
+            "font_size_px": 54,
+            "line_height": 1.1,
+            "weight": 700,
+            "align": "left",
+            "min_font_size_px": 50,
+            "max_font_size_px": 64,
+            "max_lines": 2,
+            "max_chars_per_line": 24
+          },
+          "fitting": {
+            "overflow_strategy": "repaginate",
+            "allow_wrap": true,
+            "allow_continue_to_next_page": true,
+            "strict_no_overlap": true
+          },
+          "computed_metrics": {
+            "estimated_line_count": 2,
+            "fit_status": "fit",
+            "overflow_detected": false
+          }
+        },
+        {
+          "id": "p2_body",
+          "role": "body",
+          "content": "1. เข้าใจความต้องการของทารก\\nทารกในวัยหกเดือนยังต้องการการดูแลอย่างใกล้ชิด...\\n\\n2. สร้างสภาพแวดล้อมที่เหมาะสม\\nสภาพแวดล้อมการนอนมีความสำคัญมาก...",
+          "bounds": {
+            "x": 72,
+            "y": 220,
+            "w": 612,
+            "h": 730
+          },
+          "typography": {
+            "font_size_px": 30,
+            "line_height": 1.42,
+            "weight": 400,
+            "align": "left",
+            "min_font_size_px": 28,
+            "max_font_size_px": 34,
+            "max_lines": 14,
+            "max_chars_per_line": 27
+          },
+          "fitting": {
+            "overflow_strategy": "continue_to_next_page",
+            "allow_wrap": true,
+            "allow_continue_to_next_page": true,
+            "strict_no_overlap": true
+          },
+          "computed_metrics": {
+            "estimated_line_count": 13,
+            "fit_status": "fit",
+            "overflow_detected": false
+          }
+        },
+        {
+          "id": "p2_callout",
+          "role": "callout",
+          "content": "Key idea: เข้าใจความต้องการพื้นฐานของลูกก่อน แล้วค่อยจัดสิ่งแวดล้อมให้เหมาะกับการนอน",
+          "bounds": {
+            "x": 72,
+            "y": 980,
+            "w": 612,
+            "h": 162
+          },
+          "typography": {
+            "font_size_px": 28,
+            "line_height": 1.42,
+            "weight": 500,
+            "align": "center",
+            "min_font_size_px": 28,
+            "max_font_size_px": 34,
+            "max_lines": 5,
+            "max_chars_per_line": 27
+          },
+          "fitting": {
+            "overflow_strategy": "repaginate",
+            "allow_wrap": true,
+            "allow_continue_to_next_page": true,
+            "strict_no_overlap": true
+          },
+          "computed_metrics": {
+            "estimated_line_count": 4,
+            "fit_status": "fit",
+            "overflow_detected": false
+          }
+        }
+      ],
+      "image_blocks": [
+        {
+          "id": "p2_image",
+          "source_type": "image_prompt",
+          "reference": "Understanding baby needs",
+          "bounds": {
+            "x": 718,
+            "y": 208,
+            "w": 278,
+            "h": 864
+          },
+          "crop_mode": "cover",
+          "focal_point": "face",
+          "corner_radius_px": 20
+        }
+      ],
+      "overflow_strategy": "none",
+      "page_quality": {
+        "occupancy_ratio": 0.86,
+        "whitespace_ratio": 0.14,
+        "balance_score": 92,
+        "readability_score": 91,
+        "fitness_score": 92,
+        "underfill_detected": false,
+        "overfill_detected": false,
+        "switch_reason": "Expanded image vertically and injected callout to remove empty lower half",
+        "recommended_alternative_layouts": [
+          "right_column",
+          "text_panel_with_bottom_strip"
+        ]
+      },
+      "page_validation": [
+        {
+          "check": "safe_area_respected",
+          "status": "pass",
+          "message": "All blocks within safe area."
+        },
+        {
+          "check": "text_overflow",
+          "status": "pass",
+          "message": "Body and callout fit."
+        },
+        {
+          "check": "page_fill",
+          "status": "pass",
+          "message": "Occupancy above target minimum with good lower-half usage."
+        }
+      ],
+      "render_notes": "This page was optimized from an underfilled split layout into a fuller text-card + tall image composition."
+    },
+    {
+      "page_number": 3,
+      "page_role": "content",
+      "layout_pattern": "split_text_card_image",
+      "background_style": "warm_minimal_editorial",
+      "initial_layout_pattern": "image_left_text_right_40_60",
+      "template_switched": true,
+      "text_blocks": [
+        {
+          "id": "p3_title",
+          "role": "title",
+          "content": "จัดจังหวะการนอนให้สม่ำเสมอ",
+          "bounds": {
+            "x": 438,
+            "y": 92,
+            "w": 570,
+            "h": 94
+          },
+          "typography": {
+            "font_size_px": 54,
+            "line_height": 1.1,
+            "weight": 700,
+            "align": "left",
+            "min_font_size_px": 50,
+            "max_font_size_px": 64,
+            "max_lines": 2,
+            "max_chars_per_line": 24
+          },
+          "fitting": {
+            "overflow_strategy": "repaginate",
+            "allow_wrap": true,
+            "allow_continue_to_next_page": true,
+            "strict_no_overlap": true
+          },
+          "computed_metrics": {
+            "estimated_line_count": 2,
+            "fit_status": "fit",
+            "overflow_detected": false
+          }
+        },
+        {
+          "id": "p3_body",
+          "role": "body",
+          "content": "3. กำหนดเวลานอนที่สม่ำเสมอ\\nการกำหนดเวลานอนที่ชัดเจนและสม่ำเสมอช่วยให้ทารกรู้สึกปลอดภัย...\\n\\n4. จัดการกับการหลับกลางวัน\\nการนอนหลับในช่วงกลางวันส่งผลต่อการนอนตอนกลางคืน...",
+          "bounds": {
+            "x": 438,
+            "y": 220,
+            "w": 570,
+            "h": 742
+          },
+          "typography": {
+            "font_size_px": 30,
+            "line_height": 1.42,
+            "weight": 400,
+            "align": "left",
+            "min_font_size_px": 28,
+            "max_font_size_px": 34,
+            "max_lines": 14,
+            "max_chars_per_line": 27
+          },
+          "fitting": {
+            "overflow_strategy": "continue_to_next_page",
+            "allow_wrap": true,
+            "allow_continue_to_next_page": true,
+            "strict_no_overlap": true
+          },
+          "computed_metrics": {
+            "estimated_line_count": 13,
+            "fit_status": "fit",
+            "overflow_detected": false
+          }
+        },
+        {
+          "id": "p3_key",
+          "role": "keypoints",
+          "content": "Key points\\n• สร้างกิจวัตรก่อนนอน\\n• จัดช่วงหลับกลางวันไม่ให้กระทบกลางคืน",
+          "bounds": {
+            "x": 438,
+            "y": 990,
+            "w": 570,
+            "h": 144
+          },
+          "typography": {
+            "font_size_px": 28,
+            "line_height": 1.42,
+            "weight": 500,
+            "align": "left",
+            "min_font_size_px": 28,
+            "max_font_size_px": 34,
+            "max_lines": 4,
+            "max_chars_per_line": 27
+          },
+          "fitting": {
+            "overflow_strategy": "repaginate",
+            "allow_wrap": true,
+            "allow_continue_to_next_page": true,
+            "strict_no_overlap": true
+          },
+          "computed_metrics": {
+            "estimated_line_count": 3,
+            "fit_status": "fit",
+            "overflow_detected": false
+          }
+        }
+      ],
+      "image_blocks": [
+        {
+          "id": "p3_image",
+          "source_type": "image_prompt",
+          "reference": "Ideal sleep environment",
+          "bounds": {
+            "x": 72,
+            "y": 208,
+            "w": 320,
+            "h": 870
+          },
+          "crop_mode": "cover",
+          "focal_point": "subject",
+          "corner_radius_px": 20
+        }
+      ],
+      "overflow_strategy": "none",
+      "page_quality": {
+        "occupancy_ratio": 0.85,
+        "whitespace_ratio": 0.15,
+        "balance_score": 90,
+        "readability_score": 91,
+        "fitness_score": 91,
+        "underfill_detected": false,
+        "overfill_detected": false,
+        "switch_reason": "Image enlarged and lower text support box added to balance page weight",
+        "recommended_alternative_layouts": [
+          "left_column",
+          "image_band_with_callout"
+        ]
+      },
+      "page_validation": [
+        {
+          "check": "safe_area_respected",
+          "status": "pass",
+          "message": "All blocks inside safe area."
+        },
+        {
+          "check": "text_overflow",
+          "status": "pass",
+          "message": "All text fits."
+        },
+        {
+          "check": "page_fill",
+          "status": "pass",
+          "message": "Lower half no longer underutilized."
+        }
+      ],
+      "render_notes": "Mirrors page 2 density without repeating the exact same visual rhythm."
+    },
+    {
+      "page_number": 4,
+      "page_role": "content",
+      "layout_pattern": "text_panel_with_bottom_strip",
+      "background_style": "warm_minimal_editorial",
+      "initial_layout_pattern": "text_top_image_bottom_split",
+      "template_switched": false,
+      "text_blocks": [
+        {
+          "id": "p4_title",
+          "role": "title",
+          "content": "รับมือการตื่นกลางดึกอย่างอ่อนโยน",
+          "bounds": {
+            "x": 72,
+            "y": 88,
+            "w": 936,
+            "h": 96
+          },
+          "typography": {
+            "font_size_px": 54,
+            "line_height": 1.1,
+            "weight": 700,
+            "align": "left",
+            "min_font_size_px": 50,
+            "max_font_size_px": 64,
+            "max_lines": 2,
+            "max_chars_per_line": 24
+          },
+          "fitting": {
+            "overflow_strategy": "repaginate",
+            "allow_wrap": true,
+            "allow_continue_to_next_page": true,
+            "strict_no_overlap": true
+          },
+          "computed_metrics": {
+            "estimated_line_count": 2,
+            "fit_status": "fit",
+            "overflow_detected": false
+          }
+        },
+        {
+          "id": "p4_body",
+          "role": "body",
+          "content": "5. ใช้เทคนิคการปลอบประโลม\\nเมื่อทารกตื่นกลางดึก เทคนิคการปลอบประโลมอย่างง่ายสามารถช่วยให้กลับไปนอนได้อีกครั้ง...\\n\\n6. อาหารก่อนนอน\\nควรให้ทารกได้รับการให้นมและพลังงานในระหว่างวันอย่างเพียงพอ...",
+          "bounds": {
+            "x": 72,
+            "y": 216,
+            "w": 936,
+            "h": 340
+          },
+          "typography": {
+            "font_size_px": 30,
+            "line_height": 1.42,
+            "weight": 400,
+            "align": "left",
+            "min_font_size_px": 28,
+            "max_font_size_px": 34,
+            "max_lines": 10,
+            "max_chars_per_line": 27
+          },
+          "fitting": {
+            "overflow_strategy": "continue_to_next_page",
+            "allow_wrap": true,
+            "allow_continue_to_next_page": true,
+            "strict_no_overlap": true
+          },
+          "computed_metrics": {
+            "estimated_line_count": 9,
+            "fit_status": "fit",
+            "overflow_detected": false
+          }
+        },
+        {
+          "id": "p4_callout",
+          "role": "callout",
+          "content": "แนวคิดสำคัญ: ปลอบให้กลับไปนอนก่อนพึ่งมื้อดึกทุกครั้ง",
+          "bounds": {
+            "x": 72,
+            "y": 584,
+            "w": 936,
+            "h": 88
+          },
+          "typography": {
+            "font_size_px": 28,
+            "line_height": 1.42,
+            "weight": 500,
+            "align": "center",
+            "min_font_size_px": 28,
+            "max_font_size_px": 34,
+            "max_lines": 2,
+            "max_chars_per_line": 27
+          },
+          "fitting": {
+            "overflow_strategy": "repaginate",
+            "allow_wrap": true,
+            "allow_continue_to_next_page": true,
+            "strict_no_overlap": true
+          },
+          "computed_metrics": {
+            "estimated_line_count": 1,
+            "fit_status": "fit",
+            "overflow_detected": false
+          }
+        }
+      ],
+      "image_blocks": [
+        {
+          "id": "p4_image",
+          "source_type": "image_prompt",
+          "reference": "Bedtime routine",
+          "bounds": {
+            "x": 72,
+            "y": 728,
+            "w": 936,
+            "h": 388
+          },
+          "crop_mode": "cover",
+          "focal_point": "subject",
+          "corner_radius_px": 18
+        }
+      ],
+      "overflow_strategy": "none",
+      "page_quality": {
+        "occupancy_ratio": 0.84,
+        "whitespace_ratio": 0.16,
+        "balance_score": 91,
+        "readability_score": 92,
+        "fitness_score": 91,
+        "underfill_detected": false,
+        "overfill_detected": false,
+        "switch_reason": "",
+        "recommended_alternative_layouts": [
+          "bottom_full_width",
+          "image_band_with_callout"
+        ]
+      },
+      "page_validation": [
+        {
+          "check": "safe_area_respected",
+          "status": "pass",
+          "message": "All blocks fit within safe area."
+        },
+        {
+          "check": "text_overflow",
+          "status": "pass",
+          "message": "No overflow risk."
+        },
+        {
+          "check": "page_fill",
+          "status": "pass",
+          "message": "Text panel and bottom strip achieve balanced occupancy."
+        }
+      ],
+      "render_notes": "Text-first page remains practical while the callout fills the gap between body and image."
+    },
+    {
+      "page_number": 5,
+      "page_role": "content",
+      "layout_pattern": "image_band_with_callout",
+      "background_style": "warm_minimal_editorial",
+      "initial_layout_pattern": "floating_top_right",
+      "template_switched": true,
+      "text_blocks": [
+        {
+          "id": "p5_title",
+          "role": "title",
+          "content": "ค่อย ๆ ลดการพึ่งมื้อดึกอย่างเหมาะสม",
+          "bounds": {
+            "x": 72,
+            "y": 86,
+            "w": 936,
+            "h": 96
+          },
+          "typography": {
+            "font_size_px": 52,
+            "line_height": 1.1,
+            "weight": 700,
+            "align": "left",
+            "min_font_size_px": 50,
+            "max_font_size_px": 64,
+            "max_lines": 2,
+            "max_chars_per_line": 24
+          },
+          "fitting": {
+            "overflow_strategy": "repaginate",
+            "allow_wrap": true,
+            "allow_continue_to_next_page": true,
+            "strict_no_overlap": true
+          },
+          "computed_metrics": {
+            "estimated_line_count": 2,
+            "fit_status": "fit",
+            "overflow_detected": false
+          }
+        },
+        {
+          "id": "p5_body",
+          "role": "body",
+          "content": "7. สงวนมื้อดึก\\nในกรณีที่ทารกตื่นกลางดึกควรสงวนการให้นมหรืออาหารในเวลากลางคืน เว้นแต่จะจำเป็นจริง ๆ ...\\n\\n8. สถานการณ์ที่น่าพิจารณา\\nหากลูกน้อยยังคงตื่นบ่อย ๆ หรือมีปัญหาในการนอนหลับ ควรปรึกษาแพทย์หรือผู้เชี่ยวชาญ...",
+          "bounds": {
+            "x": 72,
+            "y": 612,
+            "w": 936,
+            "h": 360
+          },
+          "typography": {
+            "font_size_px": 29,
+            "line_height": 1.42,
+            "weight": 400,
+            "align": "left",
+            "min_font_size_px": 28,
+            "max_font_size_px": 34,
+            "max_lines": 11,
+            "max_chars_per_line": 27
+          },
+          "fitting": {
+            "overflow_strategy": "continue_to_next_page",
+            "allow_wrap": true,
+            "allow_continue_to_next_page": true,
+            "strict_no_overlap": true
+          },
+          "computed_metrics": {
+            "estimated_line_count": 10,
+            "fit_status": "fit",
+            "overflow_detected": false
+          }
+        },
+        {
+          "id": "p5_callout",
+          "role": "callout",
+          "content": "ควรปรึกษาผู้เชี่ยวชาญเมื่อการตื่นกลางดึกยังเกิดบ่อยหรือกระทบการนอนต่อเนื่อง",
+          "bounds": {
+            "x": 72,
+            "y": 998,
+            "w": 936,
+            "h": 116
+          },
+          "typography": {
+            "font_size_px": 28,
+            "line_height": 1.42,
+            "weight": 500,
+            "align": "center",
+            "min_font_size_px": 28,
+            "max_font_size_px": 34,
+            "max_lines": 3,
+            "max_chars_per_line": 27
+          },
+          "fitting": {
+            "overflow_strategy": "repaginate",
+            "allow_wrap": true,
+            "allow_continue_to_next_page": true,
+            "strict_no_overlap": true
+          },
+          "computed_metrics": {
+            "estimated_line_count": 2,
+            "fit_status": "fit",
+            "overflow_detected": false
+          }
+        }
+      ],
+      "image_blocks": [
+        {
+          "id": "p5_image",
+          "source_type": "generated_suggestion",
+          "reference": "Consulting a professional",
+          "bounds": {
+            "x": 72,
+            "y": 206,
+            "w": 936,
+            "h": 334
+          },
+          "crop_mode": "cover",
+          "focal_point": "subject",
+          "corner_radius_px": 18
+        }
+      ],
+      "overflow_strategy": "reduce_image_area",
+      "page_quality": {
+        "occupancy_ratio": 0.88,
+        "whitespace_ratio": 0.12,
+        "balance_score": 93,
+        "readability_score": 88,
+        "fitness_score": 90,
+        "underfill_detected": false,
+        "overfill_detected": false,
+        "switch_reason": "Floating image was too small and top-heavy; switched to full-width image band and supporting callout",
+        "recommended_alternative_layouts": [
+          "text_panel_with_bottom_strip",
+          "top_full_width"
+        ]
+      },
+      "page_validation": [
+        {
+          "check": "safe_area_respected",
+          "status": "pass",
+          "message": "All blocks inside safe area."
+        },
+        {
+          "check": "text_overflow",
+          "status": "warn",
+          "message": "Body is tight but within safe font floor; reduce image area before shrinking type if copy expands."
+        },
+        {
+          "check": "page_fill",
+          "status": "pass",
+          "message": "Occupancy and balance improved substantially after template switch."
+        }
+      ],
+      "render_notes": "This page demonstrates auto-template-switch and post-layout optimization."
+    },
+    {
+      "page_number": 6,
+      "page_role": "closing",
+      "layout_pattern": "text_panel_with_bottom_strip",
+      "background_style": "warm_minimal_editorial",
+      "initial_layout_pattern": "summary_text_with_bottom_image_strip",
+      "template_switched": false,
+      "text_blocks": [
+        {
+          "id": "p6_title",
+          "role": "title",
+          "content": "สิ่งสำคัญคือความเข้าใจ ความสม่ำเสมอ และความอดทน",
+          "bounds": {
+            "x": 72,
+            "y": 84,
+            "w": 936,
+            "h": 96
+          },
+          "typography": {
+            "font_size_px": 50,
+            "line_height": 1.1,
+            "weight": 700,
+            "align": "left",
+            "min_font_size_px": 50,
+            "max_font_size_px": 64,
+            "max_lines": 2,
+            "max_chars_per_line": 24
+          },
+          "fitting": {
+            "overflow_strategy": "repaginate",
+            "allow_wrap": true,
+            "allow_continue_to_next_page": true,
+            "strict_no_overlap": true
+          },
+          "computed_metrics": {
+            "estimated_line_count": 2,
+            "fit_status": "fit",
+            "overflow_detected": false
+          }
+        },
+        {
+          "id": "p6_body",
+          "role": "body",
+          "content": "การฝึกทารกให้นอนยาวและงดมื้อดึกต้องใช้ความเข้าใจและความอดทนจากพ่อแม่ อย่างไรก็ตาม ด้วยการสร้างนิสัยที่เหมาะสม พ่อแม่สามารถช่วยให้ทารกมีการนอนหลับที่มีคุณภาพได้",
+          "bounds": {
+            "x": 72,
+            "y": 214,
+            "w": 936,
+            "h": 150
+          },
+          "typography": {
+            "font_size_px": 30,
+            "line_height": 1.42,
+            "weight": 400,
+            "align": "left",
+            "min_font_size_px": 28,
+            "max_font_size_px": 34,
+            "max_lines": 4,
+            "max_chars_per_line": 27
+          },
+          "fitting": {
+            "overflow_strategy": "continue_to_next_page",
+            "allow_wrap": true,
+            "allow_continue_to_next_page": true,
+            "strict_no_overlap": true
+          },
+          "computed_metrics": {
+            "estimated_line_count": 3,
+            "fit_status": "fit",
+            "overflow_detected": false
+          }
+        },
+        {
+          "id": "p6_keypoints",
+          "role": "keypoints",
+          "content": "• เริ่มจากเข้าใจความต้องการของลูก\\n• สร้างสภาพแวดล้อมและกิจวัตรที่สม่ำเสมอ\\n• ลดการพึ่งมื้อดึกอย่างค่อยเป็นค่อยไป\\n• หากมีปัญหาต่อเนื่อง ควรปรึกษาผู้เชี่ยวชาญ",
+          "bounds": {
+            "x": 96,
+            "y": 404,
+            "w": 888,
+            "h": 220
+          },
+          "typography": {
+            "font_size_px": 31,
+            "line_height": 1.42,
+            "weight": 500,
+            "align": "left",
+            "min_font_size_px": 28,
+            "max_font_size_px": 34,
+            "max_lines": 6,
+            "max_chars_per_line": 27
+          },
+          "fitting": {
+            "overflow_strategy": "repaginate",
+            "allow_wrap": true,
+            "allow_continue_to_next_page": true,
+            "strict_no_overlap": true
+          },
+          "computed_metrics": {
+            "estimated_line_count": 5,
+            "fit_status": "fit",
+            "overflow_detected": false
+          }
+        }
+      ],
+      "image_blocks": [
+        {
+          "id": "p6_image",
+          "source_type": "generated_suggestion",
+          "reference": "Closing summary",
+          "bounds": {
+            "x": 72,
+            "y": 804,
+            "w": 936,
+            "h": 336
+          },
+          "crop_mode": "cover",
+          "focal_point": "subject",
+          "corner_radius_px": 18
+        }
+      ],
+      "overflow_strategy": "none",
+      "page_quality": {
+        "occupancy_ratio": 0.8,
+        "whitespace_ratio": 0.2,
+        "balance_score": 88,
+        "readability_score": 92,
+        "fitness_score": 89,
+        "underfill_detected": false,
+        "overfill_detected": false,
+        "switch_reason": "",
+        "recommended_alternative_layouts": [
+          "bottom_full_width",
+          "hero_text_stack"
+        ]
+      },
+      "page_validation": [
+        {
+          "check": "safe_area_respected",
+          "status": "pass",
+          "message": "All blocks fit within safe margins."
+        },
+        {
+          "check": "text_overflow",
+          "status": "pass",
+          "message": "Summary and keypoints fit."
+        },
+        {
+          "check": "page_fill",
+          "status": "pass",
+          "message": "Closing page within relaxed closing-page whitespace rule."
+        }
+      ],
+      "render_notes": "Closing page is slightly airier by design, but still within closing-page fill tolerance."
+    }
+  ],
+  "global_validation": [
+    {
+      "check": "no_consecutive_duplicate_layouts",
+      "status": "pass",
+      "message": "No consecutive pages use the same layout pattern."
+    },
+    {
+      "check": "minimum_font_sizes_respected",
+      "status": "pass",
+      "message": "No block falls below configured font floors."
+    },
+    {
+      "check": "no_unintended_overlap",
+      "status": "pass",
+      "message": "No collisions detected."
+    },
+    {
+      "check": "underfill_detection",
+      "status": "pass",
+      "message": "Content pages that underfilled were optimized or switched."
+    },
+    {
+      "check": "page_fill_targets",
+      "status": "pass",
+      "message": "All content pages meet occupancy targets after optimization."
+    }
+  ]
+}

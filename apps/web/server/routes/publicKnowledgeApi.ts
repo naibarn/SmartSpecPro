@@ -10,6 +10,8 @@ import {
 } from "../services/creditService";
 import {
   searchLibraryItems,
+  getLibraryItemById,
+  safeEnqueueLibraryIndexJob,
   uploadLibraryFile,
   type LibraryActor,
 } from "../services/libraryService";
@@ -47,6 +49,23 @@ const RagSearchBodySchema = z.object({
   limit: z.number().int().min(1).max(20).optional(),
   offset: z.number().int().min(0).optional(),
 });
+
+const RagIngestBodySchema = z.discriminatedUnion("sourceType", [
+  z.object({
+    sourceType: z.literal("upload"),
+    fileName: z.string().min(1).max(255),
+    fileType: z.string().min(1).max(255),
+    fileBase64: z.string().min(1).max(68_000_000),
+    title: z.string().min(1).max(255).optional(),
+    visibility: z.enum(["private", "team", "public"]).optional(),
+    parentId: z.number().int().positive().nullable().optional(),
+    metadata: z.record(z.string(), z.unknown()).optional(),
+  }),
+  z.object({
+    sourceType: z.literal("library_item"),
+    libraryItemId: z.number().int().positive(),
+  }),
+]);
 
 function toOwnerActor(auth: Record<string, unknown>): LibraryActor {
   return {
@@ -229,6 +248,138 @@ export function createPublicKnowledgeRouter(): Router {
       res.json({
         ...result,
         credits_used: billing.creditsUsed,
+      });
+    } catch (error) {
+      handleKnowledgeRouteError(res, error);
+    }
+  });
+
+  router.post("/rag/ingest", requireScopes("rag:ingest"), async (req, res) => {
+    try {
+      const parsed = RagIngestBodySchema.parse(req.body ?? {});
+      const auth = req.auth! as Record<string, unknown>;
+      const idempotencyKey = req.get("Idempotency-Key") || undefined;
+      const ownerActor = toOwnerActor(auth);
+
+      await assertDelegatedWorkerGrant(auth as any, {
+        grantType: "rag_scope",
+        requireScopeFlag: "ingest",
+      });
+
+      if (parsed.sourceType === "upload") {
+        await assertDelegatedWorkerGrant(auth as any, {
+          grantType: "library_upload_policy",
+        });
+
+        const { sourceType: _sourceType, ...uploadInput } = parsed;
+
+        const fileBase64 = parsed.fileBase64.includes(",")
+          ? parsed.fileBase64.split(",", 2)[1]
+          : parsed.fileBase64;
+        const estimatedSizeBytes = Buffer.byteLength(fileBase64, "base64");
+        const estimatedBilling = await calculateLibraryUploadCreditCost(parsed.fileType, estimatedSizeBytes);
+
+        const result = await runWithDelegatedWorkerExecution({
+          auth: auth as any,
+          actionClass: "compute",
+          estimatedCredits: estimatedBilling.totalCredits,
+          idempotencyKey,
+        }, async () =>
+          uploadLibraryFile(
+            {
+              ...uploadInput,
+              metadata: {
+                ...(uploadInput.metadata ?? {}),
+                ownerUserId: Number(auth.ownerUserId ?? auth.userId),
+                requestedKnowledgeTarget: "rag",
+              },
+              billingMetadata: buildDelegatedWorkerOriginMetadata(auth as any, "rag.ingest_upload", {
+                endpoint: "/v1/knowledge/rag/ingest",
+                sourceType: "upload",
+                estimatedCredits: estimatedBilling.totalCredits,
+                fileName: uploadInput.fileName,
+                fileType: uploadInput.fileType,
+                estimatedSizeBytes,
+              }),
+            },
+            ownerActor,
+          ));
+
+        let remaining = 0;
+        try {
+          const balance = await getCreditBalance(Number(auth.userId));
+          remaining = balance?.credits ?? 0;
+        } catch {
+          // Non-fatal for upload response.
+        }
+
+        res.setHeader("X-Credits-Used", String(result.billing.creditsCharged));
+        res.setHeader("X-Credits-Remaining", String(remaining));
+        res.status(201).json({
+          source_type: "upload",
+          ingest_target: "rag",
+          item: result.item,
+          storageKey: result.storageKey,
+          indexJob: result.indexJob,
+          billing: result.billing,
+        });
+        return;
+      }
+
+      const item = await getLibraryItemById(parsed.libraryItemId, ownerActor);
+      if (!item) {
+        throw new WorkerDelegationError(
+          "library_item_not_found",
+          404,
+          `Library item ${parsed.libraryItemId} was not found`,
+          "not_found_error",
+        );
+      }
+      if (Number(item.ownerUserId) !== Number(auth.ownerUserId ?? auth.userId)) {
+        throw new WorkerDelegationError(
+          "owner_scope_required",
+          403,
+          "RAG ingest is limited to library items owned by this personal worker",
+        );
+      }
+
+      const result = await runWithDelegatedWorkerExecution({
+        auth: auth as any,
+        actionClass: "compute",
+        estimatedCredits: 0,
+        idempotencyKey,
+      }, async () => {
+        const indexJob = await safeEnqueueLibraryIndexJob({
+          libraryItemId: item.id,
+          tenantId: String(auth.tenantId),
+          jobType: "update_index",
+          operation: "index",
+          source: "public_api.rag_ingest",
+          sourceMetadata: buildDelegatedWorkerOriginMetadata(auth as any, "rag.ingest_existing_item", {
+            endpoint: "/v1/knowledge/rag/ingest",
+            sourceType: "library_item",
+            libraryItemId: item.id,
+          }),
+        });
+        return { item, indexJob };
+      });
+
+      let remaining = 0;
+      try {
+        const balance = await getCreditBalance(Number(auth.userId));
+        remaining = balance?.credits ?? 0;
+      } catch {
+        // Non-fatal for response.
+      }
+
+      res.setHeader("X-Credits-Used", "0");
+      res.setHeader("X-Credits-Remaining", String(remaining));
+      res.status(202).json({
+        source_type: "library_item",
+        ingest_target: "rag",
+        item: result.item,
+        indexJob: result.indexJob,
+        credits_used: 0,
       });
     } catch (error) {
       handleKnowledgeRouteError(res, error);

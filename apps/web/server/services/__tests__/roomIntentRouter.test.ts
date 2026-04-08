@@ -9,6 +9,14 @@ vi.mock("../skillIntentClassifier", () => ({
   classifyIntent: vi.fn(),
 }));
 
+vi.mock("../featureFlags", () => ({
+  getTenantFeatureFlag: vi.fn().mockResolvedValue(false),
+}));
+
+vi.mock("../routingTelemetry", () => ({
+  recordRoutingDecision: vi.fn(),
+}));
+
 import { detectSkill } from "../skillDetector";
 import { classifyIntent } from "../skillIntentClassifier";
 import { routeRoomIntent } from "../roomIntentRouter";
@@ -77,6 +85,44 @@ describe("roomIntentRouter", () => {
     expect(mockClassifyIntent).not.toHaveBeenCalled();
   });
 
+  it("keeps conversational model-selection questions on the chat path", async () => {
+    const decision = await routeRoomIntent({
+      message: "ใช้ llm model อะไร",
+      origin: "human_user",
+      context: "room_message",
+      userId: 1,
+      tenantId: "tenant-1",
+      roomId: "room-1",
+    });
+
+    expect(decision).toMatchObject({
+      route: "chat",
+      reason: "model_selection_query",
+      source: "rules",
+    });
+    expect(mockDetectSkill).not.toHaveBeenCalled();
+    expect(mockClassifyIntent).not.toHaveBeenCalled();
+  });
+
+  it("keeps model suitability questions on chat even when they mention creating images", async () => {
+    const decision = await routeRoomIntent({
+      message: "qwen 3.6 llm model เหมาะกับงานสร้างภาพกราฟิกหรือไม่",
+      origin: "human_user",
+      context: "room_message",
+      userId: 1,
+      tenantId: "tenant-1",
+      roomId: "room-1",
+    });
+
+    expect(decision).toMatchObject({
+      route: "chat",
+      reason: "model_selection_query",
+      source: "rules",
+    });
+    expect(mockDetectSkill).not.toHaveBeenCalled();
+    expect(mockClassifyIntent).not.toHaveBeenCalled();
+  });
+
   it("escalates complex human tasks to agency", async () => {
     mockDetectSkill.mockResolvedValue({
       detected: false,
@@ -113,6 +159,31 @@ describe("roomIntentRouter", () => {
     expect(decision.route).toBe("agency");
     expect(decision.agencyEscalation).toBe(true);
     expect(mockDetectSkill).toHaveBeenCalledTimes(1);
+    expect(mockClassifyIntent).toHaveBeenCalledTimes(1);
+  });
+
+  it("falls back to chat when classifier throws in legacy routing", async () => {
+    mockDetectSkill.mockResolvedValue({
+      detected: false,
+      skill: null,
+      confidence: 0,
+      matchedTrigger: null,
+      suggestedPrompt: null,
+      patternChainTo: null,
+    });
+    mockClassifyIntent.mockRejectedValue(new Error("LLM request failed"));
+
+    const decision = await routeRoomIntent({
+      message: "ช่วยวางแผนคอนเทนต์สินค้าเดือนนี้",
+      origin: "human_user",
+      context: "room_message",
+      userId: 1,
+      tenantId: "tenant-1",
+      roomId: "room-1",
+    });
+
+    expect(decision.route).toBe("chat");
+    expect(decision.source).toBe("fallback");
     expect(mockClassifyIntent).toHaveBeenCalledTimes(1);
   });
 });

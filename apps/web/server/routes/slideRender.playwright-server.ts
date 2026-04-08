@@ -103,7 +103,7 @@ async function main() {
     "5m",
   );
 
-  app.use("/internal", createSlideRenderRouter({ getDb: async () => makeFakeDb() }));
+  app.use("/internal", createSlideRenderRouter({ getDb: makeFakeDb }));
 
   const server = app.listen(0, "127.0.0.1", () => {
     const address = server.address();

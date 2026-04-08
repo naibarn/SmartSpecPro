@@ -116,6 +116,7 @@ async def test_generate_video_async_persists_sanitized_wavespeed_submission_and_
     assert task.result_data["submission"]["used_sync_mode"] is False
     assert task.result_data["submission"]["request_summary"] == {
         "prompt_length": len("Sensitive prompt text"),
+        "generate_type": "text-to-video",
         "has_reference_images": True,
         "reference_image_count": 2,
         "aspect_ratio": "16:9",
@@ -138,6 +139,7 @@ def _make_wavespeed_submission() -> dict:
         "used_sync_mode": False,
         "request_summary": {
             "prompt_length": 20,
+            "generate_type": "text-to-video",
             "has_reference_images": True,
             "reference_image_count": 2,
             "aspect_ratio": "16:9",

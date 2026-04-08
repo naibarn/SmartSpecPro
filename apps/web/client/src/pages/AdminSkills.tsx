@@ -70,6 +70,8 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { useToast } from "@/hooks/use-toast";
 import { SkillStudioDialog } from "@/components/skills/SkillStudioDialog";
 import { SkillModelPreviewPanel } from "@/components/chat/settings/SkillModelPreviewPanel";
+import { LocaleToggle } from "@/components/LocaleToggle";
+import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import {
   getAllowedExecutionModesForSkillCategory,
   getMediaModelTypeForSkillCategory,
@@ -507,6 +509,7 @@ export default function AdminSkills() {
   const { user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { t } = useScopedTranslation("admin");
   const utils = trpc.useUtils();
   const zipInputRef = useRef<HTMLInputElement>(null);
 
@@ -607,8 +610,10 @@ export default function AdminSkills() {
   const { data: llmProvidersData } = trpc.llmProviders.list.useQuery();
   const systemDefaultLlmModel = visionModels?.models?.find((model) => model.isDefault) || visionModels?.models?.[0];
   const systemDefaultLlmLabel = systemDefaultLlmModel
-    ? `Auto — skill requirements (fallback: ${systemDefaultLlmModel.id.split("/").pop()})`
-    : "Auto — skill requirements";
+    ? t("admin.skillsPage.modelSelection.autoLabelWithFallback", {
+        model: systemDefaultLlmModel.id.split("/").pop() ?? systemDefaultLlmModel.id,
+      })
+    : t("admin.skillsPage.modelSelection.autoLabel");
 
   // Fetch media models (image/video/audio) for media-generate skills
   const { data: imageModels } = trpc.mediaModels.list.useQuery({ type: "image" });
@@ -1266,6 +1271,8 @@ export default function AdminSkills() {
             supportsThinking: (editingSkill as any)._reqThinking || undefined,
             supportsFunctionTools: (editingSkill as any)._reqFunctionTools || undefined,
             supportsStructuredOutputs: (editingSkill as any)._reqStructuredOutputs || undefined,
+            supportsJsonMode: (editingSkill as any)._reqJsonMode || undefined,
+            supportsStrictToolSchema: (editingSkill as any)._reqStrictToolSchema || undefined,
             supportsWebSearch: (editingSkill as any)._reqWebSearch || undefined,
             supportsCodeExecution: (editingSkill as any)._reqCodeExecution || undefined,
             supportsComputerUse: (editingSkill as any)._reqComputerUse || undefined,
@@ -1325,28 +1332,29 @@ export default function AdminSkills() {
         className="text-gray-600 mb-4"
       >
         <ChevronLeft className="w-5 h-5 mr-1" />
-        Back to Dashboard
+        {t("admin.skillsPage.backToDashboard")}
       </Button>
 
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Skills Management</h1>
+          <h1 className="text-3xl font-bold">{t("admin.skillsPage.title")}</h1>
           <p className="text-muted-foreground">
-            Manage AI agent skills, import from folders or Custom GPTs
+            {t("admin.skillsPage.subtitle")}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <LocaleToggle className="shrink-0" />
           <Button variant="outline" onClick={() => openStudio("create")}>
             <Sparkles className="mr-2 h-4 w-4" />
-            Skill Studio
+            {t("admin.skillsPage.actions.skillStudio")}
           </Button>
           <Button variant="outline" onClick={() => setIsZipDialogOpen(true)}>
             <Upload className="mr-2 h-4 w-4" />
-            Import ZIP
+            {t("admin.skillsPage.actions.importZip")}
           </Button>
           <Button onClick={() => setIsCreateDialogOpen(true)}>
             <Plus className="mr-2 h-4 w-4" />
-            Create Skill
+            {t("admin.skillsPage.actions.createSkill")}
           </Button>
         </div>
       </div>
@@ -1355,15 +1363,15 @@ export default function AdminSkills() {
         <TabsList>
           <TabsTrigger value="skills">
             <Brain className="mr-2 h-4 w-4" />
-            Skills ({skills?.length || 0})
+            {t("admin.skillsPage.tabs.skills", { count: skills?.length || 0 })}
           </TabsTrigger>
           <TabsTrigger value="import">
             <FolderSync className="mr-2 h-4 w-4" />
-            Import Folders
+            {t("admin.skillsPage.tabs.importFolders")}
           </TabsTrigger>
           <TabsTrigger value="proposals">
             <Sparkles className="mr-2 h-4 w-4" />
-            ISC Proposals
+            {t("admin.skillsPage.tabs.iscProposals")}
             {iscProposals?.proposals && iscProposals.proposals.length > 0 && (
               <Badge className="ml-2" variant="secondary">
                 {iscProposals.proposals.length}
@@ -1372,7 +1380,7 @@ export default function AdminSkills() {
           </TabsTrigger>
           <TabsTrigger value="maintenance">
             <ShieldCheck className="mr-2 h-4 w-4" />
-            Maintenance
+            {t("admin.skillsPage.tabs.maintenance")}
             {!!maintenanceRecommendations?.length && (
               <Badge className="ml-2" variant="secondary">
                 {maintenanceRecommendations.length}
@@ -1382,7 +1390,7 @@ export default function AdminSkills() {
           {isAdmin && (
             <TabsTrigger value="pending">
               <Clock className="mr-2 h-4 w-4" />
-              Pending Approval
+              {t("admin.skillsPage.tabs.pendingApproval")}
               {pendingSkills && pendingSkills.length > 0 && (
                 <Badge className="ml-2" variant="destructive">
                   {pendingSkills.length}
@@ -1394,16 +1402,16 @@ export default function AdminSkills() {
 
         <TabsContent value="skills" className="space-y-6">
           {/* Filters */}
-          <DashboardCard title="Search & Filter" leading={<Search className="h-5 w-5 text-slate-500" />}>
+          <DashboardCard title={t("admin.skillsPage.filters.title")} leading={<Search className="h-5 w-5 text-slate-500" />}>
             <div className="space-y-4">
               <div className="grid gap-4 md:grid-cols-4">
                 <div className="space-y-2">
-                  <Label htmlFor="search">Search</Label>
+                  <Label htmlFor="search">{t("admin.skillsPage.filters.searchLabel")}</Label>
                   <div className="relative">
                     <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
                       id="search"
-                      placeholder="Name, description..."
+                      placeholder={t("admin.skillsPage.filters.searchPlaceholder")}
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="pl-8"
@@ -1412,13 +1420,13 @@ export default function AdminSkills() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="category">Category</Label>
+                  <Label htmlFor="category">{t("admin.skillsPage.filters.categoryLabel")}</Label>
                   <Select value={filterCategory} onValueChange={setFilterCategory}>
                     <SelectTrigger>
-                      <SelectValue placeholder="All categories" />
+                      <SelectValue placeholder={t("admin.skillsPage.filters.allCategories")} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All Categories</SelectItem>
+                      <SelectItem value="all">{t("admin.skillsPage.filters.allCategories")}</SelectItem>
                       {categories?.map((cat) => (
                         <SelectItem key={cat.id} value={cat.id}>
                           {cat.name} ({cat.count})
@@ -1429,13 +1437,13 @@ export default function AdminSkills() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Status</Label>
+                  <Label>{t("admin.skillsPage.filters.statusLabel")}</Label>
                   <div className="flex items-center gap-2 pt-2">
                     <Switch
                       checked={showEnabledOnly}
                       onCheckedChange={setShowEnabledOnly}
                     />
-                    <span className="text-sm">Enabled only</span>
+                    <span className="text-sm">{t("admin.skillsPage.filters.enabledOnly")}</span>
                   </div>
                 </div>
 
@@ -1448,7 +1456,7 @@ export default function AdminSkills() {
                       setShowEnabledOnly(false);
                     }}
                   >
-                    Reset Filters
+                    {t("admin.skillsPage.filters.reset")}
                   </Button>
                 </div>
               </div>
@@ -1658,6 +1666,8 @@ export default function AdminSkills() {
                                         _reqThinking: ep.requirements?.supportsThinking ?? false,
                                         _reqFunctionTools: ep.requirements?.supportsFunctionTools ?? false,
                                         _reqStructuredOutputs: ep.requirements?.supportsStructuredOutputs ?? false,
+                                        _reqJsonMode: ep.requirements?.supportsJsonMode ?? false,
+                                        _reqStrictToolSchema: ep.requirements?.supportsStrictToolSchema ?? false,
                                         _reqWebSearch: ep.requirements?.supportsWebSearch ?? false,
                                         _reqCodeExecution: ep.requirements?.supportsCodeExecution ?? false,
                                         _reqComputerUse: ep.requirements?.supportsComputerUse ?? false,
@@ -3646,9 +3656,9 @@ export default function AdminSkills() {
                       }
                     />
                     <div>
-                      <Label className="text-xs font-medium">Web Search Grounding</Label>
+                      <Label className="text-xs font-medium">{t("admin.skillsPage.quality.webSearchGrounding.label")}</Label>
                       <p className="text-[10px] text-muted-foreground">
-                        Enable real-time web search for up-to-date facts and citations.
+                        {t("admin.skillsPage.quality.webSearchGrounding.help")}
                       </p>
                     </div>
                   </div>
@@ -3661,9 +3671,9 @@ export default function AdminSkills() {
                       }
                     />
                     <div>
-                      <Label className="text-xs font-medium">Disclosure Required</Label>
+                      <Label className="text-xs font-medium">{t("admin.skillsPage.quality.disclosureRequired.label")}</Label>
                       <p className="text-[10px] text-muted-foreground">
-                        Require disclosure notice (e.g. sponsored, affiliate, marketing content).
+                        {t("admin.skillsPage.quality.disclosureRequired.help")}
                       </p>
                     </div>
                   </div>
@@ -3674,15 +3684,15 @@ export default function AdminSkills() {
               <div className="space-y-3 rounded-lg border border-purple-200 dark:border-purple-800 bg-purple-50/30 dark:bg-purple-950/20 p-4">
                 <div className="flex items-center gap-2 mb-1">
                   <Zap className="h-4 w-4 text-purple-600" />
-                  <Label className="text-sm font-semibold text-purple-700 dark:text-purple-400">Intelligent Model Selection</Label>
+                  <Label className="text-sm font-semibold text-purple-700 dark:text-purple-400">{t("admin.skillsPage.modelSelection.title")}</Label>
                 </div>
                 <p className="text-xs text-muted-foreground -mt-1">
-                  Define model capability requirements. The system auto-selects the best model matching these requirements at the lowest cost.
+                  {t("admin.skillsPage.modelSelection.description")}
                 </p>
 
                 {/* Execution Mode */}
                 <div className="space-y-1">
-                  <Label className="text-xs font-medium">Selection Mode</Label>
+                  <Label className="text-xs font-medium">{t("admin.skillsPage.modelSelection.selectionModeLabel")}</Label>
                   <Select
                     value={(editingSkill as any)._execMode ?? "auto"}
                     onValueChange={(val) =>
@@ -3693,28 +3703,30 @@ export default function AdminSkills() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="auto">Auto — use requirements if set, else legacy cascade</SelectItem>
-                      <SelectItem value="requirements">Requirements — always match by capabilities</SelectItem>
-                      <SelectItem value="fixed">Fixed — use skill's pinned model only</SelectItem>
-                      <SelectItem value="hybrid">Hybrid — try fixed model first, then requirements</SelectItem>
+                      <SelectItem value="auto">{t("admin.skillsPage.modelSelection.modes.auto")}</SelectItem>
+                      <SelectItem value="requirements">{t("admin.skillsPage.modelSelection.modes.requirements")}</SelectItem>
+                      <SelectItem value="fixed">{t("admin.skillsPage.modelSelection.modes.fixed")}</SelectItem>
+                      <SelectItem value="hybrid">{t("admin.skillsPage.modelSelection.modes.hybrid")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 {/* Capability Requirements */}
                 <div className="space-y-2">
-                  <Label className="text-xs font-medium">Required Model Capabilities</Label>
+                  <Label className="text-xs font-medium">{t("admin.skillsPage.modelSelection.requiredCapabilitiesLabel")}</Label>
                   <div className="grid gap-2 md:grid-cols-2">
                     {([
-                      { key: "_reqWebSearch", label: "Web Search", desc: "Real-time search for facts & citations" },
-                      { key: "_reqThinking", label: "Thinking Mode", desc: "Chain-of-thought reasoning (sends reasoning.effort=high)" },
-                      { key: "_reqStructuredOutputs", label: "Structured Outputs", desc: "JSON schema-constrained responses" },
-                      { key: "_reqFunctionTools", label: "Function Calling", desc: "Tool use & function invocation" },
-                      { key: "_reqVision", label: "Vision", desc: "Image understanding & analysis" },
-                      { key: "_reqCodeExecution", label: "Code Execution", desc: "Run code in sandbox" },
-                      { key: "_reqResponses", label: "Responses API", desc: "OpenAI Responses API support" },
-                      { key: "_reqComputerUse", label: "Computer Use", desc: "Browser/desktop automation" },
-                      { key: "_reqBackground", label: "Background Mode", desc: "Long-running async tasks" },
+                      { key: "_reqWebSearch", label: t("admin.capabilities.webSearch.label"), desc: t("admin.capabilities.webSearch.description") },
+                      { key: "_reqThinking", label: t("admin.capabilities.thinking.label"), desc: t("admin.capabilities.thinking.description") },
+                      { key: "_reqStructuredOutputs", label: t("admin.capabilities.structuredOutputs.label"), desc: t("admin.capabilities.structuredOutputs.description") },
+                      { key: "_reqJsonMode", label: t("admin.capabilities.jsonMode.label"), desc: t("admin.capabilities.jsonMode.description") },
+                      { key: "_reqStrictToolSchema", label: t("admin.capabilities.strictToolSchema.label"), desc: t("admin.capabilities.strictToolSchema.description") },
+                      { key: "_reqFunctionTools", label: t("admin.capabilities.functionTools.label"), desc: t("admin.capabilities.functionTools.description") },
+                      { key: "_reqVision", label: t("admin.capabilities.vision.label"), desc: t("admin.capabilities.vision.description") },
+                      { key: "_reqCodeExecution", label: t("admin.capabilities.codeExecution.label"), desc: t("admin.capabilities.codeExecution.description") },
+                      { key: "_reqResponses", label: t("admin.capabilities.responses.label"), desc: t("admin.capabilities.responses.description") },
+                      { key: "_reqComputerUse", label: t("admin.capabilities.computerUse.label"), desc: t("admin.capabilities.computerUse.description") },
+                      { key: "_reqBackground", label: t("admin.capabilities.background.label"), desc: t("admin.capabilities.background.description") },
                     ] as const).map((cap) => (
                       <div key={cap.key} className="flex items-center gap-2">
                         <Switch
@@ -3736,13 +3748,13 @@ export default function AdminSkills() {
                 {/* Context Length + Policy Toggles */}
                 <div className="grid gap-3 md:grid-cols-2 pt-1">
                   <div className="space-y-1">
-                    <Label className="text-xs font-medium">Min Context Length (tokens)</Label>
+                    <Label className="text-xs font-medium">{t("admin.skillsPage.modelSelection.minContextLengthLabel")}</Label>
                     <Input
                       type="number"
                       min={0}
                       max={2000000}
                       step={1000}
-                      placeholder="Not set"
+                      placeholder={t("admin.skillsPage.modelSelection.minContextLengthPlaceholder")}
                       value={(editingSkill as any)._reqContextLength ?? ""}
                       onChange={(e) =>
                         setEditingSkill({
@@ -3753,7 +3765,7 @@ export default function AdminSkills() {
                       className="h-8 text-xs"
                     />
                     <p className="text-[10px] text-muted-foreground">
-                      Only select models with at least this context window. Leave empty for no limit.
+                      {t("admin.skillsPage.modelSelection.minContextLengthHelp")}
                     </p>
                   </div>
 
@@ -3765,9 +3777,9 @@ export default function AdminSkills() {
                       }
                     />
                     <div>
-                      <Label className="text-xs font-medium">Allow Conversation Override</Label>
+                      <Label className="text-xs font-medium">{t("admin.skillsPage.modelSelection.allowConversationOverride.label")}</Label>
                       <p className="text-[10px] text-muted-foreground">
-                        Let users override with their conversation model when requirements fallback.
+                        {t("admin.skillsPage.modelSelection.allowConversationOverride.help")}
                       </p>
                     </div>
                   </div>
@@ -3780,9 +3792,9 @@ export default function AdminSkills() {
                       }
                     />
                     <div>
-                      <Label className="text-xs font-medium">Allow Free Models</Label>
+                      <Label className="text-xs font-medium">{t("admin.skillsPage.modelSelection.allowFreeModels.label")}</Label>
                       <p className="text-[10px] text-muted-foreground">
-                        Disabled by default so this skill avoids free-tier models in both primary selection and fallback.
+                        {t("admin.skillsPage.modelSelection.allowFreeModels.help")}
                       </p>
                     </div>
                   </div>
@@ -3797,10 +3809,10 @@ export default function AdminSkills() {
               <div className="space-y-3 rounded-lg border border-emerald-200 bg-emerald-50/40 p-4">
                 <div className="flex items-center gap-2">
                   <Users className="h-4 w-4 text-emerald-700" />
-                  <Label className="text-sm font-semibold text-emerald-800">Orchestration & Handoff</Label>
+                  <Label className="text-sm font-semibold text-emerald-800">{t("admin.skillsPage.orchestration.title")}</Label>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Configure whether this skill runs locally only, hands work to other skills, or participates in agency/swarm workflows. This is saved as runtime config and does not change the current input/output contract by itself.
+                  {t("admin.skillsPage.orchestration.description")}
                 </p>
 
                 <div className="grid gap-4 md:grid-cols-2">

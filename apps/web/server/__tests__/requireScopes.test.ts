@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { requireScopes } from "../middleware/requireScopes";
 
 function makeReqRes(authOverrides: Record<string, any> = {}) {
+  const headers: Record<string, string> = {};
   const req = {
     auth: {
       ok: true,
@@ -16,8 +17,12 @@ function makeReqRes(authOverrides: Record<string, any> = {}) {
   } as any;
 
   const res = {
+    setHeader: vi.fn((key: string, value: string) => {
+      headers[key] = value;
+    }),
     status: vi.fn().mockReturnThis(),
     json: vi.fn().mockReturnThis(),
+    headers,
   } as any;
 
   const next = vi.fn();
@@ -89,7 +94,15 @@ describe("requireScopes middleware", () => {
 
   it("returns 401 when no auth is attached", () => {
     const req = {} as any;
-    const res = { status: vi.fn().mockReturnThis(), json: vi.fn().mockReturnThis() } as any;
+    const headers: Record<string, string> = {};
+    const res = {
+      setHeader: vi.fn((key: string, value: string) => {
+        headers[key] = value;
+      }),
+      status: vi.fn().mockReturnThis(),
+      json: vi.fn().mockReturnThis(),
+      headers,
+    } as any;
     const next = vi.fn();
 
     const mw = requireScopes("skills:execute");

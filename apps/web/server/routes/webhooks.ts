@@ -11,11 +11,7 @@ import { eq } from "drizzle-orm";
 import { db } from "../db";
 import { googleDriveSyncState } from "../../drizzle/schema";
 import { auditLogger } from "../services/auditLogger";
-
-import { ENV } from "../_core/env";
-
-const PYTHON_BACKEND_URL = ENV.pythonBackendUrl || "http://localhost:8000";
-const PROXY_TOKEN = process.env.SMARTSPEC_PROXY_TOKEN || "";
+import { getAppRuntimeConfig } from "../services/appRuntimeConfig";
 
 export function createWebhookRouter(): Router {
   const router = Router();
@@ -113,18 +109,18 @@ export function createWebhookRouter(): Router {
 
     // Fire-and-forget: enqueue change processing via Python backend
     try {
-      fetch(`${PYTHON_BACKEND_URL}/api/internal/gdrive/process-changes`, {
+      getAppRuntimeConfig().then((runtime) => fetch(`${runtime.pythonBackendUrl}/api/internal/gdrive/process-changes`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-proxy-token": PROXY_TOKEN,
+          ...(runtime.proxyToken ? { "x-proxy-token": runtime.proxyToken } : {}),
         },
         body: JSON.stringify({
           user_id: syncState.userId,
           tenant_id: syncState.tenantId,
         }),
         signal: AbortSignal.timeout(5000),
-      }).catch((err) => {
+      })).catch((err) => {
         auditLogger.log({
           eventType: "google_drive_webhook",
           userId: syncState.userId,

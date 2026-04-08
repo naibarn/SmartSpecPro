@@ -6,12 +6,19 @@
  */
 
 import type { Response } from "express";
-import { executeWithFallback, type ExecuteResult, type ProviderCandidate } from "./llmRouter";
+import { executeWithFallback } from "./llmRouter";
 import { deductCreditsForModel } from "./creditService";
-import { resolveEnabledLlmModelId } from "./enabledLlmModels";
 import { injectHelpContextMessage } from "./helpContextInjector";
 import type { Message } from "../_core/llm";
-import { runPlanner, recordStepAttempt, type PlannerResult } from "./taskPlannerMiddleware";
+import { runPlanner, recordStepAttempt } from "./taskPlannerMiddleware";
+import {
+  deriveChatSelectionContext,
+  readStoredChatModelSelectionState,
+  resolveChatModelSelection,
+  storedSelectionStateFromResolved,
+} from "./chatModelSelection";
+import { getConversationById, updateConversation } from "./chatService";
+import { getTenantFeatureFlags } from "./tenantFeatureFlagService";
 
 interface HandlerParams {
   model?: string;
@@ -20,15 +27,33 @@ interface HandlerParams {
   tenantId: string;
   conversationId?: number;
   preferredProvider?: number;
+  modelSelection?: unknown;
+  modelSelectionContext?: unknown;
   skillUsed?: string;
   res: Response;
+}
+
+function getSelectionErrorStatus(error: unknown): number {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  return message.includes("not enabled for this tenant") ? 403 : 400;
 }
 
 /**
  * Handle a non-streaming (JSON) chat request through the router
  */
 export async function handleChatWithRouter(params: HandlerParams): Promise<void> {
-  const { model, messages, userId, tenantId, conversationId, preferredProvider, skillUsed, res } = params;
+  const {
+    model,
+    messages,
+    userId,
+    tenantId,
+    conversationId,
+    preferredProvider,
+    modelSelection,
+    modelSelectionContext,
+    skillUsed,
+    res,
+  } = params;
   if (!skillUsed || skillUsed === "help-assistant") {
     try {
       await injectHelpContextMessage(messages, { force: skillUsed === "help-assistant" });
@@ -37,30 +62,41 @@ export async function handleChatWithRouter(params: HandlerParams): Promise<void>
     }
   }
 
-  // Normal chat must honor the user-selected conversation model.
-  // Only skill-driven flows may invoke planner-based model selection.
+  const conversation = conversationId
+    ? await getConversationById(conversationId, userId)
+    : undefined;
+  const storedSelectionState = readStoredChatModelSelectionState(conversation?.skillSettings);
+  const autoSelectionEnabled = (await getTenantFeatureFlags(tenantId)).chatAutoModelSelection;
+
+  let resolvedSelection;
+  try {
+    resolvedSelection = await resolveChatModelSelection({
+      bodyModel: model,
+      bodyPreferredProvider: preferredProvider,
+      bodyModelSelection: modelSelection,
+      storedSelectionState,
+      messages,
+      selectionContext: deriveChatSelectionContext(modelSelectionContext),
+      autoSelectionEnabled,
+    });
+  } catch (error: any) {
+    res.status(getSelectionErrorStatus(error)).json({ error: { message: error?.message || "Invalid chat model selection" } });
+    return;
+  }
+
+  const effectiveModel = resolvedSelection.resolvedModelId;
+
+  // Keep planner telemetry for skill-driven chat flows, but do not allow it to override
+  // the user's explicit/provider-auto/global-auto selection contract.
   const plannerResult = skillUsed
     ? await runPlanner({
         sourceType: "chat",
         userId,
         tenantId,
-        conversationModel: model,
+        conversationModel: effectiveModel,
         skillSlug: skillUsed,
       })
     : null;
-
-  // Model selection: planner is primary, legacy is fallback
-  let effectiveModel: string | null;
-  if (plannerResult?.resolvedModel) {
-    effectiveModel = plannerResult.resolvedModel;
-  } else {
-    effectiveModel = await resolveEnabledLlmModelId([model]);
-  }
-
-  if (!effectiveModel) {
-    res.status(503).json({ error: { message: "No enabled LLM model configured" } });
-    return;
-  }
 
   const result = await executeWithFallback({
     model: effectiveModel,
@@ -68,7 +104,8 @@ export async function handleChatWithRouter(params: HandlerParams): Promise<void>
     stream: false,
     userId,
     conversationId,
-    preferredProvider,
+    preferredProvider: resolvedSelection.preferredProviderId,
+    strictProviderPin: resolvedSelection.strictProviderPin,
   });
 
   switch (result.type) {
@@ -108,6 +145,32 @@ export async function handleChatWithRouter(params: HandlerParams): Promise<void>
       // Append credit info to response
       if (data && typeof data === "object") {
         data._credits = { used: creditsUsed };
+        data._resolvedModel = {
+          modelId: resolvedSelection.resolvedModelId,
+          providerId: resolvedSelection.resolvedProviderId ?? null,
+          providerName: resolvedSelection.resolvedProviderName ?? null,
+          routeFamily: resolvedSelection.routeFamily,
+          selectionMode: resolvedSelection.selectionMode,
+        };
+      }
+
+      if (conversationId && resolvedSelection.shouldPersistSelectionState) {
+        const nextSkillSettings = {
+          ...((conversation?.skillSettings as Record<string, unknown> | null | undefined) ?? {}),
+          llmSelection: storedSelectionStateFromResolved({
+            selection: resolvedSelection.selection,
+            resolvedModelId: resolvedSelection.resolvedModelId,
+            resolvedProviderId: resolvedSelection.resolvedProviderId ?? null,
+            resolvedProviderName: resolvedSelection.resolvedProviderName ?? null,
+            routeFamily: resolvedSelection.routeFamily,
+          }),
+        };
+        await updateConversation(conversationId, userId, {
+          model: resolvedSelection.selection.mode === "explicit"
+            ? resolvedSelection.resolvedModelId
+            : null,
+          skillSettings: nextSkillSettings as any,
+        });
       }
 
       res.status(200).json(data);
@@ -147,7 +210,18 @@ export async function handleChatWithRouter(params: HandlerParams): Promise<void>
  * will be implemented when the router gains native streaming support.
  */
 export async function handleStreamWithRouter(params: HandlerParams): Promise<void> {
-  const { model, messages, userId, tenantId, conversationId, preferredProvider, skillUsed, res } = params;
+  const {
+    model,
+    messages,
+    userId,
+    tenantId,
+    conversationId,
+    preferredProvider,
+    modelSelection,
+    modelSelectionContext,
+    skillUsed,
+    res,
+  } = params;
   if (!skillUsed || skillUsed === "help-assistant") {
     try {
       await injectHelpContextMessage(messages, { force: skillUsed === "help-assistant" });
@@ -156,34 +230,44 @@ export async function handleStreamWithRouter(params: HandlerParams): Promise<voi
     }
   }
 
-  // Normal chat must honor the user-selected conversation model.
-  // Only skill-driven flows may invoke planner-based model selection.
+  const conversation = conversationId
+    ? await getConversationById(conversationId, userId)
+    : undefined;
+  const storedSelectionState = readStoredChatModelSelectionState(conversation?.skillSettings);
+  const autoSelectionEnabled = (await getTenantFeatureFlags(tenantId)).chatAutoModelSelection;
+
+  let resolvedSelection;
+  try {
+    resolvedSelection = await resolveChatModelSelection({
+      bodyModel: model,
+      bodyPreferredProvider: preferredProvider,
+      bodyModelSelection: modelSelection,
+      storedSelectionState,
+      messages,
+      selectionContext: deriveChatSelectionContext(modelSelectionContext),
+      autoSelectionEnabled,
+    });
+  } catch (error: any) {
+    const statusCode = getSelectionErrorStatus(error);
+    res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+    res.setHeader("Cache-Control", "no-cache, no-transform");
+    res.setHeader("Connection", "keep-alive");
+    res.write(`event: error\ndata: ${JSON.stringify({ error: error?.message || "Invalid chat model selection", statusCode })}\n\n`);
+    res.end();
+    return;
+  }
+
+  const effectiveModel = resolvedSelection.resolvedModelId;
+
   const plannerResult = skillUsed
     ? await runPlanner({
         sourceType: "stream",
         userId,
         tenantId,
-        conversationModel: model,
+        conversationModel: effectiveModel,
         skillSlug: skillUsed,
       })
     : null;
-
-  // Model selection: planner is primary, legacy is fallback
-  let effectiveModel: string | null;
-  if (plannerResult?.resolvedModel) {
-    effectiveModel = plannerResult.resolvedModel;
-  } else {
-    effectiveModel = await resolveEnabledLlmModelId([model]);
-  }
-
-  if (!effectiveModel) {
-    res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
-    res.setHeader("Cache-Control", "no-cache, no-transform");
-    res.setHeader("Connection", "keep-alive");
-    res.write(`event: error\ndata: ${JSON.stringify({ error: "No enabled LLM model configured", statusCode: 503 })}\n\n`);
-    res.end();
-    return;
-  }
 
   // Set SSE headers
   res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
@@ -196,7 +280,8 @@ export async function handleStreamWithRouter(params: HandlerParams): Promise<voi
     stream: true,
     userId,
     conversationId,
-    preferredProvider,
+    preferredProvider: resolvedSelection.preferredProviderId,
+    strictProviderPin: resolvedSelection.strictProviderPin,
   });
 
   switch (result.type) {
@@ -236,9 +321,37 @@ export async function handleStreamWithRouter(params: HandlerParams): Promise<voi
       // Send the response as SSE data
       const content = data?.choices?.[0]?.message?.content ?? "";
       res.write(`data: ${JSON.stringify(data)}\n\n`);
-      res.write(`event: message_complete\ndata: ${JSON.stringify({ creditsUsed, inputTokens, outputTokens })}\n\n`);
+      res.write(`event: message_complete\ndata: ${JSON.stringify({
+        creditsUsed,
+        inputTokens,
+        outputTokens,
+        resolvedModelId: resolvedSelection.resolvedModelId,
+        resolvedProviderId: resolvedSelection.resolvedProviderId ?? null,
+        resolvedProviderName: resolvedSelection.resolvedProviderName ?? null,
+        routeFamily: resolvedSelection.routeFamily,
+        selectionMode: resolvedSelection.selectionMode,
+      })}\n\n`);
       res.write("data: [DONE]\n\n");
       res.end();
+
+      if (conversationId && resolvedSelection.shouldPersistSelectionState) {
+        const nextSkillSettings = {
+          ...((conversation?.skillSettings as Record<string, unknown> | null | undefined) ?? {}),
+          llmSelection: storedSelectionStateFromResolved({
+            selection: resolvedSelection.selection,
+            resolvedModelId: resolvedSelection.resolvedModelId,
+            resolvedProviderId: resolvedSelection.resolvedProviderId ?? null,
+            resolvedProviderName: resolvedSelection.resolvedProviderName ?? null,
+            routeFamily: resolvedSelection.routeFamily,
+          }),
+        };
+        await updateConversation(conversationId, userId, {
+          model: resolvedSelection.selection.mode === "explicit"
+            ? resolvedSelection.resolvedModelId
+            : null,
+          skillSettings: nextSkillSettings as any,
+        });
+      }
       return;
     }
 

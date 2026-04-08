@@ -1,0 +1,23 @@
+{
+  "name": "editorial-layout-planner-skill",
+  "version": "1.0.0",
+  "entry": "src/index.mjs",
+  "skillFile": "SKILL.md",
+  "schemas": {
+    "input": "schemas/input.schema.json",
+    "ui": "schemas/ui.schema.json",
+    "layout": "schemas/layout.schema.json"
+  },
+  "supportedOutputs": [
+    "md",
+    "json",
+    "pptx",
+    "pdf"
+  ],
+  "supportedRatios": [
+    "16:9",
+    "9:16",
+    "4:5",
+    "5:4"
+  ]
+}

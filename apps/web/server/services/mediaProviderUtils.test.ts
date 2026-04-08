@@ -3,14 +3,20 @@ import { describe, expect, it } from "vitest";
 import { calculateCreditCost } from "./pricingCalculator";
 import { getStaticModelById } from "./modelRegistry";
 import {
+  buildWaveSpeedModelConfigJson,
+  buildWaveSpeedModelSeeds,
   assertRelativeUploadMediaReferencePath,
   buildWaveSpeedLaunchModelConfigJson,
   buildWaveSpeedLaunchModelSeed,
+  getWaveSpeedProviderAvailableModels,
+  isReferenceImageRequiredFromConfig,
   normalizeMediaProviderName,
   normalizeRelativeMediaEndpointPath,
   normalizeWaveSpeedBaseUrl,
   sanitizeMediaModelConfigJson,
   WAVESPEED_LAUNCH_MODEL_ID,
+  WAVESPEED_SEEDANCE_2_FAST_IMAGE_TO_VIDEO_MODEL_ID,
+  WAVESPEED_SEEDANCE_2_TEXT_TO_VIDEO_MODEL_ID,
 } from "./mediaProviderUtils";
 
 describe("mediaProviderUtils", () => {
@@ -116,6 +122,50 @@ describe("mediaProviderUtils", () => {
     });
   });
 
+  it("builds additive WaveSpeed Seedance 2.0 configs without changing the cinematic launch contract", () => {
+    const standardText = buildWaveSpeedModelConfigJson(WAVESPEED_SEEDANCE_2_TEXT_TO_VIDEO_MODEL_ID);
+    const fastImage = buildWaveSpeedModelConfigJson(WAVESPEED_SEEDANCE_2_FAST_IMAGE_TO_VIDEO_MODEL_ID);
+
+    expect(standardText).toMatchObject({
+      generateType: "text-to-video",
+      providerModelId: WAVESPEED_SEEDANCE_2_TEXT_TO_VIDEO_MODEL_ID,
+      apiEndpoint: "/bytedance/seedance-2.0/text-to-video",
+      pricingFormula: "per_duration",
+      maxReferenceImages: 4,
+      requiresReferenceImages: false,
+    });
+    expect(fastImage).toMatchObject({
+      generateType: "image-to-video",
+      providerModelId: WAVESPEED_SEEDANCE_2_FAST_IMAGE_TO_VIDEO_MODEL_ID,
+      apiEndpoint: "/bytedance/seedance-2.0-fast/image-to-video",
+      maxReferenceImages: 4,
+      requiresReferenceImages: true,
+    });
+    expect(isReferenceImageRequiredFromConfig(fastImage)).toBe(true);
+    expect(fastImage.inputFields).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: "image_urls",
+          required: true,
+          maxItems: 4,
+        }),
+      ]),
+    );
+  });
+
+  it("exposes all WaveSpeed models for templates and seeds", () => {
+    const seeds = buildWaveSpeedModelSeeds();
+    const providerModels = getWaveSpeedProviderAvailableModels();
+
+    expect(seeds).toHaveLength(5);
+    expect(providerModels).toHaveLength(5);
+    expect(seeds.map((seed) => seed.modelId)).toEqual(expect.arrayContaining([
+      WAVESPEED_LAUNCH_MODEL_ID,
+      WAVESPEED_SEEDANCE_2_TEXT_TO_VIDEO_MODEL_ID,
+      WAVESPEED_SEEDANCE_2_FAST_IMAGE_TO_VIDEO_MODEL_ID,
+    ]));
+  });
+
   it("exposes the launch model through the static registry with tiered fallback pricing", () => {
     const model = getStaticModelById(WAVESPEED_LAUNCH_MODEL_ID);
 
@@ -138,5 +188,13 @@ describe("mediaProviderUtils", () => {
     expect(calculateCreditCost(model!, { duration: 5 })).toBe(800);
     expect(calculateCreditCost(model!, { duration: 10 })).toBe(1600);
     expect(calculateCreditCost(model!, { duration: 15 })).toBe(2400);
+  });
+
+  it("adds Seedance 2.0 Image-to-Video to the static registry with its own pricing tier", () => {
+    const model = getStaticModelById(WAVESPEED_SEEDANCE_2_FAST_IMAGE_TO_VIDEO_MODEL_ID);
+    expect(model).toBeDefined();
+    expect(model?.configJson?.generateType).toBe("image-to-video");
+    expect(model?.configJson?.apiEndpoint).toBe("/bytedance/seedance-2.0-fast/image-to-video");
+    expect(calculateCreditCost(model!, { duration: 5 })).toBe(600);
   });
 });

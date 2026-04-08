@@ -35,7 +35,7 @@ interface ApplySkillUpgradeParams {
   publicUrl?: string | null;
 }
 
-interface ApplySkillUpgradeResult {
+export interface ApplySkillUpgradeResult {
   recommendation: SkillImprovementRecommendation;
   run: SkillImprovementRun;
   compatibilityReport: SkillCompatibilityReport | null;

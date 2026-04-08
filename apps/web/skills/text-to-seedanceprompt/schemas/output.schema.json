@@ -1,0 +1,334 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/skills/seedance-2-prompt-builder/output.schema.json",
+  "title": "Seedance 2.0 Prompt Builder Output",
+  "description": "Output contract for a rendered Seedance 2.0 prompt package.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "skill_name",
+    "skill_version",
+    "mode",
+    "language",
+    "prompt",
+    "prompt_sections",
+    "metadata",
+    "validation"
+  ],
+  "properties": {
+    "skill_name": {
+      "type": "string",
+      "const": "seedance-2-prompt-builder"
+    },
+    "skill_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "mode": {
+      "type": "string",
+      "enum": [
+        "text_to_video",
+        "image_to_video",
+        "universal_reference",
+        "video_extension",
+        "video_edit"
+      ]
+    },
+    "language": {
+      "type": "string",
+      "enum": [
+        "en",
+        "th"
+      ]
+    },
+    "prompt": {
+      "type": "string",
+      "title": "Final prompt",
+      "minLength": 1
+    },
+    "prompt_sections": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reference_instructions",
+        "global_block",
+        "shot_blocks",
+        "constraint_block"
+      ],
+      "properties": {
+        "reference_instructions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/renderedLine"
+          },
+          "default": []
+        },
+        "global_block": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/renderedLine"
+          },
+          "default": []
+        },
+        "shot_blocks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/shotBlockOut"
+          },
+          "minItems": 1
+        },
+        "constraint_block": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/renderedLine"
+          },
+          "default": []
+        }
+      }
+    },
+    "api_ready": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "provider": {
+          "type": "string",
+          "const": "wavespeed"
+        },
+        "model_family": {
+          "type": "string",
+          "const": "seedance_2_0"
+        },
+        "aspect_ratio": {
+          "type": "string",
+          "enum": [
+            "16:9",
+            "9:16",
+            "4:3",
+            "3:4"
+          ]
+        },
+        "duration_seconds": {
+          "type": "integer",
+          "minimum": 4,
+          "maximum": 15
+        },
+        "prompt": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "reference_map": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/referenceMapEntry"
+      },
+      "default": []
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "shot_count",
+        "is_multi_shot",
+        "uses_references",
+        "recommended_duration_seconds"
+      ],
+      "properties": {
+        "shot_count": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "is_multi_shot": {
+          "type": "boolean"
+        },
+        "uses_references": {
+          "type": "boolean"
+        },
+        "recommended_duration_seconds": {
+          "type": "integer",
+          "minimum": 4,
+          "maximum": 15
+        },
+        "recommended_aspect_ratio": {
+          "type": "string",
+          "enum": [
+            "16:9",
+            "9:16",
+            "4:3",
+            "3:4"
+          ]
+        },
+        "continuity_strategy": {
+          "type": "string",
+          "enum": [
+            "single_shot",
+            "single_prompt_multi_shot",
+            "one_continuous_take"
+          ]
+        },
+        "render_strategy": {
+          "type": "string",
+          "enum": [
+            "natural_language_single_prompt"
+          ]
+        }
+      }
+    },
+    "validation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "is_valid",
+        "errors",
+        "warnings"
+      ],
+      "properties": {
+        "is_valid": {
+          "type": "boolean"
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/issue"
+          },
+          "default": []
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/issue"
+          },
+          "default": []
+        },
+        "suggestions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/issue"
+          },
+          "default": []
+        }
+      }
+    }
+  },
+  "$defs": {
+    "renderedLine": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "text"
+      ],
+      "properties": {
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "shotBlockOut": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "shot_id",
+        "lines"
+      ],
+      "properties": {
+        "shot_id": {
+          "type": "string",
+          "pattern": "^Shot [1-9][0-9]*$"
+        },
+        "beat_range": {
+          "type": "string"
+        },
+        "lines": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/renderedLine"
+          },
+          "minItems": 1
+        }
+      }
+    },
+    "referenceMapEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "rendered_instruction"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "first_frame",
+            "motion_reference",
+            "camera_reference",
+            "audio_reference",
+            "extend_video",
+            "replace_character",
+            "universal_reference",
+            "appearance_reference"
+          ]
+        },
+        "asset_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^@(Image|Video|Audio)[1-9][0-9]*$"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "rendered_instruction": {
+          "type": "string",
+          "minLength": 1
+        },
+        "scope": {
+          "type": "string",
+          "enum": [
+            "global",
+            "shot"
+          ]
+        },
+        "shot_id": {
+          "type": "string",
+          "pattern": "^Shot [1-9][0-9]*$"
+        }
+      }
+    },
+    "issue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "message"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "path": {
+          "type": "string"
+        },
+        "severity": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "info"
+          ]
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import DynamicSkillForm, { SkillInputSchema } from '@/components/media/DynamicSkillForm';
+import React, { useEffect, useRef, useState } from 'react';
+import DynamicSkillForm, { SkillInputSchema, resolveSkillUiLanguage } from '@/components/media/DynamicSkillForm';
 import { useImageUpload } from './hooks/useImageUpload';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -14,7 +14,7 @@ export interface ChatDynamicSkillFormProps {
   isLoading?: boolean;
   error?: string | null;
   onClearError?: () => void;
-  /** Language for form labels. Defaults to "th". */
+  /** Language for form labels. Defaults to the current page language. */
   language?: "en" | "th";
 }
 
@@ -25,10 +25,22 @@ export function ChatDynamicSkillForm({
   isLoading,
   error,
   onClearError,
-  language: initialLanguage = "th",
+  language: initialLanguage,
 }: ChatDynamicSkillFormProps) {
-  const [language, setLanguage] = useState<"en" | "th">(initialLanguage);
+  const pageLanguage = resolveSkillUiLanguage(initialLanguage);
+  const [language, setLanguage] = useState<"en" | "th">(pageLanguage);
+  const previousAutoLanguageRef = useRef<"en" | "th">(pageLanguage);
   const { upload, isUploading, uploadProgress, error: uploadError, retry, reset, validateFile } = useImageUpload();
+
+  useEffect(() => {
+    setLanguage((current) => {
+      if (current === previousAutoLanguageRef.current) {
+        previousAutoLanguageRef.current = pageLanguage;
+        return pageLanguage;
+      }
+      return current;
+    });
+  }, [pageLanguage]);
 
   const handleImageUpload = async (files: FileList): Promise<string[]> => {
     const urls: string[] = [];
@@ -111,7 +123,13 @@ export function ChatDynamicSkillForm({
             variant="ghost"
             size="sm"
             className="h-7 gap-1.5 text-xs text-muted-foreground hover:text-foreground"
-            onClick={() => setLanguage(language === "th" ? "en" : "th")}
+            onClick={() => {
+              setLanguage((current) => {
+                const next = current === "th" ? "en" : "th";
+                previousAutoLanguageRef.current = next;
+                return next;
+              });
+            }}
           >
             <Languages className="h-3.5 w-3.5" />
             {language === "th" ? "TH" : "EN"}

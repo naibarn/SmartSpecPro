@@ -151,6 +151,27 @@ describe("retrieveAndScoreCandidates", () => {
     }
   });
 
+  it("filters out explicit-only skills defensively", () => {
+    const catalogWithManualSkill: SkillCatalogEntry[] = [
+      ...baseCatalog,
+      {
+        id: "agency-creator",
+        name: "Agency Creator",
+        category: "automation",
+        description: "Manual-only agency builder",
+        inputTypes: ["text"],
+        outputTypes: ["text"],
+        hasInputSchema: true,
+        requiredFields: [],
+        requiresExplicit: true,
+      },
+    ];
+
+    const result = retrieveAndScoreCandidates(baseProfile, basePolicy, catalogWithManualSkill);
+
+    expect(result.find((candidate) => candidate.skillId === "agency-creator")).toBeUndefined();
+  });
+
   it("applies language boost for Thai-oriented skills on Thai input", () => {
     const thProfile = { ...baseProfile, languageHint: "th" as const };
     // Add a skill with Thai name

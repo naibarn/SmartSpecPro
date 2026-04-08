@@ -5,7 +5,10 @@
  * Section 03: selectBestLlmModel, describeRequirementsMatch
  */
 
-import type { EnabledLlmModelRow } from "./enabledLlmModels";
+import {
+  filterAutoSelectableLlmModelRows,
+  type EnabledLlmModelRow,
+} from "./enabledLlmModels";
 
 /**
  * Minimum model data needed to compute a priority score.
@@ -19,6 +22,8 @@ export interface ModelPriorityInput {
   isFree?: boolean | null;
   supportsFunctionTools?: boolean | null;
   supportsStructuredOutputs?: boolean | null;
+  supportsJsonMode?: boolean | null;
+  supportsStrictToolSchema?: boolean | null;
   supportsWebSearch?: boolean | null;
   supportsThinking?: boolean | null;
   supportsCodeExecution?: boolean | null;
@@ -30,7 +35,7 @@ export interface ModelPriorityInput {
 
 const DAY_MS = 86_400_000;
 
-type CapabilityFlag = keyof Pick<
+type ScoringCapabilityFlag = keyof Pick<
   ModelPriorityInput,
   | "supportsFunctionTools"
   | "supportsStructuredOutputs"
@@ -43,7 +48,10 @@ type CapabilityFlag = keyof Pick<
   | "supportsThinking"
 >;
 
-const CAPABILITY_FLAGS: CapabilityFlag[] = [
+// Keep refinement flags such as JSON mode / strict tool schema out of the
+// generic priority score so we don't double-count narrower variants of an
+// already broader capability like structured outputs or function tools.
+const SCORING_CAPABILITY_FLAGS: ScoringCapabilityFlag[] = [
   "supportsFunctionTools",
   "supportsStructuredOutputs",
   "supportsWebSearch",
@@ -88,10 +96,10 @@ function costScore(model: ModelPriorityInput): number {
 
 function capabilityScore(model: ModelPriorityInput): number {
   let count = 0;
-  for (const flag of CAPABILITY_FLAGS) {
+  for (const flag of SCORING_CAPABILITY_FLAGS) {
     if (model[flag] === true) count++;
   }
-  return Math.floor((count / CAPABILITY_FLAGS.length) * 30);
+  return Math.floor((count / SCORING_CAPABILITY_FLAGS.length) * 30);
 }
 
 /**
@@ -120,6 +128,8 @@ export interface CapabilityRequirements {
   supportsThinking?: boolean;
   supportsFunctionTools?: boolean;
   supportsStructuredOutputs?: boolean;
+  supportsJsonMode?: boolean;
+  supportsStrictToolSchema?: boolean;
   supportsWebSearch?: boolean;
   supportsCodeExecution?: boolean;
   supportsComputerUse?: boolean;
@@ -136,6 +146,8 @@ const CAPABILITY_KEYS: ReadonlyArray<
   "supportsThinking",
   "supportsFunctionTools",
   "supportsStructuredOutputs",
+  "supportsJsonMode",
+  "supportsStrictToolSchema",
   "supportsWebSearch",
   "supportsCodeExecution",
   "supportsComputerUse",
@@ -161,12 +173,13 @@ export function selectBestLlmModel(
   requirements: Partial<CapabilityRequirements>,
   rows: EnabledLlmModelRow[],
 ): string | null {
-  if (rows.length === 0) {
+  const autoSelectableRows = filterAutoSelectableLlmModelRows(rows);
+  if (autoSelectableRows.length === 0) {
     return null;
   }
 
   // Step 1: Filter by boolean capabilities (AND logic)
-  let candidates = rows.filter((row) => {
+  let candidates = autoSelectableRows.filter((row) => {
     for (const key of CAPABILITY_KEYS) {
       if (requirements[key] === true) {
         if (row[key] !== true) {
@@ -212,9 +225,10 @@ export function selectLlmModelCandidates(
   rows: EnabledLlmModelRow[],
   maxCandidates: number = 5,
 ): string[] {
-  if (rows.length === 0) return [];
+  const autoSelectableRows = filterAutoSelectableLlmModelRows(rows);
+  if (autoSelectableRows.length === 0) return [];
 
-  let candidates = rows.filter((row) => {
+  let candidates = autoSelectableRows.filter((row) => {
     for (const key of CAPABILITY_KEYS) {
       if (requirements[key] === true) {
         if (row[key] !== true) return false;

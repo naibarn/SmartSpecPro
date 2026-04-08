@@ -36,6 +36,7 @@ import {
   getAllowedAspectRatiosFromConfig,
   getAllowedDurationsFromConfig,
   getReferenceImageLimitFromConfig,
+  isReferenceImageRequiredFromConfig,
   normalizeMediaProviderName,
 } from "../services/mediaProviderUtils";
 import {
@@ -58,6 +59,8 @@ const extraParamsSchema = z
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: msg });
     }
   });
+
+const creditOriginSurfaceSchema = z.enum(["media_studio"]).optional();
 
 // Helper to create secure token for Python backend (fallback)
 function createMediaToken(userId: number): string {
@@ -227,6 +230,9 @@ export async function reconcileTaskCredits(params: {
     const taskParams = task.parameters ?? {};
     const extraParams = (taskParams as Record<string, unknown>).extraParams as Record<string, unknown> | undefined
       ?? taskParams;
+    const originSurface = typeof extraParams.__origin_surface === "string"
+      ? extraParams.__origin_surface
+      : undefined;
     const reservedCredits = Number(extraParams.__reserved_credits);
     if (!reservedCredits || reservedCredits <= 0) return noOp;
 
@@ -275,6 +281,7 @@ export async function reconcileTaskCredits(params: {
           reservedCost: reservedCredits,
           actualDuration,
           actualResolution,
+          ...(originSurface ? { originSurface } : {}),
         },
       });
     } else {
@@ -291,6 +298,7 @@ export async function reconcileTaskCredits(params: {
           reservedCost: reservedCredits,
           actualDuration,
           actualResolution,
+          ...(originSurface ? { originSurface } : {}),
         },
       });
     }
@@ -950,6 +958,15 @@ function getReferenceImageLimitForModel(
   );
 }
 
+function isReferenceImageRequiredForModel(
+  modelId: string,
+  configJson: Record<string, unknown> | null | undefined,
+): boolean {
+  return isReferenceImageRequiredFromConfig(
+    configJson ?? getStaticModelById(modelId)?.configJson,
+  );
+}
+
 function assertModelAwareVideoRequest(params: {
   modelId: string;
   configJson: Record<string, unknown> | null | undefined;
@@ -957,6 +974,14 @@ function assertModelAwareVideoRequest(params: {
   duration?: number;
   referenceImageUrls?: string[];
 }): void {
+  const hasReferenceImages = (params.referenceImageUrls?.length ?? 0) > 0;
+  if (isReferenceImageRequiredForModel(params.modelId, params.configJson) && !hasReferenceImages) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `The selected model "${params.modelId}" requires at least one reference image.`,
+    });
+  }
+
   const imageLimit = getReferenceImageLimitForModel(params.modelId, params.configJson);
   if (imageLimit !== null && (params.referenceImageUrls?.length ?? 0) > imageLimit) {
     throw new TRPCError({
@@ -1282,6 +1307,7 @@ export const mediaRouter = router({
         outputFormat: z.string().optional(),
         apiConfig: z.record(z.string()).optional(),
         extraParams: extraParamsSchema,
+        originSurface: creditOriginSurfaceSchema,
       })
     )
     .mutation(async ({ input, ctx }) => {
@@ -1408,6 +1434,7 @@ export const mediaRouter = router({
             prompt: input.prompt.slice(0, 100),
             endpoint: "generateImage",
             creditCost,
+            ...(input.originSurface ? { originSurface: input.originSurface } : {}),
           },
         });
 
@@ -1435,6 +1462,7 @@ export const mediaRouter = router({
         referenceImageUrls: z.array(referenceMediaUrlSchema).max(5).optional(),
         referenceVideoUrls: z.array(referenceMediaUrlSchema).max(5).optional(),
         referenceVideoUrl: referenceMediaUrlSchema.optional(),
+        originSurface: creditOriginSurfaceSchema,
       })
     )
     .mutation(async ({ input, ctx }) => {
@@ -1539,6 +1567,7 @@ export const mediaRouter = router({
             duration: input.duration,
             endpoint: "generateVideo",
             creditCost,
+            ...(input.originSurface ? { originSurface: input.originSurface } : {}),
           },
         });
 
@@ -1561,6 +1590,7 @@ export const mediaRouter = router({
         speed: z.number().min(0.5).max(2.0).optional(),
         apiConfig: z.record(z.string()).optional(),
         extraParams: extraParamsSchema,
+        originSurface: creditOriginSurfaceSchema,
       })
     )
     .mutation(async ({ input, ctx }) => {
@@ -1662,6 +1692,7 @@ export const mediaRouter = router({
             textLength: input.text.length,
             endpoint: "generateAudio",
             creditCost,
+            ...(input.originSurface ? { originSurface: input.originSurface } : {}),
           },
         });
 
@@ -1684,6 +1715,7 @@ export const mediaRouter = router({
         speed: z.number().min(0.5).max(2.0).optional(),
         apiConfig: z.record(z.string()).optional(),
         extraParams: extraParamsSchema,
+        originSurface: creditOriginSurfaceSchema,
       })
     )
     .mutation(async ({ input, ctx }) => {
@@ -1752,6 +1784,7 @@ export const mediaRouter = router({
           endpoint: "generateAudioAsync",
           type: "reservation",
           creditCost,
+          ...(input.originSurface ? { originSurface: input.originSurface } : {}),
         },
       });
 
@@ -1794,6 +1827,7 @@ export const mediaRouter = router({
               model,
               textLength: input.text.length,
               error: error instanceof Error ? error.message : "Unknown error",
+              ...(input.originSurface ? { originSurface: input.originSurface } : {}),
             },
           });
         } catch (refundError) {
@@ -1823,6 +1857,7 @@ export const mediaRouter = router({
         referenceStyleUrl: referenceMediaUrlSchema.optional(),
         apiConfig: z.record(z.string()).optional(),
         extraParams: extraParamsSchema,
+        originSurface: creditOriginSurfaceSchema,
       })
     )
     .mutation(async ({ input, ctx }) => {
@@ -1887,6 +1922,7 @@ export const mediaRouter = router({
           endpoint: "generateImageAsync",
           type: "reservation",
           creditCost,
+          ...(input.originSurface ? { originSurface: input.originSurface } : {}),
         },
       });
 
@@ -1938,6 +1974,7 @@ export const mediaRouter = router({
               model,
               prompt: input.prompt.slice(0, 100),
               error: error instanceof Error ? error.message : "Unknown error",
+              ...(input.originSurface ? { originSurface: input.originSurface } : {}),
             },
           });
         } catch (refundError) {
@@ -1966,6 +2003,7 @@ export const mediaRouter = router({
         referenceVideoUrl: referenceMediaUrlSchema.optional(),
         apiConfig: z.record(z.string()).optional(),
         extraParams: extraParamsSchema,
+        originSurface: creditOriginSurfaceSchema,
       })
     )
     .mutation(async ({ input, ctx }) => {
@@ -2039,6 +2077,7 @@ export const mediaRouter = router({
           endpoint: "generateVideoAsync",
           type: "reservation",
           creditCost,
+          ...(input.originSurface ? { originSurface: input.originSurface } : {}),
         },
       });
 
@@ -2068,6 +2107,7 @@ export const mediaRouter = router({
               __reserved_credits: creditCost,
               __reserved_resolution: input.resolution,
               __reserved_duration: duration,
+              ...(input.originSurface ? { __origin_surface: input.originSurface } : {}),
             },
             publicUrl: ctx.publicUrl ?? undefined,
             auditContext: {
@@ -2095,6 +2135,7 @@ export const mediaRouter = router({
               duration,
               prompt: input.prompt.slice(0, 100),
               error: error instanceof Error ? error.message : "Unknown error",
+              ...(input.originSurface ? { originSurface: input.originSurface } : {}),
             },
           });
         } catch (refundError) {

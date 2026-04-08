@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState, useEffect, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -63,6 +63,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { trpc } from "@/lib/trpc";
+import { STORAGE_KEY } from "@/i18n/languageDetector";
 
 // Icon mapping for section icons
 const iconMap: Record<string, LucideIcon> = {
@@ -79,6 +80,16 @@ const iconMap: Record<string, LucideIcon> = {
   camera: Camera,
   film: Film,
   layers: Layers,
+};
+
+type SkillFieldDependency = {
+  field?: string;
+  value?: any;
+  values?: any[];
+  notEmpty?: boolean;
+  minItems?: number;
+  all?: SkillFieldDependency[];
+  any?: SkillFieldDependency[];
 };
 
 // Schema Types
@@ -115,12 +126,7 @@ export interface SkillInputField {
   accept?: string;
   readOnly?: boolean;
   searchable?: boolean;
-  dependsOn?: {
-    field: string;
-    value?: any;
-    values?: any[];
-    notEmpty?: boolean;
-  };
+  dependsOn?: SkillFieldDependency;
   /** Options grouped by parent field value for cascading selects */
   optionGroups?: Record<string, Array<{
     value: string;
@@ -154,6 +160,132 @@ export interface SkillInputSchema {
 interface ReferenceImage {
   url: string;
   name: string;
+}
+
+export function resolveSkillUiLanguage(explicitLanguage?: "en" | "th"): "en" | "th" {
+  if (explicitLanguage) {
+    return explicitLanguage;
+  }
+
+  const normalize = (value: string | null | undefined): "en" | "th" | undefined => {
+    if (!value) {
+      return undefined;
+    }
+    return value.startsWith("th") ? "th" : "en";
+  };
+
+  if (typeof window !== "undefined") {
+    try {
+      const stored = normalize(window.localStorage.getItem(STORAGE_KEY));
+      if (stored) {
+        return stored;
+      }
+    } catch {
+      // Ignore storage issues and fall back to document/navigator language.
+    }
+
+    const docLang = normalize(window.document?.documentElement?.lang);
+    if (docLang) {
+      return docLang;
+    }
+
+    const navLang = normalize(window.navigator?.language);
+    if (navLang) {
+      return navLang;
+    }
+  }
+
+  return "en";
+}
+
+function evaluateFieldDependency(
+  dependency: SkillFieldDependency | undefined,
+  values: Record<string, any>,
+): boolean {
+  if (!dependency) {
+    return true;
+  }
+
+  if (Array.isArray(dependency.all) && dependency.all.length > 0) {
+    return dependency.all.every((child) => evaluateFieldDependency(child, values));
+  }
+
+  if (Array.isArray(dependency.any) && dependency.any.length > 0) {
+    return dependency.any.some((child) => evaluateFieldDependency(child, values));
+  }
+
+  if (!dependency.field) {
+    return true;
+  }
+
+  const dependentValue = values[dependency.field];
+
+  if (dependency.notEmpty) {
+    return !!dependentValue && dependentValue !== "";
+  }
+
+  if (dependency.minItems !== undefined) {
+    return Array.isArray(dependentValue) && dependentValue.length >= dependency.minItems;
+  }
+
+  if (dependency.value !== undefined) {
+    return dependentValue === dependency.value;
+  }
+
+  if (Array.isArray(dependency.values) && dependency.values.length > 0) {
+    return dependency.values.includes(dependentValue);
+  }
+
+  return true;
+}
+
+function getContextualFieldDefault(
+  field: SkillInputField,
+  uiLanguage: "en" | "th",
+): any {
+  if (field.id !== "language" && field.id !== "output_language") {
+    return undefined;
+  }
+
+  const optionValues = new Set((field.options || []).map((opt) => opt.value));
+  if (optionValues.has(uiLanguage)) {
+    return uiLanguage;
+  }
+
+  return undefined;
+}
+
+function buildEffectiveFieldValues(
+  schema: SkillInputSchema,
+  values: Record<string, any>,
+  uiLanguage: "en" | "th",
+): Record<string, any> {
+  const effectiveValues = { ...values };
+
+  schema.sections.forEach((section) => {
+    section.fields.forEach((field) => {
+      if (effectiveValues[field.id] !== undefined) {
+        return;
+      }
+
+      const contextualDefault = getContextualFieldDefault(field, uiLanguage);
+      if (contextualDefault !== undefined) {
+        effectiveValues[field.id] = contextualDefault;
+        return;
+      }
+
+      if (field.default !== undefined) {
+        effectiveValues[field.id] = field.default;
+        return;
+      }
+
+      if (field.defaultValue !== undefined) {
+        effectiveValues[field.id] = field.defaultValue;
+      }
+    });
+  });
+
+  return effectiveValues;
 }
 
 /** Searchable model picker that loads available models from the system via tRPC. */
@@ -462,7 +594,7 @@ interface DynamicSkillFormProps {
 
 export default function DynamicSkillForm({
   schema,
-  language = "en",
+  language,
   values,
   onChange,
   onImageUpload,
@@ -474,6 +606,12 @@ export default function DynamicSkillForm({
   className,
 }: DynamicSkillFormProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const uiLanguage = resolveSkillUiLanguage(language);
+  const previousAutoDefaultsRef = useRef<Record<string, any>>({});
+  const effectiveValues = useMemo(
+    () => buildEffectiveFieldValues(schema, values, uiLanguage),
+    [schema, values, uiLanguage],
+  );
 
   // Track collapsed state for each section
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>(() => {
@@ -497,8 +635,8 @@ export default function DynamicSkillForm({
   useEffect(() => {
     schema.sections.forEach((section) => {
       section.fields.forEach((field) => {
-        if (field.optionGroups && field.dependsOn) {
-          const parentValue = values[field.dependsOn.field];
+        if (field.optionGroups && field.dependsOn?.field) {
+          const parentValue = effectiveValues[field.dependsOn.field];
           const currentValue = values[field.id];
 
           // If parent changed, check if current value is still valid
@@ -512,11 +650,43 @@ export default function DynamicSkillForm({
         }
       });
     });
-  }, [schema, values, onChange]);
+  }, [schema, values, effectiveValues, onChange]);
+
+  // Seed schema defaults into state so the submitted payload matches what the
+  // user sees on screen, including locale-sensitive defaults.
+  useEffect(() => {
+    const nextValues: Record<string, any> = {};
+
+    schema.sections.forEach((section) => {
+      section.fields.forEach((field) => {
+        const contextualDefault = getContextualFieldDefault(field, uiLanguage);
+        const defaultValue = contextualDefault ?? field.default ?? field.defaultValue;
+        if (defaultValue === undefined) {
+          return;
+        }
+
+        const currentValue = values[field.id];
+        const previousAutoValue = previousAutoDefaultsRef.current[field.id];
+        const shouldSeed =
+          currentValue === undefined ||
+          currentValue === null ||
+          (contextualDefault !== undefined && currentValue === previousAutoValue);
+
+        if (shouldSeed && currentValue !== defaultValue) {
+          nextValues[field.id] = defaultValue;
+          previousAutoDefaultsRef.current[field.id] = defaultValue;
+        }
+      });
+    });
+
+    if (Object.keys(nextValues).length > 0) {
+      onChange({ ...values, ...nextValues });
+    }
+  }, [schema, values, onChange, uiLanguage]);
 
   // Helper to get localized text
   const getText = (en: string | undefined, th: string | undefined) => {
-    if (language === "th" && th) return th;
+    if (uiLanguage === "th" && th) return th;
     return en || "";
   };
 
@@ -532,31 +702,14 @@ export default function DynamicSkillForm({
 
   // Check if a field should be visible based on dependsOn
   const isFieldVisible = (field: SkillInputField): boolean => {
-    if (!field.dependsOn) return true;
-    const dependentValue = values[field.dependsOn.field];
-
-    // Handle notEmpty condition
-    if (field.dependsOn.notEmpty) {
-      return !!dependentValue && dependentValue !== '';
-    }
-
-    // Handle value condition
-    if (field.dependsOn.value !== undefined) {
-      return dependentValue === field.dependsOn.value;
-    }
-
-    if (Array.isArray(field.dependsOn.values) && field.dependsOn.values.length > 0) {
-      return field.dependsOn.values.includes(dependentValue);
-    }
-
-    return true;
+    return evaluateFieldDependency(field.dependsOn, effectiveValues);
   };
 
   // Get select options, handling optionGroups for cascading selects
   const getSelectOptions = (field: SkillInputField) => {
     // If field has optionGroups and dependsOn, filter by parent value
-    if (field.optionGroups && field.dependsOn) {
-      const parentValue = values[field.dependsOn.field];
+    if (field.optionGroups && field.dependsOn?.field) {
+      const parentValue = effectiveValues[field.dependsOn.field];
       return field.optionGroups[parentValue] || [];
     }
     return field.options || [];
@@ -604,8 +757,7 @@ export default function DynamicSkillForm({
     // Check visibility based on dependsOn
     if (!isFieldVisible(field)) return null;
 
-    const defaultVal = field.default ?? field.defaultValue ?? "";
-    const value = values[field.id] ?? defaultVal;
+    const value = effectiveValues[field.id] ?? "";
     const label = getText(field.label, field.labelTh);
     const placeholder = getText(field.placeholder, field.placeholderTh);
     const description = getText(field.description || field.helpText, field.descriptionTh || field.helpTextTh);
@@ -666,6 +818,11 @@ export default function DynamicSkillForm({
               className="min-h-[80px]"
               rows={field.rows}
             />
+            {field.id === "referenceNotes" && (
+              <div className="rounded-md border border-amber-200 bg-amber-50/70 px-3 py-2 text-xs text-amber-900">
+                For character reference images, describe the face, hair, outfit, accessories, pose, and signature props here. If you leave this blank, the skill will infer a continuity bible from the idea and reference images automatically.
+              </div>
+            )}
           </div>
         );
 

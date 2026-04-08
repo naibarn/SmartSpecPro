@@ -18,6 +18,7 @@ from typing import Any
 import structlog
 
 from app.clients.web_gateway import forward_chat_json
+from app.core.sqlalchemy_sync import to_sync_sqlalchemy_url
 from app.orchestrator.workflow_validator import GeneratedWorkflow
 
 logger = structlog.get_logger(__name__)
@@ -241,7 +242,7 @@ def _load_from_db() -> list[dict[str, Any]]:
     database_url = os.getenv("DATABASE_URL", "")
     if not database_url:
         return []
-    sync_url = database_url.replace("postgresql+asyncpg://", "postgresql://")
+    sync_url = to_sync_sqlalchemy_url(database_url)
     try:
         from sqlalchemy import create_engine, text
 

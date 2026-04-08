@@ -22,6 +22,8 @@ vi.mock("../../services/tenantFeatureFlagService", () => ({
 }));
 
 const mockExecuteSkillLlmWithFallback = vi.fn();
+const mockDetectSkill = vi.fn();
+const mockRouteRoomIntent = vi.fn();
 vi.mock("../../services/skillModelFallback", () => ({
   executeSkillLlmWithFallback: (...args: unknown[]) =>
     mockExecuteSkillLlmWithFallback(...args),
@@ -40,8 +42,11 @@ vi.mock("../../services/creditService", () => ({
 
 const mockCreateMessage = vi.fn().mockResolvedValue({});
 const mockGetConversationById = vi.fn();
+const mockCreateConversation = vi.fn();
+const mockUpdateConversation = vi.fn();
 const mockBuildChatContext = vi.fn().mockResolvedValue([]);
 vi.mock("../../services/chatService", () => ({
+  createConversation: (...args: unknown[]) => mockCreateConversation(...args),
   createMessage: (...args: unknown[]) => mockCreateMessage(...args),
   getConversationById: (...args: unknown[]) =>
     mockGetConversationById(...args),
@@ -52,7 +57,7 @@ vi.mock("../../services/chatService", () => ({
   getMessageById: vi.fn(),
   updateMessage: vi.fn(),
   deleteMessage: vi.fn(),
-  updateConversation: vi.fn(),
+  updateConversation: (...args: unknown[]) => mockUpdateConversation(...args),
   deleteConversation: vi.fn(),
   restoreConversation: vi.fn(),
   permanentlyDeleteConversation: vi.fn(),
@@ -66,7 +71,6 @@ vi.mock("../../services/chatService", () => ({
   deleteEntityMemory: vi.fn(),
   getSkillPreferences: vi.fn(),
   updateSkillPreference: vi.fn(),
-  createConversation: vi.fn(),
 }));
 
 const mockAuditLog = vi.fn();
@@ -92,9 +96,13 @@ vi.mock("../../services/skillRegistry", () => ({
 }));
 
 vi.mock("../../services/skillDetector", () => ({
-  detectSkill: vi.fn(),
+  detectSkill: (...args: unknown[]) => mockDetectSkill(...args),
   extractSkillParams: vi.fn(),
   getSkillDetectionSummary: vi.fn(),
+}));
+
+vi.mock("../../services/roomIntentRouter", () => ({
+  routeRoomIntent: (...args: unknown[]) => mockRouteRoomIntent(...args),
 }));
 
 vi.mock("../../services/skillExecutor", () => ({
@@ -235,6 +243,29 @@ describe("Chat Router → Unified Orchestrator Wiring", () => {
     // Default: flag OFF
     mockGetTenantFeatureFlags.mockResolvedValue({
       unifiedSkillExecution: false,
+      chatAutoModelSelection: false,
+    });
+    mockCreateConversation.mockResolvedValue({
+      id: 101,
+      title: "New Chat",
+      model: "gpt-4o-mini",
+      skillSettings: null,
+      createdAt: new Date("2026-04-01T00:00:00.000Z"),
+    });
+    mockUpdateConversation.mockResolvedValue(undefined);
+    mockDetectSkill.mockResolvedValue({
+      detected: false,
+      skill: null,
+      confidence: 0,
+      matchedTrigger: null,
+      suggestedPrompt: null,
+      patternChainTo: null,
+    });
+    mockRouteRoomIntent.mockResolvedValue({
+      route: "chat",
+      reason: "default_chat",
+      confidence: 0.5,
+      source: "fallback",
     });
   });
 
@@ -378,5 +409,268 @@ describe("Chat Router → Unified Orchestrator Wiring", () => {
     expect(chatReturn.message).toBe("Generated article content");
     expect(chatReturn.creditsUsed).toBe(3);
     expect(chatReturn.type).toBe("text");
+  });
+
+  it("createConversation allows explicit model selection even when chat auto selection flag is off", async () => {
+    const { chatRouter } = await import("../chat");
+    const caller = chatRouter.createCaller({
+      user: {
+        id: 1,
+        openId: "user-open-id",
+        email: "user@example.com",
+        name: "Tester",
+        role: "admin",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        lastSignedIn: new Date(),
+        currentTenantId: "tenant-1",
+        registeredDomain: "tenant-1",
+      },
+      tenantId: "tenant-1",
+      userToken: null,
+      privateVaultToken: null,
+      publicUrl: "https://example.com",
+      req: { ip: "127.0.0.1", headers: {}, protocol: "https" } as any,
+      res: {} as any,
+    });
+
+    await caller.createConversation({
+      title: "Explicit",
+      modelSelection: {
+        mode: "explicit",
+        modelId: "gpt-4o-mini",
+      },
+    });
+
+    expect(mockCreateConversation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model: "gpt-4o-mini",
+        skillSettings: expect.objectContaining({
+          llmSelection: expect.objectContaining({
+            mode: "explicit",
+            modelId: "gpt-4o-mini",
+          }),
+        }),
+      }),
+    );
+  });
+
+  it("createConversation rejects auto selection when chat auto selection flag is off", async () => {
+    const { chatRouter } = await import("../chat");
+    const caller = chatRouter.createCaller({
+      user: {
+        id: 1,
+        openId: "user-open-id",
+        email: "user@example.com",
+        name: "Tester",
+        role: "admin",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        lastSignedIn: new Date(),
+        currentTenantId: "tenant-1",
+        registeredDomain: "tenant-1",
+      },
+      tenantId: "tenant-1",
+      userToken: null,
+      privateVaultToken: null,
+      publicUrl: "https://example.com",
+      req: { ip: "127.0.0.1", headers: {}, protocol: "https" } as any,
+      res: {} as any,
+    });
+
+    await expect(
+      caller.createConversation({
+        title: "Auto",
+        modelSelection: {
+          mode: "auto-global",
+        },
+      }),
+    ).rejects.toThrow("Chat auto model selection is not enabled for this tenant");
+  });
+
+  it("updateConversation persists provider-auto selection when flag is on", async () => {
+    mockGetTenantFeatureFlags.mockResolvedValue({
+      unifiedSkillExecution: false,
+      chatAutoModelSelection: true,
+    });
+    mockGetConversationById.mockResolvedValue({
+      id: 42,
+      userId: 1,
+      model: "gpt-4o-mini",
+      skillSettings: {},
+    });
+
+    const { chatRouter } = await import("../chat");
+    const caller = chatRouter.createCaller({
+      user: {
+        id: 1,
+        openId: "user-open-id",
+        email: "user@example.com",
+        name: "Tester",
+        role: "admin",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        lastSignedIn: new Date(),
+        currentTenantId: "tenant-1",
+        registeredDomain: "tenant-1",
+      },
+      tenantId: "tenant-1",
+      userToken: null,
+      privateVaultToken: null,
+      publicUrl: "https://example.com",
+      req: { ip: "127.0.0.1", headers: {}, protocol: "https" } as any,
+      res: {} as any,
+    });
+
+    await caller.updateConversation({
+      id: 42,
+      modelSelection: {
+        mode: "auto-provider",
+        providerId: 2,
+        providerName: "Kie AI",
+      },
+    });
+
+    expect(mockUpdateConversation).toHaveBeenCalledWith(
+      42,
+      1,
+      expect.objectContaining({
+        model: null,
+        skillSettings: expect.objectContaining({
+          llmSelection: expect.objectContaining({
+            mode: "auto-provider",
+            providerId: 2,
+            providerName: "Kie AI",
+          }),
+        }),
+      }),
+    );
+  });
+
+  it("updateConversation rejects client-managed skillSettings.llmSelection payloads", async () => {
+    mockGetConversationById.mockResolvedValue({
+      id: 42,
+      userId: 1,
+      model: "gpt-4o-mini",
+      skillSettings: {},
+    });
+
+    const { chatRouter } = await import("../chat");
+    const caller = chatRouter.createCaller({
+      user: {
+        id: 1,
+        openId: "user-open-id",
+        email: "user@example.com",
+        name: "Tester",
+        role: "admin",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        lastSignedIn: new Date(),
+        currentTenantId: "tenant-1",
+        registeredDomain: "tenant-1",
+      },
+      tenantId: "tenant-1",
+      userToken: null,
+      privateVaultToken: null,
+      publicUrl: "https://example.com",
+      req: { ip: "127.0.0.1", headers: {}, protocol: "https" } as any,
+      res: {} as any,
+    });
+
+    await expect(
+      caller.updateConversation({
+        id: 42,
+        skillSettings: {
+          autoDetect: true,
+          enabledSkills: [],
+          detectionMode: "auto",
+          llmSelection: {
+            mode: "auto-global",
+          },
+        },
+      }),
+    ).rejects.toThrow("skillSettings.llmSelection must not be sent by clients");
+
+    expect(mockUpdateConversation).not.toHaveBeenCalled();
+  });
+
+  it("detectSkill falls back to detected=false when detection throws", async () => {
+    mockDetectSkill.mockRejectedValueOnce(new Error("LLM request failed"));
+
+    const { chatRouter } = await import("../chat");
+    const caller = chatRouter.createCaller({
+      user: {
+        id: 1,
+        openId: "user-open-id",
+        email: "user@example.com",
+        name: "Tester",
+        role: "admin",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        lastSignedIn: new Date(),
+        currentTenantId: "tenant-1",
+        registeredDomain: "tenant-1",
+      },
+      tenantId: "tenant-1",
+      userToken: null,
+      privateVaultToken: null,
+      publicUrl: "https://example.com",
+      req: { ip: "127.0.0.1", headers: {}, protocol: "https" } as any,
+      res: {} as any,
+    });
+
+    await expect(
+      caller.detectSkill({ message: "ช่วยหน่อย", conversationId: 42 }),
+    ).resolves.toEqual({
+      detected: false,
+      skill: null,
+      confidence: 0,
+      matchedTrigger: null,
+      suggestedPrompt: null,
+      patternChainTo: null,
+      params: null,
+    });
+  });
+
+  it("analyzeIntent falls back to chat when routing throws", async () => {
+    mockRouteRoomIntent.mockRejectedValueOnce(new Error("LLM request failed"));
+
+    const { chatRouter } = await import("../chat");
+    const caller = chatRouter.createCaller({
+      user: {
+        id: 1,
+        openId: "user-open-id",
+        email: "user@example.com",
+        name: "Tester",
+        role: "admin",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        lastSignedIn: new Date(),
+        currentTenantId: "tenant-1",
+        registeredDomain: "tenant-1",
+      },
+      tenantId: "tenant-1",
+      userToken: null,
+      privateVaultToken: null,
+      publicUrl: "https://example.com",
+      req: { ip: "127.0.0.1", headers: {}, protocol: "https" } as any,
+      res: {} as any,
+    });
+
+    await expect(
+      caller.analyzeIntent({ message: "ช่วยวางแผนคอนเทนต์", conversationId: 42, hasImages: false }),
+    ).resolves.toEqual({
+      route: "chat",
+      reason: "intent_analysis_unavailable",
+      selectedSkillId: null,
+      confidence: 0,
+      source: "fallback",
+      agencyEscalation: false,
+      routingStrategy: null,
+      taskProfile: null,
+      candidateSkills: null,
+      hybridPlan: null,
+      skillMeta: null,
+    });
   });
 });

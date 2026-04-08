@@ -104,6 +104,30 @@ export const delegatedManifestAvailabilitySchema = z.enum([
   "unavailable",
 ]);
 
+export const delegatedDiscoveryRouteHintSchema = z.object({
+  family: delegatedRouteFamilySchema,
+  method: z.enum(["GET", "POST"]),
+  path: z.string().min(1),
+  availability: delegatedManifestAvailabilitySchema.default("ready"),
+  purpose: z.string().min(1).max(160),
+});
+
+export const delegatedMcpToolSummarySchema = z.object({
+  name: z.string().min(1),
+  family: z.string().min(1),
+  namespace: z.string().min(1),
+  toolGroup: z.string().min(1),
+  availability: delegatedManifestAvailabilitySchema.default("ready"),
+  reason: z.string().min(1).nullable().default(null),
+});
+
+export const delegatedMcpFamilySummarySchema = z.object({
+  family: z.string().min(1),
+  enabled: z.boolean().default(false),
+  availableToolCount: z.number().int().nonnegative().default(0),
+  reason: z.string().min(1).nullable().default(null),
+});
+
 export const delegatedCapabilityManifestSchema = z.object({
   sessionId: z.string().min(1),
   workerId: z.string().min(1),
@@ -145,6 +169,34 @@ export const delegatedCapabilityManifestSchema = z.object({
     http: delegatedManifestAvailabilitySchema.default("ready"),
     mcp: delegatedManifestAvailabilitySchema.default("unavailable"),
     knowledge: delegatedManifestAvailabilitySchema.default("experimental"),
+  }),
+  mcp: z.object({
+    enabled: z.boolean().default(false),
+    availableFamilies: z.array(z.string().min(1)).default([]),
+    families: z.array(delegatedMcpFamilySummarySchema).default([]),
+    availableTools: z.array(delegatedMcpToolSummarySchema).default([]),
+    experimentalTools: z.array(delegatedMcpToolSummarySchema).default([]),
+    disabledTools: z.array(delegatedMcpToolSummarySchema).default([]),
+    familyFlags: z.object({
+      browserEnabled: z.boolean().default(false),
+      workspaceEnabled: z.boolean().default(false),
+      driveEnabled: z.boolean().default(false),
+      orchestratorEnabled: z.boolean().default(false),
+    }),
+    operatorPolicy: z.object({
+      enabled: z.boolean().default(true),
+      disabledFamilies: z.array(z.string().min(1)).default([]),
+      disabledToolGroups: z.array(z.string().min(1)).default([]),
+      approvalRequiredToolGroups: z.array(z.string().min(1)).default([]),
+    }),
+  }),
+  discovery: z.object({
+    openApiUrl: z.string().min(1),
+    docsUrl: z.string().min(1),
+    catalogUrl: z.string().min(1),
+    manifestPath: z.string().min(1),
+    recommendedAuthMode: z.literal("bearer").default("bearer"),
+    routeHints: z.array(delegatedDiscoveryRouteHintSchema).default([]),
   }),
   expiresAt: z.string().datetime(),
 });

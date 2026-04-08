@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Layout Spec",
+  "type": "object",
+  "required": [
+    "canvas",
+    "theme",
+    "slides"
+  ],
+  "properties": {
+    "canvas": {
+      "type": "object",
+      "required": [
+        "ratio",
+        "widthIn",
+        "heightIn",
+        "family"
+      ],
+      "properties": {
+        "ratio": {
+          "type": "string"
+        },
+        "widthIn": {
+          "type": "number"
+        },
+        "heightIn": {
+          "type": "number"
+        },
+        "family": {
+          "type": "string"
+        }
+      }
+    },
+    "theme": {
+      "type": "object"
+    },
+    "slides": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "intent",
+          "archetype",
+          "elements"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "intent": {
+            "type": "string"
+          },
+          "archetype": {
+            "type": "string"
+          },
+          "background": {
+            "type": "string"
+          },
+          "editorialStructure": {
+            "type": "object"
+          },
+          "elements": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "kind",
+                "role",
+                "xPct",
+                "yPct",
+                "wPct",
+                "hPct"
+              ],
+              "properties": {
+                "kind": {
+                  "type": "string"
+                },
+                "role": {
+                  "type": "string"
+                },
+                "xPct": {
+                  "type": "number"
+                },
+                "yPct": {
+                  "type": "number"
+                },
+                "wPct": {
+                  "type": "number"
+                },
+                "hPct": {
+                  "type": "number"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

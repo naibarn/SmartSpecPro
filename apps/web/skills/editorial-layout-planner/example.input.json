@@ -1,0 +1,75 @@
+{
+  "article_title": "แนวทางการฝึกทารกหกเดือนให้นอนยาวและงดมื้อดึกอย่างเข้าใจ",
+  "article_body": "การฝึกทารกให้นอนยาวและหยุดมื้อดึกเป็นหนึ่งในขั้นตอนสำคัญ... (ใส่บทความเต็มที่นี่)",
+  "article_language": "th",
+  "target_audience": "new parents",
+  "tone": "warm, calm, premium parenting editorial",
+  "page_size_or_ratio": "1080x1350",
+  "page_count_mode": "auto",
+  "global_style_prompt": "Warm editorial photography, Thai mother and her six-month-old baby, soft warm daylight, cozy nursery, calm nurturing mood, no text, no logos, no watermark, clean composition.",
+  "render_safety": {
+    "safe_margin_px": 48,
+    "min_body_font_px": 28,
+    "max_body_font_px": 36,
+    "min_headline_font_px": 52,
+    "max_headline_font_px": 84,
+    "max_chars_per_line": 28,
+    "strict_no_overlap": true,
+    "allow_repaginate": true,
+    "allow_reduce_image_area": true,
+    "fit_strategy": "balanced"
+  },
+  "page_fill_rules": {
+    "target_occupancy_min": 0.78,
+    "target_occupancy_max": 0.92,
+    "whitespace_ceiling": 0.18,
+    "cover_whitespace_ceiling": 0.28,
+    "closing_whitespace_ceiling": 0.24,
+    "allow_callout_injection": true,
+    "allow_keypoint_box_injection": true
+  },
+  "quality_optimizer": {
+    "enable_layout_fitness_scoring": true,
+    "enable_auto_template_switch": true,
+    "enable_post_layout_optimizer": true,
+    "underfill_action_priority": [
+      "expand_image",
+      "expand_text",
+      "inject_keypoints",
+      "switch_template"
+    ],
+    "overfill_action_priority": [
+      "wrap_text",
+      "reduce_image_area",
+      "continue_to_next_page",
+      "repaginate"
+    ]
+  },
+  "image_assets": [
+    {
+      "asset_type": "image_prompt",
+      "label": "Cover hero",
+      "page_hint": 1,
+      "prompt": "A tender lifestyle photograph of a Thai mother holding her six-month-old baby in a warm, cozy nursery."
+    },
+    {
+      "asset_type": "image_prompt",
+      "label": "Understanding baby needs",
+      "page_hint": 2,
+      "prompt": "A close, intimate moment of a Thai mother observing her six-month-old baby’s expressions."
+    },
+    {
+      "asset_type": "image_prompt",
+      "label": "Ideal sleep environment",
+      "page_hint": 3,
+      "prompt": "A peaceful nursery prepared for a six-month-old Thai baby, cozy crib, dim warm lighting."
+    },
+    {
+      "asset_type": "image_prompt",
+      "label": "Bedtime routine",
+      "page_hint": 4,
+      "prompt": "A serene bedtime routine scene of a Thai mother gently putting her six-month-old baby to sleep."
+    }
+  ],
+  "output_format": "render_manifest_json"
+}

@@ -8,9 +8,9 @@ Covers:
 
 from __future__ import annotations
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
+import pytest
 
 # ---------------------------------------------------------------------------
 # F03 — memory_embedding uses text() for SQL, not a bare string
@@ -36,7 +36,7 @@ class TestMemoryEmbeddingSQL:
     @pytest.mark.asyncio
     async def test_embed_memory_calls_text(self):
         """embed_memory calls session.execute with a text() object."""
-        from unittest.mock import AsyncMock, MagicMock, patch
+        from unittest.mock import AsyncMock, patch
 
         from sqlalchemy import TextClause
 
@@ -94,3 +94,20 @@ class TestMemoryEmbeddingSQL:
         with patch("app.core.database.get_session", return_value=mock_session, create=True):
             result = await svc.embed_memory("mem-1", "content")
         assert result is False
+
+    @pytest.mark.asyncio
+    async def test_generate_embedding_keeps_existing_default_model(self):
+        from app.services.memory_embedding import MemoryEmbeddingService
+
+        mock_embedding_service = AsyncMock()
+        mock_embedding_service.embed = AsyncMock(return_value=[0.1, 0.2, 0.3])
+
+        with patch("app.services.embedding_service.EmbeddingService", return_value=mock_embedding_service):
+            svc = MemoryEmbeddingService()
+            result = await svc.generate_embedding("content")
+
+        assert result == [0.1, 0.2, 0.3]
+        mock_embedding_service.embed.assert_awaited_once_with(
+            text="content",
+            model="text-embedding-3-small",
+        )

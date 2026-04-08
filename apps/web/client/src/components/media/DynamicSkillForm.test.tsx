@@ -410,5 +410,94 @@ describe('DynamicSkillForm', () => {
 
       expect(screen.getByLabelText('ชื่อ')).toBeInTheDocument();
     });
+
+    it('seeds the skill language field from the current UI language', async () => {
+      const languageSchema: SkillInputSchema = {
+        title: 'Language Form',
+        sections: [{
+          id: 'basic',
+          title: 'Basic',
+          fields: [
+            {
+              id: 'language',
+              type: 'select',
+              label: 'Output Language',
+              labelTh: 'ภาษาเอาต์พุต',
+              default: 'en',
+              options: [
+                { value: 'en', label: 'English', labelTh: 'อังกฤษ' },
+                { value: 'th', label: 'Thai', labelTh: 'ไทย' },
+              ],
+            },
+          ],
+        }],
+      };
+
+      render(
+        <DynamicSkillForm
+          schema={languageSchema}
+          values={{}}
+          onChange={mockOnChange}
+          language="th"
+        />
+      );
+
+      await waitFor(() => {
+        expect(mockOnChange).toHaveBeenCalledWith({ language: 'th' });
+      });
+    });
+  });
+
+  describe('Advanced dependsOn rules', () => {
+    it('supports combined all/any/minItems visibility rules', () => {
+      const advancedSchema: SkillInputSchema = {
+        title: 'Advanced DependsOn',
+        sections: [{
+          id: 'refs',
+          title: 'References',
+          fields: [
+            {
+              id: 'extra_seedance_role',
+              type: 'select',
+              label: 'Seedance Extra Role',
+              dependsOn: {
+                all: [
+                  { field: 'target_model_profile', value: 'seedance_2_kie' },
+                  {
+                    any: [
+                      { field: 'reference_images', minItems: 5 },
+                      { field: 'reference_images', minItems: 6 },
+                    ],
+                  },
+                ],
+              },
+              options: [
+                { value: 'supporting_reference', label: 'Supporting Reference' },
+              ],
+            },
+          ],
+        }],
+      };
+
+      const { rerender } = render(
+        <DynamicSkillForm
+          schema={advancedSchema}
+          values={{ target_model_profile: 'seedance_2_kie', reference_images: ['1', '2', '3', '4'] }}
+          onChange={mockOnChange}
+        />
+      );
+
+      expect(screen.queryByText('Seedance Extra Role')).not.toBeInTheDocument();
+
+      rerender(
+        <DynamicSkillForm
+          schema={advancedSchema}
+          values={{ target_model_profile: 'seedance_2_kie', reference_images: ['1', '2', '3', '4', '5'] }}
+          onChange={mockOnChange}
+        />
+      );
+
+      expect(screen.getByText('Seedance Extra Role')).toBeInTheDocument();
+    });
   });
 });

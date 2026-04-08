@@ -4,9 +4,25 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 const teamCreateMutateAsync = vi.fn();
+const ownedWorkerBudgetMutate = vi.fn();
+const {
+  teamListDataRef,
+  teamGetDataRef,
+  bindableWorkersRef,
+  ownedWorkerBudgetRef,
+  routeParamsRef,
+} = vi.hoisted(() => ({
+  teamListDataRef: { current: [] as any[] },
+  teamGetDataRef: { current: undefined as any },
+  bindableWorkersRef: { current: [] as any[] },
+  ownedWorkerBudgetRef: { current: null as any },
+  routeParamsRef: { current: null as any },
+}));
 const invalidateMocks = {
   teamList: vi.fn(),
   teamGet: vi.fn(),
+  teamListBindableWorkers: vi.fn(),
+  teamGetOwnedWorkerBudget: vi.fn(),
   teamRoomListByTeam: vi.fn(),
   teamRunGet: vi.fn(),
   teamWorkItemListByRoom: vi.fn(),
@@ -24,7 +40,7 @@ const setLocationMock = vi.fn();
 
 vi.mock("wouter", () => ({
   useLocation: () => ["/teams", setLocationMock],
-  useRoute: () => [false, null],
+  useRoute: () => [Boolean(routeParamsRef.current), routeParamsRef.current],
 }));
 
 vi.mock("sonner", () => ({
@@ -34,11 +50,12 @@ vi.mock("sonner", () => ({
   },
 }));
 
-vi.mock("@/lib/i18n", () => ({
-  useI18n: () => ({
+vi.mock("@/i18n/useScopedTranslation", () => ({
+  useScopedTranslation: () => ({
     t: (key: string, params?: Record<string, string | number>) => {
       const dictionary: Record<string, string> = {
         "teams.create.title": "New Team",
+        "teams.create.createTeam": "Create Team",
         "teams.page.noTeamsYet": "No teams yet",
         "teams.page.selectTeam": "Select a team",
       };
@@ -114,6 +131,8 @@ vi.mock("@/lib/trpc", () => ({
       team: {
         list: { invalidate: invalidateMocks.teamList },
         get: { invalidate: invalidateMocks.teamGet },
+        listBindableWorkers: { invalidate: invalidateMocks.teamListBindableWorkers },
+        getOwnedWorkerBudget: { invalidate: invalidateMocks.teamGetOwnedWorkerBudget },
       },
       teamRoom: {
         listByTeam: { invalidate: invalidateMocks.teamRoomListByTeam },
@@ -130,10 +149,22 @@ vi.mock("@/lib/trpc", () => ({
     }),
     team: {
       list: {
-        useQuery: () => ({ data: [], isLoading: false }),
+        useQuery: () => ({ data: teamListDataRef.current, isLoading: false }),
       },
       get: {
-        useQuery: () => ({ data: undefined }),
+        useQuery: () => ({ data: teamGetDataRef.current }),
+      },
+      listBindableWorkers: {
+        useQuery: () => ({ data: bindableWorkersRef.current }),
+      },
+      getOwnedWorkerBudget: {
+        useQuery: () => ({ data: ownedWorkerBudgetRef.current, isLoading: false }),
+      },
+      updateOwnedWorkerBudget: {
+        useMutation: () => ({
+          mutate: ownedWorkerBudgetMutate,
+          isPending: false,
+        }),
       },
       create: {
         useMutation: (opts?: any) => ({
@@ -223,6 +254,10 @@ import Teams from "../Teams";
 describe("Teams preset creation flow", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    teamListDataRef.current = [];
+    teamGetDataRef.current = undefined;
+    bindableWorkersRef.current = [];
+    routeParamsRef.current = null;
   });
 
   it("loads a preset, shows reused personas, and submits blueprint references to backend", async () => {
@@ -258,5 +293,54 @@ describe("Teams preset creation flow", () => {
         }),
       ]),
     );
+  });
+
+  it("shows bound worker status for external connector members when a worker binding exists", async () => {
+    routeParamsRef.current = { teamId: "team-1" };
+    teamListDataRef.current = [
+      {
+        id: "team-1",
+        name: "Connected Team",
+        description: null,
+        category: "operations",
+        status: "active",
+        memberCount: 1,
+      },
+    ];
+    teamGetDataRef.current = {
+      id: "team-1",
+      name: "Connected Team",
+      members: [
+        {
+          id: "member-1",
+          memberKind: "external_connector",
+          memberRole: "reviewer",
+          displayName: "OpenClaw Desk",
+          externalRef: "openclaw://desk-1",
+          externalWorkerId: "worker-1",
+          roleTitle: "External Reviewer",
+          isLead: false,
+        },
+      ],
+    };
+    bindableWorkersRef.current = [
+      {
+        id: "worker-1",
+        displayName: "Gateway Alpha",
+        status: "online",
+        runtimeType: "openclaw_gateway",
+        runtimeVersion: "1.2.3",
+        externalReference: "openclaw://desk-1",
+        teamId: "team-1",
+        lastSeenAt: new Date().toISOString(),
+        warningFlagsJson: [],
+        boundProfileCount: 1,
+        availableForBinding: true,
+      },
+    ];
+
+    render(<Teams />);
+
+    expect(await screen.findByText(/gateway alpha · online/i)).toBeInTheDocument();
   });
 });

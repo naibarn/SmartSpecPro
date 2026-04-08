@@ -38,6 +38,10 @@ interface ServiceConfig {
   dockerContainer?: string;  // For Docker containers (if different from id)
 }
 
+function getDockerContainerId(config: ServiceConfig): string {
+  return config.dockerContainer ?? config.id;
+}
+
 // Service configurations - supports Docker, host processes, and systemd services
 const SERVICE_CONFIGS: ServiceConfig[] = [
   // Infrastructure (Docker containers via docker-compose.infra.yml)
@@ -77,7 +81,7 @@ const SERVICE_CONFIGS: ServiceConfig[] = [
   },
   {
     id: 'nginx', name: 'nginx', displayName: 'Nginx',
-    ports: ['80', '443'], type: 'systemd', systemdName: 'nginx',
+    ports: ['80', '443'], type: 'docker', dockerContainer: 'smartspec-nginx-dev',
     description: 'Reverse proxy with HTTPS (optional)'
   },
 
@@ -335,7 +339,7 @@ async function getServiceStatus(serviceId: string): Promise<ServiceStatus> {
     switch (config.type) {
       case 'docker': {
         // First check if running as Docker container
-        const dockerStatus = await getDockerContainerStatus(serviceId);
+        const dockerStatus = await getDockerContainerStatus(getDockerContainerId(config));
         if (dockerStatus) {
           return {
             ...baseStatus,
@@ -401,7 +405,7 @@ async function getServiceStatus(serviceId: string): Promise<ServiceStatus> {
 
       case 'systemd': {
         // First check if running as Docker container (full Docker mode)
-        const dockerStatus = await getDockerContainerStatus(`smartspec-${config.name}`);
+        const dockerStatus = await getDockerContainerStatus(getDockerContainerId(config));
         if (dockerStatus && dockerStatus.running) {
           return {
             ...baseStatus,
@@ -758,7 +762,7 @@ export function registerServicesRoutes(app: Express) {
 
       switch (config.type) {
         case 'docker':
-          await startContainer(serviceId);
+          await startContainer(getDockerContainerId(config));
           break;
         case 'host':
           // Host processes need to be started via dev-local.sh script
@@ -798,7 +802,7 @@ export function registerServicesRoutes(app: Express) {
 
       switch (config.type) {
         case 'docker':
-          await stopContainer(serviceId);
+          await stopContainer(getDockerContainerId(config));
           break;
         case 'host':
           if (config.checkPort) {
@@ -837,7 +841,7 @@ export function registerServicesRoutes(app: Express) {
 
       switch (config.type) {
         case 'docker':
-          await restartContainer(serviceId);
+          await restartContainer(getDockerContainerId(config));
           break;
         case 'host':
           // Host processes need to be restarted manually
@@ -879,7 +883,7 @@ export function registerServicesRoutes(app: Express) {
         case 'docker':
           if (docker) {
             try {
-              const container = docker.getContainer(serviceId);
+              const container = docker.getContainer(getDockerContainerId(config));
               const containerLogs = await container.logs({
                 stdout: true,
                 stderr: true,
@@ -926,7 +930,7 @@ export function registerServicesRoutes(app: Express) {
       const results = await Promise.allSettled(
         SERVICE_CONFIGS.filter(c => c.type !== 'host').map(async (config) => {
           if (config.type === 'docker') {
-            await startContainer(config.id);
+            await startContainer(getDockerContainerId(config));
           } else if (config.type === 'systemd' && config.systemdName) {
             await startSystemdService(config.systemdName);
           }
@@ -952,7 +956,7 @@ export function registerServicesRoutes(app: Express) {
       const results = await Promise.allSettled(
         SERVICE_CONFIGS.map(async (config) => {
           if (config.type === 'docker') {
-            await stopContainer(config.id);
+            await stopContainer(getDockerContainerId(config));
           } else if (config.type === 'host' && config.checkPort) {
             await stopHostProcess(config.checkPort);
           } else if (config.type === 'systemd' && config.systemdName) {
@@ -977,7 +981,7 @@ export function registerServicesRoutes(app: Express) {
       const results = await Promise.allSettled(
         SERVICE_CONFIGS.filter(c => c.type !== 'host').map(async (config) => {
           if (config.type === 'docker') {
-            await restartContainer(config.id);
+            await restartContainer(getDockerContainerId(config));
           } else if (config.type === 'systemd' && config.systemdName) {
             await restartSystemdService(config.systemdName);
           }

@@ -1,0 +1,93 @@
+{
+  "skill_name": "cinematic-video-createprompt",
+  "skill_version": "5.7.0",
+  "response_format": "structured_json",
+  "language": "en",
+  "target_model_profile": "generic_video_models",
+  "generation_mode": "text_to_video",
+  "delivery_mode": "multi_shot_single_video",
+  "multi_video_strategy": "not_applicable",
+  "video_count": 1,
+  "dialogue_language": {
+    "requested": "auto",
+    "resolved": "en",
+    "source": "user_text_language",
+    "rationale": "The user wrote the brief in English and did not request another spoken language."
+  },
+  "storytelling_resolution": {
+    "preset_requested": "dialogue_skit",
+    "preset_resolved": "dialogue_skit",
+    "multi_shot_timing_mode_requested": "untimed_or_auto",
+    "multi_shot_timing_mode_resolved": "untimed_or_auto",
+    "audio_mode_resolved": "spoken_dialogue",
+    "dialogue_density_resolved": "brief_exchange",
+    "story_shape_resolved": "three_beat_micro_story",
+    "ending_style_resolved": "punchline",
+    "performance_style_resolved": "playful",
+    "imagination_level_resolved": "grounded",
+    "scene_arc_resolved": "mini_story",
+    "continuity_mode_resolved": "three_beat_sequence",
+    "motion_realism_resolved": "grounded_and_believable",
+    "background_mode": "normal_background",
+    "narrative_intent": "Tell one warm, readable, dialogue-driven micro-scene where the same dog and cat stay visually stable from setup to laugh payoff."
+  },
+  "continuity_package": {
+    "continuity_notes": "Keep the same large friendly brown dog with floppy ears and the same small black-and-white cat with bright alert eyes throughout the clip. Preserve their relative size difference, playful chemistry, sunny garden setting, and warm daytime tone from beginning to end.",
+    "continuity_notes_origin": "auto_generated",
+    "reference_notes": "Use the written brief itself as the reference bible: the dog should remain a large friendly brown dog with floppy ears and open cheerful body language, while the cat should remain a small black-and-white cat with bright alert eyes, expressive reactions, and playful timing. Keep both animals readable in the same sunny garden world with stable fur colors, proportions, and interaction energy across every beat.",
+    "reference_notes_origin": "auto_generated"
+  },
+  "final_prompt": "In a bright lively garden under soft midday sunlight, a large friendly brown dog with floppy ears stands beside a small black-and-white cat with bright alert eyes beneath a broad shady tree, both clearly readable in the same frame as the moment begins with playful warmth and natural chemistry. The dog starts telling a funny joke with animated but believable body language, the cat listens with amused attention and increasingly expressive reactions, and the scene evolves through a gentle three-beat flow that keeps their proportions, fur patterns, and emotional connection stable as the camera moves from a welcoming shared view into more intimate reaction moments before resolving on both animals sharing a warm laugh together. Keep the staging clean, the garden vivid and sunlit, the motion grounded, and any spoken line short, playful, and easy to follow.\n\nContinuity Notes:\nKeep the same large friendly brown dog with floppy ears and the same small black-and-white cat with bright alert eyes throughout the clip. Preserve their relative size difference, playful chemistry, sunny garden setting, and warm daytime tone from beginning to end.\n\nReference Notes:\nUse the written brief itself as the reference bible: the dog should remain a large friendly brown dog with floppy ears and open cheerful body language, while the cat should remain a small black-and-white cat with bright alert eyes, expressive reactions, and playful timing. Keep both animals readable in the same sunny garden world with stable fur colors, proportions, and interaction energy across every beat.",
+  "short_prompt": "A large brown dog and a small black-and-white cat share a funny conversation in a sunny garden, staying visually consistent through a warm cinematic multi-shot single-video scene.",
+  "prompt_sequence": [
+    {
+      "prompt_id": "Prompt 1",
+      "video_number": 1,
+      "duration_seconds": 8,
+      "prompt_role": "Single Video Prompt",
+      "prompt": "In a bright lively garden under soft midday sunlight, a large friendly brown dog with floppy ears stands beside a small black-and-white cat with bright alert eyes beneath a broad shady tree, both clearly readable in the same frame as the moment begins with playful warmth and natural chemistry. The dog starts telling a funny joke with animated but believable body language, the cat listens with amused attention and increasingly expressive reactions, and the scene evolves through a gentle three-beat flow that keeps their proportions, fur patterns, and emotional connection stable as the camera moves from a welcoming shared view into more intimate reaction moments before resolving on both animals sharing a warm laugh together. Keep the staging clean, the garden vivid and sunlit, the motion grounded, and any spoken line short, playful, and easy to follow.",
+      "continuity_notes": "Keep the same large friendly brown dog with floppy ears and the same small black-and-white cat with bright alert eyes throughout the clip. Preserve their relative size difference, playful chemistry, sunny garden setting, and warm daytime tone from beginning to end.",
+      "reference_notes": "Use the written brief itself as the reference bible: the dog should remain a large friendly brown dog with floppy ears and open cheerful body language, while the cat should remain a small black-and-white cat with bright alert eyes, expressive reactions, and playful timing. Keep both animals readable in the same sunny garden world with stable fur colors, proportions, and interaction energy across every beat."
+    }
+  ],
+  "cinematic_plan": {
+    "opening_frame": "A large brown dog and a small black-and-white cat share the frame under a shady tree in a bright sunny garden.",
+    "subject_focus": "The visual anchor is the playful relationship between the same two animals and their stable, readable identities.",
+    "staging_blocking": "The dog begins slightly closer to camera, the cat reacts in place, and the scene gradually balances both characters in equal focus by the end.",
+    "motion_arc": "The clip moves from setup, to reaction, to a shared laugh with believable animal motion.",
+    "camera_language": "Use a welcoming shared composition, then closer reaction emphasis, then a gentle resolved ending frame.",
+    "focus_depth": "Keep both animals readable while using soft depth to preserve the garden atmosphere.",
+    "atmosphere_time": "Sunny daytime warmth with soft shadows and fresh garden energy.",
+    "production_design": "Green grass, flowers, tree shade, and a lively public-garden atmosphere support the playful tone.",
+    "lighting_color": "Soft natural daylight, warm greens, and clean color separation help the animals stand out.",
+    "continuity_pacing": "A controlled three-beat single-video progression with stable identity and clear emotional escalation.",
+    "continuity_guardrails": "Preserve size difference, fur colors, facial identity cues, playful chemistry, and sunny garden continuity."
+  },
+  "reference_usage": {
+    "reference_input_mode": "brief_only",
+    "reference_image_count": 0,
+    "assignments": [],
+    "reference_video_count": 0,
+    "video_assignments": [],
+    "reference_audio_count": 0,
+    "audio_assignments": [],
+    "first_frame_present": false,
+    "last_frame_present": false,
+    "applied_focus": [
+      "written brief as character reference bible",
+      "stable animal identity",
+      "garden continuity"
+    ],
+    "notes": "Reference stability comes from the written character and environment anchors in the brief."
+  },
+  "validation": {
+    "is_valid": true,
+    "warnings": [],
+    "safety_notes": [
+      "Reference locking relies on the written character and environment anchors in the brief rather than file-based handles."
+    ],
+    "suggestions": [
+      "If stronger visual identity locking is needed later, add one or two reference images for the dog and cat."
+    ]
+  }
+}

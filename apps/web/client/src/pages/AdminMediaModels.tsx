@@ -62,6 +62,7 @@ import {
   Sparkles,
   Search,
   Filter,
+  ChevronDown,
   CheckCircle2,
   XCircle,
   Coins,
@@ -981,6 +982,8 @@ export default function AdminMediaModels() {
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [operationFilter, setOperationFilter] = useState<string>("all");
+  const [providerFilter, setProviderFilter] = useState<string>("all");
+  const [isTemplatesExpanded, setIsTemplatesExpanded] = useState(true);
 
   // Wait for the user to pause typing before querying to avoid per-character fetch churn.
   const debouncedSearch = useDebouncedValue(searchQuery, SEARCH_DEBOUNCE_MS);
@@ -1030,18 +1033,35 @@ export default function AdminMediaModels() {
     enabled: !!user && user.role === "admin",
   });
 
+  const providerOptions = useMemo(() => {
+    const providerMap = new Map<string, string>();
+    for (const entry of [...models, ...templates]) {
+      const providerKey = entry.provider;
+      if (!providerKey || providerMap.has(providerKey)) {
+        continue;
+      }
+      providerMap.set(providerKey, entry.providerDisplayName || entry.provider);
+    }
+
+    return Array.from(providerMap.entries())
+      .map(([value, label]) => ({ value, label }))
+      .sort((left, right) => left.label.localeCompare(right.label));
+  }, [models, templates]);
+
   const visibleModels = useMemo(
     () => models.filter((model: MediaModel) => (
-      operationFilter === "all" || inferOperationTypeFromModel(model) === operationFilter
+      (operationFilter === "all" || inferOperationTypeFromModel(model) === operationFilter)
+      && (providerFilter === "all" || model.provider === providerFilter)
     )),
-    [models, operationFilter],
+    [models, operationFilter, providerFilter],
   );
 
   const visibleTemplates = useMemo(
     () => templates.filter((template: MediaModelTemplate) => (
-      operationFilter === "all" || inferOperationTypeFromModel(template) === operationFilter
+      (operationFilter === "all" || inferOperationTypeFromModel(template) === operationFilter)
+      && (providerFilter === "all" || template.provider === providerFilter)
     )),
-    [templates, operationFilter],
+    [templates, operationFilter, providerFilter],
   );
 
   const {
@@ -1633,6 +1653,20 @@ export default function AdminMediaModels() {
                 ))}
               </SelectContent>
             </Select>
+            <Select value={providerFilter} onValueChange={setProviderFilter}>
+              <SelectTrigger className="w-[220px]">
+                <Settings2 className="mr-2 h-4 w-4" />
+                <SelectValue placeholder="Filter by provider" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Providers</SelectItem>
+                {providerOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </DashboardCard>
@@ -1643,124 +1677,151 @@ export default function AdminMediaModels() {
           className="mb-6"
           title="Available Templates"
           description="Static fallback models that are available in runtime but have not been imported into the admin database yet."
+          trailing={(
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setIsTemplatesExpanded((current) => !current)}
+              aria-expanded={isTemplatesExpanded}
+              aria-controls="available-model-templates"
+            >
+              <span className="mr-2 text-xs text-muted-foreground">
+                {visibleTemplates.length} templates
+              </span>
+              {isTemplatesExpanded ? "Collapse" : "Expand"}
+              <ChevronDown
+                className={`ml-2 h-4 w-4 transition-transform ${isTemplatesExpanded ? "rotate-180" : ""}`}
+              />
+            </Button>
+          )}
         >
-          <div className="grid gap-4 lg:grid-cols-2">
-            {visibleTemplates.map((template: MediaModelTemplate) => {
-              const generationModeLabel = getModelGenerationModeLabel(template as Pick<MediaModel, "modelType" | "modelId" | "configJson">);
-              const isImporting = importTemplateMutation.isPending
-                && importTemplateMutation.variables?.modelId === template.modelId;
+          {isTemplatesExpanded ? (
+            <div id="available-model-templates" className="grid gap-4 lg:grid-cols-2">
+              {visibleTemplates.map((template: MediaModelTemplate) => {
+                const generationModeLabel = getModelGenerationModeLabel(template as Pick<MediaModel, "modelType" | "modelId" | "configJson">);
+                const isImporting = importTemplateMutation.isPending
+                  && importTemplateMutation.variables?.modelId === template.modelId;
 
-              return (
-                <DashboardCard key={template.modelId} className="border-dashed">
-                  <div className="space-y-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-start gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
-                          {getModelTypeIcon(template.modelType)}
-                        </div>
-                        <div className="space-y-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <div className="font-medium">{template.name}</div>
-                            <Badge className={getModelTypeBadgeColor(template.modelType)}>
-                              {template.modelType}
-                            </Badge>
-                            {generationModeLabel && (
-                              <Badge
-                                variant="outline"
-                                className={`text-[10px] px-1.5 py-0 ${getGenerationModeBadgeColor(generationModeLabel)}`}
-                              >
-                                {generationModeLabel}
-                              </Badge>
-                            )}
+                return (
+                  <DashboardCard key={template.modelId} className="border-dashed">
+                    <div className="space-y-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-3">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
+                            {getModelTypeIcon(template.modelType)}
                           </div>
-                          <div className="font-mono text-xs text-muted-foreground">
-                            {template.modelId}
-                          </div>
-                        </div>
-                      </div>
-                      <Button
-                        type="button"
-                        size="sm"
-                        onClick={() => importTemplateMutation.mutate({ modelId: template.modelId })}
-                        disabled={importTemplateMutation.isPending}
-                      >
-                        {isImporting ? (
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        ) : (
-                          <Plus className="mr-2 h-4 w-4" />
-                        )}
-                        Import
-                      </Button>
-                    </div>
-
-                    {template.description && (
-                      <p className="text-sm leading-6 text-muted-foreground">
-                        {template.description}
-                      </p>
-                    )}
-
-                    <div className="flex flex-wrap gap-2">
-                      <Badge variant="outline">
-                        {template.providerDisplayName || template.provider}
-                      </Badge>
-                      <Badge variant="outline">
-                        <Coins className="mr-1 h-3 w-3 text-amber-500" />
-                        {template.creditCost} credits
-                      </Badge>
-                      {Array.isArray(template.durations) && template.durations.length > 0 && (
-                        <Badge variant="outline">
-                          {template.durations.join(", ")}s
-                        </Badge>
-                      )}
-                      {Array.isArray(template.aspectRatios) && template.aspectRatios.length > 0 && (
-                        <Badge variant="outline">
-                          {template.aspectRatios.join(", ")}
-                        </Badge>
-                      )}
-                    </div>
-
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div className="flex flex-wrap gap-1">
-                        {(template.aliases || []).slice(0, 3).map((alias: string) => (
-                          <Badge key={alias} variant="outline" className="text-xs">
-                            {alias}
-                          </Badge>
-                        ))}
-                        {(template.aliases || []).length > 3 && (
-                          <Badge variant="outline" className="text-xs">
-                            +{(template.aliases || []).length - 3}
-                          </Badge>
-                        )}
-                      </div>
-
-                      <div className="max-w-[280px] text-right">
-                        {template.providerReady ? (
-                          <Badge variant="outline" className="border-green-200 text-green-700">
-                            Provider Ready
-                          </Badge>
-                        ) : (
                           <div className="space-y-1">
-                            <Badge variant="outline" className="border-amber-200 text-amber-700">
-                              {template.providerReadiness === "provider_disabled" && "Provider Disabled"}
-                              {template.providerReadiness === "missing_api_key" && "Missing API Key"}
-                              {template.providerReadiness === "provider_not_found" && "Provider Missing"}
-                              {template.providerReadiness === "test_failed" && "Health Test Failed"}
-                              {!template.providerReadiness && "Not Ready"}
-                            </Badge>
-                            {template.providerReadinessMessage && (
-                              <div className="text-xs leading-5 text-muted-foreground">
-                                {summarizeProviderReadinessMessage(template.providerReadinessMessage)}
-                              </div>
-                            )}
+                            <div className="flex flex-wrap items-center gap-2">
+                              <div className="font-medium">{template.name}</div>
+                              <Badge className={getModelTypeBadgeColor(template.modelType)}>
+                                {template.modelType}
+                              </Badge>
+                              {generationModeLabel && (
+                                <Badge
+                                  variant="outline"
+                                  className={`text-[10px] px-1.5 py-0 ${getGenerationModeBadgeColor(generationModeLabel)}`}
+                                >
+                                  {generationModeLabel}
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="font-mono text-xs text-muted-foreground">
+                              {template.modelId}
+                            </div>
                           </div>
+                        </div>
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={() => importTemplateMutation.mutate({ modelId: template.modelId })}
+                          disabled={importTemplateMutation.isPending}
+                        >
+                          {isImporting ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          ) : (
+                            <Plus className="mr-2 h-4 w-4" />
+                          )}
+                          Import
+                        </Button>
+                      </div>
+
+                      {template.description && (
+                        <p className="text-sm leading-6 text-muted-foreground">
+                          {template.description}
+                        </p>
+                      )}
+
+                      <div className="flex flex-wrap gap-2">
+                        <Badge variant="outline">
+                          {template.providerDisplayName || template.provider}
+                        </Badge>
+                        <Badge variant="outline">
+                          <Coins className="mr-1 h-3 w-3 text-amber-500" />
+                          {template.creditCost} credits
+                        </Badge>
+                        {Array.isArray(template.durations) && template.durations.length > 0 && (
+                          <Badge variant="outline">
+                            {template.durations.join(", ")}s
+                          </Badge>
+                        )}
+                        {Array.isArray(template.aspectRatios) && template.aspectRatios.length > 0 && (
+                          <Badge variant="outline">
+                            {template.aspectRatios.join(", ")}
+                          </Badge>
                         )}
                       </div>
+
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="flex flex-wrap gap-1">
+                          {(template.aliases || []).slice(0, 3).map((alias: string) => (
+                            <Badge key={alias} variant="outline" className="text-xs">
+                              {alias}
+                            </Badge>
+                          ))}
+                          {(template.aliases || []).length > 3 && (
+                            <Badge variant="outline" className="text-xs">
+                              +{(template.aliases || []).length - 3}
+                            </Badge>
+                          )}
+                        </div>
+
+                        <div className="max-w-[280px] text-right">
+                          {template.providerReady ? (
+                            <Badge variant="outline" className="border-green-200 text-green-700">
+                              Provider Ready
+                            </Badge>
+                          ) : (
+                            <div className="space-y-1">
+                              <Badge variant="outline" className="border-amber-200 text-amber-700">
+                                {template.providerReadiness === "provider_disabled" && "Provider Disabled"}
+                                {template.providerReadiness === "missing_api_key" && "Missing API Key"}
+                                {template.providerReadiness === "provider_not_found" && "Provider Missing"}
+                                {template.providerReadiness === "test_failed" && "Health Test Failed"}
+                                {!template.providerReadiness && "Not Ready"}
+                              </Badge>
+                              {template.providerReadinessMessage && (
+                                <div className="text-xs leading-5 text-muted-foreground">
+                                  {summarizeProviderReadinessMessage(template.providerReadinessMessage)}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </DashboardCard>
-              );
-            })}
-          </div>
+                  </DashboardCard>
+                );
+              })}
+            </div>
+          ) : (
+            <div
+              id="available-model-templates"
+              className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-3 text-sm text-muted-foreground"
+            >
+              Template list is collapsed. Expand this section when you want to import models from the runtime catalog.
+            </div>
+          )}
         </DashboardCard>
       )}
 

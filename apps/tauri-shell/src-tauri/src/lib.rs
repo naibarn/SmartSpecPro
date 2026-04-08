@@ -1,6 +1,7 @@
 mod docker_commands;
 mod git_commands;
 mod file_commands;
+mod local_skill_runtime;
 mod terminal_pty;
 mod video_editor;
 
@@ -14,6 +15,7 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())
         .manage(terminal_pty::PtyState::default())
+        .manage(Arc::new(Mutex::new(local_skill_runtime::LocalLlmProcessRegistry::default())))
         .manage(Arc::new(Mutex::new(video_editor::render::RenderEngine::default())))
         .manage(Arc::new(Mutex::new(video_editor::job_dispatcher::JobStore::default())))
         .invoke_handler(tauri::generate_handler![
@@ -49,6 +51,23 @@ pub fn run() {
             file_commands::fs_delete_file,
             file_commands::fs_get_file_tree,
             file_commands::fs_search_files,
+            // Local Skill Runtime
+            local_skill_runtime::local_skill_get_runtime_status,
+            local_skill_runtime::local_skill_execute,
+            local_skill_runtime::local_http_backend_chat_completion,
+            local_skill_runtime::local_llm_prepare_model,
+            local_skill_runtime::local_llm_verify_model,
+            local_skill_runtime::local_llm_update_model,
+            local_skill_runtime::local_llm_repair_model,
+            local_skill_runtime::local_llm_remove_model,
+            local_skill_runtime::local_llm_generate,
+            local_skill_runtime::local_llm_analyze_image,
+            local_skill_runtime::local_llm_transcribe_audio,
+            local_skill_runtime::local_llm_generate_stream,
+            local_skill_runtime::local_llm_cancel_stream,
+            local_skill_runtime::local_tts_get_status,
+            local_skill_runtime::local_tts_speak_text,
+            local_skill_runtime::local_tts_stop_speaking,
             // Terminal PTY
             terminal_pty::pty_spawn,
             terminal_pty::pty_write,

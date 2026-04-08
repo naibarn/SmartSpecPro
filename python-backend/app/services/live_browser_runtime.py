@@ -14,6 +14,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.config import settings
+from app.core.sqlalchemy_sync import to_sync_sqlalchemy_url
 from app.services.live_browser_adapter import (
     InMemoryManagedBrowserBackend,
     LiveBrowserProviderError,
@@ -44,16 +45,7 @@ _manager: LiveBrowserSessionManager | None = None
 
 
 def _get_sync_db_url() -> str:
-    url = settings.DATABASE_URL
-    if "+asyncpg" in url:
-        return url.replace("+asyncpg", "")
-    if "+aiosqlite" in url:
-        return url.replace("+aiosqlite", "")
-    if url.startswith("postgresql+asyncpg"):
-        return url.replace("postgresql+asyncpg", "postgresql")
-    if url.startswith("sqlite+aiosqlite"):
-        return url.replace("sqlite+aiosqlite", "sqlite")
-    return url
+    return to_sync_sqlalchemy_url(settings.DATABASE_URL)
 
 
 def get_live_browser_session_factory() -> sessionmaker[Session]:

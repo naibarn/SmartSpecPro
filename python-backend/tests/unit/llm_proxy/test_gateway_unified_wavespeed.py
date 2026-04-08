@@ -7,6 +7,7 @@ from fastapi import HTTPException
 from app.llm_proxy.gateway_unified import LLMGateway
 from app.llm_proxy.models import VideoGenerationRequest
 from app.llm_proxy.providers.wavespeed_media_provider import (
+    WAVESPEED_SEEDANCE_2_FAST_TEXT_TO_VIDEO_MODEL_ID,
     WaveSpeedMediaProvider as _RealWaveSpeed,
     WaveSpeedPollResult,
 )
@@ -95,6 +96,7 @@ async def test_generate_video_routes_launch_model_to_wavespeed_and_maps_submit_f
         ],
         aspect_ratio="9:16",
         duration=10,
+        resolution=None,
     )
     client.aclose.assert_awaited_once()
 
@@ -146,3 +148,17 @@ async def test_estimate_cost_uses_wavespeed_static_tiers_when_db_lookup_is_unava
     cost = await LLMGateway._estimate_cost(gateway, request, False)
 
     assert cost == Decimal("1.6")
+
+
+@pytest.mark.asyncio
+async def test_estimate_cost_uses_model_specific_wavespeed_static_tiers_for_new_seedance_models(gateway):
+    request = VideoGenerationRequest(
+        model=WAVESPEED_SEEDANCE_2_FAST_TEXT_TO_VIDEO_MODEL_ID,
+        prompt="A cinematic waterfall",
+        duration=15,
+        apiConfig={"provider": "wavespeed_ai"},
+    )
+
+    cost = await LLMGateway._estimate_cost(gateway, request, False)
+
+    assert cost == Decimal("1.8")

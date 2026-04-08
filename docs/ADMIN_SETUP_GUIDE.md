@@ -67,9 +67,8 @@ python -m uvicorn app.main:app --reload --port 8000
 ### 5. Start Desktop App
 
 ```bash
-cd desktop-app
-pnpm install  # if not already done
-pnpm tauri dev
+npm install  # if not already done
+npm run dev:desktop
 ```
 
 ### 6. Login
@@ -312,7 +311,7 @@ After setup:
 
 - [Provider Configuration README](python-backend/migrations/README_PROVIDER_CONFIG.md)
 - [Backend API Documentation](http://localhost:8000/docs)
-- [Desktop App README](desktop-app/README.md)
+- Desktop shell source: `apps/tauri-shell/`
 
 ## 💡 Tips
 

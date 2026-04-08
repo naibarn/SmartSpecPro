@@ -58,6 +58,7 @@ describe("workerRuntime shared contracts", () => {
       expect.objectContaining({ path: "/v1/chat/completions" }),
       expect.objectContaining({ path: "/v1/responses" }),
       expect.objectContaining({ path: "/v1/models" }),
+      expect.objectContaining({ path: "/v1/knowledge/rag/ingest" }),
     ]));
   });
 });

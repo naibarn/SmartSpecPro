@@ -9,6 +9,121 @@ import { registerMcpPublicRoutes } from "../mcpPublicServer";
 
 let mockRedisData: Record<string, string> = {};
 
+const {
+  mockDelegatedManifest,
+  mockPromoteMessageToWorkItem,
+  mockAdvanceWorkItemByAssistant,
+  mockApproveWorkItemByAssistant,
+  mockRequestWorkItemChangesByAssistant,
+  mockAuditLog,
+} = vi.hoisted(() => ({
+  mockDelegatedManifest: {
+    sessionId: "delegated-session-1",
+    workerId: "worker-1",
+    workerJobId: "job-1",
+    tenantId: "tenant-1",
+    actingUserId: 7,
+    ownerUserId: 7,
+    runtimeType: "openclaw_gateway",
+    scopeProfile: "worker_gateway_hybrid_executor",
+    grantedScopes: ["mcp:read", "mcp:write", "llm:chat", "skills:list", "library:search", "rag:search"],
+    routeFamilies: ["llm", "skills", "library", "rag", "mcp", "callbacks"],
+    allowedMcpNamespaces: ["gateway", "knowledge", "skills"],
+    allowedModelAliases: ["gpt-5.4-mini"],
+    allowedProviderProfiles: [],
+    knowledgeAccess: {
+      libraryRead: false,
+      librarySearch: true,
+      libraryUpload: false,
+      ragSearch: true,
+      ragIngest: false,
+    },
+    grantSummary: {
+      skills: [],
+      agencies: [],
+      libraryItemIds: [],
+      mcpNamespaces: ["gateway", "knowledge", "skills"],
+    },
+    uploadPolicy: {
+      enabled: false,
+      allowedItemTypes: [],
+      maxFileBytes: null,
+    },
+    callbackTargets: {
+      roomUpdate: true,
+      workflowUpdate: true,
+      userNotification: true,
+    },
+    availability: {
+      http: "ready",
+      mcp: "ready",
+      knowledge: "ready",
+    },
+    mcp: {
+      enabled: true,
+      availableFamilies: ["gateway", "knowledge", "skills"],
+      families: [
+        { family: "gateway", enabled: true, availableToolCount: 4, reason: null },
+        { family: "knowledge", enabled: true, availableToolCount: 3, reason: null },
+        { family: "skills", enabled: true, availableToolCount: 4, reason: null },
+      ],
+      availableTools: [
+        {
+          name: "smartspec.gateway.models.list",
+          family: "gateway",
+          namespace: "gateway",
+          toolGroup: "gateway_read",
+          availability: "ready",
+          reason: null,
+        },
+      ],
+      experimentalTools: [],
+      disabledTools: [],
+      familyFlags: {
+        browserEnabled: false,
+        workspaceEnabled: false,
+        driveEnabled: false,
+        orchestratorEnabled: false,
+      },
+      operatorPolicy: {
+        enabled: true,
+        disabledFamilies: [],
+        disabledToolGroups: [],
+        approvalRequiredToolGroups: [],
+      },
+    },
+    discovery: {
+      openApiUrl: "/v1/openapi.json",
+      docsUrl: "/v1/docs",
+      catalogUrl: "/v1/mcp/catalog",
+      manifestPath: "/api/worker-jobs/job-1/delegated-manifest",
+      recommendedAuthMode: "bearer",
+      routeHints: [],
+    },
+    expiresAt: "2026-04-08T00:00:00.000Z",
+  },
+  mockPromoteMessageToWorkItem: vi.fn(async () => ({
+    workItem: { id: "work-1", title: "Follow up" },
+    createdMessage: { id: "msg-1" },
+    autoRouted: { targetStep: "research", roomMessage: { id: "msg-2" } },
+  })),
+  mockAdvanceWorkItemByAssistant: vi.fn(async () => ({
+    workItem: { id: "work-1" },
+    targetStep: "review",
+    roomMessage: { id: "msg-3" },
+  })),
+  mockApproveWorkItemByAssistant: vi.fn(async () => ({
+    workItem: { id: "work-1" },
+    roomMessage: { id: "msg-4" },
+  })),
+  mockRequestWorkItemChangesByAssistant: vi.fn(async () => ({
+    workItem: { id: "work-1" },
+    roomMessage: { id: "msg-5" },
+    autoRouted: { targetStep: "research", roomMessage: { id: "msg-6" } },
+  })),
+  mockAuditLog: vi.fn(),
+}));
+
 vi.mock("../../services/redis", () => ({
   getRedisClient: () => ({
     get: vi.fn(async (key: string) => mockRedisData[key] ?? null),
@@ -22,6 +137,12 @@ vi.mock("../../services/redis", () => ({
       return 1;
     }),
   }),
+}));
+
+vi.mock("../../services/auditLogger", () => ({
+  auditLogger: {
+    log: mockAuditLog,
+  },
 }));
 
 vi.mock("../../middleware/apiKeyAuth", () => ({
@@ -52,31 +173,24 @@ vi.mock("../../middleware/apiKeyAuth", () => ({
   },
 }));
 
-const {
-  mockPromoteMessageToWorkItem,
-  mockAdvanceWorkItemByAssistant,
-  mockApproveWorkItemByAssistant,
-  mockRequestWorkItemChangesByAssistant,
-} = vi.hoisted(() => ({
-  mockPromoteMessageToWorkItem: vi.fn(async () => ({
-    workItem: { id: "work-1", title: "Follow up" },
-    createdMessage: { id: "msg-1" },
-    autoRouted: { targetStep: "research", roomMessage: { id: "msg-2" } },
-  })),
-  mockAdvanceWorkItemByAssistant: vi.fn(async () => ({
-    workItem: { id: "work-1" },
-    targetStep: "review",
-    roomMessage: { id: "msg-3" },
-  })),
-  mockApproveWorkItemByAssistant: vi.fn(async () => ({
-    workItem: { id: "work-1" },
-    roomMessage: { id: "msg-4" },
-  })),
-  mockRequestWorkItemChangesByAssistant: vi.fn(async () => ({
-    workItem: { id: "work-1" },
-    roomMessage: { id: "msg-5" },
-    autoRouted: { targetStep: "research", roomMessage: { id: "msg-6" } },
-  })),
+vi.mock("../../services/appRuntimeConfig", async () => {
+  const actual = await vi.importActual<typeof import("../../services/appRuntimeConfig")>(
+    "../../services/appRuntimeConfig",
+  );
+  return {
+    ...actual,
+    getAppRuntimeConfig: vi.fn(async () => ({
+      pythonBackendUrl: "http://localhost:4000",
+      proxyToken: "test-proxy-token",
+      webGatewayToken: "test-web-gateway-token",
+    })),
+    getCachedPythonBackendUrl: vi.fn(() => "http://localhost:4000"),
+  };
+});
+
+vi.mock("../../services/skillRegistry", () => ({
+  getAvailableSkillsAsync: vi.fn(async () => []),
+  getSkillByIdAsync: vi.fn(async () => null),
 }));
 
 vi.mock("../../services/orchestratorRoomActionsService", () => ({
@@ -85,6 +199,17 @@ vi.mock("../../services/orchestratorRoomActionsService", () => ({
   approveWorkItemByAssistant: mockApproveWorkItemByAssistant,
   requestWorkItemChangesByAssistant: mockRequestWorkItemChangesByAssistant,
 }));
+
+vi.mock("../../services/workerDelegationService", async () => {
+  const actual = await vi.importActual<typeof import("../../services/workerDelegationService")>(
+    "../../services/workerDelegationService",
+  );
+  return {
+    ...actual,
+    getDelegatedWorkerManifestBySessionId: vi.fn(async ({ delegatedSessionId }: { delegatedSessionId: string }) =>
+      delegatedSessionId === "delegated-session-1" ? mockDelegatedManifest : null),
+  };
+});
 
 // ---------------------------------------------------------------------------
 // Test app factory
@@ -175,7 +300,7 @@ beforeEach(() => {
 // ---------------------------------------------------------------------------
 
 describe("POST /v1/mcp — protocol", () => {
-  it("rejects delegated worker callers for this phase", async () => {
+  it("allows delegated worker callers to initialize an owner-bound MCP session", async () => {
     const delegatedWorkerApp = makeApp({
       ok: true,
       mode: "delegated_worker",
@@ -199,11 +324,188 @@ describe("POST /v1/mcp — protocol", () => {
         id: 1,
       });
 
-    expect(res.status).toBe(403);
-    expect(res.body.error).toEqual(expect.objectContaining({
-      code: "mcp_unavailable",
-      message: "Delegated worker MCP access is unavailable in this phase",
+    expect(res.status).toBe(200);
+    expect(res.body.result.protocolVersion).toBe("2025-03-26");
+    const sessionId = res.headers["mcp-session-id"];
+    const stored = JSON.parse(mockRedisData[`mcp:session:${sessionId}`]);
+    expect(stored.authMode).toBe("delegated_worker");
+    expect(stored.ownerUserId).toBe(7);
+    expect(stored.workerId).toBe("worker-1");
+    expect(stored.delegatedSessionId).toBe("delegated-session-1");
+  });
+
+  it("limits delegated worker tools/list to granted MCP namespaces", async () => {
+    const delegatedWorkerApp = makeApp({
+      ok: true,
+      mode: "delegated_worker",
+      sub: "worker-1",
+      userId: 7,
+      ownerUserId: 7,
+      tenantId: "tenant-1",
+      workerId: "worker-1",
+      workerJobId: "job-1",
+      delegatedSessionId: "delegated-session-1",
+      runtimeType: "openclaw_gateway",
+      scopeProfile: "worker_gateway_hybrid_executor",
+      scopes: ["mcp:read", "mcp:write", "llm:chat", "skills:list", "library:search", "rag:search"],
+    });
+    const sessionId = await initializeSession(delegatedWorkerApp);
+
+    const res = await request(delegatedWorkerApp)
+      .post("/v1/mcp")
+      .set("Mcp-Session-Id", sessionId)
+      .send({ jsonrpc: "2.0", method: "tools/list", params: {}, id: 2 });
+
+    expect(res.status).toBe(200);
+    const toolNames = res.body.result.tools.map((tool: any) => tool.name);
+    expect(toolNames).toContain("smartspec.gateway.models.list");
+    expect(toolNames).toContain("smartspec.knowledge.library.search");
+    expect(toolNames).toContain("smartspec.skills.list");
+    expect(toolNames).not.toContain("smartspec.workspace.read_file");
+    expect(toolNames).not.toContain("smartspec.orchestrator.promote_message_to_work_item");
+    expect(mockAuditLog).toHaveBeenCalledWith(expect.objectContaining({
+      eventType: "mcp_tool_call",
+      metadata: expect.objectContaining({
+        event: "tools_list",
+        hiddenToolCount: expect.any(Number),
+      }),
     }));
+  });
+
+  it("hides delegated MCP families disabled by operator policy", async () => {
+    const previousDisabledFamilies = process.env.OPENCLAW_EXTERNAL_RUNTIME_MCP_DISABLED_FAMILIES;
+    const previousScopes = [...mockDelegatedManifest.grantedScopes];
+    const previousNamespaces = [...mockDelegatedManifest.allowedMcpNamespaces];
+    const previousFamilies = [...mockDelegatedManifest.routeFamilies];
+    process.env.OPENCLAW_EXTERNAL_RUNTIME_MCP_DISABLED_FAMILIES = "media";
+    mockDelegatedManifest.grantedScopes = [...previousScopes, "media:generate"];
+    mockDelegatedManifest.allowedMcpNamespaces = [...previousNamespaces, "media"];
+    mockDelegatedManifest.routeFamilies = [...new Set([...previousFamilies, "media"])];
+
+    try {
+      const delegatedWorkerApp = makeApp({
+        ok: true,
+        mode: "delegated_worker",
+        sub: "worker-1",
+        userId: 7,
+        ownerUserId: 7,
+        tenantId: "tenant-1",
+        workerId: "worker-1",
+        workerJobId: "job-1",
+        delegatedSessionId: "delegated-session-1",
+        runtimeType: "openclaw_gateway",
+        scopeProfile: "worker_gateway_hybrid_executor",
+        scopes: mockDelegatedManifest.grantedScopes,
+      });
+      const sessionId = await initializeSession(delegatedWorkerApp);
+
+      const res = await request(delegatedWorkerApp)
+        .post("/v1/mcp")
+        .set("Mcp-Session-Id", sessionId)
+        .send({ jsonrpc: "2.0", method: "tools/list", params: {}, id: 3 });
+
+      expect(res.status).toBe(200);
+      const toolNames = res.body.result.tools.map((tool: any) => tool.name);
+      expect(toolNames).not.toContain("smartspec.media.generate_image");
+      expect(toolNames).not.toContain("smartspec.media.generate_video");
+    } finally {
+      process.env.OPENCLAW_EXTERNAL_RUNTIME_MCP_DISABLED_FAMILIES = previousDisabledFamilies;
+      mockDelegatedManifest.grantedScopes = previousScopes;
+      mockDelegatedManifest.allowedMcpNamespaces = previousNamespaces;
+      mockDelegatedManifest.routeFamilies = previousFamilies;
+    }
+  });
+
+  it("hides all delegated MCP tools when delegated MCP is globally disabled by operator policy", async () => {
+    const previousEnabled = process.env.OPENCLAW_EXTERNAL_RUNTIME_MCP_ENABLED;
+    process.env.OPENCLAW_EXTERNAL_RUNTIME_MCP_ENABLED = "false";
+
+    try {
+      const delegatedWorkerApp = makeApp({
+        ok: true,
+        mode: "delegated_worker",
+        sub: "worker-1",
+        userId: 7,
+        ownerUserId: 7,
+        tenantId: "tenant-1",
+        workerId: "worker-1",
+        workerJobId: "job-1",
+        delegatedSessionId: "delegated-session-1",
+        runtimeType: "openclaw_gateway",
+        scopeProfile: "worker_gateway_hybrid_executor",
+        scopes: mockDelegatedManifest.grantedScopes,
+      });
+      const sessionId = await initializeSession(delegatedWorkerApp);
+
+      const res = await request(delegatedWorkerApp)
+        .post("/v1/mcp")
+        .set("Mcp-Session-Id", sessionId)
+        .send({ jsonrpc: "2.0", method: "tools/list", params: {}, id: 3 });
+
+      expect(res.status).toBe(200);
+      expect(res.body.result.tools).toEqual([]);
+    } finally {
+      process.env.OPENCLAW_EXTERNAL_RUNTIME_MCP_ENABLED = previousEnabled;
+    }
+  });
+
+  it("denies delegated MCP tools that require approval by operator policy", async () => {
+    const previousApprovalGroups = process.env.OPENCLAW_EXTERNAL_RUNTIME_MCP_APPROVAL_REQUIRED_TOOL_GROUPS;
+    const previousScopes = [...mockDelegatedManifest.grantedScopes];
+    const previousNamespaces = [...mockDelegatedManifest.allowedMcpNamespaces];
+    const previousFamilies = [...mockDelegatedManifest.routeFamilies];
+    process.env.OPENCLAW_EXTERNAL_RUNTIME_MCP_APPROVAL_REQUIRED_TOOL_GROUPS = "media_generation";
+    mockDelegatedManifest.grantedScopes = [...previousScopes, "media:generate"];
+    mockDelegatedManifest.allowedMcpNamespaces = [...previousNamespaces, "media"];
+    mockDelegatedManifest.routeFamilies = [...new Set([...previousFamilies, "media"])];
+
+    try {
+      const delegatedWorkerApp = makeApp({
+        ok: true,
+        mode: "delegated_worker",
+        sub: "worker-1",
+        userId: 7,
+        ownerUserId: 7,
+        tenantId: "tenant-1",
+        workerId: "worker-1",
+        workerJobId: "job-1",
+        delegatedSessionId: "delegated-session-1",
+        runtimeType: "openclaw_gateway",
+        scopeProfile: "worker_gateway_hybrid_executor",
+        scopes: mockDelegatedManifest.grantedScopes,
+      });
+      const sessionId = await initializeSession(delegatedWorkerApp);
+
+      const res = await request(delegatedWorkerApp)
+        .post("/v1/mcp")
+        .set("Mcp-Session-Id", sessionId)
+        .send({
+          jsonrpc: "2.0",
+          method: "tools/call",
+          params: {
+            name: "smartspec.media.generate_image",
+            arguments: { prompt: "robot pianist" },
+          },
+          id: 4,
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.body.error.code).toBe(-32603);
+      expect(res.body.error.message).toBe("Internal error");
+      expect(mockAuditLog).toHaveBeenCalledWith(expect.objectContaining({
+        eventType: "mcp_tool_call",
+        metadata: expect.objectContaining({
+          event: "approval_required",
+          toolName: "smartspec.media.generate_image",
+          reason: "approval_required_by_operator_policy",
+        }),
+      }));
+    } finally {
+      process.env.OPENCLAW_EXTERNAL_RUNTIME_MCP_APPROVAL_REQUIRED_TOOL_GROUPS = previousApprovalGroups;
+      mockDelegatedManifest.grantedScopes = previousScopes;
+      mockDelegatedManifest.allowedMcpNamespaces = previousNamespaces;
+      mockDelegatedManifest.routeFamilies = previousFamilies;
+    }
   });
 
   it("returns server capabilities on initialize", async () => {
@@ -586,6 +888,30 @@ describe("GET /.well-known/mcp.json", () => {
     expect(res.body.auth.type).toBe("bearer");
     expect(res.body.capabilities.tools).toBe(true);
     expect(res.body.docs).toBeDefined();
+  });
+});
+
+describe("GET /v1/mcp/catalog", () => {
+  it("returns the static machine-readable MCP catalog", async () => {
+    const res = await request(makeApp()).get("/v1/mcp/catalog");
+
+    expect(res.status).toBe(200);
+    expect(res.body.canonicalEndpoint).toBe("/v1/mcp");
+    expect(res.body.capabilities).toEqual(expect.objectContaining({
+      tools: true,
+      prompts: false,
+      resources: false,
+      toolsListChanged: false,
+    }));
+    expect(Array.isArray(res.body.tools)).toBe(true);
+    expect(res.body.tools.some((tool: any) => tool.name === "smartspec.gateway.models.list")).toBe(true);
+    expect(res.body.tools.find((tool: any) => tool.name === "smartspec.gateway.chat.create")?.toolGroup).toBe("gateway_generation");
+    expect(res.body.operatorPolicy).toEqual(expect.objectContaining({
+      enabled: expect.any(Boolean),
+      disabledFamilies: expect.any(Array),
+      disabledToolGroups: expect.any(Array),
+      approvalRequiredToolGroups: expect.any(Array),
+    }));
   });
 });
 

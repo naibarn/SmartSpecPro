@@ -48,6 +48,26 @@ describe("skillCatalog", () => {
         id: "public-helper",
         name: "Public Helper",
         internalOnly: false,
+        requiresExplicit: false,
+      }),
+    ]);
+
+    const entries = await getSkillCatalogSummary(1, "tenant-1");
+
+    expect(entries.map((entry) => entry.id)).toEqual(["public-helper"]);
+  });
+
+  it("filters out explicit-only skills from the classifier catalog", async () => {
+    mockGetSkillRegistryAsync.mockResolvedValue([
+      makeSkill({
+        id: "agency-creator",
+        name: "Agency Creator",
+        requiresExplicit: true,
+      }),
+      makeSkill({
+        id: "public-helper",
+        name: "Public Helper",
+        requiresExplicit: false,
       }),
     ]);
 

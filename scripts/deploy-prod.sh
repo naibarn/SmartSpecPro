@@ -54,13 +54,7 @@ docker compose -f docker-compose.full.yml build --no-cache
 
 # 3. Build Desktop Application (Production Release)
 log_step "3. Building Desktop Application (Production Release)..."
-cd apps/desktop
-if [ -d "node_modules" ]; then
-    pnpm tauri build
-else
-    pnpm install && pnpm tauri build
-fi
-cd ../..
+./scripts/desktop-app.sh build
 
 # 4. เริ่มต้นระบบในโหมด Production
 log_step "4. Deploying services with Docker Compose..."
@@ -80,5 +74,5 @@ echo -e "Web Interface:    ${CYAN}http://localhost:3000${NC}"
 echo -e "Backend API:      ${CYAN}http://localhost:8000${NC}"
 echo -e "Control Plane:    ${CYAN}http://localhost:7070${NC}"
 echo "--------------------------------------------------"
-log_info "Desktop App installer can be found in: apps/desktop/src-tauri/target/release/bundle/"
+log_info "Desktop App installer can be found in: apps/tauri-shell/src-tauri/target/release/bundle/"
 echo ""

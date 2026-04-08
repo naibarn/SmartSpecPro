@@ -19,12 +19,12 @@ const CONTROL_PLANE_BASE_URL = (process.env.CONTROL_PLANE_BASE_URL ?? "").replac
 const CONTROL_PLANE_API_KEY = process.env.CONTROL_PLANE_API_KEY ?? "";
 
 const DEFAULT_READ_EXTS = (process.env.MCP_READ_EXT_ALLOWLIST ??
-  ".md,.txt,.json,.yaml,.yml,.toml,.ts,.tsx,.js,.jsx,.py,.css,.html,.env,.csv")
-  .split(",").map(s => s.trim()).filter(Boolean);
+  ".md,.txt,.json,.yaml,.yml,.toml,.ts,.tsx,.js,.jsx,.py,.css,.html,.csv")
+  .split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
 
 const DEFAULT_WRITE_EXTS = (process.env.MCP_WRITE_EXT_ALLOWLIST ??
-  ".md,.txt,.json,.yaml,.yml,.toml,.ts,.tsx,.js,.jsx,.py,.css,.html,.env,.csv")
-  .split(",").map(s => s.trim()).filter(Boolean);
+  ".md,.txt,.json,.yaml,.yml,.toml,.ts,.tsx,.js,.jsx,.py,.css,.html,.csv")
+  .split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
 
 const PATH_ALLOWLIST = (process.env.MCP_PATH_ALLOWLIST ?? "").split(",").map(s => s.trim()).filter(Boolean);
 const PATH_DENYLIST = (process.env.MCP_PATH_DENYLIST ?? ".git,node_modules,dist,build,logs,.env")
@@ -86,8 +86,18 @@ function audit(entry: any) {
   } catch {}
 }
 
+function sanitizeTraceId(value: string | undefined) {
+  const normalized = String(value || "")
+    .replace(/[^A-Za-z0-9_-]/g, "")
+    .slice(0, 128);
+  return normalized || crypto.randomUUID();
+}
+
 function requireGatewayKey(req: any, res: any): boolean {
-  if (!GATEWAY_KEY) return true;
+  if (!GATEWAY_KEY) {
+    res.status(503).json({ error: "MCP gateway not configured" });
+    return false;
+  }
   const k = req.header("x-gateway-key") || "";
   if (k !== GATEWAY_KEY) {
     res.status(401).json({ error: { message: "invalid_gateway_key" } });
@@ -126,9 +136,13 @@ function checkPathPolicy(rel: string, mode: "read" | "write") {
     if (!ok) throw new Error("path_not_allowed");
   }
 
-  const ext = path.extname(rel).toLowerCase();
+  const base = path.basename(rel);
+  if (base.startsWith(".")) throw new Error("path_denied");
+
+  const ext = path.extname(base).toLowerCase();
   const allowed = mode === "read" ? DEFAULT_READ_EXTS : DEFAULT_WRITE_EXTS;
-  if (allowed.length > 0 && ext && !allowed.includes(ext)) {
+  if (!ext) throw new Error("extension_not_allowed");
+  if (allowed.length > 0 && !allowed.includes(ext)) {
     throw new Error("extension_not_allowed");
   }
 }
@@ -161,8 +175,12 @@ const tools: ToolDef[] = [
     permission: "net",
     handler: async (args: any) => {
       if (!CONTROL_PLANE_BASE_URL || !CONTROL_PLANE_API_KEY) throw new Error("control_plane_not_configured");
+      const sessionId = String(args.sessionId || "");
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sessionId)) {
+        throw new Error("Invalid session ID");
+      }
       const url =
-        `${CONTROL_PLANE_BASE_URL}/api/v1/sessions/${encodeURIComponent(String(args.sessionId))}/artifacts/presign-get?` +
+        `${CONTROL_PLANE_BASE_URL}/api/v1/sessions/${encodeURIComponent(sessionId)}/artifacts/presign-get?` +
         new URLSearchParams({ key: String(args.key) }).toString();
       const r = await fetch(url, { headers: { "x-api-key": CONTROL_PLANE_API_KEY } });
       if (!r.ok) throw new Error(`control_plane_error:${r.status}:${await r.text()}`);
@@ -254,7 +272,7 @@ export function registerMcpRoutes(app: any) {
   app.post("/api/mcp/invoke", async (req: any, res: any) => {
     if (!requireGatewayKey(req, res)) return;
 
-    const traceId = req.header("x-trace-id") || crypto.randomUUID();
+    const traceId = sanitizeTraceId(req.header("x-trace-id"));
     const started = Date.now();
 
     const { name, arguments: args } = req.body || {};
