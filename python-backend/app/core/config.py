@@ -2,9 +2,10 @@
 SmartSpec Pro - Core Configuration
 """
 
-from typing import List, Literal, Union
+from typing import Literal
+
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import Field, field_validator, model_validator
 
 
 class Settings(BaseSettings):
@@ -25,7 +26,7 @@ class Settings(BaseSettings):
     ENVIRONMENT: Literal["development", "staging", "production"] = "development"
     DEBUG: bool = False
     LOG_LEVEL: str = "INFO"
-    CORS_ORIGINS: Union[str, List[str]] = [
+    CORS_ORIGINS: str | list[str] = [
         "http://localhost:3000",
         "http://localhost:5173",
         "http://localhost:8080",
@@ -85,6 +86,9 @@ class Settings(BaseSettings):
 
     KNPLABAI_API_KEY: str = ""
     KNPLABAI_BASE_URL: str = "https://api.knplabai.com/ai/v1"
+
+    NVIDIA_NIM_API_KEY: str = ""
+    NVIDIA_NIM_BASE_URL: str = "https://integrate.api.nvidia.com/v1"
 
     # Stripe Payment
     STRIPE_PUBLISHABLE_KEY: str = ""

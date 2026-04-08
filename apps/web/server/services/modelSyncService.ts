@@ -9,6 +9,7 @@
 import { db } from "../db";
 import { llmProviders } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
+import { normalizeNvidiaHostedCatalogModel } from "./llmProviderCatalog";
 
 // Types
 interface OpenRouterModel {
@@ -67,6 +68,45 @@ export interface SyncedModel {
   provider?: string;
   description?: string;
   createdAt?: number; // Unix timestamp when model was added
+  apiStyle?: "chat-completions" | "responses" | "messages" | "gemini";
+  ownedBy?: string;
+  surface?: "chat" | "embedding" | "parse" | "guardrail" | "reward" | "translation" | "multimodal" | "other";
+  executionMode?: "public" | "internal-only" | "deferred";
+  autoSelectionEligible?: boolean;
+  embeddingDimension?: number;
+  supportsVision?: boolean;
+  supportsThinking?: boolean;
+  supportsFunctionTools?: boolean;
+  supportsResponses?: boolean;
+}
+
+interface OpenAICompatibleNativeModel {
+  id: string;
+  name?: string;
+  created?: number;
+  owned_by?: string;
+  context_length?: number;
+  context_window?: number;
+  max_context_length?: number;
+  max_model_len?: number;
+  pricing?: {
+    prompt?: string | number;
+    completion?: string | number;
+    input?: string | number;
+    output?: string | number;
+  };
+  supports_vision?: boolean;
+  supportsVision?: boolean;
+  supports_reasoning?: boolean;
+  supportsThinking?: boolean;
+  supports_responses?: boolean;
+  supportsResponses?: boolean;
+  supports_function_tools?: boolean;
+  supportsFunctionTools?: boolean;
+  supports_function_calling?: boolean;
+  supports_tools?: boolean;
+  embedding_dimension?: number;
+  embeddingDimension?: number;
 }
 
 /**
@@ -164,7 +204,7 @@ async function fetchProviderNativeModels(
   }
 
   // OpenAI-compatible providers (OpenAI, Groq, DeepSeek, Together, Fireworks, etc.)
-  if (['openai', 'groq', 'deepseek', 'together', 'fireworks', 'moonshot', 'qwen', 'zhipu', 'minimax'].includes(providerLower)) {
+  if (['openai', 'groq', 'deepseek', 'together', 'fireworks', 'moonshot', 'qwen', 'zhipu', 'minimax', 'nvidia_nim'].includes(providerLower)) {
     return fetchOpenAICompatibleModels(baseUrl, apiKey, providerLower);
   }
 
@@ -253,14 +293,9 @@ async function fetchOpenAICompatibleModels(
   }
 
   const data = await response.json();
-  const models = data.data || data.models || [];
-
-  return models.map((m: any) => ({
-    id: m.id,
-    name: m.id, // OpenAI API only returns ID
-    contextLength: m.context_window || m.context_length,
-    provider: providerName,
-  }));
+  const models = (data.data || data.models || []) as OpenAICompatibleNativeModel[];
+  const normalized = models.map((model) => normalizeOpenAICompatibleNativeModel(model, providerName));
+  return dedupeSyncedModels(normalized);
 }
 
 /**
@@ -348,6 +383,121 @@ function parsePricing(priceStr?: string): number {
   if (!priceStr) return 0;
   const parsed = parseFloat(priceStr);
   return isNaN(parsed) ? 0 : parsed;
+}
+
+function parsePricingValue(value?: string | number): number {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : 0;
+  }
+  return parsePricing(value);
+}
+
+function parseOptionalNumber(value?: string | number | null): number | undefined {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : undefined;
+  }
+  if (typeof value === "string" && value.trim().length > 0) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+  return undefined;
+}
+
+function pickBoolean(...values: Array<boolean | null | undefined>): boolean | undefined {
+  for (const value of values) {
+    if (typeof value === "boolean") {
+      return value;
+    }
+  }
+  return undefined;
+}
+
+function mergeSyncedModels(current: SyncedModel, next: SyncedModel): SyncedModel {
+  return {
+    ...current,
+    ...next,
+    name: next.name || current.name,
+    contextLength: next.contextLength ?? current.contextLength,
+    pricing: next.pricing ?? current.pricing,
+    provider: next.provider ?? current.provider,
+    description: next.description ?? current.description,
+    createdAt: next.createdAt ?? current.createdAt,
+    apiStyle: next.apiStyle ?? current.apiStyle,
+    ownedBy: next.ownedBy ?? current.ownedBy,
+    surface: next.surface ?? current.surface,
+    executionMode: next.executionMode ?? current.executionMode,
+    autoSelectionEligible: next.autoSelectionEligible ?? current.autoSelectionEligible,
+    embeddingDimension: next.embeddingDimension ?? current.embeddingDimension,
+    supportsVision: next.supportsVision ?? current.supportsVision,
+    supportsThinking: next.supportsThinking ?? current.supportsThinking,
+    supportsFunctionTools: next.supportsFunctionTools ?? current.supportsFunctionTools,
+    supportsResponses: next.supportsResponses ?? current.supportsResponses,
+  };
+}
+
+function dedupeSyncedModels(models: SyncedModel[]): SyncedModel[] {
+  const modelsById = new Map<string, SyncedModel>();
+
+  for (const model of models) {
+    const existing = modelsById.get(model.id);
+    if (!existing) {
+      modelsById.set(model.id, model);
+      continue;
+    }
+
+    modelsById.set(model.id, mergeSyncedModels(existing, model));
+  }
+
+  return Array.from(modelsById.values());
+}
+
+function normalizeOpenAICompatibleNativeModel(
+  model: OpenAICompatibleNativeModel,
+  providerName: string,
+): SyncedModel {
+  const contextLength = model.context_window
+    ?? model.context_length
+    ?? model.max_context_length
+    ?? model.max_model_len;
+  const pricingInput = parsePricingValue(model.pricing?.prompt ?? model.pricing?.input);
+  const pricingOutput = parsePricingValue(model.pricing?.completion ?? model.pricing?.output);
+
+  if (providerName === "nvidia_nim") {
+    return {
+      ...normalizeNvidiaHostedCatalogModel({
+        id: model.id,
+        name: model.name ?? model.id,
+        ownedBy: model.owned_by,
+        contextLength,
+        createdAt: model.created,
+        pricing: pricingInput > 0 || pricingOutput > 0
+          ? { input: pricingInput, output: pricingOutput }
+          : undefined,
+        embeddingDimension: parseOptionalNumber(model.embedding_dimension ?? model.embeddingDimension),
+        supportsVision: pickBoolean(model.supports_vision, model.supportsVision),
+        supportsThinking: pickBoolean(model.supports_reasoning, model.supportsThinking),
+        supportsResponses: pickBoolean(model.supports_responses, model.supportsResponses),
+        supportsFunctionTools: pickBoolean(
+          model.supports_function_tools,
+          model.supportsFunctionTools,
+          model.supports_function_calling,
+          model.supports_tools,
+        ),
+      }),
+      provider: providerName,
+    };
+  }
+
+  return {
+    id: model.id,
+    name: model.name || model.id,
+    contextLength,
+    pricing: pricingInput > 0 || pricingOutput > 0
+      ? { input: pricingInput, output: pricingOutput }
+      : undefined,
+    provider: providerName,
+    createdAt: model.created,
+  };
 }
 
 /**

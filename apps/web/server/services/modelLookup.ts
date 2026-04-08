@@ -1,4 +1,4 @@
-import { eq, or } from "drizzle-orm";
+import { eq, or, sql } from "drizzle-orm";
 import { modelProviderMap } from "../../drizzle/schema";
 
 export function buildModelLookupCandidates(modelId: string): string[] {
@@ -28,6 +28,7 @@ export function buildModelProviderMapLookupCondition(modelId: string) {
     return or(
       eq(modelProviderMap.modelId, lookupCandidates[0]!),
       eq(modelProviderMap.providerModelId, lookupCandidates[0]!),
+      sql<boolean>`${modelProviderMap.legacyModelAliases} ? ${lookupCandidates[0]!}`,
     )!;
   }
 
@@ -35,6 +36,7 @@ export function buildModelProviderMapLookupCondition(modelId: string) {
     ...lookupCandidates.flatMap((candidate) => [
       eq(modelProviderMap.modelId, candidate),
       eq(modelProviderMap.providerModelId, candidate),
+      sql<boolean>`${modelProviderMap.legacyModelAliases} ? ${candidate}`,
     ]),
   )!;
 }

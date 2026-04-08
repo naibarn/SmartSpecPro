@@ -671,6 +671,11 @@ export const llmProviders = pgTable("llm_providers", {
     createdAt?: number;
     pricing?: { input: number; output: number };
     apiStyle?: "chat-completions" | "responses" | "messages" | "gemini";
+    ownedBy?: string;
+    surface?: "chat" | "embedding" | "parse" | "guardrail" | "reward" | "translation" | "multimodal" | "other";
+    executionMode?: "public" | "internal-only" | "deferred";
+    autoSelectionEligible?: boolean;
+    embeddingDimension?: number;
     supportsVision?: boolean;
     supportsThinking?: boolean;
     supportsWebSearch?: boolean;
@@ -761,6 +766,9 @@ export const modelProviderMap = pgTable("model_provider_map", {
   /** Provider-specific model string sent in API requests */
   providerModelId: varchar("providerModelId", { length: 256 }).notNull(),
 
+  /** Historical modelId aliases preserved when duplicate upstream mappings are consolidated */
+  legacyModelAliases: jsonb("legacyModelAliases").$type<string[]>().default(sql`'[]'::jsonb`).notNull(),
+
   /** Cost per 1M input tokens (0 for free) */
   pricingInput: numeric("pricingInput", { precision: 12, scale: 8 }).default("0").notNull(),
 
@@ -821,6 +829,7 @@ export const modelProviderMap = pgTable("model_provider_map", {
   apiStyle: apiStyleEnum("apiStyle").default("chat-completions").notNull(),
 }, (t) => [
   uniqueIndex("model_provider_map_unique").on(t.modelId, t.providerId),
+  uniqueIndex("model_provider_map_provider_model_unique").on(t.providerId, t.providerModelId),
 ]);
 
 export type ModelProviderMap = typeof modelProviderMap.$inferSelect;

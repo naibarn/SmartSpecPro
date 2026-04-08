@@ -3,17 +3,36 @@ import { and, asc, eq } from "drizzle-orm";
 import { llmProviders, modelProviderMap } from "../../drizzle/schema";
 import { getDb } from "../db";
 import { buildModelLookupCandidates } from "./modelLookup";
+import { resolveProviderCatalogDefaults } from "../routers/llmProviders";
+import {
+  buildProviderCatalogLookupKey,
+  resolveCatalogEligibility,
+  type AvailableLlmProviderModel,
+  type CatalogEligibility,
+  type CatalogInvalidReason,
+} from "./llmProviderCatalog";
 
 export type EnabledLlmModelRow = {
+  providerId: number;
   providerName: string;
   modelId: string;
   providerModelId: string;
+  legacyModelAliases?: string[] | null;
   defaultModel: string | null;
+  apiStyle: "chat-completions" | "responses" | "messages" | "gemini";
+  ownedBy?: string;
+  surface?: "chat" | "embedding" | "parse" | "guardrail" | "reward" | "translation" | "multimodal" | "other";
+  executionMode?: "public" | "internal-only" | "deferred";
+  autoSelectionEligible?: boolean;
+  catalogEligibility?: CatalogEligibility;
+  catalogInvalidReason?: CatalogInvalidReason;
   // Capability columns (from model_provider_map)
   supportsVision: boolean | null;
   supportsThinking: boolean | null;
   supportsFunctionTools: boolean | null;
   supportsStructuredOutputs: boolean | null;
+  supportsJsonMode: boolean | null;
+  supportsStrictToolSchema: boolean | null;
   supportsWebSearch: boolean | null;
   supportsCodeExecution: boolean | null;
   supportsComputerUse: boolean | null;
@@ -24,28 +43,43 @@ export type EnabledLlmModelRow = {
   priority: number;
   priorityLocked: boolean | null;
   isFree: boolean;
+  pricingInput?: string | null;
+  pricingOutput?: string | null;
+};
+
+export type EnabledLlmModelSourceRow = EnabledLlmModelRow & {
+  availableModels?: AvailableLlmProviderModel[] | null;
 };
 
 function trimModelId(value: string | null | undefined): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function addComparableId(
+  ids: Set<string>,
+  providerName: string,
+  value: string | null | undefined,
+) {
+  const trimmed = trimModelId(value);
+  if (!trimmed) {
+    return;
+  }
+
+  ids.add(trimmed);
+  for (const candidate of buildModelLookupCandidates(trimmed)) {
+    ids.add(candidate);
+  }
+  if (providerName) {
+    ids.add(`${providerName}/${trimmed}`);
+  }
+}
+
 function buildComparableIds(row: EnabledLlmModelRow): Set<string> {
   const ids = new Set<string>();
   const providerName = trimModelId(row.providerName);
 
-  for (const value of [row.modelId, row.providerModelId]) {
-    const trimmed = trimModelId(value);
-    if (!trimmed) {
-      continue;
-    }
-    ids.add(trimmed);
-    for (const candidate of buildModelLookupCandidates(trimmed)) {
-      ids.add(candidate);
-    }
-    if (providerName) {
-      ids.add(`${providerName}/${trimmed}`);
-    }
+  for (const value of [row.modelId, row.providerModelId, ...(row.legacyModelAliases ?? [])]) {
+    addComparableId(ids, providerName, value);
   }
 
   return ids;
@@ -68,6 +102,79 @@ function rowMatchesModelId(row: EnabledLlmModelRow, modelId: string | null | und
   }
 
   return false;
+}
+
+function buildProviderCatalogs(rows: EnabledLlmModelSourceRow[]) {
+  const providerCatalogs = new Map<number, AvailableLlmProviderModel[]>();
+
+  for (const row of rows) {
+    if (providerCatalogs.has(row.providerId)) {
+      continue;
+    }
+
+    const hydratedProvider = resolveProviderCatalogDefaults({
+      providerName: row.providerName,
+      defaultModel: row.defaultModel,
+      availableModels: row.availableModels ?? null,
+    });
+    providerCatalogs.set(row.providerId, hydratedProvider.availableModels ?? []);
+  }
+
+  return providerCatalogs;
+}
+
+export function hydrateEnabledLlmModelRows(
+  rows: EnabledLlmModelSourceRow[],
+  options?: { autoSelectionOnly?: boolean },
+): EnabledLlmModelRow[] {
+  const providerCatalogs = buildProviderCatalogs(rows);
+  const catalogModels = new Map<string, AvailableLlmProviderModel>();
+
+  for (const row of rows) {
+    const availableModels = providerCatalogs.get(row.providerId) ?? [];
+    for (const model of availableModels) {
+      catalogModels.set(buildProviderCatalogLookupKey(row.providerId, model.id), model);
+    }
+  }
+
+  return rows
+    .map((row) => {
+      const catalogModel = catalogModels.get(
+        buildProviderCatalogLookupKey(row.providerId, row.providerModelId),
+      ) ?? null;
+      const catalogState = resolveCatalogEligibility({
+        providerName: row.providerName,
+        providerEnabled: true,
+        catalogModel,
+        mappingExists: true,
+      });
+
+      return {
+        ...row,
+        ownedBy: catalogState.ownedBy,
+        surface: catalogState.surface,
+        executionMode: catalogState.executionMode,
+        autoSelectionEligible: catalogState.catalogEligibility === "public-chat",
+        catalogEligibility: catalogState.catalogEligibility,
+        catalogInvalidReason: catalogState.catalogInvalidReason,
+      };
+    })
+    .filter((row) => {
+      if (row.providerName === "nvidia_nim") {
+        return row.catalogEligibility === "public-chat" || row.catalogEligibility === "manual-only";
+      }
+      return true;
+    })
+    .filter((row) => {
+      if (!options?.autoSelectionOnly) {
+        return true;
+      }
+      return row.catalogEligibility === "public-chat";
+    });
+}
+
+export function filterAutoSelectableLlmModelRows(rows: EnabledLlmModelRow[]): EnabledLlmModelRow[] {
+  return rows.filter((row) => row.catalogEligibility == null || row.catalogEligibility === "public-chat");
 }
 
 export function resolveEnabledLlmModelIdFromRows(input: {
@@ -94,7 +201,9 @@ export function resolveEnabledLlmModelIdFromRows(input: {
   return rows[0]?.modelId ?? null;
 }
 
-export async function loadEnabledLlmModelRows(): Promise<EnabledLlmModelRow[]> {
+export async function loadEnabledLlmModelRows(
+  options?: { autoSelectionOnly?: boolean },
+): Promise<EnabledLlmModelRow[]> {
   const db = await getDb();
   if (!db) {
     return [];
@@ -102,15 +211,21 @@ export async function loadEnabledLlmModelRows(): Promise<EnabledLlmModelRow[]> {
 
   const rows = await db
     .select({
+      providerId: llmProviders.id,
       providerName: llmProviders.providerName,
       modelId: modelProviderMap.modelId,
       providerModelId: modelProviderMap.providerModelId,
+      legacyModelAliases: modelProviderMap.legacyModelAliases,
       defaultModel: llmProviders.defaultModel,
+      availableModels: llmProviders.availableModels,
+      apiStyle: modelProviderMap.apiStyle,
       // Capability columns
       supportsVision: modelProviderMap.supportsVision,
       supportsThinking: modelProviderMap.supportsThinking,
       supportsFunctionTools: modelProviderMap.supportsFunctionTools,
       supportsStructuredOutputs: modelProviderMap.supportsStructuredOutputs,
+      supportsJsonMode: modelProviderMap.supportsJsonMode,
+      supportsStrictToolSchema: modelProviderMap.supportsStrictToolSchema,
       supportsWebSearch: modelProviderMap.supportsWebSearch,
       supportsCodeExecution: modelProviderMap.supportsCodeExecution,
       supportsComputerUse: modelProviderMap.supportsComputerUse,
@@ -121,6 +236,8 @@ export async function loadEnabledLlmModelRows(): Promise<EnabledLlmModelRow[]> {
       priority: modelProviderMap.priority,
       priorityLocked: modelProviderMap.priorityLocked,
       isFree: modelProviderMap.isFree,
+      pricingInput: modelProviderMap.pricingInput,
+      pricingOutput: modelProviderMap.pricingOutput,
     })
     .from(modelProviderMap)
     .innerJoin(llmProviders, eq(modelProviderMap.providerId, llmProviders.id))
@@ -131,15 +248,21 @@ export async function loadEnabledLlmModelRows(): Promise<EnabledLlmModelRow[]> {
       asc(modelProviderMap.id),
     );
 
-  return rows.map((row) => ({
+  return hydrateEnabledLlmModelRows(rows.map((row) => ({
+    providerId: row.providerId,
     providerName: row.providerName,
     modelId: row.modelId,
     providerModelId: row.providerModelId,
+    legacyModelAliases: row.legacyModelAliases as string[] | null,
     defaultModel: row.defaultModel,
+    availableModels: row.availableModels as AvailableLlmProviderModel[] | null,
+    apiStyle: row.apiStyle,
     supportsVision: row.supportsVision,
     supportsThinking: row.supportsThinking,
     supportsFunctionTools: row.supportsFunctionTools,
     supportsStructuredOutputs: row.supportsStructuredOutputs,
+    supportsJsonMode: row.supportsJsonMode,
+    supportsStrictToolSchema: row.supportsStrictToolSchema,
     supportsWebSearch: row.supportsWebSearch,
     supportsCodeExecution: row.supportsCodeExecution,
     supportsComputerUse: row.supportsComputerUse,
@@ -149,7 +272,9 @@ export async function loadEnabledLlmModelRows(): Promise<EnabledLlmModelRow[]> {
     priority: row.priority,
     priorityLocked: row.priorityLocked,
     isFree: row.isFree,
-  }));
+    pricingInput: row.pricingInput,
+    pricingOutput: row.pricingOutput,
+  })), options);
 }
 
 export async function resolveEnabledLlmModelId(
@@ -163,4 +288,3 @@ export async function isEnabledLlmModelId(modelId: string | null | undefined): P
   const rows = await loadEnabledLlmModelRows();
   return rows.some((row) => rowMatchesModelId(row, modelId));
 }
-

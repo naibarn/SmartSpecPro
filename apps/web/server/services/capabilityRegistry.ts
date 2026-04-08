@@ -10,9 +10,12 @@
  */
 
 import type { SkillExecutionPolicyConfig } from "@smartspec/skills";
-import { and, eq, asc } from "drizzle-orm";
-import { modelProviderMap, llmProviders } from "../../drizzle/schema";
-import { getDb } from "../db";
+import {
+  loadEnabledLlmModelRows,
+  type EnabledLlmModelRow,
+} from "./enabledLlmModels";
+import type { CatalogEligibility, CatalogInvalidReason } from "./llmProviderCatalog";
+import { buildModelLookupCandidates } from "./modelLookup";
 
 /**
  * Model capability metadata — normalized from model_provider_map rows.
@@ -22,6 +25,8 @@ export interface ModelCapabilities {
   supportsThinking?: boolean;
   supportsResponses?: boolean;
   supportsStructuredOutputs?: boolean;
+  supportsJsonMode?: boolean;
+  supportsStrictToolSchema?: boolean;
   supportsWebSearch?: boolean;
   supportsFunctionTools?: boolean;
   supportsCodeExecution?: boolean;
@@ -59,6 +64,10 @@ export interface EnabledModelWithCapabilities {
   modelId: string;
   providerModelId: string;
   providerName: string;
+  legacyModelAliases?: string[];
+  catalogEligibility?: CatalogEligibility;
+  catalogInvalidReason?: CatalogInvalidReason;
+  autoSelectionEligible?: boolean;
   capabilities: ModelCapabilities;
 }
 
@@ -67,47 +76,8 @@ export interface EnabledModelWithCapabilities {
  * This is the integration layer between DB and the capability filter.
  */
 export async function loadEnabledModelsWithCapabilities(): Promise<EnabledModelWithCapabilities[]> {
-  const db = await getDb();
-  if (!db) return [];
-
-  const rows = await db
-    .select({
-      modelId: modelProviderMap.modelId,
-      providerModelId: modelProviderMap.providerModelId,
-      providerName: llmProviders.providerName,
-      contextLength: modelProviderMap.contextLength,
-      supportsVision: modelProviderMap.supportsVision,
-      supportsThinking: modelProviderMap.supportsThinking,
-      supportsResponses: modelProviderMap.supportsResponses,
-      supportsStructuredOutputs: modelProviderMap.supportsStructuredOutputs,
-      supportsWebSearch: modelProviderMap.supportsWebSearch,
-      supportsFunctionTools: modelProviderMap.supportsFunctionTools,
-      supportsCodeExecution: modelProviderMap.supportsCodeExecution,
-      supportsComputerUse: modelProviderMap.supportsComputerUse,
-      supportsBackground: modelProviderMap.supportsBackground,
-    })
-    .from(modelProviderMap)
-    .innerJoin(llmProviders, eq(modelProviderMap.providerId, llmProviders.id))
-    .where(and(eq(modelProviderMap.isEnabled, true), eq(llmProviders.isEnabled, true)))
-    .orderBy(asc(llmProviders.sortOrder), asc(modelProviderMap.priority));
-
-  return rows.map((row) => ({
-    modelId: row.modelId,
-    providerModelId: row.providerModelId,
-    providerName: row.providerName,
-    capabilities: {
-      supportsVision: row.supportsVision ?? false,
-      supportsThinking: row.supportsThinking ?? false,
-      supportsResponses: row.supportsResponses ?? false,
-      supportsStructuredOutputs: row.supportsStructuredOutputs ?? false,
-      supportsWebSearch: row.supportsWebSearch ?? false,
-      supportsFunctionTools: row.supportsFunctionTools ?? false,
-      supportsCodeExecution: row.supportsCodeExecution ?? false,
-      supportsComputerUse: row.supportsComputerUse ?? false,
-      supportsBackground: row.supportsBackground ?? false,
-      contextLength: row.contextLength ?? undefined,
-    },
-  }));
+  const rows = await loadEnabledLlmModelRows({ autoSelectionOnly: true });
+  return rows.map(mapEnabledRowToCapabilities);
 }
 
 /**
@@ -117,42 +87,31 @@ export async function loadEnabledModelsWithCapabilities(): Promise<EnabledModelW
 export async function loadEnabledModelsWithPricing(): Promise<
   Array<EnabledModelWithCapabilities & { pricingInput: number; pricingOutput: number; isFree: boolean }>
 > {
-  const db = await getDb();
-  if (!db) return [];
-
-  const rows = await db
-    .select({
-      modelId: modelProviderMap.modelId,
-      providerModelId: modelProviderMap.providerModelId,
-      providerName: llmProviders.providerName,
-      contextLength: modelProviderMap.contextLength,
-      supportsVision: modelProviderMap.supportsVision,
-      supportsThinking: modelProviderMap.supportsThinking,
-      supportsResponses: modelProviderMap.supportsResponses,
-      supportsStructuredOutputs: modelProviderMap.supportsStructuredOutputs,
-      supportsWebSearch: modelProviderMap.supportsWebSearch,
-      supportsFunctionTools: modelProviderMap.supportsFunctionTools,
-      supportsCodeExecution: modelProviderMap.supportsCodeExecution,
-      supportsComputerUse: modelProviderMap.supportsComputerUse,
-      supportsBackground: modelProviderMap.supportsBackground,
-      pricingInput: modelProviderMap.pricingInput,
-      pricingOutput: modelProviderMap.pricingOutput,
-      isFree: modelProviderMap.isFree,
-    })
-    .from(modelProviderMap)
-    .innerJoin(llmProviders, eq(modelProviderMap.providerId, llmProviders.id))
-    .where(and(eq(modelProviderMap.isEnabled, true), eq(llmProviders.isEnabled, true)))
-    .orderBy(asc(llmProviders.sortOrder), asc(modelProviderMap.priority));
-
+  const rows = await loadEnabledLlmModelRows({ autoSelectionOnly: true });
   return rows.map((row) => ({
+    ...mapEnabledRowToCapabilities(row),
+    pricingInput: parseFloat(String(row.pricingInput)) || 0,
+    pricingOutput: parseFloat(String(row.pricingOutput)) || 0,
+    isFree: row.isFree ?? false,
+  }));
+}
+
+function mapEnabledRowToCapabilities(row: EnabledLlmModelRow): EnabledModelWithCapabilities {
+  return {
     modelId: row.modelId,
     providerModelId: row.providerModelId,
     providerName: row.providerName,
+    legacyModelAliases: row.legacyModelAliases ?? undefined,
+    catalogEligibility: row.catalogEligibility,
+    catalogInvalidReason: row.catalogInvalidReason,
+    autoSelectionEligible: row.autoSelectionEligible,
     capabilities: {
       supportsVision: row.supportsVision ?? false,
       supportsThinking: row.supportsThinking ?? false,
       supportsResponses: row.supportsResponses ?? false,
       supportsStructuredOutputs: row.supportsStructuredOutputs ?? false,
+      supportsJsonMode: row.supportsJsonMode ?? false,
+      supportsStrictToolSchema: row.supportsStrictToolSchema ?? false,
       supportsWebSearch: row.supportsWebSearch ?? false,
       supportsFunctionTools: row.supportsFunctionTools ?? false,
       supportsCodeExecution: row.supportsCodeExecution ?? false,
@@ -160,10 +119,50 @@ export async function loadEnabledModelsWithPricing(): Promise<
       supportsBackground: row.supportsBackground ?? false,
       contextLength: row.contextLength ?? undefined,
     },
-    pricingInput: parseFloat(String(row.pricingInput)) || 0,
-    pricingOutput: parseFloat(String(row.pricingOutput)) || 0,
-    isFree: row.isFree ?? false,
-  }));
+  };
+}
+
+function buildComparableModelIds(model: {
+  modelId: string;
+  providerModelId?: string;
+  legacyModelAliases?: string[];
+}): Set<string> {
+  const ids = new Set<string>();
+
+  for (const value of [model.modelId, model.providerModelId, ...(model.legacyModelAliases ?? [])]) {
+    const trimmed = typeof value === "string" ? value.trim() : "";
+    if (!trimmed) {
+      continue;
+    }
+    ids.add(trimmed);
+    for (const candidate of buildModelLookupCandidates(trimmed)) {
+      ids.add(candidate);
+    }
+  }
+
+  return ids;
+}
+
+function modelMatchesIdentifier(
+  model: { modelId: string; providerModelId?: string; legacyModelAliases?: string[] },
+  requestedId: string,
+): boolean {
+  const trimmedRequestedId = requestedId.trim();
+  if (!trimmedRequestedId) {
+    return false;
+  }
+
+  const requestedIds = new Set(buildModelLookupCandidates(trimmedRequestedId));
+  requestedIds.add(trimmedRequestedId);
+
+  const comparableIds = buildComparableModelIds(model);
+  for (const candidate of requestedIds) {
+    if (comparableIds.has(candidate)) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 /**
@@ -206,13 +205,14 @@ export function resolveModelsForPolicy<
 
   // Apply disallowedModels filter
   if (policy.disallowedModels?.length) {
-    const disallowed = new Set(policy.disallowedModels);
-    candidates = candidates.filter((m) => !disallowed.has(m.modelId));
+    candidates = candidates.filter(
+      (model) => !policy.disallowedModels!.some((disallowedId) => modelMatchesIdentifier(model, disallowedId)),
+    );
   }
 
   if (policy.mode === "fixed" && policy.fixedModel) {
     // Fixed mode: only the specified model
-    return candidates.filter((m) => m.modelId === policy.fixedModel);
+    return candidates.filter((model) => modelMatchesIdentifier(model, policy.fixedModel!));
   }
 
   // Requirements-based filtering (for requirements and hybrid modes)
@@ -222,7 +222,7 @@ export function resolveModelsForPolicy<
 
   if (policy.mode === "hybrid" && policy.fixedModel) {
     // Hybrid: put fixed model first if it's in the candidates (i.e., it meets requirements)
-    const fixedIdx = candidates.findIndex((m) => m.modelId === policy.fixedModel);
+    const fixedIdx = candidates.findIndex((model) => modelMatchesIdentifier(model, policy.fixedModel!));
     if (fixedIdx > 0) {
       const [fixed] = candidates.splice(fixedIdx, 1);
       candidates.unshift(fixed);
@@ -231,12 +231,11 @@ export function resolveModelsForPolicy<
 
   // Apply preferredProfiles ordering
   if (policy.preferredProfiles?.length) {
-    const preferenceOrder = new Map(
-      policy.preferredProfiles.map((id, idx) => [id, idx]),
-    );
     candidates.sort((a, b) => {
-      const aOrder = preferenceOrder.get(a.modelId) ?? Infinity;
-      const bOrder = preferenceOrder.get(b.modelId) ?? Infinity;
+      const aMatchIndex = policy.preferredProfiles!.findIndex((profileId) => modelMatchesIdentifier(a, profileId));
+      const bMatchIndex = policy.preferredProfiles!.findIndex((profileId) => modelMatchesIdentifier(b, profileId));
+      const aOrder = aMatchIndex === -1 ? Infinity : aMatchIndex;
+      const bOrder = bMatchIndex === -1 ? Infinity : bMatchIndex;
       return aOrder - bOrder;
     });
   }

@@ -6,6 +6,12 @@
 import { getDb } from "../server/db";
 import { llmProviders, modelProviderMap, routingRules, personaTemplates, assistantTeamTemplates } from "./schema";
 import { eq } from "drizzle-orm";
+import { encrypt } from "../server/services/crypto";
+import {
+  buildKieLlmAvailableModels,
+  canonicalModelIdForCatalogModel,
+  KIE_PROVIDER_NAME,
+} from "../server/services/llmProviderCatalog";
 
 interface ModelMapping {
   modelId: string;
@@ -18,6 +24,132 @@ interface ModelMapping {
   priority: number;
 }
 
+function encryptSeedApiKey(apiKey: string): string | null {
+  if (!apiKey) {
+    return null;
+  }
+  return encrypt(apiKey);
+}
+
+export async function seedKieAiProvider(): Promise<void> {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Seed] Database not available");
+    return;
+  }
+
+  const apiKey = process.env.KIE_AI_API_KEY || "";
+  const hasKey = !!apiKey;
+  const encryptedApiKey = encryptSeedApiKey(apiKey);
+  const kieAvailableModels = buildKieLlmAvailableModels();
+
+  await db
+    .insert(llmProviders)
+    .values({
+      providerName: KIE_PROVIDER_NAME,
+      displayName: "Kie AI",
+      description: "Kie AI marketplace gateway for GPT, Claude, Gemini, and Codex chat models",
+      baseUrl: "https://api.kie.ai",
+      apiKeyEncrypted: encryptedApiKey,
+      hasApiKey: hasKey,
+      isEnabled: hasKey,
+      sortOrder: 15,
+      providerType: "secondary",
+      healthStatus: "healthy",
+      failureCount: 0,
+      successCount: 0,
+      availableModels: kieAvailableModels,
+      defaultModel: "gpt-5-4",
+    })
+    .onConflictDoNothing({ target: llmProviders.providerName });
+
+  await db
+    .update(llmProviders)
+    .set({
+      description: "Kie AI marketplace gateway for GPT, Claude, Gemini, and Codex chat models",
+      baseUrl: "https://api.kie.ai",
+      apiKeyEncrypted: encryptedApiKey,
+      hasApiKey: hasKey,
+      isEnabled: hasKey,
+      availableModels: kieAvailableModels,
+      defaultModel: "gpt-5-4",
+    })
+    .where(eq(llmProviders.providerName, KIE_PROVIDER_NAME));
+
+  const [kieProvider] = await db
+    .select({ id: llmProviders.id })
+    .from(llmProviders)
+    .where(eq(llmProviders.providerName, KIE_PROVIDER_NAME))
+    .limit(1);
+
+  if (!kieProvider) {
+    console.warn("[Seed] Failed to find Kie AI provider after insert");
+    return;
+  }
+
+  for (const model of kieAvailableModels) {
+    const pricingInput = model.pricing?.input ?? 0;
+    const pricingOutput = model.pricing?.output ?? 0;
+
+    await db
+      .insert(modelProviderMap)
+      .values({
+        modelId: canonicalModelIdForCatalogModel(KIE_PROVIDER_NAME, model.id),
+        providerId: kieProvider.id,
+        modelName: model.name,
+        providerModelId: model.id,
+        pricingInput: String(pricingInput),
+        pricingOutput: String(pricingOutput),
+        isFree: pricingInput === 0 && pricingOutput === 0,
+        contextLength: model.contextLength ?? null,
+        isEnabled: true,
+        priority: 0,
+        apiStyle: model.apiStyle ?? "chat-completions",
+        supportsVision: !!model.supportsVision,
+        supportsThinking: !!model.supportsThinking,
+        supportsWebSearch: !!model.supportsWebSearch,
+        supportsFunctionTools: !!model.supportsFunctionTools,
+        supportsStructuredOutputs: !!model.supportsStructuredOutputs,
+        supportsJsonMode: !!model.supportsJsonMode,
+        supportsStrictToolSchema: !!model.supportsStrictToolSchema,
+        supportsCodeExecution: !!model.supportsCodeExecution,
+        supportsComputerUse: !!model.supportsComputerUse,
+        supportsBackground: !!model.supportsBackground,
+        supportsResponses: !!model.supportsResponses,
+      })
+      .onConflictDoUpdate({
+        target: [modelProviderMap.modelId, modelProviderMap.providerId],
+        set: {
+          modelName: model.name,
+          providerModelId: model.id,
+          pricingInput: String(pricingInput),
+          pricingOutput: String(pricingOutput),
+          isFree: pricingInput === 0 && pricingOutput === 0,
+          contextLength: model.contextLength ?? null,
+          isEnabled: true,
+          apiStyle: model.apiStyle ?? "chat-completions",
+          supportsVision: !!model.supportsVision,
+          supportsThinking: !!model.supportsThinking,
+          supportsWebSearch: !!model.supportsWebSearch,
+          supportsFunctionTools: !!model.supportsFunctionTools,
+          supportsStructuredOutputs: !!model.supportsStructuredOutputs,
+          supportsJsonMode: !!model.supportsJsonMode,
+          supportsStrictToolSchema: !!model.supportsStrictToolSchema,
+          supportsCodeExecution: !!model.supportsCodeExecution,
+          supportsComputerUse: !!model.supportsComputerUse,
+          supportsBackground: !!model.supportsBackground,
+          supportsResponses: !!model.supportsResponses,
+        },
+      });
+  }
+
+  if (!hasKey) {
+    console.warn("[Seed] KIE_AI_API_KEY not set — provider seeded but disabled");
+  }
+
+  console.log(`[Seed] Kie AI: ${kieAvailableModels.length} models`);
+}
+
 export async function seedZenProvider(): Promise<void> {
   const db = await getDb();
   if (!db) {
@@ -27,6 +159,7 @@ export async function seedZenProvider(): Promise<void> {
 
   const apiKey = process.env.OPENCODE_ZEN_API_KEY || "";
   const hasKey = !!apiKey;
+  const encryptedApiKey = encryptSeedApiKey(apiKey);
 
   // Define available models for OpenCode Zen
   // IMPORTANT: The 'id' field must match 'modelId' in modelProviderMap for correct routing
@@ -59,7 +192,7 @@ export async function seedZenProvider(): Promise<void> {
       displayName: "OpenCode Zen",
       description: "Secondary provider with free model access",
       baseUrl: "https://open-api.zen.com",
-      apiKeyEncrypted: apiKey || null,
+      apiKeyEncrypted: encryptedApiKey,
       hasApiKey: hasKey,
       isEnabled: hasKey,
       sortOrder: 10,
@@ -77,6 +210,9 @@ export async function seedZenProvider(): Promise<void> {
   await db
     .update(llmProviders)
     .set({
+      apiKeyEncrypted: encryptedApiKey,
+      hasApiKey: hasKey,
+      isEnabled: hasKey,
       availableModels: zenAvailableModels,
       defaultModel: "kimi-k2.5-free",
     })
@@ -314,6 +450,57 @@ export async function seedZenProvider(): Promise<void> {
 
   console.log(`[Seed] Routing rules seeded`);
   console.log(`[Seed] Done!`);
+}
+
+export async function seedNvidiaNimProvider(): Promise<void> {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Seed] Database not available");
+    return;
+  }
+
+  const apiKey = process.env.NVIDIA_NIM_API_KEY || "";
+  const hasKey = !!apiKey;
+  const encryptedApiKey = encryptSeedApiKey(apiKey);
+
+  await db
+    .insert(llmProviders)
+    .values({
+      providerName: "nvidia_nim",
+      displayName: "NVIDIA NIM (Hosted)",
+      description: "Hosted NVIDIA Integrate API for chat, retrieval, guardrail, and multimodal models",
+      baseUrl: "https://integrate.api.nvidia.com",
+      apiKeyEncrypted: encryptedApiKey,
+      hasApiKey: hasKey,
+      isEnabled: hasKey,
+      sortOrder: 25,
+      providerType: "secondary",
+      healthStatus: "healthy",
+      failureCount: 0,
+      successCount: 0,
+      availableModels: null,
+      defaultModel: "nvidia/llama-3.3-nemotron-super-49b-v1.5",
+    })
+    .onConflictDoNothing({ target: llmProviders.providerName });
+
+  await db
+    .update(llmProviders)
+    .set({
+      displayName: "NVIDIA NIM (Hosted)",
+      description: "Hosted NVIDIA Integrate API for chat, retrieval, guardrail, and multimodal models",
+      baseUrl: "https://integrate.api.nvidia.com",
+      apiKeyEncrypted: encryptedApiKey,
+      hasApiKey: hasKey,
+      isEnabled: hasKey,
+      defaultModel: "nvidia/llama-3.3-nemotron-super-49b-v1.5",
+    })
+    .where(eq(llmProviders.providerName, "nvidia_nim"));
+
+  if (!hasKey) {
+    console.warn("[Seed] NVIDIA_NIM_API_KEY not set — provider seeded but disabled");
+  }
+
+  console.log("[Seed] NVIDIA NIM provider seeded");
 }
 
 /**

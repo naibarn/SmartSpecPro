@@ -11,6 +11,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Lock, Info } from "lucide-react";
+import { useScopedTranslation } from "../../i18n/useScopedTranslation";
 import { trpc } from "../../lib/trpc";
 import { formatModelCost } from "../../lib/modelPricing";
 import {
@@ -31,6 +32,7 @@ import {
 } from "../ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import {
+  canEnableAdminModelCatalogRow,
   filterAdminModelCatalogRows,
   filterModelMappingGroups,
   getAdminModelSelectionKey,
@@ -39,12 +41,26 @@ import {
 
 type Tab = "mappings" | "rules" | "health" | "usage";
 const ALL_TABS: Tab[] = ["mappings", "rules", "health", "usage"];
-const TAB_LABELS: Record<Tab, string> = {
-  mappings: "Model Mappings",
-  rules: "Routing Rules",
-  health: "Provider Health",
-  usage: "Usage Stats",
+const TAB_LABEL_KEYS: Record<Tab, string> = {
+  mappings: "admin.multiProvider.tabs.mappings",
+  rules: "admin.multiProvider.tabs.rules",
+  health: "admin.multiProvider.tabs.health",
+  usage: "admin.multiProvider.tabs.usage",
 };
+
+const CAPABILITY_FIELDS = [
+  { key: "supportsVision", labelKey: "admin.capabilities.vision.label", shortKey: "admin.capabilities.vision.short" },
+  { key: "supportsThinking", labelKey: "admin.capabilities.thinking.label", shortKey: "admin.capabilities.thinking.short" },
+  { key: "supportsFunctionTools", labelKey: "admin.capabilities.functionTools.label", shortKey: "admin.capabilities.functionTools.short" },
+  { key: "supportsStructuredOutputs", labelKey: "admin.capabilities.structuredOutputs.label", shortKey: "admin.capabilities.structuredOutputs.short" },
+  { key: "supportsJsonMode", labelKey: "admin.capabilities.jsonMode.label", shortKey: "admin.capabilities.jsonMode.short" },
+  { key: "supportsStrictToolSchema", labelKey: "admin.capabilities.strictToolSchema.label", shortKey: "admin.capabilities.strictToolSchema.short" },
+  { key: "supportsWebSearch", labelKey: "admin.capabilities.webSearch.label", shortKey: "admin.capabilities.webSearch.short" },
+  { key: "supportsComputerUse", labelKey: "admin.capabilities.computerUse.label", shortKey: "admin.capabilities.computerUse.short" },
+  { key: "supportsCodeExecution", labelKey: "admin.capabilities.codeExecution.label", shortKey: "admin.capabilities.codeExecution.short" },
+  { key: "supportsBackground", labelKey: "admin.capabilities.background.label", shortKey: "admin.capabilities.background.short" },
+  { key: "supportsResponses", labelKey: "admin.capabilities.responses.label", shortKey: "admin.capabilities.responses.short" },
+] as const;
 
 interface MultiProviderAdminProps {
   tabs?: Tab[];
@@ -52,6 +68,7 @@ interface MultiProviderAdminProps {
 }
 
 export function MultiProviderAdmin({ tabs = ALL_TABS, defaultTab }: MultiProviderAdminProps) {
+  const { t } = useScopedTranslation("admin");
   const resolvedTabs = tabs.length > 0 ? tabs : ALL_TABS;
   const initialTab = resolvedTabs.includes(defaultTab ?? resolvedTabs[0]!) ? (defaultTab ?? resolvedTabs[0]!) : resolvedTabs[0]!;
   const [activeTab, setActiveTab] = useState<Tab>(initialTab);
@@ -76,7 +93,7 @@ export function MultiProviderAdmin({ tabs = ALL_TABS, defaultTab }: MultiProvide
                   : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
             >
-              {TAB_LABELS[tab]}
+              {t(TAB_LABEL_KEYS[tab])}
             </button>
           ))}
         </div>
@@ -110,6 +127,8 @@ interface MappingForm {
   supportsWebSearch: boolean;
   supportsFunctionTools: boolean;
   supportsStructuredOutputs: boolean;
+  supportsJsonMode: boolean;
+  supportsStrictToolSchema: boolean;
   supportsComputerUse: boolean;
   supportsCodeExecution: boolean;
   supportsBackground: boolean;
@@ -133,11 +152,31 @@ const emptyMappingForm: MappingForm = {
   supportsWebSearch: false,
   supportsFunctionTools: false,
   supportsStructuredOutputs: false,
+  supportsJsonMode: false,
+  supportsStrictToolSchema: false,
   supportsComputerUse: false,
   supportsCodeExecution: false,
   supportsBackground: false,
   supportsResponses: false,
 };
+
+function getCatalogEligibilityBadgeVariant(
+  eligibility: "public-chat" | "manual-only" | "internal-only" | "deferred" | "invalid" | undefined,
+): "default" | "secondary" | "outline" | "destructive" {
+  switch (eligibility) {
+    case "public-chat":
+      return "default";
+    case "manual-only":
+      return "secondary";
+    case "invalid":
+      return "destructive";
+    case "internal-only":
+    case "deferred":
+      return "outline";
+    default:
+      return "secondary";
+  }
+}
 
 function PriorityInlineEditor({
   mappingId,
@@ -150,6 +189,7 @@ function PriorityInlineEditor({
   priorityLocked: boolean;
   onMutationSuccess: () => void;
 }) {
+  const { t } = useScopedTranslation("admin");
   const [localValue, setLocalValue] = useState(String(priority));
   const [lastSaved, setLastSaved] = useState(priority);
 
@@ -161,7 +201,7 @@ function PriorityInlineEditor({
   const mutation = trpc.multiProvider.updateModelPriority.useMutation({
     onError: () => {
       setLocalValue(String(lastSaved));
-      toast.error("Failed to update priority");
+      toast.error(t("admin.multiProvider.priority.updateFailed"));
     },
   });
 
@@ -191,7 +231,7 @@ function PriorityInlineEditor({
 
   return (
     <span className="inline-flex items-center gap-1">
-      <span className="text-xs text-muted-foreground">Priority:</span>
+      <span className="text-xs text-muted-foreground">{t("admin.multiProvider.priority.label")}</span>
       <input
         type="number"
         min={0}
@@ -202,7 +242,7 @@ function PriorityInlineEditor({
         onKeyDown={handleKeyDown}
         disabled={mutation.isPending}
         className="w-14 rounded border border-input bg-transparent px-1 py-0.5 text-xs text-center disabled:opacity-50"
-        aria-label="Priority"
+        aria-label={t("admin.multiProvider.priority.ariaLabel")}
       />
       <Tooltip>
         <TooltipTrigger asChild>
@@ -214,8 +254,8 @@ function PriorityInlineEditor({
         </TooltipTrigger>
         <TooltipContent>
           {priorityLocked
-            ? "Manually set. Re-import won't change this."
-            : "Auto-assigned."}
+            ? t("admin.multiProvider.priority.lockedHelp")
+            : t("admin.multiProvider.priority.autoHelp")}
         </TooltipContent>
       </Tooltip>
     </span>
@@ -224,6 +264,7 @@ function PriorityInlineEditor({
 
 function ModelMappingsTab() {
   type MappingView = "all" | "groups";
+  const { t } = useScopedTranslation("admin");
 
   const { data: mappings, isLoading } = trpc.multiProvider.listModelMappings.useQuery();
   const { data: catalogRows, isLoading: isCatalogLoading } = trpc.multiProvider.listAdminModelCatalog.useQuery();
@@ -328,6 +369,8 @@ function ModelMappingsTab() {
       supportsWebSearch: !!mapping.supportsWebSearch,
       supportsFunctionTools: !!mapping.supportsFunctionTools,
       supportsStructuredOutputs: !!mapping.supportsStructuredOutputs,
+      supportsJsonMode: !!mapping.supportsJsonMode,
+      supportsStrictToolSchema: !!mapping.supportsStrictToolSchema,
       supportsComputerUse: !!mapping.supportsComputerUse,
       supportsCodeExecution: !!mapping.supportsCodeExecution,
       supportsBackground: !!mapping.supportsBackground,
@@ -356,6 +399,8 @@ function ModelMappingsTab() {
       supportsWebSearch: form.supportsWebSearch,
       supportsFunctionTools: form.supportsFunctionTools,
       supportsStructuredOutputs: form.supportsStructuredOutputs,
+      supportsJsonMode: form.supportsJsonMode,
+      supportsStrictToolSchema: form.supportsStrictToolSchema,
       supportsComputerUse: form.supportsComputerUse,
       supportsCodeExecution: form.supportsCodeExecution,
       supportsBackground: form.supportsBackground,
@@ -378,16 +423,30 @@ function ModelMappingsTab() {
       contextLength: number | null;
       priority: number;
       apiStyle: MappingForm["apiStyle"];
+      supportsVision?: boolean;
+      supportsThinking?: boolean;
+      supportsWebSearch?: boolean;
+      supportsFunctionTools?: boolean;
+      supportsStructuredOutputs?: boolean;
+      supportsJsonMode?: boolean;
+      supportsStrictToolSchema?: boolean;
+      supportsComputerUse?: boolean;
+      supportsCodeExecution?: boolean;
+      supportsBackground?: boolean;
+      supportsResponses?: boolean;
+      catalogEligibility?: "public-chat" | "manual-only" | "internal-only" | "deferred" | "invalid";
     }>,
     isEnabled: boolean,
   ) => {
-    if (rows.length === 0) {
-      toast.error("Select at least one model first");
+    const eligibleRows = isEnabled ? rows.filter((row) => canEnableAdminModelCatalogRow(row)) : rows;
+
+    if (eligibleRows.length === 0) {
+      toast.error(t("admin.multiProvider.mappings.selectAtLeastOne"));
       return;
     }
 
     const uniqueRows = Array.from(
-      new Map(rows.map((row) => [getAdminModelSelectionKey(row), row])).values(),
+      new Map(eligibleRows.map((row) => [getAdminModelSelectionKey(row), row])).values(),
     );
     const result = await bulkSetCatalogEnabledMutation.mutateAsync({
       items: uniqueRows.map((row) => ({
@@ -402,17 +461,35 @@ function ModelMappingsTab() {
         contextLength: row.contextLength,
         priority: row.priority,
         apiStyle: row.apiStyle,
+        supportsVision: !!row.supportsVision,
+        supportsThinking: !!row.supportsThinking,
+        supportsWebSearch: !!row.supportsWebSearch,
+        supportsFunctionTools: !!row.supportsFunctionTools,
+        supportsStructuredOutputs: !!row.supportsStructuredOutputs,
+        supportsJsonMode: !!row.supportsJsonMode,
+        supportsStrictToolSchema: !!row.supportsStrictToolSchema,
+        supportsComputerUse: !!row.supportsComputerUse,
+        supportsCodeExecution: !!row.supportsCodeExecution,
+        supportsBackground: !!row.supportsBackground,
+        supportsResponses: !!row.supportsResponses,
       })),
       isEnabled,
     });
     await invalidateMappingQueries();
     const changedCount = result.updatedCount + result.insertedCount;
-    toast.success(`${isEnabled ? "Enabled" : "Disabled"} ${changedCount} model${changedCount > 1 ? "s" : ""}`);
+    toast.success(
+      t(
+        isEnabled
+          ? "admin.multiProvider.mappings.bulkEnabled"
+          : "admin.multiProvider.mappings.bulkDisabled",
+        { count: changedCount },
+      ),
+    );
     const affectedKeys = new Set(uniqueRows.map((row) => getAdminModelSelectionKey(row)));
     setSelectedKeys((previous) => new Set(Array.from(previous).filter((key) => !affectedKeys.has(key))));
   };
 
-  if (isLoading || isCatalogLoading) return <div className="p-4 text-sm text-muted-foreground">Loading...</div>;
+  if (isLoading || isCatalogLoading) return <div className="p-4 text-sm text-muted-foreground">{t("admin.multiProvider.loading")}</div>;
 
   return (
     <div className="space-y-4">
@@ -422,7 +499,7 @@ function ModelMappingsTab() {
             <Input
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="Search model id, display name, provider, or provider model id"
+              placeholder={t("admin.multiProvider.mappings.searchPlaceholder")}
               className="md:max-w-md"
             />
             <select
@@ -430,7 +507,7 @@ function ModelMappingsTab() {
               value={providerFilter}
               onChange={(event) => setProviderFilter(event.target.value)}
             >
-              <option value="all">All providers</option>
+              <option value="all">{t("admin.multiProvider.mappings.filters.allProviders")}</option>
               {providers?.map((provider: any) => (
                 <option key={provider.id} value={String(provider.id)}>
                   {provider.displayName} ({provider.providerName})
@@ -442,9 +519,9 @@ function ModelMappingsTab() {
               value={enabledFilter}
               onChange={(event) => setEnabledFilter(event.target.value as EnabledFilter)}
             >
-              <option value="all">All status</option>
-              <option value="enabled">Enabled only</option>
-              <option value="disabled">Disabled only</option>
+              <option value="all">{t("admin.multiProvider.mappings.filters.allStatus")}</option>
+              <option value="enabled">{t("admin.multiProvider.mappings.filters.enabledOnly")}</option>
+              <option value="disabled">{t("admin.multiProvider.mappings.filters.disabledOnly")}</option>
             </select>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -452,9 +529,9 @@ function ModelMappingsTab() {
               <Checkbox
                 checked={allFilteredSelected ? true : someFilteredSelected ? "indeterminate" : false}
                 onCheckedChange={(checked) => setSelectionForRows(filteredCatalogRows, checked === true)}
-                aria-label="Select all filtered model mappings"
+                aria-label={t("admin.multiProvider.mappings.selectAllFilteredAria")}
               />
-              <span>Select Filtered</span>
+              <span>{t("admin.multiProvider.mappings.selectFiltered")}</span>
             </label>
             <Button
               variant="outline"
@@ -462,7 +539,7 @@ function ModelMappingsTab() {
               onClick={() => setSelectionForRows(filteredCatalogRows, true)}
               disabled={filteredCatalogRows.length === 0}
             >
-              Select All
+              {t("admin.multiProvider.mappings.selectAll")}
             </Button>
             <Button
               variant="outline"
@@ -470,7 +547,7 @@ function ModelMappingsTab() {
               onClick={() => setSelectionForRows(filteredCatalogRows, false)}
               disabled={visibleSelectedCount === 0}
             >
-              Clear Filtered
+              {t("admin.multiProvider.mappings.clearFiltered")}
             </Button>
             <Button
               variant="outline"
@@ -478,7 +555,7 @@ function ModelMappingsTab() {
               onClick={() => handleSetEnabled(filteredCatalogRows, true)}
               disabled={filteredCatalogRows.length === 0 || bulkSetCatalogEnabledMutation.isPending}
             >
-              {bulkSetCatalogEnabledMutation.isPending ? "Working..." : "Enable Visible"}
+              {bulkSetCatalogEnabledMutation.isPending ? t("admin.multiProvider.working") : t("admin.multiProvider.mappings.enableVisible")}
             </Button>
             <Button
               variant="outline"
@@ -486,7 +563,7 @@ function ModelMappingsTab() {
               onClick={() => handleSetEnabled(filteredCatalogRows, false)}
               disabled={filteredCatalogRows.length === 0 || bulkSetCatalogEnabledMutation.isPending}
             >
-              {bulkSetCatalogEnabledMutation.isPending ? "Working..." : "Disable Visible"}
+              {bulkSetCatalogEnabledMutation.isPending ? t("admin.multiProvider.working") : t("admin.multiProvider.mappings.disableVisible")}
             </Button>
             <Button
               size="sm"
@@ -496,7 +573,7 @@ function ModelMappingsTab() {
               )}
               disabled={selectedKeys.size === 0 || bulkSetCatalogEnabledMutation.isPending}
             >
-              {bulkSetCatalogEnabledMutation.isPending ? "Working..." : "Enable Selected"}
+              {bulkSetCatalogEnabledMutation.isPending ? t("admin.multiProvider.working") : t("admin.multiProvider.mappings.enableSelected")}
             </Button>
             <Button
               variant="secondary"
@@ -507,22 +584,22 @@ function ModelMappingsTab() {
               )}
               disabled={selectedKeys.size === 0 || bulkSetCatalogEnabledMutation.isPending}
             >
-              {bulkSetCatalogEnabledMutation.isPending ? "Working..." : "Disable Selected"}
+              {bulkSetCatalogEnabledMutation.isPending ? t("admin.multiProvider.working") : t("admin.multiProvider.mappings.disableSelected")}
             </Button>
           </div>
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
-          <Badge variant="secondary">{filteredCatalogRows.length} visible models</Badge>
-          <Badge variant="secondary">{totalVisibleEnabled} enabled in view</Badge>
-          <Badge variant="secondary">{filteredGroups.length} groups</Badge>
+          <Badge variant="secondary">{t("admin.multiProvider.mappings.visibleModels", { count: filteredCatalogRows.length })}</Badge>
+          <Badge variant="secondary">{t("admin.multiProvider.mappings.enabledInView", { count: totalVisibleEnabled })}</Badge>
+          <Badge variant="secondary">{t("admin.multiProvider.mappings.groupsCount", { count: filteredGroups.length })}</Badge>
           <Badge variant={selectedKeys.size > 0 ? "default" : "secondary"}>
-            {selectedKeys.size} selected
+            {t("admin.multiProvider.mappings.selectedCount", { count: selectedKeys.size })}
           </Badge>
         </div>
       </div>
 
       <Button onClick={() => setShowForm(true)} className="w-fit" size="sm">
-        + Add Model Mapping
+        {t("admin.multiProvider.mappings.addModelMapping")}
       </Button>
 
       <Dialog
@@ -537,55 +614,55 @@ function ModelMappingsTab() {
       >
         <DialogContent className="w-[95vw] max-w-4xl max-h-[88vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editId ? "Edit Model Mapping" : "Add Model Mapping"}</DialogTitle>
+            <DialogTitle>{editId ? t("admin.multiProvider.mappings.editDialogTitle") : t("admin.multiProvider.mappings.addDialogTitle")}</DialogTitle>
             <DialogDescription>
-              Update the model ID, provider model ID, pricing, and endpoint style in this dialog.
+              {t("admin.multiProvider.mappings.dialogDescription")}
             </DialogDescription>
           </DialogHeader>
 
           <div className="grid gap-4 md:grid-cols-2">
             <label className="space-y-1">
-              <span className="text-xs text-muted-foreground">Model ID *</span>
+              <span className="text-xs text-muted-foreground">{t("admin.multiProvider.mappings.fields.modelId")}</span>
               <input
                 className="w-full rounded border border-border bg-background px-2 py-1.5 text-sm"
-                placeholder="e.g. kimi-k2.5"
+                placeholder={t("admin.multiProvider.mappings.placeholders.modelId")}
                 value={form.modelId}
                 onChange={(e) => setForm({ ...form, modelId: e.target.value })}
               />
             </label>
             <label className="space-y-1">
-              <span className="text-xs text-muted-foreground">Display Name</span>
+              <span className="text-xs text-muted-foreground">{t("admin.multiProvider.mappings.fields.displayName")}</span>
               <input
                 className="w-full rounded border border-border bg-background px-2 py-1.5 text-sm"
-                placeholder="e.g. Kimi K2.5"
+                placeholder={t("admin.multiProvider.mappings.placeholders.displayName")}
                 value={form.modelName}
                 onChange={(e) => setForm({ ...form, modelName: e.target.value })}
               />
             </label>
             <label className="space-y-1">
-              <span className="text-xs text-muted-foreground">Provider *</span>
+              <span className="text-xs text-muted-foreground">{t("admin.multiProvider.mappings.fields.provider")}</span>
               <select
                 className="w-full rounded border border-border bg-background px-2 py-1.5 text-sm"
                 value={form.providerId}
                 onChange={(e) => setForm({ ...form, providerId: e.target.value })}
               >
-                <option value="">-- Select provider --</option>
+                <option value="">{t("admin.multiProvider.mappings.placeholders.selectProvider")}</option>
                 {providers?.map((p: any) => (
                   <option key={p.id} value={p.id}>{p.displayName} ({p.providerName})</option>
                 ))}
               </select>
             </label>
             <label className="space-y-1">
-              <span className="text-xs text-muted-foreground">Provider Model ID</span>
+              <span className="text-xs text-muted-foreground">{t("admin.multiProvider.mappings.fields.providerModelId")}</span>
               <input
                 className="w-full rounded border border-border bg-background px-2 py-1.5 text-sm"
-                placeholder="e.g. moonshotai/kimi-k2.5"
+                placeholder={t("admin.multiProvider.mappings.placeholders.providerModelId")}
                 value={form.providerModelId}
                 onChange={(e) => setForm({ ...form, providerModelId: e.target.value })}
               />
             </label>
             <label className="space-y-1">
-              <span className="text-xs text-muted-foreground">Input Price (per 1M tokens)</span>
+              <span className="text-xs text-muted-foreground">{t("admin.multiProvider.mappings.fields.inputPrice")}</span>
               <input
                 type="number"
                 step="0.01"
@@ -595,7 +672,7 @@ function ModelMappingsTab() {
               />
             </label>
             <label className="space-y-1">
-              <span className="text-xs text-muted-foreground">Output Price (per 1M tokens)</span>
+              <span className="text-xs text-muted-foreground">{t("admin.multiProvider.mappings.fields.outputPrice")}</span>
               <input
                 type="number"
                 step="0.01"
@@ -605,7 +682,7 @@ function ModelMappingsTab() {
               />
             </label>
             <label className="space-y-1">
-              <span className="text-xs text-muted-foreground">Context Length</span>
+              <span className="text-xs text-muted-foreground">{t("admin.multiProvider.mappings.fields.contextLength")}</span>
               <input
                 type="number"
                 className="w-full rounded border border-border bg-background px-2 py-1.5 text-sm"
@@ -614,7 +691,7 @@ function ModelMappingsTab() {
               />
             </label>
             <label className="space-y-1">
-              <span className="text-xs text-muted-foreground">Priority (lower = higher)</span>
+              <span className="text-xs text-muted-foreground">{t("admin.multiProvider.mappings.fields.priority")}</span>
               <input
                 type="number"
                 className="w-full rounded border border-border bg-background px-2 py-1.5 text-sm"
@@ -623,16 +700,16 @@ function ModelMappingsTab() {
               />
             </label>
             <label className="space-y-1 md:col-span-2">
-              <span className="text-xs text-muted-foreground">API Style</span>
+              <span className="text-xs text-muted-foreground">{t("admin.multiProvider.mappings.fields.apiStyle")}</span>
               <select
                 className="w-full rounded border border-border bg-background px-2 py-1.5 text-sm"
                 value={form.apiStyle}
                 onChange={(e) => setForm({ ...form, apiStyle: e.target.value as MappingForm["apiStyle"] })}
               >
-                <option value="chat-completions">Chat Completions (/chat/completions)</option>
-                <option value="responses">Responses (/responses - GPT)</option>
-                <option value="messages">Messages (/messages - Claude)</option>
-                <option value="gemini">Gemini (/models/id)</option>
+                <option value="chat-completions">{t("admin.multiProvider.mappings.apiStyles.chatCompletions")}</option>
+                <option value="responses">{t("admin.multiProvider.mappings.apiStyles.responses")}</option>
+                <option value="messages">{t("admin.multiProvider.mappings.apiStyles.messages")}</option>
+                <option value="gemini">{t("admin.multiProvider.mappings.apiStyles.gemini")}</option>
               </select>
             </label>
           </div>
@@ -644,7 +721,7 @@ function ModelMappingsTab() {
                 checked={form.isFree}
                 onChange={(e) => setForm({ ...form, isFree: e.target.checked })}
               />
-              Free tier
+              {t("admin.multiProvider.mappings.freeTier")}
             </label>
             <label className="flex items-center gap-2 text-sm">
               <input
@@ -652,98 +729,40 @@ function ModelMappingsTab() {
                 checked={form.isEnabled}
                 onChange={(e) => setForm({ ...form, isEnabled: e.target.checked })}
               />
-              Enabled
+              {t("admin.multiProvider.status.enabled")}
             </label>
           </div>
 
           {/* Model Capabilities */}
           <div className="space-y-2">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Capabilities</p>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t("admin.multiProvider.mappings.capabilities")}</p>
             <div className="flex flex-wrap items-center gap-4">
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={form.supportsVision}
-                  onChange={(e) => setForm({ ...form, supportsVision: e.target.checked })}
-                />
-                Vision
-              </label>
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={form.supportsThinking}
-                  onChange={(e) => setForm({ ...form, supportsThinking: e.target.checked })}
-                />
-                Thinking
-              </label>
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={form.supportsWebSearch}
-                  onChange={(e) => setForm({ ...form, supportsWebSearch: e.target.checked })}
-                />
-                Web Search
-              </label>
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={form.supportsFunctionTools}
-                  onChange={(e) => setForm({ ...form, supportsFunctionTools: e.target.checked })}
-                />
-                Function Tools
-              </label>
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={form.supportsStructuredOutputs}
-                  onChange={(e) => setForm({ ...form, supportsStructuredOutputs: e.target.checked })}
-                />
-                Structured Outputs
-              </label>
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={form.supportsComputerUse}
-                  onChange={(e) => setForm({ ...form, supportsComputerUse: e.target.checked })}
-                />
-                Computer Use
-              </label>
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={form.supportsCodeExecution}
-                  onChange={(e) => setForm({ ...form, supportsCodeExecution: e.target.checked })}
-                />
-                Code Execution
-              </label>
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={form.supportsBackground}
-                  onChange={(e) => setForm({ ...form, supportsBackground: e.target.checked })}
-                />
-                Background
-              </label>
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={form.supportsResponses}
-                  onChange={(e) => setForm({ ...form, supportsResponses: e.target.checked })}
-                />
-                Responses API
-              </label>
+              {CAPABILITY_FIELDS.map(({ key, labelKey }) => (
+                <label key={key} className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={form[key]}
+                    onChange={(e) => setForm({ ...form, [key]: e.target.checked })}
+                  />
+                  {t(labelKey)}
+                </label>
+              ))}
             </div>
           </div>
 
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={resetForm}>
-              Cancel
+              {t("admin.multiProvider.cancel")}
             </Button>
             <Button
               onClick={handleSubmit}
               disabled={!form.modelId || !form.providerId || upsertMutation.isPending}
             >
-              {upsertMutation.isPending ? "Saving..." : editId ? "Update Mapping" : "Add Mapping"}
+              {upsertMutation.isPending
+                ? t("admin.multiProvider.saving")
+                : editId
+                  ? t("admin.multiProvider.mappings.updateMapping")
+                  : t("admin.multiProvider.mappings.addMapping")}
             </Button>
           </div>
         </DialogContent>
@@ -751,13 +770,13 @@ function ModelMappingsTab() {
 
       <Tabs value={mappingView} onValueChange={(value) => setMappingView(value as MappingView)} className="space-y-4">
         <TabsList className="grid w-full max-w-md grid-cols-2">
-          <TabsTrigger value="all">All Models</TabsTrigger>
-          <TabsTrigger value="groups">Group Controls</TabsTrigger>
+          <TabsTrigger value="all">{t("admin.multiProvider.mappings.views.allModels")}</TabsTrigger>
+          <TabsTrigger value="groups">{t("admin.multiProvider.mappings.views.groupControls")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="all" className="space-y-3">
           {filteredCatalogRows.length === 0 ? (
-            <p className="p-4 text-sm text-muted-foreground">No models match the current filters.</p>
+            <p className="p-4 text-sm text-muted-foreground">{t("admin.multiProvider.mappings.noModelsMatch")}</p>
           ) : (
             filteredCatalogRows.map((mapping) => (
               <div
@@ -768,7 +787,10 @@ function ModelMappingsTab() {
                   <Checkbox
                     checked={selectedKeys.has(getAdminModelSelectionKey(mapping))}
                     onCheckedChange={(checked) => setSelectionForRows([mapping], checked === true)}
-                    aria-label={`Select mapping ${mapping.modelId} on ${mapping.providerDisplayName ?? mapping.providerName}`}
+                    aria-label={t("admin.multiProvider.mappings.selectMappingAria", {
+                      modelId: mapping.modelId,
+                      provider: mapping.providerDisplayName ?? mapping.providerName,
+                    })}
                   />
                   <div className="space-y-1">
                     <div className="flex flex-wrap items-center gap-2">
@@ -778,21 +800,46 @@ function ModelMappingsTab() {
                         <Badge variant="outline">{mapping.modelId}</Badge>
                       )}
                       <Badge variant={mapping.isEnabled ? "default" : mapping.isMapped ? "outline" : "secondary"}>
-                        {mapping.isEnabled ? "Enabled" : mapping.isMapped ? "Disabled" : "Not Configured"}
+                        {mapping.isEnabled
+                          ? t("admin.multiProvider.status.enabled")
+                          : mapping.isMapped
+                            ? t("admin.multiProvider.status.disabled")
+                            : t("admin.multiProvider.status.notConfigured")}
                       </Badge>
                       {mapping.isFree && (
-                        <Badge className="bg-green-500/10 text-green-600 hover:bg-green-500/10">Free</Badge>
+                        <Badge className="bg-green-500/10 text-green-600 hover:bg-green-500/10">{t("admin.multiProvider.status.free")}</Badge>
                       )}
                       {mapping.apiStyle !== "chat-completions" && (
                         <Badge variant="secondary">{mapping.apiStyle}</Badge>
                       )}
+                      {mapping.catalogEligibility && (
+                        <Badge variant={getCatalogEligibilityBadgeVariant(mapping.catalogEligibility)}>
+                          {t(`admin.multiProvider.catalogEligibility.${mapping.catalogEligibility}`)}
+                        </Badge>
+                      )}
+                      {mapping.ownedBy && (
+                        <Badge variant="outline">
+                          {t("admin.multiProvider.mappings.ownedBy", { owner: mapping.ownedBy })}
+                        </Badge>
+                      )}
+                      {mapping.surface && mapping.surface !== "chat" && (
+                        <Badge variant="outline">{mapping.surface}</Badge>
+                      )}
+                      {mapping.executionMode && mapping.executionMode !== "public" && (
+                        <Badge variant="outline">{mapping.executionMode}</Badge>
+                      )}
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      Provider model: <code>{mapping.providerModelId}</code>
+                      {t("admin.multiProvider.mappings.providerModel")} <code>{mapping.providerModelId}</code>
                     </div>
+                    {mapping.catalogInvalidReason && (
+                      <div className="text-xs text-destructive">
+                        {t(`admin.multiProvider.catalogInvalidReason.${mapping.catalogInvalidReason}`)}
+                      </div>
+                    )}
                     <div className="flex flex-wrap gap-3 text-xs text-muted-foreground items-center">
                       <span>{formatModelCost(mapping.pricingInput, mapping.pricingOutput, mapping.isFree)}</span>
-                      <span>Context: {(mapping.contextLength ?? 0).toLocaleString()}</span>
+                      <span>{t("admin.multiProvider.mappings.context", { count: (mapping.contextLength ?? 0).toLocaleString() })}</span>
                       {mapping.mappingId != null ? (
                         <PriorityInlineEditor
                           mappingId={mapping.mappingId}
@@ -806,15 +853,13 @@ function ModelMappingsTab() {
                     </div>
                     {mapping.isMapped && (
                       <div className="flex flex-wrap gap-1">
-                        {mapping.supportsVision && <Badge variant="outline" className="text-[10px] px-1.5 py-0">Vision</Badge>}
-                        {mapping.supportsThinking && <Badge variant="outline" className="text-[10px] px-1.5 py-0">Thinking</Badge>}
-                        {mapping.supportsFunctionTools && <Badge variant="outline" className="text-[10px] px-1.5 py-0">Tools</Badge>}
-                        {mapping.supportsStructuredOutputs && <Badge variant="outline" className="text-[10px] px-1.5 py-0">Structured</Badge>}
-                        {mapping.supportsWebSearch && <Badge variant="outline" className="text-[10px] px-1.5 py-0">Web Search</Badge>}
-                        {mapping.supportsComputerUse && <Badge variant="outline" className="text-[10px] px-1.5 py-0">Computer Use</Badge>}
-                        {mapping.supportsCodeExecution && <Badge variant="outline" className="text-[10px] px-1.5 py-0">Code Exec</Badge>}
-                        {mapping.supportsBackground && <Badge variant="outline" className="text-[10px] px-1.5 py-0">Background</Badge>}
-                        {mapping.supportsResponses && <Badge variant="outline" className="text-[10px] px-1.5 py-0">Responses</Badge>}
+                        {CAPABILITY_FIELDS.map(({ key, shortKey }) =>
+                          mapping[key] ? (
+                            <Badge key={key} variant="outline" className="text-[10px] px-1.5 py-0">
+                              {t(shortKey)}
+                            </Badge>
+                          ) : null,
+                        )}
                       </div>
                     )}
                   </div>
@@ -824,16 +869,16 @@ function ModelMappingsTab() {
                     variant={mapping.isEnabled ? "outline" : "default"}
                     size="sm"
                     onClick={() => handleSetEnabled([mapping], !mapping.isEnabled)}
-                    disabled={bulkSetCatalogEnabledMutation.isPending}
+                    disabled={bulkSetCatalogEnabledMutation.isPending || (!mapping.isEnabled && !canEnableAdminModelCatalogRow(mapping))}
                   >
-                    {mapping.isEnabled ? "Disable" : "Enable"}
+                    {mapping.isEnabled ? t("admin.multiProvider.disable") : t("admin.multiProvider.enable")}
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => handleEdit(mapping)}
                   >
-                    {mapping.isMapped ? "Edit" : "Configure"}
+                    {mapping.isMapped ? t("admin.multiProvider.edit") : t("admin.multiProvider.configure")}
                   </Button>
                   {mapping.mappingId != null && (
                     <Button
@@ -842,11 +887,11 @@ function ModelMappingsTab() {
                       onClick={async () => {
                         await deleteMutation.mutateAsync({ id: mapping.mappingId! });
                         await invalidateMappingQueries();
-                        toast.success("Model mapping deleted");
+                        toast.success(t("admin.multiProvider.mappings.deleted"));
                       }}
                       disabled={deleteMutation.isPending}
                     >
-                      Delete
+                      {t("admin.multiProvider.delete")}
                     </Button>
                   )}
                 </div>
@@ -857,7 +902,7 @@ function ModelMappingsTab() {
 
         <TabsContent value="groups" className="space-y-4">
           {filteredGroups.length === 0 ? (
-            <p className="p-4 text-sm text-muted-foreground">No model groups match the current filters.</p>
+            <p className="p-4 text-sm text-muted-foreground">{t("admin.multiProvider.mappings.noGroupsMatch")}</p>
           ) : (
             filteredGroups.map((group) => {
               const groupRows = group.models.map((mapping) => ({
@@ -872,6 +917,7 @@ function ModelMappingsTab() {
                 contextLength: mapping.contextLength,
                 priority: mapping.priority,
                 apiStyle: mapping.apiStyle,
+                catalogEligibility: mapping.catalogEligibility,
               }));
               const selectedInGroup = groupRows.filter((row) => selectedKeys.has(getAdminModelSelectionKey(row))).length;
               const allGroupSelected = groupRows.length > 0 && selectedInGroup === groupRows.length;
@@ -884,14 +930,14 @@ function ModelMappingsTab() {
                       <Checkbox
                         checked={allGroupSelected ? true : someGroupSelected ? "indeterminate" : false}
                         onCheckedChange={(checked) => setSelectionForRows(groupRows, checked === true)}
-                        aria-label={`Select all mappings for ${group.modelId}`}
+                        aria-label={t("admin.multiProvider.mappings.selectGroupAria", { modelId: group.modelId })}
                       />
                       <div>
                         <h3 className="text-sm font-medium">{group.modelId}</h3>
                         <div className="mt-1 flex flex-wrap gap-2">
-                          <Badge variant="secondary">{group.models.length} mappings</Badge>
+                          <Badge variant="secondary">{t("admin.multiProvider.mappings.groupMappingsCount", { count: group.models.length })}</Badge>
                           <Badge variant={group.enabledCount > 0 ? "default" : "secondary"}>
-                            {group.enabledCount} enabled
+                            {t("admin.multiProvider.mappings.groupEnabledCount", { count: group.enabledCount })}
                           </Badge>
                         </div>
                       </div>
@@ -903,7 +949,7 @@ function ModelMappingsTab() {
                         onClick={() => handleSetEnabled(groupRows, true)}
                         disabled={bulkSetCatalogEnabledMutation.isPending}
                       >
-                        Enable Group
+                        {t("admin.multiProvider.mappings.enableGroup")}
                       </Button>
                       <Button
                         variant="outline"
@@ -911,7 +957,7 @@ function ModelMappingsTab() {
                         onClick={() => handleSetEnabled(groupRows, false)}
                         disabled={bulkSetCatalogEnabledMutation.isPending}
                       >
-                        Disable Group
+                        {t("admin.multiProvider.mappings.disableGroup")}
                       </Button>
                     </div>
                   </div>
@@ -930,7 +976,10 @@ function ModelMappingsTab() {
                               providerId: mapping.providerId,
                               providerModelId: mapping.providerModelId,
                             }], checked === true)}
-                            aria-label={`Select mapping ${mapping.modelId} on ${mapping.providerDisplayName ?? mapping.providerName}`}
+                            aria-label={t("admin.multiProvider.mappings.selectMappingAria", {
+                              modelId: mapping.modelId,
+                              provider: mapping.providerDisplayName ?? mapping.providerName,
+                            })}
                           />
                           <div className="space-y-1">
                             <div className="flex flex-wrap items-center gap-2">
@@ -938,21 +987,36 @@ function ModelMappingsTab() {
                                 {mapping.providerDisplayName ?? mapping.providerName}
                               </span>
                               {!mapping.isEnabled && (
-                                <Badge variant="outline">Disabled</Badge>
+                                <Badge variant="outline">{t("admin.multiProvider.status.disabled")}</Badge>
                               )}
                               {mapping.isFree && (
-                                <Badge className="bg-green-500/10 text-green-600 hover:bg-green-500/10">Free</Badge>
+                                <Badge className="bg-green-500/10 text-green-600 hover:bg-green-500/10">{t("admin.multiProvider.status.free")}</Badge>
                               )}
                               {mapping.apiStyle !== "chat-completions" && (
                                 <Badge variant="secondary">{mapping.apiStyle}</Badge>
                               )}
+                              {mapping.catalogEligibility && (
+                                <Badge variant={getCatalogEligibilityBadgeVariant(mapping.catalogEligibility)}>
+                                  {t(`admin.multiProvider.catalogEligibility.${mapping.catalogEligibility}`)}
+                                </Badge>
+                              )}
+                              {mapping.ownedBy && (
+                                <Badge variant="outline">
+                                  {t("admin.multiProvider.mappings.ownedBy", { owner: mapping.ownedBy })}
+                                </Badge>
+                              )}
                             </div>
                             <div className="text-xs text-muted-foreground">
-                              Provider model: <code>{mapping.providerModelId}</code>
+                              {t("admin.multiProvider.mappings.providerModel")} <code>{mapping.providerModelId}</code>
                             </div>
+                            {mapping.catalogInvalidReason && (
+                              <div className="text-xs text-destructive">
+                                {t(`admin.multiProvider.catalogInvalidReason.${mapping.catalogInvalidReason}`)}
+                              </div>
+                            )}
                             <div className="flex flex-wrap gap-3 text-xs text-muted-foreground items-center">
                               <span>{formatModelCost(mapping.pricingInput, mapping.pricingOutput, mapping.isFree)}</span>
-                              <span>Context: {(mapping.contextLength ?? 0).toLocaleString()}</span>
+                              <span>{t("admin.multiProvider.mappings.context", { count: (mapping.contextLength ?? 0).toLocaleString() })}</span>
                               <PriorityInlineEditor
                                 mappingId={mapping.id}
                                 priority={mapping.priority}
@@ -978,17 +1042,18 @@ function ModelMappingsTab() {
                               contextLength: mapping.contextLength,
                               priority: mapping.priority,
                               apiStyle: mapping.apiStyle,
+                              catalogEligibility: mapping.catalogEligibility,
                             }], !mapping.isEnabled)}
-                            disabled={bulkSetCatalogEnabledMutation.isPending}
+                            disabled={bulkSetCatalogEnabledMutation.isPending || (!mapping.isEnabled && !canEnableAdminModelCatalogRow(mapping))}
                           >
-                            {mapping.isEnabled ? "Disable" : "Enable"}
+                            {mapping.isEnabled ? t("admin.multiProvider.disable") : t("admin.multiProvider.enable")}
                           </Button>
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => handleEdit(mapping)}
                           >
-                            Edit
+                            {t("admin.multiProvider.edit")}
                           </Button>
                           <Button
                             variant="destructive"
@@ -996,11 +1061,11 @@ function ModelMappingsTab() {
                             onClick={async () => {
                               await deleteMutation.mutateAsync({ id: mapping.id });
                               await invalidateMappingQueries();
-                              toast.success("Model mapping deleted");
+                              toast.success(t("admin.multiProvider.mappings.deleted"));
                             }}
                             disabled={deleteMutation.isPending}
                           >
-                            Delete
+                            {t("admin.multiProvider.delete")}
                           </Button>
                         </div>
                       </div>
@@ -1033,6 +1098,7 @@ const emptyRuleForm: RuleForm = {
 };
 
 function RoutingRulesTab() {
+  const { t } = useScopedTranslation("admin");
   const { data: rules, isLoading } = trpc.multiProvider.listRoutingRules.useQuery();
   const upsertMutation = trpc.multiProvider.upsertRoutingRule.useMutation();
   const deleteMutation = trpc.multiProvider.deleteRoutingRule.useMutation();
@@ -1071,38 +1137,38 @@ function RoutingRulesTab() {
     resetForm();
   };
 
-  if (isLoading) return <div className="p-4 text-sm text-muted-foreground">Loading...</div>;
+  if (isLoading) return <div className="p-4 text-sm text-muted-foreground">{t("admin.multiProvider.loading")}</div>;
 
   return (
     <div className="space-y-4">
       {/* Add / Edit form */}
       {showForm ? (
         <div className="rounded-lg border border-border p-4 space-y-3 bg-muted/30">
-          <h4 className="text-sm font-medium">{editId ? "Edit Rule" : "Add Routing Rule"}</h4>
+          <h4 className="text-sm font-medium">{editId ? t("admin.multiProvider.rules.editTitle") : t("admin.multiProvider.rules.addTitle")}</h4>
           <div className="grid grid-cols-2 gap-3">
             <label className="space-y-1">
-              <span className="text-xs text-muted-foreground">Model Pattern *</span>
+              <span className="text-xs text-muted-foreground">{t("admin.multiProvider.rules.modelPattern")}</span>
               <input
                 className="w-full rounded border border-border bg-background px-2 py-1.5 text-sm"
-                placeholder="* or gpt-* or exact-model-id"
+                placeholder={t("admin.multiProvider.rules.modelPatternPlaceholder")}
                 value={form.modelPattern}
                 onChange={(e) => setForm({ ...form, modelPattern: e.target.value })}
               />
             </label>
             <label className="space-y-1">
-              <span className="text-xs text-muted-foreground">Routing Mode *</span>
+              <span className="text-xs text-muted-foreground">{t("admin.multiProvider.rules.routingMode")}</span>
               <select
                 className="w-full rounded border border-border bg-background px-2 py-1.5 text-sm"
                 value={form.routingMode}
                 onChange={(e) => setForm({ ...form, routingMode: e.target.value as RuleForm["routingMode"] })}
               >
-                <option value="cost">Cost (cheapest first)</option>
-                <option value="quality">Quality (best rated first)</option>
-                <option value="priority">Priority (manual order)</option>
+                <option value="cost">{t("admin.multiProvider.rules.routingModes.cost")}</option>
+                <option value="quality">{t("admin.multiProvider.rules.routingModes.quality")}</option>
+                <option value="priority">{t("admin.multiProvider.rules.routingModes.priority")}</option>
               </select>
             </label>
             <label className="space-y-1">
-              <span className="text-xs text-muted-foreground">Max Fallbacks</span>
+              <span className="text-xs text-muted-foreground">{t("admin.multiProvider.rules.maxFallbacks")}</span>
               <input
                 type="number"
                 min={0}
@@ -1118,7 +1184,7 @@ function RoutingRulesTab() {
                 checked={form.isActive}
                 onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
               />
-              Active
+              {t("admin.multiProvider.rules.active")}
             </label>
           </div>
           <div className="flex gap-2">
@@ -1127,13 +1193,13 @@ function RoutingRulesTab() {
               disabled={!form.modelPattern || upsertMutation.isPending}
               className="rounded bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
             >
-              {upsertMutation.isPending ? "Saving..." : editId ? "Update" : "Add Rule"}
+              {upsertMutation.isPending ? t("admin.multiProvider.saving") : editId ? t("admin.multiProvider.rules.update") : t("admin.multiProvider.rules.addButton")}
             </button>
             <button
               onClick={resetForm}
               className="rounded border border-border px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted"
             >
-              Cancel
+              {t("admin.multiProvider.cancel")}
             </button>
           </div>
         </div>
@@ -1142,28 +1208,28 @@ function RoutingRulesTab() {
           onClick={() => setShowForm(true)}
           className="rounded bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
         >
-          + Add Routing Rule
+          {t("admin.multiProvider.rules.addButton")}
         </button>
       )}
 
       {/* Existing rules list */}
       {!rules?.length ? (
-        <p className="p-4 text-sm text-muted-foreground">No routing rules configured.</p>
+        <p className="p-4 text-sm text-muted-foreground">{t("admin.multiProvider.rules.empty")}</p>
       ) : (
         rules.map((rule: any) => (
           <div key={rule.id} className="flex items-center justify-between rounded-lg border border-border p-3">
             <div>
               <code className="text-sm">{rule.modelPattern}</code>
               <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-xs">{rule.routingMode}</span>
-              <span className="ml-2 text-xs text-muted-foreground">max {rule.maxFallbacks} fallbacks</span>
-              {!rule.isActive && <span className="ml-2 text-xs text-yellow-500">inactive</span>}
+              <span className="ml-2 text-xs text-muted-foreground">{t("admin.multiProvider.rules.maxFallbacksValue", { count: rule.maxFallbacks })}</span>
+              {!rule.isActive && <span className="ml-2 text-xs text-yellow-500">{t("admin.multiProvider.rules.inactive")}</span>}
             </div>
             <div className="flex gap-2">
               <button
                 onClick={() => handleEdit(rule)}
                 className="text-xs text-blue-500 hover:text-blue-400"
               >
-                Edit
+                {t("admin.multiProvider.edit")}
               </button>
               <button
                 onClick={async () => {
@@ -1172,7 +1238,7 @@ function RoutingRulesTab() {
                 }}
                 className="text-xs text-red-500 hover:text-red-400"
               >
-                Delete
+                {t("admin.multiProvider.delete")}
               </button>
             </div>
           </div>
@@ -1185,14 +1251,15 @@ function RoutingRulesTab() {
 // ─── Provider Health ────────────────────────────────────────────────
 
 function ProviderHealthTab() {
+  const { t } = useScopedTranslation("admin");
   const { data: health, isLoading } = trpc.multiProvider.getProviderHealth.useQuery();
 
-  if (isLoading) return <div className="p-4 text-sm text-muted-foreground">Loading...</div>;
+  if (isLoading) return <div className="p-4 text-sm text-muted-foreground">{t("admin.multiProvider.loading")}</div>;
 
   return (
     <div className="space-y-2">
       {!health?.length ? (
-        <p className="p-4 text-sm text-muted-foreground">No providers tracked.</p>
+        <p className="p-4 text-sm text-muted-foreground">{t("admin.multiProvider.health.empty")}</p>
       ) : (
         health.map((p: any) => (
           <div key={p.providerId} className="flex items-center justify-between rounded-lg border border-border p-3">
@@ -1208,7 +1275,7 @@ function ProviderHealthTab() {
               <span className="text-xs text-muted-foreground capitalize">{p.status}</span>
             </div>
             <div className="text-xs text-muted-foreground">
-              {p.successCount} ok / {p.failureCount} fail
+              {t("admin.multiProvider.health.successFail", { ok: p.successCount, fail: p.failureCount })}
             </div>
           </div>
         ))
@@ -1220,6 +1287,7 @@ function ProviderHealthTab() {
 // ─── Usage Stats ────────────────────────────────────────────────────
 
 function UsageStatsTab() {
+  const { t } = useScopedTranslation("admin");
   const [days, setDays] = useState(7);
 
   // Memoize date range to prevent infinite re-fetching
@@ -1234,7 +1302,7 @@ function UsageStatsTab() {
 
   const { data: stats, isLoading } = trpc.multiProvider.getAdminUsageStats.useQuery(dateRange);
 
-  if (isLoading) return <div className="p-4 text-sm text-muted-foreground">Loading...</div>;
+  if (isLoading) return <div className="p-4 text-sm text-muted-foreground">{t("admin.multiProvider.loading")}</div>;
 
   return (
     <div className="space-y-4">
@@ -1247,7 +1315,7 @@ function UsageStatsTab() {
               days === d ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
             }`}
           >
-            {d}d
+            {t("admin.multiProvider.usage.days", { count: d })}
           </button>
         ))}
       </div>
@@ -1255,15 +1323,15 @@ function UsageStatsTab() {
       {stats && (
         <div className="grid grid-cols-3 gap-4">
           <div className="rounded-lg border border-border p-4">
-            <p className="text-xs text-muted-foreground">Total Requests</p>
+            <p className="text-xs text-muted-foreground">{t("admin.multiProvider.usage.totalRequests")}</p>
             <p className="text-2xl font-bold">{stats.totalRequests.toLocaleString()}</p>
           </div>
           <div className="rounded-lg border border-border p-4">
-            <p className="text-xs text-muted-foreground">Total Cost</p>
+            <p className="text-xs text-muted-foreground">{t("admin.multiProvider.usage.totalCost")}</p>
             <p className="text-2xl font-bold">${stats.totalCostUsd.toFixed(2)}</p>
           </div>
           <div className="rounded-lg border border-border p-4">
-            <p className="text-xs text-muted-foreground">Error Rate</p>
+            <p className="text-xs text-muted-foreground">{t("admin.multiProvider.usage.errorRate")}</p>
             <p className="text-2xl font-bold">{(stats.errorRate * 100).toFixed(1)}%</p>
           </div>
         </div>

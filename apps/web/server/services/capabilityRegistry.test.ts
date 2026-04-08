@@ -1,4 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const { mockLoadEnabledLlmModelRows } = vi.hoisted(() => ({
+  mockLoadEnabledLlmModelRows: vi.fn(),
+}));
+
+vi.mock("./enabledLlmModels", () => ({
+  loadEnabledLlmModelRows: mockLoadEnabledLlmModelRows,
+}));
 
 import {
   type ModelCapabilities,
@@ -6,6 +14,8 @@ import {
   filterModelsByCapabilities,
   resolveModelsForPolicy,
   DEFAULT_EXECUTION_POLICY,
+  loadEnabledModelsWithCapabilities,
+  loadEnabledModelsWithPricing,
 } from "./capabilityRegistry";
 
 const models: Array<{ modelId: string; capabilities: ModelCapabilities }> = [
@@ -14,6 +24,8 @@ const models: Array<{ modelId: string; capabilities: ModelCapabilities }> = [
     capabilities: {
       supportsResponses: true,
       supportsStructuredOutputs: true,
+      supportsJsonMode: true,
+      supportsStrictToolSchema: true,
       supportsWebSearch: false,
       supportsFunctionTools: true,
       supportsCodeExecution: false,
@@ -27,6 +39,7 @@ const models: Array<{ modelId: string; capabilities: ModelCapabilities }> = [
     capabilities: {
       supportsResponses: true,
       supportsStructuredOutputs: true,
+      supportsStrictToolSchema: true,
       supportsWebSearch: true,
       supportsFunctionTools: true,
       supportsCodeExecution: true,
@@ -50,6 +63,11 @@ const models: Array<{ modelId: string; capabilities: ModelCapabilities }> = [
   },
 ];
 
+beforeEach(() => {
+  vi.clearAllMocks();
+  mockLoadEnabledLlmModelRows.mockResolvedValue([]);
+});
+
 describe("filterModelsByCapabilities", () => {
   it("returns all models when no requirements specified", () => {
     const result = filterModelsByCapabilities(models, {});
@@ -67,6 +85,14 @@ describe("filterModelsByCapabilities", () => {
       supportsFunctionTools: true,
     });
     expect(result.map((m) => m.modelId)).toEqual(["gpt-4o", "claude-sonnet-4"]);
+  });
+
+  it("filters by refined structured output capabilities", () => {
+    const result = filterModelsByCapabilities(models, {
+      supportsJsonMode: true,
+      supportsStrictToolSchema: true,
+    });
+    expect(result.map((m) => m.modelId)).toEqual(["gpt-4o"]);
   });
 
   it("filters by minimum context length", () => {
@@ -158,5 +184,128 @@ describe("resolveModelsForPolicy", () => {
     const result = resolveModelsForPolicy(models, policy);
     // gemini-flash should NOT appear since it doesn't meet requirements
     expect(result.map((m) => m.modelId)).toEqual(["gpt-4o", "claude-sonnet-4"]);
+  });
+
+  it("matches preserved legacy aliases across fixed, disallowed, and preferred policy fields", () => {
+    const aliasedModels = [
+      {
+        modelId: "nemotron-manual",
+        providerModelId: "nvidia/llama-3.1-nemotron-51b-instruct",
+        providerName: "nvidia_nim",
+        legacyModelAliases: ["legacy-nemotron"],
+        capabilities: {
+          supportsFunctionTools: true,
+        },
+      },
+      {
+        modelId: "gpt-4o",
+        providerModelId: "gpt-4o",
+        providerName: "openai",
+        capabilities: {
+          supportsFunctionTools: true,
+        },
+      },
+    ] as const;
+
+    expect(resolveModelsForPolicy(aliasedModels as any, {
+      mode: "fixed",
+      fixedModel: "legacy-nemotron",
+    }).map((model) => model.modelId)).toEqual(["nemotron-manual"]);
+
+    expect(resolveModelsForPolicy(aliasedModels as any, {
+      mode: "requirements",
+      requirements: {},
+      disallowedModels: ["legacy-nemotron"],
+    }).map((model) => model.modelId)).toEqual(["gpt-4o"]);
+
+    expect(resolveModelsForPolicy(aliasedModels as any, {
+      mode: "requirements",
+      requirements: {},
+      preferredProfiles: ["legacy-nemotron", "gpt-4o"],
+    })[0]?.modelId).toBe("nemotron-manual");
+  });
+});
+
+describe("capability registry runtime loaders", () => {
+  it("surfaces catalog eligibility metadata from the shared enabled-model loader", async () => {
+    mockLoadEnabledLlmModelRows.mockResolvedValue([
+      {
+        providerId: 91,
+        providerName: "nvidia_nim",
+        modelId: "nemotron-auto",
+        providerModelId: "nvidia/llama-3.3-nemotron-super-49b-v1.5",
+        defaultModel: null,
+        apiStyle: "chat-completions",
+        catalogEligibility: "public-chat",
+        catalogInvalidReason: undefined,
+        autoSelectionEligible: true,
+        supportsVision: false,
+        supportsThinking: true,
+        supportsResponses: false,
+        supportsStructuredOutputs: true,
+        supportsJsonMode: true,
+        supportsStrictToolSchema: true,
+        supportsWebSearch: false,
+        supportsFunctionTools: true,
+        supportsCodeExecution: false,
+        supportsComputerUse: false,
+        supportsBackground: false,
+        contextLength: 128000,
+        priority: 1,
+        priorityLocked: false,
+        isFree: false,
+        pricingInput: "0.4",
+        pricingOutput: "1.2",
+      },
+    ]);
+
+    const rows = await loadEnabledModelsWithCapabilities();
+
+    expect(rows[0]).toMatchObject({
+      modelId: "nemotron-auto",
+      catalogEligibility: "public-chat",
+      autoSelectionEligible: true,
+      capabilities: {
+        supportsFunctionTools: true,
+        supportsStructuredOutputs: true,
+      },
+    });
+  });
+
+  it("keeps manual-only NVIDIA rows out of capability-based auto loaders", async () => {
+    mockLoadEnabledLlmModelRows.mockResolvedValue([
+      {
+        providerId: 91,
+        providerName: "nvidia_nim",
+        modelId: "nemotron-auto",
+        providerModelId: "nvidia/llama-3.3-nemotron-super-49b-v1.5",
+        defaultModel: null,
+        apiStyle: "chat-completions",
+        catalogEligibility: "public-chat",
+        autoSelectionEligible: true,
+        supportsVision: false,
+        supportsThinking: true,
+        supportsResponses: false,
+        supportsStructuredOutputs: true,
+        supportsJsonMode: true,
+        supportsStrictToolSchema: true,
+        supportsWebSearch: false,
+        supportsFunctionTools: true,
+        supportsCodeExecution: false,
+        supportsComputerUse: false,
+        supportsBackground: false,
+        contextLength: 128000,
+        priority: 1,
+        priorityLocked: false,
+        isFree: false,
+        pricingInput: "0.4",
+        pricingOutput: "1.2",
+      },
+    ]);
+
+    const rows = await loadEnabledModelsWithPricing();
+
+    expect(rows.map((row) => row.modelId)).toEqual(["nemotron-auto"]);
+    expect(mockLoadEnabledLlmModelRows).toHaveBeenCalledWith({ autoSelectionOnly: true });
   });
 });

@@ -76,12 +76,30 @@ beforeEach(() => {
 });
 
 // Helper to set up chained mocks
-function mockSelectChain(result: any[]) {
+function mockSelectChain(result: any[], providers: any[] = []) {
+  const providerOrderByMock = vi.fn().mockResolvedValue(providers);
+  const providerFromMock = vi.fn().mockReturnValue({ orderBy: providerOrderByMock });
+
   const orderByMock = vi.fn().mockResolvedValue(result);
   const whereMock = vi.fn().mockReturnValue({ orderBy: orderByMock });
   const joinMock = vi.fn().mockReturnValue({ where: whereMock, orderBy: orderByMock });
   const fromMock = vi.fn().mockReturnValue({ innerJoin: joinMock, where: whereMock, orderBy: orderByMock });
-  mockDbSelect.mockReturnValue({ from: fromMock });
+
+  mockDbSelect
+    .mockImplementationOnce(() => ({ from: providerFromMock }))
+    .mockImplementationOnce(() => ({ from: fromMock }));
+}
+
+function mockProviderCatalogLookup(providers: any[]) {
+  const whereMock = vi.fn().mockResolvedValue(providers);
+  const fromMock = vi.fn().mockReturnValue({ where: whereMock });
+  mockDbSelect.mockImplementationOnce(() => ({ from: fromMock }));
+}
+
+function mockExistingProviderModelMappings(rows: any[]) {
+  const whereMock = vi.fn().mockResolvedValue(rows);
+  const fromMock = vi.fn().mockReturnValue({ where: whereMock });
+  mockDbSelect.mockImplementationOnce(() => ({ from: fromMock }));
 }
 
 describe("groupModelMappingsByModelId", () => {
@@ -173,6 +191,7 @@ describe("mergeAdminModelCatalogRows", () => {
           id: 1,
           providerName: "openrouter",
           providerDisplayName: "OpenRouter",
+          isEnabled: true,
           availableModels: [
             {
               id: "openai/gpt-5.4",
@@ -190,6 +209,95 @@ describe("mergeAdminModelCatalogRows", () => {
     expect(rows[0]?.providerModelId).toBe("openai/gpt-5.4");
     expect(rows[0]?.isMapped).toBe(false);
     expect(rows[0]?.isEnabled).toBe(false);
+    expect(rows[0]?.catalogEligibility).toBe("public-chat");
+  });
+
+  it("preserves Kie catalog apiStyle, config, capabilities, and canonical alias mapping", () => {
+    const rows = mergeAdminModelCatalogRows({
+      providers: [
+        {
+          id: 2,
+          providerName: "kie_ai",
+          providerDisplayName: "Kie AI",
+          isEnabled: true,
+          availableModels: [
+            {
+              id: "gpt-5-4",
+              name: "GPT 5.4",
+              contextLength: 400000,
+              pricing: { input: 2.5, output: 15 },
+              apiStyle: "responses",
+              supportsResponses: true,
+              supportsVision: true,
+              config: {
+                requestBodyFormat: "responses",
+                apiEndpoint: "/codex/v1/responses",
+                passthroughFields: ["reasoning", "tools"],
+              },
+            },
+          ],
+        },
+      ],
+      mappings: [],
+    });
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.modelId).toBe("gpt-5.4");
+    expect(rows[0]?.apiStyle).toBe("responses");
+    expect(rows[0]?.supportsResponses).toBe(true);
+    expect(rows[0]?.supportsVision).toBe(true);
+    expect(rows[0]?.config?.apiEndpoint).toBe("/codex/v1/responses");
+    expect(rows[0]?.config?.passthroughFields).toEqual(["reasoning", "tools"]);
+    expect(rows[0]?.catalogEligibility).toBe("public-chat");
+  });
+
+  it("marks mapped NVIDIA rows invalid when catalog state is no longer public chat", () => {
+    const rows = mergeAdminModelCatalogRows({
+      providers: [
+        {
+          id: 9,
+          providerName: "nvidia_nim",
+          providerDisplayName: "NVIDIA NIM",
+          isEnabled: true,
+          availableModels: [
+            {
+              id: "meta/llama-guard-4-12b",
+              name: "Llama Guard 4 12B",
+              ownedBy: "meta",
+              surface: "guardrail",
+              executionMode: "deferred",
+              autoSelectionEligible: false,
+            },
+          ],
+        },
+      ],
+      mappings: [
+        {
+          id: 101,
+          modelId: "llama-guard",
+          providerId: 9,
+          providerName: "nvidia_nim",
+          providerDisplayName: "NVIDIA NIM",
+          modelName: "Llama Guard 4 12B",
+          providerModelId: "meta/llama-guard-4-12b",
+          pricingInput: "0",
+          pricingOutput: "0",
+          isFree: true,
+          contextLength: 8192,
+          isEnabled: true,
+          priority: 0,
+          priorityLocked: false,
+          apiStyle: "chat-completions",
+        },
+      ],
+    });
+
+    expect(rows[0]).toMatchObject({
+      catalogEligibility: "invalid",
+      catalogInvalidReason: "surface-not-chat",
+      surface: "guardrail",
+      executionMode: "deferred",
+    });
   });
 });
 
@@ -200,6 +308,7 @@ describe("listAdminModelCatalog", () => {
         id: 1,
         providerName: "openrouter",
         providerDisplayName: "OpenRouter",
+        isEnabled: true,
         availableModels: [
           {
             id: "openai/gpt-5.4",
@@ -241,10 +350,113 @@ describe("listAdminModelCatalog", () => {
     expect(result.some((row: any) => row.providerModelId === "openai/gpt-4o" && row.isMapped)).toBe(true);
     expect(result.some((row: any) => row.providerModelId === "openai/gpt-5.4" && !row.isMapped)).toBe(true);
   });
+
+  it("hydrates Kie AI template catalog when a legacy provider row has no availableModels", async () => {
+    const providerOrderByMock = vi.fn().mockResolvedValue([
+      {
+        id: 2,
+        providerName: "kie_ai",
+        providerDisplayName: "Kie AI",
+        availableModels: null,
+      },
+    ]);
+    const providerFromMock = vi.fn().mockReturnValue({ orderBy: providerOrderByMock });
+    mockDbSelect.mockImplementationOnce(() => ({ from: providerFromMock }));
+
+    const mappingOrderByMock = vi.fn().mockResolvedValue([]);
+    const mappingJoinMock = vi.fn().mockReturnValue({ orderBy: mappingOrderByMock });
+    const mappingFromMock = vi.fn().mockReturnValue({ innerJoin: mappingJoinMock });
+    mockDbSelect.mockImplementationOnce(() => ({ from: mappingFromMock }));
+
+    const fn = multiProviderRouter.listAdminModelCatalog as Function;
+    const result = await fn({ ctx: { user: { role: "admin" } } });
+
+    expect(result.length).toBeGreaterThan(0);
+    expect(result.some((row: any) => row.providerName === "kie_ai" && row.providerModelId === "gpt-5-4")).toBe(true);
+    expect(result.some((row: any) => row.providerName === "kie_ai" && row.providerModelId === "gemini-3-pro")).toBe(true);
+  });
+
+  it("returns NVIDIA catalog eligibility metadata for mapped and unmapped rows", async () => {
+    const providerOrderByMock = vi.fn().mockResolvedValue([
+      {
+        id: 91,
+        providerName: "nvidia_nim",
+        providerDisplayName: "NVIDIA NIM",
+        isEnabled: true,
+        availableModels: [
+          {
+            id: "nvidia/llama-3.3-nemotron-super-49b-v1.5",
+            name: "Nemotron Super",
+            ownedBy: "nvidia",
+            surface: "chat",
+            executionMode: "public",
+            autoSelectionEligible: true,
+          },
+          {
+            id: "meta/llama-guard-4-12b",
+            name: "Llama Guard 4 12B",
+            ownedBy: "meta",
+            surface: "guardrail",
+            executionMode: "deferred",
+            autoSelectionEligible: false,
+          },
+        ],
+      },
+    ]);
+    const providerFromMock = vi.fn().mockReturnValue({ orderBy: providerOrderByMock });
+    mockDbSelect.mockImplementationOnce(() => ({ from: providerFromMock }));
+
+    const mappingOrderByMock = vi.fn().mockResolvedValue([
+      {
+        id: 7,
+        modelId: "llama-guard",
+        providerId: 91,
+        providerName: "nvidia_nim",
+        providerDisplayName: "NVIDIA NIM",
+        modelName: "Llama Guard 4 12B",
+        providerModelId: "meta/llama-guard-4-12b",
+        pricingInput: "0",
+        pricingOutput: "0",
+        isFree: true,
+        contextLength: 8192,
+        isEnabled: true,
+        priority: 0,
+        priorityLocked: false,
+        apiStyle: "chat-completions",
+      },
+    ]);
+    const mappingJoinMock = vi.fn().mockReturnValue({ orderBy: mappingOrderByMock });
+    const mappingFromMock = vi.fn().mockReturnValue({ innerJoin: mappingJoinMock });
+    mockDbSelect.mockImplementationOnce(() => ({ from: mappingFromMock }));
+
+    const fn = multiProviderRouter.listAdminModelCatalog as Function;
+    const result = await fn({ ctx: { user: { role: "admin" } } });
+
+    expect(result.find((row: any) => row.providerModelId === "nvidia/llama-3.3-nemotron-super-49b-v1.5")).toMatchObject({
+      catalogEligibility: "public-chat",
+      ownedBy: "nvidia",
+      isMapped: false,
+      isEnabled: false,
+    });
+    expect(result.find((row: any) => row.providerModelId === "meta/llama-guard-4-12b")).toMatchObject({
+      catalogEligibility: "invalid",
+      catalogInvalidReason: "surface-not-chat",
+    });
+  });
 });
 
 describe("upsertModelMapping", () => {
   it("creates a new mapping", async () => {
+    mockProviderCatalogLookup([
+      {
+        id: 1,
+        providerName: "openai",
+        providerDisplayName: "OpenAI",
+        isEnabled: true,
+        availableModels: [],
+      },
+    ]);
+    mockExistingProviderModelMappings([]);
     const returningMock = vi.fn().mockResolvedValue([{ id: 10 }]);
     const valuesMock = vi.fn().mockReturnValue({ returning: returningMock });
     mockDbInsert.mockReturnValue({ values: valuesMock });
@@ -271,6 +483,22 @@ describe("upsertModelMapping", () => {
   });
 
   it("updates existing mapping by id", async () => {
+    mockProviderCatalogLookup([
+      {
+        id: 1,
+        providerName: "openai",
+        providerDisplayName: "OpenAI",
+        isEnabled: true,
+        availableModels: [],
+      },
+    ]);
+    mockExistingProviderModelMappings([
+      {
+        id: 5,
+        providerId: 1,
+        providerModelId: "test-model-v1",
+      },
+    ]);
     const whereMock = vi.fn().mockResolvedValue(undefined);
     const setMock = vi.fn().mockReturnValue({ where: whereMock });
     mockDbUpdate.mockReturnValue({ set: setMock });
@@ -295,6 +523,82 @@ describe("upsertModelMapping", () => {
 
     expect(result.success).toBe(true);
     expect(result.id).toBe(5);
+  });
+
+  it("rejects duplicate provider model ids for the same provider", async () => {
+    mockProviderCatalogLookup([
+      {
+        id: 1,
+        providerName: "openai",
+        providerDisplayName: "OpenAI",
+        isEnabled: true,
+        availableModels: [],
+      },
+    ]);
+    mockExistingProviderModelMappings([
+      {
+        id: 7,
+        providerId: 1,
+        providerModelId: "test-model-v1",
+      },
+    ]);
+
+    const fn = multiProviderRouter.upsertModelMapping as Function;
+    await expect(
+      fn({
+        ctx: { user: { role: "admin" } },
+        input: {
+          modelId: "alternate-model-id",
+          providerId: 1,
+          modelName: "Test Model",
+          providerModelId: "test-model-v1",
+          pricingInput: 1.0,
+          pricingOutput: 4.0,
+          isFree: false,
+          contextLength: 8192,
+          isEnabled: true,
+          priority: 0,
+        },
+      }),
+    ).rejects.toThrow("already mapped for this provider");
+  });
+
+  it("rejects NVIDIA rows that are not public chat", async () => {
+    mockProviderCatalogLookup([
+      {
+        id: 91,
+        providerName: "nvidia_nim",
+        providerDisplayName: "NVIDIA NIM",
+        isEnabled: true,
+        availableModels: [
+          {
+            id: "meta/llama-guard-4-12b",
+            name: "Llama Guard 4 12B",
+            surface: "guardrail",
+            executionMode: "deferred",
+          },
+        ],
+      },
+    ]);
+
+    const fn = multiProviderRouter.upsertModelMapping as Function;
+    await expect(
+      fn({
+        ctx: { user: { role: "admin" } },
+        input: {
+          modelId: "llama-guard",
+          providerId: 91,
+          modelName: "Llama Guard 4 12B",
+          providerModelId: "meta/llama-guard-4-12b",
+          pricingInput: 0,
+          pricingOutput: 0,
+          isFree: true,
+          contextLength: 8192,
+          isEnabled: true,
+          priority: 0,
+        },
+      }),
+    ).rejects.toThrow("reason=surface-not-chat");
   });
 });
 
@@ -328,14 +632,59 @@ describe("bulkSetModelMappingsEnabled", () => {
     expect(result.isEnabled).toBe(false);
     expect(mockDbUpdate).toHaveBeenCalled();
   });
+
+  it("rejects re-enabling mapped NVIDIA rows that are no longer public chat", async () => {
+    const mappingWhereMock = vi.fn().mockResolvedValue([
+      {
+        id: 9,
+        providerId: 91,
+        providerModelId: "meta/llama-guard-4-12b",
+        providerName: "nvidia_nim",
+      },
+    ]);
+    const mappingJoinMock = vi.fn().mockReturnValue({ where: mappingWhereMock });
+    const mappingFromMock = vi.fn().mockReturnValue({ innerJoin: mappingJoinMock });
+    mockDbSelect.mockImplementationOnce(() => ({ from: mappingFromMock }));
+
+    mockProviderCatalogLookup([
+      {
+        id: 91,
+        providerName: "nvidia_nim",
+        providerDisplayName: "NVIDIA NIM",
+        isEnabled: true,
+        availableModels: [
+          {
+            id: "meta/llama-guard-4-12b",
+            name: "Llama Guard 4 12B",
+            surface: "guardrail",
+            executionMode: "deferred",
+          },
+        ],
+      },
+    ]);
+
+    const fn = multiProviderRouter.bulkSetModelMappingsEnabled as Function;
+    await expect(
+      fn({
+        ctx: { user: { role: "admin" } },
+        input: { ids: [9], isEnabled: true },
+      }),
+    ).rejects.toThrow("reason=surface-not-chat");
+  });
 });
 
 describe("bulkSetAdminModelCatalogEnabled", () => {
   it("creates mappings for unmapped catalog models when enabling", async () => {
-    // Mock provider pre-load for priority computation
-    const providerWhereMock = vi.fn().mockResolvedValue([]);
-    const providerFromMock = vi.fn().mockReturnValue({ where: providerWhereMock });
-    mockDbSelect.mockImplementationOnce(() => ({ from: providerFromMock }));
+    mockProviderCatalogLookup([
+      {
+        id: 1,
+        providerName: "openai",
+        providerDisplayName: "OpenAI",
+        isEnabled: true,
+        availableModels: [],
+      },
+    ]);
+    mockExistingProviderModelMappings([]);
 
     const onConflictDoUpdate = vi.fn().mockResolvedValue(undefined);
     const valuesMock = vi.fn().mockReturnValue({ onConflictDoUpdate });
@@ -365,6 +714,198 @@ describe("bulkSetAdminModelCatalogEnabled", () => {
     expect(result.success).toBe(true);
     expect(result.insertedCount).toBe(1);
     expect(mockDbInsert).toHaveBeenCalled();
+  });
+
+  it("allows enabling reviewed NVIDIA chat rows manually", async () => {
+    mockProviderCatalogLookup([
+      {
+        id: 91,
+        providerName: "nvidia_nim",
+        providerDisplayName: "NVIDIA NIM",
+        isEnabled: true,
+        availableModels: [
+          {
+            id: "nvidia/llama-3.3-nemotron-super-49b-v1.5",
+            name: "Nemotron Super",
+            surface: "chat",
+            executionMode: "public",
+            autoSelectionEligible: true,
+          },
+        ],
+      },
+    ]);
+    mockExistingProviderModelMappings([]);
+
+    const onConflictDoUpdate = vi.fn().mockResolvedValue(undefined);
+    const valuesMock = vi.fn().mockReturnValue({ onConflictDoUpdate });
+    mockDbInsert.mockReturnValue({ values: valuesMock });
+
+    const fn = multiProviderRouter.bulkSetAdminModelCatalogEnabled as Function;
+    const result = await fn({
+      ctx: { user: { role: "admin" } },
+      input: {
+        items: [{
+          mappingId: null,
+          modelId: "nvidia-default",
+          providerId: 91,
+          modelName: "Nemotron Super",
+          providerModelId: "nvidia/llama-3.3-nemotron-super-49b-v1.5",
+          pricingInput: 0.4,
+          pricingOutput: 1.2,
+          isFree: false,
+          contextLength: 128000,
+          priority: 0,
+          apiStyle: "chat-completions",
+        }],
+        isEnabled: true,
+      },
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.insertedCount).toBe(1);
+    expect(mockDbInsert).toHaveBeenCalled();
+  });
+
+  it("rejects non-chat NVIDIA catalog rows before insert", async () => {
+    mockProviderCatalogLookup([
+      {
+        id: 91,
+        providerName: "nvidia_nim",
+        providerDisplayName: "NVIDIA NIM",
+        isEnabled: true,
+        availableModels: [
+          {
+            id: "meta/llama-guard-4-12b",
+            name: "Llama Guard 4 12B",
+            surface: "guardrail",
+            executionMode: "deferred",
+          },
+        ],
+      },
+    ]);
+
+    const fn = multiProviderRouter.bulkSetAdminModelCatalogEnabled as Function;
+    await expect(
+      fn({
+        ctx: { user: { role: "admin" } },
+        input: {
+          items: [{
+            mappingId: null,
+            modelId: "llama-guard",
+            providerId: 91,
+            modelName: "Llama Guard 4 12B",
+            providerModelId: "meta/llama-guard-4-12b",
+            pricingInput: 0,
+            pricingOutput: 0,
+            isFree: true,
+          }],
+          isEnabled: true,
+        },
+      }),
+    ).rejects.toThrow("reason=surface-not-chat");
+    expect(mockDbInsert).not.toHaveBeenCalled();
+  });
+
+  it("rejects duplicate provider model ids inside one admin enable request", async () => {
+    mockProviderCatalogLookup([
+      {
+        id: 91,
+        providerName: "nvidia_nim",
+        providerDisplayName: "NVIDIA NIM",
+        isEnabled: true,
+        availableModels: [
+          {
+            id: "nvidia/llama-3.3-nemotron-super-49b-v1.5",
+            name: "Nemotron Super",
+            surface: "chat",
+            executionMode: "public",
+            autoSelectionEligible: true,
+          },
+        ],
+      },
+    ]);
+
+    const fn = multiProviderRouter.bulkSetAdminModelCatalogEnabled as Function;
+    await expect(
+      fn({
+        ctx: { user: { role: "admin" } },
+        input: {
+          items: [
+            {
+              mappingId: null,
+              modelId: "nvidia-default",
+              providerId: 91,
+              modelName: "Nemotron Super",
+              providerModelId: "nvidia/llama-3.3-nemotron-super-49b-v1.5",
+              pricingInput: 0.4,
+              pricingOutput: 1.2,
+              isFree: false,
+              contextLength: 128000,
+            },
+            {
+              mappingId: null,
+              modelId: "nvidia-alternate",
+              providerId: 91,
+              modelName: "Nemotron Super Copy",
+              providerModelId: "nvidia/llama-3.3-nemotron-super-49b-v1.5",
+              pricingInput: 0.4,
+              pricingOutput: 1.2,
+              isFree: false,
+              contextLength: 128000,
+            },
+          ],
+          isEnabled: true,
+        },
+      }),
+    ).rejects.toThrow("appears multiple times in request");
+  });
+
+  it("rejects stale admin enable requests when provider model already exists under another modelId", async () => {
+    mockProviderCatalogLookup([
+      {
+        id: 91,
+        providerName: "nvidia_nim",
+        providerDisplayName: "NVIDIA NIM",
+        isEnabled: true,
+        availableModels: [
+          {
+            id: "nvidia/llama-3.3-nemotron-super-49b-v1.5",
+            name: "Nemotron Super",
+            surface: "chat",
+            executionMode: "public",
+            autoSelectionEligible: true,
+          },
+        ],
+      },
+    ]);
+    mockExistingProviderModelMappings([
+      {
+        id: 12,
+        providerId: 91,
+        providerModelId: "nvidia/llama-3.3-nemotron-super-49b-v1.5",
+      },
+    ]);
+
+    const fn = multiProviderRouter.bulkSetAdminModelCatalogEnabled as Function;
+    await expect(
+      fn({
+        ctx: { user: { role: "admin" } },
+        input: {
+          items: [{
+            mappingId: null,
+            modelId: "nvidia-default",
+            providerId: 91,
+            modelName: "Nemotron Super",
+            providerModelId: "nvidia/llama-3.3-nemotron-super-49b-v1.5",
+            pricingInput: 0.4,
+            pricingOutput: 1.2,
+            isFree: false,
+            contextLength: 128000,
+          }],
+          isEnabled: true,
+        },
+      }),
+    ).rejects.toThrow("already mapped for this provider");
   });
 });
 
@@ -464,6 +1005,41 @@ describe("getAvailableModelsWithProviders", () => {
     expect(result).toHaveLength(2);
     expect(result[0].modelId).toBe("gpt-4o");
     expect(result[0].providers).toHaveLength(1);
+  });
+
+  it("hydrates Kie pricing from provider catalog when legacy mappings were stored as free", async () => {
+    const rows = [
+      {
+        modelId: "gpt-5.4",
+        modelName: "GPT 5.4",
+        providerId: 9,
+        providerName: "kie_ai",
+        providerDisplayName: "Kie AI",
+        providerModelId: "gpt-5-4",
+        pricingInput: "0",
+        pricingOutput: "0",
+        isFree: true,
+        isEnabled: true,
+        contextLength: 400000,
+        availableModels: [
+          {
+            id: "gpt-5-4",
+            name: "GPT 5.4",
+            pricing: { input: 0.7, output: 5.6 },
+          },
+        ],
+      },
+    ];
+    mockAvailableModelsQuery(rows);
+
+    const fn = multiProviderRouter.getAvailableModelsWithProviders as Function;
+    const result = await fn({ ctx: { user: { id: 1 } } });
+
+    expect(result[0]?.providers[0]).toMatchObject({
+      pricingInput: "0.7",
+      pricingOutput: "5.6",
+      isFree: false,
+    });
   });
 
   it("excludes disabled models", async () => {
@@ -601,8 +1177,11 @@ describe("multiProvider.backfillModelPriorities", () => {
 
 describe("bulkSetAdminModelCatalogEnabled — priority assignment", () => {
   it("assigns computed priority to new entries (not 0)", async () => {
-    const providerRows = [{
+    mockProviderCatalogLookup([{
       id: 1,
+      providerName: "openai",
+      providerDisplayName: "OpenAI",
+      isEnabled: true,
       availableModels: [{
         id: "openai/gpt-5.4",
         name: "GPT 5.4",
@@ -610,10 +1189,8 @@ describe("bulkSetAdminModelCatalogEnabled — priority assignment", () => {
         pricing: { input: 2.5, output: 10 },
         createdAt: Math.floor(Date.now() / 1000) - 7 * 86400,
       }],
-    }];
-    const providerWhereMock = vi.fn().mockResolvedValue(providerRows);
-    const providerFromMock = vi.fn().mockReturnValue({ where: providerWhereMock });
-    mockDbSelect.mockImplementationOnce(() => ({ from: providerFromMock }));
+    }]);
+    mockExistingProviderModelMappings([]);
 
     mockComputeModelPriority.mockReturnValue(18);
 
@@ -646,7 +1223,85 @@ describe("bulkSetAdminModelCatalogEnabled — priority assignment", () => {
     expect(insertedValues[0].priority).toBe(18);
   });
 
+  it("uses provider-scoped catalog lookup when providerModelId collides across providers", async () => {
+    mockProviderCatalogLookup([
+      {
+        id: 1,
+        providerName: "openai",
+        providerDisplayName: "OpenAI",
+        isEnabled: true,
+        availableModels: [{
+          id: "shared-model",
+          name: "Shared Model (OpenAI)",
+          contextLength: 8000,
+          createdAt: 100,
+        }],
+      },
+      {
+        id: 2,
+        providerName: "nvidia_nim",
+        providerDisplayName: "NVIDIA NIM",
+        isEnabled: true,
+        availableModels: [{
+          id: "shared-model",
+          name: "Shared Model (NVIDIA)",
+          contextLength: 64000,
+          createdAt: 200,
+          surface: "chat",
+          executionMode: "public",
+          autoSelectionEligible: false,
+        }],
+      },
+    ]);
+    mockExistingProviderModelMappings([]);
+
+    mockComputeModelPriority.mockImplementation((input: any) => input.contextLength);
+
+    const onConflictDoUpdate = vi.fn().mockResolvedValue(undefined);
+    const valuesMock = vi.fn().mockReturnValue({ onConflictDoUpdate });
+    mockDbInsert.mockReturnValue({ values: valuesMock });
+
+    const fn = multiProviderRouter.bulkSetAdminModelCatalogEnabled as Function;
+    await fn({
+      ctx: { user: { role: "admin" } },
+      input: {
+        items: [{
+          mappingId: null,
+          modelId: "shared-model",
+          providerId: 2,
+          modelName: "Shared Model",
+          providerModelId: "shared-model",
+          pricingInput: 0,
+          pricingOutput: 0,
+          isFree: true,
+          contextLength: null,
+        }],
+        isEnabled: true,
+      },
+    });
+
+    expect(mockComputeModelPriority).toHaveBeenCalledWith(
+      expect.objectContaining({ contextLength: 64000, createdAt: 200 }),
+    );
+  });
+
   it("does not overwrite priorityLocked=true entries", async () => {
+    mockProviderCatalogLookup([
+      {
+        id: 1,
+        providerName: "openai",
+        providerDisplayName: "OpenAI",
+        isEnabled: true,
+        availableModels: [],
+      },
+    ]);
+    mockExistingProviderModelMappings([
+      {
+        id: 99,
+        providerId: 1,
+        providerModelId: "openai/gpt-4o",
+      },
+    ]);
     const updateWhereMock = vi.fn().mockResolvedValue(undefined);
     const updateSetMock = vi.fn().mockReturnValue({ where: updateWhereMock });
     mockDbUpdate.mockReturnValue({ set: updateSetMock });

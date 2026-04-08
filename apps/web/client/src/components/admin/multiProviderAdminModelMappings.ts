@@ -14,12 +14,21 @@ export interface AdminModelMappingRow {
   priority: number;
   priorityLocked: boolean;
   apiStyle: "chat-completions" | "responses" | "messages" | "gemini";
+  ownedBy?: string;
+  surface?: "chat" | "embedding" | "parse" | "guardrail" | "reward" | "translation" | "multimodal" | "other";
+  executionMode?: "public" | "internal-only" | "deferred";
+  autoSelectionEligible?: boolean;
+  embeddingDimension?: number;
+  catalogEligibility?: "public-chat" | "manual-only" | "internal-only" | "deferred" | "invalid";
+  catalogInvalidReason?: "missing-catalog-row" | "surface-not-chat" | "execution-mode-not-public" | "provider-disabled" | "unknown";
   // Model capabilities
   supportsVision?: boolean;
   supportsThinking?: boolean;
   supportsWebSearch?: boolean;
   supportsFunctionTools?: boolean;
   supportsStructuredOutputs?: boolean;
+  supportsJsonMode?: boolean;
+  supportsStrictToolSchema?: boolean;
   supportsCodeExecution?: boolean;
   supportsComputerUse?: boolean;
   supportsBackground?: boolean;
@@ -43,16 +52,44 @@ export interface AdminModelCatalogRow {
   priority: number;
   priorityLocked: boolean;
   apiStyle: "chat-completions" | "responses" | "messages" | "gemini";
+  ownedBy?: string;
+  surface?: "chat" | "embedding" | "parse" | "guardrail" | "reward" | "translation" | "multimodal" | "other";
+  executionMode?: "public" | "internal-only" | "deferred";
+  autoSelectionEligible?: boolean;
+  embeddingDimension?: number;
+  catalogEligibility?: "public-chat" | "manual-only" | "internal-only" | "deferred" | "invalid";
+  catalogInvalidReason?: "missing-catalog-row" | "surface-not-chat" | "execution-mode-not-public" | "provider-disabled" | "unknown";
   // Model capabilities
   supportsVision?: boolean;
   supportsThinking?: boolean;
   supportsWebSearch?: boolean;
   supportsFunctionTools?: boolean;
   supportsStructuredOutputs?: boolean;
+  supportsJsonMode?: boolean;
+  supportsStrictToolSchema?: boolean;
   supportsCodeExecution?: boolean;
   supportsComputerUse?: boolean;
   supportsBackground?: boolean;
   supportsResponses?: boolean;
+  config?: {
+    requestBodyFormat: "responses" | "anthropic-messages" | "openai-chat-completions";
+    apiEndpoint?: string;
+    apiEndpointTemplate?: string;
+    authStrategy?: "provider-default";
+    supportsStreaming?: boolean;
+    inputFields?: Array<{
+      key: string;
+      label: string;
+      type: "boolean" | "number" | "text" | "select" | "json" | "messages" | "input" | "tools";
+      required?: boolean;
+      documented?: boolean;
+      default?: string | number | boolean;
+      options?: Array<{ value: string; label: string }>;
+      description?: string;
+    }>;
+    passthroughFields?: string[];
+    conflicts?: Array<{ type: "xor"; fields: string[] }>;
+  };
 }
 
 export type AdminModelMappingsGrouped = Record<string, AdminModelMappingRow[]>;
@@ -104,6 +141,12 @@ export function getAdminModelSelectionKey(row: Pick<AdminModelCatalogRow, "mappi
     return `mapped:${row.mappingId}`;
   }
   return `catalog:${row.providerId}:${row.providerModelId}`;
+}
+
+export function canEnableAdminModelCatalogRow(
+  row: Pick<AdminModelCatalogRow, "catalogEligibility">,
+): boolean {
+  return row.catalogEligibility === "public-chat" || row.catalogEligibility === "manual-only";
 }
 
 export type EnabledFilter = "all" | "enabled" | "disabled";

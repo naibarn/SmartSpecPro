@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  canEnableAdminModelCatalogRow,
   filterAdminModelCatalogRows,
   collectVisibleMappingIds,
   filterFlatModelMappings,
@@ -152,6 +153,89 @@ describe("filterAdminModelCatalogRows", () => {
 
     expect(rows).toHaveLength(1);
     expect(getAdminModelSelectionKey(rows[0]!)).toBe("catalog:20:openai/gpt-5.4");
+  });
+
+  it("preserves NVIDIA metadata on catalog rows while filtering", () => {
+    const rows = filterAdminModelCatalogRows([
+      {
+        mappingId: null,
+        isMapped: false,
+        modelId: "nvidia/llama-3.3-nemotron-super-49b-v1.5",
+        providerId: 91,
+        providerName: "nvidia_nim",
+        providerDisplayName: "NVIDIA NIM",
+        modelName: "Llama 3.3 Nemotron Super 49B v1.5",
+        providerModelId: "nvidia/llama-3.3-nemotron-super-49b-v1.5",
+        pricingInput: "0",
+        pricingOutput: "0",
+        isFree: true,
+        contextLength: 128000,
+        isEnabled: false,
+        priority: 0,
+        priorityLocked: false,
+        apiStyle: "chat-completions",
+        ownedBy: "nvidia",
+        surface: "chat",
+        executionMode: "public",
+        autoSelectionEligible: true,
+        catalogEligibility: "public-chat",
+        supportsStructuredOutputs: true,
+      },
+    ], "nemotron", "91");
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      ownedBy: "nvidia",
+      surface: "chat",
+      executionMode: "public",
+      autoSelectionEligible: true,
+      catalogEligibility: "public-chat",
+      supportsStructuredOutputs: true,
+    });
+  });
+
+  it("preserves invalid NVIDIA eligibility metadata for stale mapped rows", () => {
+    const rows = filterAdminModelCatalogRows([
+      {
+        mappingId: 7,
+        isMapped: true,
+        modelId: "llama-guard",
+        providerId: 91,
+        providerName: "nvidia_nim",
+        providerDisplayName: "NVIDIA NIM",
+        modelName: "Llama Guard 4 12B",
+        providerModelId: "meta/llama-guard-4-12b",
+        pricingInput: "0",
+        pricingOutput: "0",
+        isFree: true,
+        contextLength: 8192,
+        isEnabled: true,
+        priority: 0,
+        priorityLocked: false,
+        apiStyle: "chat-completions",
+        ownedBy: "meta",
+        surface: "guardrail",
+        executionMode: "deferred",
+        autoSelectionEligible: false,
+        catalogEligibility: "invalid",
+        catalogInvalidReason: "surface-not-chat",
+      },
+    ], "guard", "91");
+
+    expect(rows[0]).toMatchObject({
+      catalogEligibility: "invalid",
+      catalogInvalidReason: "surface-not-chat",
+    });
+  });
+});
+
+describe("canEnableAdminModelCatalogRow", () => {
+  it("allows public-chat and manual-only rows only", () => {
+    expect(canEnableAdminModelCatalogRow({ catalogEligibility: "public-chat" })).toBe(true);
+    expect(canEnableAdminModelCatalogRow({ catalogEligibility: "manual-only" })).toBe(true);
+    expect(canEnableAdminModelCatalogRow({ catalogEligibility: "internal-only" })).toBe(false);
+    expect(canEnableAdminModelCatalogRow({ catalogEligibility: "deferred" })).toBe(false);
+    expect(canEnableAdminModelCatalogRow({ catalogEligibility: "invalid" })).toBe(false);
   });
 });
 

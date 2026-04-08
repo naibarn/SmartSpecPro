@@ -71,8 +71,10 @@ export function resolveModelFromPlan(
         [
           candidate.modelId,
           candidate.providerModelId,
+          ...(candidate.legacyModelAliases ?? []),
           ...buildModelLookupCandidates(candidate.modelId),
           ...buildModelLookupCandidates(candidate.providerModelId),
+          ...(candidate.legacyModelAliases ?? []).flatMap((alias) => buildModelLookupCandidates(alias)),
         ].filter((value): value is string => Boolean(value)),
       );
 

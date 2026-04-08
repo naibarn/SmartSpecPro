@@ -3,22 +3,23 @@
 from __future__ import annotations
 
 import secrets
-from typing import Any, Optional
+from typing import Any
 
+import httpx
 from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 
 from app.core.config import settings
+from app.llm_proxy.providers import KNPLabsProvider, NvidiaNimProvider
 from app.services.embedding_service import OpenAIEmbedding
-from app.llm_proxy.providers import KNPLabsProvider
 
 router = APIRouter(prefix="/api/internal/embeddings", tags=["Internal Embeddings"])
 
 
 async def _verify_proxy_token(
-    x_proxy_token: Optional[str] = Header(None),
-    x_internal_token: Optional[str] = Header(None),
+    x_proxy_token: str | None = Header(None),
+    x_internal_token: str | None = Header(None),
 ) -> None:
     token = x_proxy_token or x_internal_token
     if not token:
@@ -57,11 +58,41 @@ class BatchEmbeddingResponse(BaseModel):
     count: int
 
 
+def _create_nvidia_provider() -> NvidiaNimProvider:
+    api_key = getattr(settings, "NVIDIA_NIM_API_KEY", "").strip()
+    if not api_key:
+        raise HTTPException(status_code=503, detail="NVIDIA_NIM_API_KEY not configured")
+
+    try:
+        return NvidiaNimProvider(
+            api_key=api_key,
+            base_url=getattr(settings, "NVIDIA_NIM_BASE_URL", None),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+def _raise_nvidia_provider_http_error(exc: Exception) -> HTTPException:
+    return HTTPException(status_code=502, detail=str(exc))
+
+
+async def _embed_with_nvidia_provider(
+    provider: NvidiaNimProvider,
+    model: str,
+    text: str,
+) -> tuple[list[float], str]:
+    try:
+        embedding = await provider.create_embedding(model, text)
+        return embedding, provider.normalize_model_id(model)
+    except (ValueError, TypeError, httpx.HTTPError) as exc:
+        raise _raise_nvidia_provider_http_error(exc) from exc
+
+
 @router.post("")
 async def embed_text(
     payload: EmbeddingRequest,
-    x_proxy_token: Optional[str] = Header(None),
-    x_internal_token: Optional[str] = Header(None),
+    x_proxy_token: str | None = Header(None),
+    x_internal_token: str | None = Header(None),
 ) -> EmbeddingResponse:
     await _verify_proxy_token(x_proxy_token, x_internal_token)
 
@@ -74,6 +105,13 @@ async def embed_text(
         embedding = await provider.create_embedding(payload.model, payload.text)
         dimension = len(embedding)
         model_name = payload.model
+    elif provider_name in {"nvidia", "nvidia_nim"}:
+        provider = _create_nvidia_provider()
+        try:
+            embedding, model_name = await _embed_with_nvidia_provider(provider, payload.model, payload.text)
+            dimension = len(embedding)
+        finally:
+            await provider.aclose()
     else:
         api_key = getattr(settings, "OPENAI_API_KEY", "").strip()
         if not api_key:
@@ -97,8 +135,8 @@ async def embed_text(
 @router.post("/batch")
 async def embed_text_batch(
     payload: BatchEmbeddingRequest,
-    x_proxy_token: Optional[str] = Header(None),
-    x_internal_token: Optional[str] = Header(None),
+    x_proxy_token: str | None = Header(None),
+    x_internal_token: str | None = Header(None),
 ) -> BatchEmbeddingResponse:
     await _verify_proxy_token(x_proxy_token, x_internal_token)
 
@@ -111,6 +149,19 @@ async def embed_text_batch(
         embeddings = [await provider.create_embedding(payload.model, text) for text in payload.texts]
         dimension = len(embeddings[0]) if embeddings else 0
         model_name = payload.model
+    elif provider_name in {"nvidia", "nvidia_nim"}:
+        provider = _create_nvidia_provider()
+        try:
+            model_name = provider.normalize_model_id(payload.model)
+            embeddings: list[list[float]] = []
+            for text in payload.texts:
+                embedding, _ = await _embed_with_nvidia_provider(provider, payload.model, text)
+                embeddings.append(embedding)
+            dimension = len(embeddings[0]) if embeddings else 0
+        except (ValueError, TypeError, httpx.HTTPError) as exc:
+            raise _raise_nvidia_provider_http_error(exc) from exc
+        finally:
+            await provider.aclose()
     else:
         api_key = getattr(settings, "OPENAI_API_KEY", "").strip()
         if not api_key:
