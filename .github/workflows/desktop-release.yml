@@ -6,6 +6,10 @@ on:
       tag:
         description: "Release tag (e.g. v0.1.0)"
         required: true
+      version:
+        description: "Release version without the v prefix (e.g. 0.1.0)"
+        required: false
+        default: ""
       platform:
         description: "Desktop platform to build"
         required: false
@@ -27,9 +31,13 @@ on:
           - e4b
           - all
       web_url:
-        description: "Public SmartSpec web URL embedded into the desktop app"
+        description: "Public SmartAIHub web URL embedded into the desktop app"
         required: false
         default: "https://smartaihub.app"
+      release_notes:
+        description: "Release notes to publish with the desktop build"
+        required: false
+        default: ""
 
 permissions:
   contents: write
@@ -63,8 +71,95 @@ jobs:
               ;;
           esac
 
+  resolve-release-meta:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.set-meta.outputs.version }}
+      tag: ${{ steps.set-meta.outputs.tag }}
+      body: ${{ steps.set-meta.outputs.body }}
+    steps:
+      - id: set-meta
+        shell: bash
+        env:
+          INPUT_TAG: ${{ github.event.inputs.tag }}
+          INPUT_VERSION: ${{ github.event.inputs.version }}
+          INPUT_RELEASE_NOTES: ${{ github.event.inputs.release_notes }}
+        run: |
+          version="${INPUT_VERSION:-}"
+          if [[ -z "$version" ]]; then
+            version="${INPUT_TAG#v}"
+          fi
+          if [[ -z "$version" ]]; then
+            version="${GITHUB_REF_NAME#v}"
+          fi
+          version="${version#v}"
+          tag="${INPUT_TAG:-v${version}}"
+          tag="${tag#refs/tags/}"
+
+          {
+            echo "version=${version}"
+            echo "tag=${tag}"
+          } >> "$GITHUB_OUTPUT"
+
+          if [[ -n "${INPUT_RELEASE_NOTES:-}" ]]; then
+            delim="EOF_$(date +%s)_$RANDOM"
+            {
+              echo "body<<${delim}"
+              printf '%s\n' "${INPUT_RELEASE_NOTES}"
+              echo "${delim}"
+            } >> "$GITHUB_OUTPUT"
+          else
+            echo "body=See [CHANGELOG](https://github.com/${GITHUB_REPOSITORY}/blob/main/CHANGELOG.md) for details." >> "$GITHUB_OUTPUT"
+          fi
+
+  verify-desktop-host:
+    runs-on: ubuntu-22.04
+    name: Verify Desktop Host Hardening
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Linux desktop dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libssl-dev
+
+      - name: Install npm dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: Run Desktop Host web contract and UI tests
+        run: |
+          npm --prefix apps/web test -- \
+            shared/__tests__/desktopHostContracts.test.ts \
+            client/src/features/desktop-host/__tests__/desktopHostUi.test.tsx \
+            client/src/pages/__tests__/Settings.desktopHostTab.test.tsx \
+            server/services/__tests__/desktopDeviceRegistryService.test.ts \
+            server/routes/desktopHost.test.ts
+
+      - name: Run Desktop Host Tauri hardening tests
+        run: |
+          cargo test --manifest-path apps/tauri-shell/src-tauri/Cargo.toml \
+            --test device_attestation_tests \
+            --test device_identity_tests \
+            --test secret_store_tests \
+            --test local_file_service_tests \
+            --test desktop_runtime_capabilities_tests
+
   build:
-    needs: resolve-matrix
+    needs: [resolve-matrix, resolve-release-meta, verify-desktop-host]
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.resolve-matrix.outputs.matrix) }}
@@ -114,7 +209,7 @@ jobs:
       - name: Prepare LiteRT-LM and Gemma 4 bundle
         run: python apps/tauri-shell/scripts/prepare-litert-lm-bundle.py --target "${{ matrix.target }}" --bundle-mode "${{ github.event.inputs.bundle_mode }}"
 
-      - name: Build SmartSpec Web assets for desktop
+      - name: Build SmartAIHub Web assets for desktop
         env:
           VITE_SMARTSPEC_WEB_URL: ${{ github.event.inputs.web_url }}
         run: npm --workspace apps/web run build
@@ -131,11 +226,85 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          DESKTOP_RELEASE_BODY: ${{ needs.resolve-release-meta.outputs.body }}
         with:
           projectPath: apps/tauri-shell
-          tagName: ${{ github.event.inputs.tag || github.ref_name }}
-          releaseName: "SmartSpec Pro ${{ github.event.inputs.tag || github.ref_name }}"
-          releaseBody: "See [CHANGELOG](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details."
+          tagName: ${{ needs.resolve-release-meta.outputs.tag }}
+          releaseName: "SmartAIHub Desktop ${{ needs.resolve-release-meta.outputs.version }}"
+          releaseBody: ${{ env.DESKTOP_RELEASE_BODY }}
           releaseDraft: true
           prerelease: false
           args: --target ${{ matrix.target }}
+
+      - name: Upload desktop installer to SmartAIHub portal
+        shell: bash
+        env:
+          DESKTOP_RELEASE_PORTAL_URL: ${{ github.event.inputs.web_url }}
+          SMARTAIHUB_DESKTOP_RELEASE_UPLOAD_TOKEN: ${{ secrets.SMARTAIHUB_DESKTOP_RELEASE_UPLOAD_TOKEN }}
+          DESKTOP_RELEASE_UPLOAD_TOKEN: ${{ secrets.DESKTOP_RELEASE_UPLOAD_TOKEN }}
+          DESKTOP_RELEASE_VERSION: ${{ needs.resolve-release-meta.outputs.version }}
+          DESKTOP_RELEASE_RELEASE_NOTES: ${{ needs.resolve-release-meta.outputs.body }}
+          DESKTOP_RELEASE_PLATFORM: ${{ matrix.platform }}
+          DESKTOP_RELEASE_TARGET: ${{ matrix.target }}
+        run: |
+          set -euo pipefail
+
+          upload_token="${SMARTAIHUB_DESKTOP_RELEASE_UPLOAD_TOKEN:-${DESKTOP_RELEASE_UPLOAD_TOKEN:-}}"
+
+          if [[ -z "${upload_token:-}" ]]; then
+            echo "A desktop release upload token is required for portal upload." >&2
+            exit 1
+          fi
+
+          bundle_root="apps/tauri-shell/src-tauri/target/${DESKTOP_RELEASE_TARGET}/release/bundle"
+          if [[ ! -d "$bundle_root" ]]; then
+            bundle_root="apps/tauri-shell/src-tauri/target/release/bundle"
+          fi
+
+          candidate=""
+          case "$DESKTOP_RELEASE_PLATFORM" in
+            windows)
+              candidate=$(find "$bundle_root" -type f \( -path "*/nsis/*.exe" -o -path "*/msi/*.msi" -o -name "*.exe" -o -name "*.msi" \) | sort | head -n 1)
+              ;;
+            macos)
+              candidate=$(find "$bundle_root" -type f \( -path "*/dmg/*.dmg" -o -path "*/pkg/*.pkg" -o -name "*.dmg" -o -name "*.pkg" \) | sort | head -n 1)
+              ;;
+            linux)
+              candidate=$(find "$bundle_root" -type f \( -path "*/deb/*.deb" -o -path "*/appimage/*.AppImage" -o -path "*/rpm/*.rpm" -o -name "*.deb" -o -name "*.AppImage" -o -name "*.rpm" \) | sort | head -n 1)
+              ;;
+            *)
+              echo "Unsupported platform: $DESKTOP_RELEASE_PLATFORM" >&2
+              exit 1
+              ;;
+          esac
+
+          if [[ -z "${candidate:-}" ]]; then
+            echo "No desktop installer found under $bundle_root" >&2
+            find "$bundle_root" -type f | sort >&2 || true
+            exit 1
+          fi
+
+          installer_format="other"
+          case "${candidate,,}" in
+            *.exe) installer_format="exe" ;;
+            *.msi) installer_format="msi" ;;
+            *.dmg) installer_format="dmg" ;;
+            *.pkg) installer_format="pkg" ;;
+            *.deb) installer_format="deb" ;;
+            *.rpm) installer_format="rpm" ;;
+            *.appimage) installer_format="appimage" ;;
+            *.zip) installer_format="zip" ;;
+            *.tar.gz|*.tgz) installer_format="tar_gz" ;;
+          esac
+
+          echo "Uploading ${candidate} to ${DESKTOP_RELEASE_PORTAL_URL}..."
+          curl --fail-with-body --show-error --silent \
+            -H "X-Desktop-Release-Token: ${upload_token}" \
+            -F "version=${DESKTOP_RELEASE_VERSION}" \
+            -F "platform=${DESKTOP_RELEASE_PLATFORM}" \
+            -F "channel=stable" \
+            -F "installerFormat=${installer_format}" \
+            --form-string "releaseNotes=${DESKTOP_RELEASE_RELEASE_NOTES}" \
+            -F "publish=true" \
+            -F "file=@${candidate}" \
+            "${DESKTOP_RELEASE_PORTAL_URL%/}/api/desktop-releases/upload"

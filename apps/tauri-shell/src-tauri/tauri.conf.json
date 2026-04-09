@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/nicehash/tauri/dev/crates/tauri-config-schema/schema.json",
-  "productName": "SmartSpec Pro",
-  "version": "0.1.0",
+  "productName": "SmartAIHub Desktop",
+  "version": "0.1.1",
   "identifier": "com.smartspec.pro",
   "build": {
     "beforeDevCommand": "",
@@ -12,11 +12,12 @@
   "app": {
     "windows": [
       {
-        "title": "SmartSpec Pro",
+        "title": "SmartAIHub Desktop",
         "width": 1400,
         "height": 900,
         "minWidth": 900,
         "minHeight": 600,
+        "maximized": true,
         "resizable": true
       }
     ],

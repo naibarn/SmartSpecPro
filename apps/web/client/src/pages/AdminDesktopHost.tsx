@@ -14,8 +14,12 @@ import { useDesktopHostStatus } from "@/features/desktop-host/useDesktopHostStat
 import { useDesktopPackageCatalog } from "@/features/desktop-host/useDesktopPackageCatalog";
 import { useTenantFeatureFlag } from "@/hooks/useTenantFeatureFlag";
 import {
+  desktopDeviceActionResponseSchema,
   desktopDeviceDisableResponseSchema,
+  desktopDevicePolicyOverrideResponseSchema,
   desktopRootActionResponseSchema,
+  type DesktopDeviceActionRequest,
+  type DesktopDevicePolicyOverrides,
 } from "@shared/desktopHost";
 
 export default function AdminDesktopHost() {
@@ -31,6 +35,8 @@ export default function AdminDesktopHost() {
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
   const [disableDeviceId, setDisableDeviceId] = useState<string | null>(null);
   const [rootActionKey, setRootActionKey] = useState<string | null>(null);
+  const [deviceActionKey, setDeviceActionKey] = useState<string | null>(null);
+  const [policyOverrideDeviceId, setPolicyOverrideDeviceId] = useState<string | null>(null);
   const selectedDevice = useMemo(
     () => tenantStatus.status?.devices.find((device) => device.deviceId === selectedDeviceId)
       ?? tenantStatus.status?.devices[0]
@@ -127,6 +133,70 @@ export default function AdminDesktopHost() {
     }
   };
 
+  const handleDeviceAction = async (
+    deviceId: string,
+    actionType: DesktopDeviceActionRequest["actionType"],
+  ) => {
+    setDeviceActionKey(actionType);
+    try {
+      const response = await fetch(`/api/desktop-host/devices/${encodeURIComponent(deviceId)}/actions`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          actionType,
+          note: "tenant_console_requested_action",
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(typeof payload?.error === "string" ? payload.error : "desktop_device_action_failed");
+      }
+      desktopDeviceActionResponseSchema.parse(payload);
+      toast.success("Desktop device action queued.");
+      tenantStatus.refresh();
+      controlPlaneState.refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to queue desktop device action");
+    } finally {
+      setDeviceActionKey(null);
+    }
+  };
+
+  const handleSavePolicyOverrides = async (
+    deviceId: string,
+    overrides: DesktopDevicePolicyOverrides,
+  ) => {
+    setPolicyOverrideDeviceId(deviceId);
+    try {
+      const response = await fetch(`/api/desktop-host/devices/${encodeURIComponent(deviceId)}/policy-overrides`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          overrides,
+          note: "tenant_console_policy_override",
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(typeof payload?.error === "string" ? payload.error : "desktop_policy_override_failed");
+      }
+      desktopDevicePolicyOverrideResponseSchema.parse(payload);
+      toast.success("Device policy overrides saved.");
+      tenantStatus.refresh();
+      controlPlaneState.refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to save device policy overrides");
+    } finally {
+      setPolicyOverrideDeviceId(null);
+    }
+  };
+
   return (
     <div className="mx-auto max-w-7xl space-y-6 px-4 py-8">
       <div className="flex flex-col gap-3 rounded-2xl border border-indigo-100 bg-indigo-50/70 p-4 md:flex-row md:items-start md:justify-between">
@@ -155,9 +225,9 @@ export default function AdminDesktopHost() {
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={() => navigate(user?.role === "admin" ? "/admin/settings" : "/domain-admin/settings")}>
+          <Button variant="outline" onClick={() => navigate("/dashboard")}>
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to settings
+            Back to dashboard
           </Button>
           <HelpButton page={helpPage} topic="desktop-host" variant="outline" size="sm" />
         </div>
@@ -187,6 +257,10 @@ export default function AdminDesktopHost() {
           disableInFlightDeviceId={disableDeviceId}
           onRequestRootAction={handleRootAction}
           rootActionInFlightKey={rootActionKey}
+          onRequestDeviceAction={handleDeviceAction}
+          deviceActionInFlightKey={deviceActionKey}
+          onSavePolicyOverrides={handleSavePolicyOverrides}
+          policyOverrideInFlightDeviceId={policyOverrideDeviceId}
           scopeLabel="tenant"
         />
       ) : (
@@ -196,7 +270,11 @@ export default function AdminDesktopHost() {
         </div>
       )}
 
-      <DesktopReleasePanel variant="admin" enabled={Boolean(user)} />
+      <DesktopReleasePanel
+        variant="admin"
+        enabled={Boolean(user)}
+        canTriggerBuild={user?.role === "admin"}
+      />
     </div>
   );
 }

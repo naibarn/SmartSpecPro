@@ -1,8 +1,8 @@
 [package]
 name = "smartspec-tauri-shell"
-version = "0.1.0"
-description = "SmartSpec Pro Desktop Shell"
-authors = ["SmartSpec"]
+version = "0.1.1"
+description = "SmartAIHub Desktop Shell"
+authors = ["SmartAIHub"]
 edition = "2021"
 
 [lib]

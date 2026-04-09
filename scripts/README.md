@@ -1,13 +1,13 @@
-# SmartSpecPro Scripts
+# SmartAIHub Scripts
 
-Collection of utility scripts for managing and validating SmartSpecPro services.
+Collection of utility scripts for managing and validating SmartAIHub services.
 
 ## Desktop Build And Runtime
 
-SmartSpecPro desktop has two distinct modes:
+SmartAIHub desktop has two distinct modes:
 
 - **Repo development (`npm run dev:desktop`)** uses Tauri dev mode with `http://localhost:3000`.
-- **Packaged installers (`npm run build:desktop`, `npm run release:desktop:gh`)** embed a public SmartSpec web URL such as `https://smartaihub.app`.
+- **Packaged installers (`npm run build:desktop`, `npm run release:desktop:gh`)** embed a public SmartAIHub web URL such as `https://smartaihub.app`.
 
 ### What end users should expect
 
@@ -37,7 +37,7 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 Use your public HTTPS domain so the installed app works immediately after installation:
 
 ```bash
-SMARTSPEC_DESKTOP_PUBLIC_URL=https://smartaihub.app npm run build:desktop
+SMARTAIHUB_DESKTOP_PUBLIC_URL=https://smartaihub.app npm run build:desktop
 ```
 
 Or pass the URL explicitly with the local builder:
@@ -51,7 +51,7 @@ npm run build:desktop:local -- --web-url https://smartaihub.app
 This is the recommended path when building Windows from Linux/macOS:
 
 ```bash
-npm run release:desktop:gh -- --tag v0.1.0 --platform windows --web-url https://smartaihub.app --watch
+npm run release:desktop:gh -- --tag v0.1.1 --platform windows --web-url https://smartaihub.app --watch
 ```
 
 ### FFmpeg sidecars

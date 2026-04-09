@@ -45,7 +45,7 @@ function parseArgs(argv) {
 Options:
   --target <triple>        Optional Rust target triple to pass to Tauri build.
   --bundle-mode <mode>     One of: skip, on-demand, e2b, e4b, all.
-  --web-url <url>          Public SmartSpec web URL embedded into the packaged desktop app.
+  --web-url <url>          Public SmartAIHub web URL embedded into the packaged desktop app.
   --no-install             Skip npm install even if Tauri CLI is missing.
   -h, --help               Show this help.
 `);
@@ -158,6 +158,8 @@ function normalizeWebUrl(rawValue) {
 function resolveDesktopWebUrl(explicitWebUrl) {
   const candidate =
     explicitWebUrl ||
+    process.env.SMARTAIHUB_DESKTOP_PUBLIC_URL ||
+    process.env.VITE_SMARTAIHUB_WEB_URL ||
     process.env.SMARTSPEC_DESKTOP_PUBLIC_URL ||
     process.env.VITE_SMARTSPEC_WEB_URL ||
     process.env.APP_PUBLIC_URL ||
@@ -184,7 +186,7 @@ if (!commandExists("cargo")) {
 assertHostSupportsTarget(options.target);
 
 const desktopWebUrl = resolveDesktopWebUrl(options.webUrl);
-log(`Packaged desktop app will use SmartSpec Web at ${desktopWebUrl}`);
+log(`Packaged desktop app will use SmartAIHub Web at ${desktopWebUrl}`);
 if (isLoopbackUrl(desktopWebUrl)) {
   log("WARN: a localhost desktop web URL is only suitable for local testing. End-user installers should use your public HTTPS domain.");
 } else {
@@ -226,7 +228,7 @@ if (options.target) {
 }
 run("node", ffmpegArgs);
 
-log(`Building SmartSpec Web assets for ${desktopWebUrl}...`);
+log(`Building SmartAIHub Web assets for ${desktopWebUrl}...`);
 run("npm", ["--workspace", "apps/web", "run", "build"], {
   env: {
     VITE_SMARTSPEC_WEB_URL: desktopWebUrl,

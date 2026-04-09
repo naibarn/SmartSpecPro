@@ -18,11 +18,13 @@ function log(message) {
 function parseArgs(argv) {
   const options = {
     tag: "",
+    version: "",
     platform: "windows",
     bundleMode: "on-demand",
     ref: "",
     watch: false,
     webUrl: "",
+    releaseNotes: "",
   };
 
   for (let i = 0; i < argv.length; i += 1) {
@@ -36,11 +38,17 @@ function parseArgs(argv) {
     } else if (arg === "--bundle-mode") {
       options.bundleMode = argv[i + 1] ?? fail("Missing value for --bundle-mode");
       i += 1;
+    } else if (arg === "--version") {
+      options.version = argv[i + 1] ?? fail("Missing value for --version");
+      i += 1;
     } else if (arg === "--ref") {
       options.ref = argv[i + 1] ?? fail("Missing value for --ref");
       i += 1;
     } else if (arg === "--web-url") {
       options.webUrl = argv[i + 1] ?? fail("Missing value for --web-url");
+      i += 1;
+    } else if (arg === "--release-notes") {
+      options.releaseNotes = argv[i + 1] ?? fail("Missing value for --release-notes");
       i += 1;
     } else if (arg === "--watch") {
       options.watch = true;
@@ -49,10 +57,12 @@ function parseArgs(argv) {
 
 Options:
   --tag <tag>              Release tag to pass to workflow_dispatch. Required.
+  --version <version>      Version without the v prefix. Defaults to tag without leading v.
   --platform <name>        One of: windows, macos, linux, all. Default: windows.
   --bundle-mode <mode>     One of: on-demand, e2b, e4b, all. Default: on-demand.
   --ref <git-ref>          Branch or ref to run the workflow from. Default: current HEAD branch.
-  --web-url <url>          Public SmartSpec web URL embedded into the desktop build.
+  --web-url <url>          Public SmartAIHub web URL embedded into the desktop build.
+  --release-notes <text>   Release notes forwarded to GitHub release + portal upload.
   --watch                  Wait for the newly created workflow run.
   -h, --help               Show this help.
 `);
@@ -119,9 +129,15 @@ function normalizeWebUrl(rawValue) {
   return url.toString().replace(/\/+$/, "");
 }
 
+function stripLeadingV(value) {
+  return `${value ?? ""}`.trim().replace(/^v/i, "");
+}
+
 function resolveDesktopWebUrl(explicitWebUrl) {
   const candidate =
     explicitWebUrl ||
+    process.env.SMARTAIHUB_DESKTOP_PUBLIC_URL ||
+    process.env.VITE_SMARTAIHUB_WEB_URL ||
     process.env.SMARTSPEC_DESKTOP_PUBLIC_URL ||
     process.env.VITE_SMARTSPEC_WEB_URL ||
     process.env.APP_PUBLIC_URL ||
@@ -192,7 +208,9 @@ if (!ref) {
 }
 
 const desktopWebUrl = resolveDesktopWebUrl(options.webUrl);
-log(`Triggering desktop release workflow for platform=${options.platform}, bundle_mode=${options.bundleMode}, tag=${options.tag}, ref=${ref}, web_url=${desktopWebUrl}`);
+const desktopVersion = options.version || stripLeadingV(options.tag);
+const desktopTag = options.tag || `v${desktopVersion}`;
+log(`Triggering desktop release workflow for platform=${options.platform}, bundle_mode=${options.bundleMode}, version=${desktopVersion}, tag=${desktopTag}, ref=${ref}, web_url=${desktopWebUrl}`);
 const dispatchStartedAt = Date.now() - 1000;
 run("gh", [
   "workflow",
@@ -201,13 +219,17 @@ run("gh", [
   "--ref",
   ref,
   "-f",
-  `tag=${options.tag}`,
+  `tag=${desktopTag}`,
+  "-f",
+  `version=${desktopVersion}`,
   "-f",
   `platform=${options.platform}`,
   "-f",
   `bundle_mode=${options.bundleMode}`,
   "-f",
   `web_url=${desktopWebUrl}`,
+  "-f",
+  `release_notes=${options.releaseNotes}`,
 ]);
 
 if (!options.watch) {

@@ -4,7 +4,7 @@
 
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 
 const navigateMock = vi.fn();
 const featureFlagsState = vi.hoisted(() => ({
@@ -72,6 +72,7 @@ const packageCatalogState = vi.hoisted(() => ({
   error: null as string | null,
   refresh: vi.fn(),
 }));
+const desktopReleasePanelMock = vi.hoisted(() => vi.fn());
 
 vi.mock("wouter", () => ({
   useLocation: () => ["/admin/desktop-host", navigateMock] as const,
@@ -101,6 +102,22 @@ vi.mock("@/features/desktop-host/useDesktopPackageCatalog", () => ({
   useDesktopPackageCatalog: () => packageCatalogState,
 }));
 
+vi.mock("@/features/desktop-host/DesktopHostSettingsPanel", () => ({
+  DesktopHostSettingsPanel: () => (
+    <div>
+      <h2>Tenant Devices</h2>
+      <h2>Desktop Package Catalog</h2>
+    </div>
+  ),
+}));
+
+vi.mock("@/features/desktop-releases/DesktopReleasePanel", () => ({
+  DesktopReleasePanel: (props: Record<string, unknown>) => {
+    desktopReleasePanelMock(props);
+    return null;
+  },
+}));
+
 vi.mock("sonner", () => ({
   toast: {
     success: vi.fn(),
@@ -128,6 +145,7 @@ import AdminDesktopHost from "../AdminDesktopHost";
 describe("AdminDesktopHost", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    desktopReleasePanelMock.mockClear();
   });
 
   it("renders tenant governance posture", () => {
@@ -136,5 +154,25 @@ describe("AdminDesktopHost", () => {
     expect(screen.getByText("Tenant Desktop Governance")).toBeInTheDocument();
     expect(screen.getByText("Tenant Devices")).toBeInTheDocument();
     expect(screen.getByText("Desktop Package Catalog")).toBeInTheDocument();
+  });
+
+  it("returns to the dashboard from the back button", () => {
+    render(<AdminDesktopHost />);
+
+    fireEvent.click(screen.getByRole("button", { name: /back to dashboard/i }));
+
+    expect(navigateMock).toHaveBeenCalledWith("/dashboard");
+  });
+
+  it("enables desktop build triggers for admins", () => {
+    render(<AdminDesktopHost />);
+
+    expect(desktopReleasePanelMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        variant: "admin",
+        enabled: true,
+        canTriggerBuild: true,
+      }),
+    );
   });
 });
