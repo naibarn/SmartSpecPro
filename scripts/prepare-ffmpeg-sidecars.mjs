@@ -6,7 +6,7 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
-const binariesDir = join(root, "apps", "tauri-shell", "binaries");
+const binariesDir = join(root, "apps", "tauri-shell", "src-tauri", "binaries");
 
 function fail(message) {
   console.error(`[desktop-ffmpeg] ERROR: ${message}`);
