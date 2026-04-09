@@ -1113,6 +1113,8 @@ export const desktopDevices = pgTable("desktop_devices", {
   pendingActionsJson: jsonb("pendingActionsJson").$type<Record<string, unknown>[]>().notNull().default([]),
   currentWorkspaceProfileJson: jsonb("currentWorkspaceProfileJson").$type<Record<string, unknown>>().notNull().default({}),
   lastRunSummaryJson: jsonb("lastRunSummaryJson").$type<Record<string, unknown>>().notNull().default({}),
+  accessState: varchar("accessState", { length: 32 }).notNull().default("active"),
+  policyOverridesJson: jsonb("policyOverridesJson").$type<Record<string, unknown>>().notNull().default({}),
   policyCursor: varchar("policyCursor", { length: 128 }),
   policyVersion: varchar("policyVersion", { length: 128 }),
   policyExpiresAt: timestamp("policyExpiresAt", { withTimezone: true }),
@@ -2051,6 +2053,46 @@ export const libraryIndexJobStatusEnum = pgEnum("library_index_job_status", [
   "failed",
 ]);
 
+export const financeTransactionTypeEnum = pgEnum("finance_transaction_type", [
+  "income",
+  "expense",
+  "transfer",
+]);
+
+export const financeTransactionStatusEnum = pgEnum("finance_transaction_status", [
+  "draft",
+  "confirmed",
+  "voided",
+]);
+
+export const financeDraftStatusEnum = pgEnum("finance_draft_status", [
+  "draft",
+  "confirmed",
+  "expired",
+  "cancelled",
+]);
+
+export const financeRecurringRuleStatusEnum = pgEnum("finance_recurring_rule_status", [
+  "active",
+  "paused",
+  "ended",
+]);
+
+export const financeSourceEnum = pgEnum("finance_source", [
+  "chat_text",
+  "ocr_document",
+  "import",
+  "api",
+  "recurring_rule",
+]);
+
+export const financeDocumentRoleEnum = pgEnum("finance_document_role", [
+  "receipt",
+  "invoice",
+  "statement",
+  "supporting",
+]);
+
 export const libraryItems = pgTable("library_items", {
   id: serial("id").primaryKey(),
   tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
@@ -2059,6 +2101,7 @@ export const libraryItems = pgTable("library_items", {
   parentId: integer("parent_id").references((): AnyPgColumn => libraryItems.id, { onDelete: "cascade" }),
   itemType: varchar("item_type", { length: 32 }).notNull(),
   source: varchar("source", { length: 64 }).notNull(),
+  projectId: varchar("project_id", { length: 100 }),
   title: varchar("title", { length: 255 }).notNull(),
   description: text("description"),
   status: libraryItemStatusEnum("status").notNull().default("ready"),
@@ -2080,6 +2123,8 @@ export const libraryItems = pgTable("library_items", {
   uniqueIndex("library_items_id_tenant_unique").on(t.id, t.tenantId),
   index("library_items_tenant_visibility_status_idx").on(t.tenantId, t.visibility, t.status),
   index("library_items_tenant_owner_status_idx").on(t.tenantId, t.ownerUserId, t.status),
+  index("library_items_tenant_project_idx").on(t.tenantId, t.projectId),
+  index("library_items_tenant_owner_project_idx").on(t.tenantId, t.ownerUserId, t.projectId),
   index("library_items_source_item_type_idx").on(t.source, t.itemType),
   index("library_items_deleted_at_idx").on(t.deletedAt),
   index("library_items_allowed_scopes_gin_idx").using("gin", t.allowedScopes),
@@ -2110,6 +2155,7 @@ export const libraryChunks = pgTable("library_chunks", {
   id: serial("id").primaryKey(),
   tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
   libraryItemId: integer("library_item_id").notNull().references(() => libraryItems.id, { onDelete: "cascade" }),
+  projectId: varchar("project_id", { length: 100 }),
   chunkIndex: integer("chunk_index").notNull(),
   content: text("content").notNull(),
   contentType: varchar("content_type", { length: 32 }).notNull().default("text"),
@@ -2125,6 +2171,7 @@ export const libraryChunks = pgTable("library_chunks", {
 }, (t) => [
   uniqueIndex("library_chunks_item_chunk_index_unique").on(t.libraryItemId, t.chunkIndex),
   index("library_chunks_tenant_content_type_idx").on(t.tenantId, t.contentType),
+  index("library_chunks_tenant_project_idx").on(t.tenantId, t.projectId),
   index("library_chunks_vector_ref_idx").on(t.vectorRefId),
   index("library_chunks_allowed_scopes_gin_idx").using("gin", t.allowedScopes),
   index("library_chunks_parent_chunk_idx").on(t.parentChunkId),
@@ -2206,6 +2253,7 @@ export const libraryIndexJobs = pgTable("library_index_jobs", {
   id: serial("id").primaryKey(),
   tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
   libraryItemId: integer("library_item_id").notNull().references(() => libraryItems.id, { onDelete: "cascade" }),
+  projectId: varchar("project_id", { length: 100 }),
   jobType: varchar("job_type", { length: 64 }).notNull(),
   status: libraryIndexJobStatusEnum("status").notNull().default("pending"),
   attemptCount: integer("attempt_count").notNull().default(0),
@@ -2219,12 +2267,201 @@ export const libraryIndexJobs = pgTable("library_index_jobs", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
   index("library_index_jobs_tenant_status_run_at_idx").on(t.tenantId, t.status, t.runAt),
+  index("library_index_jobs_tenant_project_idx").on(t.tenantId, t.projectId),
   index("library_index_jobs_status_retry_idx").on(t.status, t.nextRetryAt),
   index("library_index_jobs_item_status_idx").on(t.libraryItemId, t.status),
 ]);
 
 export type LibraryIndexJob = typeof libraryIndexJobs.$inferSelect;
 export type InsertLibraryIndexJob = typeof libraryIndexJobs.$inferInsert;
+
+export const financeRecurringRules = pgTable("finance_recurring_rules", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  projectId: varchar("project_id", { length: 100 }).notNull(),
+  ownerUserId: integer("owner_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  type: financeTransactionTypeEnum("type").notNull(),
+  amountMinor: integer("amount_minor").notNull(),
+  currency: varchar("currency", { length: 3 }).notNull().default("THB"),
+  categoryCode: varchar("category_code", { length: 64 }).notNull(),
+  merchantName: text("merchant_name"),
+  note: text("note"),
+  rrule: text("rrule").notNull(),
+  timezone: varchar("timezone", { length: 64 }).notNull().default("Asia/Bangkok"),
+  startDate: timestamp("start_date", { withTimezone: true }).notNull(),
+  endDate: timestamp("end_date", { withTimezone: true }),
+  nextRunAt: timestamp("next_run_at", { withTimezone: true }),
+  lastRunAt: timestamp("last_run_at", { withTimezone: true }),
+  runCount: integer("run_count").notNull().default(0),
+  autoConfirm: boolean("auto_confirm").notNull().default(false),
+  status: financeRecurringRuleStatusEnum("status").notNull().default("active"),
+  idempotencyKey: varchar("idempotency_key", { length: 256 }).notNull(),
+  sourceHash: varchar("source_hash", { length: 64 }),
+  sourceMessageId: integer("source_message_id").references(() => messages.id, { onDelete: "set null" }),
+  sourceLibraryItemId: integer("source_library_item_id").references(() => libraryItems.id, { onDelete: "set null" }),
+  allowedScopes: text("allowed_scopes").array().notNull().default(sql`'{}'`),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("finance_recurring_rules_tenant_idempotency_unique").on(t.tenantId, t.idempotencyKey),
+  index("finance_recurring_rules_tenant_project_owner_idx").on(t.tenantId, t.projectId, t.ownerUserId),
+  index("finance_recurring_rules_tenant_status_next_run_idx").on(t.tenantId, t.status, t.nextRunAt),
+  index("finance_recurring_rules_source_hash_idx").on(t.sourceHash),
+  index("finance_recurring_rules_allowed_scopes_gin_idx").using("gin", t.allowedScopes),
+  index("finance_recurring_rules_source_message_idx").on(t.sourceMessageId),
+  index("finance_recurring_rules_source_library_item_idx").on(t.sourceLibraryItemId),
+  check("finance_recurring_rules_amount_minor_positive", sql`${t.amountMinor} > 0`),
+]);
+
+export type FinanceRecurringRule = typeof financeRecurringRules.$inferSelect;
+export type InsertFinanceRecurringRule = typeof financeRecurringRules.$inferInsert;
+
+export const financeDrafts = pgTable("finance_drafts", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  projectId: varchar("project_id", { length: 100 }).notNull(),
+  ownerUserId: integer("owner_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  type: financeTransactionTypeEnum("type").notNull(),
+  status: financeDraftStatusEnum("status").notNull().default("draft"),
+  source: financeSourceEnum("source").notNull(),
+  idempotencyKey: varchar("idempotency_key", { length: 256 }).notNull(),
+  sourceHash: varchar("source_hash", { length: 64 }),
+  payloadJson: jsonb("payload_json").$type<Record<string, any>>().notNull().default({}),
+  missingFields: text("missing_fields").array().notNull().default(sql`'{}'`),
+  confidence: numeric("confidence", { precision: 3, scale: 2 }),
+  needsClarification: boolean("needs_clarification").notNull().default(false),
+  clarificationPrompt: text("clarification_prompt"),
+  sourceMessageId: integer("source_message_id").references(() => messages.id, { onDelete: "set null" }),
+  sourceLibraryItemId: integer("source_library_item_id").references(() => libraryItems.id, { onDelete: "set null" }),
+  recurringRuleId: integer("recurring_rule_id").references(() => financeRecurringRules.id, { onDelete: "set null" }),
+  expiresAt: timestamp("expires_at", { withTimezone: true }),
+  allowedScopes: text("allowed_scopes").array().notNull().default(sql`'{}'`),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("finance_drafts_tenant_idempotency_unique").on(t.tenantId, t.idempotencyKey),
+  index("finance_drafts_tenant_project_owner_idx").on(t.tenantId, t.projectId, t.ownerUserId),
+  index("finance_drafts_tenant_status_created_idx").on(t.tenantId, t.status, t.createdAt),
+  index("finance_drafts_source_hash_idx").on(t.sourceHash),
+  index("finance_drafts_source_message_idx").on(t.sourceMessageId),
+  index("finance_drafts_source_library_item_idx").on(t.sourceLibraryItemId),
+  index("finance_drafts_recurring_rule_idx").on(t.recurringRuleId),
+  index("finance_drafts_allowed_scopes_gin_idx").using("gin", t.allowedScopes),
+  index("finance_drafts_expires_at_idx").on(t.expiresAt),
+]);
+
+export type FinanceDraft = typeof financeDrafts.$inferSelect;
+export type InsertFinanceDraft = typeof financeDrafts.$inferInsert;
+
+export const financeTransactions = pgTable("finance_transactions", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  projectId: varchar("project_id", { length: 100 }).notNull(),
+  ownerUserId: integer("owner_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  type: financeTransactionTypeEnum("type").notNull(),
+  status: financeTransactionStatusEnum("status").notNull().default("draft"),
+  source: financeSourceEnum("source").notNull(),
+  amountMinor: integer("amount_minor").notNull(),
+  currency: varchar("currency", { length: 3 }).notNull().default("THB"),
+  occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull(),
+  categoryCode: varchar("category_code", { length: 64 }).notNull(),
+  merchantName: text("merchant_name"),
+  note: text("note"),
+  confidence: numeric("confidence", { precision: 3, scale: 2 }),
+  idempotencyKey: varchar("idempotency_key", { length: 256 }).notNull(),
+  sourceHash: varchar("source_hash", { length: 64 }),
+  confirmedFromDraftId: integer("confirmed_from_draft_id").references(() => financeDrafts.id, { onDelete: "set null" }),
+  recurringRuleId: integer("recurring_rule_id").references(() => financeRecurringRules.id, { onDelete: "set null" }),
+  sourceMessageId: integer("source_message_id").references(() => messages.id, { onDelete: "set null" }),
+  sourceLibraryItemId: integer("source_library_item_id").references(() => libraryItems.id, { onDelete: "set null" }),
+  confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+  confirmedByUserId: integer("confirmed_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  voidedAt: timestamp("voided_at", { withTimezone: true }),
+  voidedByUserId: integer("voided_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  voidReason: text("void_reason"),
+  allowedScopes: text("allowed_scopes").array().notNull().default(sql`'{}'`),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("finance_transactions_tenant_idempotency_unique").on(t.tenantId, t.idempotencyKey),
+  uniqueIndex("finance_transactions_confirmed_from_draft_unique")
+    .on(t.confirmedFromDraftId)
+    .where(sql`"confirmed_from_draft_id" IS NOT NULL`),
+  index("finance_transactions_tenant_project_owner_idx").on(t.tenantId, t.projectId, t.ownerUserId),
+  index("finance_transactions_tenant_status_occurred_idx").on(t.tenantId, t.status, t.occurredAt),
+  index("finance_transactions_source_hash_idx").on(t.sourceHash),
+  index("finance_transactions_source_message_idx").on(t.sourceMessageId),
+  index("finance_transactions_source_library_item_idx").on(t.sourceLibraryItemId),
+  index("finance_transactions_recurring_rule_idx").on(t.recurringRuleId),
+  index("finance_transactions_allowed_scopes_gin_idx").using("gin", t.allowedScopes),
+  index("finance_transactions_owner_voided_idx").on(t.tenantId, t.ownerUserId, t.voidedAt),
+  check("finance_transactions_amount_minor_positive", sql`${t.amountMinor} > 0`),
+]);
+
+export type FinanceTransaction = typeof financeTransactions.$inferSelect;
+export type InsertFinanceTransaction = typeof financeTransactions.$inferInsert;
+
+export const documentExtractions = pgTable("document_extractions", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  projectId: varchar("project_id", { length: 100 }).notNull(),
+  ownerUserId: integer("owner_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  libraryItemId: integer("library_item_id").notNull().references(() => libraryItems.id, { onDelete: "cascade" }),
+  financeDraftId: integer("finance_draft_id").references(() => financeDrafts.id, { onDelete: "set null" }),
+  source: financeSourceEnum("source").notNull().default("ocr_document"),
+  idempotencyKey: varchar("idempotency_key", { length: 256 }).notNull(),
+  sourceHash: varchar("source_hash", { length: 64 }),
+  ocrProvider: varchar("ocr_provider", { length: 64 }).notNull(),
+  ocrText: text("ocr_text").notNull(),
+  ocrJson: jsonb("ocr_json").$type<Record<string, any>>().notNull().default({}),
+  extractedJson: jsonb("extracted_json").$type<Record<string, any>>().notNull().default({}),
+  confidenceJson: jsonb("confidence_json").$type<Record<string, any>>().notNull().default({}),
+  mimeType: varchar("mime_type", { length: 128 }).notNull(),
+  fileHash: varchar("file_hash", { length: 64 }).notNull(),
+  pageCount: integer("page_count").notNull().default(1),
+  sourceMessageId: integer("source_message_id").references(() => messages.id, { onDelete: "set null" }),
+  allowedScopes: text("allowed_scopes").array().notNull().default(sql`'{}'`),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("document_extractions_tenant_idempotency_unique").on(t.tenantId, t.idempotencyKey),
+  index("document_extractions_tenant_project_owner_idx").on(t.tenantId, t.projectId, t.ownerUserId),
+  index("document_extractions_library_item_idx").on(t.libraryItemId),
+  index("document_extractions_finance_draft_idx").on(t.financeDraftId),
+  index("document_extractions_source_hash_idx").on(t.sourceHash),
+  index("document_extractions_source_message_idx").on(t.sourceMessageId),
+  index("document_extractions_file_hash_idx").on(t.fileHash),
+  index("document_extractions_allowed_scopes_gin_idx").using("gin", t.allowedScopes),
+  check("document_extractions_page_count_positive", sql`${t.pageCount} > 0`),
+]);
+
+export type DocumentExtraction = typeof documentExtractions.$inferSelect;
+export type InsertDocumentExtraction = typeof documentExtractions.$inferInsert;
+
+export const financeTransactionDocuments = pgTable("finance_transaction_documents", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  projectId: varchar("project_id", { length: 100 }).notNull(),
+  ownerUserId: integer("owner_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  transactionId: integer("transaction_id").notNull().references(() => financeTransactions.id, { onDelete: "cascade" }),
+  libraryItemId: integer("library_item_id").notNull().references(() => libraryItems.id, { onDelete: "cascade" }),
+  sourceExtractionId: integer("source_extraction_id").references(() => documentExtractions.id, { onDelete: "set null" }),
+  role: financeDocumentRoleEnum("role").notNull().default("supporting"),
+  note: text("note"),
+  allowedScopes: text("allowed_scopes").array().notNull().default(sql`'{}'`),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("finance_transaction_documents_link_unique").on(t.transactionId, t.libraryItemId, t.role),
+  index("finance_transaction_documents_tenant_project_owner_idx").on(t.tenantId, t.projectId, t.ownerUserId),
+  index("finance_transaction_documents_transaction_idx").on(t.transactionId),
+  index("finance_transaction_documents_library_item_idx").on(t.libraryItemId),
+  index("finance_transaction_documents_source_extraction_idx").on(t.sourceExtractionId),
+  index("finance_transaction_documents_allowed_scopes_gin_idx").using("gin", t.allowedScopes),
+]);
+
+export type FinanceTransactionDocument = typeof financeTransactionDocuments.$inferSelect;
+export type InsertFinanceTransactionDocument = typeof financeTransactionDocuments.$inferInsert;
 
 // ============================================================
 // Presentation Editing Tables
@@ -3177,6 +3414,32 @@ export const storageSettings = pgTable("storage_settings", {
 
 export type StorageSettings = typeof storageSettings.$inferSelect;
 export type InsertStorageSettings = typeof storageSettings.$inferInsert;
+
+export const desktopInstallerReleases = pgTable("desktop_installer_releases", {
+  id: serial("id").primaryKey(),
+  version: varchar("version", { length: 64 }).notNull(),
+  platform: text("platform").notNull(),
+  channel: text("channel").notNull().default("stable"),
+  installerFormat: text("installerFormat").notNull(),
+  fileName: varchar("fileName", { length: 255 }).notNull(),
+  contentType: varchar("contentType", { length: 255 }).notNull().default("application/octet-stream"),
+  storageKey: text("storageKey").notNull(),
+  fileSizeBytes: bigint("fileSizeBytes", { mode: "number" }).notNull(),
+  fileSha256: varchar("fileSha256", { length: 64 }).notNull(),
+  releaseNotes: text("releaseNotes"),
+  isPublished: boolean("isPublished").notNull().default(true),
+  publishedAt: timestamp("publishedAt", { withTimezone: true }),
+  uploadedBy: integer("uploadedBy").references(() => users.id, { onDelete: "set null" }),
+  uploadedAt: timestamp("uploadedAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("idx_desktop_installer_releases_platform_published").on(t.platform, t.isPublished, t.publishedAt),
+  index("idx_desktop_installer_releases_version").on(t.version),
+  uniqueIndex("desktop_installer_releases_storage_key_unique").on(t.storageKey),
+]);
+
+export type DesktopInstallerRelease = typeof desktopInstallerReleases.$inferSelect;
+export type InsertDesktopInstallerRelease = typeof desktopInstallerReleases.$inferInsert;
 
 // ============================================================
 // System Settings - Platform-wide configuration

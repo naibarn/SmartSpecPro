@@ -57,10 +57,73 @@ describe("migration ordering", () => {
       .filter((f: string) => f.match(/^\d{3}_/))
       .sort();
 
-    expect(migrations.length).toBeGreaterThanOrEqual(8);
+    expect(migrations.length).toBeGreaterThanOrEqual(12);
+    expect(migrations).toContain("008_library_provider_switch_state.py");
     expect(migrations[migrations.length - 1]).toContain(
-      "008_library_provider_switch_state"
+      "012_agency_structured_results"
     );
+  });
+
+  it("finance foundation migrations are ordered and present in the web drizzle folder", () => {
+    const migrationsDir = path.resolve(
+      import.meta.dirname,
+      "../../../../apps/web/drizzle"
+    );
+
+    const migrations = fs
+      .readdirSync(migrationsDir)
+      .filter((f: string) => /^\d{4}_.+\.sql$/.test(f))
+      .sort();
+
+    const foundationFile = "0138_private_personal_finance_foundation.sql";
+    const backstopFile = "0139_private_personal_finance_security_backstop.sql";
+    const foundationIndex = migrations.indexOf(foundationFile);
+    const backstopIndex = migrations.indexOf(backstopFile);
+
+    expect(foundationIndex).toBeGreaterThan(-1);
+    expect(backstopIndex).toBeGreaterThan(foundationIndex);
+    expect(migrations[foundationIndex - 1]).toBe("0137_desktop_installer_distribution.sql");
+  });
+
+  it("finance foundation migration creates the new finance tables and keeps legacy library rows compatibility-only", () => {
+    const foundationPath = path.resolve(
+      import.meta.dirname,
+      "../../../../apps/web/drizzle/0138_private_personal_finance_foundation.sql"
+    );
+
+    expect(fs.existsSync(foundationPath)).toBe(true);
+
+    const content = fs.readFileSync(foundationPath, "utf-8");
+    expect(content).toContain('CREATE TYPE "public"."finance_transaction_type"');
+    expect(content).toContain('CREATE TABLE IF NOT EXISTS "finance_transactions"');
+    expect(content).toContain('CREATE TABLE IF NOT EXISTS "finance_drafts"');
+    expect(content).toContain('CREATE TABLE IF NOT EXISTS "document_extractions"');
+    expect(content).toContain('CREATE TABLE IF NOT EXISTS "finance_transaction_documents"');
+    expect(content).toContain('ADD COLUMN IF NOT EXISTS "project_id" varchar(100)');
+    expect(content).toContain('"source_message_id" integer');
+    expect(content).toContain("compatibility-only");
+    expect(content).toContain("tombstone finance-backed library rows");
+  });
+
+  it("finance security backstop migration enables RLS on the finance tables", () => {
+    const backstopPath = path.resolve(
+      import.meta.dirname,
+      "../../../../apps/web/drizzle/0139_private_personal_finance_security_backstop.sql"
+    );
+
+    expect(fs.existsSync(backstopPath)).toBe(true);
+
+    const content = fs.readFileSync(backstopPath, "utf-8");
+    expect(content).toContain("ENABLE ROW LEVEL SECURITY");
+    expect(content).toContain("FORCE ROW LEVEL SECURITY");
+    expect(content).toContain("CREATE POLICY \"finance_transactions_tenant_scope\"");
+    expect(content).toContain("CREATE POLICY \"finance_drafts_tenant_scope\"");
+    expect(content).toContain("CREATE POLICY \"finance_recurring_rules_tenant_scope\"");
+    expect(content).toContain("CREATE POLICY \"document_extractions_tenant_scope\"");
+    expect(content).toContain("CREATE POLICY \"finance_transaction_documents_tenant_scope\"");
+    expect(content).toContain("app.current_tenant_id");
+    expect(content).toContain("app.current_user_id");
+    expect(content).toContain("app.current_project_id");
   });
 
   it("Python migration 006 defines pgvector extension and tenant RLS", () => {

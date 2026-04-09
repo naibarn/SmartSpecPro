@@ -932,6 +932,27 @@
       "when": 1775606400000,
       "tag": "0135_model_provider_upstream_uniqueness",
       "breakpoints": true
+    },
+    {
+      "idx": 133,
+      "version": "7",
+      "when": 1775685600000,
+      "tag": "0137_desktop_installer_distribution",
+      "breakpoints": true
+    },
+    {
+      "idx": 134,
+      "version": "7",
+      "when": 1776000000000,
+      "tag": "0138_private_personal_finance_foundation",
+      "breakpoints": true
+    },
+    {
+      "idx": 135,
+      "version": "7",
+      "when": 1776000001000,
+      "tag": "0139_private_personal_finance_security_backstop",
+      "breakpoints": true
     }
   ]
 }
