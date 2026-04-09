@@ -117,6 +117,11 @@ export const desktopManagedActionTypeValues = [
   "purge_root_derived_store",
   "revoke_root",
   "cleanup_device",
+  "force_reauth",
+  "revoke_runtime_tokens",
+  "cancel_active_runs",
+  "quarantine_device",
+  "resume_device_access",
 ] as const;
 export const desktopManagedActionStatusValues = [
   "queued",
@@ -140,6 +145,20 @@ export const desktopDeviceHealthStatusValues = [
   "online",
   "offline",
   "unhealthy",
+  "disabled",
+] as const;
+
+export const desktopDeviceAccessStateValues = [
+  "active",
+  "reauth_required",
+  "quarantined",
+  "disabled",
+] as const;
+
+export const desktopDevicePresenceStatusValues = [
+  "online",
+  "stale",
+  "offline",
   "disabled",
 ] as const;
 
@@ -258,6 +277,8 @@ export const desktopCatalogRuntimeDestinationSchema = z.enum(
   desktopCatalogRuntimeDestinationValues,
 );
 export const desktopDeviceHealthStatusSchema = z.enum(desktopDeviceHealthStatusValues);
+export const desktopDeviceAccessStateSchema = z.enum(desktopDeviceAccessStateValues);
+export const desktopDevicePresenceStatusSchema = z.enum(desktopDevicePresenceStatusValues);
 export const desktopWorkspaceNetworkClassSchema = z.enum(
   desktopWorkspaceNetworkClassValues,
 );
@@ -368,6 +389,14 @@ export const desktopDeviceIdentitySchema = z.object({
   storageProvider: z.string().min(1).default("filesystem"),
   osAttested: z.boolean().default(false),
   hardwareBacked: z.boolean().default(false),
+  attestationProvider: z.string().min(1).default("derived_runtime"),
+  attestationEvidenceSha256: z
+    .string()
+    .regex(/^[a-f0-9]{64}$/)
+    .nullable()
+    .optional()
+    .default(null),
+  attestationClaims: z.array(z.string().min(1)).default([]),
   createdAt: z.string().datetime(),
   rotatedAt: z.string().datetime().nullable().optional().default(null),
 });
@@ -387,6 +416,14 @@ export const desktopDeviceIdentityCapabilitySchema = z.object({
   storageProvider: z.string().min(1).default("filesystem"),
   osAttested: z.boolean().default(false),
   hardwareBacked: z.boolean().default(false),
+  attestationProvider: z.string().min(1).default("derived_runtime"),
+  attestationEvidenceSha256: z
+    .string()
+    .regex(/^[a-f0-9]{64}$/)
+    .nullable()
+    .optional()
+    .default(null),
+  attestationClaims: z.array(z.string().min(1)).default([]),
   proofKind: desktopEnrollmentProofKindSchema.default("ed25519_signature"),
 });
 
@@ -405,8 +442,28 @@ export const desktopLocalFileParserCapabilitySchema = z.object({
   complexDocumentSupport: z
     .enum(["text_extraction_only", "rendering_without_ocr", "ocr_rendering"])
     .default("text_extraction_only"),
+  macroInspectionSupported: z.boolean().default(false),
+  embeddedMediaInspectionSupported: z.boolean().default(false),
+  layoutAnalysisMode: z.enum(["none", "basic_structural", "page_segmented"]).default("none"),
+  multiPageRenderingSupported: z.boolean().default(false),
+  maxRenderedPages: z.number().int().nonnegative().default(0),
+  ocrLayoutMode: z.enum(["plain_text", "page_segmented"]).default("plain_text"),
   fullRenderingSupported: z.boolean().default(false),
   activeContentExecutionAllowed: z.boolean().default(false),
+});
+
+export const desktopDeviceAttestationSupportSchema = z.object({
+  enabled: z.boolean().default(true),
+  evidenceSource: z
+    .enum(["derived_runtime", "runtime_override", "env_json", "helper"])
+    .default("derived_runtime"),
+  helperConfigured: z.boolean().default(false),
+  helperReachable: z.boolean().default(false),
+  helperPath: z.string().min(1).nullable().optional().default(null),
+  defaultMode: desktopDeviceAttestationModeSchema.default("software_pkcs8"),
+  providerHint: z.string().min(1).default("derived_runtime"),
+  supportedModes: z.array(desktopDeviceAttestationModeSchema).default([]),
+  notes: z.array(z.string().min(1)).default([]),
 });
 
 export const desktopManagedActionSchema = z.object({
@@ -429,6 +486,10 @@ export const desktopPackageSyncStateSchema = z.object({
 
 export const desktopCapabilitySnapshotSchema = z.object({
   deviceIdentity: desktopDeviceIdentityCapabilitySchema.nullable().optional().default(null),
+  deviceAttestationSupport: desktopDeviceAttestationSupportSchema
+    .nullable()
+    .optional()
+    .default(null),
   localFileService: desktopLocalFileParserCapabilitySchema
     .nullable()
     .optional()
@@ -581,14 +642,42 @@ export const desktopDevicePlatformSchema = z.object({
   appVersion: z.string().min(1),
 });
 
+export const desktopDeviceOwnerSchema = z.object({
+  userId: z.string().min(1).nullable().optional().default(null),
+  name: z.string().min(1).nullable().optional().default(null),
+  email: z.string().email().nullable().optional().default(null),
+});
+
+export const desktopDevicePresenceSchema = z.object({
+  status: desktopDevicePresenceStatusSchema.default("offline"),
+  staleAfterSeconds: z.number().int().positive().default(300),
+  lastSeenAgeSeconds: z.number().int().nonnegative().nullable().optional().default(null),
+  reportedAt: z.string().datetime().nullable().optional().default(null),
+});
+
+export const desktopDevicePolicyOverridesSchema = z.object({
+  allowAdvancedLocalMode: z.boolean().nullable().optional().default(null),
+  allowPackageSync: z.boolean().nullable().optional().default(null),
+  allowAgencyRuntime: z.boolean().nullable().optional().default(null),
+  allowWorkerProjection: z.boolean().nullable().optional().default(null),
+  maxLocalRoots: z.number().int().positive().nullable().optional().default(null),
+  outputWritebackMode: desktopRootWritebackModeSchema
+    .nullable()
+    .optional()
+    .default(null),
+});
+
 export const desktopRegisteredDeviceSummarySchema = z.object({
   deviceId: z.string().min(1),
   displayName: z.string().min(1),
   machineName: z.string().min(1).nullable().optional().default(null),
   healthStatus: desktopDeviceHealthStatusSchema,
+  accessState: desktopDeviceAccessStateSchema.default("active"),
   platform: desktopDevicePlatformSchema,
   enrolledAt: z.string().datetime().nullable().optional().default(null),
   lastSeenAt: z.string().datetime().nullable().optional().default(null),
+  owner: desktopDeviceOwnerSchema.default({}),
+  presence: desktopDevicePresenceSchema.default({}),
   workerProjectionEnabled: z.boolean().default(false),
   projectedWorkerRuntimeType: workerRuntimeTypeSchema.nullable().optional().default(null),
   warningFlags: z.array(z.string()).default([]),
@@ -607,6 +696,7 @@ export const desktopRegisteredDeviceSummarySchema = z.object({
     .default(null),
   policyVersion: z.string().min(1).nullable().optional().default(null),
   policyExpiresAt: z.string().datetime().nullable().optional().default(null),
+  policyOverrides: desktopDevicePolicyOverridesSchema.default({}),
 });
 
 export const desktopHostDeviceStatusResponseSchema = z.object({
@@ -693,13 +783,43 @@ export const desktopDeviceHeartbeatPayloadSchema = z.object({
 });
 
 export const desktopRootActionRequestSchema = z.object({
-  actionType: desktopManagedActionTypeSchema,
+  actionType: z.enum([
+    "reindex_root",
+    "purge_root_derived_store",
+    "revoke_root",
+  ]),
   note: z.string().min(1).nullable().optional().default(null),
 });
 
 export const desktopRootActionResponseSchema = z.object({
   device: desktopRegisteredDeviceSummarySchema,
   action: desktopManagedActionSchema,
+});
+
+export const desktopDeviceActionRequestSchema = z.object({
+  actionType: z.enum([
+    "force_reauth",
+    "revoke_runtime_tokens",
+    "cancel_active_runs",
+    "quarantine_device",
+    "resume_device_access",
+  ]),
+  note: z.string().min(1).nullable().optional().default(null),
+});
+
+export const desktopDeviceActionResponseSchema = z.object({
+  device: desktopRegisteredDeviceSummarySchema,
+  action: desktopManagedActionSchema,
+});
+
+export const desktopDevicePolicyOverrideRequestSchema = z.object({
+  overrides: desktopDevicePolicyOverridesSchema.partial().default({}),
+  note: z.string().min(1).nullable().optional().default(null),
+});
+
+export const desktopDevicePolicyOverrideResponseSchema = z.object({
+  device: desktopRegisteredDeviceSummarySchema,
+  policySnapshot: desktopHostPolicySnapshotSchema,
 });
 
 export const desktopPackageCatalogItemSchema = z.object({
@@ -785,6 +905,8 @@ export type DesktopManagedActionStatus = z.infer<
   typeof desktopManagedActionStatusSchema
 >;
 export type DesktopDeviceHealthStatus = z.infer<typeof desktopDeviceHealthStatusSchema>;
+export type DesktopDeviceAccessState = z.infer<typeof desktopDeviceAccessStateSchema>;
+export type DesktopDevicePresenceStatus = z.infer<typeof desktopDevicePresenceStatusSchema>;
 export type DesktopWorkspaceNetworkClass = z.infer<
   typeof desktopWorkspaceNetworkClassSchema
 >;
@@ -859,6 +981,11 @@ export type DesktopDeviceRunSummary = z.infer<
 export type DesktopRolloutGateState = z.infer<
   typeof desktopRolloutGateStateSchema
 >;
+export type DesktopDeviceOwner = z.infer<typeof desktopDeviceOwnerSchema>;
+export type DesktopDevicePresence = z.infer<typeof desktopDevicePresenceSchema>;
+export type DesktopDevicePolicyOverrides = z.infer<
+  typeof desktopDevicePolicyOverridesSchema
+>;
 export type DesktopRegisteredDeviceSummary = z.infer<
   typeof desktopRegisteredDeviceSummarySchema
 >;
@@ -873,6 +1000,18 @@ export type DesktopRootActionRequest = z.infer<
 >;
 export type DesktopRootActionResponse = z.infer<
   typeof desktopRootActionResponseSchema
+>;
+export type DesktopDeviceActionRequest = z.infer<
+  typeof desktopDeviceActionRequestSchema
+>;
+export type DesktopDeviceActionResponse = z.infer<
+  typeof desktopDeviceActionResponseSchema
+>;
+export type DesktopDevicePolicyOverrideRequest = z.infer<
+  typeof desktopDevicePolicyOverrideRequestSchema
+>;
+export type DesktopDevicePolicyOverrideResponse = z.infer<
+  typeof desktopDevicePolicyOverrideResponseSchema
 >;
 export type DesktopPackageCatalogItem = z.infer<
   typeof desktopPackageCatalogItemSchema

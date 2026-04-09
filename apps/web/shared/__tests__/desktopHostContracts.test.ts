@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   DESKTOP_HOST_PROTOCOL_VERSION,
   DESKTOP_HOST_WORKER_PROJECTION_RUNTIME_TYPE,
+  desktopCapabilitySnapshotSchema,
   desktopDeviceDisableRequestSchema,
   desktopHostDeviceStatusResponseSchema,
   desktopDeviceHeartbeatPayloadSchema,
@@ -178,6 +179,9 @@ describe("desktopHost shared contracts", () => {
     expect(parsed.storageProvider).toBe("filesystem");
     expect(parsed.osAttested).toBe(false);
     expect(parsed.hardwareBacked).toBe(false);
+    expect(parsed.attestationProvider).toBe("derived_runtime");
+    expect(parsed.attestationEvidenceSha256).toBeNull();
+    expect(parsed.attestationClaims).toEqual([]);
   });
 
   it("parses desktop device posture and parser capability summaries", () => {
@@ -209,6 +213,12 @@ describe("desktopHost shared contracts", () => {
               secretStorage: "file_store",
               proofKind: "ed25519_signature",
             },
+            deviceAttestationSupport: {
+              providerHint: "tenant_broker",
+              evidenceSource: "env_json",
+              defaultMode: "hardware_attested",
+              supportedModes: ["software_pkcs8", "hardware_attested"],
+            },
             localFileService: {
               enabled: true,
               isolationMode: "python_subprocess_bounded",
@@ -218,6 +228,9 @@ describe("desktopHost shared contracts", () => {
               ocrEnabled: false,
               pdfExtractor: "internal_heuristic",
               ocrProvider: "none",
+              macroInspectionSupported: true,
+              embeddedMediaInspectionSupported: true,
+              layoutAnalysisMode: "basic_structural",
               fullRenderingSupported: false,
               activeContentExecutionAllowed: false,
             },
@@ -232,6 +245,15 @@ describe("desktopHost shared contracts", () => {
     expect(parsed.devices[0]?.capabilities.deviceIdentity?.storageProtection).toBe(
       "best_effort",
     );
+    expect(parsed.devices[0]?.capabilities.deviceIdentity?.attestationProvider).toBe(
+      "derived_runtime",
+    );
+    expect(parsed.devices[0]?.capabilities.deviceAttestationSupport?.providerHint).toBe(
+      "tenant_broker",
+    );
+    expect(parsed.devices[0]?.capabilities.deviceAttestationSupport?.defaultMode).toBe(
+      "hardware_attested",
+    );
     expect(parsed.devices[0]?.capabilities.localFileService?.supportedFormats).toContain("pdf");
     expect(parsed.devices[0]?.capabilities.localFileService?.pdfExtractor).toBe(
       "internal_heuristic",
@@ -240,6 +262,31 @@ describe("desktopHost shared contracts", () => {
     expect(parsed.devices[0]?.capabilities.localFileService?.complexDocumentSupport).toBe(
       "text_extraction_only",
     );
+    expect(parsed.devices[0]?.capabilities.localFileService?.multiPageRenderingSupported).toBe(
+      false,
+    );
+    expect(parsed.devices[0]?.capabilities.localFileService?.macroInspectionSupported).toBe(
+      true,
+    );
+    expect(parsed.devices[0]?.capabilities.localFileService?.layoutAnalysisMode).toBe(
+      "basic_structural",
+    );
+  });
+
+  it("applies defaults for attestation-support and parser capability snapshots", () => {
+    const parsed = desktopCapabilitySnapshotSchema.parse({
+      deviceAttestationSupport: {},
+      localFileService: {},
+    });
+
+    expect(parsed.deviceAttestationSupport?.enabled).toBe(true);
+    expect(parsed.deviceAttestationSupport?.evidenceSource).toBe("derived_runtime");
+    expect(parsed.deviceAttestationSupport?.defaultMode).toBe("software_pkcs8");
+    expect(parsed.deviceAttestationSupport?.providerHint).toBe("derived_runtime");
+    expect(parsed.localFileService?.macroInspectionSupported).toBe(false);
+    expect(parsed.localFileService?.embeddedMediaInspectionSupported).toBe(false);
+    expect(parsed.localFileService?.layoutAnalysisMode).toBe("none");
+    expect(parsed.localFileService?.ocrLayoutMode).toBe("plain_text");
   });
 
   it("parses device disable requests with cleanup policy", () => {
