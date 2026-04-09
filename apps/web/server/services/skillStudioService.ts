@@ -376,7 +376,7 @@ async function buildStudioBrief(
   const sections: string[] = [];
 
   if (input.mode === "create") {
-    sections.push("Goal: create a brand-new SmartSpecPro skill that fits the current skill system.");
+    sections.push("Goal: create a brand-new SmartAIHub skill that fits the current skill system.");
   } else if (targetSkill) {
     sections.push(
       `Goal: improve the existing skill "${targetSkill.name}" (${targetSkill.slug}) while preserving current working behavior unless the new request explicitly changes it.`,
@@ -415,7 +415,7 @@ async function buildStudioBrief(
 
   if (input.mode === "create") {
     sections.push(
-      "Creation requirements:\n- Generate a complete skill usable in the current SmartSpecPro runtime\n- Prefer compatibility with existing categories, execution modes, schemas, and tests\n- Reuse the reference style and structure where it helps, but adapt it to current platform conventions",
+      "Creation requirements:\n- Generate a complete skill usable in the current SmartAIHub runtime\n- Prefer compatibility with existing categories, execution modes, schemas, and tests\n- Reuse the reference style and structure where it helps, but adapt it to current platform conventions",
     );
   } else {
     sections.push(
@@ -838,4 +838,27 @@ export async function listIscProposalsWithOwners(): Promise<Array<{
       ownerName: proposal.ownerId ? userMap.get(proposal.ownerId) ?? null : null,
     }))
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
+export function prepareWorkpackImprovementIntake(input: {
+  workpackTitle: string;
+  workpackGoal: string;
+  proposalSummary: string;
+  evidenceSummary: string;
+  targetArea: string;
+}): {
+  title: string;
+  brief: string;
+} {
+  return {
+    title: `Workpack improvement for ${input.workpackTitle}`,
+    brief: [
+      `Target area: ${input.targetArea}`,
+      `Workpack title: ${input.workpackTitle}`,
+      `Goal: ${input.workpackGoal}`,
+      `Proposal: ${input.proposalSummary}`,
+      `Evidence: ${input.evidenceSummary}`,
+      "Preserve the existing public contract while tightening reliability, fixtures, and operator explainability.",
+    ].join("\n"),
+  };
 }

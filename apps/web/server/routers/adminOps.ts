@@ -36,6 +36,20 @@ function isCloudTaskEventsMissingError(error: unknown): boolean {
 }
 
 export const adminOpsRouter = router({
+  workpackReleaseHealth: domainAdminProcedure.query(async ({ ctx }) => {
+    const tenantId = String(ctx.tenantId ?? ctx.user?.currentTenantId ?? "");
+    const { getWorkpackMonitoringSummary } = await import("../services/monitoringService");
+    const { listWorkpackReadinessSummaries } = await import("../services/workpackReadinessService");
+    const summary = await getWorkpackMonitoringSummary(tenantId);
+    const readiness = await listWorkpackReadinessSummaries(tenantId);
+
+    return {
+      summary,
+      readiness,
+      blockers: readiness.filter((item) => item.gateResult !== "ready"),
+    };
+  }),
+
   /**
    * Traffic & Auth Panel - Daily user activity and login metrics
    */

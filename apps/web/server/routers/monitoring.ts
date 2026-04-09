@@ -21,6 +21,17 @@ function requireTenantId(ctx: { tenantId: string | null; user?: { currentTenantI
 }
 
 export const monitoringRouter = router({
+  getWorkpackSummary: adminProcedure.query(async ({ ctx }) => {
+    const tenantId = requireTenantId(ctx);
+    return monitoringService.getWorkpackMonitoringSummary(tenantId);
+  }),
+
+  getWorkpackReadiness: adminProcedure.query(async ({ ctx }) => {
+    const tenantId = requireTenantId(ctx);
+    const { listWorkpackReadinessSummaries } = await import("../services/workpackReadinessService");
+    return listWorkpackReadinessSummaries(tenantId);
+  }),
+
   getRunEvents: protectedProcedure
     .input(z.object({
       runId: z.string().min(1),

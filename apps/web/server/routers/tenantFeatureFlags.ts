@@ -22,6 +22,40 @@ import {
 } from "../services/tenantFeatureFlagService";
 
 export const tenantFeatureFlagsRouter = router({
+  getWorkpackRolloutState: protectedProcedure
+    .input(
+      z
+        .object({
+          tenantId: z.string().optional(),
+        })
+        .optional(),
+    )
+    .query(async ({ ctx, input }) => {
+      const tenantId = input?.tenantId ?? ctx.tenantId;
+      if (!tenantId) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "No tenant context" });
+      }
+      if (input?.tenantId && ctx.user?.role !== "admin" && input.tenantId !== ctx.tenantId) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Cannot read rollout state for another tenant",
+        });
+      }
+
+      const flags = await getTenantFeatureFlags(tenantId);
+      return {
+        tenantId,
+        workpacksEnabled: flags.workpacksEnabled,
+        workpackAutonomousPilot: flags.workpackAutonomousPilot,
+        workpackOpsConsole: flags.workpackOpsConsole,
+        rolloutPhase: !flags.workpacksEnabled
+          ? "draft_only"
+          : flags.workpackAutonomousPilot
+            ? "autonomous_pilot"
+            : "supervised",
+      };
+    }),
+
   /**
    * Get resolved feature flags for the caller's current tenant.
    */

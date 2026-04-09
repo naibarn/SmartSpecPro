@@ -275,6 +275,54 @@ export async function pushMetrics(input: PushMetricsInput): Promise<{ checkId: n
   return { checkId };
 }
 
+export async function getWorkpackMonitoringSummary(tenantId: string): Promise<{
+  totals: {
+    workpackCount: number;
+    eventCount: number;
+    snapshotCount: number;
+  };
+  recentEvents: Array<{
+    id: string;
+    workpackId: string;
+    eventName: string;
+    detail: string;
+    createdAt: string;
+  }>;
+  readiness: Array<{
+    workpackId: string;
+    versionId: string;
+    gateResult: string;
+    reasonCode: string;
+    rolloutPhase: string;
+    nextAction: string;
+  }>;
+}> {
+  const { getWorkpackTelemetrySummary } = await import("./workpackTelemetryService");
+  const { listWorkpackReadinessSummaries } = await import("./workpackReadinessService");
+
+  const telemetry = getWorkpackTelemetrySummary(tenantId);
+  const readiness = await listWorkpackReadinessSummaries(tenantId);
+
+  return {
+    totals: telemetry.totals,
+    recentEvents: telemetry.recentEvents.map((event) => ({
+      id: event.id,
+      workpackId: event.workpackId,
+      eventName: event.eventName,
+      detail: event.detail,
+      createdAt: event.createdAt,
+    })),
+    readiness: readiness.map((summary) => ({
+      workpackId: summary.workpackId,
+      versionId: summary.versionId,
+      gateResult: summary.gateResult,
+      reasonCode: summary.reasonCode,
+      rolloutPhase: summary.rolloutPhase,
+      nextAction: summary.nextAction,
+    })),
+  };
+}
+
 /**
  * Paginated list of monitoring checks with optional filters.
  */
