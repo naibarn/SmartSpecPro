@@ -1620,7 +1620,7 @@ const en: TranslationDictionary = {
   "settings.localAi.voiceInput.optionUnavailable":
     "{{label}} (unavailable on this surface)",
   "settings.localAi.voiceInput.privacy.legacy_stt":
-    "Voice audio may travel through SmartSpecPro backend and external STT providers.",
+    "Voice audio may travel through SmartAIHub backend and external STT providers.",
   "settings.localAi.voiceInput.privacy.gemma4_local":
     "Voice audio is intended to stay on this device; explicit local mode must fail closed instead of silently downgrading to third-party STT when local runtime is unavailable.",
   "settings.localAi.voiceInput.privacy.auto":

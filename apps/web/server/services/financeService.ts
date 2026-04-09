@@ -33,7 +33,9 @@ import {
 } from "../../drizzle/schema";
 import {
   financeDocumentRoleSchema,
+  financeDraftStatusSchema,
   financeMonthlySummarySchema,
+  financeRecurringRuleStatusSchema,
   financeStructuredDraftSchema,
   financeTransactionStatusSchema,
   financeTransactionTypeSchema,
@@ -69,6 +71,7 @@ const recurringScheduleSchema = z.object({
 
 const transactionListFiltersSchema = z.object({
   status: financeTransactionStatusSchema.optional(),
+  type: financeTransactionTypeSchema.optional(),
   categoryCode: z.string().min(1).max(64).optional(),
   merchant: z.string().min(1).max(255).optional(),
   fromDate: z.coerce.date().optional(),
@@ -126,6 +129,8 @@ export interface ParseTextToDraftInput {
   userId: number;
   tenantId?: string | null;
   text: string;
+  categoryHint?: string | null;
+  typeHint?: FinanceTransaction["type"] | null;
   sourceMessageId?: number | null;
   model?: string;
   idempotencyKey?: string;
@@ -168,10 +173,29 @@ export interface ListTransactionsInput {
   userId: number;
   tenantId?: string | null;
   status?: FinanceTransaction["status"] | null;
+  type?: FinanceTransaction["type"] | null;
   categoryCode?: string;
   merchant?: string;
   fromDate?: Date;
   toDate?: Date;
+  limit?: number;
+  offset?: number;
+}
+
+export interface ListDraftsInput {
+  conversationId: number;
+  userId: number;
+  tenantId?: string | null;
+  status?: FinanceDraft["status"] | null;
+  limit?: number;
+  offset?: number;
+}
+
+export interface ListRecurringRulesInput {
+  conversationId: number;
+  userId: number;
+  tenantId?: string | null;
+  status?: FinanceRecurringRule["status"] | null;
   limit?: number;
   offset?: number;
 }
@@ -786,6 +810,13 @@ async function insertRecurringRuleWithIdempotency(
   }
 }
 
+function buildListRange(limit?: number, offset?: number) {
+  return {
+    limit: limit ?? 10,
+    offset: offset ?? 0,
+  };
+}
+
 async function createTransactionFromDraft(
   db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
   scope: FinanceScope,
@@ -890,6 +921,7 @@ export async function parseTextToDraft(input: ParseTextToDraftInput): Promise<Fi
   if (!normalizedText) {
     throw new TRPCError({ code: "BAD_REQUEST", message: "Finance text cannot be empty" });
   }
+  const normalizedCategoryHint = normalizeText(input.categoryHint ?? "");
 
   const sourceMessageId = input.sourceMessageId ?? null;
   const sourceHash = computeBaseSourceHash([
@@ -899,6 +931,9 @@ export async function parseTextToDraft(input: ParseTextToDraftInput): Promise<Fi
     "chat_text",
     normalizedText,
   ]);
+  const normalizedTypeHint = input.typeHint && input.typeHint !== "transfer"
+    ? input.typeHint
+    : input.typeHint ?? null;
   const idempotencyKey = input.idempotencyKey ?? toIdempotencyKey("finance-draft-text", [
     scope.tenantId,
     scope.projectId,
@@ -919,6 +954,12 @@ export async function parseTextToDraft(input: ParseTextToDraftInput): Promise<Fi
     systemPrompt: [
       "You extract a single finance transaction draft from user text.",
       "Do not change the tenant, project, or owner.",
+      normalizedTypeHint
+        ? `The user provided a type hint. Prefer it when the text is ambiguous: ${normalizedTypeHint}.`
+        : "Infer the transaction type from context. If the text is clearly about income, expense, or transfer, choose the closest type.",
+      normalizedCategoryHint
+        ? `A user-provided category hint is available. Prefer it when the text is ambiguous: ${normalizedCategoryHint}.`
+        : "Use the most specific categoryCode that matches the text. If the category is unclear, choose a useful custom categoryCode and set needsClarification when needed.",
       "Return only valid JSON matching the schema.",
       "Use missingFields and needsClarification when the user text does not provide enough detail.",
     ].join("\n"),
@@ -927,6 +968,8 @@ export async function parseTextToDraft(input: ParseTextToDraftInput): Promise<Fi
       projectId: scope.projectId,
       personal: scope.personal,
       text: normalizedText,
+      typeHint: normalizedTypeHint,
+      categoryHint: normalizedCategoryHint || null,
       sourceMessageId,
     }),
     zodSchema: financeStructuredDraftSchema,
@@ -947,6 +990,7 @@ export async function parseTextToDraft(input: ParseTextToDraftInput): Promise<Fi
     sourceMessageId,
     sourceHash,
   });
+  const draftCategoryCode = normalizedCategoryHint || structured.data.categoryCode;
 
   const draft = await insertDraftWithIdempotency(db, scope, {
     tenantId: scope.tenantId,
@@ -959,6 +1003,7 @@ export async function parseTextToDraft(input: ParseTextToDraftInput): Promise<Fi
     sourceHash,
     payloadJson: {
       ...draftPayload,
+      categoryCode: draftCategoryCode,
       version: 1,
     },
     missingFields: structured.data.missingFields ?? [],
@@ -1265,6 +1310,7 @@ export async function listTransactions(input: ListTransactionsInput): Promise<Fi
 
   const filters = transactionListFiltersSchema.parse({
     status: input.status ?? "confirmed",
+    type: input.type ?? undefined,
     categoryCode: input.categoryCode,
     merchant: input.merchant,
     fromDate: input.fromDate,
@@ -1286,6 +1332,9 @@ export async function listTransactions(input: ListTransactionsInput): Promise<Fi
   if (filters.status) {
     conditions.push(eq(financeTransactions.status, filters.status));
   }
+  if (filters.type) {
+    conditions.push(eq(financeTransactions.type, filters.type));
+  }
   if (filters.categoryCode) {
     conditions.push(eq(financeTransactions.categoryCode, filters.categoryCode));
   }
@@ -1306,6 +1355,78 @@ export async function listTransactions(input: ListTransactionsInput): Promise<Fi
     .orderBy(desc(financeTransactions.occurredAt), desc(financeTransactions.id))
     .limit(filters.limit)
     .offset(filters.offset);
+}
+
+export async function listDrafts(input: ListDraftsInput): Promise<FinanceDraftRecord[]> {
+  const db = await getDb();
+  ensureDb(db);
+
+  const scope = await resolveScopeFromConversation({
+    conversationId: input.conversationId,
+    userId: input.userId,
+    tenantId: input.tenantId,
+  });
+
+  const filters = {
+    ...buildListRange(input.limit, input.offset),
+    status: input.status ?? "draft",
+  };
+
+  const conditions = [
+    eq(financeDrafts.tenantId, scope.tenantId),
+    eq(financeDrafts.projectId, scope.projectId),
+    eq(financeDrafts.ownerUserId, scope.ownerUserId),
+  ];
+
+  if (filters.status) {
+    conditions.push(eq(financeDrafts.status, financeDraftStatusSchema.parse(filters.status)));
+  }
+
+  const rows = await db
+    .select()
+    .from(financeDrafts)
+    .where(and(...conditions))
+    .orderBy(desc(financeDrafts.createdAt), desc(financeDrafts.id))
+    .limit(filters.limit)
+    .offset(filters.offset);
+
+  return rows.map(mapDraftRow);
+}
+
+export async function listRecurringRules(input: ListRecurringRulesInput): Promise<FinanceRecurringRule[]> {
+  const db = await getDb();
+  ensureDb(db);
+
+  const scope = await resolveScopeFromConversation({
+    conversationId: input.conversationId,
+    userId: input.userId,
+    tenantId: input.tenantId,
+  });
+
+  const filters = {
+    ...buildListRange(input.limit, input.offset),
+    status: input.status ?? null,
+  };
+
+  const conditions = [
+    eq(financeRecurringRules.tenantId, scope.tenantId),
+    eq(financeRecurringRules.projectId, scope.projectId),
+    eq(financeRecurringRules.ownerUserId, scope.ownerUserId),
+  ];
+
+  if (filters.status) {
+    conditions.push(eq(financeRecurringRules.status, financeRecurringRuleStatusSchema.parse(filters.status)));
+  }
+
+  const rows = await db
+    .select()
+    .from(financeRecurringRules)
+    .where(and(...conditions))
+    .orderBy(desc(financeRecurringRules.updatedAt), desc(financeRecurringRules.id))
+    .limit(filters.limit)
+    .offset(filters.offset);
+
+  return rows;
 }
 
 async function aggregateSummary(

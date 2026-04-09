@@ -7,6 +7,8 @@ const financeRouterMocks = vi.hoisted(() => ({
   confirmDraft: vi.fn(),
   voidTransaction: vi.fn(),
   listTransactions: vi.fn(),
+  listDrafts: vi.fn(),
+  listRecurringRules: vi.fn(),
   getDailySummary: vi.fn(),
   getMonthlySummary: vi.fn(),
   createRecurringRule: vi.fn(),
@@ -76,6 +78,8 @@ describe("financeRouter", () => {
       version: 1,
     });
     financeRouterMocks.listTransactions.mockResolvedValue([]);
+    financeRouterMocks.listDrafts.mockResolvedValue([]);
+    financeRouterMocks.listRecurringRules.mockResolvedValue([]);
     financeRouterMocks.getDailySummary.mockResolvedValue({
       tenantId: "tenant-77",
       projectId: "personal",
@@ -174,6 +178,41 @@ describe("financeRouter", () => {
         tenantId: "tenant-77",
         limit: 50,
         offset: 0,
+      }),
+    );
+  });
+
+  it("forwards draft and recurring rule lists with resolved tenant scope", async () => {
+    const caller = createCaller();
+
+    await caller.listDrafts({
+      conversationId: 91,
+      status: "draft",
+      limit: 5,
+    });
+
+    await caller.listRecurringRules({
+      conversationId: 91,
+      status: "active",
+      limit: 5,
+    });
+
+    expect(financeRouterMocks.listDrafts).toHaveBeenCalledWith(
+      expect.objectContaining({
+        conversationId: 91,
+        status: "draft",
+        limit: 5,
+        userId: 7,
+        tenantId: "tenant-77",
+      }),
+    );
+    expect(financeRouterMocks.listRecurringRules).toHaveBeenCalledWith(
+      expect.objectContaining({
+        conversationId: 91,
+        status: "active",
+        limit: 5,
+        userId: 7,
+        tenantId: "tenant-77",
       }),
     );
   });

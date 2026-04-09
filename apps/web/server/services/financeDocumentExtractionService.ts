@@ -6,6 +6,8 @@ import { documentExtractions, type DocumentExtraction } from "../../drizzle/sche
 import { financeStructuredDraftSchema, type FinanceStructuredDraft } from "../../shared/finance";
 import { callLLMStructured } from "./callLLMStructured";
 import { auditLogger } from "./auditLogger";
+import { checkRateLimit } from "../middleware/distributedRateLimit";
+import { checkAbuseGuard, hashPrompt } from "./abuseGuard";
 import { getConversationById, isPersonalProjectId } from "./chatService";
 import { getLibraryItemById, type LibraryItemDto } from "./libraryService";
 import { parseDocumentToDraft, type FinanceDraftRecord, type FinanceScope } from "./financeService";
@@ -37,6 +39,10 @@ const FINANCE_MIME_ALLOWLIST = new Set([
   "image/heic",
   "image/heif",
 ]);
+const FINANCE_OCR_MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024;
+const FINANCE_OCR_MAX_PAGE_COUNT = 25;
+const FINANCE_OCR_BURST_LIMIT = 5;
+const FINANCE_OCR_DAILY_LIMIT = 30;
 
 function buildAllowedScopes(userId: number): string[] {
   return [`user:${userId}`];
@@ -49,6 +55,29 @@ function normalizeFinanceMimeType(value: unknown): string | null {
 
   const trimmed = value.trim().toLowerCase();
   return trimmed.length > 0 ? trimmed : null;
+}
+
+function coercePositiveInteger(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value) && value > 0) {
+    return Math.floor(value);
+  }
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed) && parsed > 0) {
+      return Math.floor(parsed);
+    }
+  }
+  return null;
+}
+
+function extractNumericMetadata(metadata: Record<string, unknown>, keys: string[]): number | null {
+  for (const key of keys) {
+    const value = coercePositiveInteger(metadata[key]);
+    if (value !== null) {
+      return value;
+    }
+  }
+  return null;
 }
 
 function extractLibraryText(metadata: Record<string, unknown>): string | null {
@@ -133,6 +162,72 @@ function ensureAllowedFinanceMime(mimeType: string | null): string {
   return mimeType;
 }
 
+async function enforceFinanceOcrRequestBudget(
+  scope: FinanceScope,
+  libraryItem: LibraryItemDto,
+  mimeType: string,
+): Promise<void> {
+  const metadata = (libraryItem.metadata ?? {}) as Record<string, unknown>;
+  const fileSizeBytes = extractNumericMetadata(metadata, [
+    "file_size_bytes",
+    "fileSizeBytes",
+    "size_bytes",
+  ]);
+  if (fileSizeBytes === null) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Finance OCR requires file size metadata",
+    });
+  }
+  if (fileSizeBytes > FINANCE_OCR_MAX_FILE_SIZE_BYTES) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Finance OCR accepts uploads up to 25 MB",
+    });
+  }
+
+  const pageCount = extractNumericMetadata(metadata, [
+    "page_count",
+    "pageCount",
+    "pages",
+  ]) ?? (mimeType === "application/pdf" ? null : 1);
+
+  if (pageCount === null) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Finance OCR requires page count metadata for PDFs",
+    });
+  }
+
+  if (pageCount > FINANCE_OCR_MAX_PAGE_COUNT) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Finance OCR accepts PDFs up to 25 pages",
+    });
+  }
+
+  const abuseResult = await checkAbuseGuard({
+    userId: scope.ownerUserId,
+    namespace: "finance",
+    promptHash: hashPrompt(
+      [
+        scope.tenantId,
+        scope.projectId,
+        libraryItem.id,
+        fileSizeBytes,
+        pageCount,
+      ].join(":"),
+    ),
+  });
+
+  if (!abuseResult.allowed) {
+    throw new TRPCError({
+      code: "TOO_MANY_REQUESTS",
+      message: "Finance OCR request was blocked by abuse detection",
+    });
+  }
+}
+
 async function selectExistingExtraction(db: FinanceDb, params: {
   tenantId: string;
   projectId: string;
@@ -167,6 +262,17 @@ export async function ingestFinanceDocumentFromLibraryItem(
   }
 
   const scope = buildFinanceScope(conversation, input.userId, input.tenantId);
+  const rateLimitResult = await Promise.all([
+    checkRateLimit(`finance_ocr:burst:${scope.tenantId}:${scope.ownerUserId}`, FINANCE_OCR_BURST_LIMIT, 60),
+    checkRateLimit(`finance_ocr:daily:${scope.tenantId}:${scope.ownerUserId}`, FINANCE_OCR_DAILY_LIMIT, 86_400),
+  ]);
+  if (rateLimitResult.some((result) => !result.allowed)) {
+    throw new TRPCError({
+      code: "TOO_MANY_REQUESTS",
+      message: "Finance OCR intake is temporarily throttled",
+    });
+  }
+
   const libraryItem = await getLibraryItemById(input.libraryItemId, {
     userId: input.userId,
     tenantId: scope.tenantId,
@@ -177,11 +283,11 @@ export async function ingestFinanceDocumentFromLibraryItem(
   }
 
   await ensureLibraryItemMatchesScope(libraryItem, scope);
-
   const metadata = (libraryItem.metadata ?? {}) as Record<string, unknown>;
   const fileType = ensureAllowedFinanceMime(normalizeFinanceMimeType(
     metadata.file_type ?? metadata.fileType ?? metadata.mime_type ?? metadata.mimeType,
   ));
+  await enforceFinanceOcrRequestBudget(scope, libraryItem, fileType);
   const ocrText = extractLibraryText(metadata);
   if (!ocrText) {
     throw new TRPCError({

@@ -283,7 +283,7 @@
   "localAi.voiceInput.options.gemma4_local": "Gemma 4 local",
   "localAi.voiceInput.options.auto": "อัตโนมัติ",
   "localAi.voiceInput.optionUnavailable": "{{label}} (ยังใช้ไม่ได้บนพื้นผิวนี้)",
-  "localAi.voiceInput.privacy.legacy_stt": "เสียงพูดอาจวิ่งผ่าน SmartSpecPro backend และผู้ให้บริการ STT ภายนอก",
+  "localAi.voiceInput.privacy.legacy_stt": "เสียงพูดอาจวิ่งผ่าน SmartAIHub backend และผู้ให้บริการ STT ภายนอก",
   "localAi.voiceInput.privacy.gemma4_local": "ระบบตั้งใจให้เสียงพูดอยู่บนอุปกรณ์นี้เท่านั้น และเมื่อเลือก local แบบ explicit ต้อง fail-closed แทนการแอบ downgrade ไปใช้ third-party STT",
   "localAi.voiceInput.privacy.auto": "โหมดอัตโนมัติอาจ fallback ไปยังเส้นทาง STT ที่มี server อยู่เบื้องหลังบนอุปกรณ์ที่ไม่รองรับ",
   "localAi.voiceInput.desktopReady": "เดสก์ท็อป build นี้สามารถถอดเสียงไมก์แบบสั้นด้วย Gemma 4 บนเครื่องได้แล้ว",

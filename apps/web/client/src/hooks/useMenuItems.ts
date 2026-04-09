@@ -2,6 +2,8 @@ import type { LucideIcon } from 'lucide-react';
 import {
   TrendingUp,
   MessageSquare,
+  Wallet,
+  BarChart3,
   Sparkles,
   Settings,
   Image,
@@ -38,6 +40,7 @@ import {
   ShieldCheck,
   Workflow,
   Lock,
+  Download,
 } from 'lucide-react';
 import {
   getMenuItemsByGroup,
@@ -51,6 +54,8 @@ import i18next from 'i18next';
 const iconMap: Record<string, LucideIcon> = {
   TrendingUp,
   MessageSquare,
+  Wallet,
+  BarChart3,
   Sparkles,
   Settings,
   Image,
@@ -87,6 +92,7 @@ const iconMap: Record<string, LucideIcon> = {
   ShieldCheck,
   Workflow,
   Lock,
+  Download,
 };
 
 export interface ResolvedMenuItem extends MenuItem {

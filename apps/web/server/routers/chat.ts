@@ -11,6 +11,7 @@ import {
   createPersonalConversation,
   getConversations,
   getConversationById,
+  getPersonalConversation,
   updateConversation,
   deleteConversation,
   restoreConversation,
@@ -620,6 +621,35 @@ export const chatRouter = router({
         })),
         total,
         hasMore: input.offset + conversations.length < total,
+      };
+    }),
+
+  /**
+   * Resolve the user's locked personal conversation without relying on list pagination.
+   */
+  getPersonalConversation: protectedProcedure
+    .query(async ({ ctx }) => {
+      const conversation = await getPersonalConversation({
+        userId: ctx.user.id,
+        tenantId: ctx.tenantId || ctx.user.currentTenantId?.toString?.() || null,
+      });
+
+      if (!conversation) {
+        return null;
+      }
+
+      return {
+        id: conversation.id,
+        title: conversation.title,
+        model: conversation.model,
+        modelSelection: readStoredChatModelSelectionState(conversation.skillSettings),
+        messageCount: conversation.messageCount,
+        isPinned: conversation.isPinned,
+        isArchived: conversation.isArchived,
+        totalCreditsUsed: conversation.totalCreditsUsed,
+        projectId: (conversation as any).projectId || null,
+        createdAt: conversation.createdAt,
+        updatedAt: conversation.updatedAt,
       };
     }),
 

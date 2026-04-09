@@ -159,6 +159,40 @@ export async function createPersonalConversation(data: {
 }
 
 /**
+ * Get the active personal conversation for a user in a tenant.
+ * Returns the most recently updated locked personal conversation, if any.
+ */
+export async function getPersonalConversation(data: {
+  userId: number;
+  tenantId?: string | null;
+}): Promise<Conversation | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  const resolvedTenantId = data.tenantId?.trim() || null;
+  const conditions = [
+    eq(conversations.userId, data.userId),
+    eq(conversations.projectId, PERSONAL_PROJECT_ID),
+    isNull(conversations.trashedAt),
+  ];
+
+  if (resolvedTenantId) {
+    conditions.push(eq(conversations.tenantId, resolvedTenantId));
+  } else {
+    conditions.push(isNull(conversations.tenantId));
+  }
+
+  const [conversation] = await db
+    .select()
+    .from(conversations)
+    .where(and(...conditions))
+    .orderBy(desc(conversations.updatedAt), desc(conversations.id))
+    .limit(1);
+
+  return conversation;
+}
+
+/**
  * Get conversations for a user with filters
  */
 export async function getConversations(filters: ConversationFilters): Promise<Conversation[]> {

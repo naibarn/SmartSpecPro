@@ -1595,7 +1595,7 @@ const th: TranslationDictionary = {
   "settings.localAi.voiceInput.optionUnavailable":
     "{{label}} (ยังใช้ไม่ได้บนพื้นผิวนี้)",
   "settings.localAi.voiceInput.privacy.legacy_stt":
-    "เสียงพูดอาจวิ่งผ่าน SmartSpecPro backend และผู้ให้บริการ STT ภายนอก",
+    "เสียงพูดอาจวิ่งผ่าน SmartAIHub backend และผู้ให้บริการ STT ภายนอก",
   "settings.localAi.voiceInput.privacy.gemma4_local":
     "ระบบตั้งใจให้เสียงพูดอยู่บนอุปกรณ์นี้เท่านั้น และเมื่อเลือก local แบบ explicit ต้อง fail-closed แทนการแอบ downgrade ไปใช้ third-party STT",
   "settings.localAi.voiceInput.privacy.auto":

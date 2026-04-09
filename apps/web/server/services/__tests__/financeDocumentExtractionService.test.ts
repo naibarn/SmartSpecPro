@@ -56,6 +56,8 @@ const financeDocumentHarness = vi.hoisted(() => {
   const mockCallLLMStructured = vi.fn();
   const mockParseDocumentToDraft = vi.fn();
   const mockAuditLog = vi.fn();
+  const mockCheckRateLimit = vi.fn();
+  const mockCheckAbuseGuard = vi.fn();
 
   return {
     mockGetDb,
@@ -64,6 +66,8 @@ const financeDocumentHarness = vi.hoisted(() => {
     mockCallLLMStructured,
     mockParseDocumentToDraft,
     mockAuditLog,
+    mockCheckRateLimit,
+    mockCheckAbuseGuard,
     resetDb() {
       currentDb = createDbMock();
       return currentDb;
@@ -90,6 +94,15 @@ vi.mock("../libraryService", () => ({
 
 vi.mock("../callLLMStructured", () => ({
   callLLMStructured: financeDocumentHarness.mockCallLLMStructured,
+}));
+
+vi.mock("../../middleware/distributedRateLimit", () => ({
+  checkRateLimit: financeDocumentHarness.mockCheckRateLimit,
+}));
+
+vi.mock("../abuseGuard", () => ({
+  checkAbuseGuard: financeDocumentHarness.mockCheckAbuseGuard,
+  hashPrompt: (value: string) => value.slice(0, 16),
 }));
 
 vi.mock("../auditLogger", () => ({
@@ -134,6 +147,14 @@ beforeEach(() => {
   vi.clearAllMocks();
   financeDocumentHarness.resetDb();
   financeDocumentHarness.mockAuditLog.mockReset();
+  financeDocumentHarness.mockCheckRateLimit.mockResolvedValue({
+    allowed: true,
+    remaining: 9,
+    retryAfter: null,
+  });
+  financeDocumentHarness.mockCheckAbuseGuard.mockResolvedValue({
+    allowed: true,
+  });
   financeDocumentHarness.mockGetConversationById.mockResolvedValue({
     id: 91,
     userId: 7,
@@ -152,15 +173,16 @@ beforeEach(() => {
     description: null,
     status: "ready",
     visibility: "private",
-    metadata: {
-      file_type: "application/pdf",
-      file_name: "receipt.pdf",
-      extracted_text: "ร้านอาหาร ABC ยอดรวม 180 บาท",
-      content_checksum_sha256: "abc123",
-      extractor: "library_upload_pipeline",
-      page_count: 1,
-      upload_pipeline: {
-        stage: "ready",
+      metadata: {
+        file_type: "application/pdf",
+        file_name: "receipt.pdf",
+        extracted_text: "ร้านอาหาร ABC ยอดรวม 180 บาท",
+        content_checksum_sha256: "abc123",
+        file_size_bytes: 120_000,
+        extractor: "library_upload_pipeline",
+        page_count: 1,
+        upload_pipeline: {
+          stage: "ready",
       },
     },
     sourceUrl: null,
@@ -308,6 +330,7 @@ describe("financeDocumentExtractionService", () => {
       metadata: {
         file_type: "application/pdf",
         extracted_text: "ร้านอาหาร ABC ยอดรวม 180 บาท",
+        file_size_bytes: 120_000,
       },
       sourceUrl: null,
       thumbnailUrl: null,
@@ -381,6 +404,7 @@ describe("financeDocumentExtractionService", () => {
       metadata: {
         file_type: "application/pdf",
         extracted_text: "ร้านอาหาร ABC ยอดรวม 180 บาท",
+        file_size_bytes: 120_000,
       },
       sourceUrl: null,
       thumbnailUrl: null,
@@ -421,6 +445,24 @@ describe("financeDocumentExtractionService", () => {
         }),
       }),
     );
+  });
+
+  it("blocks OCR intake when the request budget is exhausted", async () => {
+    financeDocumentHarness.mockCheckRateLimit
+      .mockResolvedValueOnce({ allowed: false, remaining: 0, retryAfter: 60 })
+      .mockResolvedValueOnce({ allowed: true, remaining: 9, retryAfter: null });
+
+    await expect(
+      ingestFinanceDocumentFromLibraryItem({
+        conversationId: 91,
+        libraryItemId: 22,
+        userId: 7,
+        tenantId: "tenant-1",
+      }),
+    ).rejects.toThrow(/throttled/i);
+
+    expect(financeDocumentHarness.mockGetLibraryItemById).not.toHaveBeenCalled();
+    expect(financeDocumentHarness.mockCallLLMStructured).not.toHaveBeenCalled();
   });
 
   it("is exposed through the finance router with resolved tenant scope", async () => {

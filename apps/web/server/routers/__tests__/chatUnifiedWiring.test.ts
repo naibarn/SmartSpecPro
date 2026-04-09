@@ -54,6 +54,7 @@ vi.mock("../../services/chatService", () => ({
   createMessage: (...args: unknown[]) => mockCreateMessage(...args),
   getConversationById: (...args: unknown[]) =>
     mockGetConversationById(...args),
+  getPersonalConversation: vi.fn(),
   buildChatContext: (...args: unknown[]) => mockBuildChatContext(...args),
   getConversations: vi.fn(),
   getMessages: vi.fn(),

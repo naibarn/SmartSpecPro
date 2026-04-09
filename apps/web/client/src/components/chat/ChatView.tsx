@@ -162,6 +162,7 @@ import {
 } from "@shared/localAiConversationSettings";
 import { HelpButton } from "@/components/help";
 import { ComparisonPreviewCard } from "@/components/comparison/ComparisonPreviewCard";
+import { FinanceActivityCard } from "@/components/finance/FinanceActivityCard";
 import { PersonaSelector } from "./PersonaSelector";
 import type { BrowserSessionLaunchSuggestion } from "@/lib/browserSessionInvocation";
 import type { LocalAiDeviceStateScope } from "@/features/local-ai/types/deviceState";
@@ -593,6 +594,7 @@ interface ChatViewProps {
   ) => void;
   onDismissBrowserSessionSuggestion?: (suggestionId: string) => void;
   onRunAgency?: () => void;
+  onOpenFinancePanel?: () => void;
 }
 
 type LibraryRecentDaysFilter = "all" | 1 | 3 | 7 | 15 | 30;
@@ -607,6 +609,7 @@ export function ChatView({
   onUserMessageSent,
   onConfirmBrowserSessionSuggestion,
   onDismissBrowserSessionSuggestion,
+  onOpenFinancePanel,
 }: ChatViewProps) {
   const [, navigate] = useLocation();
   const [messages, setMessages] = useState<Message[]>([]);
@@ -745,8 +748,14 @@ export function ChatView({
   const analyzeAttachmentAssistMutation =
     trpc.localAi.analyzeAttachmentAssist.useMutation();
 
-  // Get available models from LLM providers
-  const { data: modelsData } = trpc.llmProviders.availableModels.useQuery();
+  // Load the model catalog only when the user actually opens the selector.
+  // This keeps the chat shell resilient if the catalog endpoint is unhealthy.
+  const { data: modelsData, isLoading: modelsLoading, error: modelsError, refetch: refetchModels } =
+    trpc.llmProviders.availableModels.useQuery(undefined, {
+      enabled: modelDialogOpen,
+      retry: false,
+      staleTime: 300_000,
+    });
 
   // Get media generation models (image/video/audio)
   const { data: allMediaModelsData } = trpc.media.getModels.useQuery(
@@ -2196,7 +2205,11 @@ export function ChatView({
     }
 
     const displayName = formatModelDisplayName(
-      modelData?.name || selectedModel || "Select model",
+      modelData?.name ||
+        conversationModelSelection?.lastResolvedModelId ||
+        conversation?.model ||
+        selectedModel ||
+        "Select model",
       providerDisplayName ?? undefined
     );
 
@@ -2208,11 +2221,239 @@ export function ChatView({
     });
   }, [
     conversationModelSelection,
+    conversation?.model,
     modelsData?.models,
     multiProviderModels,
     selectedModel,
     selectedProviderId,
   ]);
+
+  const renderModelDialogContent = () => {
+    if (modelsLoading) {
+      return (
+        <div className="flex items-center gap-2 px-3 py-6 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Loading model catalog...
+        </div>
+      );
+    }
+
+    if (modelsError) {
+      return (
+        <div className="space-y-3 px-3 py-6 text-sm">
+          <p className="font-medium text-destructive">
+            Unable to load the model catalog right now.
+          </p>
+          <p className="text-muted-foreground">
+            The chat will keep using the last selected model.
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={() => void refetchModels()}
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+            Retry
+          </Button>
+        </div>
+      );
+    }
+
+    if (!multiProviderModels || multiProviderModels.length === 0) {
+      return (
+        <>
+          <CommandEmpty>No models found.</CommandEmpty>
+          {Object.entries(modelsByProvider).map(([provider, models]) => (
+            <CommandGroup key={provider} heading={provider}>
+              {models.map(model => (
+                <CommandItem
+                  key={model.id}
+                  value={`${model.name} ${model.id} ${provider}`}
+                  onSelect={() => {
+                    handleModelChange(model.id);
+                    setModelDialogOpen(false);
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  <Check
+                    className={cn(
+                      "h-3.5 w-3.5 shrink-0",
+                      selectedModel === model.id ? "opacity-100" : "opacity-0"
+                    )}
+                  />
+                  <span className="flex-1 truncate">
+                    {formatModelDisplayName(model.name, model.provider)}
+                  </span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          ))}
+        </>
+      );
+    }
+
+    const grouped: Record<
+      string,
+      Array<{ model: AvailableModel; provider: ModelProvider }>
+    > = {};
+
+    for (const model of multiProviderModels) {
+      if (!model.providers || model.providers.length === 0) {
+        continue;
+      }
+
+      const bestProvider = getCheapestProvider(model.providers);
+      if (!bestProvider) {
+        continue;
+      }
+
+      const providerKey =
+        bestProvider.providerDisplayName || bestProvider.providerName;
+      if (!grouped[providerKey]) {
+        grouped[providerKey] = [];
+      }
+      grouped[providerKey].push({
+        model,
+        provider: bestProvider,
+      });
+    }
+
+    const providerAutoEntries = Object.entries(grouped)
+      .map(([providerName, items]) => ({
+        providerName,
+        providerId: items[0]?.provider.providerId ?? null,
+      }))
+      .filter(
+        (
+          entry
+        ): entry is {
+          providerName: string;
+          providerId: number;
+        } => typeof entry.providerId === "number"
+      );
+
+    return (
+      <>
+        {chatAutoModelSelectionEnabled ? (
+          <CommandGroup heading="Recommended">
+            <CommandItem
+              value="Auto best overall"
+              onSelect={() => {
+                handleModelChange(AUTO_MODEL);
+                setModelDialogOpen(false);
+              }}
+              className="flex items-center gap-2"
+            >
+              <Check
+                className={cn(
+                  "h-3.5 w-3.5 shrink-0",
+                  selectedModel === AUTO_MODEL ? "opacity-100" : "opacity-0"
+                )}
+              />
+              <Sparkles className="h-3.5 w-3.5 shrink-0 text-primary" />
+              <span className="flex-1 truncate">Auto (best overall)</span>
+              {conversationModelSelection?.lastResolvedProviderName ? (
+                <Badge
+                  variant="secondary"
+                  className="h-4 max-w-[92px] shrink-0 px-1 text-[10px]"
+                >
+                  <span className="truncate">
+                    {conversationModelSelection.lastResolvedProviderName}
+                  </span>
+                </Badge>
+              ) : null}
+            </CommandItem>
+            {providerAutoEntries.map(entry => {
+              const autoValue = buildAutoProviderValue(entry.providerId);
+              return (
+                <CommandItem
+                  key={autoValue}
+                  value={`${entry.providerName} auto model`}
+                  onSelect={() => {
+                    handleModelChange(
+                      autoValue,
+                      entry.providerId,
+                      entry.providerName
+                    );
+                    setModelDialogOpen(false);
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  <Check
+                    className={cn(
+                      "h-3.5 w-3.5 shrink-0",
+                      selectedModel === autoValue ? "opacity-100" : "opacity-0"
+                    )}
+                  />
+                  <Sparkles className="h-3.5 w-3.5 shrink-0 text-primary" />
+                  <span className="flex-1 truncate">Auto Model</span>
+                  <Badge
+                    variant="secondary"
+                    className="h-4 max-w-[92px] shrink-0 px-1 text-[10px]"
+                  >
+                    <span className="truncate">{entry.providerName}</span>
+                  </Badge>
+                </CommandItem>
+              );
+            })}
+          </CommandGroup>
+        ) : null}
+
+        {Object.entries(grouped).map(([providerName, items]) => (
+          <CommandGroup key={providerName} heading={providerName}>
+            {items.map(({ model, provider }) => (
+              <CommandItem
+                key={`${model.modelId}-${provider.providerId}`}
+                value={`${model.modelName} ${model.modelId} ${providerName}`}
+                onSelect={() => {
+                  handleModelChange(
+                    model.modelId,
+                    provider.providerId,
+                    provider.providerDisplayName || provider.providerName
+                  );
+                  setModelDialogOpen(false);
+                }}
+                className="flex items-center gap-2"
+              >
+                <Check
+                  className={cn(
+                    "h-3.5 w-3.5 shrink-0",
+                    selectedModel === model.modelId ? "opacity-100" : "opacity-0"
+                  )}
+                />
+                <span className="flex-1 truncate">
+                  {formatModelDisplayName(model.modelName, providerName)}
+                </span>
+                <Badge
+                  variant="secondary"
+                  className="h-4 max-w-[92px] shrink-0 px-1 text-[10px]"
+                >
+                  <span className="truncate">{providerName}</span>
+                </Badge>
+                {provider.isFree ? (
+                  <Badge
+                    variant="secondary"
+                    className="h-4 px-1 text-[10px] shrink-0 bg-green-500/10 text-green-600"
+                  >
+                    FREE
+                  </Badge>
+                ) : (
+                  <span className="text-[10px] text-muted-foreground shrink-0">
+                    {formatModelCost(
+                      provider.pricingInput,
+                      provider.pricingOutput,
+                      false
+                    )}
+                  </span>
+                )}
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        ))}
+      </>
+    );
+  };
 
   // Skill detection state
   const [detectedSkill, setDetectedSkill] = useState<{
@@ -4906,296 +5147,65 @@ export function ChatView({
             className={isPersonalConversation ? "bg-amber-500/10 text-amber-700" : undefined}
           />
           {/* Model Selector */}
-          {modelsData?.models && modelsData.models.length > 0 ? (
-            <>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 max-w-[220px] sm:max-w-[340px] justify-start gap-1.5 text-xs font-normal shrink-0"
-                onClick={() => setModelDialogOpen(true)}
-                disabled={
-                  isStreaming ||
-                  updateConversationMutation.isPending ||
-                  !!fallbackRequest
-                }
-                title={selectedModelDisplay.tooltipLabel}
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 max-w-[220px] sm:max-w-[340px] justify-start gap-1.5 text-xs font-normal shrink-0"
+            onClick={() => setModelDialogOpen(true)}
+            disabled={
+              isStreaming ||
+              updateConversationMutation.isPending ||
+              !!fallbackRequest
+            }
+            title={selectedModelDisplay.tooltipLabel}
+          >
+            <Bot className="h-3 w-3 shrink-0" />
+            {selectedModelDisplay.providerLabel ? (
+              <Badge
+                variant="secondary"
+                className="h-4 max-w-[92px] shrink-0 px-1.5 text-[10px] font-medium"
               >
-                <Bot className="h-3 w-3 shrink-0" />
-                {selectedModelDisplay.providerLabel ? (
-                  <Badge
-                    variant="secondary"
-                    className="h-4 max-w-[92px] shrink-0 px-1.5 text-[10px] font-medium"
-                  >
-                    <span className="truncate">
-                      {selectedModelDisplay.providerLabel}
-                    </span>
-                  </Badge>
-                ) : null}
                 <span className="truncate">
-                  {selectedModelDisplay.primaryLabel}
+                  {selectedModelDisplay.providerLabel}
                 </span>
-                {/* FREE badge in header */}
-                {(() => {
-                  const multiModel = multiProviderModels?.find(
-                    (m: AvailableModel) => m.modelId === selectedModel
-                  );
-                  const provider =
-                    multiModel?.providers?.find(
-                      (p: ModelProvider) => p.providerId === selectedProviderId
-                    ) ||
-                    (multiModel?.providers?.length
-                      ? getCheapestProvider(multiModel.providers)
-                      : null);
-                  return provider?.isFree ? (
-                    <Badge
-                      variant="secondary"
-                      className="h-4 px-1 text-[10px] shrink-0 bg-green-500/10 text-green-600 ml-1"
-                    >
-                      FREE
-                    </Badge>
-                  ) : null;
-                })()}
-              </Button>
-              <CommandDialog
-                open={modelDialogOpen}
-                onOpenChange={setModelDialogOpen}
-                title="Select Model"
-                description="Search and select an LLM model"
-              >
-                <CommandInput placeholder="Search models..." />
-                <CommandList className="max-h-[60vh]">
-                  <CommandEmpty>No models found.</CommandEmpty>
-                  {/* Use multi-provider models grouped by provider */}
-                  {(() => {
-                    if (
-                      !multiProviderModels ||
-                      multiProviderModels.length === 0
-                    ) {
-                      return Object.entries(modelsByProvider).map(
-                        ([provider, models]) => (
-                          <CommandGroup key={provider} heading={provider}>
-                            {models.map(model => (
-                              <CommandItem
-                                key={model.id}
-                                value={`${model.name} ${model.id} ${provider}`}
-                                onSelect={() => {
-                                  handleModelChange(model.id);
-                                  setModelDialogOpen(false);
-                                }}
-                                className="flex items-center gap-2"
-                              >
-                                <Check
-                                  className={cn(
-                                    "h-3.5 w-3.5 shrink-0",
-                                    selectedModel === model.id
-                                      ? "opacity-100"
-                                      : "opacity-0"
-                                  )}
-                                />
-                                <span className="flex-1 truncate">
-                                  {formatModelDisplayName(
-                                    model.name,
-                                    model.provider
-                                  )}
-                                </span>
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        )
-                      );
-                    }
-
-                    // Group multi-provider models by their best provider
-                    const grouped: Record<
-                      string,
-                      Array<{ model: AvailableModel; provider: ModelProvider }>
-                    > = {};
-                    for (const model of multiProviderModels) {
-                      if (!model.providers || model.providers.length === 0)
-                        continue;
-                      const bestProvider = getCheapestProvider(model.providers);
-                      if (!bestProvider) continue;
-                      const providerKey =
-                        bestProvider.providerDisplayName ||
-                        bestProvider.providerName;
-                      if (!grouped[providerKey]) {
-                        grouped[providerKey] = [];
-                      }
-                      grouped[providerKey].push({
-                        model,
-                        provider: bestProvider,
-                      });
-                    }
-
-                    const providerAutoEntries = Object.entries(grouped)
-                      .map(([providerName, items]) => ({
-                        providerName,
-                        providerId: items[0]?.provider.providerId ?? null,
-                      }))
-                      .filter(
-                        (
-                          entry
-                        ): entry is {
-                          providerName: string;
-                          providerId: number;
-                        } => typeof entry.providerId === "number"
-                      );
-
-                    return (
-                      <>
-                        {chatAutoModelSelectionEnabled ? (
-                          <CommandGroup heading="Recommended">
-                            <CommandItem
-                              value="Auto best overall"
-                              onSelect={() => {
-                                handleModelChange(AUTO_MODEL);
-                                setModelDialogOpen(false);
-                              }}
-                              className="flex items-center gap-2"
-                            >
-                              <Check
-                                className={cn(
-                                  "h-3.5 w-3.5 shrink-0",
-                                  selectedModel === AUTO_MODEL
-                                    ? "opacity-100"
-                                    : "opacity-0"
-                                )}
-                              />
-                              <Sparkles className="h-3.5 w-3.5 shrink-0 text-primary" />
-                              <span className="flex-1 truncate">
-                                Auto (best overall)
-                              </span>
-                              {conversationModelSelection?.lastResolvedProviderName ? (
-                                <Badge
-                                  variant="secondary"
-                                  className="h-4 max-w-[92px] shrink-0 px-1 text-[10px]"
-                                >
-                                  <span className="truncate">
-                                    {
-                                      conversationModelSelection.lastResolvedProviderName
-                                    }
-                                  </span>
-                                </Badge>
-                              ) : null}
-                            </CommandItem>
-                            {providerAutoEntries.map(entry => {
-                              const autoValue = buildAutoProviderValue(
-                                entry.providerId
-                              );
-                              return (
-                                <CommandItem
-                                  key={autoValue}
-                                  value={`${entry.providerName} auto model`}
-                                  onSelect={() => {
-                                    handleModelChange(
-                                      autoValue,
-                                      entry.providerId,
-                                      entry.providerName
-                                    );
-                                    setModelDialogOpen(false);
-                                  }}
-                                  className="flex items-center gap-2"
-                                >
-                                  <Check
-                                    className={cn(
-                                      "h-3.5 w-3.5 shrink-0",
-                                      selectedModel === autoValue
-                                        ? "opacity-100"
-                                        : "opacity-0"
-                                    )}
-                                  />
-                                  <Sparkles className="h-3.5 w-3.5 shrink-0 text-primary" />
-                                  <span className="flex-1 truncate">
-                                    Auto Model
-                                  </span>
-                                  <Badge
-                                    variant="secondary"
-                                    className="h-4 max-w-[92px] shrink-0 px-1 text-[10px]"
-                                  >
-                                    <span className="truncate">
-                                      {entry.providerName}
-                                    </span>
-                                  </Badge>
-                                </CommandItem>
-                              );
-                            })}
-                          </CommandGroup>
-                        ) : null}
-                        {Object.entries(grouped).map(
-                          ([providerName, items]) => (
-                            <CommandGroup
-                              key={providerName}
-                              heading={providerName}
-                            >
-                              {items.map(({ model, provider }) => (
-                                <CommandItem
-                                  key={`${model.modelId}-${provider.providerId}`}
-                                  value={`${model.modelName} ${model.modelId} ${providerName}`}
-                                  onSelect={() => {
-                                    handleModelChange(
-                                      model.modelId,
-                                      provider.providerId,
-                                      provider.providerDisplayName ||
-                                        provider.providerName
-                                    );
-                                    setModelDialogOpen(false);
-                                  }}
-                                  className="flex items-center gap-2"
-                                >
-                                  <Check
-                                    className={cn(
-                                      "h-3.5 w-3.5 shrink-0",
-                                      selectedModel === model.modelId
-                                        ? "opacity-100"
-                                        : "opacity-0"
-                                    )}
-                                  />
-                                  <span className="flex-1 truncate">
-                                    {formatModelDisplayName(
-                                      model.modelName,
-                                      providerName
-                                    )}
-                                  </span>
-                                  <Badge
-                                    variant="secondary"
-                                    className="h-4 max-w-[92px] shrink-0 px-1 text-[10px]"
-                                  >
-                                    <span className="truncate">
-                                      {providerName}
-                                    </span>
-                                  </Badge>
-                                  {provider.isFree ? (
-                                    <Badge
-                                      variant="secondary"
-                                      className="h-4 px-1 text-[10px] shrink-0 bg-green-500/10 text-green-600"
-                                    >
-                                      FREE
-                                    </Badge>
-                                  ) : (
-                                    <span className="text-[10px] text-muted-foreground shrink-0">
-                                      {formatModelCost(
-                                        provider.pricingInput,
-                                        provider.pricingOutput,
-                                        false
-                                      )}
-                                    </span>
-                                  )}
-                                </CommandItem>
-                              ))}
-                            </CommandGroup>
-                          )
-                        )}
-                      </>
-                    );
-                  })()}
-                </CommandList>
-              </CommandDialog>
-            </>
-          ) : (
-            <Badge variant="outline" className="text-xs">
-              {selectedModel || "No model"}
-            </Badge>
-          )}
+              </Badge>
+            ) : null}
+            <span className="truncate">
+              {selectedModelDisplay.primaryLabel}
+            </span>
+            {/* FREE badge in header */}
+            {(() => {
+              const multiModel = multiProviderModels?.find(
+                (m: AvailableModel) => m.modelId === selectedModel
+              );
+              const provider =
+                multiModel?.providers?.find(
+                  (p: ModelProvider) => p.providerId === selectedProviderId
+                ) ||
+                (multiModel?.providers?.length
+                  ? getCheapestProvider(multiModel.providers)
+                  : null);
+              return provider?.isFree ? (
+                <Badge
+                  variant="secondary"
+                  className="h-4 px-1 text-[10px] shrink-0 bg-green-500/10 text-green-600 ml-1"
+                >
+                  FREE
+                </Badge>
+              ) : null;
+            })()}
+          </Button>
+          <CommandDialog
+            open={modelDialogOpen}
+            onOpenChange={setModelDialogOpen}
+            title="Select Model"
+            description="Search and select an LLM model"
+          >
+            <CommandInput placeholder="Search models..." />
+            <CommandList className="max-h-[60vh]">
+              {renderModelDialogContent()}
+            </CommandList>
+          </CommandDialog>
 
           {localClientLlmModeEnabled ? (
             <Popover>
@@ -5592,6 +5602,17 @@ export function ChatView({
                             preview={preview}
                           />
                         ))}
+                        {(m.artifacts ?? [])
+                          .filter((artifact) => Boolean(artifact?.metadata?.finance))
+                          .map((artifact) => (
+                            <FinanceActivityCard
+                              key={`finance-${artifact.id}`}
+                              title={artifact.title}
+                              content={artifact.content}
+                              metadata={artifact.metadata as any}
+                              onOpenFinancePanel={onOpenFinancePanel}
+                            />
+                          ))}
                       </>
                     ) : (
                       renderUserContent(m)

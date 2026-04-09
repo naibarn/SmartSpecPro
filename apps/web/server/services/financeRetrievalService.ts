@@ -60,9 +60,10 @@ export async function searchFinanceEvidence(
         {
           query,
           limit: input.limit ?? 10,
-          scope: "all",
+          scope: "my_library",
           filters: {
             projectId: scope.projectId,
+            ownerUserId: scope.ownerUserId,
           },
         },
         {

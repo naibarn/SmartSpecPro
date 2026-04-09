@@ -132,7 +132,9 @@ import {
   createRecurringRule,
   getDailySummary,
   getMonthlySummary,
+  listDrafts,
   listLinkedDocuments,
+  listRecurringRules,
   parseTextToDraft,
   runDueRecurringRules,
   updateDraft,
@@ -220,6 +222,42 @@ function buildTransactionRow(overrides: Record<string, unknown> = {}) {
     voidedAt: null,
     voidedByUserId: null,
     voidReason: null,
+    allowedScopes: [`user:7`],
+    createdAt: new Date("2026-04-09T00:00:00.000Z"),
+    updatedAt: new Date("2026-04-09T00:00:00.000Z"),
+    ...overrides,
+  } as any;
+}
+
+function buildRecurringRuleRow(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 88,
+    tenantId: "tenant-1",
+    projectId: PERSONAL_PROJECT_ID,
+    ownerUserId: 7,
+    type: "expense",
+    amountMinor: 219,
+    currency: "THB",
+    categoryCode: "subscription",
+    merchantName: "Netflix",
+    note: "Monthly plan",
+    rrule: JSON.stringify({
+      frequency: "monthly",
+      interval: 1,
+      dayOfMonth: 15,
+    }),
+    timezone: "Asia/Bangkok",
+    startDate: new Date("2026-04-15T02:00:00.000Z"),
+    endDate: null,
+    nextRunAt: new Date("2026-04-15T02:00:00.000Z"),
+    lastRunAt: null,
+    runCount: 0,
+    autoConfirm: false,
+    status: "active",
+    idempotencyKey: "finance-recurring:existing",
+    sourceHash: "recurring-hash",
+    sourceMessageId: null,
+    sourceLibraryItemId: null,
     allowedScopes: [`user:7`],
     createdAt: new Date("2026-04-09T00:00:00.000Z"),
     updatedAt: new Date("2026-04-09T00:00:00.000Z"),
@@ -459,6 +497,29 @@ describe("financeService", () => {
     expect(monthly.balanceMinor).toBe(750);
     expect(daily.rangeStart).not.toBe(daily.rangeEnd);
     expect(monthly.rangeStart).not.toBe(monthly.rangeEnd);
+  });
+
+  it("lists drafts and recurring rules in the scoped finance workspace", async () => {
+    const db = financeHarness.getDbState();
+    db.queueSelectResult([buildDraftRow()], [buildRecurringRuleRow()]);
+
+    const drafts = await listDrafts({
+      conversationId: 91,
+      userId: 7,
+      tenantId: "tenant-1",
+      limit: 5,
+    });
+    const recurringRules = await listRecurringRules({
+      conversationId: 91,
+      userId: 7,
+      tenantId: "tenant-1",
+      limit: 5,
+    });
+
+    expect(drafts).toHaveLength(1);
+    expect(drafts[0].id).toBe(55);
+    expect(recurringRules).toHaveLength(1);
+    expect(recurringRules[0].id).toBe(88);
   });
 
   it("creates recurring rules and queues future runs", async () => {

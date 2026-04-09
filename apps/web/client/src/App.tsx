@@ -82,6 +82,8 @@ const DomainAdminContent = lazy(() => import("./pages/DomainAdminContent"));
 const DomainUsers = lazy(() => import("./pages/DomainUsers"));
 const TenantSettings = lazy(() => import("./pages/TenantSettings"));
 const Chat = lazy(() => import("./pages/Chat"));
+const Finance = lazy(() => import("./pages/Finance"));
+const FinanceReports = lazy(() => import("./pages/FinanceReports"));
 const SocialChannels = lazy(() => import("./pages/SocialChannels"));
 const SocialInbox = lazy(() => import("./pages/SocialInbox"));
 const SocialPublishing = lazy(() => import("./pages/SocialPublishing"));
@@ -281,6 +283,9 @@ function Router() {
         <Route path="/admin/desktop-host">
           <RequireAdmin><AdminDesktopHost /></RequireAdmin>
         </Route>
+        <Route path="/desktop-host">
+          <RequireDomainAdmin><AdminDesktopHost /></RequireDomainAdmin>
+        </Route>
         <Route path="/admin/billing">
           <RequireAdmin><AdminBillingCenter /></RequireAdmin>
         </Route>
@@ -372,6 +377,8 @@ function Router() {
         <Route path="/signup" component={Signup} />
         <Route path="/forgot-password" component={ForgotPassword} />
         <Route path="/chat"><RequireAuth><Chat /></RequireAuth></Route>
+        <Route path="/finance/reports"><RequireAuth><FinanceReports /></RequireAuth></Route>
+        <Route path="/finance"><RequireAuth><Finance /></RequireAuth></Route>
         <Route path="/social/channels"><RequireAuth><SocialChannels /></RequireAuth></Route>
         <Route path="/social/inbox"><RequireAuth><SocialInbox /></RequireAuth></Route>
         <Route path="/social/publishing"><RequireAuth><SocialPublishing /></RequireAuth></Route>

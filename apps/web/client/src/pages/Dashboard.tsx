@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { JobCard } from "@/components/chat/JobCard";
 import { FinanceHub } from "@/components/finance/FinanceHub";
+import FinanceAccessGate from "@/components/finance/FinanceAccessGate";
 import {
   DashboardSectionHeader,
   DashboardStatCard,
@@ -239,6 +240,14 @@ export default function Dashboard() {
     { limit: 20 },
     { enabled: isAuthenticated }
   );
+
+  // Resolve the locked personal finance conversation directly so it does not depend on pagination.
+  const { data: personalFinanceConversationData } = trpc.chat.getPersonalConversation.useQuery(
+    undefined,
+    { enabled: isAuthenticated }
+  );
+
+  const createPersonalConversationMutation = trpc.chat.createPersonalConversation.useMutation();
 
   // Fetch active workflows
   const { data: activeWorkflows } = trpc.workflow.list.useQuery(
@@ -864,13 +873,7 @@ export default function Dashboard() {
   }, [analyticsPoints]);
 
   const topRecentTransaction = recentTransactions?.[0] ?? null;
-  const personalFinanceConversation = useMemo(() => {
-    return (
-      chatData?.conversations?.find(
-        conversation => (conversation as { projectId?: string | null }).projectId === "personal"
-      ) ?? null
-    );
-  }, [chatData?.conversations]);
+  const personalFinanceConversation = personalFinanceConversationData ?? null;
   const latestConversation = chatData?.conversations?.[0] ?? null;
   const urgentNoticeCount = attentionNotices.filter(
     notice => notice.tone !== "positive"
@@ -1640,11 +1643,20 @@ export default function Dashboard() {
             transition={{ delay: 0.09 }}
             className="mb-8"
           >
-            <FinanceHub
-              compact
-              conversationId={personalFinanceConversation?.id ?? null}
-              onOpenFinancePanel={() => navigateTo("/chat?panel=finance")}
-            />
+            <FinanceAccessGate>
+              <FinanceHub
+                surface="dashboard"
+                compact
+                conversationId={personalFinanceConversation?.id ?? null}
+                onCreatePersonalChat={async () => {
+                  const created = await createPersonalConversationMutation.mutateAsync({
+                    title: t("dashboard:finance.title"),
+                  });
+                  navigateTo(`/chat?c=${created.id}&panel=finance`);
+                }}
+                onOpenFinancePanel={() => navigateTo("/chat?panel=finance")}
+              />
+            </FinanceAccessGate>
           </motion.section>
 
           {desktopGovernanceEnabled && (

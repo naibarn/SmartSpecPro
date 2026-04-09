@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
+import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/AuthContext";
 import { ChatSidebar, ChatView, MemoryPanel, SkillSettings, ArtifactPanel, SchedulePanel, type Artifact } from "@/components/chat";
 import { FinanceHub } from "@/components/finance/FinanceHub";
+import FinanceAccessGate from "@/components/finance/FinanceAccessGate";
 import { CanvasPane } from "@/components/chat/canvas/CanvasPane";
 import { HelpButton } from "@/components/help";
 import { BrowserSessionSummaryCard } from "@/components/browser-session/BrowserSessionSummaryCard";
@@ -97,8 +99,6 @@ export default function Chat() {
 
   const utils = trpc.useUtils();
 
-  // Get available models from LLM providers (for default model)
-  const { data: modelsData } = trpc.llmProviders.availableModels.useQuery();
   // Agency trigger data for auto-detection in chat
   const { data: agencyTriggersData } = (trpc as any).agency?.listTriggers?.useQuery?.(undefined, {
     staleTime: 60_000,
@@ -111,6 +111,27 @@ export default function Chat() {
   const createLiveBrowserSessionMutation = trpc.liveBrowser.createSession.useMutation();
   const sendLiveBrowserCommandMutation = trpc.liveBrowser.sendCommand.useMutation();
   const saveAssistantMessageMutation = trpc.chat.saveAssistantMessage.useMutation();
+  const mirrorFinanceActivity = async (message: {
+    content: string;
+    artifacts: Array<{
+      id: string;
+      type: "markdown" | "table" | "chart";
+      title?: string;
+      content: string | string[];
+      metadata?: Record<string, unknown>;
+    }>;
+  }) => {
+    if (!selectedConversationId) {
+      return;
+    }
+
+    await saveAssistantMessageMutation.mutateAsync({
+      conversationId: selectedConversationId,
+      content: message.content,
+      artifacts: message.artifacts,
+    });
+    utils.chat.getMessages.invalidate({ conversationId: selectedConversationId });
+  };
 
   const browserSessionArtifacts = useMemo(
     () => (messagesData || [])
@@ -313,11 +334,18 @@ export default function Chat() {
   };
 
   const createConversationWithDefaultModel = async (title = t('chat.newChat')) => {
-    const defaultModel = modelsData?.models?.find(m => m.isDefault);
     return createConversationMutation.mutateAsync({
       title,
-      model: defaultModel?.id,
     });
+  };
+
+  const activateConversation = (conversationId: number, options?: { closeSidebar?: boolean }) => {
+    setSelectedConversationId(conversationId);
+    setRightPanel("none");
+    setLocation(`/chat?c=${conversationId}`);
+    if (options?.closeSidebar ?? window.innerWidth < 1024) {
+      setSidebarOpen(false);
+    }
   };
 
   const ensureConversationId = async () => {
@@ -325,7 +353,7 @@ export default function Chat() {
       return selectedConversationId;
     }
     const result = await createConversationWithDefaultModel();
-    setSelectedConversationId(result.id);
+    activateConversation(result.id);
     return result.id;
   };
 
@@ -504,17 +532,23 @@ export default function Chat() {
   };
 
   const handleNewChat = async () => {
-    const result = await createConversationWithDefaultModel();
-    setSelectedConversationId(result.id);
+    try {
+      const result = await createConversationWithDefaultModel();
+      activateConversation(result.id);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t("chat.createConversationFailed"));
+    }
   };
 
   const handleNewPersonalChat = async () => {
-    const defaultModel = modelsData?.models?.find(m => m.isDefault);
-    const result = await createPersonalConversationMutation.mutateAsync({
-      title: "Personal Chat",
-      model: defaultModel?.id,
-    });
-    setSelectedConversationId(result.id);
+    try {
+      const result = await createPersonalConversationMutation.mutateAsync({
+        title: t("chat.startPersonalChat"),
+      });
+      activateConversation(result.id);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t("chat.createConversationFailed"));
+    }
   };
 
   const handleOpenTeamRoom = (teamId: string) => {
@@ -525,11 +559,8 @@ export default function Chat() {
 
   // Create new chat continuing the same project, with summary from previous chat
   const handleNewChatFromProject = async (projectId: string, summary: string) => {
-    const defaultModel = modelsData?.models?.find(m => m.isDefault);
-
     const result = await createConversationMutation.mutateAsync({
       title: `${projectId} - continued`,
-      model: defaultModel?.id,
       projectId,
       systemPrompt: summary
         ? `Context from previous conversation in project "${projectId}":\n\n${summary}`
@@ -561,6 +592,7 @@ export default function Chat() {
     }
 
     setSelectedConversationId(result.id);
+    setLocation(`/chat?c=${result.id}`);
     // Open Memory panel so user can see the carried-over context
     setRightPanel("memory");
   };
@@ -760,7 +792,7 @@ export default function Chat() {
           <ChatSidebar
             selectedConversationId={selectedConversationId}
             onSelectConversation={(id) => {
-              setSelectedConversationId(id);
+              activateConversation(id, { closeSidebar: true });
               setSidebarOpen(false);
             }}
             onNewChat={handleNewChat}
@@ -778,7 +810,7 @@ export default function Chat() {
           {sidebarOpen && (
             <ChatSidebar
               selectedConversationId={selectedConversationId}
-              onSelectConversation={(id) => setSelectedConversationId(id)}
+              onSelectConversation={(id) => activateConversation(id, { closeSidebar: false })}
               onNewChat={handleNewChat}
               onNewPersonalChat={handleNewPersonalChat}
               onOpenTeamRoom={handleOpenTeamRoom}
@@ -900,6 +932,7 @@ export default function Chat() {
                   onConfirmBrowserSessionSuggestion={handleConfirmBrowserSessionSuggestion}
                   onDismissBrowserSessionSuggestion={handleDismissBrowserSessionSuggestion}
                   onRunAgency={() => setAgencyPickerOpen(true)}
+                  onOpenFinancePanel={() => setRightPanel("finance")}
                 />
                 {/* Agency suggestion card (auto-detected) */}
                 {agencySuggestion && !targetAgency && (
@@ -1137,7 +1170,7 @@ export default function Chat() {
           className={cn(
             "flex h-full min-h-0 flex-shrink-0 flex-col overflow-hidden transition-all duration-200",
             rightPanel !== "none"
-              ? "w-full translate-x-0 border-l sm:w-96 lg:w-[28rem]"
+              ? "w-full translate-x-0 border-l sm:w-[26rem] lg:w-[36rem] xl:w-[40rem]"
               : "pointer-events-none w-0 translate-x-full border-l-0"
           )}
         >
@@ -1187,12 +1220,14 @@ export default function Chat() {
                   <X className="h-4 w-4" />
                 </Button>
               </div>
-              <div className="min-h-0 flex-1 overflow-y-auto p-3">
+              <FinanceAccessGate className="min-h-0 flex-1 overflow-y-auto p-3">
                 <FinanceHub
+                  surface="panel"
                   conversationId={selectedConversationId}
                   onCreatePersonalChat={handleNewPersonalChat}
+                  onMirrorFinanceActivity={mirrorFinanceActivity}
                 />
-              </div>
+              </FinanceAccessGate>
             </div>
           )}
           {rightPanel === "schedule" && (

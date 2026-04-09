@@ -9,6 +9,46 @@ const authState = {
 const tenantFeatureFlagsState = {
   desktopHostEnabled: false,
 };
+const {
+  chatListConversationsUseQuery,
+  getPersonalConversationUseQuery,
+} = vi.hoisted(() => ({
+  chatListConversationsUseQuery: vi.fn(() => ({
+    data: {
+      conversations: [
+        {
+          id: 1,
+          title: "Weekly Ops",
+          messageCount: 4,
+          totalCreditsUsed: 12,
+          updatedAt: "2026-04-09T09:00:00.000Z",
+          projectId: "ops",
+        },
+        {
+          id: 2,
+          title: "Personal Finance",
+          messageCount: 3,
+          totalCreditsUsed: 0,
+          updatedAt: "2026-04-09T10:00:00.000Z",
+          projectId: "personal",
+        },
+      ],
+      total: 2,
+    },
+    isLoading: false,
+  })),
+  getPersonalConversationUseQuery: vi.fn(() => ({
+    data: {
+      id: 2,
+      title: "Personal Finance",
+      messageCount: 3,
+      totalCreditsUsed: 0,
+      updatedAt: "2026-04-09T10:00:00.000Z",
+      projectId: "personal",
+    },
+    isLoading: false,
+  })),
+}));
 const desktopGovernanceStatusState = {
   status: {
     generatedAt: "2026-04-09T10:00:00.000Z",
@@ -176,6 +216,8 @@ const translationMap: Record<string, string> = {
   "dashboard:finance.actions.pause": "Pause",
   "dashboard:finance.actions.resume": "Resume",
   "dashboard:finance.actions.void": "Void",
+  "dashboard:finance.quick.addExpense": "Add Expense",
+  "dashboard:finance.quick.addIncome": "Add Income",
   "dashboard:finance.description": "A private, user-scoped finance workspace for chat drafts, OCR receipts, recurring rules, and reports.",
   "dashboard:finance.drafts.empty": "No open drafts yet.",
   "dashboard:finance.drafts.title": "Drafts",
@@ -191,6 +233,19 @@ const translationMap: Record<string, string> = {
   "dashboard:finance.quick.textPlaceholder": "Example: Lunch with client, 120 THB",
   "dashboard:finance.quick.title": "Quick Draft",
   "dashboard:finance.quick.upload": "Upload Receipt",
+  "dashboard:finance.report.categoryBreakdown": "Category Breakdown",
+  "dashboard:finance.report.categoryBreakdownDescription": "This month’s confirmed spend by category.",
+  "dashboard:finance.report.categoryBreakdownEmpty": "No category data yet.",
+  "dashboard:finance.report.evidenceTrail": "Evidence Trail",
+  "dashboard:finance.report.evidenceTrailDescription": "Inspect linked receipts and search the finance library.",
+  "dashboard:finance.report.evidenceTrailEmpty": "No linked evidence yet.",
+  "dashboard:finance.report.inspect": "Inspect",
+  "dashboard:finance.report.inspectingTransaction": "Inspecting {{amount}}",
+  "dashboard:finance.report.recurringDueSoon": "Recurring Due Soon",
+  "dashboard:finance.report.recurringDueSoonDescription": "Recurring rules that should run in the next two weeks.",
+  "dashboard:finance.report.recurringDueSoonEmpty": "No recurring items due soon.",
+  "dashboard:finance.report.searchEvidence": "Search Evidence",
+  "dashboard:finance.report.searchEvidencePlaceholder": "Search receipts, invoices, or notes",
   "dashboard:finance.recurring.empty": "No active recurring rules yet.",
   "dashboard:finance.recurring.title": "Recurring Rules",
   "dashboard:finance.summary.monthBalance": "Month balance",
@@ -257,6 +312,10 @@ function translate(key: string, params?: Record<string, string | number>) {
 
   if (key === "dashboard:quickActions.finance") {
     return "Finance";
+  }
+
+  if (key === "dashboard:finance.report.inspectingTransaction") {
+    return `Inspecting ${params?.amount ?? ""}`;
   }
 
   return translationMap[key] ?? key;
@@ -487,30 +546,10 @@ vi.mock("@/lib/trpc", () => ({
     },
     chat: {
       listConversations: {
-        useQuery: vi.fn(() => ({
-          data: {
-            conversations: [
-              {
-                id: 1,
-                title: "Weekly Ops",
-                messageCount: 4,
-                totalCreditsUsed: 12,
-                updatedAt: "2026-04-09T09:00:00.000Z",
-                projectId: "ops",
-              },
-              {
-                id: 2,
-                title: "Personal Finance",
-                messageCount: 3,
-                totalCreditsUsed: 0,
-                updatedAt: "2026-04-09T10:00:00.000Z",
-                projectId: "personal",
-              },
-            ],
-            total: 2,
-          },
-          isLoading: false,
-        })),
+        useQuery: chatListConversationsUseQuery,
+      },
+      getPersonalConversation: {
+        useQuery: getPersonalConversationUseQuery,
       },
       getConversation: {
         useQuery: vi.fn(() => ({
@@ -521,6 +560,20 @@ vi.mock("@/lib/trpc", () => ({
           isLoading: false,
         })),
       },
+      createPersonalConversation: {
+        useMutation: vi.fn(() => ({ mutateAsync: vi.fn(), isPending: false })),
+      },
+    },
+    users: {
+      getPreferences: {
+        useQuery: vi.fn(() => ({
+          data: { privateVault: { enabled: false } },
+          isLoading: false,
+        })),
+      },
+      unlockPrivateVault: {
+        useMutation: vi.fn(() => ({ mutateAsync: vi.fn(), isPending: false })),
+      },
     },
     finance: {
       getDailySummary: {
@@ -529,6 +582,13 @@ vi.mock("@/lib/trpc", () => ({
             incomeMinor: 125000,
             expenseMinor: 42000,
             balanceMinor: 83000,
+            rangeStart: "2026-04-09T00:00:00.000Z",
+            rangeEnd: "2026-04-10T00:00:00.000Z",
+            timezone: "Asia/Bangkok",
+            tenantId: "tenant-77",
+            projectId: "personal",
+            transferMinor: 0,
+            granularity: "day",
           },
           isLoading: false,
         })),
@@ -540,6 +600,12 @@ vi.mock("@/lib/trpc", () => ({
             expenseMinor: 210000,
             transferMinor: 0,
             balanceMinor: 300000,
+            rangeStart: "2026-04-01T00:00:00.000Z",
+            rangeEnd: "2026-05-01T00:00:00.000Z",
+            timezone: "Asia/Bangkok",
+            tenantId: "tenant-77",
+            projectId: "personal",
+            granularity: "month",
           },
           isLoading: false,
         })),
@@ -554,6 +620,7 @@ vi.mock("@/lib/trpc", () => ({
               currency: "THB",
               merchantName: "Lunch",
               categoryCode: "food",
+              source: "ocr_document",
               confidence: 0.88,
               needsClarification: false,
               createdAt: "2026-04-09T08:30:00.000Z",
@@ -573,11 +640,26 @@ vi.mock("@/lib/trpc", () => ({
               currency: "THB",
               merchantName: "Cafe",
               categoryCode: "food",
+              source: "chat_text",
               status: "confirmed",
               occurredAt: "2026-04-09T07:45:00.000Z",
             },
           ],
           isLoading: false,
+        })),
+      },
+      searchFinanceEvidence: {
+        useQuery: vi.fn(() => ({
+          data: {
+            query: null,
+            searchResults: null,
+            linkedDocuments: [],
+            projectId: "personal",
+            personal: true,
+          },
+          isLoading: false,
+          isFetching: false,
+          refetch: vi.fn(),
         })),
       },
       listRecurringRules: {
@@ -778,6 +860,41 @@ describe("Dashboard", () => {
     expect(screen.getByText("Today income")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Recent Transactions" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^Finance$/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Open Finance Panel/i })).toBeInTheDocument();
+  });
+
+  it("recovers the locked personal finance conversation even when the paginated chat list omits it", () => {
+    chatListConversationsUseQuery.mockReturnValueOnce({
+      data: {
+        conversations: [
+          {
+            id: 1,
+            title: "Weekly Ops",
+            messageCount: 4,
+            totalCreditsUsed: 12,
+            updatedAt: "2026-04-09T09:00:00.000Z",
+            projectId: "ops",
+          },
+        ],
+        total: 1,
+      },
+      isLoading: false,
+    });
+    getPersonalConversationUseQuery.mockReturnValueOnce({
+      data: {
+        id: 99,
+        title: "Personal Finance",
+        messageCount: 7,
+        totalCreditsUsed: 0,
+        updatedAt: "2026-04-09T10:00:00.000Z",
+        projectId: "personal",
+      },
+      isLoading: false,
+    });
+
+    render(<Dashboard />);
+
+    expect(screen.getByRole("heading", { name: "Personal Finance" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Open Finance Panel/i })).toBeInTheDocument();
   });
 

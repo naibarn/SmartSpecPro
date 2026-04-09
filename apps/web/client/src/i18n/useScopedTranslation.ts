@@ -70,21 +70,25 @@ export function useScopedTranslation(defaultNamespaces: Namespace | Namespace[])
     [i18n],
   );
 
-  function t(key: string, params?: Record<string, string | number>) {
+  function t(key: string, params?: string | Record<string, string | number>) {
+    const options =
+      typeof params === "string"
+        ? { defaultValue: params }
+        : (params ?? {});
     const candidates = buildCandidates(key);
     for (const ns of namespaces) {
       if (i18n.exists(key, { ns })) {
-        return i18nT(key, { ns, ...(params ?? {}) }) as string;
+        return i18nT(key, { ns, ...options }) as string;
       }
     }
 
     for (const candidate of candidates) {
       if (i18n.exists(candidate.key, { ns: candidate.ns })) {
-        return i18nT(candidate.key, { ns: candidate.ns, ...(params ?? {}) }) as string;
+        return i18nT(candidate.key, { ns: candidate.ns, ...options }) as string;
       }
     }
 
-    return i18nT(key, { ns: namespaces, ...(params ?? {}) }) as string;
+    return i18nT(key, { ns: namespaces, ...options }) as string;
   }
 
   return { t, i18n, locale, setLocale };

@@ -2,14 +2,23 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 
 import { protectedProcedure, router } from "../_core/trpc";
+import { auditLogger } from "../services/auditLogger";
 import { resolveTenantIdVarchar } from "../services/tenantContext";
-import { financeStructuredDraftSchema, financeTransactionStatusSchema, financeTransactionTypeSchema } from "../../shared/finance";
+import {
+  financeDraftStatusSchema,
+  financeRecurringRuleStatusSchema,
+  financeStructuredDraftSchema,
+  financeTransactionStatusSchema,
+  financeTransactionTypeSchema,
+} from "../../shared/finance";
 import {
   confirmDraft,
   createRecurringRule,
   getDailySummary,
   getMonthlySummary,
+  listDrafts,
   listLinkedDocuments,
+  listRecurringRules,
   listTransactions,
   // OCR ingestion is handled in a dedicated service to keep document parsing isolated.
   // The router still exposes a chat-friendly entrypoint for the upload-to-draft flow.
@@ -22,6 +31,12 @@ import {
 } from "../services/financeService";
 import { ingestFinanceDocumentFromLibraryItem } from "../services/financeDocumentExtractionService";
 import { searchFinanceEvidence } from "../services/financeRetrievalService";
+import { exportMarkdownArtifact as generateMarkdownExportArtifact } from "../services/markdownExport";
+import {
+  getPrivateVaultPinVersion,
+  normalizePrivateVaultPrefs,
+  validatePrivateVaultAccessToken,
+} from "../services/privateVaultService";
 
 const draftPatchSchema = financeStructuredDraftSchema
   .partial()
@@ -46,6 +61,8 @@ const recurringScheduleSchema = z.object({
 const parseTextToDraftSchema = z.object({
   conversationId: z.number().int().positive(),
   text: z.string().min(1).max(10_000),
+  categoryHint: z.string().max(128).nullable().optional(),
+  typeHint: financeTransactionTypeSchema.nullable().optional(),
   sourceMessageId: z.number().int().positive().nullable().optional(),
   model: z.string().max(128).optional(),
   idempotencyKey: z.string().max(256).optional(),
@@ -85,6 +102,7 @@ const voidTransactionSchema = z.object({
 const listTransactionsSchema = z.object({
   conversationId: z.number().int().positive(),
   status: financeTransactionStatusSchema.optional().nullable(),
+  type: financeTransactionTypeSchema.optional().nullable(),
   categoryCode: z.string().max(64).optional(),
   merchant: z.string().max(255).optional(),
   fromDate: z.coerce.date().optional(),
@@ -121,6 +139,20 @@ const recurringRuleIdSchema = z.object({
   recurringRuleId: z.number().int().positive(),
 });
 
+const listDraftsSchema = z.object({
+  conversationId: z.number().int().positive(),
+  status: financeDraftStatusSchema.optional().nullable(),
+  limit: z.number().int().min(1).max(50).optional(),
+  offset: z.number().int().min(0).optional(),
+});
+
+const listRecurringRulesSchema = z.object({
+  conversationId: z.number().int().positive(),
+  status: financeRecurringRuleStatusSchema.optional().nullable(),
+  limit: z.number().int().min(1).max(50).optional(),
+  offset: z.number().int().min(0).optional(),
+});
+
 const linkedDocumentsSchema = z.object({
   conversationId: z.number().int().positive(),
   transactionId: z.number().int().positive(),
@@ -133,6 +165,12 @@ const searchEvidenceSchema = z.object({
   limit: z.number().int().min(1).max(50).optional(),
 });
 
+const exportReportPdfSchema = z.object({
+  conversationId: z.number().int().positive(),
+  title: z.string().min(1).max(255).optional(),
+  markdown: z.string().min(1).max(5_000_000),
+});
+
 function resolveTenantId(ctx: { tenantId: string | null; user: { currentTenantId?: string | number | null } }): string | null {
   return resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId ?? null);
 }
@@ -141,11 +179,55 @@ function normalizeTenantIdOrNull(value: string | null): string | null {
   return value && value.trim() ? value.trim() : null;
 }
 
+async function ensureFinanceAccess(ctx: {
+  user: { id: number; currentTenantId?: string | number | null; userPreferences?: unknown };
+  tenantId: string | null;
+  privateVaultToken: string | null;
+}): Promise<string> {
+  const tenantId = normalizeTenantIdOrNull(resolveTenantId(ctx));
+  if (!tenantId) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Tenant context is required for finance operations",
+    });
+  }
+
+  const privateVaultPrefs = normalizePrivateVaultPrefs(ctx.user.userPreferences);
+  const vaultEnabled = Boolean(privateVaultPrefs?.enabled && privateVaultPrefs.pinHash);
+  if (!vaultEnabled) {
+    return tenantId;
+  }
+
+  const pinVersion = getPrivateVaultPinVersion(ctx.user.userPreferences);
+  if (!ctx.privateVaultToken) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Unlock your private vault to access finance data",
+    });
+  }
+
+  const unlocked = await validatePrivateVaultAccessToken({
+    token: ctx.privateVaultToken,
+    userId: ctx.user.id,
+    tenantId,
+    pinVersion,
+  });
+
+  if (!unlocked) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Unlock your private vault to access finance data",
+    });
+  }
+
+  return tenantId;
+}
+
 export const financeRouter = router({
   parseTextToDraft: protectedProcedure
     .input(parseTextToDraftSchema)
     .mutation(async ({ input, ctx }) => {
-      const tenantId = normalizeTenantIdOrNull(resolveTenantId(ctx));
+      const tenantId = await ensureFinanceAccess(ctx);
       return await parseTextToDraft({
         ...input,
         userId: ctx.user.id,
@@ -156,7 +238,7 @@ export const financeRouter = router({
   parseDocumentToDraft: protectedProcedure
     .input(parseDocumentToDraftSchema)
     .mutation(async ({ input, ctx }) => {
-      const tenantId = normalizeTenantIdOrNull(resolveTenantId(ctx));
+      const tenantId = await ensureFinanceAccess(ctx);
       return await parseDocumentToDraft({
         ...input,
         userId: ctx.user.id,
@@ -167,7 +249,7 @@ export const financeRouter = router({
   ingestFinanceDocument: protectedProcedure
     .input(ingestFinanceDocumentSchema)
     .mutation(async ({ input, ctx }) => {
-      const tenantId = normalizeTenantIdOrNull(resolveTenantId(ctx));
+      const tenantId = await ensureFinanceAccess(ctx);
       return await ingestFinanceDocumentFromLibraryItem({
         ...input,
         userId: ctx.user.id,
@@ -178,7 +260,7 @@ export const financeRouter = router({
   searchFinanceEvidence: protectedProcedure
     .input(searchEvidenceSchema)
     .query(async ({ input, ctx }) => {
-      const tenantId = normalizeTenantIdOrNull(resolveTenantId(ctx));
+      const tenantId = await ensureFinanceAccess(ctx);
       return await searchFinanceEvidence({
         ...input,
         userId: ctx.user.id,
@@ -186,10 +268,41 @@ export const financeRouter = router({
       });
     }),
 
+  exportReportPdf: protectedProcedure
+    .input(exportReportPdfSchema)
+    .mutation(async ({ input, ctx }) => {
+      const tenantId = await ensureFinanceAccess(ctx);
+      const artifact = await generateMarkdownExportArtifact({
+        markdown: input.markdown,
+        title: input.title ?? "Finance report",
+        format: "pdf",
+      });
+
+      auditLogger.log({
+        eventType: "finance_report_exported",
+        userId: ctx.user.id,
+        endpoint: "finance.exportReportPdf",
+        requestType: "mutation",
+        requestPayload: {
+          tenantId,
+          conversationId: input.conversationId,
+          title: input.title ?? "Finance report",
+          markdownLength: input.markdown.length,
+        },
+        responsePayload: {
+          fileName: artifact.fileName,
+          mimeType: artifact.mimeType,
+          dataBase64Length: artifact.dataBase64.length,
+        },
+      });
+
+      return artifact;
+    }),
+
   updateDraft: protectedProcedure
     .input(updateDraftSchema)
     .mutation(async ({ input, ctx }) => {
-      const tenantId = normalizeTenantIdOrNull(resolveTenantId(ctx));
+      const tenantId = await ensureFinanceAccess(ctx);
       return await updateDraft({
         ...input,
         userId: ctx.user.id,
@@ -200,7 +313,7 @@ export const financeRouter = router({
   confirmDraft: protectedProcedure
     .input(confirmDraftSchema)
     .mutation(async ({ input, ctx }) => {
-      const tenantId = normalizeTenantIdOrNull(resolveTenantId(ctx));
+      const tenantId = await ensureFinanceAccess(ctx);
       return await confirmDraft({
         ...input,
         userId: ctx.user.id,
@@ -211,7 +324,7 @@ export const financeRouter = router({
   voidTransaction: protectedProcedure
     .input(voidTransactionSchema)
     .mutation(async ({ input, ctx }) => {
-      const tenantId = normalizeTenantIdOrNull(resolveTenantId(ctx));
+      const tenantId = await ensureFinanceAccess(ctx);
       return await voidTransaction({
         ...input,
         userId: ctx.user.id,
@@ -222,7 +335,7 @@ export const financeRouter = router({
   listTransactions: protectedProcedure
     .input(listTransactionsSchema)
     .query(async ({ input, ctx }) => {
-      const tenantId = normalizeTenantIdOrNull(resolveTenantId(ctx));
+      const tenantId = await ensureFinanceAccess(ctx);
       return await listTransactions({
         ...input,
         userId: ctx.user.id,
@@ -232,10 +345,36 @@ export const financeRouter = router({
       });
     }),
 
+  listDrafts: protectedProcedure
+    .input(listDraftsSchema)
+    .query(async ({ input, ctx }) => {
+      const tenantId = await ensureFinanceAccess(ctx);
+      return await listDrafts({
+        ...input,
+        userId: ctx.user.id,
+        tenantId,
+        limit: input.limit ?? 10,
+        offset: input.offset ?? 0,
+      });
+    }),
+
+  listRecurringRules: protectedProcedure
+    .input(listRecurringRulesSchema)
+    .query(async ({ input, ctx }) => {
+      const tenantId = await ensureFinanceAccess(ctx);
+      return await listRecurringRules({
+        ...input,
+        userId: ctx.user.id,
+        tenantId,
+        limit: input.limit ?? 10,
+        offset: input.offset ?? 0,
+      });
+    }),
+
   getDailySummary: protectedProcedure
     .input(summaryInputSchema)
     .query(async ({ input, ctx }) => {
-      const tenantId = normalizeTenantIdOrNull(resolveTenantId(ctx));
+      const tenantId = await ensureFinanceAccess(ctx);
       return await getDailySummary({
         ...input,
         userId: ctx.user.id,
@@ -246,7 +385,7 @@ export const financeRouter = router({
   getMonthlySummary: protectedProcedure
     .input(summaryInputSchema)
     .query(async ({ input, ctx }) => {
-      const tenantId = normalizeTenantIdOrNull(resolveTenantId(ctx));
+      const tenantId = await ensureFinanceAccess(ctx);
       return await getMonthlySummary({
         ...input,
         userId: ctx.user.id,
@@ -257,7 +396,7 @@ export const financeRouter = router({
   createRecurringRule: protectedProcedure
     .input(recurringRuleSchema)
     .mutation(async ({ input, ctx }) => {
-      const tenantId = normalizeTenantIdOrNull(resolveTenantId(ctx));
+      const tenantId = await ensureFinanceAccess(ctx);
       return await createRecurringRule({
         ...input,
         userId: ctx.user.id,
@@ -268,7 +407,7 @@ export const financeRouter = router({
   pauseRecurringRule: protectedProcedure
     .input(recurringRuleIdSchema)
     .mutation(async ({ input, ctx }) => {
-      const tenantId = normalizeTenantIdOrNull(resolveTenantId(ctx));
+      const tenantId = await ensureFinanceAccess(ctx);
       return await pauseRecurringRule({
         ...input,
         userId: ctx.user.id,
@@ -279,7 +418,7 @@ export const financeRouter = router({
   resumeRecurringRule: protectedProcedure
     .input(recurringRuleIdSchema)
     .mutation(async ({ input, ctx }) => {
-      const tenantId = normalizeTenantIdOrNull(resolveTenantId(ctx));
+      const tenantId = await ensureFinanceAccess(ctx);
       return await resumeRecurringRule({
         ...input,
         userId: ctx.user.id,
@@ -290,7 +429,7 @@ export const financeRouter = router({
   listLinkedDocuments: protectedProcedure
     .input(linkedDocumentsSchema)
     .query(async ({ input, ctx }) => {
-      const tenantId = normalizeTenantIdOrNull(resolveTenantId(ctx));
+      const tenantId = await ensureFinanceAccess(ctx);
       return await listLinkedDocuments({
         ...input,
         userId: ctx.user.id,

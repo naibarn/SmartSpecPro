@@ -105,9 +105,10 @@ describe("financeRetrievalService", () => {
       expect.objectContaining({
         query: "receipt",
         limit: 10,
-        scope: "all",
+        scope: "my_library",
         filters: expect.objectContaining({
           projectId: "personal",
+          ownerUserId: 7,
         }),
       }),
       expect.objectContaining({

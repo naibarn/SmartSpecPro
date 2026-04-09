@@ -1,7 +1,7 @@
-import { useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
 import { toast } from "sonner";
-import { Loader2, ReceiptText, Upload, CheckCircle2, ArrowDownRight, ArrowUpRight, Pause, Play, FileText, Wallet, Sparkles } from "lucide-react";
+import { Loader2, ReceiptText, Upload, CheckCircle2, ArrowDownRight, ArrowUpRight, Pause, Play, FileText, Wallet, Sparkles, Search, Mic, MicOff } from "lucide-react";
 
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   DashboardCard,
   DashboardKpiCard,
@@ -17,15 +18,27 @@ import {
   dashboardMetaLineClass,
 } from "@/components/dashboard";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
+import { usePushToTalk } from "@/hooks/usePushToTalk";
 
 const DEFAULT_CURRENCY = "THB";
 
 export interface FinanceHubProps {
   conversationId: number | null;
+  surface?: "panel" | "dashboard" | "page";
   compact?: boolean;
   className?: string;
   onCreatePersonalChat?: () => Promise<void> | void;
   onOpenFinancePanel?: () => void;
+  onMirrorFinanceActivity?: (message: {
+    content: string;
+    artifacts: Array<{
+      id: string;
+      type: "markdown" | "table" | "chart";
+      title?: string;
+      content: string | string[];
+      metadata?: Record<string, unknown>;
+    }>;
+  }) => Promise<void> | void;
 }
 
 function formatMoneyMinor(amountMinor: number | string | null | undefined, currency = DEFAULT_CURRENCY): string {
@@ -92,17 +105,66 @@ function getTransactionTypeLabel(type: string): string {
   }
 }
 
+function getFinanceSourceLabel(source: string): string {
+  switch (source) {
+    case "ocr_document":
+      return "OCR receipt";
+    case "chat_text":
+      return "Chat draft";
+    case "recurring_rule":
+      return "Recurring rule";
+    case "api":
+      return "API";
+    case "import":
+      return "Import";
+    default:
+      return source;
+  }
+}
+
+type FinanceDraftPayload = {
+  amountMinor?: number;
+  currency?: string;
+  categoryCode?: string;
+  merchantName?: string | null;
+  note?: string | null;
+  occurredAt?: string;
+};
+
+function getDraftPayload(draft: { payloadJson?: Record<string, unknown> | null }): FinanceDraftPayload {
+  return (draft.payloadJson ?? {}) as FinanceDraftPayload;
+}
+
 export function FinanceHub({
   conversationId,
+  surface = "panel",
   compact = false,
   className,
   onCreatePersonalChat,
   onOpenFinancePanel,
+  onMirrorFinanceActivity,
 }: FinanceHubProps) {
   const { t } = useScopedTranslation("dashboard");
   const utils = trpc.useUtils();
   const receiptInputRef = useRef<HTMLInputElement>(null);
+  const draftTextareaRef = useRef<HTMLTextAreaElement>(null);
   const [draftText, setDraftText] = useState("");
+  const [draftCategoryHint, setDraftCategoryHint] = useState("");
+  const [draftTypeHint, setDraftTypeHint] = useState<"auto" | "income" | "expense" | "transfer">("auto");
+  const [selectedEvidenceTransactionId, setSelectedEvidenceTransactionId] = useState<number | null>(null);
+  const [evidenceSearchText, setEvidenceSearchText] = useState("");
+
+  const { isRecording, isTranscribing, startRecording, stopRecording } = usePushToTalk({
+    onTranscription: (text) => {
+      setDraftText((current) => {
+        const trimmed = current.trim();
+        return trimmed ? `${trimmed} ${text}` : text;
+      });
+      draftTextareaRef.current?.focus();
+    },
+    onError: (message) => toast.error(message),
+    maxRecordingMs: 60_000,
+  });
 
   const conversationQuery = trpc.chat.getConversation.useQuery(
     { id: conversationId ?? 0 },
@@ -139,10 +201,49 @@ export function FinanceHub({
     { conversationId: conversationId ?? 0, status: "active", limit: recurringLimit },
     { enabled: financeReady },
   );
+  const monthlyTransactionsQuery = trpc.finance.listTransactions.useQuery(
+    {
+      conversationId: conversationId ?? 0,
+      status: "confirmed",
+      fromDate: monthlySummaryQuery.data?.rangeStart ? new Date(monthlySummaryQuery.data.rangeStart) : undefined,
+      toDate: monthlySummaryQuery.data?.rangeEnd ? new Date(monthlySummaryQuery.data.rangeEnd) : undefined,
+      limit: compact ? 25 : 100,
+    },
+    { enabled: financeReady && Boolean(monthlySummaryQuery.data?.rangeStart && monthlySummaryQuery.data?.rangeEnd) },
+  );
+  const financeEvidenceQuery = trpc.finance.searchFinanceEvidence.useQuery(
+    {
+      conversationId: conversationId ?? 0,
+      transactionId: selectedEvidenceTransactionId ?? undefined,
+      query: evidenceSearchText.trim() || undefined,
+      limit: compact ? 3 : 5,
+    },
+    {
+      enabled:
+        financeReady
+        && (selectedEvidenceTransactionId !== null || evidenceSearchText.trim().length > 0),
+    },
+  );
+
+  const invalidateMonthlyConfirmedTransactions = async () => {
+    if (!conversationId || !monthlySummaryQuery.data?.rangeStart || !monthlySummaryQuery.data?.rangeEnd) {
+      return;
+    }
+
+    await utils.finance.listTransactions.invalidate({
+      conversationId,
+      status: "confirmed",
+      fromDate: new Date(monthlySummaryQuery.data.rangeStart),
+      toDate: new Date(monthlySummaryQuery.data.rangeEnd),
+      limit: compact ? 25 : 100,
+    });
+  };
 
   const parseTextMutation = trpc.finance.parseTextToDraft.useMutation({
     onSuccess: async () => {
       setDraftText("");
+      setDraftCategoryHint("");
+      setDraftTypeHint("auto");
       await Promise.all([
         utils.finance.listDrafts.invalidate({ conversationId: conversationId ?? 0, limit: draftLimit }),
         utils.finance.getDailySummary.invalidate({ conversationId: conversationId ?? 0 }),
@@ -157,11 +258,7 @@ export function FinanceHub({
     onSuccess: async () => {
       await Promise.all([
         utils.finance.listDrafts.invalidate({ conversationId: conversationId ?? 0, limit: draftLimit }),
-        utils.finance.listTransactions.invalidate({
-          conversationId: conversationId ?? 0,
-          status: "confirmed",
-          limit: transactionLimit,
-        }),
+        invalidateMonthlyConfirmedTransactions(),
         utils.finance.getDailySummary.invalidate({ conversationId: conversationId ?? 0 }),
         utils.finance.getMonthlySummary.invalidate({ conversationId: conversationId ?? 0 }),
       ]);
@@ -173,11 +270,7 @@ export function FinanceHub({
   const voidTransactionMutation = trpc.finance.voidTransaction.useMutation({
     onSuccess: async () => {
       await Promise.all([
-        utils.finance.listTransactions.invalidate({
-          conversationId: conversationId ?? 0,
-          status: "confirmed",
-          limit: transactionLimit,
-        }),
+        invalidateMonthlyConfirmedTransactions(),
         utils.finance.getDailySummary.invalidate({ conversationId: conversationId ?? 0 }),
         utils.finance.getMonthlySummary.invalidate({ conversationId: conversationId ?? 0 }),
       ]);
@@ -230,11 +323,7 @@ export function FinanceHub({
 
     await Promise.all([
       utils.finance.listDrafts.invalidate({ conversationId, limit: draftLimit }),
-      utils.finance.listTransactions.invalidate({
-        conversationId,
-        status: "confirmed",
-        limit: transactionLimit,
-      }),
+      invalidateMonthlyConfirmedTransactions(),
       utils.finance.listRecurringRules.invalidate({
         conversationId,
         status: "active",
@@ -250,10 +339,50 @@ export function FinanceHub({
       return;
     }
 
-    await parseTextMutation.mutateAsync({
+    const draft = await parseTextMutation.mutateAsync({
       conversationId,
       text: draftText.trim(),
+      categoryHint: draftCategoryHint.trim() || null,
+      typeHint: draftTypeHint === "auto" ? null : draftTypeHint,
     });
+    const draftPayload = getDraftPayload(draft);
+    if (onMirrorFinanceActivity) {
+      try {
+        await onMirrorFinanceActivity({
+          content: `Created a finance draft from chat text: ${draftPayload.merchantName ?? draftPayload.categoryCode ?? "draft"}`,
+          artifacts: [
+            {
+              id: `finance-draft-${draft.id}`,
+              type: "table",
+              title: "Finance draft",
+              content: [
+                `Type: ${getTransactionTypeLabel(draft.type)}`,
+                `Amount: ${formatMoneyMinor(draftPayload.amountMinor, draftPayload.currency)}`,
+                `Category: ${draftPayload.categoryCode ?? "uncategorized"}`,
+                `Source: ${getFinanceSourceLabel(draft.source)}`,
+              ],
+              metadata: {
+                finance: {
+                  kind: "draft",
+                  draftId: draft.id,
+                  type: draft.type,
+                  amountMinor: draftPayload.amountMinor ?? null,
+                  currency: draftPayload.currency ?? DEFAULT_CURRENCY,
+                  categoryCode: draftPayload.categoryCode ?? "uncategorized",
+                  merchantName: draftPayload.merchantName ?? null,
+                  source: draft.source,
+                  status: draft.status,
+                  confidence: draft.confidence,
+                  projectId: conversationQuery.data?.projectId ?? null,
+                },
+              },
+            },
+          ],
+        });
+      } catch {
+        // Best-effort mirror to chat; do not block finance drafting if chat persistence fails.
+      }
+    }
     await refreshFinance();
   };
 
@@ -283,11 +412,52 @@ export function FinanceHub({
       throw new Error("Upload response missing library item id");
     }
 
-    await ingestDocumentMutation.mutateAsync({
+    const result = await ingestDocumentMutation.mutateAsync({
       conversationId,
       libraryItemId,
       idempotencyKey: `finance-ocr:${conversationId}:${libraryItemId}`,
     });
+    const draft = (result as { draft?: { id: number; type: string; source?: string; status?: string; confidence?: string | number | null; payloadJson: Record<string, unknown> } | null } | null)?.draft;
+    if (draft && onMirrorFinanceActivity) {
+      const draftPayload = getDraftPayload(draft);
+      try {
+        await onMirrorFinanceActivity({
+          content: `Receipt OCR created a ${draft.type} draft for ${draftPayload.merchantName ?? draftPayload.categoryCode ?? "draft"}.`,
+          artifacts: [
+            {
+              id: `finance-ocr-${libraryItemId}`,
+              type: "table",
+              title: "OCR receipt",
+              content: [
+                `Receipt: ${file.name}`,
+                `Draft type: ${getTransactionTypeLabel(draft.type)}`,
+                `Amount: ${formatMoneyMinor(draftPayload.amountMinor, draftPayload.currency)}`,
+                `Category: ${draftPayload.categoryCode ?? "uncategorized"}`,
+                `Source: OCR receipt`,
+              ],
+              metadata: {
+                finance: {
+                  kind: "receipt",
+                  draftId: draft.id,
+                  type: draft.type,
+                  amountMinor: draftPayload.amountMinor ?? null,
+                  currency: draftPayload.currency ?? DEFAULT_CURRENCY,
+                  categoryCode: draftPayload.categoryCode ?? "uncategorized",
+                  merchantName: draftPayload.merchantName ?? null,
+                  source: draft.source ?? "ocr_document",
+                  status: draft.status ?? "draft",
+                  confidence: draft.confidence ?? null,
+                  projectId: conversationQuery.data?.projectId ?? null,
+                  libraryItemId,
+                },
+              },
+            },
+          ],
+        });
+      } catch {
+        // Best-effort mirror to chat; the OCR draft is already persisted.
+      }
+    }
   };
 
   const summaryCards = financeReady ? [
@@ -320,6 +490,82 @@ export function FinanceHub({
       bg: "bg-amber-50",
     },
   ] : [];
+
+  const openDrafts = draftsQuery.data ?? [];
+  const recentTransactions = transactionsQuery.data ?? [];
+  const recurringRules = recurringRulesQuery.data ?? [];
+  const monthlyTransactions = monthlyTransactionsQuery.data ?? [];
+  const monthlyCategoryBreakdown = useMemo(() => {
+    const buckets = new Map<string, {
+      categoryCode: string;
+      count: number;
+      expenseMinor: number;
+      incomeMinor: number;
+    }>();
+
+    for (const transaction of monthlyTransactions) {
+      const categoryCode = transaction.categoryCode || "uncategorized";
+      const bucket = buckets.get(categoryCode) ?? {
+        categoryCode,
+        count: 0,
+        expenseMinor: 0,
+        incomeMinor: 0,
+      };
+      bucket.count += 1;
+      if (transaction.type === "income") {
+        bucket.incomeMinor += transaction.amountMinor;
+      } else if (transaction.type === "expense") {
+        bucket.expenseMinor += transaction.amountMinor;
+      }
+      buckets.set(categoryCode, bucket);
+    }
+
+    return Array.from(buckets.values())
+      .sort((left, right) => (right.expenseMinor + right.incomeMinor) - (left.expenseMinor + left.incomeMinor))
+      .slice(0, compact ? 3 : 5);
+  }, [compact, monthlyTransactions]);
+  const monthlyTransactionTotalMinor = useMemo(
+    () => monthlyTransactions.reduce((sum, transaction) => sum + transaction.amountMinor, 0),
+    [monthlyTransactions],
+  );
+
+  const dueSoonRecurringRules = useMemo(() => {
+    const now = Date.now();
+    const soonThreshold = now + 14 * 24 * 60 * 60 * 1000;
+    return recurringRules
+      .filter((rule) => {
+        if (!rule.nextRunAt) {
+          return false;
+        }
+        const nextRunAt = new Date(rule.nextRunAt).getTime();
+        return Number.isFinite(nextRunAt) && nextRunAt >= now && nextRunAt <= soonThreshold;
+      })
+      .sort((left, right) => new Date(left.nextRunAt ?? 0).getTime() - new Date(right.nextRunAt ?? 0).getTime())
+      .slice(0, compact ? 2 : 4);
+  }, [compact, recurringRules]);
+
+  const evidenceResults = financeEvidenceQuery.data?.searchResults?.results ?? [];
+  const linkedDocuments = financeEvidenceQuery.data?.linkedDocuments ?? [];
+  const activeEvidenceTransaction = useMemo(
+    () => recentTransactions.find((transaction) => transaction.id === selectedEvidenceTransactionId) ?? recentTransactions[0] ?? null,
+    [recentTransactions, selectedEvidenceTransactionId],
+  );
+  const summaryGridClass = surface === "page"
+    ? "grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
+    : surface === "dashboard"
+      ? "grid gap-3 sm:grid-cols-2"
+      : "grid gap-3 md:grid-cols-2";
+  const sectionsGridClass = surface === "page"
+    ? "grid gap-4 xl:grid-cols-3"
+    : surface === "dashboard"
+      ? "grid gap-4 lg:grid-cols-2"
+      : "grid gap-4";
+
+  useEffect(() => {
+    if (selectedEvidenceTransactionId === null && recentTransactions.length > 0) {
+      setSelectedEvidenceTransactionId(recentTransactions[0].id);
+    }
+  }, [recentTransactions, selectedEvidenceTransactionId]);
 
   const lockedState = (
     <div className="space-y-4">
@@ -355,12 +601,8 @@ export function FinanceHub({
     </div>
   );
 
-  const openDrafts = draftsQuery.data ?? [];
-  const recentTransactions = transactionsQuery.data ?? [];
-  const recurringRules = recurringRulesQuery.data ?? [];
-
   return (
-    <div className={cn("space-y-4", className)}>
+    <div className={cn("space-y-4", surface === "page" ? "rounded-[32px] border border-slate-200/80 bg-white/90 p-5 shadow-[0_24px_70px_rgba(15,23,42,0.08)] backdrop-blur-xl" : "", className)}>
       <DashboardCard
         eyebrow={t("dashboard:finance.eyebrow")}
         title={t("dashboard:finance.title")}
@@ -374,7 +616,7 @@ export function FinanceHub({
       >
         {financeReady ? (
           <div className="space-y-4">
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className={summaryGridClass}>
               {summaryCards.map((card) => (
                 <DashboardKpiCard
                   key={card.label}
@@ -389,23 +631,77 @@ export function FinanceHub({
 
             {!compact ? (
               <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
-                <div className="flex items-center gap-2">
-                  <ReceiptText className="h-4 w-4 text-slate-600" />
-                  <p className="text-sm font-semibold text-slate-900">
-                    {t("dashboard:finance.quick.title")}
-                  </p>
+              <div className="flex items-center gap-2">
+                <ReceiptText className="h-4 w-4 text-slate-600" />
+                <p className="text-sm font-semibold text-slate-900">
+                  {t("dashboard:finance.quick.title")}
+                </p>
                 </div>
                 <p className={`mt-1 ${dashboardCardDescriptionClass}`}>
                   {t("dashboard:finance.quick.description")}
                 </p>
                 <div className="mt-4 space-y-3">
                   <Textarea
+                    ref={draftTextareaRef}
                     value={draftText}
                     onChange={(event) => setDraftText(event.target.value)}
                     placeholder={t("dashboard:finance.quick.textPlaceholder")}
-                    className="min-h-[100px] bg-white"
+                    className="min-h-[118px] bg-white"
                   />
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Input
+                      value={draftCategoryHint}
+                      onChange={(event) => setDraftCategoryHint(event.target.value)}
+                      placeholder={t(
+                        "dashboard:finance.quick.categoryPlaceholder",
+                        "Custom category hint, e.g. taxi / coffee / rent",
+                      )}
+                      className="bg-white"
+                    />
+                    <Select
+                      value={draftTypeHint}
+                      onValueChange={(value) => setDraftTypeHint(value as typeof draftTypeHint)}
+                    >
+                      <SelectTrigger className="bg-white">
+                        <SelectValue placeholder={t("dashboard:finance.quick.intentLabel", "Intent")} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="auto">{t("dashboard:finance.quick.intent.auto", "Auto intent")}</SelectItem>
+                        <SelectItem value="income">{t("dashboard:finance.quick.intent.income", "Income")}</SelectItem>
+                        <SelectItem value="expense">{t("dashboard:finance.quick.intent.expense", "Expense")}</SelectItem>
+                        <SelectItem value="transfer">{t("dashboard:finance.quick.intent.transfer", "Transfer")}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <p className="text-xs leading-5 text-slate-500">
+                    {t(
+                      "dashboard:finance.quick.categoryHelper",
+                      "If the category is unclear, type your own label here and the parser will still infer whether the message is income, expense, or transfer."
+                    )}
+                  </p>
                   <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      variant="secondary"
+                      className="gap-2"
+                      onClick={() => {
+                        setDraftText((current) => current.trim() ? current : "Expense: ");
+                        draftTextareaRef.current?.focus();
+                      }}
+                    >
+                      <ArrowDownRight className="h-4 w-4" />
+                      {t("dashboard:finance.quick.addExpense")}
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      className="gap-2"
+                      onClick={() => {
+                        setDraftText((current) => current.trim() ? current : "Income: ");
+                        draftTextareaRef.current?.focus();
+                      }}
+                    >
+                      <ArrowUpRight className="h-4 w-4" />
+                      {t("dashboard:finance.quick.addIncome")}
+                    </Button>
                     <Button
                       className="gap-2"
                       onClick={() => void handleParseText()}
@@ -431,10 +727,35 @@ export function FinanceHub({
                       )}
                       {t("dashboard:finance.quick.upload")}
                     </Button>
+                    <Button
+                      variant={isRecording ? "destructive" : "outline"}
+                      className="gap-2"
+                      onClick={() => {
+                        if (isRecording) {
+                          stopRecording();
+                        } else {
+                          void startRecording();
+                        }
+                      }}
+                      disabled={isTranscribing}
+                    >
+                      {isRecording ? (
+                        <MicOff className="h-4 w-4" />
+                      ) : isTranscribing ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Mic className="h-4 w-4" />
+                      )}
+                      {isRecording
+                        ? t("dashboard:finance.quick.voiceStop", "Stop mic")
+                        : isTranscribing
+                          ? t("dashboard:finance.quick.voiceTranscribing", "Transcribing")
+                          : t("dashboard:finance.quick.voiceInput", "Voice input")}
+                    </Button>
                     <Input
                       ref={receiptInputRef}
                       type="file"
-                      accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,image/*,application/pdf"
+                      accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp"
                       className="hidden"
                       onChange={async (event) => {
                         const file = event.target.files?.[0];
@@ -454,7 +775,7 @@ export function FinanceHub({
               </div>
             ) : null}
 
-            <div className={cn("grid gap-4", compact ? "lg:grid-cols-2" : "xl:grid-cols-3")}>
+            <div className={sectionsGridClass}>
               <DashboardCard
                 eyebrow={t("dashboard:finance.drafts.title")}
                 title={t("dashboard:finance.drafts.title")}
@@ -462,53 +783,59 @@ export function FinanceHub({
               >
                 {openDrafts.length > 0 ? (
                   <div className="space-y-3">
-                    {openDrafts.map((draft) => (
-                      <div key={draft.id} className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="text-sm font-semibold text-slate-900">
-                              {getTransactionTypeLabel(draft.type)}
-                              <span className="ml-2 text-xs text-slate-500">
-                                {formatMoneyMinor(draft.amountMinor, draft.currency)}
-                              </span>
-                            </p>
-                            <p className="mt-1 text-xs leading-5 text-slate-500">
-                              {draft.merchantName ?? t("dashboard:finance.drafts.empty")}
-                            </p>
-                            <p className={dashboardMetaLineClass}>
-                              <span>{draft.categoryCode}</span>
-                              <span className="text-slate-300">|</span>
-                              <span>{formatDateTime(draft.createdAt)}</span>
-                            </p>
+                    {openDrafts.map((draft) => {
+                      const payload = getDraftPayload(draft);
+                      return (
+                        <div key={draft.id} className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold text-slate-900">
+                                {getTransactionTypeLabel(draft.type)}
+                                <span className="ml-2 text-xs text-slate-500">
+                                  {formatMoneyMinor(payload.amountMinor, payload.currency)}
+                                </span>
+                              </p>
+                              <p className="mt-1 text-xs leading-5 text-slate-500">
+                                {payload.merchantName ?? t("dashboard:finance.drafts.empty")}
+                              </p>
+                              <p className={dashboardMetaLineClass}>
+                                <span>{payload.categoryCode ?? "uncategorized"}</span>
+                                <span className="text-slate-300">|</span>
+                                <span>{getFinanceSourceLabel(draft.source)}</span>
+                                <span className="text-slate-300">|</span>
+                                <span>{formatDateTime(draft.createdAt)}</span>
+                              </p>
+                            </div>
+                            <div className="flex shrink-0 flex-col items-end gap-2">
+                              <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-700">
+                                {Number(draft.confidence ?? 0).toFixed(2)}
+                              </Badge>
+                              <Button
+                                size="sm"
+                                className="h-8 gap-1.5"
+                                onClick={async () => {
+                                  if (!conversationId) return;
+                                  const confirmedTransaction = await confirmDraftMutation.mutateAsync({
+                                    conversationId,
+                                    draftId: draft.id,
+                                  });
+                                  setSelectedEvidenceTransactionId(confirmedTransaction.id);
+                                }}
+                                disabled={!financeReady || confirmDraftMutation.isPending}
+                              >
+                                <CheckCircle2 className="h-3.5 w-3.5" />
+                                {t("dashboard:finance.actions.confirm")}
+                              </Button>
+                            </div>
                           </div>
-                          <div className="flex shrink-0 flex-col items-end gap-2">
-                            <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-700">
-                              {Number(draft.confidence ?? 0).toFixed(2)}
-                            </Badge>
-                            <Button
-                              size="sm"
-                              className="h-8 gap-1.5"
-                              onClick={() => {
-                                if (!conversationId) return;
-                                confirmDraftMutation.mutate({
-                                  conversationId,
-                                  draftId: draft.id,
-                                });
-                              }}
-                              disabled={!financeReady || confirmDraftMutation.isPending}
-                            >
-                              <CheckCircle2 className="h-3.5 w-3.5" />
-                              {t("dashboard:finance.actions.confirm")}
-                            </Button>
-                          </div>
+                          {draft.needsClarification ? (
+                            <p className="mt-2 text-xs font-medium text-amber-700">
+                              {t("dashboard:finance.labels.needsAttention")}
+                            </p>
+                          ) : null}
                         </div>
-                        {draft.needsClarification ? (
-                          <p className="mt-2 text-xs font-medium text-amber-700">
-                            {t("dashboard:finance.labels.needsAttention")}
-                          </p>
-                        ) : null}
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="py-4 text-sm text-slate-500">
@@ -541,24 +868,37 @@ export function FinanceHub({
                               <span>{formatDateTime(transaction.occurredAt)}</span>
                               <span className="text-slate-300">|</span>
                               <span>{transaction.status}</span>
+                              <span className="text-slate-300">|</span>
+                              <span>{getFinanceSourceLabel(transaction.source)}</span>
                             </p>
                           </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 gap-1.5 text-slate-600"
-                            onClick={() => {
-                              if (!conversationId) return;
-                              void voidTransactionMutation.mutateAsync({
-                                conversationId,
-                                transactionId: transaction.id,
-                              });
-                            }}
-                            disabled={!financeReady || voidTransactionMutation.isPending}
-                          >
-                            <FileText className="h-3.5 w-3.5" />
-                            {t("dashboard:finance.actions.void")}
-                          </Button>
+                          <div className="flex shrink-0 flex-col items-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 gap-1.5 text-slate-600"
+                              onClick={() => setSelectedEvidenceTransactionId(transaction.id)}
+                            >
+                              <Search className="h-3.5 w-3.5" />
+                              {t("dashboard:finance.report.inspect")}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 gap-1.5 text-slate-600"
+                              onClick={() => {
+                                if (!conversationId) return;
+                                void voidTransactionMutation.mutateAsync({
+                                  conversationId,
+                                  transactionId: transaction.id,
+                                });
+                              }}
+                              disabled={!financeReady || voidTransactionMutation.isPending}
+                            >
+                              <FileText className="h-3.5 w-3.5" />
+                              {t("dashboard:finance.actions.void")}
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -643,6 +983,180 @@ export function FinanceHub({
                 ) : (
                   <div className="py-4 text-sm text-slate-500">
                     {t("dashboard:finance.recurring.empty")}
+                  </div>
+                )}
+              </DashboardCard>
+
+              <DashboardCard
+                eyebrow={t("dashboard:finance.report.categoryBreakdown")}
+                title={t("dashboard:finance.report.categoryBreakdown")}
+                description={t("dashboard:finance.report.categoryBreakdownDescription")}
+              >
+                {monthlyCategoryBreakdown.length > 0 ? (
+                  <div className="space-y-3">
+                    {monthlyCategoryBreakdown.map((category) => {
+                      const totalMinor = category.expenseMinor + category.incomeMinor;
+                      return (
+                        <div key={category.categoryCode} className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold text-slate-900">{category.categoryCode}</p>
+                              <p className="mt-1 text-xs text-slate-500">
+                                {category.count} {category.count === 1 ? "transaction" : "transactions"}
+                              </p>
+                            </div>
+                            <div className="text-right text-xs text-slate-500">
+                              <p className="font-medium text-slate-700">
+                                {formatMoneyMinor(totalMinor)}
+                              </p>
+                              <p className="mt-1">
+                                {category.expenseMinor > 0 ? `Expense ${formatMoneyMinor(category.expenseMinor)}` : ""}
+                                {category.expenseMinor > 0 && category.incomeMinor > 0 ? " · " : ""}
+                                {category.incomeMinor > 0 ? `Income ${formatMoneyMinor(category.incomeMinor)}` : ""}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
+                            <div
+                              className="h-full rounded-full bg-gradient-to-r from-sky-500 to-emerald-500"
+                              style={{
+                                width: `${Math.max(12, Math.min(100, totalMinor > 0 ? Math.round((totalMinor / Math.max(1, monthlyTransactionTotalMinor)) * 100) : 0))}%`,
+                              }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="py-4 text-sm text-slate-500">
+                    {t("dashboard:finance.report.categoryBreakdownEmpty")}
+                  </div>
+                )}
+              </DashboardCard>
+
+              <DashboardCard
+                eyebrow={t("dashboard:finance.report.evidenceTrail")}
+                title={t("dashboard:finance.report.evidenceTrail")}
+                description={t("dashboard:finance.report.evidenceTrailDescription")}
+              >
+                <div className="space-y-3">
+                  <div className="flex flex-wrap gap-2">
+                    {recentTransactions.slice(0, compact ? 2 : 4).map((transaction) => (
+                      <Button
+                        key={transaction.id}
+                        variant={selectedEvidenceTransactionId === transaction.id ? "default" : "outline"}
+                        size="sm"
+                        className="gap-2"
+                        onClick={() => setSelectedEvidenceTransactionId(transaction.id)}
+                      >
+                        <ReceiptText className="h-3.5 w-3.5" />
+                        {formatMoneyMinor(transaction.amountMinor, transaction.currency)}
+                      </Button>
+                    ))}
+                  </div>
+
+                  <div className="space-y-2 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+                    <div className="flex items-center gap-2">
+                      <Search className="h-4 w-4 text-slate-500" />
+                      <Input
+                        value={evidenceSearchText}
+                        onChange={(event) => setEvidenceSearchText(event.target.value)}
+                        placeholder={t("dashboard:finance.report.searchEvidencePlaceholder")}
+                        className="h-9"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        className="gap-2"
+                        onClick={() => void financeEvidenceQuery.refetch()}
+                        disabled={financeEvidenceQuery.isFetching}
+                      >
+                        {financeEvidenceQuery.isFetching ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Search className="h-3.5 w-3.5" />
+                        )}
+                        {t("dashboard:finance.report.searchEvidence")}
+                      </Button>
+                      {activeEvidenceTransaction ? (
+                        <span className="text-xs text-slate-500">
+                          {t("dashboard:finance.report.inspectingTransaction", {
+                            amount: formatMoneyMinor(activeEvidenceTransaction.amountMinor, activeEvidenceTransaction.currency),
+                          })}
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  {linkedDocuments.length > 0 ? (
+                    <div className="space-y-2">
+                      {linkedDocuments.map((link) => (
+                        <div key={link.id} className="rounded-2xl border border-slate-200 bg-slate-50/80 p-3">
+                          <p className="text-sm font-semibold text-slate-900">
+                            {link.libraryItem?.title ?? `Document ${link.libraryItemId}`}
+                          </p>
+                          <p className="mt-1 text-xs text-slate-500">
+                            {link.role}
+                            {link.note ? ` · ${link.note}` : ""}
+                          </p>
+                          <p className="mt-1 text-xs text-slate-400">
+                            {link.libraryItem?.source ?? "library"}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : evidenceResults.length > 0 ? (
+                    <div className="space-y-2">
+                      {evidenceResults.map((result) => (
+                        <div key={result.item_id} className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+                          <p className="text-sm font-semibold text-slate-900">{result.title}</p>
+                          <p className="mt-1 text-xs text-slate-500">
+                            {result.source} · {result.item_type}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="py-4 text-sm text-slate-500">
+                      {t("dashboard:finance.report.evidenceTrailEmpty")}
+                    </div>
+                  )}
+                </div>
+              </DashboardCard>
+
+              <DashboardCard
+                eyebrow={t("dashboard:finance.report.recurringDueSoon")}
+                title={t("dashboard:finance.report.recurringDueSoon")}
+                description={t("dashboard:finance.report.recurringDueSoonDescription")}
+              >
+                {dueSoonRecurringRules.length > 0 ? (
+                  <div className="space-y-3">
+                    {dueSoonRecurringRules.map((rule) => (
+                      <div key={rule.id} className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-slate-900">
+                              {formatMoneyMinor(rule.amountMinor, rule.currency)}
+                              <span className="ml-2 text-xs text-slate-500">{rule.categoryCode}</span>
+                            </p>
+                            <p className="mt-1 text-xs text-slate-500">
+                              {parseRecurringRuleSummary(rule.rrule, rule.nextRunAt, rule.timezone)}
+                            </p>
+                            <p className={dashboardMetaLineClass}>
+                              <span>{getFinanceSourceLabel("recurring_rule")}</span>
+                              <span className="text-slate-300">|</span>
+                              <span>{rule.autoConfirm ? "Auto-confirm" : "Draft first"}</span>
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="py-4 text-sm text-slate-500">
+                    {t("dashboard:finance.report.recurringDueSoonEmpty")}
                   </div>
                 )}
               </DashboardCard>

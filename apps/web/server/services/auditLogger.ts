@@ -107,6 +107,7 @@ export type AuditEventType =
   | "finance_document_ocr_started"
   | "finance_document_ocr_completed"
   | "finance_document_ocr_failed"
+  | "finance_report_exported"
   | "responses_api_call"
   | "web_search_call"
   | "browser_tool_call"

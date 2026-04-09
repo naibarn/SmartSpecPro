@@ -45,6 +45,7 @@ const translationMap: Record<string, string> = {
   "chat.quickBrowserInstruction": "Quick Browser Instruction",
   "chat.quickBrowserInstructionDesc": "Describe the next result you want or the step AI should take without leaving Chat.",
   "chat.newChat": "New Chat",
+  "chat.startPersonalChat": "Start Personal Chat",
   "chat.running": "Running...",
   "chat.sendBrowserInstruction": "Send Browser Instruction",
   "chat.skills": "Skills",
@@ -93,7 +94,24 @@ vi.mock("@/i18n/useScopedTranslation", () => ({
 }));
 
 vi.mock("@/components/chat", () => ({
-  ChatSidebar: () => <div>Chat Sidebar</div>,
+  ChatSidebar: ({
+    onNewChat,
+    onNewPersonalChat,
+  }: {
+    onNewChat: () => void;
+    onNewPersonalChat?: () => void;
+  }) => (
+    <div>
+      <button type="button" onClick={() => onNewChat()}>
+        Start New Chat
+      </button>
+      {onNewPersonalChat ? (
+        <button type="button" onClick={() => onNewPersonalChat()}>
+          Start Personal Chat
+        </button>
+      ) : null}
+    </div>
+  ),
   ChatHelpDialog: () => <button type="button">Chat Help</button>,
   ChatView: ({
     conversationId,
@@ -193,6 +211,17 @@ vi.mock("@/lib/trpc", () => ({
     llmProviders: {
       availableModels: {
         useQuery: () => ({ data: { models: [] } }),
+      },
+    },
+    users: {
+      getPreferences: {
+        useQuery: () => ({
+          data: { privateVault: { enabled: false } },
+          isLoading: false,
+        }),
+      },
+      unlockPrivateVault: {
+        useMutation: () => ({ mutateAsync: vi.fn(), isPending: false }),
       },
     },
     tenantFeatureFlags: {
@@ -319,8 +348,9 @@ describe("Chat Browser Session entry", () => {
 
     expect(rightPanel).toHaveAttribute("aria-hidden", "false");
     expect(rightPanel).toHaveClass("w-full");
-    expect(rightPanel).toHaveClass("sm:w-96");
-    expect(rightPanel).toHaveClass("lg:w-[28rem]");
+    expect(rightPanel).toHaveClass("sm:w-[26rem]");
+    expect(rightPanel).toHaveClass("lg:w-[36rem]");
+    expect(rightPanel).toHaveClass("xl:w-[40rem]");
   });
 
   it("opens the finance panel from the chat toolbar", () => {
@@ -330,6 +360,36 @@ describe("Chat Browser Session entry", () => {
 
     expect(screen.getByText("Finance Hub")).toBeInTheDocument();
     expect(screen.getByTestId("chat-right-panel")).toHaveAttribute("aria-hidden", "false");
+  });
+
+  it("creates a new chat from the sidebar shortcut", async () => {
+    render(<Chat />);
+
+    fireEvent.click(screen.getAllByRole("button", { name: /start new chat/i })[0]);
+
+    await waitFor(() => {
+      expect(createConversationMutateAsync).toHaveBeenCalledWith({
+        title: "New Chat",
+        model: undefined,
+      });
+    });
+
+    expect(mockSetLocation).toHaveBeenCalledWith("/chat?c=88");
+  });
+
+  it("creates a personal chat from the sidebar shortcut", async () => {
+    render(<Chat />);
+
+    fireEvent.click(screen.getAllByRole("button", { name: /start personal chat/i })[0]);
+
+    await waitFor(() => {
+      expect(createPersonalConversationMutateAsync).toHaveBeenCalledWith({
+        title: "Start Personal Chat",
+        model: undefined,
+      });
+    });
+
+    expect(mockSetLocation).toHaveBeenCalledWith("/chat?c=89");
   });
 
   it("creates and opens a Browser Session from Chat", async () => {

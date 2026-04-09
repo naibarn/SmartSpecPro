@@ -24,7 +24,9 @@ const dbMocks = vi.hoisted(() => {
   const update = vi.fn(() => ({ set: updateSet }));
 
   const selectLimit = vi.fn(async () => selectedRows);
-  const selectFrom = vi.fn(() => ({ where: vi.fn(() => ({ limit: selectLimit })) }));
+  const selectQuery: any = { limit: selectLimit };
+  selectQuery.orderBy = vi.fn(() => selectQuery);
+  const selectFrom = vi.fn(() => ({ where: vi.fn(() => selectQuery) }));
   const select = vi.fn(() => ({ from: selectFrom }));
 
   return {
@@ -60,6 +62,7 @@ import { getDb } from "../../db";
 import {
   createConversation,
   createPersonalConversation,
+  getPersonalConversation,
   updateConversation,
 } from "../chatService";
 
@@ -144,5 +147,28 @@ describe("chatService personal lock", () => {
     });
 
     expect(dbMocks.mockDb.update).not.toHaveBeenCalled();
+  });
+
+  it("resolves the active personal conversation directly for the tenant", async () => {
+    dbMocks.setSelectedRows([
+      {
+        id: 88,
+        title: "Personal Finance",
+        projectId: "personal",
+        tenantId: "tenant-1",
+        userId: 7,
+      },
+    ]);
+
+    const result = await getPersonalConversation({
+      userId: 7,
+      tenantId: "tenant-1",
+    });
+
+    expect(result).toMatchObject({
+      id: 88,
+      projectId: "personal",
+      tenantId: "tenant-1",
+    });
   });
 });
