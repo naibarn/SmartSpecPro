@@ -4,6 +4,7 @@ import { spawnSync } from "node:child_process";
 
 const validPlatforms = new Set(["windows", "macos", "linux", "all"]);
 const validBundleModes = new Set(["on-demand", "e2b", "e4b", "all"]);
+const defaultDesktopWebUrl = "https://smartaihub.app";
 
 function fail(message) {
   console.error(`[desktop-release] ERROR: ${message}`);
@@ -21,6 +22,7 @@ function parseArgs(argv) {
     bundleMode: "on-demand",
     ref: "",
     watch: false,
+    webUrl: "",
   };
 
   for (let i = 0; i < argv.length; i += 1) {
@@ -37,6 +39,9 @@ function parseArgs(argv) {
     } else if (arg === "--ref") {
       options.ref = argv[i + 1] ?? fail("Missing value for --ref");
       i += 1;
+    } else if (arg === "--web-url") {
+      options.webUrl = argv[i + 1] ?? fail("Missing value for --web-url");
+      i += 1;
     } else if (arg === "--watch") {
       options.watch = true;
     } else if (arg === "-h" || arg === "--help") {
@@ -47,6 +52,7 @@ Options:
   --platform <name>        One of: windows, macos, linux, all. Default: windows.
   --bundle-mode <mode>     One of: on-demand, e2b, e4b, all. Default: on-demand.
   --ref <git-ref>          Branch or ref to run the workflow from. Default: current HEAD branch.
+  --web-url <url>          Public SmartSpec web URL embedded into the desktop build.
   --watch                  Wait for the newly created workflow run.
   -h, --help               Show this help.
 `);
@@ -98,7 +104,35 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function waitForRunId() {
+function normalizeWebUrl(rawValue) {
+  let url;
+  try {
+    url = new URL(rawValue);
+  } catch {
+    fail(`Invalid desktop web URL: ${rawValue}`);
+  }
+
+  if (url.protocol !== "https:" && url.protocol !== "http:") {
+    fail(`Desktop web URL must use http or https: ${rawValue}`);
+  }
+
+  return url.toString().replace(/\/+$/, "");
+}
+
+function resolveDesktopWebUrl(explicitWebUrl) {
+  const candidate =
+    explicitWebUrl ||
+    process.env.SMARTSPEC_DESKTOP_PUBLIC_URL ||
+    process.env.VITE_SMARTSPEC_WEB_URL ||
+    process.env.APP_PUBLIC_URL ||
+    process.env.PUBLIC_URL ||
+    defaultDesktopWebUrl;
+
+  return normalizeWebUrl(candidate);
+}
+
+async function waitForRunId({ ref, startedAt }) {
+  const normalizedRef = ref.replace(/^refs\/heads\//, "");
   for (let attempt = 0; attempt < 10; attempt += 1) {
     const output = run("gh", [
       "run",
@@ -106,15 +140,37 @@ async function waitForRunId() {
       "--workflow",
       "desktop-release.yml",
       "--limit",
-      "1",
+      "15",
       "--json",
-      "databaseId",
-      "--jq",
-      ".[0].databaseId",
+      "databaseId,createdAt,headBranch,event",
     ], { capture: true });
 
-    if (output) {
-      return output;
+    const runs = JSON.parse(output || "[]");
+    const matchedRun = runs.find((currentRun) => {
+      const runCreatedAt = Date.parse(currentRun.createdAt || "");
+      if (!Number.isFinite(runCreatedAt) || runCreatedAt < startedAt) {
+        return false;
+      }
+
+      if (currentRun.event !== "workflow_dispatch") {
+        return false;
+      }
+
+      return !normalizedRef || currentRun.headBranch === normalizedRef;
+    });
+
+    if (matchedRun?.databaseId) {
+      return String(matchedRun.databaseId);
+    }
+
+    const fallbackRun = runs.find((currentRun) => {
+      const runCreatedAt = Date.parse(currentRun.createdAt || "");
+      return Number.isFinite(runCreatedAt)
+        && runCreatedAt >= startedAt
+        && currentRun.event === "workflow_dispatch";
+    });
+    if (fallbackRun?.databaseId) {
+      return String(fallbackRun.databaseId);
     }
     await sleep(3000);
   }
@@ -135,7 +191,9 @@ if (!ref) {
   ref = run("git", ["rev-parse", "--abbrev-ref", "HEAD"], { capture: true });
 }
 
-log(`Triggering desktop release workflow for platform=${options.platform}, bundle_mode=${options.bundleMode}, tag=${options.tag}, ref=${ref}`);
+const desktopWebUrl = resolveDesktopWebUrl(options.webUrl);
+log(`Triggering desktop release workflow for platform=${options.platform}, bundle_mode=${options.bundleMode}, tag=${options.tag}, ref=${ref}, web_url=${desktopWebUrl}`);
+const dispatchStartedAt = Date.now() - 1000;
 run("gh", [
   "workflow",
   "run",
@@ -148,6 +206,8 @@ run("gh", [
   `platform=${options.platform}`,
   "-f",
   `bundle_mode=${options.bundleMode}`,
+  "-f",
+  `web_url=${desktopWebUrl}`,
 ]);
 
 if (!options.watch) {
@@ -157,7 +217,7 @@ if (!options.watch) {
 }
 
 log("Waiting for the newly created workflow run...");
-const runId = await waitForRunId();
+const runId = await waitForRunId({ ref, startedAt: dispatchStartedAt });
 if (!runId) {
   fail("Workflow was dispatched, but the new run ID could not be discovered automatically.");
 }

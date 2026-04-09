@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const validBundleModes = new Set(["skip", "on-demand", "e2b", "e4b", "all"]);
+const defaultDesktopWebUrl = "https://smartaihub.app";
 
 function fail(message) {
   console.error(`[desktop-build] ERROR: ${message}`);
@@ -22,6 +23,7 @@ function parseArgs(argv) {
     target: null,
     bundleMode: "skip",
     noInstall: false,
+    webUrl: "",
   };
 
   for (let i = 0; i < argv.length; i += 1) {
@@ -32,6 +34,9 @@ function parseArgs(argv) {
     } else if (arg === "--bundle-mode") {
       options.bundleMode = argv[i + 1] ?? fail("Missing value for --bundle-mode");
       i += 1;
+    } else if (arg === "--web-url") {
+      options.webUrl = argv[i + 1] ?? fail("Missing value for --web-url");
+      i += 1;
     } else if (arg === "--no-install") {
       options.noInstall = true;
     } else if (arg === "-h" || arg === "--help") {
@@ -40,6 +45,7 @@ function parseArgs(argv) {
 Options:
   --target <triple>        Optional Rust target triple to pass to Tauri build.
   --bundle-mode <mode>     One of: skip, on-demand, e2b, e4b, all.
+  --web-url <url>          Public SmartSpec web URL embedded into the packaged desktop app.
   --no-install             Skip npm install even if Tauri CLI is missing.
   -h, --help               Show this help.
 `);
@@ -61,6 +67,10 @@ function run(command, args, options = {}) {
     cwd: options.cwd ?? root,
     stdio: "inherit",
     shell: process.platform === "win32",
+    env: {
+      ...process.env,
+      ...(options.env ?? {}),
+    },
   });
 
   if (result.error) {
@@ -130,6 +140,38 @@ function resolvePythonCommand() {
   return null;
 }
 
+function normalizeWebUrl(rawValue) {
+  let url;
+  try {
+    url = new URL(rawValue);
+  } catch {
+    fail(`Invalid desktop web URL: ${rawValue}`);
+  }
+
+  if (url.protocol !== "https:" && url.protocol !== "http:") {
+    fail(`Desktop web URL must use http or https: ${rawValue}`);
+  }
+
+  return url.toString().replace(/\/+$/, "");
+}
+
+function resolveDesktopWebUrl(explicitWebUrl) {
+  const candidate =
+    explicitWebUrl ||
+    process.env.SMARTSPEC_DESKTOP_PUBLIC_URL ||
+    process.env.VITE_SMARTSPEC_WEB_URL ||
+    process.env.APP_PUBLIC_URL ||
+    process.env.PUBLIC_URL ||
+    defaultDesktopWebUrl;
+
+  return normalizeWebUrl(candidate);
+}
+
+function isLoopbackUrl(rawValue) {
+  const url = new URL(rawValue);
+  return ["localhost", "127.0.0.1", "::1"].includes(url.hostname);
+}
+
 const options = parseArgs(process.argv.slice(2));
 
 if (!commandExists("npm")) {
@@ -140,6 +182,14 @@ if (!commandExists("cargo")) {
 }
 
 assertHostSupportsTarget(options.target);
+
+const desktopWebUrl = resolveDesktopWebUrl(options.webUrl);
+log(`Packaged desktop app will use SmartSpec Web at ${desktopWebUrl}`);
+if (isLoopbackUrl(desktopWebUrl)) {
+  log("WARN: a localhost desktop web URL is only suitable for local testing. End-user installers should use your public HTTPS domain.");
+} else {
+  log("End users do not need a local python-backend when this public web URL is reachable.");
+}
 
 const tauriBin = join(root, "node_modules", ".bin", process.platform === "win32" ? "tauri.cmd" : "tauri");
 if (!existsSync(tauriBin)) {
@@ -157,16 +207,31 @@ if (options.bundleMode !== "skip") {
   }
 
   log(`Preparing LiteRT-LM bundle (${options.bundleMode})...`);
-  run(python[0], [
+  const liteRtArgs = [
     ...python[1],
     "apps/tauri-shell/scripts/prepare-litert-lm-bundle.py",
     "--bundle-mode",
     options.bundleMode,
-  ]);
+  ];
+  if (options.target) {
+    liteRtArgs.push("--target", options.target);
+  }
+  run(python[0], liteRtArgs);
 }
 
-log("Building SmartSpec Web assets...");
-run("npm", ["--workspace", "apps/web", "run", "build"]);
+log("Preparing FFmpeg sidecars...");
+const ffmpegArgs = ["scripts/prepare-ffmpeg-sidecars.mjs"];
+if (options.target) {
+  ffmpegArgs.push("--target", options.target);
+}
+run("node", ffmpegArgs);
+
+log(`Building SmartSpec Web assets for ${desktopWebUrl}...`);
+run("npm", ["--workspace", "apps/web", "run", "build"], {
+  env: {
+    VITE_SMARTSPEC_WEB_URL: desktopWebUrl,
+  },
+});
 
 const tauriArgs = ["--workspace", "apps/tauri-shell", "run", "tauri:build"];
 if (options.target) {

@@ -6,6 +6,9 @@ DESKTOP_WORKSPACE="apps/tauri-shell"
 WEB_WORKSPACE="apps/web"
 WEB_URL="${SMARTSPEC_DESKTOP_WEB_URL:-http://localhost:3000}"
 BACKEND_HEALTH_URL="${SMARTSPEC_DESKTOP_BACKEND_HEALTH_URL:-http://localhost:8000/health}"
+PUBLIC_WEB_URL="${SMARTSPEC_DESKTOP_PUBLIC_URL:-${VITE_SMARTSPEC_WEB_URL:-${APP_PUBLIC_URL:-${PUBLIC_URL:-https://smartaihub.app}}}}"
+DESKTOP_BUNDLE_MODE="${SMARTSPEC_DESKTOP_BUNDLE_MODE:-skip}"
+DESKTOP_BUILD_TARGET="${SMARTSPEC_DESKTOP_BUILD_TARGET:-}"
 
 START_WEB_IF_MISSING=true
 WEB_PID=""
@@ -29,7 +32,7 @@ Usage: ./scripts/desktop-app.sh <dev|build|info> [--no-web]
 
 Commands:
   dev     Start the SmartSpec web dev server if needed, then launch Tauri.
-  build   Build the web frontend and then build the desktop bundle.
+  build   Build an installable desktop bundle that points at the public SmartSpec web URL.
   info    Print Tauri environment information for the desktop shell.
 
 Options:
@@ -102,7 +105,7 @@ ensure_web_dev_server() {
 
 warn_if_backend_missing() {
     if ! curl -sf "$BACKEND_HEALTH_URL" >/dev/null 2>&1; then
-        warn "Python backend is not responding at $BACKEND_HEALTH_URL. Login, API, and media features may be unavailable."
+        warn "Local Python backend is not responding at $BACKEND_HEALTH_URL. This only affects local dev flows that depend on localhost:8000; installed desktop builds should use the public web stack instead."
     fi
 }
 
@@ -122,16 +125,14 @@ cmd_dev() {
 cmd_build() {
     ensure_desktop_prereqs
 
-    log "Building SmartSpec Web assets for the desktop shell..."
+    log "Building desktop bundle for public web URL: $PUBLIC_WEB_URL"
     (
         cd "$ROOT"
-        npm --workspace "$WEB_WORKSPACE" run build
-    )
-
-    log "Building Tauri desktop bundle..."
-    (
-        cd "$ROOT"
-        npm --workspace "$DESKTOP_WORKSPACE" run tauri:build
+        BUILD_ARGS=(node ./scripts/desktop-build-local.mjs --bundle-mode "$DESKTOP_BUNDLE_MODE" --web-url "$PUBLIC_WEB_URL")
+        if [ -n "$DESKTOP_BUILD_TARGET" ]; then
+            BUILD_ARGS+=(--target "$DESKTOP_BUILD_TARGET")
+        fi
+        "${BUILD_ARGS[@]}"
     )
 }
 

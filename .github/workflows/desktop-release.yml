@@ -4,12 +4,12 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Release tag (e.g. v0.1.0)'
+        description: "Release tag (e.g. v0.1.0)"
         required: true
       platform:
-        description: 'Desktop platform to build'
+        description: "Desktop platform to build"
         required: false
-        default: 'windows'
+        default: "windows"
         type: choice
         options:
           - windows
@@ -17,41 +17,60 @@ on:
           - linux
           - all
       bundle_mode:
-        description: 'Gemma 4 packaging mode for the Tauri installer'
+        description: "Gemma 4 packaging mode for the Tauri installer"
         required: false
-        default: 'on-demand'
+        default: "on-demand"
         type: choice
         options:
           - on-demand
           - e2b
           - e4b
           - all
+      web_url:
+        description: "Public SmartSpec web URL embedded into the desktop app"
+        required: false
+        default: "https://smartaihub.app"
 
 permissions:
   contents: write
 
 jobs:
+  resolve-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - id: set-matrix
+        shell: bash
+        run: |
+          platform="${{ github.event.inputs.platform }}"
+          case "$platform" in
+            windows)
+              echo 'matrix={"include":[{"os":"windows-latest","target":"x86_64-pc-windows-msvc","label":"Windows","platform":"windows"}]}' >> "$GITHUB_OUTPUT"
+              ;;
+            macos)
+              echo 'matrix={"include":[{"os":"macos-latest","target":"universal-apple-darwin","label":"macOS","platform":"macos"}]}' >> "$GITHUB_OUTPUT"
+              ;;
+            linux)
+              echo 'matrix={"include":[{"os":"ubuntu-22.04","target":"x86_64-unknown-linux-gnu","label":"Linux","platform":"linux"}]}' >> "$GITHUB_OUTPUT"
+              ;;
+            all)
+              echo 'matrix={"include":[{"os":"windows-latest","target":"x86_64-pc-windows-msvc","label":"Windows","platform":"windows"},{"os":"macos-latest","target":"universal-apple-darwin","label":"macOS","platform":"macos"},{"os":"ubuntu-22.04","target":"x86_64-unknown-linux-gnu","label":"Linux","platform":"linux"}]}' >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "Unsupported platform input: $platform" >&2
+              exit 1
+              ;;
+          esac
+
   build:
+    needs: resolve-matrix
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - os: macos-latest
-            target: universal-apple-darwin
-            label: macOS
-            platform: macos
-          - os: windows-latest
-            target: x86_64-pc-windows-msvc
-            label: Windows
-            platform: windows
-          - os: ubuntu-22.04
-            target: x86_64-unknown-linux-gnu
-            label: Linux
-            platform: linux
+      matrix: ${{ fromJSON(needs.resolve-matrix.outputs.matrix) }}
 
     runs-on: ${{ matrix.os }}
     name: Build (${{ matrix.label }})
-    if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == matrix.platform }}
 
     steps:
       - uses: actions/checkout@v4
@@ -59,8 +78,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -70,21 +89,37 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
-      - name: Install dependencies (Ubuntu)
+      - name: Install FFmpeg and Linux desktop dependencies
         if: matrix.os == 'ubuntu-22.04'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libssl-dev
+          sudo apt-get install -y ffmpeg libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libssl-dev
+
+      - name: Install FFmpeg (macOS)
+        if: matrix.os == 'macos-latest'
+        run: brew install ffmpeg
+
+      - name: Install FFmpeg (Windows)
+        if: matrix.os == 'windows-latest'
+        run: choco install ffmpeg -y
 
       - name: Install npm dependencies
         run: npm install --legacy-peer-deps
 
+      - name: Prepare FFmpeg sidecars
+        run: node ./scripts/prepare-ffmpeg-sidecars.mjs --target ${{ matrix.target }}
+
       - name: Prepare LiteRT-LM and Gemma 4 bundle
         run: |
-          BUNDLE_MODE="${{ github.event.inputs.bundle_mode || 'on-demand' }}"
-          python apps/tauri-shell/scripts/prepare-litert-lm-bundle.py --bundle-mode "$BUNDLE_MODE"
+          BUNDLE_MODE="${{ github.event.inputs.bundle_mode }}"
+          python apps/tauri-shell/scripts/prepare-litert-lm-bundle.py --target "${{ matrix.target }}" --bundle-mode "$BUNDLE_MODE"
+
+      - name: Build SmartSpec Web assets for desktop
+        env:
+          VITE_SMARTSPEC_WEB_URL: ${{ github.event.inputs.web_url }}
+        run: npm --workspace apps/web run build
 
       - name: Smoke test bundled Gemma 4 runtime
         if: matrix.os == 'ubuntu-22.04' && (github.event.inputs.bundle_mode == 'e2b' || github.event.inputs.bundle_mode == 'all')
@@ -101,8 +136,8 @@ jobs:
         with:
           projectPath: apps/tauri-shell
           tagName: ${{ github.event.inputs.tag || github.ref_name }}
-          releaseName: 'SmartSpec Pro ${{ github.event.inputs.tag || github.ref_name }}'
-          releaseBody: 'See [CHANGELOG](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details.'
+          releaseName: "SmartSpec Pro ${{ github.event.inputs.tag || github.ref_name }}"
+          releaseBody: "See [CHANGELOG](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details."
           releaseDraft: true
           prerelease: false
           args: --target ${{ matrix.target }}

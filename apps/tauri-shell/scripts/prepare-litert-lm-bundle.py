@@ -10,6 +10,7 @@ import platform
 import shutil
 import stat
 import subprocess
+import sys
 import urllib.request
 from pathlib import Path
 
@@ -96,6 +97,10 @@ def validate_binary_runtime(binary_path: Path) -> None:
     )
 
 
+def has_command(command: str) -> bool:
+    return shutil.which(command) is not None
+
+
 def resolve_venv_python_path(venv_dir: Path) -> Path:
     candidates = [
         venv_dir / "bin" / "python",
@@ -139,15 +144,32 @@ def prepare_runtime_venv() -> tuple[Path, Path]:
         shutil.rmtree(RUNTIME_VENV_DIR)
     RUNTIME_METADATA_DIR.mkdir(parents=True, exist_ok=True)
 
-    subprocess.run(
-        ["uv", "venv", str(RUNTIME_VENV_DIR)],
-        check=True,
-    )
+    if has_command("uv"):
+        subprocess.run(
+            ["uv", "venv", str(RUNTIME_VENV_DIR)],
+            check=True,
+        )
+    else:
+        subprocess.run(
+            [sys.executable, "-m", "venv", str(RUNTIME_VENV_DIR)],
+            check=True,
+        )
+
     python_path = resolve_venv_python_path(RUNTIME_VENV_DIR)
-    subprocess.run(
-        ["uv", "pip", "install", "--python", str(python_path), LITERT_LM_PYPI_SPEC],
-        check=True,
-    )
+    if has_command("uv"):
+        subprocess.run(
+            ["uv", "pip", "install", "--python", str(python_path), LITERT_LM_PYPI_SPEC],
+            check=True,
+        )
+    else:
+        subprocess.run(
+            [str(python_path), "-m", "pip", "install", "--upgrade", "pip"],
+            check=True,
+        )
+        subprocess.run(
+            [str(python_path), "-m", "pip", "install", LITERT_LM_PYPI_SPEC],
+            check=True,
+        )
 
     litert_executable = resolve_venv_litert_executable_path(RUNTIME_VENV_DIR)
     current_mode = litert_executable.stat().st_mode
@@ -243,23 +265,32 @@ def resolve_bundle_mode(args: argparse.Namespace) -> tuple[str, list[str]]:
 
 
 def write_runtime_manifest(
-    runtime_executable: Path,
-    runtime_library_dir: Path,
+    runtime_executable: Path | None,
+    runtime_library_dir: Path | None,
     target: str,
     bundle_mode: str,
     profiles: list[str],
+    runtime_kind: str,
+    skipped_reason: str | None = None,
 ) -> None:
     RUNTIME_METADATA_DIR.mkdir(parents=True, exist_ok=True)
     payload = {
-        "runtimeKind": "uv_venv",
-        "runtimePackageSpec": LITERT_LM_PYPI_SPEC,
-        "relativeExecutablePath": str(runtime_executable.relative_to(RUNTIME_METADATA_DIR)),
-        "relativeLibraryDir": str(runtime_library_dir.relative_to(RUNTIME_METADATA_DIR)),
+        "runtimeKind": runtime_kind,
+        "runtimePackageSpec": LITERT_LM_PYPI_SPEC if runtime_executable else None,
+        "relativeExecutablePath": (
+            str(runtime_executable.relative_to(RUNTIME_METADATA_DIR))
+            if runtime_executable else None
+        ),
+        "relativeLibraryDir": (
+            str(runtime_library_dir.relative_to(RUNTIME_METADATA_DIR))
+            if runtime_library_dir else None
+        ),
         "binaryTarget": target,
-        "binarySourceName": runtime_executable.name,
+        "binarySourceName": runtime_executable.name if runtime_executable else None,
         "bundleMode": bundle_mode,
         "bundledProfiles": profiles,
         "preparedAt": datetime.datetime.now(datetime.UTC).isoformat().replace("+00:00", "Z"),
+        "skippedReason": skipped_reason,
     }
     RUNTIME_METADATA_PATH.write_text(
         json.dumps(payload, indent=2, sort_keys=True) + "\n",
@@ -300,11 +331,32 @@ def main() -> None:
         print(
             "--binary is deprecated for Tauri Gemma 4 bundling; preparing a self-contained uv runtime instead."
         )
+    bundle_mode, profiles = resolve_bundle_mode(args)
+    if "windows" in target:
+        prune_model_resources([])
+        print(
+            "Skipping bundled LiteRT-LM runtime on Windows. "
+            "This desktop build will rely on cloud-backed features instead of a bundled Gemma runtime."
+        )
+        if profiles:
+            print(
+                f"Requested bundle mode {bundle_mode}, but no Gemma model files will be embedded for target {target}."
+            )
+        write_runtime_manifest(
+            None,
+            None,
+            target,
+            bundle_mode,
+            [],
+            runtime_kind="unsupported_host",
+            skipped_reason="windows_litert_runtime_unavailable",
+        )
+        return
+
     runtime_executable, runtime_library_dir = prepare_runtime_venv()
     print(f"Bundled LiteRT-LM runtime executable: {runtime_executable}")
     print(f"Bundled LiteRT-LM runtime libraries: {runtime_library_dir}")
 
-    bundle_mode, profiles = resolve_bundle_mode(args)
     prune_model_resources(profiles)
 
     if profiles:
@@ -320,6 +372,7 @@ def main() -> None:
         target,
         bundle_mode,
         profiles,
+        runtime_kind="uv_venv",
     )
 
 
