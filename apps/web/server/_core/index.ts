@@ -163,9 +163,10 @@ app.set("trust proxy", 1);
 // Trusted origin check (shared between CORS and CSRF middleware)
 const ALLOWED_SUFFIXES = [
   '.smartaihub.app',
+  '.smartspec.pro',
   ...(process.env.NODE_ENV !== 'production' ? ['.smartspec.local', '.localhost'] : []),
 ];
-const ALLOWED_EXACT = ['tauri://localhost', 'http://tauri.localhost'];
+const ALLOWED_EXACT = ['tauri://localhost', 'http://tauri.localhost', 'https://tauri.localhost'];
 
 function isAllowedOrigin(origin: string | undefined): boolean {
   if (!origin) return false;

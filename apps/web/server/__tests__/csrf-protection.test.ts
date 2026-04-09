@@ -15,7 +15,7 @@ const ALLOWED_SUFFIXES = [
   ".localhost",
   ".smartaihub.app",
 ];
-const ALLOWED_EXACT = ["tauri://localhost", "http://tauri.localhost"];
+const ALLOWED_EXACT = ["tauri://localhost", "http://tauri.localhost", "https://tauri.localhost"];
 
 function isAllowedOrigin(
   origin: string | undefined,
@@ -61,6 +61,7 @@ describe("CSRF Origin Validation", () => {
   it("should accept requests from tauri", () => {
     expect(isAllowedOrigin("tauri://localhost")).toBe(true);
     expect(isAllowedOrigin("http://tauri.localhost")).toBe(true);
+    expect(isAllowedOrigin("https://tauri.localhost")).toBe(true);
   });
 
   it("should reject requests from unknown domains", () => {
