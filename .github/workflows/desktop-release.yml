@@ -112,9 +112,7 @@ jobs:
         run: node ./scripts/prepare-ffmpeg-sidecars.mjs --target ${{ matrix.target }}
 
       - name: Prepare LiteRT-LM and Gemma 4 bundle
-        run: |
-          BUNDLE_MODE="${{ github.event.inputs.bundle_mode }}"
-          python apps/tauri-shell/scripts/prepare-litert-lm-bundle.py --target "${{ matrix.target }}" --bundle-mode "$BUNDLE_MODE"
+        run: python apps/tauri-shell/scripts/prepare-litert-lm-bundle.py --target "${{ matrix.target }}" --bundle-mode "${{ github.event.inputs.bundle_mode }}"
 
       - name: Build SmartSpec Web assets for desktop
         env:
