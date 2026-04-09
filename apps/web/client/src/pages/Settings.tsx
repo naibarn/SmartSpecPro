@@ -21,6 +21,10 @@ import {
 } from '@/components/ui/dialog';
 import { trpc } from '@/lib/trpc';
 import { toast } from 'sonner';
+import {
+  desktopDeviceDisableResponseSchema,
+  desktopRootActionResponseSchema,
+} from '@shared/desktopHost';
 import { pickEnabledModelId } from '@/lib/enabledModelSelection';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -59,6 +63,7 @@ import {
   Link2,
   UserCog,
   Cpu,
+  MonitorPlay,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { GoogleDrivePanel } from '@/components/settings/GoogleDrivePanel';
@@ -72,12 +77,16 @@ import { PersonasPanel } from '@/components/settings/PersonasPanel';
 import { UserAutomationPreferencesPanel } from '@/components/settings/UserAutomationPreferencesPanel';
 import { NotificationPreferencesPanel } from '@/components/settings/NotificationPreferencesPanel';
 import { LocalAiSettingsSection } from '@/features/local-ai/components/LocalAiSettingsSection';
+import { DesktopHostSettingsPanel } from '@/features/desktop-host/DesktopHostSettingsPanel';
+import { useDesktopHostStatus } from '@/features/desktop-host/useDesktopHostStatus';
+import { useDesktopDeviceControlPlaneState } from '@/features/desktop-host/useDesktopDeviceControlPlaneState';
+import { useDesktopPackageCatalog } from '@/features/desktop-host/useDesktopPackageCatalog';
 import { clearPrivateVaultAccessToken, getPrivateVaultAccessToken, setPrivateVaultAccessToken } from '@/lib/privateVault';
 import { LocaleToggle } from '@/components/LocaleToggle';
 import { useScopedTranslation } from '@/i18n/useScopedTranslation';
 import { useTenantFeatureFlag } from '@/hooks/useTenantFeatureFlag';
 
-type SettingsTab = 'profile' | 'account' | 'security' | 'privateVault' | 'preferences' | 'localAi' | 'notifications' | 'automation' | 'api' | 'billing' | 'integrations' | 'personas';
+type SettingsTab = 'profile' | 'account' | 'security' | 'privateVault' | 'preferences' | 'localAi' | 'desktopHost' | 'notifications' | 'automation' | 'api' | 'billing' | 'integrations' | 'personas';
 
 type TwoFAStep = 'idle' | 'setup' | 'verify' | 'done' | 'disable' | 'regen';
 
@@ -179,12 +188,18 @@ function TwoFactorSection() {
       {/* Admin disabled */}
       {!adminEnabled && !enabled && (
         <div className="p-4 bg-gray-50 rounded-xl">
-          <div className="flex items-center gap-3">
-            <ShieldOff className="w-5 h-5 text-gray-400" />
-            <div>
-              <div className="font-medium text-gray-900">{t('settings.2fa.notAvailable')}</div>
-              <div className="text-sm text-gray-500">{t('settings.2fa.disabledByAdmin')}</div>
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <ShieldOff className="w-5 h-5 text-gray-400" />
+              <div>
+                <div className="font-medium text-gray-900">{t('settings.2fa.notAvailable')}</div>
+                <div className="text-sm text-gray-500">{t('settings.2fa.disabledByAdmin')}</div>
+              </div>
             </div>
+            <Button size="sm" disabled>
+              <ShieldCheck className="mr-1 h-4 w-4" />
+              {t('settings.2fa.enable')}
+            </Button>
           </div>
         </div>
       )}
@@ -243,6 +258,10 @@ function TwoFactorSection() {
           )}
         </div>
       )}
+
+      <div className="mt-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+        {t('settings.2fa.desktopFlowNote')}
+      </div>
 
       {/* Setup step: show QR code */}
       {step === 'setup' && setupData && (
@@ -439,6 +458,117 @@ export default function Settings() {
   const [showPassword, setShowPassword] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const localClientLlmModeEnabled = useTenantFeatureFlag("localClientLlmMode");
+  const desktopHostEnabled = useTenantFeatureFlag("desktopHostEnabled");
+  const desktopAdvancedLocalModeEnabled = useTenantFeatureFlag("desktopAdvancedLocalMode");
+  const desktopPackageSyncEnabled = useTenantFeatureFlag("desktopPackageSync");
+  const desktopAgencyRuntimeEnabled = useTenantFeatureFlag("desktopAgencyRuntime");
+  const desktopWorkerProjectionEnabled = useTenantFeatureFlag("desktopWorkerProjection");
+  const desktopHostStatus = useDesktopHostStatus(desktopHostEnabled && activeTab === 'desktopHost');
+  const [selectedDesktopDeviceId, setSelectedDesktopDeviceId] = useState<string | null>(null);
+  const [desktopDisableDeviceId, setDesktopDisableDeviceId] = useState<string | null>(null);
+  const [desktopRootActionKey, setDesktopRootActionKey] = useState<string | null>(null);
+  const selectedDesktopDevice = useMemo(
+    () => desktopHostStatus.status?.devices.find((device) => device.deviceId === selectedDesktopDeviceId)
+      ?? desktopHostStatus.status?.devices[0]
+      ?? null,
+    [desktopHostStatus.status?.devices, selectedDesktopDeviceId],
+  );
+  const desktopDeviceControlPlane = useDesktopDeviceControlPlaneState(
+    desktopHostEnabled && activeTab === 'desktopHost',
+    selectedDesktopDevice?.deviceId ?? null,
+  );
+  const desktopPackageCatalog = useDesktopPackageCatalog(
+    desktopHostEnabled && activeTab === 'desktopHost' && desktopPackageSyncEnabled,
+  );
+
+  useEffect(() => {
+    if (!desktopHostEnabled || activeTab !== 'desktopHost') {
+      return;
+    }
+    if (!selectedDesktopDeviceId && desktopHostStatus.status?.devices[0]?.deviceId) {
+      setSelectedDesktopDeviceId(desktopHostStatus.status.devices[0].deviceId);
+      return;
+    }
+    if (
+      selectedDesktopDeviceId
+      && !(desktopHostStatus.status?.devices ?? []).some((device) => device.deviceId === selectedDesktopDeviceId)
+    ) {
+      setSelectedDesktopDeviceId(desktopHostStatus.status?.devices[0]?.deviceId ?? null);
+    }
+  }, [activeTab, desktopHostEnabled, desktopHostStatus.status?.devices, selectedDesktopDeviceId]);
+
+  const handleDisableDesktopDevice = async (deviceId: string) => {
+    setDesktopDisableDeviceId(deviceId);
+    try {
+      const device = desktopHostStatus.status?.devices.find((candidate) => candidate.deviceId === deviceId) ?? null;
+      const response = await fetch(`/api/desktop-host/devices/${encodeURIComponent(deviceId)}/disable`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          reason: 'user_requested_disable',
+          cleanupOnNextContact: true,
+          packageCachePaths: device?.packageCachePaths ?? [],
+          localRoots: device?.localRoots ?? [],
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(typeof payload?.error === 'string' ? payload.error : 'desktop_device_disable_failed');
+      }
+      const parsed = desktopDeviceDisableResponseSchema.parse(payload);
+      toast.success(
+        parsed.offboardingPlan.cleanupOnNextContact
+          ? 'Desktop device disabled. Cleanup will run on next contact.'
+          : 'Desktop device disabled.',
+      );
+      desktopHostStatus.refresh();
+      desktopDeviceControlPlane.refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to disable desktop device');
+    } finally {
+      setDesktopDisableDeviceId(null);
+    }
+  };
+
+  const handleDesktopRootAction = async (
+    deviceId: string,
+    rootId: string,
+    actionType: 'reindex_root' | 'purge_root_derived_store' | 'revoke_root',
+  ) => {
+    const inFlightKey = `${rootId}:${actionType}`;
+    setDesktopRootActionKey(inFlightKey);
+    try {
+      const response = await fetch(
+        `/api/desktop-host/devices/${encodeURIComponent(deviceId)}/roots/${encodeURIComponent(rootId)}/actions`,
+        {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            actionType,
+            note: 'settings_panel_requested_action',
+          }),
+        },
+      );
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(typeof payload?.error === 'string' ? payload.error : 'desktop_root_action_failed');
+      }
+      desktopRootActionResponseSchema.parse(payload);
+      toast.success(actionType === 'revoke_root' ? 'Managed root revoked.' : 'Managed root action queued.');
+      desktopHostStatus.refresh();
+      desktopDeviceControlPlane.refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to queue desktop root action');
+    } finally {
+      setDesktopRootActionKey(null);
+    }
+  };
 
   // Delete account states
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -468,6 +598,9 @@ export default function Settings() {
 
   const { data: recoveryInfo, refetch: refetchRecovery } =
     trpc.auth.getRecoveryInfo.useQuery(undefined, { enabled: isAuthenticated });
+  const { data: recoveryCapabilities } =
+    trpc.auth.getRecoveryCapabilities.useQuery(undefined, { enabled: isAuthenticated });
+  const smsRecoveryEnabled = recoveryCapabilities?.sms.enabled ?? false;
 
   const sendBackupEmailCodeMut = trpc.auth.sendBackupEmailCode.useMutation({
     onSuccess: () => { toast.success(t('settings.recovery.backupEmailSent')); setBackupEmailStep('code_sent'); },
@@ -684,6 +817,12 @@ export default function Settings() {
   }, [activeTab, localClientLlmModeEnabled]);
 
   useEffect(() => {
+    if (activeTab === "desktopHost" && !desktopHostEnabled) {
+      setActiveTab("preferences");
+    }
+  }, [activeTab, desktopHostEnabled]);
+
+  useEffect(() => {
     if (typeof window === 'undefined') return;
     const syncVaultToken = () => setPrivateVaultTokenState(getPrivateVaultAccessToken());
     syncVaultToken();
@@ -731,6 +870,9 @@ export default function Settings() {
     { id: 'preferences', label: t('settings.tabs.preferences'), icon: Palette },
     ...(localClientLlmModeEnabled
       ? [{ id: 'localAi' as const, label: t('settings.tabs.localAi'), icon: Cpu }]
+      : []),
+    ...(desktopHostEnabled
+      ? [{ id: 'desktopHost' as const, label: t('settings.tabs.desktopHost'), icon: MonitorPlay }]
       : []),
     { id: 'notifications', label: t('settings.tabs.notifications'), icon: Bell },
     { id: 'automation', label: t('settings.tabs.automation'), icon: Bot },
@@ -1132,6 +1274,12 @@ export default function Settings() {
                       </div>
                     ) : (
                       <div className="space-y-3">
+                        {!smsRecoveryEnabled && (
+                          <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                            <span>{t('recovery.smsUnavailable')}</span>
+                          </div>
+                        )}
                         <div className="flex gap-2">
                           <Input
                             type="tel"
@@ -1139,17 +1287,17 @@ export default function Settings() {
                             value={phoneInput}
                             onChange={(e) => setPhoneInput(e.target.value)}
                             className="flex-1"
-                            disabled={phoneStep === 'code_sent'}
+                            disabled={!smsRecoveryEnabled || phoneStep === 'code_sent'}
                           />
                           <Button
                             variant="outline"
                             onClick={() => sendPhoneCodeMut.mutate({ phone: phoneInput })}
-                            disabled={!phoneInput || sendPhoneCodeMut.isPending || phoneStep === 'code_sent'}
+                            disabled={!smsRecoveryEnabled || !phoneInput || sendPhoneCodeMut.isPending || phoneStep === 'code_sent'}
                           >
                             {sendPhoneCodeMut.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : t('settings.recovery.sendCode')}
                           </Button>
                         </div>
-                        {phoneStep === 'code_sent' && (
+                        {smsRecoveryEnabled && phoneStep === 'code_sent' && (
                           <div className="flex gap-2">
                             <Input
                               placeholder={t('settings.recovery.codePlaceholder')}
@@ -1727,6 +1875,75 @@ export default function Settings() {
                   </div>
 
                   <LocalAiSettingsSection hideHeading />
+                </div>
+              )}
+
+              {activeTab === 'desktopHost' && desktopHostEnabled && (
+                <div className="space-y-6">
+                  <div className="flex flex-col gap-3 rounded-2xl border border-indigo-100 bg-indigo-50/70 p-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <div className="text-xs font-semibold uppercase tracking-[0.18em] text-indigo-700">
+                        {t('settings.tabs.desktopHost')}
+                      </div>
+                      <h2 className="mt-1 text-xl font-semibold text-slate-900">
+                        {t('settings.desktopHost.title')}
+                      </h2>
+                      <p className="mt-2 max-w-3xl text-sm text-slate-600">
+                        {t('settings.desktopHost.description')}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge
+                        variant="outline"
+                        className={desktopHostEnabled
+                          ? "border-emerald-200 bg-white text-emerald-700"
+                          : "border-amber-200 bg-white text-amber-700"}
+                      >
+                        {desktopHostEnabled
+                          ? t('settings.desktopHost.badges.enabled')
+                          : t('settings.desktopHost.badges.preview')}
+                      </Badge>
+                      <HelpButton
+                        page="/settings"
+                        topic="desktop-host"
+                        variant="outline"
+                        size="sm"
+                        label={t('settings.desktopHost.helpButton')}
+                      />
+                    </div>
+                  </div>
+
+                  <DesktopHostSettingsPanel
+                    featureFlags={{
+                      desktopHostEnabled,
+                      desktopAdvancedLocalMode: desktopAdvancedLocalModeEnabled,
+                      desktopPackageSync: desktopPackageSyncEnabled,
+                      desktopAgencyRuntime: desktopAgencyRuntimeEnabled,
+                      desktopWorkerProjection: desktopWorkerProjectionEnabled,
+                    }}
+                    status={desktopHostStatus.status}
+                    statusLoading={desktopHostStatus.isLoading}
+                    statusError={desktopHostStatus.error}
+                    selectedDeviceId={selectedDesktopDevice?.deviceId ?? null}
+                    onSelectedDeviceIdChange={setSelectedDesktopDeviceId}
+                    controlPlaneState={desktopDeviceControlPlane.state}
+                    controlPlaneLoading={desktopDeviceControlPlane.isLoading}
+                    controlPlaneError={desktopDeviceControlPlane.error}
+                    packageCatalog={desktopPackageCatalog.catalog}
+                    packageCatalogLoading={desktopPackageCatalog.isLoading}
+                    packageCatalogError={desktopPackageCatalog.error}
+                    onDisableDevice={handleDisableDesktopDevice}
+                    disableInFlightDeviceId={desktopDisableDeviceId}
+                    onRequestRootAction={handleDesktopRootAction}
+                    rootActionInFlightKey={desktopRootActionKey}
+                    adminConsoleHref={
+                      user?.role === 'admin'
+                        ? '/admin/desktop-host'
+                        : user?.role === 'domain_admin'
+                          ? '/domain-admin/desktop-host'
+                          : null
+                    }
+                  />
                 </div>
               )}
 

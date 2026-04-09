@@ -57,6 +57,38 @@ describe("useAgencyStream", () => {
     );
   });
 
+  it("forwards compilePreview when provided", async () => {
+    const fetchSpy = vi.fn().mockResolvedValue(
+      makeSSEResponse(`event: run_finished\ndata: {"creditsUsed":0}\n\n`),
+    );
+    globalThis.fetch = fetchSpy;
+
+    const { result } = renderHook(() => useAgencyStream());
+
+    await act(async () => {
+      result.current.connect({
+        agencyId: "ag-1",
+        message: "hello",
+        compilePreview: {
+          planSummary: {
+            engineMix: ["agency_swarm", "adk2"],
+            subgraphCount: 2,
+            bridgeCount: 1,
+            usesHybrid: true,
+          },
+        },
+      });
+      await new Promise((r) => setTimeout(r, 50));
+    });
+
+    expect(fetchSpy).toHaveBeenCalledWith(
+      "/api/v1/agency/stream",
+      expect.objectContaining({
+        body: expect.stringContaining("\"compilePreview\":{\"planSummary\":{\"engineMix\":[\"agency_swarm\",\"adk2\"]"),
+      }),
+    );
+  });
+
   it("parses SSE token events and accumulates content", async () => {
     globalThis.fetch = vi.fn().mockResolvedValue(
       makeSSEResponse(
@@ -153,7 +185,7 @@ describe("useAgencyStream", () => {
   it("calls onRunFinished with credits used", async () => {
     globalThis.fetch = vi.fn().mockResolvedValue(
       makeSSEResponse(
-        `event: run_finished\ndata: {"creditsUsed":1.25}\n\n`,
+        `event: run_finished\ndata: {"creditsUsed":1.25,"hybrid_summary":{"usesHybrid":true,"engineMix":["agency_swarm","adk2"],"subgraphCount":2,"bridgeCount":1},"step_attempt_snapshots":[{"phase":"subgraph","subgraph_id":"sg_root","engine":"agency_swarm"}]}\n\n`,
       ),
     );
 
@@ -167,8 +199,19 @@ describe("useAgencyStream", () => {
       await new Promise((r) => setTimeout(r, 50));
     });
 
-    expect(onRunFinished).toHaveBeenCalledWith(1.25);
+    expect(onRunFinished).toHaveBeenCalledWith(1.25, null);
     expect(result.current.creditsUsed).toBe(1.25);
+    expect(result.current.hybridSummary).toEqual(expect.objectContaining({
+      usesHybrid: true,
+      engineMix: ["agency_swarm", "adk2"],
+    }));
+    expect(result.current.stepAttemptSnapshots).toEqual([
+      expect.objectContaining({
+        phase: "subgraph",
+        subgraph_id: "sg_root",
+        engine: "agency_swarm",
+      }),
+    ]);
   });
 
   it("parses browser_session events and forwards the artifact", async () => {
@@ -378,7 +421,10 @@ describe("useAgencyStream", () => {
     expect(onApprovalRequired).toHaveBeenCalled();
 
     // Cleanup: close the stream
-    streamController!.close();
+    await act(async () => {
+      streamController!.close();
+      await new Promise((r) => setTimeout(r, 0));
+    });
   });
 
   it("cancel calls cancel endpoint with correct mode", async () => {
@@ -506,7 +552,7 @@ describe("useAgencyStream", () => {
 
     expect(result.current.creditsUsed).toBe(0.01);
     expect(result.current.isStreaming).toBe(false);
-    expect(onRunFinished).toHaveBeenCalledWith(0.01);
+    expect(onRunFinished).toHaveBeenCalledWith(0.01, null);
   });
 
   it("backward compatible with legacy token events", async () => {

@@ -9,6 +9,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { formatDate } from "@smartspec/shared";
+import { LocaleToggle } from "@/components/LocaleToggle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -57,31 +58,43 @@ export default function DomainUsers() {
   const limit = 20;
 
   // Queries
-  const { data: usersData, isLoading: usersLoading, refetch: refetchUsers } = trpc.users.listByDomain.useQuery(
+  const {
+    data: usersData,
+    isLoading: usersLoading,
+    refetch: refetchUsers,
+  } = trpc.users.listByDomain.useQuery(
     { search: search || undefined, limit, offset: page * limit },
-    { enabled: !!user && (user.role === "domain_admin" || user.role === "admin") }
+    {
+      enabled:
+        !!user && (user.role === "domain_admin" || user.role === "admin"),
+    }
   );
 
-  const { data: stats, refetch: refetchStats } = trpc.users.domainStats.useQuery(
-    undefined,
-    { enabled: !!user && (user.role === "domain_admin" || user.role === "admin") }
-  );
+  const { data: stats, refetch: refetchStats } =
+    trpc.users.domainStats.useQuery(undefined, {
+      enabled:
+        !!user && (user.role === "domain_admin" || user.role === "admin"),
+    });
 
   // Mutations
   const toggleStatusMutation = trpc.users.toggleUserStatus.useMutation({
-    onSuccess: (data) => {
-      toast.success(`User ${data.newStatus ? 'disabled' : 'enabled'} successfully`);
+    onSuccess: data => {
+      toast.success(
+        `User ${data.newStatus ? "disabled" : "enabled"} successfully`
+      );
       refetchUsers();
       refetchStats();
     },
-    onError: (err) => {
+    onError: err => {
       toast.error(`Failed to update user status: ${err.message}`);
     },
   });
 
   const transferCreditsMutation = trpc.users.transferCredits.useMutation({
-    onSuccess: (data) => {
-      toast.success(`Transferred ${transferAmount} credits successfully. Your new balance: ${data.senderNewBalance}`);
+    onSuccess: data => {
+      toast.success(
+        `Transferred ${transferAmount} credits successfully. Your new balance: ${data.senderNewBalance}`
+      );
       setShowTransferModal(false);
       setTransferAmount("");
       setTransferNote("");
@@ -90,14 +103,17 @@ export default function DomainUsers() {
       refetchStats();
       refreshUser(); // Refresh current user's balance
     },
-    onError: (err) => {
+    onError: err => {
       toast.error(`Failed to transfer credits: ${err.message}`);
     },
   });
 
   // Redirect if not domain admin
   useEffect(() => {
-    if (!authLoading && (!user || (user.role !== "domain_admin" && user.role !== "admin"))) {
+    if (
+      !authLoading &&
+      (!user || (user.role !== "domain_admin" && user.role !== "admin"))
+    ) {
       setLocation("/");
     }
   }, [user, authLoading, setLocation]);
@@ -150,7 +166,6 @@ export default function DomainUsers() {
     setShowTransferModal(true);
   };
 
-
   const getRoleBadge = (role: string) => {
     const colors = {
       user: "bg-gray-100 text-gray-700",
@@ -174,8 +189,8 @@ export default function DomainUsers() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/20">
       <div className="px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-4">
+        <div className="mb-8 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-wrap items-center gap-4">
             <Button
               variant="ghost"
               size="icon"
@@ -192,7 +207,8 @@ export default function DomainUsers() {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-4">
+            <LocaleToggle className="shrink-0" />
             <div className="text-right">
               <p className="text-sm text-gray-500">Your Credits</p>
               <p className="text-lg font-semibold text-purple-600">
@@ -280,7 +296,7 @@ export default function DomainUsers() {
               type="text"
               placeholder="Search users by name or email..."
               value={search}
-              onChange={(e) => {
+              onChange={e => {
                 setSearch(e.target.value);
                 setPage(0);
               }}
@@ -331,7 +347,7 @@ export default function DomainUsers() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {users.map((u) => (
+                    {users.map(u => (
                       <tr key={u.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
@@ -352,7 +368,9 @@ export default function DomainUsers() {
                               u.role
                             )}`}
                           >
-                            {u.role === "domain_admin" ? "Domain Admin" : u.role}
+                            {u.role === "domain_admin"
+                              ? "Domain Admin"
+                              : u.role}
                           </span>
                         </td>
                         <td className="px-6 py-4">
@@ -393,7 +411,9 @@ export default function DomainUsers() {
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  onClick={() => openTransferModal(u as DomainUser)}
+                                  onClick={() =>
+                                    openTransferModal(u as DomainUser)
+                                  }
                                   title="Transfer Credits"
                                 >
                                   <Send className="w-4 h-4 mr-1" />
@@ -403,7 +423,11 @@ export default function DomainUsers() {
                                   variant={u.isDisabled ? "default" : "outline"}
                                   size="sm"
                                   onClick={() => handleToggleStatus(u.id)}
-                                  className={u.isDisabled ? "bg-green-600 hover:bg-green-700" : "text-red-600 border-red-200 hover:bg-red-50"}
+                                  className={
+                                    u.isDisabled
+                                      ? "bg-green-600 hover:bg-green-700"
+                                      : "text-red-600 border-red-200 hover:bg-red-50"
+                                  }
                                 >
                                   {u.isDisabled ? (
                                     <>
@@ -420,7 +444,9 @@ export default function DomainUsers() {
                               </>
                             )}
                             {u.id === Number(user?.id) && (
-                              <span className="text-sm text-gray-400 italic">You</span>
+                              <span className="text-sm text-gray-400 italic">
+                                You
+                              </span>
                             )}
                           </div>
                         </td>
@@ -470,7 +496,9 @@ export default function DomainUsers() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4 p-6">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold text-gray-900">Transfer Credits</h2>
+              <h2 className="text-xl font-semibold text-gray-900">
+                Transfer Credits
+              </h2>
               <Button
                 variant="ghost"
                 size="icon"
@@ -493,20 +521,26 @@ export default function DomainUsers() {
                 </p>
                 <p className="text-sm text-gray-500">{selectedUser.email}</p>
                 <p className="text-sm text-gray-500 mt-2">
-                  Current balance: <span className="font-medium">{selectedUser.credits.toLocaleString()}</span>
+                  Current balance:{" "}
+                  <span className="font-medium">
+                    {selectedUser.credits.toLocaleString()}
+                  </span>
                 </p>
               </div>
 
               <div className="bg-purple-50 rounded-lg p-4">
-                <p className="text-sm text-purple-600 mb-1">Your balance will be reduced</p>
+                <p className="text-sm text-purple-600 mb-1">
+                  Your balance will be reduced
+                </p>
                 <p className="text-xl font-bold text-purple-700">
                   {(user?.credits || 0).toLocaleString()} credits
                 </p>
               </div>
 
               <div className="rounded-lg border border-purple-200 bg-purple-50/60 p-4 text-sm text-purple-900">
-                This action deducts credits from your own balance and adds the same amount to the selected user.
-                You can only add credits to another user here.
+                This action deducts credits from your own balance and adds the
+                same amount to the selected user. You can only add credits to
+                another user here.
               </div>
 
               <div>
@@ -518,7 +552,7 @@ export default function DomainUsers() {
                   min="1"
                   max={user?.credits || 0}
                   value={transferAmount}
-                  onChange={(e) => setTransferAmount(e.target.value)}
+                  onChange={e => setTransferAmount(e.target.value)}
                   placeholder="Enter amount"
                 />
               </div>
@@ -530,7 +564,7 @@ export default function DomainUsers() {
                 <Input
                   type="text"
                   value={transferNote}
-                  onChange={(e) => setTransferNote(e.target.value)}
+                  onChange={e => setTransferNote(e.target.value)}
                   placeholder="Reason for transfer"
                 />
               </div>

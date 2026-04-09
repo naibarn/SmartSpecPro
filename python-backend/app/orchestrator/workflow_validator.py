@@ -6,7 +6,7 @@ returning it to the caller. On validation failure the error is fed back to the L
 as a correction instruction (see workflow_generator.py retry loop in section-08).
 
 Do NOT import NodeRegistry here — circular dependency risk.
-The KNOWN_NODE_TYPES set is a hardcoded copy of the 57 registered type strings.
+The KNOWN_NODE_TYPES set is a hardcoded copy of the registered type strings.
 """
 from __future__ import annotations
 
@@ -33,17 +33,27 @@ KNOWN_NODE_TYPES: frozenset[str] = frozenset({
     # Data
     "database_query", "transformer", "filter", "set_variable", "merge_data",
     "code_runner", "map_array", "validator",
-    "csv_parser", "template_engine", "read_file", "write_file",
+    "csv_parser", "excel_parser", "template_engine", "read_file", "write_file",
     # Integrations
     "http_request", "graphql_request", "websocket_client",
-    "storage_action", "mcp_connector",
+    "storage_action", "mcp_connector", "library_input", "save_to_library",
+    "browser_session_start", "browser_session_instruction",
+    "browser_session_wait_for_user", "browser_session_review_gate",
+    "incoming_meta_message", "classify_social_intent", "draft_social_reply",
+    "send_meta_reply", "publish_meta_post", "approve_social_action",
+    "web_automation",
     # Outputs
     "send_email", "send_notification", "workflow_response", "webhook_response",
+    "write_to_console",
     # Observability / reliability
     "metrics_collector", "secrets_vault", "dead_letter_queue", "run_history",
     "rate_limiter", "idempotency",
     # Media / Skills / Human
-    "generate_image", "skill", "approval_gate", "form_input",
+    "generate_image", "generate_video", "skill", "approval_gate", "form_input",
+    "agency_run",
+    # Worker runtime
+    "dispatch_worker_job", "wait_for_worker_completion",
+    "publish_worker_artifacts", "trigger_worker_rag_index",
 })
 
 TRIGGER_NODE_TYPES: frozenset[str] = frozenset({

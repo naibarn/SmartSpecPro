@@ -3,6 +3,7 @@ import { Handle, Position } from "reactflow";
 import type { NodeProps } from "reactflow";
 import { GitBranch, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getRouterRouteHandleId, normalizeRouterRoutes } from "../nodeGraphSync";
 import type { AgencyNodeData } from "./types";
 
 export const RouterNodeCard = memo(function RouterNodeCard({
@@ -11,7 +12,7 @@ export const RouterNodeCard = memo(function RouterNodeCard({
 }: NodeProps<AgencyNodeData>) {
   const hasErrors = (data.validationErrors?.length ?? 0) > 0;
   const routingMode = (data.nodeConfig?.routingMode as string) ?? "keyword";
-  const routes = (data.nodeConfig?.routes as Array<{ condition: string; targetNodeId: string; label?: string; handleId?: string }>) ?? [];
+  const routes = normalizeRouterRoutes(data.nodeConfig?.routes);
 
   return (
     <div
@@ -51,44 +52,24 @@ export const RouterNodeCard = memo(function RouterNodeCard({
         </div>
       </div>
 
-      {/* === Output handles: True (right), False (left), Default (bottom) === */}
+      {/* Source handles for each route */}
+      {routes.map((route, index) => (
+        <Handle
+          key={getRouterRouteHandleId(route, index)}
+          type="source"
+          position={Position.Right}
+          id={getRouterRouteHandleId(route, index)}
+          style={{ top: `${30 + index * 16}%`, right: -6 }}
+          className="!h-2.5 !w-2.5 !border-2 !border-blue-500 !bg-blue-100"
+        />
+      ))}
 
-      {/* True handle — right side */}
-      <Handle
-        type="source"
-        position={Position.Right}
-        id="true"
-        style={{ top: "50%", right: -6 }}
-        className="!h-3 !w-3 !border-2 !border-green-500 !bg-green-100"
-      />
-      <div
-        className="absolute text-[9px] font-bold text-green-600 pointer-events-none select-none"
-        style={{ right: -28, top: "50%", transform: "translateY(-50%)" }}
-      >
-        True
-      </div>
-
-      {/* False handle — left side */}
-      <Handle
-        type="source"
-        position={Position.Left}
-        id="false"
-        style={{ top: "50%", left: -6 }}
-        className="!h-3 !w-3 !border-2 !border-red-400 !bg-red-100"
-      />
-      <div
-        className="absolute text-[9px] font-bold text-red-500 pointer-events-none select-none"
-        style={{ left: -30, top: "50%", transform: "translateY(-50%)" }}
-      >
-        False
-      </div>
-
-      {/* Default/additional handle — bottom */}
+      {/* Default/fallback handle — bottom */}
       <Handle
         type="source"
         position={Position.Bottom}
         id="default"
-        className="!h-2.5 !w-2.5 !border-2 !border-blue-400 !bg-blue-100"
+        className="!h-2.5 !w-2.5 !border-2 !border-blue-500 !bg-blue-100"
       />
       <div
         className="absolute text-[9px] font-medium text-blue-500 pointer-events-none select-none"

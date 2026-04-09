@@ -23,13 +23,14 @@ import {
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/AuthContext";
 import { DashboardCard } from "@/components/dashboard";
+import { LocaleToggle } from "@/components/LocaleToggle";
 
 export default function AdminFunnelDashboard() {
   // RBAC check - only admin and domain_admin can access
   const { user } = useAuth();
   const [, setLocation] = useLocation();
 
-  if (!user || (user.role !== 'admin' && user.role !== 'domain_admin')) {
+  if (!user || (user.role !== "admin" && user.role !== "domain_admin")) {
     return <Redirect to="/" />;
   }
   // Date range state (default: last 30 days)
@@ -54,7 +55,9 @@ export default function AdminFunnelDashboard() {
   const [dateRangeExceeded, setDateRangeExceeded] = useState(false);
 
   // Determine current stage filter based on active tab
-  const getStageForTab = (tab: string): "acquisition" | "activation" | "usage" | "revenue" | undefined => {
+  const getStageForTab = (
+    tab: string
+  ): "acquisition" | "activation" | "usage" | "revenue" | undefined => {
     switch (tab) {
       case "acquisition":
         return "acquisition";
@@ -73,7 +76,9 @@ export default function AdminFunnelDashboard() {
 
   // Check and warn about date range
   const checkDateRange = (from: string, to: string) => {
-    const diffDays = (new Date(to).getTime() - new Date(from).getTime()) / (1000 * 60 * 60 * 24);
+    const diffDays =
+      (new Date(to).getTime() - new Date(from).getTime()) /
+      (1000 * 60 * 60 * 24);
     setDateRangeExceeded(diffDays > 90);
   };
 
@@ -106,7 +111,8 @@ export default function AdminFunnelDashboard() {
   );
 
   // Cache invalidation mutation
-  const invalidateCacheMutation = trpc.funnelAnalytics.invalidateCache.useMutation();
+  const invalidateCacheMutation =
+    trpc.funnelAnalytics.invalidateCache.useMutation();
 
   // Manual refresh handler
   const handleRefresh = async () => {
@@ -131,13 +137,18 @@ export default function AdminFunnelDashboard() {
     setIsExporting(true);
     try {
       // Trigger export via tRPC export endpoint
-      window.open(`/trpc/funnelAnalytics.export?input=${encodeURIComponent(JSON.stringify({
-        from: dateFrom,
-        to: dateTo,
-        bucket,
-        stage: currentStage,
-        format: exportFormat,
-      }))}`, '_blank');
+      window.open(
+        `/trpc/funnelAnalytics.export?input=${encodeURIComponent(
+          JSON.stringify({
+            from: dateFrom,
+            to: dateTo,
+            bucket,
+            stage: currentStage,
+            format: exportFormat,
+          })
+        )}`,
+        "_blank"
+      );
     } finally {
       // Set timeout to reset loading state (since we can't track window.open completion)
       setTimeout(() => setIsExporting(false), 1000);
@@ -147,8 +158,8 @@ export default function AdminFunnelDashboard() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/20 px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-wrap items-center gap-4">
           <Button
             variant="ghost"
             size="sm"
@@ -167,7 +178,8 @@ export default function AdminFunnelDashboard() {
             </p>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <LocaleToggle className="shrink-0" />
           <Button
             variant="outline"
             size="sm"
@@ -209,7 +221,7 @@ export default function AdminFunnelDashboard() {
                 id="dateFrom"
                 type="date"
                 value={dateFrom}
-                onChange={(e) => handleDateFromChange(e.target.value)}
+                onChange={e => handleDateFromChange(e.target.value)}
               />
             </div>
             <div className="space-y-2">
@@ -218,12 +230,15 @@ export default function AdminFunnelDashboard() {
                 id="dateTo"
                 type="date"
                 value={dateTo}
-                onChange={(e) => handleDateToChange(e.target.value)}
+                onChange={e => handleDateToChange(e.target.value)}
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="bucket">Bucket</Label>
-              <Select value={bucket} onValueChange={(v) => setBucket(v as "day" | "week" | "month")}>
+              <Select
+                value={bucket}
+                onValueChange={v => setBucket(v as "day" | "week" | "month")}
+              >
                 <SelectTrigger id="bucket">
                   <SelectValue />
                 </SelectTrigger>
@@ -236,7 +251,10 @@ export default function AdminFunnelDashboard() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="exportFormat">Export Format</Label>
-              <Select value={exportFormat} onValueChange={(v) => setExportFormat(v as "csv" | "json")}>
+              <Select
+                value={exportFormat}
+                onValueChange={v => setExportFormat(v as "csv" | "json")}
+              >
                 <SelectTrigger id="exportFormat">
                   <SelectValue />
                 </SelectTrigger>
@@ -251,7 +269,9 @@ export default function AdminFunnelDashboard() {
           {dateRangeExceeded && (
             <div className="mt-4 flex items-center gap-2 text-sm text-amber-600">
               <AlertCircle className="h-4 w-4" />
-              <span>Date range exceeds 90 days and will be clamped by the backend</span>
+              <span>
+                Date range exceeds 90 days and will be clamped by the backend
+              </span>
             </div>
           )}
 
@@ -366,13 +386,22 @@ export default function AdminFunnelDashboard() {
 // ── Panel Components ──
 
 interface FunnelSummaryPanelProps {
-  data?: { stages: Array<{ eventName: string; total: number; uniqueUsers: number }>; rangeClamped: boolean; cached: boolean };
+  data?: {
+    stages: Array<{ eventName: string; total: number; uniqueUsers: number }>;
+    rangeClamped: boolean;
+    cached: boolean;
+  };
   isLoading: boolean;
   error: any;
   stage?: string;
 }
 
-function FunnelSummaryPanel({ data, isLoading, error, stage }: FunnelSummaryPanelProps) {
+function FunnelSummaryPanel({
+  data,
+  isLoading,
+  error,
+  stage,
+}: FunnelSummaryPanelProps) {
   if (isLoading) {
     return (
       <DashboardCard>
@@ -411,8 +440,11 @@ function FunnelSummaryPanel({ data, isLoading, error, stage }: FunnelSummaryPane
       description="Event counts and unique users"
     >
       <div className="space-y-4">
-        {data.stages.map((s) => (
-          <div key={s.eventName} className="flex items-center justify-between border-b pb-2">
+        {data.stages.map(s => (
+          <div
+            key={s.eventName}
+            className="flex items-center justify-between border-b pb-2"
+          >
             <div>
               <p className="font-medium">{s.eventName}</p>
               <p className="text-xs text-muted-foreground">
@@ -431,19 +463,30 @@ function FunnelSummaryPanel({ data, isLoading, error, stage }: FunnelSummaryPane
 }
 
 interface FunnelTimeSeriesPanelProps {
-  data?: { series: Array<{ bucket: string; eventName: string; total: number }>; rangeClamped: boolean; cached: boolean };
+  data?: {
+    series: Array<{ bucket: string; eventName: string; total: number }>;
+    rangeClamped: boolean;
+    cached: boolean;
+  };
   isLoading: boolean;
   error: any;
   bucket: string;
 }
 
-function FunnelTimeSeriesPanel({ data, isLoading, error, bucket }: FunnelTimeSeriesPanelProps) {
+function FunnelTimeSeriesPanel({
+  data,
+  isLoading,
+  error,
+  bucket,
+}: FunnelTimeSeriesPanelProps) {
   if (isLoading) {
     return (
       <DashboardCard>
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          <span className="ml-2 text-muted-foreground">Loading time series...</span>
+          <span className="ml-2 text-muted-foreground">
+            Loading time series...
+          </span>
         </div>
       </DashboardCard>
     );
@@ -462,7 +505,10 @@ function FunnelTimeSeriesPanel({ data, isLoading, error, bucket }: FunnelTimeSer
 
   if (!data || data.series.length === 0) {
     return (
-      <DashboardCard title="Time Series" description={`Events over time (${bucket}ly buckets, UTC)`}>
+      <DashboardCard
+        title="Time Series"
+        description={`Events over time (${bucket}ly buckets, UTC)`}
+      >
         <div className="text-center py-12 text-muted-foreground">
           <p>No data available for the selected period</p>
         </div>
@@ -471,24 +517,32 @@ function FunnelTimeSeriesPanel({ data, isLoading, error, bucket }: FunnelTimeSer
   }
 
   return (
-    <DashboardCard title="Time Series" description={`Events over time (${bucket}ly buckets, UTC)`}>
+    <DashboardCard
+      title="Time Series"
+      description={`Events over time (${bucket}ly buckets, UTC)`}
+    >
       <div className="space-y-2">
         <div className="space-y-2">
           {data.series.map((point, idx) => {
             // Parse bucket date and format as UTC
-            const bucketDate = new Date(point.bucket + 'T00:00:00Z');
-            const formattedDate = bucketDate.toLocaleDateString('en-US', {
-              timeZone: 'UTC',
-              year: 'numeric',
-              month: 'short',
-              day: 'numeric',
+            const bucketDate = new Date(point.bucket + "T00:00:00Z");
+            const formattedDate = bucketDate.toLocaleDateString("en-US", {
+              timeZone: "UTC",
+              year: "numeric",
+              month: "short",
+              day: "numeric",
             });
 
             return (
-              <div key={idx} className="flex items-center justify-between text-sm border-b pb-2">
+              <div
+                key={idx}
+                className="flex items-center justify-between text-sm border-b pb-2"
+              >
                 <div>
                   <p className="font-medium">{formattedDate} (UTC)</p>
-                  <p className="text-xs text-muted-foreground">{point.eventName}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {point.eventName}
+                  </p>
                 </div>
                 <p className="font-semibold">{point.total.toLocaleString()}</p>
               </div>

@@ -71,7 +71,7 @@ export function registerAgencyStreamRoutes(app: Express): void {
     // Step 3: Extract and validate request body
     const {
       agencyId, conversationId, message, modelOverride,
-      recipientAgent, fileIds, additionalInstructions,
+      recipientAgent, fileIds, additionalInstructions, compilePreview,
     } = req.body || {};
     if (!agencyId || !message) {
       return res
@@ -214,6 +214,7 @@ export function registerAgencyStreamRoutes(app: Express): void {
             ...(recipientAgent && typeof recipientAgent === "string" ? { recipient_agent: recipientAgent } : {}),
             ...(Array.isArray(fileIds) && fileIds.length > 0 ? { file_ids: fileIds } : {}),
             ...(additionalInstructions && typeof additionalInstructions === "string" ? { additional_instructions: additionalInstructions } : {}),
+            ...(compilePreview && typeof compilePreview === "object" ? { compile_preview: compilePreview } : {}),
           }),
           signal: controller.signal,
         },

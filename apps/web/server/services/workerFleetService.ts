@@ -20,6 +20,7 @@ import {
   sanitizeWorkerWarningFlags,
 } from "./workerPayloadSanitizer";
 import type { AuditLogEntry } from "./auditLogger";
+import { getWorkerRuntimeDefinition } from "../../shared/workerRuntime";
 
 type WorkerRecord = Record<string, any>;
 type WorkerArtifactRecord = Record<string, any>;
@@ -43,11 +44,16 @@ export interface WorkerFleetSummary {
   id: string;
   displayName: string;
   runtimeType: string;
+  runtimeLabel: string;
+  runtimeFamily: string;
   runtimeVersion: string;
   status: string;
   teamId: string | null;
   externalReference: string;
   lastSeenAt: Date | null;
+  compatibilityState: "compatible" | "attention_required" | "unknown";
+  registrationSupport: "stable" | "feature_gated" | "admin_gated";
+  dispatchSupport: "stable" | "limited" | "admin_gated";
   healthState: "healthy" | "stale" | "failed" | "disabled" | "draining" | "unknown";
   warningFlagsJson: string[];
   boundProfileCount: number;
@@ -61,10 +67,14 @@ export interface WorkerDiagnosticsSnapshot {
   workerId: string;
   displayName: string;
   runtimeType: string;
+  runtimeLabel: string;
+  runtimeFamily: string;
   status: string;
   capturedAt: string | null;
   summaryJson: Record<string, unknown>;
   detailsJson: Record<string, unknown>;
+  compatibilityState: WorkerFleetSummary["compatibilityState"];
+  compatibility: Record<string, unknown> | null;
   warningFlagsJson: string[];
   dashboardUrl: string | null;
   revokedAt: string | null;
@@ -217,6 +227,27 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return isPlainObject(value) ? value : null;
+}
+
+function readCompatibility(worker: WorkerRecord): Record<string, unknown> | null {
+  const healthSummary = asRecord(worker.healthSummaryJson);
+  const controlPlane = healthSummary ? asRecord(healthSummary.controlPlane) : null;
+  return controlPlane ? asRecord(controlPlane.compatibility) : null;
+}
+
+function deriveCompatibilityState(
+  compatibility: Record<string, unknown> | null,
+): WorkerFleetSummary["compatibilityState"] {
+  if (!compatibility) {
+    return "unknown";
+  }
+  const transport = asRecord(compatibility.transport);
+  const runtimeFamily = asRecord(compatibility.runtimeFamily);
+  const runtimeProfile = asRecord(compatibility.runtimeProfile);
+  const allCompatible = [transport, runtimeFamily, runtimeProfile].every(
+    (lane) => lane?.compatible === true,
+  );
+  return allCompatible ? "compatible" : "attention_required";
 }
 
 function sanitizeDashboardUrl(url: unknown): string | null {
@@ -589,23 +620,33 @@ export async function listWorkerFleet(
       .map((row) => [row.workerId, Number(row.activeJobCount ?? 0)]),
   );
 
-  return workerRows.map((worker) => ({
-    id: worker.id,
-    displayName: worker.displayName,
-    runtimeType: worker.runtimeType,
-    runtimeVersion: worker.runtimeVersion,
-    status: worker.status,
-    teamId: worker.teamId ?? null,
-    externalReference: worker.externalReference,
-    lastSeenAt: worker.lastSeenAt ?? null,
-    healthState: deriveHealthState(worker),
-    warningFlagsJson: Array.isArray(worker.warningFlagsJson) ? worker.warningFlagsJson : [],
-    boundProfileCount: bindingMap.get(worker.id) ?? 0,
-    activeJobCount: activeJobMap.get(worker.id) ?? 0,
-    diagnosticsAvailable: isPlainObject(worker.healthSummaryJson) && isPlainObject(worker.healthSummaryJson.details),
-    dashboardUrl: sanitizeDashboardUrl(worker.dashboardUrl),
-    revokedAt: readRevokedAt(worker),
-  }));
+  return workerRows.map((worker) => {
+    const runtimeDefinition = getWorkerRuntimeDefinition(worker.runtimeType);
+    const compatibility = readCompatibility(worker);
+
+    return {
+      id: worker.id,
+      displayName: worker.displayName,
+      runtimeType: worker.runtimeType,
+      runtimeLabel: runtimeDefinition.displayName,
+      runtimeFamily: runtimeDefinition.familyName,
+      runtimeVersion: worker.runtimeVersion,
+      status: worker.status,
+      teamId: worker.teamId ?? null,
+      externalReference: worker.externalReference,
+      lastSeenAt: worker.lastSeenAt ?? null,
+      compatibilityState: deriveCompatibilityState(compatibility),
+      registrationSupport: runtimeDefinition.registrationSupport,
+      dispatchSupport: runtimeDefinition.dispatchSupport,
+      healthState: deriveHealthState(worker),
+      warningFlagsJson: Array.isArray(worker.warningFlagsJson) ? worker.warningFlagsJson : [],
+      boundProfileCount: bindingMap.get(worker.id) ?? 0,
+      activeJobCount: activeJobMap.get(worker.id) ?? 0,
+      diagnosticsAvailable: isPlainObject(worker.healthSummaryJson) && isPlainObject(worker.healthSummaryJson.details),
+      dashboardUrl: sanitizeDashboardUrl(worker.dashboardUrl),
+      revokedAt: readRevokedAt(worker),
+    };
+  });
 }
 
 export async function getWorkerDiagnosticsSnapshot(
@@ -620,15 +661,21 @@ export async function getWorkerDiagnosticsSnapshot(
   }
 
   const healthSummary = isPlainObject(worker.healthSummaryJson) ? worker.healthSummaryJson : {};
+  const runtimeDefinition = getWorkerRuntimeDefinition(worker.runtimeType);
+  const compatibility = readCompatibility(worker);
 
   return {
     workerId: worker.id,
     displayName: worker.displayName,
     runtimeType: worker.runtimeType,
+    runtimeLabel: runtimeDefinition.displayName,
+    runtimeFamily: runtimeDefinition.familyName,
     status: worker.status,
     capturedAt: typeof healthSummary.capturedAt === "string" ? healthSummary.capturedAt : null,
     summaryJson: sanitizeWorkerPayload(isPlainObject(healthSummary.summary) ? healthSummary.summary : {}) as Record<string, unknown>,
     detailsJson: sanitizeWorkerPayload(isPlainObject(healthSummary.details) ? healthSummary.details : {}) as Record<string, unknown>,
+    compatibilityState: deriveCompatibilityState(compatibility),
+    compatibility,
     warningFlagsJson: sanitizeWorkerWarningFlags(worker.warningFlagsJson),
     dashboardUrl: sanitizeDashboardUrl(worker.dashboardUrl),
     revokedAt: readRevokedAt(worker),

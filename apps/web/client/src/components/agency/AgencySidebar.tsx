@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import {
   Bot, Crown, GitBranch, Merge, Database, Zap, UserCheck,
   MonitorPlay, GitFork, Layers, RefreshCw, Sparkles,
-  ShieldAlert, Braces, Brain, Plug,
+  ShieldAlert, Braces, Brain, Plug, ArrowLeftRight,
   Briefcase, FileText, Code, BarChart, Calendar, Search, PenTool,
   ChevronDown, Info, Wrench,
 } from "lucide-react";
@@ -166,6 +166,20 @@ const NODE_TYPE_SECTIONS = [
         detail: "Watches selected nodes for errors and applies a recovery strategy: retry with exponential backoff (max 5 attempts), redirect to a fallback node, skip with a message, or terminate the run. Error details are scrubbed for security.",
         icon: <ShieldAlert className="h-3.5 w-3.5" />,
         color: "text-red-500",
+      },
+    ],
+  },
+  {
+    label: "Hybrid Runtime",
+    color: "violet",
+    items: [
+      {
+        nodeType: "engine_boundary",
+        label: "Engine Boundary",
+        description: "Bridges payloads across execution engines",
+        detail: "Explicit boundary node for cross-engine transitions. Declares bridge mode, payload contracts, approval ownership, and gives compile/runtime traces a first-class handoff checkpoint.",
+        icon: <ArrowLeftRight className="h-3.5 w-3.5" />,
+        color: "text-violet-600",
       },
     ],
   },

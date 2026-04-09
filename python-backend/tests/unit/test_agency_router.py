@@ -38,8 +38,15 @@ def _make_run_result():
     result.response = "The analysis is complete."
     result.agent_name = "Researcher"
     result.total_tokens = 500
+    result.prompt_tokens = 300
+    result.completion_tokens = 200
+    result.usage_breakdown = []
     result.step_count = 3
     result.duration_ms = 2500
+    result.step_attempt_snapshots = []
+    result.structured_result = None
+    result.preview_artifacts = []
+    result.hybrid_summary = None
     return result
 
 
@@ -58,7 +65,7 @@ def _build_app(
     agency_service_mock=None,
 ):
     """Build a FastAPI test app with the agencies router and mocked deps."""
-    from app.api.agencies import router, require_agency_feature, _bearer_scheme
+    from app.api.agencies import router, get_user_from_gateway_or_jwt, require_agency_feature
     from app.core.auth import get_current_user
     from app.core.database import get_db
 
@@ -67,10 +74,18 @@ def _build_app(
     mock_user = user or _make_mock_user()
     mock_db = AsyncMock()
 
+    @app.middleware("http")
+    async def _inject_test_bearer(request, call_next):
+        headers = list(request.scope.get("headers") or [])
+        if not any(key == b"authorization" for key, _ in headers):
+            headers.append((b"authorization", b"Bearer test-token"))
+            request.scope["headers"] = headers
+        return await call_next(request)
+
     # Override auth dependency
+    app.dependency_overrides[get_user_from_gateway_or_jwt] = lambda: mock_user
     app.dependency_overrides[get_current_user] = lambda: mock_user
     app.dependency_overrides[get_db] = lambda: mock_db
-    app.dependency_overrides[_bearer_scheme] = _make_mock_credentials
 
     if not feature_enabled:
         from fastapi import HTTPException
@@ -274,6 +289,107 @@ class TestAgencyRunEndpoint:
         assert data["structured_result"]["intent"] == "research_report"
         assert data["preview_artifacts"][0]["state"] == "preview_generated"
 
+    @patch("app.api.agencies.check_agentic_flag")
+    @patch("app.api.agencies.AgencyService")
+    def test_forwards_compile_preview_and_returns_hybrid_summary(self, MockService, mock_check_flag):
+        mock_check_flag.side_effect = [True, False]
+        mock_result = _make_run_result()
+        mock_result.step_attempt_snapshots = [
+            {
+                "model_id": "agency_swarm",
+                "provider": "agency_swarm",
+                "input_tokens": 0,
+                "output_tokens": 0,
+                "credits_used": 0,
+                "engine": "agency_swarm",
+                "subgraph_id": "sg_research",
+                "phase": "subgraph",
+            }
+        ]
+        mock_result.hybrid_summary = {
+            "usesHybrid": True,
+            "engineMix": ["agency_swarm", "adk2"],
+            "subgraphCount": 2,
+            "bridgeCount": 1,
+            "compileStatus": "success",
+            "artifactPublicationMode": "agency_run_artifacts",
+        }
+        mock_svc = MagicMock()
+        mock_svc.execute_run = AsyncMock(return_value=mock_result)
+        MockService.return_value = mock_svc
+
+        app, _ = _build_app()
+        client = TestClient(app)
+        resp = client.post(
+            "/api/v1/agencies/agency-1/run",
+            json={
+                "message": "Analyze this topic",
+                "compile_preview": {
+                    "planSummary": {
+                        "engineMix": ["agency_swarm", "adk2"],
+                        "subgraphCount": 2,
+                        "bridgeCount": 1,
+                        "usesHybrid": True,
+                        "errorCount": 0,
+                    }
+                },
+            },
+        )
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["step_attempt_snapshots"][0]["subgraph_id"] == "sg_research"
+        assert data["hybrid_summary"]["usesHybrid"] is True
+        assert MockService.return_value.execute_run.await_args.kwargs["compile_preview"]["planSummary"]["usesHybrid"] is True
+
+    @patch("app.api.agencies.check_agentic_flag")
+    def test_blocks_hybrid_compile_preview_when_flag_is_disabled(self, mock_check_flag):
+        mock_check_flag.side_effect = [False]
+
+        app, _ = _build_app()
+        client = TestClient(app)
+        resp = client.post(
+            "/api/v1/agencies/agency-1/run",
+            json={
+                "message": "Analyze this topic",
+                "compile_preview": {
+                    "planSummary": {
+                        "engineMix": ["agency_swarm", "adk2"],
+                        "subgraphCount": 2,
+                        "bridgeCount": 1,
+                        "usesHybrid": True,
+                        "errorCount": 0,
+                    }
+                },
+            },
+        )
+
+        assert resp.status_code == 403
+
+    @patch("app.api.agencies.check_agentic_flag")
+    def test_blocks_hybrid_compile_preview_when_kill_switch_is_enabled(self, mock_check_flag):
+        mock_check_flag.side_effect = [True, True]
+
+        app, _ = _build_app()
+        client = TestClient(app)
+        resp = client.post(
+            "/api/v1/agencies/agency-1/run",
+            json={
+                "message": "Analyze this topic",
+                "compile_preview": {
+                    "planSummary": {
+                        "engineMix": ["agency_swarm", "adk2"],
+                        "subgraphCount": 2,
+                        "bridgeCount": 1,
+                        "usesHybrid": True,
+                        "errorCount": 0,
+                    }
+                },
+            },
+        )
+
+        assert resp.status_code == 503
+
     def test_returns_422_for_missing_message(self):
         """Missing 'message' field in request body returns 422."""
         app, _ = _build_app()
@@ -395,6 +511,80 @@ class TestAgencyStreamEndpoint:
         )
 
         assert resp.status_code == 402
+
+    @patch("app.api.agencies.check_agentic_flag")
+    @patch("app.api.agencies.AgencyService")
+    def test_stream_forwards_compile_preview_and_emits_hybrid_summary(self, MockService, mock_check_flag):
+        captured_kwargs = {}
+
+        async def _mock_stream(*args, **kwargs):
+            captured_kwargs.update(kwargs)
+            yield {
+                "event": "run_finished",
+                "data": {
+                    "run_id": "r1",
+                    "hybrid_summary": {
+                        "usesHybrid": True,
+                        "engineMix": ["agency_swarm", "adk2"],
+                        "subgraphCount": 2,
+                        "bridgeCount": 1,
+                        "compileStatus": "success",
+                    },
+                },
+            }
+
+        mock_check_flag.side_effect = [True, False]
+        mock_svc = MagicMock()
+        mock_svc.credit_manager.estimate_run_cost.return_value = 0.1
+        mock_svc.credit_manager.pre_check = AsyncMock(return_value=True)
+        mock_svc.execute_run_stream = _mock_stream
+        MockService.return_value = mock_svc
+
+        app, _ = _build_app()
+        client = TestClient(app)
+        resp = client.post(
+            "/api/v1/agencies/agency-1/stream",
+            json={
+                "message": "Hello",
+                "compile_preview": {
+                    "planSummary": {
+                        "engineMix": ["agency_swarm", "adk2"],
+                        "subgraphCount": 2,
+                        "bridgeCount": 1,
+                        "usesHybrid": True,
+                        "errorCount": 0,
+                    }
+                },
+            },
+        )
+
+        assert resp.status_code == 200
+        assert '"hybrid_summary": {"usesHybrid": true' in resp.text
+        assert captured_kwargs["compile_preview"]["planSummary"]["usesHybrid"] is True
+
+    @patch("app.api.agencies.check_agentic_flag")
+    def test_stream_blocks_hybrid_compile_preview_when_flag_is_disabled(self, mock_check_flag):
+        mock_check_flag.side_effect = [False]
+
+        app, _ = _build_app()
+        client = TestClient(app)
+        resp = client.post(
+            "/api/v1/agencies/agency-1/stream",
+            json={
+                "message": "Hello",
+                "compile_preview": {
+                    "planSummary": {
+                        "engineMix": ["agency_swarm", "adk2"],
+                        "subgraphCount": 2,
+                        "bridgeCount": 1,
+                        "usesHybrid": True,
+                        "errorCount": 0,
+                    }
+                },
+            },
+        )
+
+        assert resp.status_code == 403
 
 
 # ── List Runs Endpoint Tests ────────────────────────────────────

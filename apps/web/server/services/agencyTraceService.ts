@@ -20,6 +20,103 @@ interface TracePayload {
   status?: string | null;
 }
 
+const TRACE_SECRET_PATTERNS = [
+  /sk-[a-zA-Z0-9]{20,}/g,
+  /Bearer\s+[a-zA-Z0-9._-]+/gi,
+  /Authorization:\s*\S+(?:\s+\S+)?/gi,
+  /postgresql:\/\/[^\s]+/gi,
+];
+
+function scrubTraceString(value: string): string {
+  return TRACE_SECRET_PATTERNS.reduce(
+    (current, pattern) => current.replace(pattern, "[REDACTED]"),
+    value,
+  );
+}
+
+function scrubTraceValue(value: unknown): unknown {
+  if (typeof value === "string") {
+    return scrubTraceString(value);
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => scrubTraceValue(item));
+  }
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).map(([key, entryValue]) => [
+        key,
+        scrubTraceValue(entryValue),
+      ]),
+    );
+  }
+  return value;
+}
+
+function inferHybridSummary(trace: Record<string, unknown>): Record<string, unknown> | null {
+  const spans = Array.isArray(trace.spans) ? trace.spans : [];
+  const engines = new Set<string>();
+  const subgraphIds = new Set<string>();
+  const bridgeIds = new Set<string>();
+  let boundaryCount = 0;
+
+  for (const span of spans) {
+    if (!span || typeof span !== "object") continue;
+    const typedSpan = span as Record<string, unknown>;
+    const metadata = (typedSpan.metadata && typeof typedSpan.metadata === "object")
+      ? typedSpan.metadata as Record<string, unknown>
+      : {};
+    if (typeof metadata.engine === "string" && metadata.engine.length > 0) {
+      engines.add(metadata.engine);
+    }
+    if (typeof metadata.subgraphId === "string" && metadata.subgraphId.length > 0) {
+      subgraphIds.add(metadata.subgraphId);
+    }
+    if (
+      typedSpan.type === "bridge"
+      || metadata.phase === "bridge"
+      || metadata.boundaryTransition === true
+    ) {
+      boundaryCount += 1;
+      bridgeIds.add(
+        typeof metadata.bridgeId === "string" && metadata.bridgeId.length > 0
+          ? metadata.bridgeId
+          : String(typedSpan.spanId ?? `bridge_${boundaryCount}`),
+      );
+    }
+  }
+
+  if (engines.size === 0 && subgraphIds.size === 0 && boundaryCount === 0 && bridgeIds.size === 0) {
+    return null;
+  }
+
+  return {
+    engineMix: [...engines],
+    subgraphIds: [...subgraphIds],
+    subgraphCount: subgraphIds.size,
+    boundaryCount,
+    bridgeCount: bridgeIds.size,
+  };
+}
+
+export function normalizeTraceForPersistence(
+  trace: Record<string, unknown>,
+): Record<string, unknown> {
+  const scrubbed = scrubTraceValue(trace) as Record<string, unknown>;
+  if (scrubbed.hybridSummary) {
+    return scrubbed;
+  }
+
+  const inferredHybridSummary = inferHybridSummary(scrubbed);
+  if (!inferredHybridSummary) {
+    return scrubbed;
+  }
+
+  return {
+    ...scrubbed,
+    hybridSummary: inferredHybridSummary,
+  };
+}
+
 /**
  * Persist a run trace emitted by the Python orchestrator via SSE.
  * Called from agencyStream.ts when a trace_complete event arrives.
@@ -39,7 +136,7 @@ export async function persistRunTrace(payload: TracePayload): Promise<void> {
     agencyId: payload.agencyId,
     tenantId: payload.tenantId,
     createdBy: payload.createdBy ?? null,
-    trace: payload.trace,
+    trace: normalizeTraceForPersistence(payload.trace),
     durationMs: payload.durationMs ? Math.round(payload.durationMs) : null,
     totalTokens: payload.totalTokens ?? null,
     totalCost: payload.totalCost != null ? String(payload.totalCost) : null,
@@ -67,6 +164,7 @@ export async function listRunTraces(opts: {
     totalTokens: number | null;
     totalCost: string | null;
     createdAt: Date;
+    hybridSummary: Record<string, unknown> | null;
   }>;
   total: number;
 }> {
@@ -103,6 +201,7 @@ export async function listRunTraces(opts: {
         totalTokens: agencyRunTraces.totalTokens,
         totalCost: agencyRunTraces.totalCost,
         createdAt: agencyRunTraces.createdAt,
+        trace: agencyRunTraces.trace,
       })
       .from(agencyRunTraces)
       .where(whereClause)
@@ -116,7 +215,19 @@ export async function listRunTraces(opts: {
   ]);
 
   return {
-    traces,
+    traces: traces.map((trace) => ({
+      id: trace.id,
+      runId: trace.runId,
+      status: trace.status,
+      durationMs: trace.durationMs,
+      totalTokens: trace.totalTokens,
+      totalCost: trace.totalCost,
+      createdAt: trace.createdAt,
+      hybridSummary:
+        trace.trace && typeof trace.trace === "object"
+          ? ((trace.trace as Record<string, unknown>).hybridSummary as Record<string, unknown> | null) ?? null
+          : null,
+    })),
     total: countResult[0]?.count ?? 0,
   };
 }

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 
 import { trpc } from "@/lib/trpc";
+import { LocaleToggle } from "@/components/LocaleToggle";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,15 +30,15 @@ export default function Factory() {
   const createSession = trpc.factory.createSession.useMutation();
   const evalGates = trpc.factory.evaluateGates.useQuery(
     { projectId, sessionId },
-    { enabled: Boolean(projectId && sessionId), refetchInterval: 5000 },
+    { enabled: Boolean(projectId && sessionId), refetchInterval: 5000 }
   );
   const tasks = trpc.factory.listTasks.useQuery(
     { projectId, sessionId },
-    { enabled: Boolean(projectId && sessionId), refetchInterval: 5000 },
+    { enabled: Boolean(projectId && sessionId), refetchInterval: 5000 }
   );
   const reports = trpc.factory.listReports.useQuery(
     { projectId, sessionId },
-    { enabled: Boolean(projectId && sessionId), refetchInterval: 5000 },
+    { enabled: Boolean(projectId && sessionId), refetchInterval: 5000 }
   );
 
   const requestApproval = trpc.factory.requestApplyApproval.useMutation();
@@ -46,15 +47,18 @@ export default function Factory() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/20 px-4 py-8 sm:px-6 lg:px-8">
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => setLocation("/dashboard")}
-        className="mb-4 text-gray-600"
-      >
-        <ChevronLeft className="mr-1 h-5 w-5" />
-        Back to Dashboard
-      </Button>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setLocation("/dashboard")}
+          className="text-gray-600"
+        >
+          <ChevronLeft className="mr-1 h-5 w-5" />
+          Back to Dashboard
+        </Button>
+        <LocaleToggle className="shrink-0" />
+      </div>
 
       <div className="mb-8">
         <h1 className="flex items-center gap-3 text-3xl font-bold">
@@ -85,19 +89,23 @@ export default function Factory() {
           <div className="flex flex-wrap gap-2">
             <Input
               value={projectName}
-              onChange={(e) => setProjectName(e.target.value)}
+              onChange={e => setProjectName(e.target.value)}
               placeholder="Project name"
               className="max-w-xs"
             />
             <Button
               onClick={async () => {
-                const res: any = await createProject.mutateAsync({ name: projectName });
+                const res: any = await createProject.mutateAsync({
+                  name: projectName,
+                });
                 setProjectId(res.project?.id ?? res.projectId ?? res.id ?? "");
               }}
               disabled={createProject.isPending}
               className="gap-1.5"
             >
-              {createProject.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+              {createProject.isPending && (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              )}
               Create Project
             </Button>
             <Button
@@ -111,16 +119,20 @@ export default function Factory() {
                 setSessionId(res.session?.id ?? res.id ?? "");
               }}
             >
-              {createSession.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+              {createSession.isPending && (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              )}
               Create Session
             </Button>
           </div>
           <div className="flex gap-4 text-sm font-mono text-muted-foreground">
             <span>
-              Project: <span className="text-foreground">{projectId || "—"}</span>
+              Project:{" "}
+              <span className="text-foreground">{projectId || "—"}</span>
             </span>
             <span>
-              Session: <span className="text-foreground">{sessionId || "—"}</span>
+              Session:{" "}
+              <span className="text-foreground">{sessionId || "—"}</span>
             </span>
           </div>
         </DashboardCard>
@@ -183,13 +195,15 @@ export default function Factory() {
           <div className="flex flex-wrap gap-2">
             <Input
               value={workspace}
-              onChange={(e) => setWorkspace(e.target.value)}
+              onChange={e => setWorkspace(e.target.value)}
               placeholder="Workspace path (server can access)"
               className="min-w-[360px] flex-1"
             />
             <Button
               variant="secondary"
-              disabled={!projectId || !sessionId || !workspace || runOrch.isPending}
+              disabled={
+                !projectId || !sessionId || !workspace || runOrch.isPending
+              }
               onClick={async () => {
                 await runOrch.mutateAsync({
                   projectId,
@@ -203,7 +217,13 @@ export default function Factory() {
               Run (plan-only)
             </Button>
             <Button
-              disabled={!projectId || !sessionId || !workspace || !applyToken || runOrch.isPending}
+              disabled={
+                !projectId ||
+                !sessionId ||
+                !workspace ||
+                !applyToken ||
+                runOrch.isPending
+              }
               onClick={async () => {
                 await runOrch.mutateAsync({
                   projectId,
@@ -217,7 +237,9 @@ export default function Factory() {
               }}
               className="gap-1.5"
             >
-              {runOrch.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+              {runOrch.isPending && (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              )}
               Run (apply)
             </Button>
           </div>
@@ -279,7 +301,7 @@ export default function Factory() {
           <div className="flex gap-2">
             <Input
               value={artifactKey}
-              onChange={(e) => setArtifactKey(e.target.value)}
+              onChange={e => setArtifactKey(e.target.value)}
               placeholder="artifact key"
               className="flex-1"
             />

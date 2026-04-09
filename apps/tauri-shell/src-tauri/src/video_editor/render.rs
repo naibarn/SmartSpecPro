@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 /// Sanitize file path to prevent command injection
 /// Only allows alphanumeric, dash, underscore, dot, and forward/back slashes
-fn sanitize_path(path: &str) -> Result<String, String> {
+pub(crate) fn sanitize_path(path: &str) -> Result<String, String> {
     // Check for null bytes (command injection vector)
     if path.contains('\0') {
         return Err("Invalid path: contains null bytes".to_string());
@@ -690,6 +690,53 @@ impl RenderEngine {
         }
 
         Ok(filters.join(";"))
+    }
+}
+
+pub fn render_project_blocking(
+    project_json: &str,
+    output_path: &str,
+) -> Result<RenderJob, String> {
+    let project: VideoEditorProject = serde_json::from_str(project_json)
+        .map_err(|e| format!("Invalid project JSON: {}", e))?;
+
+    validate_project_limits(&project)?;
+    let ffmpeg_cmd = RenderEngine::generate_ffmpeg_command(&project, output_path)?;
+    let ffmpeg_path = super::ffmpeg::get_ffmpeg_path();
+    let started_at = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+
+    let output = Command::new(&ffmpeg_path)
+        .args(&ffmpeg_cmd)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
+        .map_err(|e| format!("Failed to spawn ffmpeg: {}", e))?;
+
+    let completed_at = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(started_at);
+
+    if output.status.success() {
+        Ok(RenderJob {
+            id: uuid::Uuid::new_v4().to_string(),
+            output_path: output_path.to_string(),
+            status: RenderStatus::Completed,
+            progress: 1.0,
+            error: None,
+            started_at: Some(started_at),
+            completed_at: Some(completed_at),
+        })
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+        Err(if stderr.is_empty() {
+            "FFmpeg process failed".to_string()
+        } else {
+            format!("FFmpeg process failed: {stderr}")
+        })
     }
 }
 

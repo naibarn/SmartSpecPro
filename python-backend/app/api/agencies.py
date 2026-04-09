@@ -73,6 +73,7 @@ from app.services.agency_service import (
     InsufficientCreditsError,
     RunContext,
 )
+from app.services.agentic_feature_flags import check_agentic_flag
 
 router = APIRouter(prefix="/api/v1/agencies", tags=["agencies"])
 logger = structlog.get_logger(__name__)
@@ -125,6 +126,9 @@ class AgencyRunRequest(BaseModel):
     additional_instructions: Optional[str] = Field(
         None, max_length=5000, description="Per-run instruction override"
     )
+    compile_preview: Optional[dict] = Field(
+        None, description="Node-side hybrid compile preview for additive runtime validation"
+    )
 
     @property
     def safe_persona_prefix(self) -> Optional[str]:
@@ -158,8 +162,10 @@ class AgencyRunResponse(BaseModel):
     output: str
     credits_used: float
     duration_ms: int
+    step_attempt_snapshots: list[dict] = Field(default_factory=list)
     structured_result: Optional[dict] = None
     preview_artifacts: list[dict] = Field(default_factory=list)
+    hybrid_summary: Optional[dict] = None
     # v1.6: Token usage tracking
     total_tokens: int = 0
     prompt_tokens: int = 0
@@ -187,12 +193,14 @@ class AgencyRunDetailResponse(AgencyRunSummary):
     conversation_id: Optional[str] = None
     response: str = ""
     output: str = ""
+    step_attempt_snapshots: list[dict] = Field(default_factory=list)
     structured_result: Optional[dict] = None
     structured_result_parse_status: Optional[str] = None
     structured_result_intent: Optional[str] = None
     structured_result_summary: Optional[str] = None
     structured_result_error: Optional[str] = None
     preview_artifacts: list[dict] = Field(default_factory=list)
+    hybrid_summary: Optional[dict] = None
 
 
 class AgencyRunListResponse(BaseModel):
@@ -351,6 +359,21 @@ def _resolve_user_token(request: Request, credentials: HTTPAuthorizationCredenti
     return bearer
 
 
+def _compile_preview_uses_hybrid(compile_preview: dict | None) -> bool:
+    if not isinstance(compile_preview, dict):
+        return False
+
+    plan_summary = compile_preview.get("planSummary")
+    if not isinstance(plan_summary, dict):
+        return False
+
+    if bool(plan_summary.get("usesHybrid")):
+        return True
+
+    engine_mix = plan_summary.get("engineMix")
+    return isinstance(engine_mix, list) and "adk2" in engine_mix
+
+
 # ── Endpoints ──────────────────────────────────────────────────
 
 
@@ -375,6 +398,7 @@ async def run_agency(
         run_metadata={
             **({"planner": request.task_metadata.model_dump(exclude_none=True)} if request.task_metadata else {}),
             **({"retrieval_scope": request.retrieval_scope} if request.retrieval_scope else {}),
+            **({"compile_preview": request.compile_preview} if request.compile_preview else {}),
         } or None,
     )
 
@@ -390,6 +414,16 @@ async def run_agency(
             budget_class=request.task_metadata.budget_class,
         )
 
+    if _compile_preview_uses_hybrid(request.compile_preview):
+        tenant_id = user.currentTenantId or ""
+        hybrid_enabled = await check_agentic_flag("agencyHybridAdk", tenant_id)
+        if not hybrid_enabled:
+            raise HTTPException(status_code=403, detail="Hybrid agency runtime is not enabled for this tenant")
+
+        hybrid_kill_switch = await check_agentic_flag("agencyHybridAdkKillSwitch", tenant_id)
+        if hybrid_kill_switch:
+            raise HTTPException(status_code=503, detail="Hybrid agency runtime is temporarily disabled")
+
     try:
         result = await with_retry(
             lambda: service.execute_run(
@@ -397,6 +431,7 @@ async def run_agency(
                 recipient_agent=request.recipient_agent,
                 file_ids=request.file_ids,
                 additional_instructions=request.additional_instructions,
+                compile_preview=request.compile_preview,
             )
         )
     except InsufficientCreditsError as exc:
@@ -422,8 +457,10 @@ async def run_agency(
         output=result.response,
         credits_used=0.0,  # Per-call deduction by gateway; reconciled in section-06
         duration_ms=result.duration_ms,
+        step_attempt_snapshots=result.step_attempt_snapshots,
         structured_result=result.structured_result,
         preview_artifacts=result.preview_artifacts,
+        hybrid_summary=result.hybrid_summary,
         # v1.6: Usage tracking
         total_tokens=result.total_tokens,
         prompt_tokens=result.prompt_tokens,
@@ -461,8 +498,19 @@ async def stream_agency(
         run_metadata={
             **({"planner": request.task_metadata.model_dump(exclude_none=True)} if request.task_metadata else {}),
             **({"retrieval_scope": request.retrieval_scope} if request.retrieval_scope else {}),
+            **({"compile_preview": request.compile_preview} if request.compile_preview else {}),
         } or None,
     )
+
+    if _compile_preview_uses_hybrid(request.compile_preview):
+        tenant_id = user.currentTenantId or ""
+        hybrid_enabled = await check_agentic_flag("agencyHybridAdk", tenant_id)
+        if not hybrid_enabled:
+            raise HTTPException(status_code=403, detail="Hybrid agency runtime is not enabled for this tenant")
+
+        hybrid_kill_switch = await check_agentic_flag("agencyHybridAdkKillSwitch", tenant_id)
+        if hybrid_kill_switch:
+            raise HTTPException(status_code=503, detail="Hybrid agency runtime is temporarily disabled")
 
     # Pre-check credits before starting stream
     try:
@@ -485,6 +533,7 @@ async def stream_agency(
                 recipient_agent=request.recipient_agent,
                 file_ids=request.file_ids,
                 additional_instructions=request.additional_instructions,
+                compile_preview=request.compile_preview,
             ):
                 event_type = event.get("event", "message")
                 event_data = json.dumps(event.get("data", {}))

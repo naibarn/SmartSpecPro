@@ -8,12 +8,18 @@ const {
   mockAuthorizeRequest,
   mockSignBearerToken,
   mockDebugError,
+  mockGetDb,
+  mockEq,
+  mockAnd,
 } = vi.hoisted(() => ({
   mockGetFeatureFlag: vi.fn(),
   mockHasEnoughCredits: vi.fn(),
   mockAuthorizeRequest: vi.fn(),
   mockSignBearerToken: vi.fn().mockReturnValue("mock-jwt-token"),
   mockDebugError: vi.fn(),
+  mockGetDb: vi.fn(),
+  mockEq: vi.fn(),
+  mockAnd: vi.fn(),
 }));
 
 vi.mock("../services/featureFlags", () => ({
@@ -30,6 +36,28 @@ vi.mock("./tokens", () => ({
 }));
 vi.mock("./logger", () => ({
   debugError: mockDebugError,
+}));
+vi.mock("../db", () => ({
+  getDb: mockGetDb,
+}));
+vi.mock("../../drizzle/schema", () => ({
+  agencies: {
+    id: "agencies.id",
+    tenantId: "agencies.tenantId",
+  },
+  users: {
+    id: "users.id",
+    currentTenantId: "users.currentTenantId",
+  },
+  conversations: {
+    id: "conversations.id",
+    personaId: "conversations.personaId",
+    tenantId: "conversations.tenantId",
+  },
+}));
+vi.mock("drizzle-orm", () => ({
+  eq: mockEq,
+  and: mockAnd,
 }));
 
 import {
@@ -98,6 +126,31 @@ function makeSSEStream(events: string): ReadableStream<Uint8Array> {
   });
 }
 
+function makeSelectResult(rows: unknown[]) {
+  const limit = vi.fn().mockResolvedValue(rows);
+  const where = vi.fn().mockReturnValue({ limit });
+  const from = vi.fn().mockReturnValue({ where });
+  return { from };
+}
+
+function makeOwnershipDb() {
+  return {
+    select: vi.fn((projection: Record<string, unknown>) => {
+      const keys = Object.keys(projection || {});
+      if (keys.includes("tenantId") && !keys.includes("personaId")) {
+        return makeSelectResult([{ tenantId: "tenant-1" }]);
+      }
+      if (keys.includes("id")) {
+        return makeSelectResult([{ id: "ag-1" }]);
+      }
+      if (keys.includes("personaId")) {
+        return makeSelectResult([]);
+      }
+      return makeSelectResult([]);
+    }),
+  };
+}
+
 describe("agencyStreamProxy", () => {
   const originalFetch = globalThis.fetch;
   const requestBody = {
@@ -118,6 +171,16 @@ describe("agencyStreamProxy", () => {
     });
     mockGetFeatureFlag.mockResolvedValue(true);
     mockHasEnoughCredits.mockResolvedValue(true);
+    mockGetDb.mockResolvedValue(makeOwnershipDb());
+    mockEq.mockImplementation((left: unknown, right: unknown) => ({
+      op: "eq",
+      left,
+      right,
+    }));
+    mockAnd.mockImplementation((...conditions: unknown[]) => ({
+      op: "and",
+      conditions,
+    }));
   });
 
   afterEach(() => {
@@ -176,6 +239,42 @@ describe("agencyStreamProxy", () => {
       );
       expect(res.body).toContain(
         `event: run_finished\ndata: {"run_id":"abc"}\n\n`,
+      );
+    } finally {
+      server.close();
+    }
+  });
+
+  it("forwards compilePreview payload to the upstream stream runtime", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue(
+      new Response(makeSSEStream(`event: run_finished\ndata: {"run_id":"abc"}\n\n`), {
+        status: 200,
+        headers: { "content-type": "text/event-stream" },
+      }),
+    );
+
+    const app = createApp();
+    const { server, base } = await startServer(app);
+
+    try {
+      await httpRequest(base, "/api/v1/agency/stream", {
+        ...requestBody,
+        compilePreview: {
+          planSummary: {
+            engineMix: ["agency_swarm", "adk2"],
+            subgraphCount: 2,
+            bridgeCount: 1,
+            usesHybrid: true,
+            errorCount: 0,
+          },
+        },
+      });
+
+      expect(globalThis.fetch).toHaveBeenCalledWith(
+        expect.stringContaining("/api/v1/agencies/ag-1/stream"),
+        expect.objectContaining({
+          body: expect.stringContaining("\"compile_preview\":{\"planSummary\":{\"engineMix\":[\"agency_swarm\",\"adk2\"]"),
+        }),
       );
     } finally {
       server.close();
@@ -280,12 +379,18 @@ describe("agencyStreamProxy", () => {
   });
 
   it("sends heartbeat keepalive on interval", async () => {
-    vi.useFakeTimers({ shouldAdvanceTime: true });
-
-    // Track what the proxy writes to the response
     const writes: string[] = [];
-    let resolveEnd: () => void;
-    const endPromise = new Promise<void>((r) => (resolveEnd = r));
+    let heartbeatCallback: (() => void) | undefined;
+    let closeHandler: (() => void) | undefined;
+    const setIntervalSpy = vi
+      .spyOn(globalThis, "setInterval")
+      .mockImplementation(((callback: TimerHandler) => {
+        heartbeatCallback = callback as () => void;
+        return 1 as unknown as ReturnType<typeof setInterval>;
+      }) as typeof setInterval);
+    const clearIntervalSpy = vi
+      .spyOn(globalThis, "clearInterval")
+      .mockImplementation(() => undefined);
 
     // We'll test the heartbeat at a lower level using mock req/res
     const mockReq: any = {
@@ -295,7 +400,11 @@ describe("agencyStreamProxy", () => {
         message: "hello",
       },
       headers: {},
-      on: vi.fn(),
+      on: vi.fn((event: string, handler: () => void) => {
+        if (event === "close") {
+          closeHandler = handler;
+        }
+      }),
     };
 
     const mockRes: any = {
@@ -311,7 +420,9 @@ describe("agencyStreamProxy", () => {
         writes.push(str);
         return true;
       }),
-      end: vi.fn(() => resolveEnd!()),
+      end: vi.fn(() => {
+        mockRes.writableEnded = true;
+      }),
       headersSent: false,
       writableEnded: false,
     };
@@ -340,26 +451,26 @@ describe("agencyStreamProxy", () => {
     const handler = routeLayer.route.stack[0].handle;
 
     // Invoke handler directly
-    handler(mockReq, mockRes);
+    const handlerPromise = handler(mockReq, mockRes);
 
-    // Let auth/flag/credits resolve
-    await vi.advanceTimersByTimeAsync(50);
+    await vi.waitFor(() =>
+      expect(setIntervalSpy).toHaveBeenCalledWith(
+        expect.any(Function),
+        HEARTBEAT_INTERVAL_MS,
+      ),
+    );
 
-    // Advance past one heartbeat interval
-    await vi.advanceTimersByTimeAsync(HEARTBEAT_INTERVAL_MS);
-    const keepalives1 = writes.filter((w) => w === ": keepalive\n\n");
-    expect(keepalives1.length).toBeGreaterThanOrEqual(1);
+    heartbeatCallback?.();
+    heartbeatCallback?.();
 
-    // Advance another interval
-    await vi.advanceTimersByTimeAsync(HEARTBEAT_INTERVAL_MS);
-    const keepalives2 = writes.filter((w) => w === ": keepalive\n\n");
-    expect(keepalives2.length).toBeGreaterThanOrEqual(2);
+    const keepalives = writes.filter((w) => w === ": keepalive\n\n");
+    expect(keepalives.length).toBe(2);
 
-    // Close the stream to clean up
     streamController.close();
-    await vi.advanceTimersByTimeAsync(50);
+    closeHandler?.();
+    await handlerPromise;
 
-    vi.useRealTimers();
+    expect(clearIntervalSpy).toHaveBeenCalled();
   });
 
   it("returns 401 when no auth provided", async () => {

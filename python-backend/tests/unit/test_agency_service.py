@@ -1,4 +1,5 @@
 """Tests for AgencyService -- lifecycle management."""
+import json
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, timezone
@@ -22,6 +23,10 @@ def _make_agency_row():
     row.system_prompt = "You are a helpful agency."
     row.credit_multiplier = "1.50"
     row.max_run_time_seconds = 600
+    row.creator_fee_credits = 0
+    row.platform_share_pct = 20
+    row.creator_id = None
+    row.user_context = None
     row.status = "active"
     return row
 
@@ -71,6 +76,7 @@ class TestAgencyServiceLoadAgency:
         mock_db.execute = AsyncMock(return_value=mock_result)
 
         service = AgencyService(db=mock_db)
+        service._load_flows = AsyncMock(return_value=[])
         config = await service.load_agency("agency-1", "tenant-1")
 
         assert config.agency_id == "agency-1"
@@ -135,6 +141,10 @@ class TestAgencyServiceExecuteRun:
         }])
         service._load_flows_full = AsyncMock(return_value=[])
         service._load_tool_whitelist = AsyncMock(return_value={"builtin-document-search"})
+        service._load_guardrails_for_agents = AsyncMock(return_value={})
+        service.credit_manager.pre_check = AsyncMock(return_value=True)
+        service.credit_manager.estimate_run_cost = MagicMock(return_value=0.1)
+        service.credit_manager.apply_multiplier_markup = AsyncMock()
 
         mock_orchestrator = MagicMock()
         mock_orchestrator.run = AsyncMock(return_value="orchestrated")
@@ -415,6 +425,151 @@ class TestAgencyServiceExecuteRun:
         assert result.structured_result["intent"] == "research_report"
         assert result.preview_artifacts[0]["state"] == "preview_generated"
 
+    async def test_execute_run_adds_hybrid_runtime_summary_from_compile_preview(self):
+        """Hybrid compile preview metadata is normalized into additive run-result surfaces."""
+        from app.services.agency_service import AgencyService, RunContext
+
+        mock_db = _make_mock_db()
+        service = AgencyService(db=mock_db)
+
+        service.load_agency = AsyncMock(return_value=MagicMock(
+            agency_id="a1", tenant_id="t1", name="Test",
+            system_prompt="", communication_flows=[],
+            max_run_time_seconds=600, user_id=1, conversation_id="c1",
+            credit_multiplier=1.0, creator_fee_credits=0, creator_id=None, platform_share_pct=20,
+        ))
+        service._load_agents = AsyncMock(return_value=[])
+        service._load_flows = AsyncMock(return_value=[])
+        service._load_tool_whitelist = AsyncMock(return_value=set())
+
+        mock_agent = MagicMock(name="Agent1")
+        mock_agent._is_entry_point = True
+        service.adapter.create_agent = MagicMock(return_value=mock_agent)
+        service.adapter.create_agency = MagicMock()
+
+        mock_run_result = MagicMock(
+            run_id="run-1", response="ok", agent_name="Agent1",
+            total_tokens=50, step_count=1, duration_ms=300,
+            usage_breakdown=[],
+            structured_result=None,
+            preview_artifacts=[],
+        )
+        service.adapter.run = AsyncMock(return_value=mock_run_result)
+        service.credit_manager.pre_check = AsyncMock(return_value=True)
+        service.credit_manager.estimate_run_cost = MagicMock(return_value=0.1)
+        service.credit_manager.apply_multiplier_markup = AsyncMock()
+
+        with patch("app.services.agency_service.resolve_tools_for_agent", AsyncMock(return_value=[])):
+            with patch("app.services.agency_service.create_persistence_hooks", return_value=(AsyncMock(), AsyncMock())):
+                ctx = RunContext(user_id=1, tenant_id="t1", conversation_id="c1", user_token="tok")
+                result = await service.execute_run(
+                    "a1",
+                    "Hi",
+                    ctx,
+                    compile_preview={
+                        "compiledSubgraphs": [
+                            {
+                                "id": "sg_research",
+                                "engine": "agency_swarm",
+                                "loweringStrategy": "agency_swarm_adapter",
+                                "emulatedNodeIds": [],
+                            },
+                            {
+                                "id": "sg_creative",
+                                "engine": "adk2",
+                                "loweringStrategy": "adk_dynamic",
+                                "emulatedNodeIds": ["router-1"],
+                            },
+                        ],
+                        "bridges": [
+                            {
+                                "fromSubgraphId": "sg_research",
+                                "toSubgraphId": "sg_creative",
+                                "toEngine": "adk2",
+                                "bridgeMode": "sync",
+                                "implicit": False,
+                            }
+                        ],
+                        "planSummary": {
+                            "engineMix": ["agency_swarm", "adk2"],
+                            "subgraphCount": 2,
+                            "bridgeCount": 1,
+                            "usesHybrid": True,
+                            "errorCount": 0,
+                        },
+                    },
+                )
+
+        assert result.hybrid_summary["usesHybrid"] is True
+        assert result.step_attempt_snapshots[0]["subgraph_id"] == "sg_research"
+        assert result.step_attempt_snapshots[1]["engine"] == "adk2"
+
+    async def test_execute_run_orchestrator_persists_hybrid_runtime_metadata(self):
+        """Orchestrator path persists additive hybrid runtime metadata for later run-detail reads."""
+        from app.services.agency_service import AgencyService, RunContext
+
+        mock_db = _make_mock_db()
+        service = AgencyService(db=mock_db)
+
+        service.load_agency = AsyncMock(return_value=MagicMock(
+            agency_id="a1", tenant_id="t1", name="Test",
+            system_prompt="Base prompt", communication_flows=[],
+            max_run_time_seconds=600, user_id=1, conversation_id="c1",
+            credit_multiplier=1.0, creator_fee_credits=0, creator_id=None, platform_share_pct=20,
+            user_context=None,
+        ))
+        service._load_agents = AsyncMock(return_value=[{
+            "id": "node-1",
+            "name": "Router",
+            "instructions": "",
+            "model": "gpt-4o-mini",
+            "model_settings": None,
+            "is_entry_point": True,
+            "node_type": "router",
+            "node_config": {},
+        }])
+        service._load_flows_full = AsyncMock(return_value=[])
+        service._load_tool_whitelist = AsyncMock(return_value={"builtin-document-search"})
+        service._load_guardrails_for_agents = AsyncMock(return_value={})
+        service.credit_manager.pre_check = AsyncMock(return_value=True)
+        service.credit_manager.estimate_run_cost = MagicMock(return_value=0.1)
+        service.credit_manager.apply_multiplier_markup = AsyncMock()
+
+        mock_orchestrator = MagicMock()
+        mock_orchestrator.run = AsyncMock(return_value="orchestrated")
+
+        with patch("app.services.agency_service.should_use_orchestrator", return_value=True):
+            with patch("app.services.agency_service.AgencyOrchestrator", return_value=mock_orchestrator):
+                ctx = RunContext(
+                    user_id=1,
+                    tenant_id="t1",
+                    conversation_id="c1",
+                    user_token="tok",
+                )
+                await service.execute_run(
+                    "a1",
+                    "Hello",
+                    ctx,
+                    compile_preview={
+                        "planSummary": {
+                            "engineMix": ["agency_swarm", "adk2"],
+                            "subgraphCount": 2,
+                            "bridgeCount": 1,
+                            "usesHybrid": True,
+                            "errorCount": 0,
+                        }
+                    },
+                )
+
+        metadata_payloads = [
+            call.args[1]["metadata"]
+            for call in mock_db.execute.call_args_list
+            if len(call.args) > 1 and isinstance(call.args[1], dict) and "metadata" in call.args[1]
+        ]
+        assert metadata_payloads
+        persisted = json.loads(metadata_payloads[-1])
+        assert persisted["hybrid_runtime"]["hybrid_summary"]["usesHybrid"] is True
+
 
 class TestAgencyPreviewPersistencePolicy:
     """Tests for preview payload persistence sizing and streaming preview events."""
@@ -582,6 +737,8 @@ class TestAgencyPreviewPersistencePolicy:
         }])
         service._load_flows_full = AsyncMock(return_value=[])
         service._load_tool_whitelist = AsyncMock(return_value={"builtin-document-search"})
+        service._load_guardrails_for_agents = AsyncMock(return_value={})
+        service.credit_manager.apply_multiplier_markup = AsyncMock()
 
         mock_orchestrator = MagicMock()
         mock_ctx = ExecutionContext("Hello", "tok", "t1", user_id=1)
@@ -618,6 +775,134 @@ class TestAgencyPreviewPersistencePolicy:
         ctor_kwargs = mock_ctor.call_args.kwargs
         assert ctor_kwargs["agency_whitelist"] == {"builtin-document-search"}
         assert ctor_kwargs["retrieval_scope_mode"] == "library_only"
+
+    async def test_execute_run_stream_emits_hybrid_summary_and_persists_metadata(self):
+        """Streaming runs carry additive hybrid metadata through run_finished and persistence."""
+        from app.services.agency_service import AgencyService, RunContext
+
+        async def _stream():
+            yield {"type": "response.output_text.delta", "delta": "Hello"}
+
+        mock_db = _make_mock_db()
+        service = AgencyService(db=mock_db)
+
+        service.load_agency = AsyncMock(return_value=MagicMock(
+            agency_id="a1", tenant_id="t1", name="Test",
+            system_prompt="", communication_flows=[],
+            max_run_time_seconds=600, user_id=1, conversation_id="c1",
+            credit_multiplier=1.0, creator_fee_credits=0, creator_id=None, platform_share_pct=20,
+        ))
+        service._load_agents = AsyncMock(return_value=[])
+        service._load_flows = AsyncMock(return_value=[])
+        service._load_tool_whitelist = AsyncMock(return_value=set())
+        service.adapter.create_agency = MagicMock()
+        service.adapter.run_stream = MagicMock(return_value=_stream())
+        service.adapter.extract_stream_usage = MagicMock(return_value=(10, 5, 5, 0.0, []))
+        service.credit_manager.apply_multiplier_markup = AsyncMock()
+
+        with patch("app.services.agency_service.resolve_tools_for_agent", AsyncMock(return_value=[])):
+            with patch("app.services.agency_service.create_persistence_hooks", return_value=(AsyncMock(), AsyncMock())):
+                ctx = RunContext(user_id=1, tenant_id="t1", conversation_id="c1", user_token="tok")
+                events = [
+                    event
+                    async for event in service.execute_run_stream(
+                        "a1",
+                        "Hello",
+                        ctx,
+                        compile_preview={
+                            "compiledSubgraphs": [
+                                {
+                                    "id": "sg_research",
+                                    "engine": "agency_swarm",
+                                    "loweringStrategy": "agency_swarm_adapter",
+                                    "emulatedNodeIds": [],
+                                }
+                            ],
+                            "planSummary": {
+                                "engineMix": ["agency_swarm", "adk2"],
+                                "subgraphCount": 2,
+                                "bridgeCount": 1,
+                                "usesHybrid": True,
+                                "errorCount": 0,
+                            },
+                        },
+                    )
+                ]
+
+        run_finished = next(event for event in events if event["event"] == "run_finished")
+        assert run_finished["data"]["hybrid_summary"]["usesHybrid"] is True
+        assert run_finished["data"]["step_attempt_snapshots"][0]["subgraph_id"] == "sg_research"
+
+        metadata_payloads = [
+            call.args[1]["metadata"]
+            for call in mock_db.execute.call_args_list
+            if len(call.args) > 1 and isinstance(call.args[1], dict) and "metadata" in call.args[1]
+        ]
+        persisted = json.loads(metadata_payloads[-1])
+        assert persisted["hybrid_runtime"]["hybrid_summary"]["usesHybrid"] is True
+
+
+class TestAgencyServiceRunRetrieval:
+    async def test_get_run_hydrates_hybrid_runtime_from_compile_preview_metadata(self):
+        """get_run backfills hybrid runtime fields from persisted compile_preview metadata."""
+        from app.services.agency_service import AgencyService
+
+        mock_db = _make_mock_db()
+        service = AgencyService(db=mock_db)
+
+        run_row = MagicMock()
+        run_row.id = "run-1"
+        run_row.status = "completed"
+        run_row.total_credits_used = 0
+        run_row.started_at = None
+        run_row.completed_at = None
+        run_row.duration_ms = 123
+        run_row.error_type = None
+        run_row.error_message = None
+        run_row.step_count = 2
+        run_row.metadata = {
+            "compile_preview": {
+                "compiledSubgraphs": [
+                    {
+                        "id": "sg_review",
+                        "engine": "agency_swarm",
+                        "loweringStrategy": "agency_swarm_adapter",
+                        "emulatedNodeIds": [],
+                    }
+                ],
+                "planSummary": {
+                    "engineMix": ["agency_swarm", "adk2"],
+                    "subgraphCount": 2,
+                    "bridgeCount": 1,
+                    "usesHybrid": True,
+                    "errorCount": 0,
+                },
+            }
+        }
+        run_row.structured_result = None
+        run_row.structured_result_parse_status = "not_present"
+        run_row.structured_result_intent = None
+        run_row.structured_result_summary = None
+        run_row.structured_result_error = None
+        run_row.conversation_id = "conv-1"
+
+        response_row = MagicMock()
+        response_row.content = "hello"
+
+        run_result = MagicMock()
+        run_result.first.return_value = run_row
+        response_result = MagicMock()
+        response_result.first.return_value = response_row
+        artifact_result = MagicMock()
+        artifact_result.all.return_value = []
+
+        mock_db.execute = AsyncMock(side_effect=[run_result, response_result, artifact_result])
+
+        result = await service.get_run("run-1", "agency-1", "tenant-1")
+
+        assert result["response"] == "hello"
+        assert result["hybrid_summary"]["usesHybrid"] is True
+        assert result["step_attempt_snapshots"][0]["subgraph_id"] == "sg_review"
 
     async def test_execute_run_stream_passes_retrieval_scope_mode_to_tool_resolution(self):
         """streaming runs apply retrieval scope before tool construction."""

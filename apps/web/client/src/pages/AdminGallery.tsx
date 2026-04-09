@@ -5,6 +5,7 @@
  */
 
 import { useAuth } from "@/contexts/AuthContext";
+import { LocaleToggle } from "@/components/LocaleToggle";
 import { Button } from "@/components/ui/button";
 import { DashboardCard } from "@/components/dashboard";
 import {
@@ -144,17 +145,17 @@ function isImagePreviewUrl(url?: string | null): boolean {
 export default function AdminGallery() {
   const { user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
-  
+
   // View state
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [activeTab, setActiveTab] = useState<"all" | GalleryType>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(0);
-  
+
   // Selection state
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [selectMode, setSelectMode] = useState(false);
-  
+
   // Dialog state
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -162,13 +163,13 @@ export default function AdminGallery() {
   const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<GalleryItem | null>(null);
   const [formData, setFormData] = useState<FormData>(defaultFormData);
-  
+
   // Upload state
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const thumbnailInputRef = useRef<HTMLInputElement>(null);
-  
+
   // Drag state
   const [draggedItem, setDraggedItem] = useState<number | null>(null);
 
@@ -180,12 +181,12 @@ export default function AdminGallery() {
     limit: ITEMS_PER_PAGE,
     offset: page * ITEMS_PER_PAGE,
   });
-  
+
   const { data: totalCount } = trpc.gallery.count.useQuery({
     type: activeTab === "all" ? undefined : activeTab,
     search: searchQuery || undefined,
   });
-  
+
   const { data: stats, refetch: refetchStats } = trpc.gallery.stats.useQuery();
   const { data: analytics } = trpc.gallery.analytics.useQuery(
     { days: 30 },
@@ -202,7 +203,7 @@ export default function AdminGallery() {
       utils.gallery.stats.invalidate();
       utils.gallery.count.invalidate();
     },
-    onError: (error) => {
+    onError: error => {
       toast.error(`Failed to create: ${error.message}`);
     },
   });
@@ -214,7 +215,7 @@ export default function AdminGallery() {
       setSelectedItem(null);
       utils.gallery.adminList.invalidate();
     },
-    onError: (error) => {
+    onError: error => {
       toast.error(`Failed to update: ${error.message}`);
     },
   });
@@ -228,20 +229,20 @@ export default function AdminGallery() {
       utils.gallery.stats.invalidate();
       utils.gallery.count.invalidate();
     },
-    onError: (error) => {
+    onError: error => {
       toast.error(`Failed to delete: ${error.message}`);
     },
   });
 
   const togglePublishMutation = trpc.gallery.togglePublish.useMutation({
-    onSuccess: (data) => {
+    onSuccess: data => {
       toast.success(data.isPublished ? "Item published" : "Item unpublished");
       utils.gallery.adminList.invalidate();
     },
   });
 
   const toggleFeaturedMutation = trpc.gallery.toggleFeatured.useMutation({
-    onSuccess: (data) => {
+    onSuccess: data => {
       toast.success(data.isFeatured ? "Item featured" : "Item unfeatured");
       utils.gallery.adminList.invalidate();
     },
@@ -256,7 +257,7 @@ export default function AdminGallery() {
   });
 
   const uploadFileMutation = trpc.gallery.uploadFile.useMutation();
-  
+
   const updateSortOrderMutation = trpc.gallery.updateSortOrder.useMutation({
     onSuccess: () => {
       toast.success("Order updated");
@@ -266,7 +267,7 @@ export default function AdminGallery() {
 
   // Bulk mutations
   const bulkDeleteMutation = trpc.gallery.bulkDelete.useMutation({
-    onSuccess: (data) => {
+    onSuccess: data => {
       toast.success(`Deleted ${data.count} items`);
       setSelectedIds(new Set());
       setSelectMode(false);
@@ -275,13 +276,13 @@ export default function AdminGallery() {
       utils.gallery.stats.invalidate();
       utils.gallery.count.invalidate();
     },
-    onError: (error) => {
+    onError: error => {
       toast.error(`Failed to delete: ${error.message}`);
     },
   });
 
   const bulkPublishMutation = trpc.gallery.bulkPublish.useMutation({
-    onSuccess: (data) => {
+    onSuccess: data => {
       toast.success(`Updated ${data.count} items`);
       setSelectedIds(new Set());
       utils.gallery.adminList.invalidate();
@@ -289,7 +290,7 @@ export default function AdminGallery() {
   });
 
   const bulkFeatureMutation = trpc.gallery.bulkFeature.useMutation({
-    onSuccess: (data) => {
+    onSuccess: data => {
       toast.success(`Updated ${data.count} items`);
       setSelectedIds(new Set());
       utils.gallery.adminList.invalidate();
@@ -341,9 +342,9 @@ export default function AdminGallery() {
         setUploadProgress(100);
 
         if (type === "main") {
-          setFormData((prev) => ({ ...prev, fileUrl: result.fileUrl }));
+          setFormData(prev => ({ ...prev, fileUrl: result.fileUrl }));
         } else {
-          setFormData((prev) => ({ ...prev, thumbnailUrl: result.fileUrl }));
+          setFormData(prev => ({ ...prev, thumbnailUrl: result.fileUrl }));
         }
 
         toast.success("File uploaded successfully");
@@ -369,7 +370,9 @@ export default function AdminGallery() {
       thumbnailUrl: formData.thumbnailUrl || undefined,
       duration: formData.duration || undefined,
       demoUrl: formData.demoUrl || undefined,
-      tags: formData.tags ? formData.tags.split(",").map((t) => t.trim()) : undefined,
+      tags: formData.tags
+        ? formData.tags.split(",").map(t => t.trim())
+        : undefined,
       isPublished: formData.isPublished,
       isFeatured: formData.isFeatured,
       authorName: formData.authorName || undefined,
@@ -390,7 +393,9 @@ export default function AdminGallery() {
         thumbnailUrl: formData.thumbnailUrl || undefined,
         duration: formData.duration || undefined,
         demoUrl: formData.demoUrl || undefined,
-        tags: formData.tags ? formData.tags.split(",").map((t) => t.trim()) : undefined,
+        tags: formData.tags
+          ? formData.tags.split(",").map(t => t.trim())
+          : undefined,
         isPublished: formData.isPublished,
         isFeatured: formData.isFeatured,
         authorName: formData.authorName || undefined,
@@ -442,7 +447,7 @@ export default function AdminGallery() {
 
   const selectAll = () => {
     if (items) {
-      setSelectedIds(new Set(items.map((item) => item.id)));
+      setSelectedIds(new Set(items.map(item => item.id)));
     }
   };
 
@@ -463,14 +468,19 @@ export default function AdminGallery() {
   const handleDrop = (targetId: number) => {
     if (draggedItem === null || !items) return;
 
-    const draggedIndex = items.findIndex((item) => item.id === draggedItem);
-    const targetIndex = items.findIndex((item) => item.id === targetId);
+    const draggedIndex = items.findIndex(item => item.id === draggedItem);
+    const targetIndex = items.findIndex(item => item.id === targetId);
 
     if (draggedIndex === -1 || targetIndex === -1) return;
 
     const newOrder = items.map((item, index) => ({
       id: item.id,
-      sortOrder: index === draggedIndex ? targetIndex : index === targetIndex ? draggedIndex : index,
+      sortOrder:
+        index === draggedIndex
+          ? targetIndex
+          : index === targetIndex
+            ? draggedIndex
+            : index,
     }));
 
     updateSortOrderMutation.mutate(newOrder);
@@ -510,7 +520,7 @@ export default function AdminGallery() {
       {/* Header */}
       <header className="bg-white border-b sticky top-0 z-40">
         <div className="px-4 sm:px-6 lg:px-8 py-4">
-          <div className="mb-2">
+          <div className="mb-2 flex items-center justify-between gap-2">
             <a
               href="/dashboard"
               className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -518,6 +528,7 @@ export default function AdminGallery() {
               <ChevronLeft className="w-4 h-4" />
               Back to Dashboard
             </a>
+            <LocaleToggle className="shrink-0" />
           </div>
           <div className="flex items-center justify-between">
             <div>
@@ -546,7 +557,10 @@ export default function AdminGallery() {
                 <BarChart3 className="w-4 h-4 mr-1" />
                 Analytics
               </Button>
-              <Button onClick={() => setIsCreateDialogOpen(true)} className="bg-purple-600 hover:bg-purple-700">
+              <Button
+                onClick={() => setIsCreateDialogOpen(true)}
+                className="bg-purple-600 hover:bg-purple-700"
+              >
                 <Plus className="w-4 h-4 mr-2" />
                 Add Item
               </Button>
@@ -619,7 +633,9 @@ export default function AdminGallery() {
                   </div>
                   <div>
                     <p className="text-xs text-gray-500">Views</p>
-                    <p className="text-xl font-bold">{stats.totalViews.toLocaleString()}</p>
+                    <p className="text-xl font-bold">
+                      {stats.totalViews.toLocaleString()}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -632,7 +648,9 @@ export default function AdminGallery() {
                   </div>
                   <div>
                     <p className="text-xs text-gray-500">Likes</p>
-                    <p className="text-xl font-bold">{stats.totalLikes.toLocaleString()}</p>
+                    <p className="text-xl font-bold">
+                      {stats.totalLikes.toLocaleString()}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -655,11 +673,18 @@ export default function AdminGallery() {
                 {analytics?.topItems && analytics.topItems.length > 0 ? (
                   <div className="space-y-3">
                     {analytics.topItems.map((item, index) => (
-                      <div key={item.id} className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
-                        <span className="text-lg font-bold text-gray-400 w-6">#{index + 1}</span>
+                      <div
+                        key={item.id}
+                        className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg"
+                      >
+                        <span className="text-lg font-bold text-gray-400 w-6">
+                          #{index + 1}
+                        </span>
                         <div className="flex-1">
                           <p className="font-medium">{item.title}</p>
-                          <p className="text-sm text-gray-500 capitalize">{item.type}</p>
+                          <p className="text-sm text-gray-500 capitalize">
+                            {item.type}
+                          </p>
                         </div>
                         <div className="flex items-center gap-4 text-sm">
                           <span className="flex items-center gap-1">
@@ -675,7 +700,9 @@ export default function AdminGallery() {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-gray-500 text-center py-8">No data available</p>
+                  <p className="text-gray-500 text-center py-8">
+                    No data available
+                  </p>
                 )}
               </div>
             </DashboardCard>
@@ -689,22 +716,36 @@ export default function AdminGallery() {
                 </h3>
               </div>
               <div>
-                {analytics?.typeDistribution && analytics.typeDistribution.length > 0 ? (
+                {analytics?.typeDistribution &&
+                analytics.typeDistribution.length > 0 ? (
                   <div className="grid grid-cols-3 gap-4">
-                    {analytics.typeDistribution.map((item) => (
-                      <div key={item.type} className="text-center p-4 bg-gray-50 rounded-lg">
+                    {analytics.typeDistribution.map(item => (
+                      <div
+                        key={item.type}
+                        className="text-center p-4 bg-gray-50 rounded-lg"
+                      >
                         <div className="flex justify-center mb-2">
-                          {item.type === "image" && <Image className="w-8 h-8 text-blue-500" />}
-                          {item.type === "video" && <Video className="w-8 h-8 text-red-500" />}
-                          {item.type === "website" && <Globe className="w-8 h-8 text-green-500" />}
+                          {item.type === "image" && (
+                            <Image className="w-8 h-8 text-blue-500" />
+                          )}
+                          {item.type === "video" && (
+                            <Video className="w-8 h-8 text-red-500" />
+                          )}
+                          {item.type === "website" && (
+                            <Globe className="w-8 h-8 text-green-500" />
+                          )}
                         </div>
                         <p className="text-2xl font-bold">{item.count}</p>
-                        <p className="text-sm text-gray-500 capitalize">{item.type}s</p>
+                        <p className="text-sm text-gray-500 capitalize">
+                          {item.type}s
+                        </p>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-gray-500 text-center py-8">No data available</p>
+                  <p className="text-gray-500 text-center py-8">
+                    No data available
+                  </p>
                 )}
               </div>
             </DashboardCard>
@@ -719,14 +760,20 @@ export default function AdminGallery() {
                 <Input
                   placeholder="Search gallery items..."
                   value={searchQuery}
-                  onChange={(e) => {
+                  onChange={e => {
                     setSearchQuery(e.target.value);
                     setPage(0);
                   }}
                   className="pl-10"
                 />
               </div>
-              <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v as any); setPage(0); }}>
+              <Tabs
+                value={activeTab}
+                onValueChange={v => {
+                  setActiveTab(v as any);
+                  setPage(0);
+                }}
+              >
                 <TabsList>
                   <TabsTrigger value="all">All</TabsTrigger>
                   <TabsTrigger value="image">
@@ -763,7 +810,12 @@ export default function AdminGallery() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => bulkPublishMutation.mutate({ ids: Array.from(selectedIds), isPublished: true })}
+                    onClick={() =>
+                      bulkPublishMutation.mutate({
+                        ids: Array.from(selectedIds),
+                        isPublished: true,
+                      })
+                    }
                     disabled={selectedIds.size === 0}
                   >
                     <Eye className="w-4 h-4 mr-1" />
@@ -772,7 +824,12 @@ export default function AdminGallery() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => bulkPublishMutation.mutate({ ids: Array.from(selectedIds), isPublished: false })}
+                    onClick={() =>
+                      bulkPublishMutation.mutate({
+                        ids: Array.from(selectedIds),
+                        isPublished: false,
+                      })
+                    }
                     disabled={selectedIds.size === 0}
                   >
                     <EyeOff className="w-4 h-4 mr-1" />
@@ -781,7 +838,12 @@ export default function AdminGallery() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => bulkFeatureMutation.mutate({ ids: Array.from(selectedIds), isFeatured: true })}
+                    onClick={() =>
+                      bulkFeatureMutation.mutate({
+                        ids: Array.from(selectedIds),
+                        isFeatured: true,
+                      })
+                    }
                     disabled={selectedIds.size === 0}
                   >
                     <Star className="w-4 h-4 mr-1" />
@@ -796,7 +858,14 @@ export default function AdminGallery() {
                     <Trash2 className="w-4 h-4 mr-1" />
                     Delete
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={() => { setSelectMode(false); setSelectedIds(new Set()); }}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setSelectMode(false);
+                      setSelectedIds(new Set());
+                    }}
+                  >
                     <X className="w-4 h-4" />
                   </Button>
                 </div>
@@ -805,7 +874,11 @@ export default function AdminGallery() {
 
             {!selectMode && (
               <div className="flex justify-end mb-4">
-                <Button variant="outline" size="sm" onClick={() => setSelectMode(true)}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSelectMode(true)}
+                >
                   <CheckSquare className="w-4 h-4 mr-1" />
                   Select Items
                 </Button>
@@ -827,7 +900,7 @@ export default function AdminGallery() {
               </div>
             ) : items && items.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {items.map((item) => {
+                {items.map(item => {
                   const videoPoster = isImagePreviewUrl(item.thumbnailUrl)
                     ? item.thumbnailUrl || undefined
                     : isImagePreviewUrl(item.fileUrl)
@@ -835,32 +908,43 @@ export default function AdminGallery() {
                       : undefined;
 
                   return (
-                  <DashboardCard
-                    key={item.id}
-                    className={`group overflow-hidden cursor-pointer transition-all ${
-                      selectedIds.has(item.id) ? "ring-2 ring-purple-500" : ""
-                    } ${draggedItem === item.id ? "opacity-50" : ""}`}
-                    draggable
-                    onDragStart={() => handleDragStart(item.id)}
-                    onDragOver={(e) => handleDragOver(e, item.id)}
-                    onDrop={() => handleDrop(item.id)}
-                  >
-                    <div className="relative aspect-video bg-gray-100">
-                      {item.type === "video" ? (
-                        item.fileUrl ? (
-                          <video
-                            src={item.fileUrl}
-                            poster={videoPoster}
-                            className="w-full h-full object-cover"
-                            preload="auto"
-                            autoPlay
-                            loop
-                            muted
-                            playsInline
-                          />
-                        ) : item.thumbnailUrl ? (
+                    <DashboardCard
+                      key={item.id}
+                      className={`group overflow-hidden cursor-pointer transition-all ${
+                        selectedIds.has(item.id) ? "ring-2 ring-purple-500" : ""
+                      } ${draggedItem === item.id ? "opacity-50" : ""}`}
+                      draggable
+                      onDragStart={() => handleDragStart(item.id)}
+                      onDragOver={e => handleDragOver(e, item.id)}
+                      onDrop={() => handleDrop(item.id)}
+                    >
+                      <div className="relative aspect-video bg-gray-100">
+                        {item.type === "video" ? (
+                          item.fileUrl ? (
+                            <video
+                              src={item.fileUrl}
+                              poster={videoPoster}
+                              className="w-full h-full object-cover"
+                              preload="auto"
+                              autoPlay
+                              loop
+                              muted
+                              playsInline
+                            />
+                          ) : item.thumbnailUrl ? (
+                            <img
+                              src={item.thumbnailUrl}
+                              alt={item.title}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              {getTypeIcon(item.type)}
+                            </div>
+                          )
+                        ) : item.thumbnailUrl || item.fileUrl ? (
                           <img
-                            src={item.thumbnailUrl}
+                            src={item.thumbnailUrl || item.fileUrl || ""}
                             alt={item.title}
                             className="w-full h-full object-cover"
                           />
@@ -868,168 +952,183 @@ export default function AdminGallery() {
                           <div className="w-full h-full flex items-center justify-center">
                             {getTypeIcon(item.type)}
                           </div>
-                        )
-                      ) : item.thumbnailUrl || item.fileUrl ? (
-                        <img
-                          src={item.thumbnailUrl || item.fileUrl || ""}
-                          alt={item.title}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          {getTypeIcon(item.type)}
-                        </div>
-                      )}
-
-                      {/* Selection checkbox */}
-                      {selectMode && (
-                        <div
-                          className="absolute top-2 left-2 z-10"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleSelect(item.id);
-                          }}
-                        >
-                          <div className={`w-6 h-6 rounded border-2 flex items-center justify-center ${
-                            selectedIds.has(item.id)
-                              ? "bg-purple-500 border-purple-500"
-                              : "bg-white/80 border-gray-300"
-                          }`}>
-                            {selectedIds.has(item.id) && <Check className="w-4 h-4 text-white" />}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Drag handle */}
-                      {!selectMode && (
-                        <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <div className="p-1 bg-black/50 rounded cursor-grab">
-                            <GripVertical className="w-4 h-4 text-white" />
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Status badges */}
-                      <div className="absolute top-2 right-2 flex gap-1">
-                        {!item.isPublished && (
-                          <Badge variant="secondary" className="bg-yellow-500/90 text-white text-xs">
-                            Draft
-                          </Badge>
                         )}
-                        {item.isFeatured && (
-                          <Badge variant="secondary" className="bg-violet-500/90 text-white text-xs">
-                            <Star className="w-3 h-3" />
-                          </Badge>
+
+                        {/* Selection checkbox */}
+                        {selectMode && (
+                          <div
+                            className="absolute top-2 left-2 z-10"
+                            onClick={e => {
+                              e.stopPropagation();
+                              toggleSelect(item.id);
+                            }}
+                          >
+                            <div
+                              className={`w-6 h-6 rounded border-2 flex items-center justify-center ${
+                                selectedIds.has(item.id)
+                                  ? "bg-purple-500 border-purple-500"
+                                  : "bg-white/80 border-gray-300"
+                              }`}
+                            >
+                              {selectedIds.has(item.id) && (
+                                <Check className="w-4 h-4 text-white" />
+                              )}
+                            </div>
+                          </div>
                         )}
-                      </div>
 
-                      {/* Type badge */}
-                      <Badge
-                        variant="secondary"
-                        className="absolute bottom-2 left-2 bg-black/50 text-white text-xs"
-                      >
-                        {getTypeIcon(item.type)}
-                        <span className="ml-1 capitalize">{item.type}</span>
-                      </Badge>
+                        {/* Drag handle */}
+                        {!selectMode && (
+                          <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="p-1 bg-black/50 rounded cursor-grab">
+                              <GripVertical className="w-4 h-4 text-white" />
+                            </div>
+                          </div>
+                        )}
 
-                      {/* Duration for videos */}
-                      {item.type === "video" && item.duration && (
+                        {/* Status badges */}
+                        <div className="absolute top-2 right-2 flex gap-1">
+                          {!item.isPublished && (
+                            <Badge
+                              variant="secondary"
+                              className="bg-yellow-500/90 text-white text-xs"
+                            >
+                              Draft
+                            </Badge>
+                          )}
+                          {item.isFeatured && (
+                            <Badge
+                              variant="secondary"
+                              className="bg-violet-500/90 text-white text-xs"
+                            >
+                              <Star className="w-3 h-3" />
+                            </Badge>
+                          )}
+                        </div>
+
+                        {/* Type badge */}
                         <Badge
                           variant="secondary"
-                          className="absolute bottom-2 right-2 bg-black/70 text-white text-xs"
+                          className="absolute bottom-2 left-2 bg-black/50 text-white text-xs"
                         >
-                          {item.duration}
+                          {getTypeIcon(item.type)}
+                          <span className="ml-1 capitalize">{item.type}</span>
                         </Badge>
-                      )}
 
-                      {/* Like button overlay */}
-                      <button
-                        className="absolute bottom-2 right-2 p-2 bg-white/90 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-pink-100"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          likeMutation.mutate({ id: item.id });
-                        }}
-                      >
-                        <Heart className="w-4 h-4 text-pink-500" />
-                      </button>
-                    </div>
-
-                    <div className="p-4">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0 flex-1">
-                          <h3 className="font-medium truncate">{item.title}</h3>
-                          <p className="text-sm text-gray-500 truncate">
-                            {item.aspectRatio}
-                          </p>
-                        </div>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="shrink-0">
-                              <MoreVertical className="w-4 h-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => openEditDialog(item)}>
-                              <Pencil className="w-4 h-4 mr-2" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => togglePublishMutation.mutate({ id: item.id })}>
-                              {item.isPublished ? (
-                                <>
-                                  <EyeOff className="w-4 h-4 mr-2" />
-                                  Unpublish
-                                </>
-                              ) : (
-                                <>
-                                  <Eye className="w-4 h-4 mr-2" />
-                                  Publish
-                                </>
-                              )}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => toggleFeaturedMutation.mutate({ id: item.id })}>
-                              {item.isFeatured ? (
-                                <>
-                                  <StarOff className="w-4 h-4 mr-2" />
-                                  Unfeature
-                                </>
-                              ) : (
-                                <>
-                                  <Star className="w-4 h-4 mr-2" />
-                                  Feature
-                                </>
-                              )}
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              onClick={() => openDeleteDialog(item)}
-                              className="text-red-600"
-                            >
-                              <Trash2 className="w-4 h-4 mr-2" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-
-                      {/* Stats */}
-                      <div className="flex items-center gap-4 mt-3 text-sm text-gray-500">
-                        <span className="flex items-center gap-1">
-                          <Eye className="w-3 h-3" />
-                          {item.views}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Heart className="w-3 h-3 text-pink-400" />
-                          {item.likes}
-                        </span>
-                        {item.type === "image" && (
-                          <span className="flex items-center gap-1">
-                            <Download className="w-3 h-3" />
-                            {item.downloads}
-                          </span>
+                        {/* Duration for videos */}
+                        {item.type === "video" && item.duration && (
+                          <Badge
+                            variant="secondary"
+                            className="absolute bottom-2 right-2 bg-black/70 text-white text-xs"
+                          >
+                            {item.duration}
+                          </Badge>
                         )}
+
+                        {/* Like button overlay */}
+                        <button
+                          className="absolute bottom-2 right-2 p-2 bg-white/90 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-pink-100"
+                          onClick={e => {
+                            e.stopPropagation();
+                            likeMutation.mutate({ id: item.id });
+                          }}
+                        >
+                          <Heart className="w-4 h-4 text-pink-500" />
+                        </button>
                       </div>
-                    </div>
-                  </DashboardCard>
+
+                      <div className="p-4">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0 flex-1">
+                            <h3 className="font-medium truncate">
+                              {item.title}
+                            </h3>
+                            <p className="text-sm text-gray-500 truncate">
+                              {item.aspectRatio}
+                            </p>
+                          </div>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="shrink-0"
+                              >
+                                <MoreVertical className="w-4 h-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={() => openEditDialog(item)}
+                              >
+                                <Pencil className="w-4 h-4 mr-2" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  togglePublishMutation.mutate({ id: item.id })
+                                }
+                              >
+                                {item.isPublished ? (
+                                  <>
+                                    <EyeOff className="w-4 h-4 mr-2" />
+                                    Unpublish
+                                  </>
+                                ) : (
+                                  <>
+                                    <Eye className="w-4 h-4 mr-2" />
+                                    Publish
+                                  </>
+                                )}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  toggleFeaturedMutation.mutate({ id: item.id })
+                                }
+                              >
+                                {item.isFeatured ? (
+                                  <>
+                                    <StarOff className="w-4 h-4 mr-2" />
+                                    Unfeature
+                                  </>
+                                ) : (
+                                  <>
+                                    <Star className="w-4 h-4 mr-2" />
+                                    Feature
+                                  </>
+                                )}
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => openDeleteDialog(item)}
+                                className="text-red-600"
+                              >
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+
+                        {/* Stats */}
+                        <div className="flex items-center gap-4 mt-3 text-sm text-gray-500">
+                          <span className="flex items-center gap-1">
+                            <Eye className="w-3 h-3" />
+                            {item.views}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Heart className="w-3 h-3 text-pink-400" />
+                            {item.likes}
+                          </span>
+                          {item.type === "image" && (
+                            <span className="flex items-center gap-1">
+                              <Download className="w-3 h-3" />
+                              {item.downloads}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </DashboardCard>
                   );
                 })}
               </div>
@@ -1039,7 +1138,9 @@ export default function AdminGallery() {
                   <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
                     <Image className="w-8 h-8 text-gray-400" />
                   </div>
-                  <h3 className="text-lg font-medium mb-2">No gallery items yet</h3>
+                  <h3 className="text-lg font-medium mb-2">
+                    No gallery items yet
+                  </h3>
                   <p className="text-gray-500 mb-4">
                     Get started by adding your first gallery item.
                   </p>
@@ -1057,7 +1158,7 @@ export default function AdminGallery() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setPage((p) => Math.max(0, p - 1))}
+                  onClick={() => setPage(p => Math.max(0, p - 1))}
                   disabled={page === 0}
                 >
                   <ChevronLeft className="w-4 h-4 mr-1" />
@@ -1069,7 +1170,7 @@ export default function AdminGallery() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                  onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
                   disabled={page >= totalPages - 1}
                 >
                   Next
@@ -1084,7 +1185,7 @@ export default function AdminGallery() {
       {/* Create/Edit Dialog */}
       <Dialog
         open={isCreateDialogOpen || isEditDialogOpen}
-        onOpenChange={(open) => {
+        onOpenChange={open => {
           if (!open) {
             setIsCreateDialogOpen(false);
             setIsEditDialogOpen(false);
@@ -1112,7 +1213,9 @@ export default function AdminGallery() {
                 <Label>Type</Label>
                 <Select
                   value={formData.type}
-                  onValueChange={(v) => setFormData((prev) => ({ ...prev, type: v as GalleryType }))}
+                  onValueChange={v =>
+                    setFormData(prev => ({ ...prev, type: v as GalleryType }))
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -1144,7 +1247,12 @@ export default function AdminGallery() {
                 <Label>Aspect Ratio</Label>
                 <Select
                   value={formData.aspectRatio}
-                  onValueChange={(v) => setFormData((prev) => ({ ...prev, aspectRatio: v as AspectRatio }))}
+                  onValueChange={v =>
+                    setFormData(prev => ({
+                      ...prev,
+                      aspectRatio: v as AspectRatio,
+                    }))
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -1163,7 +1271,9 @@ export default function AdminGallery() {
               <Label>Title</Label>
               <Input
                 value={formData.title}
-                onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
+                onChange={e =>
+                  setFormData(prev => ({ ...prev, title: e.target.value }))
+                }
                 placeholder="Enter title..."
               />
             </div>
@@ -1173,7 +1283,12 @@ export default function AdminGallery() {
               <Label>Description</Label>
               <Textarea
                 value={formData.description}
-                onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
+                onChange={e =>
+                  setFormData(prev => ({
+                    ...prev,
+                    description: e.target.value,
+                  }))
+                }
                 placeholder="Enter description..."
                 rows={3}
               />
@@ -1182,12 +1297,18 @@ export default function AdminGallery() {
             {/* File Upload */}
             <div className="space-y-2">
               <Label>
-                {formData.type === "image" ? "Image" : formData.type === "video" ? "Video" : "Screenshot"}
+                {formData.type === "image"
+                  ? "Image"
+                  : formData.type === "video"
+                    ? "Video"
+                    : "Screenshot"}
               </Label>
               <div className="flex gap-2">
                 <Input
                   value={formData.fileUrl}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, fileUrl: e.target.value }))}
+                  onChange={e =>
+                    setFormData(prev => ({ ...prev, fileUrl: e.target.value }))
+                  }
                   placeholder="Enter URL or upload file..."
                   className="flex-1"
                 />
@@ -1196,7 +1317,7 @@ export default function AdminGallery() {
                   type="file"
                   accept={formData.type === "video" ? "video/*" : "image/*"}
                   className="hidden"
-                  onChange={(e) => {
+                  onChange={e => {
                     const file = e.target.files?.[0];
                     if (file) handleFileUpload(file, "main");
                   }}
@@ -1239,7 +1360,12 @@ export default function AdminGallery() {
               <div className="flex gap-2">
                 <Input
                   value={formData.thumbnailUrl}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, thumbnailUrl: e.target.value }))}
+                  onChange={e =>
+                    setFormData(prev => ({
+                      ...prev,
+                      thumbnailUrl: e.target.value,
+                    }))
+                  }
                   placeholder="Enter thumbnail URL or upload..."
                   className="flex-1"
                 />
@@ -1248,7 +1374,7 @@ export default function AdminGallery() {
                   type="file"
                   accept="image/*"
                   className="hidden"
-                  onChange={(e) => {
+                  onChange={e => {
                     const file = e.target.files?.[0];
                     if (file) handleFileUpload(file, "thumbnail");
                   }}
@@ -1279,7 +1405,9 @@ export default function AdminGallery() {
                 <Label>Duration</Label>
                 <Input
                   value={formData.duration}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, duration: e.target.value }))}
+                  onChange={e =>
+                    setFormData(prev => ({ ...prev, duration: e.target.value }))
+                  }
                   placeholder="e.g., 2:30"
                 />
               </div>
@@ -1291,7 +1419,9 @@ export default function AdminGallery() {
                 <Label>Demo URL</Label>
                 <Input
                   value={formData.demoUrl}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, demoUrl: e.target.value }))}
+                  onChange={e =>
+                    setFormData(prev => ({ ...prev, demoUrl: e.target.value }))
+                  }
                   placeholder="https://..."
                 />
               </div>
@@ -1302,7 +1432,9 @@ export default function AdminGallery() {
               <Label>Tags (comma-separated)</Label>
               <Input
                 value={formData.tags}
-                onChange={(e) => setFormData((prev) => ({ ...prev, tags: e.target.value }))}
+                onChange={e =>
+                  setFormData(prev => ({ ...prev, tags: e.target.value }))
+                }
                 placeholder="e.g., nature, landscape, photography"
               />
             </div>
@@ -1312,7 +1444,9 @@ export default function AdminGallery() {
               <Label>Author Name (optional)</Label>
               <Input
                 value={formData.authorName}
-                onChange={(e) => setFormData((prev) => ({ ...prev, authorName: e.target.value }))}
+                onChange={e =>
+                  setFormData(prev => ({ ...prev, authorName: e.target.value }))
+                }
                 placeholder="Enter author name..."
               />
             </div>
@@ -1323,7 +1457,12 @@ export default function AdminGallery() {
               <Input
                 type="number"
                 value={formData.sortOrder}
-                onChange={(e) => setFormData((prev) => ({ ...prev, sortOrder: parseInt(e.target.value) || 0 }))}
+                onChange={e =>
+                  setFormData(prev => ({
+                    ...prev,
+                    sortOrder: parseInt(e.target.value) || 0,
+                  }))
+                }
               />
             </div>
 
@@ -1332,14 +1471,18 @@ export default function AdminGallery() {
               <div className="flex items-center gap-2">
                 <Switch
                   checked={formData.isPublished}
-                  onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, isPublished: checked }))}
+                  onCheckedChange={checked =>
+                    setFormData(prev => ({ ...prev, isPublished: checked }))
+                  }
                 />
                 <Label>Published</Label>
               </div>
               <div className="flex items-center gap-2">
                 <Switch
                   checked={formData.isFeatured}
-                  onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, isFeatured: checked }))}
+                  onCheckedChange={checked =>
+                    setFormData(prev => ({ ...prev, isFeatured: checked }))
+                  }
                 />
                 <Label>Featured</Label>
               </div>
@@ -1360,7 +1503,11 @@ export default function AdminGallery() {
             </Button>
             <Button
               onClick={isEditDialogOpen ? handleUpdate : handleCreate}
-              disabled={createMutation.isPending || updateMutation.isPending || !formData.title}
+              disabled={
+                createMutation.isPending ||
+                updateMutation.isPending ||
+                !formData.title
+              }
               className="bg-purple-600 hover:bg-purple-700"
             >
               {createMutation.isPending || updateMutation.isPending ? (
@@ -1381,11 +1528,15 @@ export default function AdminGallery() {
               Delete Item
             </DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete "{selectedItem?.title}"? This action cannot be undone.
+              Are you sure you want to delete "{selectedItem?.title}"? This
+              action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteDialogOpen(false)}
+            >
               Cancel
             </Button>
             <Button
@@ -1393,7 +1544,9 @@ export default function AdminGallery() {
               onClick={handleDelete}
               disabled={deleteMutation.isPending}
             >
-              {deleteMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              {deleteMutation.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+              ) : null}
               Delete
             </Button>
           </DialogFooter>
@@ -1401,7 +1554,10 @@ export default function AdminGallery() {
       </Dialog>
 
       {/* Bulk Delete Confirmation Dialog */}
-      <Dialog open={isBulkDeleteDialogOpen} onOpenChange={setIsBulkDeleteDialogOpen}>
+      <Dialog
+        open={isBulkDeleteDialogOpen}
+        onOpenChange={setIsBulkDeleteDialogOpen}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -1409,19 +1565,27 @@ export default function AdminGallery() {
               Delete {selectedIds.size} Items
             </DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete {selectedIds.size} selected items? This action cannot be undone.
+              Are you sure you want to delete {selectedIds.size} selected items?
+              This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsBulkDeleteDialogOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setIsBulkDeleteDialogOpen(false)}
+            >
               Cancel
             </Button>
             <Button
               variant="destructive"
-              onClick={() => bulkDeleteMutation.mutate({ ids: Array.from(selectedIds) })}
+              onClick={() =>
+                bulkDeleteMutation.mutate({ ids: Array.from(selectedIds) })
+              }
               disabled={bulkDeleteMutation.isPending}
             >
-              {bulkDeleteMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              {bulkDeleteMutation.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+              ) : null}
               Delete All
             </Button>
           </DialogFooter>
@@ -1434,7 +1598,13 @@ export default function AdminGallery() {
 // Check icon component
 function Check({ className }: { className?: string }) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={3}
+    >
       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
     </svg>
   );

@@ -8,6 +8,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { clearPrivateVaultAccessToken } from '@/lib/privateVault';
 import { clearLocalAiDeviceState } from '@/features/local-ai/state/localAiDeviceStateStorage';
+import { getSmartSpecWebEndpoint } from '@/lib/webRuntime';
 
 export interface User {
   id: string;
@@ -45,9 +46,6 @@ interface SignupData {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// API base URL for legacy Python backend (for OAuth flows)
-const API_BASE_URL = import.meta.env.VITE_API_URL || '';
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -60,7 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const checkAuth = async () => {
     try {
       // Call tRPC auth.me endpoint with credentials to include session cookie
-      const response = await fetch('/trpc/auth.me', {
+      const response = await fetch(getSmartSpecWebEndpoint('/trpc/auth.me'), {
         method: 'GET',
         credentials: 'include', // Include cookies for session auth
       });
@@ -113,7 +111,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // Otherwise, it's email/password login via tRPC
       const email = userOrEmail;
-      const response = await fetch('/trpc/auth.login', {
+      const response = await fetch(getSmartSpecWebEndpoint('/trpc/auth.login'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -157,7 +155,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signup = async (signupData: SignupData) => {
     setIsLoading(true);
     try {
-      const response = await fetch('/trpc/auth.register', {
+      const response = await fetch(getSmartSpecWebEndpoint('/trpc/auth.register'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -193,7 +191,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     try {
       // Call tRPC logout endpoint to clear session cookie
-      await fetch('/trpc/auth.logout', {
+      await fetch(getSmartSpecWebEndpoint('/trpc/auth.logout'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -225,7 +223,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     // Redirect to Google OAuth
     const redirectUri = `${window.location.origin}/auth/callback/google`;
-    const googleAuthUrl = `${API_BASE_URL}/api/auth/google?redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}`;
+    const googleAuthUrl = `${getSmartSpecWebEndpoint('/api/auth/google')}?redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}`;
     window.location.href = googleAuthUrl;
   };
 
@@ -238,14 +236,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     // Redirect to GitHub OAuth
     const redirectUri = `${window.location.origin}/auth/callback/github`;
-    const githubAuthUrl = `${API_BASE_URL}/api/auth/github?redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}`;
+    const githubAuthUrl = `${getSmartSpecWebEndpoint('/api/auth/github')}?redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}`;
     window.location.href = githubAuthUrl;
   };
 
   const refreshUser = async () => {
     // Use tRPC auth.me to refresh user from session cookie
     try {
-      const response = await fetch('/trpc/auth.me', {
+      const response = await fetch(getSmartSpecWebEndpoint('/trpc/auth.me'), {
         method: 'GET',
         credentials: 'include',
       });

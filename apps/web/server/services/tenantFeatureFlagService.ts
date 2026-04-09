@@ -48,6 +48,16 @@ const REDIS_SYNCED_FLAGS: ReadonlySet<TenantFeatureFlagKey> = new Set([
   "UPLOAD_POST_GATEWAY_ENABLED",
   "localClientLlmMode",
   "openClawExternalRuntime",
+  "desktopZeroClawWorker",
+  "nemoClawSecureWorkerPool",
+  "hiClawClusterRuntime",
+  "desktopHostEnabled",
+  "desktopAdvancedLocalMode",
+  "desktopPackageSync",
+  "desktopAgencyRuntime",
+  "desktopWorkerProjection",
+  "agencyHybridAdk",
+  "agencyHybridAdkKillSwitch",
 ]);
 
 /**

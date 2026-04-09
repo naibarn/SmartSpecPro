@@ -3608,6 +3608,7 @@ dependencies = [
  "portable-pty",
  "regex",
  "reqwest 0.12.28",
+ "ring",
  "serde",
  "serde_json",
  "sha2",
@@ -3617,6 +3618,7 @@ dependencies = [
  "tauri-plugin-fs",
  "tauri-plugin-opener",
  "tauri-plugin-shell",
+ "time",
  "tokio",
  "uuid",
 ]

@@ -1,0 +1,70 @@
+{
+  "plugin_root": "/home/dev/projects/SmartSpecPro/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/076-hybrid-agency-runtime-google-adk/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/076-hybrid-agency-runtime-google-adk/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "workflow_backend": "compatible",
+  "task_tracking_backend": "compatible",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-document-model-and-subgraphs",
+    "section-02-canonical-ir-and-compile-planning",
+    "section-03-runtime-adapters-and-bridge-orchestration",
+    "section-04-agency-builder-ux-and-migration",
+    "section-05-rollout-tests-and-guardrails"
+  ],
+  "sections_state": {
+    "section-01-document-model-and-subgraphs": {
+      "status": "completed",
+      "notes": "Hybrid agency document v2 foundation implemented with additive schema, version snapshot normalization, router wiring, and minimal builder pass-through support.",
+      "verification": [
+        "npm --prefix apps/web test -- --run drizzle/schema.test.ts server/services/agencyBuilderDocument.test.ts server/routers/__tests__/agency.test.ts client/src/components/agency/__tests__/AgencyBuilder.test.tsx",
+        "npm --prefix apps/web run typecheck"
+      ]
+    },
+    "section-02-canonical-ir-and-compile-planning": {
+      "status": "completed",
+      "notes": "Added SmartSpecPro-owned canonical IR + compile preview builder, capability diagnostics, cross-engine boundary validation, browser_session compatibility handling, and save/run preflight blocking through the agency router.",
+      "verification": [
+        "npm --prefix apps/web test -- --run server/services/__tests__/agencyHybridCompile.test.ts server/routers/__tests__/agency.test.ts",
+        "npm --prefix apps/web run typecheck"
+      ]
+    },
+    "section-03-runtime-adapters-and-bridge-orchestration": {
+      "status": "completed",
+      "notes": "Extended Node/Python agency runtime contracts with compile-preview forwarding, hybrid step-attempt snapshots, hybrid summaries, trace scrubbing, and additive bridge/runtime metadata without replacing the existing Agency Swarm path.",
+      "verification": [
+        "npm --prefix apps/web test -- --run server/services/__tests__/agencyBridge.test.ts server/services/__tests__/agencyTraces.test.ts",
+        "DEBUG=false uv run pytest --no-cov tests/unit/test_agency_hybrid_runtime.py tests/unit/test_agency_router.py tests/unit/test_agency_service.py"
+      ]
+    },
+    "section-04-agency-builder-ux-and-migration": {
+      "status": "completed",
+      "notes": "Added builder-side hybrid banner, explicit upgrade action, compile-preview controls, diagnostics surface, engine/compile mode selectors, and admin feature-flag grouping updates while keeping legacy agencies quiet by default.",
+      "verification": [
+        "npm --prefix apps/web test -- --run client/src/components/agency/__tests__/AgencyBuilder.test.tsx client/src/components/admin/tenantFeatureFlagGroups.test.ts shared/__tests__/agencyHybridFeatureFlag.test.ts",
+        "npm --prefix apps/web run typecheck"
+      ]
+    },
+    "section-05-rollout-tests-and-guardrails": {
+      "status": "completed",
+      "notes": "Implemented tenant feature flags plus kill switch across web and python, hybrid compile/run guardrails, trace-secret scrubbing, and targeted regression coverage for compile, router, runtime, and UI integration paths.",
+      "verification": [
+        "npm --prefix apps/web test -- --run server/services/__tests__/agencyHybridCompile.test.ts server/services/__tests__/agencyBridge.test.ts server/services/__tests__/agencyTraces.test.ts server/routers/__tests__/agency.test.ts client/src/components/agency/__tests__/AgencyBuilder.test.tsx client/src/components/admin/tenantFeatureFlagGroups.test.ts shared/__tests__/agencyHybridFeatureFlag.test.ts",
+        "DEBUG=false uv run pytest --no-cov tests/unit/test_agency_hybrid_runtime.py tests/unit/test_agency_router.py tests/unit/test_agency_service.py",
+        "npm --prefix apps/web run typecheck"
+      ]
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-04-08T14:36:09.720665+00:00"
+}

@@ -52,6 +52,16 @@ export interface TenantFeatureFlags {
   chatAutoModelSelection: boolean; // F44 — Chat Auto/Provider-Auto model selection
   localClientLlmMode: boolean; // F45 — Local / Client LLM mode
   openClawExternalRuntime: boolean; // F46 — OpenClaw external worker runtime control plane
+  desktopZeroClawWorker: boolean; // F47 — Desktop + ZeroClaw managed worker runtime
+  nemoClawSecureWorkerPool: boolean; // F48 — NemoClaw secure worker pools
+  hiClawClusterRuntime: boolean; // F49 — HiClaw collaborative cluster runtime
+  desktopHostEnabled: boolean; // F50 — Unified Desktop Host control plane
+  desktopAdvancedLocalMode: boolean; // F51 — Step-up desktop local power
+  desktopPackageSync: boolean; // F52 — Signed desktop package sync and materialization
+  desktopAgencyRuntime: boolean; // F53 — Desktop Agency Swarm runtime enablement
+  desktopWorkerProjection: boolean; // F54 — Desktop Host projection into worker fabric
+  agencyHybridAdk: boolean; // F55 — Hybrid Agency Runtime with Google ADK compile/runtime surfaces
+  agencyHybridAdkKillSwitch: boolean; // F56 — Operational kill switch for Agency Hybrid ADK paths
 }
 
 export type TenantFeatureFlagKey = keyof TenantFeatureFlags;
@@ -107,6 +117,16 @@ export const ALLOWED_FEATURE_FLAGS: ReadonlySet<string> = new Set<TenantFeatureF
   "chatAutoModelSelection",
   "localClientLlmMode",
   "openClawExternalRuntime",
+  "desktopZeroClawWorker",
+  "nemoClawSecureWorkerPool",
+  "hiClawClusterRuntime",
+  "desktopHostEnabled",
+  "desktopAdvancedLocalMode",
+  "desktopPackageSync",
+  "desktopAgencyRuntime",
+  "desktopWorkerProjection",
+  "agencyHybridAdk",
+  "agencyHybridAdkKillSwitch",
 ]);
 
 /**
@@ -161,4 +181,14 @@ export const FEATURE_FLAG_DEFAULTS: Readonly<TenantFeatureFlags> = {
   chatAutoModelSelection: true, // Enabled by default; admin can still disable per tenant if needed
   localClientLlmMode: false, // Rollout-gated until local runtime paths are explicitly enabled per tenant
   openClawExternalRuntime: false, // External worker control plane ships disabled until tenant enablement
+  desktopZeroClawWorker: false, // Desktop worker host remains tenant-gated until runtime/profile support is ready
+  nemoClawSecureWorkerPool: false, // Secure sandbox pools are explicitly admin-gated
+  hiClawClusterRuntime: false, // Collaborative cluster runtime is explicitly admin-gated
+  desktopHostEnabled: false, // Desktop Host control plane rollout is explicit and fail-closed
+  desktopAdvancedLocalMode: false, // High-power local mode requires explicit tenant opt-in
+  desktopPackageSync: false, // Signed package sync stays disabled until registry/policy is ready
+  desktopAgencyRuntime: false, // Desktop agency runtime stays disabled until gateway enforcement lands
+  desktopWorkerProjection: false, // Desktop Host only joins worker fabric when explicitly enabled
+  agencyHybridAdk: false, // Hybrid Agency Runtime is explicit opt-in while ADK integration remains rollout-gated
+  agencyHybridAdkKillSwitch: false, // Kill switch defaults open but stays available for incident response
 };

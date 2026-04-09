@@ -55,6 +55,8 @@ export const BASE_TENANT_FLAG_GROUPS: TenantFlagGroup[] = [
       { key: "agencyReactExecutorEnabled", label: "ReAct Executor (L2)", description: "Reasoning + Acting loop" },
       { key: "agencyAutonomousAgentEnabled", label: "Autonomous Agent (L3)", description: "Self-planning autonomous agents" },
       { key: "agencyLongTermMemoryEnabled", label: "Long-Term Memory", description: "Persistent memory across runs" },
+      { key: "agencyHybridAdk", label: "Hybrid ADK Runtime", description: "Compile and run hybrid Agency Swarm + ADK workflows" },
+      { key: "agencyHybridAdkKillSwitch", label: "Hybrid ADK Kill Switch", description: "Operationally disable ADK compile/save/run paths" },
     ],
   },
   {
@@ -88,6 +90,20 @@ export const BASE_TENANT_FLAG_GROUPS: TenantFlagGroup[] = [
       { key: "webhookTriggers", label: "Webhook Triggers", description: "Inbound webhook triggers" },
       { key: "costDisplay", label: "Cost Display", description: "Show per-response costs" },
       { key: "multimodalMemory", label: "Multimodal Memory", description: "Image/audio in memory" },
+    ],
+  },
+  {
+    title: "Desktop Host",
+    icon: "💻",
+    flags: [
+      { key: "desktopHostEnabled", label: "Desktop Host", description: "Unified governed Desktop Host control plane" },
+      { key: "desktopAdvancedLocalMode", label: "Advanced Local Mode", description: "Step-up local power with explicit tenant opt-in" },
+      { key: "desktopPackageSync", label: "Desktop Package Sync", description: "Signed package sync and local materialization" },
+      { key: "desktopAgencyRuntime", label: "Desktop Agency Runtime", description: "Agency Swarm runtime on managed desktop" },
+      { key: "desktopWorkerProjection", label: "Desktop Worker Projection", description: "Project Desktop Host into the worker fabric" },
+      { key: "desktopZeroClawWorker", label: "Desktop ZeroClaw Worker", description: "Compatibility rollout for managed desktop workers" },
+      { key: "nemoClawSecureWorkerPool", label: "NemoClaw Secure Workers", description: "Secure worker pool runtime family" },
+      { key: "hiClawClusterRuntime", label: "HiClaw Cluster Runtime", description: "Collaborative cluster runtime family" },
     ],
   },
   {

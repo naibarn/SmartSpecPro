@@ -72,6 +72,7 @@ describe("workerRegistryService", () => {
       hardwareJson: {},
       healthSummaryJson: {},
       warningFlagsJson: [],
+      runtimeMetadataJson: {},
       fileScopeMode: "workspace_scoped",
       runtimeProfileName: null,
       policyProfileName: null,
@@ -117,6 +118,7 @@ describe("workerRegistryService", () => {
       hardwareJson: {},
       healthSummaryJson: {},
       warningFlagsJson: [],
+      runtimeMetadataJson: {},
       fileScopeMode: "workspace_scoped",
       runtimeProfileName: null,
       policyProfileName: null,
@@ -144,6 +146,170 @@ describe("workerRegistryService", () => {
       code: "protocol_incompatible",
       statusCode: 409,
     });
+  });
+
+  it("rejects runtime-profile incompatibility separately from transport compatibility", async () => {
+    const { registerWorker } = await import("../workerRegistryService");
+
+    const payload: WorkerRegistrationPayload = {
+      compatibility: {
+        protocolVersion: "2026-04-06",
+        runtimeVersion: "1.2.3",
+        runtimeProfileSchemaVersion: "2030-01-01",
+      },
+      runtimeType: "openclaw_gateway",
+      workerMode: "external_runtime",
+      displayName: "OpenClaw Main",
+      externalReference: "openclaw://main",
+      runtimeMode: "external_managed",
+      teamId: null,
+      machineId: null,
+      machineName: null,
+      dashboardUrl: null,
+      capabilitiesJson: {},
+      hardwareJson: {},
+      healthSummaryJson: {},
+      warningFlagsJson: [],
+      runtimeMetadataJson: {},
+      fileScopeMode: "workspace_scoped",
+      runtimeProfileName: null,
+      policyProfileName: null,
+    };
+
+    await expect(registerWorker({
+      auth: {
+        tenantId: "tenant-1",
+        teamId: null,
+        runtimeType: "openclaw_gateway",
+        registeredByUserId: 7,
+        audience: "smartspec-worker-registration",
+        scopes: ["workers:register"],
+      } as any,
+      payload,
+    }, {
+      repo: {
+        findRuntimeProfileByName: vi.fn(),
+        findWorkerPolicyByName: vi.fn(),
+        findWorkerByExternalReference: vi.fn(),
+        createWorker: vi.fn(),
+        updateWorker: vi.fn(),
+      },
+    } as any)).rejects.toMatchObject({
+      code: "protocol_incompatible",
+      statusCode: 409,
+    });
+  });
+
+  it("stores compatibility state and runtime metadata for desktop workers", async () => {
+    const { registerWorker } = await import("../workerRegistryService");
+
+    const createdWorker = {
+      id: "worker-desktop-1",
+      tenantId: "tenant-1",
+      teamId: "team-video",
+      runtimeType: "desktop_zeroclaw_managed",
+      workerMode: "shared_department",
+      machineId: "machine-01",
+      machineName: "render-host-01",
+      displayName: "Render Host 01",
+      status: "online",
+      runtimeVersion: "2.0.0",
+      runtimeMode: "wsl2_managed",
+      runtimeProfileId: null,
+      policyProfileId: null,
+      externalReference: "desktop://render-host-01",
+      dashboardUrl: "http://127.0.0.1:4318",
+      capabilitiesJson: {},
+      hardwareJson: {},
+      healthSummaryJson: {},
+      warningFlagsJson: [],
+      fileScopeMode: "team_drive",
+      lastSeenAt: new Date("2026-04-06T00:00:00.000Z"),
+      registeredByUserId: 7,
+      createdAt: new Date("2026-04-06T00:00:00.000Z"),
+      updatedAt: new Date("2026-04-06T00:00:00.000Z"),
+    };
+
+    const repo = {
+      findRuntimeProfileByName: vi.fn().mockResolvedValue(null),
+      findWorkerPolicyByName: vi.fn().mockResolvedValue(null),
+      findWorkerByExternalReference: vi.fn().mockResolvedValue(null),
+      createWorker: vi.fn().mockResolvedValue(createdWorker),
+      updateWorker: vi.fn().mockResolvedValue(createdWorker),
+    };
+
+    const payload: WorkerRegistrationPayload = {
+      compatibility: {
+        protocolVersion: "2026-04-06",
+        runtimeVersion: "2.0.0",
+      },
+      runtimeType: "desktop_zeroclaw_managed",
+      workerMode: "shared_department",
+      displayName: "Render Host 01",
+      externalReference: "desktop://render-host-01",
+      runtimeMode: "wsl2_managed",
+      teamId: "team-video",
+      machineId: "machine-01",
+      machineName: "render-host-01",
+      dashboardUrl: "http://127.0.0.1:4318",
+      capabilitiesJson: {},
+      hardwareJson: {},
+      healthSummaryJson: {},
+      warningFlagsJson: [],
+      runtimeMetadataJson: {
+        desktopVersion: "0.77.0",
+        runtimeProfile: "wsl2_managed",
+        workspaceRootsSummary: [{ root: "\\\\media\\team", accessMode: "team_drive" }],
+        gpuSnapshot: { vendor: "nvidia" },
+        toolchainSummary: { ffmpeg: "7.0" },
+        doctorSummary: { status: "ok" },
+        serviceMode: "managed_startup",
+        executionIdentity: {
+          mode: "service_identity",
+          approvalMode: "team_approved",
+          budgetAttributionMode: "team_budget",
+          tokenRotationTriggers: ["manual_reissue", "policy_change", "revocation"],
+        },
+      },
+      fileScopeMode: "team_drive",
+      runtimeProfileName: null,
+      policyProfileName: null,
+    };
+
+    await registerWorker({
+      auth: {
+        tenantId: "tenant-1",
+        teamId: "team-video",
+        runtimeType: "desktop_zeroclaw_managed",
+        registeredByUserId: 7,
+        audience: "smartspec-worker-registration",
+        scopes: ["workers:register"],
+      } as any,
+      payload,
+    }, { repo } as any);
+
+    expect(repo.createWorker).toHaveBeenCalledWith(expect.objectContaining({
+      runtimeType: "desktop_zeroclaw_managed",
+      capabilitiesJson: expect.objectContaining({
+        runtimeMetadata: expect.objectContaining({
+          desktopVersion: "0.77.0",
+          serviceMode: "managed_startup",
+        }),
+      }),
+      healthSummaryJson: expect.objectContaining({
+        controlPlane: expect.objectContaining({
+          compatibility: expect.objectContaining({
+            runtimeType: "desktop_zeroclaw_managed",
+            transport: expect.objectContaining({
+              compatible: true,
+            }),
+            runtimeProfile: expect.objectContaining({
+              compatible: true,
+            }),
+          }),
+        }),
+      }),
+    }));
   });
 
   it("updates worker status and lastSeenAt on heartbeat", async () => {
@@ -178,6 +344,7 @@ describe("workerRegistryService", () => {
       freeDiskBytes: 1024,
       metricsJson: { gpu: "ok" },
       warningsJson: [],
+      runtimeMetadataJson: {},
     };
 
     const result = await recordWorkerHeartbeat({
@@ -193,6 +360,64 @@ describe("workerRegistryService", () => {
     expect(result.status).toBe("online");
     expect(repo.updateWorker).toHaveBeenCalled();
     expect(repo.insertHeartbeat).toHaveBeenCalled();
+  });
+
+  it("backfills compatibility state for legacy workers on heartbeat without re-registration", async () => {
+    const { recordWorkerHeartbeat } = await import("../workerRegistryService");
+
+    const worker = {
+      id: "worker-legacy-openclaw",
+      tenantId: "tenant-1",
+      runtimeType: "openclaw_gateway",
+      status: "offline",
+      healthSummaryJson: {},
+    };
+
+    const repo = {
+      getWorkerById: vi.fn().mockResolvedValue(worker),
+      updateWorker: vi.fn().mockResolvedValue({
+        ...worker,
+        status: "online",
+        lastSeenAt: new Date("2026-04-06T12:00:00.000Z"),
+      }),
+      insertHeartbeat: vi.fn().mockResolvedValue(undefined),
+    };
+
+    await recordWorkerHeartbeat({
+      auth: {
+        tenantId: "tenant-1",
+        workerId: "worker-legacy-openclaw",
+        runtimeType: "openclaw_gateway",
+      } as any,
+      workerId: "worker-legacy-openclaw",
+      payload: {
+        compatibility: {
+          protocolVersion: "2026-04-06",
+          runtimeVersion: "1.2.3",
+        },
+        runtimeType: "openclaw_gateway",
+        status: "online",
+        currentJobCount: 0,
+        queueDepth: 0,
+        freeDiskBytes: 1024,
+        metricsJson: {},
+        warningsJson: [],
+      },
+    }, { repo } as any);
+
+    expect(repo.updateWorker).toHaveBeenCalledWith(
+      "worker-legacy-openclaw",
+      expect.objectContaining({
+        healthSummaryJson: expect.objectContaining({
+          controlPlane: expect.objectContaining({
+            compatibility: expect.objectContaining({
+              runtimeType: "openclaw_gateway",
+              transport: expect.objectContaining({ compatible: true }),
+            }),
+          }),
+        }),
+      }),
+    );
   });
 
   it("rejects revoked worker tokens before mutating heartbeat state", async () => {
@@ -393,6 +618,166 @@ describe("workerRegistryService", () => {
     }, { repo } as any)).rejects.toMatchObject({
       code: "worker_state_invalid",
       statusCode: 409,
+    });
+  });
+
+  it("enforces the canonical video_assembly progress taxonomy", async () => {
+    const { recordWorkerJobEvent } = await import("../workerRegistryService");
+
+    const repo = {
+      getJobById: vi.fn().mockResolvedValue({
+        id: "job-video-1",
+        tenantId: "tenant-1",
+        workerId: "worker-1",
+        runtimeType: "desktop_zeroclaw_managed",
+        jobType: "video_assembly",
+        status: "running",
+        leaseOwnerToken: "lease-1",
+        leaseExpiresAt: new Date("2030-04-06T00:05:00.000Z"),
+      }),
+      listJobEvents: vi.fn().mockResolvedValue([]),
+      insertJobEvent: vi.fn(),
+      updateJob: vi.fn(),
+    };
+
+    await expect(recordWorkerJobEvent({
+      auth: {
+        tenantId: "tenant-1",
+        workerId: "worker-1",
+        runtimeType: "desktop_zeroclaw_managed",
+      } as any,
+      jobId: "job-video-1",
+      payload: {
+        eventType: "job.progress",
+        payloadJson: {
+          stage: "invent_new_stage",
+        },
+        sequenceNumber: 1,
+        leaseOwnerToken: "lease-1",
+      },
+    }, { repo } as any)).rejects.toMatchObject({
+      code: "invalid_request",
+      statusCode: 400,
+    });
+  });
+
+  it("enforces the canonical local_folder_ingest progress taxonomy", async () => {
+    const { recordWorkerJobEvent } = await import("../workerRegistryService");
+
+    const repo = {
+      getJobById: vi.fn().mockResolvedValue({
+        id: "job-ingest-1",
+        tenantId: "tenant-1",
+        workerId: "worker-1",
+        runtimeType: "desktop_zeroclaw_managed",
+        jobType: "local_folder_ingest",
+        status: "running",
+        leaseOwnerToken: "lease-1",
+        leaseExpiresAt: new Date("2030-04-06T00:05:00.000Z"),
+      }),
+      listJobEvents: vi.fn().mockResolvedValue([]),
+      insertJobEvent: vi.fn(),
+      updateJob: vi.fn(),
+    };
+
+    await expect(recordWorkerJobEvent({
+      auth: {
+        tenantId: "tenant-1",
+        workerId: "worker-1",
+        runtimeType: "desktop_zeroclaw_managed",
+      } as any,
+      jobId: "job-ingest-1",
+      payload: {
+        eventType: "job.progress",
+        payloadJson: {
+          stage: "invent_new_stage",
+        },
+        sequenceNumber: 1,
+        leaseOwnerToken: "lease-1",
+      },
+    }, { repo } as any)).rejects.toMatchObject({
+      code: "invalid_request",
+      statusCode: 400,
+    });
+  });
+
+  it("enforces the canonical comfy_image_generation failure taxonomy", async () => {
+    const { recordWorkerJobEvent } = await import("../workerRegistryService");
+
+    const repo = {
+      getJobById: vi.fn().mockResolvedValue({
+        id: "job-comfy-1",
+        tenantId: "tenant-1",
+        workerId: "worker-1",
+        runtimeType: "desktop_zeroclaw_managed",
+        jobType: "comfy_image_generation",
+        status: "running",
+        leaseOwnerToken: "lease-1",
+        leaseExpiresAt: new Date("2030-04-06T00:05:00.000Z"),
+      }),
+      listJobEvents: vi.fn().mockResolvedValue([]),
+      insertJobEvent: vi.fn(),
+      updateJob: vi.fn(),
+    };
+
+    await expect(recordWorkerJobEvent({
+      auth: {
+        tenantId: "tenant-1",
+        workerId: "worker-1",
+        runtimeType: "desktop_zeroclaw_managed",
+      } as any,
+      jobId: "job-comfy-1",
+      payload: {
+        eventType: "job.failed",
+        payloadJson: {
+          failureCode: "invent_new_failure",
+        },
+        sequenceNumber: 1,
+        leaseOwnerToken: "lease-1",
+      },
+    }, { repo } as any)).rejects.toMatchObject({
+      code: "invalid_request",
+      statusCode: 400,
+    });
+  });
+
+  it("enforces the canonical comfy_workflow_run progress taxonomy", async () => {
+    const { recordWorkerJobEvent } = await import("../workerRegistryService");
+
+    const repo = {
+      getJobById: vi.fn().mockResolvedValue({
+        id: "job-comfy-workflow-1",
+        tenantId: "tenant-1",
+        workerId: "worker-1",
+        runtimeType: "desktop_zeroclaw_managed",
+        jobType: "comfy_workflow_run",
+        status: "running",
+        leaseOwnerToken: "lease-1",
+        leaseExpiresAt: new Date("2030-04-06T00:05:00.000Z"),
+      }),
+      listJobEvents: vi.fn().mockResolvedValue([]),
+      insertJobEvent: vi.fn(),
+      updateJob: vi.fn(),
+    };
+
+    await expect(recordWorkerJobEvent({
+      auth: {
+        tenantId: "tenant-1",
+        workerId: "worker-1",
+        runtimeType: "desktop_zeroclaw_managed",
+      } as any,
+      jobId: "job-comfy-workflow-1",
+      payload: {
+        eventType: "job.progress",
+        payloadJson: {
+          stage: "invent_new_stage",
+        },
+        sequenceNumber: 1,
+        leaseOwnerToken: "lease-1",
+      },
+    }, { repo } as any)).rejects.toMatchObject({
+      code: "invalid_request",
+      statusCode: 400,
     });
   });
 

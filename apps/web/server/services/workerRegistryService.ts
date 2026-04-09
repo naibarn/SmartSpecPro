@@ -16,6 +16,7 @@ import type {
   WorkerArtifactCompletePayload,
   WorkerArtifactInitPayload,
   WorkerClaimRequest,
+  WorkerCompatibilityEvaluation,
   WorkerDiagnosticsPayload,
   WorkerHeartbeatPayload,
   WorkerJobEventPayload,
@@ -24,7 +25,19 @@ import type {
   WorkerRegistrationPayload,
   WorkerRuntimeType,
 } from "../../shared/workerRuntime";
-import { WORKER_RUNTIME_PROTOCOL_VERSION } from "../../shared/workerRuntime";
+import {
+  COMFY_IMAGE_GENERATION_FAILURE_CODES,
+  COMFY_IMAGE_GENERATION_PROGRESS_STAGES,
+  COMFY_WORKFLOW_RUN_FAILURE_CODES,
+  COMFY_WORKFLOW_RUN_PROGRESS_STAGES,
+  LOCAL_FOLDER_INGEST_FAILURE_CODES,
+  LOCAL_FOLDER_INGEST_PROGRESS_STAGES,
+  VIDEO_ASSEMBLY_FAILURE_CODES,
+  VIDEO_ASSEMBLY_PROGRESS_STAGES,
+  WORKER_RUNTIME_PROTOCOL_VERSION,
+  evaluateWorkerCompatibility,
+  getWorkerRuntimeDefinition,
+} from "../../shared/workerRuntime";
 import type {
   WorkerAccessAuthContext,
   WorkerRegistrationAuthContext,
@@ -55,7 +68,6 @@ import {
   sanitizeWorkerWarningFlags,
 } from "./workerPayloadSanitizer";
 
-const SUPPORTED_RUNTIME_TYPE: WorkerRuntimeType = "openclaw_gateway";
 const DEFAULT_LEASE_TTL_MS = 5 * 60 * 1000;
 const RECLAIMABLE_JOB_STATUSES: WorkerJobStatus[] = [
   "claimed",
@@ -177,47 +189,112 @@ function compareProtocolVersions(left: string, right: string): number {
   return left.localeCompare(right);
 }
 
-function assertSupportedRuntimeType(runtimeType: WorkerRuntimeType): void {
-  if (runtimeType !== SUPPORTED_RUNTIME_TYPE) {
-    throw new WorkerRuntimeServiceError(
-      "invalid_request",
-      400,
-      `Runtime type ${runtimeType} is not supported by this control-plane profile`,
-    );
-  }
+function assertSupportedRuntimeType(runtimeType: WorkerRuntimeType) {
+  return getWorkerRuntimeDefinition(runtimeType);
 }
 
 export function assertWorkerProtocolCompatibility(
+  runtimeType: WorkerRuntimeType,
   compatibility: WorkerProtocolCompatibility,
-): void {
+): WorkerCompatibilityEvaluation {
   const current = WORKER_RUNTIME_PROTOCOL_VERSION;
-  if (compatibility.protocolVersion !== current) {
+  const evaluation = evaluateWorkerCompatibility(runtimeType, compatibility);
+  if (!evaluation.transport.compatible) {
+    if (compatibility.protocolVersion !== current) {
+      throw new WorkerRuntimeServiceError(
+        "protocol_incompatible",
+        409,
+        `Worker protocol ${compatibility.protocolVersion} is incompatible with server protocol ${current}`,
+      );
+    }
+    if (
+      compatibility.minServerProtocolVersion
+      && compareProtocolVersions(current, compatibility.minServerProtocolVersion) < 0
+    ) {
+      throw new WorkerRuntimeServiceError(
+        "protocol_incompatible",
+        409,
+        `Server protocol ${current} is below worker minimum ${compatibility.minServerProtocolVersion}`,
+      );
+    }
+    if (
+      compatibility.maxServerProtocolVersion
+      && compareProtocolVersions(current, compatibility.maxServerProtocolVersion) > 0
+    ) {
+      throw new WorkerRuntimeServiceError(
+        "protocol_incompatible",
+        409,
+        `Server protocol ${current} is above worker maximum ${compatibility.maxServerProtocolVersion}`,
+      );
+    }
+  }
+  if (!evaluation.runtimeFamily.compatible) {
     throw new WorkerRuntimeServiceError(
       "protocol_incompatible",
       409,
-      `Worker protocol ${compatibility.protocolVersion} is incompatible with server protocol ${current}`,
+      evaluation.runtimeFamily.reason
+        ?? `Worker runtime-family schema ${compatibility.runtimeFamilySchemaVersion} is incompatible with ${runtimeType}`,
     );
   }
-  if (
-    compatibility.minServerProtocolVersion
-    && compareProtocolVersions(current, compatibility.minServerProtocolVersion) < 0
-  ) {
+  if (!evaluation.runtimeProfile.compatible) {
     throw new WorkerRuntimeServiceError(
       "protocol_incompatible",
       409,
-      `Server protocol ${current} is below worker minimum ${compatibility.minServerProtocolVersion}`,
+      evaluation.runtimeProfile.reason
+        ?? `Worker runtime-profile schema ${compatibility.runtimeProfileSchemaVersion} is incompatible with ${runtimeType}`,
     );
   }
-  if (
-    compatibility.maxServerProtocolVersion
-    && compareProtocolVersions(current, compatibility.maxServerProtocolVersion) > 0
-  ) {
-    throw new WorkerRuntimeServiceError(
-      "protocol_incompatible",
-      409,
-      `Server protocol ${current} is above worker maximum ${compatibility.maxServerProtocolVersion}`,
-    );
+  return evaluation;
+}
+
+function mergeRuntimeMetadata(
+  capabilitiesJson: unknown,
+  runtimeMetadataJson: Record<string, unknown>,
+): Record<string, unknown> {
+  const sanitizedCapabilities = sanitizeWorkerPayload(
+    isPlainObject(capabilitiesJson) ? capabilitiesJson : {},
+  ) as Record<string, unknown>;
+  const sanitizedRuntimeMetadata = sanitizeWorkerPayload(runtimeMetadataJson) as Record<string, unknown>;
+  if (Object.keys(sanitizedRuntimeMetadata).length === 0) {
+    return sanitizedCapabilities;
   }
+  return {
+    ...sanitizedCapabilities,
+    runtimeMetadata: sanitizedRuntimeMetadata,
+  };
+}
+
+function buildWorkerControlPlaneState(
+  runtimeType: WorkerRuntimeType,
+  compatibility: WorkerProtocolCompatibility,
+  existingControlPlane: Record<string, unknown> = {},
+): Record<string, unknown> {
+  const runtimeDefinition = getWorkerRuntimeDefinition(runtimeType);
+  return {
+    ...existingControlPlane,
+    compatibility: evaluateWorkerCompatibility(runtimeType, compatibility),
+    runtimeFamily: runtimeDefinition.familyName,
+    featureFlag: runtimeDefinition.featureFlag,
+    lastCompatibilityCheckAt: new Date().toISOString(),
+  };
+}
+
+function buildWorkerHealthSummary(
+  existingHealthSummaryJson: unknown,
+  runtimeType: WorkerRuntimeType,
+  compatibility: WorkerProtocolCompatibility,
+): Record<string, unknown> {
+  const existingHealthSummary = sanitizeWorkerPayload(
+    isPlainObject(existingHealthSummaryJson) ? existingHealthSummaryJson : {},
+  ) as Record<string, unknown>;
+  return {
+    ...existingHealthSummary,
+    controlPlane: buildWorkerControlPlaneState(
+      runtimeType,
+      compatibility,
+      readWorkerControlPlaneState({ healthSummaryJson: existingHealthSummary }),
+    ),
+  };
 }
 
 function requireWorkerRecord(
@@ -289,6 +366,60 @@ function ensureLease(job: WorkerJobRecord, leaseOwnerToken: string): void {
 
 function resolveEventStatus(eventType: string): WorkerJobStatus | null {
   return JOB_EVENT_STATUS_MAP[eventType] ?? null;
+}
+
+function assertRuntimeSpecificJobEventContract(
+  job: WorkerJobRecord,
+  payload: WorkerJobEventPayload,
+): void {
+  const progressStages = job.jobType === "video_assembly"
+    ? VIDEO_ASSEMBLY_PROGRESS_STAGES
+    : job.jobType === "local_folder_ingest"
+      ? LOCAL_FOLDER_INGEST_PROGRESS_STAGES
+      : job.jobType === "comfy_image_generation"
+        ? COMFY_IMAGE_GENERATION_PROGRESS_STAGES
+        : job.jobType === "comfy_workflow_run"
+          ? COMFY_WORKFLOW_RUN_PROGRESS_STAGES
+      : null;
+  const failureCodes = job.jobType === "video_assembly"
+    ? VIDEO_ASSEMBLY_FAILURE_CODES
+    : job.jobType === "local_folder_ingest"
+      ? LOCAL_FOLDER_INGEST_FAILURE_CODES
+      : job.jobType === "comfy_image_generation"
+        ? COMFY_IMAGE_GENERATION_FAILURE_CODES
+        : job.jobType === "comfy_workflow_run"
+          ? COMFY_WORKFLOW_RUN_FAILURE_CODES
+      : null;
+
+  if (!progressStages || !failureCodes) {
+    return;
+  }
+
+  if (payload.eventType === "job.progress") {
+    const stage = typeof payload.payloadJson?.stage === "string"
+      ? payload.payloadJson.stage
+      : "";
+    if (!progressStages.includes(stage as any)) {
+      throw new WorkerRuntimeServiceError(
+        "invalid_request",
+        400,
+        `${job.jobType} progress stage ${stage || "(missing)"} is invalid`,
+      );
+    }
+  }
+
+  if (payload.eventType === "job.failed") {
+    const failureCode = typeof payload.payloadJson?.failureCode === "string"
+      ? payload.payloadJson.failureCode
+      : "";
+    if (!failureCodes.includes(failureCode as any)) {
+      throw new WorkerRuntimeServiceError(
+        "invalid_request",
+        400,
+        `${job.jobType} failure code ${failureCode || "(missing)"} is invalid`,
+      );
+    }
+  }
 }
 
 function assertStatusTransition(
@@ -570,7 +701,7 @@ export async function registerWorker(
 }> {
   const repo = deps.repo ?? defaultRepo;
   assertSupportedRuntimeType(input.payload.runtimeType);
-  assertWorkerProtocolCompatibility(input.payload.compatibility);
+  assertWorkerProtocolCompatibility(input.payload.runtimeType, input.payload.compatibility);
 
   if (input.auth.runtimeType && input.auth.runtimeType !== input.payload.runtimeType) {
     throw new WorkerRuntimeServiceError("worker_scope_mismatch", 403, "Registration token runtime does not match the payload runtime", "auth_error");
@@ -608,9 +739,16 @@ export async function registerWorker(
     policyProfileId: policyProfile?.id ?? null,
     externalReference: input.payload.externalReference,
     dashboardUrl: sanitizeDashboardUrl(input.payload.dashboardUrl ?? null),
-    capabilitiesJson: sanitizeWorkerPayload(input.payload.capabilitiesJson) as Record<string, unknown>,
+    capabilitiesJson: mergeRuntimeMetadata(
+      input.payload.capabilitiesJson,
+      input.payload.runtimeMetadataJson ?? {},
+    ),
     hardwareJson: sanitizeWorkerPayload(input.payload.hardwareJson) as Record<string, unknown>,
-    healthSummaryJson: sanitizeWorkerPayload(input.payload.healthSummaryJson) as Record<string, unknown>,
+    healthSummaryJson: buildWorkerHealthSummary(
+      input.payload.healthSummaryJson,
+      input.payload.runtimeType,
+      input.payload.compatibility,
+    ),
     warningFlagsJson: sanitizeWorkerWarningFlags(input.payload.warningFlagsJson),
     fileScopeMode: input.payload.fileScopeMode,
     lastSeenAt: new Date(),
@@ -656,7 +794,7 @@ export async function recordWorkerHeartbeat(
 ): Promise<WorkerRecord> {
   const repo = deps.repo ?? defaultRepo;
   assertSupportedRuntimeType(input.payload.runtimeType);
-  assertWorkerProtocolCompatibility(input.payload.compatibility);
+  assertWorkerProtocolCompatibility(input.payload.runtimeType, input.payload.compatibility);
 
   const worker = requireWorkerRecord(
     await repo.getWorkerById(input.auth.tenantId, input.workerId),
@@ -671,6 +809,15 @@ export async function recordWorkerHeartbeat(
   const updatedWorker = await repo.updateWorker(worker.id, {
     status: nextStatus,
     runtimeVersion: input.payload.compatibility.runtimeVersion,
+    capabilitiesJson: mergeRuntimeMetadata(
+      worker.capabilitiesJson,
+      input.payload.runtimeMetadataJson ?? {},
+    ),
+    healthSummaryJson: buildWorkerHealthSummary(
+      worker.healthSummaryJson,
+      worker.runtimeType,
+      input.payload.compatibility,
+    ),
     warningFlagsJson: sanitizeWorkerWarningFlags(input.payload.warningsJson),
     lastSeenAt: new Date(),
   });
@@ -759,6 +906,7 @@ export async function recordWorkerJobEvent(
   );
   ensureJobScopedAccess(input.auth, job);
   ensureLease(job, input.payload.leaseOwnerToken);
+  assertRuntimeSpecificJobEventContract(job, input.payload);
 
   const sequenceNumber = input.payload.sequenceNumber;
   if (!sequenceNumber) {

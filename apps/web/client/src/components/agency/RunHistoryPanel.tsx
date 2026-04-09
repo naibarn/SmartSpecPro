@@ -133,6 +133,30 @@ export function RunHistoryPanel({ agencyId, open, onClose }: RunHistoryPanelProp
                     <div className="text-[10px] text-muted-foreground mt-0.5">
                       {new Date(trace.createdAt).toLocaleString()}
                     </div>
+                    {trace.hybridSummary && (
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        <Badge variant="outline" className="text-[10px]">
+                          {(Array.isArray(trace.hybridSummary.engineMix) && trace.hybridSummary.engineMix.length > 0)
+                            ? trace.hybridSummary.engineMix.join(", ")
+                            : "hybrid"}
+                        </Badge>
+                        {typeof trace.hybridSummary.subgraphCount === "number" && (
+                          <Badge variant="outline" className="text-[10px]">
+                            {trace.hybridSummary.subgraphCount} subgraphs
+                          </Badge>
+                        )}
+                        {typeof trace.hybridSummary.boundaryCount === "number" && (
+                          <Badge variant="outline" className="text-[10px]">
+                            {trace.hybridSummary.boundaryCount} boundaries
+                          </Badge>
+                        )}
+                        {typeof trace.hybridSummary.bridgeCount === "number" && (
+                          <Badge variant="outline" className="text-[10px]">
+                            {trace.hybridSummary.bridgeCount} bridges
+                          </Badge>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
                 </button>

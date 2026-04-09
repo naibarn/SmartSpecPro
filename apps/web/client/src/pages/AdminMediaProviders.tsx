@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import { trpc } from "../lib/trpc";
+import { LocaleToggle } from "@/components/LocaleToggle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -121,15 +122,26 @@ export default function AdminMediaProviders() {
   const [, setLocation] = useLocation();
   const [editingProvider, setEditingProvider] = useState<Provider | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [selectedTemplate, setSelectedTemplate] = useState<ProviderTemplate | null>(null);
+  const [selectedTemplate, setSelectedTemplate] =
+    useState<ProviderTemplate | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<Provider | null>(null);
-  const [testResult, setTestResult] = useState<{ id: number; success: boolean; message: string } | null>(null);
+  const [testResult, setTestResult] = useState<{
+    id: number;
+    success: boolean;
+    message: string;
+  } | null>(null);
   const [activeTab, setActiveTab] = useState("settings");
 
   // Model editing state
   const [editingModels, setEditingModels] = useState<ModelVersion[]>([]);
-  const [newModel, setNewModel] = useState<ModelVersion>({ id: "", name: "", type: "image" });
-  const [deleteModelConfirm, setDeleteModelConfirm] = useState<string | null>(null);
+  const [newModel, setNewModel] = useState<ModelVersion>({
+    id: "",
+    name: "",
+    type: "image",
+  });
+  const [deleteModelConfirm, setDeleteModelConfirm] = useState<string | null>(
+    null
+  );
 
   // Form state
   const [formData, setFormData] = useState({
@@ -158,13 +170,20 @@ export default function AdminMediaProviders() {
   }, [user, authLoading, setLocation]);
 
   // Queries using tRPC hooks
-  const { data: providers = [], isLoading, refetch } = trpc.mediaProviders.adminList.useQuery(undefined, {
+  const {
+    data: providers = [],
+    isLoading,
+    refetch,
+  } = trpc.mediaProviders.adminList.useQuery(undefined, {
     enabled: !!user && user.role === "admin",
   });
 
-  const { data: templates = [] } = trpc.mediaProviders.templates.useQuery(undefined, {
-    enabled: !!user && user.role === "admin",
-  });
+  const { data: templates = [] } = trpc.mediaProviders.templates.useQuery(
+    undefined,
+    {
+      enabled: !!user && user.role === "admin",
+    }
+  );
 
   const { data: stats } = trpc.mediaProviders.stats.useQuery(undefined, {
     enabled: !!user && user.role === "admin",
@@ -202,8 +221,12 @@ export default function AdminMediaProviders() {
     },
   });
 
-  const configuredProviderNames = new Set(providers.map((provider) => provider.providerName));
-  const availableTemplates = templates.filter((template) => !configuredProviderNames.has(template.providerName));
+  const configuredProviderNames = new Set(
+    providers.map(provider => provider.providerName)
+  );
+  const availableTemplates = templates.filter(
+    template => !configuredProviderNames.has(template.providerName)
+  );
 
   const resetForm = () => {
     setFormData({
@@ -229,7 +252,8 @@ export default function AdminMediaProviders() {
       description: template.description,
       providerType: template.providerType,
       baseUrl: template.baseUrl,
-      callbackUrl: template.providerName === "kie_ai" ? suggestedKieCallbackUrl : "",
+      callbackUrl:
+        template.providerName === "kie_ai" ? suggestedKieCallbackUrl : "",
       apiKey: "",
       defaultModel: template.defaultModel,
       isEnabled: false,
@@ -310,21 +334,31 @@ export default function AdminMediaProviders() {
 
   const getProviderTypeIcon = (type: string) => {
     switch (type) {
-      case "image": return <Image className="h-4 w-4" />;
-      case "video": return <Video className="h-4 w-4" />;
-      case "audio": return <Music className="h-4 w-4" />;
-      case "multimodal": return <Layers className="h-4 w-4" />;
-      default: return <Layers className="h-4 w-4" />;
+      case "image":
+        return <Image className="h-4 w-4" />;
+      case "video":
+        return <Video className="h-4 w-4" />;
+      case "audio":
+        return <Music className="h-4 w-4" />;
+      case "multimodal":
+        return <Layers className="h-4 w-4" />;
+      default:
+        return <Layers className="h-4 w-4" />;
     }
   };
 
   const getProviderTypeBadgeColor = (type: string) => {
     switch (type) {
-      case "image": return "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400";
-      case "video": return "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400";
-      case "audio": return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400";
-      case "multimodal": return "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400";
-      default: return "bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400";
+      case "image":
+        return "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400";
+      case "video":
+        return "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400";
+      case "audio":
+        return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400";
+      case "multimodal":
+        return "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400";
+      default:
+        return "bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400";
     }
   };
 
@@ -344,16 +378,15 @@ export default function AdminMediaProviders() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/20 px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
       <div className="mb-8">
-        <Button
-          variant="ghost"
-          className="mb-4"
-          onClick={() => setLocation("/dashboard")}
-        >
-          <ChevronLeft className="mr-2 h-4 w-4" />
-          Back to Dashboard
-        </Button>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+          <Button variant="ghost" onClick={() => setLocation("/dashboard")}>
+            <ChevronLeft className="mr-2 h-4 w-4" />
+            Back to Dashboard
+          </Button>
+          <LocaleToggle className="shrink-0" />
+        </div>
 
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h1 className="text-3xl font-bold flex items-center gap-3">
               <Sparkles className="h-8 w-8 text-primary" />
@@ -363,10 +396,12 @@ export default function AdminMediaProviders() {
               Configure API keys for image, video, and audio generation services
             </p>
           </div>
-          <Button onClick={() => setIsCreateDialogOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Provider
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button onClick={() => setIsCreateDialogOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Provider
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -406,7 +441,9 @@ export default function AdminMediaProviders() {
               <Zap className="h-4 w-4 text-orange-500" />
             </div>
             <div>
-              <div className="text-2xl font-bold">{stats.byType.multimodal}</div>
+              <div className="text-2xl font-bold">
+                {stats.byType.multimodal}
+              </div>
             </div>
           </DashboardCard>
         </div>
@@ -417,13 +454,17 @@ export default function AdminMediaProviders() {
           <div>
             <h3>Available Templates</h3>
             <p>
-              Built-in provider templates that are ready to add. WaveSpeed and the other providers here
-              will not appear in the configured list until a provider row is created.
+              Built-in provider templates that are ready to add. WaveSpeed and
+              the other providers here will not appear in the configured list
+              until a provider row is created.
             </p>
           </div>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {availableTemplates.map((template) => (
-              <DashboardCard key={template.providerName} className="border-dashed">
+            {availableTemplates.map(template => (
+              <DashboardCard
+                key={template.providerName}
+                className="border-dashed"
+              >
                 <div className="pb-3">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3">
@@ -432,21 +473,32 @@ export default function AdminMediaProviders() {
                       </div>
                       <div>
                         <h3 className="text-base">{template.displayName}</h3>
-                        <p className="text-xs text-muted-foreground">{template.providerName}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {template.providerName}
+                        </p>
                       </div>
                     </div>
-                    <Badge className={getProviderTypeBadgeColor(template.providerType)}>
+                    <Badge
+                      className={getProviderTypeBadgeColor(
+                        template.providerType
+                      )}
+                    >
                       {template.providerType}
                     </Badge>
                   </div>
                 </div>
                 <div className="space-y-3">
-                  <p className="text-sm text-muted-foreground">{template.description}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {template.description}
+                  </p>
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
                     <span>{template.availableModels?.length || 0} models</span>
                     <span>{template.baseUrl}</span>
                   </div>
-                  <Button size="sm" onClick={() => handleStartFromTemplate(template)}>
+                  <Button
+                    size="sm"
+                    onClick={() => handleStartFromTemplate(template)}
+                  >
                     <Plus className="mr-2 h-4 w-4" />
                     Add Template
                   </Button>
@@ -462,7 +514,8 @@ export default function AdminMediaProviders() {
         <div>
           <h3>Configured Providers</h3>
           <p>
-            Manage your media generation API providers. Primary providers are used first, with fallback to others based on priority.
+            Manage your media generation API providers. Primary providers are
+            used first, with fallback to others based on priority.
           </p>
         </div>
         <div>
@@ -470,8 +523,13 @@ export default function AdminMediaProviders() {
             <div className="text-center py-12 text-muted-foreground">
               <Sparkles className="h-12 w-12 mx-auto mb-4 opacity-50" />
               <p className="text-lg font-medium">No providers configured</p>
-              <p className="text-sm">Add your first media provider to get started</p>
-              <Button className="mt-4" onClick={() => setIsCreateDialogOpen(true)}>
+              <p className="text-sm">
+                Add your first media provider to get started
+              </p>
+              <Button
+                className="mt-4"
+                onClick={() => setIsCreateDialogOpen(true)}
+              >
                 <Plus className="mr-2 h-4 w-4" />
                 Add Provider
               </Button>
@@ -489,7 +547,7 @@ export default function AdminMediaProviders() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {providers.map((provider) => (
+                {providers.map(provider => (
                   <TableRow key={provider.id}>
                     <TableCell>
                       <div className="flex items-center gap-3">
@@ -513,7 +571,11 @@ export default function AdminMediaProviders() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge className={getProviderTypeBadgeColor(provider.providerType)}>
+                      <Badge
+                        className={getProviderTypeBadgeColor(
+                          provider.providerType
+                        )}
+                      >
                         {provider.providerType}
                       </Badge>
                     </TableCell>
@@ -556,7 +618,9 @@ export default function AdminMediaProviders() {
                           </span>
                         </div>
                       ) : (
-                        <span className="text-sm text-muted-foreground">Never</span>
+                        <span className="text-sm text-muted-foreground">
+                          Never
+                        </span>
                       )}
                     </TableCell>
                     <TableCell className="text-right">
@@ -564,10 +628,13 @@ export default function AdminMediaProviders() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => testMutation.mutate({ id: provider.id })}
+                          onClick={() =>
+                            testMutation.mutate({ id: provider.id })
+                          }
                           disabled={testMutation.isPending}
                         >
-                          {testMutation.isPending && testMutation.variables?.id === provider.id ? (
+                          {testMutation.isPending &&
+                          testMutation.variables?.id === provider.id ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
                           ) : (
                             <TestTube className="h-4 w-4" />
@@ -576,7 +643,9 @@ export default function AdminMediaProviders() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleEditProvider(provider as Provider)}
+                          onClick={() =>
+                            handleEditProvider(provider as Provider)
+                          }
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
@@ -610,7 +679,7 @@ export default function AdminMediaProviders() {
           <div className="flex-1 overflow-y-auto pr-1">
             {!selectedTemplate ? (
               <div className="grid gap-4 py-4">
-                {templates.map((template) => (
+                {templates.map(template => (
                   <button
                     type="button"
                     key={template.providerName}
@@ -625,8 +694,14 @@ export default function AdminMediaProviders() {
                               {getProviderTypeIcon(template.providerType)}
                             </div>
                             <div>
-                              <h3 className="text-lg">{template.displayName}</h3>
-                              <Badge className={getProviderTypeBadgeColor(template.providerType)}>
+                              <h3 className="text-lg">
+                                {template.displayName}
+                              </h3>
+                              <Badge
+                                className={getProviderTypeBadgeColor(
+                                  template.providerType
+                                )}
+                              >
                                 {template.providerType}
                               </Badge>
                             </div>
@@ -634,7 +709,9 @@ export default function AdminMediaProviders() {
                         </div>
                       </div>
                       <div>
-                        <p className="text-sm text-muted-foreground">{template.description}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {template.description}
+                        </p>
                       </div>
                     </DashboardCard>
                   </button>
@@ -680,7 +757,9 @@ export default function AdminMediaProviders() {
                 onClick={handleSave}
                 disabled={createMutation.isPending || !formData.displayName}
               >
-                {createMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {createMutation.isPending && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
                 Create Provider
               </Button>
             )}
@@ -689,10 +768,15 @@ export default function AdminMediaProviders() {
       </Dialog>
 
       {/* Edit Provider Dialog */}
-      <Dialog open={!!editingProvider} onOpenChange={(open) => !open && setEditingProvider(null)}>
+      <Dialog
+        open={!!editingProvider}
+        onOpenChange={open => !open && setEditingProvider(null)}
+      >
         <DialogContent className="flex max-h-[90vh] max-w-2xl flex-col overflow-hidden">
           <DialogHeader>
-            <DialogTitle>Edit Provider - {editingProvider?.displayName}</DialogTitle>
+            <DialogTitle>
+              Edit Provider - {editingProvider?.displayName}
+            </DialogTitle>
             <DialogDescription>
               Update provider configuration and API keys
             </DialogDescription>
@@ -726,7 +810,9 @@ export default function AdminMediaProviders() {
               onClick={handleSave}
               disabled={updateMutation.isPending || !formData.displayName}
             >
-              {updateMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {updateMutation.isPending && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
               Save Changes
             </Button>
           </DialogFooter>
@@ -734,22 +820,30 @@ export default function AdminMediaProviders() {
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={!!deleteConfirm} onOpenChange={(open) => !open && setDeleteConfirm(null)}>
+      <AlertDialog
+        open={!!deleteConfirm}
+        onOpenChange={open => !open && setDeleteConfirm(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Provider</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete <strong>{deleteConfirm?.displayName}</strong>?
-              This action cannot be undone.
+              Are you sure you want to delete{" "}
+              <strong>{deleteConfirm?.displayName}</strong>? This action cannot
+              be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={() => deleteConfirm && deleteMutation.mutate({ id: deleteConfirm.id })}
+              onClick={() =>
+                deleteConfirm && deleteMutation.mutate({ id: deleteConfirm.id })
+              }
             >
-              {deleteMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {deleteMutation.isPending && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -759,7 +853,11 @@ export default function AdminMediaProviders() {
       {/* Test Result Toast */}
       {testResult && (
         <div className="fixed bottom-4 right-4 z-50">
-          <DashboardCard className={testResult.success ? "border-green-500" : "border-red-500"}>
+          <DashboardCard
+            className={
+              testResult.success ? "border-green-500" : "border-red-500"
+            }
+          >
             <div className="flex items-center gap-3 p-4">
               {testResult.success ? (
                 <CheckCircle2 className="h-5 w-5 text-green-500" />
@@ -768,11 +866,19 @@ export default function AdminMediaProviders() {
               )}
               <div>
                 <p className="font-medium">
-                  {testResult.success ? "Connection Successful" : "Connection Failed"}
+                  {testResult.success
+                    ? "Connection Successful"
+                    : "Connection Failed"}
                 </p>
-                <p className="text-sm text-muted-foreground">{testResult.message}</p>
+                <p className="text-sm text-muted-foreground">
+                  {testResult.message}
+                </p>
               </div>
-              <Button variant="ghost" size="sm" onClick={() => setTestResult(null)}>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setTestResult(null)}
+              >
                 <X className="h-4 w-4" />
               </Button>
             </div>
@@ -842,7 +948,9 @@ function ProviderForm({
     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
       <TabsList className="grid w-full grid-cols-2">
         <TabsTrigger value="settings">Settings</TabsTrigger>
-        <TabsTrigger value="models">Models ({editingModels.length})</TabsTrigger>
+        <TabsTrigger value="models">
+          Models ({editingModels.length})
+        </TabsTrigger>
       </TabsList>
 
       <TabsContent value="settings" className="space-y-4 mt-4">
@@ -852,7 +960,9 @@ function ProviderForm({
             <Input
               id="displayName"
               value={formData.displayName}
-              onChange={(e) => setFormData({ ...formData, displayName: e.target.value })}
+              onChange={e =>
+                setFormData({ ...formData, displayName: e.target.value })
+              }
               placeholder="e.g., Kie AI"
             />
           </div>
@@ -862,7 +972,9 @@ function ProviderForm({
             <Textarea
               id="description"
               value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              onChange={e =>
+                setFormData({ ...formData, description: e.target.value })
+              }
               placeholder="Provider description..."
               rows={2}
             />
@@ -872,13 +984,17 @@ function ProviderForm({
             <Label htmlFor="providerType">Provider Type</Label>
             <Select
               value={formData.providerType}
-              onValueChange={(value) => setFormData({ ...formData, providerType: value })}
+              onValueChange={value =>
+                setFormData({ ...formData, providerType: value })
+              }
             >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="multimodal">Multimodal (Image + Video + Audio)</SelectItem>
+                <SelectItem value="multimodal">
+                  Multimodal (Image + Video + Audio)
+                </SelectItem>
                 <SelectItem value="image">Image Only</SelectItem>
                 <SelectItem value="video">Video Only</SelectItem>
                 <SelectItem value="audio">Audio Only</SelectItem>
@@ -891,7 +1007,9 @@ function ProviderForm({
             <Input
               id="baseUrl"
               value={formData.baseUrl}
-              onChange={(e) => setFormData({ ...formData, baseUrl: e.target.value })}
+              onChange={e =>
+                setFormData({ ...formData, baseUrl: e.target.value })
+              }
               placeholder="https://api.example.com/v1"
             />
           </div>
@@ -901,7 +1019,9 @@ function ProviderForm({
             <Input
               id="callbackUrl"
               value={formData.callbackUrl}
-              onChange={(e) => setFormData({ ...formData, callbackUrl: e.target.value })}
+              onChange={e =>
+                setFormData({ ...formData, callbackUrl: e.target.value })
+              }
               placeholder={
                 isKieAiProvider
                   ? suggestedKieCallbackUrl
@@ -911,7 +1031,8 @@ function ProviderForm({
             {isKieAiProvider ? (
               <>
                 <p className="text-xs text-muted-foreground">
-                  Recommended Kie.ai callback URL: <code>{suggestedKieCallbackUrl}</code>
+                  Recommended Kie.ai callback URL:{" "}
+                  <code>{suggestedKieCallbackUrl}</code>
                 </p>
                 <div className="flex items-center gap-2">
                   <Button
@@ -938,17 +1059,20 @@ function ProviderForm({
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Set this URL in Kie.ai webhook settings to receive completion callbacks immediately.
+                  Set this URL in Kie.ai webhook settings to receive completion
+                  callbacks immediately.
                 </p>
                 {isLocalCallbackSuggestion && (
                   <p className="text-xs text-amber-600">
-                    Current URL is local-only. Use a public HTTPS tunnel/domain so Kie.ai can reach your callback.
+                    Current URL is local-only. Use a public HTTPS tunnel/domain
+                    so Kie.ai can reach your callback.
                   </p>
                 )}
               </>
             ) : (
               <p className="text-xs text-muted-foreground">
-                Required for async providers. Use a public HTTPS URL (e.g., cloudflared tunnel in local dev).
+                Required for async providers. Use a public HTTPS URL (e.g.,
+                cloudflared tunnel in local dev).
               </p>
             )}
           </div>
@@ -961,7 +1085,9 @@ function ProviderForm({
               id="apiKey"
               type="password"
               value={formData.apiKey}
-              onChange={(e) => setFormData({ ...formData, apiKey: e.target.value })}
+              onChange={e =>
+                setFormData({ ...formData, apiKey: e.target.value })
+              }
               placeholder={isNew ? "Enter your API key" : "••••••••"}
             />
           </div>
@@ -970,13 +1096,15 @@ function ProviderForm({
             <Label htmlFor="defaultModel">Default Model</Label>
             <Select
               value={formData.defaultModel}
-              onValueChange={(value) => setFormData({ ...formData, defaultModel: value })}
+              onValueChange={value =>
+                setFormData({ ...formData, defaultModel: value })
+              }
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select default model" />
               </SelectTrigger>
               <SelectContent>
-                {editingModels.map((model) => (
+                {editingModels.map(model => (
                   <SelectItem key={model.id} value={model.id}>
                     {model.name} ({model.type})
                   </SelectItem>
@@ -986,12 +1114,19 @@ function ProviderForm({
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="priority">Priority (lower = higher priority for failover)</Label>
+            <Label htmlFor="priority">
+              Priority (lower = higher priority for failover)
+            </Label>
             <Input
               id="priority"
               type="number"
               value={formData.priority}
-              onChange={(e) => setFormData({ ...formData, priority: parseInt(e.target.value) || 0 })}
+              onChange={e =>
+                setFormData({
+                  ...formData,
+                  priority: parseInt(e.target.value) || 0,
+                })
+              }
             />
           </div>
 
@@ -1004,7 +1139,9 @@ function ProviderForm({
             </div>
             <Switch
               checked={formData.isEnabled}
-              onCheckedChange={(checked) => setFormData({ ...formData, isEnabled: checked })}
+              onCheckedChange={checked =>
+                setFormData({ ...formData, isEnabled: checked })
+              }
             />
           </div>
 
@@ -1017,13 +1154,18 @@ function ProviderForm({
             </div>
             <Switch
               checked={formData.isPrimary}
-              onCheckedChange={(checked) => setFormData({ ...formData, isPrimary: checked })}
+              onCheckedChange={checked =>
+                setFormData({ ...formData, isPrimary: checked })
+              }
             />
           </div>
         </div>
       </TabsContent>
 
-      <TabsContent value="models" className="mt-4 max-h-[50vh] overflow-y-auto pr-2">
+      <TabsContent
+        value="models"
+        className="mt-4 max-h-[50vh] overflow-y-auto pr-2"
+      >
         <div className="space-y-4">
           {/* Add new model */}
           <DashboardCard>
@@ -1035,12 +1177,16 @@ function ProviderForm({
                 <Input
                   placeholder="Model ID"
                   value={newModel.id}
-                  onChange={(e) => setNewModel({ ...newModel, id: e.target.value })}
+                  onChange={e =>
+                    setNewModel({ ...newModel, id: e.target.value })
+                  }
                 />
                 <Input
                   placeholder="Display Name"
                   value={newModel.name}
-                  onChange={(e) => setNewModel({ ...newModel, name: e.target.value })}
+                  onChange={e =>
+                    setNewModel({ ...newModel, name: e.target.value })
+                  }
                 />
                 <Select
                   value={newModel.type}
@@ -1061,9 +1207,15 @@ function ProviderForm({
               <Input
                 placeholder="Description (optional)"
                 value={newModel.description || ""}
-                onChange={(e) => setNewModel({ ...newModel, description: e.target.value })}
+                onChange={e =>
+                  setNewModel({ ...newModel, description: e.target.value })
+                }
               />
-              <Button onClick={handleAddModel} disabled={!newModel.id || !newModel.name} size="sm">
+              <Button
+                onClick={handleAddModel}
+                disabled={!newModel.id || !newModel.name}
+                size="sm"
+              >
                 <Plus className="mr-2 h-4 w-4" />
                 Add Model
               </Button>
@@ -1072,40 +1224,42 @@ function ProviderForm({
 
           {/* Models list */}
           <div className="space-y-2">
-            {editingModels.map((model) => (
-            <DashboardCard key={model.id}>
-              <div className="flex items-center justify-between p-3">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-8 w-8 items-center justify-center rounded bg-muted">
-                    {model.type === "image" && <Image className="h-4 w-4" />}
-                    {model.type === "video" && <Video className="h-4 w-4" />}
-                    {model.type === "audio" && <Music className="h-4 w-4" />}
+            {editingModels.map(model => (
+              <DashboardCard key={model.id}>
+                <div className="flex items-center justify-between p-3">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 items-center justify-center rounded bg-muted">
+                      {model.type === "image" && <Image className="h-4 w-4" />}
+                      {model.type === "video" && <Video className="h-4 w-4" />}
+                      {model.type === "audio" && <Music className="h-4 w-4" />}
+                    </div>
+                    <div>
+                      <p className="font-medium">{model.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {model.id}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-medium">{model.name}</p>
-                    <p className="text-xs text-muted-foreground">{model.id}</p>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline">{model.type}</Badge>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setDeleteModelConfirm(model.id)}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline">{model.type}</Badge>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setDeleteModelConfirm(model.id)}
-                  >
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
-                </div>
-              </div>
-            </DashboardCard>
-          ))}
+              </DashboardCard>
+            ))}
           </div>
         </div>
 
         {/* Delete model confirmation */}
         <AlertDialog
           open={!!deleteModelConfirm}
-          onOpenChange={(open) => !open && setDeleteModelConfirm(null)}
+          onOpenChange={open => !open && setDeleteModelConfirm(null)}
         >
           <AlertDialogContent>
             <AlertDialogHeader>
@@ -1117,7 +1271,9 @@ function ProviderForm({
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction
-                onClick={() => deleteModelConfirm && handleRemoveModel(deleteModelConfirm)}
+                onClick={() =>
+                  deleteModelConfirm && handleRemoveModel(deleteModelConfirm)
+                }
               >
                 Remove
               </AlertDialogAction>

@@ -41,9 +41,12 @@ import { DateRangeSelector } from "@/components/analytics/DateRangeSelector";
 import { StatsCards } from "@/components/analytics/StatsCards";
 import { BreakdownTable } from "@/components/analytics/BreakdownTable";
 import { TransactionDetailDialog } from "@/components/analytics/TransactionDetailDialog";
+import { LocaleToggle } from "@/components/LocaleToggle";
 import { formatCurrency, formatLatency } from "@/lib/formatters";
+import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 
 export default function UsageAnalytics() {
+  const { t, locale } = useScopedTranslation("billing");
   const { user, loading: authLoading } = useAuth();
   const [days, setDays] = useState<number>(7);
   const [page, setPage] = useState(0);
@@ -66,7 +69,12 @@ export default function UsageAnalytics() {
 
   // Transaction history (admin can view another user's transactions)
   const transactions = trpc.usage.getUserTransactions.useQuery(
-    { days, limit: pageSize, offset: page * pageSize, ...(targetUserId ? { userId: targetUserId } : {}) },
+    {
+      days,
+      limit: pageSize,
+      offset: page * pageSize,
+      ...(targetUserId ? { userId: targetUserId } : {}),
+    },
     { staleTime: 60 * 1000 }
   );
 
@@ -89,8 +97,8 @@ export default function UsageAnalytics() {
       <div className="flex items-center justify-center min-h-screen">
         <DashboardCard className="w-96">
           <div>
-            <h3>Authentication Required</h3>
-            <p>Please log in to view your usage analytics.</p>
+            <h3>{t("usage.auth.title")}</h3>
+            <p>{t("usage.auth.description")}</p>
           </div>
         </DashboardCard>
       </div>
@@ -112,42 +120,51 @@ export default function UsageAnalytics() {
               <Link href="/dashboard">
                 <Button variant="ghost" size="sm">
                   <ArrowLeft className="h-4 w-4 mr-1" />
-                  Dashboard
+                  {t("usage.backToDashboard")}
                 </Button>
               </Link>
               <div>
                 <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
                   <BarChart3 className="h-5 w-5 sm:h-6 sm:w-6 text-blue-500" />
-                  Usage Analytics
+                  {t("usage.title")}
                 </h1>
                 <p className="text-sm text-muted-foreground">
                   {isAdmin && selectedUserId
-                    ? `Viewing user #${selectedUserId}`
-                    : "Your personal usage statistics"}
+                    ? t("usage.subtitle.user", { id: selectedUserId })
+                    : t("usage.subtitle.self")}
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-3 sm:ml-auto">
+              <LocaleToggle className="shrink-0" />
               {/* Admin user selector */}
               {isAdmin && userList.data && (
                 <select
                   className="px-3 py-1.5 border rounded-md text-sm bg-background"
                   value={selectedUserId ?? ""}
-                  onChange={(e) => {
+                  onChange={e => {
                     const val = e.target.value;
                     setSelectedUserId(val ? Number(val) : null);
                     setPage(0);
                   }}
                 >
-                  <option value="">My Usage</option>
-                  {userList.data.users.map((u) => (
+                  <option value="">{t("usage.filters.myUsage")}</option>
+                  {userList.data.users.map(u => (
                     <option key={u.id} value={u.id}>
-                      {u.name || u.email || `User #${u.id}`}
+                      {u.name ||
+                        u.email ||
+                        t("usage.filters.userFallback", { id: u.id })}
                     </option>
                   ))}
                 </select>
               )}
-              <DateRangeSelector value={days} onChange={(d) => { setDays(d); setPage(0); }} />
+              <DateRangeSelector
+                value={days}
+                onChange={d => {
+                  setDays(d);
+                  setPage(0);
+                }}
+              />
             </div>
           </div>
         </div>
@@ -164,25 +181,25 @@ export default function UsageAnalytics() {
             <StatsCards
               items={[
                 {
-                  label: "Requests",
+                  label: t("usage.stats.requests"),
                   value: data.totalRequests.toLocaleString(),
                   icon: Activity,
                   color: "text-blue-500",
                 },
                 {
-                  label: "Credits Used",
+                  label: t("usage.stats.creditsUsed"),
                   value: data.totalCredits.toLocaleString(),
                   icon: CreditCard,
                   color: "text-green-500",
                 },
                 {
-                  label: "Models Used",
+                  label: t("usage.stats.modelsUsed"),
                   value: data.activeModels,
                   icon: Brain,
                   color: "text-purple-500",
                 },
                 {
-                  label: "Total Cost",
+                  label: t("usage.stats.totalCost"),
                   value: formatCurrency(data.totalCost),
                   icon: DollarSign,
                   color: "text-yellow-500",
@@ -194,37 +211,63 @@ export default function UsageAnalytics() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <DashboardCard>
                 <div>
-                  <h3 className="text-base">Provider Breakdown</h3>
+                  <h3 className="text-base">
+                    {t("usage.providerBreakdown.title")}
+                  </h3>
                 </div>
                 <div>
                   <BreakdownTable
                     columns={[
-                      { header: "Provider", accessor: (r: any) => r.providerName },
-                      { header: "Requests", accessor: (r: any) => r.requests.toLocaleString(), align: "right" },
-                      { header: "Credits", accessor: (r: any) => r.totalCredits.toLocaleString(), align: "right" },
+                      {
+                        header: t("usage.columns.provider"),
+                        accessor: (r: any) => r.providerName,
+                      },
+                      {
+                        header: t("usage.columns.requests"),
+                        accessor: (r: any) => r.requests.toLocaleString(),
+                        align: "right",
+                      },
+                      {
+                        header: t("usage.columns.credits"),
+                        accessor: (r: any) => r.totalCredits.toLocaleString(),
+                        align: "right",
+                      },
                     ]}
                     data={data.providerBreakdown}
-                    emptyMessage="No provider data for this period."
+                    emptyMessage={t("usage.providerBreakdown.empty")}
                   />
                 </div>
               </DashboardCard>
 
               <DashboardCard>
                 <div>
-                  <h3 className="text-base">Model Breakdown</h3>
+                  <h3 className="text-base">
+                    {t("usage.modelBreakdown.title")}
+                  </h3>
                 </div>
                 <div>
                   <BreakdownTable
                     columns={[
-                      { header: "Model", accessor: (r: any) => {
-                        const m = r.model || "Unknown";
-                        return m.length > 25 ? m.substring(0, 25) + "..." : m;
-                      }},
-                      { header: "Requests", accessor: (r: any) => r.requests.toLocaleString(), align: "right" },
-                      { header: "Credits", accessor: (r: any) => r.totalCredits.toLocaleString(), align: "right" },
+                      {
+                        header: t("usage.columns.model"),
+                        accessor: (r: any) => {
+                          const m = r.model || t("usage.unknownModel");
+                          return m.length > 25 ? m.substring(0, 25) + "..." : m;
+                        },
+                      },
+                      {
+                        header: t("usage.columns.requests"),
+                        accessor: (r: any) => r.requests.toLocaleString(),
+                        align: "right",
+                      },
+                      {
+                        header: t("usage.columns.credits"),
+                        accessor: (r: any) => r.totalCredits.toLocaleString(),
+                        align: "right",
+                      },
                     ]}
                     data={data.modelBreakdown}
-                    emptyMessage="No model data for this period."
+                    emptyMessage={t("usage.modelBreakdown.empty")}
                   />
                 </div>
               </DashboardCard>
@@ -237,11 +280,15 @@ export default function UsageAnalytics() {
           <div>
             <div className="flex items-center justify-between">
               <div>
-                <h3>Transaction History</h3>
+                <h3>{t("usage.transactionHistory.title")}</h3>
                 <p>
                   {totalTxns > 0
-                    ? `Showing ${page * pageSize + 1}-${Math.min((page + 1) * pageSize, totalTxns)} of ${totalTxns}`
-                    : "No transactions for this period"}
+                    ? t("usage.transactionHistory.range", {
+                        start: page * pageSize + 1,
+                        end: Math.min((page + 1) * pageSize, totalTxns),
+                        total: totalTxns,
+                      })
+                    : t("usage.transactionHistory.emptyPeriod")}
                 </p>
               </div>
               {totalPages > 1 && (
@@ -276,18 +323,20 @@ export default function UsageAnalytics() {
               </div>
             ) : txns.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground text-sm">
-                No transactions found for this period.
+                {t("usage.transactionHistory.emptyFound")}
               </div>
             ) : (
               <>
                 {/* Mobile card list — hidden on sm+ */}
                 <div className="sm:hidden divide-y divide-border">
-                  {txns.map((tx) => (
+                  {txns.map(tx => (
                     <div key={tx.id} className="py-3 space-y-1.5">
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2 flex-wrap">
                           <Badge variant="outline" className="text-xs">
-                            {tx.requestType || tx.type || "LLM"}
+                            {tx.requestType ||
+                              tx.type ||
+                              t("usage.mobile.defaultType")}
                           </Badge>
                           {tx.errorType ? (
                             <XCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
@@ -295,12 +344,18 @@ export default function UsageAnalytics() {
                             <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
                           )}
                         </div>
-                        <span className="text-sm font-semibold tabular-nums">{tx.creditsCharged ?? 0} cr</span>
+                        <span className="text-sm font-semibold tabular-nums">
+                          {t("usage.mobile.creditsShort", {
+                            count: tx.creditsCharged ?? 0,
+                          })}
+                        </span>
                       </div>
-                      <div className="text-xs text-muted-foreground font-mono truncate">{tx.model || "-"}</div>
+                      <div className="text-xs text-muted-foreground font-mono truncate">
+                        {tx.model || "-"}
+                      </div>
                       {tx.traceId && (
                         <div className="text-[11px] text-muted-foreground font-mono truncate">
-                          trace: {tx.traceId}
+                          {t("usage.mobile.trace", { traceId: tx.traceId })}
                         </div>
                       )}
                       {tx.errorMessage && (
@@ -312,7 +367,7 @@ export default function UsageAnalytics() {
                         <span>{tx.providerName || "-"}</span>
                         <span>
                           {tx.createdAt
-                            ? new Date(tx.createdAt).toLocaleString([], {
+                            ? new Date(tx.createdAt).toLocaleString(locale, {
                                 month: "numeric",
                                 day: "numeric",
                                 hour: "2-digit",
@@ -323,7 +378,12 @@ export default function UsageAnalytics() {
                       </div>
                       <div className="flex items-center gap-3 text-xs text-muted-foreground">
                         {tx.inputTokens != null && (
-                          <span>{tx.inputTokens}/{tx.outputTokens} tok</span>
+                          <span>
+                            {t("usage.mobile.tokensShort", {
+                              input: tx.inputTokens,
+                              output: tx.outputTokens ?? 0,
+                            })}
+                          </span>
                         )}
                         {tx.responseTimeMs != null && (
                           <span>{formatLatency(tx.responseTimeMs)}</span>
@@ -335,7 +395,9 @@ export default function UsageAnalytics() {
                             txType={tx.type as "llm" | "media"}
                             date={
                               tx.createdAt
-                                ? new Date(tx.createdAt).toISOString().slice(0, 10)
+                                ? new Date(tx.createdAt)
+                                    .toISOString()
+                                    .slice(0, 10)
                                 : undefined
                             }
                           />
@@ -346,101 +408,116 @@ export default function UsageAnalytics() {
                 </div>
                 {/* Desktop table — hidden on mobile */}
                 <div className="hidden sm:block">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Time</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Model</TableHead>
-                      <TableHead>Provider</TableHead>
-                      <TableHead className="text-right">Credits</TableHead>
-                      <TableHead className="text-right">Tokens</TableHead>
-                      <TableHead className="text-right">Latency</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Trace / Error</TableHead>
-                      <TableHead></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                <TableBody>
-                  {txns.map((tx) => (
-                    <TableRow key={tx.id}>
-                      <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                        {tx.createdAt
-                          ? new Date(tx.createdAt).toLocaleString([], {
-                              month: "numeric",
-                              day: "numeric",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })
-                          : "-"}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="text-xs">
-                          {tx.requestType || tx.type || "LLM"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="font-mono text-xs max-w-[120px] truncate">
-                        {tx.model || "-"}
-                      </TableCell>
-                      <TableCell className="text-xs">
-                        {tx.providerName || "-"}
-                      </TableCell>
-                      <TableCell className="text-right text-sm">
-                        {tx.creditsCharged ?? 0}
-                      </TableCell>
-                      <TableCell className="text-right text-xs text-muted-foreground">
-                        {tx.inputTokens != null
-                          ? `${tx.inputTokens}/${tx.outputTokens}`
-                          : "-"}
-                      </TableCell>
-                      <TableCell className="text-right text-xs text-muted-foreground">
-                        {tx.responseTimeMs != null
-                          ? formatLatency(tx.responseTimeMs)
-                          : "-"}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          {tx.errorType ? (
-                            <XCircle className="h-4 w-4 text-red-500" />
-                          ) : (
-                            <CheckCircle className="h-4 w-4 text-green-500" />
-                          )}
-                          <span className="text-xs text-muted-foreground">
-                            {tx.statusCode ?? "-"}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="max-w-[280px]">
-                        <div className="space-y-1">
-                          <div className="text-[11px] text-muted-foreground font-mono truncate">
-                            {tx.traceId || "-"}
-                          </div>
-                          {tx.errorMessage ? (
-                            <div className="text-xs text-red-600 truncate" title={tx.errorMessage}>
-                              {tx.errorMessage}
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>{t("usage.table.time")}</TableHead>
+                        <TableHead>{t("usage.table.type")}</TableHead>
+                        <TableHead>{t("usage.table.model")}</TableHead>
+                        <TableHead>{t("usage.table.provider")}</TableHead>
+                        <TableHead className="text-right">
+                          {t("usage.table.credits")}
+                        </TableHead>
+                        <TableHead className="text-right">
+                          {t("usage.table.tokens")}
+                        </TableHead>
+                        <TableHead className="text-right">
+                          {t("usage.table.latency")}
+                        </TableHead>
+                        <TableHead>{t("usage.table.status")}</TableHead>
+                        <TableHead>{t("usage.table.traceError")}</TableHead>
+                        <TableHead></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {txns.map(tx => (
+                        <TableRow key={tx.id}>
+                          <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                            {tx.createdAt
+                              ? new Date(tx.createdAt).toLocaleString(locale, {
+                                  month: "numeric",
+                                  day: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })
+                              : "-"}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="text-xs">
+                              {tx.requestType ||
+                                tx.type ||
+                                t("usage.mobile.defaultType")}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="font-mono text-xs max-w-[120px] truncate">
+                            {tx.model || "-"}
+                          </TableCell>
+                          <TableCell className="text-xs">
+                            {tx.providerName || "-"}
+                          </TableCell>
+                          <TableCell className="text-right text-sm">
+                            {tx.creditsCharged ?? 0}
+                          </TableCell>
+                          <TableCell className="text-right text-xs text-muted-foreground">
+                            {tx.inputTokens != null
+                              ? `${tx.inputTokens}/${tx.outputTokens}`
+                              : "-"}
+                          </TableCell>
+                          <TableCell className="text-right text-xs text-muted-foreground">
+                            {tx.responseTimeMs != null
+                              ? formatLatency(tx.responseTimeMs)
+                              : "-"}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              {tx.errorType ? (
+                                <XCircle className="h-4 w-4 text-red-500" />
+                              ) : (
+                                <CheckCircle className="h-4 w-4 text-green-500" />
+                              )}
+                              <span className="text-xs text-muted-foreground">
+                                {tx.statusCode ?? "-"}
+                              </span>
                             </div>
-                          ) : (
-                            <div className="text-xs text-muted-foreground">-</div>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <TransactionDetailDialog
-                          traceId={tx.traceId || undefined}
-                          txId={tx.id}
-                          txType={tx.type as "llm" | "media"}
-                          date={
-                            tx.createdAt
-                              ? new Date(tx.createdAt).toISOString().slice(0, 10)
-                              : undefined
-                          }
-                        />
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-              </div>
+                          </TableCell>
+                          <TableCell className="max-w-[280px]">
+                            <div className="space-y-1">
+                              <div className="text-[11px] text-muted-foreground font-mono truncate">
+                                {tx.traceId || "-"}
+                              </div>
+                              {tx.errorMessage ? (
+                                <div
+                                  className="text-xs text-red-600 truncate"
+                                  title={tx.errorMessage}
+                                >
+                                  {tx.errorMessage}
+                                </div>
+                              ) : (
+                                <div className="text-xs text-muted-foreground">
+                                  -
+                                </div>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <TransactionDetailDialog
+                              traceId={tx.traceId || undefined}
+                              txId={tx.id}
+                              txType={tx.type as "llm" | "media"}
+                              date={
+                                tx.createdAt
+                                  ? new Date(tx.createdAt)
+                                      .toISOString()
+                                      .slice(0, 10)
+                                  : undefined
+                              }
+                            />
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               </>
             )}
           </div>

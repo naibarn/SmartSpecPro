@@ -1,4 +1,5 @@
 use std::process::{Command, Stdio};
+use super::render::sanitize_path;
 use std::path::PathBuf;
 use std::io::Read as IoRead;
 use std::env;
@@ -157,8 +158,7 @@ pub fn get_ffprobe_path() -> PathBuf {
 }
 
 /// Probe media file with ffprobe to extract metadata
-#[tauri::command]
-pub async fn ffmpeg_probe_file(path: String) -> Result<MediaFileInfo, String> {
+pub fn probe_media_file_sync(path: &str) -> Result<MediaFileInfo, String> {
     let ffprobe_path = get_ffprobe_path();
 
     let output = Command::new(&ffprobe_path)
@@ -167,7 +167,7 @@ pub async fn ffmpeg_probe_file(path: String) -> Result<MediaFileInfo, String> {
             "-print_format", "json",
             "-show_format",
             "-show_streams",
-            &path
+            path
         ])
         .output()
         .map_err(|e| format!("Failed to run ffprobe: {}", e))?;
@@ -182,7 +182,6 @@ pub async fn ffmpeg_probe_file(path: String) -> Result<MediaFileInfo, String> {
     let json: serde_json::Value = serde_json::from_slice(&output.stdout)
         .map_err(|e| format!("Failed to parse ffprobe output: {}", e))?;
 
-    // Extract info from JSON
     let format = &json["format"];
     let empty_vec = vec![];
     let streams = json["streams"].as_array().unwrap_or(&empty_vec);
@@ -220,24 +219,28 @@ pub async fn ffmpeg_probe_file(path: String) -> Result<MediaFileInfo, String> {
     })
 }
 
-/// Generate thumbnail from video at specified time
 #[tauri::command]
-pub async fn ffmpeg_generate_thumbnail(
-    input_path: String,
-    output_path: String,
-    time_seconds: f64
+pub async fn ffmpeg_probe_file(path: String) -> Result<MediaFileInfo, String> {
+    probe_media_file_sync(&path)
+}
+
+/// Generate thumbnail from video at specified time
+pub fn generate_thumbnail_sync(
+    input_path: &str,
+    output_path: &str,
+    time_seconds: f64,
 ) -> Result<(), String> {
     let ffmpeg_path = get_ffmpeg_path();
 
     let status = Command::new(&ffmpeg_path)
         .args(&[
             "-ss", &time_seconds.to_string(),
-            "-i", &input_path,
+            "-i", input_path,
             "-vframes", "1",
             "-q:v", "2",
             "-vf", "scale=320:-1",
             "-y",
-            &output_path
+            output_path
         ])
         .stdout(Stdio::null())
         .stderr(Stdio::piped())
@@ -249,6 +252,123 @@ pub async fn ffmpeg_generate_thumbnail(
     }
 
     Ok(())
+}
+
+fn run_ffmpeg_sync(args: &[String], failure_prefix: &str) -> Result<(), String> {
+    let ffmpeg_path = get_ffmpeg_path();
+    let output = Command::new(&ffmpeg_path)
+        .args(args)
+        .output()
+        .map_err(|error| format!("Failed to run ffmpeg: {error}"))?;
+
+    if output.status.success() {
+        return Ok(());
+    }
+
+    let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+    Err(if stderr.is_empty() {
+        failure_prefix.to_string()
+    } else {
+        format!("{failure_prefix}: {stderr}")
+    })
+}
+
+fn escape_subtitle_filter_path(path: &str) -> Result<String, String> {
+    let safe_path = sanitize_path(path)?;
+    Ok(safe_path
+        .replace('\\', "/")
+        .replace(':', "\\:")
+        .replace('\'', "\\'")
+        .replace('[', "\\[")
+        .replace(']', "\\]")
+        .replace(',', "\\,")
+        .replace(';', "\\;")
+        .replace('=', "\\="))
+}
+
+pub fn mux_subtitle_track_sync(
+    input_video_path: &str,
+    subtitle_path: &str,
+    output_path: &str,
+) -> Result<(), String> {
+    let safe_input_video_path = sanitize_path(input_video_path)?;
+    let safe_subtitle_path = sanitize_path(subtitle_path)?;
+    let safe_output_path = sanitize_path(output_path)?;
+
+    run_ffmpeg_sync(
+        &[
+            "-i".into(),
+            safe_input_video_path,
+            "-i".into(),
+            safe_subtitle_path,
+            "-map".into(),
+            "0:v:0".into(),
+            "-map".into(),
+            "0:a?".into(),
+            "-map".into(),
+            "1:0".into(),
+            "-c:v".into(),
+            "copy".into(),
+            "-c:a".into(),
+            "copy".into(),
+            "-c:s".into(),
+            "mov_text".into(),
+            "-metadata:s:s:0".into(),
+            "language=und".into(),
+            "-movflags".into(),
+            "+faststart".into(),
+            "-y".into(),
+            safe_output_path,
+        ],
+        "Subtitle muxing failed",
+    )
+}
+
+pub fn burn_in_subtitle_track_sync(
+    input_video_path: &str,
+    subtitle_path: &str,
+    output_path: &str,
+) -> Result<(), String> {
+    let safe_input_video_path = sanitize_path(input_video_path)?;
+    let safe_output_path = sanitize_path(output_path)?;
+    let subtitle_filter = format!("subtitles='{}'", escape_subtitle_filter_path(subtitle_path)?);
+
+    run_ffmpeg_sync(
+        &[
+            "-i".into(),
+            safe_input_video_path,
+            "-map".into(),
+            "0:v:0".into(),
+            "-map".into(),
+            "0:a?".into(),
+            "-vf".into(),
+            subtitle_filter,
+            "-c:v".into(),
+            "libx264".into(),
+            "-preset".into(),
+            "veryfast".into(),
+            "-crf".into(),
+            "18".into(),
+            "-pix_fmt".into(),
+            "yuv420p".into(),
+            "-c:a".into(),
+            "copy".into(),
+            "-movflags".into(),
+            "+faststart".into(),
+            "-y".into(),
+            safe_output_path,
+        ],
+        "Subtitle burn-in failed",
+    )
+}
+
+#[tauri::command]
+pub async fn ffmpeg_generate_thumbnail(
+    input_path: String,
+    output_path: String,
+    time_seconds: f64
+) -> Result<(), String> {
+    generate_thumbnail_sync(&input_path, &output_path, time_seconds)
 }
 
 /// Detect available H.264 encoders on the system
@@ -494,6 +614,7 @@ fn extract_float_after(line: &str, prefix: &str) -> Option<f64> {
 }
 
 /// Compute keep segments by inverting silence segments
+#[cfg_attr(not(test), allow(dead_code))]
 pub fn compute_keep_segments(
     silence_segments: &[SilenceSegment],
     total_duration_ms: u64,
@@ -522,6 +643,7 @@ pub fn compute_keep_segments(
     merge_keep_segments(keep, padding_ms * 2)
 }
 
+#[cfg_attr(not(test), allow(dead_code))]
 fn merge_keep_segments(segments: Vec<(u64, u64)>, merge_threshold: u64) -> Vec<(u64, u64)> {
     if segments.is_empty() {
         return segments;
@@ -556,6 +678,64 @@ fn parse_fps(fps_str: &str) -> Option<f64> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
+    use std::path::PathBuf;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn temp_dir(name: &str) -> PathBuf {
+        let mut path = std::env::temp_dir();
+        let suffix = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        path.push(format!("smartspec-ffmpeg-tests-{name}-{suffix}"));
+        path
+    }
+
+    fn ffmpeg_command_available() -> bool {
+        Command::new(get_ffmpeg_path())
+            .arg("-version")
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status()
+            .map(|status| status.success())
+            .unwrap_or(false)
+    }
+
+    fn ffmpeg_supports_subtitles_filter() -> bool {
+        let Ok(output) = Command::new(get_ffmpeg_path())
+            .args(["-hide_banner", "-filters"])
+            .output() else {
+            return false;
+        };
+        output.status.success()
+            && String::from_utf8_lossy(&output.stdout).contains(" subtitles ")
+    }
+
+    fn create_sample_video(output_path: &str) -> Result<(), String> {
+        run_ffmpeg_sync(
+            &[
+                "-f".into(),
+                "lavfi".into(),
+                "-i".into(),
+                "color=c=blue:s=320x240:d=1".into(),
+                "-f".into(),
+                "lavfi".into(),
+                "-i".into(),
+                "sine=frequency=1000:duration=1".into(),
+                "-shortest".into(),
+                "-c:v".into(),
+                "libx264".into(),
+                "-c:a".into(),
+                "aac".into(),
+                "-pix_fmt".into(),
+                "yuv420p".into(),
+                "-y".into(),
+                output_path.into(),
+            ],
+            "Sample video generation failed",
+        )
+    }
 
     #[test]
     fn test_parse_fps() {
@@ -696,5 +876,71 @@ mod tests {
     fn test_get_ffprobe_path_does_not_panic() {
         let path = get_ffprobe_path();
         assert!(!path.as_os_str().is_empty());
+    }
+
+    #[test]
+    fn test_escape_subtitle_filter_path_normalizes_special_characters() {
+        let escaped = escape_subtitle_filter_path("C:\\clips\\hello world.srt").unwrap();
+        assert_eq!(escaped, "C\\:/clips/hello world.srt");
+    }
+
+    #[test]
+    fn test_mux_subtitle_track_sync_generates_output_when_ffmpeg_available() {
+        if !ffmpeg_command_available() {
+            return;
+        }
+
+        let root_dir = temp_dir("softmux");
+        fs::create_dir_all(&root_dir).unwrap();
+        let input_video = root_dir.join("input.mp4");
+        let output_video = root_dir.join("output_softmux.mp4");
+        let subtitle_file = root_dir.join("captions.srt");
+
+        create_sample_video(&input_video.to_string_lossy()).unwrap();
+        fs::write(
+            &subtitle_file,
+            "1\n00:00:00,000 --> 00:00:00,800\nHello SmartSpec\n",
+        )
+        .unwrap();
+
+        mux_subtitle_track_sync(
+            &input_video.to_string_lossy(),
+            &subtitle_file.to_string_lossy(),
+            &output_video.to_string_lossy(),
+        )
+        .unwrap();
+
+        assert!(output_video.exists());
+        assert!(fs::metadata(output_video).unwrap().len() > 0);
+    }
+
+    #[test]
+    fn test_burn_in_subtitle_track_sync_generates_output_when_filter_available() {
+        if !ffmpeg_command_available() || !ffmpeg_supports_subtitles_filter() {
+            return;
+        }
+
+        let root_dir = temp_dir("burnin");
+        fs::create_dir_all(&root_dir).unwrap();
+        let input_video = root_dir.join("input.mp4");
+        let output_video = root_dir.join("output_burnin.mp4");
+        let subtitle_file = root_dir.join("captions.srt");
+
+        create_sample_video(&input_video.to_string_lossy()).unwrap();
+        fs::write(
+            &subtitle_file,
+            "1\n00:00:00,000 --> 00:00:00,800\nHello Burn In\n",
+        )
+        .unwrap();
+
+        burn_in_subtitle_track_sync(
+            &input_video.to_string_lossy(),
+            &subtitle_file.to_string_lossy(),
+            &output_video.to_string_lossy(),
+        )
+        .unwrap();
+
+        assert!(output_video.exists());
+        assert!(fs::metadata(output_video).unwrap().len() > 0);
     }
 }

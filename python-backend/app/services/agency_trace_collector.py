@@ -123,6 +123,7 @@ class TraceCollector:
         type: str,
         parent_span_id: str | None = None,
         input_data: str | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> str:
         """Start a new span. Returns span_id."""
         span_id = str(uuid.uuid4())
@@ -135,6 +136,7 @@ class TraceCollector:
             type=type,
             start_ms=now_ms,
             input_data=truncated_input,
+            metadata=dict(metadata or {}),
         )
         self._spans[span_id] = span
         return span_id
@@ -149,6 +151,7 @@ class TraceCollector:
         tool_calls: list[dict[str, Any]] | None = None,
         guardrails: list[dict[str, Any]] | None = None,
         error: str | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> None:
         """End a span. Applies secret scrubbing and output truncation."""
         span = self._spans.get(span_id)
@@ -171,6 +174,8 @@ class TraceCollector:
             span.guardrails = guardrails
         if error:
             span.error = scrub_secrets(error)
+        if metadata:
+            span.metadata.update(metadata)
 
     async def start_span_async(
         self,
@@ -178,10 +183,11 @@ class TraceCollector:
         type: str,
         parent_span_id: str | None = None,
         input_data: str | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> str:
         """Thread-safe version of start_span for concurrent tool calls."""
         async with self._lock:
-            return self.start_span(name, type, parent_span_id, input_data)
+            return self.start_span(name, type, parent_span_id, input_data, metadata)
 
     async def end_span_async(self, span_id: str, **kwargs: Any) -> None:
         """Thread-safe version of end_span for concurrent tool calls."""

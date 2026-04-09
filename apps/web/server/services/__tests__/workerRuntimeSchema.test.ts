@@ -4,9 +4,12 @@ import { describe, expect, it } from "vitest";
 import * as schema from "../../../drizzle/schema";
 
 describe("worker runtime schema foundation", () => {
-  it("exports worker runtime enums with openclaw_gateway", () => {
+  it("exports worker runtime enums for all declared runtime families", () => {
     expect((schema as any).workerRuntimeTypeEnum).toBeDefined();
     expect((schema as any).workerRuntimeTypeEnum?.enumValues).toContain("openclaw_gateway");
+    expect((schema as any).workerRuntimeTypeEnum?.enumValues).toContain("desktop_zeroclaw_managed");
+    expect((schema as any).workerRuntimeTypeEnum?.enumValues).toContain("nemoclaw_sandbox");
+    expect((schema as any).workerRuntimeTypeEnum?.enumValues).toContain("hiclaw_cluster");
   });
 
   it("defines the canonical worker control-plane tables", () => {

@@ -4063,6 +4063,231 @@ class NodeRegistry:
             )
         )
 
+        # Worker runtime nodes
+        self.register_node_type(
+            NodeTypeSpec(
+                type="dispatch_worker_job",
+                display_name="Dispatch Worker Job",
+                description="Dispatch a typed worker-runtime job to the SmartSpec control plane.",
+                icon="send",
+                color="amber",
+                category="integrations",
+                inputs=[
+                    InputSpec(
+                        name="jobType",
+                        display_name="Job Type",
+                        data_type="text",
+                        ui_type="text",
+                        required=True,
+                        accepts_connection=True,
+                        placeholder="video_assembly, local_folder_ingest, comfy_image_generation, comfy_workflow_run, or external_agent_task",
+                    ),
+                    InputSpec(
+                        name="runtimeType",
+                        display_name="Runtime Type",
+                        data_type="text",
+                        ui_type="select",
+                        required=False,
+                        accepts_connection=True,
+                        options=[
+                            {"label": "Auto Route", "value": ""},
+                            {"label": "Desktop + ZeroClaw", "value": "desktop_zeroclaw_managed"},
+                            {"label": "OpenClaw Gateway", "value": "openclaw_gateway"},
+                            {"label": "NemoClaw Sandbox", "value": "nemoclaw_sandbox"},
+                            {"label": "HiClaw Cluster", "value": "hiclaw_cluster"},
+                        ],
+                    ),
+                    InputSpec(
+                        name="jobRequest",
+                        display_name="Job Request",
+                        data_type="json",
+                        ui_type="json_editor",
+                        required=False,
+                        accepts_connection=True,
+                        placeholder='{"inputRefs":[],"workspacePolicy":{"allowedSourceRoots":["C:\\\\Media"]}}',
+                    ),
+                    InputSpec(
+                        name="inputJson",
+                        display_name="Input JSON",
+                        data_type="json",
+                        ui_type="json_editor",
+                        required=False,
+                        accepts_connection=True,
+                        placeholder='{"task":"Summarize and research"}',
+                    ),
+                    InputSpec(
+                        name="instructionsJson",
+                        display_name="Instructions JSON",
+                        data_type="json",
+                        ui_type="json_editor",
+                        required=False,
+                        accepts_connection=True,
+                    ),
+                    InputSpec(
+                        name="capabilityFamilies",
+                        display_name="Capability Families",
+                        data_type="json",
+                        ui_type="json_editor",
+                        required=False,
+                        accepts_connection=True,
+                        placeholder='["artifact-producing-session"]',
+                    ),
+                    InputSpec(
+                        name="preferredWorkerId",
+                        display_name="Preferred Worker ID",
+                        data_type="text",
+                        ui_type="text",
+                        required=False,
+                        accepts_connection=True,
+                    ),
+                    InputSpec(
+                        name="timeoutSeconds",
+                        display_name="Timeout Seconds",
+                        data_type="number",
+                        ui_type="number",
+                        required=False,
+                        accepts_connection=False,
+                        default=3600,
+                        validation={"min": 1, "max": 86400},
+                    ),
+                    InputSpec(
+                        name="idempotencyKey",
+                        display_name="Idempotency Key",
+                        data_type="text",
+                        ui_type="text",
+                        required=False,
+                        accepts_connection=True,
+                    ),
+                ],
+                outputs=[
+                    OutputSpec(name="workerJobId", display_name="Worker Job ID", data_type="text"),
+                    OutputSpec(name="status", display_name="Status", data_type="text"),
+                    OutputSpec(name="runtimeType", display_name="Runtime Type", data_type="text"),
+                    OutputSpec(name="jobType", display_name="Job Type", data_type="text"),
+                    OutputSpec(name="created", display_name="Created", data_type="boolean"),
+                    OutputSpec(name="workerJob", display_name="Worker Job", data_type="json"),
+                    OutputSpec(name="queueMetadata", display_name="Queue Metadata", data_type="json"),
+                    OutputSpec(name="error", display_name="Error", data_type="text"),
+                ],
+                executor="app.orchestrator.node_executors.worker_runtime_executor.WorkerRuntimeExecutor",
+            )
+        )
+
+        self.register_node_type(
+            NodeTypeSpec(
+                type="wait_for_worker_completion",
+                display_name="Wait For Worker Completion",
+                description="Poll a worker job until it reaches a terminal state or timeout.",
+                icon="hourglass",
+                color="amber",
+                category="flow_control",
+                inputs=[
+                    InputSpec(
+                        name="workerJobId",
+                        display_name="Worker Job ID",
+                        data_type="text",
+                        ui_type="text",
+                        required=True,
+                        accepts_connection=True,
+                        placeholder="Connect workerJobId from Dispatch Worker Job",
+                    ),
+                    InputSpec(
+                        name="timeoutSeconds",
+                        display_name="Timeout Seconds",
+                        data_type="number",
+                        ui_type="number",
+                        required=False,
+                        accepts_connection=False,
+                        default=900,
+                        validation={"min": 5, "max": 86400},
+                    ),
+                    InputSpec(
+                        name="pollIntervalMs",
+                        display_name="Poll Interval (ms)",
+                        data_type="number",
+                        ui_type="number",
+                        required=False,
+                        accepts_connection=False,
+                        default=5000,
+                        validation={"min": 250, "max": 30000},
+                    ),
+                ],
+                outputs=[
+                    OutputSpec(name="workerJobId", display_name="Worker Job ID", data_type="text"),
+                    OutputSpec(name="terminalStatus", display_name="Terminal Status", data_type="text"),
+                    OutputSpec(name="completed", display_name="Completed", data_type="boolean"),
+                    OutputSpec(name="failed", display_name="Failed", data_type="boolean"),
+                    OutputSpec(name="timedOut", display_name="Timed Out", data_type="boolean"),
+                    OutputSpec(name="failureSummary", display_name="Failure Summary", data_type="text"),
+                    OutputSpec(name="workerJob", display_name="Worker Job", data_type="json"),
+                    OutputSpec(name="artifactRefs", display_name="Artifact Refs", data_type="array"),
+                    OutputSpec(name="publishedArtifacts", display_name="Published Artifacts", data_type="array"),
+                    OutputSpec(name="error", display_name="Error", data_type="text"),
+                ],
+                executor="app.orchestrator.node_executors.worker_runtime_executor.WorkerRuntimeExecutor",
+            )
+        )
+
+        self.register_node_type(
+            NodeTypeSpec(
+                type="publish_worker_artifacts",
+                display_name="Publish Worker Artifacts",
+                description="Publish worker-produced artifacts into the SmartSpec library with safe-serving rules.",
+                icon="library",
+                color="amber",
+                category="integrations",
+                inputs=[
+                    InputSpec(
+                        name="workerJobId",
+                        display_name="Worker Job ID",
+                        data_type="text",
+                        ui_type="text",
+                        required=True,
+                        accepts_connection=True,
+                        placeholder="Connect workerJobId from a worker node",
+                    ),
+                ],
+                outputs=[
+                    OutputSpec(name="workerJobId", display_name="Worker Job ID", data_type="text"),
+                    OutputSpec(name="publishedArtifacts", display_name="Published Artifacts", data_type="array"),
+                    OutputSpec(name="publishedItemIds", display_name="Published Item IDs", data_type="array"),
+                    OutputSpec(name="publishedCount", display_name="Published Count", data_type="number"),
+                    OutputSpec(name="error", display_name="Error", data_type="text"),
+                ],
+                executor="app.orchestrator.node_executors.worker_runtime_executor.WorkerRuntimeExecutor",
+            )
+        )
+
+        self.register_node_type(
+            NodeTypeSpec(
+                type="trigger_worker_rag_index",
+                display_name="Trigger Worker RAG Index",
+                description="Trigger library indexing for worker artifacts that have already been published.",
+                icon="database-zap",
+                color="amber",
+                category="integrations",
+                inputs=[
+                    InputSpec(
+                        name="workerJobId",
+                        display_name="Worker Job ID",
+                        data_type="text",
+                        ui_type="text",
+                        required=True,
+                        accepts_connection=True,
+                        placeholder="Connect workerJobId from a worker node",
+                    ),
+                ],
+                outputs=[
+                    OutputSpec(name="workerJobId", display_name="Worker Job ID", data_type="text"),
+                    OutputSpec(name="indexingJobs", display_name="Indexing Jobs", data_type="array"),
+                    OutputSpec(name="publishedItemIds", display_name="Published Item IDs", data_type="array"),
+                    OutputSpec(name="indexedCount", display_name="Indexed Count", data_type="number"),
+                    OutputSpec(name="error", display_name="Error", data_type="text"),
+                ],
+                executor="app.orchestrator.node_executors.worker_runtime_executor.WorkerRuntimeExecutor",
+            )
+        )
+
         # Social workflow nodes
         self.register_node_type(
             NodeTypeSpec(
@@ -4469,6 +4694,7 @@ def get_executor(node_type: str):
     from app.orchestrator.node_executors.approval_executor import ApprovalExecutor
     from app.orchestrator.node_executors.browser_session_executor import BrowserSessionExecutor
     from app.orchestrator.node_executors.loop_executor import LoopExecutor
+    from app.orchestrator.node_executors.worker_runtime_executor import WorkerRuntimeExecutor
     from app.orchestrator.node_executors.social.approval_gate_executor import SocialApprovalGateExecutor
     from app.orchestrator.node_executors.social.classify_intent_executor import ClassifyIntentExecutor
     from app.orchestrator.node_executors.social.draft_reply_executor import DraftReplyExecutor
@@ -4515,6 +4741,10 @@ def get_executor(node_type: str):
         "browser_session_instruction": BrowserSessionExecutor,
         "browser_session_wait_for_user": BrowserSessionExecutor,
         "browser_session_review_gate": BrowserSessionExecutor,
+        "dispatch_worker_job": WorkerRuntimeExecutor,
+        "wait_for_worker_completion": WorkerRuntimeExecutor,
+        "publish_worker_artifacts": WorkerRuntimeExecutor,
+        "trigger_worker_rag_index": WorkerRuntimeExecutor,
         # Social
         "incoming_meta_message": MetaMessageTriggerExecutor,
         "classify_social_intent": ClassifyIntentExecutor,

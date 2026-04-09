@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { ChevronLeft, Globe, Loader2, Plus, Search, Users } from "lucide-react";
 
+import { LocaleToggle } from "@/components/LocaleToggle";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,19 +30,19 @@ export default function GroupManagement() {
 
   const { data: myGroups, isLoading: myLoading } = trpc.groups.list.useQuery(
     { scope: "my_groups" },
-    { enabled: isAuthenticated && selectedTab === "my_groups" },
+    { enabled: isAuthenticated && selectedTab === "my_groups" }
   );
 
   const { data: memberOfGroups, isLoading: memberLoading } =
     trpc.groups.list.useQuery(
       { scope: "member_of" },
-      { enabled: isAuthenticated && selectedTab === "member_of" },
+      { enabled: isAuthenticated && selectedTab === "member_of" }
     );
 
   const { data: publicGroups, isLoading: publicLoading } =
     trpc.groups.searchPublic.useQuery(
       { query: searchQuery || undefined, limit: 20 },
-      { enabled: isAuthenticated && selectedTab === "public" },
+      { enabled: isAuthenticated && selectedTab === "public" }
     );
 
   if (authLoading || !isAuthenticated || !user) {
@@ -81,8 +82,8 @@ export default function GroupManagement() {
       {/* Sticky Header */}
       <header className="sticky top-0 z-10 border-b bg-white/70 backdrop-blur-xl">
         <div className="px-4 py-3 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-wrap items-center gap-3">
               <Button
                 variant="ghost"
                 size="sm"
@@ -103,7 +104,8 @@ export default function GroupManagement() {
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <LocaleToggle className="shrink-0" />
               <Button
                 variant="outline"
                 size="sm"
@@ -124,7 +126,7 @@ export default function GroupManagement() {
       <main className="px-4 py-6 sm:px-6 lg:px-8">
         <Tabs
           value={selectedTab}
-          onValueChange={(v) => setSelectedTab(v as TabScope)}
+          onValueChange={v => setSelectedTab(v as TabScope)}
         >
           <TabsList>
             <TabsTrigger value="my_groups">My Groups</TabsTrigger>
@@ -139,7 +141,7 @@ export default function GroupManagement() {
                 <Input
                   placeholder="Search public groups..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={e => setSearchQuery(e.target.value)}
                   className="pl-9"
                 />
               </div>
@@ -153,7 +155,7 @@ export default function GroupManagement() {
               <EmptyState message={getEmptyMessage()} />
             ) : (
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {currentGroups.map((group) => (
+                {currentGroups.map(group => (
                   <GroupCard
                     key={group.id}
                     group={group}

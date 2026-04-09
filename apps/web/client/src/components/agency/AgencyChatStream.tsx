@@ -26,6 +26,8 @@ import type {
   ToolCallState,
   GuardrailEvent,
   ApprovalRequest,
+  HybridRunSummary,
+  StepAttemptSnapshot,
 } from "@/hooks/useAgencyStream";
 
 export interface AgencyChatStreamProps {
@@ -39,6 +41,8 @@ export interface AgencyChatStreamProps {
   guardrailEvents: GuardrailEvent[];
   pendingApproval: ApprovalRequest | null;
   isPollingFallback: boolean;
+  hybridSummary: HybridRunSummary | null;
+  stepAttemptSnapshots: StepAttemptSnapshot[];
   onCancel?: (mode: "immediate" | "after_turn") => void;
   onApprovalSubmit?: (approvalKey: string, approved: boolean, feedback?: string) => void;
   onRetrySSE?: () => void;
@@ -57,6 +61,8 @@ export function AgencyChatStream({
   guardrailEvents,
   pendingApproval,
   isPollingFallback,
+  hybridSummary,
+  stepAttemptSnapshots,
   onCancel,
   onApprovalSubmit,
   onRetrySSE,
@@ -70,6 +76,40 @@ export function AgencyChatStream({
 
   return (
     <div className="space-y-4">
+        {hybridSummary?.usesHybrid && (
+          <div
+            data-testid="hybrid-runtime-summary"
+            className="rounded-md border border-violet-200 bg-violet-50 px-3 py-2 text-xs text-violet-900 dark:border-violet-900 dark:bg-violet-950 dark:text-violet-100"
+          >
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="secondary" className="bg-white/80 text-violet-800">
+                Hybrid Runtime
+              </Badge>
+              <span>
+                Engines: {(hybridSummary.engineMix ?? []).join(", ") || "agency_swarm"}
+              </span>
+              <span>Subgraphs: {hybridSummary.subgraphCount ?? 0}</span>
+              <span>Bridges: {hybridSummary.bridgeCount ?? 0}</span>
+              <span>Status: {hybridSummary.compileStatus ?? "success"}</span>
+            </div>
+            {stepAttemptSnapshots.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {stepAttemptSnapshots.map((snapshot, index) => (
+                  <Badge
+                    key={`${snapshot.phase ?? "step"}-${snapshot.subgraph_id ?? "none"}-${index}`}
+                    variant="outline"
+                    className="border-violet-200 bg-white/80 text-[10px] text-violet-700"
+                  >
+                    {snapshot.phase ?? "step"}
+                    {snapshot.subgraph_id ? `:${snapshot.subgraph_id}` : ""}
+                    {snapshot.engine ? ` • ${snapshot.engine}` : ""}
+                  </Badge>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Polling fallback banner */}
         {isPollingFallback && (
           <div

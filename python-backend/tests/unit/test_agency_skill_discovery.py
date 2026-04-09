@@ -184,6 +184,49 @@ async def test_discovery_with_category_filter():
 @pytest.mark.unit
 @pytest.mark.agency
 @pytest.mark.asyncio
+async def test_discovery_merges_multiple_categories_without_duplicates():
+    """Multi-category filters fan out into multiple requests and dedupe results."""
+    ctx = AgencyRunContext()
+    node_config = {
+        "taskSource": "static",
+        "taskValue": "make promotional media",
+        "confidenceThreshold": 0.5,
+        "maxResults": 5,
+        "skillCategories": ["image_generation", "video_generation"],
+    }
+
+    with patch("app.services.agency_skill_discovery.httpx.AsyncClient") as mock_client_cls:
+        mock_client = AsyncMock()
+        mock_client_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client_cls.return_value.__aexit__ = AsyncMock(return_value=False)
+
+        first_response = MagicMock()
+        first_response.status_code = 200
+        first_response.json.return_value = _make_discovery_response([
+            {"id": "shared", "name": "Shared Skill", "confidence": 0.7},
+            {"id": "image-only", "name": "Image Skill", "confidence": 0.9},
+        ])
+        second_response = MagicMock()
+        second_response.status_code = 200
+        second_response.json.return_value = _make_discovery_response([
+            {"id": "shared", "name": "Shared Skill", "confidence": 0.8},
+            {"id": "video-only", "name": "Video Skill", "confidence": 0.6},
+        ])
+        mock_client.post.side_effect = [first_response, second_response]
+
+        output = await execute_skill_discovery(
+            node_name="disc", node_config=node_config, context=ctx, results={}
+        )
+
+    assert mock_client.post.call_count == 2
+    discovered = await ctx.get("disc_discovered")
+    assert [skill["id"] for skill in discovered] == ["image-only", "shared", "video-only"]
+    assert "Discovered 3 skills" in output
+
+
+@pytest.mark.unit
+@pytest.mark.agency
+@pytest.mark.asyncio
 async def test_discovery_no_matches_returns_empty():
     """No matching skills returns empty list, not an error."""
     ctx = AgencyRunContext()

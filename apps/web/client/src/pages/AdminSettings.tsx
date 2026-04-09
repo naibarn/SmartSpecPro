@@ -353,6 +353,111 @@ export default function AdminSettings() {
       save: isThai ? "บันทึกการตั้งค่า Stripe" : "Save Stripe Settings",
       test: isThai ? "ทดสอบ Stripe" : "Test Stripe",
     },
+    sms: {
+      title: isThai ? "ตั้งค่า SMS Provider" : "SMS Provider Settings",
+      description: isThai
+        ? "ตั้งค่า SMS provider สำหรับการยืนยันเบอร์โทรและรีเซ็ตรหัสผ่านผ่าน SMS หากยังไม่ตั้งค่า ระบบจะ log รหัสไว้ที่ server console เท่านั้น"
+        : "Configure an SMS provider for phone verification and password reset via SMS. Without SMS config, codes are logged to the server console only.",
+      configured: isThai ? "ตั้งค่า SMS แล้ว" : "SMS Configured",
+      provider: isThai ? "ผู้ให้บริการ" : "Provider",
+      twilio: "Twilio",
+      vonage: "Vonage (Nexmo)",
+      accountSid: isThai ? "Account SID" : "Account SID",
+      apiKey: isThai ? "API Key" : "API Key",
+      authToken: isThai ? "Auth Token" : "Auth Token",
+      apiSecret: isThai ? "API Secret" : "API Secret",
+      secretPlaceholderKeep: isThai ? "•••••••• (เว้นว่างเพื่อคงค่าเดิม)" : "•••••••• (leave blank to keep)",
+      secretPlaceholderNew: isThai ? "กรอก token หรือ secret" : "Enter token/secret",
+      fromLabel: isThai ? "From Number / Sender ID" : "From Number / Sender ID",
+      fromPlaceholder: isThai ? "SMARTSPEC หรือ +1234567890" : "SMARTSPEC or +1234567890",
+      fromHint: isThai
+        ? "กรอกเบอร์ที่ใช้ส่ง หรือ Sender ID ที่ลงทะเบียนและได้รับอนุมัติแล้วจากผู้ให้บริการ"
+        : "Enter a sending number or the registered Sender ID approved by your provider.",
+      testLabel: isThai ? "ส่ง SMS ทดสอบ" : "Send Test SMS",
+      sending: isThai ? "กำลังส่ง..." : "Sending...",
+      sendTest: isThai ? "ส่งทดสอบ" : "Send Test",
+      saving: isThai ? "กำลังบันทึก..." : "Saving...",
+      save: isThai ? "บันทึกการตั้งค่า SMS" : "Save SMS Settings",
+      recommendedTitle: isThai ? "Twilio เป็นผู้ให้บริการที่แนะนำ" : "Twilio is the recommended provider",
+      recommendedBody: isThai
+        ? "หากต้องส่ง SMS เข้าไทยหรือปลายทางที่มีข้อกำกับเรื่องชื่อผู้ส่ง แนะนำให้ใช้ Twilio และเตรียมการสมัครบัญชีกับการลงทะเบียน Sender ID ให้พร้อมก่อนเปิดใช้งานจริง"
+        : "If you plan to send SMS into Thailand or destinations with sender-name rules, Twilio is the recommended provider and you should complete account signup plus Sender ID registration before going live.",
+      twilioGuideTitle: isThai ? "Twilio Setup และ Sender ID" : "Twilio Setup and Sender ID",
+      twilioGuideIntro: isThai
+        ? "สำหรับประเทศไทยและบางประเทศ การใช้ Sender ID แบบ alphanumeric มักต้องลงทะเบียนก่อน จึงจะส่งข้อความใช้งานจริงได้"
+        : "For Thailand and some destinations, alphanumeric Sender IDs typically must be registered before production SMS can be delivered.",
+      twilioConsole: isThai ? "เปิด Twilio Console" : "Open Twilio Console",
+      docsTitle: isThai ? "ฟอร์ม/เอกสารหลัก (ตัวอย่างประเทศไทย)" : "Core forms/documents (Thailand example)",
+      docsItems: isThai
+        ? [
+            "Thailand Letter of Authorisations จำนวน 3 ฉบับ หรือ 3 templates",
+            "Form to Register the Sender ID Name",
+            "Thailand URL registration form เฉพาะกรณีที่ข้อความมี URL และต้องลงทะเบียน URL ไปพร้อมกัน",
+          ]
+        : [
+            "Thailand Letter of Authorisations in 3 copies or 3 templates",
+            "Form to Register the Sender ID Name",
+            "Thailand URL registration form when your SMS includes a URL and that URL must be registered together with the Sender ID",
+          ],
+      requestTitle: isThai ? "ข้อมูลที่ต้องใส่ในคำขอ" : "Information required in the request",
+      requestItems: isThai
+        ? [
+            "หัวกระดาษบริษัท (letterhead) หรือ Company Logo",
+            "Website URL ของบริษัท",
+            "ชื่อ Alphanumeric Sender ID ที่ต้องการ",
+            "ตัวอย่างข้อความ SMS (sample message template)",
+          ]
+        : [
+            "Company letterhead or company logo",
+            "Company website URL",
+            "Desired alphanumeric Sender ID",
+            "Sample SMS message template",
+          ],
+      conditionsTitle: isThai ? "เงื่อนไขเพิ่มเติมที่ควรรู้" : "Important additional conditions",
+      conditionsItems: isThai
+        ? [
+            "ถ้าข้อความมี URL ต้องส่ง full-length URL ไปลงทะเบียนหรือ allowlist กับ Sender ID ด้วย และ shortened URL ใช้ไม่ได้ในไทย",
+            "ถ้าเป็นข้อความเกี่ยวกับสินเชื่อหรือเงินกู้ ผู้ให้บริการอาจขอใบอนุญาตจาก Bank of Thailand เพิ่มเติม",
+            "ชื่อ Sender ID แบบ alphanumeric ของ Twilio ต้องยาวไม่เกิน 11 ตัวอักษร และต้องมีตัวอักษรอย่างน้อย 1 ตัว โดยใช้ตัวอักษรอังกฤษ ตัวเลข และเว้นวรรคได้",
+          ]
+        : [
+            "If the message contains a URL, you must register or allowlist the full-length URL with the Sender ID. Shortened URLs are not accepted in Thailand.",
+            "For loan-related content, the provider may request additional Bank of Thailand licensing documents.",
+            "Twilio alphanumeric Sender IDs must be no longer than 11 characters, include at least one letter, and may use English letters, numbers, and spaces.",
+          ],
+      checklistTitle: isThai ? "เช็กลิสต์ก่อนยื่นคำขอ" : "Practical pre-submission checklist",
+      checklistItems: isThai
+        ? [
+            "ชื่อแบรนด์ที่จะใช้เป็น Sender ID",
+            "โลโก้หรือหัวกระดาษบริษัท",
+            "เว็บไซต์บริษัท",
+            "ตัวอย่าง SMS 1-3 แบบ",
+            "รายการ URL จริงที่จะใส่ใน SMS",
+            "เอกสารหรือสิทธิ์พิเศษ ถ้าเป็นธุรกิจการเงินหรือสินเชื่อ",
+          ]
+        : [
+            "Brand name you want to use as the Sender ID",
+            "Company logo or letterhead",
+            "Company website",
+            "1-3 real SMS samples",
+            "The exact URLs that will appear in your SMS",
+            "Extra approvals or documents for finance or lending use cases",
+          ],
+      vonageGuideTitle: isThai ? "Vonage Setup" : "Vonage Setup",
+      vonageGuideItems: isThai
+        ? [
+            "สมัครที่ dashboard.nexmo.com",
+            "คัดลอก API Key และ API Secret",
+            "ช่อง From Number / Sender ID ใส่ชื่อผู้ส่งหรือเบอร์โทรตามที่ Vonage รองรับ",
+            "ถ้าต้องส่งเข้าไทยหรือปลายทางที่มีกฎ Sender ID เข้มงวด แนะนำพิจารณาใช้ Twilio พร้อมขั้นตอน registration ด้านบน",
+          ]
+        : [
+            "Sign up at dashboard.nexmo.com",
+            "Copy the API Key and API Secret",
+            "Use the From Number / Sender ID field for the sender name or phone number supported by Vonage",
+            "If you need Thailand delivery or stricter Sender ID compliance, prefer Twilio and follow the registration checklist above",
+          ],
+    },
     beam: {
       title: isThai ? "ตั้งค่า Beam Gateway" : "Beam Gateway Configuration",
       description: isThai ? "ตั้งค่า Beam checkout, PromptPay QR, payment links, webhook verification และ card setup จากหน้า Payments นี้" : "Configure Beam checkout, PromptPay QR, payment links, webhook verification, and card setup from the main Payments page.",
@@ -1231,6 +1336,13 @@ export default function AdminSettings() {
     });
   };
 
+  const hasConfiguredValue = (value?: string) => !!value?.trim();
+  const googleSecretReady = googleSecretConfigured || hasConfiguredValue(oauthForm.googleClientSecret);
+  const googleLoginReady = hasConfiguredValue(oauthForm.googleClientId) && googleSecretReady && hasConfiguredValue(oauthForm.googleRedirectUri);
+  const googleDriveReady = hasConfiguredValue(oauthForm.googleClientId) && googleSecretReady && hasConfiguredValue(oauthForm.googleDriveRedirectUri);
+  const twoFaWebReady = twoFaForm.enabled;
+  const twoFaDesktopBrowserReady = twoFaForm.enabled;
+
   const navItems = [
     { key: "stripe", label: copy.nav.payments.label, sublabel: copy.nav.payments.sublabel, icon: CreditCard },
     { key: "oauth", label: copy.nav.oauth.label, sublabel: copy.nav.oauth.sublabel, icon: Globe },
@@ -2040,7 +2152,55 @@ export default function AdminSettings() {
                     </div>
                   </div>
 
-                  {/* Google OAuth Setup Guide */}
+                  <div className="grid gap-3 md:grid-cols-3">
+                    {[
+                      {
+                        title: "Web sign-in",
+                        ready: googleLoginReady,
+                        description: googleLoginReady
+                          ? "Ready for Sign in with Google on the web login page."
+                          : "Requires Client ID, Client Secret, and Login Redirect URI.",
+                      },
+                      {
+                        title: "Desktop via browser",
+                        ready: googleLoginReady,
+                        description: googleLoginReady
+                          ? "Ready. Desktop users can choose Sign in via browser and finish Google sign-in in the web flow."
+                          : "Not ready until web Google sign-in is fully configured.",
+                      },
+                      {
+                        title: "Desktop direct login",
+                        ready: false,
+                        description: "Not supported for Google social-login accounts. Keep this disabled and instruct users to use browser sign-in.",
+                      },
+                    ].map((item) => (
+                      <div key={item.title} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="text-sm font-semibold text-slate-900">{item.title}</div>
+                          <Badge
+                            variant="outline"
+                            className={item.ready
+                              ? "border-emerald-200 bg-white text-emerald-700"
+                              : "border-amber-200 bg-white text-amber-700"}
+                          >
+                            {item.ready ? "Ready" : "Not ready"}
+                          </Badge>
+                        </div>
+                        <p className="mt-2 text-xs leading-5 text-slate-600">{item.description}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                    <p className="font-semibold">Admin rollout notes</p>
+                    <ul className="mt-2 list-disc space-y-1 pl-4 text-xs text-amber-800">
+                      <li>Web sign-in and desktop browser sign-in share the same Google Client ID and Client Secret.</li>
+                      <li>Desktop direct login must stay disabled for Google accounts. Tell users to choose <strong>Sign in via browser</strong>.</li>
+                      <li>{googleDriveReady ? "Google Drive redirect is configured for Drive/Docs integration." : "Google Drive features stay disabled until the Google Drive Redirect URI is also configured."}</li>
+                      <li>If your OAuth consent screen is still in Testing, add every admin/test user email before validating the flow.</li>
+                    </ul>
+                  </div>
+
                   <details className="mt-4 group">
                     <summary className="cursor-pointer flex items-center gap-2 text-sm font-medium text-blue-700 dark:text-blue-300 hover:text-blue-900 dark:hover:text-blue-100 transition-colors">
                       <Info className="w-4 h-4" />
@@ -2049,16 +2209,13 @@ export default function AdminSettings() {
                     </summary>
                     <div className="mt-3 p-4 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg">
                       <div className="text-sm text-blue-900 dark:text-blue-100 space-y-4">
-                        {/* Overview */}
-                        <div className="p-3 bg-blue-100/50 dark:bg-blue-900/30 rounded-md">
-                          <p className="font-semibold">What this enables:</p>
-                          <ul className="list-disc list-inside mt-1 space-y-0.5 text-blue-700 dark:text-blue-300 ml-2">
-                            <li><strong>Sign Up / Sign In with Google</strong> &mdash; users can register and log in using their Google account</li>
-                            <li><strong>Google Drive integration</strong> &mdash; users can connect their Google Drive to import and export documents</li>
+                        <div className="p-3 rounded-md bg-blue-100/50 dark:bg-blue-900/30">
+                          <p className="font-semibold">What this enables</p>
+                          <ul className="mt-1 list-disc space-y-1 pl-4 text-blue-700 dark:text-blue-300">
+                            <li><strong>Web sign-in</strong> for Google login on the standard login page.</li>
+                            <li><strong>Desktop browser sign-in</strong> because desktop authorization reuses the same web Google flow.</li>
+                            <li><strong>Google Drive / Docs / Sheets / Slides integration</strong> when the Drive redirect URI is also configured.</li>
                           </ul>
-                          <p className="text-blue-600 dark:text-blue-400 text-xs mt-2">
-                            Both features share the same Client ID and Client Secret, but use different redirect URIs.
-                          </p>
                         </div>
 
                         {/* Step 1 */}
@@ -2077,16 +2234,16 @@ export default function AdminSettings() {
                         <div>
                           <p className="font-semibold">Step 2: Enable required APIs</p>
                           <p className="text-blue-700 dark:text-blue-300 mt-1">
-                            In your project, go to <strong>APIs & Services &gt; Library</strong> and enable these APIs:
+                            In your project, go to <strong>APIs & Services &gt; Library</strong> and enable the APIs you plan to use:
                           </p>
                           <ul className="list-disc list-inside mt-1 space-y-0.5 text-blue-700 dark:text-blue-300 ml-2">
-                            <li><strong>Google Drive API</strong> &mdash; required for Google Drive integration</li>
-                            <li><strong>Google Docs API</strong> &mdash; required for reading/writing Google Docs</li>
-                            <li><strong>Google Sheets API</strong> &mdash; required for spreadsheet access</li>
-                            <li><strong>Google Slides API</strong> &mdash; required for presentation access</li>
+                            <li><strong>Google Drive API</strong> for Drive integration</li>
+                            <li><strong>Google Docs API</strong> for document editing</li>
+                            <li><strong>Google Sheets API</strong> for spreadsheet editing</li>
+                            <li><strong>Google Slides API</strong> for presentation editing</li>
                           </ul>
                           <p className="text-blue-600 dark:text-blue-400 text-xs mt-1">
-                            If you only need Sign Up / Sign In (no Drive integration), you can skip this step.
+                            For login-only setups, the Drive/Docs/Sheets/Slides APIs can be skipped.
                           </p>
                         </div>
 
@@ -2099,14 +2256,8 @@ export default function AdminSettings() {
                           <ul className="list-disc list-inside mt-1 space-y-0.5 text-blue-700 dark:text-blue-300 ml-2">
                             <li>User Type: <strong>External</strong> (or Internal for Google Workspace)</li>
                             <li>Fill in App name, User support email, and Developer contact</li>
-                            <li>
-                              Add scopes:
-                              <div className="ml-4 mt-1 space-y-0.5">
-                                <p><code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-xs">openid</code> <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-xs">email</code> <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-xs">profile</code> &mdash; required for Sign Up / Sign In</p>
-                                <p><code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-xs">drive.readonly</code> <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-xs">drive.file</code> &mdash; required for Google Drive integration</p>
-                              </div>
-                            </li>
-                            <li>Add test users if the app is still in &quot;Testing&quot; status (max 100 test users)</li>
+                            <li>Add scopes: <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-xs">openid</code>, <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-xs">email</code>, <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-xs">profile</code> for sign-in, and <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-xs">drive.readonly</code> plus <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-xs">drive.file</code> for Drive integration.</li>
+                            <li>Add test users if in Testing status. Desktop browser sign-in uses the same consent screen as the web flow.</li>
                           </ul>
                         </div>
 
@@ -2118,22 +2269,21 @@ export default function AdminSettings() {
                           </p>
                           <ul className="list-disc list-inside mt-1 space-y-0.5 text-blue-700 dark:text-blue-300 ml-2">
                             <li>Application type: <strong>Web application</strong></li>
-                            <li>Name: e.g. &quot;SmartAIHub Web&quot;</li>
-                            <li>Authorized JavaScript origins: <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-xs font-mono">https://smartaihub.app</code></li>
+                            <li>Authorized JavaScript origins: your production web origin, for example <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-xs font-mono">https://smartaihub.app</code></li>
                             <li>
-                              Authorized redirect URIs &mdash; add <strong>both</strong> of these:
+                              Authorized redirect URIs &mdash; add these exact URLs:
                               <div className="ml-4 mt-1 space-y-1">
                                 <div className="flex items-start gap-2">
                                   <code className="block bg-blue-100 dark:bg-blue-900 px-2 py-1 rounded text-xs font-mono">
-                                    https://smartaihub.app/auth/callback/google
+                                    {oauthForm.googleRedirectUri || "https://smartaihub.app/auth/callback/google"}
                                   </code>
-                                  <span className="text-xs text-blue-600 dark:text-blue-400 whitespace-nowrap mt-0.5">&larr; for Sign Up / Sign In</span>
+                                  <span className="text-xs text-blue-600 dark:text-blue-400 mt-0.5 whitespace-nowrap">&larr; web sign-in + desktop browser sign-in</span>
                                 </div>
                                 <div className="flex items-start gap-2">
                                   <code className="block bg-blue-100 dark:bg-blue-900 px-2 py-1 rounded text-xs font-mono">
-                                    https://smartaihub.app/auth/callback/google-drive
+                                    {oauthForm.googleDriveRedirectUri || "https://smartaihub.app/auth/callback/google-drive"}
                                   </code>
-                                  <span className="text-xs text-blue-600 dark:text-blue-400 whitespace-nowrap mt-0.5">&larr; for Google Drive</span>
+                                  <span className="text-xs text-blue-600 dark:text-blue-400 mt-0.5 whitespace-nowrap">&larr; Google Drive integration</span>
                                 </div>
                               </div>
                             </li>
@@ -2144,18 +2294,18 @@ export default function AdminSettings() {
                         <div>
                           <p className="font-semibold">Step 5: Copy credentials here</p>
                           <p className="text-blue-700 dark:text-blue-300 mt-1">
-                            Copy the <strong>Client ID</strong> and <strong>Client Secret</strong> from Google Cloud Console and paste them in the fields above.
-                            The redirect URIs are pre-filled with defaults &mdash; only change them if your domain is different. Then click <strong>Save OAuth Settings</strong>.
+                            Copy the <strong>Client ID</strong> and <strong>Client Secret</strong> from Google Cloud Console and paste them in the fields above. Then click <strong>Save OAuth Settings</strong>.
                           </p>
                         </div>
 
-                        {/* Step 6 */}
                         <div>
-                          <p className="font-semibold">Step 6: Verify</p>
-                          <p className="text-blue-700 dark:text-blue-300 mt-1">
-                            After saving, use the <strong>Test Google Connection</strong> button below to verify your credentials.
-                            Then visit the Sign Up page to confirm the Google button appears.
-                          </p>
+                          <p className="font-semibold">Step 6: Validate both web and desktop browser flows</p>
+                          <ul className="list-disc list-inside mt-1 space-y-0.5 text-blue-700 dark:text-blue-300 ml-2">
+                            <li>Click <strong>Test Google Connection</strong> below after saving.</li>
+                            <li>Open the web login page and confirm the Google button is enabled.</li>
+                            <li>If you support desktop users, confirm the desktop app uses <strong>Sign in via browser</strong> for Google accounts.</li>
+                            <li>If Google returns <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-xs">redirect_uri_mismatch</code>, compare the URI in Google Cloud Console with the exact URI shown in this page.</li>
+                          </ul>
                         </div>
 
                         <div className="pt-2 border-t border-blue-200 dark:border-blue-700 space-y-1">
@@ -2165,112 +2315,7 @@ export default function AdminSettings() {
                           </p>
                           <p className="text-blue-600 dark:text-blue-400 text-xs flex items-center gap-1">
                             <AlertCircle className="w-3 h-3" />
-                            Both redirect URIs must be registered in Google Cloud Console, even if you only use one feature.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </details>
-
-                  {/* Test Connection Button */}
-                  <div className="mt-4">
-                    <Button
-                      variant="outline"
-                      onClick={() => testGoogleOAuthMutation.mutate()}
-                      disabled={testGoogleOAuthMutation.isPending || !oauthSettings?.googleClientId}
-                    >
-                      {testGoogleOAuthMutation.isPending ? (
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      ) : (
-                        <TestTube className="w-4 h-4 mr-2" />
-                      )}
-                      Test Google Connection
-                    </Button>
-                  </div>
-
-                  {/* Google OAuth Setup Guide */}
-                  <details className="mt-4 group">
-                    <summary className="cursor-pointer flex items-center gap-2 text-sm font-medium text-blue-700 dark:text-blue-300 hover:text-blue-900 dark:hover:text-blue-100 transition-colors">
-                      <Info className="w-4 h-4" />
-                      Setup Guide: How to create Google OAuth credentials
-                      <ChevronLeft className="w-4 h-4 transition-transform group-open:-rotate-90" />
-                    </summary>
-                    <div className="mt-3 p-4 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg">
-                      <div className="text-sm text-blue-900 dark:text-blue-100 space-y-4">
-                        {/* Step 1 */}
-                        <div>
-                          <p className="font-semibold">Step 1: Create a Google Cloud Project</p>
-                          <p className="text-blue-700 dark:text-blue-300 mt-1">
-                            Go to{" "}
-                            <a href="https://console.cloud.google.com/" target="_blank" rel="noopener noreferrer" className="underline inline-flex items-center gap-1">
-                              Google Cloud Console <ExternalLink className="w-3 h-3" />
-                            </a>
-                            {" "}and create a new project (or select an existing one).
-                          </p>
-                        </div>
-
-                        {/* Step 2 */}
-                        <div>
-                          <p className="font-semibold">Step 2: Enable required APIs</p>
-                          <p className="text-blue-700 dark:text-blue-300 mt-1">
-                            In your project, go to <strong>APIs & Services &gt; Library</strong> and enable:
-                          </p>
-                          <ul className="list-disc list-inside mt-1 space-y-0.5 text-blue-700 dark:text-blue-300 ml-2">
-                            <li>Google Drive API</li>
-                            <li>Google Docs API</li>
-                            <li>Google Sheets API</li>
-                            <li>Google Slides API</li>
-                          </ul>
-                        </div>
-
-                        {/* Step 3 */}
-                        <div>
-                          <p className="font-semibold">Step 3: Configure OAuth Consent Screen</p>
-                          <p className="text-blue-700 dark:text-blue-300 mt-1">
-                            Go to <strong>APIs & Services &gt; OAuth consent screen</strong>:
-                          </p>
-                          <ul className="list-disc list-inside mt-1 space-y-0.5 text-blue-700 dark:text-blue-300 ml-2">
-                            <li>User Type: <strong>External</strong> (or Internal for Google Workspace)</li>
-                            <li>Fill in App name, User support email, and Developer contact</li>
-                            <li>Add scopes: <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-xs">openid</code>, <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-xs">email</code>, <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-xs">profile</code>, <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-xs">drive.readonly</code>, <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-xs">drive.file</code></li>
-                            <li>Add test users if in Testing status</li>
-                          </ul>
-                        </div>
-
-                        {/* Step 4 */}
-                        <div>
-                          <p className="font-semibold">Step 4: Create OAuth Client ID</p>
-                          <p className="text-blue-700 dark:text-blue-300 mt-1">
-                            Go to <strong>APIs & Services &gt; Credentials</strong> &gt; <strong>Create Credentials</strong> &gt; <strong>OAuth client ID</strong>:
-                          </p>
-                          <ul className="list-disc list-inside mt-1 space-y-0.5 text-blue-700 dark:text-blue-300 ml-2">
-                            <li>Application type: <strong>Web application</strong></li>
-                            <li>
-                              Authorized redirect URIs &mdash; add both:
-                              <div className="ml-4 mt-1 space-y-1">
-                                <code className="block bg-blue-100 dark:bg-blue-900 px-2 py-1 rounded text-xs font-mono">
-                                  https://smartaihub.app/auth/callback/google
-                                </code>
-                                <code className="block bg-blue-100 dark:bg-blue-900 px-2 py-1 rounded text-xs font-mono">
-                                  https://smartaihub.app/auth/callback/google-drive
-                                </code>
-                              </div>
-                            </li>
-                          </ul>
-                        </div>
-
-                        {/* Step 5 */}
-                        <div>
-                          <p className="font-semibold">Step 5: Copy credentials here</p>
-                          <p className="text-blue-700 dark:text-blue-300 mt-1">
-                            Copy the <strong>Client ID</strong> and <strong>Client Secret</strong> from Google Cloud Console and paste them in the fields above. Then click <strong>Save Settings</strong>.
-                          </p>
-                        </div>
-
-                        <div className="pt-2 border-t border-blue-200 dark:border-blue-700">
-                          <p className="text-blue-600 dark:text-blue-400 text-xs flex items-center gap-1">
-                            <AlertCircle className="w-3 h-3" />
-                            Client Secret is encrypted before storage. It will not be shown after saving.
+                            Desktop direct login should remain disabled for Google social accounts; only the browser/device-code path is supported.
                           </p>
                         </div>
                       </div>
@@ -2643,30 +2688,30 @@ export default function AdminSettings() {
             <DashboardCard
               className="overflow-hidden"
               leading={<MessageSquare className="w-5 h-5 text-blue-500" />}
-              title="SMS Provider Settings"
-              description="Configure SMS provider for phone verification and password reset via SMS. Without SMS config, codes are logged to server console only."
+              title={copy.sms.title}
+              description={copy.sms.description}
               bodyClassName="space-y-6"
             >
                 {smsSettings?.configured && (
                   <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                    <Check className="w-3 h-3 mr-1" /> SMS Configured
+                    <Check className="w-3 h-3 mr-1" /> {copy.sms.configured}
                   </Badge>
                 )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label>Provider</Label>
+                    <Label>{copy.sms.provider}</Label>
                     <select
                       value={smsForm.provider}
                       onChange={(e) => setSmsForm((p) => ({ ...p, provider: e.target.value as "twilio" | "vonage" }))}
                       className="mt-1 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm focus:border-blue-400 focus:ring-blue-400"
                     >
-                      <option value="twilio">Twilio</option>
-                      <option value="vonage">Vonage (Nexmo)</option>
+                      <option value="twilio">{copy.sms.twilio}</option>
+                      <option value="vonage">{copy.sms.vonage}</option>
                     </select>
                   </div>
                   <div>
-                    <Label>{smsForm.provider === "twilio" ? "Account SID" : "API Key"}</Label>
+                    <Label>{smsForm.provider === "twilio" ? copy.sms.accountSid : copy.sms.apiKey}</Label>
                     <Input
                       placeholder={smsForm.provider === "twilio" ? "ACxxxxxxxxxxxxxxxx" : "API Key"}
                       value={smsForm.accountSid}
@@ -2675,29 +2720,30 @@ export default function AdminSettings() {
                     />
                   </div>
                   <div>
-                    <Label>{smsForm.provider === "twilio" ? "Auth Token" : "API Secret"}</Label>
+                    <Label>{smsForm.provider === "twilio" ? copy.sms.authToken : copy.sms.apiSecret}</Label>
                     <Input
                       type="password"
-                      placeholder={smsSettings?.configured ? "••••••••  (leave blank to keep)" : "Enter token/secret"}
+                      placeholder={smsSettings?.configured ? copy.sms.secretPlaceholderKeep : copy.sms.secretPlaceholderNew}
                       value={smsForm.authToken}
                       onChange={(e) => setSmsForm((p) => ({ ...p, authToken: e.target.value }))}
                       className="mt-1"
                     />
                   </div>
                   <div>
-                    <Label>From Number</Label>
+                    <Label>{copy.sms.fromLabel}</Label>
                     <Input
-                      placeholder="+1234567890"
+                      placeholder={copy.sms.fromPlaceholder}
                       value={smsForm.fromNumber}
                       onChange={(e) => setSmsForm((p) => ({ ...p, fromNumber: e.target.value }))}
                       className="mt-1"
                     />
+                    <p className="mt-2 text-xs text-gray-500">{copy.sms.fromHint}</p>
                   </div>
                 </div>
 
                 {/* Test SMS */}
                 <div className="rounded-lg border border-gray-200 p-4">
-                  <Label className="mb-2 block">Send Test SMS</Label>
+                  <Label className="mb-2 block">{copy.sms.testLabel}</Label>
                   <div className="flex gap-2">
                     <Input
                       placeholder="+66812345678"
@@ -2711,31 +2757,85 @@ export default function AdminSettings() {
                       disabled={testSmsMutation.isPending || !smsForm.testNumber}
                     >
                       {testSmsMutation.isPending ? (
-                        <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Sending...</>
+                        <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {copy.sms.sending}</>
                       ) : (
-                        <><TestTube className="w-4 h-4 mr-2" /> Send Test</>
+                        <><TestTube className="w-4 h-4 mr-2" /> {copy.sms.sendTest}</>
                       )}
                     </Button>
                   </div>
                 </div>
 
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="mt-0.5 h-4 w-4 text-amber-700" />
+                    <div className="space-y-1">
+                      <p className="text-sm font-semibold text-amber-900">{copy.sms.recommendedTitle}</p>
+                      <p className="text-sm text-amber-800">{copy.sms.recommendedBody}</p>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Provider guide */}
-                <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-4 text-sm space-y-2">
-                  <p className="font-semibold text-blue-800">
-                    {smsForm.provider === "twilio" ? "Twilio Setup" : "Vonage Setup"}
-                  </p>
+                <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-4 text-sm space-y-4">
+                  <div className="space-y-2">
+                    <p className="font-semibold text-blue-800">
+                      {smsForm.provider === "twilio" ? copy.sms.twilioGuideTitle : copy.sms.vonageGuideTitle}
+                    </p>
+                    {smsForm.provider === "twilio" && (
+                      <div className="space-y-3">
+                        <p className="text-sm text-blue-800">{copy.sms.twilioGuideIntro}</p>
+                        <a
+                          href="https://www.twilio.com/console"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 rounded-md border border-blue-300 bg-white px-3 py-2 text-xs font-medium text-blue-700 transition hover:bg-blue-100"
+                        >
+                          <ExternalLink className="h-3.5 w-3.5" />
+                          {copy.sms.twilioConsole}
+                        </a>
+                      </div>
+                    )}
+                  </div>
                   {smsForm.provider === "twilio" ? (
-                    <ul className="text-blue-700 space-y-1 text-xs list-disc pl-4">
-                      <li>สมัครที่ <a href="https://www.twilio.com/console" target="_blank" rel="noopener noreferrer" className="underline font-medium">twilio.com/console</a></li>
-                      <li>คัดลอก Account SID และ Auth Token จาก Dashboard</li>
-                      <li>ซื้อเบอร์โทร (Phone Number) สำหรับส่ง SMS</li>
-                      <li>Trial account ส่งได้เฉพาะเบอร์ที่ verify แล้ว</li>
-                    </ul>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div>
+                        <p className="font-medium text-blue-900">{copy.sms.docsTitle}</p>
+                        <ul className="mt-2 text-blue-700 space-y-1 text-xs list-disc pl-4">
+                          {copy.sms.docsItems.map((item) => (
+                            <li key={item}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div>
+                        <p className="font-medium text-blue-900">{copy.sms.requestTitle}</p>
+                        <ul className="mt-2 text-blue-700 space-y-1 text-xs list-disc pl-4">
+                          {copy.sms.requestItems.map((item) => (
+                            <li key={item}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div>
+                        <p className="font-medium text-blue-900">{copy.sms.conditionsTitle}</p>
+                        <ul className="mt-2 text-blue-700 space-y-1 text-xs list-disc pl-4">
+                          {copy.sms.conditionsItems.map((item) => (
+                            <li key={item}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div>
+                        <p className="font-medium text-blue-900">{copy.sms.checklistTitle}</p>
+                        <ul className="mt-2 text-blue-700 space-y-1 text-xs list-disc pl-4">
+                          {copy.sms.checklistItems.map((item) => (
+                            <li key={item}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
                   ) : (
                     <ul className="text-blue-700 space-y-1 text-xs list-disc pl-4">
-                      <li>สมัครที่ <a href="https://dashboard.nexmo.com" target="_blank" rel="noopener noreferrer" className="underline font-medium">dashboard.nexmo.com</a></li>
-                      <li>คัดลอก API Key และ API Secret</li>
-                      <li>From Number ใส่ชื่อผู้ส่ง (alphanumeric) หรือเบอร์โทร</li>
+                      {copy.sms.vonageGuideItems.map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
                     </ul>
                   )}
                 </div>
@@ -2752,9 +2852,9 @@ export default function AdminSettings() {
                     className="bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600"
                   >
                     {updateSmsMutation.isPending ? (
-                      <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</>
+                      <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {copy.sms.saving}</>
                     ) : (
-                      <><Save className="w-4 h-4 mr-2" /> Save SMS Settings</>
+                      <><Save className="w-4 h-4 mr-2" /> {copy.sms.save}</>
                     )}
                   </Button>
                 </div>
@@ -3204,6 +3304,45 @@ export default function AdminSettings() {
                   </p>
                 </div>
 
+                <div className="grid gap-3 md:grid-cols-3">
+                  {[
+                    {
+                      title: "Web sign-in",
+                      ready: twoFaWebReady,
+                      description: twoFaWebReady
+                        ? "Ready. Users can complete password or Google/GitHub sign-in and then enter a TOTP code."
+                        : "Disabled until Allow 2FA is turned on.",
+                    },
+                    {
+                      title: "Desktop via browser",
+                      ready: twoFaDesktopBrowserReady,
+                      description: twoFaDesktopBrowserReady
+                        ? "Ready. Desktop authorization finishes in the browser, so the same 2FA prompt is supported."
+                        : "Disabled until web 2FA is enabled.",
+                    },
+                    {
+                      title: "Desktop direct login",
+                      ready: false,
+                      description: "Not supported for 2FA accounts. Users must choose Sign in via browser in the desktop app.",
+                    },
+                  ].map((item) => (
+                    <div key={item.title} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="text-sm font-semibold text-slate-900">{item.title}</div>
+                        <Badge
+                          variant="outline"
+                          className={item.ready
+                            ? "border-emerald-200 bg-white text-emerald-700"
+                            : "border-amber-200 bg-white text-amber-700"}
+                        >
+                          {item.ready ? "Ready" : "Not ready"}
+                        </Badge>
+                      </div>
+                      <p className="mt-2 text-xs leading-5 text-slate-600">{item.description}</p>
+                    </div>
+                  ))}
+                </div>
+
                 {/* Info Box */}
                 <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-4 text-sm space-y-2">
                   <p className="font-semibold text-blue-800">How 2FA Works</p>
@@ -3215,6 +3354,17 @@ export default function AdminSettings() {
                     <li>Users with verified backup email or phone can also reset 2FA via those channels</li>
                     <li>TOTP uses HMAC-SHA1 with 30-second time window (RFC 6238 standard)</li>
                   </ul>
+                </div>
+
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                  <p className="font-semibold">Recommended admin procedure</p>
+                  <ol className="mt-2 list-decimal space-y-1 pl-4 text-xs text-amber-800">
+                    <li>Turn on <strong>Allow 2FA</strong> first and test with one internal account on the web login page.</li>
+                    <li>Confirm recovery email or SMS is configured before you enforce 2FA broadly.</li>
+                    <li>If you use Google sign-in, test an account end-to-end to confirm the OAuth flow redirects into the 2FA prompt correctly.</li>
+                    <li>Tell desktop users that <strong>Sign in via browser</strong> is the required path for any account protected by 2FA.</li>
+                    <li>Only then enable <strong>Enforce 2FA for all users</strong>.</li>
+                  </ol>
                 </div>
 
                 {/* Save */}

@@ -72,6 +72,7 @@ import {
   persistRunTrace,
   listRunTraces,
   getRunTrace,
+  normalizeTraceForPersistence,
   sweepExpiredTraces,
 } from "../agencyTraceService";
 
@@ -102,6 +103,47 @@ describe("persistRunTrace", () => {
         tenantId: "tenant-A",
         createdBy: 42,
         status: "completed",
+      }),
+    );
+  });
+
+  it("scrubs secrets and infers hybrid summary before persistence", async () => {
+    await persistRunTrace({
+      runId: "run-2",
+      agencyId: "agency-2",
+      tenantId: "tenant-B",
+      trace: {
+        version: 1,
+        spans: [
+          {
+            spanId: "span-1",
+            type: "bridge",
+            metadata: {
+              engine: "adk2",
+              subgraphId: "sg_creative",
+              phase: "bridge",
+            },
+            output: "Authorization: Bearer sk-secret-token-value",
+          },
+        ],
+      },
+      status: "completed",
+    });
+
+    expect(mockDb.values).toHaveBeenCalledWith(
+      expect.objectContaining({
+        trace: expect.objectContaining({
+          hybridSummary: expect.objectContaining({
+            engineMix: ["adk2"],
+            subgraphIds: ["sg_creative"],
+            boundaryCount: 1,
+          }),
+          spans: [
+            expect.objectContaining({
+              output: "[REDACTED]",
+            }),
+          ],
+        }),
       }),
     );
   });
@@ -200,5 +242,27 @@ describe("sweepExpiredTraces", () => {
 
     const deleted = await sweepExpiredTraces("tenant-A", 30);
     expect(deleted).toBe(0);
+  });
+});
+
+describe("normalizeTraceForPersistence", () => {
+  it("leaves traces without hybrid spans unchanged except for scrubbing", () => {
+    const trace = normalizeTraceForPersistence({
+      version: 1,
+      spans: [
+        {
+          output: "Bearer demo-token",
+        },
+      ],
+    });
+
+    expect(trace).toEqual({
+      version: 1,
+      spans: [
+        {
+          output: "[REDACTED]",
+        },
+      ],
+    });
   });
 });

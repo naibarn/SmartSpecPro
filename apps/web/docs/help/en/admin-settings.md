@@ -27,6 +27,16 @@ System Settings allow administrators to configure platform-wide behavior includi
 - Test email delivery from the settings page.
 - SMTP credentials are stored encrypted.
 
+### SMS
+- Twilio is the recommended provider when you need production SMS delivery to Thailand or destinations that require Sender ID compliance.
+- To send with Twilio, create an account and complete Sender ID registration before going live.
+- Thailand example documents commonly include: Thailand Letter of Authorisations (3 copies/templates), Form to Register the Sender ID Name, and the Thailand URL registration form when your message includes a URL.
+- Typical request details include your company letterhead or logo, company website URL, desired alphanumeric Sender ID, and sample SMS templates.
+- If your SMS contains a URL, register the full-length URL together with the Sender ID. Shortened URLs are not accepted in Thailand.
+- Loan-related messaging may require additional licensing evidence from the Bank of Thailand.
+- Twilio alphanumeric Sender IDs must be no longer than 11 characters, include at least one letter, and may use English letters, numbers, and spaces.
+- Practical checklist: brand name for the Sender ID, company logo or letterhead, company website, 1-3 sample SMS messages, exact URLs used in the SMS, and any extra approvals for finance or lending use cases.
+
 ### Credits and billing
 - Default credit allocation for new users.
 - Enable or disable self-service credit top-up.

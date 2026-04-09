@@ -5,7 +5,11 @@ import type { Request } from "express";
 import type { TokenClaims } from "../_core/tokens";
 import { hasScope, signBearerToken, verifyBearerToken } from "../_core/tokens";
 import { isJtiRevoked } from "../_core/revocation";
-import type { WorkerRuntimeType, WorkerScope } from "../../shared/workerRuntime";
+import {
+  getWorkerRuntimeDefinition,
+  type WorkerRuntimeType,
+  type WorkerScope,
+} from "../../shared/workerRuntime";
 import { getTenantFeatureFlags } from "./tenantFeatureFlagService";
 
 export const WORKER_REGISTRATION_AUDIENCE = "smartspec-worker-registration";
@@ -97,13 +101,26 @@ function randomJti(prefix: string): string {
   return `${prefix}_${Date.now()}_${crypto.randomBytes(10).toString("hex")}`;
 }
 
-async function assertTenantFeatureEnabled(tenantId: string): Promise<void> {
+async function assertTenantFeatureEnabled(
+  tenantId: string,
+  runtimeType: WorkerRuntimeType | null,
+): Promise<void> {
+  if (!runtimeType) {
+    throw new WorkerAuthError(
+      "worker_auth_invalid",
+      401,
+      "Worker token is missing runtime binding",
+    );
+  }
+
+  const runtimeDefinition = getWorkerRuntimeDefinition(runtimeType);
   const flags = await getTenantFeatureFlags(tenantId);
-  if (!flags.openClawExternalRuntime) {
+  const rolloutEnabled = Boolean(flags[runtimeDefinition.featureFlag as keyof typeof flags]);
+  if (!rolloutEnabled) {
     throw new WorkerAuthError(
       "feature_disabled",
       403,
-      "OpenClaw external worker runtime is disabled for this tenant",
+      `${runtimeDefinition.displayName} is disabled for this tenant`,
     );
   }
 }
@@ -236,7 +253,7 @@ export async function verifyWorkerRegistrationToken(
     throw new WorkerAuthError("worker_scope_mismatch", 403, "Worker registration token runtime does not match request");
   }
 
-  await assertTenantFeatureEnabled(tenantId);
+  await assertTenantFeatureEnabled(tenantId, opts.runtimeType ?? runtimeType);
 
   return {
     audience,
@@ -283,7 +300,7 @@ export async function verifyWorkerAccessToken(
     }
   }
 
-  await assertTenantFeatureEnabled(tenantId);
+  await assertTenantFeatureEnabled(tenantId, runtimeType);
 
   return {
     audience,

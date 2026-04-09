@@ -17,6 +17,7 @@ import {
   agencies,
   agencyAgents,
   agencyAgentTools,
+  agencySubgraphs,
   agencyCommunicationFlows,
   agencyConversations,
   agencyRunArtifacts,
@@ -63,6 +64,17 @@ import { sanitizeExamples } from "../services/fewShotSanitizer";
 import { invalidateStarterCache } from "../services/conversationStarterCache";
 import { generateAgencySvg } from "../lib/agencySvgGenerator";
 import { createNotification } from "../services/notificationService";
+import {
+  AGENCY_DEFAULT_COMPILE_MODE,
+  AGENCY_DEFAULT_COMPATIBILITY_MODE,
+  AGENCY_DEFAULT_ENGINE,
+  buildAgencyDocumentFromRows,
+  buildAgencyVersionSnapshot,
+  normalizeAgencyDocumentSnapshot,
+  remapAgencySubgraphs,
+  shouldPersistAgencyDocumentV2,
+} from "../services/agencyBuilderDocument";
+import { compileAgencyBuilderRows } from "../services/agencyHybridCompile";
 
 /**
  * Safely resolve tenantId from tRPC context.
@@ -94,6 +106,200 @@ async function assertAgencyEnabled(tenantId: string): Promise<void> {
   if (!enabled) {
     throw new TRPCError({ code: "NOT_FOUND", message: "Not found" });
   }
+}
+
+async function getAgencyHybridFlags(tenantId: string): Promise<{
+  hybridEnabled: boolean;
+  killSwitchActive: boolean;
+}> {
+  if (!tenantId || tenantId.length === 0) {
+    return {
+      hybridEnabled: false,
+      killSwitchActive: false,
+    };
+  }
+
+  const [hybridEnabled, killSwitchActive] = await Promise.all([
+    getTenantFeatureFlag("agencyHybridAdk", tenantId).catch(() => false),
+    getTenantFeatureFlag("agencyHybridAdkKillSwitch", tenantId).catch(() => false),
+  ]);
+
+  return {
+    hybridEnabled,
+    killSwitchActive,
+  };
+}
+
+function formatCompileDiagnosticsForError(
+  diagnostics: Array<{ severity: string; message: string }>,
+): string {
+  const blocking = diagnostics
+    .filter((diagnostic) => diagnostic.severity === "error")
+    .slice(0, 3)
+    .map((diagnostic) => diagnostic.message);
+
+  if (blocking.length === 0) {
+    return "Compile preview failed for this agency graph.";
+  }
+
+  return blocking.join(" ");
+}
+
+async function loadAgencyCompilePreview(
+  agencyId: string,
+  tenantId: string,
+): Promise<ReturnType<typeof compileAgencyBuilderRows>> {
+  type CompilePreviewAgentRow = {
+    id: string;
+    name: string;
+    description: string | null;
+    instructions: string | null;
+    nodeType: string | null;
+    model: string | null;
+    isEntryPoint: boolean | null;
+    isOptional: boolean | null;
+    position: unknown;
+    nodeConfig: unknown;
+    outputSchema: unknown;
+    examples: unknown;
+    parallelToolCalls: boolean | null;
+    maxTurns: number | null;
+    subgraphId: string | null;
+    engineHint: string | null;
+    runtimeConfig: unknown;
+  };
+  type CompilePreviewFlowRow = {
+    fromAgentId: string;
+    toAgentId: string;
+    flowType: string | null;
+    flowConfig: unknown;
+  };
+  type CompilePreviewSubgraphRow = {
+    id: string;
+    name: string;
+    engine: string;
+    entryNodeIds: string[] | null;
+    exitNodeIds: string[] | null;
+    nodeIds: string[] | null;
+    boundaryPolicy: Record<string, unknown> | null;
+  };
+
+  const [agency] = await db
+    .select({
+      id: agencies.id,
+      name: agencies.name,
+      documentVersion: agencies.documentVersion,
+      defaultEngine: agencies.defaultEngine,
+      compileMode: agencies.compileMode,
+      compatibilityMode: agencies.compatibilityMode,
+      tenantId: agencies.tenantId,
+    })
+    .from(agencies)
+    .where(eq(agencies.id, agencyId))
+    .limit(1);
+
+  if (!agency || (agency.tenantId !== tenantId && agency.tenantId !== "__system__")) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Agency not found" });
+  }
+
+  const [agentRows, flowRows, subgraphRows, hybridFlags]: [
+    CompilePreviewAgentRow[],
+    CompilePreviewFlowRow[],
+    CompilePreviewSubgraphRow[],
+    Awaited<ReturnType<typeof getAgencyHybridFlags>>,
+  ] = await Promise.all([
+    db
+      .select({
+        id: agencyAgents.id,
+        name: agencyAgents.name,
+        description: agencyAgents.description,
+        instructions: agencyAgents.instructions,
+        nodeType: agencyAgents.nodeType,
+        model: agencyAgents.model,
+        isEntryPoint: agencyAgents.isEntryPoint,
+        isOptional: agencyAgents.isOptional,
+        position: agencyAgents.position,
+        nodeConfig: agencyAgents.nodeConfig,
+        outputSchema: agencyAgents.outputSchema,
+        examples: agencyAgents.examples,
+        parallelToolCalls: agencyAgents.parallelToolCalls,
+        maxTurns: agencyAgents.maxTurns,
+        subgraphId: agencyAgents.subgraphId,
+        engineHint: agencyAgents.engineHint,
+        runtimeConfig: agencyAgents.runtimeConfig,
+      })
+      .from(agencyAgents)
+      .where(eq(agencyAgents.agencyId, agencyId)),
+    db
+      .select({
+        fromAgentId: agencyCommunicationFlows.fromAgentId,
+        toAgentId: agencyCommunicationFlows.toAgentId,
+        flowType: agencyCommunicationFlows.flowType,
+        flowConfig: agencyCommunicationFlows.flowConfig,
+      })
+      .from(agencyCommunicationFlows)
+      .where(eq(agencyCommunicationFlows.agencyId, agencyId)),
+    db
+      .select({
+        id: agencySubgraphs.subgraphKey,
+        name: agencySubgraphs.name,
+        engine: agencySubgraphs.engine,
+        entryNodeIds: agencySubgraphs.entryNodeIds,
+        exitNodeIds: agencySubgraphs.exitNodeIds,
+        nodeIds: agencySubgraphs.nodeIds,
+        boundaryPolicy: agencySubgraphs.boundaryPolicy,
+      })
+      .from(agencySubgraphs)
+      .where(eq(agencySubgraphs.agencyId, agencyId)),
+    getAgencyHybridFlags(tenantId),
+  ]);
+
+  const agentIdToName = new Map(agentRows.map((row) => [row.id, row.name]));
+
+  return compileAgencyBuilderRows(
+    {
+      name: agency.name ?? "Untitled Agency",
+      documentVersion: agency.documentVersion ?? 1,
+      defaultEngine: (agency.defaultEngine as any) ?? AGENCY_DEFAULT_ENGINE,
+      compileMode: (agency.compileMode as any) ?? AGENCY_DEFAULT_COMPILE_MODE,
+      compatibilityMode: (agency.compatibilityMode as any) ?? AGENCY_DEFAULT_COMPATIBILITY_MODE,
+      agents: agentRows.map((row) => ({
+        id: row.id,
+        name: row.name,
+        description: row.description ?? undefined,
+        instructions: row.instructions ?? undefined,
+        nodeType: row.nodeType ?? "agent",
+        model: row.model ?? undefined,
+        isEntryPoint: row.isEntryPoint ?? false,
+        isOptional: row.isOptional ?? false,
+        position: (row.position as any) ?? undefined,
+        nodeConfig: (row.nodeConfig as any) ?? undefined,
+        outputSchema: (row.outputSchema as any) ?? undefined,
+        examples: (row.examples as any) ?? undefined,
+        parallelToolCalls: row.parallelToolCalls ?? undefined,
+        maxTurns: row.maxTurns ?? undefined,
+        subgraphId: row.subgraphId ?? undefined,
+        engineHint: (row.engineHint as any) ?? undefined,
+        runtimeConfig: (row.runtimeConfig as any) ?? undefined,
+      })),
+      communicationFlows: flowRows.map((row) => ({
+        fromAgentName: agentIdToName.get(row.fromAgentId) ?? row.fromAgentId,
+        toAgentName: agentIdToName.get(row.toAgentId) ?? row.toAgentId,
+        flowType: row.flowType ?? "delegation",
+        flowConfig: (row.flowConfig as any) ?? undefined,
+      })),
+      subgraphs: subgraphRows.map((row) => ({
+        id: row.id,
+        name: row.name,
+        engine: row.engine as any,
+        entryNodeIds: (row.entryNodeIds as string[] | null) ?? [],
+        exitNodeIds: (row.exitNodeIds as string[] | null) ?? [],
+        nodeIds: (row.nodeIds as string[] | null) ?? [],
+        boundaryPolicy: (row.boundaryPolicy as Record<string, unknown> | null) ?? null,
+      })),
+    },
+    hybridFlags,
+  );
 }
 
 // Exported Zod schema for custom tool input (reused by section-04 OpenAPI import)
@@ -1064,6 +1270,11 @@ export const agencyRouter = router({
         .from(agencyCommunicationFlows)
         .where(eq(agencyCommunicationFlows.agencyId, input.id));
 
+      const subgraphs = await db
+        .select()
+        .from(agencySubgraphs)
+        .where(eq(agencySubgraphs.agencyId, input.id));
+
       // Fetch agent tool assignments (single query instead of N+1)
       const agentIds = agents.map((a: { id: string }) => a.id);
       const toolAssignments = agentIds.length > 0
@@ -1086,14 +1297,57 @@ export const agencyRouter = router({
         hasMcpTokens: !!a.mcpServerTokensEncrypted,
       }));
 
+      const agentIdToName = new Map(
+        agents.map((agent: any) => [agent.id, agent.name] as const),
+      );
+      const document = buildAgencyDocumentFromRows({
+        agency: {
+          name: agency.name,
+          documentVersion: agency.documentVersion,
+          defaultEngine: agency.defaultEngine,
+          compileMode: agency.compileMode,
+          compatibilityMode: agency.compatibilityMode,
+        },
+        nodes: safeAgents,
+        edges: flows.map((flow: any) => ({
+          fromAgentName: agentIdToName.get(flow.fromAgentId) ?? flow.fromAgentId,
+          toAgentName: agentIdToName.get(flow.toAgentId) ?? flow.toAgentId,
+          flowType: flow.flowType ?? "delegation",
+          flowConfig: flow.flowConfig ?? null,
+        })),
+        subgraphs: subgraphs.map((subgraph: any) => ({
+          id: subgraph.subgraphKey,
+          name: subgraph.name,
+          engine: subgraph.engine,
+          entryNodeIds: subgraph.entryNodeIds ?? [],
+          exitNodeIds: subgraph.exitNodeIds ?? [],
+          nodeIds: subgraph.nodeIds ?? [],
+          boundaryPolicy: subgraph.boundaryPolicy ?? null,
+        })),
+      });
+
       return {
         ...agency,
         canEdit,
+        documentVersion: document.documentVersion,
+        defaultEngine: document.defaultEngine,
+        compileMode: document.settings.compileMode,
+        compatibilityMode: document.settings.compatibilityMode,
+        subgraphs: document.subgraphs,
         agents: safeAgents,
         communicationFlows: flows,
         agentToolAssignments: toolAssignments,
         sharedToolAssignments: sharedTools,
       };
+    }),
+
+  getCompilePreview: protectedProcedure
+    .input(z.object({ agencyId: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      const tenantId = resolveTenantId(ctx);
+      await assertAgencyEnabled(tenantId);
+
+      return loadAgencyCompilePreview(input.agencyId, tenantId);
     }),
 
   createFromTemplate: agencyCreateProcedure
@@ -1183,7 +1437,7 @@ export const agencyRouter = router({
               description: z.string().optional(),
               nodeType: z.enum([
                 "agent", "supervisor", "router", "aggregator",
-                "knowledge_base", "skill_call", "human_approval", "browser_session", "conditional_branch", "parallel_fan_out", "loop_retry", "skill_discovery", "data_transform", "error_handler", "autonomous_agent",
+                "knowledge_base", "skill_call", "human_approval", "browser_session", "conditional_branch", "parallel_fan_out", "loop_retry", "skill_discovery", "data_transform", "error_handler", "autonomous_agent", "engine_boundary",
               ]).default("agent"),
               instructions: z.string().max(50000).optional(),
               model: z.string().max(100).regex(/^[a-zA-Z0-9._\/-]+$/, "Invalid model identifier").optional(),
@@ -1434,6 +1688,83 @@ export const agencyRouter = router({
       return { success: true };
     }),
 
+  compilePreview: protectedProcedure
+    .input(
+      z.object({
+        name: z.string().min(1).max(255),
+        documentVersion: z.number().int().min(1).max(2).optional(),
+        defaultEngine: z.enum(["agency_swarm", "adk2"]).optional(),
+        compileMode: z.enum(["legacy_agency", "strict", "assist"]).optional(),
+        compatibilityMode: z.enum(["preserve_agency_swarm", "hybrid"]).optional(),
+        agents: z.array(
+          z.object({
+            id: z.string().min(1).max(100).optional(),
+            name: z.string().min(1).max(100),
+            description: z.string().optional(),
+            instructions: z.string().optional(),
+            nodeType: z.string().min(1).max(100).optional(),
+            model: z.string().max(100).optional(),
+            isEntryPoint: z.boolean().optional(),
+            isOptional: z.boolean().optional(),
+            position: z.object({ x: z.number(), y: z.number() }).optional(),
+            nodeConfig: z.record(z.unknown()).optional(),
+            outputSchema: z.record(z.unknown()).nullable().optional(),
+            examples: z.array(
+              z.array(
+                z.object({
+                  role: z.enum(["user", "assistant"]),
+                  content: z.string(),
+                }),
+              ),
+            ).optional(),
+            parallelToolCalls: z.boolean().optional(),
+            maxTurns: z.number().int().optional(),
+            subgraphId: z.string().min(1).max(100).nullish(),
+            engineHint: z.enum(["agency_swarm", "adk2"]).nullable().optional(),
+            runtimeConfig: z.record(z.unknown()).nullable().optional(),
+          }),
+        ),
+        communicationFlows: z.array(
+          z.object({
+            fromAgentName: z.string().min(1).max(100),
+            toAgentName: z.string().min(1).max(100),
+            flowType: z.string().optional(),
+            flowConfig: z.record(z.unknown()).optional(),
+          }),
+        ),
+        subgraphs: z.array(
+          z.object({
+            id: z.string().min(1).max(100),
+            name: z.string().min(1).max(255),
+            engine: z.enum(["agency_swarm", "adk2"]),
+            entryNodeIds: z.array(z.string().min(1).max(100)),
+            exitNodeIds: z.array(z.string().min(1).max(100)),
+            nodeIds: z.array(z.string().min(1).max(100)),
+            boundaryPolicy: z.record(z.unknown()).nullable().optional(),
+          }),
+        ).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = resolveTenantId(ctx);
+      await assertAgencyEnabled(tenantId);
+      const hybridFlags = await getAgencyHybridFlags(tenantId);
+
+      return compileAgencyBuilderRows(
+        {
+          name: input.name,
+          documentVersion: input.documentVersion ?? 1,
+          defaultEngine: input.defaultEngine ?? AGENCY_DEFAULT_ENGINE,
+          compileMode: input.compileMode ?? AGENCY_DEFAULT_COMPILE_MODE,
+          compatibilityMode: input.compatibilityMode ?? AGENCY_DEFAULT_COMPATIBILITY_MODE,
+          agents: input.agents as any,
+          communicationFlows: input.communicationFlows as any,
+          subgraphs: (input.subgraphs as any) ?? [],
+        },
+        hybridFlags,
+      );
+    }),
+
   /** Full graph save for the visual builder (replaces all agents/flows). */
   saveBuilder: protectedProcedure
     .input(
@@ -1444,14 +1775,19 @@ export const agencyRouter = router({
         systemPrompt: z.string().optional(),
         defaultModel: z.string().max(100).nullish(),
         topology: z.enum(["handoff_chain", "orchestrator_worker", "hybrid", "custom"]).optional(),
+        documentVersion: z.number().int().min(1).max(2).optional(),
+        defaultEngine: z.enum(["agency_swarm", "adk2"]).optional(),
+        compileMode: z.enum(["legacy_agency", "strict", "assist"]).optional(),
+        compatibilityMode: z.enum(["preserve_agency_swarm", "hybrid"]).optional(),
         changeDescription: z.string().max(500).optional(),
         agents: z.array(
           z.object({
+            id: z.string().uuid().optional(),
             name: z.string().min(1).max(100),
             description: z.string().optional(),
             nodeType: z.enum([
               "agent", "supervisor", "router", "aggregator",
-              "knowledge_base", "skill_call", "human_approval", "browser_session", "conditional_branch", "parallel_fan_out", "loop_retry", "skill_discovery", "data_transform", "error_handler", "autonomous_agent",
+              "knowledge_base", "skill_call", "human_approval", "browser_session", "conditional_branch", "parallel_fan_out", "loop_retry", "skill_discovery", "data_transform", "error_handler", "autonomous_agent", "engine_boundary",
             ]).default("agent"),
             instructions: z.string().max(50000).optional(),
             model: z.string().max(100).regex(/^[a-zA-Z0-9._\/-]+$/, "Invalid model identifier").optional(),
@@ -1468,6 +1804,9 @@ export const agencyRouter = router({
             isEntryPoint: z.boolean().default(false),
             isOptional: z.boolean().default(false),
             position: z.object({ x: z.number().finite(), y: z.number().finite() }).optional(),
+            subgraphId: z.string().min(1).max(100).nullish(),
+            engineHint: z.enum(["agency_swarm", "adk2"]).nullable().optional(),
+            runtimeConfig: z.record(z.unknown()).nullable().optional(),
             toolIds: z.array(z.string().min(1).max(100)).max(50).optional(),
             toolConfigs: z.record(z.string(), z.record(z.unknown())).optional(),
             nodeConfig: z.record(z.unknown()).optional(),
@@ -1522,6 +1861,18 @@ export const agencyRouter = router({
                 && !handoffSummary
               ) {
                 ctx.addIssue({ code: "custom", path: ["nodeConfig", "handoffSummary"], message: "browser_session requires a handoff summary for review or user input states" });
+              }
+            }
+            if (data.nodeType === "engine_boundary") {
+              const cfg = data.nodeConfig as any;
+              if (!String(cfg?.bridgeMode ?? "").trim()) {
+                ctx.addIssue({ code: "custom", path: ["nodeConfig", "bridgeMode"], message: "engine_boundary requires bridgeMode" });
+              }
+              if (!String(cfg?.inputContract ?? "").trim()) {
+                ctx.addIssue({ code: "custom", path: ["nodeConfig", "inputContract"], message: "engine_boundary requires inputContract" });
+              }
+              if (!String(cfg?.outputContract ?? "").trim()) {
+                ctx.addIssue({ code: "custom", path: ["nodeConfig", "outputContract"], message: "engine_boundary requires outputContract" });
               }
             }
             if (data.isEntryPoint && !["agent", "supervisor", "autonomous_agent"].includes(data.nodeType)) {
@@ -1761,6 +2112,17 @@ export const agencyRouter = router({
             }
           }),
         ).min(1).max(20),
+        subgraphs: z.array(
+          z.object({
+            id: z.string().min(1).max(100),
+            name: z.string().min(1).max(255),
+            engine: z.enum(["agency_swarm", "adk2"]),
+            entryNodeIds: z.array(z.string().min(1).max(100)).max(100),
+            exitNodeIds: z.array(z.string().min(1).max(100)).max(100),
+            nodeIds: z.array(z.string().min(1).max(100)).max(100),
+            boundaryPolicy: z.record(z.unknown()).nullable().optional(),
+          }),
+        ).max(50).optional(),
         userContext: z.record(z.string(), z.unknown()).optional(),
         sharedInstructions: z.string().max(50000).optional(),
         conversationStarters: z.array(z.string().min(1).max(500)).max(10).optional(),
@@ -1806,6 +2168,33 @@ export const agencyRouter = router({
         }
       }
 
+      const hybridFlags = await getAgencyHybridFlags(tenantId);
+      const compilePreview = compileAgencyBuilderRows(
+        {
+          name: input.name ?? "Untitled Agency",
+          documentVersion: input.documentVersion ?? 1,
+          defaultEngine: input.defaultEngine ?? AGENCY_DEFAULT_ENGINE,
+          compileMode: input.compileMode ?? AGENCY_DEFAULT_COMPILE_MODE,
+          compatibilityMode: input.compatibilityMode ?? AGENCY_DEFAULT_COMPATIBILITY_MODE,
+          agents: input.agents as any,
+          communicationFlows: (input.communicationFlows ?? []) as any,
+          subgraphs: (input.subgraphs ?? []) as any,
+        },
+        hybridFlags,
+      );
+
+      if (compilePreview.status === "failed") {
+        const hybridBlockedByFlag = compilePreview.diagnostics.some(
+          (diagnostic) =>
+            diagnostic.code === "hybrid_feature_flag_required"
+            || diagnostic.code === "hybrid_runtime_kill_switch_active",
+        );
+        throw new TRPCError({
+          code: hybridBlockedByFlag ? "FORBIDDEN" : "BAD_REQUEST",
+          message: formatCompileDiagnosticsForError(compilePreview.diagnostics),
+        });
+      }
+
       // Look up agency by ID first, then verify tenant access
       const [agency] = await db
         .select()
@@ -1838,6 +2227,16 @@ export const agencyRouter = router({
         });
       }
 
+      const providedAgentIds = input.agents
+        .map((agent) => agent.id)
+        .filter((agentId): agentId is string => typeof agentId === "string" && agentId.length > 0);
+      if (new Set(providedAgentIds).size !== providedAgentIds.length) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Agent ids must be unique when provided",
+        });
+      }
+
       // Detect cycles in communication flows (prevent infinite-loop agent graphs)
       if (input.communicationFlows?.length) {
         const cycleNode = detectFlowCycle(input.communicationFlows);
@@ -1848,6 +2247,54 @@ export const agencyRouter = router({
           });
         }
       }
+
+      const agentsForPersistence = input.agents.map((agent) => ({
+        ...agent,
+        id: agent.id ?? crypto.randomUUID(),
+      }));
+      const effectiveName = input.name ?? (agency as any).name;
+      const persistDocumentV2 = shouldPersistAgencyDocumentV2({
+        documentVersion: input.documentVersion ?? null,
+        defaultEngine: input.defaultEngine ?? null,
+        compileMode: input.compileMode ?? null,
+        compatibilityMode: input.compatibilityMode ?? null,
+        subgraphs: input.subgraphs ?? null,
+        nodes: agentsForPersistence,
+      });
+      const draftDocument = buildAgencyDocumentFromRows({
+        agency: {
+          name: effectiveName,
+          documentVersion: persistDocumentV2
+            ? Math.max(2, input.documentVersion ?? 2)
+            : 1,
+          defaultEngine: persistDocumentV2
+            ? input.defaultEngine ?? (agency as any).defaultEngine ?? AGENCY_DEFAULT_ENGINE
+            : AGENCY_DEFAULT_ENGINE,
+          compileMode: persistDocumentV2
+            ? input.compileMode ?? (agency as any).compileMode ?? AGENCY_DEFAULT_COMPILE_MODE
+            : AGENCY_DEFAULT_COMPILE_MODE,
+          compatibilityMode: persistDocumentV2
+            ? input.compatibilityMode ?? (agency as any).compatibilityMode ?? AGENCY_DEFAULT_COMPATIBILITY_MODE
+            : AGENCY_DEFAULT_COMPATIBILITY_MODE,
+        },
+        nodes: agentsForPersistence,
+        edges: input.communicationFlows ?? [],
+        subgraphs: persistDocumentV2 ? input.subgraphs ?? [] : [],
+      });
+      const nodeIdMap = Object.fromEntries(
+        agentsForPersistence.flatMap((agent) => [
+          [agent.id, agent.id],
+          [agent.name, agent.id],
+        ]),
+      );
+      const normalizedSubgraphs = remapAgencySubgraphs(
+        draftDocument.subgraphs,
+        nodeIdMap,
+      );
+      const snapshotDocument = {
+        ...draftDocument,
+        subgraphs: normalizedSubgraphs,
+      };
 
       await db.transaction(async (tx) => {
         // Row lock inside transaction (defense-in-depth)
@@ -1870,6 +2317,10 @@ export const agencyRouter = router({
         if (input.sharedInstructions !== undefined) setValues.sharedInstructions = input.sharedInstructions;
         if (input.conversationStarters !== undefined) setValues.conversationStarters = input.conversationStarters;
         if (input.cacheConversationStarters !== undefined) setValues.cacheConversationStarters = input.cacheConversationStarters;
+        setValues.documentVersion = snapshotDocument.documentVersion;
+        setValues.defaultEngine = snapshotDocument.defaultEngine;
+        setValues.compileMode = snapshotDocument.settings.compileMode;
+        setValues.compatibilityMode = snapshotDocument.settings.compatibilityMode;
         if (Object.keys(setValues).length > 0) {
           await tx.update(agencies).set(setValues).where(eq(agencies.id, input.id));
         }
@@ -1903,12 +2354,13 @@ export const agencyRouter = router({
           await tx.delete(agencyAgentTools).where(inArray(agencyAgentTools.agentId, existingAgentIds));
         }
         await tx.delete(agencyCommunicationFlows).where(eq(agencyCommunicationFlows.agencyId, input.id));
+        await tx.delete(agencySubgraphs).where(eq(agencySubgraphs.agencyId, input.id));
         await tx.delete(agencyAgents).where(eq(agencyAgents.agencyId, input.id));
 
         // Re-insert agents
         const agentNameToId: Record<string, string> = {};
-        for (const agent of input.agents) {
-          const agentId = crypto.randomUUID();
+        for (const agent of agentsForPersistence) {
+          const agentId = agent.id;
           agentNameToId[agent.name] = agentId;
 
           await tx.insert(agencyAgents).values({
@@ -1927,6 +2379,9 @@ export const agencyRouter = router({
             isEntryPoint: agent.isEntryPoint,
             isOptional: agent.isOptional,
             position: agent.position ?? null,
+            subgraphId: persistDocumentV2 ? agent.subgraphId ?? null : null,
+            engineHint: persistDocumentV2 ? agent.engineHint ?? null : null,
+            runtimeConfig: persistDocumentV2 ? (agent.runtimeConfig ?? null) as any : null,
             outputSchema: (agent.outputSchema ?? null) as any,
             examples: agent.examples ? (() => {
               try { return sanitizeExamples(agent.examples!) as any; }
@@ -1969,8 +2424,26 @@ export const agencyRouter = router({
           }
         }
 
+        if (persistDocumentV2) {
+          for (const subgraph of normalizedSubgraphs) {
+            await tx.insert(agencySubgraphs).values({
+              id: crypto.randomUUID(),
+              agencyId: input.id,
+              subgraphKey: subgraph.id,
+              name: subgraph.name,
+              engine: subgraph.engine,
+              entryNodeIds: subgraph.entryNodeIds as any,
+              exitNodeIds: subgraph.exitNodeIds as any,
+              nodeIds: subgraph.nodeIds as any,
+              boundaryPolicy: (subgraph.boundaryPolicy ?? null) as any,
+            });
+          }
+        }
+
         // Save version snapshot (deduped by SHA-256 content hash, cap at 50)
-        const snapshotJson = { nodes: input.agents, edges: input.communicationFlows ?? [], name: input.name ?? (agency as any).name };
+        const snapshotJson = buildAgencyVersionSnapshot(snapshotDocument, {
+          persistAsDocumentV2: persistDocumentV2,
+        });
         const contentHash = crypto.createHash("sha256").update(JSON.stringify(snapshotJson)).digest("hex");
 
         // Only insert if content has changed since last version
@@ -2220,6 +2693,19 @@ export const agencyRouter = router({
           })
         : undefined;
 
+      const compilePreview = await loadAgencyCompilePreview(input.agencyId, tenantId);
+      if (compilePreview.status === "failed") {
+        const hybridBlockedByFlag = compilePreview.diagnostics.some(
+          (diagnostic) =>
+            diagnostic.code === "hybrid_feature_flag_required"
+            || diagnostic.code === "hybrid_runtime_kill_switch_active",
+        );
+        throw new TRPCError({
+          code: hybridBlockedByFlag ? "FORBIDDEN" : "BAD_REQUEST",
+          message: formatCompileDiagnosticsForError(compilePreview.diagnostics),
+        });
+      }
+
       const agencyStartTime = Date.now();
       const result = await agencyBridge.executeRun({
         agencyId: input.agencyId,
@@ -2233,6 +2719,7 @@ export const agencyRouter = router({
         recipientAgent: input.recipientAgent,
         fileIds: input.fileIds,
         additionalInstructions: input.additionalInstructions,
+        compilePreview,
       });
 
       if (plannerResult) {
@@ -2721,15 +3208,26 @@ export const agencyRouter = router({
         throw new TRPCError({ code: "FORBIDDEN", message: "Not authorized" });
       }
 
-      const snapshot = version.snapshotJson as any;
+      const document = normalizeAgencyDocumentSnapshot(
+        version.snapshotJson,
+        (agency as any).name ?? "Untitled Agency",
+      );
+      const persistDocumentV2 = shouldPersistAgencyDocumentV2({
+        documentVersion: document.documentVersion,
+        defaultEngine: document.defaultEngine,
+        compileMode: document.settings.compileMode,
+        compatibilityMode: document.settings.compatibilityMode,
+        subgraphs: document.subgraphs,
+        nodes: document.nodes,
+      });
       // SECURITY: Validate snapshot nodeTypes against current allowlist before restoring
       const VALID_NODE_TYPES = new Set([
         "agent", "supervisor", "router", "aggregator",
         "knowledge_base", "skill_call", "human_approval", "browser_session",
         "conditional_branch", "parallel_fan_out", "loop_retry", "skill_discovery",
-        "data_transform", "error_handler",
+        "data_transform", "error_handler", "autonomous_agent", "engine_boundary",
       ]);
-      for (const node of (snapshot.nodes ?? [])) {
+      for (const node of document.nodes) {
         if (node.nodeType && !VALID_NODE_TYPES.has(node.nodeType)) {
           throw new TRPCError({ code: "BAD_REQUEST", message: `Invalid node type '${node.nodeType}' in snapshot` });
         }
@@ -2749,12 +3247,20 @@ export const agencyRouter = router({
           await tx.delete(agencyAgentTools).where(inArray(agencyAgentTools.agentId, existingAgentIds));
         }
         await tx.delete(agencyCommunicationFlows).where(eq(agencyCommunicationFlows.agencyId, version.agencyId));
+        await tx.delete(agencySubgraphs).where(eq(agencySubgraphs.agencyId, version.agencyId));
         await tx.delete(agencyAgents).where(eq(agencyAgents.agencyId, version.agencyId));
 
         const nameToId: Record<string, string> = {};
-        for (const node of (snapshot.nodes ?? [])) {
-          const agentId = crypto.randomUUID();
+        const restoredNodes = document.nodes.map((node) => ({
+          ...node,
+          id: typeof node.id === "string" && node.id.length > 0 && node.id.length <= 36
+            ? node.id
+            : crypto.randomUUID(),
+        }));
+        for (const node of restoredNodes) {
+          const agentId = node.id!;
           nameToId[node.name] = agentId;
+          nameToId[String(node.id)] = agentId;
           // Normalise legacy snake_case modelSettings keys from old snapshots
           let ms = node.modelSettings ?? null;
           if (ms && ("max_tokens" in ms || "top_p" in ms)) {
@@ -2780,6 +3286,14 @@ export const agencyRouter = router({
             isEntryPoint: node.isEntryPoint ?? false,
             isOptional: node.isOptional ?? false,
             position: node.position ?? null,
+            subgraphId: persistDocumentV2 ? node.subgraphId ?? null : null,
+            engineHint: persistDocumentV2 ? node.engineHint ?? null : null,
+            runtimeConfig: persistDocumentV2 ? (node.runtimeConfig ?? null) as any : null,
+            outputSchema: (node.outputSchema ?? null) as any,
+            examples: node.examples ? (() => {
+              try { return sanitizeExamples(node.examples) as any; }
+              catch (e: any) { throw new TRPCError({ code: "BAD_REQUEST", message: e.message ?? "Invalid examples" }); }
+            })() : null,
           });
           if (node.toolIds?.length) {
             for (const toolId of node.toolIds) {
@@ -2792,7 +3306,7 @@ export const agencyRouter = router({
             }
           }
         }
-        for (const edge of (snapshot.edges ?? [])) {
+        for (const edge of document.edges) {
           const fromId = nameToId[edge.fromAgentName];
           const toId = nameToId[edge.toAgentName];
           if (fromId && toId) {
@@ -2806,6 +3320,42 @@ export const agencyRouter = router({
             });
           }
         }
+
+        if (persistDocumentV2) {
+          const normalizedSubgraphs = remapAgencySubgraphs(document.subgraphs, nameToId);
+          for (const subgraph of normalizedSubgraphs) {
+            await tx.insert(agencySubgraphs).values({
+              id: crypto.randomUUID(),
+              agencyId: version.agencyId,
+              subgraphKey: subgraph.id,
+              name: subgraph.name,
+              engine: subgraph.engine,
+              entryNodeIds: subgraph.entryNodeIds as any,
+              exitNodeIds: subgraph.exitNodeIds as any,
+              nodeIds: subgraph.nodeIds as any,
+              boundaryPolicy: (subgraph.boundaryPolicy ?? null) as any,
+            });
+          }
+        }
+
+        await tx
+          .update(agencies)
+          .set({
+            name: document.name,
+            documentVersion: persistDocumentV2
+              ? Math.max(2, document.documentVersion)
+              : 1,
+            defaultEngine: persistDocumentV2
+              ? document.defaultEngine
+              : AGENCY_DEFAULT_ENGINE,
+            compileMode: persistDocumentV2
+              ? document.settings.compileMode
+              : AGENCY_DEFAULT_COMPILE_MODE,
+            compatibilityMode: persistDocumentV2
+              ? document.settings.compatibilityMode
+              : AGENCY_DEFAULT_COMPATIBILITY_MODE,
+          })
+          .where(eq(agencies.id, version.agencyId));
       });
 
       return { success: true };
@@ -4477,29 +5027,130 @@ export const agencyRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "Run not found" });
       }
 
-      // 2. Ownership check
+      // 2. Resolve approval metadata and authorization
       const isOwner = conv.userId === userId;
       const isAdmin = userRole === "admin" || userRole === "domain_admin";
-      if (!isOwner && !isAdmin) {
+      const { getRedisClient } = await import("../services/redis");
+      const redis = getRedisClient();
+
+      const approvalMetaKey = `agency:approval:meta:${input.runId}:${input.approvalKey}`;
+      const rawApprovalMeta = await redis.get(approvalMetaKey);
+      const approvalMeta = rawApprovalMeta
+        ? (() => {
+          try {
+            return JSON.parse(rawApprovalMeta) as {
+              approvers?: string[];
+              requiredApprovers?: number;
+            };
+          } catch {
+            return null;
+          }
+        })()
+        : null;
+      const configuredApprovers = Array.isArray(approvalMeta?.approvers)
+        ? approvalMeta.approvers.map((value) => String(value))
+        : [];
+      const requiredApprovers = Math.max(1, Number(approvalMeta?.requiredApprovers ?? 1) || 1);
+      const isConfiguredApprover = configuredApprovers.includes(String(userId));
+      const canSubmit = isAdmin || (configuredApprovers.length > 0 ? isConfiguredApprover : isOwner);
+
+      if (!canSubmit) {
         throw new TRPCError({
           code: "FORBIDDEN",
-          message: "Only the run creator or an admin can submit approvals",
+          message: configuredApprovers.length > 0
+            ? "Only designated approvers or admins can submit this approval"
+            : "Only the run creator or an admin can submit approvals",
         });
       }
 
-      // 3. Publish decision to Redis for Python orchestrator
-      const { getRedisClient } = await import("../services/redis");
-      const redis = getRedisClient();
-      await redis.publish(
-        `agency:approval:${input.runId}`,
+      const ttlSecondsRaw = await redis.ttl(approvalMetaKey);
+      const ttlSeconds = ttlSecondsRaw > 0 ? ttlSecondsRaw : 86_400;
+      const resolvedKey = `${approvalMetaKey}:resolved`;
+      const existingResolution = await redis.get(resolvedKey);
+      if (existingResolution) {
+        return { success: true, alreadyResolved: true };
+      }
+
+      if (input.decision === "rejected") {
+        const resolved = await redis.set(
+          resolvedKey,
+          JSON.stringify({
+            decision: "rejected",
+            userId,
+            feedback: input.feedback ?? "",
+            at: new Date().toISOString(),
+          }),
+          "EX",
+          ttlSeconds,
+          "NX",
+        );
+
+        if (resolved) {
+          await redis.publish(
+            `agency:approval:${input.runId}`,
+            JSON.stringify({
+              approvalKey: input.approvalKey,
+              decision: input.decision,
+              feedback: input.feedback ?? "",
+            }),
+          );
+        }
+
+        return {
+          success: true,
+          alreadyResolved: !resolved,
+          currentApprovals: 0,
+          approvalsRemaining: 0,
+          waitingForApprovals: false,
+        };
+      }
+
+      const approvalsKey = `${approvalMetaKey}:approvals`;
+      await redis.sadd(approvalsKey, String(userId));
+      await redis.expire(approvalsKey, ttlSeconds);
+
+      const currentApprovals = await redis.scard(approvalsKey);
+      const approvalsRemaining = Math.max(requiredApprovers - currentApprovals, 0);
+
+      if (approvalsRemaining > 0) {
+        return {
+          success: true,
+          waitingForApprovals: true,
+          currentApprovals,
+          approvalsRemaining,
+        };
+      }
+
+      const resolved = await redis.set(
+        resolvedKey,
         JSON.stringify({
-          approvalKey: input.approvalKey,
-          decision: input.decision,
-          feedback: input.feedback ?? "",
+          decision: "approved",
+          userId,
+          at: new Date().toISOString(),
         }),
+        "EX",
+        ttlSeconds,
+        "NX",
       );
 
-      return { success: true };
+      if (resolved) {
+        await redis.publish(
+          `agency:approval:${input.runId}`,
+          JSON.stringify({
+            approvalKey: input.approvalKey,
+            decision: input.decision,
+            feedback: input.feedback ?? "",
+          }),
+        );
+      }
+
+      return {
+        success: true,
+        alreadyResolved: !resolved,
+        waitingForApprovals: false,
+        currentApprovals,
+        approvalsRemaining: 0,
+      };
     }),
 
   // ── MCP Integration (section-14) ──────────────────────────────────────

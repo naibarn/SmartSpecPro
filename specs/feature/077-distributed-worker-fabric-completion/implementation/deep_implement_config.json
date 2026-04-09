@@ -1,0 +1,28 @@
+{
+  "plugin_root": "/home/dev/projects/SmartSpecPro/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/077-distributed-worker-fabric-completion/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/077-distributed-worker-fabric-completion/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "workflow_backend": "compatible",
+  "task_tracking_backend": "compatible",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-runtime-generalization-and-rollout-foundation",
+    "section-02-desktop-zeroclaw-managed-runtime-foundation",
+    "section-03-local-workspaces-video-assembly-and-media-adapters",
+    "section-04-nemoclaw-and-hiclaw-runtime-profiles",
+    "section-05-admin-docs-and-migration-truthfulness"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-04-08T14:55:20.018819+00:00"
+}

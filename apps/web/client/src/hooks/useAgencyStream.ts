@@ -47,6 +47,27 @@ export interface ApprovalRequest {
   timestamp: number;
 }
 
+export interface HybridRunSummary {
+  usesHybrid?: boolean;
+  engineMix?: string[];
+  subgraphCount?: number;
+  bridgeCount?: number;
+  compileStatus?: string;
+  artifactPublicationMode?: string;
+}
+
+export interface StepAttemptSnapshot {
+  model_id?: string;
+  provider?: string;
+  input_tokens?: number;
+  output_tokens?: number;
+  credits_used?: number;
+  engine?: string | null;
+  subgraph_id?: string | null;
+  phase?: string | null;
+  metadata?: Record<string, unknown>;
+}
+
 export interface UseAgencyStreamOptions {
   onRunFinished?: (creditsUsed: number, runId: string | null) => void;
   onError?: (error: string) => void;
@@ -62,6 +83,7 @@ export interface UseAgencyStreamOptions {
 }
 
 export interface UseAgencyStreamReturn {
+  runId: string | null;
   messages: AgencyStreamMessage[];
   activeAgent: string | null;
   isStreaming: boolean;
@@ -72,6 +94,8 @@ export interface UseAgencyStreamReturn {
   guardrailEvents: GuardrailEvent[];
   pendingApproval: ApprovalRequest | null;
   isPollingFallback: boolean;
+  hybridSummary: HybridRunSummary | null;
+  stepAttemptSnapshots: StepAttemptSnapshot[];
   connect: (params: {
     agencyId: string;
     conversationId?: string;
@@ -83,6 +107,8 @@ export interface UseAgencyStreamReturn {
     fileIds?: string[];
     /** v1.8: Per-run instruction override */
     additionalInstructions?: string;
+    /** Optional compile preview for hybrid-runtime-aware stream execution */
+    compilePreview?: unknown;
   }) => void;
   disconnect: () => void;
   cancel: (mode: "immediate" | "after_turn") => void;
@@ -133,6 +159,7 @@ const POLLING_INTERVAL_MS = 3_000;
 export function useAgencyStream(
   options?: UseAgencyStreamOptions,
 ): UseAgencyStreamReturn {
+  const [runId, setRunId] = useState<string | null>(null);
   const [messages, setMessages] = useState<AgencyStreamMessage[]>([]);
   const [activeAgent, setActiveAgent] = useState<string | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -145,6 +172,8 @@ export function useAgencyStream(
   const [guardrailEvents, setGuardrailEvents] = useState<GuardrailEvent[]>([]);
   const [pendingApproval, setPendingApproval] = useState<ApprovalRequest | null>(null);
   const [isPollingFallback, setIsPollingFallback] = useState(false);
+  const [hybridSummary, setHybridSummary] = useState<HybridRunSummary | null>(null);
+  const [stepAttemptSnapshots, setStepAttemptSnapshots] = useState<StepAttemptSnapshot[]>([]);
 
   const abortRef = useRef<AbortController | null>(null);
   const streamingMsgRef = useRef<string>("");
@@ -202,6 +231,7 @@ export function useAgencyStream(
     clearReconnectTimer();
     clearPollingInterval();
     setIsStreaming(false);
+    setRunId(runIdRef.current);
   }, [clearReconnectTimer, clearPollingInterval]);
 
   // H2 fix: cleanup on unmount
@@ -240,6 +270,7 @@ export function useAgencyStream(
       recipientAgent?: string;
       fileIds?: string[];
       additionalInstructions?: string;
+      compilePreview?: unknown;
     }) => {
       // Reset state
       disconnect();
@@ -249,6 +280,9 @@ export function useAgencyStream(
       setGuardrailEvents([]);
       setPendingApproval(null);
       setIsPollingFallback(false);
+      setHybridSummary(null);
+      setStepAttemptSnapshots([]);
+      setRunId(null);
       streamingMsgRef.current = "";
       streamingAgentRef.current = "";
       runCounterRef.current += 1;
@@ -281,6 +315,7 @@ export function useAgencyStream(
       recipientAgent?: string;
       fileIds?: string[];
       additionalInstructions?: string;
+      compilePreview?: unknown;
     },
     runCounter: number,
   ) {
@@ -308,6 +343,9 @@ export function useAgencyStream(
             ...(params.recipientAgent ? { recipientAgent: params.recipientAgent } : {}),
             ...(params.fileIds?.length ? { fileIds: params.fileIds } : {}),
             ...(params.additionalInstructions ? { additionalInstructions: params.additionalInstructions } : {}),
+            ...(params.compilePreview && typeof params.compilePreview === "object"
+              ? { compilePreview: params.compilePreview }
+              : {}),
           }),
           signal: controller.signal,
         });
@@ -407,6 +445,7 @@ export function useAgencyStream(
         const metaRunId = data.runId || data.run_id;
         if (metaRunId) {
           runIdRef.current = metaRunId;
+          setRunId(metaRunId);
         }
         setIsStreaming(true);
         break;
@@ -676,9 +715,20 @@ export function useAgencyStream(
       case "run_complete":
       case "run_finished": {
         const credits = data.creditsUsed ?? data.total_credits ?? data.usage?.cost ?? 0;
+        const normalizedSnapshots = Array.isArray(data.step_attempt_snapshots)
+          ? data.step_attempt_snapshots.filter((value: unknown): value is StepAttemptSnapshot => (
+            value !== null && typeof value === "object"
+          ))
+          : [];
+        const normalizedHybridSummary = data.hybrid_summary && typeof data.hybrid_summary === "object"
+          ? data.hybrid_summary as HybridRunSummary
+          : null;
         setCreditsUsed(credits);
+        setStepAttemptSnapshots(normalizedSnapshots);
+        setHybridSummary(normalizedHybridSummary);
         setIsStreaming(false);
         setPendingApproval(null);
+        setRunId(runIdRef.current);
         // Finalize streaming message
         setMessages((prev) =>
           prev.map((m) =>
@@ -709,6 +759,7 @@ export function useAgencyStream(
   }
 
   return {
+    runId,
     messages,
     activeAgent,
     isStreaming,
@@ -719,6 +770,8 @@ export function useAgencyStream(
     guardrailEvents,
     pendingApproval,
     isPollingFallback,
+    hybridSummary,
+    stepAttemptSnapshots,
     connect,
     disconnect,
     cancel,

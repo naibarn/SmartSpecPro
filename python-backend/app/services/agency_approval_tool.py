@@ -31,34 +31,51 @@ class RequestApprovalTool:
         self._context = run_context
         self._emitter = event_emitter
 
-    async def execute(self, step: str, summary: str) -> str:
+    async def execute(
+        self,
+        step: str,
+        summary: str,
+        *,
+        approval_key: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> str:
         """Request human approval for the given step.
 
         Args:
             step: What the agent is requesting approval for.
             summary: Context/details for the human reviewer.
+            approval_key: Optional pre-generated key used for external tracking.
+            metadata: Optional structured metadata for approver routing/quorum.
 
         Returns:
             A message string for the agent indicating approval was requested.
         """
-        approval_key = str(uuid.uuid4())
+        approval_key = approval_key or str(uuid.uuid4())
+        metadata = metadata or {}
 
         # Store in context
-        await self._context.set(f"approval:{approval_key}", {
+        record = {
             "step": step,
             "summary": summary,
             "status": "pending",
             "agentName": self.agent_name,
-        })
+        }
+        if metadata:
+            record["metadata"] = metadata
+        await self._context.set(f"approval:{approval_key}", record)
 
         # Emit SSE event
+        event_payload = {
+            "approvalKey": approval_key,
+            "step": step,
+            "summary": summary,
+            "agentName": self.agent_name,
+        }
+        if metadata:
+            event_payload.update(metadata)
+
         if self._emitter:
-            await self._emitter.emit("approval_required", {
-                "approvalKey": approval_key,
-                "step": step,
-                "summary": summary,
-                "agentName": self.agent_name,
-            })
+            await self._emitter.emit("approval_required", event_payload)
 
         logger.info(
             "approval_requested",
@@ -74,7 +91,7 @@ async def await_approval_decision(
     context: Any,  # AgencyRunContext
     approval_key: str,
     step: str,
-    timeout_seconds: float = 1800,  # 30 minutes default
+    timeout_seconds: float = 86400,  # 24 hours default
     poll_interval: float = 2.0,
 ) -> str:
     """Poll AgencyRunContext for approval decision.

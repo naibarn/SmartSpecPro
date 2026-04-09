@@ -22,6 +22,8 @@ const defaultProps = {
   guardrailEvents: [] as GuardrailEvent[],
   pendingApproval: null as ApprovalRequest | null,
   isPollingFallback: false,
+  hybridSummary: null,
+  stepAttemptSnapshots: [],
 };
 
 describe("AgencyChatStream", () => {
@@ -210,5 +212,28 @@ describe("AgencyChatStream", () => {
     );
 
     expect(screen.queryByTestId("cancel-button-wrapper")).toBeNull();
+  });
+
+  it("renders hybrid runtime summary when returned by the stream", () => {
+    render(
+      <AgencyChatStream
+        {...defaultProps}
+        hybridSummary={{
+          usesHybrid: true,
+          engineMix: ["agency_swarm", "adk2"],
+          subgraphCount: 2,
+          bridgeCount: 1,
+          compileStatus: "success",
+        }}
+        stepAttemptSnapshots={[
+          { phase: "subgraph", subgraph_id: "sg_research", engine: "agency_swarm" },
+          { phase: "bridge", subgraph_id: "sg_creative", engine: "adk2" },
+        ]}
+      />,
+    );
+
+    expect(screen.getByTestId("hybrid-runtime-summary")).toBeTruthy();
+    expect(screen.getByText(/agency_swarm, adk2/i)).toBeTruthy();
+    expect(screen.getByText(/subgraph:sg_research/i)).toBeTruthy();
   });
 });

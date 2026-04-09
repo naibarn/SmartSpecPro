@@ -113,7 +113,12 @@ describe("workerDelegationService", () => {
       },
     }, {
       repo,
-      getFeatureFlags: async () => ({ openClawExternalRuntime: true }),
+      getFeatureFlags: async () => ({
+        openClawExternalRuntime: true,
+        desktopZeroClawWorker: false,
+        nemoClawSecureWorkerPool: false,
+        hiClawClusterRuntime: false,
+      }),
     });
 
     expect(created.manifest.discovery.openApiUrl).toBe("/v1/openapi.json");
@@ -181,7 +186,12 @@ describe("workerDelegationService", () => {
         },
       }, {
         repo,
-        getFeatureFlags: async () => ({ openClawExternalRuntime: true }),
+        getFeatureFlags: async () => ({
+          openClawExternalRuntime: true,
+          desktopZeroClawWorker: false,
+          nemoClawSecureWorkerPool: false,
+          hiClawClusterRuntime: false,
+        }),
       });
 
       expect(created.manifest.availability.mcp).toBe("unavailable");

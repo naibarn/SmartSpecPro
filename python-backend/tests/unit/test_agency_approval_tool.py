@@ -100,6 +100,30 @@ class TestRequestApprovalTool:
         parsed = uuid.UUID(data["approvalKey"])
         assert parsed.version == 4
 
+    @pytest.mark.asyncio
+    async def test_execute_accepts_metadata_and_custom_approval_key(self):
+        """Metadata is stored and emitted when provided by the orchestrator."""
+        ctx = AgencyRunContext()
+        emitter = AsyncMock()
+        tool = RequestApprovalTool(
+            agent_name="Approver",
+            run_context=ctx,
+            event_emitter=emitter,
+        )
+
+        await tool.execute(
+            step="Approve publish",
+            summary="Ready to ship",
+            approval_key="11111111-1111-4111-8111-111111111111",
+            metadata={"requiredApprovers": 2, "approvers": ["1", "2"]},
+        )
+
+        stored = await ctx.get("approval:11111111-1111-4111-8111-111111111111")
+        assert stored["metadata"]["requiredApprovers"] == 2
+        emitted = emitter.emit.call_args[0][1]
+        assert emitted["approvalKey"] == "11111111-1111-4111-8111-111111111111"
+        assert emitted["approvers"] == ["1", "2"]
+
 
 @pytest.mark.unit
 @pytest.mark.agency

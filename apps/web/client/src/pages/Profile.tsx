@@ -5,16 +5,17 @@
  * - Soft shadows and backdrop blur
  */
 
-import { useState, useRef, useEffect } from 'react';
-import { useLocation } from 'wouter';
-import { motion } from 'framer-motion';
-import { useAuth } from '@/contexts/AuthContext';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Switch } from '@/components/ui/switch';
-import { toast } from 'sonner';
+import { useState, useRef, useEffect } from "react";
+import { useLocation } from "wouter";
+import { motion } from "framer-motion";
+import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
+import { LocaleToggle } from "@/components/LocaleToggle";
+import { toast } from "sonner";
 import {
   Sparkles,
   User,
@@ -37,27 +38,27 @@ import {
   Globe,
   Moon,
   Sun,
-} from 'lucide-react';
-import { useScopedTranslation } from '@/i18n/useScopedTranslation';
+} from "lucide-react";
+import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 
 export default function Profile() {
-  const { t } = useScopedTranslation('profile');
+  const { t } = useScopedTranslation("profile");
   const { user, isLoading: authLoading, isAuthenticated, logout } = useAuth();
   const [, setLocation] = useLocation();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Profile state
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [company, setCompany] = useState('');
-  const [avatar, setAvatar] = useState('');
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [company, setCompany] = useState("");
+  const [avatar, setAvatar] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   // Security state
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
@@ -69,12 +70,12 @@ export default function Profile() {
   const [securityAlerts, setSecurityAlerts] = useState(true);
 
   // Preferences state
-  const [theme, setTheme] = useState<'light' | 'dark' | 'system'>('system');
-  const [language, setLanguage] = useState('en');
+  const [theme, setTheme] = useState<"light" | "dark" | "system">("system");
+  const [language, setLanguage] = useState("en");
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
-      setLocation('/login');
+      setLocation("/login");
     }
   }, [authLoading, isAuthenticated, setLocation]);
 
@@ -82,8 +83,8 @@ export default function Profile() {
     if (user) {
       setName(user.name);
       setEmail(user.email);
-      setCompany(user.company || '');
-      setAvatar(user.avatar || '');
+      setCompany(user.company || "");
+      setAvatar(user.avatar || "");
     }
   }, [user]);
 
@@ -109,7 +110,7 @@ export default function Profile() {
       const reader = new FileReader();
       reader.onloadend = () => {
         setAvatar(reader.result as string);
-        toast.success(t('toast.avatarUpdated'));
+        toast.success(t("toast.avatarUpdated"));
       };
       reader.readAsDataURL(file);
     }
@@ -120,44 +121,44 @@ export default function Profile() {
     await new Promise(resolve => setTimeout(resolve, 1000));
     setIsSaving(false);
     setIsEditing(false);
-    toast.success(t('toast.profileSaved'));
+    toast.success(t("toast.profileSaved"));
   };
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (newPassword.length < 8) {
-      toast.error(t('security.passwordMinLength'));
+      toast.error(t("security.passwordMinLength"));
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      toast.error(t('security.passwordMismatch'));
+      toast.error(t("security.passwordMismatch"));
       return;
     }
 
     setIsSaving(true);
     await new Promise(resolve => setTimeout(resolve, 1500));
     setIsSaving(false);
-    setCurrentPassword('');
-    setNewPassword('');
-    setConfirmPassword('');
-    toast.success(t('security.passwordChanged'));
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+    toast.success(t("security.passwordChanged"));
   };
 
   const handleDeleteAccount = () => {
-    toast.error(t('security.deleteRequiresEmail'));
+    toast.error(t("security.deleteRequiresEmail"));
   };
 
   const handleExportData = () => {
-    toast.success(t('toast.dataExportStarted'));
+    toast.success(t("toast.dataExportStarted"));
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-cyan-50/20">
       {/* Header */}
       <header className="bg-white/70 backdrop-blur-xl border-b border-gray-200/50 sticky top-0 z-50">
-        <div className="px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+        <div className="px-4 sm:px-6 lg:px-8 py-3 flex flex-col gap-3 sm:h-16 sm:flex-row sm:items-center sm:justify-between">
           <a href="/" className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
               <Sparkles className="w-5 h-5 text-white" />
@@ -165,11 +166,16 @@ export default function Profile() {
             <span className="text-xl font-bold text-gray-900">SmartAIHub</span>
           </a>
 
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-3 sm:justify-end">
+            <LocaleToggle className="shrink-0" />
             <a href="/dashboard">
               <Button variant="ghost">Dashboard</Button>
             </a>
-            <Button variant="ghost" onClick={logout} className="text-red-600 hover:text-red-700 hover:bg-red-50">
+            <Button
+              variant="ghost"
+              onClick={logout}
+              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+            >
               <LogOut className="w-4 h-4 mr-2" />
               Sign Out
             </Button>
@@ -189,7 +195,11 @@ export default function Profile() {
             <div className="relative group">
               <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center overflow-hidden">
                 {avatar ? (
-                  <img src={avatar} alt={name} className="w-full h-full object-cover" />
+                  <img
+                    src={avatar}
+                    alt={name}
+                    className="w-full h-full object-cover"
+                  />
                 ) : (
                   <span className="text-3xl font-bold text-white">
                     {name.charAt(0).toUpperCase()}
@@ -216,13 +226,15 @@ export default function Profile() {
               <h1 className="text-2xl font-bold text-gray-900">{name}</h1>
               <p className="text-gray-600">{email}</p>
               <div className="flex items-center justify-center sm:justify-start gap-2 mt-2">
-                <span className={`px-3 py-1 text-xs font-medium rounded-full ${
-                  user.plan === 'pro' 
-                    ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white'
-                    : user.plan === 'enterprise'
-                    ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white'
-                    : 'bg-gray-100 text-gray-700'
-                }`}>
+                <span
+                  className={`px-3 py-1 text-xs font-medium rounded-full ${
+                    user.plan === "pro"
+                      ? "bg-gradient-to-r from-blue-500 to-cyan-500 text-white"
+                      : user.plan === "enterprise"
+                        ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white"
+                        : "bg-gray-100 text-gray-700"
+                  }`}
+                >
                   {user.plan.charAt(0).toUpperCase() + user.plan.slice(1)} Plan
                 </span>
                 <span className="text-sm text-gray-500">
@@ -265,24 +277,36 @@ export default function Profile() {
         {/* Tabs */}
         <Tabs defaultValue="profile" className="space-y-6">
           <div className="overflow-x-auto">
-          <TabsList className="bg-white/70 backdrop-blur-xl border border-white/50 p-1 rounded-xl min-w-max">
-            <TabsTrigger value="profile" className="rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-cyan-500 data-[state=active]:text-white">
-              <User className="w-4 h-4 mr-2" />
-              Profile
-            </TabsTrigger>
-            <TabsTrigger value="security" className="rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-cyan-500 data-[state=active]:text-white">
-              <Shield className="w-4 h-4 mr-2" />
-              Security
-            </TabsTrigger>
-            <TabsTrigger value="notifications" className="rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-cyan-500 data-[state=active]:text-white">
-              <Bell className="w-4 h-4 mr-2" />
-              Notifications
-            </TabsTrigger>
-            <TabsTrigger value="billing" className="rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-cyan-500 data-[state=active]:text-white">
-              <CreditCard className="w-4 h-4 mr-2" />
-              Billing
-            </TabsTrigger>
-          </TabsList>
+            <TabsList className="bg-white/70 backdrop-blur-xl border border-white/50 p-1 rounded-xl min-w-max">
+              <TabsTrigger
+                value="profile"
+                className="rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-cyan-500 data-[state=active]:text-white"
+              >
+                <User className="w-4 h-4 mr-2" />
+                Profile
+              </TabsTrigger>
+              <TabsTrigger
+                value="security"
+                className="rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-cyan-500 data-[state=active]:text-white"
+              >
+                <Shield className="w-4 h-4 mr-2" />
+                Security
+              </TabsTrigger>
+              <TabsTrigger
+                value="notifications"
+                className="rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-cyan-500 data-[state=active]:text-white"
+              >
+                <Bell className="w-4 h-4 mr-2" />
+                Notifications
+              </TabsTrigger>
+              <TabsTrigger
+                value="billing"
+                className="rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-cyan-500 data-[state=active]:text-white"
+              >
+                <CreditCard className="w-4 h-4 mr-2" />
+                Billing
+              </TabsTrigger>
+            </TabsList>
           </div>
 
           {/* Profile Tab */}
@@ -292,17 +316,21 @@ export default function Profile() {
               animate={{ opacity: 1, y: 0 }}
               className="bg-white/70 backdrop-blur-xl rounded-3xl border border-white/50 shadow-xl shadow-blue-500/10 p-8"
             >
-              <h2 className="text-xl font-bold text-gray-900 mb-6">Personal Information</h2>
-              
+              <h2 className="text-xl font-bold text-gray-900 mb-6">
+                Personal Information
+              </h2>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <Label htmlFor="name" className="text-gray-700">Full Name</Label>
+                  <Label htmlFor="name" className="text-gray-700">
+                    Full Name
+                  </Label>
                   <div className="relative mt-1">
                     <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                     <Input
                       id="name"
                       value={name}
-                      onChange={(e) => setName(e.target.value)}
+                      onChange={e => setName(e.target.value)}
                       disabled={!isEditing}
                       className="pl-10 h-12 bg-white/50 border-gray-200 disabled:opacity-60"
                     />
@@ -310,14 +338,16 @@ export default function Profile() {
                 </div>
 
                 <div>
-                  <Label htmlFor="email" className="text-gray-700">Email Address</Label>
+                  <Label htmlFor="email" className="text-gray-700">
+                    Email Address
+                  </Label>
                   <div className="relative mt-1">
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                     <Input
                       id="email"
                       type="email"
                       value={email}
-                      onChange={(e) => setEmail(e.target.value)}
+                      onChange={e => setEmail(e.target.value)}
                       disabled={!isEditing}
                       className="pl-10 h-12 bg-white/50 border-gray-200 disabled:opacity-60"
                     />
@@ -325,13 +355,15 @@ export default function Profile() {
                 </div>
 
                 <div className="md:col-span-2">
-                  <Label htmlFor="company" className="text-gray-700">Company (Optional)</Label>
+                  <Label htmlFor="company" className="text-gray-700">
+                    Company (Optional)
+                  </Label>
                   <div className="relative mt-1">
                     <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                     <Input
                       id="company"
                       value={company}
-                      onChange={(e) => setCompany(e.target.value)}
+                      onChange={e => setCompany(e.target.value)}
                       disabled={!isEditing}
                       placeholder="Your company name"
                       className="pl-10 h-12 bg-white/50 border-gray-200 disabled:opacity-60"
@@ -341,20 +373,30 @@ export default function Profile() {
               </div>
 
               {/* Preferences */}
-              <h2 className="text-xl font-bold text-gray-900 mt-8 mb-6">Preferences</h2>
-              
+              <h2 className="text-xl font-bold text-gray-900 mt-8 mb-6">
+                Preferences
+              </h2>
+
               <div className="space-y-4">
                 <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
                   <div className="flex items-center gap-3">
-                    {theme === 'dark' ? <Moon className="w-5 h-5 text-gray-600" /> : <Sun className="w-5 h-5 text-gray-600" />}
+                    {theme === "dark" ? (
+                      <Moon className="w-5 h-5 text-gray-600" />
+                    ) : (
+                      <Sun className="w-5 h-5 text-gray-600" />
+                    )}
                     <div>
                       <p className="font-medium text-gray-900">Theme</p>
-                      <p className="text-sm text-gray-500">Choose your preferred theme</p>
+                      <p className="text-sm text-gray-500">
+                        Choose your preferred theme
+                      </p>
                     </div>
                   </div>
                   <select
                     value={theme}
-                    onChange={(e) => setTheme(e.target.value as 'light' | 'dark' | 'system')}
+                    onChange={e =>
+                      setTheme(e.target.value as "light" | "dark" | "system")
+                    }
                     className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-gray-700"
                   >
                     <option value="light">Light</option>
@@ -368,12 +410,14 @@ export default function Profile() {
                     <Globe className="w-5 h-5 text-gray-600" />
                     <div>
                       <p className="font-medium text-gray-900">Language</p>
-                      <p className="text-sm text-gray-500">Select your preferred language</p>
+                      <p className="text-sm text-gray-500">
+                        Select your preferred language
+                      </p>
                     </div>
                   </div>
                   <select
                     value={language}
-                    onChange={(e) => setLanguage(e.target.value)}
+                    onChange={e => setLanguage(e.target.value)}
                     className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-gray-700"
                   >
                     <option value="en">English</option>
@@ -395,39 +439,54 @@ export default function Profile() {
             >
               {/* Change Password */}
               <div className="bg-white/70 backdrop-blur-xl rounded-3xl border border-white/50 shadow-xl shadow-blue-500/10 p-8">
-                <h2 className="text-xl font-bold text-gray-900 mb-6">Change Password</h2>
-                
-                <form onSubmit={handleChangePassword} className="space-y-4 max-w-md">
+                <h2 className="text-xl font-bold text-gray-900 mb-6">
+                  Change Password
+                </h2>
+
+                <form
+                  onSubmit={handleChangePassword}
+                  className="space-y-4 max-w-md"
+                >
                   <div>
-                    <Label htmlFor="currentPassword" className="text-gray-700">Current Password</Label>
+                    <Label htmlFor="currentPassword" className="text-gray-700">
+                      Current Password
+                    </Label>
                     <div className="relative mt-1">
                       <Key className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                       <Input
                         id="currentPassword"
-                        type={showCurrentPassword ? 'text' : 'password'}
+                        type={showCurrentPassword ? "text" : "password"}
                         value={currentPassword}
-                        onChange={(e) => setCurrentPassword(e.target.value)}
+                        onChange={e => setCurrentPassword(e.target.value)}
                         className="pl-10 pr-10 h-12 bg-white/50 border-gray-200"
                       />
                       <button
                         type="button"
-                        onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                        onClick={() =>
+                          setShowCurrentPassword(!showCurrentPassword)
+                        }
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                       >
-                        {showCurrentPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                        {showCurrentPassword ? (
+                          <EyeOff className="w-5 h-5" />
+                        ) : (
+                          <Eye className="w-5 h-5" />
+                        )}
                       </button>
                     </div>
                   </div>
 
                   <div>
-                    <Label htmlFor="newPassword" className="text-gray-700">New Password</Label>
+                    <Label htmlFor="newPassword" className="text-gray-700">
+                      New Password
+                    </Label>
                     <div className="relative mt-1">
                       <Key className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                       <Input
                         id="newPassword"
-                        type={showNewPassword ? 'text' : 'password'}
+                        type={showNewPassword ? "text" : "password"}
                         value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
+                        onChange={e => setNewPassword(e.target.value)}
                         className="pl-10 pr-10 h-12 bg-white/50 border-gray-200"
                       />
                       <button
@@ -435,20 +494,26 @@ export default function Profile() {
                         onClick={() => setShowNewPassword(!showNewPassword)}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                       >
-                        {showNewPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                        {showNewPassword ? (
+                          <EyeOff className="w-5 h-5" />
+                        ) : (
+                          <Eye className="w-5 h-5" />
+                        )}
                       </button>
                     </div>
                   </div>
 
                   <div>
-                    <Label htmlFor="confirmPassword" className="text-gray-700">Confirm New Password</Label>
+                    <Label htmlFor="confirmPassword" className="text-gray-700">
+                      Confirm New Password
+                    </Label>
                     <div className="relative mt-1">
                       <Key className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                       <Input
                         id="confirmPassword"
                         type="password"
                         value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        onChange={e => setConfirmPassword(e.target.value)}
                         className="pl-10 h-12 bg-white/50 border-gray-200"
                       />
                     </div>
@@ -459,7 +524,9 @@ export default function Profile() {
                     disabled={isSaving}
                     className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white"
                   >
-                    {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                    {isSaving ? (
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    ) : null}
                     Update Password
                   </Button>
                 </form>
@@ -473,8 +540,12 @@ export default function Profile() {
                       <Smartphone className="w-6 h-6 text-blue-600" />
                     </div>
                     <div>
-                      <h2 className="text-xl font-bold text-gray-900">Two-Factor Authentication</h2>
-                      <p className="text-gray-600">Add an extra layer of security to your account</p>
+                      <h2 className="text-xl font-bold text-gray-900">
+                        Two-Factor Authentication
+                      </h2>
+                      <p className="text-gray-600">
+                        Add an extra layer of security to your account
+                      </p>
                     </div>
                   </div>
                   <Switch
@@ -486,13 +557,19 @@ export default function Profile() {
 
               {/* Danger Zone */}
               <div className="bg-white/70 backdrop-blur-xl rounded-3xl border border-red-200 shadow-xl p-8">
-                <h2 className="text-xl font-bold text-red-600 mb-4">Danger Zone</h2>
-                
+                <h2 className="text-xl font-bold text-red-600 mb-4">
+                  Danger Zone
+                </h2>
+
                 <div className="space-y-4">
                   <div className="flex items-center justify-between p-4 bg-red-50 rounded-xl">
                     <div>
-                      <p className="font-medium text-gray-900">Export Account Data</p>
-                      <p className="text-sm text-gray-500">Download all your data in JSON format</p>
+                      <p className="font-medium text-gray-900">
+                        Export Account Data
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        Download all your data in JSON format
+                      </p>
                     </div>
                     <Button variant="outline" onClick={handleExportData}>
                       <Download className="w-4 h-4 mr-2" />
@@ -502,8 +579,12 @@ export default function Profile() {
 
                   <div className="flex items-center justify-between p-4 bg-red-50 rounded-xl">
                     <div>
-                      <p className="font-medium text-gray-900">Delete Account</p>
-                      <p className="text-sm text-gray-500">Permanently delete your account and all data</p>
+                      <p className="font-medium text-gray-900">
+                        Delete Account
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        Permanently delete your account and all data
+                      </p>
                     </div>
                     <Button variant="destructive" onClick={handleDeleteAccount}>
                       <Trash2 className="w-4 h-4 mr-2" />
@@ -522,16 +603,45 @@ export default function Profile() {
               animate={{ opacity: 1, y: 0 }}
               className="bg-white/70 backdrop-blur-xl rounded-3xl border border-white/50 shadow-xl shadow-blue-500/10 p-8"
             >
-              <h2 className="text-xl font-bold text-gray-900 mb-6">Notification Preferences</h2>
-              
+              <h2 className="text-xl font-bold text-gray-900 mb-6">
+                Notification Preferences
+              </h2>
+
               <div className="space-y-4">
                 {[
-                  { id: 'email', label: 'Email Notifications', desc: 'Receive updates via email', state: emailNotifications, setState: setEmailNotifications },
-                  { id: 'push', label: 'Push Notifications', desc: 'Receive browser notifications', state: pushNotifications, setState: setPushNotifications },
-                  { id: 'marketing', label: 'Marketing Emails', desc: 'News, tips, and special offers', state: marketingEmails, setState: setMarketingEmails },
-                  { id: 'security', label: 'Security Alerts', desc: 'Important security notifications', state: securityAlerts, setState: setSecurityAlerts },
-                ].map((item) => (
-                  <div key={item.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                  {
+                    id: "email",
+                    label: "Email Notifications",
+                    desc: "Receive updates via email",
+                    state: emailNotifications,
+                    setState: setEmailNotifications,
+                  },
+                  {
+                    id: "push",
+                    label: "Push Notifications",
+                    desc: "Receive browser notifications",
+                    state: pushNotifications,
+                    setState: setPushNotifications,
+                  },
+                  {
+                    id: "marketing",
+                    label: "Marketing Emails",
+                    desc: "News, tips, and special offers",
+                    state: marketingEmails,
+                    setState: setMarketingEmails,
+                  },
+                  {
+                    id: "security",
+                    label: "Security Alerts",
+                    desc: "Important security notifications",
+                    state: securityAlerts,
+                    setState: setSecurityAlerts,
+                  },
+                ].map(item => (
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between p-4 bg-gray-50 rounded-xl"
+                  >
                     <div>
                       <p className="font-medium text-gray-900">{item.label}</p>
                       <p className="text-sm text-gray-500">{item.desc}</p>
@@ -555,20 +665,27 @@ export default function Profile() {
             >
               {/* Current Plan */}
               <div className="bg-white/70 backdrop-blur-xl rounded-3xl border border-white/50 shadow-xl shadow-blue-500/10 p-8">
-                <h2 className="text-xl font-bold text-gray-900 mb-6">Current Plan</h2>
-                
+                <h2 className="text-xl font-bold text-gray-900 mb-6">
+                  Current Plan
+                </h2>
+
                 <div className="flex items-center justify-between p-6 bg-gradient-to-r from-blue-500/10 to-cyan-500/10 rounded-2xl border border-blue-200">
                   <div>
                     <p className="text-2xl font-bold text-gray-900">
-                      {user.plan.charAt(0).toUpperCase() + user.plan.slice(1)} Plan
+                      {user.plan.charAt(0).toUpperCase() + user.plan.slice(1)}{" "}
+                      Plan
                     </p>
                     <p className="text-gray-600">
-                      {user.plan === 'free' ? '10 credits/month' : user.plan === 'pro' ? '500 credits/month' : '5,000 credits/month'}
+                      {user.plan === "free"
+                        ? "10 credits/month"
+                        : user.plan === "pro"
+                          ? "500 credits/month"
+                          : "5,000 credits/month"}
                     </p>
                   </div>
                   <a href="/pricing">
                     <Button className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white">
-                      {user.plan === 'free' ? 'Upgrade' : 'Manage Plan'}
+                      {user.plan === "free" ? "Upgrade" : "Manage Plan"}
                       <ChevronRight className="w-4 h-4 ml-2" />
                     </Button>
                   </a>
@@ -577,11 +694,15 @@ export default function Profile() {
 
               {/* Credits */}
               <div className="bg-white/70 backdrop-blur-xl rounded-3xl border border-white/50 shadow-xl shadow-blue-500/10 p-8">
-                <h2 className="text-xl font-bold text-gray-900 mb-6">Credits</h2>
-                
+                <h2 className="text-xl font-bold text-gray-900 mb-6">
+                  Credits
+                </h2>
+
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="p-4 bg-gray-50 rounded-xl text-center">
-                    <p className="text-3xl font-bold text-blue-600">{user.credits}</p>
+                    <p className="text-3xl font-bold text-blue-600">
+                      {user.credits}
+                    </p>
                     <p className="text-sm text-gray-500">Available</p>
                   </div>
                   <div className="p-4 bg-gray-50 rounded-xl text-center">
@@ -602,15 +723,19 @@ export default function Profile() {
 
               {/* Payment Method */}
               <div className="bg-white/70 backdrop-blur-xl rounded-3xl border border-white/50 shadow-xl shadow-blue-500/10 p-8">
-                <h2 className="text-xl font-bold text-gray-900 mb-6">Payment Method</h2>
-                
+                <h2 className="text-xl font-bold text-gray-900 mb-6">
+                  Payment Method
+                </h2>
+
                 <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-8 bg-gradient-to-r from-blue-600 to-blue-800 rounded flex items-center justify-center text-white text-xs font-bold">
                       VISA
                     </div>
                     <div>
-                      <p className="font-medium text-gray-900">•••• •••• •••• 4242</p>
+                      <p className="font-medium text-gray-900">
+                        •••• •••• •••• 4242
+                      </p>
                       <p className="text-sm text-gray-500">Expires 12/2027</p>
                     </div>
                   </div>

@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { LocaleToggle } from "@/components/LocaleToggle";
 import { HelpButton } from "@/components/help";
 import { DashboardCard, DashboardKpiCard } from "@/components/dashboard";
 import {
@@ -145,34 +146,34 @@ export default function AdminNotifications() {
   }
 
   const stats = statsQuery.data;
-  const items: UnifiedNotification[] =
-    (listQuery.data?.items as any) ?? [];
+  const items: UnifiedNotification[] = (listQuery.data?.items as any) ?? [];
   const hasMore = listQuery.data?.hasMore ?? false;
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 p-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap items-center gap-3">
           <Bell className="h-6 w-6" />
           <h1 className="text-2xl font-bold">Notification Center</h1>
         </div>
-        <div className="flex items-center gap-2">
-        <HelpButton page="/admin/notifications" variant="ghost" size="sm" />
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => {
-            statsQuery.refetch();
-            listQuery.refetch();
-          }}
-          disabled={statsQuery.isLoading || listQuery.isLoading}
-        >
-          <RefreshCw
-            className={`mr-2 h-4 w-4 ${statsQuery.isLoading ? "animate-spin" : ""}`}
-          />
-          Refresh
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <LocaleToggle className="shrink-0" />
+          <HelpButton page="/admin/notifications" variant="ghost" size="sm" />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              statsQuery.refetch();
+              listQuery.refetch();
+            }}
+            disabled={statsQuery.isLoading || listQuery.isLoading}
+          >
+            <RefreshCw
+              className={`mr-2 h-4 w-4 ${statsQuery.isLoading ? "animate-spin" : ""}`}
+            />
+            Refresh
+          </Button>
         </div>
       </div>
 
@@ -226,52 +227,52 @@ export default function AdminNotifications() {
       {stats && (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {/* Source Breakdown */}
-          <DashboardCard title="By Source" titleClassName="text-sm font-medium text-slate-900">
+          <DashboardCard
+            title="By Source"
+            titleClassName="text-sm font-medium text-slate-900"
+          >
             <div className="space-y-2">
-              {stats.bySource.map(
-                (s: { source: string; count: number }) => {
-                  const max = Math.max(
-                    ...stats.bySource.map(
-                      (x: { count: number }) => x.count,
-                    ),
-                    1,
-                  );
-                  return (
-                    <div key={s.source} className="flex items-center gap-2">
-                      <Badge
-                        variant="secondary"
-                        className={`w-24 justify-center ${SOURCE_COLORS[s.source] ?? ""}`}
-                      >
-                        {s.source}
-                      </Badge>
-                      <div className="h-5 flex-1 rounded bg-muted">
-                        <div
-                          className={`h-full rounded ${s.source === "user" ? "bg-indigo-500" : s.source === "orchestrator" ? "bg-emerald-500" : "bg-amber-500"}`}
-                          style={{
-                            width: `${(s.count / max) * 100}%`,
-                          }}
-                        />
-                      </div>
-                      <span className="w-8 text-right text-sm font-medium">
-                        {s.count}
-                      </span>
+              {stats.bySource.map((s: { source: string; count: number }) => {
+                const max = Math.max(
+                  ...stats.bySource.map((x: { count: number }) => x.count),
+                  1
+                );
+                return (
+                  <div key={s.source} className="flex items-center gap-2">
+                    <Badge
+                      variant="secondary"
+                      className={`w-24 justify-center ${SOURCE_COLORS[s.source] ?? ""}`}
+                    >
+                      {s.source}
+                    </Badge>
+                    <div className="h-5 flex-1 rounded bg-muted">
+                      <div
+                        className={`h-full rounded ${s.source === "user" ? "bg-indigo-500" : s.source === "orchestrator" ? "bg-emerald-500" : "bg-amber-500"}`}
+                        style={{
+                          width: `${(s.count / max) * 100}%`,
+                        }}
+                      />
                     </div>
-                  );
-                },
-              )}
+                    <span className="w-8 text-right text-sm font-medium">
+                      {s.count}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </DashboardCard>
 
           {/* Severity Distribution */}
-          <DashboardCard title="By Severity" titleClassName="text-sm font-medium text-slate-900">
+          <DashboardCard
+            title="By Severity"
+            titleClassName="text-sm font-medium text-slate-900"
+          >
             <div className="space-y-2">
               {stats.bySeverity.map(
                 (s: { severity: string; count: number }) => {
                   const max = Math.max(
-                    ...stats.bySeverity.map(
-                      (x: { count: number }) => x.count,
-                    ),
-                    1,
+                    ...stats.bySeverity.map((x: { count: number }) => x.count),
+                    1
                   );
                   const barColor =
                     s.severity === "critical"
@@ -282,10 +283,7 @@ export default function AdminNotifications() {
                           ? "bg-yellow-400"
                           : "bg-blue-400";
                   return (
-                    <div
-                      key={s.severity}
-                      className="flex items-center gap-2"
-                    >
+                    <div key={s.severity} className="flex items-center gap-2">
                       <Badge
                         variant="secondary"
                         className={`w-24 justify-center ${SEVERITY_COLORS[s.severity] ?? ""}`}
@@ -305,7 +303,7 @@ export default function AdminNotifications() {
                       </span>
                     </div>
                   );
-                },
+                }
               )}
             </div>
           </DashboardCard>
@@ -319,7 +317,7 @@ export default function AdminNotifications() {
             <Label htmlFor="source-filter">Source</Label>
             <Select
               value={source}
-              onValueChange={(v) => {
+              onValueChange={v => {
                 setSource(v);
                 setPage(0);
               }}
@@ -344,7 +342,7 @@ export default function AdminNotifications() {
             <Label htmlFor="severity-filter">Severity</Label>
             <Select
               value={severity}
-              onValueChange={(v) => {
+              onValueChange={v => {
                 setSeverity(v);
                 setPage(0);
               }}
@@ -373,7 +371,7 @@ export default function AdminNotifications() {
               type="date"
               className="w-40"
               value={dateFrom}
-              onChange={(e) => {
+              onChange={e => {
                 setDateFrom(e.target.value);
                 setPage(0);
               }}
@@ -388,7 +386,7 @@ export default function AdminNotifications() {
               type="date"
               className="w-40"
               value={dateTo}
-              onChange={(e) => {
+              onChange={e => {
                 setDateTo(e.target.value);
                 setPage(0);
               }}
@@ -427,13 +425,13 @@ export default function AdminNotifications() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {items.map((item) => (
+                  {items.map(item => (
                     <TableRow
                       key={item.id}
                       className={`cursor-pointer ${!item.isRead ? "font-medium" : ""} ${selectedNotification?.id === item.id ? "bg-muted" : ""}`}
                       tabIndex={0}
                       onClick={() => setSelectedNotification(item)}
-                      onKeyDown={(e) => {
+                      onKeyDown={e => {
                         if (e.key === "Enter" || e.key === " ") {
                           e.preventDefault();
                           setSelectedNotification(item);
@@ -471,7 +469,7 @@ export default function AdminNotifications() {
                   variant="ghost"
                   size="sm"
                   disabled={page === 0}
-                  onClick={() => setPage((p) => Math.max(0, p - 1))}
+                  onClick={() => setPage(p => Math.max(0, p - 1))}
                   aria-label="Previous page"
                 >
                   <ChevronLeft className="mr-1 h-4 w-4" />
@@ -484,7 +482,7 @@ export default function AdminNotifications() {
                   variant="ghost"
                   size="sm"
                   disabled={!hasMore}
-                  onClick={() => setPage((p) => p + 1)}
+                  onClick={() => setPage(p => p + 1)}
                   aria-label="Next page"
                 >
                   Next
@@ -529,9 +527,7 @@ export default function AdminNotifications() {
             <div className="space-y-4">
               {/* Content */}
               {selectedNotification.content && (
-                <p className="text-sm">
-                  {selectedNotification.content}
-                </p>
+                <p className="text-sm">{selectedNotification.content}</p>
               )}
 
               {/* Action URL */}
@@ -559,11 +555,7 @@ export default function AdminNotifications() {
                     Metadata
                   </p>
                   <pre className="max-h-48 overflow-auto rounded bg-muted p-2 text-xs">
-                    {JSON.stringify(
-                      selectedNotification.metadata,
-                      null,
-                      2,
-                    )}
+                    {JSON.stringify(selectedNotification.metadata, null, 2)}
                   </pre>
                 </div>
               )}
@@ -572,16 +564,12 @@ export default function AdminNotifications() {
               <div className="text-xs text-muted-foreground">
                 <p>
                   Created:{" "}
-                  {new Date(
-                    selectedNotification.createdAt,
-                  ).toLocaleString()}
+                  {new Date(selectedNotification.createdAt).toLocaleString()}
                 </p>
                 {selectedNotification.readAt && (
                   <p>
                     Read:{" "}
-                    {new Date(
-                      selectedNotification.readAt,
-                    ).toLocaleString()}
+                    {new Date(selectedNotification.readAt).toLocaleString()}
                   </p>
                 )}
               </div>

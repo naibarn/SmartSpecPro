@@ -18,39 +18,108 @@ function hasKey(obj: Record<string, string>, key: string): boolean {
 }
 
 const REQUIRED_DASHBOARD_KEYS = [
-  "welcome", "subtitle", "websitePreview", "signOut",
-  "healthBadge.critical", "healthBadge.warning", "healthBadge.healthy",
-  "prioritySnapshot.eyebrow", "prioritySnapshot.title", "prioritySnapshot.description",
-  "nextBestActions.eyebrow", "nextBestActions.title", "nextBestActions.description",
-  "trendHealth.eyebrow", "trendHealth.title", "trendHealth.description",
-  "stats.creditsAvailable", "stats.thirtyDayUsage", "stats.requests", "stats.recentMediaJobs",
-  "notices.pendingApprovals", "notices.failedGenerations", "notices.workflowsRunning",
-  "notices.creditsLow", "notices.reviewCoverage", "notices.allHealthy",
-  "quickActions.mediaStudio", "quickActions.chat", "quickActions.documentManagement",
-  "quickActions.presentations", "quickActions.agencies", "quickActions.buyCredits",
-  "status.completed", "status.processing", "status.pending", "status.failed", "status.cancelled",
-  "momentum.noData", "momentum.insufficientHistory", "momentum.rising", "momentum.easing", "momentum.steady",
+  "welcome",
+  "subtitle",
+  "websitePreview",
+  "signOut",
+  "healthBadge.critical",
+  "healthBadge.warning",
+  "healthBadge.healthy",
+  "prioritySnapshot.eyebrow",
+  "prioritySnapshot.title",
+  "prioritySnapshot.description",
+  "nextBestActions.eyebrow",
+  "nextBestActions.title",
+  "nextBestActions.description",
+  "trendHealth.eyebrow",
+  "trendHealth.title",
+  "trendHealth.description",
+  "stats.creditsAvailable",
+  "stats.thirtyDayUsage",
+  "stats.requests",
+  "stats.recentMediaJobs",
+  "notices.pendingApprovals",
+  "notices.failedGenerations",
+  "notices.workflowsRunning",
+  "notices.creditsLow",
+  "notices.reviewCoverage",
+  "notices.allHealthy",
+  "quickActions.mediaStudio",
+  "quickActions.chat",
+  "quickActions.documentManagement",
+  "quickActions.presentations",
+  "quickActions.agencies",
+  "quickActions.buyCredits",
+  "status.completed",
+  "status.processing",
+  "status.pending",
+  "status.failed",
+  "status.cancelled",
+  "momentum.noData",
+  "momentum.insufficientHistory",
+  "momentum.rising",
+  "momentum.easing",
+  "momentum.steady",
 ];
 
 const REQUIRED_COMMON_KEYS = [
-  "save", "cancel", "delete", "edit", "create", "close", "back", "next", "submit", "confirm",
-  "search", "filter", "sort", "required", "optional", "loading", "success", "error",
-  "pending", "active", "inactive",
-  "confirmDialog.title", "confirmDialog.irreversible",
-  "pagination.showing", "pagination.page", "pagination.previous", "pagination.next",
-  "emptyState.noItems", "emptyState.nothingYet",
-  "fileActions.upload", "fileActions.download", "fileActions.export", "fileActions.import",
-  "toast.saved", "toast.deleted", "toast.copied", "toast.failed", "toast.updated",
+  "save",
+  "cancel",
+  "delete",
+  "edit",
+  "create",
+  "close",
+  "back",
+  "next",
+  "submit",
+  "confirm",
+  "search",
+  "filter",
+  "sort",
+  "required",
+  "optional",
+  "loading",
+  "success",
+  "error",
+  "pending",
+  "active",
+  "inactive",
+  "confirmDialog.title",
+  "confirmDialog.irreversible",
+  "pagination.showing",
+  "pagination.page",
+  "pagination.previous",
+  "pagination.next",
+  "emptyState.noItems",
+  "emptyState.nothingYet",
+  "fileActions.upload",
+  "fileActions.download",
+  "fileActions.export",
+  "fileActions.import",
+  "toast.saved",
+  "toast.deleted",
+  "toast.copied",
+  "toast.failed",
+  "toast.updated",
 ];
 
 const REQUIRED_ERRORS_KEYS = [
-  "notFound.title", "notFound.description",
-  "forbidden.title", "forbidden.description",
-  "serverError.title", "serverError.description",
-  "network.connectionLost", "network.requestFailed",
-  "generic.somethingWentWrong", "generic.tryAgain",
-  "validation.required", "validation.invalidEmail", "validation.passwordTooShort", "validation.passwordMismatch",
-  "session.expired", "session.unauthorized",
+  "notFound.title",
+  "notFound.description",
+  "forbidden.title",
+  "forbidden.description",
+  "serverError.title",
+  "serverError.description",
+  "network.connectionLost",
+  "network.requestFailed",
+  "generic.somethingWentWrong",
+  "generic.tryAgain",
+  "validation.required",
+  "validation.invalidEmail",
+  "validation.passwordTooShort",
+  "validation.passwordMismatch",
+  "session.expired",
+  "session.unauthorized",
 ];
 
 describe("en/dashboard.json — key completeness", () => {
@@ -125,36 +194,57 @@ describe("en/errors.json — key completeness", () => {
   });
 });
 
-describe("Dashboard.tsx — uses useTranslation", () => {
-  it("Dashboard.tsx imports useTranslation from react-i18next", () => {
-    const src = readFileSync(join(import.meta.dirname, "../../pages/Dashboard.tsx"), "utf-8");
-    expect(src).toContain("useTranslation");
+describe("Dashboard.tsx — uses scoped i18n", () => {
+  it("Dashboard.tsx imports useScopedTranslation", () => {
+    const src = readFileSync(
+      join(import.meta.dirname, "../../pages/Dashboard.tsx"),
+      "utf-8"
+    );
+    expect(src).toContain("useScopedTranslation");
+    expect(src).toContain(
+      'useScopedTranslation(["dashboard", "common", "media"])'
+    );
   });
 
   it("Dashboard.tsx uses t() for welcome message", () => {
-    const src = readFileSync(join(import.meta.dirname, "../../pages/Dashboard.tsx"), "utf-8");
-    expect(src).toContain("t('dashboard:welcome'");
+    const src = readFileSync(
+      join(import.meta.dirname, "../../pages/Dashboard.tsx"),
+      "utf-8"
+    );
+    expect(src).toContain('t("dashboard:welcome"');
   });
 
   it("Dashboard.tsx uses t() for stats labels", () => {
-    const src = readFileSync(join(import.meta.dirname, "../../pages/Dashboard.tsx"), "utf-8");
+    const src = readFileSync(
+      join(import.meta.dirname, "../../pages/Dashboard.tsx"),
+      "utf-8"
+    );
     expect(src).toContain("dashboard:stats.creditsAvailable");
   });
 
   it("Dashboard.tsx uses t() for healthBadge labels", () => {
-    const src = readFileSync(join(import.meta.dirname, "../../pages/Dashboard.tsx"), "utf-8");
+    const src = readFileSync(
+      join(import.meta.dirname, "../../pages/Dashboard.tsx"),
+      "utf-8"
+    );
     expect(src).toContain("dashboard:healthBadge.critical");
     expect(src).toContain("dashboard:healthBadge.healthy");
   });
 
   it("Dashboard.tsx uses t() for notices", () => {
-    const src = readFileSync(join(import.meta.dirname, "../../pages/Dashboard.tsx"), "utf-8");
+    const src = readFileSync(
+      join(import.meta.dirname, "../../pages/Dashboard.tsx"),
+      "utf-8"
+    );
     expect(src).toContain("dashboard:notices.pendingApprovals");
     expect(src).toContain("dashboard:notices.allHealthy");
   });
 
   it("Dashboard.tsx uses t() for quickActions", () => {
-    const src = readFileSync(join(import.meta.dirname, "../../pages/Dashboard.tsx"), "utf-8");
+    const src = readFileSync(
+      join(import.meta.dirname, "../../pages/Dashboard.tsx"),
+      "utf-8"
+    );
     expect(src).toContain("dashboard:quickActions.mediaStudio");
   });
 });

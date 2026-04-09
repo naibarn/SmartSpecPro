@@ -8,6 +8,7 @@ vi.mock("../../_core/env", () => ({
   },
 }));
 
+import * as appRuntimeConfig from "../appRuntimeConfig";
 import { AgencyBridge, agencyBridge } from "../agencyBridge";
 
 describe("AgencyBridge", () => {
@@ -18,6 +19,12 @@ describe("AgencyBridge", () => {
     bridge = new AgencyBridge();
     fetchSpy = vi.fn();
     globalThis.fetch = fetchSpy;
+    vi.spyOn(appRuntimeConfig, "getAppRuntimeConfig").mockResolvedValue({
+      pythonBackendUrl: "http://localhost:8000",
+    } as any);
+    vi.spyOn(appRuntimeConfig, "getPreferredInternalToken").mockResolvedValue(
+      "test-gateway-token",
+    );
   });
 
   afterEach(() => {
@@ -60,6 +67,107 @@ describe("AgencyBridge", () => {
       expect(result.runId).toBe("run-001");
       expect(result.status).toBe("completed");
       expect(result.response).toBe("Analysis complete");
+      expect(result.hybridSummary).toBeNull();
+    });
+
+    it("forwards compile preview metadata and maps hybrid runtime summaries", async () => {
+      const mockResponse = {
+        run_id: "run-003",
+        status: "completed",
+        response: "Hybrid analysis complete",
+        credits_used: 2.5,
+        duration_ms: 1800,
+        step_attempt_snapshots: [
+          {
+            model_id: "agency_swarm",
+            provider: "agency_swarm",
+            input_tokens: 0,
+            output_tokens: 0,
+            credits_used: 0,
+            engine: "agency_swarm",
+            subgraph_id: "sg_research",
+            phase: "subgraph",
+          },
+        ],
+        hybrid_summary: {
+          usesHybrid: true,
+          engineMix: ["agency_swarm", "adk2"],
+          subgraphCount: 2,
+          bridgeCount: 1,
+          compileStatus: "success",
+          artifactPublicationMode: "agency_run_artifacts",
+        },
+      };
+
+      fetchSpy.mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => mockResponse,
+      });
+
+      const result = await bridge.executeRun({
+        agencyId: "agency-001",
+        conversationId: "conv-001",
+        message: "Analyze this data",
+        userToken: "user-jwt-token",
+        tenantId: "tenant-001",
+        userId: 42,
+        compilePreview: {
+          status: "success",
+          ir: {
+            irVersion: "1.0",
+            workflow: {
+              name: "Hybrid Agency",
+              documentVersion: 2,
+              defaultEngine: "agency_swarm",
+              compileMode: "strict",
+              compatibilityMode: "hybrid",
+            },
+            graph: {
+              nodes: [],
+              edges: [],
+              entryNodes: [],
+              exitNodes: [],
+            },
+            subgraphs: [],
+          },
+          diagnostics: [],
+          compiledSubgraphs: [],
+          bridges: [],
+          executionPlan: [],
+          planSummary: {
+            engineMix: ["agency_swarm", "adk2"],
+            subgraphCount: 2,
+            bridgeCount: 1,
+            usesHybrid: true,
+            warningCount: 0,
+            errorCount: 0,
+          },
+        },
+      });
+
+      const [, options] = fetchSpy.mock.calls[0];
+      expect(JSON.parse(options.body)).toEqual(
+        expect.objectContaining({
+          compile_preview: expect.objectContaining({
+            planSummary: expect.objectContaining({
+              usesHybrid: true,
+            }),
+          }),
+        }),
+      );
+      expect(result.stepAttemptSnapshots[0]).toEqual(
+        expect.objectContaining({
+          subgraph_id: "sg_research",
+          phase: "subgraph",
+        }),
+      );
+      expect(result.hybridSummary).toEqual(
+        expect.objectContaining({
+          usesHybrid: true,
+          bridgeCount: 1,
+        }),
+      );
     });
 
     it("passes auth headers (Authorization + X-User-Token + X-Tenant-Id)", async () => {

@@ -146,6 +146,8 @@ class RunResult(BaseModel):
     duration_ms: int = 0
     structured_result: dict[str, Any] | None = None
     preview_artifacts: list[dict[str, Any]] = Field(default_factory=list)
+    step_attempt_snapshots: list[dict[str, Any]] = Field(default_factory=list)
+    hybrid_summary: dict[str, Any] | None = None
     # v1.6: Per-model usage breakdown (main agent + sub-agents)
     usage_breakdown: list[UsageBreakdown] = Field(default_factory=list)
     prompt_tokens: int = 0

@@ -11,8 +11,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { trpc } from '@/lib/trpc';
 import { toast } from 'sonner';
 import { useScopedTranslation } from '@/i18n/useScopedTranslation';
+import { getSmartSpecWebEndpoint } from '@/lib/webRuntime';
 import {
   Sparkles,
   Mail,
@@ -30,6 +32,7 @@ type Step = 'choose' | 'input' | 'sent' | 'reset' | 'success';
 
 export default function ForgotPassword() {
   const { t } = useScopedTranslation('auth');
+  const { data: recoveryCapabilities } = trpc.auth.getRecoveryCapabilities.useQuery();
   const [step, setStep] = useState<Step>('choose');
   const [channel, setChannel] = useState<Channel>('email');
   const [email, setEmail] = useState('');
@@ -38,12 +41,14 @@ export default function ForgotPassword() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const smsRecoveryEnabled = recoveryCapabilities?.sms.enabled ?? false;
 
   const destination = channel === 'sms' ? phone : email;
   const destinationLabel = channel === 'sms' ? phone : email;
 
   const handleSendCode = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (channel === 'sms' && !smsRecoveryEnabled) { toast.error(t('recovery.smsUnavailable')); return; }
     if (channel === 'sms' && !phone) { toast.error(t('forgot.toast.phoneRequired')); return; }
     if (channel !== 'sms' && !email) { toast.error(t('forgot.toast.emailRequired')); return; }
 
@@ -52,7 +57,7 @@ export default function ForgotPassword() {
       const body: any = { channel };
       if (channel === 'sms') { body.phone = phone; } else { body.email = email; }
 
-      const response = await fetch('/trpc/auth.forgotPassword', {
+      const response = await fetch(getSmartSpecWebEndpoint('/trpc/auth.forgotPassword'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ json: body }),
@@ -82,7 +87,7 @@ export default function ForgotPassword() {
       const body: any = { code, channel };
       if (channel === 'sms') { body.phone = phone; } else { body.email = email; }
 
-      const response = await fetch('/trpc/auth.verifyResetCode', {
+      const response = await fetch(getSmartSpecWebEndpoint('/trpc/auth.verifyResetCode'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ json: body }),
@@ -108,7 +113,7 @@ export default function ForgotPassword() {
       const body: any = { code, newPassword, channel };
       if (channel === 'sms') { body.phone = phone; } else { body.email = email; }
 
-      const response = await fetch('/trpc/auth.resetPassword', {
+      const response = await fetch(getSmartSpecWebEndpoint('/trpc/auth.resetPassword'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ json: body }),
@@ -246,12 +251,18 @@ export default function ForgotPassword() {
                     {[
                       { ch: 'email' as Channel, icon: Mail, label: 'Primary Email', desc: 'Send code to your registered email' },
                       { ch: 'backup_email' as Channel, icon: MailPlus, label: 'Backup Email', desc: 'Send code to your recovery email' },
-                      { ch: 'sms' as Channel, icon: Phone, label: 'SMS', desc: 'Send code to your verified phone number' },
+                      { ch: 'sms' as Channel, icon: Phone, label: 'SMS', desc: smsRecoveryEnabled ? 'Send code to your verified phone number' : t('recovery.smsUnavailable'), disabled: !smsRecoveryEnabled },
                     ].map((opt) => (
                       <button
                         key={opt.ch}
-                        onClick={() => { setChannel(opt.ch); setStep('input'); }}
-                        className="w-full flex items-center gap-4 p-4 rounded-xl border border-gray-200 hover:border-cyan-400 hover:bg-cyan-50/50 transition-all text-left"
+                        type="button"
+                        onClick={() => { if (!opt.disabled) { setChannel(opt.ch); setStep('input'); } }}
+                        disabled={opt.disabled}
+                        className={`w-full flex items-center gap-4 p-4 rounded-xl border text-left transition-all ${
+                          opt.disabled
+                            ? 'cursor-not-allowed border-gray-200 bg-gray-50/60 opacity-60'
+                            : 'border-gray-200 hover:border-cyan-400 hover:bg-cyan-50/50'
+                        }`}
                       >
                         <div className="w-10 h-10 rounded-lg bg-cyan-100 flex items-center justify-center shrink-0">
                           <opt.icon className="w-5 h-5 text-cyan-600" />
@@ -293,6 +304,9 @@ export default function ForgotPassword() {
                       {channel === 'sms' ? (
                         <>
                           <Label htmlFor="phone" className="text-gray-700">Phone Number (E.164)</Label>
+                          {!smsRecoveryEnabled && (
+                            <p className="mt-2 text-sm text-amber-700">{t('recovery.smsUnavailable')}</p>
+                          )}
                           <div className="relative mt-1">
                             <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                             <Input
@@ -301,6 +315,7 @@ export default function ForgotPassword() {
                               placeholder="+66812345678"
                               value={phone}
                               onChange={(e) => setPhone(e.target.value)}
+                              disabled={!smsRecoveryEnabled}
                               className="pl-10 h-12 bg-white/50 border-gray-200 focus:border-cyan-500 focus:ring-cyan-500"
                             />
                           </div>
@@ -325,7 +340,7 @@ export default function ForgotPassword() {
 
                     <Button
                       type="submit"
-                      disabled={isLoading}
+                      disabled={isLoading || (channel === 'sms' && !smsRecoveryEnabled)}
                       className="w-full h-12 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-medium"
                     >
                       {isLoading ? (

@@ -2,6 +2,7 @@ import * as Sentry from "@sentry/react";
 import { trpc } from "@/lib/trpc";
 import { getPrivateVaultAccessToken } from "@/lib/privateVault";
 import { parseSampleRate, shouldEnableBrowserSentry } from "@/lib/sentryConfig";
+import { getSmartSpecWebEndpoint } from "@/lib/webRuntime";
 import { UNAUTHED_ERR_MSG } from '@shared/const';
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { httpBatchLink, httpLink, TRPCClientError } from "@trpc/client";
@@ -203,7 +204,7 @@ const hasActiveSession = async (): Promise<boolean> => {
 
   authRecheckInFlight = (async () => {
     try {
-      const response = await globalThis.fetch("/trpc/auth.me", {
+      const response = await globalThis.fetch(getSmartSpecWebEndpoint("/trpc/auth.me"), {
         method: "GET",
         credentials: "include",
       });
@@ -279,7 +280,7 @@ const trpcClient = trpc.createClient({
   links: [
     // Use httpLink instead of httpBatchLink to isolate issues
     httpLink({
-      url: "/trpc",
+      url: getSmartSpecWebEndpoint("/trpc"),
       transformer: superjson,
       async fetch(input, init) {
         const requestUrl =

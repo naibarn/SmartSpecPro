@@ -25,6 +25,10 @@ const createLiveBrowserSessionMutateAsync = vi.fn();
 const sendLiveBrowserCommandMutateAsync = vi.fn();
 const getSessionFetch = vi.fn();
 const getRunPreviewFetch = vi.fn();
+const createHybridPreviewTokenMutateAsync = vi.fn();
+const refreshHybridPreviewTokenMutateAsync = vi.fn();
+const getCompilePreviewFetch = vi.fn();
+const submitApprovalMutateAsync = vi.fn();
 
 vi.mock("wouter", () => ({
   useLocation: () => ["/agencies/agency-1", mockSetLocation],
@@ -78,6 +82,7 @@ vi.mock("@/lib/trpc", () => ({
     useUtils: () => ({
       agency: {
         getRunPreview: { fetch: getRunPreviewFetch },
+        getCompilePreview: { fetch: getCompilePreviewFetch },
       },
       liveBrowser: {
         getSession: { fetch: getSessionFetch },
@@ -92,8 +97,19 @@ vi.mock("@/lib/trpc", () => ({
       reviewAgency: {
         useMutation: () => ({ mutateAsync: vi.fn(), isPending: false }),
       },
+      submitApproval: {
+        useMutation: () => ({ mutateAsync: submitApprovalMutateAsync, isPending: false }),
+      },
       commitPreview: {
         useMutation: () => ({ mutate: vi.fn(), isPending: false }),
+      },
+    },
+    hybridOrchestration: {
+      createPreviewToken: {
+        useMutation: () => ({ mutateAsync: createHybridPreviewTokenMutateAsync, isPending: false }),
+      },
+      refreshPreviewToken: {
+        useMutation: () => ({ mutateAsync: refreshHybridPreviewTokenMutateAsync, isPending: false }),
       },
     },
     liveBrowser: {
@@ -107,12 +123,62 @@ vi.mock("@/lib/trpc", () => ({
   },
 }));
 
+vi.mock("@/i18n/useScopedTranslation", () => ({
+  useScopedTranslation: () => ({
+    t: (key: string, values?: Record<string, string | number>) => {
+      const dictionary: Record<string, string> = {
+        "chat.agency": "Agency",
+        "chat.agencyNotFound": "Agency not found",
+        "chat.backToAgencies": "Back",
+        "chat.agentsCount": `${values?.count ?? 0} agents`,
+        "chat.review": "Review",
+        "chat.runAgencyReview": "Run review",
+        "chat.openBrowserSession": "Open Browser Session",
+        "chat.credits": "credits",
+        "chat.quickBrowserInstruction": "Quick Browser Instruction",
+        "chat.quickBrowserInstructionHint": "Queue the next task for the browser session.",
+        "chat.browserskillPlaceholder": "Choose browser skill",
+        "chat.browserskillGoalPlaceholder": "Find the right site, compare choices",
+        "chat.queuingInstruction": "Queuing...",
+        "chat.sendBrowserInstruction": "Send Browser Instruction",
+        "chat.browserCommandQueued": "Instruction queued for this Browser Session.",
+        "chat.browserCommandFailed": "Instruction failed",
+        "chat.returnToAgency": "Return to agency",
+        "chat.messagePlaceholder": `Message ${values?.name ?? "Agency"}`,
+        "chat.sendMessage": "Send a message to start the conversation",
+        "chat.errorTitle": "Something went wrong",
+        "chat.retry": "Retry",
+      };
+      return dictionary[key] ?? key;
+    },
+  }),
+}));
+
 import AgencyChat from "../AgencyChat";
 
 describe("AgencyChat Browser Session surface", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    createHybridPreviewTokenMutateAsync.mockResolvedValue({
+      token: "preview-token-123",
+      expiresAt: "2026-03-24T12:00:00.000Z",
+    });
+    refreshHybridPreviewTokenMutateAsync.mockResolvedValue({
+      token: "preview-token-456",
+      expiresAt: "2026-03-24T12:30:00.000Z",
+    });
+    submitApprovalMutateAsync.mockResolvedValue({ success: true });
+    getCompilePreviewFetch.mockResolvedValue({
+      status: "success",
+      diagnostics: [],
+      planSummary: {
+        engineMix: ["agency_swarm"],
+        subgraphCount: 1,
+        bridgeCount: 0,
+      },
+    });
     useAgencyStreamMock.mockReturnValue({
+      runId: null,
       messages: [],
       activeAgent: null,
       isStreaming: false,
@@ -123,6 +189,8 @@ describe("AgencyChat Browser Session surface", () => {
       guardrailEvents: [],
       pendingApproval: null,
       isPollingFallback: false,
+      hybridSummary: null,
+      stepAttemptSnapshots: [],
       connect: vi.fn(),
       disconnect: vi.fn(),
     });

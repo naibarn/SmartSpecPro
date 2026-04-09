@@ -98,6 +98,9 @@ const GroupManagement = lazy(() => import("./pages/GroupManagement"));
 const GroupDiscovery = lazy(() => import("./pages/GroupDiscovery"));
 const GroupDetailPanel = lazy(() => import("./components/groups/GroupDetailPanel"));
 const Settings = lazy(() => import("./pages/Settings"));
+const AdminDesktopHost = lazy(() => import("./pages/AdminDesktopHost"));
+const DesktopOpen = lazy(() => import("./pages/DesktopOpen"));
+const DesktopView = lazy(() => import("./pages/DesktopView"));
 const SkillBrowser = lazy(() => import("./pages/SkillBrowser"));
 const DockerRedirect = lazy(() => import("./pages/DockerRedirect"));
 const GoogleDriveCallback = lazy(() => import("./pages/GoogleDriveCallback"));
@@ -214,6 +217,8 @@ function Router() {
         <Route path="/docs/:slug+" component={DocPage} />
         <Route path="/help" component={HelpPage} />
         <Route path="/help/:slug+" component={HelpTopicPage} />
+        <Route path="/desktop/open" component={DesktopOpen} />
+        <Route path="/desktop/view" component={DesktopView} />
         <Route path="/contact" component={Contact} />
         <Route path="/about" component={About} />
         <Route path="/changelog" component={Changelog} />
@@ -272,6 +277,9 @@ function Router() {
         </Route>
         <Route path="/admin/settings">
           <RequireAdmin><AdminSettings /></RequireAdmin>
+        </Route>
+        <Route path="/admin/desktop-host">
+          <RequireAdmin><AdminDesktopHost /></RequireAdmin>
         </Route>
         <Route path="/admin/billing">
           <RequireAdmin><AdminBillingCenter /></RequireAdmin>
@@ -350,6 +358,9 @@ function Router() {
         </Route>
         <Route path="/domain-admin/settings">
           <RequireDomainAdmin><TenantSettings /></RequireDomainAdmin>
+        </Route>
+        <Route path="/domain-admin/desktop-host">
+          <RequireDomainAdmin><AdminDesktopHost /></RequireDomainAdmin>
         </Route>
         <Route path="/domain-admin/blog">
           <RequireDomainAdmin><DomainBlogAdmin /></RequireDomainAdmin>

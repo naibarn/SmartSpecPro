@@ -51,7 +51,6 @@ import {
   AlertTriangle,
   Sparkles,
   ChevronRight,
-  RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AgencyTemplateModal } from "@/components/agency/AgencyTemplateModal";
@@ -65,6 +64,10 @@ interface AgencyItem {
   name: string;
   description?: string;
   status?: string;
+  documentVersion?: number | null;
+  defaultEngine?: "agency_swarm" | "adk2" | null;
+  compileMode?: "legacy_agency" | "strict" | "assist" | null;
+  compatibilityMode?: "preserve_agency_swarm" | "hybrid" | null;
   agentCount?: number;
   creditMultiplier?: number;
   creatorFeeCredits?: number;
@@ -643,6 +646,15 @@ export default function AgencyBrowser() {
             {filtered.map((agency) => {
               const vis = VISIBILITY_CONFIG[agency.visibility || "private"] ?? VISIBILITY_CONFIG.private;
               const VisIcon = vis.icon;
+              const isHybridRuntime = Boolean(
+                (agency.documentVersion ?? 1) >= 2
+                || agency.defaultEngine === "adk2"
+                || agency.compatibilityMode === "hybrid",
+              );
+              const runtimeLabel = isHybridRuntime ? "Hybrid Runtime" : "Legacy Runtime";
+              const runtimeTone = isHybridRuntime
+                ? "bg-violet-100 text-violet-700 dark:bg-violet-900 dark:text-violet-200"
+                : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300";
 
               return (
                 <div
@@ -653,15 +665,23 @@ export default function AgencyBrowser() {
                   {/* Title + Status */}
                   <div className="mb-1 flex items-start justify-between">
                     <h3 className="font-semibold text-slate-800 text-lg leading-tight">{agency.name}</h3>
-                    <Badge
-                      variant="secondary"
-                      className={cn(
-                        "text-[10px] uppercase tracking-wider font-bold shrink-0 ml-2",
-                        STATUS_STYLES[agency.status || ""] || "",
-                      )}
-                    >
-                      {t(`browser.status.${agency.status || "draft"}`)}
-                    </Badge>
+                    <div className="ml-2 flex shrink-0 flex-col items-end gap-1">
+                      <Badge
+                        variant="secondary"
+                        className={cn(
+                          "text-[10px] uppercase tracking-wider font-bold",
+                          STATUS_STYLES[agency.status || ""] || "",
+                        )}
+                      >
+                        {t(`browser.status.${agency.status || "draft"}`)}
+                      </Badge>
+                      <Badge
+                        variant="secondary"
+                        className={cn("text-[10px] font-medium", runtimeTone)}
+                      >
+                        {runtimeLabel}
+                      </Badge>
+                    </div>
                   </div>
 
                   {/* Owner */}
@@ -694,6 +714,12 @@ export default function AgencyBrowser() {
                       {agency.visibility === "shared" && (agency.sharedGroupCount ?? 0) > 0 && (
                         <span className="ml-0.5">{agency.sharedGroupCount}</span>
                       )}
+                    </Badge>
+                    <Badge variant="outline" className="text-[10px]">
+                      Engine: {agency.defaultEngine ?? "agency_swarm"}
+                    </Badge>
+                    <Badge variant="outline" className="text-[10px]">
+                      Compile: {agency.compileMode ?? "legacy_agency"}
                     </Badge>
                     {agency.visibility === "rejected" && agency.rejectionReason && (
                       <TooltipProvider>
@@ -784,29 +810,16 @@ export default function AgencyBrowser() {
                     >
                       <span className="flex items-center gap-2">
                         <Sparkles className="h-3.5 w-3.5" />
-                        {t("browser.card.hybridOrchestrate")}
+                        Preview Hybrid Plan
                       </span>
                       <ChevronRight className="h-4 w-4" />
                     </Button>
                   )}
 
                   {agency.canEdit && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="mb-3 w-full justify-between border-cyan-200 bg-cyan-50/70 text-cyan-700 hover:bg-cyan-100 hover:text-cyan-800"
-                      disabled={createHybridPreviewTokenMutation.isPending}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleOpenHybridPreview(agency);
-                      }}
-                    >
-                      <span className="flex items-center gap-2">
-                        <RefreshCw className="h-3.5 w-3.5" />
-                        {t("browser.card.regeneratePreviewToken")}
-                      </span>
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
+                    <p className="mb-3 rounded-md border border-cyan-200 bg-cyan-50/70 px-3 py-2 text-[11px] text-cyan-800">
+                      Planning shortcut only. Use the runtime badges above to see whether this agency actually runs in legacy or hybrid mode.
+                    </p>
                   )}
 
                   {/* Footer: agent count + actions */}

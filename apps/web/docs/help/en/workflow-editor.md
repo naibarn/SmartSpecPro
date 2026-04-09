@@ -15,6 +15,8 @@ tags: [workflow, automation, flow builder, nodes, visual editor]
 
 The Workflow Editor is a canvas-based visual tool for building multi-step automation workflows. Nodes are defined by a registry and rendered with dynamically generated forms, so no code is required to wire together complex pipelines. Workflows execute in real time with server-sent event streaming, and the editor tracks credit costs and provides cost estimates before you run.
 
+Worker-runtime orchestration is rollout-gated. The editor should not imply that every declared worker runtime already has a drag-and-drop workflow node. Runtime-aware worker dispatch, wait, publish, and indexing surfaces only appear when the matching backend support and tenant rollout flags are both enabled.
+
 ## Getting there
 
 Open **Workflows** in the sidebar, then click **New Workflow** or click an existing workflow to open it in the editor. The editor is also accessible directly at `/workflows/editor` for a blank canvas or `/workflows/editor/:id` to load a saved workflow.
@@ -47,3 +49,5 @@ Open **Workflows** in the sidebar, then click **New Workflow** or click an exist
 - Use the template marketplace as a starting point. Modify a template rather than building from scratch whenever a suitable one exists.
 - If a node turns red during execution, click it to read the error output from that step before re-running.
 - Saving frequently preserves intermediate states. The editor auto-saves a draft, but only a manual save creates a named version visible in the gallery.
+- For worker-backed flows, separate these states mentally:
+  dispatch accepted, worker execution completed, artifacts published, and indexing finished. A successful dispatch does not guarantee later publication or search availability.

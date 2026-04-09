@@ -1,8 +1,14 @@
+import i18next from "i18next";
+
 export type SocialInboxBackendStatus = "open" | "pending" | "closed" | "spam";
 
 export type SocialInboxFilterStatus = "all" | "open" | "pending" | "resolved";
 
-export type SocialInboxDisplayStatus = "open" | "pending" | "resolved" | "archived";
+export type SocialInboxDisplayStatus =
+  | "open"
+  | "pending"
+  | "resolved"
+  | "archived";
 
 export interface SocialInboxConversationSummary {
   id: number;
@@ -77,9 +83,20 @@ export interface PageOption {
   label: string;
 }
 
-export type SocialAutomationTriggerType = "new_message" | "keyword_match" | "unread_timeout";
-export type SocialAutomationActionMode = "off" | "draft_only" | "approval_required" | "auto_send";
-export type SocialAutomationApprovalStatus = "pending" | "approved" | "rejected" | "expired";
+export type SocialAutomationTriggerType =
+  | "new_message"
+  | "keyword_match"
+  | "unread_timeout";
+export type SocialAutomationActionMode =
+  | "off"
+  | "draft_only"
+  | "approval_required"
+  | "auto_send";
+export type SocialAutomationApprovalStatus =
+  | "pending"
+  | "approved"
+  | "rejected"
+  | "expired";
 
 export interface SocialAutomationPageOption {
   id: number;
@@ -135,35 +152,52 @@ export interface SocialAutomationListResponse<T> {
   hasMore: boolean;
 }
 
-export function formatAutomationTriggerType(triggerType: string | null | undefined): string {
+function getSocialLocale(): string {
+  return i18next.resolvedLanguage ?? i18next.language ?? "en";
+}
+
+function socialT(key: string, defaultValue: string): string {
+  return i18next.t(key, { ns: "social", defaultValue }) as string;
+}
+
+export function formatAutomationTriggerType(
+  triggerType: string | null | undefined
+): string {
   switch (triggerType) {
     case "new_message":
-      return "New message";
+      return socialT("automation.trigger.newMessage", "New message");
     case "keyword_match":
-      return "Keyword match";
+      return socialT("automation.trigger.keywordMatch", "Keyword match");
     case "unread_timeout":
-      return "Unread timeout";
+      return socialT("automation.trigger.unreadTimeout", "Unread timeout");
     default:
-      return "Unknown";
+      return socialT("automation.common.unknown", "Unknown");
   }
 }
 
-export function formatAutomationActionMode(actionMode: string | null | undefined): string {
+export function formatAutomationActionMode(
+  actionMode: string | null | undefined
+): string {
   switch (actionMode) {
     case "off":
-      return "Off";
+      return socialT("automation.actionMode.off", "Off");
     case "draft_only":
-      return "Draft only";
+      return socialT("automation.actionMode.draftOnly", "Draft only");
     case "approval_required":
-      return "Approval required";
+      return socialT(
+        "automation.actionMode.approvalRequired",
+        "Approval required"
+      );
     case "auto_send":
-      return "Auto send";
+      return socialT("automation.actionMode.autoSend", "Auto send");
     default:
-      return "Draft only";
+      return socialT("automation.actionMode.draftOnly", "Draft only");
   }
 }
 
-export function getAutomationActionTone(actionMode: string | null | undefined): string {
+export function getAutomationActionTone(
+  actionMode: string | null | undefined
+): string {
   switch (actionMode) {
     case "off":
       return "bg-slate-100 text-slate-600 border-slate-200";
@@ -178,22 +212,26 @@ export function getAutomationActionTone(actionMode: string | null | undefined): 
   }
 }
 
-export function formatAutomationApprovalStatus(status: string | null | undefined): string {
+export function formatAutomationApprovalStatus(
+  status: string | null | undefined
+): string {
   switch (status) {
     case "pending":
-      return "Pending";
+      return socialT("automation.approvalStatus.pending", "Pending");
     case "approved":
-      return "Approved";
+      return socialT("automation.approvalStatus.approved", "Approved");
     case "rejected":
-      return "Rejected";
+      return socialT("automation.approvalStatus.rejected", "Rejected");
     case "expired":
-      return "Expired";
+      return socialT("automation.approvalStatus.expired", "Expired");
     default:
-      return "Pending";
+      return socialT("automation.approvalStatus.pending", "Pending");
   }
 }
 
-export function getAutomationApprovalStatusTone(status: string | null | undefined): string {
+export function getAutomationApprovalStatusTone(
+  status: string | null | undefined
+): string {
   switch (status) {
     case "pending":
       return "bg-amber-100 text-amber-700 border-amber-200";
@@ -208,12 +246,18 @@ export function getAutomationApprovalStatusTone(status: string | null | undefine
   }
 }
 
-export function mapAutomationApprovalFilterToBackendStatus(status: "all" | SocialAutomationApprovalStatus): SocialAutomationApprovalStatus | undefined {
+export function mapAutomationApprovalFilterToBackendStatus(
+  status: "all" | SocialAutomationApprovalStatus
+): SocialAutomationApprovalStatus | undefined {
   if (status === "all") return undefined;
   return status;
 }
 
-export type SocialPublishingStatus = "draft" | "scheduled" | "published" | "failed";
+export type SocialPublishingStatus =
+  | "draft"
+  | "scheduled"
+  | "published"
+  | "failed";
 
 export type SocialPublishingFilterStatus = "all" | SocialPublishingStatus;
 
@@ -226,35 +270,57 @@ export interface SocialPublishingPageOption {
   pageCategory?: string | null;
   providerPageId?: string;
   publishingReady?: boolean;
-  publishingIssueCode?: "ready" | "page_inactive" | "publishing_disabled" | "missing_page_access" | "expired_page_access" | "missing_provider_access" | "expired_provider_access";
+  publishingIssueCode?:
+    | "ready"
+    | "page_inactive"
+    | "publishing_disabled"
+    | "missing_page_access"
+    | "expired_page_access"
+    | "missing_provider_access"
+    | "expired_provider_access";
   publishingIssue?: string | null;
 }
 
 export function formatPublishingReadiness(
-  code: SocialPublishingPageOption["publishingIssueCode"] | null | undefined,
+  code: SocialPublishingPageOption["publishingIssueCode"] | null | undefined
 ): string {
   switch (code) {
     case "ready":
-      return "Ready to publish";
+      return socialT("publishing.readyToPublish", "Ready to publish");
     case "page_inactive":
-      return "Page inactive";
+      return socialT("publishing.issues.pageInactive", "Page inactive");
     case "publishing_disabled":
-      return "Publishing disabled";
+      return socialT(
+        "publishing.issues.publishingDisabled",
+        "Publishing disabled"
+      );
     case "missing_page_access":
-      return "Page access missing";
+      return socialT(
+        "publishing.issues.missingPageAccess",
+        "Page access missing"
+      );
     case "expired_page_access":
-      return "Page access expired";
+      return socialT(
+        "publishing.issues.expiredPageAccess",
+        "Page access expired"
+      );
     case "missing_provider_access":
-      return "Provider access missing";
+      return socialT(
+        "publishing.issues.missingProviderAccess",
+        "Provider access missing"
+      );
     case "expired_provider_access":
-      return "Provider access expired";
+      return socialT(
+        "publishing.issues.expiredProviderAccess",
+        "Provider access expired"
+      );
     default:
-      return "Publishing not ready";
+      return socialT("publishing.issues.notReady", "Publishing not ready");
   }
 }
 
 export function getPublishingReadinessTone(
-  code: SocialPublishingPageOption["publishingIssueCode"] | null | undefined,
+  code: SocialPublishingPageOption["publishingIssueCode"] | null | undefined
 ): string {
   switch (code) {
     case "ready":
@@ -295,7 +361,9 @@ export interface SocialPublishingListResponse {
   hasMore: boolean;
 }
 
-export function normalizePublishingStatus(status: string | null | undefined): SocialPublishingStatus {
+export function normalizePublishingStatus(
+  status: string | null | undefined
+): SocialPublishingStatus {
   switch (status) {
     case "scheduled":
     case "published":
@@ -307,20 +375,24 @@ export function normalizePublishingStatus(status: string | null | undefined): So
   }
 }
 
-export function formatPublishingStatus(status: string | null | undefined): string {
+export function formatPublishingStatus(
+  status: string | null | undefined
+): string {
   switch (normalizePublishingStatus(status)) {
     case "draft":
-      return "Draft";
+      return socialT("publishing.status.draft", "Draft");
     case "scheduled":
-      return "Scheduled";
+      return socialT("publishing.status.scheduled", "Scheduled");
     case "published":
-      return "Published";
+      return socialT("publishing.status.published", "Published");
     case "failed":
-      return "Failed";
+      return socialT("publishing.status.failed", "Failed");
   }
 }
 
-export function getPublishingStatusTone(status: string | null | undefined): string {
+export function getPublishingStatusTone(
+  status: string | null | undefined
+): string {
   switch (normalizePublishingStatus(status)) {
     case "draft":
       return "bg-slate-100 text-slate-700 border-slate-200";
@@ -333,12 +405,16 @@ export function getPublishingStatusTone(status: string | null | undefined): stri
   }
 }
 
-export function mapPublishingFilterToBackendStatus(status: SocialPublishingFilterStatus): SocialPublishingStatus | undefined {
+export function mapPublishingFilterToBackendStatus(
+  status: SocialPublishingFilterStatus
+): SocialPublishingStatus | undefined {
   if (status === "all") return undefined;
   return status;
 }
 
-export function normalizeConversationStatus(status: string | null | undefined): SocialInboxDisplayStatus {
+export function normalizeConversationStatus(
+  status: string | null | undefined
+): SocialInboxDisplayStatus {
   switch (status) {
     case "open":
       return "open";
@@ -355,7 +431,9 @@ export function normalizeConversationStatus(status: string | null | undefined): 
   }
 }
 
-export function formatConversationStatus(status: string | null | undefined): string {
+export function formatConversationStatus(
+  status: string | null | undefined
+): string {
   const normalized = normalizeConversationStatus(status);
   switch (normalized) {
     case "open":
@@ -369,7 +447,9 @@ export function formatConversationStatus(status: string | null | undefined): str
   }
 }
 
-export function getConversationStatusTone(status: string | null | undefined): string {
+export function getConversationStatusTone(
+  status: string | null | undefined
+): string {
   const normalized = normalizeConversationStatus(status);
   switch (normalized) {
     case "open":
@@ -383,7 +463,9 @@ export function getConversationStatusTone(status: string | null | undefined): st
   }
 }
 
-export function getConversationStatusDot(status: string | null | undefined): string {
+export function getConversationStatusDot(
+  status: string | null | undefined
+): string {
   const normalized = normalizeConversationStatus(status);
   switch (normalized) {
     case "open":
@@ -397,7 +479,9 @@ export function getConversationStatusDot(status: string | null | undefined): str
   }
 }
 
-export function mapFilterToBackendStatus(status: SocialInboxFilterStatus): SocialInboxBackendStatus | undefined {
+export function mapFilterToBackendStatus(
+  status: SocialInboxFilterStatus
+): SocialInboxBackendStatus | undefined {
   switch (status) {
     case "open":
       return "open";
@@ -411,27 +495,36 @@ export function mapFilterToBackendStatus(status: SocialInboxFilterStatus): Socia
   }
 }
 
-export function formatRelativeTime(isoString: string | Date | null | undefined): string {
+export function formatRelativeTime(
+  isoString: string | Date | null | undefined
+): string {
   if (!isoString) return "—";
 
   const date = isoString instanceof Date ? isoString : new Date(isoString);
   if (Number.isNaN(date.getTime())) return "—";
 
-  const diffMs = Date.now() - date.getTime();
-  const minutes = Math.max(Math.floor(diffMs / 60_000), 0);
-  if (minutes < 1) return "just now";
-  if (minutes < 60) return `${minutes}m ago`;
+  const diffMs = date.getTime() - Date.now();
+  const absDiffMs = Math.abs(diffMs);
 
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
+  try {
+    const rtf = new Intl.RelativeTimeFormat(getSocialLocale(), {
+      numeric: "auto",
+    });
 
-  const days = Math.floor(hours / 24);
-  if (days < 7) return `${days}d ago`;
-
-  const weeks = Math.floor(days / 7);
-  if (weeks < 4) return `${weeks}w ago`;
-
-  return date.toLocaleDateString();
+    if (absDiffMs < 60_000)
+      return rtf.format(Math.round(diffMs / 1_000), "second");
+    if (absDiffMs < 3_600_000)
+      return rtf.format(Math.round(diffMs / 60_000), "minute");
+    if (absDiffMs < 86_400_000)
+      return rtf.format(Math.round(diffMs / 3_600_000), "hour");
+    if (absDiffMs < 2_592_000_000)
+      return rtf.format(Math.round(diffMs / 86_400_000), "day");
+    if (absDiffMs < 31_536_000_000)
+      return rtf.format(Math.round(diffMs / 2_592_000_000), "month");
+    return rtf.format(Math.round(diffMs / 31_536_000_000), "year");
+  } catch {
+    return date.toLocaleDateString(getSocialLocale());
+  }
 }
 
 export function truncateText(text: string, maxLength = 60): string {
@@ -470,7 +563,9 @@ export interface SocialModerationListResponse {
   hasMore: boolean;
 }
 
-export function normalizeCommentStatus(status: string | null | undefined): SocialModerationCommentStatus {
+export function normalizeCommentStatus(
+  status: string | null | undefined
+): SocialModerationCommentStatus {
   switch (status) {
     case "hidden":
     case "deleted":
@@ -484,15 +579,17 @@ export function normalizeCommentStatus(status: string | null | undefined): Socia
 export function formatCommentStatus(status: string | null | undefined): string {
   switch (normalizeCommentStatus(status)) {
     case "visible":
-      return "Visible";
+      return socialT("moderation.status.visible", "Visible");
     case "hidden":
-      return "Hidden";
+      return socialT("moderation.status.hidden", "Hidden");
     case "deleted":
-      return "Deleted";
+      return socialT("moderation.status.deleted", "Deleted");
   }
 }
 
-export function getCommentStatusTone(status: string | null | undefined): string {
+export function getCommentStatusTone(
+  status: string | null | undefined
+): string {
   switch (normalizeCommentStatus(status)) {
     case "visible":
       return "bg-emerald-100 text-emerald-700 border-emerald-200";

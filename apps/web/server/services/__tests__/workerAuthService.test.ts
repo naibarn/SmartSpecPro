@@ -20,7 +20,12 @@ import { signBearerToken } from "../../_core/tokens";
 describe("workerAuthService", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetTenantFeatureFlags.mockResolvedValue({ openClawExternalRuntime: true });
+    mockGetTenantFeatureFlags.mockResolvedValue({
+      openClawExternalRuntime: true,
+      desktopZeroClawWorker: true,
+      nemoClawSecureWorkerPool: false,
+      hiClawClusterRuntime: false,
+    });
     mockIsJtiRevoked.mockResolvedValue(false);
   });
 
@@ -102,7 +107,12 @@ describe("workerAuthService", () => {
   });
 
   it("fails closed when the tenant feature flag is disabled", async () => {
-    mockGetTenantFeatureFlags.mockResolvedValue({ openClawExternalRuntime: false });
+    mockGetTenantFeatureFlags.mockResolvedValue({
+      openClawExternalRuntime: false,
+      desktopZeroClawWorker: true,
+      nemoClawSecureWorkerPool: false,
+      hiClawClusterRuntime: false,
+    });
 
     const {
       createWorkerRegistrationToken,
@@ -117,6 +127,124 @@ describe("workerAuthService", () => {
     await expect(verifyWorkerRegistrationToken(token)).rejects.toMatchObject({
       code: "feature_disabled",
       statusCode: 403,
+    });
+  });
+
+  it("fails closed per runtime family when a desktop worker rollout flag is disabled", async () => {
+    mockGetTenantFeatureFlags.mockResolvedValue({
+      openClawExternalRuntime: true,
+      desktopZeroClawWorker: false,
+      nemoClawSecureWorkerPool: false,
+      hiClawClusterRuntime: false,
+    });
+
+    const {
+      createWorkerRegistrationToken,
+      verifyWorkerRegistrationToken,
+    } = await import("../workerAuthService");
+
+    const token = createWorkerRegistrationToken({
+      tenantId: "tenant-desktop-disabled",
+      runtimeType: "desktop_zeroclaw_managed",
+    });
+
+    await expect(verifyWorkerRegistrationToken(token)).rejects.toMatchObject({
+      code: "feature_disabled",
+      statusCode: 403,
+    });
+  });
+
+  it("rejects registration tokens when the request runtime mismatches the token runtime", async () => {
+    const {
+      createWorkerRegistrationToken,
+      verifyWorkerRegistrationToken,
+    } = await import("../workerAuthService");
+
+    const token = createWorkerRegistrationToken({
+      tenantId: "tenant-1",
+      runtimeType: "openclaw_gateway",
+    });
+
+    await expect(
+      verifyWorkerRegistrationToken(token, {
+        runtimeType: "desktop_zeroclaw_managed",
+      }),
+    ).rejects.toMatchObject({
+      code: "worker_scope_mismatch",
+      statusCode: 403,
+    });
+  });
+
+  it("rejects upload tokens on execution-only endpoints", async () => {
+    const {
+      issueWorkerAccessTokens,
+      verifyWorkerAccessToken,
+    } = await import("../workerAuthService");
+
+    const tokens = issueWorkerAccessTokens({
+      tenantId: "tenant-1",
+      workerId: "worker-1",
+      runtimeType: "openclaw_gateway",
+      teamId: "team-1",
+    });
+
+    await expect(
+      verifyWorkerAccessToken(tokens.uploadToken, {
+        workerId: "worker-1",
+        allowedTokenUses: ["worker_execution"],
+        requiredScopes: ["workers:claim"],
+      }),
+    ).rejects.toMatchObject({
+      code: "worker_auth_invalid",
+      statusCode: 401,
+    });
+  });
+
+  it("rejects worker access tokens when the requested worker id does not match the token binding", async () => {
+    const {
+      issueWorkerAccessTokens,
+      verifyWorkerAccessToken,
+    } = await import("../workerAuthService");
+
+    const tokens = issueWorkerAccessTokens({
+      tenantId: "tenant-1",
+      workerId: "worker-1",
+      runtimeType: "openclaw_gateway",
+      teamId: "team-1",
+    });
+
+    await expect(
+      verifyWorkerAccessToken(tokens.executionToken, {
+        workerId: "worker-2",
+        allowedTokenUses: ["worker_execution"],
+      }),
+    ).rejects.toMatchObject({
+      code: "worker_scope_mismatch",
+      statusCode: 403,
+    });
+  });
+
+  it("rejects revoked worker access tokens before scope checks", async () => {
+    mockIsJtiRevoked.mockResolvedValueOnce(true);
+
+    const {
+      issueWorkerAccessTokens,
+      verifyWorkerAccessToken,
+    } = await import("../workerAuthService");
+
+    const tokens = issueWorkerAccessTokens({
+      tenantId: "tenant-1",
+      workerId: "worker-1",
+      runtimeType: "openclaw_gateway",
+    });
+
+    await expect(
+      verifyWorkerAccessToken(tokens.executionToken, {
+        workerId: "worker-1",
+      }),
+    ).rejects.toMatchObject({
+      code: "worker_auth_invalid",
+      statusCode: 401,
     });
   });
 });

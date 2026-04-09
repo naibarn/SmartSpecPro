@@ -34,6 +34,10 @@ vi.mock("@/hooks/useAgencyQuery", () => ({
           name: "Growth Agency",
           description: "Growth experiments and publishing workflows.",
           status: "published",
+          documentVersion: 2,
+          defaultEngine: "adk2",
+          compileMode: "strict",
+          compatibilityMode: "hybrid",
           agentCount: 3,
           canEdit: true,
           visibility: "private",
@@ -85,6 +89,37 @@ vi.mock("@/lib/trpc", () => ({
 
 vi.mock("@/components/agency/AgencyTemplateModal", () => ({
   AgencyTemplateModal: () => null,
+}));
+
+vi.mock("@/i18n/useScopedTranslation", () => ({
+  useScopedTranslation: () => ({
+    t: (key: string, values?: Record<string, string | number>) => {
+      const dictionary: Record<string, string> = {
+        "browser.back": "Back",
+        "browser.header.title": "Agencies",
+        "browser.header.subtitle": "Manage your teams",
+        "browser.header.marketplace": "Marketplace",
+        "browser.header.createAgency": "Create Agency",
+        "browser.header.teamsCount": `${values?.count ?? 0} teams`,
+        "browser.searchPlaceholder": "Search agencies",
+        "browser.social.facebookAutoPost": "Facebook auto-post",
+        "browser.social.partialReady": `${values?.ready ?? 0}/${values?.total ?? 0} ready`,
+        "browser.social.pagesNeedAccess": "Need access or publishing enabled",
+        "browser.social.openPublishing": "Open Social Publishing",
+        "browser.status.published": "Published",
+        "browser.visibility.private": "Private",
+        "browser.card.owner": "Owner",
+        "browser.card.evaluateAgency": "Evaluate Agency",
+        "browser.card.agentsCount": `${values?.count ?? 0} agents`,
+        "browser.card.chatTitle": "Chat",
+        "browser.card.reviewTitle": "Review",
+        "browser.card.shareTitle": "Share",
+        "browser.card.editTitle": "Edit",
+        "browser.card.deleteTitle": "Delete",
+      };
+      return dictionary[key] ?? key;
+    },
+  }),
 }));
 
 describe("AgencyBrowser", () => {
@@ -174,10 +209,11 @@ describe("AgencyBrowser", () => {
     expect(screen.getByText(/need access or publishing enabled/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Open Social Publishing/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Evaluate Agency/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Hybrid Orchestrate/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Regenerate Preview Token/i })).toBeInTheDocument();
+    expect(screen.getByText("Hybrid Runtime")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Preview Hybrid Plan/i })).toBeInTheDocument();
+    expect(screen.getByText(/planning shortcut only/i)).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: /Regenerate Preview Token/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Preview Hybrid Plan/i }));
 
     await waitFor(() => {
       expect(mockSetLocation).toHaveBeenCalledWith(

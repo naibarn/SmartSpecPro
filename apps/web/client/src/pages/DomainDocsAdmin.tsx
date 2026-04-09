@@ -8,11 +8,19 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useTenant } from "@/contexts/TenantContext";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
+import { LocaleToggle } from "@/components/LocaleToggle";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { DashboardCard } from "@/components/dashboard";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   ChevronLeft,
   ExternalLink,
@@ -47,7 +55,10 @@ interface TenantPage {
 
 function stripHtml(value?: string): string {
   if (!value) return "";
-  return value.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+  return value
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function buildDocPath(slug: string): string {
@@ -69,7 +80,10 @@ export default function DomainDocsAdmin() {
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
   useEffect(() => {
-    if (!authLoading && (!user || (user.role !== "domain_admin" && user.role !== "admin"))) {
+    if (
+      !authLoading &&
+      (!user || (user.role !== "domain_admin" && user.role !== "admin"))
+    ) {
       setLocation("/");
     }
   }, [user, authLoading, setLocation]);
@@ -91,7 +105,11 @@ export default function DomainDocsAdmin() {
 
       const pagesData = await response.json();
       const docsPages = (Object.values(pagesData || {}) as TenantPage[])
-        .filter((page: any) => typeof page?.pageKey === "string" && page.pageKey.startsWith("docs-"))
+        .filter(
+          (page: any) =>
+            typeof page?.pageKey === "string" &&
+            page.pageKey.startsWith("docs-")
+        )
         .sort((a: TenantPage, b: TenantPage) => {
           const left = new Date(b.updatedAt || b.createdAt || 0).getTime();
           const right = new Date(a.updatedAt || a.createdAt || 0).getTime();
@@ -111,7 +129,7 @@ export default function DomainDocsAdmin() {
   const filteredPages = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();
     if (!query) return pages;
-    return pages.filter((page) => {
+    return pages.filter(page => {
       const description = page.metadata?.description || "";
       const contentText = stripHtml(page.content);
       return [
@@ -130,13 +148,14 @@ export default function DomainDocsAdmin() {
 
   const defaultEditorPageKey = filteredPages[0]?.pageKey || "docs-intro";
   const visibleIds = filteredPages
-    .map((page) => page.id)
+    .map(page => page.id)
     .filter((value): value is number => typeof value === "number");
-  const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedIds.has(id));
+  const allVisibleSelected =
+    visibleIds.length > 0 && visibleIds.every(id => selectedIds.has(id));
   const selectionCount = selectedIds.size;
 
   const toggleSelection = (pageId: number, checked: boolean) => {
-    setSelectedIds((prev) => {
+    setSelectedIds(prev => {
       const next = new Set(prev);
       if (checked) {
         next.add(pageId);
@@ -148,15 +167,15 @@ export default function DomainDocsAdmin() {
   };
 
   const toggleAllVisible = () => {
-    setSelectedIds((prev) => {
+    setSelectedIds(prev => {
       if (allVisibleSelected) {
         const next = new Set(prev);
-        visibleIds.forEach((id) => next.delete(id));
+        visibleIds.forEach(id => next.delete(id));
         return next;
       }
 
       const next = new Set(prev);
-      visibleIds.forEach((id) => next.add(id));
+      visibleIds.forEach(id => next.add(id));
       return next;
     });
   };
@@ -169,10 +188,13 @@ export default function DomainDocsAdmin() {
     if (!page.pageKey) return;
 
     try {
-      const response = await fetch(`/api/tenant/pages/${encodeURIComponent(page.pageKey)}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
+      const response = await fetch(
+        `/api/tenant/pages/${encodeURIComponent(page.pageKey)}`,
+        {
+          method: "DELETE",
+          credentials: "include",
+        }
+      );
 
       if (!response.ok) {
         const err = await response.json().catch(() => null);
@@ -183,7 +205,9 @@ export default function DomainDocsAdmin() {
       setDeleteConfirmId(null);
       await fetchDocs();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to delete doc");
+      toast.error(
+        error instanceof Error ? error.message : "Failed to delete doc"
+      );
     }
   };
 
@@ -213,13 +237,19 @@ export default function DomainDocsAdmin() {
       setSelectedIds(new Set());
       await fetchDocs();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to delete docs");
+      toast.error(
+        error instanceof Error ? error.message : "Failed to delete docs"
+      );
     } finally {
       setIsBulkDeleting(false);
     }
   };
 
-  if (authLoading || !user || (user.role !== "domain_admin" && user.role !== "admin")) {
+  if (
+    authLoading ||
+    !user ||
+    (user.role !== "domain_admin" && user.role !== "admin")
+  ) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <RefreshCw className="w-8 h-8 animate-spin text-blue-500" />
@@ -247,11 +277,20 @@ export default function DomainDocsAdmin() {
                 Docs Manager
               </h1>
               <p className="text-gray-600 mt-2">
-                Manage docs pages for domain: <span className="font-semibold">{tenant?.name || (user as any)?.registeredDomain || "Current domain"}</span>
+                Manage docs pages for domain:{" "}
+                <span className="font-semibold">
+                  {tenant?.name ||
+                    (user as any)?.registeredDomain ||
+                    "Current domain"}
+                </span>
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <Button variant="outline" onClick={() => setLocation("/domain-admin/blog")}>
+              <LocaleToggle className="shrink-0" />
+              <Button
+                variant="outline"
+                onClick={() => setLocation("/domain-admin/blog")}
+              >
                 <PenLine className="w-4 h-4 mr-2" />
                 Manage Blog
               </Button>
@@ -265,7 +304,9 @@ export default function DomainDocsAdmin() {
                 ) : (
                   <Square className="w-4 h-4 mr-2" />
                 )}
-                {allVisibleSelected ? "Clear Visible Selection" : "Select All Visible"}
+                {allVisibleSelected
+                  ? "Clear Visible Selection"
+                  : "Select All Visible"}
               </Button>
               <Button
                 variant="outline"
@@ -274,7 +315,8 @@ export default function DomainDocsAdmin() {
                 className="border-red-200 text-red-700 hover:bg-red-50"
               >
                 <Trash2 className="w-4 h-4 mr-2" />
-                Delete Selected {selectionCount > 0 ? `(${selectionCount})` : ""}
+                Delete Selected{" "}
+                {selectionCount > 0 ? `(${selectionCount})` : ""}
               </Button>
               <Button
                 onClick={() => openPageEditor(defaultEditorPageKey)}
@@ -293,7 +335,7 @@ export default function DomainDocsAdmin() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <Input
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={e => setSearchTerm(e.target.value)}
                 placeholder="Search docs by title, slug, keyword, or content..."
                 className="pl-10"
               />
@@ -321,7 +363,10 @@ export default function DomainDocsAdmin() {
                       ? "Create docs pages from the content editor or content import tools."
                       : "Try a different search term."}
                   </p>
-                  <Button onClick={() => openPageEditor(defaultEditorPageKey)} className="bg-blue-600 hover:bg-blue-700">
+                  <Button
+                    onClick={() => openPageEditor(defaultEditorPageKey)}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
                     <Plus className="w-4 h-4 mr-2" />
                     Open Docs Editor
                   </Button>
@@ -329,27 +374,35 @@ export default function DomainDocsAdmin() {
               </DashboardCard>
             ) : (
               <div className="space-y-3">
-                {filteredPages.map((page) => (
+                {filteredPages.map(page => (
                   <DashboardCard
                     key={page.id}
                     className={`transition-shadow ${
-                      page.id && selectedIds.has(page.id) ? "border-cyan-200 bg-cyan-50/40 shadow-md" : "hover:shadow-md"
+                      page.id && selectedIds.has(page.id)
+                        ? "border-cyan-200 bg-cyan-50/40 shadow-md"
+                        : "hover:shadow-md"
                     }`}
                   >
                     <div className="p-4">
                       <div className="flex items-start gap-4">
                         <Checkbox
                           checked={!!page.id && selectedIds.has(page.id)}
-                          onCheckedChange={(checked) => toggleSelection(page.id!, checked === true)}
+                          onCheckedChange={checked =>
+                            toggleSelection(page.id!, checked === true)
+                          }
                           aria-label={`Select ${page.title}`}
                           className="mt-1"
                         />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1 flex-wrap">
-                            <h3 className="font-semibold text-gray-900 truncate">{page.title}</h3>
+                            <h3 className="font-semibold text-gray-900 truncate">
+                              {page.title}
+                            </h3>
                             <span
                               className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                                page.isPublished ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"
+                                page.isPublished
+                                  ? "bg-green-100 text-green-700"
+                                  : "bg-gray-100 text-gray-600"
                               }`}
                             >
                               {page.isPublished ? "Published" : "Draft"}
@@ -364,22 +417,37 @@ export default function DomainDocsAdmin() {
                             </span>
                           </div>
                           <p className="text-sm text-gray-500 truncate">
-                            {page.metadata?.description || stripHtml(page.content) || "No description"}
+                            {page.metadata?.description ||
+                              stripHtml(page.content) ||
+                              "No description"}
                           </p>
                           <div className="flex items-center gap-3 mt-1 text-xs text-gray-400 flex-wrap">
                             <span>{`/docs/${page.slug}`}</span>
                             <span>{page.pageKey}</span>
                             {page.metadata?.keywords?.length ? (
-                              <span>{page.metadata.keywords.slice(0, 3).join(", ")}</span>
+                              <span>
+                                {page.metadata.keywords.slice(0, 3).join(", ")}
+                              </span>
                             ) : null}
-                            {page.updatedAt && <span>Updated {new Date(page.updatedAt).toLocaleDateString()}</span>}
+                            {page.updatedAt && (
+                              <span>
+                                Updated{" "}
+                                {new Date(page.updatedAt).toLocaleDateString()}
+                              </span>
+                            )}
                           </div>
                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0">
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => window.open(buildDocPath(page.slug), "_blank", "noopener,noreferrer")}
+                            onClick={() =>
+                              window.open(
+                                buildDocPath(page.slug),
+                                "_blank",
+                                "noopener,noreferrer"
+                              )
+                            }
                           >
                             <ExternalLink className="w-4 h-4" />
                           </Button>
@@ -409,12 +477,16 @@ export default function DomainDocsAdmin() {
         </div>
       </div>
 
-      <Dialog open={deleteConfirmId !== null} onOpenChange={() => setDeleteConfirmId(null)}>
+      <Dialog
+        open={deleteConfirmId !== null}
+        onOpenChange={() => setDeleteConfirmId(null)}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Delete Doc</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete this doc? This action cannot be undone.
+              Are you sure you want to delete this doc? This action cannot be
+              undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -424,7 +496,7 @@ export default function DomainDocsAdmin() {
             <Button
               variant="destructive"
               onClick={() => {
-                const page = pages.find((item) => item.id === deleteConfirmId);
+                const page = pages.find(item => item.id === deleteConfirmId);
                 if (page) {
                   void deleteSingleDoc(page);
                 }
@@ -436,16 +508,23 @@ export default function DomainDocsAdmin() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={bulkDeleteConfirmOpen} onOpenChange={setBulkDeleteConfirmOpen}>
+      <Dialog
+        open={bulkDeleteConfirmOpen}
+        onOpenChange={setBulkDeleteConfirmOpen}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Delete Selected Docs</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete {selectionCount} selected doc{selectionCount === 1 ? "" : "s"}? This action cannot be undone.
+              Are you sure you want to delete {selectionCount} selected doc
+              {selectionCount === 1 ? "" : "s"}? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setBulkDeleteConfirmOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setBulkDeleteConfirmOpen(false)}
+            >
               Cancel
             </Button>
             <Button
@@ -453,7 +532,9 @@ export default function DomainDocsAdmin() {
               onClick={() => void bulkDeleteDocs()}
               disabled={isBulkDeleting}
             >
-              {isBulkDeleting ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : null}
+              {isBulkDeleting ? (
+                <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+              ) : null}
               Delete Selected
             </Button>
           </DialogFooter>

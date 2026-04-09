@@ -274,7 +274,14 @@ export function registerDeviceAuthRoutes(app: Express) {
 
       // Verify password
       if (!user.password) {
-        res.status(401).json({ error: { message: "This account uses social login. Please use 'Sign in via browser' instead." } });
+        res.status(409).json({
+          error: {
+            message:
+              "Desktop direct login is not available for Google or other social-login accounts. Use 'Sign in via browser' instead.",
+          },
+          requiresBrowserSignIn: true,
+          reason: "social_login_requires_browser",
+        });
         return;
       }
 
@@ -299,10 +306,13 @@ export function registerDeviceAuthRoutes(app: Express) {
 
       // Check 2FA
       if (user.twoFactorEnabled) {
-        res.status(200).json({
-          success: false,
-          requires2FA: true,
-          email: user.email,
+        res.status(409).json({
+          error: {
+            message:
+              "Desktop direct login does not yet support 2FA verification. Use 'Sign in via browser' to complete sign-in.",
+          },
+          requiresBrowserSignIn: true,
+          reason: "two_factor_requires_browser",
         });
         return;
       }

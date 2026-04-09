@@ -316,6 +316,13 @@ export const sandboxFeatureTypeEnum = pgEnum("sandbox_feature_type", [
   "chat", "skill", "workflow", "library", "media", "presentation", "connector", "agency",
 ]);
 
+export const desktopDeviceHealthStatusEnum = pgEnum("desktop_device_health_status", [
+  "online",
+  "offline",
+  "unhealthy",
+  "disabled",
+]);
+
 /**
  * Core user table backing auth flow.
  * Extend this file with additional tables as your product grows.
@@ -1085,6 +1092,43 @@ export const tenants = pgTable("tenants", {
 
 export type Tenant = typeof tenants.$inferSelect;
 export type InsertTenant = typeof tenants.$inferInsert;
+
+export const desktopDevices = pgTable("desktop_devices", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 })
+    .notNull()
+    .references((): AnyPgColumn => tenants.id, { onDelete: "cascade" }),
+  userId: integer("userId").references((): AnyPgColumn => users.id, { onDelete: "set null" }),
+  displayName: varchar("displayName", { length: 255 }).notNull(),
+  machineName: varchar("machineName", { length: 255 }),
+  healthStatus: desktopDeviceHealthStatusEnum("healthStatus").notNull().default("offline"),
+  workerProjectionEnabled: boolean("workerProjectionEnabled").notNull().default(false),
+  projectedWorkerRuntimeType: varchar("projectedWorkerRuntimeType", { length: 64 }),
+  platform: jsonb("platform").$type<Record<string, unknown>>().notNull().default({}),
+  capabilitiesJson: jsonb("capabilitiesJson").$type<Record<string, unknown>>().notNull().default({}),
+  healthSummaryJson: jsonb("healthSummaryJson").$type<Record<string, unknown>>().notNull().default({}),
+  localRootsJson: jsonb("localRootsJson").$type<Record<string, unknown>[]>().notNull().default([]),
+  packageCachePathsJson: jsonb("packageCachePathsJson").$type<string[]>().notNull().default([]),
+  packageSyncStateJson: jsonb("packageSyncStateJson").$type<Record<string, unknown>>().notNull().default({}),
+  pendingActionsJson: jsonb("pendingActionsJson").$type<Record<string, unknown>[]>().notNull().default([]),
+  currentWorkspaceProfileJson: jsonb("currentWorkspaceProfileJson").$type<Record<string, unknown>>().notNull().default({}),
+  lastRunSummaryJson: jsonb("lastRunSummaryJson").$type<Record<string, unknown>>().notNull().default({}),
+  policyCursor: varchar("policyCursor", { length: 128 }),
+  policyVersion: varchar("policyVersion", { length: 128 }),
+  policyExpiresAt: timestamp("policyExpiresAt", { withTimezone: true }),
+  warningFlagsJson: jsonb("warningFlagsJson").$type<string[]>().notNull().default([]),
+  enrolledAt: timestamp("enrolledAt", { withTimezone: true }).notNull().defaultNow(),
+  lastSeenAt: timestamp("lastSeenAt", { withTimezone: true }),
+  disabledAt: timestamp("disabledAt", { withTimezone: true }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  tenantDeviceIdx: index("desktop_devices_tenant_id_idx").on(t.tenantId),
+  tenantUserIdx: index("desktop_devices_tenant_user_idx").on(t.tenantId, t.userId),
+}));
+
+export type DesktopDevice = typeof desktopDevices.$inferSelect;
+export type InsertDesktopDevice = typeof desktopDevices.$inferInsert;
 
 /**
  * User Groups - Custom groups for file sharing and collaboration
@@ -5803,6 +5847,10 @@ export const agencies = pgTable("agencies", {
   userContext: jsonb("userContext").$type<Record<string, unknown>>(),
   conversationStarters: jsonb("conversationStarters").$type<string[]>(),
   topology: varchar("topology", { length: 30 }).default("custom").notNull(),
+  documentVersion: integer("documentVersion").default(1).notNull(),
+  defaultEngine: varchar("defaultEngine", { length: 30 }).default("agency_swarm").notNull(),
+  compileMode: varchar("compileMode", { length: 30 }).default("legacy_agency").notNull(),
+  compatibilityMode: varchar("compatibilityMode", { length: 50 }).default("preserve_agency_swarm").notNull(),
   cacheConversationStarters: boolean("cacheConversationStarters").default(false).notNull(),
   createdBy: integer("createdBy").references(() => users.id, { onDelete: "set null" }),
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
@@ -5945,6 +5993,9 @@ export const agencyAgents = pgTable("agency_agents", {
   isEntryPoint: boolean("isEntryPoint").default(false).notNull(),
   isOptional: boolean("isOptional").default(false).notNull(),
   position: json("position").$type<{ x: number; y: number }>(),
+  subgraphId: varchar("subgraphId", { length: 100 }),
+  engineHint: varchar("engineHint", { length: 30 }),
+  runtimeConfig: jsonb("runtimeConfig").$type<Record<string, unknown>>(),
   nodeType: varchar("nodeType", { length: 30 }).default("agent").notNull(),
   nodeConfig: json("nodeConfig").$type<{
     // supervisor
@@ -6043,6 +6094,29 @@ export const agencyAgents = pgTable("agency_agents", {
 
 export type AgencyAgent = typeof agencyAgents.$inferSelect;
 export type InsertAgencyAgent = typeof agencyAgents.$inferInsert;
+
+/**
+ * Agency Subgraphs -- Hybrid document containers for mixed-engine execution groups.
+ */
+export const agencySubgraphs = pgTable("agency_subgraphs", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  agencyId: varchar("agencyId", { length: 36 }).notNull().references(() => agencies.id, { onDelete: "cascade" }),
+  subgraphKey: varchar("subgraphKey", { length: 100 }).notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  engine: varchar("engine", { length: 30 }).default("agency_swarm").notNull(),
+  entryNodeIds: jsonb("entryNodeIds").$type<string[]>().default(sql`'[]'::jsonb`).notNull(),
+  exitNodeIds: jsonb("exitNodeIds").$type<string[]>().default(sql`'[]'::jsonb`).notNull(),
+  nodeIds: jsonb("nodeIds").$type<string[]>().default(sql`'[]'::jsonb`).notNull(),
+  boundaryPolicy: jsonb("boundaryPolicy").$type<Record<string, unknown>>(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("agency_subgraphs_agency_idx").on(t.agencyId),
+  uniqueIndex("agency_subgraphs_agency_key_idx").on(t.agencyId, t.subgraphKey),
+]);
+
+export type AgencySubgraph = typeof agencySubgraphs.$inferSelect;
+export type InsertAgencySubgraph = typeof agencySubgraphs.$inferInsert;
 
 /**
  * Agency Templates -- Pre-configured multi-agent orchestration templates
@@ -6292,7 +6366,7 @@ export const agencyVersions = pgTable("agency_versions", {
   agencyId: varchar("agencyId", { length: 36 }).notNull().references(() => agencies.id, { onDelete: "cascade" }),
   tenantId: varchar("tenantId", { length: 36 }).references(() => tenants.id, { onDelete: "cascade" }),
   versionNumber: integer("versionNumber").notNull(),
-  snapshotJson: json("snapshotJson").$type<{ nodes: unknown[]; edges: unknown[]; name: string }>().notNull(),
+  snapshotJson: json("snapshotJson").$type<Record<string, unknown>>().notNull(),
   contentHash: varchar("contentHash", { length: 64 }).notNull(),
   changeDescription: text("changeDescription"),
   createdByUserId: integer("createdByUserId").notNull().references(() => users.id),

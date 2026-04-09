@@ -14,6 +14,8 @@ import {
   agencyTools,
   agencyCommunicationFlows,
   agencyConversations,
+  agencySubgraphs,
+  agencyVersions,
   billingProfiles,
   sellerProfiles,
   sellerProfileRevisions,
@@ -473,6 +475,10 @@ describe('agencies table schema', () => {
     expect(columns.status).toBeDefined();
     expect(columns.isFallbackSafe).toBeDefined();
     expect(columns.isPublished).toBeDefined();
+    expect(columns.documentVersion).toBeDefined();
+    expect(columns.defaultEngine).toBeDefined();
+    expect(columns.compileMode).toBeDefined();
+    expect(columns.compatibilityMode).toBeDefined();
     expect(columns.createdBy).toBeDefined();
     expect(columns.createdAt).toBeDefined();
     expect(columns.updatedAt).toBeDefined();
@@ -497,6 +503,9 @@ describe('agency_agents table schema', () => {
     expect(columns.isEntryPoint).toBeDefined();
     expect(columns.isOptional).toBeDefined();
     expect(columns.position).toBeDefined();
+    expect(columns.subgraphId).toBeDefined();
+    expect(columns.engineHint).toBeDefined();
+    expect(columns.runtimeConfig).toBeDefined();
     expect(columns.createdAt).toBeDefined();
     expect(columns.updatedAt).toBeDefined();
   });
@@ -547,6 +556,34 @@ describe('agency_communication_flows table schema', () => {
     expect(columns.toAgentId).toBeDefined();
     expect(columns.flowType).toBeDefined();
     expect(columns.createdAt).toBeDefined();
+  });
+});
+
+describe('agency_subgraphs table schema', () => {
+  test('has all required columns', () => {
+    const columns = getTableColumns(agencySubgraphs);
+    expect(columns.id).toBeDefined();
+    expect(columns.agencyId).toBeDefined();
+    expect(columns.subgraphKey).toBeDefined();
+    expect(columns.name).toBeDefined();
+    expect(columns.engine).toBeDefined();
+    expect(columns.entryNodeIds).toBeDefined();
+    expect(columns.exitNodeIds).toBeDefined();
+    expect(columns.nodeIds).toBeDefined();
+    expect(columns.boundaryPolicy).toBeDefined();
+    expect(columns.createdAt).toBeDefined();
+    expect(columns.updatedAt).toBeDefined();
+  });
+});
+
+describe('agency_versions table schema', () => {
+  test('stores a JSON snapshot payload for legacy and hybrid documents', () => {
+    const columns = getTableColumns(agencyVersions);
+    expect(columns.id).toBeDefined();
+    expect(columns.agencyId).toBeDefined();
+    expect(columns.versionNumber).toBeDefined();
+    expect(columns.snapshotJson).toBeDefined();
+    expect(columns.contentHash).toBeDefined();
   });
 });
 

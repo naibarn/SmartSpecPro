@@ -38,6 +38,14 @@ vi.mock("../../services/featureFlags", () => ({
   setTenantFeatureFlag: mockSetTenantFeatureFlag,
 }));
 
+const { mockGetRedisClient } = vi.hoisted(() => ({
+  mockGetRedisClient: vi.fn(),
+}));
+
+vi.mock("../../services/redis", () => ({
+  getRedisClient: mockGetRedisClient,
+}));
+
 const { mockBridgeExecuteRun, mockBridgeCancelRun, mockBridgeListRuns, mockBridgeGetRunDetails } =
   vi.hoisted(() => ({
     mockBridgeExecuteRun: vi.fn(),
@@ -138,6 +146,10 @@ vi.mock("../../../drizzle/schema", () => ({
     isFallbackSafe: "isFallbackSafe",
     status: "status",
     isPublished: "isPublished",
+    documentVersion: "documentVersion",
+    defaultEngine: "defaultEngine",
+    compileMode: "compileMode",
+    compatibilityMode: "compatibilityMode",
     createdBy: "createdBy",
     createdAt: "createdAt",
     updatedAt: "updatedAt",
@@ -153,11 +165,33 @@ vi.mock("../../../drizzle/schema", () => ({
     isEntryPoint: "isEntryPoint",
     isOptional: "isOptional",
     position: "position",
+    subgraphId: "subgraphId",
+    engineHint: "engineHint",
+    runtimeConfig: "runtimeConfig",
     createdAt: "createdAt",
+  },
+  agencySubgraphs: {
+    id: "id",
+    agencyId: "agencyId",
+    subgraphKey: "subgraphKey",
+    name: "name",
+    engine: "engine",
+    entryNodeIds: "entryNodeIds",
+    exitNodeIds: "exitNodeIds",
+    nodeIds: "nodeIds",
+    boundaryPolicy: "boundaryPolicy",
+    createdAt: "createdAt",
+    updatedAt: "updatedAt",
   },
   agencyAgentTools: {
     id: "id",
     agentId: "agentId",
+    toolId: "toolId",
+    createdAt: "createdAt",
+  },
+  agencySharedTools: {
+    id: "id",
+    agencyId: "agencyId",
     toolId: "toolId",
     createdAt: "createdAt",
   },
@@ -179,6 +213,17 @@ vi.mock("../../../drizzle/schema", () => ({
     isArchived: "isArchived",
     createdAt: "createdAt",
     updatedAt: "updatedAt",
+  },
+  agencyVersions: {
+    id: "id",
+    agencyId: "agencyId",
+    tenantId: "tenantId",
+    versionNumber: "versionNumber",
+    snapshotJson: "snapshotJson",
+    contentHash: "contentHash",
+    changeDescription: "changeDescription",
+    createdByUserId: "createdByUserId",
+    createdAt: "createdAt",
   },
   agencyRunArtifacts: {
     id: "id",
@@ -245,6 +290,7 @@ vi.mock("drizzle-orm", () => ({
 vi.spyOn(crypto, "randomUUID").mockReturnValue("00000000-0000-4000-a000-000000000001" as `${string}-${string}-${string}-${string}-${string}`);
 
 import { agencyRouter } from "../agency";
+import { agencies, agencySubgraphs, agencyVersions } from "../../../drizzle/schema";
 
 // Helper to build ctx
 function makeCtx(overrides: Partial<{
@@ -266,10 +312,88 @@ function makeCtx(overrides: Partial<{
   };
 }
 
+function makeSelectLimitChain(rows: any[]) {
+  return {
+    from: vi.fn().mockReturnThis(),
+    where: vi.fn().mockReturnThis(),
+    orderBy: vi.fn().mockReturnThis(),
+    limit: vi.fn().mockResolvedValue(rows),
+  };
+}
+
+function makeSelectWhereChain(rows: any[]) {
+  return {
+    from: vi.fn().mockReturnThis(),
+    where: vi.fn().mockResolvedValue(rows),
+  };
+}
+
+function makeConversationLookupChain() {
+  return {
+    from: vi.fn().mockReturnThis(),
+    where: vi.fn().mockReturnThis(),
+    limit: vi.fn().mockResolvedValue([
+      {
+        id: "conv-001",
+        agencyId: "agency-001",
+        userId: 1,
+      },
+    ]),
+  };
+}
+
+function queueLegacyAgencyCompilePreviewLookups() {
+  mockDbSelect
+    .mockReturnValueOnce(makeConversationLookupChain())
+    .mockReturnValueOnce(makeSelectLimitChain([
+      {
+        id: "agency-001",
+        tenantId: "tenant-001",
+        name: "Legacy Agency",
+        documentVersion: 1,
+        defaultEngine: "agency_swarm",
+        compileMode: "legacy_agency",
+        compatibilityMode: "preserve_agency_swarm",
+      },
+    ]))
+    .mockReturnValueOnce(makeSelectWhereChain([
+      {
+        id: "agent-001",
+        name: "Researcher",
+        description: null,
+        instructions: "Research topics",
+        nodeType: "agent",
+        model: "gpt-4o-mini",
+        isEntryPoint: true,
+        isOptional: false,
+        position: null,
+        nodeConfig: {},
+        outputSchema: null,
+        examples: null,
+        parallelToolCalls: true,
+        maxTurns: 25,
+        subgraphId: null,
+        engineHint: null,
+        runtimeConfig: null,
+      },
+    ]))
+    .mockReturnValueOnce(makeSelectWhereChain([]))
+    .mockReturnValueOnce(makeSelectWhereChain([]));
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   // Default: feature flag enabled
   mockGetTenantFeatureFlag.mockResolvedValue(true);
+  mockGetRedisClient.mockReturnValue({
+    get: vi.fn().mockResolvedValue(null),
+    ttl: vi.fn().mockResolvedValue(3600),
+    set: vi.fn().mockResolvedValue("OK"),
+    sadd: vi.fn().mockResolvedValue(1),
+    scard: vi.fn().mockResolvedValue(1),
+    expire: vi.fn().mockResolvedValue(1),
+    publish: vi.fn().mockResolvedValue(1),
+  });
   // Default: no quota configured (quota check returns empty)
   mockDbSelect.mockReturnValue({
     from: vi.fn().mockReturnValue({
@@ -285,6 +409,7 @@ describe("agencyRouter", () => {
     expect(agencyRouter.getById).toBeDefined();
     expect(agencyRouter.create).toBeDefined();
     expect(agencyRouter.update).toBeDefined();
+    expect(agencyRouter.compilePreview).toBeDefined();
     expect(agencyRouter.delete).toBeDefined();
     expect(agencyRouter.listConversations).toBeDefined();
     expect(agencyRouter.createConversation).toBeDefined();
@@ -292,6 +417,61 @@ describe("agencyRouter", () => {
     expect(agencyRouter.adminListAgencies).toBeDefined();
     expect(agencyRouter.adminToggleTenant).toBeDefined();
     expect(agencyRouter.adminKillRun).toBeDefined();
+  });
+
+  describe("getById hybrid document metadata", () => {
+    it("auto-wraps legacy agencies into a synthesized root subgraph", async () => {
+      mockDbSelect
+        .mockReturnValueOnce(makeSelectLimitChain([
+          {
+            id: "agency-001",
+            tenantId: "tenant-001",
+            createdBy: 1,
+            name: "Legacy Agency",
+            status: "draft",
+            documentVersion: 1,
+            defaultEngine: "agency_swarm",
+            compileMode: "legacy_agency",
+            compatibilityMode: "preserve_agency_swarm",
+          },
+        ]))
+        .mockReturnValueOnce(makeSelectWhereChain([
+          {
+            id: "00000000-0000-4000-a000-000000000111",
+            agencyId: "agency-001",
+            name: "Researcher",
+            nodeType: "agent",
+            isEntryPoint: true,
+            position: { x: 10, y: 20 },
+          },
+        ]))
+        .mockReturnValueOnce(makeSelectWhereChain([]))
+        .mockReturnValueOnce(makeSelectWhereChain([]))
+        .mockReturnValueOnce(makeSelectWhereChain([]))
+        .mockReturnValueOnce(makeSelectWhereChain([]));
+
+      const handler = agencyRouter.getById;
+      const result = await handler({
+        ctx: makeCtx(),
+        input: { id: "00000000-0000-4000-a000-000000000001" },
+      });
+
+      expect(result.documentVersion).toBe(1);
+      expect(result.defaultEngine).toBe("agency_swarm");
+      expect(result.compileMode).toBe("legacy_agency");
+      expect(result.compatibilityMode).toBe("preserve_agency_swarm");
+      expect(result.subgraphs).toEqual([
+        {
+          id: "sg_root_legacy",
+          name: "Legacy Agency Root",
+          engine: "agency_swarm",
+          entryNodeIds: ["00000000-0000-4000-a000-000000000111"],
+          exitNodeIds: ["00000000-0000-4000-a000-000000000111"],
+          nodeIds: ["00000000-0000-4000-a000-000000000111"],
+          boundaryPolicy: null,
+        },
+      ]);
+    });
   });
 
   describe("list", () => {
@@ -368,6 +548,187 @@ describe("agencyRouter", () => {
     });
   });
 
+  describe("submitApproval", () => {
+    it("allows a designated approver to record partial quorum without publishing early", async () => {
+      mockDbSelect.mockReturnValueOnce({
+        from: vi.fn().mockReturnThis(),
+        where: vi.fn().mockResolvedValue([
+          {
+            id: "run-001",
+            agencyId: "agency-001",
+            tenantId: "tenant-001",
+            userId: 999,
+          },
+        ]),
+      });
+
+      const redis = {
+        get: vi.fn()
+          .mockResolvedValueOnce(JSON.stringify({ approvers: ["5", "9"], requiredApprovers: 2 }))
+          .mockResolvedValueOnce(null),
+        ttl: vi.fn().mockResolvedValue(7200),
+        set: vi.fn().mockResolvedValue(null),
+        sadd: vi.fn().mockResolvedValue(1),
+        scard: vi.fn().mockResolvedValue(1),
+        expire: vi.fn().mockResolvedValue(1),
+        publish: vi.fn().mockResolvedValue(1),
+      };
+      mockGetRedisClient.mockReturnValue(redis);
+
+      const result = await agencyRouter.submitApproval({
+        ctx: makeCtx({
+          user: {
+            id: 5,
+            role: "user",
+            currentTenantId: "tenant-001",
+          },
+        }),
+        input: {
+          runId: "00000000-0000-4000-a000-000000000010",
+          approvalKey: "00000000-0000-4000-a000-000000000011",
+          decision: "approved",
+        },
+      });
+
+      expect(result).toMatchObject({
+        success: true,
+        waitingForApprovals: true,
+        currentApprovals: 1,
+        approvalsRemaining: 1,
+      });
+      expect(redis.publish).not.toHaveBeenCalled();
+    });
+
+    it("publishes once quorum is satisfied", async () => {
+      mockDbSelect.mockReturnValueOnce({
+        from: vi.fn().mockReturnThis(),
+        where: vi.fn().mockResolvedValue([
+          {
+            id: "run-001",
+            agencyId: "agency-001",
+            tenantId: "tenant-001",
+            userId: 999,
+          },
+        ]),
+      });
+
+      const redis = {
+        get: vi.fn()
+          .mockResolvedValueOnce(JSON.stringify({ approvers: ["5", "9"], requiredApprovers: 2 }))
+          .mockResolvedValueOnce(null),
+        ttl: vi.fn().mockResolvedValue(7200),
+        set: vi.fn().mockResolvedValue("OK"),
+        sadd: vi.fn().mockResolvedValue(1),
+        scard: vi.fn().mockResolvedValue(2),
+        expire: vi.fn().mockResolvedValue(1),
+        publish: vi.fn().mockResolvedValue(1),
+      };
+      mockGetRedisClient.mockReturnValue(redis);
+
+      const result = await agencyRouter.submitApproval({
+        ctx: makeCtx({
+          user: {
+            id: 5,
+            role: "user",
+            currentTenantId: "tenant-001",
+          },
+        }),
+        input: {
+          runId: "00000000-0000-4000-a000-000000000020",
+          approvalKey: "00000000-0000-4000-a000-000000000021",
+          decision: "approved",
+        },
+      });
+
+      expect(result).toMatchObject({
+        success: true,
+        waitingForApprovals: false,
+        currentApprovals: 2,
+        approvalsRemaining: 0,
+      });
+      expect(redis.publish).toHaveBeenCalledOnce();
+    });
+  });
+
+  describe("compilePreview", () => {
+    it("returns a hybrid compile preview with diagnostics and bridge summary", async () => {
+      mockGetTenantFeatureFlag.mockImplementation(async (flagName: string) => {
+        if (flagName === "agencyHybridAdk") return true;
+        if (flagName === "agencyHybridAdkKillSwitch") return false;
+        return true;
+      });
+
+      const handler = agencyRouter.compilePreview;
+      const result = await handler({
+        ctx: makeCtx(),
+        input: {
+          name: "Hybrid Agency",
+          documentVersion: 2,
+          defaultEngine: "agency_swarm",
+          compileMode: "assist",
+          compatibilityMode: "hybrid",
+          agents: [
+            {
+              id: "n1",
+              name: "Research",
+              nodeType: "agent",
+              isEntryPoint: true,
+              subgraphId: "sg_a",
+            },
+            {
+              id: "n2",
+              name: "Creative Router",
+              nodeType: "router",
+              subgraphId: "sg_b",
+            },
+          ],
+          communicationFlows: [
+            {
+              fromAgentName: "Research",
+              toAgentName: "Creative Router",
+              flowType: "delegation",
+            },
+          ],
+          subgraphs: [
+            {
+              id: "sg_a",
+              name: "Research",
+              engine: "agency_swarm",
+              entryNodeIds: ["n1"],
+              exitNodeIds: ["n1"],
+              nodeIds: ["n1"],
+              boundaryPolicy: {
+                bridgeMode: "sync",
+                inputContract: "research_input_v1",
+              },
+            },
+            {
+              id: "sg_b",
+              name: "Creative",
+              engine: "adk2",
+              entryNodeIds: ["n2"],
+              exitNodeIds: ["n2"],
+              nodeIds: ["n2"],
+              boundaryPolicy: {
+                outputContract: "creative_output_v1",
+                approvalOwner: "workflow",
+              },
+            },
+          ],
+        },
+      });
+
+      expect(result.status).toBe("success");
+      expect(result.planSummary.engineMix).toEqual(["agency_swarm", "adk2"]);
+      expect(result.bridges).toEqual([
+        expect.objectContaining({
+          fromSubgraphId: "sg_a",
+          toSubgraphId: "sg_b",
+        }),
+      ]);
+    });
+  });
+
   describe("sendMessage", () => {
     it("dispatches to Python bridge and returns result", async () => {
       const mockRunResult = {
@@ -382,19 +743,7 @@ describe("agencyRouter", () => {
       };
       mockBridgeExecuteRun.mockResolvedValue(mockRunResult);
 
-      // Mock conversation lookup
-      const convChain = {
-        from: vi.fn().mockReturnThis(),
-        where: vi.fn().mockReturnThis(),
-        limit: vi.fn().mockResolvedValue([
-          {
-            id: "conv-001",
-            agencyId: "agency-001",
-            userId: 1,
-          },
-        ]),
-      };
-      mockDbSelect.mockReturnValue(convChain);
+      queueLegacyAgencyCompilePreviewLookups();
 
       const handler = agencyRouter.sendMessage;
       const result = await handler({
@@ -413,6 +762,12 @@ describe("agencyRouter", () => {
           message: "Analyze this",
           userToken: "user-jwt-token",
           userId: 1,
+          compilePreview: expect.objectContaining({
+            status: "success",
+            planSummary: expect.objectContaining({
+              usesHybrid: false,
+            }),
+          }),
         }),
       );
       expect(result).toEqual({
@@ -444,18 +799,7 @@ describe("agencyRouter", () => {
         previewArtifacts: [],
       });
 
-      const convChain = {
-        from: vi.fn().mockReturnThis(),
-        where: vi.fn().mockReturnThis(),
-        limit: vi.fn().mockResolvedValue([
-          {
-            id: "conv-001",
-            agencyId: "agency-001",
-            userId: 1,
-          },
-        ]),
-      };
-      mockDbSelect.mockReturnValue(convChain);
+      queueLegacyAgencyCompilePreviewLookups();
 
       const handler = agencyRouter.sendMessage;
       await handler({
@@ -530,18 +874,7 @@ describe("agencyRouter", () => {
         ],
       });
 
-      const convChain = {
-        from: vi.fn().mockReturnThis(),
-        where: vi.fn().mockReturnThis(),
-        limit: vi.fn().mockResolvedValue([
-          {
-            id: "conv-001",
-            agencyId: "agency-001",
-            userId: 1,
-          },
-        ]),
-      };
-      mockDbSelect.mockReturnValue(convChain);
+      queueLegacyAgencyCompilePreviewLookups();
 
       const handler = agencyRouter.sendMessage;
       await handler({
@@ -609,18 +942,7 @@ describe("agencyRouter", () => {
         ],
       });
 
-      const convChain = {
-        from: vi.fn().mockReturnThis(),
-        where: vi.fn().mockReturnThis(),
-        limit: vi.fn().mockResolvedValue([
-          {
-            id: "conv-001",
-            agencyId: "agency-001",
-            userId: 1,
-          },
-        ]),
-      };
-      mockDbSelect.mockReturnValue(convChain);
+      queueLegacyAgencyCompilePreviewLookups();
 
       const handler = agencyRouter.sendMessage;
       const result = await handler({
@@ -1235,6 +1557,217 @@ describe("agencyRouter", () => {
     });
   });
 
+  describe("saveBuilder hybrid document metadata", () => {
+    it("persists document v2 snapshots and subgraph rows for hybrid agencies", async () => {
+      mockGetTenantFeatureFlag.mockImplementation(async (flagName: string) => {
+        if (flagName === "agencyHybridAdk") return true;
+        if (flagName === "agencyHybridAdkKillSwitch") return false;
+        return true;
+      });
+
+      mockDbSelect.mockReturnValueOnce(makeSelectLimitChain([
+        {
+          id: "00000000-0000-4000-a000-000000000001",
+          tenantId: "tenant-001",
+          createdBy: 1,
+          name: "Hybrid Agency",
+          defaultEngine: "agency_swarm",
+          compileMode: "legacy_agency",
+          compatibilityMode: "preserve_agency_swarm",
+        },
+      ]));
+
+      const insertCalls: Array<{ table: unknown; payload: unknown }> = [];
+      mockDbTransaction.mockImplementation(async (cb: Function) => {
+        const tx = {
+          execute: vi.fn()
+            .mockResolvedValueOnce([{ id: "00000000-0000-4000-a000-000000000001" }])
+            .mockResolvedValueOnce([]),
+          select: vi.fn()
+            .mockReturnValueOnce(makeSelectWhereChain([]))
+            .mockReturnValueOnce(makeSelectLimitChain([]))
+            .mockReturnValueOnce(makeSelectWhereChain([]))
+            .mockReturnValueOnce(makeSelectWhereChain([])),
+          update: vi.fn(() => ({
+            set: vi.fn().mockReturnValue({
+              where: vi.fn().mockResolvedValue(undefined),
+            }),
+          })),
+          delete: vi.fn(() => ({
+            where: vi.fn().mockResolvedValue(undefined),
+          })),
+          insert: vi.fn((table: unknown) => ({
+            values: vi.fn(async (payload: unknown) => {
+              insertCalls.push({ table, payload });
+              return undefined;
+            }),
+          })),
+        };
+
+        return cb(tx);
+      });
+
+      const handler = agencyRouter.saveBuilder;
+      await handler({
+        ctx: makeCtx(),
+        input: {
+          id: "00000000-0000-4000-a000-000000000001",
+          name: "Hybrid Agency",
+          documentVersion: 2,
+          defaultEngine: "adk2",
+          compileMode: "strict",
+          compatibilityMode: "hybrid",
+          agents: [
+            {
+              id: "00000000-0000-4000-a000-000000000111",
+              name: "Creative Router",
+              nodeType: "router",
+              instructions: "Route creative tasks",
+              model: "gpt-4o-mini",
+              isEntryPoint: true,
+              subgraphId: "sg_creative",
+              engineHint: "adk2",
+              runtimeConfig: { timeoutMs: 30000 },
+              nodeConfig: {
+                routes: [
+                  {
+                    condition: "default",
+                    targetNodeId: "00000000-0000-4000-a000-000000000111",
+                  },
+                ],
+              },
+            },
+          ],
+          communicationFlows: [],
+          subgraphs: [
+            {
+              id: "sg_creative",
+              name: "Creative Cluster",
+              engine: "adk2",
+              entryNodeIds: ["00000000-0000-4000-a000-000000000111"],
+              exitNodeIds: ["00000000-0000-4000-a000-000000000111"],
+              nodeIds: ["00000000-0000-4000-a000-000000000111"],
+              boundaryPolicy: { bridgeMode: "sync" },
+            },
+          ],
+        },
+      });
+
+      const versionInsert = insertCalls.find((call) => call.table === agencyVersions);
+      expect(versionInsert).toBeDefined();
+      expect(versionInsert?.payload).toEqual(
+        expect.objectContaining({
+          snapshotJson: expect.objectContaining({
+            documentVersion: 2,
+            defaultEngine: "adk2",
+            settings: expect.objectContaining({
+              compileMode: "strict",
+              compatibilityMode: "hybrid",
+            }),
+            subgraphs: [
+              expect.objectContaining({
+                id: "sg_creative",
+                nodeIds: ["00000000-0000-4000-a000-000000000111"],
+              }),
+            ],
+          }),
+        }),
+      );
+
+      const subgraphInsert = insertCalls.find((call) => call.table === agencySubgraphs);
+      expect(subgraphInsert?.payload).toEqual(
+        expect.objectContaining({
+          subgraphKey: "sg_creative",
+          engine: "adk2",
+          nodeIds: ["00000000-0000-4000-a000-000000000111"],
+        }),
+      );
+
+      const agentInsert = insertCalls.find((call) =>
+        typeof call.payload === "object" && call.payload !== null && (call.payload as any).agencyId === "00000000-0000-4000-a000-000000000001"
+          && (call.payload as any).name === "Creative Router"
+      );
+      expect(agentInsert?.payload).toEqual(
+        expect.objectContaining({
+          id: "00000000-0000-4000-a000-000000000111",
+          subgraphId: "sg_creative",
+          engineHint: "adk2",
+          runtimeConfig: { timeoutMs: 30000 },
+        }),
+      );
+    });
+
+    it("blocks ADK persistence when the hybrid feature flag is disabled", async () => {
+      mockGetTenantFeatureFlag.mockImplementation(async (flagName: string) => {
+        if (flagName === "agencyHybridAdk") return false;
+        if (flagName === "agencyHybridAdkKillSwitch") return false;
+        return true;
+      });
+
+      mockDbSelect.mockReturnValueOnce(makeSelectLimitChain([
+        {
+          id: "00000000-0000-4000-a000-000000000001",
+          tenantId: "tenant-001",
+          createdBy: 1,
+          name: "Hybrid Agency",
+          defaultEngine: "agency_swarm",
+          compileMode: "legacy_agency",
+          compatibilityMode: "preserve_agency_swarm",
+        },
+      ]));
+
+      const handler = agencyRouter.saveBuilder;
+
+      await expect(() =>
+        handler({
+          ctx: makeCtx(),
+          input: {
+            id: "00000000-0000-4000-a000-000000000001",
+            name: "Hybrid Agency",
+            documentVersion: 2,
+            defaultEngine: "adk2",
+            compileMode: "strict",
+            compatibilityMode: "hybrid",
+            agents: [
+              {
+                id: "00000000-0000-4000-a000-000000000111",
+                name: "Creative Router",
+                nodeType: "router",
+                instructions: "Route creative tasks",
+                model: "gpt-4o-mini",
+                isEntryPoint: true,
+                subgraphId: "sg_creative",
+                engineHint: "adk2",
+                nodeConfig: {
+                  routes: [
+                    {
+                      condition: "default",
+                      targetNodeId: "00000000-0000-4000-a000-000000000111",
+                    },
+                  ],
+                },
+              },
+            ],
+            communicationFlows: [],
+            subgraphs: [
+              {
+                id: "sg_creative",
+                name: "Creative Cluster",
+                engine: "adk2",
+                entryNodeIds: ["00000000-0000-4000-a000-000000000111"],
+                exitNodeIds: ["00000000-0000-4000-a000-000000000111"],
+                nodeIds: ["00000000-0000-4000-a000-000000000111"],
+                boundaryPolicy: null,
+              },
+            ],
+          },
+        }),
+      ).rejects.toMatchObject({
+        code: "FORBIDDEN",
+      });
+    });
+  });
+
   describe("delete", () => {
     it("soft-deletes by setting status to archived", async () => {
       // Mock finding the agency
@@ -1269,34 +1802,26 @@ describe("agencyRouter", () => {
   describe("createFromTemplate", () => {
     it("clones built-in template tools into the new tenant draft", async () => {
       mockDbSelect
-        .mockReturnValueOnce({
-          from: vi.fn().mockReturnValue({
-            where: vi.fn().mockResolvedValue([
-              {
-                id: "platform-deep-research",
-                name: "Deep Research",
-                description: "Template",
-                systemPrompt: "Prompt",
-              },
-            ]),
-          }),
-        } as any)
-        .mockReturnValueOnce({
-          from: vi.fn().mockReturnValue({
-            where: vi.fn().mockResolvedValue([
-              {
-                id: "tpl-agent-1",
-                name: "Deep Research Lead",
-                description: "Lead",
-                instructions: "Use RAG",
-                defaultModel: "gpt-4.1-mini",
-                isEntryPoint: true,
-                position: { x: 0, y: 0 },
-                defaultTools: ["builtin-rag-knowledge", "builtin-document-search"],
-              },
-            ]),
-          }),
-        } as any);
+        .mockReturnValueOnce(makeSelectWhereChain([
+          {
+            id: "platform-deep-research",
+            name: "Deep Research",
+            description: "Template",
+            systemPrompt: "Prompt",
+          },
+        ]) as any)
+        .mockReturnValueOnce(makeSelectWhereChain([
+          {
+            id: "tpl-agent-1",
+            name: "Deep Research Lead",
+            description: "Lead",
+            instructions: "Use RAG",
+            defaultModel: "gpt-4.1-mini",
+            isEntryPoint: true,
+            position: { x: 0, y: 0 },
+            defaultTools: ["builtin-rag-knowledge", "builtin-document-search"],
+          },
+        ]) as any);
 
       const insertCalls: Array<{ table: any; values: any[] | Record<string, unknown> }> = [];
       mockDbInsert.mockImplementation((table: any) => ({
@@ -1329,12 +1854,16 @@ describe("agencyRouter", () => {
 
   it("includes the Meta Channels builtin tool in listTools", async () => {
     const chain = {
-      from: vi.fn().mockReturnThis(),
-      where: vi.fn().mockReturnThis(),
-      orderBy: vi.fn().mockReturnThis(),
-      limit: vi.fn().mockReturnThis(),
+      from: vi.fn(),
+      where: vi.fn(),
+      orderBy: vi.fn(),
+      limit: vi.fn(),
       offset: vi.fn().mockResolvedValue([]),
     };
+    chain.from.mockReturnValue(chain);
+    chain.where.mockReturnValue(chain);
+    chain.orderBy.mockReturnValue(chain);
+    chain.limit.mockReturnValue(chain);
     mockDbSelect.mockReturnValue(chain);
 
     const handler = agencyRouter.listTools;
@@ -1362,12 +1891,16 @@ describe("agencyRouter", () => {
 
   it("includes the provider-neutral Social Actions builtin tool in listTools", async () => {
     const chain = {
-      from: vi.fn().mockReturnThis(),
-      where: vi.fn().mockReturnThis(),
-      orderBy: vi.fn().mockReturnThis(),
-      limit: vi.fn().mockReturnThis(),
+      from: vi.fn(),
+      where: vi.fn(),
+      orderBy: vi.fn(),
+      limit: vi.fn(),
       offset: vi.fn().mockResolvedValue([]),
     };
+    chain.from.mockReturnValue(chain);
+    chain.where.mockReturnValue(chain);
+    chain.orderBy.mockReturnValue(chain);
+    chain.limit.mockReturnValue(chain);
     mockDbSelect.mockReturnValue(chain);
 
     const handler = agencyRouter.listTools;

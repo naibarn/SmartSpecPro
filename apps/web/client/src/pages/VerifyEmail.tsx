@@ -9,6 +9,7 @@ import { Link, useLocation } from 'wouter';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { getSmartSpecWebEndpoint } from '@/lib/webRuntime';
 import {
   Mail,
   CheckCircle2,
@@ -100,7 +101,7 @@ export default function VerifyEmail() {
     setStatus('verifying');
 
     try {
-      const response = await fetch('/trpc/auth.verifyEmail', {
+      const response = await fetch(getSmartSpecWebEndpoint('/trpc/auth.verifyEmail'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ json: { email, code: fullCode } }),
@@ -138,7 +139,7 @@ export default function VerifyEmail() {
     setIsResending(true);
 
     try {
-      const response = await fetch('/trpc/auth.resendVerification', {
+      const response = await fetch(getSmartSpecWebEndpoint('/trpc/auth.resendVerification'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ json: { email } }),

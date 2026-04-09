@@ -1,0 +1,23 @@
+# Section 07 status
+
+- Status: implemented, uncommitted
+- Completed this round:
+  - asymmetric ed25519 device enrollment helpers with cryptographic signature verification
+  - shared-secret compatibility helpers with expiry-aware challenge verification
+  - authenticated desktop-host enrollment challenge/verify API routes
+  - desktop device identity init/read/rotate lifecycle
+  - OS-protected secret storage when the platform exposes a supported keychain or DPAPI helper
+  - desktop capability reports that surface device identity posture, storage protection, provider, and attestation hints to the control plane
+  - device disable/offboarding actions that block later heartbeat refresh and close policy gates
+  - tenant-wide device listing and selected-device control-plane state routes for governed admin review
+  - root-action queue routes and audit events for reindex / purge / revoke operations
+  - runtime token binding and clone-suspicion utilities
+  - rekey binding plus secret-store-backed symmetric and asymmetric proof construction
+  - signed updater verification helpers with authoritative signer resolution on the server route
+  - scoped secret metadata lifecycle and audit events
+  - offboarding cleanup plans covering package caches and derived stores
+- Residual hardening still pending:
+  - integrate universal hardware-backed or platform-attested key providers on every supported desktop platform
+- Targeted tests passed:
+  - `npm --prefix apps/web test -- shared/__tests__/desktopHostContracts.test.ts server/routes/desktopHost.test.ts server/services/__tests__/desktopDeviceRegistryService.test.ts server/services/__tests__/desktopOffboarding.test.ts server/services/__tests__/desktopUpdateService.test.ts`
+  - `cargo test --manifest-path apps/tauri-shell/src-tauri/Cargo.toml --test device_identity_tests --test secret_store_tests --test desktop_runtime_capabilities_tests`

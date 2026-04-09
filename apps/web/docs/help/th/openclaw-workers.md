@@ -13,6 +13,14 @@ tags: [openclaw, worker, external runtime, monitoring, teams, credits, feature f
 
 ใช้คู่มือนี้เมื่อคุณต้องการให้ SmartSpecPro ส่งงานที่รองรับไปทำบน worker ภายนอกของตระกูล Claw
 
+คู่มือนี้อธิบายเฉพาะ runtime แบบ `openclaw_gateway` เป็นหลัก ปัจจุบัน SmartSpecPro แยก runtime family อื่นไว้อย่างชัดเจนแล้ว:
+
+- `desktop_zeroclaw_managed` สำหรับงานแบบ Desktop + ZeroClaw ที่ผูกกับเครื่อง
+- `nemoclaw_sandbox` สำหรับ secure sandbox pool ที่เปิดแบบ admin-gated
+- `hiclaw_cluster` สำหรับ collaborative cluster ที่เปิดแบบ admin-gated
+
+runtime เหล่านี้ไม่ได้สืบทอด semantics ของ OpenClaw โดยอัตโนมัติ ถ้าเปิดใช้งานภายหลัง หน้า operator จะเห็นเป็นคนละ runtime family พร้อม rollout และ compatibility state ของตัวเอง
+
 Claw workers เหมาะกับงานแบบ:
 
 - งานผู้ช่วยที่ใช้เวลานาน
@@ -66,6 +74,16 @@ Claw workers เหมาะกับงานแบบ:
 
 ถ้า tenant flag ยังปิดอยู่ ถึงแม้จะเห็น worker ในระบบ งานใหม่ก็ยังไม่ถูกส่งไปที่ worker ของ tenant นั้น
 
+## ความจริงเรื่อง rollout ของ runtime
+
+Feature 077 ทำให้ control plane รู้จัก runtime หลายสายมากขึ้น แต่ความพร้อมใช้งานจริงยังขึ้นกับแต่ละ runtime:
+
+- `openclaw_gateway` คือเส้นทาง delegated external operator ที่เสถียรที่สุดในตอนนี้
+- `desktop_zeroclaw_managed` แยกไว้สำหรับ local files, GPU, และ media jobs
+- `nemoclaw_sandbox` กับ `hiclaw_cluster` ยังเป็น runtime แบบ admin-gated จนกว่าจะเปิด rollout ของตัวเอง
+
+ดังนั้นอย่าอ่านคู่มือนี้ว่า runtime ทุกแบบรองรับ dispatch, callback, หรือ delegated session ได้เท่ากันทั้งหมด
+
 ## ลำดับการตั้งค่าที่แนะนำ
 
 1. เปิด `openClawExternalRuntime`
@@ -100,6 +118,8 @@ Claw workers เหมาะกับงานแบบ:
 - ถ้ายอดเครดิตหรือ budget guardrail ถึงเพดาน worker จะถูกบล็อกไม่ให้ใช้เส้นทาง SmartSpecPro ต่อ
 - การเรียก LLM ของ delegated worker ต้องใช้ model alias ที่ SmartSpecPro อนุญาต
 - ฝั่ง gateway ยังมีเพดาน concurrent call ต่อ job เพื่อกัน worker ที่มีปัญหายิงคำขอถี่เกินไป
+
+โมเดล Bound Worker แบบนี้ยังคงเป็น owner-bound สำหรับ OpenClaw เท่านั้น ส่วน shared department worker, dedicated GPU host, และ runtime แบบ cluster จะใช้ approval และ execution semantics คนละแบบ
 
 ## worker รู้ได้อย่างไรว่ามีอะไรให้ใช้บ้าง
 

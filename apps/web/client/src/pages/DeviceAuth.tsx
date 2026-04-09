@@ -71,7 +71,7 @@ export default function DeviceAuth() {
       // Redirect to login with return URL
       const cleanCode = userCode.replace(/-/g, "");
       const returnUrl = `/auth/device?user_code=${cleanCode}`;
-      setLocation(`/login?redirect=${encodeURIComponent(returnUrl)}`);
+      setLocation(`/login?returnUrl=${encodeURIComponent(returnUrl)}`);
       return;
     }
 
@@ -240,9 +240,12 @@ export default function DeviceAuth() {
             </div>
 
             {!user && (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+              <div className="space-y-3 rounded-lg border border-yellow-200 bg-yellow-50 p-4 mb-6">
                 <p className="text-sm text-yellow-800">
                   You need to sign in to authorize this device.
+                </p>
+                <p className="text-sm text-yellow-800">
+                  Google sign-in and accounts protected by 2FA are supported through the browser flow on the next step. Desktop direct login is not available for those cases yet.
                 </p>
               </div>
             )}

@@ -104,6 +104,12 @@ import { socialInboxRouter } from "./routers/socialInbox";
 import { billingRouter } from "./routers/billing";
 import { adminBillingRouter } from "./routers/adminBilling";
 import { localAiRouter } from "./routers/localAi";
+import {
+  clearPendingTwoFactorCookie,
+  readPendingTwoFactorCookie,
+  setPendingTwoFactorCookie,
+} from "./services/pendingTwoFactor";
+import { buildOAuthProviderAvailability } from "./services/oauthProviderAvailability";
 
 // Zod schemas for validation
 const strongPasswordSchema = z.string().min(8).refine(
@@ -144,6 +150,28 @@ const galleryFiltersSchema = z.object({
   offset: z.number().min(0).default(0),
 });
 
+const SMS_RECOVERY_UNAVAILABLE_ERROR =
+  "SMS recovery is currently unavailable. Please use email recovery instead.";
+
+async function isSmsRecoveryConfigured(): Promise<boolean> {
+  const { getDb } = await import("./db");
+  const { systemSettings } = await import("../drizzle/schema");
+  const { eq } = await import("drizzle-orm");
+
+  const db = await getDb();
+  if (!db) return false;
+
+  const settings = await db.select().from(systemSettings)
+    .where(eq(systemSettings.category, "sms"));
+
+  const map: Record<string, string | null> = {};
+  for (const setting of settings) {
+    map[setting.key] = setting.value;
+  }
+
+  return Boolean(map.provider && map.account_sid && map.auth_token && map.from_number);
+}
+
 export const appRouter = router({
   // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
   system: systemRouter,
@@ -183,7 +211,7 @@ export const appRouter = router({
       const { systemSettings } = await import("../drizzle/schema");
       const { eq } = await import("drizzle-orm");
 
-      const result = { google: false, github: false, microsoft: false };
+      const values: Record<string, string | null | undefined> = {};
 
       try {
         const db = await getDb();
@@ -193,16 +221,22 @@ export const appRouter = router({
             .where(eq(systemSettings.category, "oauth"));
 
           for (const row of rows) {
-            if (row.key === "googleClientId" && row.value) result.google = true;
-            if (row.key === "githubClientId" && row.value) result.github = true;
-            if (row.key === "microsoftClientId" && row.value) result.microsoft = true;
+            values[row.key] = row.value;
           }
         }
       } catch {
-        // DB not available — return defaults (all false)
+        // Fall back to environment variables when DB is unavailable.
       }
 
-      return result;
+      return buildOAuthProviderAvailability(values);
+    }),
+    getRecoveryCapabilities: publicProcedure.query(async () => {
+      const smsEnabled = await isSmsRecoveryConfigured();
+      return {
+        sms: {
+          enabled: smsEnabled,
+        },
+      };
     }),
     logout: publicProcedure.mutation(async ({ ctx }) => {
       // Revoke the session token before clearing the cookie
@@ -222,6 +256,7 @@ export const appRouter = router({
 
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
+      clearPendingTwoFactorCookie(ctx.req, ctx.res);
       return {
         success: true,
       } as const;
@@ -329,6 +364,13 @@ export const appRouter = router({
 
         // If 2FA is enabled, don't create session yet — return challenge
         if (user.twoFactorEnabled) {
+          await setPendingTwoFactorCookie(ctx.req, ctx.res, {
+            email: user.email || input.email,
+            openId: user.openId,
+            name: user.name || user.email || "",
+            provider: "password",
+          });
+
           return {
             success: false,
             requires2FA: true,
@@ -344,6 +386,7 @@ export const appRouter = router({
         });
 
         const cookieOptions = getSessionCookieOptions(ctx.req);
+        clearPendingTwoFactorCookie(ctx.req, ctx.res);
         ctx.res.cookie(COOKIE_NAME, token, { ...cookieOptions, maxAge: THIRTY_DAYS_MS });
 
         return {
@@ -628,6 +671,10 @@ export const appRouter = router({
         channel: z.enum(["email", "backup_email", "sms"]).default("email"),
       }))
       .mutation(async ({ input }) => {
+        if (input.channel === "sms" && !(await isSmsRecoveryConfigured())) {
+          throw new Error(SMS_RECOVERY_UNAVAILABLE_ERROR);
+        }
+
         const { getUserByEmail } = await import("./db");
         const { getDb } = await import("./db");
         const { users, emailVerificationTokens } = await import("../drizzle/schema");
@@ -860,6 +907,10 @@ export const appRouter = router({
     sendPhoneCode: protectedProcedure
       .input(z.object({ phone: z.string().regex(/^\+[1-9]\d{1,14}$/, "Invalid phone number (E.164 format required)") }))
       .mutation(async ({ input, ctx }) => {
+        if (!(await isSmsRecoveryConfigured())) {
+          throw new Error(SMS_RECOVERY_UNAVAILABLE_ERROR);
+        }
+
         const { getDb } = await import("./db");
         const { emailVerificationTokens } = await import("../drizzle/schema");
         const { eq, and, isNull, gt } = await import("drizzle-orm");
@@ -880,16 +931,21 @@ export const appRouter = router({
         const code = String(crypto.randomInt(100000, 999999));
         const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
-        await db.insert(emailVerificationTokens).values({
+        const [token] = await db.insert(emailVerificationTokens).values({
           userId: ctx.user.id,
           email: input.phone, // store phone in email field for SMS channel
           code,
           channel: "sms",
           expiresAt,
-        });
+        }).returning({ id: emailVerificationTokens.id });
 
         const { sendVerificationSms } = await import("./services/smsService");
-        await sendVerificationSms(input.phone, code);
+        const sent = await sendVerificationSms(input.phone, code);
+        if (!sent) {
+          await db.delete(emailVerificationTokens)
+            .where(eq(emailVerificationTokens.id, token.id));
+          throw new Error(SMS_RECOVERY_UNAVAILABLE_ERROR);
+        }
 
         return { success: true };
       }),
@@ -1124,8 +1180,18 @@ export const appRouter = router({
         const { decryptSecret, verifyTotp } = await import("./services/totpService");
         const bcrypt = await import("bcrypt");
 
+        const pending = await readPendingTwoFactorCookie(ctx.req);
+        if (!pending || pending.email.toLowerCase() !== input.email.toLowerCase()) {
+          throw new Error("Your sign-in session expired. Please sign in again.");
+        }
+
         const user = await getUserByEmail(input.email);
-        if (!user || !user.twoFactorEnabled || !user.twoFactorSecret) {
+        if (
+          !user ||
+          user.openId !== pending.openId ||
+          !user.twoFactorEnabled ||
+          !user.twoFactorSecret
+        ) {
           throw new Error("Invalid request");
         }
 
@@ -1159,6 +1225,7 @@ export const appRouter = router({
 
         const { getSessionCookieOptions } = await import("./_core/cookies");
         const cookieOptions = getSessionCookieOptions(ctx.req);
+        clearPendingTwoFactorCookie(ctx.req, ctx.res);
         ctx.res.cookie(COOKIE_NAME, token, { ...cookieOptions, maxAge: THIRTY_DAYS_MS });
 
         return {
@@ -1178,6 +1245,10 @@ export const appRouter = router({
         phone: z.string().optional(),
       }))
       .mutation(async ({ input }) => {
+        if (input.channel === "sms" && !(await isSmsRecoveryConfigured())) {
+          throw new Error(SMS_RECOVERY_UNAVAILABLE_ERROR);
+        }
+
         const { getUserByEmail } = await import("./db");
         const { getDb } = await import("./db");
         const { emailVerificationTokens } = await import("../drizzle/schema");
@@ -1388,11 +1459,29 @@ export const appRouter = router({
             throw new Error('Please verify your email before logging in');
           }
 
+          if (existing.twoFactorEnabled) {
+            await setPendingTwoFactorCookie(ctx.req, ctx.res, {
+              email: existing.email || pythonUser.email,
+              openId: existing.openId,
+              name: existing.name || existing.email || "",
+              provider: input.provider,
+            });
+
+            return {
+              success: false,
+              requires2FA: true,
+              email: existing.email,
+              hasBackupEmail: !!existing.backupEmailVerified && !!existing.backupEmail,
+              hasPhone: !!existing.phoneVerified && !!existing.phone,
+            };
+          }
+
           // Create session for existing user
           const token = await sdk.createSessionToken(existing.openId, {
             name: existing.name || existing.email || '',
           });
           const cookieOptions = getSessionCookieOptions(ctx.req);
+          clearPendingTwoFactorCookie(ctx.req, ctx.res);
           ctx.res.cookie(COOKIE_NAME, token, { ...cookieOptions, maxAge: THIRTY_DAYS_MS });
 
           return {
@@ -1457,6 +1546,7 @@ export const appRouter = router({
           name: pythonUser.full_name || pythonUser.email.split('@')[0],
         });
         const cookieOptions = getSessionCookieOptions(ctx.req);
+        clearPendingTwoFactorCookie(ctx.req, ctx.res);
         ctx.res.cookie(COOKIE_NAME, token, { ...cookieOptions, maxAge: THIRTY_DAYS_MS });
 
         return {

@@ -13,6 +13,14 @@ tags: [openclaw, worker, external runtime, monitoring, teams, credits, feature f
 
 Use this guide when you want SmartSpecPro Web to hand supported work to a Claw-family worker such as OpenClaw.
 
+This guide is specifically about the `openclaw_gateway` runtime. SmartSpecPro now tracks other worker families separately:
+
+- `desktop_zeroclaw_managed` for Desktop + ZeroClaw machine-hosted work
+- `nemoclaw_sandbox` for admin-gated secure sandbox pools
+- `hiclaw_cluster` for admin-gated collaborative clusters
+
+Those runtime families do not inherit OpenClaw semantics automatically. If a tenant enables them later, operator views will show them as separate runtime families with their own rollout and compatibility state.
+
 Claw workers are best for:
 
 - long-running assistant work
@@ -66,6 +74,16 @@ Make sure these are ready first:
 
 If the tenant flag is off, the worker can exist in the system but new work will not be dispatched for that tenant.
 
+## Runtime rollout truth
+
+Feature 077 widens the control plane, but production readiness is still runtime-specific:
+
+- `openclaw_gateway` is the current stable dispatch path for delegated external operator work
+- `desktop_zeroclaw_managed` is tracked separately and is intended for desktop-local files, GPU, and media jobs
+- `nemoclaw_sandbox` and `hiclaw_cluster` stay admin-gated until their own rollout flags are enabled
+
+Do not read this guide as proof that every runtime family supports the same dispatch, callback, or delegated-session behavior.
+
 ## Setup order that works best
 
 1. Enable `openClawExternalRuntime`.
@@ -100,6 +118,8 @@ Important:
 - the worker is blocked when the owner's balance or worker budget guardrails say it must stop
 - delegated worker LLM calls must use SmartSpecPro-approved model aliases
 - delegated worker calls also respect per-job concurrency caps so a broken worker does not flood the gateway
+
+This bound-worker model remains owner-bound for OpenClaw. Shared department workers, dedicated GPU hosts, and future cluster runtimes use different approval and execution semantics.
 
 ## How the worker knows what is available
 

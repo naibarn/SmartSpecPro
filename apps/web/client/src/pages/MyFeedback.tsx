@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation, useSearch } from "wouter";
 import { trpc } from "@/lib/trpc";
+import { LocaleToggle } from "@/components/LocaleToggle";
 import { Badge } from "@smartspec/ui/src/components/ui/badge";
 import { Button } from "@smartspec/ui/src/components/ui/button";
 import { ScrollArea } from "@smartspec/ui/src/components/ui/scroll-area";
@@ -34,10 +35,13 @@ export default function MyFeedback() {
     }
   }, [search]);
 
-  const ticketsQuery = trpc.feedback.myTickets.useQuery({ limit: 50, offset: 0 });
+  const ticketsQuery = trpc.feedback.myTickets.useQuery({
+    limit: 50,
+    offset: 0,
+  });
   const ticketDetailQuery = trpc.feedback.myTicketDetail.useQuery(
     { id: selectedTicketId! },
-    { enabled: !!selectedTicketId },
+    { enabled: !!selectedTicketId }
   );
 
   const tickets = ticketsQuery.data ?? [];
@@ -97,8 +101,8 @@ export default function MyFeedback() {
       {/* Header */}
       <header className="bg-white/70 backdrop-blur-xl border-b sticky top-0 z-10">
         <div className="px-4 sm:px-6 lg:px-8 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-wrap items-center gap-3">
               <Button
                 variant="ghost"
                 size="sm"
@@ -113,11 +117,16 @@ export default function MyFeedback() {
                 </div>
                 <div>
                   <h1 className="text-lg font-bold">My Feedback</h1>
-                  <p className="text-xs text-muted-foreground">View your submitted tickets & replies</p>
+                  <p className="text-xs text-muted-foreground">
+                    View your submitted tickets & replies
+                  </p>
                 </div>
               </div>
             </div>
-            <Badge variant="secondary">{tickets.length} tickets</Badge>
+            <div className="flex items-center gap-2">
+              <LocaleToggle className="shrink-0" />
+              <Badge variant="secondary">{tickets.length} tickets</Badge>
+            </div>
           </div>
         </div>
       </header>
@@ -132,7 +141,9 @@ export default function MyFeedback() {
                 <div className="text-center py-12 text-muted-foreground">
                   <MessageSquare className="h-10 w-10 mx-auto mb-3 opacity-30" />
                   <p className="text-sm">No feedback submitted yet</p>
-                  <p className="text-xs mt-1">Use the Feedback button to report issues</p>
+                  <p className="text-xs mt-1">
+                    Use the Feedback button to report issues
+                  </p>
                 </div>
               )}
               {tickets.map((ticket: any) => (
@@ -146,15 +157,22 @@ export default function MyFeedback() {
                   onClick={() => setSelectedTicketId(ticket.id)}
                 >
                   <div className="flex items-center gap-1.5 mb-1">
-                    <Badge className={`text-[10px] px-1.5 py-0 gap-1 ${typeColor[ticket.ticketType] ?? ""}`}>
+                    <Badge
+                      className={`text-[10px] px-1.5 py-0 gap-1 ${typeColor[ticket.ticketType] ?? ""}`}
+                    >
                       {typeIcons[ticket.ticketType]}
                       {ticket.ticketType.replace("_", " ")}
                     </Badge>
-                    <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${statusColor[ticket.status] ?? ""}`}>
+                    <Badge
+                      variant="outline"
+                      className={`text-[10px] px-1.5 py-0 ${statusColor[ticket.status] ?? ""}`}
+                    >
                       {statusLabel[ticket.status] ?? ticket.status}
                     </Badge>
                   </div>
-                  <div className="font-medium text-sm truncate">{ticket.title}</div>
+                  <div className="font-medium text-sm truncate">
+                    {ticket.title}
+                  </div>
                   <div className="flex items-center gap-2 mt-1">
                     <span className="text-[10px] text-muted-foreground flex items-center gap-1">
                       <Clock className="h-3 w-3" />
@@ -190,12 +208,19 @@ export default function MyFeedback() {
                   <div className="flex items-center gap-2 mb-2">
                     <Badge className={typeColor[detail.ticketType] ?? ""}>
                       {typeIcons[detail.ticketType]}
-                      <span className="ml-1">{detail.ticketType.replace("_", " ")}</span>
+                      <span className="ml-1">
+                        {detail.ticketType.replace("_", " ")}
+                      </span>
                     </Badge>
-                    <Badge variant="outline" className={statusColor[detail.status] ?? ""}>
+                    <Badge
+                      variant="outline"
+                      className={statusColor[detail.status] ?? ""}
+                    >
                       {statusLabel[detail.status] ?? detail.status}
                     </Badge>
-                    <span className="text-xs text-muted-foreground">#{detail.id}</span>
+                    <span className="text-xs text-muted-foreground">
+                      #{detail.id}
+                    </span>
                   </div>
                   <h2 className="text-xl font-semibold">{detail.title}</h2>
                   <p className="text-xs text-muted-foreground mt-1">
@@ -206,7 +231,9 @@ export default function MyFeedback() {
                 {/* Description */}
                 {detail.description && (
                   <div className="bg-white rounded-lg p-4 border">
-                    <p className="text-sm whitespace-pre-wrap">{detail.description}</p>
+                    <p className="text-sm whitespace-pre-wrap">
+                      {detail.description}
+                    </p>
                   </div>
                 )}
 
@@ -255,9 +282,13 @@ export default function MyFeedback() {
                               </div>
                             )}
                             <div className="flex-1 min-w-0">
-                              <p className="text-xs font-medium truncate">{att.fileName}</p>
+                              <p className="text-xs font-medium truncate">
+                                {att.fileName}
+                              </p>
                               <p className="text-[10px] text-muted-foreground">
-                                {att.fileSize ? `${(att.fileSize / 1024).toFixed(0)} KB` : ""}
+                                {att.fileSize
+                                  ? `${(att.fileSize / 1024).toFixed(0)} KB`
+                                  : ""}
                               </p>
                             </div>
                             <Download className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 shrink-0" />
@@ -284,19 +315,25 @@ export default function MyFeedback() {
                             <User className="h-3.5 w-3.5 text-blue-700" />
                           </div>
                           <span className="text-xs font-medium text-blue-800">
-                            {c.authorType === "ai" ? "AI Assistant" : "Support Team"}
+                            {c.authorType === "ai"
+                              ? "AI Assistant"
+                              : "Support Team"}
                           </span>
                           <span className="text-[10px] text-muted-foreground ml-auto">
                             {formatDate(c.createdAt)}
                           </span>
                         </div>
-                        <p className="text-sm whitespace-pre-wrap">{c.content}</p>
+                        <p className="text-sm whitespace-pre-wrap">
+                          {c.content}
+                        </p>
                       </div>
                     ))}
                     {((detail as any).comments?.length ?? 0) === 0 && (
                       <div className="text-center py-8 text-muted-foreground">
                         <p className="text-sm">No replies yet</p>
-                        <p className="text-xs mt-1">Our team will review your feedback shortly</p>
+                        <p className="text-xs mt-1">
+                          Our team will review your feedback shortly
+                        </p>
                       </div>
                     )}
                   </div>

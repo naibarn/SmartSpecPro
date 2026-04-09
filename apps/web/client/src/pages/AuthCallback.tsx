@@ -7,7 +7,14 @@ import { useEffect, useState } from 'react';
 import { useLocation, useRoute } from 'wouter';
 import { Sparkles, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { trpc } from '@/lib/trpc';
+import {
+  clearPendingOAuthTwoFactor,
+  consumeAuthReturnUrl,
+  getStoredAuthReturnUrl,
+  setPendingOAuthTwoFactor,
+} from '@/lib/authRedirects';
 import { useScopedTranslation } from '@/i18n/useScopedTranslation';
+import { getSmartSpecWebEndpoint } from '@/lib/webRuntime';
 
 export default function AuthCallback() {
   const [, params] = useRoute('/auth/callback/:provider');
@@ -34,6 +41,15 @@ export default function AuthCallback() {
     },
   });
 
+  const redirectAfterAuth = (returnUrl: string) => {
+    if (returnUrl.startsWith('http://') || returnUrl.startsWith('https://')) {
+      window.location.href = returnUrl;
+      return;
+    }
+
+    setLocation(returnUrl);
+  };
+
   useEffect(() => {
     const handleCallback = async () => {
       try {
@@ -51,8 +67,6 @@ export default function AuthCallback() {
         }
 
         const provider = params?.provider;
-        const API_BASE_URL = import.meta.env.VITE_API_URL || '';
-
         // Retrieve CSRF state token
         const savedState = sessionStorage.getItem('oauth_state');
         const urlState = urlParams.get('state');
@@ -65,7 +79,7 @@ export default function AuthCallback() {
         }
 
         // Exchange code for token via OAuth endpoint
-        const response = await fetch(`${API_BASE_URL}/api/oauth/${provider}/callback`, {
+        const response = await fetch(getSmartSpecWebEndpoint(`/api/oauth/${provider}/callback`), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -81,7 +95,7 @@ export default function AuthCallback() {
         const data = await response.json();
 
         // Exchange the Python OAuth token for a Node.js session cookie
-        const sessionRes = await fetch('/trpc/auth.oauthExchangeSession', {
+        const sessionRes = await fetch(getSmartSpecWebEndpoint('/trpc/auth.oauthExchangeSession'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -95,15 +109,35 @@ export default function AuthCallback() {
           );
         }
 
+        const sessionData = await sessionRes.json();
+        const sessionResult = sessionData.result?.data?.json;
+
+        if (sessionResult?.requires2FA) {
+          const returnUrl = getStoredAuthReturnUrl() ?? '/dashboard';
+          setPendingOAuthTwoFactor({
+            email: sessionResult.email,
+            hasBackupEmail: Boolean(sessionResult.hasBackupEmail),
+            hasPhone: Boolean(sessionResult.hasPhone),
+          });
+          setStatus('loading');
+          setMessage(t('callback.twoFactorRedirect'));
+
+          setTimeout(() => {
+            setLocation(`/login?mode=2fa&returnUrl=${encodeURIComponent(returnUrl)}`);
+          }, 800);
+          return;
+        }
+
         setStatus('success');
         setMessage(t('callback.success') + ' ' + t('callback.redirecting'));
 
-        // Redirect to dashboard
+        const returnUrl = consumeAuthReturnUrl('/dashboard');
         setTimeout(() => {
-          setLocation('/dashboard');
+          redirectAfterAuth(returnUrl);
         }, 1500);
       } catch (error) {
         console.error('Auth callback error:', error);
+        clearPendingOAuthTwoFactor();
         setStatus('error');
         setMessage(error instanceof Error ? error.message : t('callback.error'));
         

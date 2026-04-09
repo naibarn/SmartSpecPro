@@ -19,6 +19,19 @@ logger = structlog.get_logger(__name__)
 MAX_RESULTS_CAP = 10
 
 
+def _dedupe_skills(skills: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Keep the highest-confidence record for each discovered skill."""
+    deduped: dict[str, dict[str, Any]] = {}
+    for skill in skills:
+        skill_id = str(skill.get("id") or skill.get("slug") or skill.get("name") or "").strip()
+        if not skill_id:
+            continue
+        current = deduped.get(skill_id)
+        if current is None or float(skill.get("confidence", 0)) > float(current.get("confidence", 0)):
+            deduped[skill_id] = skill
+    return list(deduped.values())
+
+
 async def execute_skill_discovery(
     *,
     node_name: str,
@@ -45,38 +58,52 @@ async def execute_skill_discovery(
     # Build request
     nodejs_url = os.getenv("NODEJS_INTERNAL_URL", "http://127.0.0.1:3000")
     internal_token = os.getenv("SMARTSPEC_WEB_GATEWAY_TOKEN", "")
-    request_body: dict[str, Any] = {
-        "description": task_description,
-        "limit": max_results,
-    }
-    if skill_categories:
-        request_body["category"] = skill_categories[0]
-
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
-            resp = await client.post(
-                f"{nodejs_url}/api/internal/tools/skill-discovery",
-                json=request_body,
-                headers={"X-Internal-Token": internal_token},
-            )
-            if resp.status_code != 200:
-                logger.warning(
-                    "skill_discovery_endpoint_error",
-                    status=resp.status_code,
-                    node=node_name,
-                )
-                await context.set(f"{node_name}_discovered", [])
-                return f"Skill discovery failed: HTTP {resp.status_code}"
+            request_bodies: list[dict[str, Any]] = []
+            if skill_categories:
+                request_bodies.extend({
+                    "description": task_description,
+                    "limit": max_results,
+                    "category": category,
+                } for category in skill_categories)
+            else:
+                request_bodies.append({
+                    "description": task_description,
+                    "limit": max_results,
+                })
 
-            data = resp.json()
-            all_skills: list[dict] = data.get("skills", [])
+            all_skills: list[dict[str, Any]] = []
+            for request_body in request_bodies:
+                resp = await client.post(
+                    f"{nodejs_url}/api/internal/tools/skill-discovery",
+                    json=request_body,
+                    headers={"X-Internal-Token": internal_token},
+                )
+                if resp.status_code != 200:
+                    logger.warning(
+                        "skill_discovery_endpoint_error",
+                        status=resp.status_code,
+                        node=node_name,
+                        category=request_body.get("category"),
+                    )
+                    await context.set(f"{node_name}_discovered", [])
+                    return f"Skill discovery failed: HTTP {resp.status_code}"
+
+                data = resp.json()
+                all_skills.extend(data.get("skills", []))
     except Exception as exc:
         logger.error("skill_discovery_request_failed", error=str(exc)[:200], node=node_name)
         await context.set(f"{node_name}_discovered", [])
         return f"Skill discovery error: {str(exc)[:100]}"
 
     # Filter by confidence threshold
-    filtered = [s for s in all_skills if float(s.get("confidence", 0)) >= confidence_threshold]
+    filtered = [
+        s for s in _dedupe_skills(all_skills)
+        if float(s.get("confidence", 0)) >= confidence_threshold
+    ]
+    filtered.sort(key=lambda skill: float(skill.get("confidence", 0)), reverse=True)
+    filtered = filtered[:max_results]
 
     # Store in context
     await context.set(f"{node_name}_discovered", filtered)

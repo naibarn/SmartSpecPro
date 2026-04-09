@@ -1,6 +1,6 @@
 # Feature Specs Map
 
-Last updated: 2026-04-07
+Last updated: 2026-04-08
 
 - **001-workflow-scripts**: local workflow engine (`.smartspec/ss_autopilot`) used by Desktop (004) and tests (008)
 - **002-auth-generator**: generator/template (CLI) used optionally by Web server (003) or Python backend (007)
@@ -20,3 +20,4 @@ Last updated: 2026-04-07
 - **071-openclaw-external-runtime-integration**: OpenClaw worker registration, worker/job/artifact control plane, team binding, capability routing, and fleet admin visibility as the first canonical external runtime extension after Feature 059
 - **072-claw-worker-platform-access**: delegated worker gateway sessions, runtime-aware Bound Worker expansion, worker-driven platform automation, and credit-correct API/MCP access beyond the control-plane foundation from Feature 071
 - **074-claw-worker-mcp-platform-completion**: canonical `/v1/mcp` completion for delegated workers, truthful MCP tool discovery, high-value tool parity across platform families, and consolidation of legacy MCP implementations into one budgeted and secure execution model
+- **077-distributed-worker-fabric-completion**: runtime-generalized worker fabric completion across SmartSpec Desktop + ZeroClaw managed workers, local media/file job classes, and truthful NemoClaw/HiClaw runtime semantics on top of the OpenClaw feature chain

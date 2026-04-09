@@ -8,6 +8,7 @@ import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTenant } from "@/contexts/TenantContext";
 import { useLocation } from "wouter";
+import { LocaleToggle } from "@/components/LocaleToggle";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -133,7 +134,9 @@ function HtmlEditor({
   const handleInsertImage = () => {
     const url = prompt("Enter image URL:");
     if (url) {
-      insertHtml(`<img src="${url}" alt="" style="max-width: 100%; border-radius: 8px;" />`);
+      insertHtml(
+        `<img src="${url}" alt="" style="max-width: 100%; border-radius: 8px;" />`
+      );
     }
   };
 
@@ -166,7 +169,7 @@ function HtmlEditor({
         </div>
         <Textarea
           value={sourceValue}
-          onChange={(e) => setSourceValue(e.target.value)}
+          onChange={e => setSourceValue(e.target.value)}
           onBlur={() => onChange(sourceValue)}
           rows={20}
           className="font-mono text-sm rounded-t-none"
@@ -179,12 +182,7 @@ function HtmlEditor({
     <div className="space-y-0">
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-0.5 p-2 bg-gray-100 rounded-t-lg border border-b-0 border-gray-200">
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          className="text-xs"
-        >
+        <Button type="button" variant="secondary" size="sm" className="text-xs">
           <Eye className="w-3 h-3 mr-1" />
           Visual
         </Button>
@@ -204,58 +202,156 @@ function HtmlEditor({
 
         <div className="w-px h-6 bg-gray-300 mx-1" />
 
-        <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => execCommand("bold")} title="Bold">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={() => execCommand("bold")}
+          title="Bold"
+        >
           <Bold className="w-4 h-4" />
         </Button>
-        <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => execCommand("italic")} title="Italic">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={() => execCommand("italic")}
+          title="Italic"
+        >
           <Italic className="w-4 h-4" />
         </Button>
 
         <div className="w-px h-6 bg-gray-300 mx-1" />
 
-        <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => execCommand("formatBlock", "h2")} title="Heading 2">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={() => execCommand("formatBlock", "h2")}
+          title="Heading 2"
+        >
           <Heading2 className="w-4 h-4" />
         </Button>
-        <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => execCommand("formatBlock", "h3")} title="Heading 3">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={() => execCommand("formatBlock", "h3")}
+          title="Heading 3"
+        >
           <Heading3 className="w-4 h-4" />
         </Button>
-        <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => execCommand("formatBlock", "p")} title="Paragraph">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={() => execCommand("formatBlock", "p")}
+          title="Paragraph"
+        >
           <PenLine className="w-4 h-4" />
         </Button>
 
         <div className="w-px h-6 bg-gray-300 mx-1" />
 
-        <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => execCommand("insertUnorderedList")} title="Bullet List">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={() => execCommand("insertUnorderedList")}
+          title="Bullet List"
+        >
           <List className="w-4 h-4" />
         </Button>
-        <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => execCommand("insertOrderedList")} title="Numbered List">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={() => execCommand("insertOrderedList")}
+          title="Numbered List"
+        >
           <ListOrdered className="w-4 h-4" />
         </Button>
-        <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => execCommand("formatBlock", "blockquote")} title="Quote">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={() => execCommand("formatBlock", "blockquote")}
+          title="Quote"
+        >
           <Quote className="w-4 h-4" />
         </Button>
 
         <div className="w-px h-6 bg-gray-300 mx-1" />
 
-        <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={handleInsertLink} title="Insert Link">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={handleInsertLink}
+          title="Insert Link"
+        >
           <LinkIcon className="w-4 h-4" />
         </Button>
-        <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={handleInsertImage} title="Insert Image">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={handleInsertImage}
+          title="Insert Image"
+        >
           <ImageIcon className="w-4 h-4" />
         </Button>
-        <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => execCommand("insertHorizontalRule")} title="Horizontal Rule">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={() => execCommand("insertHorizontalRule")}
+          title="Horizontal Rule"
+        >
           <Minus className="w-4 h-4" />
         </Button>
-        <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => insertHtml('<pre><code>code here</code></pre>')} title="Code Block">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={() => insertHtml("<pre><code>code here</code></pre>")}
+          title="Code Block"
+        >
           <Code2 className="w-4 h-4" />
         </Button>
 
         <div className="w-px h-6 bg-gray-300 mx-1" />
 
-        <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => execCommand("undo")} title="Undo">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={() => execCommand("undo")}
+          title="Undo"
+        >
           <Undo className="w-4 h-4" />
         </Button>
-        <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => execCommand("redo")} title="Redo">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={() => execCommand("redo")}
+          title="Redo"
+        >
           <Redo className="w-4 h-4" />
         </Button>
       </div>
@@ -286,14 +382,21 @@ export default function DomainBlogAdmin() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
-  const [selectedPostIds, setSelectedPostIds] = useState<Set<number>>(new Set());
+  const [selectedPostIds, setSelectedPostIds] = useState<Set<number>>(
+    new Set()
+  );
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [bulkDeleteConfirmOpen, setBulkDeleteConfirmOpen] = useState(false);
   const [tagsInput, setTagsInput] = useState("");
-  const allPostsSelected = posts.length > 0 && posts.every((post) => !!post.id && selectedPostIds.has(post.id));
+  const allPostsSelected =
+    posts.length > 0 &&
+    posts.every(post => !!post.id && selectedPostIds.has(post.id));
 
   useEffect(() => {
-    if (!authLoading && (!user || (user.role !== "domain_admin" && user.role !== "admin"))) {
+    if (
+      !authLoading &&
+      (!user || (user.role !== "domain_admin" && user.role !== "admin"))
+    ) {
       setLocation("/");
     }
   }, [user, authLoading, setLocation]);
@@ -305,7 +408,9 @@ export default function DomainBlogAdmin() {
   const fetchPosts = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch("/api/admin/blog/posts", { credentials: "include" });
+      const res = await fetch("/api/admin/blog/posts", {
+        credentials: "include",
+      });
       if (res.ok) {
         const data = await res.json();
         setPosts(data.posts || []);
@@ -364,7 +469,7 @@ export default function DomainBlogAdmin() {
       if (res.ok) {
         toast.success("Post deleted");
         setDeleteConfirmId(null);
-        setSelectedPostIds((prev) => {
+        setSelectedPostIds(prev => {
           const next = new Set(prev);
           next.delete(id);
           return next;
@@ -377,7 +482,7 @@ export default function DomainBlogAdmin() {
   };
 
   const togglePostSelection = (postId: number, checked: boolean) => {
-    setSelectedPostIds((prev) => {
+    setSelectedPostIds(prev => {
       const next = new Set(prev);
       if (checked) {
         next.add(postId);
@@ -393,7 +498,7 @@ export default function DomainBlogAdmin() {
       if (!checked) {
         return new Set();
       }
-      return new Set(posts.map((post) => post.id!).filter(Boolean));
+      return new Set(posts.map(post => post.id!).filter(Boolean));
     });
   };
 
@@ -414,7 +519,9 @@ export default function DomainBlogAdmin() {
       });
 
       if (res.ok) {
-        toast.success(`Deleted ${ids.length} post${ids.length === 1 ? "" : "s"}`);
+        toast.success(
+          `Deleted ${ids.length} post${ids.length === 1 ? "" : "s"}`
+        );
         setSelectedPostIds(new Set());
         setBulkDeleteConfirmOpen(false);
         fetchPosts();
@@ -444,7 +551,11 @@ export default function DomainBlogAdmin() {
       .replace(/^-|-$/g, "");
   };
 
-  if (authLoading || !user || (user.role !== "domain_admin" && user.role !== "admin")) {
+  if (
+    authLoading ||
+    !user ||
+    (user.role !== "domain_admin" && user.role !== "admin")
+  ) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <RefreshCw className="w-8 h-8 animate-spin text-blue-500" />
@@ -461,7 +572,11 @@ export default function DomainBlogAdmin() {
           <div className="px-4 sm:px-6 lg:px-8 py-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <Button variant="ghost" size="sm" onClick={() => setEditingPost(null)}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setEditingPost(null)}
+                >
                   <ChevronLeft className="w-5 h-5 mr-1" />
                   Back
                 </Button>
@@ -473,23 +588,33 @@ export default function DomainBlogAdmin() {
                 <Label className="flex items-center gap-2">
                   <Switch
                     checked={editingPost.isPublished}
-                    onCheckedChange={(checked) =>
+                    onCheckedChange={checked =>
                       setEditingPost({ ...editingPost, isPublished: checked })
                     }
                   />
-                  <span className="text-sm">{editingPost.isPublished ? "Published" : "Draft"}</span>
+                  <span className="text-sm">
+                    {editingPost.isPublished ? "Published" : "Draft"}
+                  </span>
                 </Label>
                 <Label className="flex items-center gap-2">
                   <Switch
                     checked={editingPost.isFeatured}
-                    onCheckedChange={(checked) =>
+                    onCheckedChange={checked =>
                       setEditingPost({ ...editingPost, isFeatured: checked })
                     }
                   />
                   <span className="text-sm">Featured</span>
                 </Label>
-                <Button onClick={handleSave} disabled={isSaving} className="bg-blue-600 hover:bg-blue-700">
-                  {isSaving ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                <Button
+                  onClick={handleSave}
+                  disabled={isSaving}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  {isSaving ? (
+                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Save className="w-4 h-4 mr-2" />
+                  )}
                   Save
                 </Button>
               </div>
@@ -505,7 +630,7 @@ export default function DomainBlogAdmin() {
                 <Label>Title</Label>
                 <Input
                   value={editingPost.title}
-                  onChange={(e) => {
+                  onChange={e => {
                     const title = e.target.value;
                     setEditingPost({
                       ...editingPost,
@@ -522,7 +647,9 @@ export default function DomainBlogAdmin() {
                 <Label>Excerpt</Label>
                 <Textarea
                   value={editingPost.excerpt}
-                  onChange={(e) => setEditingPost({ ...editingPost, excerpt: e.target.value })}
+                  onChange={e =>
+                    setEditingPost({ ...editingPost, excerpt: e.target.value })
+                  }
                   placeholder="Short summary for blog listing..."
                   rows={2}
                 />
@@ -532,7 +659,9 @@ export default function DomainBlogAdmin() {
                 <Label>Content</Label>
                 <HtmlEditor
                   value={editingPost.content}
-                  onChange={(content) => setEditingPost({ ...editingPost, content })}
+                  onChange={content =>
+                    setEditingPost({ ...editingPost, content })
+                  }
                 />
               </div>
             </div>
@@ -545,7 +674,9 @@ export default function DomainBlogAdmin() {
                     <Label>Slug</Label>
                     <Input
                       value={editingPost.slug}
-                      onChange={(e) => setEditingPost({ ...editingPost, slug: e.target.value })}
+                      onChange={e =>
+                        setEditingPost({ ...editingPost, slug: e.target.value })
+                      }
                       placeholder="url-slug"
                     />
                   </div>
@@ -554,7 +685,12 @@ export default function DomainBlogAdmin() {
                     <Label>Category</Label>
                     <Input
                       value={editingPost.category}
-                      onChange={(e) => setEditingPost({ ...editingPost, category: e.target.value })}
+                      onChange={e =>
+                        setEditingPost({
+                          ...editingPost,
+                          category: e.target.value,
+                        })
+                      }
                       placeholder="e.g. Tutorial, News"
                     />
                   </div>
@@ -563,11 +699,14 @@ export default function DomainBlogAdmin() {
                     <Label>Tags (comma separated)</Label>
                     <Input
                       value={tagsInput || editingPost.tags?.join(", ") || ""}
-                      onChange={(e) => {
+                      onChange={e => {
                         setTagsInput(e.target.value);
                         setEditingPost({
                           ...editingPost,
-                          tags: e.target.value.split(",").map((t) => t.trim()).filter(Boolean),
+                          tags: e.target.value
+                            .split(",")
+                            .map(t => t.trim())
+                            .filter(Boolean),
                         });
                       }}
                       placeholder="AI, Tutorial, Guide"
@@ -578,7 +717,12 @@ export default function DomainBlogAdmin() {
                     <Label>Read Time</Label>
                     <Input
                       value={editingPost.readTime}
-                      onChange={(e) => setEditingPost({ ...editingPost, readTime: e.target.value })}
+                      onChange={e =>
+                        setEditingPost({
+                          ...editingPost,
+                          readTime: e.target.value,
+                        })
+                      }
                       placeholder="5 min read"
                     />
                   </div>
@@ -587,7 +731,12 @@ export default function DomainBlogAdmin() {
                     <Label>Author</Label>
                     <Input
                       value={editingPost.author}
-                      onChange={(e) => setEditingPost({ ...editingPost, author: e.target.value })}
+                      onChange={e =>
+                        setEditingPost({
+                          ...editingPost,
+                          author: e.target.value,
+                        })
+                      }
                     />
                   </div>
 
@@ -595,7 +744,12 @@ export default function DomainBlogAdmin() {
                     <Label>Author Avatar URL</Label>
                     <Input
                       value={editingPost.authorAvatar}
-                      onChange={(e) => setEditingPost({ ...editingPost, authorAvatar: e.target.value })}
+                      onChange={e =>
+                        setEditingPost({
+                          ...editingPost,
+                          authorAvatar: e.target.value,
+                        })
+                      }
                       placeholder="https://..."
                     />
                   </div>
@@ -604,7 +758,12 @@ export default function DomainBlogAdmin() {
                     <Label>Cover Image URL</Label>
                     <Input
                       value={editingPost.coverImage}
-                      onChange={(e) => setEditingPost({ ...editingPost, coverImage: e.target.value })}
+                      onChange={e =>
+                        setEditingPost({
+                          ...editingPost,
+                          coverImage: e.target.value,
+                        })
+                      }
                       placeholder="https://..."
                     />
                     {editingPost.coverImage && (
@@ -624,7 +783,12 @@ export default function DomainBlogAdmin() {
                     <Label>Meta Description</Label>
                     <Textarea
                       value={editingPost.metaDescription}
-                      onChange={(e) => setEditingPost({ ...editingPost, metaDescription: e.target.value })}
+                      onChange={e =>
+                        setEditingPost({
+                          ...editingPost,
+                          metaDescription: e.target.value,
+                        })
+                      }
                       rows={2}
                       placeholder="SEO description..."
                     />
@@ -633,7 +797,12 @@ export default function DomainBlogAdmin() {
                     <Label>Meta Keywords</Label>
                     <Input
                       value={editingPost.metaKeywords}
-                      onChange={(e) => setEditingPost({ ...editingPost, metaKeywords: e.target.value })}
+                      onChange={e =>
+                        setEditingPost({
+                          ...editingPost,
+                          metaKeywords: e.target.value,
+                        })
+                      }
                       placeholder="keyword1, keyword2"
                     />
                   </div>
@@ -651,9 +820,13 @@ export default function DomainBlogAdmin() {
     <div className="min-h-screen bg-gray-50">
       <div className="bg-white border-b">
         <div className="px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="sm" onClick={() => setLocation("/dashboard")}>
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-wrap items-center gap-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setLocation("/dashboard")}
+              >
                 <ChevronLeft className="w-5 h-5 mr-1" />
                 Back
               </Button>
@@ -667,7 +840,8 @@ export default function DomainBlogAdmin() {
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <LocaleToggle className="shrink-0" />
               <Button
                 variant="outline"
                 disabled={posts.length === 0}
@@ -687,9 +861,13 @@ export default function DomainBlogAdmin() {
                 className="border-red-200 text-red-700 hover:bg-red-50"
               >
                 <Trash2 className="w-4 h-4 mr-2" />
-                Delete Selected {selectedPostIds.size > 0 ? `(${selectedPostIds.size})` : ""}
+                Delete Selected{" "}
+                {selectedPostIds.size > 0 ? `(${selectedPostIds.size})` : ""}
               </Button>
-              <Button onClick={handleNewPost} className="bg-blue-600 hover:bg-blue-700">
+              <Button
+                onClick={handleNewPost}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
                 <Plus className="w-4 h-4 mr-2" />
                 New Post
               </Button>
@@ -707,9 +885,16 @@ export default function DomainBlogAdmin() {
           <DashboardCard>
             <div className="text-center py-16">
               <FileText className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-              <h3 className="text-lg font-semibold text-gray-700 mb-2">No blog posts yet</h3>
-              <p className="text-gray-500 mb-6">Create your first blog post to get started.</p>
-              <Button onClick={handleNewPost} className="bg-blue-600 hover:bg-blue-700">
+              <h3 className="text-lg font-semibold text-gray-700 mb-2">
+                No blog posts yet
+              </h3>
+              <p className="text-gray-500 mb-6">
+                Create your first blog post to get started.
+              </p>
+              <Button
+                onClick={handleNewPost}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
                 <Plus className="w-4 h-4 mr-2" />
                 Create First Post
               </Button>
@@ -717,7 +902,7 @@ export default function DomainBlogAdmin() {
           </DashboardCard>
         ) : (
           <div className="space-y-3">
-            {posts.map((post) => (
+            {posts.map(post => (
               <DashboardCard
                 key={post.id}
                 className={`transition-shadow ${post.id && selectedPostIds.has(post.id) ? "border-cyan-200 bg-cyan-50/40 shadow-md" : "hover:shadow-md"}`}
@@ -726,7 +911,9 @@ export default function DomainBlogAdmin() {
                   <div className="flex items-center gap-4">
                     <Checkbox
                       checked={!!post.id && selectedPostIds.has(post.id)}
-                      onCheckedChange={(checked) => togglePostSelection(post.id!, checked === true)}
+                      onCheckedChange={checked =>
+                        togglePostSelection(post.id!, checked === true)
+                      }
                       aria-label={`Select ${post.title}`}
                     />
                     {post.coverImage && (
@@ -738,7 +925,9 @@ export default function DomainBlogAdmin() {
                     )}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-semibold text-gray-900 truncate">{post.title}</h3>
+                        <h3 className="font-semibold text-gray-900 truncate">
+                          {post.title}
+                        </h3>
                         {post.isFeatured && (
                           <Star className="w-4 h-4 text-amber-500 flex-shrink-0" />
                         )}
@@ -752,7 +941,9 @@ export default function DomainBlogAdmin() {
                           {post.isPublished ? "Published" : "Draft"}
                         </span>
                       </div>
-                      <p className="text-sm text-gray-500 truncate">{post.excerpt || "No excerpt"}</p>
+                      <p className="text-sm text-gray-500 truncate">
+                        {post.excerpt || "No excerpt"}
+                      </p>
                       <div className="flex items-center gap-3 mt-1 text-xs text-gray-400">
                         {post.category && <span>{post.category}</span>}
                         {post.author && <span>by {post.author}</span>}
@@ -769,7 +960,13 @@ export default function DomainBlogAdmin() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => window.open(`/blog/${post.slug}`, "_blank", "noopener,noreferrer")}
+                          onClick={() =>
+                            window.open(
+                              `/blog/${post.slug}`,
+                              "_blank",
+                              "noopener,noreferrer"
+                            )
+                          }
                         >
                           <ExternalLink className="w-4 h-4" />
                         </Button>
@@ -802,12 +999,16 @@ export default function DomainBlogAdmin() {
       </div>
 
       {/* Delete confirmation dialog */}
-      <Dialog open={deleteConfirmId !== null} onOpenChange={() => setDeleteConfirmId(null)}>
+      <Dialog
+        open={deleteConfirmId !== null}
+        onOpenChange={() => setDeleteConfirmId(null)}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Delete Post</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete this post? This action cannot be undone.
+              Are you sure you want to delete this post? This action cannot be
+              undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -824,16 +1025,24 @@ export default function DomainBlogAdmin() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={bulkDeleteConfirmOpen} onOpenChange={setBulkDeleteConfirmOpen}>
+      <Dialog
+        open={bulkDeleteConfirmOpen}
+        onOpenChange={setBulkDeleteConfirmOpen}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Delete Selected Posts</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete {selectedPostIds.size} selected post{selectedPostIds.size === 1 ? "" : "s"}? This action cannot be undone.
+              Are you sure you want to delete {selectedPostIds.size} selected
+              post{selectedPostIds.size === 1 ? "" : "s"}? This action cannot be
+              undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setBulkDeleteConfirmOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setBulkDeleteConfirmOpen(false)}
+            >
               Cancel
             </Button>
             <Button

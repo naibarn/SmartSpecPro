@@ -57,6 +57,11 @@ describe("workerFleetService", () => {
     expect(result).toEqual([
       expect.objectContaining({
         id: "worker-1",
+        runtimeLabel: "OpenClaw Gateway",
+        runtimeFamily: "OpenClaw",
+        compatibilityState: "unknown",
+        registrationSupport: "stable",
+        dispatchSupport: "stable",
         healthState: "stale",
         boundProfileCount: 2,
         activeJobCount: 3,
@@ -94,6 +99,9 @@ describe("workerFleetService", () => {
 
     expect(result).toEqual(expect.objectContaining({
       workerId: "worker-1",
+      runtimeLabel: "OpenClaw Gateway",
+      runtimeFamily: "OpenClaw",
+      compatibilityState: "unknown",
       summaryJson: {
         Authorization: "[REDACTED]",
       },

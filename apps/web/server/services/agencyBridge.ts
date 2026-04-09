@@ -9,6 +9,7 @@
 import { getAppRuntimeConfig, getPreferredInternalToken } from "./appRuntimeConfig";
 import type { AgencyTaskMetadata } from "./agencyEscalation";
 import type { ResolvedAgencyRetrievalScope } from "./agencyExperienceTemplateService";
+import type { AgencyCompilePreview } from "./agencyHybridCompile";
 const RUN_TIMEOUT_MS = 120_000; // 2 minutes for multi-agent runs
 
 interface RunParams {
@@ -27,6 +28,8 @@ interface RunParams {
   fileIds?: string[];
   /** v1.8: Per-run instruction override appended to agent instructions */
   additionalInstructions?: string;
+  /** Hybrid compile preview forwarded to Python runtime for additive validation/summary wiring */
+  compilePreview?: AgencyCompilePreview | null;
 }
 
 export interface StepAttemptSnapshot {
@@ -35,6 +38,10 @@ export interface StepAttemptSnapshot {
   input_tokens: number;
   output_tokens: number;
   credits_used: number;
+  engine?: "agency_swarm" | "adk2" | null;
+  subgraph_id?: string | null;
+  phase?: "subgraph" | "bridge" | "usage_breakdown" | null;
+  metadata?: Record<string, unknown> | null;
 }
 
 export interface StructuredRunResult {
@@ -64,6 +71,15 @@ export interface PreviewArtifactMetadata {
   expired_at?: string | null;
 }
 
+export interface HybridRunSummary {
+  usesHybrid: boolean;
+  engineMix: Array<"agency_swarm" | "adk2">;
+  subgraphCount: number;
+  bridgeCount: number;
+  compileStatus: "success" | "failed";
+  artifactPublicationMode?: string | null;
+}
+
 export interface RunResult {
   runId: string;
   conversationId?: string;
@@ -77,6 +93,7 @@ export interface RunResult {
   stepAttemptSnapshots: StepAttemptSnapshot[];
   structuredResult: StructuredRunResult | null;
   previewArtifacts: PreviewArtifactMetadata[];
+  hybridSummary: HybridRunSummary | null;
 }
 
 interface RunFilters {
@@ -176,6 +193,9 @@ export class AgencyBridge {
     if (params.additionalInstructions) {
       body.additional_instructions = params.additionalInstructions;
     }
+    if (params.compilePreview) {
+      body.compile_preview = params.compilePreview;
+    }
 
     let response: Response;
     try {
@@ -204,6 +224,7 @@ export class AgencyBridge {
       stepAttemptSnapshots: data.step_attempt_snapshots ?? [],
       structuredResult: data.structured_result ?? null,
       previewArtifacts: data.preview_artifacts ?? [],
+      hybridSummary: data.hybrid_summary ?? null,
     };
   }
 
@@ -268,6 +289,7 @@ export class AgencyBridge {
       stepAttemptSnapshots: data.step_attempt_snapshots ?? [],
       structuredResult: data.structured_result ?? null,
       previewArtifacts: data.preview_artifacts ?? [],
+      hybridSummary: data.hybrid_summary ?? null,
     };
   }
 }

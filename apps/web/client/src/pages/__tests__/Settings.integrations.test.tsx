@@ -84,6 +84,10 @@ vi.mock("@/lib/trpc", () => ({
   trpc: trpcRoot,
 }));
 
+vi.mock("@/hooks/useTenantFeatureFlag", () => ({
+  useTenantFeatureFlag: () => false,
+}));
+
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (key: string) => key,

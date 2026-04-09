@@ -8,6 +8,7 @@ import { motion } from 'framer-motion';
 import { Link, useLocation } from 'wouter';
 import { generateFingerprint } from '@/lib/fingerprint';
 import { getPostHog } from '@/lib/posthog';
+import { getSmartSpecWebEndpoint } from '@/lib/webRuntime';
 import { useAuth } from '@/_core/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -197,8 +198,7 @@ export default function Signup() {
         document.cookie = `invite_code=${encodeURIComponent(inviteCode)}; path=/; max-age=600; SameSite=Lax; Secure`;
       }
 
-      const API_BASE_URL = import.meta.env.VITE_API_URL || '';
-      const response = await fetch(`${API_BASE_URL}/api/oauth/${provider.toLowerCase()}/authorize`);
+      const response = await fetch(getSmartSpecWebEndpoint(`/api/oauth/${provider.toLowerCase()}/authorize`));
       if (!response.ok) {
         const err = await response.json().catch(() => null);
         if (response.status === 503) {

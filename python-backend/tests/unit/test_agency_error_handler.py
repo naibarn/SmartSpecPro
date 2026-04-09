@@ -258,4 +258,42 @@ class TestErrorHandlerMapConstruction:
         with patch.object(orch, "_execute_agent_node", new_callable=AsyncMock) as mock_exec:
             mock_exec.side_effect = RuntimeError("test failure")
             result = await orch.run("hello", "token", "tenant-1")
-            assert "Skipped due to test error" in result
+        assert "Skipped due to test error" in result
+
+    @pytest.mark.asyncio
+    async def test_fallback_redirect_executes_target_node_with_incremented_depth(self):
+        """Fallback-to-node delegates to the configured node instead of crashing on _depth."""
+        from app.services.agency_orchestrator import AgencyOrchestrator, ExecutionContext
+
+        orch = AgencyOrchestrator.__new__(AgencyOrchestrator)
+        orch.nodes = {
+            "fallback-node": {"id": "fallback-node", "node_type": "agent", "name": "Fallback"},
+        }
+        orch.event_emitter = None
+        orch.trace_collector = None
+        orch.guardrail_runner = None
+        orch.redis_client = None
+        orch.error_handler_map = {}
+        orch._execute_node = AsyncMock(return_value="fallback-success")
+
+        handler_node = {
+            "id": "handler-1",
+            "name": "Handler",
+            "node_config": {
+                "onError": "fallback",
+                "fallbackNodeId": "fallback-node",
+            },
+        }
+        failed_node = {"id": "agent-1", "name": "Agent 1"}
+        ctx = ExecutionContext("hello", "token", "tenant-1")
+
+        result = await orch._handle_error(
+            handler_node,
+            failed_node,
+            RuntimeError("boom"),
+            ctx,
+            _depth=2,
+        )
+
+        orch._execute_node.assert_awaited_once_with(orch.nodes["fallback-node"], ctx, 3)
+        assert result == "fallback-success"

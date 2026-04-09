@@ -188,11 +188,16 @@ type WorkerFleetRow = {
   id: string;
   displayName: string;
   runtimeType: string;
+  runtimeLabel: string;
+  runtimeFamily: string;
   runtimeVersion: string;
   status: string;
   teamId: string | null;
   externalReference: string;
   lastSeenAt: Date | string | null;
+  compatibilityState: "compatible" | "attention_required" | "unknown";
+  registrationSupport: "stable" | "feature_gated" | "admin_gated";
+  dispatchSupport: "stable" | "limited" | "admin_gated";
   healthState: string;
   warningFlagsJson: string[];
   boundProfileCount: number;
@@ -205,10 +210,14 @@ type WorkerDiagnosticsSnapshot = {
   workerId: string;
   displayName: string;
   runtimeType: string;
+  runtimeLabel: string;
+  runtimeFamily: string;
   status: string;
   capturedAt: string | null;
   summaryJson: Record<string, unknown>;
   detailsJson: Record<string, unknown>;
+  compatibilityState: "compatible" | "attention_required" | "unknown";
+  compatibility: Record<string, unknown> | null;
   warningFlagsJson: string[];
   dashboardUrl: string | null;
   revokedAt: string | null;
@@ -2443,14 +2452,20 @@ export default function AdminMonitoring() {
                           {serviceStatusLabel(worker.healthState)}
                         </Badge>
                         <Badge variant="outline">{worker.status}</Badge>
+                        <Badge variant="secondary">{worker.runtimeLabel}</Badge>
+                        <Badge
+                          variant={worker.compatibilityState === "compatible" ? "outline" : "destructive"}
+                        >
+                          {humanizeMachineLabel(worker.compatibilityState)}
+                        </Badge>
                         {worker.revokedAt ? <Badge variant="destructive">Revoked</Badge> : null}
                       </div>
                       <p className="text-xs text-muted-foreground">{worker.externalReference}</p>
                       <p className="text-xs text-muted-foreground">
-                        Runtime {worker.runtimeVersion} · {worker.activeJobCount} active jobs · {worker.boundProfileCount} bound connectors
+                        {worker.runtimeFamily} · Runtime {worker.runtimeVersion} · {worker.activeJobCount} active jobs · {worker.boundProfileCount} bound connectors
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        Last seen {timeAgo(worker.lastSeenAt)}{worker.dashboardUrl ? " · dashboard available" : ""}
+                        Last seen {timeAgo(worker.lastSeenAt)} · registration {humanizeMachineLabel(worker.registrationSupport)} · dispatch {humanizeMachineLabel(worker.dispatchSupport)}{worker.dashboardUrl ? " · dashboard available" : ""}
                       </p>
                     </div>
                     <div className="flex flex-wrap gap-2">
@@ -2522,8 +2537,16 @@ export default function AdminMonitoring() {
                     <p>
                       Captured {selectedWorkerDiagnostics.capturedAt ? formatAbsoluteDateTime(selectedWorkerDiagnostics.capturedAt) : "No record"}
                     </p>
+                    <p>
+                      {selectedWorkerDiagnostics.runtimeLabel} · {selectedWorkerDiagnostics.runtimeFamily} · {humanizeMachineLabel(selectedWorkerDiagnostics.compatibilityState)}
+                    </p>
                     <pre className="max-h-64 overflow-auto rounded-md bg-white p-3 text-[11px] leading-5">
                       {JSON.stringify({
+                        runtimeType: selectedWorkerDiagnostics.runtimeType,
+                        runtimeLabel: selectedWorkerDiagnostics.runtimeLabel,
+                        runtimeFamily: selectedWorkerDiagnostics.runtimeFamily,
+                        compatibilityState: selectedWorkerDiagnostics.compatibilityState,
+                        compatibility: selectedWorkerDiagnostics.compatibility,
                         summary: selectedWorkerDiagnostics.summaryJson,
                         details: selectedWorkerDiagnostics.detailsJson,
                         warningFlags: selectedWorkerDiagnostics.warningFlagsJson,

@@ -18,6 +18,8 @@ AGENTIC_FLAGS = {
     "agencyReactExecutorEnabled",
     "agencyAutonomousAgentEnabled",
     "agencyLongTermMemoryEnabled",
+    "agencyHybridAdk",
+    "agencyHybridAdkKillSwitch",
 }
 
 AGENTIC_FLAG_DEFAULTS: dict[str, bool] = {
@@ -25,6 +27,8 @@ AGENTIC_FLAG_DEFAULTS: dict[str, bool] = {
     "agencyReactExecutorEnabled": False,
     "agencyAutonomousAgentEnabled": False,
     "agencyLongTermMemoryEnabled": False,
+    "agencyHybridAdk": False,
+    "agencyHybridAdkKillSwitch": False,
 }
 
 

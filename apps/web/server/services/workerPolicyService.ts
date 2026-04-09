@@ -1,4 +1,4 @@
-import { DEFAULT_CLAW_GATEWAY_COMPATIBILITY } from "../../shared/workerRuntime";
+import { getWorkerRuntimeDefinition } from "../../shared/workerRuntime";
 import type { WorkerAccessAuthContext } from "./workerAuthService";
 import {
   WorkerRuntimeServiceError,
@@ -38,6 +38,16 @@ export async function getWorkerPolicySnapshot(
   const runtimeProfile = worker.runtimeProfileId
     ? await repo.getRuntimeProfileById(worker.runtimeProfileId)
     : null;
+  const runtimeDefinition = getWorkerRuntimeDefinition(worker.runtimeType);
+  const controlPlane = worker.healthSummaryJson && typeof worker.healthSummaryJson === "object"
+    ? (worker.healthSummaryJson as Record<string, unknown>).controlPlane
+    : null;
+  const compatibility = controlPlane && typeof controlPlane === "object"
+    ? (controlPlane as Record<string, unknown>).compatibility ?? null
+    : null;
+  const runtimeMetadata = worker.capabilitiesJson && typeof worker.capabilitiesJson === "object"
+    ? (worker.capabilitiesJson as Record<string, unknown>).runtimeMetadata ?? null
+    : null;
 
   return {
     workerId: worker.id,
@@ -54,6 +64,15 @@ export async function getWorkerPolicySnapshot(
           profileJson: runtimeProfile.profileJson,
         }
       : null,
-    gatewayCompatibility: DEFAULT_CLAW_GATEWAY_COMPATIBILITY,
+    gatewayCompatibility: runtimeDefinition.gatewayCompatibility,
+    compatibility,
+    runtimeMetadata: {
+      displayName: runtimeDefinition.displayName,
+      familyName: runtimeDefinition.familyName,
+      featureFlag: runtimeDefinition.featureFlag,
+      registrationSupport: runtimeDefinition.registrationSupport,
+      dispatchSupport: runtimeDefinition.dispatchSupport,
+      runtimeMetadata,
+    },
   };
 }

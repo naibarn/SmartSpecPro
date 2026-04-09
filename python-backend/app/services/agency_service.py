@@ -32,6 +32,10 @@ from app.services.agency_persistence import create_persistence_hooks
 from app.services.agency_result_envelope import parse_agency_result_envelope
 from app.services.agency_tools import resolve_tools_for_agent
 from app.services.agency_audit import log_agency_event, reconcile_credits
+from app.services.agency_hybrid_runtime import (
+    build_hybrid_run_summary,
+    build_step_attempt_snapshots,
+)
 from app.services.agency_orchestrator import AgencyOrchestrator, should_use_orchestrator
 from app.services.agency_trace_collector import TraceCollector
 
@@ -145,6 +149,58 @@ class AgencyService:
             except json.JSONDecodeError:
                 return value
         return value
+
+    @classmethod
+    def _merge_run_metadata(
+        cls,
+        run_metadata: dict[str, Any] | None,
+        *,
+        step_attempt_snapshots: list[dict[str, Any]] | None = None,
+        hybrid_summary: dict[str, Any] | None = None,
+    ) -> dict[str, Any] | None:
+        metadata = dict(run_metadata or {})
+        hybrid_runtime = metadata.get("hybrid_runtime")
+        hybrid_runtime_payload = dict(hybrid_runtime) if isinstance(hybrid_runtime, dict) else {}
+
+        if step_attempt_snapshots is not None:
+            hybrid_runtime_payload["step_attempt_snapshots"] = step_attempt_snapshots
+        if hybrid_summary is not None:
+            hybrid_runtime_payload["hybrid_summary"] = hybrid_summary
+
+        if hybrid_runtime_payload:
+            metadata["hybrid_runtime"] = hybrid_runtime_payload
+
+        return metadata or None
+
+    @classmethod
+    def _extract_hybrid_runtime_metadata(
+        cls,
+        metadata_value: Any,
+    ) -> tuple[list[dict[str, Any]], dict[str, Any] | None]:
+        metadata = cls._json_value(metadata_value)
+        if not isinstance(metadata, dict):
+            return [], None
+
+        hybrid_runtime = metadata.get("hybrid_runtime")
+        step_attempt_snapshots: list[dict[str, Any]] = []
+        hybrid_summary: dict[str, Any] | None = None
+
+        if isinstance(hybrid_runtime, dict):
+            raw_snapshots = hybrid_runtime.get("step_attempt_snapshots")
+            if isinstance(raw_snapshots, list):
+                step_attempt_snapshots = [item for item in raw_snapshots if isinstance(item, dict)]
+            raw_summary = hybrid_runtime.get("hybrid_summary")
+            if isinstance(raw_summary, dict):
+                hybrid_summary = raw_summary
+
+        compile_preview = metadata.get("compile_preview")
+        if isinstance(compile_preview, dict):
+            if not step_attempt_snapshots:
+                step_attempt_snapshots = build_step_attempt_snapshots(compile_preview)
+            if hybrid_summary is None:
+                hybrid_summary = build_hybrid_run_summary(compile_preview)
+
+        return step_attempt_snapshots, hybrid_summary
 
     @staticmethod
     def _compact_preview_artifact(artifact: dict) -> dict:
@@ -312,6 +368,7 @@ class AgencyService:
         parse_summary: str | None,
         parse_error: str | None,
         preview_artifacts: list[dict],
+        run_metadata: dict[str, Any] | None,
     ) -> None:
         await self.db.execute(
             text("""
@@ -324,7 +381,8 @@ class AgencyService:
                     structured_result_parse_status = :structured_result_parse_status,
                     structured_result_intent = :structured_result_intent,
                     structured_result_summary = :structured_result_summary,
-                    structured_result_error = :structured_result_error
+                    structured_result_error = :structured_result_error,
+                    metadata = CAST(:metadata AS JSON)
                 WHERE id = :id
             """),
             {
@@ -337,6 +395,7 @@ class AgencyService:
                 "structured_result_intent": parse_intent,
                 "structured_result_summary": parse_summary,
                 "structured_result_error": parse_error,
+                "metadata": json.dumps(run_metadata) if run_metadata else None,
             },
         )
 
@@ -372,6 +431,7 @@ class AgencyService:
         run_id: str,
         elapsed_ms: int,
         exc: Exception,
+        run_metadata: dict[str, Any] | None = None,
     ) -> None:
         await self.db.execute(
             text("""
@@ -380,7 +440,8 @@ class AgencyService:
                     completed_at = :completed_at,
                     duration_ms = :duration_ms,
                     error_type = :error_type,
-                    error_message = :error_message
+                    error_message = :error_message,
+                    metadata = CAST(:metadata AS JSON)
                 WHERE id = :id
             """),
             {
@@ -389,6 +450,7 @@ class AgencyService:
                 "duration_ms": elapsed_ms,
                 "error_type": type(exc).__name__,
                 "error_message": str(exc)[:500],
+                "metadata": json.dumps(run_metadata) if run_metadata else None,
             },
         )
         await self.db.commit()
@@ -462,6 +524,9 @@ class AgencyService:
                        "isEntryPoint" as is_entry_point,
                        "nodeType" as node_type,
                        "nodeConfig" as node_config,
+                       "subgraphId" as subgraph_id,
+                       "engineHint" as engine_hint,
+                       "runtimeConfig" as runtime_config,
                        "parallelToolCalls" as parallel_tool_calls,
                        "maxTurns" as max_turns
                 FROM agency_agents
@@ -480,6 +545,9 @@ class AgencyService:
                 "is_entry_point": row.is_entry_point,
                 "node_type": row.node_type or "agent",
                 "node_config": row.node_config or {},
+                "subgraph_id": row.subgraph_id,
+                "engine_hint": row.engine_hint,
+                "runtime_config": row.runtime_config or {},
                 "parallel_tool_calls": row.parallel_tool_calls,
                 "max_turns": row.max_turns,
             }
@@ -582,6 +650,7 @@ class AgencyService:
         recipient_agent: str | None = None,
         file_ids: list[str] | None = None,
         additional_instructions: str | None = None,
+        compile_preview: dict[str, Any] | None = None,
     ) -> RunResult:
         """Full run lifecycle: load -> construct -> pre-check -> execute -> markup.
 
@@ -602,43 +671,7 @@ class AgencyService:
         # 2. Load agent definitions (separate query, not duplicated from load_agency)
         agents_data = await self._load_agents(agency_id)
 
-        # 2b. If agency contains non-agent nodes → use AgencyOrchestrator (backward-compatible)
-        if should_use_orchestrator(agents_data):
-            logger.info(
-                "agency_run_orchestrator_path",
-                agency_id=agency_id,
-                node_count=len(agents_data),
-            )
-            agency_whitelist = await self._load_tool_whitelist(agency_id)
-            retrieval_scope_mode = self._get_retrieval_scope_mode(context.run_metadata)
-            edges_data = await self._load_flows_full(agency_id)
-            guardrails_map = await self._load_guardrails_for_agents(agency_id)
-            orchestrator = AgencyOrchestrator(
-                nodes=agents_data,
-                edges=edges_data,
-                adapter=self.adapter,
-                db=self.db,
-                agency_config=agency_config,
-                agency_whitelist=agency_whitelist,
-                retrieval_scope_mode=retrieval_scope_mode,
-                guardrails_by_agent=guardrails_map,
-                user_context=agency_config.user_context,
-            )
-            response_text = await orchestrator.run(
-                message=message,
-                user_token=context.user_token,
-                tenant_id=context.tenant_id,
-                user_id=context.user_id,
-            )
-            elapsed = time.monotonic() - start_time
-            return RunResult(
-                response=response_text,
-                run_id=run_id,
-                agent_name="orchestrator",
-                duration_ms=int(elapsed * 1000),
-            )
-
-        # 3. Pre-check credits (agent-only agencies — original path)
+        # 3. Pre-check credits before either execution path.
         estimate = self.credit_manager.estimate_run_cost(
             agent_count=max(len(agents_data), 1),
         )
@@ -650,6 +683,160 @@ class AgencyService:
             raise InsufficientCreditsError(
                 f"Insufficient credits for estimated cost ${estimate:.4f}"
             )
+
+        # 3b. If agency contains non-agent nodes → use AgencyOrchestrator (backward-compatible)
+        if should_use_orchestrator(agents_data):
+            logger.info(
+                "agency_run_orchestrator_path",
+                agency_id=agency_id,
+                node_count=len(agents_data),
+            )
+            agency_whitelist = await self._load_tool_whitelist(agency_id)
+            retrieval_scope_mode = self._get_retrieval_scope_mode(context.run_metadata)
+            edges_data = await self._load_flows_full(agency_id)
+            guardrails_map = await self._load_guardrails_for_agents(agency_id)
+            step_attempt_snapshots = build_step_attempt_snapshots(compile_preview)
+            hybrid_summary = build_hybrid_run_summary(compile_preview)
+            run_metadata = self._merge_run_metadata(
+                context.run_metadata,
+                step_attempt_snapshots=step_attempt_snapshots,
+                hybrid_summary=hybrid_summary,
+            )
+
+            await self._insert_running_run_record(
+                run_id=run_id,
+                agency_id=agency_id,
+                context=RunContext(
+                    user_id=context.user_id,
+                    tenant_id=context.tenant_id,
+                    conversation_id=context.conversation_id,
+                    user_token=context.user_token,
+                    run_metadata=run_metadata,
+                ),
+            )
+
+            log_agency_event(
+                "agency_run_started",
+                run_id=run_id,
+                agency_id=agency_id,
+                tenant_id=context.tenant_id,
+                user_id=context.user_id,
+                metadata={"agent_count": len(agents_data), "runtime": "orchestrator"},
+            )
+
+            try:
+                orchestrator = AgencyOrchestrator(
+                    nodes=agents_data,
+                    edges=edges_data,
+                    adapter=self.adapter,
+                    db=self.db,
+                    agency_config=agency_config,
+                    agency_whitelist=agency_whitelist,
+                    retrieval_scope_mode=retrieval_scope_mode,
+                    guardrails_by_agent=guardrails_map,
+                    user_context=agency_config.user_context,
+                )
+                response_text = await orchestrator.run(
+                    message=message,
+                    user_token=context.user_token,
+                    tenant_id=context.tenant_id,
+                    user_id=context.user_id,
+                )
+                elapsed_ms = int((time.monotonic() - start_time) * 1000)
+                normalized = self._normalize_structured_preview_result(
+                    response_text=response_text,
+                    run_id=run_id,
+                    agency_id=agency_id,
+                    conversation_id=context.conversation_id,
+                    tenant_id=context.tenant_id,
+                )
+
+                await self.credit_manager.apply_multiplier_markup(
+                    user_id=context.user_id,
+                    agency_id=agency_id,
+                    total_gateway_cost=0.0,
+                    multiplier=agency_config.credit_multiplier,
+                )
+
+                await self._persist_completed_run(
+                    run_id=run_id,
+                    completed_at=datetime.now(timezone.utc),
+                    elapsed_ms=elapsed_ms,
+                    step_count=max(len(agents_data), 1),
+                    structured_result=normalized["structured_result"],
+                    parse_status=normalized["parse_status"],
+                    parse_intent=normalized["parse_intent"],
+                    parse_summary=normalized["parse_summary"],
+                    parse_error=normalized["parse_error"],
+                    preview_artifacts=normalized["preview_artifacts"],
+                    run_metadata=run_metadata,
+                )
+
+                log_agency_event(
+                    "agency_run_completed",
+                    run_id=run_id,
+                    agency_id=agency_id,
+                    tenant_id=context.tenant_id,
+                    user_id=context.user_id,
+                    duration_ms=elapsed_ms,
+                    step_count=max(len(agents_data), 1),
+                )
+
+                await reconcile_credits(
+                    run_id=run_id,
+                    gateway_total=None,
+                    run_total_credits=None,
+                )
+
+                if agency_config.creator_fee_credits > 0 and agency_config.creator_id:
+                    await self.credit_manager.settle_creator_fee(
+                        run_id=run_id,
+                        agency_id=agency_id,
+                        user_id=context.user_id,
+                        creator_id=agency_config.creator_id,
+                        creator_fee_credits=agency_config.creator_fee_credits,
+                        platform_share_pct=agency_config.platform_share_pct,
+                        tenant_id=context.tenant_id,
+                    )
+
+                return RunResult(
+                    response=normalized["response"],
+                    run_id=run_id,
+                    agent_name="orchestrator",
+                    duration_ms=elapsed_ms,
+                    step_count=max(len(agents_data), 1),
+                    structured_result=normalized["structured_result"],
+                    preview_artifacts=[
+                        self._compact_preview_artifact(artifact)
+                        for artifact in normalized["preview_artifacts"]
+                    ],
+                    step_attempt_snapshots=step_attempt_snapshots,
+                    hybrid_summary=hybrid_summary,
+                )
+            except Exception as exc:
+                elapsed_ms = int((time.monotonic() - start_time) * 1000)
+                try:
+                    await self._mark_failed_run(
+                        run_id=run_id,
+                        elapsed_ms=elapsed_ms,
+                        exc=exc,
+                        run_metadata=run_metadata,
+                    )
+                except Exception:
+                    logger.error("agency_run_record_update_failed", run_id=run_id)
+
+                log_agency_event(
+                    "agency_run_failed",
+                    run_id=run_id,
+                    agency_id=agency_id,
+                    tenant_id=context.tenant_id,
+                    user_id=context.user_id,
+                    duration_ms=elapsed_ms,
+                    error_type=type(exc).__name__,
+                    error_message=str(exc)[:500],
+                )
+
+                raise
 
         # 4. Resolve tools for each agent
         agency_whitelist = await self._load_tool_whitelist(agency_id)
@@ -765,6 +952,16 @@ class AgencyService:
                 self._compact_preview_artifact(artifact)
                 for artifact in normalized["preview_artifacts"]
             ]
+            result.step_attempt_snapshots = build_step_attempt_snapshots(
+                compile_preview,
+                result.usage_breakdown,
+            )
+            result.hybrid_summary = build_hybrid_run_summary(compile_preview)
+            persisted_run_metadata = self._merge_run_metadata(
+                context.run_metadata,
+                step_attempt_snapshots=result.step_attempt_snapshots,
+                hybrid_summary=result.hybrid_summary,
+            )
 
             # 10. Apply multiplier markup
             # NOTE: total_gateway_cost is 0.0 here because per-call costs are
@@ -790,6 +987,7 @@ class AgencyService:
                 parse_summary=normalized["parse_summary"],
                 parse_error=normalized["parse_error"],
                 preview_artifacts=normalized["preview_artifacts"],
+                run_metadata=persisted_run_metadata,
             )
 
             logger.info(
@@ -836,7 +1034,16 @@ class AgencyService:
             # Update run record (status: failed)
             elapsed_ms = int((time.monotonic() - start_time) * 1000)
             try:
-                await self._mark_failed_run(run_id=run_id, elapsed_ms=elapsed_ms, exc=exc)
+                await self._mark_failed_run(
+                    run_id=run_id,
+                    elapsed_ms=elapsed_ms,
+                    exc=exc,
+                    run_metadata=self._merge_run_metadata(
+                        context.run_metadata,
+                        step_attempt_snapshots=build_step_attempt_snapshots(compile_preview),
+                        hybrid_summary=build_hybrid_run_summary(compile_preview),
+                    ),
+                )
             except Exception:
                 logger.error("agency_run_record_update_failed", run_id=run_id)
 
@@ -864,6 +1071,7 @@ class AgencyService:
         recipient_agent: str | None = None,
         file_ids: list[str] | None = None,
         additional_instructions: str | None = None,
+        compile_preview: dict[str, Any] | None = None,
     ) -> AsyncGenerator[dict, None]:
         """Streaming variant: yields SSE-formatted event dicts.
 
@@ -888,6 +1096,24 @@ class AgencyService:
             # Orchestrator path for non-agent nodes (streaming: emit as single token event)
             if should_use_orchestrator(agents_data):
                 logger.info("agency_run_stream_orchestrator_path", agency_id=agency_id)
+                step_attempt_snapshots = build_step_attempt_snapshots(compile_preview)
+                hybrid_summary = build_hybrid_run_summary(compile_preview)
+                persisted_run_metadata = self._merge_run_metadata(
+                    context.run_metadata,
+                    step_attempt_snapshots=step_attempt_snapshots,
+                    hybrid_summary=hybrid_summary,
+                )
+                await self._insert_running_run_record(
+                    run_id=run_id,
+                    agency_id=agency_id,
+                    context=RunContext(
+                        user_id=context.user_id,
+                        tenant_id=context.tenant_id,
+                        conversation_id=context.conversation_id,
+                        user_token=context.user_token,
+                        run_metadata=persisted_run_metadata,
+                    ),
+                )
                 yield {"event": "run_started", "data": {"run_id": run_id}}
                 agency_whitelist = await self._load_tool_whitelist(agency_id)
                 retrieval_scope_mode = self._get_retrieval_scope_mode(context.run_metadata)
@@ -938,16 +1164,69 @@ class AgencyService:
                     tenant_id=context.tenant_id,
                     user_id=context.user_id,
                 )
+                normalized = self._normalize_structured_preview_result(
+                    response_text=response_text,
+                    run_id=run_id,
+                    agency_id=agency_id,
+                    conversation_id=context.conversation_id,
+                    tenant_id=context.tenant_id,
+                )
+                elapsed_ms = int((time.monotonic() - start_time) * 1000)
+                await self.credit_manager.apply_multiplier_markup(
+                    user_id=context.user_id,
+                    agency_id=agency_id,
+                    total_gateway_cost=0.0,
+                    multiplier=agency_config.credit_multiplier,
+                )
+                await self._persist_completed_run(
+                    run_id=run_id,
+                    completed_at=datetime.now(timezone.utc),
+                    elapsed_ms=elapsed_ms,
+                    step_count=max(len(agents_data), 1),
+                    structured_result=normalized["structured_result"],
+                    parse_status=normalized["parse_status"],
+                    parse_intent=normalized["parse_intent"],
+                    parse_summary=normalized["parse_summary"],
+                    parse_error=normalized["parse_error"],
+                    preview_artifacts=normalized["preview_artifacts"],
+                    run_metadata=persisted_run_metadata,
+                )
+                await reconcile_credits(
+                    run_id=run_id,
+                    gateway_total=None,
+                    run_total_credits=None,
+                )
                 for browser_session in execution_context.browser_sessions:
                     yield {"event": "browser_session", "data": browser_session}
-                yield {"event": "token", "data": {"token": response_text}}
+                yield {"event": "token", "data": {"token": normalized["response"]}}
 
                 # Persist trace via SSE event emitter (Node.js side persists to agency_run_traces)
                 trace_summary = trace_collector.get_trace_summary()
                 if event_emitter:
                     await event_emitter.emit("trace_complete", trace_summary)
                     await event_emitter.emit_complete({"tokens": trace_summary.get("totalTokens", 0), "cost": trace_summary.get("totalCost", 0)})
-                yield {"event": "run_finished", "data": {"run_id": run_id, "response": response_text}}
+                if normalized["preview_artifacts"]:
+                    first_artifact = normalized["preview_artifacts"][0]
+                    yield {
+                        "event": "preview_ready",
+                        "data": {
+                            "run_id": run_id,
+                            "preview_artifact_ids": [
+                                artifact["id"] for artifact in normalized["preview_artifacts"]
+                            ],
+                            "intent": first_artifact["intent"],
+                            "summary": first_artifact["summary"],
+                        },
+                    }
+                yield {
+                    "event": "run_finished",
+                    "data": {
+                        "run_id": run_id,
+                        "response": normalized["response"],
+                        "step_attempt_snapshots": step_attempt_snapshots,
+                        "hybrid_summary": hybrid_summary,
+                    },
+                }
                 return
 
             agency_whitelist = await self._load_tool_whitelist(agency_id)
@@ -1155,6 +1434,17 @@ class AgencyService:
                 multiplier=agency_config.credit_multiplier,
             )
 
+            step_attempt_snapshots = build_step_attempt_snapshots(
+                compile_preview,
+                stream_breakdown,
+            )
+            hybrid_summary = build_hybrid_run_summary(compile_preview)
+            persisted_run_metadata = self._merge_run_metadata(
+                context.run_metadata,
+                step_attempt_snapshots=step_attempt_snapshots,
+                hybrid_summary=hybrid_summary,
+            )
+
             await self._persist_completed_run(
                 run_id=run_id,
                 completed_at=datetime.now(timezone.utc),
@@ -1166,6 +1456,7 @@ class AgencyService:
                 parse_summary=normalized["parse_summary"],
                 parse_error=normalized["parse_error"],
                 preview_artifacts=normalized["preview_artifacts"],
+                run_metadata=persisted_run_metadata,
             )
 
             await reconcile_credits(
@@ -1197,6 +1488,8 @@ class AgencyService:
                     "prompt_tokens": stream_pt,
                     "completion_tokens": stream_ct,
                     "usage_breakdown": [b.model_dump() for b in stream_breakdown],
+                    "step_attempt_snapshots": step_attempt_snapshots,
+                    "hybrid_summary": hybrid_summary,
                 },
             }
 
@@ -1227,6 +1520,11 @@ class AgencyService:
                     run_id=run_id,
                     elapsed_ms=int((time.monotonic() - start_time) * 1000),
                     exc=exc,
+                    run_metadata=self._merge_run_metadata(
+                        context.run_metadata,
+                        step_attempt_snapshots=build_step_attempt_snapshots(compile_preview),
+                        hybrid_summary=build_hybrid_run_summary(compile_preview),
+                    ),
                 )
             except Exception:
                 logger.error("agency_run_stream_record_update_failed", run_id=run_id)
@@ -1325,6 +1623,7 @@ class AgencyService:
                        started_at, completed_at, duration_ms,
                        error_type, error_message,
                        COALESCE(step_count, 0) as step_count,
+                       metadata,
                        structured_result,
                        structured_result_parse_status,
                        structured_result_intent,
@@ -1370,6 +1669,8 @@ class AgencyService:
             {"run_id": run_id, "tenant_id": tenant_id},
         )
 
+        step_attempt_snapshots, hybrid_summary = self._extract_hybrid_runtime_metadata(row.metadata)
+
         return {
             "id": row.id,
             "conversation_id": row.conversation_id,
@@ -1383,11 +1684,13 @@ class AgencyService:
             "step_count": row.step_count,
             "response": response_row.content if response_row else "",
             "output": response_row.content if response_row else "",
+            "step_attempt_snapshots": step_attempt_snapshots,
             "structured_result": self._json_value(row.structured_result),
             "structured_result_parse_status": row.structured_result_parse_status,
             "structured_result_intent": row.structured_result_intent,
             "structured_result_summary": row.structured_result_summary,
             "structured_result_error": row.structured_result_error,
+            "hybrid_summary": hybrid_summary,
             "preview_artifacts": [
                 {
                     "id": artifact.id,

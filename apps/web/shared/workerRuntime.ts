@@ -1,6 +1,8 @@
 import { z } from "zod";
 
 export const WORKER_RUNTIME_PROTOCOL_VERSION = "2026-04-06";
+export const WORKER_RUNTIME_FAMILY_SCHEMA_VERSION = "2026-04-08";
+export const WORKER_RUNTIME_PROFILE_SCHEMA_VERSION = "2026-04-08";
 
 export const workerRuntimeTypeValues = [
   "openclaw_gateway",
@@ -70,6 +72,148 @@ export const workerScopeValues = [
   "workers:diagnostics",
 ] as const;
 
+export const workerDesktopServiceModeValues = [
+  "foreground",
+  "background_tray",
+  "auto_start",
+  "managed_startup",
+  "maintenance",
+] as const;
+
+export const workerExecutionIdentityModeValues = [
+  "user_bound",
+  "service_identity",
+] as const;
+
+export const workerApprovalModeValues = [
+  "owner_approved",
+  "team_approved",
+  "admin_approved",
+  "preapproved_typed_jobs",
+  "per_job_approval",
+  "admin_only",
+] as const;
+
+export const workerBudgetAttributionModeValues = [
+  "owner_budget",
+  "team_budget",
+  "cost_center_budget",
+  "requesting_actor_budget",
+  "service_cost_center_budget",
+] as const;
+
+export const workerTokenRotationTriggerValues = [
+  "manual_reissue",
+  "periodic_rotation",
+  "policy_change",
+  "revocation",
+  "worker_reassignment",
+  "offboarding",
+  "ownership_transfer",
+  "drain_event",
+] as const;
+
+export const videoAssemblyProgressStageValues = [
+  "resolve_inputs",
+  "stage_workspace",
+  "probe_media",
+  "build_edit_plan",
+  "render_outputs",
+  "verify_outputs",
+  "upload_artifacts",
+  "publish_artifacts",
+  "trigger_indexing",
+] as const;
+
+export const videoAssemblyFailureCodeValues = [
+  "transient_input_fetch_failed",
+  "temporary_disk_pressure",
+  "runtime_restart_required",
+  "artifact_upload_failed",
+  "index_enqueue_failed",
+  "unauthorized_path",
+  "unsupported_media",
+  "insufficient_gpu",
+  "insufficient_temp_disk",
+  "adapter_contract_violation",
+  "render_failed",
+  "artifact_publish_failed",
+] as const;
+
+export const VIDEO_ASSEMBLY_PROGRESS_STAGES = [...videoAssemblyProgressStageValues];
+export const VIDEO_ASSEMBLY_FAILURE_CODES = [...videoAssemblyFailureCodeValues];
+
+export const localFolderIngestProgressStageValues = [
+  "resolve_roots",
+  "index_files",
+  "extract_previews",
+  "write_manifest",
+  "upload_artifacts",
+  "publish_artifacts",
+  "trigger_indexing",
+] as const;
+
+export const localFolderIngestFailureCodeValues = [
+  "temporary_disk_pressure",
+  "artifact_upload_failed",
+  "index_enqueue_failed",
+  "unauthorized_path",
+  "unsupported_media",
+  "adapter_contract_violation",
+  "artifact_publish_failed",
+] as const;
+
+export const LOCAL_FOLDER_INGEST_PROGRESS_STAGES = [...localFolderIngestProgressStageValues];
+export const LOCAL_FOLDER_INGEST_FAILURE_CODES = [...localFolderIngestFailureCodeValues];
+
+export const comfyImageGenerationProgressStageValues = [
+  "validate_service",
+  "submit_workflow",
+  "poll_execution",
+  "collect_outputs",
+  "upload_artifacts",
+  "publish_artifacts",
+  "trigger_indexing",
+] as const;
+
+export const comfyImageGenerationFailureCodeValues = [
+  "service_unreachable",
+  "workflow_rejected",
+  "execution_timeout",
+  "artifact_upload_failed",
+  "index_enqueue_failed",
+  "adapter_contract_violation",
+  "artifact_publish_failed",
+  "unsupported_output",
+] as const;
+
+export const COMFY_IMAGE_GENERATION_PROGRESS_STAGES = [...comfyImageGenerationProgressStageValues];
+export const COMFY_IMAGE_GENERATION_FAILURE_CODES = [...comfyImageGenerationFailureCodeValues];
+
+export const comfyWorkflowRunProgressStageValues = [
+  "validate_service",
+  "submit_workflow",
+  "poll_execution",
+  "collect_outputs",
+  "upload_artifacts",
+  "publish_artifacts",
+  "trigger_indexing",
+] as const;
+
+export const comfyWorkflowRunFailureCodeValues = [
+  "service_unreachable",
+  "workflow_rejected",
+  "execution_timeout",
+  "artifact_upload_failed",
+  "index_enqueue_failed",
+  "adapter_contract_violation",
+  "artifact_publish_failed",
+  "unsupported_output",
+] as const;
+
+export const COMFY_WORKFLOW_RUN_PROGRESS_STAGES = [...comfyWorkflowRunProgressStageValues];
+export const COMFY_WORKFLOW_RUN_FAILURE_CODES = [...comfyWorkflowRunFailureCodeValues];
+
 export type WorkerRuntimeType = (typeof workerRuntimeTypeValues)[number];
 export type WorkerStatus = (typeof workerStatusValues)[number];
 export type WorkerJobStatus = (typeof workerJobStatusValues)[number];
@@ -78,6 +222,23 @@ export type WorkerRuntimeMode = (typeof workerRuntimeModeValues)[number];
 export type WorkerFileScopeMode = (typeof workerFileScopeModeValues)[number];
 export type WorkerResourceProfile = (typeof workerResourceProfileValues)[number];
 export type WorkerScope = (typeof workerScopeValues)[number];
+export type WorkerDesktopServiceMode = (typeof workerDesktopServiceModeValues)[number];
+export type WorkerExecutionIdentityMode = (typeof workerExecutionIdentityModeValues)[number];
+export type WorkerApprovalMode = (typeof workerApprovalModeValues)[number];
+export type WorkerBudgetAttributionMode = (typeof workerBudgetAttributionModeValues)[number];
+export type WorkerTokenRotationTrigger = (typeof workerTokenRotationTriggerValues)[number];
+export type VideoAssemblyProgressStage = (typeof videoAssemblyProgressStageValues)[number];
+export type VideoAssemblyFailureCode = (typeof videoAssemblyFailureCodeValues)[number];
+export type LocalFolderIngestProgressStage = (typeof localFolderIngestProgressStageValues)[number];
+export type LocalFolderIngestFailureCode = (typeof localFolderIngestFailureCodeValues)[number];
+export type ComfyImageGenerationProgressStage =
+  (typeof comfyImageGenerationProgressStageValues)[number];
+export type ComfyImageGenerationFailureCode =
+  (typeof comfyImageGenerationFailureCodeValues)[number];
+export type ComfyWorkflowRunProgressStage =
+  (typeof comfyWorkflowRunProgressStageValues)[number];
+export type ComfyWorkflowRunFailureCode =
+  (typeof comfyWorkflowRunFailureCodeValues)[number];
 
 export const workerRuntimeTypeSchema = z.enum(workerRuntimeTypeValues);
 export const workerStatusSchema = z.enum(workerStatusValues);
@@ -87,15 +248,79 @@ export const workerRuntimeModeSchema = z.enum(workerRuntimeModeValues);
 export const workerFileScopeModeSchema = z.enum(workerFileScopeModeValues);
 export const workerResourceProfileSchema = z.enum(workerResourceProfileValues);
 export const workerScopeSchema = z.enum(workerScopeValues);
+export const workerDesktopServiceModeSchema = z.enum(workerDesktopServiceModeValues);
+export const workerExecutionIdentityModeSchema = z.enum(workerExecutionIdentityModeValues);
+export const workerApprovalModeSchema = z.enum(workerApprovalModeValues);
+export const workerBudgetAttributionModeSchema = z.enum(workerBudgetAttributionModeValues);
+export const workerTokenRotationTriggerSchema = z.enum(workerTokenRotationTriggerValues);
+export const videoAssemblyProgressStageSchema = z.enum(videoAssemblyProgressStageValues);
+export const videoAssemblyFailureCodeSchema = z.enum(videoAssemblyFailureCodeValues);
+export const localFolderIngestProgressStageSchema = z.enum(localFolderIngestProgressStageValues);
+export const localFolderIngestFailureCodeSchema = z.enum(localFolderIngestFailureCodeValues);
+export const comfyImageGenerationProgressStageSchema = z.enum(comfyImageGenerationProgressStageValues);
+export const comfyImageGenerationFailureCodeSchema = z.enum(comfyImageGenerationFailureCodeValues);
+export const comfyWorkflowRunProgressStageSchema = z.enum(comfyWorkflowRunProgressStageValues);
+export const comfyWorkflowRunFailureCodeSchema = z.enum(comfyWorkflowRunFailureCodeValues);
 
 export const workerProtocolCompatibilitySchema = z.object({
   protocolVersion: z.string().min(1).default(WORKER_RUNTIME_PROTOCOL_VERSION),
   runtimeVersion: z.string().min(1),
   minServerProtocolVersion: z.string().min(1).nullable().optional().default(null),
   maxServerProtocolVersion: z.string().min(1).nullable().optional().default(null),
+  runtimeFamilySchemaVersion: z.string().min(1).default(WORKER_RUNTIME_FAMILY_SCHEMA_VERSION),
+  runtimeProfileSchemaVersion: z.string().min(1).default(WORKER_RUNTIME_PROFILE_SCHEMA_VERSION),
+  minRuntimeFamilySchemaVersion: z.string().min(1).nullable().optional().default(null),
+  maxRuntimeFamilySchemaVersion: z.string().min(1).nullable().optional().default(null),
+  minRuntimeProfileSchemaVersion: z.string().min(1).nullable().optional().default(null),
+  maxRuntimeProfileSchemaVersion: z.string().min(1).nullable().optional().default(null),
 });
 
-export const workerRegistrationPayloadSchema = z.object({
+export const workerDesktopExecutionIdentitySchema = z.object({
+  mode: workerExecutionIdentityModeSchema,
+  approvalMode: workerApprovalModeSchema,
+  budgetAttributionMode: workerBudgetAttributionModeSchema,
+  tokenRotationTriggers: z.array(workerTokenRotationTriggerSchema).min(1),
+});
+
+export const workerDesktopRuntimeMetadataSchema = z.object({
+  desktopVersion: z.string().min(1),
+  runtimeProfile: workerRuntimeModeSchema,
+  workspaceRootsSummary: z.array(
+    z.object({
+      root: z.string().min(1),
+      accessMode: workerFileScopeModeSchema.optional(),
+    }),
+  ),
+  gpuSnapshot: z.record(z.string(), z.unknown()),
+  toolchainSummary: z.record(z.string(), z.unknown()),
+  doctorSummary: z.record(z.string(), z.unknown()),
+  serviceMode: workerDesktopServiceModeSchema,
+  executionIdentity: workerDesktopExecutionIdentitySchema,
+});
+
+export const workerNemoClawRuntimeMetadataSchema = z.object({
+  openShellVersion: z.string().min(1),
+  sandboxName: z.string().min(1),
+  blueprintVersion: z.string().min(1),
+  inferenceProviderProfile: z.string().min(1),
+  networkPolicyProfile: z.string().min(1),
+  filesystemPolicyScope: z.string().min(1),
+  processRestrictionProfile: z.string().min(1),
+  resourceClass: z.string().min(1),
+});
+
+export const workerHiClawRuntimeMetadataSchema = z.object({
+  managerEndpoint: z.string().min(1),
+  clusterId: z.string().min(1),
+  gatewayMode: z.string().min(1),
+  credentialHandlingMode: z.string().min(1),
+  sharedArtifactStoreProfile: z.string().min(1),
+  humanOversightMode: z.string().min(1),
+  workerPoolSummary: z.record(z.string(), z.unknown()),
+  matrixVisibilityMode: z.string().min(1),
+});
+
+const workerRegistrationPayloadBaseSchema = z.object({
   compatibility: workerProtocolCompatibilitySchema,
   runtimeType: workerRuntimeTypeSchema,
   workerMode: workerModeSchema.default("external_runtime"),
@@ -110,10 +335,17 @@ export const workerRegistrationPayloadSchema = z.object({
   hardwareJson: z.record(z.string(), z.unknown()).default({}),
   healthSummaryJson: z.record(z.string(), z.unknown()).default({}),
   warningFlagsJson: z.array(z.string()).default([]),
+  runtimeMetadataJson: z.record(z.string(), z.unknown()).default({}),
   fileScopeMode: workerFileScopeModeSchema.default("workspace_scoped"),
   runtimeProfileName: z.string().min(1).nullable().optional().default(null),
   policyProfileName: z.string().min(1).nullable().optional().default(null),
 });
+
+export const workerRegistrationPayloadSchema = workerRegistrationPayloadBaseSchema.superRefine(
+  (payload, ctx) => {
+    validateWorkerRuntimeMetadata(payload.runtimeType, payload.workerMode, payload.runtimeMetadataJson, ctx);
+  },
+);
 
 export const workerHeartbeatPayloadSchema = z.object({
   compatibility: workerProtocolCompatibilitySchema,
@@ -124,6 +356,7 @@ export const workerHeartbeatPayloadSchema = z.object({
   freeDiskBytes: z.number().int().min(0).nullable().optional().default(null),
   metricsJson: z.record(z.string(), z.unknown()).default({}),
   warningsJson: z.array(z.string()).default([]),
+  runtimeMetadataJson: z.record(z.string(), z.unknown()).default({}),
 });
 
 export const workerClaimRequestSchema = z.object({
@@ -193,6 +426,610 @@ export const DEFAULT_CLAW_GATEWAY_COMPATIBILITY = workerGatewayCompatibilityMeta
   ],
 });
 
+export interface WorkerRuntimeDefinition {
+  runtimeType: WorkerRuntimeType;
+  displayName: string;
+  familyName: string;
+  featureFlag: string;
+  registrationSupport: "stable" | "feature_gated" | "admin_gated";
+  dispatchSupport: "stable" | "limited" | "admin_gated";
+  supportedRuntimeFamilySchemaVersions: string[];
+  supportedRuntimeProfileSchemaVersions: string[];
+  gatewayCompatibility: WorkerGatewayCompatibilityMetadata | null;
+}
+
+export const WORKER_RUNTIME_DEFINITIONS: Readonly<
+  Record<WorkerRuntimeType, WorkerRuntimeDefinition>
+> = {
+  openclaw_gateway: {
+    runtimeType: "openclaw_gateway",
+    displayName: "OpenClaw Gateway",
+    familyName: "OpenClaw",
+    featureFlag: "openClawExternalRuntime",
+    registrationSupport: "stable",
+    dispatchSupport: "stable",
+    supportedRuntimeFamilySchemaVersions: [WORKER_RUNTIME_FAMILY_SCHEMA_VERSION],
+    supportedRuntimeProfileSchemaVersions: [WORKER_RUNTIME_PROFILE_SCHEMA_VERSION],
+    gatewayCompatibility: DEFAULT_CLAW_GATEWAY_COMPATIBILITY,
+  },
+  desktop_zeroclaw_managed: {
+    runtimeType: "desktop_zeroclaw_managed",
+    displayName: "Desktop + ZeroClaw Managed Runtime",
+    familyName: "DesktopZeroClaw",
+    featureFlag: "desktopZeroClawWorker",
+    registrationSupport: "feature_gated",
+    dispatchSupport: "limited",
+    supportedRuntimeFamilySchemaVersions: [WORKER_RUNTIME_FAMILY_SCHEMA_VERSION],
+    supportedRuntimeProfileSchemaVersions: [WORKER_RUNTIME_PROFILE_SCHEMA_VERSION],
+    gatewayCompatibility: null,
+  },
+  nemoclaw_sandbox: {
+    runtimeType: "nemoclaw_sandbox",
+    displayName: "NemoClaw Secure Sandbox",
+    familyName: "NemoClaw",
+    featureFlag: "nemoClawSecureWorkerPool",
+    registrationSupport: "admin_gated",
+    dispatchSupport: "admin_gated",
+    supportedRuntimeFamilySchemaVersions: [WORKER_RUNTIME_FAMILY_SCHEMA_VERSION],
+    supportedRuntimeProfileSchemaVersions: [WORKER_RUNTIME_PROFILE_SCHEMA_VERSION],
+    gatewayCompatibility: null,
+  },
+  hiclaw_cluster: {
+    runtimeType: "hiclaw_cluster",
+    displayName: "HiClaw Collaborative Cluster",
+    familyName: "HiClaw",
+    featureFlag: "hiClawClusterRuntime",
+    registrationSupport: "admin_gated",
+    dispatchSupport: "admin_gated",
+    supportedRuntimeFamilySchemaVersions: [WORKER_RUNTIME_FAMILY_SCHEMA_VERSION],
+    supportedRuntimeProfileSchemaVersions: [WORKER_RUNTIME_PROFILE_SCHEMA_VERSION],
+    gatewayCompatibility: null,
+  },
+};
+
+export function getWorkerRuntimeDefinition(runtimeType: WorkerRuntimeType): WorkerRuntimeDefinition {
+  return WORKER_RUNTIME_DEFINITIONS[runtimeType];
+}
+
+function compareVersionStrings(left: string, right: string): number {
+  return left.localeCompare(right);
+}
+
+function isVersionWithinWindow(
+  current: string,
+  minVersion: string | null | undefined,
+  maxVersion: string | null | undefined,
+): boolean {
+  if (minVersion && compareVersionStrings(current, minVersion) < 0) {
+    return false;
+  }
+  if (maxVersion && compareVersionStrings(current, maxVersion) > 0) {
+    return false;
+  }
+  return true;
+}
+
+function compatibilityReason(
+  supported: boolean,
+  workerVersion: string,
+  supportedVersions: readonly string[],
+): string | null {
+  if (supported) {
+    return null;
+  }
+  return `Worker reported ${workerVersion}, server supports ${supportedVersions.join(", ")}`;
+}
+
+export interface WorkerCompatibilityEvaluationLane {
+  compatible: boolean;
+  workerVersion: string;
+  serverVersion: string;
+  supportedVersions: string[];
+  reason: string | null;
+}
+
+export interface WorkerCompatibilityEvaluation {
+  runtimeType: WorkerRuntimeType;
+  checkedAt: string;
+  compatible: boolean;
+  transport: WorkerCompatibilityEvaluationLane;
+  runtimeFamily: WorkerCompatibilityEvaluationLane;
+  runtimeProfile: WorkerCompatibilityEvaluationLane;
+}
+
+export function evaluateWorkerCompatibility(
+  runtimeType: WorkerRuntimeType,
+  compatibility: WorkerProtocolCompatibility,
+): WorkerCompatibilityEvaluation {
+  const normalizedCompatibility = workerProtocolCompatibilitySchema.parse(compatibility);
+  const definition = getWorkerRuntimeDefinition(runtimeType);
+  const transportCompatible =
+    normalizedCompatibility.protocolVersion === WORKER_RUNTIME_PROTOCOL_VERSION
+    && isVersionWithinWindow(
+      WORKER_RUNTIME_PROTOCOL_VERSION,
+      normalizedCompatibility.minServerProtocolVersion,
+      normalizedCompatibility.maxServerProtocolVersion,
+    );
+  const runtimeFamilyCompatible =
+    definition.supportedRuntimeFamilySchemaVersions.includes(normalizedCompatibility.runtimeFamilySchemaVersion)
+    && isVersionWithinWindow(
+      WORKER_RUNTIME_FAMILY_SCHEMA_VERSION,
+      normalizedCompatibility.minRuntimeFamilySchemaVersion,
+      normalizedCompatibility.maxRuntimeFamilySchemaVersion,
+    );
+  const runtimeProfileCompatible =
+    definition.supportedRuntimeProfileSchemaVersions.includes(normalizedCompatibility.runtimeProfileSchemaVersion)
+    && isVersionWithinWindow(
+      WORKER_RUNTIME_PROFILE_SCHEMA_VERSION,
+      normalizedCompatibility.minRuntimeProfileSchemaVersion,
+      normalizedCompatibility.maxRuntimeProfileSchemaVersion,
+    );
+
+  return {
+    runtimeType,
+    checkedAt: new Date().toISOString(),
+    compatible: transportCompatible && runtimeFamilyCompatible && runtimeProfileCompatible,
+    transport: {
+      compatible: transportCompatible,
+      workerVersion: normalizedCompatibility.protocolVersion,
+      serverVersion: WORKER_RUNTIME_PROTOCOL_VERSION,
+      supportedVersions: [WORKER_RUNTIME_PROTOCOL_VERSION],
+      reason: transportCompatible
+        ? null
+        : `Worker reported ${normalizedCompatibility.protocolVersion}, server requires ${WORKER_RUNTIME_PROTOCOL_VERSION}`,
+    },
+    runtimeFamily: {
+      compatible: runtimeFamilyCompatible,
+      workerVersion: normalizedCompatibility.runtimeFamilySchemaVersion,
+      serverVersion: WORKER_RUNTIME_FAMILY_SCHEMA_VERSION,
+      supportedVersions: [...definition.supportedRuntimeFamilySchemaVersions],
+      reason: compatibilityReason(
+        runtimeFamilyCompatible,
+        normalizedCompatibility.runtimeFamilySchemaVersion,
+        definition.supportedRuntimeFamilySchemaVersions,
+      ),
+    },
+    runtimeProfile: {
+      compatible: runtimeProfileCompatible,
+      workerVersion: normalizedCompatibility.runtimeProfileSchemaVersion,
+      serverVersion: WORKER_RUNTIME_PROFILE_SCHEMA_VERSION,
+      supportedVersions: [...definition.supportedRuntimeProfileSchemaVersions],
+      reason: compatibilityReason(
+        runtimeProfileCompatible,
+        normalizedCompatibility.runtimeProfileSchemaVersion,
+        definition.supportedRuntimeProfileSchemaVersions,
+      ),
+    },
+  };
+}
+
+const videoAssemblyInputRefSourceKindSchema = z.enum([
+  "library_asset",
+  "authorized_local_path",
+  "staged_upload",
+]);
+
+const videoAssemblySubtitleSourcePrioritySchema = z.enum([
+  "user_provided",
+  "system_generated",
+  "external_integration",
+]);
+
+const videoAssemblySubtitleModeSchema = z.enum([
+  "burn_in",
+  "soft_mux",
+  "none",
+]);
+
+const videoAssemblyAspectRatioSchema = z.enum([
+  "16:9",
+  "9:16",
+  "1:1",
+  "4:5",
+]);
+
+const comfyExpectedOutputTypeSchema = z.enum([
+  "images",
+  "videos",
+  "audio",
+  "files",
+  "text",
+]);
+
+const localFolderIngestWritebackModeSchema = z.enum([
+  "read_search_only",
+  "managed_output_only",
+  "user_confirmed_root_write",
+  "advanced_local_override",
+]);
+
+export function looksLikeWorkerLocalFilePath(value: string): boolean {
+  return /^[a-zA-Z]:[\\/]/.test(value) || /^\\\\/.test(value);
+}
+
+export function isWorkerLoopbackUrl(value: string): boolean {
+  try {
+    const parsed = new URL(value.trim());
+    const hostname = parsed.hostname.trim().toLowerCase();
+    return hostname === "localhost"
+      || hostname === "127.0.0.1"
+      || hostname === "::1"
+      || hostname === "[::1]";
+  } catch {
+    return false;
+  }
+}
+
+export function normalizeWorkerPolicyPath(value: string): string {
+  const trimmed = value.trim();
+  const isUncPath = /^[\\/]{2}/.test(trimmed);
+  const strippedLeadingSeparators = trimmed.replace(/^[\\/]+/, "");
+  const normalizedBody = strippedLeadingSeparators
+    .replace(/[\\/]+/g, "\\")
+    .replace(/[\\]+$/, "")
+    .toLowerCase();
+
+  if (isUncPath) {
+    return `\\\\${normalizedBody}`;
+  }
+
+  return normalizedBody;
+}
+
+export function isWorkerPathWithinAllowedRoots(
+  candidatePath: string,
+  allowedRoots: readonly string[],
+): boolean {
+  const normalizedCandidate = normalizeWorkerPolicyPath(candidatePath);
+  return allowedRoots.some((root) => {
+    const normalizedRoot = normalizeWorkerPolicyPath(root);
+    return normalizedCandidate === normalizedRoot
+      || normalizedCandidate.startsWith(`${normalizedRoot}\\`);
+  });
+}
+
+export const videoAssemblyJobContractSchema = z.object({
+  inputRefs: z.array(
+    z.object({
+      sourceKind: videoAssemblyInputRefSourceKindSchema,
+      refId: z.string().min(1).optional(),
+      path: z.string().min(1).optional(),
+    }).superRefine((inputRef, ctx) => {
+      if (inputRef.sourceKind === "library_asset" && !inputRef.refId) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "library_asset input refs require refId",
+        });
+      }
+      if (inputRef.sourceKind !== "library_asset" && !inputRef.path) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `${inputRef.sourceKind} input refs require path`,
+        });
+      }
+    }),
+  ).min(1),
+  editPlan: z.object({
+    clips: z.array(
+      z.object({
+        sourceRef: z.string().min(1),
+        trim: z.object({
+          startMs: z.number().int().min(0),
+          endMs: z.number().int().min(0),
+        }),
+      }),
+    ).min(1),
+    applyWatermark: z.boolean().default(false),
+  }),
+  subtitlePlan: z.object({
+    sourcePriority: videoAssemblySubtitleSourcePrioritySchema,
+    mode: videoAssemblySubtitleModeSchema,
+    transcriptRef: z.string().min(1).optional(),
+    subtitleRef: z.string().min(1).optional(),
+  }),
+  renderProfile: z.object({
+    aspectRatios: z.array(videoAssemblyAspectRatioSchema).min(1),
+    codecPreset: z.string().min(1),
+    qualityPreset: z.string().min(1),
+    gpuRequired: z.boolean().default(false),
+  }),
+  workspacePolicy: z.object({
+    mode: workerFileScopeModeSchema,
+    allowedSourceRoots: z.array(z.string().min(1)).min(1),
+  }),
+  outputTargets: z.object({
+    renderedAssets: z.array(
+      z.object({
+        label: z.string().min(1),
+        aspectRatio: videoAssemblyAspectRatioSchema,
+        publishToLibrary: z.boolean().default(true),
+      }),
+    ).min(1),
+    subtitlesOptional: z.boolean().default(false),
+    thumbnailsOptional: z.boolean().default(false),
+  }),
+}).superRefine((payload, ctx) => {
+  const declaredSourceRefs = new Set<string>();
+  for (const inputRef of payload.inputRefs) {
+    if (inputRef.refId) {
+      declaredSourceRefs.add(inputRef.refId);
+    }
+    if (inputRef.path) {
+      declaredSourceRefs.add(inputRef.path);
+    }
+  }
+
+  payload.editPlan.clips.forEach((clip, index) => {
+    if (!declaredSourceRefs.has(clip.sourceRef)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["editPlan", "clips", index, "sourceRef"],
+        message: "clip sourceRef must match a declared inputRef path or refId",
+      });
+    }
+  });
+
+  for (const [field, value] of [
+    ["transcriptRef", payload.subtitlePlan.transcriptRef],
+    ["subtitleRef", payload.subtitlePlan.subtitleRef],
+  ] as const) {
+    if (!value || !looksLikeWorkerLocalFilePath(value)) {
+      continue;
+    }
+    if (!isWorkerPathWithinAllowedRoots(value, payload.workspacePolicy.allowedSourceRoots)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["subtitlePlan", field],
+        message: `${field} must stay inside an approved source root when using a local file path`,
+      });
+    }
+  }
+});
+
+export const localFolderIngestJobContractSchema = z.object({
+  roots: z.array(
+    z.object({
+      rootId: z.string().min(1),
+      name: z.string().min(1),
+      path: z.string().min(1),
+      requestedWritebackMode: localFolderIngestWritebackModeSchema.optional().default("managed_output_only"),
+      advancedLocalMode: z.boolean().default(false),
+    }),
+  ).min(1).max(20),
+  workspacePolicy: z.object({
+    mode: workerFileScopeModeSchema,
+    allowedSourceRoots: z.array(z.string().min(1)).min(1),
+  }),
+  ingestPolicy: z.object({
+    maxDepth: z.number().int().min(1).max(12).default(5),
+    maxFiles: z.number().int().min(1).max(1000).default(250),
+    includePreviewText: z.boolean().default(true),
+    previewFileLimit: z.number().int().min(0).max(100).default(25),
+    snippetQuery: z.string().trim().min(1).max(200).optional(),
+    snippetFileLimit: z.number().int().min(0).max(50).default(10),
+  }),
+  outputTargets: z.object({
+    publishManifestToLibrary: z.boolean().default(true),
+    publishSummaryToLibrary: z.boolean().default(true),
+    triggerIndexing: z.boolean().default(true),
+  }),
+}).superRefine((payload, ctx) => {
+  const seenRootIds = new Set<string>();
+  const seenNormalizedPaths = new Set<string>();
+
+  payload.roots.forEach((root, index) => {
+    if (seenRootIds.has(root.rootId)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["roots", index, "rootId"],
+        message: "rootId values must be unique within a local_folder_ingest request",
+      });
+    } else {
+      seenRootIds.add(root.rootId);
+    }
+
+    if (!isWorkerPathWithinAllowedRoots(root.path, payload.workspacePolicy.allowedSourceRoots)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["roots", index, "path"],
+        message: "local_folder_ingest root paths must stay inside an approved source root",
+      });
+    }
+
+    const normalizedPath = normalizeWorkerPolicyPath(root.path);
+    if (seenNormalizedPaths.has(normalizedPath)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["roots", index, "path"],
+        message: "Duplicate local_folder_ingest root paths are not allowed",
+      });
+    } else {
+      seenNormalizedPaths.add(normalizedPath);
+    }
+  });
+
+  if (!payload.outputTargets.publishManifestToLibrary && !payload.outputTargets.publishSummaryToLibrary) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["outputTargets"],
+      message: "local_folder_ingest must publish at least one artifact target",
+    });
+  }
+});
+
+const comfyServiceBindingSchema = z.object({
+  baseUrl: z.string().url(),
+  submitPath: z.string().min(1).default("/prompt"),
+  historyPathTemplate: z.string().min(1).default("/history/{promptId}"),
+  viewPath: z.string().min(1).default("/view"),
+  clientId: z.string().trim().min(1).max(128).nullable().optional().default(null),
+  pollIntervalMs: z.number().int().min(250).max(30_000).default(2_000),
+  timeoutSeconds: z.number().int().min(5).max(3_600).default(600),
+  localOnly: z.boolean().default(true),
+}).superRefine((payload, ctx) => {
+  if (payload.localOnly && !isWorkerLoopbackUrl(payload.baseUrl)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["baseUrl"],
+      message: "ComfyUI local-only services must bind to a loopback baseUrl",
+    });
+  }
+
+  for (const [field, value] of [
+    ["submitPath", payload.submitPath],
+    ["historyPathTemplate", payload.historyPathTemplate],
+    ["viewPath", payload.viewPath],
+  ] as const) {
+    if (!value.startsWith("/")) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: [field],
+        message: `${field} must begin with /`,
+      });
+    }
+  }
+
+  if (!payload.historyPathTemplate.includes("{promptId}")) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["historyPathTemplate"],
+      message: "historyPathTemplate must include the {promptId} placeholder",
+    });
+  }
+});
+
+export const comfyImageGenerationJobContractSchema = z.object({
+  service: comfyServiceBindingSchema,
+  workflowJson: z.record(z.string(), z.unknown()),
+  generationSpec: z.object({
+    promptSummary: z.string().trim().min(1).max(4_000),
+    negativePromptSummary: z.string().trim().max(4_000).nullable().optional().default(null),
+    width: z.number().int().min(64).max(4_096).default(1_024),
+    height: z.number().int().min(64).max(4_096).default(1_024),
+    batchSize: z.number().int().min(1).max(8).default(1),
+    steps: z.number().int().min(1).max(200).default(30),
+    cfgScale: z.number().min(0.1).max(50).default(7),
+    samplerName: z.string().trim().min(1).max(100).default("euler"),
+    seed: z.number().int().min(0).nullable().optional().default(null),
+    modelCheckpoint: z.string().trim().min(1).max(200).nullable().optional().default(null),
+    gpuRequired: z.boolean().default(true),
+  }),
+  outputTargets: z.object({
+    publishImagesToLibrary: z.boolean().default(true),
+    publishManifestToLibrary: z.boolean().default(true),
+    triggerIndexing: z.boolean().default(true),
+    maxImages: z.number().int().min(1).max(32).default(8),
+  }),
+}).superRefine((payload, ctx) => {
+  if (Object.keys(payload.workflowJson).length === 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["workflowJson"],
+      message: "comfy_image_generation requires a non-empty workflowJson payload",
+    });
+  }
+
+  if (!payload.outputTargets.publishImagesToLibrary && !payload.outputTargets.publishManifestToLibrary) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["outputTargets"],
+      message: "comfy_image_generation must publish at least one artifact target",
+    });
+  }
+});
+
+export const comfyWorkflowRunJobContractSchema = z.object({
+  service: comfyServiceBindingSchema,
+  workflowJson: z.record(z.string(), z.unknown()),
+  workflowLabel: z.string().trim().min(1).max(200).nullable().optional().default(null),
+  executionPolicy: z.object({
+    expectedOutputTypes: z.array(comfyExpectedOutputTypeSchema).min(1).max(5).default(["images"]),
+    gpuRequired: z.boolean().default(true),
+    failOnMissingOutputs: z.boolean().default(true),
+  }),
+  outputTargets: z.object({
+    publishOutputFilesToLibrary: z.boolean().default(true),
+    publishManifestToLibrary: z.boolean().default(true),
+    triggerIndexing: z.boolean().default(true),
+    maxOutputFiles: z.number().int().min(1).max(64).default(16),
+  }),
+}).superRefine((payload, ctx) => {
+  if (Object.keys(payload.workflowJson).length === 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["workflowJson"],
+      message: "comfy_workflow_run requires a non-empty workflowJson payload",
+    });
+  }
+
+  if (
+    !payload.outputTargets.publishOutputFilesToLibrary
+    && !payload.outputTargets.publishManifestToLibrary
+  ) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["outputTargets"],
+      message: "comfy_workflow_run must publish at least one artifact target",
+    });
+  }
+});
+
+function validateWorkerRuntimeMetadata(
+  runtimeType: WorkerRuntimeType,
+  workerMode: WorkerMode,
+  runtimeMetadataJson: Record<string, unknown>,
+  ctx: z.RefinementCtx,
+): void {
+  if (runtimeType === "desktop_zeroclaw_managed") {
+    const parsed = workerDesktopRuntimeMetadataSchema.safeParse(runtimeMetadataJson);
+    if (!parsed.success) {
+      for (const issue of parsed.error.issues) {
+        ctx.addIssue({
+          ...issue,
+          path: ["runtimeMetadataJson", ...issue.path],
+        });
+      }
+      return;
+    }
+    if (
+      (workerMode === "shared_department" || workerMode === "dedicated_gpu")
+      && parsed.data.executionIdentity.mode !== "service_identity"
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["runtimeMetadataJson", "executionIdentity", "mode"],
+        message: "Shared or dedicated desktop workers must use service identity execution mode",
+      });
+    }
+    return;
+  }
+
+  if (runtimeType === "nemoclaw_sandbox") {
+    const parsed = workerNemoClawRuntimeMetadataSchema.safeParse(runtimeMetadataJson);
+    if (!parsed.success) {
+      for (const issue of parsed.error.issues) {
+        ctx.addIssue({
+          ...issue,
+          path: ["runtimeMetadataJson", ...issue.path],
+        });
+      }
+    }
+    return;
+  }
+
+  if (runtimeType === "hiclaw_cluster") {
+    const parsed = workerHiClawRuntimeMetadataSchema.safeParse(runtimeMetadataJson);
+    if (!parsed.success) {
+      for (const issue of parsed.error.issues) {
+        ctx.addIssue({
+          ...issue,
+          path: ["runtimeMetadataJson", ...issue.path],
+        });
+      }
+    }
+  }
+}
+
 export type WorkerProtocolCompatibility = z.infer<typeof workerProtocolCompatibilitySchema>;
 export type WorkerRegistrationPayload = z.infer<typeof workerRegistrationPayloadSchema>;
 export type WorkerHeartbeatPayload = z.infer<typeof workerHeartbeatPayloadSchema>;
@@ -202,3 +1039,7 @@ export type WorkerArtifactInitPayload = z.infer<typeof workerArtifactInitPayload
 export type WorkerArtifactCompletePayload = z.infer<typeof workerArtifactCompletePayloadSchema>;
 export type WorkerDiagnosticsPayload = z.infer<typeof workerDiagnosticsPayloadSchema>;
 export type WorkerGatewayCompatibilityMetadata = z.infer<typeof workerGatewayCompatibilityMetadataSchema>;
+export type VideoAssemblyJobContract = z.infer<typeof videoAssemblyJobContractSchema>;
+export type LocalFolderIngestJobContract = z.infer<typeof localFolderIngestJobContractSchema>;
+export type ComfyImageGenerationJobContract = z.infer<typeof comfyImageGenerationJobContractSchema>;
+export type ComfyWorkflowRunJobContract = z.infer<typeof comfyWorkflowRunJobContractSchema>;

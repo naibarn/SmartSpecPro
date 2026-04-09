@@ -1,14 +1,5 @@
 /**
- * NodePropertyPanel — polymorphic property panel for all 7 agency node types.
- *
- * Dispatches to the appropriate form based on data.nodeType:
- *   agent / supervisor   → AgentSupervisorForm
- *   router               → RouterForm
- *   aggregator           → AggregatorForm
- *   knowledge_base       → KnowledgeBaseForm
- *   skill_call           → SkillCallForm
- *   browser_session      → BrowserSessionForm
- *   human_approval       → HumanApprovalForm
+ * NodePropertyPanel — polymorphic property panel for agency builder node types.
  */
 
 import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
@@ -52,10 +43,12 @@ import { FewShotExamplesEditor, type ExamplePair } from "./FewShotExamplesEditor
 import { AutonomousConfigPanel } from "./AutonomousConfigPanel";
 import type { AgencyNodeData } from "./nodes/types";
 import { BROWSER_SESSION_COPY } from "@shared/browserSession";
+import { getNodeSupport, type HybridEngine } from "./hybridNodeSupport";
+import { getRouterRouteHandleId, normalizeRouterRoutes } from "./nodeGraphSync";
 import {
   X, Wrench, ChevronDown, ChevronRight, Trash2, Plus,
   Search, Loader2, Zap, GripVertical, Check, ChevronsUpDown,
-  BookOpen, Shield, Server, Brain,
+  BookOpen, Shield, Server, Brain, ArrowLeftRight,
 } from "lucide-react";
 
 const PANEL_MIN_W = 340;
@@ -78,6 +71,8 @@ interface NodePropertyPanelProps {
   siblingNodes?: SiblingNode[];
   /** Agency ID for guardrails panel */
   agencyId?: string;
+  subgraphs?: Array<{ id: string; name: string; engine: HybridEngine }>;
+  defaultEngine?: HybridEngine;
   onChange: (updates: Partial<AgencyNodeData>) => void;
   onClose: () => void;
   onDelete: () => void;
@@ -112,9 +107,154 @@ function normalizeLibraryPickerDocs(rows: unknown): Array<{ id: number; title: s
   }, []);
 }
 
+function HybridRuntimeSection({
+  node,
+  onChange,
+  subgraphs = [],
+  defaultEngine = "agency_swarm",
+}: {
+  node: AgencyNodeData;
+  onChange: (updates: Partial<AgencyNodeData>) => void;
+  subgraphs?: Array<{ id: string; name: string; engine: HybridEngine }>;
+  defaultEngine?: HybridEngine;
+}) {
+  const targetSubgraph = subgraphs.find((subgraph) => subgraph.id === node.subgraphId);
+  const effectiveEngine = targetSubgraph?.engine ?? node.engineHint ?? defaultEngine;
+  const support = getNodeSupport(node.nodeType ?? "agent", effectiveEngine);
+  const runtimeConfig = (node.runtimeConfig ?? {}) as Record<string, unknown>;
+
+  const updateRuntimeConfig = (key: string, value: unknown) => {
+    onChange({
+      runtimeConfig: {
+        ...runtimeConfig,
+        [key]: value,
+      },
+    });
+  };
+
+  return (
+    <div className="space-y-3 rounded-lg border border-slate-200 bg-slate-50/80 p-3">
+      <div>
+        <p className="text-sm font-medium text-slate-800">Hybrid Runtime</p>
+        <p className="text-xs text-slate-500">
+          Assign this node to a subgraph, choose an engine hint, and tune runtime guardrails.
+        </p>
+      </div>
+
+      <div className="grid gap-3">
+        <div className="space-y-1.5">
+          <Label className="text-xs text-slate-600">Subgraph</Label>
+          <Select
+            value={node.subgraphId ?? "__unassigned__"}
+            onValueChange={(value) => {
+              const nextSubgraph = subgraphs.find((subgraph) => subgraph.id === value);
+              onChange({
+                subgraphId: value === "__unassigned__" ? null : value,
+                engineHint: nextSubgraph?.engine ?? node.engineHint ?? defaultEngine,
+              });
+            }}
+          >
+            <SelectTrigger className="h-9">
+              <SelectValue placeholder="Choose subgraph" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__unassigned__">Unassigned</SelectItem>
+              {subgraphs.map((subgraph) => (
+                <SelectItem key={subgraph.id} value={subgraph.id}>
+                  {subgraph.name} ({subgraph.engine})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label className="text-xs text-slate-600">Engine Hint</Label>
+          <Select
+            value={node.engineHint ?? effectiveEngine}
+            onValueChange={(value) => onChange({ engineHint: value as HybridEngine })}
+          >
+            <SelectTrigger className="h-9">
+              <SelectValue placeholder="Choose engine" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="agency_swarm">Agency Swarm</SelectItem>
+              <SelectItem value="adk2">Google ADK</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs text-slate-600">Timeout (ms)</Label>
+            <Input
+              type="number"
+              value={String(runtimeConfig.timeoutMs ?? "")}
+              onChange={(event) => updateRuntimeConfig("timeoutMs", event.target.value ? Number(event.target.value) : null)}
+              placeholder="120000"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs text-slate-600">Retry Policy</Label>
+            <Input
+              value={String(runtimeConfig.retryPolicy ?? "")}
+              onChange={(event) => updateRuntimeConfig("retryPolicy", event.target.value || null)}
+              placeholder="standard"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs text-slate-600">Concurrency Key</Label>
+            <Input
+              value={String(runtimeConfig.concurrencyKey ?? "")}
+              onChange={(event) => updateRuntimeConfig("concurrencyKey", event.target.value || null)}
+              placeholder="creative-review"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge variant="outline" className="text-[10px]">
+          Effective engine: {effectiveEngine}
+        </Badge>
+        {targetSubgraph && (
+          <Badge variant="outline" className="text-[10px]">
+            Subgraph: {targetSubgraph.name}
+          </Badge>
+        )}
+      </div>
+
+      {support !== "native" && (
+        <div
+          className={cn(
+            "rounded border px-3 py-2 text-xs",
+            support === "unsupported"
+              ? "border-red-200 bg-red-50 text-red-700"
+              : "border-amber-200 bg-amber-50 text-amber-700",
+          )}
+        >
+          {support === "unsupported"
+            ? `This node type is not supported on ${effectiveEngine}. Move it to another subgraph or switch engines before running.`
+            : `This node type is ${support} on ${effectiveEngine}. The compiler will preserve behavior through adapter emulation when possible.`}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Root dispatcher ──────────────────────────────────────────────────────────
 
-export function NodePropertyPanel({ node, nodeId, siblingNodes = [], agencyId, onChange, onClose, onDelete }: NodePropertyPanelProps) {
+export function NodePropertyPanel({
+  node,
+  nodeId,
+  siblingNodes = [],
+  agencyId,
+  subgraphs = [],
+  defaultEngine = "agency_swarm",
+  onChange,
+  onClose,
+  onDelete,
+}: NodePropertyPanelProps) {
   const nodeType = node.nodeType ?? "agent";
   const { t } = useScopedTranslation("agency");
 
@@ -171,6 +311,7 @@ export function NodePropertyPanel({ node, nodeId, siblingNodes = [], agencyId, o
     skill_discovery: t("builder.skillDiscoveryProperties"),
     data_transform: t("builder.dataTransformProperties"),
     error_handler: t("builder.errorHandlerProperties"),
+    engine_boundary: "Engine Boundary",
   };
 
   return (
@@ -217,6 +358,14 @@ export function NodePropertyPanel({ node, nodeId, siblingNodes = [], agencyId, o
           {nodeType === "skill_discovery" && <SkillDiscoveryForm node={node} onChange={onChange} />}
           {nodeType === "error_handler" && <ErrorHandlerForm node={node} onChange={onChange} siblingNodes={siblingNodes} />}
           {nodeType === "data_transform" && <DataTransformForm node={node} onChange={onChange} />}
+          {nodeType === "engine_boundary" && <EngineBoundaryForm node={node} onChange={onChange} subgraphs={subgraphs} />}
+
+          <HybridRuntimeSection
+            node={node}
+            onChange={onChange}
+            subgraphs={subgraphs}
+            defaultEngine={defaultEngine}
+          />
 
           <Separator />
 
@@ -1222,7 +1371,7 @@ function AgentSupervisorForm({
 
 // ── Router Form ──────────────────────────────────────────────────────────────
 
-type Route = { condition: string; targetNodeId: string; label?: string; handleId?: string };
+type Route = { id?: string; condition: string; targetNodeId: string; label?: string; handleId?: string };
 
 function RouterForm({
   node,
@@ -1234,11 +1383,39 @@ function RouterForm({
   siblingNodes?: SiblingNode[];
 }) {
   const routingMode = ncGet<string>(node, "routingMode", "keyword");
-  const routes: Route[] = ncGet(node, "routes", []);
+  const routes: Route[] = normalizeRouterRoutes(ncGet(node, "routes", [])).map((route) => ({
+    ...route,
+    condition: route.condition ?? "",
+    targetNodeId: route.targetNodeId ?? "",
+    label: route.label ?? "",
+  }));
+  const defaultTargetNodeId = ncGet<string>(node, "defaultTargetNodeId", "");
 
   const updateRoute = (i: number, key: keyof Route, value: string) => {
     const newRoutes = routes.map((r, idx) => (idx === i ? { ...r, [key]: value } : r));
     onChange({ nodeConfig: { ...(node.nodeConfig ?? {}), routes: newRoutes } });
+  };
+
+  const addRoute = () => {
+    const nextRoutes = [
+      ...routes,
+      {
+        id: `route-${Date.now().toString(36)}`,
+        condition: "",
+        targetNodeId: "",
+        label: "",
+      },
+    ];
+    onChange({ nodeConfig: { ...(node.nodeConfig ?? {}), routes: nextRoutes } });
+  };
+
+  const removeRoute = (index: number) => {
+    onChange({
+      nodeConfig: {
+        ...(node.nodeConfig ?? {}),
+        routes: routes.filter((_, routeIndex) => routeIndex !== index),
+      },
+    });
   };
 
   const conditionPlaceholder =
@@ -1247,26 +1424,6 @@ function RouterForm({
       : routingMode === "llm_classify"
         ? "Option label shown to the classifier"
         : "Keyword to match in input";
-
-  // Resolve node names from siblingNodes
-  const nodeNameMap = new Map(siblingNodes.map((sn) => [sn.id, sn]));
-
-  // Node type icon prefix
-  const nodeTypeIcon: Record<string, string> = {
-    agent: "\uD83E\uDD16", supervisor: "\uD83D\uDC51", router: "\u2194\uFE0F",
-    aggregator: "\uD83D\uDD00", knowledge_base: "\uD83D\uDCDA", skill_call: "\u26A1",
-    browser_session: "\uD83D\uDDA5\uFE0F", human_approval: "\uD83D\uDC64",
-    conditional_branch: "\u2696\uFE0F",
-    parallel_fan_out: "\u2194\uFE0F",
-    loop_retry: "\uD83D\uDD04",
-  };
-
-  // Handle badge styles
-  const handleBadge: Record<string, { bg: string; text: string; label: string }> = {
-    true: { bg: "bg-green-100 border-green-300", text: "text-green-700", label: "True" },
-    false: { bg: "bg-red-100 border-red-300", text: "text-red-600", label: "False" },
-    default: { bg: "bg-blue-100 border-blue-300", text: "text-blue-600", label: "Else" },
-  };
 
   return (
     <>
@@ -1315,50 +1472,46 @@ function RouterForm({
 
       <Separator />
 
-      {/* Routes — auto-created from canvas edges */}
       <div className="space-y-2">
-        <div>
+        <div className="flex items-center justify-between">
           <Label className="text-sm font-medium">Routes</Label>
-          <p className="text-[10px] text-muted-foreground mt-0.5">
-            Drag from <span className="text-green-600 font-semibold">True</span> (right),{" "}
-            <span className="text-red-500 font-semibold">False</span> (left), or{" "}
-            <span className="text-blue-500 font-semibold">Else</span> (bottom) handle to target nodes
-          </p>
+          <Button variant="outline" size="sm" className="h-6 text-xs" onClick={addRoute}>
+            <Plus className="mr-1 h-3 w-3" /> Add Route
+          </Button>
         </div>
+        <p className="text-[10px] text-muted-foreground">
+          Each route gets its own output handle on the canvas. Pick a target here or drag from that handle.
+        </p>
 
         {routes.length === 0 && (
           <div className="rounded-md border border-dashed border-blue-200 bg-blue-50/50 p-3 text-center">
             <p className="text-xs text-blue-600 font-medium">No routes yet</p>
             <p className="text-[10px] text-blue-400 mt-0.5">
-              Drag from the <span className="text-green-600 font-bold">True</span> or <span className="text-red-500 font-bold">False</span> handle to another node
+              Add a route here, then connect its handle to a target node on the canvas.
             </p>
           </div>
         )}
 
         {routes.map((route, i) => {
-          const targetNode = nodeNameMap.get(route.targetNodeId);
-          const icon = targetNode ? (nodeTypeIcon[targetNode.nodeType] ?? "") : "";
-          const targetLabel = targetNode ? `${icon} ${targetNode.name}` : route.targetNodeId;
-          const hid = route.handleId ?? "default";
-          const badge = handleBadge[hid] ?? handleBadge.default;
-
           return (
             <div
-              key={`${route.targetNodeId}-${hid}-${i}`}
-              className={`rounded border p-2.5 space-y-2 ${badge.bg}`}
+              key={getRouterRouteHandleId(route, i)}
+              className="rounded border border-blue-200 bg-blue-50/40 p-2.5 space-y-2"
             >
-              {/* Handle badge + target node */}
-              <div className="flex items-center gap-2">
-                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${badge.bg} ${badge.text}`}>
-                  {badge.label}
-                </span>
-                <span className="text-[11px] text-slate-500">→</span>
-                <span className="text-xs font-semibold text-slate-700 truncate" title={route.targetNodeId}>
-                  {targetLabel}
-                </span>
+              <div className="flex items-center justify-between gap-2">
+                <Badge variant="outline" className="text-[10px]">
+                  Handle: {getRouterRouteHandleId(route, i)}
+                </Badge>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-5 w-5"
+                  onClick={() => removeRoute(i)}
+                >
+                  <Trash2 className="h-3 w-3 text-red-500" />
+                </Button>
               </div>
 
-              {/* Condition input */}
               <Input
                 value={route.condition}
                 onChange={(e) => updateRoute(i, "condition", e.target.value)}
@@ -1366,16 +1519,49 @@ function RouterForm({
                 className="h-7 text-xs bg-white/80"
               />
 
-              {/* Optional label */}
               <Input
                 value={route.label ?? ""}
                 onChange={(e) => updateRoute(i, "label", e.target.value)}
                 placeholder="Label (optional, shown on edge)"
                 className="h-7 text-xs bg-white/80"
               />
+
+              <Select value={route.targetNodeId} onValueChange={(value) => updateRoute(i, "targetNodeId", value)}>
+                <SelectTrigger className="h-7 text-xs bg-white/80">
+                  <SelectValue placeholder="Target node..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {siblingNodes.map((siblingNode) => (
+                    <SelectItem key={siblingNode.id} value={siblingNode.id}>
+                      {siblingNode.name} ({siblingNode.nodeType})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           );
         })}
+      </div>
+
+      <Separator />
+
+      <div className="space-y-1.5">
+        <Label>Default Target (fallback)</Label>
+        <Select
+          value={defaultTargetNodeId}
+          onValueChange={(value) => onChange(ncSet(node, "defaultTargetNodeId", value))}
+        >
+          <SelectTrigger className="h-7 text-xs">
+            <SelectValue placeholder="Select fallback target..." />
+          </SelectTrigger>
+          <SelectContent>
+            {siblingNodes.map((siblingNode) => (
+              <SelectItem key={siblingNode.id} value={siblingNode.id}>
+                {siblingNode.name} ({siblingNode.nodeType})
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
     </>
   );
@@ -3440,6 +3626,107 @@ function ErrorHandlerForm({
 }
 
 // ── Data Transform Form ──────────────────────────────────────────────────────
+
+function EngineBoundaryForm({
+  node,
+  onChange,
+  subgraphs = [],
+}: {
+  node: AgencyNodeData;
+  onChange: (updates: Partial<AgencyNodeData>) => void;
+  subgraphs?: Array<{ id: string; name: string; engine: HybridEngine }>;
+}) {
+  const bridgeMode = ncGet<string>(node, "bridgeMode", "sync");
+  const inputContract = ncGet<string>(node, "inputContract", "");
+  const outputContract = ncGet<string>(node, "outputContract", "");
+  const approvalOwner = ncGet<string>(node, "approvalOwner", "");
+  const targetSubgraphId = ncGet<string>(node, "targetSubgraphId", "");
+
+  return (
+    <>
+      <div>
+        <Label className="text-xs font-medium">Name</Label>
+        <Input
+          value={node.name}
+          onChange={(event) => onChange({ name: event.target.value })}
+          className="mt-1"
+          placeholder="Engine Boundary"
+        />
+      </div>
+
+      <div className="rounded-lg border border-violet-200 bg-violet-50/70 p-3">
+        <div className="flex items-start gap-2">
+          <ArrowLeftRight className="mt-0.5 h-4 w-4 text-violet-600" />
+          <div>
+            <p className="text-sm font-medium text-violet-900">Boundary Contract</p>
+            <p className="text-xs text-violet-800/80">
+              Declare the payload contract for the handoff between subgraphs or engines.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-2">
+        <div>
+          <Label className="text-xs font-medium">Bridge Mode</Label>
+          <Input
+            value={bridgeMode}
+            onChange={(event) => onChange(ncSet(node, "bridgeMode", event.target.value))}
+            className="mt-1"
+            placeholder="sync"
+          />
+        </div>
+        <div>
+          <Label className="text-xs font-medium">Target Subgraph</Label>
+          <Select
+            value={targetSubgraphId || "__none__"}
+            onValueChange={(value) => onChange(ncSet(node, "targetSubgraphId", value === "__none__" ? "" : value))}
+          >
+            <SelectTrigger className="mt-1">
+              <SelectValue placeholder="Select subgraph" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none__">None</SelectItem>
+              {subgraphs.map((subgraph) => (
+                <SelectItem key={subgraph.id} value={subgraph.id}>
+                  {subgraph.name} ({subgraph.engine})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="text-xs font-medium">Input Contract</Label>
+          <Input
+            value={inputContract}
+            onChange={(event) => onChange(ncSet(node, "inputContract", event.target.value))}
+            className="mt-1"
+            placeholder="research_input_v1"
+          />
+        </div>
+        <div>
+          <Label className="text-xs font-medium">Output Contract</Label>
+          <Input
+            value={outputContract}
+            onChange={(event) => onChange(ncSet(node, "outputContract", event.target.value))}
+            className="mt-1"
+            placeholder="creative_output_v1"
+          />
+        </div>
+      </div>
+
+      <div>
+        <Label className="text-xs font-medium">Approval Owner</Label>
+        <Input
+          value={approvalOwner}
+          onChange={(event) => onChange(ncSet(node, "approvalOwner", event.target.value))}
+          className="mt-1"
+          placeholder="workflow"
+        />
+      </div>
+    </>
+  );
+}
 
 function DataTransformForm({
   node,

@@ -18,6 +18,7 @@ import copy
 import json
 import os
 import re
+import uuid
 from typing import Any
 
 import httpx
@@ -231,6 +232,37 @@ class AgencyOrchestrator:
             n.get("node_type", "agent") not in AGENT_NODE_TYPES
             for n in self.nodes.values()
         )
+
+    def _resolve_node_engine(self, node: NodeRow) -> str:
+        return str(node.get("engine_hint") or "agency_swarm")
+
+    def _build_trace_metadata(self, node: NodeRow) -> dict[str, Any]:
+        node_type = node.get("node_type", "agent")
+        node_config = node.get("node_config") or {}
+        metadata: dict[str, Any] = {
+            "nodeId": node.get("id"),
+            "nodeType": node_type,
+            "engine": self._resolve_node_engine(node),
+        }
+
+        if node.get("subgraph_id"):
+            metadata["subgraphId"] = node.get("subgraph_id")
+
+        if node_type == "engine_boundary":
+            metadata.update({
+                "phase": "bridge",
+                "boundaryTransition": True,
+                "bridgeMode": node_config.get("bridgeMode"),
+                "inputContract": node_config.get("inputContract"),
+                "outputContract": node_config.get("outputContract"),
+                "sourceSubgraphId": node_config.get("sourceSubgraphId") or node.get("subgraph_id"),
+                "targetSubgraphId": node_config.get("targetSubgraphId"),
+                "sourceEngine": node_config.get("sourceEngine") or self._resolve_node_engine(node),
+                "targetEngine": node_config.get("targetEngine"),
+                "bridgeId": f"bridge:{node.get('id')}",
+            })
+
+        return {key: value for key, value in metadata.items() if value is not None}
 
     async def _build_legacy_memory_context(
         self,
@@ -571,16 +603,19 @@ class AgencyOrchestrator:
         logger.info("agency_orchestrator_execute_node", node_id=node_id, node_type=node_type)
 
         # Start trace span for this node.
-        # Span type mapping: agent/supervisor → agent_turn; all other orchestrator
-        # node types (router, aggregator, knowledge_base, skill_call, human_approval,
-        # browser_session) → tool_call.  This is acceptable because the spec defines
-        # only agent_turn, tool_call, and guardrail as valid span types.
+        # Engine boundaries use a dedicated bridge span so hybrid traces can
+        # surface cross-engine handoffs directly in the UI.
         span_id: str | None = None
         if self.trace_collector:
             span_id = self.trace_collector.start_span(
                 name=f"{node_type}:{node_name}",
-                type="agent_turn" if node_type in AGENT_NODE_TYPES else "tool_call",
+                type=(
+                    "agent_turn" if node_type in AGENT_NODE_TYPES
+                    else "bridge" if node_type == "engine_boundary"
+                    else "tool_call"
+                ),
                 input_data=ctx.get_context_text()[:500],
+                metadata=self._build_trace_metadata(node),
             )
 
         # Check if this node has error handlers watching it
@@ -650,6 +685,9 @@ class AgencyOrchestrator:
                     )
                     result = str(execution.get("result") or "")
 
+                case "engine_boundary":
+                    result = await self._execute_engine_boundary(node, ctx)
+
                 case "conditional_branch":
                     next_node_id = await self._evaluate_conditional_branch(node, ctx)
                     if next_node_id and next_node_id in self.nodes:
@@ -687,7 +725,7 @@ class AgencyOrchestrator:
                         handler_count=len(handlers),
                         using_handler=handlers[0].get("name"),
                     )
-                result = await self._handle_error(handlers[0], node, exc, ctx)
+                result = await self._handle_error(handlers[0], node, exc, ctx, _depth)
             else:
                 raise
 
@@ -1694,6 +1732,15 @@ class AgencyOrchestrator:
         default_target: str | None = cfg.get("defaultTargetNodeId")
         input_text = ctx.input
 
+        if routing_mode == "llm_classify":
+            matched = await self._llm_classify(
+                input_text,
+                routes,
+                ctx.user_token,
+                model=router_node.get("model"),
+            )
+            return matched or default_target
+
         for route in routes:
             condition: str = route.get("condition", "")
             target_id: str = route.get("targetNodeId", "")
@@ -1712,21 +1759,25 @@ class AgencyOrchestrator:
                             return target_id
                     except re.error:
                         pass
-                case "llm_classify":
-                    matched = await self._llm_classify(input_text, routes, ctx.user_token)
-                    return matched or default_target
                 case _:
                     pass
 
         return default_target
 
-    async def _llm_classify(self, input_text: str, routes: list[dict], user_token: str) -> str | None:
+    async def _llm_classify(
+        self,
+        input_text: str,
+        routes: list[dict],
+        user_token: str,
+        *,
+        model: str | None = None,
+    ) -> str | None:
         """Use LLM to classify input and return target node ID.
 
         SECURITY: Uses role separation to prevent prompt injection.
         User input is always in the 'user' role, never embedded in system prompt.
         """
-        llm_url = os.getenv("LLM_GATEWAY_URL", "http://127.0.0.1:3000")
+        python_backend = os.getenv("PYTHON_BACKEND_INTERNAL_URL", "http://127.0.0.1:8000")
         route_labels = "\n".join(
             f"- {r.get('label', r.get('condition', ''))}: targetNodeId={r.get('targetNodeId', '')}"
             for r in routes
@@ -1739,26 +1790,26 @@ class AgencyOrchestrator:
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
                 resp = await client.post(
-                    f"{llm_url}/api/llm/chat",
+                    f"{python_backend}/api/v1/llm/simple",
                     json={
-                        "messages": [
-                            {"role": "system", "content": system_prompt},
-                            {"role": "user", "content": input_text[:2000]},
-                        ],
+                        "model": model,
+                        "system": system_prompt,
+                        "message": input_text[:2000],
                         "max_tokens": 50,
                     },
                     headers={"Authorization": f"Bearer {user_token}"},
                 )
                 if resp.status_code == 200:
                     body = resp.json()
-                    answer = (
-                        body.get("choices", [{}])[0].get("message", {}).get("content", "")
-                        or body.get("content", "")
-                        or ""
-                    ).strip()
+                    answer = str(body.get("content", "")).strip()
+                    answer_lower = answer.lower()
                     for route in routes:
-                        if route.get("targetNodeId", "") in answer:
+                        target_node_id = str(route.get("targetNodeId", "")).strip()
+                        if target_node_id and target_node_id in answer:
                             return route["targetNodeId"]
+                        label = str(route.get("label", route.get("condition", ""))).strip().lower()
+                        if label and label == answer_lower:
+                            return target_node_id or None
         except Exception as exc:
             logger.warning("agency_router_llm_classify_failed", error=str(exc)[:100])
         return None
@@ -1951,6 +2002,7 @@ class AgencyOrchestrator:
         """Aggregate results from upstream nodes."""
         cfg: dict = agg_node.get("node_config") or {}
         mode: str = cfg.get("aggregationMode", "concatenate")
+        min_responses = max(1, int(cfg.get("minResponses", 1)))
 
         upstream_ids = [
             e["from_node_id"] for e in self.edges
@@ -1960,6 +2012,20 @@ class AgencyOrchestrator:
 
         if not inputs:
             return ""
+
+        if len(inputs) < min_responses:
+            logger.info(
+                "agency_aggregator_min_responses_not_met",
+                node_id=agg_node["id"],
+                required=min_responses,
+                received=len(inputs),
+            )
+            partial_output = "\n\n---\n\n".join(inputs)
+            return (
+                f"[Aggregator received {len(inputs)} of {min_responses} required responses]\n\n{partial_output}"
+                if partial_output else
+                f"[Aggregator received {len(inputs)} of {min_responses} required responses]"
+            )
 
         match mode:
             case "first_wins":
@@ -1984,7 +2050,11 @@ class AgencyOrchestrator:
             async with httpx.AsyncClient(timeout=60.0) as client:
                 resp = await client.post(
                     f"{python_backend}/api/v1/llm/simple",
-                    json={"message": prompt, "max_tokens": 2000},
+                    json={
+                        "model": agg_node.get("model"),
+                        "message": prompt,
+                        "max_tokens": 2000,
+                    },
                     headers={"Authorization": f"Bearer {user_token}"},
                 )
                 if resp.status_code == 200:
@@ -2242,6 +2312,7 @@ class AgencyOrchestrator:
 
     async def _await_approval(self, approval_node: NodeRow, ctx: ExecutionContext) -> str:
         """Create an approval request and wait for decision via SSE + context polling."""
+        from app.orchestrator.node_executors.approval_executor import _resolve_approvers
         from app.services.agency_approval_tool import (
             RequestApprovalTool,
             await_approval_decision,
@@ -2249,65 +2320,128 @@ class AgencyOrchestrator:
 
         cfg: dict = approval_node.get("node_config") or {}
         approval_message: str = cfg.get("approvalMessage", "Approval required to proceed.")
-        timeout_hours: int = int(cfg.get("timeoutHours", 24))
+        timeout_hours: int = max(1, int(cfg.get("timeoutHours", 24)))
         on_timeout: str = cfg.get("onTimeout", "auto_reject")
+        raw_approvers = [
+            str(value).strip()
+            for value in (cfg.get("approvers") or [])
+            if str(value).strip()
+        ]
+        resolved_approvers = (
+            await _resolve_approvers(raw_approvers, ctx.tenant_id)
+            if raw_approvers else
+            []
+        )
+        if raw_approvers and not resolved_approvers:
+            logger.warning(
+                "agency_human_approval_no_valid_approvers",
+                node_id=approval_node["id"],
+                approvers_count=len(raw_approvers),
+            )
+            return "[Human approval: no valid approvers configured]"
+        required_approvers = (
+            max(1, len(resolved_approvers))
+            if cfg.get("requireAllApprovers", False) and resolved_approvers
+            else 1
+        )
+        timeout_seconds = timeout_hours * 3600
 
         logger.info(
             "agency_human_approval_requested",
             node_id=approval_node["id"],
             timeout_hours=timeout_hours,
+            approver_count=len(resolved_approvers),
+            required_approvers=required_approvers,
         )
 
         # Use SSE-based approval flow if context and emitter are available
         if ctx.shared_context and self.event_emitter:
+            approval_key = str(uuid.uuid4())
+            approval_metadata = {
+                "approvers": [str(value) for value in resolved_approvers],
+                "requiredApprovers": required_approvers,
+                "approverCount": len(resolved_approvers),
+                "timeoutHours": timeout_hours,
+                "onTimeout": on_timeout,
+            }
             tool = RequestApprovalTool(
                 agent_name=approval_node.get("name", "Approval"),
                 run_context=ctx.shared_context,
                 event_emitter=self.event_emitter,
             )
-            await tool.execute(step=approval_message, summary=ctx.input[:500])
+            await tool.execute(
+                step=approval_message,
+                summary=ctx.input[:500],
+                approval_key=approval_key,
+                metadata=approval_metadata,
+            )
 
-            # Extract the approval key from the emitted event
-            all_data = ctx.shared_context.snapshot()
-            approval_key = None
-            for key in all_data:
-                if key.startswith("approval:") and all_data[key].get("status") == "pending":
-                    approval_key = key.replace("approval:", "")
-                    break
+            if self.redis_client:
+                approval_meta_key = f"agency:approval:meta:{self.event_emitter.run_id}:{approval_key}"
+                approval_meta = {
+                    "approvalKey": approval_key,
+                    "runId": self.event_emitter.run_id,
+                    "tenantId": ctx.tenant_id,
+                    "ownerUserId": ctx.user_id,
+                    "approvers": [str(value) for value in resolved_approvers],
+                    "requiredApprovers": required_approvers,
+                    "step": approval_message,
+                    "agentName": approval_node.get("name", "Approval"),
+                }
+                try:
+                    await self.redis_client.setex(
+                        approval_meta_key,
+                        min(timeout_seconds + 86400, 14 * 24 * 3600),
+                        json.dumps(approval_meta),
+                    )
+                except Exception as exc:
+                    logger.warning(
+                        "agency_human_approval_meta_store_failed",
+                        run_id=self.event_emitter.run_id,
+                        error=str(exc)[:100],
+                    )
 
-            if approval_key:
-                timeout_seconds = timeout_hours * 3600
-                result = await await_approval_decision(
-                    ctx.shared_context,
-                    approval_key,
-                    approval_message,
-                    timeout_seconds=min(timeout_seconds, 1800),  # Cap at 30 min for SSE
-                )
-                return result
+            result = await await_approval_decision(
+                ctx.shared_context,
+                approval_key,
+                approval_message,
+                timeout_seconds=timeout_seconds,
+            )
+            if "timed out" in result.lower():
+                match on_timeout:
+                    case "auto_approve":
+                        return "[Human approval: timed out -> AUTO-APPROVED]"
+                    case "auto_reject":
+                        return "[Human approval: timed out -> AUTO-REJECTED]"
+                    case _:
+                        return "[Human approval: timed out -> escalated]"
+            return result
 
         # Fallback: HTTP-based approval for non-SSE flows
         python_backend = os.getenv("PYTHON_BACKEND_INTERNAL_URL", "http://127.0.0.1:8000")
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
                 resp = await client.post(
-                    f"{python_backend}/api/v1/approvals/create",
+                    f"{python_backend}/api/v1/approvals/requests",
                     json={
-                        "context": f"Agency approval: {approval_message}\n\nInput: {ctx.input[:500]}",
-                        "approval_type": "agency_approval",
-                        "timeout_hours": timeout_hours,
-                        "on_timeout": on_timeout,
+                        "request_type": "agency_approval",
+                        "title": approval_message[:255] or "Agency approval required",
+                        "description": f"Agency approval: {approval_message}\n\nInput: {ctx.input[:500]}",
+                        "execution_id": getattr(ctx, "run_id", None),
+                        "payload": {
+                            "input": ctx.input[:500],
+                            "approvers": [str(value) for value in resolved_approvers],
+                            "requiredApprovers": required_approvers,
+                        },
+                        "required_approvers": required_approvers,
+                        "timeout_minutes": min(timeout_hours * 60, 10080),
                     },
                     headers={"Authorization": f"Bearer {ctx.user_token}"},
                 )
                 if resp.status_code in (200, 201):
                     data = resp.json()
                     approval_id = data.get("id")
-                    decision = data.get("decision")
-                    if decision == "approved":
-                        return "[Human approval: APPROVED — proceeding]"
-                    elif decision == "rejected":
-                        return "[Human approval: REJECTED — stopping]"
-                    return f"[Human approval requested (id={approval_id}) — awaiting decision]"
+                    return f"[Human approval requested (request={approval_id}) — awaiting decision]"
         except Exception as exc:
             logger.warning("agency_human_approval_failed", error=str(exc)[:100])
 
@@ -2319,6 +2453,46 @@ class AgencyOrchestrator:
                 return "[Human approval: timed out → AUTO-REJECTED]"
             case _:
                 return "[Human approval: timed out → escalated]"
+
+    async def _execute_engine_boundary(self, node: NodeRow, ctx: ExecutionContext) -> str:
+        """Pass payloads across a declared engine boundary with traceable metadata."""
+        node_id = node["id"]
+        node_name = node.get("name", node_id)
+        node_config = node.get("node_config") or {}
+        incoming_edges = [edge for edge in self.edges if edge.get("to_node_id") == node_id]
+
+        boundary_input = ""
+        for edge in reversed(incoming_edges):
+            source_id = edge.get("from_node_id")
+            if source_id and ctx.results.get(source_id):
+                boundary_input = ctx.results[source_id]
+                break
+
+        if not boundary_input:
+            boundary_input = ctx.input
+
+        boundary_summary = {
+            "nodeId": node_id,
+            "nodeName": node_name,
+            "sourceSubgraphId": node_config.get("sourceSubgraphId") or node.get("subgraph_id"),
+            "targetSubgraphId": node_config.get("targetSubgraphId"),
+            "sourceEngine": node_config.get("sourceEngine") or self._resolve_node_engine(node),
+            "targetEngine": node_config.get("targetEngine"),
+            "bridgeMode": node_config.get("bridgeMode"),
+            "inputContract": node_config.get("inputContract"),
+            "outputContract": node_config.get("outputContract"),
+        }
+
+        if ctx.shared_context:
+            await ctx.shared_context.set(
+                f"{node_name}_boundary",
+                boundary_summary,
+            )
+
+        if self.event_emitter:
+            await self.event_emitter.emit("boundary_transition", boundary_summary)
+
+        return boundary_input
 
     async def _dispatch_node(self, node: NodeRow, ctx: ExecutionContext) -> str:
         """Execute node logic WITHOUT error interception wrapping.
@@ -2335,6 +2509,8 @@ class AgencyOrchestrator:
                 return await self._call_skill(node, ctx)
             case "aggregator":
                 return await self._aggregate(node, ctx)
+            case "engine_boundary":
+                return await self._execute_engine_boundary(node, ctx)
             case _:
                 return await self._execute_agent_node(node, ctx)
 
@@ -2344,6 +2520,7 @@ class AgencyOrchestrator:
         failed_node: NodeRow,
         exc: Exception,
         ctx: ExecutionContext,
+        _depth: int = 0,
     ) -> str:
         """Apply error handler strategy to a failed node."""
         cfg = handler_node.get("node_config") or {}

@@ -19,6 +19,10 @@ import {
   assertWorkflowBrowserSessionNodesAllowed,
   filterWorkflowNodeRegistryForFlags,
 } from "../services/workflowBrowserSessionFlags";
+import {
+  assertWorkflowWorkerRuntimeNodesAllowed,
+  filterWorkflowWorkerRuntimeRegistryForFlags,
+} from "../services/workflowWorkerRuntimeFlags";
 
 // Loose but structural Zod schemas for workflow nodes/edges.
 // Enforce minimum shape to prevent prototype pollution and unbounded payloads
@@ -87,14 +91,24 @@ async function fetchPythonBackend(
   });
 }
 
-async function getWorkflowBrowserSessionFlagState(tenantId: string | null) {
+async function getWorkflowFeatureGateState(tenantId: string | null) {
   if (!tenantId) {
-    return { workflowBrowserSessionNodes: false };
+    return {
+      workflowBrowserSessionNodes: false,
+      openClawExternalRuntime: false,
+      desktopZeroClawWorker: false,
+      nemoClawSecureWorkerPool: false,
+      hiClawClusterRuntime: false,
+    };
   }
 
   const flags = await getTenantFeatureFlags(tenantId);
   return {
     workflowBrowserSessionNodes: flags.workflowBrowserSessionNodes,
+    openClawExternalRuntime: flags.openClawExternalRuntime,
+    desktopZeroClawWorker: flags.desktopZeroClawWorker,
+    nemoClawSecureWorkerPool: flags.nemoClawSecureWorkerPool,
+    hiClawClusterRuntime: flags.hiClawClusterRuntime,
   };
 }
 
@@ -185,8 +199,9 @@ export const workflowRouter = router({
       try {
         const userId = ctx.user.id;
         const tenantId = ctx.user.currentTenantId ? String(ctx.user.currentTenantId) : null;
-        const workflowFlags = await getWorkflowBrowserSessionFlagState(tenantId);
+        const workflowFlags = await getWorkflowFeatureGateState(tenantId);
         assertWorkflowBrowserSessionNodesAllowed(workflowFlags, input.workflowJson.nodes);
+        assertWorkflowWorkerRuntimeNodesAllowed(workflowFlags, input.workflowJson.nodes);
 
         if (input.id) {
           // Update existing workflow
@@ -493,8 +508,9 @@ export const workflowRouter = router({
     .mutation(async ({ input, ctx }) => {
       try {
         const tenantId = ctx.user.currentTenantId ? String(ctx.user.currentTenantId) : null;
-        const workflowFlags = await getWorkflowBrowserSessionFlagState(tenantId);
+        const workflowFlags = await getWorkflowFeatureGateState(tenantId);
         assertWorkflowBrowserSessionNodesAllowed(workflowFlags, input.nodes);
+        assertWorkflowWorkerRuntimeNodesAllowed(workflowFlags, input.nodes);
 
         // Normalize generic "output"/"input" handle names to null before sending to Python.
         // Template-seeded edges use these generic placeholder names. The Python validator
@@ -829,8 +845,9 @@ export const workflowRouter = router({
     .mutation(async ({ input, ctx }) => {
       try {
         const tenantId = ctx.user.currentTenantId ? String(ctx.user.currentTenantId) : null;
-        const workflowFlags = await getWorkflowBrowserSessionFlagState(tenantId);
+        const workflowFlags = await getWorkflowFeatureGateState(tenantId);
         assertWorkflowBrowserSessionNodesAllowed(workflowFlags, input.workflowJson.nodes);
+        assertWorkflowWorkerRuntimeNodesAllowed(workflowFlags, input.workflowJson.nodes);
         const response = await fetchPythonBackend(
           "/api/v1/workflows/execute",
           {
@@ -970,7 +987,7 @@ export const workflowRouter = router({
   getNodeTypes: protectedProcedure.query(async ({ ctx }) => {
     try {
       const tenantId = ctx.user.currentTenantId ? String(ctx.user.currentTenantId) : null;
-      const workflowFlags = await getWorkflowBrowserSessionFlagState(tenantId);
+      const workflowFlags = await getWorkflowFeatureGateState(tenantId);
       const response = await fetchPythonBackend(
         "/api/v1/workflows/node-types",
         { method: "GET" },
@@ -990,8 +1007,11 @@ export const workflowRouter = router({
       const data = await response.json();
       return {
         ...data,
-        node_types: filterWorkflowNodeRegistryForFlags(
-          Array.isArray(data.node_types) ? data.node_types : [],
+        node_types: filterWorkflowWorkerRuntimeRegistryForFlags(
+          filterWorkflowNodeRegistryForFlags(
+            Array.isArray(data.node_types) ? data.node_types : [],
+            workflowFlags,
+          ),
           workflowFlags,
         ),
       };

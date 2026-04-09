@@ -2,6 +2,7 @@ import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import {
   Dialog,
   DialogContent,
@@ -30,7 +31,11 @@ import {
   Zap,
   Calculator,
 } from "lucide-react";
-import { formatCurrency, formatLatency, formatTokenCount } from "@/lib/formatters";
+import {
+  formatCurrency,
+  formatLatency,
+  formatTokenCount,
+} from "@/lib/formatters";
 
 interface TransactionDetailDialogProps {
   traceId?: string | null;
@@ -41,7 +46,7 @@ interface TransactionDetailDialogProps {
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value)
-    ? value as Record<string, unknown>
+    ? (value as Record<string, unknown>)
     : null;
 }
 
@@ -74,13 +79,13 @@ function extractPromptPreview(requestPayload: unknown): string | null {
     request.userPrompt,
     request.text,
     payload?.prompt,
-    payload?.text,
+    payload?.text
   );
   if (direct) return compactText(direct, 280);
 
   if (!Array.isArray(request.messages)) return null;
 
-  const lastUserMessage = [...request.messages].reverse().find((message) => {
+  const lastUserMessage = [...request.messages].reverse().find(message => {
     const item = asRecord(message);
     if (!item) return false;
     return item.role === "user";
@@ -135,6 +140,7 @@ export function TransactionDetailDialog({
   txType,
   date,
 }: TransactionDetailDialogProps) {
+  const { t } = useScopedTranslation("billing");
   const [open, setOpen] = useState(false);
 
   const payload = trpc.usage.getTransactionPayload.useQuery(
@@ -160,14 +166,14 @@ export function TransactionDetailDialog({
         onClick={() => setOpen(true)}
       >
         <Eye className="h-3 w-3 mr-1" />
-        View
+        {t("transactionDetail.view")}
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base">
-              Transaction Detail
+              {t("transactionDetail.title")}
               {traceId && (
                 <Badge variant="outline" className="font-mono text-xs">
                   {traceId}
@@ -187,7 +193,7 @@ export function TransactionDetailDialog({
             </div>
           ) : !authorized ? (
             <div className="text-center py-12 text-muted-foreground">
-              Not authorized to view this transaction.
+              {t("transactionDetail.notAuthorized")}
             </div>
           ) : (
             <div className="space-y-4">
@@ -204,7 +210,9 @@ export function TransactionDetailDialog({
                             : "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300"
                         }
                       >
-                        {summary.source === "llm" ? "LLM" : "Media"}
+                        {summary.source === "llm"
+                          ? t("transactionDetail.source.llm")
+                          : t("transactionDetail.source.media")}
                       </Badge>
                       {summary.model && (
                         <span className="font-mono text-sm font-medium">
@@ -223,12 +231,15 @@ export function TransactionDetailDialog({
                       )}
                       {"skillSlug" in summary && summary.skillSlug && (
                         <Badge variant="secondary" className="text-xs">
-                          skill: {summary.skillSlug}
+                          {t("transactionDetail.badges.skill", {
+                            skill: summary.skillSlug,
+                          })}
                         </Badge>
                       )}
                     </div>
                     <div>
-                      {summary.errorMessage || ("errorType" in summary && summary.errorType) ? (
+                      {summary.errorMessage ||
+                      ("errorType" in summary && summary.errorType) ? (
                         <XCircle className="h-4 w-4 text-red-500" />
                       ) : (
                         <CheckCircle className="h-4 w-4 text-green-500" />
@@ -241,15 +252,21 @@ export function TransactionDetailDialog({
                     <div className="flex items-center gap-2">
                       <Cpu className="h-3.5 w-3.5 text-muted-foreground" />
                       <div>
-                        <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Provider</div>
-                        <div className="text-sm font-medium">{summary.provider || "-"}</div>
+                        <div className="text-[10px] text-muted-foreground uppercase tracking-wide">
+                          {t("transactionDetail.summary.provider")}
+                        </div>
+                        <div className="text-sm font-medium">
+                          {summary.provider || "-"}
+                        </div>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-2">
                       <Clock className="h-3.5 w-3.5 text-muted-foreground" />
                       <div>
-                        <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Latency</div>
+                        <div className="text-[10px] text-muted-foreground uppercase tracking-wide">
+                          {t("transactionDetail.summary.latency")}
+                        </div>
                         <div className="text-sm font-medium">
                           {summary.responseTimeMs != null
                             ? formatLatency(summary.responseTimeMs)
@@ -261,7 +278,9 @@ export function TransactionDetailDialog({
                     <div className="flex items-center gap-2">
                       <CreditCard className="h-3.5 w-3.5 text-muted-foreground" />
                       <div>
-                        <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Credits</div>
+                        <div className="text-[10px] text-muted-foreground uppercase tracking-wide">
+                          {t("transactionDetail.summary.credits")}
+                        </div>
                         <div className="text-sm font-medium">
                           {summary.creditsCharged ?? 0}
                         </div>
@@ -271,7 +290,9 @@ export function TransactionDetailDialog({
                     <div className="flex items-center gap-2">
                       <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
                       <div>
-                        <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Cost</div>
+                        <div className="text-[10px] text-muted-foreground uppercase tracking-wide">
+                          {t("transactionDetail.summary.cost")}
+                        </div>
                         <div className="text-sm font-medium">
                           {summary.costUsd != null
                             ? formatCurrency(summary.costUsd)
@@ -286,7 +307,9 @@ export function TransactionDetailDialog({
                         <div className="flex items-center gap-2">
                           <ArrowUpRight className="h-3.5 w-3.5 text-blue-500" />
                           <div>
-                            <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Input Tokens</div>
+                            <div className="text-[10px] text-muted-foreground uppercase tracking-wide">
+                              {t("transactionDetail.summary.inputTokens")}
+                            </div>
                             <div className="text-sm font-medium">
                               {formatTokenCount(summary.inputTokens ?? 0)}
                             </div>
@@ -295,7 +318,9 @@ export function TransactionDetailDialog({
                         <div className="flex items-center gap-2">
                           <ArrowDownLeft className="h-3.5 w-3.5 text-green-500" />
                           <div>
-                            <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Output Tokens</div>
+                            <div className="text-[10px] text-muted-foreground uppercase tracking-wide">
+                              {t("transactionDetail.summary.outputTokens")}
+                            </div>
                             <div className="text-sm font-medium">
                               {formatTokenCount(summary.outputTokens ?? 0)}
                             </div>
@@ -309,30 +334,48 @@ export function TransactionDetailDialog({
                       <div className="flex items-center gap-2">
                         <Zap className="h-3.5 w-3.5 text-yellow-500" />
                         <div>
-                          <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Fallback</div>
+                          <div className="text-[10px] text-muted-foreground uppercase tracking-wide">
+                            {t("transactionDetail.summary.fallback")}
+                          </div>
                           <div className="text-sm font-medium text-yellow-600">
-                            {"fallbackFromProviderName" in summary && summary.fallbackFromProviderName
-                              ? `From: ${summary.fallbackFromProviderName}`
-                              : "Yes"}
+                            {"fallbackFromProviderName" in summary &&
+                            summary.fallbackFromProviderName
+                              ? t("transactionDetail.summary.fallbackFrom", {
+                                  provider: summary.fallbackFromProviderName,
+                                })
+                              : t("transactionDetail.summary.fallbackYes")}
                           </div>
                         </div>
                       </div>
                     )}
 
                     {/* Cost Calculation Method */}
-                    {"costCalculationMethod" in summary && summary.costCalculationMethod && (
-                      <div className="flex items-center gap-2">
-                        <Calculator className="h-3.5 w-3.5 text-emerald-500" />
-                        <div>
-                          <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Cost Method</div>
-                          <div className="text-sm font-medium">
-                            {summary.costCalculationMethod === "provider_reported" ? "Provider Reported"
-                              : summary.costCalculationMethod === "model_lookup" ? "Model Pricing"
-                              : "Default Rate"}
+                    {"costCalculationMethod" in summary &&
+                      summary.costCalculationMethod && (
+                        <div className="flex items-center gap-2">
+                          <Calculator className="h-3.5 w-3.5 text-emerald-500" />
+                          <div>
+                            <div className="text-[10px] text-muted-foreground uppercase tracking-wide">
+                              {t("transactionDetail.summary.costMethod")}
+                            </div>
+                            <div className="text-sm font-medium">
+                              {summary.costCalculationMethod ===
+                              "provider_reported"
+                                ? t(
+                                    "transactionDetail.summary.costMethod.providerReported"
+                                  )
+                                : summary.costCalculationMethod ===
+                                    "model_lookup"
+                                  ? t(
+                                      "transactionDetail.summary.costMethod.modelPricing"
+                                    )
+                                  : t(
+                                      "transactionDetail.summary.costMethod.defaultRate"
+                                    )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    )}
+                      )}
                   </div>
 
                   {/* Error message */}
@@ -366,10 +409,12 @@ export function TransactionDetailDialog({
                 <div className="border rounded-lg overflow-hidden">
                   <div className="bg-muted/30 px-4 py-2.5 border-b">
                     <span className="text-sm font-medium">
-                      Request &amp; Response Payloads
+                      {t("transactionDetail.sections.requestResponse")}
                     </span>
                     <span className="text-xs text-muted-foreground ml-2">
-                      ({entries.length} event{entries.length > 1 ? "s" : ""})
+                      {t("transactionDetail.sections.eventCount", {
+                        count: entries.length,
+                      })}
                     </span>
                   </div>
 
@@ -378,141 +423,237 @@ export function TransactionDetailDialog({
                       <div key={i} className="py-1">
                         {(() => {
                           const requestPayload = asRecord(entry.requestPayload);
-                          const responsePayload = asRecord(entry.responsePayload);
+                          const responsePayload = asRecord(
+                            entry.responsePayload
+                          );
                           const metadata = asRecord(entry.metadata);
-                          const requestInnerPayload = asRecord(requestPayload?.payload);
-                          const stage = pickText(metadata?.stage, requestPayload?.stage, responsePayload?.stage);
-                          const source = pickText(metadata?.source, requestPayload?.source);
-                          const provider = pickText(entry.providerName, entry.provider, requestPayload?.provider);
-                          const endpoint = pickText(entry.endpoint, requestPayload?.endpoint);
+                          const requestInnerPayload = asRecord(
+                            requestPayload?.payload
+                          );
+                          const stage = pickText(
+                            metadata?.stage,
+                            requestPayload?.stage,
+                            responsePayload?.stage
+                          );
+                          const source = pickText(
+                            metadata?.source,
+                            requestPayload?.source
+                          );
+                          const provider = pickText(
+                            entry.providerName,
+                            entry.provider,
+                            requestPayload?.provider
+                          );
+                          const endpoint = pickText(
+                            entry.endpoint,
+                            requestPayload?.endpoint
+                          );
                           const requestType = pickText(entry.requestType);
-                          const mediaTaskId = pickText(entry.mediaTaskId, requestPayload?.mediaTaskId, responsePayload?.mediaTaskId);
-                          const promptPreview = extractPromptPreview(entry.requestPayload);
-                          const statusCode = typeof entry.statusCode === "number" ? entry.statusCode : null;
-                          const isError = Boolean(entry.errorMessage) || Boolean(entry.errorType) || (statusCode != null && statusCode >= 400);
+                          const mediaTaskId = pickText(
+                            entry.mediaTaskId,
+                            requestPayload?.mediaTaskId,
+                            responsePayload?.mediaTaskId
+                          );
+                          const promptPreview = extractPromptPreview(
+                            entry.requestPayload
+                          );
+                          const statusCode =
+                            typeof entry.statusCode === "number"
+                              ? entry.statusCode
+                              : null;
+                          const isError =
+                            Boolean(entry.errorMessage) ||
+                            Boolean(entry.errorType) ||
+                            (statusCode != null && statusCode >= 400);
 
                           return (
                             <>
-                        {/* Event header */}
-                        <div className="flex flex-wrap items-center gap-2 px-3 py-1.5">
-                          <Badge variant="secondary" className="text-[10px] font-mono">
-                            {entry.eventType}
-                          </Badge>
-                          <span className="text-xs text-muted-foreground">
-                            {new Date(entry.timestamp).toLocaleTimeString()}
-                          </span>
-                          {requestType && (
-                            <Badge variant="outline" className="text-[10px] font-mono">
-                              {requestType}
-                            </Badge>
-                          )}
-                          {statusCode != null && (
-                            <Badge
-                              variant="outline"
-                              className={`text-[10px] font-mono ${
-                                statusCode >= 400
-                                  ? "border-red-300 text-red-700 dark:border-red-800 dark:text-red-300"
-                                  : "border-emerald-300 text-emerald-700 dark:border-emerald-800 dark:text-emerald-300"
-                              }`}
-                            >
-                              HTTP {statusCode}
-                            </Badge>
-                          )}
-                          {entry.model && (
-                            <span className="text-xs text-blue-600 font-mono">
-                              {entry.model}
-                            </span>
-                          )}
-                          {provider && (
-                            <span className="text-xs text-muted-foreground">
-                              {provider}
-                            </span>
-                          )}
-                          {entry.timing?.totalMs != null && (
-                            <span className="text-xs text-muted-foreground">
-                              {formatLatency(entry.timing.totalMs)}
-                            </span>
-                          )}
-                          {entry.timing && (entry.timing.networkMs != null || entry.timing.parseMs != null) && (
-                            <span className="text-[10px] text-muted-foreground/70">
-                              ({[
-                                entry.timing.networkMs != null && `net: ${entry.timing.networkMs}ms`,
-                                entry.timing.parseMs != null && `parse: ${entry.timing.parseMs}ms`,
-                              ].filter(Boolean).join(", ")})
-                            </span>
-                          )}
-                          {entry.costCalculationMethod && (
-                            <Badge variant="outline" className="text-[9px] px-1 py-0">
-                              {entry.costCalculationMethod === "provider_reported" ? "provider cost"
-                                : entry.costCalculationMethod === "model_lookup" ? "model pricing"
-                              : "default rate"}
-                            </Badge>
-                          )}
-                        </div>
+                              {/* Event header */}
+                              <div className="flex flex-wrap items-center gap-2 px-3 py-1.5">
+                                <Badge
+                                  variant="secondary"
+                                  className="text-[10px] font-mono"
+                                >
+                                  {entry.eventType}
+                                </Badge>
+                                <span className="text-xs text-muted-foreground">
+                                  {new Date(
+                                    entry.timestamp
+                                  ).toLocaleTimeString()}
+                                </span>
+                                {requestType && (
+                                  <Badge
+                                    variant="outline"
+                                    className="text-[10px] font-mono"
+                                  >
+                                    {requestType}
+                                  </Badge>
+                                )}
+                                {statusCode != null && (
+                                  <Badge
+                                    variant="outline"
+                                    className={`text-[10px] font-mono ${
+                                      statusCode >= 400
+                                        ? "border-red-300 text-red-700 dark:border-red-800 dark:text-red-300"
+                                        : "border-emerald-300 text-emerald-700 dark:border-emerald-800 dark:text-emerald-300"
+                                    }`}
+                                  >
+                                    HTTP {statusCode}
+                                  </Badge>
+                                )}
+                                {entry.model && (
+                                  <span className="text-xs text-blue-600 font-mono">
+                                    {entry.model}
+                                  </span>
+                                )}
+                                {provider && (
+                                  <span className="text-xs text-muted-foreground">
+                                    {provider}
+                                  </span>
+                                )}
+                                {entry.timing?.totalMs != null && (
+                                  <span className="text-xs text-muted-foreground">
+                                    {formatLatency(entry.timing.totalMs)}
+                                  </span>
+                                )}
+                                {entry.timing &&
+                                  (entry.timing.networkMs != null ||
+                                    entry.timing.parseMs != null) && (
+                                    <span className="text-[10px] text-muted-foreground/70">
+                                      (
+                                      {[
+                                        entry.timing.networkMs != null &&
+                                          `net: ${entry.timing.networkMs}ms`,
+                                        entry.timing.parseMs != null &&
+                                          `parse: ${entry.timing.parseMs}ms`,
+                                      ]
+                                        .filter(Boolean)
+                                        .join(", ")}
+                                      )
+                                    </span>
+                                  )}
+                                {entry.costCalculationMethod && (
+                                  <Badge
+                                    variant="outline"
+                                    className="text-[9px] px-1 py-0"
+                                  >
+                                    {entry.costCalculationMethod ===
+                                    "provider_reported"
+                                      ? t(
+                                          "transactionDetail.summary.costMethod.providerReported"
+                                        )
+                                      : entry.costCalculationMethod ===
+                                          "model_lookup"
+                                        ? t(
+                                            "transactionDetail.summary.costMethod.modelPricing"
+                                          )
+                                        : t(
+                                            "transactionDetail.summary.costMethod.defaultRate"
+                                          )}
+                                  </Badge>
+                                )}
+                              </div>
 
-                        {/* Context row */}
-                        <div className="px-3 pb-2 flex flex-wrap gap-1.5">
-                          {stage && (
-                            <Badge variant="outline" className="text-[10px] font-mono">
-                              stage: {stage}
-                            </Badge>
-                          )}
-                          {source && (
-                            <Badge variant="outline" className="text-[10px] font-mono">
-                              source: {source}
-                            </Badge>
-                          )}
-                          {endpoint && (
-                            <Badge variant="outline" className="text-[10px] font-mono">
-                              endpoint: {endpoint}
-                            </Badge>
-                          )}
-                          {mediaTaskId && (
-                            <Badge variant="outline" className="text-[10px] font-mono">
-                              task: {mediaTaskId}
-                            </Badge>
-                          )}
-                          {Boolean(requestInnerPayload?.api_config) && (
-                            <Badge variant="outline" className="text-[10px] font-mono">
-                              api_config
-                            </Badge>
-                          )}
-                        </div>
+                              {/* Context row */}
+                              <div className="px-3 pb-2 flex flex-wrap gap-1.5">
+                                {stage && (
+                                  <Badge
+                                    variant="outline"
+                                    className="text-[10px] font-mono"
+                                  >
+                                    {t("transactionDetail.labels.stage", {
+                                      value: stage,
+                                    })}
+                                  </Badge>
+                                )}
+                                {source && (
+                                  <Badge
+                                    variant="outline"
+                                    className="text-[10px] font-mono"
+                                  >
+                                    {t("transactionDetail.labels.source", {
+                                      value: source,
+                                    })}
+                                  </Badge>
+                                )}
+                                {endpoint && (
+                                  <Badge
+                                    variant="outline"
+                                    className="text-[10px] font-mono"
+                                  >
+                                    {t("transactionDetail.labels.endpoint", {
+                                      value: endpoint,
+                                    })}
+                                  </Badge>
+                                )}
+                                {mediaTaskId && (
+                                  <Badge
+                                    variant="outline"
+                                    className="text-[10px] font-mono"
+                                  >
+                                    {t("transactionDetail.labels.task", {
+                                      value: mediaTaskId,
+                                    })}
+                                  </Badge>
+                                )}
+                                {Boolean(requestInnerPayload?.api_config) && (
+                                  <Badge
+                                    variant="outline"
+                                    className="text-[10px] font-mono"
+                                  >
+                                    {t("transactionDetail.labels.apiConfig")}
+                                  </Badge>
+                                )}
+                              </div>
 
-                        {promptPreview && (
-                          <div className="mx-3 mb-2 text-xs text-muted-foreground border rounded-md bg-muted/30 px-2.5 py-1.5">
-                            <span className="font-medium text-foreground">Prompt:</span>{" "}
-                            {promptPreview}
-                          </div>
-                        )}
+                              {promptPreview && (
+                                <div className="mx-3 mb-2 text-xs text-muted-foreground border rounded-md bg-muted/30 px-2.5 py-1.5">
+                                  <span className="font-medium text-foreground">
+                                    {t("transactionDetail.labels.prompt")}:
+                                  </span>{" "}
+                                  {promptPreview}
+                                </div>
+                              )}
 
-                        {/* Collapsible payloads */}
-                        <PayloadSection
-                          title="Request Payload"
-                          icon={<ArrowUpRight className="h-3.5 w-3.5 text-blue-500" />}
-                          data={entry.requestPayload}
-                          defaultOpen={entries.length === 1 || i === 0}
-                        />
-                        <PayloadSection
-                          title="Response Payload"
-                          icon={<ArrowDownLeft className="h-3.5 w-3.5 text-green-500" />}
-                          data={entry.responsePayload}
-                          defaultOpen={entries.length === 1 || i === 0}
-                        />
-                        <PayloadSection
-                          title="Metadata"
-                          icon={<Cpu className="h-3.5 w-3.5 text-indigo-500" />}
-                          data={entry.metadata}
-                          defaultOpen={isError}
-                        />
+                              {/* Collapsible payloads */}
+                              <PayloadSection
+                                title={t(
+                                  "transactionDetail.sections.requestPayload"
+                                )}
+                                icon={
+                                  <ArrowUpRight className="h-3.5 w-3.5 text-blue-500" />
+                                }
+                                data={entry.requestPayload}
+                                defaultOpen={entries.length === 1 || i === 0}
+                              />
+                              <PayloadSection
+                                title={t(
+                                  "transactionDetail.sections.responsePayload"
+                                )}
+                                icon={
+                                  <ArrowDownLeft className="h-3.5 w-3.5 text-green-500" />
+                                }
+                                data={entry.responsePayload}
+                                defaultOpen={entries.length === 1 || i === 0}
+                              />
+                              <PayloadSection
+                                title={t("transactionDetail.sections.metadata")}
+                                icon={
+                                  <Cpu className="h-3.5 w-3.5 text-indigo-500" />
+                                }
+                                data={entry.metadata}
+                                defaultOpen={isError}
+                              />
 
-                        {entry.errorMessage && (
-                          <div className="mx-3 mb-2 text-xs text-red-600 flex items-center gap-1">
-                            <AlertTriangle className="h-3 w-3" />
-                            {entry.errorType ? `[${entry.errorType}] ` : ""}
-                            {entry.errorMessage}
-                          </div>
-                        )}
+                              {entry.errorMessage && (
+                                <div className="mx-3 mb-2 text-xs text-red-600 flex items-center gap-1">
+                                  <AlertTriangle className="h-3 w-3" />
+                                  {entry.errorType
+                                    ? `[${entry.errorType}] `
+                                    : ""}
+                                  {entry.errorMessage}
+                                </div>
+                              )}
                             </>
                           );
                         })()}
@@ -522,14 +663,14 @@ export function TransactionDetailDialog({
                 </div>
               ) : summary ? (
                 <div className="border rounded-lg px-4 py-6 text-center text-muted-foreground text-sm">
-                  <p>Request/response payloads not available.</p>
+                  <p>{t("transactionDetail.unavailable.title")}</p>
                   <p className="text-xs mt-1">
-                    Audit log may have been rotated, or this request predates payload logging.
+                    {t("transactionDetail.unavailable.description")}
                   </p>
                 </div>
               ) : (
                 <div className="text-center py-8 text-muted-foreground text-sm">
-                  No data found for this trace.
+                  {t("transactionDetail.noData")}
                 </div>
               )}
             </div>

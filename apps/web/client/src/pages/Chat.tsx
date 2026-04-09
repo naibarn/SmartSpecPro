@@ -24,6 +24,7 @@ import { ChevronLeft, PanelLeftClose, Brain, Wand2, Layers, Bell, Menu, MonitorP
 import { AgencyPickerModal } from "@/components/agency/AgencyPickerModal";
 import { useAgencyStream } from "@/hooks/useAgencyStream";
 import { AgencyChatStream } from "@/components/agency/AgencyChatStream";
+import { DesktopAgencyHandoffLinks } from "@/features/desktop-host/agencies/DesktopAgencyHandoffLinks";
 import { cn } from "@/lib/utils";
 import {
   trackBrowserSessionOpened,
@@ -946,6 +947,23 @@ export default function Chat() {
                           <p className="text-xs text-muted-foreground">
                             {t('chat.agencyPanelHint')}
                           </p>
+                          <div className="rounded-md border border-indigo-200 bg-white/70 px-3 py-3 shadow-sm dark:border-indigo-900 dark:bg-slate-950/40">
+                            <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                              <div>
+                                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-indigo-700 dark:text-indigo-300">
+                                  Desktop handoff
+                                </p>
+                                <p className="mt-1 text-xs text-muted-foreground">
+                                  Open this agency in Desktop Host for governed local package sync,
+                                  Pi preparation, and Agency Swarm execution.
+                                </p>
+                              </div>
+                              <DesktopAgencyHandoffLinks
+                                agencyId={targetAgency.id}
+                                runId={selectedConversationId ? `chat-${selectedConversationId}` : undefined}
+                              />
+                            </div>
+                          </div>
                           {/* Agency stream output */}
                           {agencyStream.messages.length > 0 ? (
                             <div className="max-h-[300px] overflow-y-auto rounded-md border bg-background p-3">
@@ -960,6 +978,8 @@ export default function Chat() {
                                 guardrailEvents={agencyStream.guardrailEvents}
                                 pendingApproval={agencyStream.pendingApproval}
                                 isPollingFallback={agencyStream.isPollingFallback}
+                                hybridSummary={agencyStream.hybridSummary ?? null}
+                                stepAttemptSnapshots={agencyStream.stepAttemptSnapshots ?? []}
                               />
                             </div>
                           ) : (

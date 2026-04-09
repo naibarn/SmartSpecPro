@@ -51,6 +51,12 @@ Workflow เหมาะที่สุดสำหรับงานที่�
 - **API Call** — ทำ HTTP Request ไปยังบริการภายนอก
 - **Transform** — จัดรูปแบบหรือประมวลผลข้อมูลระหว่างขั้นตอน (JSON, ข้อความ, ดึงข้อมูล)
 
+บาง tenant อาจเห็นความสามารถด้าน worker-runtime orchestration เพิ่มเข้ามา แต่ฟีเจอร์เหล่านี้เป็น runtime-family specific และ rollout-gated:
+
+- งานแบบ OpenClaw gateway ไม่เหมือนงาน media/local file บน desktop
+- งาน Desktop + ZeroClaw ถูกออกแบบมาสำหรับ local files, GPU และ machine-hosted execution
+- runtime แบบ secure pool และ collaborative cluster จะยังคงเป็น admin-gated จนกว่าจะเปิดใช้งานโดยชัดเจน
+
 ## Condition
 
 เพิ่ม Node **Condition** เพื่อแยกเส้นทาง Workflow ตามตรรกะ:
@@ -79,6 +85,15 @@ Workflow Gallery มี Template สำเร็จรูปสำหรับ�
 - ระหว่างรัน ตัวบ่งชี้ความคืบหน้าจะแสดง Node ที่กำลังดำเนินการ
 - ผลลัพธ์จะแสดงในแผง **Run History** ทางขวาของหน้ารายละเอียด Workflow
 - คลิกการรันที่ผ่านมาเพื่อดู Output ทั้งหมดและข้อผิดพลาด
+
+ถ้า Workflow มีการส่งงานออกไปยัง worker runtime ให้แยก milestone เหล่านี้ออกจากกัน:
+
+- control plane รับ dispatch แล้ว
+- worker ทำ execution เสร็จแล้ว
+- artifact ถูกอัปโหลดและ publish แล้ว
+- indexing เสร็จจนค้นหาเจอได้
+
+บางกรณี workflow อาจสำเร็จใน milestone แรก แต่ล้มเหลวใน milestone หลังจากนั้นได้
 
 ## เคล็ดลับ
 

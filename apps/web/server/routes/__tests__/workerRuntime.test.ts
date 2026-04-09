@@ -20,7 +20,12 @@ vi.mock("../../_core/revocation", () => ({
 describe("workerRuntime routes", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetTenantFeatureFlags.mockResolvedValue({ openClawExternalRuntime: true });
+    mockGetTenantFeatureFlags.mockResolvedValue({
+      openClawExternalRuntime: true,
+      desktopZeroClawWorker: true,
+      nemoClawSecureWorkerPool: false,
+      hiClawClusterRuntime: false,
+    });
     mockIsJtiRevoked.mockResolvedValue(false);
   });
 
@@ -315,8 +320,129 @@ describe("workerRuntime routes", () => {
     expect(res.body.tokens.uploadToken).toBeTruthy();
   });
 
+  it("registers desktop workers when the desktop runtime rollout is enabled", async () => {
+    const { createWorkerRegistrationToken } = await import("../../services/workerAuthService");
+    const registerWorker = vi.fn().mockResolvedValue({
+      created: true,
+      worker: {
+        id: "desktop-worker-1",
+        tenantId: "tenant-1",
+        runtimeType: "desktop_zeroclaw_managed",
+        status: "online",
+      },
+      tokens: {
+        executionToken: "execution-token",
+        uploadToken: "upload-token",
+      },
+    });
+    const app = await makeApp({
+      workerRegistry: { registerWorker },
+    });
+
+    const token = createWorkerRegistrationToken({
+      tenantId: "tenant-1",
+      runtimeType: "desktop_zeroclaw_managed",
+      teamId: "team-video",
+      registeredByUserId: 7,
+    });
+
+    const res = await request(app)
+      .post("/api/workers/register")
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        compatibility: { protocolVersion: "2026-04-06", runtimeVersion: "2.0.0" },
+        runtimeType: "desktop_zeroclaw_managed",
+        workerMode: "shared_department",
+        runtimeMode: "wsl2_managed",
+        teamId: "team-video",
+        displayName: "Render Host 01",
+        externalReference: "desktop://render-host-01",
+        machineId: "machine-01",
+        machineName: "render-host-01",
+        runtimeMetadataJson: {
+          desktopVersion: "0.77.0",
+          runtimeProfile: "wsl2_managed",
+          workspaceRootsSummary: [{ root: "C:\\Media", accessMode: "workspace_scoped" }],
+          gpuSnapshot: { vendor: "nvidia" },
+          toolchainSummary: { ffmpeg: "7.0" },
+          doctorSummary: { status: "ok" },
+          serviceMode: "managed_startup",
+          executionIdentity: {
+            mode: "service_identity",
+            approvalMode: "team_approved",
+            budgetAttributionMode: "team_budget",
+            tokenRotationTriggers: ["manual_reissue", "policy_change", "revocation"],
+          },
+        },
+      });
+
+    expect(res.status).toBe(201);
+    expect(registerWorker).toHaveBeenCalledWith(expect.objectContaining({
+      payload: expect.objectContaining({
+        runtimeType: "desktop_zeroclaw_managed",
+        runtimeMetadataJson: expect.objectContaining({
+          desktopVersion: "0.77.0",
+        }),
+      }),
+    }));
+  });
+
+  it("fails closed for desktop worker registration when the runtime family flag is disabled", async () => {
+    mockGetTenantFeatureFlags.mockResolvedValue({
+      openClawExternalRuntime: true,
+      desktopZeroClawWorker: false,
+      nemoClawSecureWorkerPool: false,
+      hiClawClusterRuntime: false,
+    });
+
+    const { createWorkerRegistrationToken } = await import("../../services/workerAuthService");
+    const app = await makeApp();
+
+    const token = createWorkerRegistrationToken({
+      tenantId: "tenant-disabled",
+      runtimeType: "desktop_zeroclaw_managed",
+    });
+
+    const res = await request(app)
+      .post("/api/workers/register")
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        compatibility: { protocolVersion: "2026-04-06", runtimeVersion: "2.0.0" },
+        runtimeType: "desktop_zeroclaw_managed",
+        workerMode: "shared_department",
+        runtimeMode: "native_constrained",
+        displayName: "Desktop Runtime",
+        externalReference: "desktop://machine-01",
+        machineId: "machine-01",
+        machineName: "machine-01",
+        runtimeMetadataJson: {
+          desktopVersion: "0.77.0",
+          runtimeProfile: "native_constrained",
+          workspaceRootsSummary: [],
+          gpuSnapshot: {},
+          toolchainSummary: {},
+          doctorSummary: {},
+          serviceMode: "managed_startup",
+          executionIdentity: {
+            mode: "service_identity",
+            approvalMode: "team_approved",
+            budgetAttributionMode: "team_budget",
+            tokenRotationTriggers: ["manual_reissue"],
+          },
+        },
+      });
+
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe("feature_disabled");
+  });
+
   it("fails closed when the worker feature flag is disabled", async () => {
-    mockGetTenantFeatureFlags.mockResolvedValue({ openClawExternalRuntime: false });
+    mockGetTenantFeatureFlags.mockResolvedValue({
+      openClawExternalRuntime: false,
+      desktopZeroClawWorker: true,
+      nemoClawSecureWorkerPool: false,
+      hiClawClusterRuntime: false,
+    });
 
     const { createWorkerRegistrationToken } = await import("../../services/workerAuthService");
     const app = await makeApp();

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAgencyStream } from "@/hooks/useAgencyStream";
@@ -141,6 +141,11 @@ export default function AgencyChat() {
   });
   const createLiveBrowserSessionMutation = trpc.liveBrowser.createSession.useMutation();
   const sendLiveBrowserCommandMutation = trpc.liveBrowser.sendCommand.useMutation();
+  const submitApprovalMutation = trpc.agency.submitApproval.useMutation({
+    onError: (error) => {
+      toast.error(error.message || "Unable to submit approval decision.");
+    },
+  });
   const reviewAgencyMutation = trpc.agency.reviewAgency.useMutation({
     onSuccess: () => {
       utils.agency.getImprovementSuggestions.invalidate({ agencyId: agencyId! });
@@ -372,9 +377,37 @@ export default function AgencyChat() {
     })();
   };
 
-  const handleSend = () => {
+  const loadCompilePreview = useCallback(async () => {
+    if (!agencyId) {
+      return null;
+    }
+
+    try {
+      const preview = await utils.agency.getCompilePreview.fetch({ agencyId });
+      if (preview?.status === "failed") {
+        const blockingMessage = (preview.diagnostics ?? [])
+          .filter((diagnostic: any) => diagnostic.severity === "error")
+          .slice(0, 2)
+          .map((diagnostic: any) => diagnostic.message)
+          .join(" ");
+        toast.error(blockingMessage || "This agency draft has compile errors and cannot run yet.");
+        return null;
+      }
+      return preview;
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to load compile preview.");
+      return null;
+    }
+  }, [agencyId, utils.agency.getCompilePreview]);
+
+  const handleSend = async () => {
     const message = input.trim();
     if (!message || !agencyId || stream.isStreaming) return;
+
+    const compilePreview = await loadCompilePreview();
+    if (!compilePreview) {
+      return;
+    }
 
     setBrowserSessionSuggestion(
       agencyBrowserSessionEnabled
@@ -394,6 +427,7 @@ export default function AgencyChat() {
       ...(modelOverride ? { modelOverride } : {}),
       ...(recipientAgent ? { recipientAgent } : {}),
       ...(additionalInstructions ? { additionalInstructions } : {}),
+      compilePreview,
     });
     setInput("");
   };
@@ -405,17 +439,50 @@ export default function AgencyChat() {
     }
   };
 
-  const handleRetry = () => {
+  const handleApprovalSubmit = useCallback(async (
+    approvalKey: string,
+    approved: boolean,
+    feedback?: string,
+  ) => {
+    const runId = stream.runId ?? lastRunId;
+    if (!runId) {
+      toast.error("Unable to submit approval decision.");
+      return;
+    }
+
+    const result = await submitApprovalMutation.mutateAsync({
+      runId,
+      approvalKey,
+      decision: approved ? "approved" : "rejected",
+      feedback,
+    });
+
+    if (result.waitingForApprovals) {
+      toast.success(`Approval recorded. ${result.approvalsRemaining ?? 0} more required.`);
+      return;
+    }
+
+    toast.success(approved ? "Approval submitted." : "Rejection submitted.");
+  }, [lastRunId, stream.runId, submitApprovalMutation]);
+
+  const handleRetry = async () => {
     if (stream.messages.length > 0 && agencyId) {
       const lastUserMsg = [...stream.messages]
         .reverse()
         .find((m) => m.role === "user");
       if (lastUserMsg) {
+        const compilePreview = await loadCompilePreview();
+        if (!compilePreview) {
+          return;
+        }
         stream.connect({
           agencyId,
           conversationId,
           message: lastUserMsg.content,
           ...(modelOverride ? { modelOverride } : {}),
+          ...(recipientAgent ? { recipientAgent } : {}),
+          ...(additionalInstructions ? { additionalInstructions } : {}),
+          compilePreview,
         });
       }
     }
@@ -1040,9 +1107,11 @@ export default function AgencyChat() {
                 guardrailEvents={stream.guardrailEvents}
                 pendingApproval={stream.pendingApproval}
                 isPollingFallback={stream.isPollingFallback}
+                hybridSummary={stream.hybridSummary}
+                stepAttemptSnapshots={stream.stepAttemptSnapshots}
                 onCancel={stream.cancel}
-                onApprovalSubmit={(_approvalKey, _approved, _feedback) => {
-                  // TODO: Wire to trpc.agency.submitApproval when section 12 is implemented
+                onApprovalSubmit={(approvalKey, approved, feedback) => {
+                  void handleApprovalSubmit(approvalKey, approved, feedback);
                 }}
                 getAgentColor={getAgentColor}
               />

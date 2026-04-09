@@ -4,7 +4,14 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 
-const { mockSetLocation, mockUseRoute, mockGetPreviewFetch, mockCreateHybridPreviewTokenMutateAsync } = vi.hoisted(() => ({
+const {
+  mockSetLocation,
+  mockUseRoute,
+  mockGetPreviewFetch,
+  mockGetCompilePreviewFetch,
+  mockCreateHybridPreviewTokenMutateAsync,
+  mockSubmitApprovalMutateAsync,
+} = vi.hoisted(() => ({
   mockSetLocation: vi.fn(),
   mockUseRoute: vi.fn((pattern: string) => (
     pattern === "/agencies/:id/review"
@@ -12,7 +19,9 @@ const { mockSetLocation, mockUseRoute, mockGetPreviewFetch, mockCreateHybridPrev
       : [true, { id: "agency-1" }]
   )),
   mockGetPreviewFetch: vi.fn(),
+  mockGetCompilePreviewFetch: vi.fn(),
   mockCreateHybridPreviewTokenMutateAsync: vi.fn(),
+  mockSubmitApprovalMutateAsync: vi.fn(),
 }));
 
 // Mock wouter
@@ -45,6 +54,7 @@ vi.mock("@/lib/trpc", () => ({
       agency: {
         getImprovementSuggestions: { invalidate: vi.fn() },
         getImprovementHistory: { invalidate: vi.fn() },
+        getCompilePreview: { fetch: mockGetCompilePreviewFetch },
       },
       hybridOrchestration: {
         getPreview: {
@@ -69,6 +79,9 @@ vi.mock("@/lib/trpc", () => ({
       },
       reviewAgency: {
         useMutation: () => ({ mutateAsync: vi.fn(), isPending: false }),
+      },
+      submitApproval: {
+        useMutation: () => ({ mutateAsync: mockSubmitApprovalMutateAsync, isPending: false }),
       },
       applyImprovement: {
         useMutation: () => ({ mutate: vi.fn(), isPending: false }),
@@ -96,11 +109,37 @@ vi.mock("@/lib/trpc", () => ({
   },
 }));
 
+vi.mock("@/i18n/useScopedTranslation", () => ({
+  useScopedTranslation: () => ({
+    t: (key: string, values?: Record<string, string | number>) => {
+      const dictionary: Record<string, string> = {
+        "chat.agency": "Agency",
+        "chat.agencyNotFound": "Agency not found",
+        "chat.agentsCount": `${values?.count ?? 0} agents`,
+        "chat.sendMessage": "Send a message to start the conversation",
+        "chat.messagePlaceholder": `Message ${values?.name ?? "Agency"}`,
+        "chat.credits": "credits",
+        "chat.hybridLoaded": "Hybrid orchestration loaded",
+        "chat.stages": `${values?.count ?? 0} stages`,
+        "chat.openDetailedPreview": "Open detailed preview",
+        "chat.regeneratePreviewToken": "Regenerate preview token",
+        "chat.previewFailed": "Preview failed",
+        "chat.toast.previewLoadFailed": "Preview load failed",
+        "chat.toast.previewFailed": "Preview failed",
+        "chat.errorTitle": "Something went wrong",
+        "chat.retry": "Retry",
+      };
+      return dictionary[key] ?? key;
+    },
+  }),
+}));
+
 // Mock stream hook
 const mockConnect = vi.fn();
 const mockDisconnect = vi.fn();
 vi.mock("@/hooks/useAgencyStream", () => ({
   useAgencyStream: vi.fn(() => ({
+    runId: null,
     messages: [],
     activeAgent: null,
     isStreaming: false,
@@ -111,6 +150,8 @@ vi.mock("@/hooks/useAgencyStream", () => ({
     guardrailEvents: [],
     pendingApproval: null,
     isPollingFallback: false,
+    hybridSummary: null,
+    stepAttemptSnapshots: [],
     connect: mockConnect,
     disconnect: mockDisconnect,
   })),
@@ -181,6 +222,16 @@ describe("AgencyChat", () => {
       token: "preview-token-regenerated",
       expiresAt: "2026-03-24T11:30:00.000Z",
     });
+    mockSubmitApprovalMutateAsync.mockResolvedValue({ success: true });
+    mockGetCompilePreviewFetch.mockResolvedValue({
+      status: "success",
+      diagnostics: [],
+      planSummary: {
+        engineMix: ["agency_swarm"],
+        subgraphCount: 1,
+        bridgeCount: 0,
+      },
+    });
   });
 
   it("renders agency name in header", () => {
@@ -221,6 +272,8 @@ describe("AgencyChat", () => {
       guardrailEvents: [],
       pendingApproval: null,
       isPollingFallback: false,
+      hybridSummary: null,
+      stepAttemptSnapshots: [],
       connect: mockConnect,
       disconnect: mockDisconnect,
     });
@@ -244,6 +297,8 @@ describe("AgencyChat", () => {
       guardrailEvents: [],
       pendingApproval: null,
       isPollingFallback: false,
+      hybridSummary: null,
+      stepAttemptSnapshots: [],
       connect: mockConnect,
       disconnect: mockDisconnect,
     });
@@ -265,6 +320,8 @@ describe("AgencyChat", () => {
       guardrailEvents: [],
       pendingApproval: null,
       isPollingFallback: false,
+      hybridSummary: null,
+      stepAttemptSnapshots: [],
       connect: mockConnect,
       disconnect: mockDisconnect,
     });
@@ -336,6 +393,28 @@ describe("AgencyChat", () => {
       expect(mockSetLocation).toHaveBeenCalledWith(
         "/agencies/agency-1/hybrid-preview?hybridPreviewToken=preview-token-regenerated",
       );
+    });
+  });
+
+  it("loads compile preview before connecting a run", async () => {
+    render(<AgencyChat />);
+
+    const input = screen.getByPlaceholderText(/Message Test Agency/i);
+    fireEvent.change(input, { target: { value: "Please help" } });
+    fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
+
+    await waitFor(() => {
+      expect(mockGetCompilePreviewFetch).toHaveBeenCalledWith({ agencyId: "agency-1" });
+    });
+
+    await waitFor(() => {
+      expect(mockConnect).toHaveBeenCalledWith(expect.objectContaining({
+        agencyId: "agency-1",
+        message: "Please help",
+        compilePreview: expect.objectContaining({
+          status: "success",
+        }),
+      }));
     });
   });
 });

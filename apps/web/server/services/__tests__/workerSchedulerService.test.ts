@@ -1,8 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  queueDesktopComfyImageGenerationJob,
+  queueDesktopComfyWorkflowRunJob,
+  queueDesktopLocalFolderIngestJob,
   OPENCLAW_SUPPORTED_CAPABILITY_FAMILIES,
+  queueHiClawWorkerJob,
+  queueNemoClawWorkerJob,
+  queueDesktopVideoAssemblyJob,
   queueOpenClawWorkerJob,
+  queueWorkerJobByRuntime,
   workerJobMatchesSelection,
 } from "../workerSchedulerService";
 
@@ -18,6 +25,7 @@ describe("workerSchedulerService", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     delete process.env.OPENCLAW_EXTERNAL_RUNTIME_DISPATCH_ENABLED;
+    delete process.env.DESKTOP_ZEROCLAW_WORKER_DISPATCH_ENABLED;
     repo.findJobByIdempotencyKey.mockResolvedValue(null);
     repo.findWorkerById.mockResolvedValue({
       id: "worker-1",
@@ -35,7 +43,12 @@ describe("workerSchedulerService", () => {
       reservedCredits: 25,
       sourceType: "worker_runtime",
     });
-    getFeatureFlags.mockResolvedValue({ openClawExternalRuntime: true });
+    getFeatureFlags.mockResolvedValue({
+      openClawExternalRuntime: true,
+      desktopZeroClawWorker: false,
+      nemoClawSecureWorkerPool: false,
+      hiClawClusterRuntime: false,
+    });
   });
 
   it("queues supported OpenClaw jobs with billing metadata", async () => {
@@ -155,7 +168,12 @@ describe("workerSchedulerService", () => {
   });
 
   it("rejects queueing when the tenant rollout flag is disabled", async () => {
-    getFeatureFlags.mockResolvedValueOnce({ openClawExternalRuntime: false });
+    getFeatureFlags.mockResolvedValueOnce({
+      openClawExternalRuntime: false,
+      desktopZeroClawWorker: false,
+      nemoClawSecureWorkerPool: false,
+      hiClawClusterRuntime: false,
+    });
 
     await expect(
       queueOpenClawWorkerJob(
@@ -243,5 +261,848 @@ describe("workerSchedulerService", () => {
         ["browser-automation"],
       ),
     ).toBe(false);
+  });
+
+  it("queues desktop video_assembly jobs through the desktop runtime lane", async () => {
+    getFeatureFlags.mockResolvedValue({
+      openClawExternalRuntime: true,
+      desktopZeroClawWorker: true,
+      nemoClawSecureWorkerPool: false,
+      hiClawClusterRuntime: false,
+    });
+    repo.findWorkerById.mockResolvedValue({
+      id: "desktop-worker-1",
+      runtimeType: "desktop_zeroclaw_managed",
+      status: "online",
+    });
+
+    const result = await queueDesktopVideoAssemblyJob(
+      {
+        tenantId: "tenant-1",
+        teamId: "team-video",
+        requestedByUserId: 7,
+        preferredWorkerId: "desktop-worker-1",
+        inputRefs: [
+          {
+            sourceKind: "authorized_local_path",
+            path: "C:\\Media\\job\\source.mp4",
+          },
+        ],
+        editPlan: {
+          clips: [
+            {
+              sourceRef: "C:\\Media\\job\\source.mp4",
+              trim: { startMs: 0, endMs: 5000 },
+            },
+          ],
+          applyWatermark: false,
+        },
+        subtitlePlan: {
+          sourcePriority: "user_provided",
+          mode: "burn_in",
+        },
+        renderProfile: {
+          aspectRatios: ["16:9"],
+          codecPreset: "h264_high",
+          qualityPreset: "social_default",
+          gpuRequired: true,
+        },
+        workspacePolicy: {
+          mode: "workspace_scoped",
+          allowedSourceRoots: ["C:\\Media\\job"],
+        },
+        outputTargets: {
+          renderedAssets: [
+            {
+              label: "main",
+              aspectRatio: "16:9",
+              publishToLibrary: true,
+            },
+          ],
+          subtitlesOptional: true,
+          thumbnailsOptional: true,
+        },
+      },
+      {
+        repo: repo as any,
+        reserveCredits,
+        getFeatureFlags,
+      },
+    );
+
+    expect(result.created).toBe(true);
+    expect(repo.insertJob).toHaveBeenCalledWith(expect.objectContaining({
+      runtimeType: "desktop_zeroclaw_managed",
+      jobType: "video_assembly",
+      resourceProfile: "gpu_required",
+      capabilityRequirementsJson: expect.objectContaining({
+        preferredWorkerId: "desktop-worker-1",
+        capabilityFamilies: expect.arrayContaining(["video-edit", "file-access"]),
+      }),
+      inputJson: expect.objectContaining({
+        inputRefs: expect.any(Array),
+        workspacePolicy: expect.objectContaining({
+          allowedSourceRoots: ["C:\\Media\\job"],
+        }),
+      }),
+    }));
+  });
+
+  it("rejects desktop video_assembly jobs when local paths fall outside the approved workspace roots", async () => {
+    getFeatureFlags.mockResolvedValue({
+      openClawExternalRuntime: true,
+      desktopZeroClawWorker: true,
+      nemoClawSecureWorkerPool: false,
+      hiClawClusterRuntime: false,
+    });
+
+    await expect(
+      queueDesktopVideoAssemblyJob(
+        {
+          tenantId: "tenant-1",
+          requestedByUserId: 7,
+          inputRefs: [
+            {
+              sourceKind: "authorized_local_path",
+              path: "D:\\Other\\source.mp4",
+            },
+          ],
+          editPlan: {
+            clips: [
+              {
+                sourceRef: "D:\\Other\\source.mp4",
+                trim: { startMs: 0, endMs: 1000 },
+              },
+            ],
+            applyWatermark: false,
+          },
+          subtitlePlan: {
+            sourcePriority: "system_generated",
+            mode: "soft_mux",
+          },
+          renderProfile: {
+            aspectRatios: ["16:9"],
+            codecPreset: "h264_high",
+            qualityPreset: "social_default",
+            gpuRequired: false,
+          },
+          workspacePolicy: {
+            mode: "workspace_scoped",
+            allowedSourceRoots: ["C:\\Media"],
+          },
+          outputTargets: {
+            renderedAssets: [
+              {
+                label: "main",
+                aspectRatio: "16:9",
+                publishToLibrary: true,
+              },
+            ],
+            subtitlesOptional: false,
+            thumbnailsOptional: false,
+          },
+        },
+        {
+          repo: repo as any,
+          reserveCredits,
+          getFeatureFlags,
+        },
+      ),
+    ).rejects.toMatchObject({
+      code: "unauthorized_path",
+      statusCode: 403,
+    });
+  });
+
+  it("rejects desktop video_assembly subtitle refs that escape the approved roots", async () => {
+    getFeatureFlags.mockResolvedValue({
+      openClawExternalRuntime: true,
+      desktopZeroClawWorker: true,
+      nemoClawSecureWorkerPool: false,
+      hiClawClusterRuntime: false,
+    });
+
+    await expect(
+      queueDesktopVideoAssemblyJob(
+        {
+          tenantId: "tenant-1",
+          requestedByUserId: 7,
+          inputRefs: [
+            {
+              sourceKind: "authorized_local_path",
+              path: "C:\\Media\\source.mp4",
+            },
+          ],
+          editPlan: {
+            clips: [
+              {
+                sourceRef: "C:\\Media\\source.mp4",
+                trim: { startMs: 0, endMs: 1000 },
+              },
+            ],
+            applyWatermark: false,
+          },
+          subtitlePlan: {
+            sourcePriority: "user_provided",
+            mode: "burn_in",
+            subtitleRef: "D:\\Other\\captions.srt",
+          },
+          renderProfile: {
+            aspectRatios: ["16:9"],
+            codecPreset: "h264_high",
+            qualityPreset: "social_default",
+            gpuRequired: false,
+          },
+          workspacePolicy: {
+            mode: "workspace_scoped",
+            allowedSourceRoots: ["C:\\Media"],
+          },
+          outputTargets: {
+            renderedAssets: [
+              {
+                label: "main",
+                aspectRatio: "16:9",
+                publishToLibrary: true,
+              },
+            ],
+            subtitlesOptional: false,
+            thumbnailsOptional: false,
+          },
+        },
+        {
+          repo: repo as any,
+          reserveCredits,
+          getFeatureFlags,
+        },
+      ),
+    ).rejects.toMatchObject({
+      issues: expect.arrayContaining([
+        expect.objectContaining({
+          path: ["subtitlePlan", "subtitleRef"],
+          message:
+            "subtitleRef must stay inside an approved source root when using a local file path",
+        }),
+      ]),
+    });
+  });
+
+  it("queues desktop local_folder_ingest jobs through the desktop runtime lane", async () => {
+    getFeatureFlags.mockResolvedValue({
+      openClawExternalRuntime: true,
+      desktopZeroClawWorker: true,
+      nemoClawSecureWorkerPool: false,
+      hiClawClusterRuntime: false,
+    });
+    repo.findWorkerById.mockResolvedValue({
+      id: "desktop-worker-1",
+      runtimeType: "desktop_zeroclaw_managed",
+      status: "online",
+    });
+
+    const result = await queueDesktopLocalFolderIngestJob(
+      {
+        tenantId: "tenant-1",
+        teamId: "team-docs",
+        requestedByUserId: 7,
+        preferredWorkerId: "desktop-worker-1",
+        roots: [
+          {
+            rootId: "quotes",
+            name: "Quotes",
+            path: "C:\\Media\\Quotes",
+          },
+        ],
+        workspacePolicy: {
+          mode: "workspace_scoped",
+          allowedSourceRoots: ["C:\\Media"],
+        },
+        ingestPolicy: {
+          maxDepth: 4,
+          maxFiles: 150,
+          includePreviewText: true,
+          previewFileLimit: 10,
+          snippetQuery: "launch",
+          snippetFileLimit: 5,
+        },
+        outputTargets: {
+          publishManifestToLibrary: true,
+          publishSummaryToLibrary: true,
+          triggerIndexing: true,
+        },
+      },
+      {
+        repo: repo as any,
+        reserveCredits,
+        getFeatureFlags,
+      },
+    );
+
+    expect(result.created).toBe(true);
+    expect(repo.insertJob).toHaveBeenCalledWith(expect.objectContaining({
+      runtimeType: "desktop_zeroclaw_managed",
+      jobType: "local_folder_ingest",
+      resourceProfile: "cpu_heavy",
+      capabilityRequirementsJson: expect.objectContaining({
+        preferredWorkerId: "desktop-worker-1",
+        capabilityFamilies: expect.arrayContaining(["file-access", "doc-indexing"]),
+      }),
+      instructionsJson: expect.objectContaining({
+        intent: "local_folder_ingest",
+      }),
+    }));
+  });
+
+  it("rejects local_folder_ingest roots that fall outside the approved workspace roots", async () => {
+    getFeatureFlags.mockResolvedValue({
+      openClawExternalRuntime: true,
+      desktopZeroClawWorker: true,
+      nemoClawSecureWorkerPool: false,
+      hiClawClusterRuntime: false,
+    });
+
+    await expect(
+      queueDesktopLocalFolderIngestJob(
+        {
+          tenantId: "tenant-1",
+          requestedByUserId: 7,
+          roots: [
+            {
+              rootId: "quotes",
+              name: "Quotes",
+              path: "D:\\Other\\Quotes",
+            },
+          ],
+          workspacePolicy: {
+            mode: "workspace_scoped",
+            allowedSourceRoots: ["C:\\Media"],
+          },
+          ingestPolicy: {
+            maxDepth: 4,
+            maxFiles: 50,
+            includePreviewText: true,
+            previewFileLimit: 10,
+            snippetFileLimit: 0,
+          },
+          outputTargets: {
+            publishManifestToLibrary: true,
+            publishSummaryToLibrary: false,
+            triggerIndexing: true,
+          },
+        },
+        {
+          repo: repo as any,
+          reserveCredits,
+          getFeatureFlags,
+        },
+      ),
+    ).rejects.toMatchObject({
+      code: "unauthorized_path",
+      statusCode: 403,
+    });
+  });
+
+  it("queues desktop comfy_image_generation jobs through the desktop runtime lane", async () => {
+    getFeatureFlags.mockResolvedValue({
+      openClawExternalRuntime: true,
+      desktopZeroClawWorker: true,
+      nemoClawSecureWorkerPool: false,
+      hiClawClusterRuntime: false,
+    });
+    repo.findWorkerById.mockResolvedValue({
+      id: "desktop-worker-1",
+      runtimeType: "desktop_zeroclaw_managed",
+      status: "online",
+    });
+
+    const result = await queueDesktopComfyImageGenerationJob(
+      {
+        tenantId: "tenant-1",
+        requestedByUserId: 7,
+        preferredWorkerId: "desktop-worker-1",
+        service: {
+          baseUrl: "http://127.0.0.1:8188",
+          submitPath: "/prompt",
+          historyPathTemplate: "/history/{promptId}",
+          viewPath: "/view",
+        },
+        workflowJson: {
+          "1": { class_type: "KSampler", inputs: { seed: 42 } },
+        },
+        generationSpec: {
+          promptSummary: "Editorial portrait",
+          gpuRequired: true,
+        },
+        outputTargets: {
+          publishImagesToLibrary: true,
+          publishManifestToLibrary: true,
+          triggerIndexing: true,
+          maxImages: 4,
+        },
+      },
+      {
+        repo: repo as any,
+        reserveCredits,
+        getFeatureFlags,
+      },
+    );
+
+    expect(result.created).toBe(true);
+    expect(repo.insertJob).toHaveBeenCalledWith(expect.objectContaining({
+      runtimeType: "desktop_zeroclaw_managed",
+      jobType: "comfy_image_generation",
+      resourceProfile: "gpu_required",
+      capabilityRequirementsJson: expect.objectContaining({
+        preferredWorkerId: "desktop-worker-1",
+        capabilityFamilies: expect.arrayContaining(["comfyui-image-generate", "gpu-nvidia"]),
+      }),
+      instructionsJson: expect.objectContaining({
+        intent: "comfy_image_generation",
+      }),
+    }));
+  });
+
+  it("rejects comfy_image_generation jobs that point to non-loopback services", async () => {
+    getFeatureFlags.mockResolvedValue({
+      openClawExternalRuntime: true,
+      desktopZeroClawWorker: true,
+      nemoClawSecureWorkerPool: false,
+      hiClawClusterRuntime: false,
+    });
+
+    await expect(
+      queueDesktopComfyImageGenerationJob(
+        {
+          tenantId: "tenant-1",
+          requestedByUserId: 7,
+          service: {
+            baseUrl: "https://comfy.example.test",
+            submitPath: "/prompt",
+            historyPathTemplate: "/history/{promptId}",
+            viewPath: "/view",
+          },
+          workflowJson: {
+            "1": { class_type: "KSampler" },
+          },
+          generationSpec: {
+            promptSummary: "Studio portrait",
+            gpuRequired: true,
+          },
+          outputTargets: {
+            publishImagesToLibrary: true,
+            publishManifestToLibrary: true,
+            triggerIndexing: true,
+            maxImages: 2,
+          },
+        },
+        {
+          repo: repo as any,
+          reserveCredits,
+          getFeatureFlags,
+        },
+      ),
+    ).rejects.toMatchObject({
+      issues: expect.arrayContaining([
+        expect.objectContaining({
+          path: ["service", "baseUrl"],
+        }),
+      ]),
+    });
+  });
+
+  it("queues desktop comfy_workflow_run jobs through the desktop runtime lane", async () => {
+    getFeatureFlags.mockResolvedValue({
+      openClawExternalRuntime: true,
+      desktopZeroClawWorker: true,
+      nemoClawSecureWorkerPool: false,
+      hiClawClusterRuntime: false,
+    });
+    repo.findWorkerById.mockResolvedValue({
+      id: "desktop-worker-1",
+      runtimeType: "desktop_zeroclaw_managed",
+      status: "online",
+    });
+
+    const result = await queueDesktopComfyWorkflowRunJob(
+      {
+        tenantId: "tenant-1",
+        requestedByUserId: 7,
+        preferredWorkerId: "desktop-worker-1",
+        service: {
+          baseUrl: "http://localhost:8188",
+          submitPath: "/prompt",
+          historyPathTemplate: "/history/{promptId}",
+          viewPath: "/view",
+        },
+        workflowJson: {
+          "10": { class_type: "SaveImage", inputs: { filename_prefix: "smartspec" } },
+        },
+        executionPolicy: {
+          expectedOutputTypes: ["images", "files"],
+          gpuRequired: false,
+          failOnMissingOutputs: true,
+        },
+        outputTargets: {
+          publishOutputFilesToLibrary: true,
+          publishManifestToLibrary: true,
+          triggerIndexing: false,
+          maxOutputFiles: 12,
+        },
+      },
+      {
+        repo: repo as any,
+        reserveCredits,
+        getFeatureFlags,
+      },
+    );
+
+    expect(result.created).toBe(true);
+    expect(repo.insertJob).toHaveBeenCalledWith(expect.objectContaining({
+      runtimeType: "desktop_zeroclaw_managed",
+      jobType: "comfy_workflow_run",
+      resourceProfile: "cpu_heavy",
+      capabilityRequirementsJson: expect.objectContaining({
+        preferredWorkerId: "desktop-worker-1",
+        capabilityFamilies: expect.arrayContaining(["comfyui-workflow-run"]),
+      }),
+      instructionsJson: expect.objectContaining({
+        intent: "comfy_workflow_run",
+      }),
+    }));
+  });
+
+  it("queues NemoClaw jobs through the secure runtime lane", async () => {
+    getFeatureFlags.mockResolvedValue({
+      openClawExternalRuntime: true,
+      desktopZeroClawWorker: true,
+      nemoClawSecureWorkerPool: true,
+      hiClawClusterRuntime: false,
+    });
+    repo.findWorkerById.mockResolvedValue({
+      id: "nemo-worker-1",
+      runtimeType: "nemoclaw_sandbox",
+      status: "online",
+    });
+
+    const result = await queueNemoClawWorkerJob(
+      {
+        tenantId: "tenant-1",
+        requestedByUserId: 7,
+        preferredWorkerId: "nemo-worker-1",
+        jobType: "secure_browser_task",
+        inputJson: { url: "https://example.com" },
+      },
+      {
+        repo: repo as any,
+        reserveCredits,
+        getFeatureFlags,
+      },
+    );
+
+    expect(result.created).toBe(true);
+    expect(repo.insertJob).toHaveBeenCalledWith(expect.objectContaining({
+      runtimeType: "nemoclaw_sandbox",
+      jobType: "secure_browser_task",
+      resourceProfile: "sandbox_required",
+      capabilityRequirementsJson: expect.objectContaining({
+        preferredWorkerId: "nemo-worker-1",
+        capabilityFamilies: ["secure-sandbox-exec"],
+      }),
+    }));
+  });
+
+  it("queues HiClaw jobs through the collaborative cluster lane", async () => {
+    getFeatureFlags.mockResolvedValue({
+      openClawExternalRuntime: true,
+      desktopZeroClawWorker: true,
+      nemoClawSecureWorkerPool: false,
+      hiClawClusterRuntime: true,
+    });
+    repo.findWorkerById.mockResolvedValue({
+      id: "hiclaw-worker-1",
+      runtimeType: "hiclaw_cluster",
+      status: "online",
+    });
+
+    const result = await queueHiClawWorkerJob(
+      {
+        tenantId: "tenant-1",
+        requestedByUserId: 7,
+        preferredWorkerId: "hiclaw-worker-1",
+        jobType: "collaborative_agent_task",
+        inputJson: { topic: "market scan" },
+      },
+      {
+        repo: repo as any,
+        reserveCredits,
+        getFeatureFlags,
+      },
+    );
+
+    expect(result.created).toBe(true);
+    expect(repo.insertJob).toHaveBeenCalledWith(expect.objectContaining({
+      runtimeType: "hiclaw_cluster",
+      jobType: "collaborative_agent_task",
+      resourceProfile: "human_observable",
+      capabilityRequirementsJson: expect.objectContaining({
+        preferredWorkerId: "hiclaw-worker-1",
+        capabilityFamilies: ["multi-agent-cluster"],
+      }),
+    }));
+  });
+
+  it("rejects nested local Windows paths for NemoClaw jobs", async () => {
+    getFeatureFlags.mockResolvedValue({
+      openClawExternalRuntime: true,
+      desktopZeroClawWorker: true,
+      nemoClawSecureWorkerPool: true,
+      hiClawClusterRuntime: false,
+    });
+
+    await expect(
+      queueNemoClawWorkerJob(
+        {
+          tenantId: "tenant-1",
+          requestedByUserId: 7,
+          jobType: "secure_browser_task",
+          inputJson: {
+            artifacts: [{
+              sourcePath: "C:\\Media\\private\\notes.txt",
+            }],
+          },
+        },
+        {
+          repo: repo as any,
+          reserveCredits,
+          getFeatureFlags,
+        },
+      ),
+    ).rejects.toMatchObject({
+      code: "unsupported_job_scope",
+      statusCode: 400,
+    });
+
+    expect(repo.insertJob).not.toHaveBeenCalled();
+  });
+
+  it("rejects UNC paths for HiClaw jobs", async () => {
+    getFeatureFlags.mockResolvedValue({
+      openClawExternalRuntime: true,
+      desktopZeroClawWorker: true,
+      nemoClawSecureWorkerPool: false,
+      hiClawClusterRuntime: true,
+    });
+
+    await expect(
+      queueHiClawWorkerJob(
+        {
+          tenantId: "tenant-1",
+          requestedByUserId: 7,
+          jobType: "collaborative_agent_task",
+          inputJson: {
+            source: {
+              uncPath: "\\\\fileserver\\teamshare\\brief.docx",
+            },
+          },
+        },
+        {
+          repo: repo as any,
+          reserveCredits,
+          getFeatureFlags,
+        },
+      ),
+    ).rejects.toMatchObject({
+      code: "unsupported_job_scope",
+      statusCode: 400,
+    });
+
+    expect(repo.insertJob).not.toHaveBeenCalled();
+  });
+
+  it("routes generic worker queue requests by runtime family", async () => {
+    getFeatureFlags.mockResolvedValue({
+      openClawExternalRuntime: true,
+      desktopZeroClawWorker: true,
+      nemoClawSecureWorkerPool: false,
+      hiClawClusterRuntime: false,
+    });
+    repo.findWorkerById.mockResolvedValue({
+      id: "desktop-worker-1",
+      runtimeType: "desktop_zeroclaw_managed",
+      status: "online",
+    });
+
+    const result = await queueWorkerJobByRuntime(
+      {
+        runtimeType: "desktop_zeroclaw_managed",
+        jobType: "video_assembly",
+        tenantId: "tenant-1",
+        requestedByUserId: 7,
+        preferredWorkerId: "desktop-worker-1",
+        inputRefs: [
+          {
+            sourceKind: "authorized_local_path",
+            path: "C:\\Media\\source.mp4",
+          },
+        ],
+        editPlan: {
+          clips: [
+            {
+              sourceRef: "C:\\Media\\source.mp4",
+              trim: { startMs: 0, endMs: 1000 },
+            },
+          ],
+          applyWatermark: false,
+        },
+        subtitlePlan: {
+          sourcePriority: "system_generated",
+          mode: "none",
+        },
+        renderProfile: {
+          aspectRatios: ["16:9"],
+          codecPreset: "h264_high",
+          qualityPreset: "social_default",
+          gpuRequired: false,
+        },
+        workspacePolicy: {
+          mode: "workspace_scoped",
+          allowedSourceRoots: ["C:\\Media"],
+        },
+        outputTargets: {
+          renderedAssets: [
+            {
+              label: "main",
+              aspectRatio: "16:9",
+              publishToLibrary: true,
+            },
+          ],
+          subtitlesOptional: false,
+          thumbnailsOptional: false,
+        },
+      },
+      {
+        repo: repo as any,
+        reserveCredits,
+        getFeatureFlags,
+      },
+    );
+
+    expect(result.created).toBe(true);
+    expect(repo.insertJob).toHaveBeenCalledWith(expect.objectContaining({
+      runtimeType: "desktop_zeroclaw_managed",
+      jobType: "video_assembly",
+    }));
+  });
+
+  it("routes local_folder_ingest queue requests through the desktop runtime family", async () => {
+    getFeatureFlags.mockResolvedValue({
+      openClawExternalRuntime: true,
+      desktopZeroClawWorker: true,
+      nemoClawSecureWorkerPool: false,
+      hiClawClusterRuntime: false,
+    });
+    repo.findWorkerById.mockResolvedValue({
+      id: "desktop-worker-1",
+      runtimeType: "desktop_zeroclaw_managed",
+      status: "online",
+    });
+
+    const result = await queueWorkerJobByRuntime(
+      {
+        runtimeType: "desktop_zeroclaw_managed",
+        jobType: "local_folder_ingest",
+        tenantId: "tenant-1",
+        requestedByUserId: 7,
+        preferredWorkerId: "desktop-worker-1",
+        roots: [
+          {
+            rootId: "quotes",
+            name: "Quotes",
+            path: "C:\\Media\\Quotes",
+          },
+        ],
+        workspacePolicy: {
+          mode: "workspace_scoped",
+          allowedSourceRoots: ["C:\\Media"],
+        },
+        ingestPolicy: {
+          maxDepth: 4,
+          maxFiles: 25,
+          includePreviewText: true,
+          previewFileLimit: 5,
+          snippetQuery: "launch",
+          snippetFileLimit: 3,
+        },
+        outputTargets: {
+          publishManifestToLibrary: true,
+          publishSummaryToLibrary: true,
+          triggerIndexing: true,
+        },
+      },
+      {
+        repo: repo as any,
+        reserveCredits,
+        getFeatureFlags,
+      },
+    );
+
+    expect(result.created).toBe(true);
+    expect(repo.insertJob).toHaveBeenCalledWith(expect.objectContaining({
+      runtimeType: "desktop_zeroclaw_managed",
+      jobType: "local_folder_ingest",
+    }));
+  });
+
+  it("routes comfy_image_generation queue requests through the desktop runtime family", async () => {
+    getFeatureFlags.mockResolvedValue({
+      openClawExternalRuntime: true,
+      desktopZeroClawWorker: true,
+      nemoClawSecureWorkerPool: false,
+      hiClawClusterRuntime: false,
+    });
+    repo.findWorkerById.mockResolvedValue({
+      id: "desktop-worker-1",
+      runtimeType: "desktop_zeroclaw_managed",
+      status: "online",
+    });
+
+    const result = await queueWorkerJobByRuntime(
+      {
+        runtimeType: "desktop_zeroclaw_managed",
+        jobType: "comfy_image_generation",
+        tenantId: "tenant-1",
+        requestedByUserId: 7,
+        preferredWorkerId: "desktop-worker-1",
+        service: {
+          baseUrl: "http://127.0.0.1:8188",
+          submitPath: "/prompt",
+          historyPathTemplate: "/history/{promptId}",
+          viewPath: "/view",
+        },
+        workflowJson: {
+          "1": { class_type: "KSampler" },
+        },
+        generationSpec: {
+          promptSummary: "Portrait study",
+          gpuRequired: true,
+        },
+        outputTargets: {
+          publishImagesToLibrary: true,
+          publishManifestToLibrary: true,
+          triggerIndexing: true,
+          maxImages: 2,
+        },
+      },
+      {
+        repo: repo as any,
+        reserveCredits,
+        getFeatureFlags,
+      },
+    );
+
+    expect(result.created).toBe(true);
+    expect(repo.insertJob).toHaveBeenCalledWith(expect.objectContaining({
+      runtimeType: "desktop_zeroclaw_managed",
+      jobType: "comfy_image_generation",
+    }));
   });
 });

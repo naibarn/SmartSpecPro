@@ -10,6 +10,7 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useTenantFeatureFlag } from "@/hooks/useTenantFeatureFlag";
 import { HelpButton } from "@/components/help";
+import { LocaleToggle } from "@/components/LocaleToggle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -49,12 +50,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   BellRing,
   ChevronLeft,
@@ -142,7 +138,7 @@ function AlertRulesTab() {
       setIsCreateOpen(false);
       utils.alertRules.listRules.invalidate();
     },
-    onError: (err) => toast.error(err.message || "Failed to create rule"),
+    onError: err => toast.error(err.message || "Failed to create rule"),
   });
 
   const updateMutation = trpc.alertRules.updateRule.useMutation({
@@ -151,7 +147,7 @@ function AlertRulesTab() {
       setEditingRule(null);
       utils.alertRules.listRules.invalidate();
     },
-    onError: (err) => toast.error(err.message || "Failed to update rule"),
+    onError: err => toast.error(err.message || "Failed to update rule"),
   });
 
   const deleteMutation = trpc.alertRules.deleteRule.useMutation({
@@ -160,7 +156,7 @@ function AlertRulesTab() {
       setDeleteId(null);
       utils.alertRules.listRules.invalidate();
     },
-    onError: (err) => toast.error(err.message || "Failed to delete rule"),
+    onError: err => toast.error(err.message || "Failed to delete rule"),
   });
 
   function handleToggleEnabled(rule: any) {
@@ -280,7 +276,7 @@ function AlertRulesTab() {
           open={isCreateOpen}
           onOpenChange={setIsCreateOpen}
           title="Create Alert Rule"
-          onSubmit={(data) => {
+          onSubmit={data => {
             const payload = {
               ...data,
               targetUserId:
@@ -299,10 +295,10 @@ function AlertRulesTab() {
         <AlertRuleFormDialog
           key={`edit-rule-${editingRule.id}`}
           open={!!editingRule}
-          onOpenChange={(open) => !open && setEditingRule(null)}
+          onOpenChange={open => !open && setEditingRule(null)}
           title="Edit Alert Rule"
           defaultValues={editingRule}
-          onSubmit={(data) => {
+          onSubmit={data => {
             const payload = {
               id: editingRule!.id,
               ...data,
@@ -320,7 +316,7 @@ function AlertRulesTab() {
       {/* Delete Confirmation */}
       <AlertDialog
         open={deleteId !== null}
-        onOpenChange={(open) => !open && setDeleteId(null)}
+        onOpenChange={open => !open && setDeleteId(null)}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -333,7 +329,9 @@ function AlertRulesTab() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => deleteId && deleteMutation.mutate({ id: deleteId })}
+              onClick={() =>
+                deleteId && deleteMutation.mutate({ id: deleteId })
+              }
               className="bg-red-600 hover:bg-red-700"
               data-testid="confirm-delete-rule"
             >
@@ -451,15 +449,12 @@ function AlertRuleFormDialog({
                 control={form.control}
                 name="operator"
                 render={({ field }) => (
-                  <Select
-                    value={field.value}
-                    onValueChange={field.onChange}
-                  >
+                  <Select value={field.value} onValueChange={field.onChange}>
                     <SelectTrigger data-testid="operator-select">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {OPERATORS.map((op) => (
+                      {OPERATORS.map(op => (
                         <SelectItem key={op} value={op}>
                           {operatorSymbol[op]} ({op})
                         </SelectItem>
@@ -510,7 +505,7 @@ function AlertRuleFormDialog({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {SEVERITIES.map((s) => (
+                    {SEVERITIES.map(s => (
                       <SelectItem key={s} value={s}>
                         {s.charAt(0).toUpperCase() + s.slice(1)}
                       </SelectItem>
@@ -524,24 +519,21 @@ function AlertRuleFormDialog({
           <div>
             <Label>Channels *</Label>
             <div className="flex gap-3 mt-1">
-              {CHANNELS.map((ch) => {
+              {CHANNELS.map(ch => {
                 const channelValues = form.getValues("channels") ?? [];
                 return (
-                  <label
-                    key={ch}
-                    className="flex items-center gap-1.5 text-sm"
-                  >
+                  <label key={ch} className="flex items-center gap-1.5 text-sm">
                     <input
                       type="checkbox"
                       checked={channelValues.includes(ch)}
-                      onChange={(e) => {
+                      onChange={e => {
                         const current = form.getValues("channels") ?? [];
                         form.setValue(
                           "channels",
                           e.target.checked
                             ? [...current, ch]
-                            : current.filter((c) => c !== ch),
-                          { shouldValidate: true },
+                            : current.filter(c => c !== ch),
+                          { shouldValidate: true }
                         );
                       }}
                     />
@@ -566,7 +558,7 @@ function AlertRuleFormDialog({
                 render={({ field }) => (
                   <Select
                     value={field.value || "_none"}
-                    onValueChange={(v) =>
+                    onValueChange={v =>
                       field.onChange(v === "_none" ? undefined : v)
                     }
                   >
@@ -638,35 +630,32 @@ function EscalationPoliciesTab() {
     offset: 0,
   });
 
-  const createMutation =
-    trpc.alertRules.createEscalationPolicy.useMutation({
-      onSuccess: () => {
-        toast.success("Escalation policy created");
-        setIsCreateOpen(false);
-        utils.alertRules.listEscalationPolicies.invalidate();
-      },
-      onError: (err) => toast.error(err.message || "Failed to create policy"),
-    });
+  const createMutation = trpc.alertRules.createEscalationPolicy.useMutation({
+    onSuccess: () => {
+      toast.success("Escalation policy created");
+      setIsCreateOpen(false);
+      utils.alertRules.listEscalationPolicies.invalidate();
+    },
+    onError: err => toast.error(err.message || "Failed to create policy"),
+  });
 
-  const updateMutation =
-    trpc.alertRules.updateEscalationPolicy.useMutation({
-      onSuccess: () => {
-        toast.success("Escalation policy updated");
-        setEditingPolicy(null);
-        utils.alertRules.listEscalationPolicies.invalidate();
-      },
-      onError: (err) => toast.error(err.message || "Failed to update policy"),
-    });
+  const updateMutation = trpc.alertRules.updateEscalationPolicy.useMutation({
+    onSuccess: () => {
+      toast.success("Escalation policy updated");
+      setEditingPolicy(null);
+      utils.alertRules.listEscalationPolicies.invalidate();
+    },
+    onError: err => toast.error(err.message || "Failed to update policy"),
+  });
 
-  const deleteMutation =
-    trpc.alertRules.deleteEscalationPolicy.useMutation({
-      onSuccess: () => {
-        toast.success("Escalation policy deleted");
-        setDeleteId(null);
-        utils.alertRules.listEscalationPolicies.invalidate();
-      },
-      onError: (err) => toast.error(err.message || "Failed to delete policy"),
-    });
+  const deleteMutation = trpc.alertRules.deleteEscalationPolicy.useMutation({
+    onSuccess: () => {
+      toast.success("Escalation policy deleted");
+      setDeleteId(null);
+      utils.alertRules.listEscalationPolicies.invalidate();
+    },
+    onError: err => toast.error(err.message || "Failed to delete policy"),
+  });
 
   const policies = policiesQuery.data?.policies ?? [];
   const totalPolicies = policiesQuery.data?.total ?? policies.length;
@@ -724,9 +713,7 @@ function EscalationPoliciesTab() {
                   <TableCell className="font-medium">{policy.name}</TableCell>
                   <TableCell>
                     <Badge
-                      className={
-                        severityColor[policy.triggerSeverity] ?? ""
-                      }
+                      className={severityColor[policy.triggerSeverity] ?? ""}
                       variant="secondary"
                     >
                       {policy.triggerSeverity}
@@ -792,7 +779,7 @@ function EscalationPoliciesTab() {
           open={isCreateOpen}
           onOpenChange={setIsCreateOpen}
           title="Create Escalation Policy"
-          onSubmit={(data) => {
+          onSubmit={data => {
             const payload = {
               ...data,
               escalateToUserId:
@@ -812,10 +799,10 @@ function EscalationPoliciesTab() {
         <EscalationPolicyFormDialog
           key={`edit-policy-${editingPolicy.id}`}
           open={!!editingPolicy}
-          onOpenChange={(open) => !open && setEditingPolicy(null)}
+          onOpenChange={open => !open && setEditingPolicy(null)}
           title="Edit Escalation Policy"
           defaultValues={editingPolicy}
-          onSubmit={(data) => {
+          onSubmit={data => {
             const payload = {
               id: editingPolicy!.id,
               ...data,
@@ -834,7 +821,7 @@ function EscalationPoliciesTab() {
       {/* Delete Confirmation */}
       <AlertDialog
         open={deleteId !== null}
-        onOpenChange={(open) => !open && setDeleteId(null)}
+        onOpenChange={open => !open && setDeleteId(null)}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -944,7 +931,7 @@ function EscalationPolicyFormDialog({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {SEVERITIES.map((s) => (
+                      {SEVERITIES.map(s => (
                         <SelectItem key={s} value={s}>
                           {s.charAt(0).toUpperCase() + s.slice(1)}
                         </SelectItem>
@@ -980,7 +967,7 @@ function EscalationPolicyFormDialog({
                 render={({ field }) => (
                   <Select
                     value={field.value || "_none"}
-                    onValueChange={(v) =>
+                    onValueChange={v =>
                       field.onChange(v === "_none" ? undefined : v)
                     }
                   >
@@ -1010,25 +997,22 @@ function EscalationPolicyFormDialog({
           <div>
             <Label>Channels *</Label>
             <div className="flex gap-3 mt-1">
-              {CHANNELS.map((ch) => {
+              {CHANNELS.map(ch => {
                 const channelValues = form.getValues("escalateChannels") ?? [];
                 return (
-                  <label
-                    key={ch}
-                    className="flex items-center gap-1.5 text-sm"
-                  >
+                  <label key={ch} className="flex items-center gap-1.5 text-sm">
                     <input
                       type="checkbox"
                       checked={channelValues.includes(ch)}
-                      onChange={(e) => {
+                      onChange={e => {
                         const current =
                           form.getValues("escalateChannels") ?? [];
                         form.setValue(
                           "escalateChannels",
                           e.target.checked
                             ? [...current, ch]
-                            : current.filter((c) => c !== ch),
-                          { shouldValidate: true },
+                            : current.filter(c => c !== ch),
+                          { shouldValidate: true }
                         );
                       }}
                     />
@@ -1119,30 +1103,35 @@ export default function AdminAlertRules() {
       {/* Header */}
       <header className="bg-white/70 backdrop-blur-xl border-b border-gray-200/50 sticky top-0 z-10">
         <div className="px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setLocation("/dashboard")}
-              className="text-gray-600"
-            >
-              <ChevronLeft className="w-5 h-5 mr-1" />
-              Back
-            </Button>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center">
-                <BellRing className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h1 className="text-xl font-bold text-gray-900">
-                  Alert Rules & Escalation
-                </h1>
-                <p className="text-sm text-gray-500">
-                  Configure alert triggers and escalation policies
-                </p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-wrap items-center gap-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setLocation("/dashboard")}
+                className="text-gray-600"
+              >
+                <ChevronLeft className="w-5 h-5 mr-1" />
+                Back
+              </Button>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center">
+                  <BellRing className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-xl font-bold text-gray-900">
+                    Alert Rules & Escalation
+                  </h1>
+                  <p className="text-sm text-gray-500">
+                    Configure alert triggers and escalation policies
+                  </p>
+                </div>
               </div>
             </div>
-            <HelpButton page="/admin/alert-rules" variant="ghost" size="sm" />
+            <div className="flex items-center gap-2 sm:justify-end">
+              <LocaleToggle className="shrink-0" />
+              <HelpButton page="/admin/alert-rules" variant="ghost" size="sm" />
+            </div>
           </div>
         </div>
       </header>

@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { trpc } from "../lib/trpc";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { getModelGenerationModeLabel } from "@/lib/mediaModelInputs";
+import { LocaleToggle } from "@/components/LocaleToggle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -91,7 +92,12 @@ interface MediaModel {
   configJson: Record<string, any> | null;
   isEnabled: boolean;
   providerReady?: boolean;
-  providerReadiness?: "ready" | "provider_not_found" | "provider_disabled" | "missing_api_key" | "test_failed";
+  providerReadiness?:
+    | "ready"
+    | "provider_not_found"
+    | "provider_disabled"
+    | "missing_api_key"
+    | "test_failed";
   providerReadinessMessage?: string | null;
   providerDisplayName?: string | null;
   providerConfigFound?: boolean;
@@ -116,7 +122,12 @@ interface MediaModelTemplate {
   configJson: Record<string, any> | null;
   isEnabled: boolean;
   providerReady?: boolean;
-  providerReadiness?: "ready" | "provider_not_found" | "provider_disabled" | "missing_api_key" | "test_failed";
+  providerReadiness?:
+    | "ready"
+    | "provider_not_found"
+    | "provider_disabled"
+    | "missing_api_key"
+    | "test_failed";
   providerReadinessMessage?: string | null;
   providerDisplayName?: string | null;
   providerConfigFound?: boolean;
@@ -160,9 +171,35 @@ interface FormData {
 const SEARCH_DEBOUNCE_MS = 900;
 const MIN_SEARCH_LENGTH = 2;
 
-type InputFieldType = "select" | "text" | "number" | "boolean" | "image_urls" | "video_urls" | "audio_urls" | "array" | "library_file";
-type SyncTarget = "none" | "reference_images" | "reference_videos" | "prompt" | "aspect_ratio";
-type MediaOperationType = "t2i" | "i2i" | "t2v" | "i2v" | "v2v" | "upscale" | "t2m" | "s2t" | "t2s" | "a2a" | "chat" | "other";
+type InputFieldType =
+  | "select"
+  | "text"
+  | "number"
+  | "boolean"
+  | "image_urls"
+  | "video_urls"
+  | "audio_urls"
+  | "array"
+  | "library_file";
+type SyncTarget =
+  | "none"
+  | "reference_images"
+  | "reference_videos"
+  | "prompt"
+  | "aspect_ratio";
+type MediaOperationType =
+  | "t2i"
+  | "i2i"
+  | "t2v"
+  | "i2v"
+  | "v2v"
+  | "upscale"
+  | "t2m"
+  | "s2t"
+  | "t2s"
+  | "a2a"
+  | "chat"
+  | "other";
 
 interface InputFieldOptionDraft {
   id: string;
@@ -220,7 +257,10 @@ interface ApiConfigPreset {
   pricingTiers: Record<string, number>;
 }
 
-const MEDIA_OPERATION_OPTIONS: Array<{ value: MediaOperationType; label: string }> = [
+const MEDIA_OPERATION_OPTIONS: Array<{
+  value: MediaOperationType;
+  label: string;
+}> = [
   { value: "t2i", label: "t2i (Text to Image)" },
   { value: "i2i", label: "i2i (Image to Image)" },
   { value: "t2v", label: "t2v (Text to Video)" },
@@ -243,9 +283,12 @@ const SYNC_TARGET_OPTIONS: Array<{ value: SyncTarget; label: string }> = [
   { value: "aspect_ratio", label: "Aspect Ratio" },
 ];
 
-const VALID_SYNC_TARGETS = SYNC_TARGET_OPTIONS.map((o) => o.value);
+const VALID_SYNC_TARGETS = SYNC_TARGET_OPTIONS.map(o => o.value);
 
-const INPUT_FIELD_TYPE_OPTIONS: Array<{ value: InputFieldType; label: string }> = [
+const INPUT_FIELD_TYPE_OPTIONS: Array<{
+  value: InputFieldType;
+  label: string;
+}> = [
   { value: "select", label: "Select" },
   { value: "text", label: "Text" },
   { value: "number", label: "Number" },
@@ -270,7 +313,7 @@ function normalizeOptionText(value: string): string {
 }
 
 function parseBulkOptionsText(raw: string): ParsedBulkOption[] {
-  const lines = raw.split(/\r?\n/).map((line) => normalizeOptionText(line));
+  const lines = raw.split(/\r?\n/).map(line => normalizeOptionText(line));
   const parsed: ParsedBulkOption[] = [];
   let pendingVoiceId: string | null = null;
 
@@ -317,7 +360,10 @@ function parseBulkOptionsText(raw: string): ParsedBulkOption[] {
     // Also supports comma-separated values in a single line.
     const plain = line.replace(/^(?:[-*]\s*)/, "").trim();
     if (plain) {
-      const commaParts = plain.split(",").map((part) => normalizeOptionText(part)).filter(Boolean);
+      const commaParts = plain
+        .split(",")
+        .map(part => normalizeOptionText(part))
+        .filter(Boolean);
       if (commaParts.length > 1) {
         for (const part of commaParts) {
           pushOption(part, part);
@@ -346,7 +392,7 @@ function parseBulkOptionsText(raw: string): ParsedBulkOption[] {
 function splitDelimitedTextValues(raw: string): string[] {
   return raw
     .split(/[\n,]/g)
-    .map((entry) => entry.trim())
+    .map(entry => entry.trim())
     .filter(Boolean);
 }
 
@@ -355,10 +401,12 @@ function parseVoiceCatalogValues(raw: string): ParsedBulkOption[] {
   if (parsed.length > 0) {
     return parsed;
   }
-  return splitDelimitedTextValues(raw).map((value) => ({ value, label: value }));
+  return splitDelimitedTextValues(raw).map(value => ({ value, label: value }));
 }
 
-function summarizeProviderReadinessMessage(message: string | null | undefined): string | null {
+function summarizeProviderReadinessMessage(
+  message: string | null | undefined
+): string | null {
   if (!message) return null;
   const trimmed = message.trim();
   if (!trimmed) return null;
@@ -424,15 +472,21 @@ function parseInputFieldDrafts(value: unknown): InputFieldDraft[] {
     return [];
   }
 
-  return value.map((item) => {
-    const record = (item && typeof item === "object") ? (item as Record<string, unknown>) : {};
+  return value.map(item => {
+    const record =
+      item && typeof item === "object" ? (item as Record<string, unknown>) : {};
     const rawType = String(record.type || "text");
-    const type: InputFieldType = INPUT_FIELD_TYPE_OPTIONS.some((option) => option.value === rawType)
+    const type: InputFieldType = INPUT_FIELD_TYPE_OPTIONS.some(
+      option => option.value === rawType
+    )
       ? (rawType as InputFieldType)
       : "text";
     const rawOptions = Array.isArray(record.options) ? record.options : [];
-    const options: InputFieldOptionDraft[] = rawOptions.map((option) => {
-      const optionRecord = (option && typeof option === "object") ? (option as Record<string, unknown>) : {};
+    const options: InputFieldOptionDraft[] = rawOptions.map(option => {
+      const optionRecord =
+        option && typeof option === "object"
+          ? (option as Record<string, unknown>)
+          : {};
       return {
         id: createDraftId("opt"),
         value: String(optionRecord.value ?? ""),
@@ -440,25 +494,34 @@ function parseInputFieldDrafts(value: unknown): InputFieldDraft[] {
       };
     });
     const rawSyncWith = String(record.syncWith || "none");
-    const syncWith: SyncTarget = VALID_SYNC_TARGETS.includes(rawSyncWith as SyncTarget)
+    const syncWith: SyncTarget = VALID_SYNC_TARGETS.includes(
+      rawSyncWith as SyncTarget
+    )
       ? (rawSyncWith as SyncTarget)
       : "none";
-    const rawOptionsSource = (record.optionsSource && typeof record.optionsSource === "object")
-      ? (record.optionsSource as Record<string, unknown>)
-      : null;
-    const rawOptionsSourceType = rawOptionsSource && typeof rawOptionsSource.type === "string"
-      ? rawOptionsSource.type.trim().toLowerCase()
-      : "none";
-    const optionsSourceType: InputFieldOptionsSourceType = rawOptionsSourceType === "provider_api" || rawOptionsSourceType === "public_api"
-      ? rawOptionsSourceType
-      : "none";
-    const optionsSourceMethodRaw = rawOptionsSource && typeof rawOptionsSource.method === "string"
-      ? rawOptionsSource.method.toUpperCase()
-      : "GET";
-    const optionsSourceMethod: "GET" | "POST" = optionsSourceMethodRaw === "POST" ? "POST" : "GET";
-    const optionsSourceValueTransformRaw = rawOptionsSource && typeof rawOptionsSource.valueTransform === "string"
-      ? rawOptionsSource.valueTransform.trim().toLowerCase()
-      : "none";
+    const rawOptionsSource =
+      record.optionsSource && typeof record.optionsSource === "object"
+        ? (record.optionsSource as Record<string, unknown>)
+        : null;
+    const rawOptionsSourceType =
+      rawOptionsSource && typeof rawOptionsSource.type === "string"
+        ? rawOptionsSource.type.trim().toLowerCase()
+        : "none";
+    const optionsSourceType: InputFieldOptionsSourceType =
+      rawOptionsSourceType === "provider_api" ||
+      rawOptionsSourceType === "public_api"
+        ? rawOptionsSourceType
+        : "none";
+    const optionsSourceMethodRaw =
+      rawOptionsSource && typeof rawOptionsSource.method === "string"
+        ? rawOptionsSource.method.toUpperCase()
+        : "GET";
+    const optionsSourceMethod: "GET" | "POST" =
+      optionsSourceMethodRaw === "POST" ? "POST" : "GET";
+    const optionsSourceValueTransformRaw =
+      rawOptionsSource && typeof rawOptionsSource.valueTransform === "string"
+        ? rawOptionsSource.valueTransform.trim().toLowerCase()
+        : "none";
     const optionsSourceValueTransform: "none" | "before_dash" =
       optionsSourceValueTransformRaw === "before_dash" ? "before_dash" : "none";
     return {
@@ -467,49 +530,87 @@ function parseInputFieldDrafts(value: unknown): InputFieldDraft[] {
       label: String(record.label ?? record.key ?? ""),
       type,
       syncWith,
-      defaultRaw: record.default === undefined || record.default === null ? "" : String(record.default),
+      defaultRaw:
+        record.default === undefined || record.default === null
+          ? ""
+          : String(record.default),
       defaultBoolean: Boolean(record.default),
       required: Boolean(record.required),
       affectsPricing: Boolean(record.affectsPricing),
       searchable: Boolean(record.searchable),
       options,
       optionsSourceType,
-      optionsSourceEndpoint: rawOptionsSource && typeof rawOptionsSource.endpoint === "string" ? rawOptionsSource.endpoint : "",
+      optionsSourceEndpoint:
+        rawOptionsSource && typeof rawOptionsSource.endpoint === "string"
+          ? rawOptionsSource.endpoint
+          : "",
       optionsSourceMethod,
-      optionsSourceItemsPath: rawOptionsSource && typeof rawOptionsSource.itemsPath === "string" ? rawOptionsSource.itemsPath : "",
-      optionsSourceValueField: rawOptionsSource && typeof rawOptionsSource.valueField === "string" ? rawOptionsSource.valueField : "",
-      optionsSourceLabelField: rawOptionsSource && typeof rawOptionsSource.labelField === "string" ? rawOptionsSource.labelField : "",
-      optionsSourceQueryParam: rawOptionsSource && typeof rawOptionsSource.queryParam === "string" ? rawOptionsSource.queryParam : "",
+      optionsSourceItemsPath:
+        rawOptionsSource && typeof rawOptionsSource.itemsPath === "string"
+          ? rawOptionsSource.itemsPath
+          : "",
+      optionsSourceValueField:
+        rawOptionsSource && typeof rawOptionsSource.valueField === "string"
+          ? rawOptionsSource.valueField
+          : "",
+      optionsSourceLabelField:
+        rawOptionsSource && typeof rawOptionsSource.labelField === "string"
+          ? rawOptionsSource.labelField
+          : "",
+      optionsSourceQueryParam:
+        rawOptionsSource && typeof rawOptionsSource.queryParam === "string"
+          ? rawOptionsSource.queryParam
+          : "",
       optionsSourceValueTransform,
-      optionsSourceCacheTtlSeconds: rawOptionsSource && rawOptionsSource.cacheTtlSeconds !== undefined && rawOptionsSource.cacheTtlSeconds !== null
-        ? String(rawOptionsSource.cacheTtlSeconds)
+      optionsSourceCacheTtlSeconds:
+        rawOptionsSource &&
+        rawOptionsSource.cacheTtlSeconds !== undefined &&
+        rawOptionsSource.cacheTtlSeconds !== null
+          ? String(rawOptionsSource.cacheTtlSeconds)
+          : "",
+      optionsSourceHeadersRaw:
+        rawOptionsSource &&
+        rawOptionsSource.headers &&
+        typeof rawOptionsSource.headers === "object"
+          ? JSON.stringify(rawOptionsSource.headers, null, 2)
+          : "",
+      optionsSourceBodyRaw:
+        rawOptionsSource && rawOptionsSource.body !== undefined
+          ? JSON.stringify(rawOptionsSource.body, null, 2)
+          : "",
+      allowedExtensions:
+        typeof record.allowedExtensions === "string"
+          ? record.allowedExtensions
+          : "",
+      itemTemplateRaw: record.itemTemplate
+        ? JSON.stringify(record.itemTemplate, null, 2)
         : "",
-      optionsSourceHeadersRaw: rawOptionsSource && rawOptionsSource.headers && typeof rawOptionsSource.headers === "object"
-        ? JSON.stringify(rawOptionsSource.headers, null, 2)
-        : "",
-      optionsSourceBodyRaw: rawOptionsSource && rawOptionsSource.body !== undefined
-        ? JSON.stringify(rawOptionsSource.body, null, 2)
-        : "",
-      allowedExtensions: typeof record.allowedExtensions === "string" ? record.allowedExtensions : "",
-      itemTemplateRaw: record.itemTemplate ? JSON.stringify(record.itemTemplate, null, 2) : "",
     };
   });
 }
 
-function parsePricingTierDrafts(value: unknown, defaultCost = 10): PricingTierDraft[] {
+function parsePricingTierDrafts(
+  value: unknown,
+  defaultCost = 10
+): PricingTierDraft[] {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return [createEmptyPricingTierDraft(defaultCost)];
   }
 
-  const tiers = Object.entries(value as Record<string, unknown>).map(([key, tierValue]) => ({
-    id: createDraftId("tier"),
-    key,
-    value: String(tierValue ?? ""),
-  }));
+  const tiers = Object.entries(value as Record<string, unknown>).map(
+    ([key, tierValue]) => ({
+      id: createDraftId("tier"),
+      key,
+      value: String(tierValue ?? ""),
+    })
+  );
   return tiers.length > 0 ? tiers : [createEmptyPricingTierDraft(defaultCost)];
 }
 
-function serializeInputFieldDrafts(drafts: InputFieldDraft[]): { fields: Record<string, unknown>[]; errors: string[] } {
+function serializeInputFieldDrafts(drafts: InputFieldDraft[]): {
+  fields: Record<string, unknown>[];
+  errors: string[];
+} {
   const errors: string[] = [];
   const seenKeys = new Set<string>();
   const fields: Record<string, unknown>[] = [];
@@ -554,12 +655,12 @@ function serializeInputFieldDrafts(drafts: InputFieldDraft[]): { fields: Record<
     }
 
     const options = draft.options
-      .map((option) => ({
+      .map(option => ({
         value: option.value.trim(),
         label: option.label.trim(),
       }))
-      .filter((option) => option.value.length > 0 || option.label.length > 0)
-      .map((option) => ({
+      .filter(option => option.value.length > 0 || option.label.length > 0)
+      .map(option => ({
         value: option.value,
         label: option.label || option.value,
       }));
@@ -573,7 +674,9 @@ function serializeInputFieldDrafts(drafts: InputFieldDraft[]): { fields: Record<
     if (hasOptionsSource) {
       const endpoint = draft.optionsSourceEndpoint.trim();
       if (!endpoint) {
-        errors.push(`Field "${key}" has options source enabled but no endpoint.`);
+        errors.push(
+          `Field "${key}" has options source enabled but no endpoint.`
+        );
         continue;
       }
       const optionsSource: Record<string, unknown> = {
@@ -616,13 +719,21 @@ function serializeInputFieldDrafts(drafts: InputFieldDraft[]): { fields: Record<
       if (headersRaw.length > 0) {
         try {
           const parsedHeaders = JSON.parse(headersRaw);
-          if (!parsedHeaders || typeof parsedHeaders !== "object" || Array.isArray(parsedHeaders)) {
-            errors.push(`Field "${key}" options source headers must be a JSON object.`);
+          if (
+            !parsedHeaders ||
+            typeof parsedHeaders !== "object" ||
+            Array.isArray(parsedHeaders)
+          ) {
+            errors.push(
+              `Field "${key}" options source headers must be a JSON object.`
+            );
             continue;
           }
           optionsSource.headers = parsedHeaders;
         } catch {
-          errors.push(`Field "${key}" has invalid options source headers JSON.`);
+          errors.push(
+            `Field "${key}" has invalid options source headers JSON.`
+          );
           continue;
         }
       }
@@ -642,7 +753,9 @@ function serializeInputFieldDrafts(drafts: InputFieldDraft[]): { fields: Record<
 
     if (draft.type === "select") {
       if (options.length === 0 && !hasOptionsSource) {
-        errors.push(`Select field "${key}" must define at least one option or options source.`);
+        errors.push(
+          `Select field "${key}" must define at least one option or options source.`
+        );
         continue;
       }
 
@@ -659,7 +772,9 @@ function serializeInputFieldDrafts(drafts: InputFieldDraft[]): { fields: Record<
         if (Number.isFinite(parsed)) {
           nextField.default = parsed;
         } else {
-          errors.push(`Number field "${key}" has invalid default value "${defaultValue}".`);
+          errors.push(
+            `Number field "${key}" has invalid default value "${defaultValue}".`
+          );
           continue;
         }
       }
@@ -695,7 +810,7 @@ function serializeInputFieldDrafts(drafts: InputFieldDraft[]): { fields: Record<
 
 function serializePricingTierDrafts(
   drafts: PricingTierDraft[],
-  fallbackCost: number,
+  fallbackCost: number
 ): { tiers: Record<string, number>; errors: string[] } {
   const errors: string[] = [];
   const tiers: Record<string, number> = {};
@@ -712,7 +827,9 @@ function serializePricingTierDrafts(
     }
     const numericValue = Number(valueRaw);
     if (!Number.isFinite(numericValue) || numericValue < 0) {
-      errors.push(`Pricing tier "${key}" must have a valid non-negative number.`);
+      errors.push(
+        `Pricing tier "${key}" must have a valid non-negative number.`
+      );
       continue;
     }
     tiers[key] = numericValue;
@@ -730,7 +847,9 @@ function normalizeOperationType(value: unknown): MediaOperationType | null {
     return null;
   }
   const normalized = value.trim().toLowerCase();
-  const direct = MEDIA_OPERATION_OPTIONS.find((item) => item.value === normalized);
+  const direct = MEDIA_OPERATION_OPTIONS.find(
+    item => item.value === normalized
+  );
   if (direct) {
     return direct.value;
   }
@@ -750,8 +869,13 @@ function normalizeOperationType(value: unknown): MediaOperationType | null {
   return aliasMap[normalized] || null;
 }
 
-function inferOperationTypeFromModel(model: Pick<MediaModel, "modelType" | "modelId" | "configJson">): MediaOperationType {
-  const config = (model.configJson && typeof model.configJson === "object") ? model.configJson : {};
+function inferOperationTypeFromModel(
+  model: Pick<MediaModel, "modelType" | "modelId" | "configJson">
+): MediaOperationType {
+  const config =
+    model.configJson && typeof model.configJson === "object"
+      ? model.configJson
+      : {};
   const fromConfig = normalizeOperationType((config as any).operationType);
   if (fromConfig) {
     return fromConfig;
@@ -774,17 +898,30 @@ function inferOperationTypeFromModel(model: Pick<MediaModel, "modelType" | "mode
   }
 
   if (model.modelType === "image") {
-    const hasImageInput = Array.isArray((config as any).inputFields)
-      && ((config as any).inputFields as Array<any>).some((field) => String(field?.type || "").toLowerCase() === "image_urls");
+    const hasImageInput =
+      Array.isArray((config as any).inputFields) &&
+      ((config as any).inputFields as Array<any>).some(
+        field => String(field?.type || "").toLowerCase() === "image_urls"
+      );
     return hasImageInput ? "i2i" : "t2i";
   }
   if (model.modelType === "video") {
-    const hasImageInput = Array.isArray((config as any).inputFields)
-      && ((config as any).inputFields as Array<any>).some((field) => String(field?.type || "").toLowerCase() === "image_urls");
-    const hasVideoInput = Array.isArray((config as any).inputFields)
-      && ((config as any).inputFields as Array<any>).some((field) => String(field?.type || "").toLowerCase() === "video_urls");
-    const hasReferenceVideoSync = Array.isArray((config as any).inputFields)
-      && ((config as any).inputFields as Array<any>).some((field) => String(field?.syncWith || "").toLowerCase() === "reference_videos");
+    const hasImageInput =
+      Array.isArray((config as any).inputFields) &&
+      ((config as any).inputFields as Array<any>).some(
+        field => String(field?.type || "").toLowerCase() === "image_urls"
+      );
+    const hasVideoInput =
+      Array.isArray((config as any).inputFields) &&
+      ((config as any).inputFields as Array<any>).some(
+        field => String(field?.type || "").toLowerCase() === "video_urls"
+      );
+    const hasReferenceVideoSync =
+      Array.isArray((config as any).inputFields) &&
+      ((config as any).inputFields as Array<any>).some(
+        field =>
+          String(field?.syncWith || "").toLowerCase() === "reference_videos"
+      );
     if (hasVideoInput || hasReferenceVideoSync) {
       return "v2v";
     }
@@ -813,14 +950,17 @@ function inferOperationTypeFromModel(model: Pick<MediaModel, "modelType" | "mode
 }
 
 function getOperationTypeLabel(value: MediaOperationType): string {
-  return MEDIA_OPERATION_OPTIONS.find((item) => item.value === value)?.label || value;
+  return (
+    MEDIA_OPERATION_OPTIONS.find(item => item.value === value)?.label || value
+  );
 }
 
 const API_CONFIG_PRESETS: ApiConfigPreset[] = [
   {
     id: "sora2_text_video",
     label: "Sora2 Text-to-Video",
-    description: "KIE Sora2 text-to-video with n_frames + aspect ratio + watermark controls and a model prompt cap.",
+    description:
+      "KIE Sora2 text-to-video with n_frames + aspect ratio + watermark controls and a model prompt cap.",
     pricingFormula: "per_duration",
     maxPromptLength: 10000,
     inputFields: [
@@ -870,7 +1010,8 @@ const API_CONFIG_PRESETS: ApiConfigPreset[] = [
   {
     id: "veo31_text_video",
     label: "Veo 3.1 Text-to-Video",
-    description: "Simple Veo setup with aspect ratio selector, prompt length cap, and flat credits.",
+    description:
+      "Simple Veo setup with aspect ratio selector, prompt length cap, and flat credits.",
     pricingFormula: "flat",
     maxPromptLength: 5000,
     inputFields: [
@@ -893,7 +1034,8 @@ const API_CONFIG_PRESETS: ApiConfigPreset[] = [
   {
     id: "kling_text_video",
     label: "Kling Text-to-Video",
-    description: "Matrix pricing by resolution + duration with optional aspect ratio and a prompt cap.",
+    description:
+      "Matrix pricing by resolution + duration with optional aspect ratio and a prompt cap.",
     pricingFormula: "matrix",
     maxPromptLength: 5000,
     inputFields: [
@@ -988,14 +1130,16 @@ export default function AdminMediaModels() {
   // Wait for the user to pause typing before querying to avoid per-character fetch churn.
   const debouncedSearch = useDebouncedValue(searchQuery, SEARCH_DEBOUNCE_MS);
   const normalizedSearch = debouncedSearch.trim();
-  const searchFilter = normalizedSearch.length >= MIN_SEARCH_LENGTH
-    ? normalizedSearch
-    : undefined;
+  const searchFilter =
+    normalizedSearch.length >= MIN_SEARCH_LENGTH ? normalizedSearch : undefined;
 
   // Form state
   const [formData, setFormData] = useState<FormData>(DEFAULT_FORM_DATA);
   // Store original configJson when duplicating to preserve extra fields
-  const [duplicateSourceConfig, setDuplicateSourceConfig] = useState<Record<string, any> | null>(null);
+  const [duplicateSourceConfig, setDuplicateSourceConfig] = useState<Record<
+    string,
+    any
+  > | null>(null);
 
   // Check auth
   useEffect(() => {
@@ -1007,10 +1151,17 @@ export default function AdminMediaModels() {
   const trpcUtils = trpc.useUtils();
 
   // Queries using tRPC hooks (use debounced search to prevent focus loss)
-  const { data: models = [], isLoading, refetch } = trpc.mediaModels.adminList.useQuery(
+  const {
+    data: models = [],
+    isLoading,
+    refetch,
+  } = trpc.mediaModels.adminList.useQuery(
     {
       search: searchFilter,
-      type: typeFilter !== "all" ? (typeFilter as "image" | "video" | "audio") : undefined,
+      type:
+        typeFilter !== "all"
+          ? (typeFilter as "image" | "video" | "audio")
+          : undefined,
       includeDisabled: true,
     },
     {
@@ -1021,7 +1172,10 @@ export default function AdminMediaModels() {
   const { data: templates = [] } = trpc.mediaModels.adminTemplates.useQuery(
     {
       search: searchFilter,
-      type: typeFilter !== "all" ? (typeFilter as "image" | "video" | "audio") : undefined,
+      type:
+        typeFilter !== "all"
+          ? (typeFilter as "image" | "video" | "audio")
+          : undefined,
       includeDisabled: true,
     },
     {
@@ -1049,19 +1203,25 @@ export default function AdminMediaModels() {
   }, [models, templates]);
 
   const visibleModels = useMemo(
-    () => models.filter((model: MediaModel) => (
-      (operationFilter === "all" || inferOperationTypeFromModel(model) === operationFilter)
-      && (providerFilter === "all" || model.provider === providerFilter)
-    )),
-    [models, operationFilter, providerFilter],
+    () =>
+      models.filter(
+        (model: MediaModel) =>
+          (operationFilter === "all" ||
+            inferOperationTypeFromModel(model) === operationFilter) &&
+          (providerFilter === "all" || model.provider === providerFilter)
+      ),
+    [models, operationFilter, providerFilter]
   );
 
   const visibleTemplates = useMemo(
-    () => templates.filter((template: MediaModelTemplate) => (
-      (operationFilter === "all" || inferOperationTypeFromModel(template) === operationFilter)
-      && (providerFilter === "all" || template.provider === providerFilter)
-    )),
-    [templates, operationFilter, providerFilter],
+    () =>
+      templates.filter(
+        (template: MediaModelTemplate) =>
+          (operationFilter === "all" ||
+            inferOperationTypeFromModel(template) === operationFilter) &&
+          (providerFilter === "all" || template.provider === providerFilter)
+      ),
+    [templates, operationFilter, providerFilter]
   );
 
   const {
@@ -1076,7 +1236,7 @@ export default function AdminMediaModels() {
 
   // Mutations
   const createMutation = trpc.mediaModels.create.useMutation({
-    onSuccess: (data) => {
+    onSuccess: data => {
       // Close dialog and reset form FIRST before refetching
       setIsCreateDialogOpen(false);
       resetForm();
@@ -1086,7 +1246,7 @@ export default function AdminMediaModels() {
       refetch();
       trpcUtils.mediaModels.list.invalidate();
     },
-    onError: (error) => {
+    onError: error => {
       toast.error("Failed to create model", {
         description: error.message,
       });
@@ -1094,18 +1254,21 @@ export default function AdminMediaModels() {
   });
 
   const importTemplateMutation = trpc.mediaModels.importTemplate.useMutation({
-    onSuccess: (data) => {
-      toast.success(data.imported ? "Template imported" : "Template already imported", {
-        description: data.imported
-          ? `${data.model.name} is now available in the configured model catalog.`
-          : `${data.model.name} already exists in the configured model catalog.`,
-      });
+    onSuccess: data => {
+      toast.success(
+        data.imported ? "Template imported" : "Template already imported",
+        {
+          description: data.imported
+            ? `${data.model.name} is now available in the configured model catalog.`
+            : `${data.model.name} already exists in the configured model catalog.`,
+        }
+      );
       refetch();
       trpcUtils.mediaModels.adminTemplates.invalidate();
       trpcUtils.mediaModels.stats.invalidate();
       trpcUtils.mediaModels.list.invalidate();
     },
-    onError: (error) => {
+    onError: error => {
       toast.error("Failed to import template", {
         description: error.message,
       });
@@ -1113,7 +1276,7 @@ export default function AdminMediaModels() {
   });
 
   const updateMutation = trpc.mediaModels.update.useMutation({
-    onSuccess: (data) => {
+    onSuccess: data => {
       setEditingModel(null);
       resetForm();
       toast.success("Model updated", {
@@ -1123,7 +1286,7 @@ export default function AdminMediaModels() {
       // Invalidate the public-facing list so Media Studio picks up the new config immediately
       trpcUtils.mediaModels.list.invalidate();
     },
-    onError: (error) => {
+    onError: error => {
       toast.error("Failed to update model", {
         description: error.message,
       });
@@ -1137,7 +1300,7 @@ export default function AdminMediaModels() {
       refetch();
       trpcUtils.mediaModels.list.invalidate();
     },
-    onError: (error) => {
+    onError: error => {
       toast.error("Failed to delete model", {
         description: error.message,
       });
@@ -1151,34 +1314,37 @@ export default function AdminMediaModels() {
     },
   });
 
-  const disableUnavailableMutation = trpc.mediaModels.disableUnavailable.useMutation({
-    onSuccess: (data) => {
-      toast.success("Unavailable models disabled", {
-        description: data.disabledCount > 0
-          ? `Disabled ${data.disabledCount} model(s) whose providers are not runtime-ready.`
-          : "No enabled models required disabling.",
-      });
-      refetch();
-      trpcUtils.mediaModels.list.invalidate();
-    },
-    onError: (error) => {
-      toast.error("Failed to disable unavailable models", {
-        description: error.message,
-      });
-    },
-  });
+  const disableUnavailableMutation =
+    trpc.mediaModels.disableUnavailable.useMutation({
+      onSuccess: data => {
+        toast.success("Unavailable models disabled", {
+          description:
+            data.disabledCount > 0
+              ? `Disabled ${data.disabledCount} model(s) whose providers are not runtime-ready.`
+              : "No enabled models required disabling.",
+        });
+        refetch();
+        trpcUtils.mediaModels.list.invalidate();
+      },
+      onError: error => {
+        toast.error("Failed to disable unavailable models", {
+          description: error.message,
+        });
+      },
+    });
 
-  const resetRuntimeCountersMutation = trpc.mediaModels.resetRuntimeCounters.useMutation({
-    onSuccess: () => {
-      toast.success("Runtime counters reset");
-      refetchRuntimeCounters();
-    },
-    onError: (error) => {
-      toast.error("Failed to reset runtime counters", {
-        description: error.message,
-      });
-    },
-  });
+  const resetRuntimeCountersMutation =
+    trpc.mediaModels.resetRuntimeCounters.useMutation({
+      onSuccess: () => {
+        toast.success("Runtime counters reset");
+        refetchRuntimeCounters();
+      },
+      onError: error => {
+        toast.error("Failed to reset runtime counters", {
+          description: error.message,
+        });
+      },
+    });
 
   const resetForm = () => {
     setFormData(DEFAULT_FORM_DATA);
@@ -1204,23 +1370,33 @@ export default function AdminMediaModels() {
       isEnabled: model.isEnabled,
       priority: model.priority,
       apiEndpoint: cfg.apiEndpoint || "/api/v1/jobs/createTask",
-      apiQueryEndpoint: cfg.apiQueryEndpoint || cfg.queryEndpoint || cfg.statusEndpoint || "",
+      apiQueryEndpoint:
+        cfg.apiQueryEndpoint || cfg.queryEndpoint || cfg.statusEndpoint || "",
       apiPayloadFormat: cfg.apiPayloadFormat || "market",
       kieModelId: cfg.kieModelId || "",
       apiConfigRaw: cfg.apiConfig ? JSON.stringify(cfg.apiConfig, null, 2) : "",
       pricingFormula: cfg.pricingFormula || "flat",
-      pricingUnitMetric: cfg.pricingUnitMetric === "items" ? "items" : "characters",
+      pricingUnitMetric:
+        cfg.pricingUnitMetric === "items" ? "items" : "characters",
       pricingUnitField: cfg.pricingUnitField || "text",
-      pricingUnitSize: Number(cfg.pricingUnitSize) > 0 ? Number(cfg.pricingUnitSize) : 1000,
-      pricingUnitRounding: cfg.pricingUnitRounding === "floor" || cfg.pricingUnitRounding === "round"
-        ? cfg.pricingUnitRounding
-        : "ceil",
-      pricingMinUnits: Number(cfg.pricingMinUnits) >= 0 ? Number(cfg.pricingMinUnits) : 0,
+      pricingUnitSize:
+        Number(cfg.pricingUnitSize) > 0 ? Number(cfg.pricingUnitSize) : 1000,
+      pricingUnitRounding:
+        cfg.pricingUnitRounding === "floor" ||
+        cfg.pricingUnitRounding === "round"
+          ? cfg.pricingUnitRounding
+          : "ceil",
+      pricingMinUnits:
+        Number(cfg.pricingMinUnits) >= 0 ? Number(cfg.pricingMinUnits) : 0,
       operationType: inferOperationTypeFromModel(model),
       generateType: cfg.generateType || "",
-      maxPromptLength: Number(cfg.maxPromptLength) > 0 ? Number(cfg.maxPromptLength) : 0,
+      maxPromptLength:
+        Number(cfg.maxPromptLength) > 0 ? Number(cfg.maxPromptLength) : 0,
       inputFieldDrafts: parseInputFieldDrafts(cfg.inputFields),
-      pricingTierDrafts: parsePricingTierDrafts(cfg.pricingTiers, model.creditCost),
+      pricingTierDrafts: parsePricingTierDrafts(
+        cfg.pricingTiers,
+        model.creditCost
+      ),
     });
     setActiveTab("basic");
   };
@@ -1246,23 +1422,33 @@ export default function AdminMediaModels() {
       isEnabled: false, // Start disabled for safety
       priority: model.priority,
       apiEndpoint: cfg.apiEndpoint || "/api/v1/jobs/createTask",
-      apiQueryEndpoint: cfg.apiQueryEndpoint || cfg.queryEndpoint || cfg.statusEndpoint || "",
+      apiQueryEndpoint:
+        cfg.apiQueryEndpoint || cfg.queryEndpoint || cfg.statusEndpoint || "",
       apiPayloadFormat: cfg.apiPayloadFormat || "market",
       kieModelId: cfg.kieModelId || "",
       apiConfigRaw: cfg.apiConfig ? JSON.stringify(cfg.apiConfig, null, 2) : "",
       pricingFormula: cfg.pricingFormula || "flat",
-      pricingUnitMetric: cfg.pricingUnitMetric === "items" ? "items" : "characters",
+      pricingUnitMetric:
+        cfg.pricingUnitMetric === "items" ? "items" : "characters",
       pricingUnitField: cfg.pricingUnitField || "text",
-      pricingUnitSize: Number(cfg.pricingUnitSize) > 0 ? Number(cfg.pricingUnitSize) : 1000,
-      pricingUnitRounding: cfg.pricingUnitRounding === "floor" || cfg.pricingUnitRounding === "round"
-        ? cfg.pricingUnitRounding
-        : "ceil",
-      pricingMinUnits: Number(cfg.pricingMinUnits) >= 0 ? Number(cfg.pricingMinUnits) : 0,
+      pricingUnitSize:
+        Number(cfg.pricingUnitSize) > 0 ? Number(cfg.pricingUnitSize) : 1000,
+      pricingUnitRounding:
+        cfg.pricingUnitRounding === "floor" ||
+        cfg.pricingUnitRounding === "round"
+          ? cfg.pricingUnitRounding
+          : "ceil",
+      pricingMinUnits:
+        Number(cfg.pricingMinUnits) >= 0 ? Number(cfg.pricingMinUnits) : 0,
       operationType: inferOperationTypeFromModel(model),
       generateType: cfg.generateType || "",
-      maxPromptLength: Number(cfg.maxPromptLength) > 0 ? Number(cfg.maxPromptLength) : 0,
+      maxPromptLength:
+        Number(cfg.maxPromptLength) > 0 ? Number(cfg.maxPromptLength) : 0,
       inputFieldDrafts: parseInputFieldDrafts(cfg.inputFields),
-      pricingTierDrafts: parsePricingTierDrafts(cfg.pricingTiers, model.creditCost),
+      pricingTierDrafts: parsePricingTierDrafts(
+        cfg.pricingTiers,
+        model.creditCost
+      ),
     });
     setActiveTab("basic");
     setIsCreateDialogOpen(true);
@@ -1276,13 +1462,23 @@ export default function AdminMediaModels() {
     const aspectRatios = splitDelimitedTextValues(formData.aspectRatios);
     const sizes = splitDelimitedTextValues(formData.sizes);
     const durations = splitDelimitedTextValues(formData.durations)
-      .map((s) => parseInt(s, 10))
-      .filter((n) => !Number.isNaN(n));
-    const voices = parseVoiceCatalogValues(formData.voices).map((entry) => entry.value);
+      .map(s => parseInt(s, 10))
+      .filter(n => !Number.isNaN(n));
+    const voices = parseVoiceCatalogValues(formData.voices).map(
+      entry => entry.value
+    );
 
-    const serializedInputFields = serializeInputFieldDrafts(formData.inputFieldDrafts);
-    const serializedPricingTiers = serializePricingTierDrafts(formData.pricingTierDrafts, formData.creditCost);
-    const parseErrors = [...serializedInputFields.errors, ...serializedPricingTiers.errors];
+    const serializedInputFields = serializeInputFieldDrafts(
+      formData.inputFieldDrafts
+    );
+    const serializedPricingTiers = serializePricingTierDrafts(
+      formData.pricingTierDrafts,
+      formData.creditCost
+    );
+    const parseErrors = [
+      ...serializedInputFields.errors,
+      ...serializedPricingTiers.errors,
+    ];
 
     let parsedApiConfig: Record<string, string | number | boolean> | undefined;
     const apiConfigRaw = formData.apiConfigRaw.trim();
@@ -1293,11 +1489,19 @@ export default function AdminMediaModels() {
           parseErrors.push("API Config JSON must be an object.");
         } else {
           const normalized: Record<string, string | number | boolean> = {};
-          for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
-            if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+          for (const [key, value] of Object.entries(
+            parsed as Record<string, unknown>
+          )) {
+            if (
+              typeof value === "string" ||
+              typeof value === "number" ||
+              typeof value === "boolean"
+            ) {
               normalized[key] = value;
             } else if (value !== null && value !== undefined) {
-              parseErrors.push(`API Config key "${key}" must be string, number, or boolean.`);
+              parseErrors.push(
+                `API Config key "${key}" must be string, number, or boolean.`
+              );
               break;
             }
           }
@@ -1327,18 +1531,31 @@ export default function AdminMediaModels() {
       kieModelId: formData.kieModelId || undefined,
       apiConfig: parsedApiConfig,
       pricingFormula: formData.pricingFormula,
-      pricingUnitMetric: formData.pricingFormula === "per_unit" ? formData.pricingUnitMetric : undefined,
-      pricingUnitField: formData.pricingFormula === "per_unit" ? (formData.pricingUnitField || undefined) : undefined,
-      pricingUnitSize: formData.pricingFormula === "per_unit" && formData.pricingUnitSize > 0
-        ? formData.pricingUnitSize
-        : undefined,
-      pricingUnitRounding: formData.pricingFormula === "per_unit" ? formData.pricingUnitRounding : undefined,
-      pricingMinUnits: formData.pricingFormula === "per_unit" && formData.pricingMinUnits >= 0
-        ? formData.pricingMinUnits
-        : undefined,
+      pricingUnitMetric:
+        formData.pricingFormula === "per_unit"
+          ? formData.pricingUnitMetric
+          : undefined,
+      pricingUnitField:
+        formData.pricingFormula === "per_unit"
+          ? formData.pricingUnitField || undefined
+          : undefined,
+      pricingUnitSize:
+        formData.pricingFormula === "per_unit" && formData.pricingUnitSize > 0
+          ? formData.pricingUnitSize
+          : undefined,
+      pricingUnitRounding:
+        formData.pricingFormula === "per_unit"
+          ? formData.pricingUnitRounding
+          : undefined,
+      pricingMinUnits:
+        formData.pricingFormula === "per_unit" && formData.pricingMinUnits >= 0
+          ? formData.pricingMinUnits
+          : undefined,
       operationType: formData.operationType,
       generateType: formData.generateType || undefined,
-      ...(includeMaxPromptLength ? { maxPromptLength: formData.maxPromptLength } : {}),
+      ...(includeMaxPromptLength
+        ? { maxPromptLength: formData.maxPromptLength }
+        : {}),
       inputFields: serializedInputFields.fields,
       pricingTiers: serializedPricingTiers.tiers,
     };
@@ -1449,12 +1666,15 @@ export default function AdminMediaModels() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-cyan-50/20 px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
       <div className="mb-8">
-        <Button variant="ghost" className="mb-4" onClick={() => setLocation("/dashboard")}>
-          <ChevronLeft className="mr-2 h-4 w-4" />
-          Back to Dashboard
-        </Button>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+          <Button variant="ghost" onClick={() => setLocation("/dashboard")}>
+            <ChevronLeft className="mr-2 h-4 w-4" />
+            Back to Dashboard
+          </Button>
+          <LocaleToggle className="shrink-0" />
+        </div>
 
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h1 className="text-3xl font-bold flex items-center gap-3">
               <Sparkles className="h-8 w-8 text-primary" />
@@ -1464,7 +1684,7 @@ export default function AdminMediaModels() {
               Manage AI models for image, video, and audio generation skills
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               variant="outline"
               onClick={() => disableUnavailableMutation.mutate()}
@@ -1488,12 +1708,36 @@ export default function AdminMediaModels() {
       {/* Stats Cards */}
       {stats && (
         <div className="grid gap-4 md:grid-cols-6 mb-8">
-          <DashboardKpiCard icon={Layers} label="Total Models" value={stats.total} />
-          <DashboardKpiCard icon={CheckCircle2} label="Enabled" value={stats.enabled} />
-          <DashboardKpiCard icon={Image} label="Image" value={stats.byType.image} />
-          <DashboardKpiCard icon={Video} label="Video" value={stats.byType.video} />
-          <DashboardKpiCard icon={Music} label="Audio" value={stats.byType.audio} />
-          <DashboardKpiCard icon={AlertTriangle} label="Provider Unavailable" value={stats.unavailable} />
+          <DashboardKpiCard
+            icon={Layers}
+            label="Total Models"
+            value={stats.total}
+          />
+          <DashboardKpiCard
+            icon={CheckCircle2}
+            label="Enabled"
+            value={stats.enabled}
+          />
+          <DashboardKpiCard
+            icon={Image}
+            label="Image"
+            value={stats.byType.image}
+          />
+          <DashboardKpiCard
+            icon={Video}
+            label="Video"
+            value={stats.byType.video}
+          />
+          <DashboardKpiCard
+            icon={Music}
+            label="Audio"
+            value={stats.byType.audio}
+          />
+          <DashboardKpiCard
+            icon={AlertTriangle}
+            label="Provider Unavailable"
+            value={stats.unavailable}
+          />
         </div>
       )}
 
@@ -1513,7 +1757,9 @@ export default function AdminMediaModels() {
                 onClick={() => refetchRuntimeCounters()}
                 disabled={isRuntimeCountersRefreshing}
               >
-                <RefreshCw className={`mr-2 h-4 w-4 ${isRuntimeCountersRefreshing ? "animate-spin" : ""}`} />
+                <RefreshCw
+                  className={`mr-2 h-4 w-4 ${isRuntimeCountersRefreshing ? "animate-spin" : ""}`}
+                />
                 Refresh
               </Button>
               <Button
@@ -1523,7 +1769,9 @@ export default function AdminMediaModels() {
                 onClick={() => resetRuntimeCountersMutation.mutate()}
                 disabled={resetRuntimeCountersMutation.isPending}
               >
-                <RotateCcw className={`mr-2 h-4 w-4 ${resetRuntimeCountersMutation.isPending ? "animate-spin" : ""}`} />
+                <RotateCcw
+                  className={`mr-2 h-4 w-4 ${resetRuntimeCountersMutation.isPending ? "animate-spin" : ""}`}
+                />
                 Reset Counters
               </Button>
             </div>
@@ -1532,12 +1780,18 @@ export default function AdminMediaModels() {
       >
         <div className="space-y-4">
           {!runtimeCounters ? (
-            <div className="text-sm text-muted-foreground">Loading runtime counters...</div>
+            <div className="text-sm text-muted-foreground">
+              Loading runtime counters...
+            </div>
           ) : (
             <div className="space-y-4">
               <div className="text-xs text-muted-foreground">
-                Last sample: {new Date(runtimeCounters.generatedAt).toLocaleString()} | Total fallback hits:{" "}
-                <span className="font-semibold text-amber-600">{runtimeCounters.fallbackTotal}</span>
+                Last sample:{" "}
+                {new Date(runtimeCounters.generatedAt).toLocaleString()} | Total
+                fallback hits:{" "}
+                <span className="font-semibold text-amber-600">
+                  {runtimeCounters.fallbackTotal}
+                </span>
               </div>
               <div className="grid gap-4 md:grid-cols-3">
                 <DashboardCard
@@ -1547,15 +1801,21 @@ export default function AdminMediaModels() {
                   <div className="space-y-1 text-sm">
                     <div className="flex justify-between">
                       <span>defaultFromDb</span>
-                      <span className="font-semibold">{runtimeCounters.mediaLookup.defaultFromDb}</span>
+                      <span className="font-semibold">
+                        {runtimeCounters.mediaLookup.defaultFromDb}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span>defaultFallbackStatic</span>
-                      <span className="font-semibold text-amber-600">{runtimeCounters.mediaLookup.defaultFallbackStatic}</span>
+                      <span className="font-semibold text-amber-600">
+                        {runtimeCounters.mediaLookup.defaultFallbackStatic}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span>unknownModelRejected</span>
-                      <span className="font-semibold">{runtimeCounters.mediaLookup.unknownModelRejected}</span>
+                      <span className="font-semibold">
+                        {runtimeCounters.mediaLookup.unknownModelRejected}
+                      </span>
                     </div>
                   </div>
                 </DashboardCard>
@@ -1566,15 +1826,24 @@ export default function AdminMediaModels() {
                   <div className="space-y-1 text-sm">
                     <div className="flex justify-between">
                       <span>pricingDbMissFallback</span>
-                      <span className="font-semibold text-amber-600">{runtimeCounters.mediaLookup.pricingDbMissFallback}</span>
+                      <span className="font-semibold text-amber-600">
+                        {runtimeCounters.mediaLookup.pricingDbMissFallback}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span>metadataDbMissFallback</span>
-                      <span className="font-semibold text-amber-600">{runtimeCounters.mediaLookup.metadataDbMissFallback}</span>
+                      <span className="font-semibold text-amber-600">
+                        {runtimeCounters.mediaLookup.metadataDbMissFallback}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span>providerDefaultFallback</span>
-                      <span className="font-semibold text-amber-600">{runtimeCounters.mediaResolution.providerDefaultFallback}</span>
+                      <span className="font-semibold text-amber-600">
+                        {
+                          runtimeCounters.mediaResolution
+                            .providerDefaultFallback
+                        }
+                      </span>
                     </div>
                   </div>
                 </DashboardCard>
@@ -1585,23 +1854,36 @@ export default function AdminMediaModels() {
                   <div className="space-y-1 text-sm">
                     <div className="flex justify-between">
                       <span>providerFromApiConfig</span>
-                      <span className="font-semibold">{runtimeCounters.mediaResolution.providerFromApiConfig}</span>
+                      <span className="font-semibold">
+                        {runtimeCounters.mediaResolution.providerFromApiConfig}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span>providerFromStaticRegistry</span>
-                      <span className="font-semibold">{runtimeCounters.mediaResolution.providerFromStaticRegistry}</span>
+                      <span className="font-semibold">
+                        {
+                          runtimeCounters.mediaResolution
+                            .providerFromStaticRegistry
+                        }
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span>unknownModelRequests</span>
-                      <span className="font-semibold">{runtimeCounters.mediaResolution.unknownModelRequests}</span>
+                      <span className="font-semibold">
+                        {runtimeCounters.mediaResolution.unknownModelRequests}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span>registry.staticFallbackHits</span>
-                      <span className="font-semibold text-amber-600">{runtimeCounters.modelRegistry.staticFallbackHits}</span>
+                      <span className="font-semibold text-amber-600">
+                        {runtimeCounters.modelRegistry.staticFallbackHits}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span>registry.cacheHits</span>
-                      <span className="font-semibold">{runtimeCounters.modelRegistry.cacheHits}</span>
+                      <span className="font-semibold">
+                        {runtimeCounters.modelRegistry.cacheHits}
+                      </span>
                     </div>
                   </div>
                 </DashboardCard>
@@ -1612,7 +1894,11 @@ export default function AdminMediaModels() {
       </DashboardCard>
 
       {/* Filters */}
-      <DashboardCard className="mb-6" title="Filters" description="Search and narrow the configured model catalog">
+      <DashboardCard
+        className="mb-6"
+        title="Filters"
+        description="Search and narrow the configured model catalog"
+      >
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="relative flex-1">
@@ -1620,11 +1906,12 @@ export default function AdminMediaModels() {
               <Input
                 placeholder="Search models..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={e => setSearchQuery(e.target.value)}
                 className="pl-9"
               />
               <p className="mt-1 text-xs text-muted-foreground">
-                Search starts after you pause typing for ~0.9s (min 2 characters).
+                Search starts after you pause typing for ~0.9s (min 2
+                characters).
               </p>
             </div>
             <Select value={typeFilter} onValueChange={setTypeFilter}>
@@ -1646,7 +1933,7 @@ export default function AdminMediaModels() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Operations</SelectItem>
-                {MEDIA_OPERATION_OPTIONS.map((option) => (
+                {MEDIA_OPERATION_OPTIONS.map(option => (
                   <SelectItem key={option.value} value={option.value}>
                     {option.label}
                   </SelectItem>
@@ -1660,7 +1947,7 @@ export default function AdminMediaModels() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Providers</SelectItem>
-                {providerOptions.map((option) => (
+                {providerOptions.map(option => (
                   <SelectItem key={option.value} value={option.value}>
                     {option.label}
                   </SelectItem>
@@ -1677,12 +1964,12 @@ export default function AdminMediaModels() {
           className="mb-6"
           title="Available Templates"
           description="Static fallback models that are available in runtime but have not been imported into the admin database yet."
-          trailing={(
+          trailing={
             <Button
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => setIsTemplatesExpanded((current) => !current)}
+              onClick={() => setIsTemplatesExpanded(current => !current)}
               aria-expanded={isTemplatesExpanded}
               aria-controls="available-model-templates"
             >
@@ -1694,17 +1981,30 @@ export default function AdminMediaModels() {
                 className={`ml-2 h-4 w-4 transition-transform ${isTemplatesExpanded ? "rotate-180" : ""}`}
               />
             </Button>
-          )}
+          }
         >
           {isTemplatesExpanded ? (
-            <div id="available-model-templates" className="grid gap-4 lg:grid-cols-2">
+            <div
+              id="available-model-templates"
+              className="grid gap-4 lg:grid-cols-2"
+            >
               {visibleTemplates.map((template: MediaModelTemplate) => {
-                const generationModeLabel = getModelGenerationModeLabel(template as Pick<MediaModel, "modelType" | "modelId" | "configJson">);
-                const isImporting = importTemplateMutation.isPending
-                  && importTemplateMutation.variables?.modelId === template.modelId;
+                const generationModeLabel = getModelGenerationModeLabel(
+                  template as Pick<
+                    MediaModel,
+                    "modelType" | "modelId" | "configJson"
+                  >
+                );
+                const isImporting =
+                  importTemplateMutation.isPending &&
+                  importTemplateMutation.variables?.modelId ===
+                    template.modelId;
 
                 return (
-                  <DashboardCard key={template.modelId} className="border-dashed">
+                  <DashboardCard
+                    key={template.modelId}
+                    className="border-dashed"
+                  >
                     <div className="space-y-3">
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-start gap-3">
@@ -1714,7 +2014,11 @@ export default function AdminMediaModels() {
                           <div className="space-y-1">
                             <div className="flex flex-wrap items-center gap-2">
                               <div className="font-medium">{template.name}</div>
-                              <Badge className={getModelTypeBadgeColor(template.modelType)}>
+                              <Badge
+                                className={getModelTypeBadgeColor(
+                                  template.modelType
+                                )}
+                              >
                                 {template.modelType}
                               </Badge>
                               {generationModeLabel && (
@@ -1734,7 +2038,11 @@ export default function AdminMediaModels() {
                         <Button
                           type="button"
                           size="sm"
-                          onClick={() => importTemplateMutation.mutate({ modelId: template.modelId })}
+                          onClick={() =>
+                            importTemplateMutation.mutate({
+                              modelId: template.modelId,
+                            })
+                          }
                           disabled={importTemplateMutation.isPending}
                         >
                           {isImporting ? (
@@ -1760,25 +2068,33 @@ export default function AdminMediaModels() {
                           <Coins className="mr-1 h-3 w-3 text-amber-500" />
                           {template.creditCost} credits
                         </Badge>
-                        {Array.isArray(template.durations) && template.durations.length > 0 && (
-                          <Badge variant="outline">
-                            {template.durations.join(", ")}s
-                          </Badge>
-                        )}
-                        {Array.isArray(template.aspectRatios) && template.aspectRatios.length > 0 && (
-                          <Badge variant="outline">
-                            {template.aspectRatios.join(", ")}
-                          </Badge>
-                        )}
+                        {Array.isArray(template.durations) &&
+                          template.durations.length > 0 && (
+                            <Badge variant="outline">
+                              {template.durations.join(", ")}s
+                            </Badge>
+                          )}
+                        {Array.isArray(template.aspectRatios) &&
+                          template.aspectRatios.length > 0 && (
+                            <Badge variant="outline">
+                              {template.aspectRatios.join(", ")}
+                            </Badge>
+                          )}
                       </div>
 
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div className="flex flex-wrap gap-1">
-                          {(template.aliases || []).slice(0, 3).map((alias: string) => (
-                            <Badge key={alias} variant="outline" className="text-xs">
-                              {alias}
-                            </Badge>
-                          ))}
+                          {(template.aliases || [])
+                            .slice(0, 3)
+                            .map((alias: string) => (
+                              <Badge
+                                key={alias}
+                                variant="outline"
+                                className="text-xs"
+                              >
+                                {alias}
+                              </Badge>
+                            ))}
                           {(template.aliases || []).length > 3 && (
                             <Badge variant="outline" className="text-xs">
                               +{(template.aliases || []).length - 3}
@@ -1788,21 +2104,33 @@ export default function AdminMediaModels() {
 
                         <div className="max-w-[280px] text-right">
                           {template.providerReady ? (
-                            <Badge variant="outline" className="border-green-200 text-green-700">
+                            <Badge
+                              variant="outline"
+                              className="border-green-200 text-green-700"
+                            >
                               Provider Ready
                             </Badge>
                           ) : (
                             <div className="space-y-1">
-                              <Badge variant="outline" className="border-amber-200 text-amber-700">
-                                {template.providerReadiness === "provider_disabled" && "Provider Disabled"}
-                                {template.providerReadiness === "missing_api_key" && "Missing API Key"}
-                                {template.providerReadiness === "provider_not_found" && "Provider Missing"}
-                                {template.providerReadiness === "test_failed" && "Health Test Failed"}
+                              <Badge
+                                variant="outline"
+                                className="border-amber-200 text-amber-700"
+                              >
+                                {template.providerReadiness ===
+                                  "provider_disabled" && "Provider Disabled"}
+                                {template.providerReadiness ===
+                                  "missing_api_key" && "Missing API Key"}
+                                {template.providerReadiness ===
+                                  "provider_not_found" && "Provider Missing"}
+                                {template.providerReadiness === "test_failed" &&
+                                  "Health Test Failed"}
                                 {!template.providerReadiness && "Not Ready"}
                               </Badge>
                               {template.providerReadinessMessage && (
                                 <div className="text-xs leading-5 text-muted-foreground">
-                                  {summarizeProviderReadinessMessage(template.providerReadinessMessage)}
+                                  {summarizeProviderReadinessMessage(
+                                    template.providerReadinessMessage
+                                  )}
                                 </div>
                               )}
                             </div>
@@ -1819,7 +2147,8 @@ export default function AdminMediaModels() {
               id="available-model-templates"
               className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-3 text-sm text-muted-foreground"
             >
-              Template list is collapsed. Expand this section when you want to import models from the runtime catalog.
+              Template list is collapsed. Expand this section when you want to
+              import models from the runtime catalog.
             </div>
           )}
         </DashboardCard>
@@ -1834,8 +2163,13 @@ export default function AdminMediaModels() {
             <div className="text-center py-12 text-muted-foreground">
               <Sparkles className="h-12 w-12 mx-auto mb-4 opacity-50" />
               <p className="text-lg font-medium">No models found</p>
-              <p className="text-sm">Try changing your filters or add a new model</p>
-              <Button className="mt-4" onClick={() => setIsCreateDialogOpen(true)}>
+              <p className="text-sm">
+                Try changing your filters or add a new model
+              </p>
+              <Button
+                className="mt-4"
+                onClick={() => setIsCreateDialogOpen(true)}
+              >
                 <Plus className="mr-2 h-4 w-4" />
                 Add Model
               </Button>
@@ -1858,153 +2192,187 @@ export default function AdminMediaModels() {
               </TableHeader>
               <TableBody>
                 {visibleModels.map((model: any, index: number) => {
-                  const generationModeLabel = getModelGenerationModeLabel(model);
+                  const generationModeLabel =
+                    getModelGenerationModeLabel(model);
                   return (
-                  <TableRow key={model.id}>
-                    <TableCell className="font-mono text-muted-foreground">
-                      {index + 1}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
-                          {getModelTypeIcon(model.modelType)}
+                    <TableRow key={model.id}>
+                      <TableCell className="font-mono text-muted-foreground">
+                        {index + 1}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
+                            {getModelTypeIcon(model.modelType)}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <div className="font-medium">{model.name}</div>
+                              {generationModeLabel && (
+                                <Badge
+                                  variant="outline"
+                                  className={`text-[10px] px-1.5 py-0 ${getGenerationModeBadgeColor(generationModeLabel)}`}
+                                >
+                                  {generationModeLabel}
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="text-xs text-muted-foreground font-mono">
+                              {model.modelId}
+                            </div>
+                          </div>
                         </div>
-                        <div>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <div className="font-medium">{model.name}</div>
-                            {generationModeLabel && (
-                              <Badge
-                                variant="outline"
-                                className={`text-[10px] px-1.5 py-0 ${getGenerationModeBadgeColor(generationModeLabel)}`}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          className={getModelTypeBadgeColor(model.modelType)}
+                        >
+                          {model.modelType}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">
+                          {getOperationTypeLabel(
+                            inferOperationTypeFromModel(model)
+                          )}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="space-y-1">
+                          <span className="text-sm">
+                            {model.providerDisplayName || model.provider}
+                          </span>
+                          {model.providerDisplayName &&
+                            model.providerDisplayName !== model.provider && (
+                              <div className="text-xs text-muted-foreground font-mono">
+                                {model.provider}
+                              </div>
+                            )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {model.providerReady ? (
+                          <Badge
+                            variant="outline"
+                            className="border-green-200 text-green-700"
+                          >
+                            Ready
+                          </Badge>
+                        ) : (
+                          <div className="max-w-[260px] space-y-1">
+                            <Badge
+                              variant="outline"
+                              className="border-amber-200 text-amber-700"
+                            >
+                              {model.providerReadiness ===
+                                "provider_disabled" && "Provider Disabled"}
+                              {model.providerReadiness === "missing_api_key" &&
+                                "Missing API Key"}
+                              {model.providerReadiness ===
+                                "provider_not_found" && "Provider Missing"}
+                              {model.providerReadiness === "test_failed" &&
+                                "Health Test Failed"}
+                              {!model.providerReadiness && "Not Ready"}
+                            </Badge>
+                            {model.providerReadinessMessage && (
+                              <div
+                                className="text-xs leading-5 text-muted-foreground whitespace-normal break-all"
+                                title={model.providerReadinessMessage}
                               >
-                                {generationModeLabel}
-                              </Badge>
+                                {summarizeProviderReadinessMessage(
+                                  model.providerReadinessMessage
+                                )}
+                              </div>
                             )}
                           </div>
-                          <div className="text-xs text-muted-foreground font-mono">
-                            {model.modelId}
-                          </div>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={getModelTypeBadgeColor(model.modelType)}>
-                        {model.modelType}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">
-                        {getOperationTypeLabel(inferOperationTypeFromModel(model))}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="space-y-1">
-                        <span className="text-sm">{model.providerDisplayName || model.provider}</span>
-                        {model.providerDisplayName && model.providerDisplayName !== model.provider && (
-                          <div className="text-xs text-muted-foreground font-mono">{model.provider}</div>
                         )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {model.providerReady ? (
-                        <Badge variant="outline" className="border-green-200 text-green-700">
-                          Ready
-                        </Badge>
-                      ) : (
-                        <div className="max-w-[260px] space-y-1">
-                          <Badge variant="outline" className="border-amber-200 text-amber-700">
-                            {model.providerReadiness === "provider_disabled" && "Provider Disabled"}
-                            {model.providerReadiness === "missing_api_key" && "Missing API Key"}
-                            {model.providerReadiness === "provider_not_found" && "Provider Missing"}
-                            {model.providerReadiness === "test_failed" && "Health Test Failed"}
-                            {!model.providerReadiness && "Not Ready"}
-                          </Badge>
-                          {model.providerReadinessMessage && (
-                            <div
-                              className="text-xs leading-5 text-muted-foreground whitespace-normal break-all"
-                              title={model.providerReadinessMessage}
-                            >
-                              {summarizeProviderReadinessMessage(model.providerReadinessMessage)}
-                            </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <Coins className="h-3 w-3 text-amber-500" />
+                          <span className="font-medium">
+                            {model.creditCost}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1 max-w-[200px]">
+                          {(model.aliases || [])
+                            .slice(0, 2)
+                            .map((alias: string, i: number) => (
+                              <Badge
+                                key={i}
+                                variant="outline"
+                                className="text-xs"
+                              >
+                                {alias}
+                              </Badge>
+                            ))}
+                          {(model.aliases || []).length > 2 && (
+                            <Badge variant="outline" className="text-xs">
+                              +{(model.aliases || []).length - 2}
+                            </Badge>
                           )}
                         </div>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <Coins className="h-3 w-3 text-amber-500" />
-                        <span className="font-medium">{model.creditCost}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1 max-w-[200px]">
-                        {(model.aliases || []).slice(0, 2).map((alias: string, i: number) => (
-                          <Badge key={i} variant="outline" className="text-xs">
-                            {alias}
+                      </TableCell>
+                      <TableCell>
+                        {model.isEnabled ? (
+                          <Badge variant="default" className="bg-green-500">
+                            <Check className="mr-1 h-3 w-3" />
+                            Enabled
                           </Badge>
-                        ))}
-                        {(model.aliases || []).length > 2 && (
-                          <Badge variant="outline" className="text-xs">
-                            +{(model.aliases || []).length - 2}
+                        ) : (
+                          <Badge variant="secondary">
+                            <X className="mr-1 h-3 w-3" />
+                            Disabled
                           </Badge>
                         )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {model.isEnabled ? (
-                        <Badge variant="default" className="bg-green-500">
-                          <Check className="mr-1 h-3 w-3" />
-                          Enabled
-                        </Badge>
-                      ) : (
-                        <Badge variant="secondary">
-                          <X className="mr-1 h-3 w-3" />
-                          Disabled
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => toggleEnabledMutation.mutate({ id: model.id })}
-                          disabled={toggleEnabledMutation.isPending}
-                          title={model.isEnabled ? "Disable model" : "Enable model"}
-                        >
-                          {model.isEnabled ? (
-                            <XCircle className="h-4 w-4 text-amber-500" />
-                          ) : (
-                            <CheckCircle2 className="h-4 w-4 text-green-500" />
-                          )}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEditModel(model)}
-                          title="Edit"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDuplicateModel(model)}
-                          title="Duplicate"
-                        >
-                          <Copy className="h-4 w-4 text-blue-500" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setDeleteConfirm(model)}
-                          title="Delete"
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() =>
+                              toggleEnabledMutation.mutate({ id: model.id })
+                            }
+                            disabled={toggleEnabledMutation.isPending}
+                            title={
+                              model.isEnabled ? "Disable model" : "Enable model"
+                            }
+                          >
+                            {model.isEnabled ? (
+                              <XCircle className="h-4 w-4 text-amber-500" />
+                            ) : (
+                              <CheckCircle2 className="h-4 w-4 text-green-500" />
+                            )}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEditModel(model)}
+                            title="Edit"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDuplicateModel(model)}
+                            title="Duplicate"
+                          >
+                            <Copy className="h-4 w-4 text-blue-500" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setDeleteConfirm(model)}
+                            title="Delete"
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
                   );
                 })}
               </TableBody>
@@ -2023,7 +2391,12 @@ export default function AdminMediaModels() {
             </DialogDescription>
           </DialogHeader>
 
-          <ModelForm formData={formData} setFormData={setFormData} activeTab={activeTab} setActiveTab={setActiveTab} />
+          <ModelForm
+            formData={formData}
+            setFormData={setFormData}
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+          />
 
           <DialogFooter>
             <Button
@@ -2037,9 +2410,13 @@ export default function AdminMediaModels() {
             </Button>
             <Button
               onClick={handleSave}
-              disabled={createMutation.isPending || !formData.modelId || !formData.name}
+              disabled={
+                createMutation.isPending || !formData.modelId || !formData.name
+              }
             >
-              {createMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {createMutation.isPending && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
               Create Model
             </Button>
           </DialogFooter>
@@ -2047,7 +2424,10 @@ export default function AdminMediaModels() {
       </Dialog>
 
       {/* Edit Model Dialog */}
-      <Dialog open={!!editingModel} onOpenChange={(open) => !open && setEditingModel(null)}>
+      <Dialog
+        open={!!editingModel}
+        onOpenChange={open => !open && setEditingModel(null)}
+      >
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex flex-wrap items-center gap-2">
@@ -2061,10 +2441,17 @@ export default function AdminMediaModels() {
                 </Badge>
               )}
             </DialogTitle>
-            <DialogDescription>Update model configuration and aliases</DialogDescription>
+            <DialogDescription>
+              Update model configuration and aliases
+            </DialogDescription>
           </DialogHeader>
 
-          <ModelForm formData={formData} setFormData={setFormData} activeTab={activeTab} setActiveTab={setActiveTab} />
+          <ModelForm
+            formData={formData}
+            setFormData={setFormData}
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+          />
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditingModel(null)}>
@@ -2072,9 +2459,13 @@ export default function AdminMediaModels() {
             </Button>
             <Button
               onClick={handleSave}
-              disabled={updateMutation.isPending || !formData.modelId || !formData.name}
+              disabled={
+                updateMutation.isPending || !formData.modelId || !formData.name
+              }
             >
-              {updateMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {updateMutation.isPending && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
               Save Changes
             </Button>
           </DialogFooter>
@@ -2082,22 +2473,30 @@ export default function AdminMediaModels() {
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={!!deleteConfirm} onOpenChange={(open) => !open && setDeleteConfirm(null)}>
+      <AlertDialog
+        open={!!deleteConfirm}
+        onOpenChange={open => !open && setDeleteConfirm(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Model</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete <strong>{deleteConfirm?.name}</strong>?
-              This action cannot be undone and may affect skill detection for this model.
+              Are you sure you want to delete{" "}
+              <strong>{deleteConfirm?.name}</strong>? This action cannot be
+              undone and may affect skill detection for this model.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={() => deleteConfirm && deleteMutation.mutate({ id: deleteConfirm.id })}
+              onClick={() =>
+                deleteConfirm && deleteMutation.mutate({ id: deleteConfirm.id })
+              }
             >
-              {deleteMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {deleteMutation.isPending && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -2122,8 +2521,11 @@ function ModelForm({
   const [selectedPresetId, setSelectedPresetId] = useState<string>("none");
   const [draggingFieldId, setDraggingFieldId] = useState<string | null>(null);
   const [dragOverFieldId, setDragOverFieldId] = useState<string | null>(null);
-  const [bulkOptionsByField, setBulkOptionsByField] = useState<Record<string, string>>({});
-  const previewFieldOptionsMutation = trpc.mediaModels.previewFieldOptions.useMutation();
+  const [bulkOptionsByField, setBulkOptionsByField] = useState<
+    Record<string, string>
+  >({});
+  const previewFieldOptionsMutation =
+    trpc.mediaModels.previewFieldOptions.useMutation();
   const formGenerationModeLabel = useMemo(() => {
     const previewConfig = {
       generateType: formData.generateType || undefined,
@@ -2136,7 +2538,9 @@ function ModelForm({
     if (selectedPresetId === "none") {
       return;
     }
-    const preset = API_CONFIG_PRESETS.find((item) => item.id === selectedPresetId);
+    const preset = API_CONFIG_PRESETS.find(
+      item => item.id === selectedPresetId
+    );
     if (!preset) {
       return;
     }
@@ -2145,7 +2549,10 @@ function ModelForm({
       pricingFormula: preset.pricingFormula,
       maxPromptLength: preset.maxPromptLength,
       inputFieldDrafts: parseInputFieldDrafts(preset.inputFields),
-      pricingTierDrafts: parsePricingTierDrafts(preset.pricingTiers, formData.creditCost),
+      pricingTierDrafts: parsePricingTierDrafts(
+        preset.pricingTiers,
+        formData.creditCost
+      ),
     });
     toast.success(`Applied preset: ${preset.label}`);
   };
@@ -2154,8 +2561,12 @@ function ModelForm({
     if (fromId === toId) {
       return;
     }
-    const fromIndex = formData.inputFieldDrafts.findIndex((field) => field.id === fromId);
-    const toIndex = formData.inputFieldDrafts.findIndex((field) => field.id === toId);
+    const fromIndex = formData.inputFieldDrafts.findIndex(
+      field => field.id === fromId
+    );
+    const toIndex = formData.inputFieldDrafts.findIndex(
+      field => field.id === toId
+    );
     if (fromIndex < 0 || toIndex < 0) {
       return;
     }
@@ -2171,82 +2582,96 @@ function ModelForm({
     });
   };
 
-  const updateInputFieldDraft = (fieldId: string, patch: Partial<InputFieldDraft>) => {
+  const updateInputFieldDraft = (
+    fieldId: string,
+    patch: Partial<InputFieldDraft>
+  ) => {
     setFormData({
       ...formData,
-      inputFieldDrafts: formData.inputFieldDrafts.map((field) => (
+      inputFieldDrafts: formData.inputFieldDrafts.map(field =>
         field.id === fieldId ? { ...field, ...patch } : field
-      )),
+      ),
     });
   };
 
   const removeInputFieldDraft = (fieldId: string) => {
     setFormData({
       ...formData,
-      inputFieldDrafts: formData.inputFieldDrafts.filter((field) => field.id !== fieldId),
+      inputFieldDrafts: formData.inputFieldDrafts.filter(
+        field => field.id !== fieldId
+      ),
     });
   };
 
   const addInputFieldDraft = () => {
     setFormData({
       ...formData,
-      inputFieldDrafts: [...formData.inputFieldDrafts, createEmptyInputFieldDraft()],
+      inputFieldDrafts: [
+        ...formData.inputFieldDrafts,
+        createEmptyInputFieldDraft(),
+      ],
     });
   };
 
   const addInputFieldOption = (fieldId: string) => {
     setFormData({
       ...formData,
-      inputFieldDrafts: formData.inputFieldDrafts.map((field) => (
+      inputFieldDrafts: formData.inputFieldDrafts.map(field =>
         field.id === fieldId
           ? {
               ...field,
-              options: [...field.options, { id: createDraftId("opt"), value: "", label: "" }],
+              options: [
+                ...field.options,
+                { id: createDraftId("opt"), value: "", label: "" },
+              ],
             }
           : field
-      )),
+      ),
     });
   };
 
   const updateInputFieldOption = (
     fieldId: string,
     optionId: string,
-    patch: Partial<InputFieldOptionDraft>,
+    patch: Partial<InputFieldOptionDraft>
   ) => {
     setFormData({
       ...formData,
-      inputFieldDrafts: formData.inputFieldDrafts.map((field) => (
+      inputFieldDrafts: formData.inputFieldDrafts.map(field =>
         field.id === fieldId
           ? {
               ...field,
-              options: field.options.map((option) => (
+              options: field.options.map(option =>
                 option.id === optionId ? { ...option, ...patch } : option
-              )),
+              ),
             }
           : field
-      )),
+      ),
     });
   };
 
   const removeInputFieldOption = (fieldId: string, optionId: string) => {
     setFormData({
       ...formData,
-      inputFieldDrafts: formData.inputFieldDrafts.map((field) => (
+      inputFieldDrafts: formData.inputFieldDrafts.map(field =>
         field.id === fieldId
           ? {
               ...field,
-              options: field.options.filter((option) => option.id !== optionId),
+              options: field.options.filter(option => option.id !== optionId),
             }
           : field
-      )),
+      ),
     });
   };
 
   const setBulkOptionsText = (fieldId: string, value: string) => {
-    setBulkOptionsByField((prev) => ({ ...prev, [fieldId]: value }));
+    setBulkOptionsByField(prev => ({ ...prev, [fieldId]: value }));
   };
 
-  const applyBulkOptionsToField = (field: InputFieldDraft, mode: "replace" | "merge") => {
+  const applyBulkOptionsToField = (
+    field: InputFieldDraft,
+    mode: "replace" | "merge"
+  ) => {
     const raw = (bulkOptionsByField[field.id] ?? "").trim();
     if (!raw) {
       toast.error("Please paste option list first.");
@@ -2259,7 +2684,7 @@ function ModelForm({
       return;
     }
 
-    const incoming = parsed.map((option) => ({
+    const incoming = parsed.map(option => ({
       id: createDraftId("opt"),
       value: option.value,
       label: option.label,
@@ -2291,9 +2716,17 @@ function ModelForm({
   };
 
   const findPreferredVoiceField = (): InputFieldDraft | null => {
-    const preferredKeys = ["voiceID", "voiceId", "voice", "speakerVoice", "speaker"];
+    const preferredKeys = [
+      "voiceID",
+      "voiceId",
+      "voice",
+      "speakerVoice",
+      "speaker",
+    ];
     for (const key of preferredKeys) {
-      const found = formData.inputFieldDrafts.find((field) => field.key.trim().toLowerCase() === key.toLowerCase());
+      const found = formData.inputFieldDrafts.find(
+        field => field.key.trim().toLowerCase() === key.toLowerCase()
+      );
       if (found) {
         return found;
       }
@@ -2308,14 +2741,19 @@ function ModelForm({
       return;
     }
 
-    const incomingOptions = parsedVoices.map((entry) => ({
+    const incomingOptions = parsedVoices.map(entry => ({
       id: createDraftId("opt"),
       value: entry.value,
       label: entry.label,
     }));
 
     const existingField = findPreferredVoiceField();
-    const defaultFieldKey = formData.provider.trim().toLowerCase().includes("uvoice") ? "voiceID" : "voice";
+    const defaultFieldKey = formData.provider
+      .trim()
+      .toLowerCase()
+      .includes("uvoice")
+      ? "voiceID"
+      : "voice";
 
     if (!existingField) {
       const nextField = createEmptyInputFieldDraft();
@@ -2330,19 +2768,28 @@ function ModelForm({
         ...formData,
         inputFieldDrafts: [...formData.inputFieldDrafts, nextField],
       });
-      toast.success(`Created "${nextField.key}" field with ${incomingOptions.length} voices.`);
+      toast.success(
+        `Created "${nextField.key}" field with ${incomingOptions.length} voices.`
+      );
       return;
     }
 
     if (mode === "replace") {
-      const shouldSetDefault = !existingField.defaultRaw.trim()
-        || !incomingOptions.some((option) => option.value === existingField.defaultRaw.trim());
+      const shouldSetDefault =
+        !existingField.defaultRaw.trim() ||
+        !incomingOptions.some(
+          option => option.value === existingField.defaultRaw.trim()
+        );
       updateInputFieldDraft(existingField.id, {
         searchable: true,
         options: incomingOptions,
-        ...(shouldSetDefault ? { defaultRaw: incomingOptions[0]?.value || "" } : {}),
+        ...(shouldSetDefault
+          ? { defaultRaw: incomingOptions[0]?.value || "" }
+          : {}),
       });
-      toast.success(`Replaced ${existingField.key} options with ${incomingOptions.length} voices.`);
+      toast.success(
+        `Replaced ${existingField.key} options with ${incomingOptions.length} voices.`
+      );
       return;
     }
 
@@ -2361,9 +2808,13 @@ function ModelForm({
     updateInputFieldDraft(existingField.id, {
       searchable: true,
       options: Array.from(merged.values()),
-      ...(existingField.defaultRaw.trim().length === 0 ? { defaultRaw: incomingOptions[0]?.value || "" } : {}),
+      ...(existingField.defaultRaw.trim().length === 0
+        ? { defaultRaw: incomingOptions[0]?.value || "" }
+        : {}),
     });
-    toast.success(`Merged voice list into ${existingField.key} (${merged.size} options).`);
+    toast.success(
+      `Merged voice list into ${existingField.key} (${merged.size} options).`
+    );
   };
 
   const refreshInputFieldOptions = async (field: InputFieldDraft) => {
@@ -2466,7 +2917,9 @@ function ModelForm({
         searchable: true,
         options: Array.from(merged.values()),
       });
-      toast.success(`Loaded ${result.options.length} options (${merged.size} total).`);
+      toast.success(
+        `Loaded ${result.options.length} options (${merged.size} total).`
+      );
     } catch (error: any) {
       toast.error("Failed to refresh options", {
         description: error?.message || "Unknown error",
@@ -2474,38 +2927,47 @@ function ModelForm({
     }
   };
 
-  const updatePricingTierDraft = (tierId: string, patch: Partial<PricingTierDraft>) => {
+  const updatePricingTierDraft = (
+    tierId: string,
+    patch: Partial<PricingTierDraft>
+  ) => {
     setFormData({
       ...formData,
-      pricingTierDrafts: formData.pricingTierDrafts.map((tier) => (
+      pricingTierDrafts: formData.pricingTierDrafts.map(tier =>
         tier.id === tierId ? { ...tier, ...patch } : tier
-      )),
+      ),
     });
   };
 
   const removePricingTierDraft = (tierId: string) => {
     setFormData({
       ...formData,
-      pricingTierDrafts: formData.pricingTierDrafts.filter((tier) => tier.id !== tierId),
+      pricingTierDrafts: formData.pricingTierDrafts.filter(
+        tier => tier.id !== tierId
+      ),
     });
   };
 
   const addPricingTierDraft = () => {
     setFormData({
       ...formData,
-      pricingTierDrafts: [...formData.pricingTierDrafts, { id: createDraftId("tier"), key: "", value: "" }],
+      pricingTierDrafts: [
+        ...formData.pricingTierDrafts,
+        { id: createDraftId("tier"), key: "", value: "" },
+      ],
     });
   };
 
   const inputFieldPreview = JSON.stringify(
     serializeInputFieldDrafts(formData.inputFieldDrafts).fields,
     null,
-    2,
+    2
   );
   const pricingTierPreview = JSON.stringify(
-    serializePricingTierDrafts(formData.pricingTierDrafts, formData.creditCost).tiers,
+    serializePricingTierDrafts(formData.pricingTierDrafts, formData.creditCost)
+      .tiers,
     null,
-    2,
+    2
   );
 
   return (
@@ -2525,7 +2987,9 @@ function ModelForm({
               <Input
                 id="modelId"
                 value={formData.modelId}
-                onChange={(e) => setFormData({ ...formData, modelId: e.target.value })}
+                onChange={e =>
+                  setFormData({ ...formData, modelId: e.target.value })
+                }
                 placeholder="e.g., google-nano-banana-pro"
               />
               <p className="text-xs text-muted-foreground">
@@ -2537,7 +3001,9 @@ function ModelForm({
               <Input
                 id="name"
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                onChange={e =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
                 placeholder="e.g., Google Nano Banana Pro"
               />
             </div>
@@ -2548,7 +3014,9 @@ function ModelForm({
             <Textarea
               id="description"
               value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              onChange={e =>
+                setFormData({ ...formData, description: e.target.value })
+              }
               placeholder="Brief description of the model..."
               rows={2}
             />
@@ -2593,7 +3061,9 @@ function ModelForm({
               <Input
                 id="provider"
                 value={formData.provider}
-                onChange={(e) => setFormData({ ...formData, provider: e.target.value })}
+                onChange={e =>
+                  setFormData({ ...formData, provider: e.target.value })
+                }
                 placeholder="e.g., kie.ai"
               />
             </div>
@@ -2607,8 +3077,11 @@ function ModelForm({
                 type="number"
                 min={0}
                 value={formData.creditCost}
-                onChange={(e) =>
-                  setFormData({ ...formData, creditCost: parseInt(e.target.value) || 0 })
+                onChange={e =>
+                  setFormData({
+                    ...formData,
+                    creditCost: parseInt(e.target.value) || 0,
+                  })
                 }
               />
               <p className="text-xs text-muted-foreground">
@@ -2622,8 +3095,11 @@ function ModelForm({
                 type="number"
                 min={0}
                 value={formData.priority}
-                onChange={(e) =>
-                  setFormData({ ...formData, priority: parseInt(e.target.value) || 99 })
+                onChange={e =>
+                  setFormData({
+                    ...formData,
+                    priority: parseInt(e.target.value) || 99,
+                  })
                 }
               />
               <p className="text-xs text-muted-foreground">
@@ -2641,7 +3117,9 @@ function ModelForm({
             </div>
             <Switch
               checked={formData.isEnabled}
-              onCheckedChange={(checked) => setFormData({ ...formData, isEnabled: checked })}
+              onCheckedChange={checked =>
+                setFormData({ ...formData, isEnabled: checked })
+              }
             />
           </div>
         </div>
@@ -2654,13 +3132,15 @@ function ModelForm({
             <Textarea
               id="aliases"
               value={formData.aliases}
-              onChange={(e) => setFormData({ ...formData, aliases: e.target.value })}
+              onChange={e =>
+                setFormData({ ...formData, aliases: e.target.value })
+              }
               placeholder="nano banana pro, nano_banana_pro, google nano banana, gemini 3"
               rows={4}
             />
             <p className="text-xs text-muted-foreground">
-              Comma-separated list of aliases for natural language detection. Users can mention
-              any of these in their prompts to use this model.
+              Comma-separated list of aliases for natural language detection.
+              Users can mention any of these in their prompts to use this model.
             </p>
           </div>
 
@@ -2668,9 +3148,16 @@ function ModelForm({
             <div className="text-sm text-muted-foreground">
               <p className="mb-2">With these aliases, users can say:</p>
               <ul className="list-disc list-inside space-y-1">
-                <li>"Generate image of a cat with <strong>nano banana pro</strong>"</li>
-                <li>"Create a video using <strong>veo 3</strong>"</li>
-                <li>"Create an image with <strong>flux 2.0</strong>"</li>
+                <li>
+                  "Generate image of a cat with <strong>nano banana pro</strong>
+                  "
+                </li>
+                <li>
+                  "Create a video using <strong>veo 3</strong>"
+                </li>
+                <li>
+                  "Create an image with <strong>flux 2.0</strong>"
+                </li>
               </ul>
             </div>
           </DashboardCard>
@@ -2679,13 +3166,16 @@ function ModelForm({
 
       <TabsContent value="capabilities" className="space-y-4 mt-4">
         <div className="grid gap-4">
-          {(formData.modelType === "image" || formData.modelType === "video") && (
+          {(formData.modelType === "image" ||
+            formData.modelType === "video") && (
             <div className="grid gap-2">
               <Label htmlFor="aspectRatios">Supported Aspect Ratios</Label>
               <Input
                 id="aspectRatios"
                 value={formData.aspectRatios}
-                onChange={(e) => setFormData({ ...formData, aspectRatios: e.target.value })}
+                onChange={e =>
+                  setFormData({ ...formData, aspectRatios: e.target.value })
+                }
                 placeholder="1:1, 16:9, 9:16, 4:3"
               />
               <p className="text-xs text-muted-foreground">
@@ -2700,7 +3190,9 @@ function ModelForm({
               <Input
                 id="sizes"
                 value={formData.sizes}
-                onChange={(e) => setFormData({ ...formData, sizes: e.target.value })}
+                onChange={e =>
+                  setFormData({ ...formData, sizes: e.target.value })
+                }
                 placeholder="1024x1024, 1024x1792, 1792x1024"
               />
               <p className="text-xs text-muted-foreground">
@@ -2715,7 +3207,9 @@ function ModelForm({
               <Input
                 id="durations"
                 value={formData.durations}
-                onChange={(e) => setFormData({ ...formData, durations: e.target.value })}
+                onChange={e =>
+                  setFormData({ ...formData, durations: e.target.value })
+                }
                 placeholder="5, 10, 15, 20"
               />
               <p className="text-xs text-muted-foreground">
@@ -2730,13 +3224,15 @@ function ModelForm({
               <Textarea
                 id="voices"
                 value={formData.voices}
-                onChange={(e) => setFormData({ ...formData, voices: e.target.value })}
+                onChange={e =>
+                  setFormData({ ...formData, voices: e.target.value })
+                }
                 placeholder={`Adam\nAlice\nMJ0RnG71ty4LH3dvNfSd\n- Leon - Soothing and Grounded`}
                 rows={8}
               />
               <p className="text-xs text-muted-foreground">
-                Supports comma/newline list and VoiceID + label format. VoiceID will be stored in DB;
-                label will be used in searchable dropdown.
+                Supports comma/newline list and VoiceID + label format. VoiceID
+                will be stored in DB; label will be used in searchable dropdown.
               </p>
               <div className="flex flex-wrap gap-2">
                 <Button
@@ -2777,7 +3273,9 @@ function ModelForm({
               <Input
                 id="apiEndpoint"
                 value={formData.apiEndpoint}
-                onChange={(e) => setFormData({ ...formData, apiEndpoint: e.target.value })}
+                onChange={e =>
+                  setFormData({ ...formData, apiEndpoint: e.target.value })
+                }
                 placeholder="e.g., /api/v1/veo/generate"
               />
               <p className="text-xs text-muted-foreground">
@@ -2789,7 +3287,9 @@ function ModelForm({
               <Input
                 id="apiPayloadFormat"
                 value={formData.apiPayloadFormat}
-                onChange={(e) => setFormData({ ...formData, apiPayloadFormat: e.target.value })}
+                onChange={e =>
+                  setFormData({ ...formData, apiPayloadFormat: e.target.value })
+                }
                 placeholder="e.g., veo, market, runway"
               />
               <p className="text-xs text-muted-foreground">
@@ -2799,15 +3299,20 @@ function ModelForm({
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="apiQueryEndpoint">Query Endpoint (Status/Result)</Label>
+            <Label htmlFor="apiQueryEndpoint">
+              Query Endpoint (Status/Result)
+            </Label>
             <Input
               id="apiQueryEndpoint"
               value={formData.apiQueryEndpoint}
-              onChange={(e) => setFormData({ ...formData, apiQueryEndpoint: e.target.value })}
+              onChange={e =>
+                setFormData({ ...formData, apiQueryEndpoint: e.target.value })
+              }
               placeholder="e.g., /api/v1/veo/record-info?taskId={task_id}"
             />
             <p className="text-xs text-muted-foreground">
-              Optional per-model endpoint used for Fetch Result. Supports {"{task_id}"} placeholder.
+              Optional per-model endpoint used for Fetch Result. Supports{" "}
+              {"{task_id}"} placeholder.
             </p>
           </div>
 
@@ -2817,7 +3322,9 @@ function ModelForm({
               <Input
                 id="kieModelId"
                 value={formData.kieModelId}
-                onChange={(e) => setFormData({ ...formData, kieModelId: e.target.value })}
+                onChange={e =>
+                  setFormData({ ...formData, kieModelId: e.target.value })
+                }
                 placeholder="e.g., wan/2-6-text-to-video"
               />
               <p className="text-xs text-muted-foreground">
@@ -2836,7 +3343,9 @@ function ModelForm({
               <Input
                 id="generateType"
                 value={formData.generateType}
-                onChange={(e) => setFormData({ ...formData, generateType: e.target.value })}
+                onChange={e =>
+                  setFormData({ ...formData, generateType: e.target.value })
+                }
                 placeholder="e.g., text-to-video, image-to-video"
               />
             </div>
@@ -2846,11 +3355,17 @@ function ModelForm({
                 id="maxPromptLength"
                 type="number"
                 value={formData.maxPromptLength}
-                onChange={(e) => setFormData({ ...formData, maxPromptLength: parseInt(e.target.value) || 0 })}
+                onChange={e =>
+                  setFormData({
+                    ...formData,
+                    maxPromptLength: parseInt(e.target.value) || 0,
+                  })
+                }
                 placeholder="0"
               />
               <p className="text-xs text-muted-foreground">
-                Maximum characters allowed for prompts. Leave as 0 to skip the prompt limit.
+                Maximum characters allowed for prompts. Leave as 0 to skip the
+                prompt limit.
               </p>
             </div>
           </div>
@@ -2861,12 +3376,15 @@ function ModelForm({
               id="apiConfigRaw"
               rows={4}
               value={formData.apiConfigRaw}
-              onChange={(e) => setFormData({ ...formData, apiConfigRaw: e.target.value })}
+              onChange={e =>
+                setFormData({ ...formData, apiConfigRaw: e.target.value })
+              }
               placeholder={`{\n  "omit_text": "true"\n}`}
               className="font-mono text-xs"
             />
             <p className="text-xs text-muted-foreground">
-              Optional extra key/value sent in <code>configJson.apiConfig</code> for model-specific behavior.
+              Optional extra key/value sent in <code>configJson.apiConfig</code>{" "}
+              for model-specific behavior.
             </p>
           </div>
 
@@ -2874,20 +3392,31 @@ function ModelForm({
             <Label htmlFor="pricingFormula">Pricing Formula</Label>
             <Select
               value={formData.pricingFormula}
-              onValueChange={(value) => setFormData({ ...formData, pricingFormula: value })}
+              onValueChange={value =>
+                setFormData({ ...formData, pricingFormula: value })
+              }
             >
               <SelectTrigger className="w-[200px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="flat">Flat (single price or one pricing field)</SelectItem>
-                <SelectItem value="per_duration">Per Duration (duration field)</SelectItem>
-                <SelectItem value="matrix">Matrix (combine all pricing fields)</SelectItem>
-                <SelectItem value="per_unit">Per Unit (characters/items)</SelectItem>
+                <SelectItem value="flat">
+                  Flat (single price or one pricing field)
+                </SelectItem>
+                <SelectItem value="per_duration">
+                  Per Duration (duration field)
+                </SelectItem>
+                <SelectItem value="matrix">
+                  Matrix (combine all pricing fields)
+                </SelectItem>
+                <SelectItem value="per_unit">
+                  Per Unit (characters/items)
+                </SelectItem>
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
-              Tier keys should match the values from the input fields you mark as <code>Affects Pricing</code>.
+              Tier keys should match the values from the input fields you mark
+              as <code>Affects Pricing</code>.
             </p>
           </div>
 
@@ -2895,10 +3424,14 @@ function ModelForm({
             <div className="grid gap-3 rounded-md border border-slate-200 p-3">
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 <div className="grid gap-1">
-                  <Label className="text-xs text-muted-foreground">Unit Metric</Label>
+                  <Label className="text-xs text-muted-foreground">
+                    Unit Metric
+                  </Label>
                   <Select
                     value={formData.pricingUnitMetric}
-                    onValueChange={(value: "characters" | "items") => setFormData({ ...formData, pricingUnitMetric: value })}
+                    onValueChange={(value: "characters" | "items") =>
+                      setFormData({ ...formData, pricingUnitMetric: value })
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -2910,29 +3443,50 @@ function ModelForm({
                   </Select>
                 </div>
                 <div className="grid gap-1">
-                  <Label className="text-xs text-muted-foreground">Source Field Key</Label>
+                  <Label className="text-xs text-muted-foreground">
+                    Source Field Key
+                  </Label>
                   <Input
                     value={formData.pricingUnitField}
-                    onChange={(e) => setFormData({ ...formData, pricingUnitField: e.target.value })}
+                    onChange={e =>
+                      setFormData({
+                        ...formData,
+                        pricingUnitField: e.target.value,
+                      })
+                    }
                     placeholder="text, prompt, dialogue"
                   />
                 </div>
               </div>
               <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
                 <div className="grid gap-1">
-                  <Label className="text-xs text-muted-foreground">Unit Size</Label>
+                  <Label className="text-xs text-muted-foreground">
+                    Unit Size
+                  </Label>
                   <Input
                     type="number"
                     min={1}
                     value={formData.pricingUnitSize}
-                    onChange={(e) => setFormData({ ...formData, pricingUnitSize: Math.max(1, parseInt(e.target.value, 10) || 1) })}
+                    onChange={e =>
+                      setFormData({
+                        ...formData,
+                        pricingUnitSize: Math.max(
+                          1,
+                          parseInt(e.target.value, 10) || 1
+                        ),
+                      })
+                    }
                   />
                 </div>
                 <div className="grid gap-1">
-                  <Label className="text-xs text-muted-foreground">Rounding</Label>
+                  <Label className="text-xs text-muted-foreground">
+                    Rounding
+                  </Label>
                   <Select
                     value={formData.pricingUnitRounding}
-                    onValueChange={(value: "ceil" | "floor" | "round") => setFormData({ ...formData, pricingUnitRounding: value })}
+                    onValueChange={(value: "ceil" | "floor" | "round") =>
+                      setFormData({ ...formData, pricingUnitRounding: value })
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -2945,17 +3499,30 @@ function ModelForm({
                   </Select>
                 </div>
                 <div className="grid gap-1">
-                  <Label className="text-xs text-muted-foreground">Min Units</Label>
+                  <Label className="text-xs text-muted-foreground">
+                    Min Units
+                  </Label>
                   <Input
                     type="number"
                     min={0}
                     value={formData.pricingMinUnits}
-                    onChange={(e) => setFormData({ ...formData, pricingMinUnits: Math.max(0, parseInt(e.target.value, 10) || 0) })}
+                    onChange={e =>
+                      setFormData({
+                        ...formData,
+                        pricingMinUnits: Math.max(
+                          0,
+                          parseInt(e.target.value, 10) || 0
+                        ),
+                      })
+                    }
                   />
                 </div>
               </div>
               <p className="text-xs text-muted-foreground">
-                Example: 70 credits per 1,000 characters = formula <code>per_unit</code>, metric <code>characters</code>, source <code>text</code>, unit size <code>1000</code>, rounding <code>ceil</code>, default tier <code>70</code>.
+                Example: 70 credits per 1,000 characters = formula{" "}
+                <code>per_unit</code>, metric <code>characters</code>, source{" "}
+                <code>text</code>, unit size <code>1000</code>, rounding{" "}
+                <code>ceil</code>, default tier <code>70</code>.
               </p>
             </div>
           )}
@@ -2964,13 +3531,15 @@ function ModelForm({
             <Label htmlFor="operationType">Operation Type</Label>
             <Select
               value={formData.operationType}
-              onValueChange={(value: MediaOperationType) => setFormData({ ...formData, operationType: value })}
+              onValueChange={(value: MediaOperationType) =>
+                setFormData({ ...formData, operationType: value })
+              }
             >
               <SelectTrigger className="w-[260px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {MEDIA_OPERATION_OPTIONS.map((option) => (
+                {MEDIA_OPERATION_OPTIONS.map(option => (
                   <SelectItem key={option.value} value={option.value}>
                     {option.label}
                   </SelectItem>
@@ -2978,7 +3547,8 @@ function ModelForm({
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
-              Used for fast filtering and selecting the correct model capability (t2i/i2i/t2v/etc.).
+              Used for fast filtering and selecting the correct model capability
+              (t2i/i2i/t2v/etc.).
             </p>
           </div>
 
@@ -2988,29 +3558,42 @@ function ModelForm({
               Quick Presets
             </Label>
             <div className="flex flex-col gap-2 md:flex-row">
-              <Select value={selectedPresetId} onValueChange={setSelectedPresetId}>
+              <Select
+                value={selectedPresetId}
+                onValueChange={setSelectedPresetId}
+              >
                 <SelectTrigger className="md:flex-1">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Custom (no preset)</SelectItem>
-                  {API_CONFIG_PRESETS.map((preset) => (
+                  {API_CONFIG_PRESETS.map(preset => (
                     <SelectItem key={preset.id} value={preset.id}>
                       {preset.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <Button type="button" variant="outline" onClick={applyApiConfigPreset} disabled={selectedPresetId === "none"}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={applyApiConfigPreset}
+                disabled={selectedPresetId === "none"}
+              >
                 Apply Preset
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              Apply a starter template for popular models. This replaces Input Fields and Pricing Tiers with preset values.
+              Apply a starter template for popular models. This replaces Input
+              Fields and Pricing Tiers with preset values.
             </p>
             {selectedPresetId !== "none" ? (
               <p className="text-xs text-slate-600">
-                {API_CONFIG_PRESETS.find((preset) => preset.id === selectedPresetId)?.description}
+                {
+                  API_CONFIG_PRESETS.find(
+                    preset => preset.id === selectedPresetId
+                  )?.description
+                }
               </p>
             ) : null}
           </div>
@@ -3018,27 +3601,44 @@ function ModelForm({
           <div className="grid gap-2">
             <div className="flex items-center justify-between gap-2">
               <Label>Pricing Tiers</Label>
-              <Button type="button" size="sm" variant="outline" onClick={addPricingTierDraft}>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={addPricingTierDraft}
+              >
                 <Plus className="mr-1 h-3.5 w-3.5" />
                 Add Tier
               </Button>
             </div>
             <div className="space-y-2 rounded-md border border-slate-200 p-3">
               {formData.pricingTierDrafts.length === 0 ? (
-                <p className="text-xs text-muted-foreground">No pricing tiers. System will save a default tier automatically.</p>
+                <p className="text-xs text-muted-foreground">
+                  No pricing tiers. System will save a default tier
+                  automatically.
+                </p>
               ) : (
-                formData.pricingTierDrafts.map((tier) => (
-                  <div key={tier.id} className="grid grid-cols-1 gap-2 rounded-md border border-slate-100 p-2 md:grid-cols-[1fr_1fr_auto]">
+                formData.pricingTierDrafts.map(tier => (
+                  <div
+                    key={tier.id}
+                    className="grid grid-cols-1 gap-2 rounded-md border border-slate-100 p-2 md:grid-cols-[1fr_1fr_auto]"
+                  >
                     <Input
                       value={tier.key}
-                      onChange={(e) => updatePricingTierDraft(tier.id, { key: e.target.value })}
+                      onChange={e =>
+                        updatePricingTierDraft(tier.id, { key: e.target.value })
+                      }
                       placeholder="Tier key (e.g., model, veo3_fast)"
                     />
                     <Input
                       type="number"
                       min={0}
                       value={tier.value}
-                      onChange={(e) => updatePricingTierDraft(tier.id, { value: e.target.value })}
+                      onChange={e =>
+                        updatePricingTierDraft(tier.id, {
+                          value: e.target.value,
+                        })
+                      }
                       placeholder="Credits"
                     />
                     <Button
@@ -3055,28 +3655,36 @@ function ModelForm({
               )}
             </div>
             <p className="text-xs text-muted-foreground">
-              Define tier key and credit cost. Example keys: "default", "model", "veo3_fast", "720p-10s".
-              Pricing is controlled by the input fields marked <code>Affects Pricing</code>.
+              Define tier key and credit cost. Example keys: "default", "model",
+              "veo3_fast", "720p-10s". Pricing is controlled by the input fields
+              marked <code>Affects Pricing</code>.
             </p>
           </div>
 
           <div className="grid gap-2">
             <div className="flex items-center justify-between gap-2">
               <Label>Input Fields</Label>
-              <Button type="button" size="sm" variant="outline" onClick={addInputFieldDraft}>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={addInputFieldDraft}
+              >
                 <Plus className="mr-1 h-3.5 w-3.5" />
                 Add Field
               </Button>
             </div>
             <div className="space-y-3 rounded-md border border-slate-200 p-3">
               {formData.inputFieldDrafts.length === 0 ? (
-                <p className="text-xs text-muted-foreground">No dynamic fields configured yet.</p>
+                <p className="text-xs text-muted-foreground">
+                  No dynamic fields configured yet.
+                </p>
               ) : (
                 formData.inputFieldDrafts.map((field, fieldIndex) => (
                   <div
                     key={field.id}
                     className={`space-y-3 rounded-md border p-3 ${dragOverFieldId === field.id ? "border-sky-400 bg-sky-50/50" : "border-slate-100"}`}
-                    onDragOver={(event) => {
+                    onDragOver={event => {
                       if (!draggingFieldId) {
                         return;
                       }
@@ -3086,9 +3694,11 @@ function ModelForm({
                         setDragOverFieldId(field.id);
                       }
                     }}
-                    onDrop={(event) => {
+                    onDrop={event => {
                       event.preventDefault();
-                      const sourceId = draggingFieldId || event.dataTransfer.getData("text/plain");
+                      const sourceId =
+                        draggingFieldId ||
+                        event.dataTransfer.getData("text/plain");
                       if (sourceId) {
                         reorderInputFieldDrafts(sourceId, field.id);
                       }
@@ -3104,7 +3714,7 @@ function ModelForm({
                           size="icon"
                           className="cursor-grab active:cursor-grabbing"
                           draggable
-                          onDragStart={(event) => {
+                          onDragStart={event => {
                             event.dataTransfer.effectAllowed = "move";
                             event.dataTransfer.setData("text/plain", field.id);
                             setDraggingFieldId(field.id);
@@ -3117,7 +3727,9 @@ function ModelForm({
                         >
                           <GripVertical className="h-4 w-4 text-slate-500" />
                         </Button>
-                        <p className="text-sm font-medium">Field #{fieldIndex + 1}</p>
+                        <p className="text-sm font-medium">
+                          Field #{fieldIndex + 1}
+                        </p>
                       </div>
                       <Button
                         type="button"
@@ -3133,12 +3745,20 @@ function ModelForm({
                     <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                       <Input
                         value={field.key}
-                        onChange={(e) => updateInputFieldDraft(field.id, { key: e.target.value })}
+                        onChange={e =>
+                          updateInputFieldDraft(field.id, {
+                            key: e.target.value,
+                          })
+                        }
                         placeholder="key (e.g., duration)"
                       />
                       <Input
                         value={field.label}
-                        onChange={(e) => updateInputFieldDraft(field.id, { label: e.target.value })}
+                        onChange={e =>
+                          updateInputFieldDraft(field.id, {
+                            label: e.target.value,
+                          })
+                        }
                         placeholder="label (e.g., Duration)"
                       />
                     </div>
@@ -3146,13 +3766,17 @@ function ModelForm({
                     <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
                       <Select
                         value={field.type}
-                        onValueChange={(value) => updateInputFieldDraft(field.id, { type: value as InputFieldType })}
+                        onValueChange={value =>
+                          updateInputFieldDraft(field.id, {
+                            type: value as InputFieldType,
+                          })
+                        }
                       >
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {INPUT_FIELD_TYPE_OPTIONS.map((option) => (
+                          {INPUT_FIELD_TYPE_OPTIONS.map(option => (
                             <SelectItem key={option.value} value={option.value}>
                               {option.label}
                             </SelectItem>
@@ -3163,36 +3787,54 @@ function ModelForm({
                         <span className="text-sm">Required</span>
                         <Switch
                           checked={field.required}
-                          onCheckedChange={(checked) => updateInputFieldDraft(field.id, { required: checked })}
+                          onCheckedChange={checked =>
+                            updateInputFieldDraft(field.id, {
+                              required: checked,
+                            })
+                          }
                         />
                       </div>
                       <div className="flex items-center justify-between rounded-md border px-3 py-2">
                         <span className="text-sm">Affects Pricing</span>
                         <Switch
                           checked={field.affectsPricing}
-                          onCheckedChange={(checked) => updateInputFieldDraft(field.id, { affectsPricing: checked })}
+                          onCheckedChange={checked =>
+                            updateInputFieldDraft(field.id, {
+                              affectsPricing: checked,
+                            })
+                          }
                         />
                       </div>
                       <div className="flex items-center justify-between rounded-md border px-3 py-2">
                         <span className="text-sm">Searchable Picker</span>
                         <Switch
                           checked={field.searchable}
-                          onCheckedChange={(checked) => updateInputFieldDraft(field.id, { searchable: checked })}
+                          onCheckedChange={checked =>
+                            updateInputFieldDraft(field.id, {
+                              searchable: checked,
+                            })
+                          }
                         />
                       </div>
                     </div>
 
                     <div className="grid gap-1">
-                      <Label className="text-xs text-muted-foreground">Sync with (auto-fill at runtime)</Label>
+                      <Label className="text-xs text-muted-foreground">
+                        Sync with (auto-fill at runtime)
+                      </Label>
                       <Select
                         value={field.syncWith}
-                        onValueChange={(value) => updateInputFieldDraft(field.id, { syncWith: value as SyncTarget })}
+                        onValueChange={value =>
+                          updateInputFieldDraft(field.id, {
+                            syncWith: value as SyncTarget,
+                          })
+                        }
                       >
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {SYNC_TARGET_OPTIONS.map((option) => (
+                          {SYNC_TARGET_OPTIONS.map(option => (
                             <SelectItem key={option.value} value={option.value}>
                               {option.label}
                             </SelectItem>
@@ -3203,18 +3845,31 @@ function ModelForm({
 
                     <div className="space-y-2 rounded-md border border-slate-100 p-2">
                       <div className="grid gap-1">
-                        <Label className="text-xs text-muted-foreground">Options Source</Label>
+                        <Label className="text-xs text-muted-foreground">
+                          Options Source
+                        </Label>
                         <Select
                           value={field.optionsSourceType}
-                          onValueChange={(value) => updateInputFieldDraft(field.id, { optionsSourceType: value as InputFieldOptionsSourceType })}
+                          onValueChange={value =>
+                            updateInputFieldDraft(field.id, {
+                              optionsSourceType:
+                                value as InputFieldOptionsSourceType,
+                            })
+                          }
                         >
                           <SelectTrigger>
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="none">Manual / Static</SelectItem>
-                            <SelectItem value="provider_api">Provider API (uses provider key)</SelectItem>
-                            <SelectItem value="public_api">Public API (HTTPS URL)</SelectItem>
+                            <SelectItem value="none">
+                              Manual / Static
+                            </SelectItem>
+                            <SelectItem value="provider_api">
+                              Provider API (uses provider key)
+                            </SelectItem>
+                            <SelectItem value="public_api">
+                              Public API (HTTPS URL)
+                            </SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -3224,12 +3879,24 @@ function ModelForm({
                           <div className="grid grid-cols-1 gap-2 md:grid-cols-[2fr_1fr]">
                             <Input
                               value={field.optionsSourceEndpoint}
-                              onChange={(e) => updateInputFieldDraft(field.id, { optionsSourceEndpoint: e.target.value })}
-                              placeholder={field.optionsSourceType === "provider_api" ? "/voice/list" : "https://api.example.com/voices"}
+                              onChange={e =>
+                                updateInputFieldDraft(field.id, {
+                                  optionsSourceEndpoint: e.target.value,
+                                })
+                              }
+                              placeholder={
+                                field.optionsSourceType === "provider_api"
+                                  ? "/voice/list"
+                                  : "https://api.example.com/voices"
+                              }
                             />
                             <Select
                               value={field.optionsSourceMethod}
-                              onValueChange={(value) => updateInputFieldDraft(field.id, { optionsSourceMethod: value as "GET" | "POST" })}
+                              onValueChange={value =>
+                                updateInputFieldDraft(field.id, {
+                                  optionsSourceMethod: value as "GET" | "POST",
+                                })
+                              }
                             >
                               <SelectTrigger>
                                 <SelectValue />
@@ -3243,43 +3910,73 @@ function ModelForm({
                           <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                             <Input
                               value={field.optionsSourceItemsPath}
-                              onChange={(e) => updateInputFieldDraft(field.id, { optionsSourceItemsPath: e.target.value })}
+                              onChange={e =>
+                                updateInputFieldDraft(field.id, {
+                                  optionsSourceItemsPath: e.target.value,
+                                })
+                              }
                               placeholder="Items path (e.g., voices, data.items)"
                             />
                             <Input
                               value={field.optionsSourceQueryParam}
-                              onChange={(e) => updateInputFieldDraft(field.id, { optionsSourceQueryParam: e.target.value })}
+                              onChange={e =>
+                                updateInputFieldDraft(field.id, {
+                                  optionsSourceQueryParam: e.target.value,
+                                })
+                              }
                               placeholder="Query param (optional)"
                             />
                           </div>
                           <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                             <Input
                               value={field.optionsSourceValueField}
-                              onChange={(e) => updateInputFieldDraft(field.id, { optionsSourceValueField: e.target.value })}
+                              onChange={e =>
+                                updateInputFieldDraft(field.id, {
+                                  optionsSourceValueField: e.target.value,
+                                })
+                              }
                               placeholder="Value field (e.g., id, voiceID, name)"
                             />
                             <Input
                               value={field.optionsSourceLabelField}
-                              onChange={(e) => updateInputFieldDraft(field.id, { optionsSourceLabelField: e.target.value })}
+                              onChange={e =>
+                                updateInputFieldDraft(field.id, {
+                                  optionsSourceLabelField: e.target.value,
+                                })
+                              }
                               placeholder="Label field (e.g., name)"
                             />
                           </div>
                           <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                             <Select
                               value={field.optionsSourceValueTransform}
-                              onValueChange={(value) => updateInputFieldDraft(field.id, { optionsSourceValueTransform: value as "none" | "before_dash" })}
+                              onValueChange={value =>
+                                updateInputFieldDraft(field.id, {
+                                  optionsSourceValueTransform: value as
+                                    | "none"
+                                    | "before_dash",
+                                })
+                              }
                             >
                               <SelectTrigger>
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="none">Value Transform: None</SelectItem>
-                                <SelectItem value="before_dash">Value Transform: Before Dash</SelectItem>
+                                <SelectItem value="none">
+                                  Value Transform: None
+                                </SelectItem>
+                                <SelectItem value="before_dash">
+                                  Value Transform: Before Dash
+                                </SelectItem>
                               </SelectContent>
                             </Select>
                             <Input
                               value={field.optionsSourceCacheTtlSeconds}
-                              onChange={(e) => updateInputFieldDraft(field.id, { optionsSourceCacheTtlSeconds: e.target.value })}
+                              onChange={e =>
+                                updateInputFieldDraft(field.id, {
+                                  optionsSourceCacheTtlSeconds: e.target.value,
+                                })
+                              }
                               placeholder="Cache TTL seconds (optional)"
                             />
                           </div>
@@ -3287,14 +3984,22 @@ function ModelForm({
                             <Textarea
                               rows={3}
                               value={field.optionsSourceHeadersRaw}
-                              onChange={(e) => updateInputFieldDraft(field.id, { optionsSourceHeadersRaw: e.target.value })}
+                              onChange={e =>
+                                updateInputFieldDraft(field.id, {
+                                  optionsSourceHeadersRaw: e.target.value,
+                                })
+                              }
                               placeholder='Headers JSON (optional), e.g. {"x-api-version":"1"}'
                               className="font-mono text-xs"
                             />
                             <Textarea
                               rows={3}
                               value={field.optionsSourceBodyRaw}
-                              onChange={(e) => updateInputFieldDraft(field.id, { optionsSourceBodyRaw: e.target.value })}
+                              onChange={e =>
+                                updateInputFieldDraft(field.id, {
+                                  optionsSourceBodyRaw: e.target.value,
+                                })
+                              }
                               placeholder='Body JSON (optional for POST), e.g. {"query":"{{query}}"}'
                               className="font-mono text-xs"
                             />
@@ -3304,10 +4009,14 @@ function ModelForm({
                               type="button"
                               size="sm"
                               variant="outline"
-                              onClick={() => { void refreshInputFieldOptions(field); }}
+                              onClick={() => {
+                                void refreshInputFieldOptions(field);
+                              }}
                               disabled={previewFieldOptionsMutation.isPending}
                             >
-                              {previewFieldOptionsMutation.isPending && <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />}
+                              {previewFieldOptionsMutation.isPending && (
+                                <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                              )}
                               <RefreshCw className="mr-1 h-3.5 w-3.5" />
                               Fetch / Refresh Options
                             </Button>
@@ -3326,7 +4035,11 @@ function ModelForm({
                         <span className="text-sm">Default Value</span>
                         <Switch
                           checked={field.defaultBoolean}
-                          onCheckedChange={(checked) => updateInputFieldDraft(field.id, { defaultBoolean: checked })}
+                          onCheckedChange={checked =>
+                            updateInputFieldDraft(field.id, {
+                              defaultBoolean: checked,
+                            })
+                          }
                         />
                       </div>
                     ) : field.type === "array" ? (
@@ -3341,46 +4054,69 @@ function ModelForm({
                           <Textarea
                             rows={4}
                             value={field.itemTemplateRaw}
-                            onChange={(e) => updateInputFieldDraft(field.id, { itemTemplateRaw: e.target.value })}
+                            onChange={e =>
+                              updateInputFieldDraft(field.id, {
+                                itemTemplateRaw: e.target.value,
+                              })
+                            }
                             placeholder={`{\n  "text": "{{value}}",\n  "voice": "{{fields.voice}}"\n}`}
                             className="font-mono text-xs"
                           />
                           <p className="text-xs text-muted-foreground">
-                            Supports placeholders: <code>{"{{value}}"}</code>, <code>{"{{item}}"}</code>, <code>{"{{prompt}}"}</code>, <code>{"{{fields.someField}}"}</code>.
+                            Supports placeholders: <code>{"{{value}}"}</code>,{" "}
+                            <code>{"{{item}}"}</code>,{" "}
+                            <code>{"{{prompt}}"}</code>,{" "}
+                            <code>{"{{fields.someField}}"}</code>.
                           </p>
                         </div>
                       </div>
                     ) : field.type === "library_file" ? (
                       <div className="grid gap-1">
                         <Label className="text-xs text-muted-foreground">
-                          Allowed Extensions (comma-separated, e.g. <code>png,jpg,gif</code>)
+                          Allowed Extensions (comma-separated, e.g.{" "}
+                          <code>png,jpg,gif</code>)
                         </Label>
                         <Input
                           value={field.allowedExtensions}
-                          onChange={(e) => updateInputFieldDraft(field.id, { allowedExtensions: e.target.value })}
+                          onChange={e =>
+                            updateInputFieldDraft(field.id, {
+                              allowedExtensions: e.target.value,
+                            })
+                          }
                           placeholder="png,jpg,gif  (leave blank to allow all)"
                         />
                         <p className="text-xs text-muted-foreground italic">
-                          User picks a file from the Library at runtime — no default needed.
+                          User picks a file from the Library at runtime — no
+                          default needed.
                         </p>
                       </div>
-                    ) : (field.type === "select" || field.searchable || field.optionsSourceType !== "none") ? (
+                    ) : field.type === "select" ||
+                      field.searchable ||
+                      field.optionsSourceType !== "none" ? (
                       <div className="space-y-2 rounded-md border border-slate-100 p-2">
                         <div className="flex items-center justify-between">
                           <span className="text-sm font-medium">Options</span>
-                          <Button type="button" size="sm" variant="outline" onClick={() => addInputFieldOption(field.id)}>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => addInputFieldOption(field.id)}
+                          >
                             <Plus className="mr-1 h-3.5 w-3.5" />
                             Add Option
                           </Button>
                         </div>
                         <div className="grid gap-1">
                           <Label className="text-xs text-muted-foreground">
-                            Bulk Import (supports plain list or VoiceID + "- Label")
+                            Bulk Import (supports plain list or VoiceID + "-
+                            Label")
                           </Label>
                           <Textarea
                             rows={5}
                             value={bulkOptionsByField[field.id] ?? ""}
-                            onChange={(e) => setBulkOptionsText(field.id, e.target.value)}
+                            onChange={e =>
+                              setBulkOptionsText(field.id, e.target.value)
+                            }
                             placeholder={`Adam\nAlice\nMJ0RnG71ty4LH3dvNfSd\n- Leon - Soothing and Grounded`}
                             className="font-mono text-xs"
                           />
@@ -3389,7 +4125,9 @@ function ModelForm({
                               type="button"
                               size="sm"
                               variant="outline"
-                              onClick={() => applyBulkOptionsToField(field, "replace")}
+                              onClick={() =>
+                                applyBulkOptionsToField(field, "replace")
+                              }
                             >
                               Replace With Imported
                             </Button>
@@ -3397,7 +4135,9 @@ function ModelForm({
                               type="button"
                               size="sm"
                               variant="outline"
-                              onClick={() => applyBulkOptionsToField(field, "merge")}
+                              onClick={() =>
+                                applyBulkOptionsToField(field, "merge")
+                              }
                             >
                               Merge Imported
                             </Button>
@@ -3412,25 +4152,40 @@ function ModelForm({
                           </div>
                         </div>
                         {field.options.length === 0 ? (
-                          <p className="text-xs text-muted-foreground">No options yet.</p>
+                          <p className="text-xs text-muted-foreground">
+                            No options yet.
+                          </p>
                         ) : (
-                          field.options.map((option) => (
-                            <div key={option.id} className="grid grid-cols-1 gap-2 md:grid-cols-[1fr_1fr_auto]">
+                          field.options.map(option => (
+                            <div
+                              key={option.id}
+                              className="grid grid-cols-1 gap-2 md:grid-cols-[1fr_1fr_auto]"
+                            >
                               <Input
                                 value={option.value}
-                                onChange={(e) => updateInputFieldOption(field.id, option.id, { value: e.target.value })}
+                                onChange={e =>
+                                  updateInputFieldOption(field.id, option.id, {
+                                    value: e.target.value,
+                                  })
+                                }
                                 placeholder="value (e.g., 10)"
                               />
                               <Input
                                 value={option.label}
-                                onChange={(e) => updateInputFieldOption(field.id, option.id, { label: e.target.value })}
+                                onChange={e =>
+                                  updateInputFieldOption(field.id, option.id, {
+                                    label: e.target.value,
+                                  })
+                                }
                                 placeholder="label (e.g., 10s)"
                               />
                               <Button
                                 type="button"
                                 variant="ghost"
                                 size="icon"
-                                onClick={() => removeInputFieldOption(field.id, option.id)}
+                                onClick={() =>
+                                  removeInputFieldOption(field.id, option.id)
+                                }
                                 aria-label="Remove option"
                               >
                                 <Trash2 className="h-4 w-4 text-destructive" />
@@ -3441,38 +4196,59 @@ function ModelForm({
 
                         {field.type === "select" ? (
                           <div className="grid gap-1">
-                            <Label className="text-xs text-muted-foreground">Default Option</Label>
+                            <Label className="text-xs text-muted-foreground">
+                              Default Option
+                            </Label>
                             <Select
                               value={
                                 field.options.some(
-                                  (option) => option.value === field.defaultRaw && option.value.trim().length > 0,
+                                  option =>
+                                    option.value === field.defaultRaw &&
+                                    option.value.trim().length > 0
                                 )
                                   ? field.defaultRaw
                                   : "__none__"
                               }
-                              onValueChange={(value) => updateInputFieldDraft(field.id, { defaultRaw: value === "__none__" ? "" : value })}
+                              onValueChange={value =>
+                                updateInputFieldDraft(field.id, {
+                                  defaultRaw: value === "__none__" ? "" : value,
+                                })
+                              }
                             >
                               <SelectTrigger>
                                 <SelectValue placeholder="Select default option" />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="__none__">No default</SelectItem>
+                                <SelectItem value="__none__">
+                                  No default
+                                </SelectItem>
                                 {field.options
-                                  .filter((option) => option.value.trim().length > 0)
-                                  .map((option) => (
-                                  <SelectItem key={option.id} value={option.value}>
-                                    {option.label.trim() || option.value}
-                                  </SelectItem>
-                                ))}
+                                  .filter(
+                                    option => option.value.trim().length > 0
+                                  )
+                                  .map(option => (
+                                    <SelectItem
+                                      key={option.id}
+                                      value={option.value}
+                                    >
+                                      {option.label.trim() || option.value}
+                                    </SelectItem>
+                                  ))}
                               </SelectContent>
                             </Select>
                           </div>
                         ) : (
                           <div className="grid gap-1">
-                            <Label className="text-xs text-muted-foreground">Default Value</Label>
+                            <Label className="text-xs text-muted-foreground">
+                              Default Value
+                            </Label>
                             <Input
                               value={field.defaultRaw}
-                              onChange={(e) => updateInputFieldDraft(field.id, { defaultRaw: e.target.value })}
+                              onChange={e =>
+                                updateInputFieldDraft(field.id, {
+                                  defaultRaw: e.target.value,
+                                })
+                              }
                               placeholder="Default value"
                             />
                           </div>
@@ -3480,12 +4256,20 @@ function ModelForm({
                       </div>
                     ) : (
                       <div className="grid gap-1">
-                        <Label className="text-xs text-muted-foreground">Default Value</Label>
+                        <Label className="text-xs text-muted-foreground">
+                          Default Value
+                        </Label>
                         <Input
                           type={field.type === "number" ? "number" : "text"}
                           value={field.defaultRaw}
-                          onChange={(e) => updateInputFieldDraft(field.id, { defaultRaw: e.target.value })}
-                          placeholder={field.type === "number" ? "0" : "Default value"}
+                          onChange={e =>
+                            updateInputFieldDraft(field.id, {
+                              defaultRaw: e.target.value,
+                            })
+                          }
+                          placeholder={
+                            field.type === "number" ? "0" : "Default value"
+                          }
                         />
                       </div>
                     )}
@@ -3494,19 +4278,38 @@ function ModelForm({
               )}
             </div>
             <p className="text-xs text-muted-foreground">
-              Fill fields in form mode, drag by the handle to reorder, and system converts everything to valid JSON automatically.
+              Fill fields in form mode, drag by the handle to reorder, and
+              system converts everything to valid JSON automatically.
             </p>
           </div>
 
-          <DashboardCard className="bg-slate-50" title="Generated JSON Preview (read-only)" leading={<Code className="h-4 w-4 text-slate-500" />}>
+          <DashboardCard
+            className="bg-slate-50"
+            title="Generated JSON Preview (read-only)"
+            leading={<Code className="h-4 w-4 text-slate-500" />}
+          >
             <div className="space-y-3">
               <div className="grid gap-1">
-                <Label className="text-xs text-muted-foreground">pricingTiers</Label>
-                <Textarea value={pricingTierPreview} readOnly rows={4} className="font-mono text-xs bg-white" />
+                <Label className="text-xs text-muted-foreground">
+                  pricingTiers
+                </Label>
+                <Textarea
+                  value={pricingTierPreview}
+                  readOnly
+                  rows={4}
+                  className="font-mono text-xs bg-white"
+                />
               </div>
               <div className="grid gap-1">
-                <Label className="text-xs text-muted-foreground">inputFields</Label>
-                <Textarea value={inputFieldPreview} readOnly rows={8} className="font-mono text-xs bg-white" />
+                <Label className="text-xs text-muted-foreground">
+                  inputFields
+                </Label>
+                <Textarea
+                  value={inputFieldPreview}
+                  readOnly
+                  rows={8}
+                  className="font-mono text-xs bg-white"
+                />
               </div>
             </div>
           </DashboardCard>

@@ -8,6 +8,13 @@ import { motion } from 'framer-motion';
 import { Link, useLocation } from 'wouter';
 import { generateFingerprint } from '@/lib/fingerprint';
 import { getPostHog } from '@/lib/posthog';
+import {
+  clearPendingOAuthTwoFactor,
+  getPendingOAuthTwoFactor,
+  getRequestedAuthReturnUrl,
+  rememberAuthReturnUrl,
+} from '@/lib/authRedirects';
+import { getSmartSpecWebEndpoint } from '@/lib/webRuntime';
 import { useAuth } from '@/_core/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,6 +35,11 @@ import {
   AlertTriangle,
   Shield,
 } from 'lucide-react';
+
+const ALLOWED_OAUTH_ORIGINS = [
+  'https://accounts.google.com/',
+  'https://github.com/login/oauth/authorize',
+];
 
 export default function Login() {
   const { t } = useScopedTranslation('auth');
@@ -52,22 +64,30 @@ export default function Login() {
   const [resetCode, setResetCode] = useState('');
   const [resetStep, setResetStep] = useState<'choose' | 'sent' | 'done'>('choose');
 
+  const getReturnUrl = () => getRequestedAuthReturnUrl() ?? '/dashboard';
+  const redirectToReturnUrl = (returnUrl: string) => {
+    if (returnUrl.startsWith('http://') || returnUrl.startsWith('https://')) {
+      window.location.href = returnUrl;
+      return;
+    }
+
+    navigate(returnUrl);
+  };
+
   // Redirect to dashboard (or returnUrl) if already authenticated
   useEffect(() => {
     if (!authLoading && user) {
-      const redirectUrl = getReturnUrl();
-      // Use window.location.href for external URLs, navigate() for internal paths
-      if (redirectUrl.startsWith('http://') || redirectUrl.startsWith('https://')) {
-        window.location.href = redirectUrl;
-      } else {
-        navigate(redirectUrl);
-      }
+      redirectToReturnUrl(getReturnUrl());
     }
   }, [authLoading, user, navigate]);
 
   // Check which OAuth providers are configured
   const { data: oauthProviders } = trpc.auth.oauthProviders.useQuery();
-  const hasAnySocial = oauthProviders?.google || oauthProviders?.github;
+  const { data: recoveryCapabilities } = trpc.auth.getRecoveryCapabilities.useQuery();
+  const googleLoginEnabled = oauthProviders?.google === true;
+  const githubLoginEnabled = oauthProviders?.github === true;
+  const hasAnySocial = googleLoginEnabled || githubLoginEnabled;
+  const smsRecoveryEnabled = recoveryCapabilities?.sms.enabled ?? false;
 
   // Generate device fingerprint on mount (stored as __fp cookie)
   useEffect(() => { generateFingerprint().catch(() => {}); }, []);
@@ -80,27 +100,28 @@ export default function Login() {
     }
   }, [resendCountdown]);
 
-  // Get returnUrl from query params (with strict domain allowlist)
-  const getReturnUrl = () => {
+  useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const returnUrl = params.get('returnUrl');
-    if (returnUrl) {
-      try {
-        const url = new URL(returnUrl);
-        const currentHost = window.location.hostname;
-        const ALLOWED_HOSTS = [currentHost, 'smartspec.pro', 'smartaihub.app', 'smartspec.local'];
-        const isAllowed = ALLOWED_HOSTS.some(h =>
-          url.hostname === h || url.hostname.endsWith('.' + h)
-        );
-        if (isAllowed) {
-          return returnUrl;
-        }
-      } catch {
-        // Invalid URL, ignore
-      }
+    if (params.get('returnUrl') || params.get('redirect')) {
+      rememberAuthReturnUrl(getReturnUrl());
     }
-    return '/dashboard';
-  };
+
+    if (params.get('mode') !== '2fa') {
+      return;
+    }
+
+    const pending = getPendingOAuthTwoFactor();
+    if (!pending) {
+      return;
+    }
+
+    setNeeds2FA(true);
+    setTwoFAEmail(pending.email);
+    setHas2FABackup({ email: pending.hasBackupEmail, phone: pending.hasPhone });
+    setShow2FAReset(false);
+    setResetCode('');
+    setResetStep('choose');
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -109,7 +130,7 @@ export default function Login() {
 
     try {
       // Call login API
-      const response = await fetch('/trpc/auth.login', {
+      const response = await fetch(getSmartSpecWebEndpoint('/trpc/auth.login'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -126,6 +147,7 @@ export default function Login() {
       const result = data.result?.data?.json;
 
       if (result?.requires2FA) {
+        clearPendingOAuthTwoFactor();
         setNeeds2FA(true);
         setTwoFAEmail(result.email);
         setHas2FABackup({ email: result.hasBackupEmail, phone: result.hasPhone });
@@ -138,8 +160,8 @@ export default function Login() {
         getPostHog()?.capture("login_succeeded", { auth_method: "email" });
         toast.success(t('login.toast.success'));
         setNeedsVerification(false);
-        const redirectUrl = getReturnUrl();
-        window.location.href = redirectUrl;
+        clearPendingOAuthTwoFactor();
+        redirectToReturnUrl(getReturnUrl());
       } else {
         const errorMessage = result?.message || data.error?.json?.message || 'Invalid email or password';
         const reason = errorMessage.toLowerCase().includes('verify') ? 'email_not_verified'
@@ -167,7 +189,7 @@ export default function Login() {
     }
     setIsResending(true);
     try {
-      const response = await fetch('/trpc/auth.resendVerification', {
+      const response = await fetch(getSmartSpecWebEndpoint('/trpc/auth.resendVerification'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ json: { email } }),
@@ -192,7 +214,7 @@ export default function Login() {
     if (!twoFACode) { toast.error(t('login.toast.enterCode')); return; }
     setIsLoading(true);
     try {
-      const response = await fetch('/trpc/auth.verify2FA', {
+      const response = await fetch(getSmartSpecWebEndpoint('/trpc/auth.verify2FA'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ json: { email: twoFAEmail, code: twoFACode } }),
@@ -208,15 +230,21 @@ export default function Login() {
         } else {
           toast.success(t('login.toast.success'));
         }
-        window.location.href = getReturnUrl();
+        clearPendingOAuthTwoFactor();
+        redirectToReturnUrl(getReturnUrl());
       }
     } catch { toast.error(t('login.toast.verifyFailed')); } finally { setIsLoading(false); }
   };
 
   const handle2FAResetRequest = async () => {
+    if (resetChannel === 'sms' && !smsRecoveryEnabled) {
+      toast.error(t('recovery.smsUnavailable'));
+      return;
+    }
+
     setIsLoading(true);
     try {
-      const response = await fetch('/trpc/auth.request2FAReset', {
+      const response = await fetch(getSmartSpecWebEndpoint('/trpc/auth.request2FAReset'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ json: { email: twoFAEmail, channel: resetChannel } }),
@@ -234,7 +262,7 @@ export default function Login() {
     if (resetCode.length !== 6) { toast.error(t('login.toast.enterSixDigit')); return; }
     setIsLoading(true);
     try {
-      const response = await fetch('/trpc/auth.confirm2FAReset', {
+      const response = await fetch(getSmartSpecWebEndpoint('/trpc/auth.confirm2FAReset'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ json: { email: twoFAEmail, code: resetCode, channel: resetChannel } }),
@@ -246,15 +274,23 @@ export default function Login() {
       if (err) { toast.error(err); return; }
       if (result?.success) {
         toast.success('2FA disabled. You are now signed in.');
-        window.location.href = getReturnUrl();
+        clearPendingOAuthTwoFactor();
+        redirectToReturnUrl(getReturnUrl());
       }
     } catch { toast.error(t('login.toast.resetFailed')); } finally { setIsLoading(false); }
   };
 
   const handleSocialLogin = async (provider: string) => {
+    const normalizedProvider = provider.toLowerCase();
+    if (normalizedProvider === 'google' && !googleLoginEnabled) {
+      toast.error(t('login.googleUnavailableToast'));
+      return;
+    }
+
     try {
-      const API_BASE_URL = import.meta.env.VITE_API_URL || '';
-      const response = await fetch(`${API_BASE_URL}/api/oauth/${provider.toLowerCase()}/authorize`);
+      rememberAuthReturnUrl(getReturnUrl());
+
+      const response = await fetch(getSmartSpecWebEndpoint(`/api/oauth/${normalizedProvider}/authorize`));
       if (!response.ok) {
         const err = await response.json().catch(() => null);
         if (response.status === 503) {
@@ -266,7 +302,14 @@ export default function Login() {
       }
       const data = await response.json();
       sessionStorage.setItem('oauth_state', data.state);
-      window.location.href = data.authorization_url;
+      const redirectUrl = data.authorization_url;
+
+      if (!ALLOWED_OAUTH_ORIGINS.some((origin) => redirectUrl.startsWith(origin))) {
+        toast.error(t('login.toast.oauthFailed'));
+        return;
+      }
+
+      window.location.href = redirectUrl;
     } catch {
       toast.error(t('login.toast.oauthFailed'));
     }
@@ -399,13 +442,20 @@ export default function Login() {
                       )}
                       {has2FABackup.phone && (
                         <button
-                          onClick={() => { setResetChannel('sms'); handle2FAResetRequest(); }}
-                          disabled={isLoading}
-                          className="w-full flex items-center gap-3 p-3 rounded-xl border border-gray-200 hover:border-purple-400 hover:bg-purple-50/50 text-left"
+                          onClick={() => { if (smsRecoveryEnabled) { setResetChannel('sms'); handle2FAResetRequest(); } }}
+                          disabled={isLoading || !smsRecoveryEnabled}
+                          className={`w-full flex items-center gap-3 p-3 rounded-xl border text-left ${
+                            smsRecoveryEnabled
+                              ? 'border-gray-200 hover:border-purple-400 hover:bg-purple-50/50'
+                              : 'cursor-not-allowed border-gray-200 bg-gray-50/60 opacity-60'
+                          }`}
                         >
                           <Lock className="w-5 h-5 text-purple-600" />
                           <div>
                             <div className="text-sm font-medium">Send code via SMS</div>
+                            {!smsRecoveryEnabled && (
+                              <div className="text-xs text-amber-700">{t('recovery.smsUnavailable')}</div>
+                            )}
                           </div>
                         </button>
                       )}
@@ -465,7 +515,7 @@ export default function Login() {
                   </Button>
 
                   <div className="flex items-center justify-between text-sm">
-                    <button onClick={() => { setNeeds2FA(false); setTwoFACode(''); }} className="text-gray-500 hover:text-gray-700">
+                    <button onClick={() => { clearPendingOAuthTwoFactor(); setNeeds2FA(false); setTwoFACode(''); }} className="text-gray-500 hover:text-gray-700">
                       Back to login
                     </button>
                     {(has2FABackup.email || has2FABackup.phone) && (
@@ -488,21 +538,20 @@ export default function Login() {
               </p>
             </div>
 
-            {/* Social Login Buttons — shown only when OAuth is configured */}
-            {hasAnySocial && (
+            {/* Social Login Buttons */}
+            {(oauthProviders || hasAnySocial) && (
               <>
-                <div className={`grid ${oauthProviders?.google && oauthProviders?.github ? 'grid-cols-2' : 'grid-cols-1'} gap-3 mb-6`}>
-                  {oauthProviders?.google && (
-                    <Button
-                      variant="outline"
-                      onClick={() => handleSocialLogin('Google')}
-                      className="bg-white hover:bg-gray-50 border-gray-200"
-                    >
-                      <Chrome className="w-5 h-5 mr-2 text-[#4285F4]" />
-                      Google
-                    </Button>
-                  )}
-                  {oauthProviders?.github && (
+                <div className={`grid ${githubLoginEnabled ? 'grid-cols-2' : 'grid-cols-1'} gap-3 mb-3`}>
+                  <Button
+                    variant="outline"
+                    onClick={() => handleSocialLogin('Google')}
+                    disabled={!googleLoginEnabled}
+                    className="bg-white hover:bg-gray-50 border-gray-200 disabled:cursor-not-allowed disabled:border-amber-200 disabled:bg-amber-50/60 disabled:text-gray-500"
+                  >
+                    <Chrome className="w-5 h-5 mr-2 text-[#4285F4]" />
+                    Google
+                  </Button>
+                  {githubLoginEnabled && (
                     <Button
                       variant="outline"
                       onClick={() => handleSocialLogin('GitHub')}
@@ -513,6 +562,13 @@ export default function Login() {
                     </Button>
                   )}
                 </div>
+
+                {oauthProviders && !googleLoginEnabled && (
+                  <div className="mb-6 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 flex-none" />
+                    <p>{t('login.googleUnavailableMessage')}</p>
+                  </div>
+                )}
 
                 {/* Divider */}
                 <div className="relative mb-6">

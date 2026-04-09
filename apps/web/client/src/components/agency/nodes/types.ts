@@ -13,7 +13,8 @@ export type AgencyNodeType =
   | "skill_discovery"
   | "data_transform"
   | "error_handler"
-  | "autonomous_agent";
+  | "autonomous_agent"
+  | "engine_boundary";
 
 export interface AgencyNodeData {
   nodeType: AgencyNodeType;
@@ -47,4 +48,7 @@ export interface AgencyNodeData {
   examples?: Array<Array<{ role: "user" | "assistant"; content: string }>>;
   outputSchema?: Record<string, unknown> | null;
   mcpServers?: Array<{ url: string; name?: string; transport?: "http" | "sse" }>;
+  subgraphId?: string | null;
+  engineHint?: "agency_swarm" | "adk2" | null;
+  runtimeConfig?: Record<string, unknown> | null;
 }

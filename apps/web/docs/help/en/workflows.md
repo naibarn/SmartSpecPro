@@ -51,6 +51,12 @@ Workflows are best suited for tasks you perform repeatedly — generating report
 - **API Call** — Make an HTTP request to an external service
 - **Transform** — Reformat or process data between steps (JSON, text, extract fields)
 
+Some tenants may also see worker-runtime orchestration features. Those features are runtime-family specific and rollout-gated:
+
+- OpenClaw gateway work is not the same thing as desktop-local media work
+- Desktop + ZeroClaw jobs are intended for local files, GPU, and machine-hosted execution
+- Secure pool and collaborative cluster runtimes stay admin-gated until explicitly enabled
+
 ## Conditions
 
 Add a **Condition** node to branch your workflow based on logic:
@@ -79,6 +85,15 @@ Browse the Gallery at **Workflows → Gallery** and click **Use Template** to st
 - While running, a progress indicator shows which node is currently executing.
 - Results are shown in the **Run History** panel on the right side of the workflow detail page.
 - Click any past run to see its full output and any errors.
+
+When a workflow dispatches work to a worker runtime, treat these as separate milestones:
+
+- dispatch accepted by the control plane
+- worker execution completed
+- artifacts uploaded and published
+- indexing completed so outputs become searchable
+
+Depending on the workflow, a run can succeed at one milestone and still fail at a later one.
 
 ## Tips
 

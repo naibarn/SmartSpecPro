@@ -24,7 +24,7 @@ import { getCoordinatorProfile } from "./turnOrderEngine";
 import * as workItemService from "./workItemService";
 import * as roomService from "./roomService";
 import * as monitoringService from "./monitoringService";
-import { queueOpenClawWorkerJob } from "./workerSchedulerService";
+import { queueWorkerJobByRuntime } from "./workerSchedulerService";
 import { agencyAgents, personaTemplates } from "../../drizzle/schema";
 import { getNextSpeaker, type TurnStrategy } from "./turnOrderEngine";
 import type { WorkItemStatus } from "./workItemService";
@@ -705,7 +705,8 @@ async function autoPauseRunForDependency(params: {
 
       await Promise.all(
         dispatchCandidates.map((candidate) =>
-          queueOpenClawWorkerJob({
+          queueWorkerJobByRuntime({
+            runtimeType: "openclaw_gateway",
             tenantId: params.tenantId,
             teamId: params.run.teamId,
             workflowRunId: params.run.id,
