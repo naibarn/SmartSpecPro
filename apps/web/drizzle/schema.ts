@@ -2161,6 +2161,7 @@ export const libraryChunks = pgTable("library_chunks", {
   contentType: varchar("content_type", { length: 32 }).notNull().default("text"),
   tokenCount: integer("token_count"),
   vectorRefId: varchar("vector_ref_id", { length: 128 }),
+  vectorIndexName: varchar("vector_index_name", { length: 128 }),
   metadata: json("metadata").$type<Record<string, any>>().notNull().default({}),
   // Denormalized scope cache — mirrors parent item's allowed_scopes
   allowedScopes: text("allowed_scopes").array().default(sql`'{}'`),
@@ -2173,6 +2174,7 @@ export const libraryChunks = pgTable("library_chunks", {
   index("library_chunks_tenant_content_type_idx").on(t.tenantId, t.contentType),
   index("library_chunks_tenant_project_idx").on(t.tenantId, t.projectId),
   index("library_chunks_vector_ref_idx").on(t.vectorRefId),
+  index("library_chunks_vector_index_name_idx").on(t.vectorIndexName),
   index("library_chunks_allowed_scopes_gin_idx").using("gin", t.allowedScopes),
   index("library_chunks_parent_chunk_idx").on(t.parentChunkId),
 ]);

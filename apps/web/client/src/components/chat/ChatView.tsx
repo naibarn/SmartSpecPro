@@ -138,6 +138,7 @@ import {
 } from "@/components/ui/popover";
 import { FallbackConsent } from "./FallbackConsent";
 import { MessageCostBadge } from "./MessageCostBadge";
+import { ConversationScopeBadge } from "./ConversationScopeBadge";
 import {
   formatModelCost,
   getCheapestProvider,
@@ -369,7 +370,7 @@ function buildLocalRuntimeFailureMessage(error: unknown): string {
       return "Local-only mode is enabled, but this browser page is running on HTTPS while the Local AI URL backend is plain HTTP on your private network, so the browser blocked the request. If you are using LM Studio, enable local-network access/CORS in Server Settings and use an HTTPS endpoint for the backend if available. Otherwise use desktop/Tauri for this device, or switch the device back to On-device Gemma / Auto.";
     }
     if (detail.includes("external_local_backend_unreachable")) {
-      return "Local-only mode is enabled, but the Local AI URL backend could not be reached from this device. Check that the backend is running, the Base URL is correct, and the local backend allows requests from SmartSpecPro.";
+      return "Local-only mode is enabled, but the Local AI URL backend could not be reached from this device. Check that the backend is running, the Base URL is correct, and the local backend allows requests from SmartAIHub.";
     }
     return `Local-only mode is enabled, but the Local AI URL backend failed (${detail || "unknown error"}). Check the Base URL, token, and local backend process in Settings > Local AI, or switch back to auto / prefer_local.`;
   }
@@ -664,6 +665,8 @@ export function ChatView({
     { id: conversationId! },
     { enabled: !!conversationId }
   );
+  const conversationProjectId = (conversation as any)?.projectId ?? null;
+  const isPersonalConversation = conversationProjectId === "personal";
   const handleOpenBrowserSession = useCallback(
     (artifact: BrowserSessionArtifact) => {
       const path = buildBrowserSessionPath(
@@ -4898,6 +4901,10 @@ export function ChatView({
           <h2 className="font-semibold truncate text-sm shrink min-w-0">
             {conversation?.title || "Chat"}
           </h2>
+          <ConversationScopeBadge
+            projectId={conversationProjectId}
+            className={isPersonalConversation ? "bg-amber-500/10 text-amber-700" : undefined}
+          />
           {/* Model Selector */}
           {modelsData?.models && modelsData.models.length > 0 ? (
             <>

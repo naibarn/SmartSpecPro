@@ -35,13 +35,16 @@ import {
   Trash,
   UsersRound,
   ChevronDown,
+  Lock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ConversationScopeBadge } from "./ConversationScopeBadge";
 
 interface ChatSidebarProps {
   selectedConversationId: number | null;
   onSelectConversation: (id: number) => void;
   onNewChat: () => void;
+  onNewPersonalChat?: () => void;
   onOpenTeamRoom?: (roomId: string) => void;
 }
 
@@ -49,6 +52,7 @@ export function ChatSidebar({
   selectedConversationId,
   onSelectConversation,
   onNewChat,
+  onNewPersonalChat,
   onOpenTeamRoom,
 }: ChatSidebarProps) {
   const [search, setSearch] = useState("");
@@ -378,6 +382,18 @@ export function ChatSidebar({
                 <MessageSquarePlus className="h-4 w-4" />
                 New
               </Button>
+              {onNewPersonalChat ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={onNewPersonalChat}
+                  className="gap-2"
+                  title="Create a locked personal chat"
+                >
+                  <Lock className="h-4 w-4" />
+                  Personal
+                </Button>
+              ) : null}
             </div>
           </>
         )}
@@ -470,7 +486,10 @@ export function ChatSidebar({
                           {(conv as any).projectId && (
                             <>
                               <span>·</span>
-                              <span className="text-primary">{(conv as any).projectId}</span>
+                              <ConversationScopeBadge
+                                projectId={(conv as any).projectId}
+                                className="h-4 px-1.5"
+                              />
                             </>
                           )}
                           {conv.totalCreditsUsed && Number(conv.totalCreditsUsed) > 0 && (

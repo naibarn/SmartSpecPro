@@ -1,9 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { mockGetDb, mockAuditLog, mockCascadeDelete, mockStorageDelete } = vi.hoisted(() => ({
+const {
+  mockGetDb,
+  mockAuditLog,
+  mockCascadeDelete,
+  mockCollectVectorTargets,
+  mockCleanupVectorArtifacts,
+  mockStorageDelete,
+} = vi.hoisted(() => ({
   mockGetDb: vi.fn(),
   mockAuditLog: vi.fn(),
   mockCascadeDelete: vi.fn(),
+  mockCollectVectorTargets: vi.fn().mockResolvedValue({ vectorRefIds: [], indexNames: [] }),
+  mockCleanupVectorArtifacts: vi.fn().mockResolvedValue(undefined),
   mockStorageDelete: vi.fn().mockResolvedValue(true),
 }));
 
@@ -22,6 +31,8 @@ vi.mock("../../drizzle/schema", () => ({
 
 vi.mock("../services/libraryService", () => ({
   cascadeDeleteLibraryItem: mockCascadeDelete,
+  collectLibraryVectorCleanupTargets: mockCollectVectorTargets,
+  cleanupLibraryVectorArtifacts: mockCleanupVectorArtifacts,
 }));
 
 vi.mock("../storage", () => ({
@@ -52,6 +63,51 @@ describe("purgeOldTrashItems", () => {
   describe("database deletion cascade", () => {
     it.todo("should call cascadeDeleteLibraryItem for each item");
     it.todo("should wrap each delete in a transaction");
+  });
+
+  describe("vector cleanup", () => {
+    it("best-effort cleans vector artifacts after purge", async () => {
+      const selectResults = [
+        [{ id: 1, tenantId: "tenant-1", deletedAt: new Date("2025-01-01T00:00:00.000Z") }],
+        [{ linkId: "upload-key-1" }],
+      ];
+
+      const selectRunner: any = {
+        where: vi.fn(() => selectRunner),
+        limit: vi.fn(() => selectRunner),
+        then: (resolve: (value: any) => void, reject?: (reason: unknown) => void) =>
+          Promise.resolve(selectResults.shift() ?? []).then(resolve, reject),
+      };
+
+      const db = {
+        select: vi.fn(() => ({
+          from: vi.fn(() => selectRunner),
+        })),
+        transaction: vi.fn(async (callback: (tx: any) => Promise<any>) => callback({} as any)),
+      };
+
+      mockGetDb.mockResolvedValue(db as any);
+      mockCollectVectorTargets.mockResolvedValue({
+        vectorRefIds: ["vec-1", "vec-2"],
+        indexNames: ["library-index"],
+      });
+
+      const result = await executeTrashPurge();
+
+      expect(result).toMatchObject({
+        purgedCount: 1,
+        totalFound: 1,
+        errors: 0,
+      });
+      expect(mockCascadeDelete).toHaveBeenCalledTimes(1);
+      expect(mockCollectVectorTargets).toHaveBeenCalledWith(1, "tenant-1", db);
+      expect(mockCleanupVectorArtifacts).toHaveBeenCalledWith({
+        tenantId: "tenant-1",
+        vectorRefIds: ["vec-1", "vec-2"],
+        indexNames: ["library-index"],
+      });
+      expect(mockStorageDelete).toHaveBeenCalledWith("upload-key-1");
+    });
   });
 
   describe("batch processing", () => {

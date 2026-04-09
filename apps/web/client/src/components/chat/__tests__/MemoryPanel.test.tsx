@@ -72,6 +72,41 @@ vi.mock("@/lib/trpc", () => ({
   },
 }));
 
+vi.mock("@/i18n/useScopedTranslation", () => ({
+  useScopedTranslation: () => ({
+    t: (key: string, params?: Record<string, unknown>) => {
+      switch (key) {
+        case "memory.title":
+          return "Memory";
+        case "memory.addMemory":
+          return "Add Memory";
+        case "memory.addMemoryDesc":
+          return "Add memory";
+        case "memory.typeLabel":
+          return "Type";
+        case "memory.nameLabel":
+          return "Name";
+        case "memory.namePlaceholder":
+          return "Name";
+        case "memory.contentLabel":
+          return "Content";
+        case "memory.contentPlaceholder":
+          return "Content";
+        case "memory.importanceLabel":
+          return `Importance ${params?.value ?? ""}`;
+        case "memory.importanceLow":
+          return "Low";
+        case "memory.importanceHigh":
+          return "High";
+        case "memory.projectNotSet":
+          return "Project not set";
+        default:
+          return key;
+      }
+    },
+  }),
+}));
+
 vi.mock("sonner", () => ({
   toast: {
     success: vi.fn(),
@@ -222,6 +257,20 @@ describe("MemoryPanel", () => {
     const cards = container.querySelectorAll(".group.rounded-lg.border.p-3");
     expect(cards.length).toBeGreaterThanOrEqual(2);
     expect(cards[0]?.textContent).toContain("Legacy Rule");
+  });
+
+  it("locks the project selector for personal conversations", () => {
+    mocks.mockGetConversationQuery.mockReturnValue({
+      data: { projectId: "personal", memoryMode: "full" },
+      isLoading: false,
+    });
+
+    render(<MemoryPanel conversationId={123} />);
+
+    expect(screen.getByTitle("Personal scope is locked to this user")).toBeTruthy();
+    expect(screen.getByText(/personal scope is locked to this user/i)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /^Edit$/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /new chat in/i })).toBeNull();
   });
 
   it("opens the scoped edit dialog prefilled and saves changes", () => {

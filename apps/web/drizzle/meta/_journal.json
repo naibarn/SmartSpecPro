@@ -953,6 +953,13 @@
       "when": 1776000001000,
       "tag": "0139_private_personal_finance_security_backstop",
       "breakpoints": true
+    },
+    {
+      "idx": 136,
+      "version": "7",
+      "when": 1776000002000,
+      "tag": "0140_private_personal_finance_vector_index_name",
+      "breakpoints": true
     }
   ]
 }

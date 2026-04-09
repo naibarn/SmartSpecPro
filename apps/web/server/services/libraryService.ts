@@ -47,7 +47,12 @@ import {
   type LibraryUploadPipelineStage,
   validateLibraryUploadSignature,
 } from "./libraryUploadPipeline";
-import { getEffectiveVectorProviderConfig, resolveVectorProvider } from "./vectorProvider";
+import {
+  dispatchVectorOperation,
+  getEffectiveVectorProviderConfig,
+  getVectorProviderConfigFromEnv,
+  resolveVectorProvider,
+} from "./vectorProvider";
 import type { EffectivePermission, PermissionSource } from "../../shared/types/library";
 
 export type LibraryPermissionLevel = "read" | "write" | "delete" | "owner";
@@ -87,6 +92,7 @@ export interface CreateLibraryItemInput {
   description?: string | null;
   status?: LibraryItemStatus;
   visibility?: LibraryVisibility;
+  projectId?: string | null;
   metadata?: Record<string, unknown>;
   sourceUrl?: string | null;
   thumbnailUrl?: string | null;
@@ -171,6 +177,7 @@ export interface LibraryItemDto {
   id: number;
   tenantId: string;
   ownerUserId: number;
+  projectId?: string | null;
   itemType: string;
   source: string;
   title: string;
@@ -212,6 +219,7 @@ export interface LibrarySearchFilters {
   itemType?: string;
   model?: string;
   ownerUserId?: number;
+  projectId?: string | null;
   tags?: string[];
   status?: LibraryItemStatus;
   fromDate?: Date;
@@ -234,6 +242,7 @@ export interface UploadLibraryFileInput {
   fileBase64: string;
   title?: string;
   visibility?: LibraryVisibility;
+  projectId?: string | null;
   parentId?: number | null;
   metadata?: Record<string, unknown>;
   billingMetadata?: Record<string, unknown>;
@@ -287,6 +296,11 @@ export interface ReplaceLibraryFileResult {
   item: LibraryItemDto;
   indexJob: LibraryEnqueueResult;
   versionNumber: number;
+}
+
+export interface LibraryVectorCleanupTargets {
+  vectorRefIds: string[];
+  indexNames: string[];
 }
 
 export interface LibrarySearchResultV1 {
@@ -366,6 +380,7 @@ export type LibraryDocumentAccessSource = "owner" | "shared_direct" | "shared_gr
 export interface LibraryDocumentFilters {
   itemType?: string;
   ownerUserId?: number;
+  projectId?: string | null;
   status?: LibraryItemStatus;
   fromDate?: Date;
   toDate?: Date;
@@ -703,6 +718,7 @@ function toLibraryItemDto(row: LibraryItemRow): LibraryItemDto {
     id: row.id,
     tenantId: row.tenantId,
     ownerUserId: row.ownerUserId,
+    projectId: row.projectId ?? null,
     itemType: row.itemType,
     source: row.source,
     title: row.title,
@@ -840,18 +856,23 @@ async function upsertLibrarySourceTextChunk(
     libraryItemId: number;
     content: string;
     source: string;
+    projectId?: string | null;
   },
 ): Promise<void> {
+  const resolvedProjectId = params.projectId ?? await resolveLibraryItemProjectId(db, params.libraryItemId, params.tenantId);
+
   await db
     .insert(libraryChunks)
     .values({
       tenantId: params.tenantId,
       libraryItemId: params.libraryItemId,
+      projectId: resolvedProjectId ?? null,
       chunkIndex: 0,
       content: params.content,
       contentType: "markdown_source",
       tokenCount: null,
       vectorRefId: null,
+      vectorIndexName: resolveLibraryVectorIndexName(),
       metadata: {
         source: params.source,
       },
@@ -860,10 +881,12 @@ async function upsertLibrarySourceTextChunk(
     .onConflictDoUpdate({
       target: [libraryChunks.libraryItemId, libraryChunks.chunkIndex],
       set: {
+        projectId: resolvedProjectId ?? null,
         content: params.content,
         contentType: "markdown_source",
         tokenCount: null,
         vectorRefId: null,
+        vectorIndexName: resolveLibraryVectorIndexName(),
         metadata: {
           source: params.source,
         },
@@ -1014,6 +1037,227 @@ function getUploadPipelineMetadata(
   return pipeline as Record<string, unknown>;
 }
 
+async function resolveLibraryItemProjectId(
+  db: DbClient,
+  libraryItemId: number,
+  tenantId: string,
+): Promise<string | null> {
+  const rows = await db
+    .select({
+      projectId: libraryItems.projectId,
+    })
+    .from(libraryItems)
+    .where(and(eq(libraryItems.id, libraryItemId), eq(libraryItems.tenantId, tenantId)))
+    .limit(1);
+
+  return rows[0]?.projectId ?? null;
+}
+
+function normalizeVectorIndexName(value: unknown): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+export function resolveLibraryVectorIndexName(): string {
+  const candidates = [
+    process.env.LIBRARY_VECTOR_INDEX_NAME,
+    process.env.VECTORIZE_LIBRARY_INDEX,
+    process.env.VECTORIZE_DOCS_INDEX,
+    "library-index",
+  ];
+
+  for (const candidate of candidates) {
+    const normalized = normalizeVectorIndexName(candidate);
+    if (normalized) {
+      return normalized;
+    }
+  }
+
+  return "library-index";
+}
+
+function extractVectorIndexNames(metadata: Record<string, unknown> | null | undefined): string[] {
+  if (!metadata || Array.isArray(metadata)) {
+    return [];
+  }
+
+  const candidates = [
+    metadata.vectorIndexName,
+    metadata.vector_index_name,
+    metadata.indexName,
+    metadata.collectionName,
+    metadata.collection_name,
+  ];
+
+  const unique = new Set<string>();
+  for (const candidate of candidates) {
+    const normalized = normalizeVectorIndexName(candidate);
+    if (normalized) {
+      unique.add(normalized);
+    }
+  }
+
+  return Array.from(unique);
+}
+
+function getLibraryVectorIndexCandidates(): string[] {
+  const envCandidates = [
+    process.env.LIBRARY_VECTOR_INDEX_NAME,
+    process.env.VECTORIZE_LIBRARY_INDEX,
+    process.env.VECTORIZE_DOCS_INDEX,
+    "library-index",
+    "docs-index-prod",
+  ];
+
+  const unique = new Set<string>();
+  for (const candidate of envCandidates) {
+    const normalized = normalizeVectorIndexName(candidate);
+    if (normalized) {
+      unique.add(normalized);
+    }
+  }
+
+  return Array.from(unique);
+}
+
+export async function collectLibraryVectorCleanupTargets(
+  itemIds: number | number[],
+  tenantId: LibraryTenantId,
+  dbClient?: DbClient,
+): Promise<LibraryVectorCleanupTargets> {
+  const db = await resolveDb(dbClient);
+  const normalizedTenantId = normalizeLibraryTenantId(tenantId);
+  const normalizedItemIds = Array.isArray(itemIds)
+    ? Array.from(new Set(itemIds.filter((value) => Number.isFinite(value))))
+    : [itemIds];
+
+  if (normalizedItemIds.length === 0) {
+    return { vectorRefIds: [], indexNames: [] };
+  }
+
+  const [chunkRows, itemRows] = await Promise.all([
+    db
+      .select({
+        vectorRefId: libraryChunks.vectorRefId,
+        vectorIndexName: libraryChunks.vectorIndexName,
+        metadata: libraryChunks.metadata,
+      })
+      .from(libraryChunks)
+      .where(
+        and(
+          eq(libraryChunks.tenantId, normalizedTenantId),
+          inArray(libraryChunks.libraryItemId, normalizedItemIds),
+        ),
+      ),
+    db
+      .select({
+        metadata: libraryItems.metadata,
+      })
+      .from(libraryItems)
+      .where(
+        and(
+          eq(libraryItems.tenantId, normalizedTenantId),
+          inArray(libraryItems.id, normalizedItemIds),
+        ),
+      ),
+  ]);
+
+  const vectorRefIds = new Set<string>();
+  const indexNames = new Set<string>();
+
+  for (const row of chunkRows) {
+    if (typeof row.vectorRefId === "string") {
+      const trimmed = row.vectorRefId.trim();
+      if (trimmed) {
+        vectorRefIds.add(trimmed);
+      }
+    }
+    if (typeof row.vectorIndexName === "string") {
+      const trimmedIndex = row.vectorIndexName.trim();
+      if (trimmedIndex) {
+        indexNames.add(trimmedIndex);
+      }
+    }
+    for (const indexName of extractVectorIndexNames(row.metadata as Record<string, unknown> | null | undefined)) {
+      indexNames.add(indexName);
+    }
+  }
+
+  for (const row of itemRows) {
+    for (const indexName of extractVectorIndexNames(row.metadata as Record<string, unknown> | null | undefined)) {
+      indexNames.add(indexName);
+    }
+  }
+
+  return {
+    vectorRefIds: Array.from(vectorRefIds),
+    indexNames: Array.from(indexNames),
+  };
+}
+
+export async function cleanupLibraryVectorArtifacts(
+  params: {
+    tenantId: LibraryTenantId;
+    vectorRefIds: string[];
+    indexNames?: string[];
+  },
+): Promise<void> {
+  const vectorRefIds = Array.from(
+    new Set(
+      params.vectorRefIds
+        .map((value) => (typeof value === "string" ? value.trim() : ""))
+        .filter((value) => value.length > 0),
+    ),
+  );
+
+  if (vectorRefIds.length === 0) {
+    return;
+  }
+
+  const explicitIndexNames = Array.from(
+    new Set(
+      (params.indexNames ?? [])
+        .map((value) => (typeof value === "string" ? value.trim() : ""))
+        .filter((value) => value.length > 0),
+    ),
+  );
+  const candidateIndexNames = explicitIndexNames.length > 0
+    ? explicitIndexNames
+    : getLibraryVectorIndexCandidates();
+  if (candidateIndexNames.length === 0) {
+    return;
+  }
+
+  let providerConfig = getVectorProviderConfigFromEnv();
+  try {
+    providerConfig = await getEffectiveVectorProviderConfig({
+      tenantId: normalizeLibraryTenantId(params.tenantId),
+    });
+  } catch {
+    // Fall back to env-based config for best-effort cleanup.
+  }
+
+  for (const indexName of candidateIndexNames) {
+    try {
+      await dispatchVectorOperation({
+        operation: "delete",
+        indexName,
+        ids: vectorRefIds,
+        providerConfig,
+      });
+    } catch (error) {
+      console.warn(
+        `[library.delete] Vector cleanup failed for index ${indexName}:`,
+        error instanceof Error ? error.message : String(error),
+      );
+    }
+  }
+}
+
 async function findDuplicateUploadedLibraryItem(
   db: DbClient,
   params: {
@@ -1083,6 +1327,7 @@ function itemMatchesFilters(item: LibraryItemRow, filters?: LibrarySearchFilters
 
   if (filters.itemType && item.itemType !== filters.itemType) return false;
   if (filters.ownerUserId !== undefined && item.ownerUserId !== filters.ownerUserId) return false;
+  if (filters.projectId !== undefined && item.projectId !== filters.projectId) return false;
   if (filters.status && item.status !== filters.status) return false;
   if (filters.fromDate && item.createdAt < filters.fromDate) return false;
   if (filters.toDate && item.createdAt > filters.toDate) return false;
@@ -1806,6 +2051,7 @@ export async function createLibraryItem(
       parentId: input.parentId ?? null,
       itemType: input.itemType,
       source: input.source,
+      projectId: input.projectId ?? null,
       title: input.title,
       description: input.description ?? null,
       status: input.status ?? "ready",
@@ -2063,6 +2309,7 @@ export async function uploadLibraryFile(
       description: null,
       status: "indexing",
       visibility: input.visibility ?? "private",
+      projectId: input.projectId ?? null,
       parentId: input.parentId ?? null,
       metadata: {
         ...buildLibraryUploadMetadata(input.metadata, {
@@ -2100,6 +2347,7 @@ export async function uploadLibraryFile(
       libraryItemId: created.item.id,
       content: extractedText,
       source: isMarkdownLibraryUpload(ext) ? "document_upload_markdown" : "document_upload_extracted",
+      projectId: input.projectId ?? null,
     });
   }
 
@@ -3202,6 +3450,7 @@ export async function enqueueLibraryIndexJob(
   input: {
     libraryItemId: number;
     tenantId: LibraryTenantId;
+    projectId?: string | null;
     jobType?: string;
     domain?: LibraryIndexDomain;
     operation?: LibraryIndexOperation;
@@ -3214,13 +3463,17 @@ export async function enqueueLibraryIndexJob(
   const db = await resolveDb(dbClient);
   const jobType = input.jobType ?? "initial_index";
   const tenantId = normalizeLibraryTenantId(input.tenantId);
+  const resolvedProjectId = input.projectId ?? await resolveLibraryItemProjectId(db, input.libraryItemId, tenantId);
   const payload = buildLibraryIndexJobPayload({
     domain: input.domain || "library",
     operation: input.operation || "index",
     tenantId,
     entityId: `library:${input.libraryItemId}`,
     source: input.source || `library.${jobType}`,
-    sourceMetadata: input.sourceMetadata,
+    sourceMetadata: {
+      ...(input.sourceMetadata ?? {}),
+      projectId: resolvedProjectId ?? undefined,
+    },
   });
 
   if (
@@ -3269,6 +3522,7 @@ export async function enqueueLibraryIndexJob(
     .values({
       tenantId,
       libraryItemId: input.libraryItemId,
+      projectId: resolvedProjectId ?? null,
       jobType,
       status: "pending",
       attemptCount: 0,
@@ -3381,6 +3635,7 @@ function itemMatchesDocumentFilters(
 
   if (filters.itemType && item.itemType !== filters.itemType) return false;
   if (filters.ownerUserId !== undefined && item.ownerUserId !== filters.ownerUserId) return false;
+  if (filters.projectId !== undefined && item.projectId !== filters.projectId) return false;
   if (filters.status && item.status !== filters.status) return false;
   if (filters.fromDate && item.createdAt < filters.fromDate) return false;
   if (filters.toDate && item.createdAt > filters.toDate) return false;
@@ -3799,6 +4054,7 @@ export async function saveLibraryMarkdown(
       contentType: "markdown_source",
       tokenCount: null,
       vectorRefId: null,
+      vectorIndexName: resolveLibraryVectorIndexName(),
       metadata: {
         source: "document_management_editor",
       },
@@ -3811,6 +4067,7 @@ export async function saveLibraryMarkdown(
         contentType: "markdown_source",
         tokenCount: null,
         vectorRefId: null,
+        vectorIndexName: resolveLibraryVectorIndexName(),
         metadata: {
           source: "document_management_editor",
         },
@@ -4786,16 +5043,22 @@ export async function permanentDeleteLibraryItem(
     });
   }
 
-  // Collect storage keys before cascade delete removes them
-  const uploadKeyRows = await db
-    .select({ linkId: libraryLinks.linkId })
-    .from(libraryLinks)
-    .where(
-      and(
-        eq(libraryLinks.libraryItemId, itemId),
-        eq(libraryLinks.linkType, "upload_key"),
+  // Collect cleanup targets before cascade delete removes them
+  const [uploadKeyRows, vectorCleanupTargets] = await Promise.all([
+    db
+      .select({ linkId: libraryLinks.linkId })
+      .from(libraryLinks)
+      .where(
+        and(
+          eq(libraryLinks.libraryItemId, itemId),
+          eq(libraryLinks.linkType, "upload_key"),
+        ),
       ),
-    );
+    collectLibraryVectorCleanupTargets(itemId, actorTenantId, db).catch(() => ({
+      vectorRefIds: [],
+      indexNames: [],
+    })),
+  ]);
 
   await db.transaction(async (tx) => {
     await cascadeDeleteLibraryItem(tx, itemId);
@@ -4811,6 +5074,19 @@ export async function permanentDeleteLibraryItem(
         err instanceof Error ? err.message : err,
       );
     }
+  }
+
+  try {
+    await cleanupLibraryVectorArtifacts({
+      tenantId: actorTenantId,
+      vectorRefIds: vectorCleanupTargets.vectorRefIds,
+      indexNames: vectorCleanupTargets.indexNames,
+    });
+  } catch (err) {
+    console.error(
+      `[permanent-delete] Vector cleanup failed for item ${itemId}:`,
+      err instanceof Error ? err.message : err,
+    );
   }
 
   return { daysInTrash };
@@ -4844,6 +5120,11 @@ export async function removeGoogleDriveData(
     return { itemsDeleted: 0, chunksDeleted: 0, linksDeleted: 0 };
   }
 
+  const vectorCleanupTargets = await collectLibraryVectorCleanupTargets(itemIds, tenantId, db).catch(() => ({
+    vectorRefIds: [],
+    indexNames: [],
+  }));
+
   // Count chunks and links before cascade delete (for audit)
   const [chunkRow] = await db
     .select({ cnt: count(libraryChunks.id) })
@@ -4864,6 +5145,17 @@ export async function removeGoogleDriveData(
     const batch = itemIds.slice(i, i + BATCH_SIZE);
     await db.delete(libraryItems).where(inArray(libraryItems.id, batch));
   }
+
+  await cleanupLibraryVectorArtifacts({
+    tenantId,
+    vectorRefIds: vectorCleanupTargets.vectorRefIds,
+    indexNames: vectorCleanupTargets.indexNames,
+  }).catch((err) => {
+    console.error(
+      `[google-drive-cleanup] Vector cleanup failed for tenant ${tenantId}:`,
+      err instanceof Error ? err.message : err,
+    );
+  });
 
   return { itemsDeleted: itemIds.length, chunksDeleted, linksDeleted };
 }

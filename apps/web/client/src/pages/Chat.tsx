@@ -135,6 +135,13 @@ export default function Chat() {
     },
   });
 
+  const createPersonalConversationMutation = trpc.chat.createPersonalConversation.useMutation({
+    onSuccess: (data) => {
+      setSelectedConversationId(data.id);
+      utils.chat.listConversations.invalidate();
+    },
+  });
+
   // Update conversation mutation
   const updateConversationMutation = trpc.chat.updateConversation.useMutation({
     onSuccess: () => {
@@ -497,6 +504,15 @@ export default function Chat() {
     setSelectedConversationId(result.id);
   };
 
+  const handleNewPersonalChat = async () => {
+    const defaultModel = modelsData?.models?.find(m => m.isDefault);
+    const result = await createPersonalConversationMutation.mutateAsync({
+      title: "Personal Chat",
+      model: defaultModel?.id,
+    });
+    setSelectedConversationId(result.id);
+  };
+
   const handleOpenTeamRoom = (teamId: string) => {
     setLocation(`/teams/${teamId}`);
   };
@@ -735,6 +751,7 @@ export default function Chat() {
               setSidebarOpen(false);
             }}
             onNewChat={handleNewChat}
+            onNewPersonalChat={handleNewPersonalChat}
             onOpenTeamRoom={handleOpenTeamRoom}
           />
         </div>
@@ -750,6 +767,7 @@ export default function Chat() {
               selectedConversationId={selectedConversationId}
               onSelectConversation={(id) => setSelectedConversationId(id)}
               onNewChat={handleNewChat}
+              onNewPersonalChat={handleNewPersonalChat}
               onOpenTeamRoom={handleOpenTeamRoom}
             />
           )}

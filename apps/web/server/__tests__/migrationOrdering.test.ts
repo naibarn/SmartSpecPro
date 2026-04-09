@@ -77,11 +77,14 @@ describe("migration ordering", () => {
 
     const foundationFile = "0138_private_personal_finance_foundation.sql";
     const backstopFile = "0139_private_personal_finance_security_backstop.sql";
+    const vectorIndexFile = "0140_private_personal_finance_vector_index_name.sql";
     const foundationIndex = migrations.indexOf(foundationFile);
     const backstopIndex = migrations.indexOf(backstopFile);
+    const vectorIndexFileIndex = migrations.indexOf(vectorIndexFile);
 
     expect(foundationIndex).toBeGreaterThan(-1);
     expect(backstopIndex).toBeGreaterThan(foundationIndex);
+    expect(vectorIndexFileIndex).toBeGreaterThan(backstopIndex);
     expect(migrations[foundationIndex - 1]).toBe("0137_desktop_installer_distribution.sql");
   });
 
@@ -124,6 +127,20 @@ describe("migration ordering", () => {
     expect(content).toContain("app.current_tenant_id");
     expect(content).toContain("app.current_user_id");
     expect(content).toContain("app.current_project_id");
+  });
+
+  it("finance vector cleanup migration persists vector index names for library chunks", () => {
+    const vectorIndexPath = path.resolve(
+      import.meta.dirname,
+      "../../../../apps/web/drizzle/0140_private_personal_finance_vector_index_name.sql"
+    );
+
+    expect(fs.existsSync(vectorIndexPath)).toBe(true);
+
+    const content = fs.readFileSync(vectorIndexPath, "utf-8");
+    expect(content).toContain('ADD COLUMN IF NOT EXISTS "vector_index_name" varchar(128)');
+    expect(content).toContain('library_chunks_vector_index_name_idx');
+    expect(content).toContain("compatibility-only");
   });
 
   it("Python migration 006 defines pgvector extension and tenant RLS", () => {

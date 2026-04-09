@@ -1,0 +1,32 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/078-private-personal-finance-ocr-rag/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/078-private-personal-finance-ocr-rag/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-schema-and-migrations",
+    "section-02-personal-chat-lock",
+    "section-03-finance-core",
+    "section-04-ocr-ingestion",
+    "section-05-rag-isolation",
+    "section-06-security-tests"
+  ],
+  "sections_state": {
+    "section-01-schema-and-migrations": {
+      "status": "complete",
+      "commit_hash": "36c3db5c"
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-04-09T12:51:43.264485+00:00"
+}

@@ -62,6 +62,7 @@ vi.mock("./groupsService", async (importOriginal) => {
 import {
   LibraryUrlValidationError,
   canReadLibraryItem,
+  collectLibraryVectorCleanupTargets,
   createLibraryItem,
   getPublicShareLinkState,
   getLibraryItemById,
@@ -175,6 +176,27 @@ describe("ACL helpers", () => {
     );
 
     expect(allowed).toBe(false);
+  });
+
+  it("collects explicit vector cleanup targets from persisted chunk metadata", async () => {
+    mockDb.select
+      .mockReturnValueOnce(makeSelectWhereChain([
+        {
+          vectorRefId: "vec-1",
+          vectorIndexName: "finance-library-v2",
+          metadata: { source: "document_upload" },
+        },
+      ]))
+      .mockReturnValueOnce(makeSelectWhereChain([
+        {
+          metadata: { source: "document_upload" },
+        },
+      ]));
+
+    const targets = await collectLibraryVectorCleanupTargets(77, 5);
+
+    expect(targets.vectorRefIds).toEqual(["vec-1"]);
+    expect(targets.indexNames).toEqual(["finance-library-v2"]);
   });
 });
 

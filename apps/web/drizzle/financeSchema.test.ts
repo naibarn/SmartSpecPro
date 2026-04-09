@@ -91,10 +91,12 @@ describe("finance schema foundation", () => {
 
     expect(libraryItemColumns.projectId).toBeDefined();
     expect(libraryChunkColumns.projectId).toBeDefined();
+    expect(libraryChunkColumns.vectorIndexName).toBeDefined();
     expect(libraryIndexJobColumns.projectId).toBeDefined();
 
     expect(libraryItemColumns.projectId.notNull).toBe(false);
     expect(libraryChunkColumns.projectId.notNull).toBe(false);
+    expect(libraryChunkColumns.vectorIndexName.notNull).toBe(false);
     expect(libraryIndexJobColumns.projectId.notNull).toBe(false);
   });
 });
