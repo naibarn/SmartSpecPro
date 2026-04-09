@@ -1,47 +1,123 @@
-# โหมด Desktop Host แบบ Managed
+---
+slug: desktop-host-managed-mode
+title: Desktop Host Managed Mode
+description: คู่มือติดตั้ง เปิดใช้งาน และทำความเข้าใจ managed desktop mode ของ SmartSpecPro Desktop Host
+icon: MonitorPlay
+section: features
+order: 68
+pages: ["/desktop/open"]
+tags: [desktop, desktop-host, managed mode, install, launch, handoff]
+---
 
-SmartSpecPro Desktop Host คือพื้นผิว local execution แบบมี governance ของ SmartSpecPro
+# Desktop Host Managed Mode
 
-## ความหมายของระบบนี้
+## หน้านี้ใช้สำหรับอะไร
 
-- Web ยังเป็น control plane
-- Desktop ยังเป็น execution-rich surface
-- local execution แบบ managed ยังต้องวิ่งผ่าน gateway-only LLM routing
-- local roots ใช้แทนการค้นทั้งดิสก์แบบ raw path ใน managed mode
-- run ของ Pi และ Agency Swarm ยังต้องอยู่ใต้ policy, audit, และ labeling ที่ตรงความจริง
+คู่มือนี้เป็นเอกสารอ้างอิงแบบรวดเร็วสำหรับการติดตั้งและเปิดใช้งาน Desktop Host แบบ managed mode
+
+ควรเปิดหน้านี้เมื่อ:
+
+- หน้า **Open in Desktop** ปรากฏขึ้น
+- แอปเดสก์ท็อปไม่เปิดให้อัตโนมัติ
+- คุณต้องการเข้าใจว่า managed mode ต่างจาก local app แบบอิสระอย่างไร
+
+ถ้าต้องการคู่มือ governance แบบเต็ม ให้ดู [Desktop Host](./desktop-host.md)
+
+## เริ่มต้นอย่างรวดเร็ว
+
+1. ติดตั้ง desktop build ล่าสุดที่เผยแพร่ไว้ใน release portal
+2. ลงชื่อเข้าใช้ด้วยบัญชี SmartSpecPro เดียวกับที่ใช้บนเว็บ
+3. รอให้ device enrollment และ policy refresh เสร็จ
+4. อนุมัติ local roots ที่ workflow ต้องใช้
+5. ลองกด launch link หรือ **Open in Desktop** อีกครั้ง
+
+ถ้ายังต้องการตัวติดตั้ง ให้ดู [Desktop Releases](./desktop-releases.md)
+
+## ความหมายของ managed mode
+
+managed mode ทำให้การรันบนเดสก์ท็อปอยู่ภายใน trust model ของ SmartSpecPro
+
+แปลว่า:
+
+- web ยังเป็น control plane
+- desktop ยังเป็น local execution surface
+- managed LLM traffic ยังเป็น gateway-only
+- local roots ใช้แทนการค้นทั้งดิสก์แบบไม่จำกัดเป็นค่าเริ่มต้น
+- run ของ Pi และ Agency Swarm ยังต้องตาม policy, audit และ truthful run labeling
+
+managed mode จึงตั้งใจให้ต่างจาก local shell ที่ไม่ถูกกำกับดูแล
 
 ## ป้ายกำกับการรันที่ตรงความจริง
 
-- `Local` หมายถึง input ดิบไม่ออกจากเครื่อง
-- `Hybrid` หมายถึงรันบน desktop แต่มีข้อมูลหรือ tool access ข้ามไปยังระบบที่ server จัดการ
-- `Server` หมายถึงรันบน runtime ฝั่งเซิร์ฟเวอร์
-- `External` หมายถึงรันบน external worker surface เช่น OpenClaw gateway
+คุณอาจเห็นป้ายเหล่านี้ใน Desktop Host และ run history ที่เกี่ยวข้อง:
 
-## Rollout gates
+| ป้ายกำกับ | ความหมาย |
+|---|---|
+| `Local` | input ดิบยังอยู่บนอุปกรณ์ |
+| `Hybrid` | รันบนเดสก์ท็อป แต่มีข้อมูลหรือเครื่องมือบางส่วนข้ามไปยังระบบที่เซิร์ฟเวอร์จัดการ |
+| `Server` | รันใน runtime ที่เซิร์ฟเวอร์ควบคุม |
+| `External` | รันบน external worker surface |
 
-ห้ามเปิด managed rollout กว้าง หาก gate ที่จำเป็นยังไม่ครบ:
+## การเปิดจากเว็บแอป
+
+desktop handoff links สามารถส่ง run, project, skill หรือ agency จากเว็บไปเปิดต่อในแอปเดสก์ท็อปได้
+
+flow ทั่วไปคือ:
+
+1. เริ่มงานจากบนเว็บ
+2. กด **Open in Desktop**
+3. เบราว์เซอร์จะเปิดหน้า launch และพยายามเปิดแอปเดสก์ท็อป
+4. ถ้าแอปถูกติดตั้งและลงทะเบียนแล้ว งานจะถูกรับช่วงต่อใน Desktop Host
+
+ถ้าการเปิดอัตโนมัติไม่สำเร็จ ให้คัดลอก launch link แล้วลองใหม่หลังจากติดตั้งหรือเปิดแอปด้วยตัวเองก่อน
+
+## สิ่งที่ต้องพร้อมก่อนจะถือว่า desktop runs เป็น managed จริง
+
+rollout คาดหวังให้ gate เหล่านี้ผ่านครบ:
 
 - device binding แบบ proof-of-possession
 - signed package verification
 - signed update verification
-- managed local roots เป็น default discovery path
+- managed local roots เป็นค่าเริ่มต้น
 - Pi startup แบบ gateway-only
 - Agency Swarm startup แบบ gateway-only
 - offboarding cleanup readiness
 
-## สิ่งที่หน้า Settings ควรแสดง
+ถ้า gate เหล่านี้ยังไม่พร้อม การรันบนเดสก์ท็อปอาจยังอยู่ในสถานะ preview หรือ partial governance
 
-- รายการ enrolled desktop devices พร้อม health, last-seen, และ posture ของ proof-of-possession
-- attestation/storage mode ที่ desktop รายงานกลับมา
-- posture ของ rich-document parser แบบ isolated รวมถึง format ที่รองรับ, extractor backend, OCR provider, สถานะ extraction-only, และ bounded limits
-- device ที่ถูก disable ต้องแสดงสถานะ disabled และต้องไม่ผ่าน managed execution gates หลัง policy refresh รอบถัดไป
-- หน้า Settings สามารถมี action สำหรับ disable device แบบ governed เพื่อ trigger offboarding cleanup ตอนเครื่องติดต่อกลับมารอบถัดไป
+## สิ่งที่ควรเห็นในหน้า Settings
 
-## ข้อจำกัดปัจจุบัน
+เมื่อแอปเดสก์ท็อป enrol แล้ว หน้า Settings ควรแสดง:
 
-- device proof แบบ cryptographic ใช้งานได้แล้ว และ Desktop Host จะรายงานได้ว่า key ปัจจุบันเป็น software-backed, OS-protected, OS-attested, หรือ hardware-backed เมื่อ helper หรือ deployment hint รองรับ แต่ platform-attested key broker แบบครอบคลุมทุก platform ยังเป็น hardening slice ถัดไป
-- rich-document parser รองรับ PDF, Office แบบ legacy/OpenXML, และไฟล์ภาพแบบ bounded แล้ว และสามารถใช้ `pdftotext`, `pdftoppm` หรือ `mutool`, `soffice`, และ `tesseract` แบบ opportunistic ได้เมื่อมีในเครื่อง แต่ยังไม่ใช่ OCR หรือ rendering pipeline เต็มรูปแบบสำหรับไฟล์ซับซ้อนมาก
+- อุปกรณ์ที่ enrol อยู่
+- health และเวลา last seen
+- attestation และ storage posture
+- package sync state
+- workspace profile ปัจจุบัน
+- local roots
+- rollout gates
 
-## หมายเหตุด้าน compatibility
+ถ้าไม่เห็นส่วนเหล่านี้ อาจเป็นเพราะ tenant ยังไม่ได้เปิด Desktop Host
 
-เส้นทาง localhost proxy แบบเดิมจาก Feature 004 ยังอยู่ในสถานะ compatibility-only ระหว่าง migration และไม่ใช่สัญญาระยะยาวของ Desktop Host แบบ managed
+## การแก้ปัญหาเบื้องต้น
+
+### แอปเดสก์ท็อปไม่เปิด
+
+- ลอง launch link อีกครั้ง
+- ตรวจว่าได้ติดตั้งแอปเดสก์ท็อปแล้ว
+- เปิดแอปเดสก์ท็อปเองหนึ่งครั้งก่อน แล้วจึงลอง handoff ใหม่
+
+### แอปเปิดแล้ว แต่ run ไม่ต่อ
+
+- ตรวจว่าล็อกอินด้วยบัญชีเดียวกับที่ใช้งานบนเว็บ
+- รอให้ policy refresh และ enrollment เสร็จ
+- ตรวจว่า local roots ที่จำเป็นถูกอนุมัติแล้ว
+
+### องค์กรของฉันต้องการให้ desktop runs อยู่ใต้ governance ตลอด
+
+ให้ใช้เฉพาะ installer ที่เผยแพร่แล้ว และเปิด managed mode ไว้เสมอ ไม่ควรพึ่ง localhost compatibility path เก่าสำหรับการใช้งานระยะยาวแบบ managed
+
+## คู่มือที่เกี่ยวข้อง
+
+- [Desktop Host](./desktop-host.md)
+- [Desktop Releases](./desktop-releases.md)

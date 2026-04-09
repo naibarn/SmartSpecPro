@@ -108,6 +108,21 @@ vi.mock("sonner", () => ({
   },
 }));
 
+vi.mock("@/i18n/useScopedTranslation", () => ({
+  useScopedTranslation: () => ({
+    t: (key: string, values?: Record<string, string | number>) => {
+      if (!values) {
+        return key;
+      }
+      return Object.entries(values).reduce(
+        (message, [name, value]) => message.replace(`{{${name}}}`, String(value)),
+        key,
+      );
+    },
+    locale: "en",
+  }),
+}));
+
 import AdminDesktopHost from "../AdminDesktopHost";
 
 describe("AdminDesktopHost", () => {

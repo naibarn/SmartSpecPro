@@ -5,8 +5,10 @@ import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { HelpButton } from "@/components/help";
 import { useAuth } from "@/contexts/AuthContext";
 import { DesktopHostSettingsPanel } from "@/features/desktop-host/DesktopHostSettingsPanel";
+import { DesktopReleasePanel } from "@/features/desktop-releases/DesktopReleasePanel";
 import { useDesktopDeviceControlPlaneState } from "@/features/desktop-host/useDesktopDeviceControlPlaneState";
 import { useDesktopHostStatus } from "@/features/desktop-host/useDesktopHostStatus";
 import { useDesktopPackageCatalog } from "@/features/desktop-host/useDesktopPackageCatalog";
@@ -19,6 +21,7 @@ import {
 export default function AdminDesktopHost() {
   const [, navigate] = useLocation();
   const { user } = useAuth();
+  const helpPage = user?.role === "admin" ? "/admin/desktop-host" : "/domain-admin/desktop-host";
   const desktopHostEnabled = useTenantFeatureFlag("desktopHostEnabled");
   const desktopAdvancedLocalModeEnabled = useTenantFeatureFlag("desktopAdvancedLocalMode");
   const desktopPackageSyncEnabled = useTenantFeatureFlag("desktopPackageSync");
@@ -151,10 +154,13 @@ export default function AdminDesktopHost() {
             </Badge>
           </div>
         </div>
-        <Button variant="outline" onClick={() => navigate(user?.role === "admin" ? "/admin/settings" : "/domain-admin/settings")}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to settings
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={() => navigate(user?.role === "admin" ? "/admin/settings" : "/domain-admin/settings")}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to settings
+          </Button>
+          <HelpButton page={helpPage} topic="desktop-host" variant="outline" size="sm" />
+        </div>
       </div>
 
       {desktopHostEnabled ? (
@@ -189,6 +195,8 @@ export default function AdminDesktopHost() {
           using managed desktop governance.
         </div>
       )}
+
+      <DesktopReleasePanel variant="admin" enabled={Boolean(user)} />
     </div>
   );
 }
