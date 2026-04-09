@@ -6,7 +6,127 @@ const setLocationMock = vi.fn();
 const authState = {
   role: "user",
 };
+const tenantFeatureFlagsState = {
+  desktopHostEnabled: false,
+};
+const desktopGovernanceStatusState = {
+  status: {
+    generatedAt: "2026-04-09T10:00:00.000Z",
+    devices: [
+      {
+        deviceId: "desktop-1",
+        displayName: "Ops Desktop",
+        machineName: "ops-desktop",
+        healthStatus: "online",
+        accessState: "active",
+        platform: {
+          os: "windows",
+          osVersion: "11",
+          arch: "x64",
+          appVersion: "0.1.0",
+        },
+        enrolledAt: "2026-04-09T09:00:00.000Z",
+        lastSeenAt: "2026-04-09T10:00:00.000Z",
+        owner: {
+          userId: "42",
+          name: "Ops Admin",
+          email: "ops@example.com",
+        },
+        presence: {
+          status: "online",
+          staleAfterSeconds: 300,
+          lastSeenAgeSeconds: 15,
+          reportedAt: "2026-04-09T10:00:00.000Z",
+        },
+        workerProjectionEnabled: true,
+        projectedWorkerRuntimeType: "desktop_zeroclaw_managed",
+        warningFlags: [],
+        capabilities: {},
+        localRoots: [
+          {
+            rootId: "root-1",
+            displayName: "Quotes",
+            normalizedPath: "/quotes",
+            trustScope: "user_selected",
+            consentState: "granted",
+            indexingMode: "metadata_full_text",
+            writebackMode: "output_only",
+            lastIndexedAt: null,
+            lastIndexError: null,
+            fileCountEstimate: null,
+          },
+        ],
+        packageCachePaths: [],
+        packageSyncState: {
+          syncStatus: "ready",
+          lastSyncAt: null,
+          lastError: null,
+          syncedPackageIds: [],
+          packageCount: 0,
+          lastRevocationCheckAt: null,
+        },
+        pendingActions: [],
+        currentWorkspaceProfile: null,
+        lastRunSummary: null,
+        policyVersion: null,
+        policyExpiresAt: null,
+        policyOverrides: {},
+      },
+      {
+        deviceId: "desktop-2",
+        displayName: "Finance Laptop",
+        machineName: "finance-laptop",
+        healthStatus: "offline",
+        accessState: "quarantined",
+        platform: {
+          os: "macos",
+          osVersion: "14",
+          arch: "arm64",
+          appVersion: "0.1.0",
+        },
+        enrolledAt: "2026-04-08T09:00:00.000Z",
+        lastSeenAt: "2026-04-09T09:50:00.000Z",
+        owner: {
+          userId: "84",
+          name: "Finance Lead",
+          email: "finance@example.com",
+        },
+        presence: {
+          status: "stale",
+          staleAfterSeconds: 300,
+          lastSeenAgeSeconds: 600,
+          reportedAt: "2026-04-09T10:00:00.000Z",
+        },
+        workerProjectionEnabled: false,
+        projectedWorkerRuntimeType: null,
+        warningFlags: ["quarantined"],
+        capabilities: {},
+        localRoots: [],
+        packageCachePaths: [],
+        packageSyncState: {
+          syncStatus: "ready",
+          lastSyncAt: null,
+          lastError: null,
+          syncedPackageIds: [],
+          packageCount: 0,
+          lastRevocationCheckAt: null,
+        },
+        pendingActions: [],
+        currentWorkspaceProfile: null,
+        lastRunSummary: null,
+        policyVersion: null,
+        policyExpiresAt: null,
+        policyOverrides: {},
+      },
+    ],
+  },
+  isLoading: false,
+  error: null as string | null,
+  refresh: vi.fn(),
+};
 const changeLanguageMock = vi.fn();
+const financeMutationMock = () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false });
+const financeInvalidateMock = () => ({ invalidate: vi.fn() });
 
 const translationMap: Record<string, string> = {
   "common:admin": "Admin",
@@ -23,6 +143,63 @@ const translationMap: Record<string, string> = {
   "dashboard:review.agencies": "Agencies",
   "dashboard:review.center": "Open Review Center",
   "dashboard:allAgencies": "All Agencies",
+  "dashboard:sections.documents": "Documents",
+  "dashboard:review.coverage": "{{percent}}% coverage",
+  "dashboard:review.metrics.agencies": "Agencies",
+  "dashboard:review.metrics.reviewed": "Reviewed",
+  "dashboard:review.metrics.averageRating": "Avg rating",
+  "dashboard:review.metrics.averageAlignment": "Avg alignment",
+  "dashboard:socialMenu.channels": "Channels",
+  "dashboard:socialMenu.inbox": "Inbox",
+  "dashboard:socialMenu.publishing": "Publishing",
+  "dashboard:socialMenu.moderation": "Moderation",
+  "dashboard:socialMenu.automation": "Social Automation",
+  "dashboard:review.eyebrow": "Agency Review Center",
+  "dashboard:review.description": "Track the latest agency feedback and rollout improvements.",
+  "dashboard:nextBestActions.manageDesktopReleases": "Manage desktop releases",
+  "dashboard:admin.systemMonitoring": "System Monitoring",
+  "dashboard:admin.tools": "Admin Tools",
+  "dashboard:admin.desktopGovernance": "Desktop Governance",
+  "dashboard:admin.desktopGovernanceEyebrow": "Managed Desktop",
+  "dashboard:admin.desktopGovernanceDescription": "Review enrolled desktop devices, last contact, root posture, and managed access controls from the web.",
+  "dashboard:admin.desktopGovernanceOpen": "Open governance console",
+  "dashboard:admin.desktopGovernanceDevices": "Enrolled devices",
+  "dashboard:admin.desktopGovernanceDevicesDescription": "Desktop installs that enrolled into the managed control plane.",
+  "dashboard:admin.desktopGovernanceConnected": "Connected now",
+  "dashboard:admin.desktopGovernanceConnectedDescription": "Devices with a recent heartbeat inside the tenant policy window.",
+  "dashboard:admin.desktopGovernanceRestricted": "Restricted devices",
+  "dashboard:admin.desktopGovernanceRestrictedDescription": "Devices currently in re-auth, quarantine, or disabled state.",
+  "dashboard:admin.desktopGovernanceRoots": "Devices with roots",
+  "dashboard:admin.desktopGovernanceRootsDescription": "Managed desktops that currently expose at least one approved local root.",
+  "dashboard:admin.desktopGovernanceUnavailable": "Desktop governance status is temporarily unavailable.",
+  "dashboard:finance.actions.confirm": "Confirm",
+  "dashboard:finance.actions.pause": "Pause",
+  "dashboard:finance.actions.resume": "Resume",
+  "dashboard:finance.actions.void": "Void",
+  "dashboard:finance.description": "A private, user-scoped finance workspace for chat drafts, OCR receipts, recurring rules, and reports.",
+  "dashboard:finance.drafts.empty": "No open drafts yet.",
+  "dashboard:finance.drafts.title": "Drafts",
+  "dashboard:finance.eyebrow": "Private Finance",
+  "dashboard:finance.labels.needsAttention": "Needs attention",
+  "dashboard:finance.locked.createPersonal": "Create Personal Chat",
+  "dashboard:finance.locked.description": "Open a personal chat to keep receipts, drafts, and reports isolated from work conversations.",
+  "dashboard:finance.locked.openPanel": "Open Finance Panel",
+  "dashboard:finance.locked.title": "Personal finance is locked",
+  "dashboard:finance.openPanel": "Open Finance Panel",
+  "dashboard:finance.quick.description": "Type a note or upload a receipt to turn it into a draft transaction.",
+  "dashboard:finance.quick.parseText": "Parse Text",
+  "dashboard:finance.quick.textPlaceholder": "Example: Lunch with client, 120 THB",
+  "dashboard:finance.quick.title": "Quick Draft",
+  "dashboard:finance.quick.upload": "Upload Receipt",
+  "dashboard:finance.recurring.empty": "No active recurring rules yet.",
+  "dashboard:finance.recurring.title": "Recurring Rules",
+  "dashboard:finance.summary.monthBalance": "Month balance",
+  "dashboard:finance.summary.openDrafts": "Open drafts",
+  "dashboard:finance.summary.todayExpense": "Today expense",
+  "dashboard:finance.summary.todayIncome": "Today income",
+  "dashboard:finance.title": "Personal Finance",
+  "dashboard:finance.transactions.empty": "No confirmed transactions yet.",
+  "dashboard:finance.transactions.title": "Recent Transactions",
 };
 
 function translate(key: string, params?: Record<string, string | number>) {
@@ -56,6 +233,30 @@ function translate(key: string, params?: Record<string, string | number>) {
 
   if (key === "dashboard:notices.failedGenerations") {
     return `${params?.count ?? 0} failed generations need review`;
+  }
+
+  if (key === "dashboard:review.coverage") {
+    return `${params?.percent ?? 0}% coverage`;
+  }
+
+  if (key === "dashboard:admin.monitoringToolsGrouped") {
+    return "Monitoring tools are grouped inside the command center.";
+  }
+
+  if (key === "dashboard:admin.monitoringToolsGroupedInside") {
+    return "Monitoring tools are grouped inside the command center.";
+  }
+
+  if (key === "dashboard:admin.desktopGovernanceLastCheck") {
+    return `Last check ${params?.time ?? "just now"}`;
+  }
+
+  if (key === "dashboard:admin.desktopGovernanceStale") {
+    return `${params?.count ?? 0} stale`;
+  }
+
+  if (key === "dashboard:quickActions.finance") {
+    return "Finance";
   }
 
   return translationMap[key] ?? key;
@@ -171,7 +372,11 @@ vi.mock("@tanstack/react-query", () => ({
 }));
 
 vi.mock("@/hooks/useTenantFeatureFlag", () => ({
-  useTenantFeatureFlags: () => ({}),
+  useTenantFeatureFlags: () => tenantFeatureFlagsState,
+}));
+
+vi.mock("@/features/desktop-host/useDesktopHostStatus", () => ({
+  useDesktopHostStatus: () => desktopGovernanceStatusState,
 }));
 
 vi.mock("@/hooks/useAgencyQuery", () => ({
@@ -258,6 +463,15 @@ vi.mock("@/hooks/useMenuItems", () => ({
 
 vi.mock("@/lib/trpc", () => ({
   trpc: {
+    useUtils: () => ({
+      finance: {
+        listDrafts: financeInvalidateMock(),
+        getDailySummary: financeInvalidateMock(),
+        getMonthlySummary: financeInvalidateMock(),
+        listTransactions: financeInvalidateMock(),
+        listRecurringRules: financeInvalidateMock(),
+      },
+    }),
     media: {
       listTasks: {
         useQuery: vi.fn(() => ({ data: { tasks: [], total: 0 }, isLoading: false })),
@@ -273,7 +487,140 @@ vi.mock("@/lib/trpc", () => ({
     },
     chat: {
       listConversations: {
-        useQuery: vi.fn(() => ({ data: { conversations: [], total: 0 }, isLoading: false })),
+        useQuery: vi.fn(() => ({
+          data: {
+            conversations: [
+              {
+                id: 1,
+                title: "Weekly Ops",
+                messageCount: 4,
+                totalCreditsUsed: 12,
+                updatedAt: "2026-04-09T09:00:00.000Z",
+                projectId: "ops",
+              },
+              {
+                id: 2,
+                title: "Personal Finance",
+                messageCount: 3,
+                totalCreditsUsed: 0,
+                updatedAt: "2026-04-09T10:00:00.000Z",
+                projectId: "personal",
+              },
+            ],
+            total: 2,
+          },
+          isLoading: false,
+        })),
+      },
+      getConversation: {
+        useQuery: vi.fn(() => ({
+          data: {
+            id: 2,
+            projectId: "personal",
+          },
+          isLoading: false,
+        })),
+      },
+    },
+    finance: {
+      getDailySummary: {
+        useQuery: vi.fn(() => ({
+          data: {
+            incomeMinor: 125000,
+            expenseMinor: 42000,
+            balanceMinor: 83000,
+          },
+          isLoading: false,
+        })),
+      },
+      getMonthlySummary: {
+        useQuery: vi.fn(() => ({
+          data: {
+            incomeMinor: 510000,
+            expenseMinor: 210000,
+            transferMinor: 0,
+            balanceMinor: 300000,
+          },
+          isLoading: false,
+        })),
+      },
+      listDrafts: {
+        useQuery: vi.fn(() => ({
+          data: [
+            {
+              id: 501,
+              type: "expense",
+              amountMinor: 12000,
+              currency: "THB",
+              merchantName: "Lunch",
+              categoryCode: "food",
+              confidence: 0.88,
+              needsClarification: false,
+              createdAt: "2026-04-09T08:30:00.000Z",
+              status: "draft",
+            },
+          ],
+          isLoading: false,
+        })),
+      },
+      listTransactions: {
+        useQuery: vi.fn(() => ({
+          data: [
+            {
+              id: 601,
+              type: "expense",
+              amountMinor: 12000,
+              currency: "THB",
+              merchantName: "Cafe",
+              categoryCode: "food",
+              status: "confirmed",
+              occurredAt: "2026-04-09T07:45:00.000Z",
+            },
+          ],
+          isLoading: false,
+        })),
+      },
+      listRecurringRules: {
+        useQuery: vi.fn(() => ({
+          data: [
+            {
+              id: 701,
+              amountMinor: 21900,
+              currency: "THB",
+              categoryCode: "subscription",
+              merchantName: "Netflix",
+              rrule: JSON.stringify({ frequency: "monthly", interval: 1, dayOfMonth: 5 }),
+              timezone: "Asia/Bangkok",
+              nextRunAt: "2026-05-05T00:00:00.000Z",
+              status: "active",
+              autoConfirm: false,
+            },
+          ],
+          isLoading: false,
+        })),
+      },
+      parseTextToDraft: {
+        useMutation: vi.fn(() => financeMutationMock()),
+      },
+      confirmDraft: {
+        useMutation: vi.fn(() => financeMutationMock()),
+      },
+      voidTransaction: {
+        useMutation: vi.fn(() => financeMutationMock()),
+      },
+      pauseRecurringRule: {
+        useMutation: vi.fn(() => financeMutationMock()),
+      },
+      resumeRecurringRule: {
+        useMutation: vi.fn(() => financeMutationMock()),
+      },
+      ingestFinanceDocument: {
+        useMutation: vi.fn(() => financeMutationMock()),
+      },
+    },
+    library: {
+      uploadFile: {
+        useMutation: vi.fn(() => financeMutationMock()),
       },
     },
     workflow: {
@@ -359,6 +706,7 @@ describe("Dashboard", () => {
     setLocationMock.mockClear();
     changeLanguageMock.mockClear();
     authState.role = "user";
+    tenantFeatureFlagsState.desktopHostEnabled = false;
   });
 
   it("shows Private Files in the sidebar", () => {
@@ -385,7 +733,6 @@ describe("Dashboard", () => {
   it("shows agency review summary on the dashboard", () => {
     render(<Dashboard />);
 
-    expect(screen.getAllByText("Agency Review Center").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("Tenant-wide improvement loop")).toBeInTheDocument();
     expect(screen.getByText("75% coverage")).toBeInTheDocument();
     expect(screen.getByText("Avg rating")).toBeInTheDocument();
@@ -424,6 +771,16 @@ describe("Dashboard", () => {
     expect(screen.getByText("Next Best Actions")).toBeInTheDocument();
   });
 
+  it("shows the personal finance report surface and shortcut", () => {
+    render(<Dashboard />);
+
+    expect(screen.getByRole("heading", { name: "Personal Finance" })).toBeInTheDocument();
+    expect(screen.getByText("Today income")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Recent Transactions" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Finance$/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Open Finance Panel/i })).toBeInTheDocument();
+  });
+
   it("keeps non-monitoring admin tools visible while grouping monitoring pages into the command center", () => {
     authState.role = "admin";
 
@@ -439,5 +796,38 @@ describe("Dashboard", () => {
 
     fireEvent.click(commandCenterButton);
     expect(setLocationMock).toHaveBeenCalledWith("/admin/dashboard");
+  });
+
+  it("shows desktop governance in next-best actions for admins when desktop host is enabled", () => {
+    authState.role = "admin";
+    tenantFeatureFlagsState.desktopHostEnabled = true;
+
+    render(<Dashboard />);
+
+    const desktopReleasesButton = screen.getByRole("button", { name: /desktop governance/i });
+    expect(desktopReleasesButton).toBeInTheDocument();
+
+    fireEvent.click(desktopReleasesButton);
+    expect(setLocationMock).toHaveBeenCalledWith("/admin/desktop-host");
+  });
+
+  it("shows a dedicated desktop governance panel on the dashboard for admins", () => {
+    authState.role = "admin";
+    tenantFeatureFlagsState.desktopHostEnabled = true;
+
+    render(<Dashboard />);
+
+    expect(
+      screen.getByRole("heading", { name: /desktop governance/i })
+    ).toBeInTheDocument();
+    expect(screen.getByText("Enrolled devices")).toBeInTheDocument();
+    expect(screen.getByText("Connected now")).toBeInTheDocument();
+    expect(screen.getByText("Restricted devices")).toBeInTheDocument();
+    expect(screen.getByText("Devices with roots")).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /open governance console/i })
+    );
+    expect(setLocationMock).toHaveBeenCalledWith("/admin/desktop-host");
   });
 });

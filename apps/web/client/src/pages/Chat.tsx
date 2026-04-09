@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/AuthContext";
 import { ChatSidebar, ChatView, MemoryPanel, SkillSettings, ArtifactPanel, SchedulePanel, type Artifact } from "@/components/chat";
+import { FinanceHub } from "@/components/finance/FinanceHub";
 import { CanvasPane } from "@/components/chat/canvas/CanvasPane";
 import { HelpButton } from "@/components/help";
 import { BrowserSessionSummaryCard } from "@/components/browser-session/BrowserSessionSummaryCard";
@@ -20,7 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { ChevronLeft, PanelLeftClose, Brain, Wand2, Layers, Bell, Menu, MonitorPlay, Loader2, Send, Users, Play, X, ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronLeft, PanelLeftClose, Brain, Wand2, Layers, Bell, Menu, MonitorPlay, Loader2, Send, Users, Play, X, ChevronDown, ChevronUp, ReceiptText } from "lucide-react";
 import { AgencyPickerModal } from "@/components/agency/AgencyPickerModal";
 import { useAgencyStream } from "@/hooks/useAgencyStream";
 import { AgencyChatStream } from "@/components/agency/AgencyChatStream";
@@ -55,7 +56,7 @@ import { LocaleToggle } from "@/components/LocaleToggle";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 
 
-type RightPanel = "none" | "memory" | "skills" | "artifacts" | "schedule" | "canvas";
+type RightPanel = "none" | "memory" | "skills" | "artifacts" | "schedule" | "canvas" | "finance";
 type AgencyRunPhase = "idle" | "connecting" | "running" | "completed" | "failed";
 
 export default function Chat() {
@@ -177,6 +178,9 @@ export default function Chat() {
       setInitialDmUserId(Number(dm));
       setInitialDmUserName(dmName || "User");
       setRightPanel("schedule");
+      window.history.replaceState({}, "", "/chat");
+    } else if (panel === "finance") {
+      setRightPanel("finance");
       window.history.replaceState({}, "", "/chat");
     } else if (panel === "schedule") {
       setRightPanel("schedule");
@@ -690,6 +694,15 @@ export default function Chat() {
             <Brain className="h-4 w-4" />
             <span className="hidden sm:inline">{t('chat.memory')}</span>
           </Button>
+          <Button
+            variant={rightPanel === "finance" ? "secondary" : "ghost"}
+            size="sm"
+            onClick={() => setRightPanel(rightPanel === "finance" ? "none" : "finance")}
+            className="gap-2"
+          >
+            <ReceiptText className="h-4 w-4" />
+            <span className="hidden sm:inline">{t('chat.finance')}</span>
+          </Button>
           {chatBrowserSessionEnabled && (
             <Button
               variant="ghost"
@@ -1152,6 +1165,35 @@ export default function Chat() {
               conversationId={selectedConversationId}
               onClose={() => setRightPanel("none")}
             />
+          )}
+          {rightPanel === "finance" && (
+            <div className="flex h-full min-h-0 flex-col">
+              <div className="flex items-center justify-between border-b border-slate-200/80 bg-white/95 px-4 py-3">
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">
+                    {t("chat.finance")}
+                  </p>
+                  <h2 className="truncate text-base font-semibold text-slate-900">
+                    {t("dashboard:finance.title")}
+                  </h2>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setRightPanel("none")}
+                  className="h-9 w-9 shrink-0 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+                  aria-label={t("chat.dismiss")}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="min-h-0 flex-1 overflow-y-auto p-3">
+                <FinanceHub
+                  conversationId={selectedConversationId}
+                  onCreatePersonalChat={handleNewPersonalChat}
+                />
+              </div>
+            </div>
           )}
           {rightPanel === "schedule" && (
             <SchedulePanel
