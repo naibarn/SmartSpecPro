@@ -3,9 +3,13 @@ import os from "os";
 import path from "path";
 import { Readable } from "stream";
 import { pipeline } from "stream/promises";
+import { and, eq } from "drizzle-orm";
 
+import { systemSettings } from "../../drizzle/schema";
+import { getDb } from "../db";
 import { listDesktopReleaseCatalog, persistDesktopReleaseUpload } from "./desktopReleaseService";
 import {
+  DESKTOP_RELEASE_SETTINGS_CATEGORY,
   getDesktopReleaseConfig,
 } from "./desktopReleaseSettings";
 import {
@@ -24,7 +28,11 @@ import {
   type DesktopReleaseBuildBundleMode,
   type DesktopReleaseBuildPlatform,
 } from "../../shared/desktopReleaseBuilds";
-import type { DesktopReleaseInstallerFormat, DesktopReleasePlatform } from "../../shared/desktopReleases";
+import {
+  desktopReleasePlatformValues,
+  type DesktopReleaseInstallerFormat,
+  type DesktopReleasePlatform,
+} from "../../shared/desktopReleases";
 
 const DEFAULT_GITHUB_WORKFLOW = "desktop-release.yml";
 const DEFAULT_GITHUB_REF = "main";
@@ -73,7 +81,6 @@ type GithubRelease = {
 
 type DesktopReleaseBuildSyncContext = {
   repository: string;
-  token: string;
   version: string;
   platform: DesktopReleaseBuildPlatform;
   bundleMode: DesktopReleaseBuildBundleMode;
@@ -81,9 +88,26 @@ type DesktopReleaseBuildSyncContext = {
   requestedByUserId: number | null;
 };
 
+type PersistedDesktopReleaseBuildJobState = {
+  workflowRunId: string;
+  repository: string;
+  version: string;
+  platform: DesktopReleaseBuildPlatform;
+  bundleMode: DesktopReleaseBuildBundleMode;
+  releaseNotes: string;
+  requestedByUserId: number | null;
+  uploadedPlatforms: DesktopReleasePlatform[];
+  portalSyncStatus: DesktopReleasePortalSyncState["status"];
+  portalSyncUpdatedAt: string | null;
+  portalSyncError: string | null;
+  portalSyncAttempts: number | null;
+};
+
 type DesktopReleasePortalSyncState = {
   status: (typeof desktopReleaseBuildPortalSyncValues)[number];
   updatedAt: string | null;
+  lastError: string | null;
+  attempts: number | null;
 };
 
 const desktopReleaseBuildContexts = new Map<string, DesktopReleaseBuildSyncContext>();
@@ -91,6 +115,7 @@ const desktopReleasePortalSyncStates = new Map<string, DesktopReleasePortalSyncS
 const desktopReleasePortalSyncActiveRuns = new Set<string>();
 const desktopReleasePortalSyncCompletedRuns = new Set<string>();
 const desktopReleasePortalSyncUploadedPlatforms = new Map<string, Set<DesktopReleasePlatform>>();
+const DESKTOP_RELEASE_BUILD_JOB_KEY_PREFIX = "build_job:";
 const DESKTOP_RELEASE_PORTAL_SYNC_MAX_ATTEMPTS = 120;
 const DESKTOP_RELEASE_PORTAL_SYNC_POLL_MS = 15_000;
 
@@ -212,16 +237,218 @@ function getPortalSyncState(workflowRunId: string): DesktopReleasePortalSyncStat
   return desktopReleasePortalSyncStates.get(workflowRunId) ?? {
     status: "idle",
     updatedAt: null,
+    lastError: null,
+    attempts: null,
   };
+}
+
+function getDesktopReleaseBuildJobSettingKey(workflowRunId: string): string {
+  return `${DESKTOP_RELEASE_BUILD_JOB_KEY_PREFIX}${workflowRunId}`;
+}
+
+function normalizePersistedUploadedPlatforms(value: unknown): DesktopReleasePlatform[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.filter((candidate): candidate is DesktopReleasePlatform => (
+    typeof candidate === "string" && desktopReleasePlatformValues.includes(candidate as DesktopReleasePlatform)
+  ));
+}
+
+function parsePersistedDesktopReleaseBuildJobState(value: unknown): PersistedDesktopReleaseBuildJobState | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const candidate = value as Partial<Record<keyof PersistedDesktopReleaseBuildJobState, unknown>>;
+  const workflowRunId = typeof candidate.workflowRunId === "string" ? candidate.workflowRunId.trim() : "";
+  const repository = typeof candidate.repository === "string" ? candidate.repository.trim() : "";
+  const version = typeof candidate.version === "string" ? candidate.version.trim() : "";
+  const platform = candidate.platform;
+  const bundleMode = candidate.bundleMode;
+  const releaseNotes = typeof candidate.releaseNotes === "string" ? candidate.releaseNotes : "";
+
+  if (!workflowRunId || !repository || !version) {
+    return null;
+  }
+  if (!desktopReleaseBuildPlatformSchema.safeParse(platform).success) {
+    return null;
+  }
+  if (!desktopReleaseBuildBundleModeSchema.safeParse(bundleMode).success) {
+    return null;
+  }
+
+  return {
+    workflowRunId,
+    repository,
+    version,
+    platform: platform as DesktopReleaseBuildPlatform,
+    bundleMode: bundleMode as DesktopReleaseBuildBundleMode,
+    releaseNotes,
+    requestedByUserId: typeof candidate.requestedByUserId === "number" ? candidate.requestedByUserId : null,
+    uploadedPlatforms: normalizePersistedUploadedPlatforms(candidate.uploadedPlatforms),
+    portalSyncStatus: desktopReleaseBuildPortalSyncValues.includes(
+      candidate.portalSyncStatus as (typeof desktopReleaseBuildPortalSyncValues)[number],
+    )
+      ? (candidate.portalSyncStatus as DesktopReleasePortalSyncState["status"])
+      : "idle",
+    portalSyncUpdatedAt: typeof candidate.portalSyncUpdatedAt === "string" ? candidate.portalSyncUpdatedAt : null,
+    portalSyncError: typeof candidate.portalSyncError === "string" ? candidate.portalSyncError : null,
+    portalSyncAttempts: typeof candidate.portalSyncAttempts === "number" ? candidate.portalSyncAttempts : null,
+  };
+}
+
+function buildPersistedDesktopReleaseBuildJobState(
+  workflowRunId: string,
+): PersistedDesktopReleaseBuildJobState | null {
+  const context = desktopReleaseBuildContexts.get(workflowRunId);
+  if (!context) {
+    return null;
+  }
+
+  const portalSyncState = getPortalSyncState(workflowRunId);
+  return {
+    workflowRunId,
+    repository: context.repository,
+    version: context.version,
+    platform: context.platform,
+    bundleMode: context.bundleMode,
+    releaseNotes: context.releaseNotes,
+    requestedByUserId: context.requestedByUserId,
+    uploadedPlatforms: Array.from(desktopReleasePortalSyncUploadedPlatforms.get(workflowRunId) ?? []),
+    portalSyncStatus: portalSyncState.status,
+    portalSyncUpdatedAt: portalSyncState.updatedAt,
+    portalSyncError: portalSyncState.lastError,
+    portalSyncAttempts: portalSyncState.attempts,
+  };
+}
+
+function shouldLogDesktopReleaseBuildJobPersistenceError(error: unknown): boolean {
+  if (process.env.NODE_ENV === "test") {
+    return false;
+  }
+
+  const message = error instanceof Error ? error.message : String(error);
+  return !/Database not configured|Database not available/i.test(message);
+}
+
+async function readPersistedDesktopReleaseBuildJobState(
+  workflowRunId: string,
+): Promise<PersistedDesktopReleaseBuildJobState | null> {
+  try {
+    const db = getDb();
+    const rows = await db
+      .select()
+      .from(systemSettings)
+      .where(and(
+        eq(systemSettings.category, DESKTOP_RELEASE_SETTINGS_CATEGORY),
+        eq(systemSettings.key, getDesktopReleaseBuildJobSettingKey(workflowRunId)),
+      ))
+      .limit(1);
+
+    const valueJson = rows[0]?.valueJson;
+    return parsePersistedDesktopReleaseBuildJobState(valueJson);
+  } catch {
+    return null;
+  }
+}
+
+async function persistDesktopReleaseBuildJobState(workflowRunId: string): Promise<void> {
+  const state = buildPersistedDesktopReleaseBuildJobState(workflowRunId);
+  if (!state) {
+    return;
+  }
+
+  const db = getDb();
+  const settingKey = getDesktopReleaseBuildJobSettingKey(workflowRunId);
+  const existing = await db
+    .select({ id: systemSettings.id })
+    .from(systemSettings)
+    .where(and(
+      eq(systemSettings.category, DESKTOP_RELEASE_SETTINGS_CATEGORY),
+      eq(systemSettings.key, settingKey),
+    ))
+    .limit(1);
+
+  if (existing.length > 0) {
+    await db
+      .update(systemSettings)
+      .set({
+        valueJson: state as Record<string, any>,
+        updatedBy: state.requestedByUserId,
+        updatedAt: new Date(),
+      })
+      .where(eq(systemSettings.id, existing[0].id));
+    return;
+  }
+
+  await db.insert(systemSettings).values({
+    category: DESKTOP_RELEASE_SETTINGS_CATEGORY,
+    key: settingKey,
+    valueJson: state as Record<string, any>,
+    isSensitive: false,
+    updatedBy: state.requestedByUserId,
+  });
+}
+
+async function hydrateDesktopReleaseBuildContext(workflowRunId: string): Promise<DesktopReleaseBuildSyncContext | null> {
+  const inMemoryContext = desktopReleaseBuildContexts.get(workflowRunId);
+  if (inMemoryContext) {
+    return inMemoryContext;
+  }
+
+  const persistedState = await readPersistedDesktopReleaseBuildJobState(workflowRunId);
+  if (!persistedState) {
+    return null;
+  }
+
+  const context: DesktopReleaseBuildSyncContext = {
+    repository: persistedState.repository,
+    version: persistedState.version,
+    platform: persistedState.platform,
+    bundleMode: persistedState.bundleMode,
+    releaseNotes: persistedState.releaseNotes,
+    requestedByUserId: persistedState.requestedByUserId,
+  };
+
+  desktopReleaseBuildContexts.set(workflowRunId, context);
+  desktopReleasePortalSyncUploadedPlatforms.set(
+    workflowRunId,
+    new Set(persistedState.uploadedPlatforms),
+  );
+  desktopReleasePortalSyncStates.set(workflowRunId, {
+    status: persistedState.portalSyncStatus,
+    updatedAt: persistedState.portalSyncUpdatedAt,
+    lastError: persistedState.portalSyncError,
+    attempts: persistedState.portalSyncAttempts,
+  });
+  if (persistedState.portalSyncStatus === "completed") {
+    desktopReleasePortalSyncCompletedRuns.add(workflowRunId);
+  }
+
+  return context;
 }
 
 function setPortalSyncState(
   workflowRunId: string,
   status: DesktopReleasePortalSyncState["status"],
+  details?: {
+    lastError?: string | null;
+    attempts?: number | null;
+  },
 ): void {
+  const existingState = getPortalSyncState(workflowRunId);
   desktopReleasePortalSyncStates.set(workflowRunId, {
     status,
     updatedAt: new Date().toISOString(),
+    lastError: details?.lastError ?? existingState.lastError,
+    attempts: details?.attempts ?? existingState.attempts,
+  });
+  void persistDesktopReleaseBuildJobState(workflowRunId).catch((error) => {
+    if (shouldLogDesktopReleaseBuildJobPersistenceError(error)) {
+      console.warn("[desktop-release] Failed to persist build job state", error);
+    }
   });
 }
 
@@ -381,7 +608,13 @@ async function uploadGithubReleaseAssetsToPortal(
     ? ["windows", "macos", "linux"]
     : [context.platform];
 
-  const release = await fetchGithubRelease(context.repository, context.token, getGithubReleaseTag(context.version));
+  const settings = await getDesktopReleaseConfig();
+  const githubToken = settings.githubToken.trim();
+  if (!githubToken) {
+    throw new Error("desktop_release_github_token_not_configured");
+  }
+
+  const release = await fetchGithubRelease(context.repository, githubToken, getGithubReleaseTag(context.version));
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "smartaihub-desktop-release-"));
 
   try {
@@ -396,7 +629,7 @@ async function uploadGithubReleaseAssetsToPortal(
       }
 
       const tempFilePath = path.join(tempRoot, sanitizeTempFileName(asset.name));
-      await downloadGithubReleaseAsset(asset, context.token, tempFilePath);
+      await downloadGithubReleaseAsset(asset, githubToken, tempFilePath);
 
       await persistDesktopReleaseUpload({
         version: context.version,
@@ -417,9 +650,13 @@ async function uploadGithubReleaseAssetsToPortal(
 
     if (uploadedPlatforms.size >= targetPlatforms.length) {
       desktopReleasePortalSyncCompletedRuns.add(workflowRunId);
-      setPortalSyncState(workflowRunId, "completed");
+      setPortalSyncState(workflowRunId, "completed", {
+        lastError: null,
+      });
     } else {
-      setPortalSyncState(workflowRunId, "syncing");
+      setPortalSyncState(workflowRunId, "syncing", {
+        lastError: null,
+      });
     }
   } finally {
     fs.rmSync(tempRoot, { recursive: true, force: true });
@@ -429,6 +666,11 @@ async function uploadGithubReleaseAssetsToPortal(
 async function startDesktopReleasePortalSync(
   workflowRunId: string,
 ): Promise<void> {
+  const context = await hydrateDesktopReleaseBuildContext(workflowRunId);
+  if (!context) {
+    return;
+  }
+
   if (desktopReleasePortalSyncCompletedRuns.has(workflowRunId)) {
     setPortalSyncState(workflowRunId, "completed");
     return;
@@ -437,27 +679,33 @@ async function startDesktopReleasePortalSync(
     return;
   }
 
-  const context = desktopReleaseBuildContexts.get(workflowRunId);
-  if (!context) {
-    return;
-  }
-
   desktopReleasePortalSyncActiveRuns.add(workflowRunId);
-  setPortalSyncState(workflowRunId, "syncing");
+  setPortalSyncState(workflowRunId, "syncing", {
+    lastError: null,
+  });
 
   void (async () => {
+    let lastErrorMessage: string | null = null;
     try {
       for (let attempt = 0; attempt < DESKTOP_RELEASE_PORTAL_SYNC_MAX_ATTEMPTS; attempt += 1) {
         try {
           await uploadGithubReleaseAssetsToPortal(workflowRunId, context);
           return;
         } catch (error) {
+          lastErrorMessage = error instanceof Error ? error.message : "desktop_release_portal_sync_failed";
+          setPortalSyncState(workflowRunId, "syncing", {
+            lastError: lastErrorMessage,
+            attempts: attempt + 1,
+          });
           console.warn("[desktop-release] Portal sync attempt failed", error);
         }
         await sleep(DESKTOP_RELEASE_PORTAL_SYNC_POLL_MS);
       }
 
-      setPortalSyncState(workflowRunId, "failed");
+      setPortalSyncState(workflowRunId, "failed", {
+        lastError: lastErrorMessage ?? "desktop_release_portal_sync_failed",
+        attempts: DESKTOP_RELEASE_PORTAL_SYNC_MAX_ATTEMPTS,
+      });
     } finally {
       desktopReleasePortalSyncActiveRuns.delete(workflowRunId);
     }
@@ -507,13 +755,13 @@ export async function buildDesktopReleaseFromGithubAction(
   if (workflowRunId) {
     desktopReleaseBuildContexts.set(workflowRunId, {
       repository: config.repository,
-      token: config.token,
       version,
       platform,
       bundleMode,
       releaseNotes,
       requestedByUserId: options.requestedByUserId ?? null,
     });
+    desktopReleasePortalSyncUploadedPlatforms.set(workflowRunId, new Set());
     setPortalSyncState(workflowRunId, "idle");
     if (process.env.NODE_ENV !== "test") {
       void startDesktopReleasePortalSync(workflowRunId);
@@ -536,6 +784,8 @@ export async function buildDesktopReleaseFromGithubAction(
 }
 
 export async function getDesktopReleaseBuildRunStatus(workflowRunId: string) {
+  await hydrateDesktopReleaseBuildContext(workflowRunId);
+
   const settings = await getDesktopReleaseConfig();
   const repository = normalizeGithubRepository(settings.githubRepository);
   const token = settings.githubToken.trim();
@@ -566,5 +816,7 @@ export async function getDesktopReleaseBuildRunStatus(workflowRunId: string) {
     workflowRunUpdatedAt: toIsoDateString(run.updated_at),
     portalSyncStatus: portalSyncState.status,
     portalSyncUpdatedAt: portalSyncState.updatedAt,
+    portalSyncError: portalSyncState.lastError,
+    portalSyncAttempts: portalSyncState.attempts,
   });
 }

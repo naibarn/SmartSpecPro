@@ -125,8 +125,10 @@ export type AuditEventType =
   | "agency_result_routed"
   | "desktop_host_device_enrolled"
   | "desktop_host_policy_refreshed"
+  | "desktop_host_device_policy_overrides_updated"
   | "desktop_host_package_sync"
   | "desktop_host_local_root_registered"
+  | "desktop_host_device_action_queued"
   | "desktop_host_root_action_queued"
   | "desktop_host_runtime_selected"
   | "desktop_host_outbound_policy_decision"
@@ -163,6 +165,7 @@ export interface AuditLogEntry {
   timestamp: string;
   eventType: AuditEventType;
   userId: number | null;
+  tenantId?: string | null;
   providerId?: number | null;
   providerName?: string | null;
   model?: string | null;

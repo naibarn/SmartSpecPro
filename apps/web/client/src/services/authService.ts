@@ -22,10 +22,50 @@ interface User {
 }
 
 const BASE_URL = import.meta.env.VITE_SMARTSPEC_WEB_URL || "https://smartaihub.app";
+const BASE_URL_HOST = (() => {
+  try {
+    return new URL(BASE_URL).hostname;
+  } catch {
+    return "smartaihub.app";
+  }
+})();
+
+function getRequestUrl(input: RequestInfo | URL): string {
+  if (input instanceof Request) return input.url;
+  if (input instanceof URL) return input.href;
+  return input.toString();
+}
+
+function isInternalSmartAiHubUrl(url: string): boolean {
+  if (url.startsWith("/")) return true;
+
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.toLowerCase();
+    return (
+      parsed.origin === new URL(BASE_URL).origin ||
+      host === BASE_URL_HOST ||
+      host.endsWith(`.${BASE_URL_HOST}`) ||
+      host === "localhost" ||
+      host === "127.0.0.1"
+    );
+  } catch {
+    return false;
+  }
+}
+
+function shouldSkipAuthInjection(url: string): boolean {
+  return (
+    url.includes("/auth/login") ||
+    url.includes("/auth/register") ||
+    url.includes("/auth/desktop/login")
+  );
+}
 
 // Cache for user data to avoid repeated secure store calls
 let cachedUser: User | null = null;
 let cachedToken: string | null = null;
+let originalFetch: typeof window.fetch | null = null;
 
 /**
  * Get stored auth token from secure store.
@@ -199,9 +239,8 @@ export async function verifyToken(): Promise<boolean> {
       return true;
     }
 
-    if (response.status === 401 || response.status === 403) {
+    if (response.status === 401) {
       await logout();
-      return false;
     }
 
     return false;
@@ -220,25 +259,77 @@ export function setupAuthInterceptor() {
   }
   (window as unknown as { __authInterceptorSetup?: boolean }).__authInterceptorSetup = true;
 
-  const originalFetch = window.fetch;
+  originalFetch = window.fetch;
+
+  async function hasValidAuthSession(): Promise<boolean> {
+    const fetchImpl = originalFetch ?? window.fetch.bind(window);
+
+    try {
+      if (hasTauri()) {
+        const token = await getAuthToken();
+        if (!token) return false;
+
+        const response = await fetchImpl(`${BASE_URL}/auth/me`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        return response.ok;
+      }
+
+      const response = await fetchImpl("/api/auth/me", {
+        credentials: "include",
+      });
+      return response.ok;
+    } catch {
+      return false;
+    }
+  }
 
   window.fetch = async (...args) => {
-    const response = await originalFetch(...args);
+    const [input, init] = args;
+    const requestUrl = getRequestUrl(input);
+
+    let finalInput = input;
+    let finalInit = init;
+
+    if (hasTauri() && isInternalSmartAiHubUrl(requestUrl) && !shouldSkipAuthInjection(requestUrl)) {
+      const token = await getAuthToken();
+      if (token) {
+        const headers = new Headers(init?.headers || (input instanceof Request ? input.headers : undefined));
+        if (!headers.has("Authorization")) {
+          headers.set("Authorization", `Bearer ${token}`);
+        }
+        finalInit = {
+          ...(init || {}),
+          headers,
+        };
+        if (input instanceof Request) {
+          finalInput = new Request(input, finalInit);
+          finalInit = undefined;
+        }
+      }
+    }
+
+    const fetchImpl = originalFetch ?? window.fetch.bind(window);
+    const response = await fetchImpl(finalInput as RequestInfo | URL, finalInit);
 
     if (response.status === 401 || response.status === 403) {
-      const url = args[0] instanceof Request ? args[0].url : args[0].toString();
+      const url = requestUrl;
 
-      if (!url.includes('/auth/login') && !url.includes('/auth/register') && !url.includes('/auth/desktop/login')) {
+      if (
+        !url.includes('/auth/login') &&
+        !url.includes('/auth/register') &&
+        !url.includes('/auth/desktop/login') &&
+        !url.includes('/trpc/auth.logout')
+      ) {
         const onLoginPage = window.location.pathname === '/login';
         if (!onLoginPage) {
-          if (hasTauri()) {
-            const hasToken = !!(await getAuthToken());
-            if (hasToken) {
-              console.warn('Auth error detected, logging out...');
-              await logout();
-            }
-          } else {
-            // Browser: cookie auth — if server says 401, session is invalid
+          // Tenant-scoped and desktop-host routes can legitimately return 403 when
+          // the user is signed in but lacks a feature/tenant entitlement.
+          // Only force a sign-out when we can confirm the auth session itself is gone.
+          const sessionAlive = await hasValidAuthSession();
+          if (!sessionAlive) {
             console.warn('Auth error detected, logging out...');
             await logout();
           }
@@ -299,4 +390,3 @@ export async function initializeAuth(): Promise<void> {
   // Both paths: verify with server
   await verifyToken();
 }
-

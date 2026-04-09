@@ -93,6 +93,12 @@ export interface FinanceDraftRecord extends Omit<FinanceDraft, "payloadJson" | "
   payloadJson: Record<string, unknown> & { version?: number };
   allowedScopes: string[];
   version: number;
+  amountMinor: number;
+  currency: string;
+  occurredAt: string;
+  categoryCode: string;
+  merchantName: string | null;
+  note: string | null;
 }
 
 export interface FinanceSummaryResult extends FinanceMonthlySummary {
@@ -131,6 +137,7 @@ export interface ParseTextToDraftInput {
   text: string;
   categoryHint?: string | null;
   typeHint?: FinanceTransaction["type"] | null;
+  occurredAt?: string | null;
   sourceMessageId?: number | null;
   model?: string;
   idempotencyKey?: string;
@@ -220,6 +227,14 @@ export interface CreateRecurringRuleInput {
   idempotencyKey?: string;
 }
 
+type FinanceDb = ReturnType<typeof getDb>;
+type FinanceDbExecutor = Pick<FinanceDb, "select" | "insert" | "update">;
+type FinanceDraftPayload = FinanceStructuredDraft & {
+  version?: number;
+  sourceKind?: string;
+  documentExtractionId?: number | null;
+};
+
 export interface PauseRecurringRuleInput {
   recurringRuleId: number;
   userId: number;
@@ -256,7 +271,391 @@ function normalizeText(value: string): string {
   return value.trim().replace(/\s+/g, " ");
 }
 
-function ensureDb(db: Awaited<ReturnType<typeof getDb>> | null | undefined): asserts db is NonNullable<Awaited<ReturnType<typeof getDb>>> {
+const THAI_DIGIT_MAP: Record<string, string> = {
+  "๐": "0",
+  "๑": "1",
+  "๒": "2",
+  "๓": "3",
+  "๔": "4",
+  "๕": "5",
+  "๖": "6",
+  "๗": "7",
+  "๘": "8",
+  "๙": "9",
+};
+
+function normalizeDigits(value: string): string {
+  return value.replace(/[๐-๙]/g, (digit) => THAI_DIGIT_MAP[digit] ?? digit);
+}
+
+function normalizeParsingText(value: string): string {
+  return normalizeDigits(normalizeText(value)).toLowerCase();
+}
+
+function stripFinanceIntentPrefix(value: string): string {
+  return normalizeText(
+    normalizeDigits(value).replace(/^\s*(?:expense|income|transfer|รายจ่าย|รายรับ|โอนเงิน|โอน):\s*/i, ""),
+  );
+}
+
+function inferFinanceTypeFromText(text: string, typeHint?: FinanceTransaction["type"] | null): FinanceTransaction["type"] {
+  if (typeHint) {
+    return typeHint;
+  }
+
+  const normalized = normalizeParsingText(text);
+  if (
+    normalized.includes("โอน")
+    || normalized.includes("transfer")
+    || normalized.includes("ย้ายเงิน")
+    || normalized.includes("ส่งเงิน")
+  ) {
+    return "transfer";
+  }
+
+  if (
+    normalized.includes("เงินเดือน")
+    || normalized.includes("เงินเข้า")
+    || normalized.includes("รับเงิน")
+    || normalized.includes("รายรับ")
+    || normalized.includes("income")
+    || normalized.includes("salary")
+    || normalized.includes("ได้เงิน")
+  ) {
+    return "income";
+  }
+
+  if (
+    normalized.includes("จ่าย")
+    || normalized.includes("ค่า")
+    || normalized.includes("ซื้อ")
+    || normalized.includes("ชำระ")
+    || normalized.includes("expense")
+    || normalized.includes("spent")
+    || normalized.includes("pay")
+    || normalized.includes("paid")
+  ) {
+    return "expense";
+  }
+
+  return "expense";
+}
+
+function inferCurrencyFromText(text: string): string {
+  const normalized = normalizeParsingText(text);
+  if (normalized.includes("usd") || normalized.includes("$")) return "USD";
+  if (normalized.includes("eur") || normalized.includes("€")) return "EUR";
+  if (normalized.includes("jpy") || normalized.includes("¥")) return "JPY";
+  if (normalized.includes("บาท") || normalized.includes("฿") || normalized.includes("thb")) return "THB";
+  return "THB";
+}
+
+function parseAmountMinorFromText(text: string, currency: string): number | null {
+  const normalized = normalizeDigits(text).replace(/,/g, "");
+  const patterns = [
+    /(?:฿|บาท|thb)\s*([0-9]+(?:\.[0-9]{1,2})?)/i,
+    /([0-9]+(?:\.[0-9]{1,2})?)\s*(?:฿|บาท|thb)/i,
+    /(?:\$|usd)\s*([0-9]+(?:\.[0-9]{1,2})?)/i,
+    /([0-9]+(?:\.[0-9]{1,2})?)\s*(?:\$|usd)/i,
+    /(?:€|eur)\s*([0-9]+(?:\.[0-9]{1,2})?)/i,
+    /([0-9]+(?:\.[0-9]{1,2})?)\s*(?:€|eur)/i,
+    /(?:¥|jpy)\s*([0-9]+(?:\.[0-9]{1,2})?)/i,
+    /([0-9]+(?:\.[0-9]{1,2})?)\s*(?:¥|jpy)/i,
+  ];
+
+  for (const pattern of patterns) {
+    const match = normalized.match(pattern);
+    if (match?.[1]) {
+      const parsed = Number.parseFloat(match[1]);
+      if (Number.isFinite(parsed)) {
+        const multiplier = currency === "JPY" ? 1 : 100;
+        return Math.max(1, Math.round(parsed * multiplier));
+      }
+    }
+  }
+
+  const candidates = Array.from(normalized.matchAll(/([0-9]+(?:\.[0-9]{1,2})?)/g), (match) => Number.parseFloat(match[1]))
+    .filter((value) => Number.isFinite(value));
+  if (candidates.length === 0) {
+    return null;
+  }
+
+  const candidate = candidates[candidates.length - 1];
+  if (!Number.isFinite(candidate)) {
+    return null;
+  }
+
+  const multiplier = currency === "JPY" ? 1 : 100;
+  return Math.max(1, Math.round(candidate * multiplier));
+}
+
+const FINANCE_DEFAULT_TIME_ZONE = "Asia/Bangkok";
+
+const MONTH_TOKEN_MAP: Record<string, number> = {
+  jan: 1,
+  january: 1,
+  feb: 2,
+  february: 2,
+  mar: 3,
+  march: 3,
+  apr: 4,
+  april: 4,
+  may: 5,
+  jun: 6,
+  june: 6,
+  jul: 7,
+  july: 7,
+  aug: 8,
+  august: 8,
+  sep: 9,
+  sept: 9,
+  september: 9,
+  oct: 10,
+  october: 10,
+  nov: 11,
+  november: 11,
+  dec: 12,
+  december: 12,
+  "ม.ค.": 1,
+  "มกราคม": 1,
+  "ก.พ.": 2,
+  "กุมภาพันธ์": 2,
+  "มี.ค.": 3,
+  "มีนาคม": 3,
+  "เม.ย.": 4,
+  "เมษายน": 4,
+  "พ.ค.": 5,
+  "พฤษภาคม": 5,
+  "มิ.ย.": 6,
+  "มิถุนายน": 6,
+  "ก.ค.": 7,
+  "กรกฎาคม": 7,
+  "ส.ค.": 8,
+  "สิงหาคม": 8,
+  "ก.ย.": 9,
+  "กันยายน": 9,
+  "ต.ค.": 10,
+  "ตุลาคม": 10,
+  "พ.ย.": 11,
+  "พฤศจิกายน": 11,
+  "ธ.ค.": 12,
+  "ธันวาคม": 12,
+};
+
+function normalizeOccurrenceText(value: string): string {
+  return normalizeDigits(normalizeText(value)).toLowerCase();
+}
+
+function normalizeOccurrenceYear(value: number): number {
+  if (value >= 2400) {
+    return value - 543;
+  }
+  if (value < 100) {
+    return 2000 + value;
+  }
+  return value;
+}
+
+function buildOccurredAtIsoFromParts(parts: { year: number; month: number; day: number; hour?: number; minute?: number; second?: number }): string {
+  return timeZonePartsToUtc(
+    {
+      year: parts.year,
+      month: parts.month,
+      day: parts.day,
+      hour: parts.hour ?? 0,
+      minute: parts.minute ?? 0,
+      second: parts.second ?? 0,
+    },
+    FINANCE_DEFAULT_TIME_ZONE,
+  ).toISOString();
+}
+
+function parseExplicitTimeFromText(normalized: string): { hour: number; minute: number; second: number } | null {
+  const timeMatch = normalized.match(/\b(?:เวลา\s*)?(\d{1,2}):(\d{2})(?:\s*(am|pm))?\b/i);
+  if (timeMatch) {
+    let hour = Number(timeMatch[1]);
+    const minute = Number(timeMatch[2]);
+    const meridiem = timeMatch[3]?.toLowerCase();
+    if (!Number.isFinite(hour) || !Number.isFinite(minute) || minute > 59 || hour > 23) {
+      return null;
+    }
+    if (meridiem === "pm" && hour < 12) {
+      hour += 12;
+    } else if (meridiem === "am" && hour === 12) {
+      hour = 0;
+    }
+    return { hour, minute, second: 0 };
+  }
+
+  const hourOnlyMatch = normalized.match(/\b(?:เวลา\s*)?(\d{1,2})\s*(?:นาฬิกา|โมง|hr|hrs|hour|hours)\b/i);
+  if (hourOnlyMatch) {
+    const hour = Number(hourOnlyMatch[1]);
+    if (Number.isFinite(hour) && hour >= 0 && hour <= 23) {
+      return { hour, minute: 0, second: 0 };
+    }
+  }
+
+  return null;
+}
+
+function parseExplicitDateFromText(normalized: string): { year: number; month: number; day: number } | null {
+  const isoMatch = normalized.match(/\b(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})\b/);
+  if (isoMatch) {
+    const year = normalizeOccurrenceYear(Number(isoMatch[1]));
+    const month = Number(isoMatch[2]);
+    const day = Number(isoMatch[3]);
+    if (Number.isFinite(year) && Number.isFinite(month) && Number.isFinite(day) && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+      return { year, month, day };
+    }
+  }
+
+  const dmyMatch = normalized.match(/\b(\d{1,2})[-/.](\d{1,2})[-/.](\d{2,4})\b/);
+  if (dmyMatch) {
+    const day = Number(dmyMatch[1]);
+    const month = Number(dmyMatch[2]);
+    const year = normalizeOccurrenceYear(Number(dmyMatch[3]));
+    if (Number.isFinite(year) && Number.isFinite(month) && Number.isFinite(day) && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+      return { year, month, day };
+    }
+  }
+
+  const monthPatterns = [
+    /\b(\d{1,2})\s*([a-zก-๙.]+)\s*(\d{2,4})\b/i,
+    /\b([a-zก-๙.]+)\s*(\d{1,2}),?\s*(\d{2,4})\b/i,
+  ];
+
+  for (const pattern of monthPatterns) {
+    const monthMatch = normalized.match(pattern);
+    if (!monthMatch) {
+      continue;
+    }
+
+    const firstToken = monthMatch[1];
+    const secondToken = monthMatch[2];
+    const thirdToken = monthMatch[3];
+    const token = Number.isNaN(Number(firstToken)) ? firstToken : secondToken;
+    const day = Number.isNaN(Number(firstToken)) ? Number(secondToken) : Number(firstToken);
+    const month = MONTH_TOKEN_MAP[token.toLowerCase()];
+    const year = normalizeOccurrenceYear(Number(thirdToken));
+    if (month && Number.isFinite(year) && Number.isFinite(day) && day >= 1 && day <= 31) {
+      return { year, month, day };
+    }
+  }
+
+  return null;
+}
+
+function parseOccurredAtPartsFromText(text: string): { year: number; month: number; day: number; hour: number; minute: number; second: number } | null {
+  const normalized = normalizeOccurrenceText(text);
+  const explicitDate = parseExplicitDateFromText(normalized);
+  if (explicitDate) {
+    const explicitTime = parseExplicitTimeFromText(normalized);
+    return {
+      ...explicitDate,
+      hour: explicitTime?.hour ?? 0,
+      minute: explicitTime?.minute ?? 0,
+      second: explicitTime?.second ?? 0,
+    };
+  }
+
+  return null;
+}
+
+export function extractDocumentOccurredAtIso(text: string): string | null {
+  const explicit = parseOccurredAtPartsFromText(text);
+  if (!explicit) {
+    return null;
+  }
+  return buildOccurredAtIsoFromParts(explicit);
+}
+
+function inferCategoryCodeFromText(text: string, categoryHint: string | null | undefined, type: FinanceTransaction["type"]): string {
+  const hint = categoryHint ? normalizeText(categoryHint) : "";
+  if (hint) {
+    return hint.slice(0, 64);
+  }
+
+  const normalized = normalizeParsingText(text);
+  const keywordRules: Array<{ keywords: string[]; code: string }> = [
+    { keywords: ["taxi", "grab", "bolt", "รถไฟฟ้า", "bts", "mrt", "เดินทาง", "transport", "ชาร์จรถ", "ชาร์จไฟรถ", "fuel", "gas"], code: "transport" },
+    { keywords: ["coffee", "cafe", "restaurant", "food", "lunch", "dinner", "อาหาร", "กาแฟ", "ข้าว", "กิน"], code: "food" },
+    { keywords: ["rent", "ค่าเช่า", "บ้าน", "หอ", "ที่พัก"], code: "housing.rent" },
+    { keywords: ["electricity", "ไฟฟ้า", "utility", "น้ำ", "internet", "wifi"], code: "utilities" },
+    { keywords: ["salary", "เงินเดือน", "โบนัส", "income"], code: "income.salary" },
+    { keywords: ["health", "ยา", "หมอ", "clinic", "hospital"], code: "healthcare" },
+    { keywords: ["education", "เรียน", "หนังสือ", "course"], code: "education" },
+    { keywords: ["subscription", "netflix", "spotify", "prime"], code: "subscription" },
+  ];
+
+  for (const rule of keywordRules) {
+    if (rule.keywords.some((keyword) => normalized.includes(keyword))) {
+      return rule.code;
+    }
+  }
+
+  return type === "income" ? "income.misc" : "other.misc";
+}
+
+function inferOccurredAtIso(text: string, fallback = new Date()): string {
+  const explicit = parseOccurredAtPartsFromText(text);
+  if (explicit) {
+    return buildOccurredAtIsoFromParts(explicit);
+  }
+
+  const normalized = normalizeOccurrenceText(text);
+  const now = new Date(fallback);
+  if (normalized.includes("เมื่อวาน") || normalized.includes("yesterday")) {
+    return new Date(now.getTime() - 86_400_000).toISOString();
+  }
+  if (normalized.includes("พรุ่งนี้") || normalized.includes("tomorrow")) {
+    return new Date(now.getTime() + 86_400_000).toISOString();
+  }
+  if (normalized.includes("วันนี้") || normalized.includes("today")) {
+    return now.toISOString();
+  }
+  return now.toISOString();
+}
+
+function buildFallbackStructuredDraft(params: {
+  text: string;
+  typeHint?: FinanceTransaction["type"] | null;
+  categoryHint?: string | null;
+  occurredAt?: string | null;
+}): FinanceStructuredDraft {
+  const type = inferFinanceTypeFromText(params.text, params.typeHint ?? null);
+  const currency = inferCurrencyFromText(params.text);
+  const amountMinor = parseAmountMinorFromText(params.text, currency);
+  const categoryCode = inferCategoryCodeFromText(params.text, params.categoryHint ?? null, type);
+  const missingFields: string[] = [];
+
+  if (amountMinor === null) {
+    missingFields.push("amountMinor");
+  }
+
+  const needsClarification = missingFields.length > 0;
+
+  return {
+    type,
+    amountMinor: amountMinor ?? 1,
+    currency,
+    occurredAt: params.occurredAt ?? inferOccurredAtIso(params.text),
+    categoryCode,
+    merchantName: null,
+    confidence: needsClarification
+      ? 0.38
+      : params.categoryHint?.trim()
+        ? 0.84
+        : 0.7,
+    needsClarification,
+    missingFields,
+    sourceMessageId: undefined,
+    sourceLibraryItemId: undefined,
+    recurringRuleId: undefined,
+    note: stripFinanceIntentPrefix(params.text) || normalizeText(params.text),
+  };
+}
+
+function ensureDb(db: FinanceDb | null | undefined): asserts db is FinanceDb {
   if (!db) {
     throw new Error("Database not available");
   }
@@ -426,11 +825,102 @@ function normalizePayloadVersion(payloadJson: Record<string, unknown> | null | u
   return typeof raw === "number" && Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : 1;
 }
 
+function toFinanceConfidenceValue(value: number | string | null | undefined): string | null {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value.toFixed(2);
+  }
+  if (typeof value === "string" && value.trim().length > 0) {
+    return value;
+  }
+  return null;
+}
+
+function readOptionalPositiveInt(value: unknown): number | null {
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
+    return null;
+  }
+  return Math.floor(value);
+}
+
+function readOptionalString(value: unknown): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function readStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0);
+}
+
+function materializeDraftPayload(row: Pick<FinanceDraft, "type" | "payloadJson" | "createdAt">): FinanceDraftPayload {
+  const payloadJson = (row.payloadJson ?? {}) as Record<string, unknown>;
+  const amountMinor = readOptionalPositiveInt(payloadJson.amountMinor) ?? 1;
+  const currency = readOptionalString(payloadJson.currency)?.toUpperCase() ?? "THB";
+  const occurredAt = readOptionalString(payloadJson.occurredAt) ?? row.createdAt.toISOString();
+  const categoryCode = readOptionalString(payloadJson.categoryCode) ?? "uncategorized";
+  const merchantName = typeof payloadJson.merchantName === "string"
+    ? payloadJson.merchantName
+    : payloadJson.merchantName === null
+      ? null
+      : null;
+  const note = typeof payloadJson.note === "string"
+    ? payloadJson.note
+    : payloadJson.note === null
+      ? null
+      : null;
+  const confidence = typeof payloadJson.confidence === "number" && Number.isFinite(payloadJson.confidence)
+    ? payloadJson.confidence
+    : 0;
+  const sourceMessageId = typeof payloadJson.sourceMessageId === "number" && Number.isFinite(payloadJson.sourceMessageId)
+    ? payloadJson.sourceMessageId
+    : null;
+  const sourceLibraryItemId = typeof payloadJson.sourceLibraryItemId === "number" && Number.isFinite(payloadJson.sourceLibraryItemId)
+    ? payloadJson.sourceLibraryItemId
+    : null;
+  const recurringRuleId = typeof payloadJson.recurringRuleId === "number" && Number.isFinite(payloadJson.recurringRuleId)
+    ? payloadJson.recurringRuleId
+    : null;
+  const documentExtractionId = typeof payloadJson.documentExtractionId === "number" && Number.isFinite(payloadJson.documentExtractionId)
+    ? payloadJson.documentExtractionId
+    : null;
+
+  return {
+    type: row.type,
+    amountMinor,
+    currency,
+    occurredAt,
+    categoryCode,
+    merchantName,
+    note,
+    confidence,
+    needsClarification: Boolean(payloadJson.needsClarification),
+    missingFields: readStringArray(payloadJson.missingFields),
+    sourceMessageId,
+    sourceLibraryItemId,
+    recurringRuleId,
+    version: normalizePayloadVersion(payloadJson),
+    sourceKind: readOptionalString(payloadJson.sourceKind) ?? undefined,
+    documentExtractionId,
+  };
+}
+
 function mapDraftRow(row: FinanceDraft): FinanceDraftRecord {
   const payloadJson = (row.payloadJson ?? {}) as Record<string, unknown>;
   const version = normalizePayloadVersion(payloadJson);
+  const materialized = materializeDraftPayload(row);
   return {
     ...row,
+    amountMinor: materialized.amountMinor,
+    currency: materialized.currency,
+    occurredAt: materialized.occurredAt,
+    categoryCode: materialized.categoryCode,
+    merchantName: materialized.merchantName ?? null,
+    note: materialized.note ?? null,
     payloadJson,
     allowedScopes: row.allowedScopes ?? [],
     version,
@@ -585,7 +1075,7 @@ function computeNextRecurringRunAt(
   return null;
 }
 
-async function selectExistingDraft(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, scope: FinanceScope, identity: { idempotencyKey: string; sourceHash?: string | null; draftId?: number | null }): Promise<FinanceDraftRecord | null> {
+async function selectExistingDraft(db: FinanceDbExecutor, scope: FinanceScope, identity: { idempotencyKey: string; sourceHash?: string | null; draftId?: number | null }): Promise<FinanceDraftRecord | null> {
   if (identity.draftId) {
     const [byId] = await db
       .select()
@@ -636,7 +1126,7 @@ async function selectExistingDraft(db: NonNullable<Awaited<ReturnType<typeof get
 }
 
 async function selectExistingConfirmedTransaction(
-  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  db: FinanceDbExecutor,
   scope: FinanceScope,
   draftId: number,
 ): Promise<FinanceTransaction | null> {
@@ -654,7 +1144,7 @@ async function selectExistingConfirmedTransaction(
 }
 
 async function ensureDraftOwnership(
-  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  db: FinanceDbExecutor,
   scope: FinanceScope,
   draftId: number,
 ): Promise<FinanceDraftRecord> {
@@ -677,7 +1167,7 @@ async function ensureDraftOwnership(
 }
 
 async function ensureTransactionOwnership(
-  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  db: FinanceDbExecutor,
   scope: FinanceScope,
   transactionId: number,
 ): Promise<FinanceTransaction> {
@@ -700,7 +1190,7 @@ async function ensureTransactionOwnership(
 }
 
 async function ensureRecurringRuleOwnership(
-  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  db: FinanceDbExecutor,
   scope: FinanceScope,
   recurringRuleId: number,
 ): Promise<FinanceRecurringRule> {
@@ -749,7 +1239,7 @@ function buildSummaryRow(
 }
 
 async function insertDraftWithIdempotency(
-  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  db: FinanceDbExecutor,
   scope: FinanceScope,
   draft: InsertFinanceDraft,
 ): Promise<FinanceDraftRecord> {
@@ -777,7 +1267,7 @@ async function insertDraftWithIdempotency(
 }
 
 async function insertRecurringRuleWithIdempotency(
-  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  db: FinanceDbExecutor,
   scope: FinanceScope,
   rule: InsertFinanceRecurringRule,
 ): Promise<FinanceRecurringRule> {
@@ -818,7 +1308,7 @@ function buildListRange(limit?: number, offset?: number) {
 }
 
 async function createTransactionFromDraft(
-  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  db: FinanceDbExecutor,
   scope: FinanceScope,
   draft: FinanceDraftRecord,
   options: { idempotencyKey?: string; confirmedAt?: Date; confirmUserId: number },
@@ -839,11 +1329,7 @@ async function createTransactionFromDraft(
     return existingTransaction;
   }
 
-  const draftPayload = draft.payloadJson as FinanceStructuredDraft & {
-    version?: number;
-    sourceKind?: string;
-    documentExtractionId?: number;
-  };
+  const draftPayload = materializeDraftPayload(draft);
   const [insertedTransaction] = await db
     .insert(financeTransactions)
     .values({
@@ -855,7 +1341,7 @@ async function createTransactionFromDraft(
       source: draft.source,
       amountMinor: draft.amountMinor,
       currency: draft.currency,
-      occurredAt: new Date(draftPayload.occurredAt),
+      occurredAt: new Date(draft.occurredAt),
       categoryCode: draft.categoryCode,
       merchantName: draft.merchantName ?? null,
       note: draft.note ?? null,
@@ -922,6 +1408,10 @@ export async function parseTextToDraft(input: ParseTextToDraftInput): Promise<Fi
     throw new TRPCError({ code: "BAD_REQUEST", message: "Finance text cannot be empty" });
   }
   const normalizedCategoryHint = normalizeText(input.categoryHint ?? "");
+  const parsedOccurredAt = input.occurredAt ? new Date(input.occurredAt) : null;
+  const resolvedOccurredAt = parsedOccurredAt && Number.isFinite(parsedOccurredAt.getTime())
+    ? parsedOccurredAt.toISOString()
+    : null;
 
   const sourceMessageId = input.sourceMessageId ?? null;
   const sourceHash = computeBaseSourceHash([
@@ -930,6 +1420,7 @@ export async function parseTextToDraft(input: ParseTextToDraftInput): Promise<Fi
     scope.ownerUserId,
     "chat_text",
     normalizedText,
+    resolvedOccurredAt ?? "",
   ]);
   const normalizedTypeHint = input.typeHint && input.typeHint !== "transfer"
     ? input.typeHint
@@ -940,6 +1431,7 @@ export async function parseTextToDraft(input: ParseTextToDraftInput): Promise<Fi
     scope.ownerUserId,
     sourceMessageId ?? sourceHash,
     sourceHash,
+    resolvedOccurredAt ?? "",
   ]);
 
   const existing = await selectExistingDraft(db, scope, {
@@ -950,53 +1442,88 @@ export async function parseTextToDraft(input: ParseTextToDraftInput): Promise<Fi
     return existing;
   }
 
-  const structured = await callLLMStructured<FinanceStructuredDraft>({
-    systemPrompt: [
-      "You extract a single finance transaction draft from user text.",
-      "Do not change the tenant, project, or owner.",
-      normalizedTypeHint
-        ? `The user provided a type hint. Prefer it when the text is ambiguous: ${normalizedTypeHint}.`
-        : "Infer the transaction type from context. If the text is clearly about income, expense, or transfer, choose the closest type.",
-      normalizedCategoryHint
-        ? `A user-provided category hint is available. Prefer it when the text is ambiguous: ${normalizedCategoryHint}.`
-        : "Use the most specific categoryCode that matches the text. If the category is unclear, choose a useful custom categoryCode and set needsClarification when needed.",
-      "Return only valid JSON matching the schema.",
-      "Use missingFields and needsClarification when the user text does not provide enough detail.",
-    ].join("\n"),
-    userMessage: JSON.stringify({
+  let structuredData: FinanceStructuredDraft;
+  let usedFallback = false;
+
+  try {
+    const structured = await callLLMStructured<FinanceStructuredDraft>({
+      systemPrompt: [
+        "You extract a single finance transaction draft from user text.",
+        "Do not change the tenant, project, or owner.",
+        resolvedOccurredAt
+          ? `The user has already selected the transaction timestamp. Use it unless the text explicitly conflicts: ${resolvedOccurredAt}.`
+          : "If the text includes a clear date or time, use it. Otherwise infer the best timestamp from the current context.",
+        normalizedTypeHint
+          ? `The user provided a type hint. Prefer it when the text is ambiguous: ${normalizedTypeHint}.`
+          : "Infer the transaction type from context. If the text is clearly about income, expense, or transfer, choose the closest type.",
+        normalizedCategoryHint
+          ? `A user-provided category hint is available. Prefer it when the text is ambiguous: ${normalizedCategoryHint}.`
+          : "Use the most specific categoryCode that matches the text. If the category is unclear, choose a useful custom categoryCode and set needsClarification when needed.",
+        "Return only valid JSON matching the schema.",
+        "Use missingFields and needsClarification when the user text does not provide enough detail.",
+      ].join("\n"),
+      userMessage: JSON.stringify({
+        tenantId: scope.tenantId,
+        projectId: scope.projectId,
+        personal: scope.personal,
+        text: normalizedText,
+        occurredAt: resolvedOccurredAt,
+        typeHint: normalizedTypeHint,
+        categoryHint: normalizedCategoryHint || null,
+        sourceMessageId,
+      }),
+      zodSchema: financeStructuredDraftSchema,
+      userId: input.userId,
       tenantId: scope.tenantId,
-      projectId: scope.projectId,
-      personal: scope.personal,
+      maxRetries: 0,
+      billingDescription: "finance_text_to_draft",
+      billingMetadata: {
+        domain: "finance",
+        source: "chat_text",
+        conversationId: input.conversationId,
+      },
+      model: input.model,
+    });
+    structuredData = structured.data;
+    if (resolvedOccurredAt) {
+      structuredData = {
+        ...structuredData,
+        occurredAt: resolvedOccurredAt,
+      };
+    }
+  } catch (error) {
+    usedFallback = true;
+    structuredData = buildFallbackStructuredDraft({
       text: normalizedText,
       typeHint: normalizedTypeHint,
       categoryHint: normalizedCategoryHint || null,
-      sourceMessageId,
-    }),
-    zodSchema: financeStructuredDraftSchema,
-    userId: input.userId,
-    tenantId: scope.tenantId,
-    maxRetries: 1,
-    billingDescription: "finance_text_to_draft",
-    billingMetadata: {
-      domain: "finance",
-      source: "chat_text",
-      conversationId: input.conversationId,
-    },
-    model: input.model,
-  });
+      occurredAt: resolvedOccurredAt,
+    });
+    auditLogger.log({
+      eventType: "orchestration_fallback",
+      userId: input.userId,
+      tenantId: scope.tenantId,
+      metadata: {
+        domain: "finance",
+        source: "chat_text",
+        conversationId: input.conversationId,
+        reason: error instanceof Error ? error.message : "structured_llm_failed",
+      },
+    });
+  }
 
-  const draftPayload = buildDraftClarificationPayload(structured.data, {
+  const draftPayload = buildDraftClarificationPayload(structuredData, {
     sourceKind: "chat_text",
     sourceMessageId,
     sourceHash,
   });
-  const draftCategoryCode = normalizedCategoryHint || structured.data.categoryCode;
+  const draftCategoryCode = normalizedCategoryHint || structuredData.categoryCode;
 
   const draft = await insertDraftWithIdempotency(db, scope, {
     tenantId: scope.tenantId,
     projectId: scope.projectId,
     ownerUserId: scope.ownerUserId,
-    type: structured.data.type,
+    type: structuredData.type,
     status: "draft",
     source: "chat_text",
     idempotencyKey,
@@ -1006,10 +1533,10 @@ export async function parseTextToDraft(input: ParseTextToDraftInput): Promise<Fi
       categoryCode: draftCategoryCode,
       version: 1,
     },
-    missingFields: structured.data.missingFields ?? [],
-    confidence: Number(structured.data.confidence.toFixed(2)),
-    needsClarification: structured.data.needsClarification,
-    clarificationPrompt: buildClarificationPrompt(structured.data.missingFields ?? []),
+    missingFields: structuredData.missingFields ?? [],
+    confidence: toFinanceConfidenceValue(structuredData.confidence),
+    needsClarification: structuredData.needsClarification,
+    clarificationPrompt: buildClarificationPrompt(structuredData.missingFields ?? []),
     sourceMessageId,
     sourceLibraryItemId: null,
     recurringRuleId: null,
@@ -1026,6 +1553,7 @@ export async function parseTextToDraft(input: ParseTextToDraftInput): Promise<Fi
       source: "chat_text",
       draftId: draft.id,
       needsClarification: draft.needsClarification,
+      usedFallback,
     },
   });
 
@@ -1103,7 +1631,7 @@ export async function parseDocumentToDraft(input: ParseDocumentToDraftInput): Pr
         version: 1,
       },
       missingFields: extracted.missingFields ?? [],
-      confidence: Number(extracted.confidence.toFixed(2)),
+      confidence: toFinanceConfidenceValue(extracted.confidence),
       needsClarification: extracted.needsClarification,
       clarificationPrompt: buildClarificationPrompt(extracted.missingFields ?? []),
       sourceMessageId: extraction.sourceMessageId ?? null,
@@ -1173,13 +1701,7 @@ export async function updateDraft(input: UpdateDraftInput): Promise<FinanceDraft
     .update(financeDrafts)
     .set({
       type: patch.type ?? draft.type,
-      amountMinor: patch.amountMinor ?? draft.amountMinor,
-      currency: patch.currency ?? draft.currency,
-      occurredAt: patch.occurredAt ? new Date(patch.occurredAt) : new Date((draft.payloadJson.occurredAt as string) ?? draft.createdAt),
-      categoryCode: patch.categoryCode ?? draft.categoryCode,
-      merchantName: patch.merchantName === undefined ? draft.merchantName : patch.merchantName,
-      note: patch.note === undefined ? draft.note : patch.note,
-      confidence: patch.confidence ?? draft.confidence,
+      confidence: toFinanceConfidenceValue(patch.confidence ?? draft.confidence),
       missingFields: patch.missingFields ?? draft.missingFields,
       needsClarification: patch.needsClarification ?? draft.needsClarification,
       clarificationPrompt: patch.clarificationPrompt === undefined ? draft.clarificationPrompt : patch.clarificationPrompt,
@@ -1706,7 +2228,7 @@ export async function listLinkedDocuments(input: ListLinkedDocumentsInput): Prom
 }
 
 async function createRecurringDraftFromRule(
-  tx: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  tx: FinanceDbExecutor,
   scope: FinanceScope,
   rule: FinanceRecurringRule,
   runAt: Date,
@@ -1747,7 +2269,7 @@ async function createRecurringDraftFromRule(
       version: 1,
     },
     missingFields: [],
-    confidence: 1,
+    confidence: toFinanceConfidenceValue(1),
     needsClarification: false,
     clarificationPrompt: null,
     sourceMessageId: rule.sourceMessageId ?? null,

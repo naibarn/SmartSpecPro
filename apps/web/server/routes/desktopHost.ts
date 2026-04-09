@@ -23,10 +23,12 @@ import {
   getDesktopDeviceByIdForTenant,
   listDesktopDevicesForActor,
   listTenantDesktopDevicesForActor,
+  queueDesktopDeviceAction,
   queueDesktopRootAction,
   recordDesktopDeviceHeartbeat,
   registerDesktopDevice,
   summarizeDesktopDeviceRecord,
+  updateDesktopDevicePolicyOverrides,
 } from "../services/desktopDeviceRegistryService";
 import {
   buildDesktopAgencyCatalogItem,
@@ -54,9 +56,13 @@ import { buildAgencyDocumentFromRows } from "../services/agencyBuilderDocument";
 import { sdk } from "../_core/sdk";
 import {
   DESKTOP_HOST_PROTOCOL_VERSION,
+  desktopDeviceActionRequestSchema,
+  desktopDeviceActionResponseSchema,
   desktopDeviceControlPlaneStateSchema,
   desktopDeviceHeartbeatPayloadSchema,
   desktopDeviceDisableRequestSchema,
+  desktopDevicePolicyOverrideRequestSchema,
+  desktopDevicePolicyOverrideResponseSchema,
   desktopDeviceRegistrationPayloadSchema,
   desktopEnrollmentChallengeRequestSchema,
   desktopEnrollmentVerifyRequestSchema,
@@ -466,6 +472,8 @@ export interface RegisterDesktopHostRoutesDeps {
   disableDesktopDevice?: typeof disableDesktopDevice;
   listDesktopDevicesForActor?: typeof listDesktopDevicesForActor;
   listTenantDesktopDevicesForActor?: typeof listTenantDesktopDevicesForActor;
+  updateDesktopDevicePolicyOverrides?: typeof updateDesktopDevicePolicyOverrides;
+  queueDesktopDeviceAction?: typeof queueDesktopDeviceAction;
   queueDesktopRootAction?: typeof queueDesktopRootAction;
   getAvailableSkillsAsync?: typeof getAvailableSkillsAsync;
   now?: () => Date;
@@ -490,36 +498,104 @@ export function registerDesktopHostRoutes(
     deps.listDesktopDevicesForActor ?? listDesktopDevicesForActor;
   const listTenantDesktopDevicesForActorImpl =
     deps.listTenantDesktopDevicesForActor ?? listTenantDesktopDevicesForActor;
+  const updateDesktopDevicePolicyOverridesImpl =
+    deps.updateDesktopDevicePolicyOverrides ?? updateDesktopDevicePolicyOverrides;
+  const queueDesktopDeviceActionImpl =
+    deps.queueDesktopDeviceAction ?? queueDesktopDeviceAction;
   const queueDesktopRootActionImpl =
     deps.queueDesktopRootAction ?? queueDesktopRootAction;
   const listAvailableSkillsImpl =
     deps.getAvailableSkillsAsync ?? getAvailableSkillsAsync;
   const now = deps.now ?? (() => new Date());
 
+  const writebackRank: Record<string, number> = {
+    read_search_only: 0,
+    managed_output_only: 1,
+    user_confirmed_root_write: 2,
+    advanced_local_override: 3,
+  };
+
+  function clampWritebackMode(
+    currentMode: string,
+    maximumMode: string | null | undefined,
+  ): string {
+    if (!maximumMode || writebackRank[maximumMode] == null || writebackRank[currentMode] == null) {
+      return currentMode;
+    }
+    return writebackRank[currentMode] <= writebackRank[maximumMode]
+      ? currentMode
+      : maximumMode;
+  }
+
+  function applyDeviceOverridesToFeatureFlags(
+    featureFlags: Awaited<ReturnType<typeof getTenantFlags>>,
+    overrides: ReturnType<typeof summarizeDesktopDeviceRecord>["policyOverrides"] | null,
+  ) {
+    if (!overrides) {
+      return featureFlags;
+    }
+
+    return {
+      ...featureFlags,
+      desktopAdvancedLocalMode: featureFlags.desktopAdvancedLocalMode
+        && overrides.allowAdvancedLocalMode !== false,
+      desktopPackageSync: featureFlags.desktopPackageSync
+        && overrides.allowPackageSync !== false,
+      desktopAgencyRuntime: featureFlags.desktopAgencyRuntime
+        && overrides.allowAgencyRuntime !== false,
+      desktopWorkerProjection: featureFlags.desktopWorkerProjection
+        && overrides.allowWorkerProjection !== false,
+    };
+  }
+
   async function buildTenantPolicySnapshot(
     tenantId: string,
     deviceId: string,
     workerProjectionEnabled?: boolean,
   ): Promise<BuildManagedDesktopHostPolicySnapshotInput> {
-    const featureFlags = await getTenantFlags(tenantId);
+    const tenantFeatureFlags = await getTenantFlags(tenantId);
     const device = await getDesktopDeviceByIdForTenantImpl({ tenantId, deviceId }).catch(
       () => null,
     );
     const timestamp = now();
     const summarizedDevice = device ? summarizeDesktopDeviceRecord(device) : null;
-    const localRoots = summarizedDevice?.localRoots ?? [];
+    const effectiveFeatureFlags = applyDeviceOverridesToFeatureFlags(
+      tenantFeatureFlags,
+      summarizedDevice?.policyOverrides ?? null,
+    );
+    const localRoots = (summarizedDevice?.localRoots ?? []).map((root) => ({
+      ...root,
+      writebackMode: clampWritebackMode(
+        root.writebackMode,
+        summarizedDevice?.policyOverrides.outputWritebackMode ?? null,
+      ) as typeof root.writebackMode,
+    }));
     const packageCachePath = summarizedDevice?.packageCachePaths[0] ?? `/workspace/${deviceId}/packages`;
     const workspaceProfile = summarizedDevice?.currentWorkspaceProfile
       ?? buildDesktopWorkspaceProfile({
-        profileName: featureFlags.desktopAdvancedLocalMode
+        profileName: effectiveFeatureFlags.desktopAdvancedLocalMode
           ? "advanced_local"
           : "pi_sidecar_managed",
         projectWorkspacePath: `/workspace/${deviceId}`,
         packageCachePath,
         localRoots,
-        needsConnectorSidecar: featureFlags.desktopAgencyRuntime,
-        advancedLocalMode: featureFlags.desktopAdvancedLocalMode,
+        needsConnectorSidecar: effectiveFeatureFlags.desktopAgencyRuntime,
+        advancedLocalMode: effectiveFeatureFlags.desktopAdvancedLocalMode,
       });
+    const effectiveWorkspaceProfile = {
+      ...workspaceProfile,
+      writebackMode: clampWritebackMode(
+        workspaceProfile.writebackMode,
+        summarizedDevice?.policyOverrides.outputWritebackMode ?? null,
+      ) as typeof workspaceProfile.writebackMode,
+    };
+    const effectiveWorkerProjectionEnabled = Boolean(
+      workerProjectionEnabled ?? summarizedDevice?.workerProjectionEnabled,
+    )
+      && effectiveFeatureFlags.desktopWorkerProjection
+      && summarizedDevice?.accessState !== "reauth_required"
+      && summarizedDevice?.accessState !== "quarantined"
+      && summarizedDevice?.accessState !== "disabled";
 
     return {
       tenantId,
@@ -528,19 +604,22 @@ export function registerDesktopHostRoutes(
       fetchedAt: timestamp.toISOString(),
       expiresAt: new Date(timestamp.getTime() + 60 * 60 * 1000).toISOString(),
       trustFreshnessTtlSeconds: 3600,
-      featureFlags,
+      featureFlags: effectiveFeatureFlags,
       localRoots,
-      workerProjectionEnabled,
-      workspaceProfiles: [workspaceProfile],
+      workerProjectionEnabled: effectiveWorkerProjectionEnabled,
+      workspaceProfiles: [effectiveWorkspaceProfile],
       rolloutGates: buildDesktopRolloutGateStates({
         deviceBindingReady: device
-          ? featureFlags.desktopHostEnabled && !device.disabledAt
-          : featureFlags.desktopHostEnabled,
-        signedPackagesEnforced: featureFlags.desktopPackageSync,
+          ? effectiveFeatureFlags.desktopHostEnabled
+            && !device.disabledAt
+            && summarizedDevice?.accessState !== "reauth_required"
+            && summarizedDevice?.accessState !== "quarantined"
+          : effectiveFeatureFlags.desktopHostEnabled,
+        signedPackagesEnforced: effectiveFeatureFlags.desktopPackageSync,
         signedUpdatesEnforced: true,
         managedFileRootsDefault: true,
-        piGatewayOnly: featureFlags.desktopHostEnabled,
-        agencyGatewayOnly: featureFlags.desktopAgencyRuntime,
+        piGatewayOnly: effectiveFeatureFlags.desktopHostEnabled,
+        agencyGatewayOnly: effectiveFeatureFlags.desktopAgencyRuntime,
         offboardingCleanupReady: true,
       }),
     };
@@ -751,6 +830,74 @@ export function registerDesktopHostRoutes(
     }
   });
 
+  router.post("/devices/:deviceId/policy-overrides", async (req, res) => {
+    try {
+      const actor = {
+        tenantId: String(res.locals.desktopHostTenantId || ""),
+        userId: String(res.locals.desktopHostUserId || ""),
+        role: typeof res.locals.desktopHostUserRole === "string"
+          ? String(res.locals.desktopHostUserRole)
+          : null,
+      };
+      await assertDesktopHostEnabled(actor.tenantId);
+      const payload = desktopDevicePolicyOverrideRequestSchema.parse(req.body ?? {});
+      const device = await updateDesktopDevicePolicyOverridesImpl({
+        actor,
+        deviceId: req.params.deviceId,
+        overrides: payload.overrides,
+        note: payload.note,
+      }, { now });
+      const policySnapshot = buildManagedDesktopHostPolicySnapshot(
+        await buildTenantPolicySnapshot(
+          actor.tenantId,
+          req.params.deviceId,
+          Boolean(device.workerProjectionEnabled),
+        ),
+      );
+      res.json(desktopDevicePolicyOverrideResponseSchema.parse({
+        device,
+        policySnapshot,
+      }));
+    } catch (error) {
+      if (error instanceof DesktopDeviceRegistryError) {
+        res.status(error.statusCode).json({ error: error.code, message: error.message });
+        return;
+      }
+      res.status(400).json({
+        error: error instanceof Error ? error.message : "failed_to_update_device_policy_overrides",
+      });
+    }
+  });
+
+  router.post("/devices/:deviceId/actions", async (req, res) => {
+    try {
+      const actor = {
+        tenantId: String(res.locals.desktopHostTenantId || ""),
+        userId: String(res.locals.desktopHostUserId || ""),
+        role: typeof res.locals.desktopHostUserRole === "string"
+          ? String(res.locals.desktopHostUserRole)
+          : null,
+      };
+      await assertDesktopHostEnabled(actor.tenantId);
+      const payload = desktopDeviceActionRequestSchema.parse(req.body ?? {});
+      const result = await queueDesktopDeviceActionImpl({
+        actor,
+        deviceId: req.params.deviceId,
+        actionType: payload.actionType,
+        note: payload.note,
+      }, { now });
+      res.json(desktopDeviceActionResponseSchema.parse(result));
+    } catch (error) {
+      if (error instanceof DesktopDeviceRegistryError) {
+        res.status(error.statusCode).json({ error: error.code, message: error.message });
+        return;
+      }
+      res.status(400).json({
+        error: error instanceof Error ? error.message : "failed_to_queue_device_action",
+      });
+    }
+  });
+
   router.post("/devices/:deviceId/roots/:rootId/actions", async (req, res) => {
     try {
       const actor = {
@@ -762,13 +909,6 @@ export function registerDesktopHostRoutes(
       };
       await assertDesktopHostEnabled(actor.tenantId);
       const payload = desktopRootActionRequestSchema.parse(req.body ?? {});
-      if (payload.actionType === "cleanup_device") {
-        res.status(400).json({
-          error: "unsupported_action_type",
-          message: "cleanup_device is only supported by device-level offboarding flows",
-        });
-        return;
-      }
       const result = await queueDesktopRootActionImpl({
         actor,
         deviceId: req.params.deviceId,

@@ -322,6 +322,41 @@ describe("financeService", () => {
     expect(String(db.state.lastInsertValues[0].idempotencyKey)).toContain("finance-draft-text:");
   });
 
+  it("honors an explicit occurredAt from the UI and keeps timestamps distinct", async () => {
+    const db = financeHarness.getDbState();
+    db.queueSelectResult([], []);
+
+    const firstOccurredAt = new Date("2026-04-10T15:30:00.000Z").toISOString();
+    const secondOccurredAt = new Date("2026-04-10T16:00:00.000Z").toISOString();
+
+    await parseTextToDraft({
+      conversationId: 91,
+      userId: 7,
+      tenantId: "tenant-1",
+      text: "จ่ายค่าแท็กซี่ 180 บาท",
+      sourceMessageId: 104,
+      occurredAt: firstOccurredAt,
+    });
+
+    await parseTextToDraft({
+      conversationId: 91,
+      userId: 7,
+      tenantId: "tenant-1",
+      text: "จ่ายค่าแท็กซี่ 180 บาท",
+      sourceMessageId: 104,
+      occurredAt: secondOccurredAt,
+    });
+
+    expect(db.state.lastInsertValues).toHaveLength(2);
+    expect(db.state.lastInsertValues[0].payloadJson).toMatchObject({
+      occurredAt: firstOccurredAt,
+    });
+    expect(db.state.lastInsertValues[1].payloadJson).toMatchObject({
+      occurredAt: secondOccurredAt,
+    });
+    expect(String(db.state.lastInsertValues[0].idempotencyKey)).not.toBe(String(db.state.lastInsertValues[1].idempotencyKey));
+  });
+
   it("keeps work chat drafts in the work project scope", async () => {
     financeHarness.mockGetConversationById.mockResolvedValueOnce(buildConversation({ projectId: "work-1" }));
     const db = financeHarness.getDbState();
@@ -343,6 +378,45 @@ describe("financeService", () => {
       source: "chat_text",
       allowedScopes: ["user:7"],
     });
+  });
+
+  it("falls back to deterministic parsing when the structured LLM draft fails", async () => {
+    financeHarness.mockCallLLMStructured.mockRejectedValueOnce(new Error("LLM response failed schema validation"));
+    const db = financeHarness.getDbState();
+    db.queueSelectResult([]);
+
+    const draft = await parseTextToDraft({
+      conversationId: 91,
+      userId: 7,
+      tenantId: "tenant-1",
+      text: "จ่ายค่าชาร์จรถไฟฟ้า 250 บาท",
+      categoryHint: "ชาร์จรถ",
+      typeHint: "expense",
+      sourceMessageId: 103,
+    });
+
+    expect(draft.type).toBe("expense");
+    expect(draft.needsClarification).toBe(false);
+    expect(draft.payloadJson).toMatchObject({
+      amountMinor: 25000,
+      currency: "THB",
+      categoryCode: "ชาร์จรถ",
+      note: "จ่ายค่าชาร์จรถไฟฟ้า 250 บาท",
+    });
+    expect(db.state.lastInsertValues).toHaveLength(1);
+    expect(db.state.lastInsertValues[0]).toMatchObject({
+      source: "chat_text",
+      type: "expense",
+      allowedScopes: ["user:7"],
+      sourceMessageId: 103,
+    });
+    expect(financeHarness.mockAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: "orchestration_fallback",
+        tenantId: "tenant-1",
+        userId: 7,
+      }),
+    );
   });
 
   it("returns an existing text draft on idempotency hit without calling the model", async () => {
@@ -383,7 +457,6 @@ describe("financeService", () => {
           note: "Updated note",
           version: 2,
         },
-        note: "Updated note",
         updatedAt: new Date("2026-04-09T01:00:00.000Z"),
       }),
     ]);
@@ -402,9 +475,7 @@ describe("financeService", () => {
     expect(updated.version).toBe(2);
     expect(updated.note).toBe("Updated note");
     expect(db.state.lastUpdateValues).toHaveLength(1);
-    expect(db.state.lastUpdateValues[0]).toMatchObject({
-      note: "Updated note",
-    });
+    expect((db.state.lastUpdateValues[0].payloadJson as Record<string, unknown>).note).toBe("Updated note");
     expect((db.state.lastUpdateValues[0].payloadJson as Record<string, unknown>).version).toBe(2);
 
     db.queueSelectResult([
@@ -429,6 +500,37 @@ describe("financeService", () => {
         },
       }),
     ).rejects.toThrow(/Draft version mismatch/);
+  });
+
+  it("updates draft occurredAt from inline edits", async () => {
+    const db = financeHarness.getDbState();
+    db.queueSelectResult([buildDraftRow({ id: 66 })]);
+    db.queueUpdateResult([
+      buildDraftRow({
+        id: 66,
+        payloadJson: {
+          ...buildDraftRow().payloadJson,
+          occurredAt: "2026-04-11T08:15:00.000Z",
+          version: 2,
+        },
+        updatedAt: new Date("2026-04-09T01:00:00.000Z"),
+      }),
+    ]);
+
+    const updated = await updateDraft({
+      draftId: 66,
+      userId: 7,
+      tenantId: "tenant-1",
+      conversationId: 91,
+      expectedVersion: 1,
+      patch: {
+        occurredAt: "2026-04-11T08:15:00.000Z",
+      },
+    });
+
+    expect(updated.occurredAt).toBe("2026-04-11T08:15:00.000Z");
+    expect(db.state.lastUpdateValues).toHaveLength(1);
+    expect((db.state.lastUpdateValues[0].payloadJson as Record<string, unknown>).occurredAt).toBe("2026-04-11T08:15:00.000Z");
   });
 
   it("confirms drafts idempotently", async () => {
