@@ -97,8 +97,10 @@ jobs:
         run: npm install --legacy-peer-deps
 
       - name: Prepare LiteRT-LM and Gemma 4 bundle
+        shell: bash
+        env:
+          BUNDLE_MODE: ${{ github.event.inputs.bundle_mode || 'on-demand' }}
         run: |
-          BUNDLE_MODE="${{ github.event.inputs.bundle_mode || 'on-demand' }}"
           python apps/tauri-shell/scripts/prepare-litert-lm-bundle.py --bundle-mode "$BUNDLE_MODE"
 
       - name: Smoke test bundled Gemma 4 runtime
