@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
 import { toast } from "sonner";
-import { Loader2, ReceiptText, Upload, CheckCircle2, ArrowDownRight, ArrowUpRight, Pause, Play, FileText, Wallet, Sparkles, Search, Mic, MicOff } from "lucide-react";
+import { Loader2, ReceiptText, Upload, CheckCircle2, ArrowDownRight, ArrowUpRight, Pause, Play, FileText, Wallet, Sparkles, Search, Mic, MicOff, RotateCcw } from "lucide-react";
 
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
@@ -69,6 +69,34 @@ function formatDateTime(value: string | Date | null | undefined): string {
   return format(parsed, "MMM d, HH:mm");
 }
 
+function toDateInputValue(date: Date): string {
+  return format(date, "yyyy-MM-dd");
+}
+
+function toTimeInputValue(date: Date): string {
+  return format(date, "HH:mm");
+}
+
+function getCurrentDraftDateTime(): { date: string; time: string } {
+  const now = new Date();
+  return {
+    date: toDateInputValue(now),
+    time: toTimeInputValue(now),
+  };
+}
+
+function buildDraftOccurredAtIso(dateValue: string, timeValue: string): string | null {
+  const now = new Date();
+  const date = dateValue.trim() || toDateInputValue(now);
+  const time = timeValue.trim() || toTimeInputValue(now);
+  const normalizedTime = time.length === 5 ? `${time}:00` : time;
+  const candidate = new Date(`${date}T${normalizedTime}`);
+  if (Number.isNaN(candidate.getTime())) {
+    return null;
+  }
+  return candidate.toISOString();
+}
+
 function parseRecurringRuleSummary(rrule: string, nextRunAt: string | Date | null | undefined, timezone: string): string {
   try {
     const parsed = JSON.parse(rrule) as Record<string, unknown>;
@@ -131,9 +159,41 @@ type FinanceDraftPayload = {
   occurredAt?: string;
 };
 
+type DraftEditState = {
+  date: string;
+  time: string;
+  status: QuickActionStatus;
+};
+
 function getDraftPayload(draft: { payloadJson?: Record<string, unknown> | null }): FinanceDraftPayload {
   return (draft.payloadJson ?? {}) as FinanceDraftPayload;
 }
+
+function getDraftDateTimeInputState(value: string | Date | null | undefined): { date: string; time: string } {
+  const candidate = value instanceof Date
+    ? value
+    : typeof value === "string" && value.trim()
+      ? new Date(value)
+      : new Date();
+
+  if (Number.isNaN(candidate.getTime())) {
+    return getCurrentDraftDateTime();
+  }
+
+  return {
+    date: toDateInputValue(candidate),
+    time: toTimeInputValue(candidate),
+  };
+}
+
+const QUICK_DRAFT_INTENT_PREFIX = /^\s*(?:Expense|Income|Transfer):\s*/i;
+
+type QuickActionStatus =
+  | { kind: "idle"; message: null }
+  | { kind: "saving"; message: string }
+  | { kind: "saved"; message: string }
+  | { kind: "draft"; message: string }
+  | { kind: "error"; message: string };
 
 export function FinanceHub({
   conversationId,
@@ -151,8 +211,14 @@ export function FinanceHub({
   const [draftText, setDraftText] = useState("");
   const [draftCategoryHint, setDraftCategoryHint] = useState("");
   const [draftTypeHint, setDraftTypeHint] = useState<"auto" | "income" | "expense" | "transfer">("auto");
+  const initialDraftDateTime = useMemo(() => getCurrentDraftDateTime(), []);
+  const [draftDate, setDraftDate] = useState(initialDraftDateTime.date);
+  const [draftTime, setDraftTime] = useState(initialDraftDateTime.time);
+  const [quickActionStatus, setQuickActionStatus] = useState<QuickActionStatus>({ kind: "idle", message: null });
+  const [draftEditStates, setDraftEditStates] = useState<Record<number, DraftEditState>>({});
   const [selectedEvidenceTransactionId, setSelectedEvidenceTransactionId] = useState<number | null>(null);
   const [evidenceSearchText, setEvidenceSearchText] = useState("");
+  const quickActionModeRef = useRef<"manual" | "quick" | null>(null);
 
   const { isRecording, isTranscribing, startRecording, stopRecording } = usePushToTalk({
     onTranscription: (text) => {
@@ -244,14 +310,29 @@ export function FinanceHub({
       setDraftText("");
       setDraftCategoryHint("");
       setDraftTypeHint("auto");
+      const next = getCurrentDraftDateTime();
+      setDraftDate(next.date);
+      setDraftTime(next.time);
+      if (quickActionModeRef.current !== "quick") {
+        setQuickActionStatus({ kind: "idle", message: null });
+      }
       await Promise.all([
         utils.finance.listDrafts.invalidate({ conversationId: conversationId ?? 0, limit: draftLimit }),
         utils.finance.getDailySummary.invalidate({ conversationId: conversationId ?? 0 }),
         utils.finance.getMonthlySummary.invalidate({ conversationId: conversationId ?? 0 }),
       ]);
-      toast.success("Finance draft created");
+      if (quickActionModeRef.current !== "quick") {
+        toast.success("Finance draft created");
+      }
     },
     onError: (error) => toast.error(error.message || "Failed to create finance draft"),
+  });
+
+  const updateDraftMutation = trpc.finance.updateDraft.useMutation({
+    onSuccess: async () => {
+      await utils.finance.listDrafts.invalidate({ conversationId: conversationId ?? 0, limit: draftLimit });
+    },
+    onError: (error) => toast.error(error.message || "Failed to update draft"),
   });
 
   const confirmDraftMutation = trpc.finance.confirmDraft.useMutation({
@@ -262,7 +343,9 @@ export function FinanceHub({
         utils.finance.getDailySummary.invalidate({ conversationId: conversationId ?? 0 }),
         utils.finance.getMonthlySummary.invalidate({ conversationId: conversationId ?? 0 }),
       ]);
-      toast.success("Draft confirmed");
+      if (quickActionModeRef.current !== "quick") {
+        toast.success("Draft confirmed");
+      }
     },
     onError: (error) => toast.error(error.message || "Failed to confirm draft"),
   });
@@ -334,56 +417,225 @@ export function FinanceHub({
     ]);
   };
 
+  const buildQuickDraftText = (nextType: "income" | "expense", currentText: string) => {
+    const seed = nextType === "expense"
+      ? t("dashboard:finance.quick.expenseSeed", "Expense: ")
+      : t("dashboard:finance.quick.incomeSeed", "Income: ");
+
+    const trimmed = currentText.trim();
+    if (!trimmed) {
+      return seed;
+    }
+
+    const normalized = currentText.replace(QUICK_DRAFT_INTENT_PREFIX, "").trimStart();
+    return `${seed}${normalized}`;
+  };
+
+  const handleResetDraftDateTime = () => {
+    const next = getCurrentDraftDateTime();
+    setDraftDate(next.date);
+    setDraftTime(next.time);
+    setQuickActionStatus({ kind: "idle", message: null });
+  };
+
   const handleParseText = async () => {
     if (!conversationId || !draftText.trim()) {
       return;
     }
 
-    const draft = await parseTextMutation.mutateAsync({
-      conversationId,
-      text: draftText.trim(),
-      categoryHint: draftCategoryHint.trim() || null,
-      typeHint: draftTypeHint === "auto" ? null : draftTypeHint,
-    });
-    const draftPayload = getDraftPayload(draft);
-    if (onMirrorFinanceActivity) {
-      try {
-        await onMirrorFinanceActivity({
-          content: `Created a finance draft from chat text: ${draftPayload.merchantName ?? draftPayload.categoryCode ?? "draft"}`,
-          artifacts: [
-            {
-              id: `finance-draft-${draft.id}`,
-              type: "table",
-              title: "Finance draft",
-              content: [
-                `Type: ${getTransactionTypeLabel(draft.type)}`,
-                `Amount: ${formatMoneyMinor(draftPayload.amountMinor, draftPayload.currency)}`,
-                `Category: ${draftPayload.categoryCode ?? "uncategorized"}`,
-                `Source: ${getFinanceSourceLabel(draft.source)}`,
-              ],
-              metadata: {
-                finance: {
-                  kind: "draft",
-                  draftId: draft.id,
-                  type: draft.type,
-                  amountMinor: draftPayload.amountMinor ?? null,
-                  currency: draftPayload.currency ?? DEFAULT_CURRENCY,
-                  categoryCode: draftPayload.categoryCode ?? "uncategorized",
-                  merchantName: draftPayload.merchantName ?? null,
-                  source: draft.source,
-                  status: draft.status,
-                  confidence: draft.confidence,
-                  projectId: conversationQuery.data?.projectId ?? null,
+    const occurredAt = buildDraftOccurredAtIso(draftDate, draftTime);
+    if (!occurredAt) {
+      toast.error(t("dashboard:finance.quick.statusInvalidDateTime", "Please choose a valid date and time."));
+      return;
+    }
+
+    quickActionModeRef.current = "manual";
+    try {
+      const draft = await parseTextMutation.mutateAsync({
+        conversationId,
+        text: draftText.trim(),
+        categoryHint: draftCategoryHint.trim() || null,
+        typeHint: draftTypeHint === "auto" ? null : draftTypeHint,
+        occurredAt,
+      });
+      const draftPayload = getDraftPayload(draft);
+      if (onMirrorFinanceActivity) {
+        try {
+          await onMirrorFinanceActivity({
+            content: `Created a finance draft from chat text: ${draftPayload.merchantName ?? draftPayload.categoryCode ?? "draft"} · occurred ${formatDateTime(draftPayload.occurredAt)}`,
+            artifacts: [
+              {
+                id: `finance-draft-${draft.id}`,
+                type: "table",
+                title: "Finance draft",
+                content: [
+                  `Type: ${getTransactionTypeLabel(draft.type)}`,
+                  `Amount: ${formatMoneyMinor(draftPayload.amountMinor, draftPayload.currency)}`,
+                  `Category: ${draftPayload.categoryCode ?? "uncategorized"}`,
+                  `Occurred: ${formatDateTime(draftPayload.occurredAt)}`,
+                  `Source: ${getFinanceSourceLabel(draft.source)}`,
+                ],
+                metadata: {
+                  finance: {
+                    kind: "draft",
+                    draftId: draft.id,
+                    type: draft.type,
+                    amountMinor: draftPayload.amountMinor ?? null,
+                    currency: draftPayload.currency ?? DEFAULT_CURRENCY,
+                    categoryCode: draftPayload.categoryCode ?? "uncategorized",
+                    merchantName: draftPayload.merchantName ?? null,
+                    source: draft.source,
+                    status: draft.status,
+                    confidence: draft.confidence,
+                    projectId: conversationQuery.data?.projectId ?? null,
+                  },
                 },
               },
-            },
-          ],
-        });
-      } catch {
-        // Best-effort mirror to chat; do not block finance drafting if chat persistence fails.
+            ],
+          });
+        } catch {
+          // Best-effort mirror to chat; do not block finance drafting if chat persistence fails.
+        }
       }
+      await refreshFinance();
+    } finally {
+      quickActionModeRef.current = null;
     }
-    await refreshFinance();
+  };
+
+  const handleQuickDraftAction = async (nextType: "income" | "expense") => {
+    if (!conversationId) {
+      return;
+    }
+
+    const hasUserContent = draftText.replace(QUICK_DRAFT_INTENT_PREFIX, "").trim().length > 0;
+    const preparedText = buildQuickDraftText(nextType, draftText);
+    setDraftTypeHint(nextType);
+    setDraftText(preparedText);
+    draftTextareaRef.current?.focus();
+
+    if (!hasUserContent) {
+      setQuickActionStatus({
+        kind: "draft",
+        message: t(
+          "dashboard:finance.quick.statusNeedText",
+          "Type a note first, then click the quick action again to save it.",
+        ),
+      });
+      return;
+    }
+
+    quickActionModeRef.current = "quick";
+    setQuickActionStatus({
+      kind: "saving",
+      message: t("dashboard:finance.quick.statusSaving", "Processing and saving now..."),
+    });
+
+    const occurredAt = buildDraftOccurredAtIso(draftDate, draftTime);
+    if (!occurredAt) {
+      setQuickActionStatus({
+        kind: "error",
+        message: t("dashboard:finance.quick.statusInvalidDateTime", "Please choose a valid date and time."),
+      });
+      quickActionModeRef.current = null;
+      return;
+    }
+
+    try {
+      const draft = await parseTextMutation.mutateAsync({
+        conversationId,
+        text: preparedText.trim(),
+        categoryHint: draftCategoryHint.trim() || null,
+        typeHint: nextType,
+        occurredAt,
+      });
+      const draftPayload = getDraftPayload(draft);
+
+      if (draft.needsClarification) {
+        setQuickActionStatus({
+          kind: "draft",
+          message: t(
+            "dashboard:finance.quick.statusDraft",
+            "Saved as draft because a few details still need review.",
+          ),
+        });
+        toast.info(
+          t(
+            "dashboard:finance.quick.statusDraftToast",
+            "Saved as draft and ready for review",
+          ),
+        );
+        return;
+      }
+
+      await confirmDraftMutation.mutateAsync({
+        conversationId,
+        draftId: draft.id,
+      });
+
+      setQuickActionStatus({
+        kind: "saved",
+        message: t(
+          "dashboard:finance.quick.statusSaved",
+          "Saved to your finance log and updated the summary above.",
+        ),
+      });
+
+      if (onMirrorFinanceActivity) {
+        try {
+          await onMirrorFinanceActivity({
+            content: `Saved a ${draft.type} transaction from quick capture: ${draftPayload.merchantName ?? draftPayload.categoryCode ?? "transaction"} · occurred ${formatDateTime(draftPayload.occurredAt)}.`,
+            artifacts: [
+              {
+                id: `finance-transaction-${draft.id}`,
+                type: "table",
+                title: "Finance transaction",
+                content: [
+                  `Type: ${getTransactionTypeLabel(draft.type)}`,
+                  `Amount: ${formatMoneyMinor(draftPayload.amountMinor, draftPayload.currency)}`,
+                  `Category: ${draftPayload.categoryCode ?? "uncategorized"}`,
+                  `Occurred: ${formatDateTime(draftPayload.occurredAt)}`,
+                  `Status: confirmed`,
+                ],
+                metadata: {
+                  finance: {
+                    kind: "transaction",
+                    transactionId: draft.id,
+                    type: draft.type,
+                    amountMinor: draftPayload.amountMinor ?? null,
+                    currency: draftPayload.currency ?? DEFAULT_CURRENCY,
+                    categoryCode: draftPayload.categoryCode ?? "uncategorized",
+                    merchantName: draftPayload.merchantName ?? null,
+                    source: draft.source,
+                    status: "confirmed",
+                    confidence: draft.confidence,
+                    projectId: conversationQuery.data?.projectId ?? null,
+                  },
+                },
+              },
+            ],
+          });
+        } catch {
+          // Best-effort mirror to chat; the finance transaction is already committed.
+        }
+      }
+
+      toast.success(
+        t(
+          "dashboard:finance.quick.statusSavedToast",
+          "Saved and updated the summary",
+        ),
+      );
+      await refreshFinance();
+    } catch (error) {
+      setQuickActionStatus({
+        kind: "error",
+        message: error instanceof Error ? error.message : t("dashboard:finance.quick.statusError", "Could not save the finance entry."),
+      });
+      toast.error(error instanceof Error ? error.message : t("dashboard:finance.quick.statusError", "Could not save the finance entry."));
+    } finally {
+      quickActionModeRef.current = null;
+    }
   };
 
   const handleReceiptUpload = async (file: File) => {
@@ -422,7 +674,7 @@ export function FinanceHub({
       const draftPayload = getDraftPayload(draft);
       try {
         await onMirrorFinanceActivity({
-          content: `Receipt OCR created a ${draft.type} draft for ${draftPayload.merchantName ?? draftPayload.categoryCode ?? "draft"}.`,
+          content: `Receipt OCR created a ${draft.type} draft for ${draftPayload.merchantName ?? draftPayload.categoryCode ?? "draft"} · occurred ${formatDateTime(draftPayload.occurredAt)}.`,
           artifacts: [
             {
               id: `finance-ocr-${libraryItemId}`,
@@ -433,6 +685,7 @@ export function FinanceHub({
                 `Draft type: ${getTransactionTypeLabel(draft.type)}`,
                 `Amount: ${formatMoneyMinor(draftPayload.amountMinor, draftPayload.currency)}`,
                 `Category: ${draftPayload.categoryCode ?? "uncategorized"}`,
+                `Occurred: ${formatDateTime(draftPayload.occurredAt)}`,
                 `Source: OCR receipt`,
               ],
               metadata: {
@@ -452,12 +705,16 @@ export function FinanceHub({
                 },
               },
             },
-          ],
-        });
+            ],
+          });
       } catch {
         // Best-effort mirror to chat; the OCR draft is already persisted.
       }
     }
+
+    const next = getCurrentDraftDateTime();
+    setDraftDate(next.date);
+    setDraftTime(next.time);
   };
 
   const summaryCards = financeReady ? [
@@ -529,6 +786,14 @@ export function FinanceHub({
     [monthlyTransactions],
   );
 
+  const activeDraftIntentLabel = draftTypeHint === "income"
+    ? t("dashboard:finance.quick.intent.income", "Income")
+    : draftTypeHint === "expense"
+      ? t("dashboard:finance.quick.intent.expense", "Expense")
+      : draftTypeHint === "transfer"
+        ? t("dashboard:finance.quick.intent.transfer", "Transfer")
+        : t("dashboard:finance.quick.intent.auto", "Auto intent");
+
   const dueSoonRecurringRules = useMemo(() => {
     const now = Date.now();
     const soonThreshold = now + 14 * 24 * 60 * 60 * 1000;
@@ -566,6 +831,44 @@ export function FinanceHub({
       setSelectedEvidenceTransactionId(recentTransactions[0].id);
     }
   }, [recentTransactions, selectedEvidenceTransactionId]);
+
+  useEffect(() => {
+    const next = getCurrentDraftDateTime();
+    setDraftDate(next.date);
+    setDraftTime(next.time);
+    setDraftText("");
+    setDraftCategoryHint("");
+    setDraftTypeHint("auto");
+    setQuickActionStatus({ kind: "idle", message: null });
+    setDraftEditStates({});
+    setSelectedEvidenceTransactionId(null);
+    setEvidenceSearchText("");
+    quickActionModeRef.current = null;
+  }, [conversationId]);
+
+  useEffect(() => {
+    setDraftEditStates((current) => {
+      const next: Record<number, DraftEditState> = {};
+
+      for (const draft of openDrafts) {
+        const existing = current[draft.id];
+        if (existing) {
+          next[draft.id] = existing;
+          continue;
+        }
+
+        const payload = getDraftPayload(draft);
+        const nextDateTime = getDraftDateTimeInputState(payload.occurredAt ?? draft.createdAt);
+        next[draft.id] = {
+          date: nextDateTime.date,
+          time: nextDateTime.time,
+          status: { kind: "idle", message: null },
+        };
+      }
+
+      return next;
+    });
+  }, [openDrafts]);
 
   const lockedState = (
     <div className="space-y-4">
@@ -679,32 +982,100 @@ export function FinanceHub({
                       "If the category is unclear, type your own label here and the parser will still infer whether the message is income, expense, or transfer."
                     )}
                   </p>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <label className="space-y-1.5">
+                      <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                        {t("dashboard:finance.quick.dateLabel", "Date")}
+                      </span>
+                      <Input
+                        aria-label={t("dashboard:finance.quick.dateLabel", "Date")}
+                        type="date"
+                        value={draftDate}
+                        onChange={(event) => setDraftDate(event.target.value)}
+                        className="bg-white"
+                      />
+                    </label>
+                    <label className="space-y-1.5">
+                      <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                        {t("dashboard:finance.quick.timeLabel", "Time")}
+                      </span>
+                      <Input
+                        aria-label={t("dashboard:finance.quick.timeLabel", "Time")}
+                        type="time"
+                        value={draftTime}
+                        onChange={(event) => setDraftTime(event.target.value)}
+                        className="bg-white"
+                      />
+                    </label>
+                  </div>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-xs leading-5 text-slate-500">
+                      {t(
+                        "dashboard:finance.quick.datetimeHelper",
+                        "Defaults to the current date and time. OCR receipts use the receipt date and default to 00:00 when time is missing.",
+                      )}
+                    </p>
+                    <Button type="button" variant="ghost" size="sm" className="gap-2 text-slate-600" onClick={handleResetDraftDateTime}>
+                      <RotateCcw className="h-3.5 w-3.5" />
+                      {t("dashboard:finance.quick.now", "Now")}
+                    </Button>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 text-xs leading-5 text-slate-500" aria-live="polite">
+                    <Badge
+                      variant={draftTypeHint === "auto" ? "outline" : "secondary"}
+                      className={cn(
+                        "rounded-full px-3 py-1",
+                        draftTypeHint === "expense"
+                          ? "border-rose-200 bg-rose-50 text-rose-700"
+                          : draftTypeHint === "income"
+                            ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                            : draftTypeHint === "transfer"
+                              ? "border-sky-200 bg-sky-50 text-sky-700"
+                              : "border-slate-200 bg-white text-slate-600",
+                      )}
+                    >
+                      {t("dashboard:finance.quick.intentLabel", "Intent")}: {activeDraftIntentLabel}
+                    </Badge>
+                    <span>
+                      {draftTypeHint === "auto"
+                        ? t(
+                          "dashboard:finance.quick.intentHelperAuto",
+                          "Pick expense or income to lock the parser to that intent."
+                        )
+                        : t(
+                          "dashboard:finance.quick.intentHelperLocked",
+                          "The selected intent will be used when you click Parse Text."
+                        )}
+                    </span>
+                  </div>
                   <div className="flex flex-wrap items-center gap-2">
                     <Button
-                      variant="secondary"
+                      type="button"
+                      variant={draftTypeHint === "expense" ? "default" : "secondary"}
                       className="gap-2"
-                      onClick={() => {
-                        setDraftText((current) => current.trim() ? current : "Expense: ");
-                        draftTextareaRef.current?.focus();
-                      }}
+                      aria-pressed={draftTypeHint === "expense"}
+                      onClick={() => void handleQuickDraftAction("expense")}
                     >
                       <ArrowDownRight className="h-4 w-4" />
                       {t("dashboard:finance.quick.addExpense")}
                     </Button>
                     <Button
-                      variant="secondary"
+                      type="button"
+                      variant={draftTypeHint === "income" ? "default" : "secondary"}
                       className="gap-2"
-                      onClick={() => {
-                        setDraftText((current) => current.trim() ? current : "Income: ");
-                        draftTextareaRef.current?.focus();
-                      }}
+                      aria-pressed={draftTypeHint === "income"}
+                      onClick={() => void handleQuickDraftAction("income")}
                     >
                       <ArrowUpRight className="h-4 w-4" />
                       {t("dashboard:finance.quick.addIncome")}
                     </Button>
                     <Button
+                      type="button"
                       className="gap-2"
-                      onClick={() => void handleParseText()}
+                      onClick={() => {
+                        quickActionModeRef.current = "manual";
+                        void handleParseText();
+                      }}
                       disabled={!draftText.trim() || parseTextMutation.isPending}
                     >
                       {parseTextMutation.isPending ? (
@@ -715,6 +1086,7 @@ export function FinanceHub({
                       {t("dashboard:finance.quick.parseText")}
                     </Button>
                     <Button
+                      type="button"
                       variant="outline"
                       className="gap-2"
                       onClick={() => receiptInputRef.current?.click()}
@@ -728,6 +1100,7 @@ export function FinanceHub({
                       {t("dashboard:finance.quick.upload")}
                     </Button>
                     <Button
+                      type="button"
                       variant={isRecording ? "destructive" : "outline"}
                       className="gap-2"
                       onClick={() => {
@@ -752,6 +1125,33 @@ export function FinanceHub({
                           ? t("dashboard:finance.quick.voiceTranscribing", "Transcribing")
                           : t("dashboard:finance.quick.voiceInput", "Voice input")}
                     </Button>
+                  </div>
+                  {quickActionStatus.kind !== "idle" ? (
+                    <div className="flex items-center gap-2 text-xs leading-5 text-slate-500" aria-live="polite">
+                      <Badge
+                        variant={quickActionStatus.kind === "error" ? "destructive" : quickActionStatus.kind === "saved" ? "default" : "secondary"}
+                        className={cn(
+                          "rounded-full px-3 py-1",
+                          quickActionStatus.kind === "saved"
+                            ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-50"
+                            : quickActionStatus.kind === "draft"
+                              ? "bg-amber-50 text-amber-700 hover:bg-amber-50"
+                              : quickActionStatus.kind === "saving"
+                                ? "bg-sky-50 text-sky-700 hover:bg-sky-50"
+                                : "",
+                        )}
+                      >
+                        {quickActionStatus.kind === "saving"
+                          ? t("dashboard:finance.quick.statusSavingLabel", "Saving")
+                          : quickActionStatus.kind === "saved"
+                            ? t("dashboard:finance.quick.statusSavedLabel", "Saved")
+                            : quickActionStatus.kind === "draft"
+                              ? t("dashboard:finance.quick.statusDraftLabel", "Draft")
+                              : t("dashboard:finance.quick.statusErrorLabel", "Error")}
+                      </Badge>
+                      <span>{quickActionStatus.message}</span>
+                    </div>
+                  ) : null}
                     <Input
                       ref={receiptInputRef}
                       type="file"
@@ -770,7 +1170,6 @@ export function FinanceHub({
                         }
                       }}
                     />
-                  </div>
                 </div>
               </div>
             ) : null}
@@ -785,6 +1184,13 @@ export function FinanceHub({
                   <div className="space-y-3">
                     {openDrafts.map((draft) => {
                       const payload = getDraftPayload(draft);
+                      const fallbackDraftEditState = getDraftDateTimeInputState(payload.occurredAt ?? draft.createdAt);
+                      const draftEditState = draftEditStates[draft.id] ?? {
+                        date: fallbackDraftEditState.date,
+                        time: fallbackDraftEditState.time,
+                        status: { kind: "idle", message: null },
+                      };
+                      const draftEditStatus = draftEditState.status;
                       return (
                         <div key={draft.id} className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
                           <div className="flex items-start justify-between gap-3">
@@ -803,7 +1209,7 @@ export function FinanceHub({
                                 <span className="text-slate-300">|</span>
                                 <span>{getFinanceSourceLabel(draft.source)}</span>
                                 <span className="text-slate-300">|</span>
-                                <span>{formatDateTime(draft.createdAt)}</span>
+                                <span>{formatDateTime(payload.occurredAt ?? draft.createdAt)}</span>
                               </p>
                             </div>
                             <div className="flex shrink-0 flex-col items-end gap-2">
@@ -833,6 +1239,225 @@ export function FinanceHub({
                               {t("dashboard:finance.labels.needsAttention")}
                             </p>
                           ) : null}
+                          <div className="mt-3 rounded-2xl border border-dashed border-sky-200 bg-sky-50/60 p-3">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-700">
+                                  {t("dashboard:finance.drafts.editSectionTitle", "Edit date and time")}
+                                </p>
+                                <p className="mt-1 text-xs leading-5 text-slate-500">
+                                  {t(
+                                    "dashboard:finance.drafts.editDescription",
+                                    "Adjust the OCR date or time before confirming this draft.",
+                                  )}
+                                </p>
+                              </div>
+                              <Badge
+                                variant={draftEditStatus.kind === "error" ? "destructive" : draftEditStatus.kind === "saved" ? "default" : "secondary"}
+                                className={cn(
+                                  "rounded-full px-3 py-1",
+                                  draftEditStatus.kind === "saved"
+                                    ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-50"
+                                    : draftEditStatus.kind === "saving"
+                                      ? "bg-sky-50 text-sky-700 hover:bg-sky-50"
+                                      : draftEditStatus.kind === "error"
+                                        ? ""
+                                        : "bg-slate-50 text-slate-600 hover:bg-slate-50",
+                                )}
+                              >
+                                {draftEditStatus.kind === "saving"
+                                  ? t("dashboard:finance.quick.statusSavingLabel", "Saving")
+                                  : draftEditStatus.kind === "saved"
+                                    ? t("dashboard:finance.quick.statusSavedLabel", "Saved")
+                                    : draftEditStatus.kind === "error"
+                                      ? t("dashboard:finance.quick.statusErrorLabel", "Error")
+                                      : t("dashboard:finance.quick.statusDraftLabel", "Draft")}
+                              </Badge>
+                            </div>
+                            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                              <label className="space-y-1.5">
+                                <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                                  {t("dashboard:finance.drafts.editDateLabel", "Date")}
+                                </span>
+                                <Input
+                                  aria-label={t("dashboard:finance.drafts.editDateLabel", "Date")}
+                                  type="date"
+                                  value={draftEditState.date}
+                                  onChange={(event) => {
+                                    const nextDate = event.target.value;
+                                    setDraftEditStates((current) => {
+                                      const previous = current[draft.id] ?? draftEditState;
+                                      return {
+                                        ...current,
+                                        [draft.id]: {
+                                          ...previous,
+                                          date: nextDate,
+                                          status: { kind: "idle", message: null },
+                                        },
+                                      };
+                                    });
+                                  }}
+                                  className="bg-white"
+                                />
+                              </label>
+                              <label className="space-y-1.5">
+                                <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                                  {t("dashboard:finance.drafts.editTimeLabel", "Time")}
+                                </span>
+                                <Input
+                                  aria-label={t("dashboard:finance.drafts.editTimeLabel", "Time")}
+                                  type="time"
+                                  value={draftEditState.time}
+                                  onChange={(event) => {
+                                    const nextTime = event.target.value;
+                                    setDraftEditStates((current) => {
+                                      const previous = current[draft.id] ?? draftEditState;
+                                      return {
+                                        ...current,
+                                        [draft.id]: {
+                                          ...previous,
+                                          time: nextTime,
+                                          status: { kind: "idle", message: null },
+                                        },
+                                      };
+                                    });
+                                  }}
+                                  className="bg-white"
+                                />
+                              </label>
+                            </div>
+                            <div className="mt-3 flex flex-wrap items-center gap-2">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="gap-2"
+                                onClick={() => {
+                                  const resetState = getDraftDateTimeInputState(payload.occurredAt ?? draft.createdAt);
+                                  setDraftEditStates((current) => ({
+                                    ...current,
+                                    [draft.id]: {
+                                      date: resetState.date,
+                                      time: resetState.time,
+                                      status: { kind: "idle", message: null },
+                                    },
+                                  }));
+                                }}
+                              >
+                                <RotateCcw className="h-3.5 w-3.5" />
+                                {t("dashboard:finance.drafts.resetToOriginal", "Reset")}
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                className="gap-2"
+                                onClick={async () => {
+                                  if (!conversationId) {
+                                    return;
+                                  }
+
+                                  const occurredAt = buildDraftOccurredAtIso(draftEditState.date, draftEditState.time);
+                                  if (!occurredAt) {
+                                    const message = t(
+                                      "dashboard:finance.quick.statusInvalidDateTime",
+                                      "Please choose a valid date and time.",
+                                    );
+                                    setDraftEditStates((current) => ({
+                                      ...current,
+                                      [draft.id]: {
+                                        ...draftEditState,
+                                        status: { kind: "error", message },
+                                      },
+                                    }));
+                                    toast.error(message);
+                                    return;
+                                  }
+
+                                  const savingMessage = t(
+                                    "dashboard:finance.drafts.editSaving",
+                                    "Saving draft date and time...",
+                                  );
+                                  setDraftEditStates((current) => ({
+                                    ...current,
+                                    [draft.id]: {
+                                      ...draftEditState,
+                                      status: { kind: "saving", message: savingMessage },
+                                    },
+                                  }));
+
+                                  try {
+                                    const updatedDraft = await updateDraftMutation.mutateAsync({
+                                      conversationId,
+                                      draftId: draft.id,
+                                      expectedVersion: draft.version,
+                                      patch: {
+                                        occurredAt,
+                                      },
+                                    });
+                                    const updatedPayload = getDraftPayload(updatedDraft);
+                                    const resolvedDraftTime = getDraftDateTimeInputState(updatedPayload.occurredAt ?? occurredAt);
+                                    const successMessage = t(
+                                      "dashboard:finance.drafts.editSaved",
+                                      "Draft date and time saved.",
+                                    );
+                                    setDraftEditStates((current) => ({
+                                      ...current,
+                                      [draft.id]: {
+                                        date: resolvedDraftTime.date,
+                                        time: resolvedDraftTime.time,
+                                        status: { kind: "saved", message: successMessage },
+                                      },
+                                    }));
+                                    toast.success(successMessage);
+                                  } catch (error) {
+                                    const message = error instanceof Error ? error.message : t(
+                                      "dashboard:finance.drafts.editError",
+                                      "Could not save draft date and time.",
+                                    );
+                                    setDraftEditStates((current) => ({
+                                      ...current,
+                                      [draft.id]: {
+                                        ...draftEditState,
+                                        status: { kind: "error", message },
+                                      },
+                                    }));
+                                  }
+                                }}
+                                disabled={!financeReady || updateDraftMutation.isPending}
+                              >
+                                {updateDraftMutation.isPending ? (
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                  <CheckCircle2 className="h-3.5 w-3.5" />
+                                )}
+                                {t("dashboard:finance.drafts.saveEdit", "Save date/time")}
+                              </Button>
+                            </div>
+                            {draftEditStatus.kind !== "idle" ? (
+                              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs leading-5 text-slate-500" aria-live="polite">
+                                <Badge
+                                  variant={draftEditStatus.kind === "error" ? "destructive" : draftEditStatus.kind === "saved" ? "default" : "secondary"}
+                                  className={cn(
+                                    "rounded-full px-3 py-1",
+                                    draftEditStatus.kind === "saved"
+                                      ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-50"
+                                      : draftEditStatus.kind === "saving"
+                                        ? "bg-sky-50 text-sky-700 hover:bg-sky-50"
+                                        : draftEditStatus.kind === "error"
+                                          ? ""
+                                          : "bg-slate-50 text-slate-600 hover:bg-slate-50",
+                                  )}
+                                >
+                                  {draftEditStatus.kind === "saving"
+                                    ? t("dashboard:finance.quick.statusSavingLabel", "Saving")
+                                    : draftEditStatus.kind === "saved"
+                                      ? t("dashboard:finance.quick.statusSavedLabel", "Saved")
+                                      : t("dashboard:finance.quick.statusErrorLabel", "Error")}
+                                </Badge>
+                                <span>{draftEditStatus.message}</span>
+                              </div>
+                            ) : null}
+                          </div>
                         </div>
                       );
                     })}
