@@ -32,6 +32,10 @@ export function TenantFeatureFlagsPanel({ tenantId, canEdit = false }: TenantFea
     { tenantId },
     { staleTime: 30_000 },
   );
+  const { data: rolloutState } = trpc.tenantFeatureFlags.getWorkpackRolloutState.useQuery(
+    { tenantId },
+    { staleTime: 30_000 },
+  );
 
   const mutation = trpc.tenantFeatureFlags.updateFeatureFlags.useMutation({
     onMutate: async ({ flags: updates, tenantId: tid }) => {
@@ -113,7 +117,24 @@ export function TenantFeatureFlagsPanel({ tenantId, canEdit = false }: TenantFea
         <span className="shrink-0 rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700">
           {enabledCount}/{totalFlags} on
         </span>
+        {rolloutState ? (
+          <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
+            Workpacks: {rolloutState.rolloutPhase}
+          </span>
+        ) : null}
       </div>
+
+      {rolloutState ? (
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50/60 px-3 py-2 text-xs text-emerald-800">
+          Tenant rollout posture:
+          {" "}
+          {rolloutState.workpacksEnabled ? "workpacks enabled" : "draft only"}
+          {" • "}
+          {rolloutState.workpackAutonomousPilot ? "autonomous pilot on" : "autonomous pilot off"}
+          {" • "}
+          {rolloutState.workpackOpsConsole ? "ops console visible" : "ops console hidden"}
+        </div>
+      ) : null}
 
       {/* Groups */}
       <div className="space-y-1">

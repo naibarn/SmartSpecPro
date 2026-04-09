@@ -81,6 +81,15 @@ export const BASE_TENANT_FLAG_GROUPS: TenantFlagGroup[] = [
     ],
   },
   {
+    title: "Workpacks & Autonomy",
+    icon: "🧩",
+    flags: [
+      { key: "workpacksEnabled", label: "Workpacks", description: "Case intake, playbooks, and reusable workpack execution units" },
+      { key: "workpackAutonomousPilot", label: "Autonomous Pilot", description: "Allow evidence-backed autonomous workpack runs for this tenant" },
+      { key: "workpackOpsConsole", label: "Ops Console", description: "Expose admin readiness, rollout, and incident controls for workpacks" },
+    ],
+  },
+  {
     title: "Integration & API",
     icon: "🔗",
     flags: [

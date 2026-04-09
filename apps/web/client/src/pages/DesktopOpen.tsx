@@ -4,6 +4,7 @@ import { ArrowLeft, Copy, Download, ExternalLink, MonitorPlay } from "lucide-rea
 
 import { Button } from "@/components/ui/button";
 import { buildDesktopLaunchUri } from "@/features/desktop-host/labels";
+import { buildWorkpackEntrypointHref } from "@/lib/workpackNavigation";
 
 function getSearchParam(search: string, key: string): string | undefined {
   const value = new URLSearchParams(search).get(key);
@@ -36,7 +37,7 @@ export default function DesktopOpen() {
             <MonitorPlay className="h-6 w-6" />
           </div>
           <div>
-            <h1 className="text-2xl font-semibold text-slate-900">Open in SmartSpecPro Desktop</h1>
+            <h1 className="text-2xl font-semibold text-slate-900">Open in SmartAIHub Desktop</h1>
             <p className="mt-1 text-sm text-slate-600">
               We tried to hand this run off to Desktop Host. If the desktop app does not open, use
               the launch link or install help below.
@@ -71,6 +72,16 @@ export default function DesktopOpen() {
             <Download className="mr-2 h-4 w-4" />
             Desktop install help
           </a>
+          <Button
+            variant="outline"
+            onClick={() => navigate(buildWorkpackEntrypointHref({
+              entrypoint: "desktop_open",
+              surface: "intake",
+            }))}
+          >
+            <MonitorPlay className="mr-2 h-4 w-4" />
+            Open Workpack Intake
+          </Button>
         </div>
 
         <div className="mt-8">

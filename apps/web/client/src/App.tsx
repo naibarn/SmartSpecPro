@@ -134,6 +134,13 @@ const AdminPersonas = lazy(() => import("./pages/AdminPersonas"));
 const Workflows = lazy(() => import("./pages/Workflows"));
 const WorkflowEditor = lazy(() => import("./pages/WorkflowEditor"));
 const WorkflowGallery = lazy(() => import("./pages/WorkflowGallery"));
+const WorkpackIntakeStudio = lazy(() => import("./pages/WorkpackIntakeStudio"));
+const WorkpackDetail = lazy(() => import("./pages/WorkpackDetail"));
+const WorkpackReplayLab = lazy(() => import("./pages/WorkpackReplayLab"));
+const WorkpackExceptionInbox = lazy(() => import("./pages/WorkpackExceptionInbox"));
+const WorkpackConnectorStudio = lazy(() => import("./pages/WorkpackConnectorStudio"));
+const WorkpackRoiDashboard = lazy(() => import("./pages/WorkpackRoiDashboard"));
+const WorkpackDiscovery = lazy(() => import("./pages/WorkpackDiscovery"));
 const WebhookTriggers = lazy(() => import("./pages/WebhookTriggers"));
 const AdminChannelRouter = lazy(() => import("./pages/AdminChannelRouter"));
 const AdminSystemGuardian = lazy(() => import("./pages/AdminSystemGuardian"));
@@ -399,6 +406,13 @@ function Router() {
         <Route path="/workflows/editor"><RequireAuth><WorkflowEditor /></RequireAuth></Route>
         <Route path="/workflows/gallery"><RequireAuth><WorkflowGallery /></RequireAuth></Route>
         <Route path="/workflows/editor/:id"><RequireAuth><WorkflowEditor /></RequireAuth></Route>
+        <Route path="/workpacks/intake"><RequireAuth><WorkpackIntakeStudio /></RequireAuth></Route>
+        <Route path="/workpacks/exceptions"><RequireAuth><WorkpackExceptionInbox /></RequireAuth></Route>
+        <Route path="/workpacks/roi"><RequireAuth><WorkpackRoiDashboard /></RequireAuth></Route>
+        <Route path="/workpacks/discovery"><RequireAuth><WorkpackDiscovery /></RequireAuth></Route>
+        <Route path="/workpacks/:workpackId/replay"><RequireAuth><WorkpackReplayLab /></RequireAuth></Route>
+        <Route path="/workpacks/:workpackId/connectors"><RequireAuth><WorkpackConnectorStudio /></RequireAuth></Route>
+        <Route path="/workpacks/:workpackId"><RequireAuth><WorkpackDetail /></RequireAuth></Route>
         <Route path="/webhook-triggers"><RequireAuth><WebhookTriggers /></RequireAuth></Route>
         <Route path="/dashboard"><RequireAuth><Dashboard /></RequireAuth></Route>
         <Route path="/notifications"><RequireAuth><Notifications /></RequireAuth></Route>

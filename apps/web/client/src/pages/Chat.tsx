@@ -56,6 +56,7 @@ import {
 import type { LiveBrowserCreateSessionRequest } from "@shared/liveBrowser";
 import { LocaleToggle } from "@/components/LocaleToggle";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
+import { buildWorkpackEntrypointHref } from "@/lib/workpackNavigation";
 
 
 type RightPanel = "none" | "memory" | "skills" | "artifacts" | "schedule" | "canvas" | "finance";
@@ -1157,6 +1158,19 @@ export default function Chat() {
                 >
                   <Users className="h-4 w-4" />
                   {t('chat.exploreAgencies')}
+                </Button>
+                <Button
+                  type="button"
+                  size="lg"
+                  variant="outline"
+                  className="gap-2"
+                  onClick={() => setLocation(buildWorkpackEntrypointHref({
+                    entrypoint: "chat",
+                    surface: "intake",
+                  }))}
+                >
+                  <Layers className="h-4 w-4" />
+                  Open Workpack Intake
                 </Button>
               </div>
             </DashboardSurface>

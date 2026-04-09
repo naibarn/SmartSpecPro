@@ -21,6 +21,7 @@ import { useTenantFeatureFlags } from "@/hooks/useTenantFeatureFlag";
 import { useDesktopHostStatus } from "@/features/desktop-host/useDesktopHostStatus";
 import { DesktopReleasePanel } from "@/features/desktop-releases/DesktopReleasePanel";
 import { trpc } from "@/lib/trpc";
+import { buildWorkpackEntrypointHref } from "@/lib/workpackNavigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { JobCard } from "@/components/chat/JobCard";
@@ -930,6 +931,15 @@ export default function Dashboard() {
       icon: Users,
       href: "/agencies",
       color: "from-slate-700 to-blue-700",
+    },
+    {
+      label: "Workpacks",
+      icon: Workflow,
+      href: buildWorkpackEntrypointHref({
+        entrypoint: "dashboard",
+        surface: "roi",
+      }),
+      color: "from-slate-700 to-violet-700",
     },
     {
       label: t("dashboard:quickActions.buyCredits"),

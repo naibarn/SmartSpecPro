@@ -62,6 +62,13 @@ type OpsEarlyWarningPanelProps = {
   title?: string;
   description?: string;
   showMonitoringLink?: boolean;
+  workpackRollout?: {
+    blockedCount: number;
+    readyCount: number;
+    stagedCount: number;
+    reviewCount: number;
+    topReasonCodes?: string[];
+  };
 };
 
 const severityBadgeClassName: Record<OpsHealth, string> = {
@@ -116,6 +123,7 @@ export function OpsEarlyWarningPanel({
   title = "Early Warning Signals",
   description = "Cross-check resources, alerts, audit logs, and orchestration so abnormal patterns show up before the server tips over.",
   showMonitoringLink = false,
+  workpackRollout,
 }: OpsEarlyWarningPanelProps) {
   const [, setLocation] = useLocation();
 
@@ -184,11 +192,30 @@ export function OpsEarlyWarningPanel({
             <SignalStat label="Orchestration Risks" value={overview.summary.orchestrationCount} tone="neutral" />
           </div>
 
+          {workpackRollout ? (
+            <div className="grid gap-3 md:grid-cols-4">
+              <SignalStat label="Workpacks Ready" value={workpackRollout.readyCount} tone="healthy" />
+              <SignalStat label="Workpacks Blocked" value={workpackRollout.blockedCount} tone="critical" />
+              <SignalStat label="Staged" value={workpackRollout.stagedCount} tone="warning" />
+              <SignalStat label="Review Required" value={workpackRollout.reviewCount} tone="neutral" />
+            </div>
+          ) : null}
+
           {signalPills.length > 0 ? (
             <div className="flex flex-wrap gap-2">
               {signalPills.map((pill) => (
                 <Badge key={pill.label} variant="outline" className="border-slate-200 bg-slate-50 text-slate-700">
                   {pill.label}: {pill.value}
+                </Badge>
+              ))}
+            </div>
+          ) : null}
+
+          {workpackRollout?.topReasonCodes?.length ? (
+            <div className="flex flex-wrap gap-2">
+              {workpackRollout.topReasonCodes.map((reasonCode) => (
+                <Badge key={reasonCode} variant="outline" className="border-rose-200 bg-rose-50 text-rose-700">
+                  Workpack blocker: {reasonCode}
                 </Badge>
               ))}
             </div>
@@ -259,7 +286,7 @@ function SignalStat({
 }: {
   label: string;
   value: number;
-  tone: "critical" | "warning" | "neutral";
+  tone: "critical" | "warning" | "neutral" | "healthy";
 }) {
   return (
     <div className={cn(
@@ -268,7 +295,9 @@ function SignalStat({
         ? "border-rose-200 bg-rose-50/70 text-rose-700"
         : tone === "warning"
           ? "border-amber-200 bg-amber-50/70 text-amber-700"
-          : "border-slate-200 bg-slate-50/80 text-slate-700",
+          : tone === "healthy"
+            ? "border-emerald-200 bg-emerald-50/70 text-emerald-700"
+            : "border-slate-200 bg-slate-50/80 text-slate-700",
     )}>
       <div className="text-xl font-semibold">{value}</div>
       <div className="text-xs uppercase tracking-[0.16em] opacity-80">{label}</div>
