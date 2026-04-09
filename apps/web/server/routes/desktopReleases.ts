@@ -1,4 +1,3 @@
-import crypto from "crypto";
 import { Router } from "express";
 import fs from "fs";
 import os from "os";
@@ -6,6 +5,7 @@ import path from "path";
 
 import multer from "multer";
 
+import { hasScope, verifyBearerToken } from "../_core/tokens";
 import { sdk } from "../_core/sdk";
 import { getUploadsDir, storageGet, storageResolveUrl, storageStreamFile } from "../storage";
 import {
@@ -22,10 +22,12 @@ import {
 } from "../../shared/desktopReleases";
 import {
   desktopReleaseBuildRequestSchema,
+  desktopReleaseBuildRunStatusSchema,
   desktopReleaseBuildResponseSchema,
 } from "../../shared/desktopReleaseBuilds";
 import {
   buildDesktopReleaseFromGithubAction,
+  getDesktopReleaseBuildRunStatus,
   suggestDesktopReleaseBuildVersion,
 } from "../services/desktopReleaseBuildService";
 
@@ -47,15 +49,6 @@ function isDesktopReleaseAdminRole(role?: string | null): boolean {
   return role === "admin" || role === "domain_admin" || role === "system_agent";
 }
 
-function getDesktopReleaseUploadToken(): string {
-  return (
-    process.env.SMARTAIHUB_DESKTOP_RELEASE_UPLOAD_TOKEN
-    || process.env.DESKTOP_RELEASE_UPLOAD_TOKEN
-    || process.env.SMARTSPEC_DESKTOP_RELEASE_UPLOAD_TOKEN
-    || ""
-  ).trim();
-}
-
 function readDesktopReleaseToken(req: any): string {
   const headerToken = req.headers["x-desktop-release-token"] ?? req.headers["x-desktop-release-token".toLowerCase()];
   if (typeof headerToken === "string" && headerToken.trim()) {
@@ -73,13 +66,24 @@ function readDesktopReleaseToken(req: any): string {
   return "";
 }
 
-function isValidDesktopReleaseToken(token: string): boolean {
-  const expected = getDesktopReleaseUploadToken();
-  if (!token || !expected || token.length !== expected.length) {
+async function isValidDesktopReleaseToken(token: string): Promise<boolean> {
+  if (!token) {
     return false;
   }
 
-  return crypto.timingSafeEqual(Buffer.from(token), Buffer.from(expected));
+  try {
+    const claims = await verifyBearerToken(token);
+    const audience = claims.aud;
+    const hasExpectedAudience =
+      audience === "desktop-release-portal"
+      || (Array.isArray(audience) && audience.includes("desktop-release-portal"));
+
+    return claims.type === "desktop_release_upload"
+      && hasExpectedAudience
+      && hasScope(claims.scopes, "desktop_release:upload");
+  } catch {
+    return false;
+  }
 }
 
 async function authenticateDesktopReleaseUser(req: any): Promise<{
@@ -113,7 +117,7 @@ async function authenticateDesktopReleaseUploader(req: any): Promise<{
   }
 
   const token = readDesktopReleaseToken(req);
-  if (isValidDesktopReleaseToken(token)) {
+  if (await isValidDesktopReleaseToken(token)) {
     return {
       userId: null,
       role: "system_agent",
@@ -239,13 +243,44 @@ export function createDesktopReleaseRouter(): Router {
         version: parsed.version ?? (await suggestDesktopReleaseBuildVersion()),
       };
 
-      const build = await buildDesktopReleaseFromGithubAction(buildRequest);
+      const build = await buildDesktopReleaseFromGithubAction(buildRequest, {
+        requestedByUserId: viewer.userId,
+      });
       res.status(202).json({
         build: desktopReleaseBuildResponseSchema.parse(build),
       });
     } catch (error) {
       res.status(400).json({
         error: error instanceof Error ? error.message : "failed_to_dispatch_desktop_release_build",
+      });
+    }
+  });
+
+  router.get("/builds/:runId/status", async (req, res) => {
+    try {
+      const viewer = await authenticateDesktopReleaseUser(req);
+      if (!viewer) {
+        res.status(401).json({ error: "desktop_release_unauthorized" });
+        return;
+      }
+      if (viewer.role !== "admin") {
+        res.status(403).json({ error: "desktop_release_forbidden" });
+        return;
+      }
+
+      const runId = String(req.params.runId ?? "").trim();
+      if (!runId) {
+        res.status(400).json({ error: "desktop_release_invalid_run_id" });
+        return;
+      }
+
+      const status = await getDesktopReleaseBuildRunStatus(runId);
+      res.json({
+        buildRun: desktopReleaseBuildRunStatusSchema.parse(status),
+      });
+    } catch (error) {
+      res.status(400).json({
+        error: error instanceof Error ? error.message : "failed_to_fetch_desktop_release_build_status",
       });
     }
   });

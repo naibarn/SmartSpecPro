@@ -34,6 +34,42 @@ export const desktopReleaseBuildResponseSchema = z.object({
 
 export type DesktopReleaseBuildResponse = z.infer<typeof desktopReleaseBuildResponseSchema>;
 
+export const desktopReleaseBuildRunStatusValues = [
+  "queued",
+  "in_progress",
+  "completed",
+] as const;
+
+export const desktopReleaseBuildConclusionValues = [
+  "success",
+  "failure",
+  "cancelled",
+  "skipped",
+  "timed_out",
+  "action_required",
+  "startup_failure",
+  "stale",
+] as const;
+
+export const desktopReleaseBuildPortalSyncValues = [
+  "idle",
+  "syncing",
+  "completed",
+  "failed",
+] as const;
+
+export const desktopReleaseBuildRunStatusSchema = z.object({
+  workflowRunId: z.string().nullable(),
+  workflowRunUrl: z.string().url().nullable(),
+  workflowRunStatus: z.enum(desktopReleaseBuildRunStatusValues).nullable(),
+  workflowRunConclusion: z.enum(desktopReleaseBuildConclusionValues).nullable(),
+  workflowRunUpdatedAt: z.string().datetime().nullable(),
+  portalSyncStatus: z.enum(desktopReleaseBuildPortalSyncValues).nullable(),
+  portalSyncUpdatedAt: z.string().datetime().nullable(),
+});
+
+export type DesktopReleaseBuildRunStatus = z.infer<typeof desktopReleaseBuildRunStatusSchema>;
+
 export function normalizeDesktopReleaseVersion(version: string | null | undefined): string {
   const trimmed = String(version ?? "").trim();
   if (!trimmed) {

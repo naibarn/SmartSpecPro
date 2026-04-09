@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { HelpButton } from "@/components/help";
 import { useAuth } from "@/contexts/AuthContext";
 import { DesktopHostSettingsPanel } from "@/features/desktop-host/DesktopHostSettingsPanel";
+import { DesktopReleaseConfigPanel } from "@/features/desktop-releases/DesktopReleaseConfigPanel";
 import { DesktopReleasePanel } from "@/features/desktop-releases/DesktopReleasePanel";
 import { useDesktopDeviceControlPlaneState } from "@/features/desktop-host/useDesktopDeviceControlPlaneState";
 import { useDesktopHostStatus } from "@/features/desktop-host/useDesktopHostStatus";
@@ -269,6 +270,10 @@ export default function AdminDesktopHost() {
           using managed desktop governance.
         </div>
       )}
+
+      {user?.role === "admin" ? (
+        <DesktopReleaseConfigPanel enabled />
+      ) : null}
 
       <DesktopReleasePanel
         variant="admin"

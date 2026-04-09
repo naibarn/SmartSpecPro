@@ -15,6 +15,10 @@ import { signBearerToken } from "../_core/tokens";
 import { loadTenantAutomationPolicyStatus, updateTenantAutomationPolicySettings } from "../services/browserPolicySettingsBridge";
 import { getAppRuntimeConfig } from "../services/appRuntimeConfig";
 import {
+  getDesktopReleaseConfig,
+  updateDesktopReleaseConfig,
+} from "../services/desktopReleaseSettings";
+import {
   browserPolicyConfigSchema,
   browserPolicyUserCustomizationSchema,
 } from "../../shared/browserPolicy";
@@ -23,7 +27,15 @@ import {
 // System Settings Router
 // ============================================================
 
-const settingCategorySchema = z.enum(["stripe", "invoice", "email", "general", "oauth", "ai", "telegram", "vectordb", "credit_pricing", "infrastructure", "tenant_automation"]);
+const settingCategorySchema = z.enum(["stripe", "invoice", "email", "general", "oauth", "ai", "telegram", "vectordb", "credit_pricing", "infrastructure", "tenant_automation", "desktop_release"]);
+
+const desktopReleaseSettingsUpdateSchema = z.object({
+  githubRepository: z.string().trim().min(1).max(256),
+  githubWorkflow: z.string().trim().min(1).max(256),
+  githubRef: z.string().trim().min(1).max(256),
+  webUrl: z.string().trim().min(1).max(2048),
+  githubToken: z.string().trim().max(4096).optional(),
+});
 
 const stripeSettingsSchema = z.object({
   secretKey: z.string().optional(),
@@ -593,6 +605,22 @@ export const systemSettingsRouter = router({
       }));
     }),
 
+  getDesktopReleaseSettings: adminProcedure.query(async () => {
+    const config = await getDesktopReleaseConfig();
+    return {
+      githubRepository: config.githubRepository,
+      githubRepositorySource: config.githubRepositorySource,
+      githubWorkflow: config.githubWorkflow,
+      githubWorkflowSource: config.githubWorkflowSource,
+      githubRef: config.githubRef,
+      githubRefSource: config.githubRefSource,
+      webUrl: config.webUrl,
+      webUrlSource: config.webUrlSource,
+      githubTokenConfigured: config.githubTokenConfigured,
+      githubTokenSource: config.githubTokenSource,
+    };
+  }),
+
   getTenantAutomationPolicyStatus: domainAdminProcedure
     .input(z.object({ tenantId: tenantIdInputSchema.optional() }).optional())
     .query(async ({ ctx, input }) => {
@@ -695,6 +723,27 @@ export const systemSettingsRouter = router({
       }
 
       return { success: true };
+    }),
+
+  updateDesktopReleaseSettings: adminProcedure
+    .input(desktopReleaseSettingsUpdateSchema)
+    .mutation(async ({ input, ctx }) => {
+      const config = await updateDesktopReleaseConfig(input, ctx.user?.id);
+      return {
+        success: true,
+        settings: {
+          githubRepository: config.githubRepository,
+          githubRepositorySource: config.githubRepositorySource,
+          githubWorkflow: config.githubWorkflow,
+          githubWorkflowSource: config.githubWorkflowSource,
+          githubRef: config.githubRef,
+          githubRefSource: config.githubRefSource,
+          webUrl: config.webUrl,
+          webUrlSource: config.webUrlSource,
+          githubTokenConfigured: config.githubTokenConfigured,
+          githubTokenSource: config.githubTokenSource,
+        },
+      };
     }),
 
   getGoogleAiSettings: adminProcedure.query(async () => {

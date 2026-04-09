@@ -29,6 +29,7 @@ import { usersRouter } from "./routers/users";
 import { packagesRouter } from "./routers/packages";
 import { llmProvidersRouter } from "./routers/llmProviders";
 import { chatRouter } from "./routers/chat";
+import { financeRouter } from "./routers/finance";
 import { memoryRouter } from "./routers/memory";
 import { mediaRouter } from "./routers/media";
 import { mediaProvidersRouter } from "./routers/mediaProviders";
@@ -1585,6 +1586,7 @@ export const appRouter = router({
 
   // Chat system (conversations, messages, memory)
   chat: chatRouter,
+  finance: financeRouter,
 
   // Canvas / AI Artifacts (versioned, interactive artifacts)
   artifact: artifactRouter,

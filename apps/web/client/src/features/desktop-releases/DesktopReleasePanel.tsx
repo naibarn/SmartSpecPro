@@ -33,10 +33,12 @@ import {
 } from "@shared/desktopReleases";
 import {
   desktopReleaseBuildBundleModeValues,
+  desktopReleaseBuildRunStatusSchema,
   desktopReleaseBuildPlatformValues,
   desktopReleaseBuildResponseSchema,
   normalizeDesktopReleaseVersion,
   suggestNextDesktopReleaseVersion,
+  type DesktopReleaseBuildRunStatus,
   type DesktopReleaseBuildBundleMode,
   type DesktopReleaseBuildPlatform,
   type DesktopReleaseBuildResponse,
@@ -45,6 +47,7 @@ import { useDesktopReleaseCatalog } from "./useDesktopReleaseCatalog";
 
 type DesktopReleasePanelVariant = "dashboard" | "admin";
 type Translator = (key: string, values?: Record<string, string | number>) => string;
+type DesktopReleaseBuildProgressPhase = "idle" | "dispatching" | "queued" | "running" | "publishing" | "completed" | "failed";
 
 function formatBytes(value: number): string {
   if (value >= 1_073_741_824) {
@@ -135,6 +138,59 @@ function formatBuildBundleModeLabel(
   return t("dashboard:desktopReleases.admin.build.bundleMode.all");
 }
 
+function buildProgressPercent(phase: DesktopReleaseBuildProgressPhase): number {
+  switch (phase) {
+    case "dispatching":
+      return 18;
+    case "queued":
+      return 35;
+    case "running":
+      return 72;
+    case "publishing":
+      return 88;
+    case "completed":
+      return 100;
+    case "failed":
+      return 100;
+    default:
+      return 0;
+  }
+}
+
+function buildProgressToneClass(phase: DesktopReleaseBuildProgressPhase): string {
+  switch (phase) {
+    case "completed":
+      return "bg-emerald-500";
+    case "failed":
+      return "bg-rose-500";
+    case "running":
+    case "queued":
+    case "dispatching":
+      return "bg-gradient-to-r from-sky-600 via-cyan-600 to-emerald-500";
+    case "publishing":
+      return "bg-gradient-to-r from-cyan-600 via-sky-600 to-emerald-500";
+    default:
+      return "bg-slate-300";
+  }
+}
+
+function buildProgressBadgeClass(phase: DesktopReleaseBuildProgressPhase): string {
+  switch (phase) {
+    case "completed":
+      return "border-emerald-200 bg-emerald-50 text-emerald-700";
+    case "failed":
+      return "border-rose-200 bg-rose-50 text-rose-700";
+    case "running":
+    case "queued":
+    case "dispatching":
+      return "border-sky-200 bg-sky-50 text-sky-800";
+    case "publishing":
+      return "border-cyan-200 bg-cyan-50 text-cyan-800";
+    default:
+      return "border-slate-200 bg-slate-50 text-slate-500";
+  }
+}
+
 function getPrimaryRelease(
   catalog: ReturnType<typeof useDesktopReleaseCatalog>["catalog"],
   preferredPlatform: DesktopReleasePlatform | null,
@@ -200,6 +256,9 @@ export function DesktopReleasePanel(props: {
   const [buildBundleMode, setBuildBundleMode] = useState<DesktopReleaseBuildBundleMode>("on-demand");
   const [buildReleaseNotes, setBuildReleaseNotes] = useState("");
   const [buildResult, setBuildResult] = useState<DesktopReleaseBuildResponse | null>(null);
+  const [buildRunStatus, setBuildRunStatus] = useState<DesktopReleaseBuildRunStatus | null>(null);
+  const [buildRunStatusLoading, setBuildRunStatusLoading] = useState(false);
+  const [buildRunStatusError, setBuildRunStatusError] = useState<string | null>(null);
   const [version, setVersion] = useState("");
   const [platform, setPlatform] = useState<DesktopReleasePlatform>("windows");
   const [channel, setChannel] = useState<DesktopReleaseChannel>("stable");
@@ -219,6 +278,112 @@ export function DesktopReleasePanel(props: {
     () => suggestNextDesktopReleaseVersion(latestReleases[0]?.version ?? null),
     [latestReleases],
   );
+  const isBuildReady = buildVersion.trim().length > 0;
+  const buildButtonClassName = isBuildReady
+    ? "w-full bg-gradient-to-r from-sky-600 via-cyan-600 to-emerald-500 text-white shadow-lg shadow-sky-500/25 ring-1 ring-sky-300 hover:from-sky-500 hover:via-cyan-500 hover:to-emerald-400"
+    : "w-full bg-slate-200 text-slate-500 shadow-none hover:bg-slate-200";
+  const buildWorkflowRunId = buildResult?.workflowRunId ?? null;
+  const buildPortalSyncStatus = buildRunStatus?.portalSyncStatus ?? "idle";
+
+  const buildProgressPhase = useMemo<DesktopReleaseBuildProgressPhase>(() => {
+    if (buildSubmitting) {
+      return "dispatching";
+    }
+    if (!buildResult) {
+      return "idle";
+    }
+    if (!buildWorkflowRunId) {
+      return "queued";
+    }
+    if (!buildRunStatus?.workflowRunStatus || buildRunStatus.workflowRunStatus === "queued") {
+      return "queued";
+    }
+    if (buildRunStatus.workflowRunStatus === "in_progress") {
+      return "running";
+    }
+    if (buildRunStatus.workflowRunStatus === "completed") {
+      if (buildRunStatus.workflowRunConclusion !== "success") {
+        return "failed";
+      }
+      if (buildPortalSyncStatus === "completed") {
+        return "completed";
+      }
+      if (buildPortalSyncStatus === "failed") {
+        return "failed";
+      }
+      return "publishing";
+    }
+    return "queued";
+  }, [buildPortalSyncStatus, buildResult, buildRunStatus, buildSubmitting, buildWorkflowRunId]);
+
+  const buildProgressTitle = useMemo(() => {
+    if (buildProgressPhase === "dispatching") {
+      return t("dashboard:desktopReleases.admin.build.progress.dispatching");
+    }
+    if (buildProgressPhase === "queued") {
+      return t("dashboard:desktopReleases.admin.build.progress.queued");
+    }
+    if (buildProgressPhase === "running") {
+      return t("dashboard:desktopReleases.admin.build.progress.running");
+    }
+    if (buildProgressPhase === "publishing") {
+      return t("dashboard:desktopReleases.admin.build.progress.publishing");
+    }
+    if (buildProgressPhase === "completed") {
+      return t("dashboard:desktopReleases.admin.build.progress.completed");
+    }
+    if (buildProgressPhase === "failed") {
+      return t("dashboard:desktopReleases.admin.build.progress.failed");
+    }
+    return t("dashboard:desktopReleases.admin.build.progress.idle");
+  }, [buildProgressPhase, t]);
+
+  const buildProgressDescription = useMemo(() => {
+    if (buildProgressPhase === "dispatching") {
+      return t("dashboard:desktopReleases.admin.build.progress.dispatchingDescription");
+    }
+    if (buildProgressPhase === "queued") {
+      return t("dashboard:desktopReleases.admin.build.progress.queuedDescription");
+    }
+    if (buildProgressPhase === "running") {
+      return t("dashboard:desktopReleases.admin.build.progress.runningDescription");
+    }
+    if (buildProgressPhase === "publishing") {
+      return t("dashboard:desktopReleases.admin.build.progress.publishingDescription");
+    }
+    if (buildProgressPhase === "completed") {
+      return t("dashboard:desktopReleases.admin.build.progress.completedDescription");
+    }
+    if (buildProgressPhase === "failed") {
+      return t("dashboard:desktopReleases.admin.build.progress.failedDescription");
+    }
+    return t("dashboard:desktopReleases.admin.build.progress.idleDescription");
+  }, [buildProgressPhase, t]);
+
+  const buildProgressBadgeLabel = useMemo(() => {
+    if (buildProgressPhase === "dispatching") {
+      return t("dashboard:desktopReleases.admin.build.progress.dispatchingBadge");
+    }
+    if (buildProgressPhase === "queued") {
+      return t("dashboard:desktopReleases.admin.build.progress.queuedBadge");
+    }
+    if (buildProgressPhase === "running") {
+      return t("dashboard:desktopReleases.admin.build.progress.runningBadge");
+    }
+    if (buildProgressPhase === "publishing") {
+      return t("dashboard:desktopReleases.admin.build.progress.publishingBadge");
+    }
+    if (buildProgressPhase === "completed") {
+      return t("dashboard:desktopReleases.admin.build.progress.completedBadge");
+    }
+    if (buildProgressPhase === "failed") {
+      return t("dashboard:desktopReleases.admin.build.progress.failedBadge");
+    }
+    return t("dashboard:desktopReleases.admin.build.progress.idleBadge");
+  }, [buildProgressPhase, t]);
+  const buildProgressPercentValue = buildProgressPercent(buildProgressPhase);
+  const buildProgressBarClassName = buildProgressToneClass(buildProgressPhase);
+  const buildProgressBadgeClassName = buildProgressBadgeClass(buildProgressPhase);
 
   useEffect(() => {
     if (!buildVersionIsCustom) {
@@ -245,6 +410,9 @@ export function DesktopReleasePanel(props: {
     }
 
     setBuildSubmitting(true);
+    setBuildResult(null);
+    setBuildRunStatus(null);
+    setBuildRunStatusError(null);
     try {
       const response = await fetch("/api/desktop-releases/builds", {
         method: "POST",
@@ -278,6 +446,88 @@ export function DesktopReleasePanel(props: {
       setBuildSubmitting(false);
     }
   };
+
+  useEffect(() => {
+    if (!buildWorkflowRunId) {
+      setBuildRunStatus(null);
+      setBuildRunStatusError(null);
+      setBuildRunStatusLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    let retryTimer: number | undefined;
+    let inFlight = false;
+
+    const pollBuildStatus = async () => {
+      if (cancelled || inFlight) {
+        return;
+      }
+
+      inFlight = true;
+      setBuildRunStatusLoading(true);
+
+      try {
+        const response = await fetch(`/api/desktop-releases/builds/${encodeURIComponent(buildWorkflowRunId)}/status`, {
+          credentials: "include",
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(typeof payload?.error === "string" ? payload.error : "desktop_release_build_status_failed");
+        }
+
+        const status = desktopReleaseBuildRunStatusSchema.parse(payload.buildRun);
+        if (!cancelled) {
+          setBuildRunStatus(status);
+          setBuildRunStatusError(null);
+        }
+
+        const workflowCompletedSuccessfully =
+          status.workflowRunStatus === "completed"
+          && status.workflowRunConclusion === "success";
+        const portalSyncFinished = status.portalSyncStatus === "completed" || status.portalSyncStatus === "failed";
+
+        if (!cancelled && (!workflowCompletedSuccessfully || !portalSyncFinished)) {
+          retryTimer = window.setTimeout(() => {
+            void pollBuildStatus();
+          }, 15_000);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setBuildRunStatusError(
+            error instanceof Error ? error.message : "desktop_release_build_status_failed",
+          );
+          retryTimer = window.setTimeout(() => {
+            void pollBuildStatus();
+          }, 15_000);
+        }
+      } finally {
+        inFlight = false;
+        if (!cancelled) {
+          setBuildRunStatusLoading(false);
+        }
+      }
+    };
+
+    void pollBuildStatus();
+
+    return () => {
+      cancelled = true;
+      if (retryTimer) {
+        window.clearTimeout(retryTimer);
+      }
+    };
+  }, [buildWorkflowRunId]);
+
+  useEffect(() => {
+    if (
+      buildRunStatus?.workflowRunStatus === "completed"
+      && buildRunStatus.workflowRunConclusion === "success"
+      && buildRunStatus.portalSyncStatus === "completed"
+    ) {
+      refresh();
+    }
+  }, [buildRunStatus?.portalSyncStatus, buildRunStatus?.workflowRunConclusion, buildRunStatus?.workflowRunStatus, refresh]);
 
   const handleUpload = async () => {
     if (!file) {
@@ -534,8 +784,8 @@ export function DesktopReleasePanel(props: {
       />
 
       {canTriggerBuild ? (
-        <div className="rounded-2xl border border-violet-200 bg-violet-50/70 p-4 shadow-sm">
-          <div className="flex items-center gap-2 text-sm font-semibold text-violet-800">
+        <div className="rounded-2xl border border-sky-200 bg-sky-50/70 p-4 shadow-sm">
+          <div className="flex items-center gap-2 text-sm font-semibold text-sky-800">
             <Rocket className="h-4 w-4" />
             {t("dashboard:desktopReleases.admin.build.eyebrow")}
           </div>
@@ -547,7 +797,7 @@ export function DesktopReleasePanel(props: {
           </p>
 
           <div className="mt-4 grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
-            <div className="space-y-4 rounded-2xl border border-violet-100 bg-white/95 p-4">
+            <div className="space-y-4 rounded-2xl border border-sky-100 bg-white/95 p-4">
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-slate-700">
                   {t("dashboard:desktopReleases.admin.formVersion")}
@@ -619,18 +869,96 @@ export function DesktopReleasePanel(props: {
               </div>
 
               <Button
-                className="w-full bg-violet-700 text-white hover:bg-violet-800"
+                className={buildButtonClassName}
                 onClick={() => {
                   void handleBuildRelease();
                 }}
-                disabled={buildSubmitting || !buildVersion.trim()}
+                disabled={buildSubmitting || !isBuildReady}
               >
                 {buildSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Rocket className="mr-2 h-4 w-4" />}
-                {t("dashboard:desktopReleases.admin.build.trigger")}
+                {buildSubmitting
+                  ? t("dashboard:desktopReleases.admin.build.submitting")
+                  : t("dashboard:desktopReleases.admin.build.trigger")}
               </Button>
             </div>
 
             <div className="space-y-3">
+              {buildSubmitting || buildResult || buildRunStatus ? (
+                <div className="rounded-2xl border border-sky-100 bg-white/95 p-4 text-sm text-slate-700 shadow-sm">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
+                        {t("dashboard:desktopReleases.admin.build.progress.title")}
+                      </p>
+                      <p className="mt-1 text-sm font-semibold text-slate-900">
+                        {buildProgressTitle}
+                      </p>
+                    </div>
+                    <Badge variant="outline" className={buildProgressBadgeClassName}>
+                      {buildProgressBadgeLabel}
+                    </Badge>
+                  </div>
+
+                  <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
+                    <div
+                      className={`h-full rounded-full transition-all duration-300 ${buildProgressBarClassName}`}
+                      style={{ width: `${buildProgressPercentValue}%` }}
+                    />
+                  </div>
+
+                  <p className="mt-3 text-sm leading-6 text-slate-600">
+                    {buildProgressDescription}
+                  </p>
+
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    {buildWorkflowRunId ? (
+                      <Badge variant="outline" className="border-slate-200 bg-slate-50 text-slate-700">
+                        {`Run #${buildWorkflowRunId}`}
+                      </Badge>
+                    ) : null}
+                    {buildRunStatusLoading ? (
+                      <Badge variant="outline" className="border-sky-200 bg-sky-50 text-sky-700">
+                        <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                        {t("dashboard:desktopReleases.admin.build.progress.refreshing")}
+                      </Badge>
+                    ) : null}
+                    {buildRunStatusError ? (
+                      <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-800">
+                        {t("dashboard:desktopReleases.admin.build.progress.retrying")}
+                      </Badge>
+                    ) : null}
+                  </div>
+
+                  <div className="mt-4">
+                    <Button
+                      asChild
+                      size="sm"
+                      className="bg-sky-700 text-white hover:bg-sky-800"
+                    >
+                      <a href={buildRunStatus?.workflowRunUrl ?? buildResult?.workflowRunUrl ?? buildResult?.workflowUrl} target="_blank" rel="noreferrer">
+                        {t("dashboard:desktopReleases.admin.build.openActions")}
+                        <ChevronRight className="ml-2 h-4 w-4" />
+                      </a>
+                    </Button>
+                  </div>
+
+                  {buildRunStatus?.workflowRunUpdatedAt ? (
+                    <p className="mt-3 text-xs text-slate-500">
+                      {t("dashboard:desktopReleases.admin.build.progress.lastUpdated", {
+                        time: new Intl.DateTimeFormat(undefined, {
+                          dateStyle: "medium",
+                          timeStyle: "short",
+                        }).format(new Date(buildRunStatus.workflowRunUpdatedAt)),
+                      })}
+                    </p>
+                  ) : null}
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-dashed border-sky-200 bg-white/90 px-4 py-8 text-sm text-slate-500">
+                  {t("dashboard:desktopReleases.admin.build.resultEmpty")}
+                </div>
+              )}
+
               {buildResult ? (
                 <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 p-4 text-sm text-emerald-900">
                   <p className="font-semibold">
@@ -653,21 +981,10 @@ export function DesktopReleasePanel(props: {
                       {formatBuildBundleModeLabel(t, buildResult.bundleMode)}
                     </Badge>
                   </div>
-                  <div className="mt-4">
-                    <Button asChild size="sm" className="bg-emerald-700 text-white hover:bg-emerald-800">
-                      <a href={buildResult.workflowRunUrl ?? buildResult.workflowUrl} target="_blank" rel="noreferrer">
-                        {t("dashboard:desktopReleases.admin.build.openActions")}
-                        <ChevronRight className="ml-2 h-4 w-4" />
-                      </a>
-                    </Button>
-                  </div>
                 </div>
-              ) : (
-                <div className="rounded-2xl border border-dashed border-violet-200 bg-white/90 px-4 py-8 text-sm text-slate-500">
-                  {t("dashboard:desktopReleases.admin.build.resultEmpty")}
-                </div>
-              )}
-              <div className="rounded-2xl border border-violet-100 bg-white/90 p-4 text-xs text-slate-500">
+              ) : null}
+
+              <div className="rounded-2xl border border-sky-100 bg-white/90 p-4 text-xs text-slate-500">
                 {t("dashboard:desktopReleases.admin.build.note")}
               </div>
             </div>

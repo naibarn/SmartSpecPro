@@ -72,6 +72,7 @@ const packageCatalogState = vi.hoisted(() => ({
   error: null as string | null,
   refresh: vi.fn(),
 }));
+const desktopReleaseConfigPanelMock = vi.hoisted(() => vi.fn());
 const desktopReleasePanelMock = vi.hoisted(() => vi.fn());
 
 vi.mock("wouter", () => ({
@@ -111,6 +112,13 @@ vi.mock("@/features/desktop-host/DesktopHostSettingsPanel", () => ({
   ),
 }));
 
+vi.mock("@/features/desktop-releases/DesktopReleaseConfigPanel", () => ({
+  DesktopReleaseConfigPanel: (props: Record<string, unknown>) => {
+    desktopReleaseConfigPanelMock(props);
+    return null;
+  },
+}));
+
 vi.mock("@/features/desktop-releases/DesktopReleasePanel", () => ({
   DesktopReleasePanel: (props: Record<string, unknown>) => {
     desktopReleasePanelMock(props);
@@ -145,6 +153,7 @@ import AdminDesktopHost from "../AdminDesktopHost";
 describe("AdminDesktopHost", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    desktopReleaseConfigPanelMock.mockClear();
     desktopReleasePanelMock.mockClear();
   });
 
@@ -167,6 +176,11 @@ describe("AdminDesktopHost", () => {
   it("enables desktop build triggers for admins", () => {
     render(<AdminDesktopHost />);
 
+    expect(desktopReleaseConfigPanelMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        enabled: true,
+      }),
+    );
     expect(desktopReleasePanelMock).toHaveBeenCalledWith(
       expect.objectContaining({
         variant: "admin",
