@@ -62,6 +62,9 @@ export interface TenantFeatureFlags {
   desktopWorkerProjection: boolean; // F54 — Desktop Host projection into worker fabric
   agencyHybridAdk: boolean; // F55 — Hybrid Agency Runtime with Google ADK compile/runtime surfaces
   agencyHybridAdkKillSwitch: boolean; // F56 — Operational kill switch for Agency Hybrid ADK paths
+  workpacksEnabled: boolean; // F57 — Autonomous workpack intake, lifecycle, and control-plane surfaces
+  workpackAutonomousPilot: boolean; // F58 — Tenant rollout gate for autonomous workpack execution
+  workpackOpsConsole: boolean; // F59 — Admin monitoring and readiness controls for workpacks
 }
 
 export type TenantFeatureFlagKey = keyof TenantFeatureFlags;
@@ -127,6 +130,9 @@ export const ALLOWED_FEATURE_FLAGS: ReadonlySet<string> = new Set<TenantFeatureF
   "desktopWorkerProjection",
   "agencyHybridAdk",
   "agencyHybridAdkKillSwitch",
+  "workpacksEnabled",
+  "workpackAutonomousPilot",
+  "workpackOpsConsole",
 ]);
 
 /**
@@ -191,4 +197,7 @@ export const FEATURE_FLAG_DEFAULTS: Readonly<TenantFeatureFlags> = {
   desktopWorkerProjection: false, // Desktop Host only joins worker fabric when explicitly enabled
   agencyHybridAdk: false, // Hybrid Agency Runtime is explicit opt-in while ADK integration remains rollout-gated
   agencyHybridAdkKillSwitch: false, // Kill switch defaults open but stays available for incident response
+  workpacksEnabled: true, // Workpack authoring ships on by default for first-party tenants
+  workpackAutonomousPilot: false, // Autonomous execution remains rollout-gated until readiness evidence exists
+  workpackOpsConsole: true, // Admin monitoring surfaces can render workpack readiness immediately
 };
