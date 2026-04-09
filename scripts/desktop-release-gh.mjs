@@ -4,7 +4,6 @@ import { spawnSync } from "node:child_process";
 
 const validPlatforms = new Set(["windows", "macos", "linux", "all"]);
 const validBundleModes = new Set(["on-demand", "e2b", "e4b", "all"]);
-const defaultDesktopWebUrl = "https://smartaihub.app";
 
 function fail(message) {
   console.error(`[desktop-release] ERROR: ${message}`);
@@ -61,8 +60,8 @@ Options:
   --platform <name>        One of: windows, macos, linux, all. Default: windows.
   --bundle-mode <mode>     One of: on-demand, e2b, e4b, all. Default: on-demand.
   --ref <git-ref>          Branch or ref to run the workflow from. Default: current HEAD branch.
-  --web-url <url>          Public SmartAIHub web URL embedded into the desktop build.
-  --release-notes <text>   Release notes forwarded to GitHub release + portal upload.
+  --web-url <url>          Public SmartAIHub web URL embedded into the desktop app.
+  --release-notes <text>   Release notes to publish with the desktop build.
   --watch                  Wait for the newly created workflow run.
   -h, --help               Show this help.
 `);
@@ -114,37 +113,8 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function normalizeWebUrl(rawValue) {
-  let url;
-  try {
-    url = new URL(rawValue);
-  } catch {
-    fail(`Invalid desktop web URL: ${rawValue}`);
-  }
-
-  if (url.protocol !== "https:" && url.protocol !== "http:") {
-    fail(`Desktop web URL must use http or https: ${rawValue}`);
-  }
-
-  return url.toString().replace(/\/+$/, "");
-}
-
 function stripLeadingV(value) {
   return `${value ?? ""}`.trim().replace(/^v/i, "");
-}
-
-function resolveDesktopWebUrl(explicitWebUrl) {
-  const candidate =
-    explicitWebUrl ||
-    process.env.SMARTAIHUB_DESKTOP_PUBLIC_URL ||
-    process.env.VITE_SMARTAIHUB_WEB_URL ||
-    process.env.SMARTSPEC_DESKTOP_PUBLIC_URL ||
-    process.env.VITE_SMARTSPEC_WEB_URL ||
-    process.env.APP_PUBLIC_URL ||
-    process.env.PUBLIC_URL ||
-    defaultDesktopWebUrl;
-
-  return normalizeWebUrl(candidate);
 }
 
 async function waitForRunId({ ref, startedAt }) {
@@ -207,10 +177,9 @@ if (!ref) {
   ref = run("git", ["rev-parse", "--abbrev-ref", "HEAD"], { capture: true });
 }
 
-const desktopWebUrl = resolveDesktopWebUrl(options.webUrl);
 const desktopVersion = options.version || stripLeadingV(options.tag);
 const desktopTag = options.tag || `v${desktopVersion}`;
-log(`Triggering desktop release workflow for platform=${options.platform}, bundle_mode=${options.bundleMode}, version=${desktopVersion}, tag=${desktopTag}, ref=${ref}, web_url=${desktopWebUrl}`);
+log(`Triggering desktop release workflow for platform=${options.platform}, bundle_mode=${options.bundleMode}, version=${desktopVersion}, tag=${desktopTag}, ref=${ref}`);
 const dispatchStartedAt = Date.now() - 1000;
 run("gh", [
   "workflow",
@@ -221,13 +190,11 @@ run("gh", [
   "-f",
   `tag=${desktopTag}`,
   "-f",
-  `version=${desktopVersion}`,
-  "-f",
   `platform=${options.platform}`,
   "-f",
   `bundle_mode=${options.bundleMode}`,
   "-f",
-  `web_url=${desktopWebUrl}`,
+  `web_url=${options.webUrl || "https://smartaihub.app"}`,
   "-f",
   `release_notes=${options.releaseNotes}`,
 ]);

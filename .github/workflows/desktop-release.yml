@@ -26,6 +26,14 @@ on:
           - e2b
           - e4b
           - all
+      web_url:
+        description: "Public SmartAIHub web URL embedded into the desktop app"
+        required: false
+        default: "https://smartaihub.app"
+      release_notes:
+        description: "Release notes to publish with the desktop build"
+        required: false
+        default: ""
 
 permissions:
   contents: write
@@ -96,6 +104,12 @@ jobs:
       - name: Install npm dependencies
         run: npm install --legacy-peer-deps
 
+      - name: Build SmartAIHub Web assets for desktop
+        env:
+          VITE_SMARTAIHUB_WEB_URL: ${{ github.event.inputs.web_url }}
+          VITE_SMARTSPEC_WEB_URL: ${{ github.event.inputs.web_url }}
+        run: npm --workspace apps/web run build
+
       - name: Prepare LiteRT-LM and Gemma 4 bundle
         shell: bash
         env:
@@ -115,11 +129,12 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          DESKTOP_RELEASE_BODY: ${{ github.event.inputs.release_notes || format('See [CHANGELOG](https://github.com/{0}/blob/main/CHANGELOG.md) for details.', github.repository) }}
         with:
           projectPath: apps/tauri-shell
           tagName: ${{ github.event.inputs.tag || github.ref_name }}
           releaseName: "SmartAIHub Desktop ${{ github.event.inputs.tag || github.ref_name }}"
-          releaseBody: "See [CHANGELOG](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details."
+          releaseBody: ${{ env.DESKTOP_RELEASE_BODY }}
           releaseDraft: true
           prerelease: false
           args: --target ${{ matrix.target }}
