@@ -48,7 +48,8 @@ describe("workpackIncidentControlService", () => {
     });
 
     expect(resumed.status).toBe("resolved");
-    expect(getWorkpack(draft.workpack.id)?.lifecycleState).toBe("ready");
+    expect(getWorkpack(draft.workpack.id)?.lifecycleState).toBe("clarification_needed");
+    expect(getWorkpack(draft.workpack.id)?.policyProfile.safeResumeRequired).toBe(true);
   });
 
   it("cancels queued work without touching completed runs", () => {

@@ -4,6 +4,10 @@ export const workpackDomainPackValues = [
   "support_ops",
   "sales_ops",
   "procurement_ops",
+  "legal_ops",
+  "customer_success",
+  "operations",
+  "content_operations",
   "executive_support",
   "custom",
 ] as const;
@@ -83,6 +87,58 @@ export const WORKPACK_DOMAIN_PACKS: WorkpackDomainPackDefinition[] = [
       "Compare supplier options",
       "Prepare approval packet",
       "Commit approved procurement action",
+    ],
+  },
+  {
+    id: "legal_ops",
+    label: "Legal Ops",
+    description: "Contract review summaries, intake routing, obligation tracking, and legal approvals.",
+    connectorFamilies: ["docs", "email", "calendar"],
+    browserSkillHints: ["contract_review_summary", "general_navigation"],
+    defaultStepTitles: [
+      "Collect legal intake context",
+      "Summarize obligations and risk flags",
+      "Prepare review packet",
+      "Dispatch approved legal follow-up",
+    ],
+  },
+  {
+    id: "customer_success",
+    label: "Customer Success",
+    description: "Renewals, health checks, stakeholder follow-up, and adoption nudges.",
+    connectorFamilies: ["crm", "email", "calendar"],
+    browserSkillHints: ["renewal_follow_up", "crm_update"],
+    defaultStepTitles: [
+      "Review customer health signal",
+      "Update account context",
+      "Prepare renewal or risk follow-up",
+      "Send stakeholder communication",
+    ],
+  },
+  {
+    id: "operations",
+    label: "Operations",
+    description: "Daily ops summaries, recurring checks, exception routing, and task coordination.",
+    connectorFamilies: ["spreadsheet", "chat", "docs"],
+    browserSkillHints: ["daily_ops_summary", "general_navigation"],
+    defaultStepTitles: [
+      "Collect recurring operational inputs",
+      "Classify anomalies and blockers",
+      "Prepare action summary",
+      "Publish daily ops outcome",
+    ],
+  },
+  {
+    id: "content_operations",
+    label: "Content Operations",
+    description: "Editorial intake, publishing checks, asset coordination, and approval routing.",
+    connectorFamilies: ["docs", "chat", "calendar"],
+    browserSkillHints: ["content_publish_check", "general_navigation"],
+    defaultStepTitles: [
+      "Collect content intake materials",
+      "Validate publishing checklist",
+      "Prepare revision or approval packet",
+      "Publish or notify stakeholders",
     ],
   },
   {
@@ -173,6 +229,46 @@ export function inferWorkpackDomainPackFromText(text: string): WorkpackDomainPac
     || normalized.includes("supplier")
   ) {
     return "procurement_ops";
+  }
+
+  if (
+    normalized.includes("contract")
+    || normalized.includes("legal")
+    || normalized.includes("obligation")
+    || normalized.includes("nda")
+    || normalized.includes("clause")
+  ) {
+    return "legal_ops";
+  }
+
+  if (
+    normalized.includes("renewal")
+    || normalized.includes("adoption")
+    || normalized.includes("health score")
+    || normalized.includes("customer success")
+    || normalized.includes("churn")
+  ) {
+    return "customer_success";
+  }
+
+  if (
+    normalized.includes("daily ops")
+    || normalized.includes("operations")
+    || normalized.includes("ops summary")
+    || normalized.includes("checklist")
+    || normalized.includes("handoff")
+  ) {
+    return "operations";
+  }
+
+  if (
+    normalized.includes("content")
+    || normalized.includes("editorial")
+    || normalized.includes("publish")
+    || normalized.includes("approval copy")
+    || normalized.includes("campaign asset")
+  ) {
+    return "content_operations";
   }
 
   if (

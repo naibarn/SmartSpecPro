@@ -36,6 +36,8 @@ describe("WorkpackRoiDashboard", () => {
             nextAction: "Expand supervised usage",
           },
         ],
+        recommendations: [],
+        slices: [],
       },
       isLoading: false,
     });

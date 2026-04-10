@@ -8,6 +8,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const useRouteMock = vi.fn();
 const detailMock = vi.fn();
 const connectorsMock = vi.fn();
+const refreshMock = vi.fn();
+const validateMock = vi.fn();
+const updateMapMock = vi.fn();
+const invalidateMock = vi.fn();
 
 vi.mock("wouter", () => ({
   useRoute: (...args: unknown[]) => useRouteMock(...args),
@@ -16,9 +20,18 @@ vi.mock("wouter", () => ({
 
 vi.mock("@/lib/trpc", () => ({
   trpc: {
+    useUtils: () => ({
+      workpack: {
+        connectors: { invalidate: invalidateMock },
+        getDetail: { invalidate: invalidateMock },
+      },
+    }),
     workpack: {
       getDetail: { useQuery: (...args: unknown[]) => detailMock(...args) },
       connectors: { useQuery: (...args: unknown[]) => connectorsMock(...args) },
+      refreshConnectorIntrospections: { useMutation: (...args: unknown[]) => refreshMock(...args) },
+      validateConnectors: { useMutation: (...args: unknown[]) => validateMock(...args) },
+      updateConnectorMap: { useMutation: (...args: unknown[]) => updateMapMock(...args) },
     },
   },
 }));
@@ -45,13 +58,19 @@ describe("WorkpackConnectorStudio", () => {
             scopePosture: "missing",
             requiredScopes: ["crm:read", "crm:write"],
             grantedScopes: ["crm:read"],
+            fieldMappings: [{ sourceField: "record_id", targetField: "record_id", required: true, sideEffectClass: "read_only" }],
+            samplePayload: {},
             missingFields: [],
             driftedFields: [],
           },
         ],
+        introspections: [],
       },
       isLoading: false,
     });
+    refreshMock.mockReturnValue({ mutate: vi.fn(), isPending: false });
+    validateMock.mockReturnValue({ mutate: vi.fn(), isPending: false });
+    updateMapMock.mockReturnValue({ mutate: vi.fn(), isPending: false, variables: null });
   });
 
   it("renders connector matrix and boundary blockers", () => {

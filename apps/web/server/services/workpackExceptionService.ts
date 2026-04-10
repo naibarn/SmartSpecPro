@@ -32,6 +32,7 @@ export interface WorkpackExceptionInboxEntry {
   remediationPointer: string;
   title: string;
   exceptionIds: string[];
+  allowedActions: WorkpackException["allowedActions"];
 }
 
 function nowIso(): string {
@@ -60,6 +61,25 @@ function deriveRiskClass(input: NormalizeWorkpackExceptionInput): WorkpackExcept
   return "low";
 }
 
+function deriveAllowedActions(
+  reasonCategory: WorkpackException["reasonCategory"],
+): WorkpackException["allowedActions"] {
+  const base: WorkpackException["allowedActions"] = ["mark_false_positive", "escalate_admin"];
+  if (reasonCategory === "connector_auth" || reasonCategory === "schema_mismatch") {
+    return [...base, "remap_connector", "retry"];
+  }
+  if (reasonCategory === "policy_boundary" || reasonCategory === "irreversible_action") {
+    return [...base, "approve", "reject", "downgrade_autonomy"];
+  }
+  if (reasonCategory === "ambiguity") {
+    return [...base, "regenerate_workpack", "retry", "reject"];
+  }
+  if (reasonCategory === "drift") {
+    return [...base, "retry", "downgrade_autonomy", "remap_connector"];
+  }
+  return [...base, "retry"];
+}
+
 export function normalizeWorkpackException(input: NormalizeWorkpackExceptionInput): WorkpackException {
   const detail = getWorkpackDetail(input.workpackId);
   if (!detail) {
@@ -81,6 +101,7 @@ export function normalizeWorkpackException(input: NormalizeWorkpackExceptionInpu
     summary: input.summary,
     remediationPointer: input.remediationPointer,
     nextAction: input.nextAction,
+    allowedActions: deriveAllowedActions(input.reasonCategory),
     createdAt,
     resolvedAt: null,
   });
@@ -105,7 +126,14 @@ export function normalizeWorkpackException(input: NormalizeWorkpackExceptionInpu
   return exceptionRecord;
 }
 
-export function resolveWorkpackException(exceptionId: string): WorkpackException {
+export function resolveWorkpackException(
+  input: string | {
+    exceptionId: string;
+    action?: WorkpackException["allowedActions"][number];
+  },
+): WorkpackException {
+  const exceptionId = typeof input === "string" ? input : input.exceptionId;
+  const action = typeof input === "string" ? undefined : input.action;
   const record = getWorkpackException(exceptionId);
   if (!record) {
     throw new Error(`Unknown workpack exception: ${exceptionId}`);
@@ -116,11 +144,20 @@ export function resolveWorkpackException(exceptionId: string): WorkpackException
   const next = {
     ...record,
     resolvedAt,
+    nextAction: action ? `${record.nextAction} (actioned via ${action})` : record.nextAction,
   };
   saveWorkpackException(next);
 
   const detail = getWorkpackDetail(record.workpackId);
   if (detail) {
+    if (action === "downgrade_autonomy") {
+      updateWorkpack(detail.workpack.id, (workpack) => ({
+        ...workpack,
+        autonomyMode: "draft",
+        lifecycleState: "needs_review",
+        updatedAt: resolvedAt,
+      }));
+    }
     saveTelemetryEvent({
       id: createWorkpackId("evt"),
       tenantId: detail.workpack.tenantId,
@@ -158,15 +195,16 @@ export function listWorkpackExceptionInbox(workpackId: string): WorkpackExceptio
       versionId: record.versionId,
       reasonCode: record.reasonCode,
       reasonCategory: record.reasonCategory,
-      riskClass: record.riskClass,
-      count: 1,
-      latestCreatedAt: record.createdAt,
-      nextAction: record.nextAction,
-      remediationPointer: record.remediationPointer,
-      title: record.title,
-      exceptionIds: [record.id],
-    });
-  }
+          riskClass: record.riskClass,
+          count: 1,
+          latestCreatedAt: record.createdAt,
+          nextAction: record.nextAction,
+          remediationPointer: record.remediationPointer,
+          title: record.title,
+          exceptionIds: [record.id],
+          allowedActions: record.allowedActions,
+        });
+      }
 
   return Array.from(grouped.values()).sort((left, right) => right.latestCreatedAt.localeCompare(left.latestCreatedAt));
 }

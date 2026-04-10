@@ -8,7 +8,7 @@ import { compileWorkpackExecutionPlan } from "./workpackCompilerService";
 import { getConnectorStudioView } from "./workpackConnectorService";
 import { normalizeWorkpackException } from "./workpackExceptionService";
 import { buildArtifactReference, createReplayGradeLedger, finalizeLedgerRun } from "./workpackLedgerService";
-import { createWorkpackId, getWorkpackDetail, saveSimulationRun, saveTelemetryEvent, updateWorkpack } from "./workpackPersistence";
+import { createWorkpackId, getWorkpackDetail, getWorkpackRun, saveSimulationRun, saveTelemetryEvent, updateWorkpack } from "./workpackPersistence";
 
 export interface SimulateWorkpackResult {
   simulationRun: SimulationRun;
@@ -26,9 +26,85 @@ function summarizeFixturePayload(payload: Record<string, unknown>): string {
   return `Fixture seeded with ${keys.slice(0, 4).join(", ")}`;
 }
 
+function buildSyntheticPayload(detail: NonNullable<ReturnType<typeof getWorkpackDetail>>): Record<string, unknown> {
+  const payload: Record<string, unknown> = {
+    goal: detail.workpack.goal,
+    domainPack: detail.workpack.domainPack,
+  };
+  for (const field of detail.playbook.extractedFields) {
+    if (!field.valueSummary) continue;
+    payload[field.key] = field.structuredValue ?? field.valueSummary;
+  }
+  return payload;
+}
+
+function resolveSimulationPayload(input: {
+  mode: SimulationRun["mode"];
+  detail: NonNullable<ReturnType<typeof getWorkpackDetail>>;
+  fixtureId?: string | null;
+  payload?: Record<string, unknown>;
+  replayRunId?: string | null;
+}): {
+  mode: SimulationRun["mode"];
+  fixtureId: string | null;
+  payload: Record<string, unknown>;
+  label: string;
+} {
+  const firstFixture = input.fixtureId
+    ? input.detail.version.fixtureCatalog.find((fixture) => fixture.id === input.fixtureId) ?? null
+    : input.detail.version.fixtureCatalog[0] ?? null;
+
+  if (input.mode === "masked_history") {
+    return {
+      mode: input.mode,
+      fixtureId: firstFixture?.id ?? null,
+      payload: input.payload ?? firstFixture?.payload ?? buildSyntheticPayload(input.detail),
+      label: firstFixture ? `Masked history from ${firstFixture.label}` : "Masked history payload",
+    };
+  }
+
+  if (input.mode === "synthetic") {
+    return {
+      mode: input.mode,
+      fixtureId: null,
+      payload: input.payload ?? buildSyntheticPayload(input.detail),
+      label: "Synthetic payload",
+    };
+  }
+
+  if (input.mode === "trace_replay") {
+    const replayRun = input.replayRunId ? getWorkpackRun(input.replayRunId) : input.detail.runs[0] ?? null;
+    return {
+      mode: input.mode,
+      fixtureId: null,
+      payload: {
+        replayRunId: replayRun?.id ?? null,
+        notes: replayRun?.notes ?? "",
+        actualSteps: replayRun?.actualSteps.map((step) => ({
+          stepId: step.stepId,
+          status: step.status,
+          runtimePath: step.runtimePath,
+        })) ?? [],
+      },
+      label: replayRun ? `Trace replay from ${replayRun.id}` : "Trace replay payload",
+    };
+  }
+
+  return {
+    mode: input.mode,
+    fixtureId: firstFixture?.id ?? null,
+    payload: input.payload ?? firstFixture?.payload ?? {},
+    label: firstFixture?.label ?? "Fixture payload",
+  };
+}
+
 export function simulateWorkpack(input: {
   workpackId: string;
   requestedBy?: number | null;
+  mode?: SimulationRun["mode"];
+  fixtureId?: string | null;
+  payload?: Record<string, unknown>;
+  replayRunId?: string | null;
 }): SimulateWorkpackResult {
   const detailBeforeCompile = getWorkpackDetail(input.workpackId);
   if (!detailBeforeCompile) {
@@ -44,13 +120,20 @@ export function simulateWorkpack(input: {
   }
 
   const connectorView = getConnectorStudioView(input.workpackId);
+  const simulationMode = input.mode ?? "fixture";
+  const simulationSeed = resolveSimulationPayload({
+    mode: simulationMode,
+    detail,
+    fixtureId: input.fixtureId ?? null,
+    payload: input.payload,
+    replayRunId: input.replayRunId ?? null,
+  });
   const ledgerRun = createReplayGradeLedger({
     workpackId: input.workpackId,
     autonomyMode: "supervised",
-    notes: "fixture-backed simulation",
+    notes: `${simulationSeed.label} simulation`,
   });
 
-  const firstFixture = detail.version.fixtureCatalog[0] ?? null;
   const actualSteps: WorkpackRunStep[] = [];
   const approvalCheckpoints: WorkpackApprovalCheckpoint[] = [];
   const artifactReferences = [];
@@ -66,7 +149,11 @@ export function simulateWorkpack(input: {
       ))
     ));
 
-    if (!firstFixture && detail.version.executionPlan.fixtureRequirements.requiresFixtures) {
+    if (
+      simulationMode === "fixture"
+      && !simulationSeed.fixtureId
+      && detail.version.executionPlan.fixtureRequirements.requiresFixtures
+    ) {
       const exceptionRecord = normalizeWorkpackException({
         workpackId: detail.workpack.id,
         versionId: detail.version.id,
@@ -142,7 +229,12 @@ export function simulateWorkpack(input: {
       status: "succeeded",
       sideEffectClass: step.sideEffectClass,
       effectKey: step.idempotency.effectKey ?? null,
-      outputSummary: `${step.expectedOutcome}. ${summarizeFixturePayload((firstFixture?.payload as Record<string, unknown> | undefined) ?? {})}`,
+      outputSummary: [
+        step.expectedOutcome,
+        summarizeFixturePayload(simulationSeed.payload),
+        simulationMode === "trace_replay" ? "Trace replay selected in inspection-only mode." : null,
+        simulationMode === "synthetic" ? "Synthetic inputs were generated for this rehearsal." : null,
+      ].filter(Boolean).join(" "),
     });
 
     artifactReferences.push(buildArtifactReference({
@@ -150,9 +242,9 @@ export function simulateWorkpack(input: {
       summary: {
         stepId: step.id,
         output: step.expectedOutcome,
-        fixtureLabel: firstFixture?.label ?? "none",
+        fixtureLabel: simulationSeed.label,
       },
-      governance: firstFixture?.governance ?? {},
+      governance: detail.version.fixtureCatalog.find((fixture) => fixture.id === simulationSeed.fixtureId)?.governance ?? {},
     }));
   }
 
@@ -181,6 +273,8 @@ export function simulateWorkpack(input: {
     versionId: detail.version.id,
     tenantId: detail.workpack.tenantId,
     runId: finishedRun.id,
+    mode: simulationMode,
+    fixtureId: simulationSeed.fixtureId,
     status: simulationStatus,
     expectedSteps: detail.version.executionPlan.steps,
     simulatedSteps: actualSteps,

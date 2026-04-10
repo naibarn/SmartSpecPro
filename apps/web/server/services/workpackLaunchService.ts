@@ -1,0 +1,1119 @@
+import path from "path";
+import { inArray } from "drizzle-orm";
+
+import { workerJobs } from "../../drizzle/schema";
+import {
+  type AutonomyMode,
+  type WorkpackApprovalCheckpoint,
+  type WorkpackArtifactReference,
+  type WorkpackRun,
+  type WorkpackRunStatus,
+  type WorkpackRunStep,
+  type WorkpackRuntimePath,
+  type WorkpackSchedule,
+  type WorkpackStep,
+  workpackScheduleSchema,
+} from "../../shared/workpackContracts";
+import { getDb } from "../db";
+import { compileWorkpackExecutionPlan } from "./workpackCompilerService";
+import { validateConnectorMaps } from "./workpackConnectorService";
+import { normalizeWorkpackException } from "./workpackExceptionService";
+import { buildArtifactReference, createReplayGradeLedger, finalizeLedgerRun } from "./workpackLedgerService";
+import {
+  createWorkpackId,
+  getWorkpackDetail,
+  getWorkpackSchedule,
+  listAllRuns,
+  listSchedulesByTenant,
+  listRunsByTenant,
+  type WorkpackDetailRecord,
+  saveTelemetryEvent,
+  saveWorkpackSchedule,
+  updateWorkpack,
+  updateWorkpackRun,
+  updateWorkpackSchedule,
+} from "./workpackPersistence";
+import { evaluateWorkpackRolloutGate } from "./workpackRolloutGateService";
+import { captureWorkpackMetricSnapshot } from "./workpackTelemetryService";
+import { type QueueWorkerJobByRuntimeInput, queueWorkerJobByRuntime } from "./workerSchedulerService";
+
+const WORKER_QUEUED_STATUSES = new Set(["queued", "claimed", "preparing"]);
+const WORKER_RUNNING_STATUSES = new Set(["running", "uploading", "publishing", "indexing"]);
+const WORKER_FAILED_STATUSES = new Set(["failed", "canceled", "expired"]);
+
+function nowIso(): string {
+  return new Date().toISOString();
+}
+
+function computeNextRunAt(schedule: WorkpackSchedule, from = new Date()): string | null {
+  if (schedule.status !== "active") return null;
+  if (schedule.triggerType === "event") return null;
+  if (schedule.triggerType === "interval" && schedule.intervalMinutes) {
+    return new Date(from.getTime() + schedule.intervalMinutes * 60 * 1000).toISOString();
+  }
+  if (schedule.triggerType === "cron") {
+    return new Date(from.getTime() + 60 * 60 * 1000).toISOString();
+  }
+  return null;
+}
+
+function buildSucceededStep(
+  step: WorkpackRun["plannedSteps"][number],
+  runtimePath = step.preferredRuntimePath,
+  summary = `${step.expectedOutcome}. Runtime path ${runtimePath} completed under bounded automation.`,
+): WorkpackRunStep {
+  return {
+    stepId: step.id,
+    title: step.title,
+    runtimePath,
+    status: "succeeded",
+    sideEffectClass: step.sideEffectClass,
+    effectKey: step.idempotency.effectKey ?? null,
+    outputSummary: summary,
+    executionRef: null,
+  };
+}
+
+function buildBlockedStep(step: WorkpackRun["plannedSteps"][number], reason: string): WorkpackRunStep {
+  return {
+    stepId: step.id,
+    title: step.title,
+    runtimePath: step.preferredRuntimePath,
+    status: "blocked",
+    sideEffectClass: step.sideEffectClass,
+    effectKey: step.idempotency.effectKey ?? null,
+    outputSummary: reason,
+    executionRef: null,
+  };
+}
+
+function buildSkippedStep(step: WorkpackRun["plannedSteps"][number], reason: string): WorkpackRunStep {
+  return {
+    stepId: step.id,
+    title: step.title,
+    runtimePath: step.preferredRuntimePath,
+    status: "skipped",
+    sideEffectClass: step.sideEffectClass,
+    effectKey: step.idempotency.effectKey ?? null,
+    outputSummary: reason,
+    executionRef: null,
+  };
+}
+
+function mapWorkerJobStatusToStepStatus(status: string | null | undefined): WorkpackRunStep["status"] {
+  if (status && WORKER_RUNNING_STATUSES.has(status)) return "running";
+  if (status && WORKER_FAILED_STATUSES.has(status)) return "failed";
+  if (status === "completed") return "succeeded";
+  return "queued";
+}
+
+function deriveRunStatus(
+  actualSteps: WorkpackRunStep[],
+  approvalCheckpoints: WorkpackApprovalCheckpoint[],
+): WorkpackRunStatus {
+  if (approvalCheckpoints.some((checkpoint) => !checkpoint.approved)) {
+    return "awaiting_approval";
+  }
+
+  if (actualSteps.some((step) => step.status === "failed")) {
+    return "failed";
+  }
+
+  if (actualSteps.some((step) => step.status === "blocked")) {
+    return "blocked";
+  }
+
+  const hasRunning = actualSteps.some((step) => step.status === "running");
+  const hasQueued = actualSteps.some((step) => step.status === "queued");
+  const hasCompletedWork = actualSteps.some((step) => step.status === "succeeded" || step.status === "skipped");
+
+  if (hasRunning || (hasQueued && hasCompletedWork)) {
+    return "running";
+  }
+
+  if (hasQueued) {
+    return "queued";
+  }
+
+  return "succeeded";
+}
+
+function isTerminalRunStatus(status: WorkpackRunStatus): boolean {
+  return status !== "queued" && status !== "running";
+}
+
+function markScheduleError(scheduleId: string | null | undefined, code: string): void {
+  if (!scheduleId) return;
+  updateWorkpackSchedule(scheduleId, (schedule) => ({
+    ...schedule,
+    status: "error",
+    lastError: code,
+    updatedAt: nowIso(),
+  }));
+}
+
+function summarizeWorkerStatus(status: string | null | undefined): string {
+  if (!status) return "queued";
+  return status.replace(/_/g, " ");
+}
+
+function collectDesktopRoots(detail: WorkpackDetailRecord): {
+  roots: Array<{ rootId: string; name: string; path: string; requestedWritebackMode: "managed_output_only"; advancedLocalMode: boolean }>;
+  allowedSourceRoots: string[];
+} | null {
+  const rootsByPath = new Map<string, { rootId: string; name: string; path: string; requestedWritebackMode: "managed_output_only"; advancedLocalMode: boolean }>();
+  const allowedSourceRoots = new Set<string>();
+
+  for (const source of detail.caseSources) {
+    const localFileRef = source.localFileRef;
+    if (!localFileRef) continue;
+    const normalizedRoot = localFileRef.rootPath?.trim()
+      || path.dirname(localFileRef.path);
+    if (!normalizedRoot) continue;
+    allowedSourceRoots.add(normalizedRoot);
+    if (!rootsByPath.has(normalizedRoot)) {
+      rootsByPath.set(normalizedRoot, {
+        rootId: localFileRef.deviceId?.trim() || source.id,
+        name: localFileRef.rootLabel?.trim() || source.title,
+        path: normalizedRoot,
+        requestedWritebackMode: "managed_output_only",
+        advancedLocalMode: false,
+      });
+    }
+  }
+
+  if (rootsByPath.size === 0 || allowedSourceRoots.size === 0) {
+    return null;
+  }
+
+  return {
+    roots: Array.from(rootsByPath.values()),
+    allowedSourceRoots: Array.from(allowedSourceRoots.values()),
+  };
+}
+
+function buildQueueInputForRuntime(input: {
+  detail: WorkpackDetailRecord;
+  runId: string;
+  step: WorkpackStep;
+  runtimePath: WorkpackRuntimePath;
+  autonomyMode: AutonomyMode;
+  requestedBy?: number | null;
+}): QueueWorkerJobByRuntimeInput | null {
+  const sharedInputJson = {
+    workpackId: input.detail.workpack.id,
+    versionId: input.detail.version.id,
+    runId: input.runId,
+    stepId: input.step.id,
+    stepTitle: input.step.title,
+    stepObjective: input.step.objective,
+    expectedOutcome: input.step.expectedOutcome,
+    sideEffectClass: input.step.sideEffectClass,
+    connectorFamilies: input.step.requiredConnectorFamilies,
+    localityHint: input.step.localityHint,
+    domainPack: input.detail.workpack.domainPack,
+    workpackGoal: input.detail.workpack.goal,
+  } as const;
+
+  const sharedInstructionsJson = {
+    intent: "workpack_step_execution",
+    workpackRuntimePath: input.runtimePath,
+    autonomyMode: input.autonomyMode,
+    fallbackPaths: input.step.allowedFallbackPaths,
+    requiredConnectorFamilies: input.step.requiredConnectorFamilies,
+    sourceCount: input.detail.caseSources.length,
+  } as const;
+
+  const baseInput = {
+    tenantId: input.detail.workpack.tenantId,
+    teamId: typeof input.detail.workpack.policyProfile.teamId === "string"
+      ? input.detail.workpack.policyProfile.teamId
+      : null,
+    workflowRunId: input.runId,
+    requestedByUserId: input.requestedBy ?? null,
+    requestedBySystemComponent: "workpack_launch_service",
+    title: `${input.detail.workpack.title}: ${input.step.title}`,
+    description: input.step.objective,
+    priority: input.step.sideEffectClass === "read_only" ? 20 : 45,
+    timeoutSeconds: input.step.sideEffectClass === "read_only" ? 900 : 3_600,
+    idempotencyKey: `workpack:${input.detail.workpack.id}:run:${input.runId}:step:${input.step.id}:path:${input.runtimePath}`,
+    reservedCredits: input.step.sideEffectClass === "financial" ? 25 : 10,
+  } as const;
+
+  switch (input.runtimePath) {
+    case "browser":
+      return {
+        runtimeType: "openclaw_gateway",
+        jobType: "browser_automation_task",
+        capabilityFamilies: ["browser-automation"],
+        resourceProfile: "network_heavy",
+        inputJson: sharedInputJson,
+        instructionsJson: {
+          ...sharedInstructionsJson,
+          intent: "workpack_browser_step",
+        },
+        ...baseInput,
+      };
+    case "workflow":
+      return {
+        runtimeType: "openclaw_gateway",
+        jobType: "plugin_workflow_task",
+        capabilityFamilies: ["plugin-automation"],
+        resourceProfile: "cpu_light",
+        inputJson: sharedInputJson,
+        instructionsJson: {
+          ...sharedInstructionsJson,
+          intent: "workpack_workflow_step",
+        },
+        ...baseInput,
+      };
+    case "skill":
+      return {
+        runtimeType: "openclaw_gateway",
+        jobType: "plugin_workflow_task",
+        capabilityFamilies: ["artifact-producing-session"],
+        resourceProfile: "cpu_light",
+        inputJson: sharedInputJson,
+        instructionsJson: {
+          ...sharedInstructionsJson,
+          intent: "workpack_skill_step",
+        },
+        ...baseInput,
+      };
+    case "hybrid":
+      return {
+        runtimeType: "hiclaw_cluster",
+        jobType: "workpack_hybrid_step",
+        capabilityFamilies: ["manager-worker-orchestration"],
+        resourceProfile: "human_observable",
+        inputJson: sharedInputJson,
+        instructionsJson: {
+          ...sharedInstructionsJson,
+          intent: "workpack_hybrid_step",
+        },
+        ...baseInput,
+      };
+    case "agency":
+      return {
+        runtimeType: "hiclaw_cluster",
+        jobType: "workpack_agency_step",
+        capabilityFamilies: ["multi-agent-cluster", "manager-worker-orchestration"],
+        resourceProfile: "human_observable",
+        inputJson: sharedInputJson,
+        instructionsJson: {
+          ...sharedInstructionsJson,
+          intent: "workpack_agency_step",
+        },
+        ...baseInput,
+      };
+    case "worker_fabric":
+      return {
+        runtimeType: "hiclaw_cluster",
+        jobType: "workpack_worker_fabric_step",
+        capabilityFamilies: ["multi-agent-cluster"],
+        resourceProfile: "human_observable",
+        inputJson: sharedInputJson,
+        instructionsJson: {
+          ...sharedInstructionsJson,
+          intent: "workpack_worker_fabric_step",
+        },
+        ...baseInput,
+      };
+    case "desktop_local": {
+      const localRoots = collectDesktopRoots(input.detail);
+      if (!localRoots) {
+        return null;
+      }
+      return {
+        runtimeType: "desktop_zeroclaw_managed",
+        jobType: "local_folder_ingest",
+        roots: localRoots.roots,
+        workspacePolicy: {
+          mode: "workspace_scoped",
+          allowedSourceRoots: localRoots.allowedSourceRoots,
+        },
+        ingestPolicy: {
+          maxDepth: 6,
+          maxFiles: 250,
+          includePreviewText: true,
+          previewFileLimit: 25,
+          snippetQuery: input.step.objective.slice(0, 200),
+          snippetFileLimit: 10,
+        },
+        outputTargets: {
+          publishManifestToLibrary: true,
+          publishSummaryToLibrary: true,
+          triggerIndexing: true,
+        },
+        ...baseInput,
+      };
+    }
+    default:
+      return null;
+  }
+}
+
+function buildQueuedDispatchStep(input: {
+  step: WorkpackStep;
+  runtimePath: WorkpackRuntimePath;
+  dispatch: Awaited<ReturnType<typeof queueWorkerJobByRuntime>>;
+  attemptedPaths: WorkpackRuntimePath[];
+}): WorkpackRunStep {
+  const job = input.dispatch.job;
+  const stepStatus = mapWorkerJobStatusToStepStatus(typeof job.status === "string" ? job.status : null);
+  const fallbackSummary = input.attemptedPaths.length > 1
+    ? ` after trying ${input.attemptedPaths.join(" -> ")}`
+    : "";
+  return {
+    stepId: input.step.id,
+    title: input.step.title,
+    runtimePath: input.runtimePath,
+    status: stepStatus,
+    sideEffectClass: input.step.sideEffectClass,
+    effectKey: input.step.idempotency.effectKey ?? null,
+    outputSummary: input.dispatch.created
+      ? `Queued on ${input.runtimePath} via worker job ${job.id}${fallbackSummary}.`
+      : `Reused worker job ${job.id} on ${input.runtimePath} with status ${summarizeWorkerStatus(job.status as string | null | undefined)}${fallbackSummary}.`,
+    executionRef: {
+      provider: "worker_job",
+      executionId: String(job.id),
+      runtimeType: typeof job.runtimeType === "string" ? job.runtimeType : null,
+      jobType: typeof job.jobType === "string" ? job.jobType : null,
+      status: typeof job.status === "string" ? job.status : null,
+      queuedAt: nowIso(),
+    },
+  };
+}
+
+async function attemptDispatchStep(input: {
+  detail: WorkpackDetailRecord;
+  runId: string;
+  step: WorkpackStep;
+  autonomyMode: AutonomyMode;
+  requestedBy?: number | null;
+  queueWorkerJobByRuntime: typeof queueWorkerJobByRuntime;
+}): Promise<
+  | { ok: true; step: WorkpackRunStep; artifacts: WorkpackArtifactReference[] }
+  | { ok: false; reason: string }
+> {
+  const attemptedPaths: WorkpackRuntimePath[] = [];
+  const candidatePaths = Array.from(new Set([
+    input.step.preferredRuntimePath,
+    ...input.step.allowedFallbackPaths,
+  ]));
+
+  for (const runtimePath of candidatePaths) {
+    attemptedPaths.push(runtimePath);
+    const queueInput = buildQueueInputForRuntime({
+      detail: input.detail,
+      runId: input.runId,
+      step: input.step,
+      runtimePath,
+      autonomyMode: input.autonomyMode,
+      requestedBy: input.requestedBy,
+    });
+    if (!queueInput) {
+      continue;
+    }
+
+    try {
+      const dispatch = await input.queueWorkerJobByRuntime(queueInput);
+      const stepResult = buildQueuedDispatchStep({
+        step: input.step,
+        runtimePath,
+        dispatch,
+        attemptedPaths,
+      });
+      return {
+        ok: true,
+        step: stepResult,
+        artifacts: [
+          buildArtifactReference({
+            label: `${input.step.title} execution dispatch`,
+            summary: {
+              stepId: input.step.id,
+              runtimePath,
+              workerJobId: dispatch.job.id,
+              created: dispatch.created,
+              workerJobStatus: dispatch.job.status,
+              jobType: dispatch.job.jobType,
+            },
+          }),
+        ],
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (attemptedPaths.length === candidatePaths.length) {
+        return {
+          ok: false,
+          reason: `${attemptedPaths.join(" -> ")} failed: ${message}`,
+        };
+      }
+    }
+  }
+
+  return {
+    ok: false,
+    reason: `${candidatePaths.join(" -> ")} could not build a supported executor request`,
+  };
+}
+
+function updateWorkpackAfterLaunch(input: {
+  detail: WorkpackDetailRecord;
+  autonomyMode: AutonomyMode;
+  runStatus: WorkpackRunStatus;
+}): void {
+  const blockedLike = input.runStatus === "blocked" || input.runStatus === "failed" || input.runStatus === "awaiting_approval";
+  updateWorkpack(input.detail.workpack.id, (workpack) => ({
+    ...workpack,
+    lifecycleState: blockedLike
+      ? "needs_review"
+      : input.autonomyMode === "autonomous"
+        ? "autonomous"
+        : "supervised",
+    autonomyMode: blockedLike && input.runStatus !== "awaiting_approval" ? "draft" : input.autonomyMode,
+    policyProfile: {
+      ...workpack.policyProfile,
+      safeResumeRequired: blockedLike,
+      safeResumeReason: input.runStatus === "awaiting_approval"
+        ? "approval_boundary_pending"
+        : input.runStatus === "failed"
+          ? "executor_job_failed"
+          : blockedLike
+            ? "executor_dispatch_blocked"
+            : null,
+    },
+    updatedAt: nowIso(),
+  }));
+}
+
+function updateScheduleAfterRun(input: {
+  scheduleId?: string | null;
+  run: WorkpackRun;
+  runStatus: WorkpackRunStatus;
+}): void {
+  if (!input.scheduleId) return;
+  updateWorkpackSchedule(input.scheduleId, (schedule) => ({
+    ...schedule,
+    lastRunAt: input.run.startedAt,
+    nextRunAt: input.runStatus === "succeeded"
+      ? computeNextRunAt(schedule, new Date(input.run.endedAt ?? input.run.startedAt))
+      : input.runStatus === "queued" || input.runStatus === "running"
+        ? schedule.nextRunAt
+        : computeNextRunAt(schedule, new Date(input.run.startedAt)),
+    status: input.runStatus === "failed" ? "error" : "active",
+    lastError: input.runStatus === "failed"
+      ? "executor_job_failed"
+      : input.runStatus === "awaiting_approval"
+        ? "approval_boundary_pending"
+        : input.runStatus === "blocked"
+          ? "executor_dispatch_blocked"
+          : null,
+    updatedAt: nowIso(),
+  }));
+}
+
+async function persistLaunchRun(input: {
+  ledgerRunId: string;
+  runStatus: WorkpackRunStatus;
+  actualSteps: WorkpackRunStep[];
+  approvalCheckpoints: WorkpackApprovalCheckpoint[];
+  artifacts: WorkpackArtifactReference[];
+  connectorSummaries: WorkpackRun["connectorSummaries"];
+  notes: string;
+}): Promise<WorkpackRun> {
+  if (isTerminalRunStatus(input.runStatus)) {
+    return finalizeLedgerRun({
+      runId: input.ledgerRunId,
+      status: input.runStatus,
+      actualSteps: input.actualSteps,
+      approvalCheckpoints: input.approvalCheckpoints,
+      artifactReferences: input.artifacts,
+      connectorSummaries: input.connectorSummaries,
+      notes: input.notes,
+    });
+  }
+
+  const run = updateWorkpackRun(input.ledgerRunId, (current) => ({
+    ...current,
+    status: input.runStatus,
+    actualSteps: input.actualSteps,
+    approvalCheckpoints: input.approvalCheckpoints,
+    artifactReferences: input.artifacts,
+    connectorSummaries: input.connectorSummaries,
+    notes: input.notes,
+  }));
+  if (!run) {
+    throw new Error(`Unknown workpack run: ${input.ledgerRunId}`);
+  }
+  return run;
+}
+
+export interface LaunchWorkpackResult {
+  run: WorkpackRun;
+  exceptionIds: string[];
+  readinessReason: string;
+}
+
+export interface WorkpackExecutorJobSnapshot {
+  id: string;
+  status: string;
+  runtimeType: string | null;
+  jobType: string | null;
+  failureReason: string | null;
+  outputJson: Record<string, unknown> | null;
+}
+
+interface WorkpackLaunchDeps {
+  queueWorkerJobByRuntime?: typeof queueWorkerJobByRuntime;
+  loadWorkerJobsById?: (jobIds: string[]) => Promise<Record<string, WorkpackExecutorJobSnapshot>>;
+}
+
+async function defaultLoadWorkerJobsById(jobIds: string[]): Promise<Record<string, WorkpackExecutorJobSnapshot>> {
+  if (jobIds.length === 0) {
+    return {};
+  }
+  const db = await getDb();
+  const rows = await db
+    .select({
+      id: workerJobs.id,
+      status: workerJobs.status,
+      runtimeType: workerJobs.runtimeType,
+      jobType: workerJobs.jobType,
+      failureReason: workerJobs.failureReason,
+      outputJson: workerJobs.outputJson,
+    })
+    .from(workerJobs)
+    .where(inArray(workerJobs.id, jobIds));
+
+  return Object.fromEntries(rows.map((row) => [row.id, {
+    id: row.id,
+    status: row.status,
+    runtimeType: row.runtimeType ?? null,
+    jobType: row.jobType ?? null,
+    failureReason: row.failureReason ?? null,
+    outputJson: (row.outputJson ?? null) as Record<string, unknown> | null,
+  }]));
+}
+
+export async function launchWorkpack(
+  input: {
+    workpackId: string;
+    requestedBy?: number | null;
+    autonomyMode?: AutonomyMode;
+    trigger?: WorkpackRun["trigger"];
+    triggerSource?: string;
+    scheduleId?: string | null;
+  },
+  deps: WorkpackLaunchDeps = {},
+): Promise<LaunchWorkpackResult> {
+  const detailBeforeCompile = getWorkpackDetail(input.workpackId);
+  if (!detailBeforeCompile) {
+    throw new Error(`Unknown workpack: ${input.workpackId}`);
+  }
+  if (!detailBeforeCompile.version.executionPlan) {
+    compileWorkpackExecutionPlan({
+      workpackId: input.workpackId,
+      requestedBy: input.requestedBy ?? null,
+    });
+  }
+  const detail = getWorkpackDetail(input.workpackId);
+  if (!detail || !detail.version.executionPlan) {
+    throw new Error(`Execution plan unavailable for workpack: ${input.workpackId}`);
+  }
+
+  const autonomyMode = input.autonomyMode ?? "supervised";
+  const queueFn = deps.queueWorkerJobByRuntime ?? queueWorkerJobByRuntime;
+  const exceptionIds: string[] = [];
+  const pendingClarifications = detail.playbook.clarificationQueue.filter((question) => question.status === "pending");
+  const readiness = await evaluateWorkpackRolloutGate({
+    workpackId: detail.workpack.id,
+    targetMode: autonomyMode === "autonomous" ? "autonomous" : "supervised",
+  });
+
+  const ledgerRun = createReplayGradeLedger({
+    workpackId: detail.workpack.id,
+    autonomyMode,
+    trigger: input.trigger ?? (input.scheduleId ? "scheduled" : "manual"),
+    triggerSource: input.triggerSource ?? (input.scheduleId ? "schedule_engine" : "control_plane"),
+    scheduleId: input.scheduleId ?? null,
+    notes: `Launched in ${autonomyMode} mode`,
+  });
+
+  if (pendingClarifications.length > 0) {
+    const exception = normalizeWorkpackException({
+      workpackId: detail.workpack.id,
+      versionId: detail.version.id,
+      runId: ledgerRun.id,
+      reasonCategory: "ambiguity",
+      reasonCode: "clarification_queue_open",
+      title: "Clarification required before launch",
+      summary: `${pendingClarifications.length} targeted clarification items remain unresolved.`,
+      remediationPointer: `/workpacks/${detail.workpack.id}`,
+      nextAction: "Answer the clarification queue before launching autonomous execution.",
+      riskClass: "medium",
+    });
+    exceptionIds.push(exception.id);
+    const run = finalizeLedgerRun({
+      runId: ledgerRun.id,
+      status: "blocked",
+      actualSteps: detail.version.executionPlan.steps.map((step) => buildBlockedStep(step, "Launch blocked until clarification queue is resolved.")),
+      notes: "Launch blocked by open clarification queue",
+    });
+    markScheduleError(input.scheduleId, "clarification_required");
+    return {
+      run,
+      exceptionIds,
+      readinessReason: "clarification_required",
+    };
+  }
+
+  if (autonomyMode === "autonomous" && readiness.gateResult !== "ready") {
+    const exception = normalizeWorkpackException({
+      workpackId: detail.workpack.id,
+      versionId: detail.version.id,
+      runId: ledgerRun.id,
+      reasonCategory: "policy_boundary",
+      reasonCode: readiness.reasonCode,
+      title: "Autonomous launch blocked by readiness gate",
+      summary: readiness.nextAction,
+      remediationPointer: `/workpacks/${detail.workpack.id}`,
+      nextAction: "Clear rollout blockers before relaunching in autonomous mode.",
+      riskClass: "high",
+    });
+    exceptionIds.push(exception.id);
+    const run = finalizeLedgerRun({
+      runId: ledgerRun.id,
+      status: "blocked",
+      actualSteps: detail.version.executionPlan.steps.map((step) => buildBlockedStep(step, `Launch blocked: ${readiness.reasonCode}`)),
+      notes: `Autonomous launch blocked: ${readiness.reasonCode}`,
+    });
+    markScheduleError(input.scheduleId, readiness.reasonCode);
+    return {
+      run,
+      exceptionIds,
+      readinessReason: readiness.reasonCode,
+    };
+  }
+
+  const connectorValidation = validateConnectorMaps({
+    workpackId: detail.workpack.id,
+    runId: ledgerRun.id,
+    emitExceptions: true,
+  });
+  if (connectorValidation.blocked || connectorValidation.stale) {
+    const run = finalizeLedgerRun({
+      runId: ledgerRun.id,
+      status: "blocked",
+      actualSteps: detail.version.executionPlan.steps.map((step) => buildBlockedStep(step, "Launch blocked by connector validation state.")),
+      connectorSummaries: connectorValidation.connectorMaps.map((connectorMap) => ({
+        connectorFamily: connectorMap.connectorFamily,
+        status: connectorMap.validationStatus,
+        summary: `Scopes ${connectorMap.scopePosture}; fields missing ${connectorMap.missingFields.length}; introspection ${connectorMap.introspectionId ?? "none"}`,
+      })),
+      notes: "Launch blocked by connector validation",
+    });
+    markScheduleError(input.scheduleId, connectorValidation.blocked ? "connector_blocked" : "connector_stale");
+    return {
+      run,
+      exceptionIds,
+      readinessReason: connectorValidation.blocked ? "connector_blocked" : "connector_stale",
+    };
+  }
+
+  const actualSteps: WorkpackRunStep[] = [];
+  const approvalCheckpoints: WorkpackApprovalCheckpoint[] = [];
+  const artifacts: WorkpackArtifactReference[] = [];
+  let stopDispatch = false;
+
+  for (const step of detail.version.executionPlan.steps) {
+    if (stopDispatch) {
+      actualSteps.push(buildSkippedStep(step, "Skipped because an earlier approval boundary or executor failure halted the run."));
+      continue;
+    }
+
+    if (step.requiresApproval) {
+      approvalCheckpoints.push({
+        stepId: step.id,
+        reason: `Consequence boundary preserved for ${step.title}`,
+        approved: false,
+      });
+      const exception = normalizeWorkpackException({
+        workpackId: detail.workpack.id,
+        versionId: detail.version.id,
+        runId: ledgerRun.id,
+        reasonCategory: "policy_boundary",
+        reasonCode: "approval_boundary_pending",
+        title: "Approval boundary reached",
+        summary: `${step.title} requires human approval before the automation can continue.`,
+        remediationPointer: `/workpacks/${detail.workpack.id}/exceptions`,
+        nextAction: "Approve, reject, or downgrade this boundary in the exception inbox.",
+        riskClass: step.sideEffectClass === "financial" || step.sideEffectClass === "irreversible" ? "critical" : "high",
+      });
+      exceptionIds.push(exception.id);
+      actualSteps.push(buildBlockedStep(step, "Paused at a consequence boundary awaiting approval."));
+      stopDispatch = true;
+      continue;
+    }
+
+    const dispatchResult = await attemptDispatchStep({
+      detail,
+      runId: ledgerRun.id,
+      step,
+      autonomyMode,
+      requestedBy: input.requestedBy ?? null,
+      queueWorkerJobByRuntime: queueFn,
+    });
+
+    if (!dispatchResult.ok) {
+      const exception = normalizeWorkpackException({
+        workpackId: detail.workpack.id,
+        versionId: detail.version.id,
+        runId: ledgerRun.id,
+        reasonCategory: "operational",
+        reasonCode: "executor_dispatch_failed",
+        title: "Executor dispatch failed",
+        summary: dispatchResult.reason,
+        remediationPointer: `/workpacks/${detail.workpack.id}/connectors`,
+        nextAction: "Inspect runtime availability, worker flags, and connector posture before relaunching.",
+        riskClass: "high",
+      });
+      exceptionIds.push(exception.id);
+      actualSteps.push(buildBlockedStep(step, `Dispatch failed: ${dispatchResult.reason}`));
+      stopDispatch = true;
+      continue;
+    }
+
+    actualSteps.push(dispatchResult.step);
+    artifacts.push(...dispatchResult.artifacts);
+
+    if (dispatchResult.step.status === "failed") {
+      const exception = normalizeWorkpackException({
+        workpackId: detail.workpack.id,
+        versionId: detail.version.id,
+        runId: ledgerRun.id,
+        reasonCategory: "operational",
+        reasonCode: "executor_job_failed",
+        title: "Executor returned a failed job",
+        summary: dispatchResult.step.outputSummary,
+        remediationPointer: `/workpacks/${detail.workpack.id}/exceptions`,
+        nextAction: "Inspect the worker job output, fix the failing runtime path, and relaunch safely.",
+        riskClass: "high",
+      });
+      exceptionIds.push(exception.id);
+      stopDispatch = true;
+    }
+  }
+
+  const runStatus = deriveRunStatus(actualSteps, approvalCheckpoints);
+  const notes = runStatus === "awaiting_approval"
+    ? "Execution paused at approval boundaries"
+    : runStatus === "queued" || runStatus === "running"
+      ? `Execution dispatched through worker fabric in ${autonomyMode} mode`
+      : runStatus === "succeeded"
+        ? `Execution completed in ${autonomyMode} mode`
+        : "Execution blocked by worker dispatch safety checks";
+
+  const run = await persistLaunchRun({
+    ledgerRunId: ledgerRun.id,
+    runStatus,
+    actualSteps,
+    approvalCheckpoints,
+    artifacts,
+    connectorSummaries: connectorValidation.connectorMaps.map((connectorMap) => ({
+      connectorFamily: connectorMap.connectorFamily,
+      status: connectorMap.validationStatus,
+      summary: `Validated with ${connectorMap.grantedScopes.length} granted scopes`,
+    })),
+    notes,
+  });
+
+  updateWorkpackAfterLaunch({
+    detail,
+    autonomyMode,
+    runStatus,
+  });
+  updateScheduleAfterRun({
+    scheduleId: input.scheduleId,
+    run,
+    runStatus,
+  });
+
+  saveTelemetryEvent({
+    id: createWorkpackId("evt"),
+    tenantId: detail.workpack.tenantId,
+    workpackId: detail.workpack.id,
+    versionId: detail.version.id,
+    eventName: runStatus === "succeeded" ? "run_succeeded" : runStatus === "failed" || runStatus === "blocked" ? "run_blocked" : "run_started",
+    detail: notes,
+    createdAt: nowIso(),
+  });
+
+  captureWorkpackMetricSnapshot(detail.workpack.id);
+  return {
+    run,
+    exceptionIds,
+    readinessReason: runStatus,
+  };
+}
+
+function buildWorkerArtifactReferences(
+  runId: string,
+  steps: WorkpackRunStep[],
+  existingArtifacts: WorkpackArtifactReference[],
+  workerJobsById: Record<string, WorkpackExecutorJobSnapshot>,
+): WorkpackArtifactReference[] {
+  const artifacts = [...existingArtifacts];
+  const knownArtifactKeys = new Set(artifacts.map((artifact) => artifact.label));
+
+  for (const step of steps) {
+    const executionRef = step.executionRef;
+    if (!executionRef || executionRef.provider !== "worker_job") continue;
+    const snapshot = workerJobsById[executionRef.executionId];
+    const publishedArtifacts = Array.isArray(snapshot?.outputJson?.publishedArtifacts)
+      ? snapshot?.outputJson?.publishedArtifacts
+      : [];
+    if (publishedArtifacts.length === 0) continue;
+    const label = `${step.title} published artifacts`;
+    if (knownArtifactKeys.has(label)) continue;
+    artifacts.push(buildArtifactReference({
+      label,
+      summary: {
+        runId,
+        stepId: step.stepId,
+        workerJobId: executionRef.executionId,
+        publishedArtifacts,
+      },
+    }));
+    knownArtifactKeys.add(label);
+  }
+
+  return artifacts;
+}
+
+function summarizeReconciledStep(step: WorkpackRunStep, snapshot: WorkpackExecutorJobSnapshot): string {
+  if (snapshot.status === "completed") {
+    return `${step.title} completed through ${snapshot.runtimeType ?? "worker"} job ${snapshot.id}.`;
+  }
+  if (WORKER_FAILED_STATUSES.has(snapshot.status)) {
+    return snapshot.failureReason?.trim()
+      || `${step.title} failed through ${snapshot.runtimeType ?? "worker"} job ${snapshot.id}.`;
+  }
+  return `${step.title} is ${summarizeWorkerStatus(snapshot.status)} in ${snapshot.runtimeType ?? "worker"} job ${snapshot.id}.`;
+}
+
+function updateWorkpackAfterReconcile(input: {
+  run: WorkpackRun;
+  runStatus: WorkpackRunStatus;
+}): void {
+  const detail = getWorkpackDetail(input.run.workpackId);
+  if (!detail) return;
+
+  if (input.runStatus === "succeeded") {
+    updateWorkpack(detail.workpack.id, (workpack) => ({
+      ...workpack,
+      lifecycleState: input.run.autonomyMode === "autonomous" ? "autonomous" : "supervised",
+      autonomyMode: input.run.autonomyMode,
+      policyProfile: {
+        ...workpack.policyProfile,
+        safeResumeRequired: false,
+        safeResumeReason: null,
+      },
+      updatedAt: nowIso(),
+    }));
+  } else if (input.runStatus === "failed" || input.runStatus === "blocked") {
+    updateWorkpack(detail.workpack.id, (workpack) => ({
+      ...workpack,
+      lifecycleState: "needs_review",
+      autonomyMode: "draft",
+      policyProfile: {
+        ...workpack.policyProfile,
+        safeResumeRequired: true,
+        safeResumeReason: input.runStatus === "failed" ? "executor_job_failed" : "executor_dispatch_blocked",
+      },
+      updatedAt: nowIso(),
+    }));
+  }
+
+  if (input.run.scheduleId) {
+    updateWorkpackSchedule(input.run.scheduleId, (schedule) => ({
+      ...schedule,
+      lastRunAt: input.run.startedAt,
+      nextRunAt: input.runStatus === "succeeded"
+        ? computeNextRunAt(schedule, new Date(input.run.endedAt ?? input.run.startedAt))
+        : schedule.nextRunAt,
+      status: input.runStatus === "failed" ? "error" : schedule.status,
+      lastError: input.runStatus === "failed" ? "executor_job_failed" : null,
+      updatedAt: nowIso(),
+    }));
+  }
+}
+
+export async function reconcileDispatchedWorkpackRuns(
+  input: {
+    tenantId?: string;
+  } = {},
+  deps: WorkpackLaunchDeps = {},
+): Promise<string[]> {
+  const loadWorkerJobsById = deps.loadWorkerJobsById ?? defaultLoadWorkerJobsById;
+  const candidateRuns = (input.tenantId ? listRunsByTenant(input.tenantId) : listAllRuns())
+    .filter((run) => run.status === "queued" || run.status === "running");
+
+  const jobIds = Array.from(new Set(candidateRuns.flatMap((run) => run.actualSteps
+    .map((step) => step.executionRef?.provider === "worker_job" ? step.executionRef.executionId : null)
+    .filter((value): value is string => Boolean(value)))));
+
+  if (jobIds.length === 0) {
+    return [];
+  }
+
+  const workerJobsById = await loadWorkerJobsById(jobIds);
+  const reconciledRunIds: string[] = [];
+
+  for (const run of candidateRuns) {
+    let changed = false;
+    const nextSteps = run.actualSteps.map((step) => {
+      const executionRef = step.executionRef;
+      if (!executionRef || executionRef.provider !== "worker_job") {
+        return step;
+      }
+      const snapshot = workerJobsById[executionRef.executionId];
+      if (!snapshot) {
+        return step;
+      }
+      const nextStatus = mapWorkerJobStatusToStepStatus(snapshot.status);
+      const nextSummary = summarizeReconciledStep(step, snapshot);
+      if (
+        nextStatus === step.status
+        && executionRef.status === snapshot.status
+        && step.outputSummary === nextSummary
+      ) {
+        return step;
+      }
+      changed = true;
+      return {
+        ...step,
+        status: nextStatus,
+        outputSummary: nextSummary,
+        executionRef: {
+          ...executionRef,
+          runtimeType: snapshot.runtimeType,
+          jobType: snapshot.jobType,
+          status: snapshot.status,
+        },
+      };
+    });
+
+    if (!changed) {
+      continue;
+    }
+
+    const nextArtifacts = buildWorkerArtifactReferences(run.id, nextSteps, run.artifactReferences, workerJobsById);
+    const nextRunStatus = deriveRunStatus(nextSteps, run.approvalCheckpoints);
+    const reconciledRun = await persistLaunchRun({
+      ledgerRunId: run.id,
+      runStatus: nextRunStatus,
+      actualSteps: nextSteps,
+      approvalCheckpoints: run.approvalCheckpoints,
+      artifacts: nextArtifacts,
+      connectorSummaries: run.connectorSummaries,
+      notes: nextRunStatus === "succeeded"
+        ? `${run.notes}\nWorker reconciliation completed successfully.`.trim()
+        : nextRunStatus === "failed"
+          ? `${run.notes}\nWorker reconciliation detected a failed executor job.`.trim()
+          : run.notes,
+    });
+
+    updateWorkpackAfterReconcile({
+      run: reconciledRun,
+      runStatus: nextRunStatus,
+    });
+    captureWorkpackMetricSnapshot(run.workpackId);
+    reconciledRunIds.push(run.id);
+  }
+
+  return reconciledRunIds;
+}
+
+export function createWorkpackSchedule(input: {
+  tenantId: string;
+  workpackId: string;
+  versionId: string;
+  title: string;
+  triggerType: WorkpackSchedule["triggerType"];
+  cronExpression?: string | null;
+  intervalMinutes?: number | null;
+  eventKey?: string | null;
+  targetAutonomyMode?: AutonomyMode;
+  createdBy?: number | null;
+}): WorkpackSchedule {
+  const createdAt = nowIso();
+  const schedule = workpackScheduleSchema.parse({
+    id: createWorkpackId("wps"),
+    tenantId: input.tenantId,
+    workpackId: input.workpackId,
+    versionId: input.versionId,
+    title: input.title,
+    triggerType: input.triggerType,
+    cronExpression: input.cronExpression ?? null,
+    intervalMinutes: input.intervalMinutes ?? null,
+    eventKey: input.eventKey ?? null,
+    targetAutonomyMode: input.targetAutonomyMode ?? "supervised",
+    status: "active",
+    nextRunAt: input.triggerType === "event"
+      ? null
+      : computeNextRunAt(workpackScheduleSchema.parse({
+          id: "draft",
+          tenantId: input.tenantId,
+          workpackId: input.workpackId,
+          versionId: input.versionId,
+          title: input.title,
+          triggerType: input.triggerType,
+          cronExpression: input.cronExpression ?? null,
+          intervalMinutes: input.intervalMinutes ?? null,
+          eventKey: input.eventKey ?? null,
+          targetAutonomyMode: input.targetAutonomyMode ?? "supervised",
+          status: "active",
+          nextRunAt: null,
+          lastRunAt: null,
+          lastError: null,
+          createdBy: input.createdBy ?? null,
+          createdAt,
+          updatedAt: createdAt,
+        })),
+    lastRunAt: null,
+    lastError: null,
+    createdBy: input.createdBy ?? null,
+    createdAt,
+    updatedAt: createdAt,
+  });
+  return saveWorkpackSchedule(schedule);
+}
+
+export async function triggerWorkpackSchedule(scheduleId: string): Promise<LaunchWorkpackResult> {
+  const schedule = getWorkpackSchedule(scheduleId);
+  if (!schedule) {
+    throw new Error(`Unknown workpack schedule: ${scheduleId}`);
+  }
+  return launchWorkpack({
+    workpackId: schedule.workpackId,
+    autonomyMode: schedule.targetAutonomyMode,
+    trigger: schedule.triggerType === "event" ? "event" : "scheduled",
+    triggerSource: schedule.triggerType === "event" ? schedule.eventKey ?? "event" : "schedule_engine",
+    scheduleId,
+  });
+}
+
+export async function runDueWorkpackSchedules(at = new Date(), tenantId?: string): Promise<string[]> {
+  const launched: string[] = [];
+  const schedules = tenantId
+    ? listSchedulesByTenant(tenantId)
+    : (await import("./workpackPersistence")).listAllSchedules();
+  for (const schedule of schedules) {
+    if (schedule.status !== "active" || !schedule.nextRunAt) continue;
+    if (Date.parse(schedule.nextRunAt) > at.getTime()) continue;
+    const launchedRun = await triggerWorkpackSchedule(schedule.id);
+    launched.push(launchedRun.run.id);
+  }
+  return launched;
+}

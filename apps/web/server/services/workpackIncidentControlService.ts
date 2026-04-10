@@ -53,10 +53,30 @@ export function applyWorkpackIncidentAction(input: {
   if (input.workpackId) {
     const detail = getWorkpackDetail(input.workpackId);
     if (detail) {
+      const clarificationOpen = detail.playbook.clarificationQueue.some((question) => question.status === "pending");
+      const connectorNeedsReview = detail.version.connectorMaps.some((map) => map.validationStatus !== "validated");
+      const nextLifecycleState =
+        input.action === "resume"
+          ? clarificationOpen
+            ? "clarification_needed"
+            : "needs_review"
+          : "paused";
       updateWorkpack(detail.workpack.id, (workpack) => ({
         ...workpack,
-        lifecycleState: input.action === "resume" ? "ready" : "paused",
+        lifecycleState: nextLifecycleState,
+        autonomyMode: input.action === "resume" ? "draft" : workpack.autonomyMode,
         promotionState: input.action === "freeze_promotion" ? "blocked" : workpack.promotionState,
+        policyProfile: {
+          ...workpack.policyProfile,
+          safeResumeRequired: input.action === "resume" ? true : input.action === "pause" || input.action === "quarantine",
+          safeResumeReason: input.action === "resume"
+            ? connectorNeedsReview
+              ? "connector_revalidation_required"
+              : clarificationOpen
+                ? "clarification_queue_open"
+                : "replay_and_readiness_review_required"
+            : input.reason,
+        },
         updatedAt: createdAt,
       }));
       saveTelemetryEvent({

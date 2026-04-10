@@ -1,11 +1,13 @@
 import {
   type ConnectorMap,
+  type ConnectorIntrospection,
   type ConnectorScopePosture,
   type ConnectorValidationStatus,
   type SideEffectClass,
   connectorMapSchema,
+  connectorIntrospectionSchema,
 } from "../../shared/workpackContracts";
-import { createWorkpackId, getWorkpackDetail, saveWorkpackVersion, updateWorkpackVersion } from "./workpackPersistence";
+import { createWorkpackId, getWorkpackDetail, listWorkpackDetailsByTenant, saveWorkpackVersion, updateWorkpackVersion } from "./workpackPersistence";
 import { compileWorkpackExecutionPlan } from "./workpackCompilerService";
 import { normalizeWorkpackException } from "./workpackExceptionService";
 
@@ -19,6 +21,9 @@ type ConnectorMetadata = {
   schemaVersion?: string;
   supportsIdempotency?: boolean;
   status?: "healthy" | "stale" | "unavailable";
+  source?: "manual" | "desktop_host" | "managed_runtime";
+  collectedAt?: string;
+  sourceDeviceId?: string | null;
 };
 
 export interface ConnectorValidationResult {
@@ -37,10 +42,8 @@ const DEFAULT_REQUIRED_FIELDS = ["record_id", "status", "summary"];
 const READ_SCOPE_SUFFIX = ":read";
 const WRITE_SCOPE_SUFFIX = ":write";
 
-const DEFAULT_CONNECTOR_METADATA: Record<string, ConnectorMetadata> = {
+const CONNECTOR_FIELD_TEMPLATES: Record<string, Pick<ConnectorMetadata, "availableFields" | "fieldTypes">> = {
   erp: {
-    connectorKey: "erp_primary",
-    connectorFamily: "erp",
     availableFields: ["record_id", "status", "summary", "amount", "currency", "approval_state"],
     fieldTypes: {
       record_id: "string",
@@ -50,13 +53,8 @@ const DEFAULT_CONNECTOR_METADATA: Record<string, ConnectorMetadata> = {
       currency: "string",
       approval_state: "string",
     },
-    grantedScopes: ["erp:read", "erp:write", "erp:approve"],
-    supportsIdempotency: true,
-    status: "healthy",
   },
   spreadsheet: {
-    connectorKey: "spreadsheet_primary",
-    connectorFamily: "spreadsheet",
     availableFields: ["record_id", "status", "summary", "tab_name", "row_id"],
     fieldTypes: {
       record_id: "string",
@@ -65,13 +63,8 @@ const DEFAULT_CONNECTOR_METADATA: Record<string, ConnectorMetadata> = {
       tab_name: "string",
       row_id: "number",
     },
-    grantedScopes: ["spreadsheet:read", "spreadsheet:write"],
-    supportsIdempotency: true,
-    status: "healthy",
   },
   email: {
-    connectorKey: "email_primary",
-    connectorFamily: "email",
     availableFields: ["record_id", "status", "summary", "recipient", "subject"],
     fieldTypes: {
       record_id: "string",
@@ -80,13 +73,8 @@ const DEFAULT_CONNECTOR_METADATA: Record<string, ConnectorMetadata> = {
       recipient: "string",
       subject: "string",
     },
-    grantedScopes: ["email:read", "email:write", "email:send"],
-    supportsIdempotency: false,
-    status: "healthy",
   },
   vendor_portal: {
-    connectorKey: "vendor_portal_primary",
-    connectorFamily: "vendor_portal",
     availableFields: ["record_id", "status", "summary", "quote_total", "vendor_name"],
     fieldTypes: {
       record_id: "string",
@@ -95,13 +83,8 @@ const DEFAULT_CONNECTOR_METADATA: Record<string, ConnectorMetadata> = {
       quote_total: "number",
       vendor_name: "string",
     },
-    grantedScopes: ["vendor_portal:read", "vendor_portal:write"],
-    supportsIdempotency: false,
-    status: "healthy",
   },
   crm: {
-    connectorKey: "crm_primary",
-    connectorFamily: "crm",
     availableFields: ["record_id", "status", "summary", "account_id", "opportunity_stage"],
     fieldTypes: {
       record_id: "string",
@@ -110,13 +93,8 @@ const DEFAULT_CONNECTOR_METADATA: Record<string, ConnectorMetadata> = {
       account_id: "string",
       opportunity_stage: "string",
     },
-    grantedScopes: ["crm:read", "crm:write"],
-    supportsIdempotency: true,
-    status: "healthy",
   },
   helpdesk: {
-    connectorKey: "helpdesk_primary",
-    connectorFamily: "helpdesk",
     availableFields: ["record_id", "status", "summary", "ticket_id", "priority"],
     fieldTypes: {
       record_id: "string",
@@ -125,13 +103,8 @@ const DEFAULT_CONNECTOR_METADATA: Record<string, ConnectorMetadata> = {
       ticket_id: "string",
       priority: "string",
     },
-    grantedScopes: ["helpdesk:read", "helpdesk:write"],
-    supportsIdempotency: true,
-    status: "healthy",
   },
   knowledge_base: {
-    connectorKey: "knowledge_base_primary",
-    connectorFamily: "knowledge_base",
     availableFields: ["record_id", "status", "summary", "article_id"],
     fieldTypes: {
       record_id: "string",
@@ -139,13 +112,8 @@ const DEFAULT_CONNECTOR_METADATA: Record<string, ConnectorMetadata> = {
       summary: "string",
       article_id: "string",
     },
-    grantedScopes: ["knowledge_base:read"],
-    supportsIdempotency: true,
-    status: "healthy",
   },
   chat: {
-    connectorKey: "chat_primary",
-    connectorFamily: "chat",
     availableFields: ["record_id", "status", "summary", "thread_id"],
     fieldTypes: {
       record_id: "string",
@@ -153,13 +121,8 @@ const DEFAULT_CONNECTOR_METADATA: Record<string, ConnectorMetadata> = {
       summary: "string",
       thread_id: "string",
     },
-    grantedScopes: ["chat:read", "chat:write"],
-    supportsIdempotency: true,
-    status: "healthy",
   },
   calendar: {
-    connectorKey: "calendar_primary",
-    connectorFamily: "calendar",
     availableFields: ["record_id", "status", "summary", "event_id", "start_at"],
     fieldTypes: {
       record_id: "string",
@@ -168,13 +131,8 @@ const DEFAULT_CONNECTOR_METADATA: Record<string, ConnectorMetadata> = {
       event_id: "string",
       start_at: "date",
     },
-    grantedScopes: ["calendar:read", "calendar:write"],
-    supportsIdempotency: true,
-    status: "healthy",
   },
   docs: {
-    connectorKey: "docs_primary",
-    connectorFamily: "docs",
     availableFields: ["record_id", "status", "summary", "doc_id"],
     fieldTypes: {
       record_id: "string",
@@ -182,13 +140,8 @@ const DEFAULT_CONNECTOR_METADATA: Record<string, ConnectorMetadata> = {
       summary: "string",
       doc_id: "string",
     },
-    grantedScopes: ["docs:read", "docs:write"],
-    supportsIdempotency: true,
-    status: "healthy",
   },
   hris: {
-    connectorKey: "hris_primary",
-    connectorFamily: "hris",
     availableFields: ["record_id", "status", "summary", "employee_id", "policy_id"],
     fieldTypes: {
       record_id: "string",
@@ -197,9 +150,6 @@ const DEFAULT_CONNECTOR_METADATA: Record<string, ConnectorMetadata> = {
       employee_id: "string",
       policy_id: "string",
     },
-    grantedScopes: ["hris:read", "hris:write"],
-    supportsIdempotency: true,
-    status: "healthy",
   },
 };
 
@@ -238,11 +188,9 @@ function buildDraftMap(input: {
   connectorFamily: string;
   sideEffectClass: SideEffectClass;
 }): ConnectorMap {
-  const defaultMetadata = DEFAULT_CONNECTOR_METADATA[input.connectorFamily];
-  const effectiveSideEffectClass =
-    defaultMetadata && !defaultMetadata.grantedScopes.includes(`${input.connectorFamily}${WRITE_SCOPE_SUFFIX}`)
-      ? "read_only"
-      : input.sideEffectClass;
+  const fieldTemplate = CONNECTOR_FIELD_TEMPLATES[input.connectorFamily];
+  const effectiveSideEffectClass = input.sideEffectClass;
+  const defaultFields = fieldTemplate?.availableFields ?? DEFAULT_REQUIRED_FIELDS;
   return connectorMapSchema.parse({
     id: createWorkpackId("conn"),
     workpackId: input.workpackId,
@@ -252,7 +200,7 @@ function buildDraftMap(input: {
     requiredScopes: requiredScopesForFamily(input.connectorFamily, effectiveSideEffectClass),
     optionalScopes: [],
     grantedScopes: [],
-    fieldMappings: DEFAULT_REQUIRED_FIELDS.map((field) => ({
+    fieldMappings: defaultFields.slice(0, Math.max(DEFAULT_REQUIRED_FIELDS.length, 3)).map((field) => ({
       sourceField: field,
       targetField: field,
       required: true,
@@ -262,8 +210,9 @@ function buildDraftMap(input: {
     scopePosture: "missing",
     idempotencySupported: effectiveSideEffectClass === "read_only",
     writeMode: deriveWriteMode(effectiveSideEffectClass),
-    missingFields: DEFAULT_REQUIRED_FIELDS,
+    missingFields: defaultFields,
     driftedFields: [],
+    samplePayload: {},
     lastValidatedAt: null,
     expiresAt: null,
   });
@@ -307,6 +256,99 @@ function ensureConnectorMaps(workpackId: string): ConnectorMap[] {
   });
 
   return connectorMaps;
+}
+
+function selectLatestTenantIntrospections(workpackId: string): Record<string, ConnectorIntrospection> {
+  const detail = getWorkpackDetail(workpackId);
+  if (!detail) {
+    throw new Error(`Unknown workpack: ${workpackId}`);
+  }
+  const latestByFamily = new Map<string, ConnectorIntrospection>();
+  const allDetails = listWorkpackDetailsByTenant(detail.workpack.tenantId);
+  for (const candidate of allDetails) {
+    for (const introspection of candidate.version.connectorIntrospections ?? []) {
+      const existing = latestByFamily.get(introspection.connectorFamily);
+      if (!existing || introspection.collectedAt > existing.collectedAt) {
+        latestByFamily.set(introspection.connectorFamily, introspection);
+      }
+    }
+  }
+  return Object.fromEntries(latestByFamily.entries());
+}
+
+function metadataToIntrospection(tenantId: string, connectorFamily: string, metadata: Partial<ConnectorMetadata>): ConnectorIntrospection {
+  return connectorIntrospectionSchema.parse({
+    id: createWorkpackId("cin"),
+    tenantId,
+    connectorKey: metadata.connectorKey ?? `${connectorFamily}_primary`,
+    connectorFamily,
+    availableFields: metadata.availableFields ?? [],
+    fieldTypes: metadata.fieldTypes ?? {},
+    grantedScopes: metadata.grantedScopes ?? [],
+    expiresAt: metadata.expiresAt ?? null,
+    schemaVersion: metadata.schemaVersion ?? null,
+    supportsIdempotency: metadata.supportsIdempotency ?? false,
+    status: metadata.status ?? "unavailable",
+    source: metadata.source ?? "manual",
+    collectedAt: metadata.collectedAt ?? nowIso(),
+    sourceDeviceId: metadata.sourceDeviceId ?? null,
+  });
+}
+
+export function refreshConnectorIntrospections(input: {
+  workpackId: string;
+  metadataByFamily: Record<string, Partial<ConnectorMetadata>>;
+}): ConnectorIntrospection[] {
+  const detail = getWorkpackDetail(input.workpackId);
+  if (!detail) {
+    throw new Error(`Unknown workpack: ${input.workpackId}`);
+  }
+  const refreshed = Object.entries(input.metadataByFamily).map(([connectorFamily, metadata]) => (
+    metadataToIntrospection(detail.workpack.tenantId, connectorFamily, metadata)
+  ));
+  const mergedByFamily = new Map<string, ConnectorIntrospection>();
+  for (const introspection of detail.version.connectorIntrospections ?? []) {
+    mergedByFamily.set(introspection.connectorFamily, introspection);
+  }
+  for (const introspection of refreshed) {
+    mergedByFamily.set(introspection.connectorFamily, introspection);
+  }
+  updateWorkpackVersion(detail.version.id, (version) => ({
+    ...version,
+    connectorIntrospections: Array.from(mergedByFamily.values()).sort((left, right) => right.collectedAt.localeCompare(left.collectedAt)),
+  }));
+  return refreshed;
+}
+
+export function updateConnectorMapFields(input: {
+  workpackId: string;
+  connectorMapId: string;
+  fieldMappings?: ConnectorMap["fieldMappings"];
+  samplePayload?: Record<string, unknown>;
+}): ConnectorMap {
+  const detail = getWorkpackDetail(input.workpackId);
+  if (!detail) {
+    throw new Error(`Unknown workpack: ${input.workpackId}`);
+  }
+  let updatedMap: ConnectorMap | null = null;
+  updateWorkpackVersion(detail.version.id, (version) => ({
+    ...version,
+    connectorMaps: version.connectorMaps.map((connectorMap) => {
+      if (connectorMap.id !== input.connectorMapId) {
+        return connectorMap;
+      }
+      updatedMap = connectorMapSchema.parse({
+        ...connectorMap,
+        fieldMappings: input.fieldMappings ?? connectorMap.fieldMappings,
+        samplePayload: input.samplePayload ?? connectorMap.samplePayload,
+      });
+      return updatedMap;
+    }),
+  }));
+  if (!updatedMap) {
+    throw new Error(`Unknown connector map: ${input.connectorMapId}`);
+  }
+  return updatedMap;
 }
 
 function validateAgainstMetadata(
@@ -435,17 +477,43 @@ export function validateConnectorMaps(input: {
   }
 
   const connectorMaps = ensureConnectorMaps(input.workpackId);
+  const overrideIntrospections = input.metadataByFamily
+    ? refreshConnectorIntrospections({
+        workpackId: input.workpackId,
+        metadataByFamily: input.metadataByFamily,
+      })
+    : [];
+  const liveTenantIntrospections = {
+    ...selectLatestTenantIntrospections(input.workpackId),
+    ...Object.fromEntries(overrideIntrospections.map((introspection) => [introspection.connectorFamily, introspection] as const)),
+  };
   const validatedMaps = connectorMaps.map((connectorMap) => {
-    const metadata = {
-      ...DEFAULT_CONNECTOR_METADATA[connectorMap.connectorFamily],
-      ...(input.metadataByFamily?.[connectorMap.connectorFamily] ?? {}),
-    };
-    return validateAgainstMetadata(connectorMap, metadata);
+    const introspection = liveTenantIntrospections[connectorMap.connectorFamily];
+    const metadata = introspection
+      ? {
+          connectorKey: introspection.connectorKey,
+          connectorFamily: introspection.connectorFamily,
+          availableFields: introspection.availableFields,
+          fieldTypes: introspection.fieldTypes,
+          grantedScopes: introspection.grantedScopes,
+          expiresAt: introspection.expiresAt ?? null,
+          schemaVersion: introspection.schemaVersion ?? undefined,
+          supportsIdempotency: introspection.supportsIdempotency,
+          status: introspection.status,
+          source: introspection.source,
+          collectedAt: introspection.collectedAt,
+          sourceDeviceId: introspection.sourceDeviceId ?? null,
+        }
+      : undefined;
+      return validateAgainstMetadata(connectorMap, metadata);
   });
 
   updateWorkpackVersion(detail.version.id, (version) => ({
     ...version,
-    connectorMaps: validatedMaps,
+    connectorMaps: validatedMaps.map((connectorMap) => ({
+      ...connectorMap,
+      introspectionId: liveTenantIntrospections[connectorMap.connectorFamily]?.id ?? connectorMap.introspectionId ?? null,
+    })),
   }));
 
   if (input.emitExceptions !== false) {
@@ -468,6 +536,7 @@ export function validateConnectorMaps(input: {
 export function getConnectorStudioView(workpackId: string): ConnectorValidationResult & {
   workpackTitle: string;
   versionId: string;
+  introspections: ConnectorIntrospection[];
 } {
   const detail = getWorkpackDetail(workpackId);
   if (!detail) {
@@ -478,5 +547,6 @@ export function getConnectorStudioView(workpackId: string): ConnectorValidationR
     ...validation,
     workpackTitle: detail.workpack.title,
     versionId: detail.version.id,
+    introspections: detail.version.connectorIntrospections ?? [],
   };
 }

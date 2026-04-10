@@ -12,7 +12,20 @@ vi.mock("../tenantFeatureFlagService", async () => {
   };
 });
 
+vi.mock("../workpackPromotionService", () => ({
+  evaluateWorkpackPromotionEligibility: vi.fn(() => ({
+    eligible: false,
+    reasonCode: "benchmark_candidate_missing",
+    publicationScope: "tenant_local",
+    trustTags: [],
+    evidenceCompleteness: 0.4,
+    benchmarkCandidate: false,
+    rollbackAvailable: false,
+  })),
+}));
+
 import { compileWorkpackExecutionPlan } from "../workpackCompilerService";
+import { validateConnectorMaps } from "../workpackConnectorService";
 import { createDraftWorkpack } from "../workpackIntakeService";
 import { evaluateWorkpackRolloutGate } from "../workpackRolloutGateService";
 import { resetWorkpackStore } from "../workpackPersistence";
@@ -60,6 +73,49 @@ describe("workpackRolloutGateService", () => {
       ],
     });
     compileWorkpackExecutionPlan({ workpackId: draft.workpack.id });
+    validateConnectorMaps({
+      workpackId: draft.workpack.id,
+      emitExceptions: false,
+      metadataByFamily: {
+        helpdesk: {
+          availableFields: ["record_id", "status", "summary", "ticket_id", "priority"],
+          fieldTypes: {
+            record_id: "string",
+            status: "string",
+            summary: "string",
+            ticket_id: "string",
+            priority: "string",
+          },
+          grantedScopes: ["helpdesk:read", "helpdesk:write"],
+          supportsIdempotency: true,
+          status: "healthy",
+        },
+        knowledge_base: {
+          availableFields: ["record_id", "status", "summary", "article_id"],
+          fieldTypes: {
+            record_id: "string",
+            status: "string",
+            summary: "string",
+            article_id: "string",
+          },
+          grantedScopes: ["knowledge_base:read", "knowledge_base:write"],
+          supportsIdempotency: true,
+          status: "healthy",
+        },
+        chat: {
+          availableFields: ["record_id", "status", "summary", "thread_id"],
+          fieldTypes: {
+            record_id: "string",
+            status: "string",
+            summary: "string",
+            thread_id: "string",
+          },
+          grantedScopes: ["chat:read", "chat:write"],
+          supportsIdempotency: true,
+          status: "healthy",
+        },
+      },
+    });
     simulateWorkpack({ workpackId: draft.workpack.id });
 
     const decision = await evaluateWorkpackRolloutGate({ workpackId: draft.workpack.id, targetMode: "autonomous" });

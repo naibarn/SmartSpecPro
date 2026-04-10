@@ -8,6 +8,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const useRouteMock = vi.fn();
 const detailMock = vi.fn();
 const replayMock = vi.fn();
+const simulateMock = vi.fn();
+const invalidateMock = vi.fn();
 
 vi.mock("wouter", () => ({
   useRoute: (...args: unknown[]) => useRouteMock(...args),
@@ -16,9 +18,17 @@ vi.mock("wouter", () => ({
 
 vi.mock("@/lib/trpc", () => ({
   trpc: {
+    useUtils: () => ({
+      workpack: {
+        getDetail: { invalidate: invalidateMock },
+        replay: { invalidate: invalidateMock },
+        readiness: { invalidate: invalidateMock },
+      },
+    }),
     workpack: {
       getDetail: { useQuery: (...args: unknown[]) => detailMock(...args) },
       replay: { useQuery: (...args: unknown[]) => replayMock(...args) },
+      simulate: { useMutation: (...args: unknown[]) => simulateMock(...args) },
     },
   },
 }));
@@ -37,6 +47,8 @@ describe("WorkpackReplayLab", () => {
           autonomyMode: "draft",
           promotionState: "blocked",
         },
+        runs: [],
+        simulations: [],
       },
       isLoading: false,
     });
@@ -55,6 +67,7 @@ describe("WorkpackReplayLab", () => {
       },
       isLoading: false,
     });
+    simulateMock.mockReturnValue({ mutate: vi.fn(), isPending: false });
   });
 
   it("renders replay diffs and remediation paths", () => {

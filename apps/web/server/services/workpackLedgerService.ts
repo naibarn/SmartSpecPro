@@ -35,6 +35,9 @@ export function openLedgerRun(input: {
   versionId: string;
   plannedSteps: WorkpackRun["plannedSteps"];
   autonomyMode: WorkpackRun["autonomyMode"];
+  trigger?: WorkpackRun["trigger"];
+  triggerSource?: string;
+  scheduleId?: string | null;
   status?: WorkpackRunStatus;
   notes?: string;
 }): WorkpackRun {
@@ -44,6 +47,9 @@ export function openLedgerRun(input: {
     workpackId: input.workpack.id,
     versionId: input.versionId,
     tenantId: input.workpack.tenantId,
+    trigger: input.trigger ?? "manual",
+    triggerSource: input.triggerSource ?? "control_plane",
+    scheduleId: input.scheduleId ?? null,
     startedAt,
     endedAt: null,
     status: input.status ?? "running",
@@ -153,6 +159,9 @@ export function buildArtifactReference(input: {
 export function createReplayGradeLedger(input: {
   workpackId: string;
   autonomyMode?: WorkpackRun["autonomyMode"];
+  trigger?: WorkpackRun["trigger"];
+  triggerSource?: string;
+  scheduleId?: string | null;
   notes?: string;
 }): WorkpackRun {
   const detail = getWorkpackDetail(input.workpackId);
@@ -164,6 +173,9 @@ export function createReplayGradeLedger(input: {
     versionId: detail.version.id,
     plannedSteps: detail.version.executionPlan?.steps ?? detail.version.playbook.steps,
     autonomyMode: input.autonomyMode ?? "supervised",
+    trigger: input.trigger,
+    triggerSource: input.triggerSource,
+    scheduleId: input.scheduleId,
     notes: input.notes,
   });
 }

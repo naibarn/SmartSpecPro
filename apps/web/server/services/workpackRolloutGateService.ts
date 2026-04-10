@@ -33,6 +33,7 @@ export async function evaluateWorkpackRolloutGate(input: {
   const unresolvedExceptions = detail.exceptions.filter((record) => !record.resolvedAt);
   const connectorBlocked = detail.version.connectorMaps.some((map) => map.validationStatus === "blocked");
   const connectorStale = detail.version.connectorMaps.some((map) => map.validationStatus === "stale");
+  const safeResumeRequired = detail.workpack.policyProfile.safeResumeRequired === true;
   const blockers: string[] = [];
 
   if (!flags.workpacksEnabled) blockers.push("feature_disabled");
@@ -40,6 +41,7 @@ export async function evaluateWorkpackRolloutGate(input: {
   if (unresolvedExceptions.some((record) => record.riskClass === "critical")) blockers.push("critical_exception");
   if (incidents.length > 0) blockers.push("active_incident");
   if (detail.simulations.filter((run) => run.status === "passed").length === 0) blockers.push("simulation_missing");
+  if (safeResumeRequired) blockers.push("safe_resume_review_required");
   if (input.targetMode === "autonomous" && !flags.workpackAutonomousPilot) blockers.push("autonomous_flag_disabled");
   if (!promotionEligibility.eligible && input.targetMode === "autonomous") blockers.push(promotionEligibility.reasonCode);
 
@@ -58,6 +60,11 @@ export async function evaluateWorkpackRolloutGate(input: {
     rolloutPhase = "draft_only";
     reasonCode = "incident_active";
     nextAction = "Resolve or resume the active incident before rollout.";
+  } else if (blockers.includes("safe_resume_review_required")) {
+    gateResult = "review_required";
+    rolloutPhase = "draft_only";
+    reasonCode = "safe_resume_review_required";
+    nextAction = "Run replay/readiness review again before resuming autonomous execution.";
   } else if (blockers.includes("connector_blocked") || blockers.includes("critical_exception")) {
     gateResult = "blocked";
     rolloutPhase = "draft_only";

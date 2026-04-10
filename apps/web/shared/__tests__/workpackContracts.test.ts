@@ -150,10 +150,18 @@ describe("workpackContracts", () => {
           stepId: "step_1",
           title: "Collect",
           runtimePath: "hybrid",
-          status: "succeeded",
+          status: "queued",
           sideEffectClass: "read_only",
           effectKey: null,
-          outputSummary: "Collected 10 invoices",
+          outputSummary: "Queued 10 invoices",
+          executionRef: {
+            provider: "worker_job",
+            executionId: "worker-job-1",
+            runtimeType: "hiclaw_cluster",
+            jobType: "workpack_hybrid_step",
+            status: "queued",
+            queuedAt: "2026-04-10T00:00:00.000Z",
+          },
         },
       ],
       approvalCheckpoints: [],
@@ -175,7 +183,7 @@ describe("workpackContracts", () => {
       notes: "",
     });
 
-    expect(parsed.actualSteps[0]?.outputSummary).toContain("Collected");
+    expect(parsed.actualSteps[0]?.executionRef?.executionId).toBe("worker-job-1");
   });
 
   it("redacts secret-like fields in evidence payloads", () => {
