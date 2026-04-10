@@ -1,5 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("./appRuntimeConfig", () => ({
+  getAppRuntimeConfig: vi.fn(async () => ({
+    pythonBackendUrl: "http://python.test",
+  })),
+  getPreferredInternalToken: vi.fn(async () => "proxy-token"),
+}));
+
 import {
   buildUploadPipelineState,
   computeLibraryUploadChecksum,
@@ -92,6 +99,40 @@ describe("libraryUploadPipeline", () => {
     expect(result.extractor).toBe("image_document_ocr");
     expect(result.searchQuality).toBe("full_text");
     expect(result.extractedText).toContain("White modern house");
+  });
+
+  it("forwards document OCR analysis profile for scanned PDF uploads", async () => {
+    process.env.SMARTSPEC_PROXY_TOKEN = "proxy-token";
+    const fetchSpy = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        text: "โอนเงิน 250 บาท ไป SCB Main",
+        method: "pdf_document_ocr",
+        warning: null,
+      }),
+    });
+    vi.stubGlobal("fetch", fetchSpy);
+
+    const result = await enrichLibraryUploadContent({
+      fileBuffer: Buffer.from("%PDF-1.7 scanned slip", "utf8"),
+      fileName: "transfer-slip.pdf",
+      fileType: "application/pdf",
+      extension: "pdf",
+      fallbackText: null,
+      metadata: {
+        analysis_profile: "document_ocr",
+      },
+    });
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    const fetchCall = fetchSpy.mock.calls[0];
+    expect(fetchCall?.[0]).toContain("/api/internal/library/extract-text");
+    const init = fetchCall?.[1] as RequestInit;
+    const body = JSON.parse(String(init.body));
+    expect(body.analysis_profile).toBe("document_ocr");
+    expect(result.extractor).toBe("pdf_document_ocr");
+    expect(result.searchQuality).toBe("full_text");
+    expect(result.extractedText).toContain("SCB Main");
   });
 
   it("creates pipeline states with timestamps", () => {

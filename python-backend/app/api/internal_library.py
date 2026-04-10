@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import io
 import os
 import json
 import shutil
@@ -45,6 +46,7 @@ router = APIRouter(prefix="/api/internal/library", tags=["Internal Library"])
 MAX_LIBRARY_SEARCH_QUERY_LENGTH = 2_000
 MAX_LIBRARY_SEARCH_CANDIDATES = 1_000
 MAX_MEDIA_ENRICH_BYTES = 50 * 1024 * 1024
+MAX_PDF_OCR_PAGES = 3
 REINDEX_TASK_ID_KEY = "vectordb:reindex:task_id"
 REINDEX_BATCH_KEY = "vectordb:reindex:batch"
 REINDEX_BATCH_TTL_SECONDS = 24 * 60 * 60
@@ -375,6 +377,7 @@ class LibraryExtractTextRequest(BaseModel):
     file_name: str = Field(..., min_length=1, max_length=255)
     mime_type: str = Field(..., min_length=1, max_length=255)
     content_base64: str = Field(..., min_length=1)
+    analysis_profile: Optional[str] = Field(default=None, max_length=64)
 
 
 class LibraryExtractTextResponse(BaseModel):
@@ -444,6 +447,105 @@ def _build_media_search_text(
         if summary_bits:
             parts.append("media_metadata: " + ", ".join(summary_bits))
     return "\n\n".join(part for part in parts if part).strip()
+
+
+def _normalize_analysis_profile(value: str | None) -> str:
+    return str(value or "").strip().lower()
+
+
+def _select_pdf_page_image(images: list[Any]) -> Any | None:
+    if not images:
+        return None
+
+    def score(image: Any) -> tuple[int, int]:
+        pil_image = getattr(image, "image", None)
+        if pil_image is not None:
+            width = int(getattr(pil_image, "width", 0) or 0)
+            height = int(getattr(pil_image, "height", 0) or 0)
+            return (width * height, len(getattr(image, "data", b"") or b""))
+        raw_data = getattr(image, "data", None)
+        if isinstance(raw_data, (bytes, bytearray)):
+            return (len(raw_data), 0)
+        return (0, 0)
+
+    return max(images, key=score)
+
+
+def _pdf_image_to_bytes(image: Any) -> tuple[bytes, str]:
+    from PIL import Image as PILImage
+
+    raw_data = getattr(image, "data", None)
+    candidate = None
+    if isinstance(raw_data, (bytes, bytearray)) and raw_data:
+        try:
+            candidate = PILImage.open(io.BytesIO(bytes(raw_data)))
+        except Exception:
+            candidate = None
+
+    if candidate is None:
+        pil_image = getattr(image, "image", None)
+        if pil_image is not None:
+            candidate = pil_image.copy()
+
+    if candidate is None:
+        raise ValueError("Embedded PDF image is unavailable for OCR")
+
+    if getattr(candidate, "mode", None) not in ("RGB", "RGBA", "L"):
+        candidate = candidate.convert("RGB")
+    elif getattr(candidate, "mode", None) == "RGBA":
+        candidate = candidate.convert("RGB")
+
+    max_dimension = 1600
+    candidate.thumbnail((max_dimension, max_dimension))
+
+    output = io.BytesIO()
+    candidate.save(output, format="PNG")
+    return output.getvalue(), "image/png"
+
+
+async def _extract_pdf_ocr_text(
+    content: bytes,
+    *,
+    file_name: str,
+    session: AsyncSession | None = None,
+) -> tuple[str, list[str]]:
+    from pypdf import PdfReader
+
+    reader = PdfReader(io.BytesIO(content))
+    page_texts: list[str] = []
+    warnings: list[str] = []
+
+    max_pages = min(len(reader.pages), MAX_PDF_OCR_PAGES)
+    for page_index in range(max_pages):
+        page = reader.pages[page_index]
+        page_images = list(getattr(page, "images", []) or [])
+        if not page_images:
+            continue
+
+        selected_image = _select_pdf_page_image(page_images)
+        if selected_image is None:
+            continue
+
+        try:
+            image_bytes, image_mime = _pdf_image_to_bytes(selected_image)
+        except Exception as exc:
+            warnings.append(f"page {page_index + 1} image decode failed: {exc}")
+            continue
+
+        try:
+            analysis = await _call_gemini_vision_bytes(image_bytes, image_mime, session=session)
+            searchable_text = _build_media_search_text(analysis, None, None).strip()
+            if searchable_text:
+                page_texts.append(f"[page {page_index + 1}]\n{searchable_text}")
+            else:
+                warnings.append(f"page {page_index + 1} OCR returned empty text")
+        except Exception as exc:
+            warnings.append(f"page {page_index + 1} OCR failed: {exc}")
+
+    if not page_texts and not warnings:
+        warnings.append("No embedded PDF images were available for OCR fallback")
+
+    return "\n\n".join(page_texts).strip(), warnings
 
 
 async def _call_gemini_vision_bytes(
@@ -601,9 +703,11 @@ async def search_library_vectors_endpoint(
 )
 async def extract_library_text_endpoint(
     request: LibraryExtractTextRequest,
+    session: AsyncSession = Depends(get_db),
 ):
     """Extract searchable text from direct library uploads."""
     content = _decode_base64_content(request.content_base64)
+    analysis_profile = _normalize_analysis_profile(request.analysis_profile)
 
     extractor = OneDriveContentExtractor()
     result = extractor.extract(
@@ -613,15 +717,39 @@ async def extract_library_text_endpoint(
     )
 
     method = str(result.get("method") or "unknown")
-    text = str(result.get("text") or "")
-    warning: str | None = None
+    text = str(result.get("text") or "").strip()
+    warning_parts: list[str] = []
     if method in {"legacy_unsupported", "unsupported", "too_large", "error"}:
-        warning = f"Extraction result: {method}"
+        warning_parts.append(f"Extraction result: {method}")
+
+    if (
+        not text
+        and analysis_profile == "document_ocr"
+        and (
+            request.mime_type.lower().startswith("application/pdf")
+            or request.file_name.lower().endswith(".pdf")
+            or "pdf" in request.mime_type.lower()
+        )
+    ):
+        ocr_text, ocr_warnings = await _extract_pdf_ocr_text(
+            content,
+            file_name=request.file_name,
+            session=session,
+        )
+        warning_parts.extend(ocr_warnings)
+        if ocr_text:
+            text = ocr_text
+            method = "pdf_document_ocr"
+        else:
+            warning_parts.append("PDF OCR fallback did not extract searchable text")
+            method = "pdf_document_ocr_unavailable"
+
+    warning: str | None = "; ".join(part for part in warning_parts if part) or None
 
     return LibraryExtractTextResponse(
         success=True,
         text=text,
-        char_count=int(result.get("char_count") or len(text)),
+        char_count=len(text),
         method=method,
         warning=warning,
     )

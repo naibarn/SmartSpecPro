@@ -4,12 +4,18 @@ from httpx import ASGITransport, AsyncClient
 
 from app.api.internal_library import router
 from app.core.config import settings
+from app.core.database import get_db
+
+
+async def _fake_get_db():
+    yield object()
 
 
 @pytest.mark.asyncio
 async def test_extract_library_text_endpoint_returns_extracted_text(monkeypatch):
     app = FastAPI()
     app.include_router(router)
+    app.dependency_overrides[get_db] = _fake_get_db
 
     monkeypatch.setattr(settings, "SMARTSPEC_PROXY_TOKEN", "proxy-token", raising=False)
 
@@ -53,6 +59,7 @@ async def test_extract_library_text_endpoint_returns_extracted_text(monkeypatch)
 async def test_extract_library_text_endpoint_rejects_bad_base64(monkeypatch):
     app = FastAPI()
     app.include_router(router)
+    app.dependency_overrides[get_db] = _fake_get_db
 
     monkeypatch.setattr(settings, "SMARTSPEC_PROXY_TOKEN", "proxy-token", raising=False)
 
@@ -72,9 +79,61 @@ async def test_extract_library_text_endpoint_rejects_bad_base64(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_extract_library_text_endpoint_uses_pdf_ocr_fallback_for_scanned_slip(monkeypatch):
+    app = FastAPI()
+    app.include_router(router)
+    app.dependency_overrides[get_db] = _fake_get_db
+
+    monkeypatch.setattr(settings, "SMARTSPEC_PROXY_TOKEN", "proxy-token", raising=False)
+
+    def fake_extract(self, content: bytes, mime_type: str, file_name: str):
+        assert content == b"pdf bytes"
+        assert mime_type == "application/pdf"
+        assert file_name == "transfer-slip.pdf"
+        return {
+            "text": "",
+            "char_count": 0,
+            "method": "pdf",
+        }
+
+    async def fake_pdf_ocr(content: bytes, *, file_name: str, session):
+        assert content == b"pdf bytes"
+        assert file_name == "transfer-slip.pdf"
+        assert session is not None
+        return "โอนเงิน 250 บาท ไป SCB Main", []
+
+    monkeypatch.setattr(
+        "app.api.internal_library.OneDriveContentExtractor.extract",
+        fake_extract,
+    )
+    monkeypatch.setattr("app.api.internal_library._extract_pdf_ocr_text", fake_pdf_ocr)
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post(
+            "/api/internal/library/extract-text",
+            headers={"x-proxy-token": "proxy-token"},
+            json={
+                "file_name": "transfer-slip.pdf",
+                "mime_type": "application/pdf",
+                "content_base64": "cGRmIGJ5dGVz",
+                "analysis_profile": "document_ocr",
+            },
+        )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["success"] is True
+    assert payload["text"] == "โอนเงิน 250 บาท ไป SCB Main"
+    assert payload["char_count"] == len("โอนเงิน 250 บาท ไป SCB Main")
+    assert payload["method"] == "pdf_document_ocr"
+    assert payload["warning"] is None
+
+
+@pytest.mark.asyncio
 async def test_enrich_library_media_endpoint_returns_image_caption(monkeypatch):
     app = FastAPI()
     app.include_router(router)
+    app.dependency_overrides[get_db] = _fake_get_db
 
     monkeypatch.setattr(settings, "SMARTSPEC_PROXY_TOKEN", "proxy-token", raising=False)
 
@@ -118,6 +177,7 @@ async def test_enrich_library_media_endpoint_returns_image_caption(monkeypatch):
 async def test_enrich_library_media_endpoint_returns_metadata_only_image_when_not_opted_in(monkeypatch):
     app = FastAPI()
     app.include_router(router)
+    app.dependency_overrides[get_db] = _fake_get_db
 
     monkeypatch.setattr(settings, "SMARTSPEC_PROXY_TOKEN", "proxy-token", raising=False)
 
@@ -142,6 +202,7 @@ async def test_enrich_library_media_endpoint_returns_metadata_only_image_when_no
 async def test_enrich_library_media_endpoint_returns_video_transcript(monkeypatch):
     app = FastAPI()
     app.include_router(router)
+    app.dependency_overrides[get_db] = _fake_get_db
 
     monkeypatch.setattr(settings, "SMARTSPEC_PROXY_TOKEN", "proxy-token", raising=False)
 

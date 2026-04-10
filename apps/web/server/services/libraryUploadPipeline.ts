@@ -254,6 +254,7 @@ async function extractComplexDocumentText(params: {
   fileBuffer: Buffer;
   fileName: string;
   fileType: string;
+  analysisProfile: UploadAnalysisProfile;
 }): Promise<LibraryUploadEnrichmentResult> {
   const payload = await postInternalJson<ExtractTextResponse>(
     "/api/internal/library/extract-text",
@@ -261,6 +262,7 @@ async function extractComplexDocumentText(params: {
       file_name: params.fileName,
       mime_type: params.fileType,
       content_base64: params.fileBuffer.toString("base64"),
+      analysis_profile: params.analysisProfile,
     },
   );
 
@@ -400,7 +402,10 @@ export async function enrichLibraryUploadContent(params: {
 
   if (COMPLEX_DOCUMENT_EXTENSIONS.has(params.extension)) {
     try {
-      return await extractComplexDocumentText(params);
+      return await extractComplexDocumentText({
+        ...params,
+        analysisProfile,
+      });
     } catch (error) {
       return {
         extractedText: null,
