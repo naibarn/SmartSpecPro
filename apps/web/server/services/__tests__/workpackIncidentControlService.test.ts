@@ -86,4 +86,29 @@ describe("workpackIncidentControlService", () => {
     expect((await getWorkpackRun(queuedRun.id))?.status).toBe("cancelled");
     expect((await getWorkpackRun(completedRun.id))?.status).toBe("succeeded");
   });
+
+  it("fails closed when the workpack does not belong to the tenant", async () => {
+    const draft = await createDraftWorkpack({
+      tenantId: "tenant-a",
+      title: "Tenant scoped pack",
+      goal: "Keep tenant boundaries intact",
+      domainPack: "support_ops",
+      sources: [
+        {
+          type: "document",
+          title: "Support SOP",
+          sourceText: "Route support work only for the owning tenant.",
+        },
+      ],
+    });
+
+    await expect(applyWorkpackIncidentAction({
+      tenantId: "tenant-b",
+      workpackId: draft.workpack.id,
+      action: "pause",
+      reason: "Cross-tenant attempt",
+    })).rejects.toThrow(`Unknown workpack for tenant: ${draft.workpack.id}`);
+
+    expect((await getWorkpack(draft.workpack.id))?.lifecycleState).toBe("clarification_needed");
+  });
 });

@@ -26,6 +26,14 @@ export async function applyWorkpackIncidentAction(input: {
 }): Promise<WorkpackIncidentRecord> {
   return withWorkpackPersistenceTransaction(async (session) => {
     const createdAt = nowIso();
+    const workpackDetail = input.workpackId
+      ? await getWorkpackDetail(input.workpackId, session)
+      : null;
+
+    if (input.workpackId && (!workpackDetail || workpackDetail.workpack.tenantId !== input.tenantId)) {
+      throw new Error(`Unknown workpack for tenant: ${input.workpackId}`);
+    }
+
     const affectedRuns = (await listRunsByTenant(input.tenantId, session))
       .filter((run) => (!input.workpackId || run.workpackId === input.workpackId))
       .filter((run) => run.status === "queued" || run.status === "running")
@@ -53,7 +61,7 @@ export async function applyWorkpackIncidentAction(input: {
     }
 
     if (input.workpackId) {
-      const detail = await getWorkpackDetail(input.workpackId, session);
+      const detail = workpackDetail;
       if (detail) {
         const clarificationOpen = detail.playbook.clarificationQueue.some((question) => question.status === "pending");
         const connectorNeedsReview = detail.version.connectorMaps.some((map) => map.validationStatus !== "validated");
