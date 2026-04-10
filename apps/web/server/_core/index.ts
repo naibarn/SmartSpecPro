@@ -98,6 +98,10 @@ import {
   initializeSkillMaintenanceScheduleJob,
   shutdownSkillMaintenanceScheduleJob,
 } from "../jobs/skillMaintenanceSchedule";
+import {
+  initializeWorkpackScheduleJob,
+  shutdownWorkpackScheduleJob,
+} from "../jobs/workpackScheduleJob";
 import { initFromDb, startPeriodicPersistence } from "../services/providerHealth";
 import { startHistoryCollection } from "../services/llmQueue";
 import { recoverActiveRunsOnStartup } from "../services/runEngine";
@@ -1535,6 +1539,12 @@ async function main() {
     console.error("[Startup] Failed to initialize skill maintenance scheduler:", error);
   }
 
+  try {
+    await initializeWorkpackScheduleJob();
+  } catch (error) {
+    console.error("[Startup] Failed to initialize workpack schedule job:", error);
+  }
+
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);
   } else {
@@ -1638,6 +1648,7 @@ process.on("SIGTERM", async () => {
   await closeWebhookApiDeliveryQueue().catch(() => {});
   await shutdownMemoryMaintenanceJobs().catch(() => {});
   await shutdownSkillMaintenanceScheduleJob().catch(() => {});
+  await shutdownWorkpackScheduleJob().catch(() => {});
   await closeEmbeddingQueue().catch(() => {});
   await shutdownVoiceGateway().catch(() => {});
 
@@ -1697,6 +1708,7 @@ process.on("SIGINT", async () => {
   await closeWebhookApiDeliveryQueue().catch(() => {});
   await shutdownMemoryMaintenanceJobs().catch(() => {});
   await shutdownSkillMaintenanceScheduleJob().catch(() => {});
+  await shutdownWorkpackScheduleJob().catch(() => {});
   await closeEmbeddingQueue().catch(() => {});
   await shutdownVoiceGateway().catch(() => {});
   await Promise.all(
