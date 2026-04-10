@@ -32,7 +32,7 @@ import { sanitizeWorkerPayload } from "./workerPayloadSanitizer";
 import { compileWorkpackExecutionPlan } from "./workpackCompilerService";
 import { validateConnectorMaps } from "./workpackConnectorService";
 import { normalizeWorkpackException } from "./workpackExceptionService";
-import { buildArtifactReference, createReplayGradeLedger, finalizeLedgerRun } from "./workpackLedgerService";
+import { buildArtifactReference, finalizeLedgerRun, openLedgerRun } from "./workpackLedgerService";
 import {
   createWorkpackId,
   getWorkpackDetail,
@@ -568,6 +568,324 @@ export interface LaunchWorkpackResult {
   run: WorkpackRun;
   exceptionIds: string[];
   readinessReason: string;
+}
+
+interface ExecutePlannedStepsInput {
+  detail: WorkpackDetailRecord;
+  ledgerRunId: string;
+  steps: WorkpackStep[];
+  autonomyMode: AutonomyMode;
+  requestedBy?: number | null;
+  queueWorkerJobByRuntime: typeof queueWorkerJobByRuntime;
+  preApprovedBoundaryStepIds?: readonly string[];
+}
+
+interface ExecutePlannedStepsResult {
+  actualSteps: WorkpackRunStep[];
+  approvalCheckpoints: WorkpackApprovalCheckpoint[];
+  artifacts: WorkpackArtifactReference[];
+  exceptionIds: string[];
+}
+
+async function executePlannedSteps(input: ExecutePlannedStepsInput): Promise<ExecutePlannedStepsResult> {
+  const actualSteps: WorkpackRunStep[] = [];
+  const approvalCheckpoints: WorkpackApprovalCheckpoint[] = [];
+  const artifacts: WorkpackArtifactReference[] = [];
+  const exceptionIds: string[] = [];
+  const preApprovedBoundaryStepIds = new Set(input.preApprovedBoundaryStepIds ?? []);
+  let stopDispatch = false;
+
+  for (const step of input.steps) {
+    if (stopDispatch) {
+      actualSteps.push(buildSkippedStep(step, "Skipped because an earlier approval boundary or executor failure halted the run."));
+      continue;
+    }
+
+    if (step.requiresApproval && !preApprovedBoundaryStepIds.has(step.id)) {
+      approvalCheckpoints.push({
+        stepId: step.id,
+        reason: `Consequence boundary preserved for ${step.title}`,
+        approved: false,
+      });
+      const exception = await normalizeWorkpackException({
+        workpackId: input.detail.workpack.id,
+        versionId: input.detail.version.id,
+        runId: input.ledgerRunId,
+        reasonCategory: "policy_boundary",
+        reasonCode: "approval_boundary_pending",
+        title: "Approval boundary reached",
+        summary: `${step.title} requires human approval before the automation can continue.`,
+        remediationPointer: `/workpacks/${input.detail.workpack.id}/exceptions`,
+        nextAction: "Approve, reject, or downgrade this boundary in the exception inbox.",
+        riskClass: step.sideEffectClass === "financial" || step.sideEffectClass === "irreversible" ? "critical" : "high",
+      });
+      exceptionIds.push(exception.id);
+      actualSteps.push(buildBlockedStep(step, "Paused at a consequence boundary awaiting approval."));
+      stopDispatch = true;
+      continue;
+    }
+
+    if (step.requiresApproval && preApprovedBoundaryStepIds.has(step.id)) {
+      approvalCheckpoints.push({
+        stepId: step.id,
+        reason: `Consequence boundary approved for ${step.title}`,
+        approved: true,
+      });
+    }
+
+    const dispatchResult = await attemptDispatchStep({
+      detail: input.detail,
+      runId: input.ledgerRunId,
+      step,
+      autonomyMode: input.autonomyMode,
+      requestedBy: input.requestedBy ?? null,
+      queueWorkerJobByRuntime: input.queueWorkerJobByRuntime,
+    });
+
+    if (!dispatchResult.ok) {
+      const exception = await normalizeWorkpackException({
+        workpackId: input.detail.workpack.id,
+        versionId: input.detail.version.id,
+        runId: input.ledgerRunId,
+        reasonCategory: "operational",
+        reasonCode: "executor_dispatch_failed",
+        title: "Executor dispatch failed",
+        summary: dispatchResult.reason,
+        remediationPointer: `/workpacks/${input.detail.workpack.id}/connectors`,
+        nextAction: "Inspect runtime availability, worker flags, and connector posture before relaunching.",
+        riskClass: "high",
+      });
+      exceptionIds.push(exception.id);
+      actualSteps.push(buildBlockedStep(step, `Dispatch failed: ${dispatchResult.reason}`));
+      stopDispatch = true;
+      continue;
+    }
+
+    actualSteps.push(dispatchResult.step);
+    artifacts.push(...dispatchResult.artifacts);
+
+    if (dispatchResult.step.status === "failed") {
+      const exception = await normalizeWorkpackException({
+        workpackId: input.detail.workpack.id,
+        versionId: input.detail.version.id,
+        runId: input.ledgerRunId,
+        reasonCategory: "operational",
+        reasonCode: "executor_job_failed",
+        title: "Executor returned a failed job",
+        summary: dispatchResult.step.outputSummary,
+        remediationPointer: `/workpacks/${input.detail.workpack.id}/exceptions`,
+        nextAction: "Inspect the worker job output, fix the failing runtime path, and relaunch safely.",
+        riskClass: "high",
+      });
+      exceptionIds.push(exception.id);
+      stopDispatch = true;
+    }
+  }
+
+  return {
+    actualSteps,
+    approvalCheckpoints,
+    artifacts,
+    exceptionIds,
+  };
+}
+
+async function resolveLaunchableDetail(input: {
+  workpackId: string;
+  requestedBy?: number | null;
+}): Promise<WorkpackDetailRecord> {
+  const detailBeforeCompile = await getWorkpackDetail(input.workpackId);
+  if (!detailBeforeCompile) {
+    throw new Error(`Unknown workpack: ${input.workpackId}`);
+  }
+  if (!detailBeforeCompile.version.executionPlan) {
+    await compileWorkpackExecutionPlan({
+      workpackId: input.workpackId,
+      requestedBy: input.requestedBy ?? null,
+    });
+  }
+  const detail = await getWorkpackDetail(input.workpackId);
+  if (!detail || !detail.version.executionPlan) {
+    throw new Error(`Execution plan unavailable for workpack: ${input.workpackId}`);
+  }
+  return detail;
+}
+
+async function launchPlannedSteps(input: {
+  detail: WorkpackDetailRecord;
+  steps: WorkpackStep[];
+  requestedBy?: number | null;
+  autonomyMode: AutonomyMode;
+  trigger?: WorkpackRun["trigger"];
+  triggerSource?: string;
+  scheduleId?: string | null;
+  ledgerNotes: string;
+  preApprovedBoundaryStepIds?: readonly string[];
+  queueWorkerJobByRuntime: typeof queueWorkerJobByRuntime;
+}): Promise<LaunchWorkpackResult> {
+  const pendingClarifications = input.detail.playbook.clarificationQueue.filter((question) => question.status === "pending");
+  const readiness = await evaluateWorkpackRolloutGate({
+    workpackId: input.detail.workpack.id,
+    targetMode: input.autonomyMode === "autonomous" ? "autonomous" : "supervised",
+  });
+
+  const ledgerRun = await openLedgerRun({
+    workpack: input.detail.workpack,
+    versionId: input.detail.version.id,
+    plannedSteps: input.steps,
+    autonomyMode: input.autonomyMode,
+    trigger: input.trigger ?? (input.scheduleId ? "scheduled" : "manual"),
+    triggerSource: input.triggerSource ?? (input.scheduleId ? "schedule_engine" : "control_plane"),
+    scheduleId: input.scheduleId ?? null,
+    notes: input.ledgerNotes,
+  });
+
+  const exceptionIds: string[] = [];
+
+  if (pendingClarifications.length > 0) {
+    const exception = await normalizeWorkpackException({
+      workpackId: input.detail.workpack.id,
+      versionId: input.detail.version.id,
+      runId: ledgerRun.id,
+      reasonCategory: "ambiguity",
+      reasonCode: "clarification_queue_open",
+      title: "Clarification required before launch",
+      summary: `${pendingClarifications.length} targeted clarification items remain unresolved.`,
+      remediationPointer: `/workpacks/${input.detail.workpack.id}`,
+      nextAction: "Answer the clarification queue before launching autonomous execution.",
+      riskClass: "medium",
+    });
+    exceptionIds.push(exception.id);
+    const run = await finalizeLedgerRun({
+      runId: ledgerRun.id,
+      status: "blocked",
+      actualSteps: input.steps.map((step) => buildBlockedStep(step, "Launch blocked until clarification queue is resolved.")),
+      notes: "Launch blocked by open clarification queue",
+    });
+    await markScheduleError(input.scheduleId, "clarification_required");
+    return {
+      run,
+      exceptionIds,
+      readinessReason: "clarification_required",
+    };
+  }
+
+  if (input.autonomyMode === "autonomous" && readiness.gateResult !== "ready") {
+    const exception = await normalizeWorkpackException({
+      workpackId: input.detail.workpack.id,
+      versionId: input.detail.version.id,
+      runId: ledgerRun.id,
+      reasonCategory: "policy_boundary",
+      reasonCode: readiness.reasonCode,
+      title: "Autonomous launch blocked by readiness gate",
+      summary: readiness.nextAction,
+      remediationPointer: `/workpacks/${input.detail.workpack.id}`,
+      nextAction: "Clear rollout blockers before relaunching in autonomous mode.",
+      riskClass: "high",
+    });
+    exceptionIds.push(exception.id);
+    const run = await finalizeLedgerRun({
+      runId: ledgerRun.id,
+      status: "blocked",
+      actualSteps: input.steps.map((step) => buildBlockedStep(step, `Launch blocked: ${readiness.reasonCode}`)),
+      notes: `Autonomous launch blocked: ${readiness.reasonCode}`,
+    });
+    await markScheduleError(input.scheduleId, readiness.reasonCode);
+    return {
+      run,
+      exceptionIds,
+      readinessReason: readiness.reasonCode,
+    };
+  }
+
+  const connectorValidation = await validateConnectorMaps({
+    workpackId: input.detail.workpack.id,
+    runId: ledgerRun.id,
+    emitExceptions: true,
+  });
+  if (connectorValidation.blocked || connectorValidation.stale) {
+    const run = await finalizeLedgerRun({
+      runId: ledgerRun.id,
+      status: "blocked",
+      actualSteps: input.steps.map((step) => buildBlockedStep(step, "Launch blocked by connector validation state.")),
+      connectorSummaries: connectorValidation.connectorMaps.map((connectorMap) => ({
+        connectorFamily: connectorMap.connectorFamily,
+        status: connectorMap.validationStatus,
+        summary: `Scopes ${connectorMap.scopePosture}; fields missing ${connectorMap.missingFields.length}; introspection ${connectorMap.introspectionId ?? "none"}`,
+      })),
+      notes: "Launch blocked by connector validation",
+    });
+    await markScheduleError(input.scheduleId, connectorValidation.blocked ? "connector_blocked" : "connector_stale");
+    return {
+      run,
+      exceptionIds,
+      readinessReason: connectorValidation.blocked ? "connector_blocked" : "connector_stale",
+    };
+  }
+
+  const execution = await executePlannedSteps({
+    detail: input.detail,
+    ledgerRunId: ledgerRun.id,
+    steps: input.steps,
+    autonomyMode: input.autonomyMode,
+    requestedBy: input.requestedBy ?? null,
+    queueWorkerJobByRuntime: input.queueWorkerJobByRuntime,
+    preApprovedBoundaryStepIds: input.preApprovedBoundaryStepIds,
+  });
+
+  exceptionIds.push(...execution.exceptionIds);
+
+  const runStatus = deriveRunStatus(execution.actualSteps, execution.approvalCheckpoints);
+  const notes = runStatus === "awaiting_approval"
+    ? "Execution paused at approval boundaries"
+    : runStatus === "queued" || runStatus === "running"
+      ? `Execution dispatched through worker fabric in ${input.autonomyMode} mode`
+      : runStatus === "succeeded"
+        ? `Execution completed in ${input.autonomyMode} mode`
+        : "Execution blocked by worker dispatch safety checks";
+
+  const run = await persistLaunchRun({
+    ledgerRunId: ledgerRun.id,
+    runStatus,
+    actualSteps: execution.actualSteps,
+    approvalCheckpoints: execution.approvalCheckpoints,
+    artifacts: execution.artifacts,
+    connectorSummaries: connectorValidation.connectorMaps.map((connectorMap) => ({
+      connectorFamily: connectorMap.connectorFamily,
+      status: connectorMap.validationStatus,
+      summary: `Validated with ${connectorMap.grantedScopes.length} granted scopes`,
+    })),
+    notes,
+  });
+
+  await updateWorkpackAfterLaunch({
+    detail: input.detail,
+    autonomyMode: input.autonomyMode,
+    runStatus,
+  });
+  await updateScheduleAfterRun({
+    scheduleId: input.scheduleId,
+    run,
+    runStatus,
+  });
+
+  await saveTelemetryEvent({
+    id: createWorkpackId("evt"),
+    tenantId: input.detail.workpack.tenantId,
+    workpackId: input.detail.workpack.id,
+    versionId: input.detail.version.id,
+    eventName: runStatus === "succeeded" ? "run_succeeded" : runStatus === "failed" || runStatus === "blocked" ? "run_blocked" : "run_started",
+    detail: notes,
+    createdAt: nowIso(),
+  });
+
+  await captureWorkpackMetricSnapshot(input.detail.workpack.id);
+
+  return {
+    run,
+    exceptionIds,
+    readinessReason: connectorValidation.stale ? "connector_stale" : "launched",
+  };
 }
 
 export interface WorkpackExecutorJobSnapshot {
@@ -1181,254 +1499,57 @@ export async function launchWorkpack(
   },
   deps: WorkpackLaunchDeps = {},
 ): Promise<LaunchWorkpackResult> {
-  const detailBeforeCompile = await getWorkpackDetail(input.workpackId);
-  if (!detailBeforeCompile) {
-    throw new Error(`Unknown workpack: ${input.workpackId}`);
-  }
-  if (!detailBeforeCompile.version.executionPlan) {
-    await compileWorkpackExecutionPlan({
-      workpackId: input.workpackId,
-      requestedBy: input.requestedBy ?? null,
-    });
-  }
-  const detail = await getWorkpackDetail(input.workpackId);
-  if (!detail || !detail.version.executionPlan) {
-    throw new Error(`Execution plan unavailable for workpack: ${input.workpackId}`);
-  }
-
-  const autonomyMode = input.autonomyMode ?? "supervised";
-  const queueFn = deps.queueWorkerJobByRuntime ?? queueWorkerJobByRuntime;
-  const exceptionIds: string[] = [];
-  const pendingClarifications = detail.playbook.clarificationQueue.filter((question) => question.status === "pending");
-  const readiness = await evaluateWorkpackRolloutGate({
-    workpackId: detail.workpack.id,
-    targetMode: autonomyMode === "autonomous" ? "autonomous" : "supervised",
+  const detail = await resolveLaunchableDetail({
+    workpackId: input.workpackId,
+    requestedBy: input.requestedBy ?? null,
   });
-
-  const ledgerRun = await createReplayGradeLedger({
-    workpackId: detail.workpack.id,
-    autonomyMode,
-    trigger: input.trigger ?? (input.scheduleId ? "scheduled" : "manual"),
-    triggerSource: input.triggerSource ?? (input.scheduleId ? "schedule_engine" : "control_plane"),
-    scheduleId: input.scheduleId ?? null,
-    notes: `Launched in ${autonomyMode} mode`,
-  });
-
-  if (pendingClarifications.length > 0) {
-    const exception = await normalizeWorkpackException({
-      workpackId: detail.workpack.id,
-      versionId: detail.version.id,
-      runId: ledgerRun.id,
-      reasonCategory: "ambiguity",
-      reasonCode: "clarification_queue_open",
-      title: "Clarification required before launch",
-      summary: `${pendingClarifications.length} targeted clarification items remain unresolved.`,
-      remediationPointer: `/workpacks/${detail.workpack.id}`,
-      nextAction: "Answer the clarification queue before launching autonomous execution.",
-      riskClass: "medium",
-    });
-    exceptionIds.push(exception.id);
-    const run = await finalizeLedgerRun({
-      runId: ledgerRun.id,
-      status: "blocked",
-      actualSteps: detail.version.executionPlan.steps.map((step) => buildBlockedStep(step, "Launch blocked until clarification queue is resolved.")),
-      notes: "Launch blocked by open clarification queue",
-    });
-    await markScheduleError(input.scheduleId, "clarification_required");
-    return {
-      run,
-      exceptionIds,
-      readinessReason: "clarification_required",
-    };
-  }
-
-  if (autonomyMode === "autonomous" && readiness.gateResult !== "ready") {
-    const exception = await normalizeWorkpackException({
-      workpackId: detail.workpack.id,
-      versionId: detail.version.id,
-      runId: ledgerRun.id,
-      reasonCategory: "policy_boundary",
-      reasonCode: readiness.reasonCode,
-      title: "Autonomous launch blocked by readiness gate",
-      summary: readiness.nextAction,
-      remediationPointer: `/workpacks/${detail.workpack.id}`,
-      nextAction: "Clear rollout blockers before relaunching in autonomous mode.",
-      riskClass: "high",
-    });
-    exceptionIds.push(exception.id);
-    const run = await finalizeLedgerRun({
-      runId: ledgerRun.id,
-      status: "blocked",
-      actualSteps: detail.version.executionPlan.steps.map((step) => buildBlockedStep(step, `Launch blocked: ${readiness.reasonCode}`)),
-      notes: `Autonomous launch blocked: ${readiness.reasonCode}`,
-    });
-    await markScheduleError(input.scheduleId, readiness.reasonCode);
-    return {
-      run,
-      exceptionIds,
-      readinessReason: readiness.reasonCode,
-    };
-  }
-
-  const connectorValidation = await validateConnectorMaps({
-    workpackId: detail.workpack.id,
-    runId: ledgerRun.id,
-    emitExceptions: true,
-  });
-  if (connectorValidation.blocked || connectorValidation.stale) {
-    const run = await finalizeLedgerRun({
-      runId: ledgerRun.id,
-      status: "blocked",
-      actualSteps: detail.version.executionPlan.steps.map((step) => buildBlockedStep(step, "Launch blocked by connector validation state.")),
-      connectorSummaries: connectorValidation.connectorMaps.map((connectorMap) => ({
-        connectorFamily: connectorMap.connectorFamily,
-        status: connectorMap.validationStatus,
-        summary: `Scopes ${connectorMap.scopePosture}; fields missing ${connectorMap.missingFields.length}; introspection ${connectorMap.introspectionId ?? "none"}`,
-      })),
-      notes: "Launch blocked by connector validation",
-    });
-    await markScheduleError(input.scheduleId, connectorValidation.blocked ? "connector_blocked" : "connector_stale");
-    return {
-      run,
-      exceptionIds,
-      readinessReason: connectorValidation.blocked ? "connector_blocked" : "connector_stale",
-    };
-  }
-
-  const actualSteps: WorkpackRunStep[] = [];
-  const approvalCheckpoints: WorkpackApprovalCheckpoint[] = [];
-  const artifacts: WorkpackArtifactReference[] = [];
-  let stopDispatch = false;
-
-  for (const step of detail.version.executionPlan.steps) {
-    if (stopDispatch) {
-      actualSteps.push(buildSkippedStep(step, "Skipped because an earlier approval boundary or executor failure halted the run."));
-      continue;
-    }
-
-    if (step.requiresApproval) {
-      approvalCheckpoints.push({
-        stepId: step.id,
-        reason: `Consequence boundary preserved for ${step.title}`,
-        approved: false,
-      });
-      const exception = await normalizeWorkpackException({
-        workpackId: detail.workpack.id,
-        versionId: detail.version.id,
-        runId: ledgerRun.id,
-        reasonCategory: "policy_boundary",
-        reasonCode: "approval_boundary_pending",
-        title: "Approval boundary reached",
-        summary: `${step.title} requires human approval before the automation can continue.`,
-        remediationPointer: `/workpacks/${detail.workpack.id}/exceptions`,
-        nextAction: "Approve, reject, or downgrade this boundary in the exception inbox.",
-        riskClass: step.sideEffectClass === "financial" || step.sideEffectClass === "irreversible" ? "critical" : "high",
-      });
-      exceptionIds.push(exception.id);
-      actualSteps.push(buildBlockedStep(step, "Paused at a consequence boundary awaiting approval."));
-      stopDispatch = true;
-      continue;
-    }
-
-    const dispatchResult = await attemptDispatchStep({
-      detail,
-      runId: ledgerRun.id,
-      step,
-      autonomyMode,
-      requestedBy: input.requestedBy ?? null,
-      queueWorkerJobByRuntime: queueFn,
-    });
-
-    if (!dispatchResult.ok) {
-      const exception = await normalizeWorkpackException({
-        workpackId: detail.workpack.id,
-        versionId: detail.version.id,
-        runId: ledgerRun.id,
-        reasonCategory: "operational",
-        reasonCode: "executor_dispatch_failed",
-        title: "Executor dispatch failed",
-        summary: dispatchResult.reason,
-        remediationPointer: `/workpacks/${detail.workpack.id}/connectors`,
-        nextAction: "Inspect runtime availability, worker flags, and connector posture before relaunching.",
-        riskClass: "high",
-      });
-      exceptionIds.push(exception.id);
-      actualSteps.push(buildBlockedStep(step, `Dispatch failed: ${dispatchResult.reason}`));
-      stopDispatch = true;
-      continue;
-    }
-
-    actualSteps.push(dispatchResult.step);
-    artifacts.push(...dispatchResult.artifacts);
-
-    if (dispatchResult.step.status === "failed") {
-      const exception = await normalizeWorkpackException({
-        workpackId: detail.workpack.id,
-        versionId: detail.version.id,
-        runId: ledgerRun.id,
-        reasonCategory: "operational",
-        reasonCode: "executor_job_failed",
-        title: "Executor returned a failed job",
-        summary: dispatchResult.step.outputSummary,
-        remediationPointer: `/workpacks/${detail.workpack.id}/exceptions`,
-        nextAction: "Inspect the worker job output, fix the failing runtime path, and relaunch safely.",
-        riskClass: "high",
-      });
-      exceptionIds.push(exception.id);
-      stopDispatch = true;
-    }
-  }
-
-  const runStatus = deriveRunStatus(actualSteps, approvalCheckpoints);
-  const notes = runStatus === "awaiting_approval"
-    ? "Execution paused at approval boundaries"
-    : runStatus === "queued" || runStatus === "running"
-      ? `Execution dispatched through worker fabric in ${autonomyMode} mode`
-      : runStatus === "succeeded"
-        ? `Execution completed in ${autonomyMode} mode`
-        : "Execution blocked by worker dispatch safety checks";
-
-  const run = await persistLaunchRun({
-    ledgerRunId: ledgerRun.id,
-    runStatus,
-    actualSteps,
-    approvalCheckpoints,
-    artifacts,
-    connectorSummaries: connectorValidation.connectorMaps.map((connectorMap) => ({
-      connectorFamily: connectorMap.connectorFamily,
-      status: connectorMap.validationStatus,
-      summary: `Validated with ${connectorMap.grantedScopes.length} granted scopes`,
-    })),
-    notes,
-  });
-
-  await updateWorkpackAfterLaunch({
+  return launchPlannedSteps({
     detail,
-    autonomyMode,
-    runStatus,
+    steps: detail.version.executionPlan!.steps,
+    requestedBy: input.requestedBy ?? null,
+    autonomyMode: input.autonomyMode ?? "supervised",
+    trigger: input.trigger,
+    triggerSource: input.triggerSource,
+    scheduleId: input.scheduleId ?? null,
+    ledgerNotes: `Launched in ${(input.autonomyMode ?? "supervised")} mode`,
+    queueWorkerJobByRuntime: deps.queueWorkerJobByRuntime ?? queueWorkerJobByRuntime,
   });
-  await updateScheduleAfterRun({
-    scheduleId: input.scheduleId,
-    run,
-    runStatus,
-  });
+}
 
-  await saveTelemetryEvent({
-    id: createWorkpackId("evt"),
-    tenantId: detail.workpack.tenantId,
-    workpackId: detail.workpack.id,
-    versionId: detail.version.id,
-    eventName: runStatus === "succeeded" ? "run_succeeded" : runStatus === "failed" || runStatus === "blocked" ? "run_blocked" : "run_started",
-    detail: notes,
-    createdAt: nowIso(),
+export async function continueWorkpackRunFromStep(
+  input: {
+    workpackId: string;
+    stepId: string;
+    sourceRunId?: string | null;
+    requestedBy?: number | null;
+    autonomyMode?: AutonomyMode;
+    approvedBoundaryStepIds?: readonly string[];
+    trigger?: WorkpackRun["trigger"];
+    triggerSource?: string;
+  },
+  deps: WorkpackLaunchDeps = {},
+): Promise<LaunchWorkpackResult> {
+  const detail = await resolveLaunchableDetail({
+    workpackId: input.workpackId,
+    requestedBy: input.requestedBy ?? null,
   });
+  const startIndex = detail.version.executionPlan!.steps.findIndex((step) => step.id === input.stepId);
+  if (startIndex < 0) {
+    throw new Error(`Unknown workpack step: ${input.stepId}`);
+  }
 
-  await captureWorkpackMetricSnapshot(detail.workpack.id);
-  return {
-    run,
-    exceptionIds,
-    readinessReason: runStatus,
-  };
+  return launchPlannedSteps({
+    detail,
+    steps: detail.version.executionPlan!.steps.slice(startIndex),
+    requestedBy: input.requestedBy ?? null,
+    autonomyMode: input.autonomyMode
+      ?? (detail.workpack.autonomyMode === "draft" ? "supervised" : detail.workpack.autonomyMode),
+    trigger: input.trigger ?? "manual",
+    triggerSource: input.triggerSource ?? "exception_inbox",
+    ledgerNotes: `Continuation from ${input.sourceRunId ?? "manual"} at step ${input.stepId}`,
+    preApprovedBoundaryStepIds: input.approvedBoundaryStepIds ?? [],
+    queueWorkerJobByRuntime: deps.queueWorkerJobByRuntime ?? queueWorkerJobByRuntime,
+  });
 }
 
 function buildWorkerArtifactReferences(

@@ -8,6 +8,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const useRouteMock = vi.fn();
 const detailMock = vi.fn();
 const connectorsMock = vi.fn();
+const discoverMock = vi.fn();
 const refreshMock = vi.fn();
 const validateMock = vi.fn();
 const updateMapMock = vi.fn();
@@ -29,6 +30,7 @@ vi.mock("@/lib/trpc", () => ({
     workpack: {
       getDetail: { useQuery: (...args: unknown[]) => detailMock(...args) },
       connectors: { useQuery: (...args: unknown[]) => connectorsMock(...args) },
+      discoverConnectors: { useMutation: (...args: unknown[]) => discoverMock(...args) },
       refreshConnectorIntrospections: { useMutation: (...args: unknown[]) => refreshMock(...args) },
       validateConnectors: { useMutation: (...args: unknown[]) => validateMock(...args) },
       updateConnectorMap: { useMutation: (...args: unknown[]) => updateMapMock(...args) },
@@ -68,6 +70,7 @@ describe("WorkpackConnectorStudio", () => {
       },
       isLoading: false,
     });
+    discoverMock.mockReturnValue({ mutate: vi.fn(), isPending: false });
     refreshMock.mockReturnValue({ mutate: vi.fn(), isPending: false });
     validateMock.mockReturnValue({ mutate: vi.fn(), isPending: false });
     updateMapMock.mockReturnValue({ mutate: vi.fn(), isPending: false, variables: null });
@@ -79,5 +82,6 @@ describe("WorkpackConnectorStudio", () => {
     expect(screen.getByText("Connector Matrix")).toBeInTheDocument();
     expect(screen.getByText("crm")).toBeInTheDocument();
     expect(screen.getByText(/missing/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /auto-discover/i })).toBeInTheDocument();
   });
 });

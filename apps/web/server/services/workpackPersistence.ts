@@ -1077,6 +1077,14 @@ export async function getWorkpackException(
   return getRecordById("workpack_exception", exceptionId, session?.db ?? null);
 }
 
+export async function getWorkpackExceptionForTenant(
+  tenantId: string,
+  exceptionId: string,
+  session?: WorkpackPersistenceSession,
+): Promise<WorkpackException | null> {
+  return getRecordByIdForTenant("workpack_exception", tenantId, exceptionId, session?.db ?? null);
+}
+
 export async function getBenchmarkPack(
   benchmarkPackId: string,
   session?: WorkpackPersistenceSession,

@@ -10,6 +10,7 @@ export const workpackTelemetryEventNameValues = [
   "run_succeeded",
   "exception_opened",
   "exception_resolved",
+  "exception_action_applied",
   "promotion_candidate",
   "promotion_approved",
   "promotion_blocked",

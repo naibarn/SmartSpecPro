@@ -33,6 +33,7 @@ import {
 } from "../workpackPersistence";
 import { compileWorkpackExecutionPlan } from "../workpackCompilerService";
 import {
+  continueWorkpackRunFromStep,
   launchWorkpack,
   listWorkpackExecutorSnapshots,
   reconcileDispatchedWorkpackRuns,
@@ -251,6 +252,87 @@ describe("workpackLaunchService", () => {
     expect(updatedDetail?.runs[0]?.status).toBe("succeeded");
     expect(updatedDetail?.runs[0]?.actualSteps[0]?.status).toBe("succeeded");
     expect(updatedDetail?.runs[0]?.artifactReferences.some((artifact) => artifact.label === "Dispatch plugin workflow published artifacts")).toBe(true);
+  });
+
+  it("continues from an approved boundary step instead of restarting from the beginning", async () => {
+    const draft = await seedWorkpack();
+    const detail = await getWorkpackDetail(draft.workpack.id);
+    expect(detail).not.toBeNull();
+
+    await updateWorkpackVersion(detail!.version.id, (version) => ({
+      ...version,
+      executionPlan: {
+        ...version.executionPlan!,
+        steps: [
+          {
+            ...version.executionPlan!.steps[0]!,
+            id: "step_boundary",
+            title: "Approve payroll export",
+            objective: "Create the payroll export in the managed workflow lane.",
+            expectedOutcome: "Payroll export queued",
+            preferredRuntimePath: "workflow",
+            allowedFallbackPaths: [],
+            requiredConnectorFamilies: [],
+            sideEffectClass: "external_write",
+            requiresApproval: true,
+          },
+          {
+            ...version.executionPlan!.steps[0]!,
+            id: "step_followup",
+            title: "Notify downstream team",
+            objective: "Notify the downstream team that the export is ready.",
+            expectedOutcome: "Notification queued",
+            preferredRuntimePath: "workflow",
+            allowedFallbackPaths: [],
+            requiredConnectorFamilies: [],
+            sideEffectClass: "read_only",
+            requiresApproval: false,
+          },
+        ],
+      },
+    }));
+
+    const result = await continueWorkpackRunFromStep({
+      workpackId: draft.workpack.id,
+      stepId: "step_boundary",
+      approvedBoundaryStepIds: ["step_boundary"],
+      requestedBy: 17,
+      autonomyMode: "supervised",
+      triggerSource: "test_boundary_continue",
+    }, {
+      queueWorkerJobByRuntime: vi.fn()
+        .mockResolvedValueOnce({
+          created: true,
+          job: {
+            id: "worker-job-continue-1",
+            status: "queued",
+            runtimeType: "openclaw_gateway",
+            jobType: "plugin_workflow_task",
+          },
+        })
+        .mockResolvedValueOnce({
+          created: true,
+          job: {
+            id: "worker-job-continue-2",
+            status: "queued",
+            runtimeType: "openclaw_gateway",
+            jobType: "plugin_workflow_task",
+          },
+        }) as any,
+    });
+
+    expect(result.run.approvalCheckpoints[0]).toMatchObject({
+      stepId: "step_boundary",
+      approved: true,
+    });
+    expect(result.run.actualSteps[0]).toMatchObject({
+      stepId: "step_boundary",
+      status: "queued",
+    });
+    expect(result.run.actualSteps[1]).toMatchObject({
+      stepId: "step_followup",
+      status: "queued",
+    });
   });
 
   it("returns lane-aware executor monitor snapshots for recent workpack runs", async () => {

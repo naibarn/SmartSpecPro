@@ -1,6 +1,5 @@
 import {
   type WorkpackExecutionPlan,
-  type WorkpackRuntimePath,
   type WorkpackStep,
   workpackExecutionPlanSchema,
 } from "../../shared/workpackContracts";
@@ -18,48 +17,9 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
-function chooseRuntimePath(step: WorkpackStep, plannerPlan: TaskExecutionPlan): WorkpackRuntimePath {
-  if (step.localityHint === "desktop") return "desktop_local";
-  if (plannerPlan.taskType === "agency" && step.requiredConnectorFamilies.length > 1) return "agency";
-  if (plannerPlan.taskType === "responses" && step.sideEffectClass === "read_only") return "browser";
-  if (
-    step.requiredConnectorFamilies.includes("vendor_portal")
-    && (
-      step.sideEffectClass === "read_only"
-      || step.title.toLowerCase().includes("compare")
-      || step.title.toLowerCase().includes("review")
-    )
-  ) {
-    return "browser";
-  }
-  if (step.sideEffectClass === "read_only" && step.requiredConnectorFamilies.length === 0) return "skill";
-  if (step.requiredConnectorFamilies.length > 1) return "hybrid";
-  if (step.preferredRuntimePath === "workflow") return "workflow";
-  return step.preferredRuntimePath;
-}
-
-function fallbackChainForRuntime(runtimePath: WorkpackRuntimePath, plannerPlan: TaskExecutionPlan): WorkpackRuntimePath[] {
-  switch (runtimePath) {
-    case "browser":
-      return plannerPlan.complexity === "complex" ? ["hybrid", "agency"] : ["hybrid"];
-    case "desktop_local":
-      return ["worker_fabric"];
-    case "workflow":
-      return ["skill"];
-    case "hybrid":
-      return plannerPlan.complexity === "complex" ? ["agency", "workflow"] : ["workflow", "agency"];
-    case "worker_fabric":
-      return ["agency"];
-    case "agency":
-      return ["hybrid"];
-    case "skill":
-    default:
-      return [];
-  }
-}
-
 function refineStepPolicy(step: WorkpackStep, plannerPlan: TaskExecutionPlan): WorkpackStep {
-  const preferredRuntimePath = chooseRuntimePath(step, plannerPlan);
+  const runtimeIntent = plannerPlan.runtimeIntent;
+  const preferredRuntimePath = runtimeIntent?.primaryPath ?? step.preferredRuntimePath;
   const sideEffectClass = step.sideEffectClass;
   const connectorBackedWrite = step.requiredConnectorFamilies.length > 0;
   const idempotency = sideEffectClass === "read_only"
@@ -86,16 +46,21 @@ function refineStepPolicy(step: WorkpackStep, plannerPlan: TaskExecutionPlan): W
   return {
     ...step,
     preferredRuntimePath,
-    allowedFallbackPaths: step.allowedFallbackPaths.length > 0
-      ? step.allowedFallbackPaths
-      : fallbackChainForRuntime(preferredRuntimePath, plannerPlan),
-    requiresApproval: step.requiresApproval || sideEffectClass === "financial" || sideEffectClass === "irreversible",
+    allowedFallbackPaths: runtimeIntent?.fallbackPaths.length
+      ? [...runtimeIntent.fallbackPaths]
+      : step.allowedFallbackPaths,
+    requiresApproval:
+      step.requiresApproval
+      || runtimeIntent?.stepUpBoundary === "approval"
+      || sideEffectClass === "financial"
+      || sideEffectClass === "irreversible",
     idempotency,
     metadata: {
       ...step.metadata,
       plannerTaskType: plannerPlan.taskType,
       plannerComplexity: plannerPlan.complexity,
       plannerStrategy: plannerPlan.strategy,
+      plannerRuntimeIntent: runtimeIntent ?? null,
       autonomyBlocked:
         sideEffectClass !== "read_only"
         && idempotency.retryDisposition === "blocked"
@@ -141,6 +106,63 @@ function buildWorkpackPlannerPlan(input: {
   });
 }
 
+function buildStepPlannerPlan(input: {
+  workpackId: string;
+  title: string;
+  goal: string;
+  domainPack: string;
+  step: WorkpackStep;
+  localFileHeavy: boolean;
+  totalSteps: number;
+}): TaskExecutionPlan {
+  const sourceType = input.step.localityHint === "desktop"
+    ? "browser_automation"
+    : input.step.preferredRuntimePath === "agency"
+      ? "agency"
+      : input.step.preferredRuntimePath === "browser" || input.step.requiredConnectorFamilies.length > 0
+        ? "responses"
+        : "skill";
+  const preferredStrategy = input.step.sideEffectClass === "financial" || input.step.sideEffectClass === "irreversible"
+    ? "best"
+    : input.totalSteps > 3 || input.step.requiredConnectorFamilies.length > 1
+      ? "fastest"
+      : "cheapest";
+
+  return buildExecutionPlan({
+    sourceType,
+    skillSlug: `workpack-${input.domainPack}`,
+    conversationModel: `${input.title}:${input.step.title}`,
+    hasTools: input.step.requiredConnectorFamilies.length > 0 || input.step.preferredRuntimePath !== "skill" || input.localFileHeavy,
+    hasMultipleSteps: input.totalSteps > 1,
+    runtimeHints: {
+      preferredPath: input.step.preferredRuntimePath,
+      allowedFallbackPaths: input.step.allowedFallbackPaths,
+      connectorCount: input.step.requiredConnectorFamilies.length,
+      localityHint: input.step.localityHint,
+      sideEffectClass: input.step.sideEffectClass,
+      requiresApproval: input.step.requiresApproval,
+      prefersBrowser:
+        input.step.preferredRuntimePath === "browser"
+        || input.step.requiredConnectorFamilies.includes("vendor_portal"),
+      prefersWorkflow: input.step.preferredRuntimePath === "workflow",
+      requiresDeterministic: input.step.preferredRuntimePath === "workflow" || input.step.preferredRuntimePath === "skill",
+    },
+    executionPolicy: {
+      preferredStrategy,
+      budgetClass: preferredStrategy === "best" ? "premium" : preferredStrategy === "fastest" ? "standard" : "economy",
+      requirements: sourceType === "responses"
+        ? { supportsResponses: true }
+        : {},
+      thinking_level_hint:
+        input.step.sideEffectClass === "financial" || input.step.sideEffectClass === "irreversible"
+          ? "high"
+          : input.step.requiredConnectorFamilies.length > 1
+            ? "medium"
+            : "low",
+    } as any,
+  });
+}
+
 export async function compileWorkpackExecutionPlan(input: {
   workpackId: string;
   requestedBy?: number | null;
@@ -159,7 +181,16 @@ export async function compileWorkpackExecutionPlan(input: {
     steps: detail.playbook.steps,
     localFileHeavy: detail.playbook.localFileIntelligence.available,
   });
-  const steps = detail.playbook.steps.map((step) => refineStepPolicy(step, plannerPlan));
+  const stepPlannerPlans = detail.playbook.steps.map((step) => buildStepPlannerPlan({
+    workpackId: detail.workpack.id,
+    title: detail.workpack.title,
+    goal: detail.workpack.goal,
+    domainPack: detail.workpack.domainPack,
+    step,
+    localFileHeavy: detail.playbook.localFileIntelligence.available,
+    totalSteps: detail.playbook.steps.length,
+  }));
+  const steps = detail.playbook.steps.map((step, index) => refineStepPolicy(step, stepPlannerPlans[index] ?? plannerPlan));
   const plan = workpackExecutionPlanSchema.parse({
     workpackId: detail.workpack.id,
     versionId: detail.version.id,
@@ -185,6 +216,7 @@ export async function compileWorkpackExecutionPlan(input: {
         compiledAt: generatedAt,
         compiledBy: input.requestedBy ?? null,
         plannerPlan,
+        stepPlannerPlans,
       },
     }), session);
     await updateWorkpack(detail.workpack.id, (workpack) => ({

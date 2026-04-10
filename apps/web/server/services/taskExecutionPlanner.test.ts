@@ -200,6 +200,45 @@ describe("taskExecutionPlanner", () => {
       expect(Object.isFrozen(plan)).toBe(true);
     });
 
+    it("emits runtime intent when runtime hints are provided", () => {
+      const plan = buildExecutionPlan({
+        ...baseInput,
+        sourceType: "responses",
+        hasTools: true,
+        hasMultipleSteps: true,
+        runtimeHints: {
+          connectorCount: 2,
+          sideEffectClass: "bounded_write",
+          preferredPath: "hybrid",
+          requiresApproval: false,
+        },
+      });
+      expect(plan.runtimeIntent).toEqual({
+        primaryPath: "hybrid",
+        fallbackPaths: ["agency", "workflow"],
+        stepUpBoundary: "policy",
+      });
+    });
+
+    it("moves high-risk desktop work to an approval boundary with desktop-first routing", () => {
+      const plan = buildExecutionPlan({
+        ...baseInput,
+        sourceType: "browser_automation",
+        hasTools: true,
+        runtimeHints: {
+          localityHint: "desktop",
+          connectorCount: 1,
+          sideEffectClass: "financial",
+          requiresApproval: true,
+        },
+      });
+      expect(plan.runtimeIntent).toEqual({
+        primaryPath: "desktop_local",
+        fallbackPaths: ["worker_fabric"],
+        stepUpBoundary: "approval",
+      });
+    });
+
     it("prevents mutation of frozen plan", () => {
       const plan = buildExecutionPlan(baseInput);
       expect(() => {

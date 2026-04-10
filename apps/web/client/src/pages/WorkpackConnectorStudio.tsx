@@ -7,8 +7,32 @@ import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
 import { WorkpackConnectorMatrix } from "@/components/workpack/WorkpackConnectorMatrix";
 import { WorkpackSummaryHeader } from "@/components/workpack/WorkpackSummaryHeader";
+import type { ConnectorIntrospection } from "@shared/workpackContracts";
 
-function buildIntrospectionTemplate(connectorMaps: Array<{ connectorFamily: string }>): string {
+function buildIntrospectionTemplate(
+  connectorMaps: Array<{ connectorFamily: string }>,
+  introspections?: ConnectorIntrospection[],
+): string {
+  if ((introspections ?? []).length > 0) {
+    const payload = Object.fromEntries((introspections ?? []).map((introspection) => [
+      introspection.connectorFamily,
+      {
+        connectorKey: introspection.connectorKey,
+        availableFields: introspection.availableFields,
+        fieldTypes: introspection.fieldTypes,
+        grantedScopes: introspection.grantedScopes,
+        expiresAt: introspection.expiresAt,
+        schemaVersion: introspection.schemaVersion,
+        supportsIdempotency: introspection.supportsIdempotency,
+        status: introspection.status,
+        source: introspection.source,
+        collectedAt: introspection.collectedAt,
+        sourceDeviceId: introspection.sourceDeviceId,
+      },
+    ]));
+    return JSON.stringify(payload, null, 2);
+  }
+
   const payload = Object.fromEntries(connectorMaps.map((connectorMap) => [
     connectorMap.connectorFamily,
     {
@@ -38,9 +62,12 @@ export default function WorkpackConnectorStudio() {
 
   useEffect(() => {
     if (connectorQuery.data?.connectorMaps?.length) {
-      setIntrospectionText(buildIntrospectionTemplate(connectorQuery.data.connectorMaps));
+      setIntrospectionText(buildIntrospectionTemplate(
+        connectorQuery.data.connectorMaps,
+        connectorQuery.data.introspections,
+      ));
     }
-  }, [connectorQuery.data?.connectorMaps]);
+  }, [connectorQuery.data?.connectorMaps, connectorQuery.data?.introspections]);
 
   const refreshMutation = trpc.workpack.refreshConnectorIntrospections.useMutation({
     onSuccess: async () => {
@@ -56,6 +83,17 @@ export default function WorkpackConnectorStudio() {
   const validateMutation = trpc.workpack.validateConnectors.useMutation({
     onSuccess: async () => {
       toast.success("Connector validation refreshed");
+      await Promise.all([
+        utils.workpack.connectors.invalidate({ workpackId }),
+        utils.workpack.getDetail.invalidate({ workpackId }),
+      ]);
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const discoverMutation = trpc.workpack.discoverConnectors.useMutation({
+    onSuccess: async () => {
+      toast.success("Connector discovery refreshed");
       await Promise.all([
         utils.workpack.connectors.invalidate({ workpackId }),
         utils.workpack.getDetail.invalidate({ workpackId }),
@@ -111,19 +149,32 @@ export default function WorkpackConnectorStudio() {
 
         <div className="space-y-6">
           <DashboardCard
-            title="Introspection Refresh"
-            description="Paste tenant-scoped live connector metadata. Validation fails closed when no fresh introspection exists."
+            title="Auto Discovery & Manual Override"
+            description="Auto-discover tenant-scoped connector evidence first, then patch or override metadata only when needed."
             trailing={(
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => validateMutation.mutate({ workpackId })}
-                disabled={validateMutation.isPending}
-              >
-                {validateMutation.isPending ? "Validating..." : "Revalidate"}
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => discoverMutation.mutate({ workpackId })}
+                  disabled={discoverMutation.isPending}
+                >
+                  {discoverMutation.isPending ? "Discovering..." : "Auto-discover"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => validateMutation.mutate({ workpackId })}
+                  disabled={validateMutation.isPending}
+                >
+                  {validateMutation.isPending ? "Validating..." : "Revalidate"}
+                </Button>
+              </div>
             )}
           >
+            <p className="mb-3 text-xs text-slate-500">
+              Discovery can infer schema evidence from tenant-local workpack signals, but validation still fails closed until scopes and connector posture are strong enough.
+            </p>
             <Textarea
               className="min-h-[240px] font-mono text-xs"
               value={introspectionText}
@@ -144,7 +195,7 @@ export default function WorkpackConnectorStudio() {
                 }}
                 disabled={refreshMutation.isPending}
               >
-                {refreshMutation.isPending ? "Refreshing..." : "Refresh introspection"}
+                {refreshMutation.isPending ? "Refreshing..." : "Apply manual override"}
               </Button>
             </div>
           </DashboardCard>

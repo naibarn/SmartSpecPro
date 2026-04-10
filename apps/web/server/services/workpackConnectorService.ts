@@ -44,6 +44,14 @@ export interface ConnectorValidationResult {
   };
 }
 
+export interface ConnectorDiscoveryResult {
+  workpackId: string;
+  versionId: string;
+  introspections: ConnectorIntrospection[];
+  discoveredCount: number;
+  unresolvedFamilies: string[];
+}
+
 const DEFAULT_REQUIRED_FIELDS = ["record_id", "status", "summary"];
 const READ_SCOPE_SUFFIX = ":read";
 const WRITE_SCOPE_SUFFIX = ":write";
@@ -163,6 +171,30 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
+function dedupeStrings(values: Array<string | null | undefined>): string[] {
+  return Array.from(new Set(values.filter((value): value is string => Boolean(value && value.trim()))));
+}
+
+function inferSampleFieldTypes(payload: Record<string, unknown>): Record<string, string> {
+  const fieldTypes: Record<string, string> = {};
+  for (const [key, value] of Object.entries(payload)) {
+    if (typeof value === "string") {
+      fieldTypes[key] = "string";
+    } else if (typeof value === "number") {
+      fieldTypes[key] = "number";
+    } else if (typeof value === "boolean") {
+      fieldTypes[key] = "boolean";
+    } else if (value instanceof Date) {
+      fieldTypes[key] = "date";
+    } else if (Array.isArray(value)) {
+      fieldTypes[key] = "array";
+    } else if (value && typeof value === "object") {
+      fieldTypes[key] = "object";
+    }
+  }
+  return fieldTypes;
+}
+
 function highestSideEffectClass(classes: SideEffectClass[]): SideEffectClass {
   if (classes.includes("financial")) return "financial";
   if (classes.includes("irreversible")) return "irreversible";
@@ -224,6 +256,54 @@ function buildDraftMap(input: {
   });
 }
 
+function buildDiscoveredIntrospection(input: {
+  detail: NonNullable<Awaited<ReturnType<typeof getWorkpackDetail>>>;
+  connectorMap: ConnectorMap;
+  existing?: ConnectorIntrospection;
+}): ConnectorIntrospection {
+  const template = CONNECTOR_FIELD_TEMPLATES[input.connectorMap.connectorFamily];
+  const samplePayload = input.connectorMap.samplePayload ?? {};
+  const sampleFieldTypes = inferSampleFieldTypes(samplePayload);
+  const availableFields = dedupeStrings([
+    ...(input.existing?.availableFields ?? []),
+    ...(template?.availableFields ?? []),
+    ...input.connectorMap.fieldMappings.map((mapping) => mapping.targetField),
+    ...Object.keys(samplePayload),
+  ]);
+  const fieldTypes = {
+    ...(template?.fieldTypes ?? {}),
+    ...sampleFieldTypes,
+    ...(input.existing?.fieldTypes ?? {}),
+  };
+  const grantedScopes = input.existing?.grantedScopes ?? input.connectorMap.grantedScopes ?? [];
+  const source = input.existing?.source
+    ?? (input.detail.playbook.localFileIntelligence.available ? "desktop_host" : "managed_runtime");
+  const hasDiscoveryEvidence = availableFields.length > 0 || Object.keys(samplePayload).length > 0;
+  const status = input.existing?.status
+    ?? (grantedScopes.length > 0
+      ? "healthy"
+      : hasDiscoveryEvidence
+        ? "stale"
+        : "unavailable");
+
+  return connectorIntrospectionSchema.parse({
+    id: input.existing?.id ?? createWorkpackId("cin"),
+    tenantId: input.detail.workpack.tenantId,
+    connectorKey: input.existing?.connectorKey ?? input.connectorMap.connectorKey,
+    connectorFamily: input.connectorMap.connectorFamily,
+    availableFields,
+    fieldTypes,
+    grantedScopes,
+    expiresAt: input.existing?.expiresAt ?? null,
+    schemaVersion: input.existing?.schemaVersion ?? null,
+    supportsIdempotency: input.existing?.supportsIdempotency ?? input.connectorMap.writeMode !== "blocked",
+    status,
+    source,
+    collectedAt: nowIso(),
+    sourceDeviceId: input.existing?.sourceDeviceId ?? input.detail.playbook.localFileIntelligence.sourceDeviceId ?? null,
+  });
+}
+
 async function ensureConnectorMaps(workpackId: string): Promise<ConnectorMap[]> {
   const detail = await getWorkpackDetail(workpackId);
   if (!detail) {
@@ -280,6 +360,46 @@ async function selectLatestTenantIntrospections(workpackId: string): Promise<Rec
     }
   }
   return Object.fromEntries(latestByFamily.entries());
+}
+
+export async function discoverConnectorIntrospections(workpackId: string): Promise<ConnectorDiscoveryResult> {
+  const detail = await getWorkpackDetail(workpackId);
+  if (!detail) {
+    throw new Error(`Unknown workpack: ${workpackId}`);
+  }
+
+  const connectorMaps = await ensureConnectorMaps(workpackId);
+  const tenantIntrospections = await selectLatestTenantIntrospections(workpackId);
+  const discovered = connectorMaps.map((connectorMap) => buildDiscoveredIntrospection({
+    detail,
+    connectorMap,
+    existing:
+      (detail.version.connectorIntrospections ?? []).find((candidate) => candidate.connectorFamily === connectorMap.connectorFamily)
+      ?? tenantIntrospections[connectorMap.connectorFamily],
+  }));
+
+  const mergedByFamily = new Map<string, ConnectorIntrospection>();
+  for (const introspection of detail.version.connectorIntrospections ?? []) {
+    mergedByFamily.set(introspection.connectorFamily, introspection);
+  }
+  for (const introspection of discovered) {
+    mergedByFamily.set(introspection.connectorFamily, introspection);
+  }
+
+  await updateWorkpackVersion(detail.version.id, (version) => ({
+    ...version,
+    connectorIntrospections: Array.from(mergedByFamily.values()).sort((left, right) => right.collectedAt.localeCompare(left.collectedAt)),
+  }));
+
+  return {
+    workpackId: detail.workpack.id,
+    versionId: detail.version.id,
+    introspections: discovered,
+    discoveredCount: discovered.length,
+    unresolvedFamilies: discovered
+      .filter((introspection) => introspection.grantedScopes.length === 0 || introspection.status === "unavailable")
+      .map((introspection) => introspection.connectorFamily),
+  };
 }
 
 function metadataToIntrospection(tenantId: string, connectorFamily: string, metadata: Partial<ConnectorMetadata>): ConnectorIntrospection {
@@ -483,6 +603,9 @@ export async function validateConnectorMaps(input: {
   }
 
   const connectorMaps = await ensureConnectorMaps(input.workpackId);
+  const autoDiscovery = !input.metadataByFamily
+    ? await discoverConnectorIntrospections(input.workpackId)
+    : null;
   const overrideIntrospections = input.metadataByFamily
     ? await refreshConnectorIntrospections({
         workpackId: input.workpackId,
@@ -491,6 +614,7 @@ export async function validateConnectorMaps(input: {
     : [];
   const liveTenantIntrospections = {
     ...await selectLatestTenantIntrospections(input.workpackId),
+    ...Object.fromEntries((autoDiscovery?.introspections ?? []).map((introspection) => [introspection.connectorFamily, introspection] as const)),
     ...Object.fromEntries(overrideIntrospections.map((introspection) => [introspection.connectorFamily, introspection] as const)),
   };
   const validatedMaps = connectorMaps.map((connectorMap) => {

@@ -20,6 +20,7 @@ import {
 import { simulateWorkpack } from "../services/workpackSimulationService";
 import { replayWorkpackRun } from "../services/workpackReplayService";
 import {
+  discoverConnectorIntrospections,
   getConnectorStudioView,
   refreshConnectorIntrospections,
   updateConnectorMapFields,
@@ -242,6 +243,17 @@ export const workpackRouter = router({
     return getConnectorStudioView(input.workpackId);
   }),
 
+  discoverConnectors: protectedProcedure.input(z.object({
+    workpackId: z.string().min(1),
+  })).mutation(async ({ ctx, input }) => {
+    const tenantId = requireTenantId(ctx);
+    const detail = await getWorkpackDetail(input.workpackId);
+    if (!detail || detail.workpack.tenantId !== tenantId) {
+      throw new TRPCError({ code: "NOT_FOUND", message: "Workpack not found" });
+    }
+    return discoverConnectorIntrospections(input.workpackId);
+  }),
+
   validateConnectors: protectedProcedure.input(z.object({
     workpackId: z.string().min(1),
   })).mutation(async ({ ctx, input }) => {
@@ -460,7 +472,9 @@ export const workpackRouter = router({
       }
       return listWorkpackExceptionInbox(input.workpackId);
     }
-    return listExceptionsByTenant(tenantId);
+    return (await listExceptionsByTenant(tenantId))
+      .filter((record) => !record.resolvedAt)
+      .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
   }),
 
   resolveException: protectedProcedure.input(z.object({
@@ -475,7 +489,12 @@ export const workpackRouter = router({
       "escalate_admin",
       "mark_false_positive",
     ]).optional(),
-  })).mutation(({ input }) => resolveWorkpackException(input)),
+  })).mutation(({ ctx, input }) => resolveWorkpackException({
+    tenantId: requireTenantId(ctx),
+    exceptionId: input.exceptionId,
+    action: input.action,
+    requestedBy: ctx.user?.id ?? null,
+  })),
 
   roiDashboard: protectedProcedure.input(z.object({
     sliceDimension: metricSliceDimensionSchema.optional(),

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { validateConnectorMaps } from "../workpackConnectorService";
 import { compileWorkpackExecutionPlan } from "../workpackCompilerService";
+import { refreshConnectorIntrospections, validateConnectorMaps } from "../workpackConnectorService";
 import { createDraftWorkpack } from "../workpackIntakeService";
 import { resetWorkpackStore } from "../workpackPersistence";
 
@@ -10,10 +10,10 @@ describe("workpackConnectorService", () => {
     await resetWorkpackStore();
   });
 
-  it("creates and validates typed connector maps", async () => {
-    const draft = await createDraftWorkpack({
+  it("auto-discovers tenant connector posture from existing tenant evidence", async () => {
+    const source = await createDraftWorkpack({
       tenantId: "tenant-1",
-      title: "Support triage",
+      title: "Support triage source",
       goal: "Route support tickets",
       domainPack: "support_ops",
       sources: [
@@ -24,11 +24,9 @@ describe("workpackConnectorService", () => {
         },
       ],
     });
-    await compileWorkpackExecutionPlan({ workpackId: draft.workpack.id });
-
-    const result = await validateConnectorMaps({
-      workpackId: draft.workpack.id,
-      emitExceptions: false,
+    await compileWorkpackExecutionPlan({ workpackId: source.workpack.id });
+    await refreshConnectorIntrospections({
+      workpackId: source.workpack.id,
       metadataByFamily: {
         helpdesk: {
           availableFields: ["record_id", "status", "summary", "ticket_id", "priority"],
@@ -70,12 +68,32 @@ describe("workpackConnectorService", () => {
       },
     });
 
+    const draft = await createDraftWorkpack({
+      tenantId: "tenant-1",
+      title: "Support triage reuse",
+      goal: "Route support tickets from another queue",
+      domainPack: "support_ops",
+      sources: [
+        {
+          type: "document",
+          title: "Support SOP 2",
+          sourceText: "Classify and route each support request with the same connector posture.",
+        },
+      ],
+    });
+    await compileWorkpackExecutionPlan({ workpackId: draft.workpack.id });
+
+    const result = await validateConnectorMaps({
+      workpackId: draft.workpack.id,
+      emitExceptions: false,
+    });
+
     expect(result.blocked).toBe(false);
     expect(result.connectorMaps.length).toBeGreaterThan(0);
-    expect(result.connectorMaps[0]?.validationStatus).toBe("validated");
+    expect(result.connectorMaps.every((connectorMap) => connectorMap.validationStatus === "validated")).toBe(true);
   });
 
-  it("fails closed when connector scopes are missing", async () => {
+  it("fails closed when discovery cannot recover required scopes", async () => {
     const draft = await createDraftWorkpack({
       tenantId: "tenant-1",
       title: "Sales follow-up",
@@ -93,23 +111,10 @@ describe("workpackConnectorService", () => {
 
     const result = await validateConnectorMaps({
       workpackId: draft.workpack.id,
-      metadataByFamily: {
-        crm: {
-          availableFields: ["record_id", "status", "summary", "account_id", "opportunity_stage"],
-          fieldTypes: {
-            record_id: "string",
-            status: "string",
-            summary: "string",
-            account_id: "string",
-            opportunity_stage: "string",
-          },
-          grantedScopes: ["crm:read"],
-          status: "healthy",
-        },
-      },
+      emitExceptions: false,
     });
 
     expect(result.blocked).toBe(true);
-    expect(result.connectorMaps.some((map) => map.validationStatus === "blocked")).toBe(true);
+    expect(result.connectorMaps.some((connectorMap) => connectorMap.validationStatus === "blocked")).toBe(true);
   });
 });
