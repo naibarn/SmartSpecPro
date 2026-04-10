@@ -226,6 +226,7 @@ describe("workpackLaunchService", () => {
 
     const reconciledRunIds = await reconcileDispatchedWorkpackRuns({
       tenantId: "tenant-1",
+      workpackId: draft.workpack.id,
     }, {
       loadWorkerJobsById: vi.fn().mockResolvedValue({
         "worker-job-3": {

@@ -10,6 +10,8 @@ const detailMock = vi.fn();
 const startRunMock = vi.fn();
 const createScheduleMock = vi.fn();
 const triggerScheduleMock = vi.fn();
+const runDueSchedulesMock = vi.fn();
+const reconcileRunsMock = vi.fn();
 const invalidateMock = vi.fn();
 
 vi.mock("wouter", () => ({
@@ -29,6 +31,8 @@ vi.mock("@/lib/trpc", () => ({
       startRun: { useMutation: (...args: unknown[]) => startRunMock(...args) },
       createSchedule: { useMutation: (...args: unknown[]) => createScheduleMock(...args) },
       triggerSchedule: { useMutation: (...args: unknown[]) => triggerScheduleMock(...args) },
+      runDueSchedules: { useMutation: (...args: unknown[]) => runDueSchedulesMock(...args) },
+      reconcileRuns: { useMutation: (...args: unknown[]) => reconcileRunsMock(...args) },
     },
   },
 }));
@@ -71,7 +75,30 @@ describe("WorkpackDetail", () => {
           policyBlockFrequency: 0.1,
         },
         runs: [
-          { id: "run_1", notes: "simulation", status: "succeeded", startedAt: "2026-04-10T00:00:00.000Z", actualSteps: [{}, {}] },
+          {
+            id: "run_1",
+            notes: "worker dispatch",
+            status: "running",
+            trigger: "manual",
+            startedAt: "2026-04-10T00:00:00.000Z",
+            actualSteps: [
+              {
+                stepId: "step_1",
+                title: "Queue browser step",
+                runtimePath: "browser",
+                sideEffectClass: "read_only",
+                status: "running",
+                outputSummary: "Queued on browser via worker job worker-job-1.",
+                executionRef: {
+                  provider: "worker_job",
+                  executionId: "worker-job-1",
+                  status: "running",
+                  runtimeType: "openclaw_gateway",
+                },
+              },
+              {},
+            ],
+          },
         ],
         exceptions: [],
         promotionRecords: [],
@@ -81,13 +108,19 @@ describe("WorkpackDetail", () => {
     startRunMock.mockReturnValue({ mutate: vi.fn(), isPending: false });
     createScheduleMock.mockReturnValue({ mutate: vi.fn(), isPending: false });
     triggerScheduleMock.mockReturnValue({ mutate: vi.fn(), isPending: false });
+    runDueSchedulesMock.mockReturnValue({ mutate: vi.fn(), isPending: false });
+    reconcileRunsMock.mockReturnValue({ mutate: vi.fn(), isPending: false });
   });
 
-  it("renders lifecycle, policy posture, and history", () => {
+  it("renders lifecycle, policy posture, history, and live executor details", () => {
     render(<WorkpackDetail />);
 
     expect(screen.getByText("Support Autopilot")).toBeInTheDocument();
     expect(screen.getByText(/evidence completeness/i)).toBeInTheDocument();
     expect(screen.getByText("History Timeline")).toBeInTheDocument();
+    expect(screen.getByText("Live Executor Status")).toBeInTheDocument();
+    expect(screen.getAllByText(/worker-job-1/i).length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: /refresh executor status/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /process due schedules/i })).toBeInTheDocument();
   });
 });

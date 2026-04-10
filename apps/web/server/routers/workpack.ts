@@ -31,7 +31,13 @@ import { captureWorkpackMetricSnapshot } from "../services/workpackTelemetryServ
 import { getWorkpackReadinessSummary, listWorkpackReadinessSummaries } from "../services/workpackReadinessService";
 import { applyWorkpackIncidentAction } from "../services/workpackIncidentControlService";
 import { listWorkpackExceptionInbox, resolveWorkpackException } from "../services/workpackExceptionService";
-import { createWorkpackSchedule, launchWorkpack, runDueWorkpackSchedules, triggerWorkpackSchedule } from "../services/workpackLaunchService";
+import {
+  createWorkpackSchedule,
+  launchWorkpack,
+  reconcileDispatchedWorkpackRuns,
+  runDueWorkpackSchedules,
+  triggerWorkpackSchedule,
+} from "../services/workpackLaunchService";
 
 const workpackSourceInputSchema = z.object({
   type: z.enum([
@@ -362,6 +368,25 @@ export const workpackRouter = router({
       const tenantId = requireTenantId(ctx);
       const launchedRunIds = await runDueWorkpackSchedules(input?.at ? new Date(input.at) : undefined, tenantId);
       return { launchedRunIds };
+    }),
+
+  reconcileRuns: protectedProcedure
+    .input(z.object({
+      workpackId: z.string().optional(),
+    }).optional())
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx);
+      if (input?.workpackId) {
+        const detail = getWorkpackDetail(input.workpackId);
+        if (!detail || detail.workpack.tenantId !== tenantId) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Workpack not found" });
+        }
+      }
+      const reconciledRunIds = await reconcileDispatchedWorkpackRuns({
+        tenantId,
+        workpackId: input?.workpackId,
+      });
+      return { reconciledRunIds };
     }),
 
   listSchedules: protectedProcedure.query(({ ctx }) => {

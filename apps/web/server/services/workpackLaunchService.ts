@@ -952,11 +952,13 @@ function updateWorkpackAfterReconcile(input: {
 export async function reconcileDispatchedWorkpackRuns(
   input: {
     tenantId?: string;
+    workpackId?: string;
   } = {},
   deps: WorkpackLaunchDeps = {},
 ): Promise<string[]> {
   const loadWorkerJobsById = deps.loadWorkerJobsById ?? defaultLoadWorkerJobsById;
   const candidateRuns = (input.tenantId ? listRunsByTenant(input.tenantId) : listAllRuns())
+    .filter((run) => (!input.workpackId || run.workpackId === input.workpackId))
     .filter((run) => run.status === "queued" || run.status === "running");
 
   const jobIds = Array.from(new Set(candidateRuns.flatMap((run) => run.actualSteps
