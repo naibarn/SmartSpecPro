@@ -15,6 +15,14 @@ import {
   workpackRuntimePathValues,
   workpackScheduleSchema,
 } from "../../shared/workpackContracts";
+import {
+  type WorkpackExecutorLaneDetail,
+  workpackBrowserLaneDetailSchema,
+  workpackClusterLaneDetailSchema,
+  workpackDesktopLocalLaneDetailSchema,
+  workpackGenericLaneDetailSchema,
+  workpackWorkflowLaneDetailSchema,
+} from "../../shared/workpackExecutorLaneDetails";
 import { getDb } from "../db";
 import { sanitizeWorkerPayload } from "./workerPayloadSanitizer";
 import { compileWorkpackExecutionPlan } from "./workpackCompilerService";
@@ -601,7 +609,7 @@ export interface WorkpackExecutorMonitorSnapshot {
   latestEventType: string | null;
   startedAt: string | null;
   finishedAt: string | null;
-  laneDetails: Record<string, unknown> | null;
+  laneDetails: WorkpackExecutorLaneDetail | null;
   recentEvents: WorkpackExecutorEventSnapshot[];
   artifacts: WorkpackExecutorArtifactSnapshot[];
 }
@@ -789,6 +797,35 @@ function compactLaneDetails(details: Record<string, unknown>): Record<string, un
   return Object.keys(filtered).length > 0 ? filtered : null;
 }
 
+function validateLaneDetails(
+  detail: Record<string, unknown> | null,
+  lane:
+    | "browser"
+    | "workflow"
+    | "desktop_local"
+    | "worker_fabric"
+    | "hybrid"
+    | "agency"
+    | "generic",
+): WorkpackExecutorLaneDetail | null {
+  if (!detail) return null;
+
+  const payload = { lane, ...detail };
+  const result = (
+    lane === "browser"
+      ? workpackBrowserLaneDetailSchema
+      : lane === "workflow"
+        ? workpackWorkflowLaneDetailSchema
+        : lane === "desktop_local"
+          ? workpackDesktopLocalLaneDetailSchema
+          : lane === "worker_fabric" || lane === "hybrid" || lane === "agency"
+            ? workpackClusterLaneDetailSchema
+            : workpackGenericLaneDetailSchema
+  ).safeParse(payload);
+
+  return result.success ? result.data : null;
+}
+
 function deriveLaneDetails(input: {
   runtimePathHint: WorkpackRuntimePath | null;
   runtimeType: string | null;
@@ -801,7 +838,7 @@ function deriveLaneDetails(input: {
   outputJson: Record<string, unknown> | null;
   recentEvents: WorkpackExecutorEventSnapshot[];
   artifacts: WorkpackExecutorArtifactSnapshot[];
-}): Record<string, unknown> | null {
+}): WorkpackExecutorLaneDetail | null {
   const connectorFamilies = readStringArrayFromRecord(input.inputJson, "connectorFamilies");
   const fallbackPaths = readStringArrayFromRecord(input.instructionsJson, "fallbackPaths");
   const sourceCount = readNumberFromRecord(input.instructionsJson, "sourceCount");
@@ -810,7 +847,7 @@ function deriveLaneDetails(input: {
   const capabilityFamilies = readStringArrayFromRecord(input.capabilityRequirementsJson, "capabilityFamilies");
 
   if (input.runtimePathHint === "browser" || input.jobType === "browser_automation_task") {
-    return compactLaneDetails({
+    return validateLaneDetails(compactLaneDetails({
       stage,
       sourceCount,
       connectorFamilies,
@@ -818,7 +855,7 @@ function deriveLaneDetails(input: {
       currentUrl: readFirstStringFromEvents(input.recentEvents, ["currentUrl", "url", "pageUrl", "targetUrl"]),
       pageTitle: readFirstStringFromEvents(input.recentEvents, ["pageTitle", "title"]),
       publishedArtifacts: publishedArtifactLabels,
-    });
+    }), "browser");
   }
 
   if (
@@ -826,7 +863,7 @@ function deriveLaneDetails(input: {
     || input.runtimePathHint === "skill"
     || input.jobType === "plugin_workflow_task"
   ) {
-    return compactLaneDetails({
+    return validateLaneDetails(compactLaneDetails({
       stage,
       workflowRunId: input.workflowRunId,
       connectorFamilies,
@@ -834,11 +871,11 @@ function deriveLaneDetails(input: {
       fallbackPaths,
       publishedArtifacts: publishedArtifactLabels,
       intent: readStringFromRecord(input.instructionsJson, "intent"),
-    });
+    }), "workflow");
   }
 
   if (input.runtimePathHint === "desktop_local" || input.jobType === "local_folder_ingest") {
-    return compactLaneDetails({
+    return validateLaneDetails(compactLaneDetails({
       stage,
       rootCount:
         readFirstNumberFromEvents(input.recentEvents, ["rootCount"])
@@ -856,7 +893,7 @@ function deriveLaneDetails(input: {
       snippetQuery: readStringFromRecord(input.inputJson?.ingestPolicy, "snippetQuery"),
       includePreviewText: readBooleanFromRecord(input.inputJson?.ingestPolicy, "includePreviewText"),
       publishedArtifacts: input.artifacts.map((artifact) => artifact.artifactType ?? artifact.artifactId).slice(0, 4),
-    });
+    }), "desktop_local");
   }
 
   if (
@@ -867,7 +904,12 @@ function deriveLaneDetails(input: {
     || input.jobType === "workpack_hybrid_step"
     || input.jobType === "workpack_agency_step"
   ) {
-    return compactLaneDetails({
+    const clusterLane = input.runtimePathHint === "hybrid"
+      ? "hybrid"
+      : input.runtimePathHint === "agency"
+        ? "agency"
+        : "worker_fabric";
+    return validateLaneDetails(compactLaneDetails({
       stage,
       teamId: input.teamId,
       capabilityFamilies,
@@ -876,16 +918,16 @@ function deriveLaneDetails(input: {
       fallbackPaths,
       connectorFamilies,
       publishedArtifacts: publishedArtifactLabels,
-    });
+    }), clusterLane);
   }
 
-  return compactLaneDetails({
+  return validateLaneDetails(compactLaneDetails({
     stage,
     sourceCount,
     connectorFamilies,
     capabilityFamilies,
     publishedArtifacts: publishedArtifactLabels,
-  });
+  }), "generic");
 }
 
 async function defaultLoadExecutorSnapshotsById(

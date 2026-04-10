@@ -113,6 +113,7 @@ describe("WorkpackDetail", () => {
             publishedArtifactCount: 0,
             latestEventType: "navigation_completed",
             laneDetails: {
+              lane: "browser",
               stage: "navigate_queue",
               connectorFamilies: ["crm"],
               sourceCount: 1,

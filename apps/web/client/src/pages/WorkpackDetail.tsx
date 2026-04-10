@@ -289,7 +289,7 @@ export default function WorkpackDetail() {
                                 {snapshot.failureReason ? (
                                   <p className="mt-1 text-rose-700">Failure: {snapshot.failureReason}</p>
                                 ) : null}
-                                {(snapshot.laneDetails ? Object.entries(snapshot.laneDetails) : []).slice(0, 5).map(([key, value]: [string, unknown]) => (
+                                {(snapshot.laneDetails ? Object.entries(snapshot.laneDetails).filter(([key]) => key !== "lane") : []).slice(0, 5).map(([key, value]: [string, unknown]) => (
                                   <p key={`${snapshot.executionId}-${key}`} className="mt-1 text-sky-800">
                                     {formatLaneDetailLabel(key)} {formatLaneDetailValue(value)}
                                   </p>

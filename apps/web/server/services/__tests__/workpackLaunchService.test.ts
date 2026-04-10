@@ -317,6 +317,7 @@ describe("workpackLaunchService", () => {
           startedAt: "2026-04-10T00:00:00.000Z",
           finishedAt: null,
           laneDetails: {
+            lane: "browser",
             stage: "navigate_queue",
             connectorFamilies: ["crm"],
             sourceCount: 1,
@@ -347,6 +348,7 @@ describe("workpackLaunchService", () => {
       latestEventType: "navigation_completed",
       artifactCount: 1,
       laneDetails: expect.objectContaining({
+        lane: "browser",
         stage: "navigate_queue",
         connectorFamilies: ["crm"],
       }),
