@@ -601,6 +601,7 @@ export interface WorkpackExecutorMonitorSnapshot {
   latestEventType: string | null;
   startedAt: string | null;
   finishedAt: string | null;
+  laneDetails: Record<string, unknown> | null;
   recentEvents: WorkpackExecutorEventSnapshot[];
   artifacts: WorkpackExecutorArtifactSnapshot[];
 }
@@ -687,6 +688,206 @@ function deriveExecutorLaneLabel(
   return "Executor lane";
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function readStringFromRecord(value: unknown, key: string): string | null {
+  if (!isRecord(value)) return null;
+  const candidate = value[key];
+  return typeof candidate === "string" && candidate.trim().length > 0 ? candidate.trim() : null;
+}
+
+function readNumberFromRecord(value: unknown, key: string): number | null {
+  if (!isRecord(value)) return null;
+  const candidate = value[key];
+  return typeof candidate === "number" && Number.isFinite(candidate) ? candidate : null;
+}
+
+function readBooleanFromRecord(value: unknown, key: string): boolean | null {
+  if (!isRecord(value)) return null;
+  return typeof value[key] === "boolean" ? value[key] as boolean : null;
+}
+
+function readStringArrayFromRecord(value: unknown, key: string): string[] {
+  if (!isRecord(value) || !Array.isArray(value[key])) return [];
+  return (value[key] as unknown[])
+    .filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0)
+    .map((entry) => entry.trim());
+}
+
+function readFirstStringFromEvents(
+  events: WorkpackExecutorEventSnapshot[],
+  keys: string[],
+): string | null {
+  for (const event of events) {
+    for (const key of keys) {
+      const value = readStringFromRecord(event.payload, key);
+      if (value) return value;
+    }
+  }
+  return null;
+}
+
+function readFirstNumberFromEvents(
+  events: WorkpackExecutorEventSnapshot[],
+  keys: string[],
+): number | null {
+  for (const event of events) {
+    for (const key of keys) {
+      const value = readNumberFromRecord(event.payload, key);
+      if (value !== null) return value;
+    }
+  }
+  return null;
+}
+
+function readStageFromEvents(events: WorkpackExecutorEventSnapshot[]): string | null {
+  return readFirstStringFromEvents(events, ["stage"]);
+}
+
+function readArtifactMetadataValue(
+  artifacts: WorkpackExecutorArtifactSnapshot[],
+  key: string,
+): string | number | null {
+  for (const artifact of artifacts) {
+    if (!artifact.metadata || typeof artifact.metadata !== "object") continue;
+    const value = artifact.metadata[key];
+    if (typeof value === "string" && value.trim().length > 0) return value.trim();
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+  }
+  return null;
+}
+
+function readRootLabels(inputJson: Record<string, unknown> | null): string[] {
+  const roots = Array.isArray(inputJson?.roots) ? inputJson.roots : [];
+  return roots
+    .map((root) => readStringFromRecord(root, "name") ?? readStringFromRecord(root, "rootId"))
+    .filter((value): value is string => Boolean(value))
+    .slice(0, 3);
+}
+
+function readPublishedArtifactLabels(outputJson: Record<string, unknown> | null): string[] {
+  const publishedArtifacts = Array.isArray(outputJson?.publishedArtifacts) ? outputJson.publishedArtifacts : [];
+  return publishedArtifacts
+    .map((artifact) => readStringFromRecord(artifact, "label") ?? readStringFromRecord(artifact, "artifactId"))
+    .filter((value): value is string => Boolean(value))
+    .slice(0, 4);
+}
+
+function compactLaneDetails(details: Record<string, unknown>): Record<string, unknown> | null {
+  const filtered = Object.fromEntries(
+    Object.entries(details).filter(([, value]) => {
+      if (value == null) return false;
+      if (typeof value === "string") return value.trim().length > 0;
+      if (typeof value === "number" || typeof value === "boolean") return true;
+      if (Array.isArray(value)) return value.length > 0;
+      if (isRecord(value)) return Object.keys(value).length > 0;
+      return false;
+    }),
+  );
+  return Object.keys(filtered).length > 0 ? filtered : null;
+}
+
+function deriveLaneDetails(input: {
+  runtimePathHint: WorkpackRuntimePath | null;
+  runtimeType: string | null;
+  jobType: string | null;
+  teamId: string | null;
+  workflowRunId: string | null;
+  capabilityRequirementsJson: Record<string, unknown> | null;
+  inputJson: Record<string, unknown> | null;
+  instructionsJson: Record<string, unknown> | null;
+  outputJson: Record<string, unknown> | null;
+  recentEvents: WorkpackExecutorEventSnapshot[];
+  artifacts: WorkpackExecutorArtifactSnapshot[];
+}): Record<string, unknown> | null {
+  const connectorFamilies = readStringArrayFromRecord(input.inputJson, "connectorFamilies");
+  const fallbackPaths = readStringArrayFromRecord(input.instructionsJson, "fallbackPaths");
+  const sourceCount = readNumberFromRecord(input.instructionsJson, "sourceCount");
+  const stage = readStageFromEvents(input.recentEvents);
+  const publishedArtifactLabels = readPublishedArtifactLabels(input.outputJson);
+  const capabilityFamilies = readStringArrayFromRecord(input.capabilityRequirementsJson, "capabilityFamilies");
+
+  if (input.runtimePathHint === "browser" || input.jobType === "browser_automation_task") {
+    return compactLaneDetails({
+      stage,
+      sourceCount,
+      connectorFamilies,
+      fallbackPaths,
+      currentUrl: readFirstStringFromEvents(input.recentEvents, ["currentUrl", "url", "pageUrl", "targetUrl"]),
+      pageTitle: readFirstStringFromEvents(input.recentEvents, ["pageTitle", "title"]),
+      publishedArtifacts: publishedArtifactLabels,
+    });
+  }
+
+  if (
+    input.runtimePathHint === "workflow"
+    || input.runtimePathHint === "skill"
+    || input.jobType === "plugin_workflow_task"
+  ) {
+    return compactLaneDetails({
+      stage,
+      workflowRunId: input.workflowRunId,
+      connectorFamilies,
+      sourceCount,
+      fallbackPaths,
+      publishedArtifacts: publishedArtifactLabels,
+      intent: readStringFromRecord(input.instructionsJson, "intent"),
+    });
+  }
+
+  if (input.runtimePathHint === "desktop_local" || input.jobType === "local_folder_ingest") {
+    return compactLaneDetails({
+      stage,
+      rootCount:
+        readFirstNumberFromEvents(input.recentEvents, ["rootCount"])
+        ?? readNumberFromRecord(input.outputJson, "rootCount")
+        ?? (Array.isArray(input.inputJson?.roots) ? input.inputJson.roots.length : null)
+        ?? (typeof readArtifactMetadataValue(input.artifacts, "rootCount") === "number"
+          ? readArtifactMetadataValue(input.artifacts, "rootCount")
+          : null),
+      rootLabels: readRootLabels(input.inputJson),
+      indexedFileCount:
+        readFirstNumberFromEvents(input.recentEvents, ["indexedFileCount", "artifactCount"])
+        ?? (typeof readArtifactMetadataValue(input.artifacts, "indexedFileCount") === "number"
+          ? readArtifactMetadataValue(input.artifacts, "indexedFileCount")
+          : null),
+      snippetQuery: readStringFromRecord(input.inputJson?.ingestPolicy, "snippetQuery"),
+      includePreviewText: readBooleanFromRecord(input.inputJson?.ingestPolicy, "includePreviewText"),
+      publishedArtifacts: input.artifacts.map((artifact) => artifact.artifactType ?? artifact.artifactId).slice(0, 4),
+    });
+  }
+
+  if (
+    input.runtimePathHint === "worker_fabric"
+    || input.runtimePathHint === "hybrid"
+    || input.runtimePathHint === "agency"
+    || input.jobType === "workpack_worker_fabric_step"
+    || input.jobType === "workpack_hybrid_step"
+    || input.jobType === "workpack_agency_step"
+  ) {
+    return compactLaneDetails({
+      stage,
+      teamId: input.teamId,
+      capabilityFamilies,
+      intent: readStringFromRecord(input.instructionsJson, "intent"),
+      sourceCount,
+      fallbackPaths,
+      connectorFamilies,
+      publishedArtifacts: publishedArtifactLabels,
+    });
+  }
+
+  return compactLaneDetails({
+    stage,
+    sourceCount,
+    connectorFamilies,
+    capabilityFamilies,
+    publishedArtifacts: publishedArtifactLabels,
+  });
+}
+
 async function defaultLoadExecutorSnapshotsById(
   jobIds: string[],
 ): Promise<Record<string, WorkpackExecutorMonitorSnapshot>> {
@@ -703,14 +904,19 @@ async function defaultLoadExecutorSnapshotsById(
     db
       .select({
         id: workerJobs.id,
+        teamId: workerJobs.teamId,
         workerId: workerJobs.workerId,
         runtimeType: workerJobs.runtimeType,
+        workflowRunId: workerJobs.workflowRunId,
         jobType: workerJobs.jobType,
         status: workerJobs.status,
         statusReason: workerJobs.statusReason,
         resourceProfile: workerJobs.resourceProfile,
         failureReason: workerJobs.failureReason,
+        capabilityRequirementsJson: workerJobs.capabilityRequirementsJson,
+        inputJson: workerJobs.inputJson,
         instructionsJson: workerJobs.instructionsJson,
+        outputJson: workerJobs.outputJson,
         startedAt: workerJobs.startedAt,
         finishedAt: workerJobs.finishedAt,
       })
@@ -775,6 +981,19 @@ async function defaultLoadExecutorSnapshotsById(
     const runtimePathHint = normalizeRuntimePathHint(job.instructionsJson?.workpackRuntimePath);
     const jobArtifacts = artifactsByJobId.get(job.id) ?? [];
     const jobEvents = eventsByJobId.get(job.id) ?? [];
+    const laneDetails = deriveLaneDetails({
+      runtimePathHint,
+      runtimeType: job.runtimeType ?? null,
+      jobType: job.jobType ?? null,
+      teamId: job.teamId ?? null,
+      workflowRunId: job.workflowRunId ?? null,
+      capabilityRequirementsJson: isRecord(job.capabilityRequirementsJson) ? job.capabilityRequirementsJson : null,
+      inputJson: isRecord(job.inputJson) ? job.inputJson : null,
+      instructionsJson: isRecord(job.instructionsJson) ? job.instructionsJson : null,
+      outputJson: isRecord(job.outputJson) ? job.outputJson : null,
+      recentEvents: jobEvents,
+      artifacts: jobArtifacts,
+    });
     return [job.id, {
       executionId: String(job.id),
       provider: "worker_job" as const,
@@ -793,6 +1012,7 @@ async function defaultLoadExecutorSnapshotsById(
       latestEventType: jobEvents[0]?.eventType ?? null,
       startedAt: serializeDate(job.startedAt),
       finishedAt: serializeDate(job.finishedAt),
+      laneDetails,
       recentEvents: jobEvents,
       artifacts: jobArtifacts,
     } satisfies WorkpackExecutorMonitorSnapshot];

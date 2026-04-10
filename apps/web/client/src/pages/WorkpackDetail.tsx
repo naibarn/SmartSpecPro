@@ -9,6 +9,35 @@ import { WorkpackHistoryTimeline } from "@/components/workpack/WorkpackHistoryTi
 import { WorkpackSourcePanel } from "@/components/workpack/WorkpackSourcePanel";
 import { WorkpackSummaryHeader } from "@/components/workpack/WorkpackSummaryHeader";
 
+function formatLaneDetailLabel(key: string): string {
+  return key
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function formatLaneDetailValue(value: unknown): string {
+  if (Array.isArray(value)) {
+    return value
+      .map((entry) => typeof entry === "string" ? entry : JSON.stringify(entry))
+      .filter(Boolean)
+      .join(", ");
+  }
+  if (typeof value === "boolean") {
+    return value ? "Yes" : "No";
+  }
+  if (typeof value === "number") {
+    return String(value);
+  }
+  if (typeof value === "string") {
+    return value;
+  }
+  if (value && typeof value === "object") {
+    return JSON.stringify(value);
+  }
+  return "n/a";
+}
+
 export default function WorkpackDetail() {
   const utils = trpc.useUtils();
   const [, params] = useRoute("/workpacks/:workpackId");
@@ -260,6 +289,11 @@ export default function WorkpackDetail() {
                                 {snapshot.failureReason ? (
                                   <p className="mt-1 text-rose-700">Failure: {snapshot.failureReason}</p>
                                 ) : null}
+                                {(snapshot.laneDetails ? Object.entries(snapshot.laneDetails) : []).slice(0, 5).map(([key, value]: [string, unknown]) => (
+                                  <p key={`${snapshot.executionId}-${key}`} className="mt-1 text-sky-800">
+                                    {formatLaneDetailLabel(key)} {formatLaneDetailValue(value)}
+                                  </p>
+                                ))}
                                 {(snapshot.recentEvents ?? []).slice(0, 2).map((event: any) => (
                                   <p key={event.eventId} className="mt-1 text-sky-700">
                                     {event.eventType ?? "event"} • {event.createdAt ?? "pending"}

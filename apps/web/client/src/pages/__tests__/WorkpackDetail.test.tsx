@@ -112,6 +112,11 @@ describe("WorkpackDetail", () => {
             artifactCount: 1,
             publishedArtifactCount: 0,
             latestEventType: "navigation_completed",
+            laneDetails: {
+              stage: "navigate_queue",
+              connectorFamilies: ["crm"],
+              sourceCount: 1,
+            },
             recentEvents: [
               {
                 eventId: "evt-1",
@@ -143,6 +148,8 @@ describe("WorkpackDetail", () => {
     expect(screen.getAllByText(/worker-job-1/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/Browser automation lane/i)).toBeInTheDocument();
     expect(screen.getByText(/Latest event navigation_completed/i)).toBeInTheDocument();
+    expect(screen.getByText(/Stage navigate_queue/i)).toBeInTheDocument();
+    expect(screen.getByText(/Connector Families crm/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /refresh executor status/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /process due schedules/i })).toBeInTheDocument();
   });
