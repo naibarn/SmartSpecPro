@@ -1,0 +1,140 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
+  <title id="title">SmartSpec Pro Alpha Ecosystem Map</title>
+  <desc id="desc">Current alpha platform map showing SmartSpec Pro core capabilities, a desktop companion, ZeroClaw, OpenClaw, NemoClaw, and HiClaw.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0%" x2="100%" y1="0%" y2="100%">
+      <stop offset="0%" stop-color="#f8fbff"/>
+      <stop offset="100%" stop-color="#eef5ff"/>
+    </linearGradient>
+    <linearGradient id="core" x1="0%" x2="100%" y1="0%" y2="100%">
+      <stop offset="0%" stop-color="#2d4d94"/>
+      <stop offset="100%" stop-color="#10295c"/>
+    </linearGradient>
+    <linearGradient id="card" x1="0%" x2="100%" y1="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#edf5ff"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" x2="100%" y1="0%" y2="100%">
+      <stop offset="0%" stop-color="#dff8ff"/>
+      <stop offset="100%" stop-color="#b9ecfb"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="16" flood-color="#9fb8db" flood-opacity="0.3"/>
+    </filter>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#d7e4f3" stroke-width="1"/>
+    </pattern>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 0 0 L 12 6 L 0 12 z" fill="#2b4b8f"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="900" fill="url(#bg)"/>
+  <rect width="1600" height="900" fill="url(#grid)" opacity="0.65"/>
+
+  <text x="800" y="72" text-anchor="middle" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="38" font-weight="700" fill="#10295c">
+    SmartSpec Pro Alpha Platform Map
+  </text>
+  <text x="800" y="108" text-anchor="middle" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="18" fill="#47648d">
+    Current repo shape: native product capabilities plus desktop and worker runtime expansion, still alpha
+  </text>
+
+  <circle cx="800" cy="450" r="240" fill="none" stroke="#d6e6fb" stroke-width="3"/>
+  <circle cx="800" cy="450" r="174" fill="none" stroke="#e2eefb" stroke-width="2"/>
+
+  <g filter="url(#shadow)">
+    <circle cx="800" cy="450" r="114" fill="url(#core)"/>
+    <circle cx="800" cy="450" r="90" fill="none" stroke="#7fcff1" stroke-width="2" opacity="0.45"/>
+  </g>
+  <text x="800" y="435" text-anchor="middle" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="28" font-weight="700" fill="#ffffff">SmartSpec Pro</text>
+  <text x="800" y="470" text-anchor="middle" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="16" fill="#dceaff">Web control plane and product core</text>
+
+  <g stroke="#93abc7" stroke-width="2">
+    <line x1="800" y1="336" x2="800" y2="240"/>
+    <line x1="874" y1="372" x2="998" y2="306"/>
+    <line x1="886" y1="462" x2="999" y2="514"/>
+    <line x1="800" y1="564" x2="800" y2="670"/>
+    <line x1="714" y1="462" x2="600" y2="514"/>
+    <line x1="724" y1="372" x2="603" y2="306"/>
+  </g>
+
+  <g filter="url(#shadow)">
+    <circle cx="800" cy="215" r="58" fill="url(#accent)" stroke="#78c9e8" stroke-width="2"/>
+    <circle cx="1015" cy="290" r="58" fill="url(#accent)" stroke="#78c9e8" stroke-width="2"/>
+    <circle cx="1015" cy="530" r="58" fill="url(#accent)" stroke="#78c9e8" stroke-width="2"/>
+    <circle cx="800" cy="690" r="58" fill="url(#accent)" stroke="#78c9e8" stroke-width="2"/>
+    <circle cx="585" cy="530" r="58" fill="url(#accent)" stroke="#78c9e8" stroke-width="2"/>
+    <circle cx="585" cy="290" r="58" fill="url(#accent)" stroke="#78c9e8" stroke-width="2"/>
+  </g>
+
+  <g font-family="Inter, Segoe UI, Arial, sans-serif" font-weight="700" fill="#17355f" text-anchor="middle">
+    <text x="800" y="222" font-size="24">Chat + LLM</text>
+    <text x="1015" y="283" font-size="24">Image</text>
+    <text x="1015" y="313" font-size="24">Generation</text>
+    <text x="1015" y="523" font-size="24">Video</text>
+    <text x="1015" y="553" font-size="24">Generation</text>
+    <text x="800" y="683" font-size="24">Agency Workflow</text>
+    <text x="585" y="523" font-size="24">Agent Skills</text>
+    <text x="585" y="283" font-size="24">RAG / Library</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="96" y="292" width="285" height="320" rx="26" fill="url(#card)" stroke="#cadcf5" stroke-width="2"/>
+    <rect x="124" y="326" width="230" height="102" rx="20" fill="#f8fbff" stroke="#92abd1" stroke-width="2"/>
+    <circle cx="239" cy="514" r="62" fill="#f8fbff" stroke="#92abd1" stroke-width="2"/>
+  </g>
+  <text x="239" y="372" text-anchor="middle" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="24" font-weight="700" fill="#17355f">Desktop</text>
+  <text x="239" y="400" text-anchor="middle" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="24" font-weight="700" fill="#17355f">Companion</text>
+  <text x="239" y="532" text-anchor="middle" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="30" font-weight="700" fill="#17355f">ZeroClaw</text>
+  <text x="239" y="560" text-anchor="middle" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="16" fill="#4a648c">Machine-bound local runtime</text>
+  <text x="239" y="593" text-anchor="middle" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="18" fill="#4a648c">Trusted local execution</text>
+  <path d="M 355 450 L 520 450" fill="none" stroke="#2b4b8f" stroke-width="6" marker-end="url(#arrow)"/>
+  <path d="M 239 430 L 239 450" fill="none" stroke="#2b4b8f" stroke-width="4" marker-end="url(#arrow)"/>
+  <path d="M 239 468 L 239 450" fill="none" stroke="#2b4b8f" stroke-width="4" marker-end="url(#arrow)"/>
+
+  <g filter="url(#shadow)">
+    <rect x="1180" y="310" width="300" height="220" rx="26" fill="url(#card)" stroke="#cadcf5" stroke-width="2"/>
+    <circle cx="1260" cy="390" r="36" fill="#f1f8ff" stroke="#8faad3" stroke-width="2"/>
+    <circle cx="1395" cy="390" r="36" fill="#f1f8ff" stroke="#8faad3" stroke-width="2"/>
+  </g>
+  <path d="M 1080 450 L 1180 450" fill="none" stroke="#2b4b8f" stroke-width="6" marker-end="url(#arrow)"/>
+  <path d="M 1298 390 L 1358 390" fill="none" stroke="#94aac8" stroke-width="4" marker-end="url(#arrow)"/>
+  <text x="1260" y="402" text-anchor="middle" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="20" font-weight="700" fill="#17355f">OpenClaw</text>
+  <text x="1395" y="394" text-anchor="middle" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="20" font-weight="700" fill="#17355f">External Worker</text>
+  <text x="1395" y="418" text-anchor="middle" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="18" font-weight="700" fill="#17355f">Fabric</text>
+  <text x="1330" y="470" text-anchor="middle" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="22" font-weight="700" fill="#17355f">OpenClaw</text>
+  <text x="1330" y="500" text-anchor="middle" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="17" fill="#4a648c">Stable delegated external runtime</text>
+
+  <g filter="url(#shadow)">
+    <polygon points="185,160 238,130 291,160 291,220 238,250 185,220" fill="#f8fbff" stroke="#d86a6a" stroke-width="3"/>
+    <polygon points="206,172 238,154 270,172 270,208 238,226 206,208" fill="#eef4ff" stroke="#9ab0d2" stroke-width="2"/>
+    <circle cx="238" cy="200" r="15" fill="none" stroke="#17355f" stroke-width="3"/>
+    <rect x="232" y="194" width="12" height="16" rx="2" fill="#17355f"/>
+  </g>
+  <path d="M 290 210 L 520 350" fill="none" stroke="#2b4b8f" stroke-width="6" marker-end="url(#arrow)"/>
+  <text x="238" y="116" text-anchor="middle" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="20" fill="#4a648c">Secure isolated sandbox</text>
+  <text x="238" y="292" text-anchor="middle" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="28" font-weight="700" fill="#17355f">NemoClaw</text>
+
+  <g filter="url(#shadow)">
+    <circle cx="1325" cy="140" r="36" fill="url(#accent)" stroke="#78c9e8" stroke-width="2"/>
+    <circle cx="1268" cy="220" r="36" fill="url(#accent)" stroke="#78c9e8" stroke-width="2"/>
+    <circle cx="1382" cy="220" r="36" fill="url(#accent)" stroke="#78c9e8" stroke-width="2"/>
+    <line x1="1325" y1="140" x2="1268" y2="220" stroke="#93abc7" stroke-width="3"/>
+    <line x1="1325" y1="140" x2="1382" y2="220" stroke="#93abc7" stroke-width="3"/>
+    <line x1="1268" y1="220" x2="1382" y2="220" stroke="#93abc7" stroke-width="3"/>
+  </g>
+  <path d="M 1290 260 L 1080 350" fill="none" stroke="#2b4b8f" stroke-width="6" marker-end="url(#arrow)"/>
+  <text x="1325" y="108" text-anchor="middle" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="20" fill="#4a648c">Collaborative distributed cluster</text>
+  <text x="1325" y="286" text-anchor="middle" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="28" font-weight="700" fill="#17355f">HiClaw</text>
+
+  <g opacity="0.85">
+    <circle cx="510" cy="748" r="28" fill="#f8fbff" stroke="#cadcf5" stroke-width="3"/>
+    <circle cx="800" cy="790" r="28" fill="#f8fbff" stroke="#cadcf5" stroke-width="3"/>
+    <circle cx="1090" cy="748" r="28" fill="#f8fbff" stroke="#cadcf5" stroke-width="3"/>
+    <path d="M 538 748 C 640 790, 700 790, 772 790" fill="none" stroke="#b2c4df" stroke-width="3"/>
+    <path d="M 828 790 C 900 790, 960 790, 1062 748" fill="none" stroke="#b2c4df" stroke-width="3"/>
+    <path d="M 470 700 C 590 770, 640 770, 770 790" fill="none" stroke="#c4d3e8" stroke-width="3"/>
+    <path d="M 1130 700 C 1010 770, 960 770, 830 790" fill="none" stroke="#c4d3e8" stroke-width="3"/>
+  </g>
+  <text x="800" y="844" text-anchor="middle" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="24" font-weight="700" fill="#4a648c">Other Claw Family</text>
+</svg>
