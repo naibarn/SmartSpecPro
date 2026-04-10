@@ -1080,6 +1080,15 @@ export function resolveLibraryVectorIndexName(): string {
   return "library-index";
 }
 
+function resolveProcessingMimeType(
+  declaredMimeType: string,
+  sniffedMimeType: string | null,
+): string {
+  const normalizedDeclared = declaredMimeType.trim().toLowerCase();
+  const normalizedSniffed = typeof sniffedMimeType === "string" ? sniffedMimeType.trim().toLowerCase() : "";
+  return normalizedSniffed || normalizedDeclared || "application/octet-stream";
+}
+
 function extractVectorIndexNames(metadata: Record<string, unknown> | null | undefined): string[] {
   if (!metadata || Array.isArray(metadata)) {
     return [];
@@ -2247,7 +2256,8 @@ export async function uploadLibraryFile(
     fileBuffer = sanitized.sanitizedBuffer;
   }
 
-  validateLibraryUploadSignature(fileBuffer, fileType, ext);
+  const { sniffedMime } = validateLibraryUploadSignature(fileBuffer, fileType, ext);
+  const effectiveFileType = resolveProcessingMimeType(fileType, sniffedMime);
   const checksumSha256 = computeLibraryUploadChecksum(fileBuffer);
   const duplicate = await findDuplicateUploadedLibraryItem(db, {
     tenantId,
@@ -2278,12 +2288,12 @@ export async function uploadLibraryFile(
     };
   }
 
-  const billing = await calculateLibraryUploadCreditCost(fileType, fileBuffer.length);
-  const fallbackText = extractTextLikeUploadContent(fileBuffer, fileType, ext);
+  const billing = await calculateLibraryUploadCreditCost(effectiveFileType, fileBuffer.length);
+  const fallbackText = extractTextLikeUploadContent(fileBuffer, effectiveFileType, ext);
   const enrichment = await enrichLibraryUploadContent({
     fileBuffer,
     fileName,
-    fileType,
+    fileType: effectiveFileType,
     extension: ext,
     fallbackText,
     metadata: input.metadata,
@@ -2298,12 +2308,11 @@ export async function uploadLibraryFile(
 
   const fileId = crypto.randomUUID().replace(/-/g, "");
   const key = `library/uploads/${tenantId}/${actor.userId}/${fileId}${ext ? `.${ext}` : ""}`;
-  const storage = await storagePut(key, fileBuffer, fileType);
-
-  const inferredItemType = inferLibraryItemType(fileType, ext);
+  const storage = await storagePut(key, fileBuffer, effectiveFileType);
+  const inferredProcessingItemType = inferLibraryItemType(effectiveFileType, ext);
   const created = await createLibraryItem(
     {
-      itemType: inferredItemType,
+      itemType: inferredProcessingItemType,
       source: "document_upload",
       title: input.title?.trim() || fileName,
       description: null,
@@ -2314,7 +2323,7 @@ export async function uploadLibraryFile(
       metadata: {
         ...buildLibraryUploadMetadata(input.metadata, {
           fileName,
-          fileType,
+          fileType: effectiveFileType,
           extension: ext,
           fileSizeBytes: fileBuffer.length,
           checksumSha256,
@@ -2331,7 +2340,7 @@ export async function uploadLibraryFile(
         source_key: storage.key,
       },
       sourceUrl: storage.url,
-      thumbnailUrl: inferredItemType === "image" ? storage.url : null,
+      thumbnailUrl: inferredProcessingItemType === "image" ? storage.url : null,
       sourceLink: {
         linkType: "upload_key",
         linkId: storage.key,
@@ -2479,7 +2488,8 @@ export async function replaceLibraryFile(
     fileBuffer = sanitized.sanitizedBuffer;
   }
 
-  validateLibraryUploadSignature(fileBuffer, fileType, ext);
+  const { sniffedMime } = validateLibraryUploadSignature(fileBuffer, fileType, ext);
+  const effectiveFileType = resolveProcessingMimeType(fileType, sniffedMime);
   const checksumSha256 = computeLibraryUploadChecksum(fileBuffer);
   const duplicate = await findDuplicateUploadedLibraryItem(db, {
     tenantId,
@@ -2491,12 +2501,12 @@ export async function replaceLibraryFile(
     throw new Error("An identical file already exists in your library. Reuse the existing item instead of uploading a duplicate.");
   }
 
-  const billing = await calculateLibraryUploadCreditCost(fileType, fileBuffer.length);
-  const fallbackText = extractTextLikeUploadContent(fileBuffer, fileType, ext);
+  const billing = await calculateLibraryUploadCreditCost(effectiveFileType, fileBuffer.length);
+  const fallbackText = extractTextLikeUploadContent(fileBuffer, effectiveFileType, ext);
   const enrichment = await enrichLibraryUploadContent({
     fileBuffer,
     fileName,
-    fileType,
+    fileType: effectiveFileType,
     extension: ext,
     fallbackText,
     metadata: input.metadata,
@@ -2519,7 +2529,7 @@ export async function replaceLibraryFile(
         service: "library.replace_file",
         libraryItemId: existing.id,
         fileName,
-        fileType,
+        fileType: effectiveFileType,
         fileSizeBytes: fileBuffer.length,
         billingCategory: billing.category,
         billingBaseCredits: billing.baseCredits,
@@ -2574,8 +2584,8 @@ export async function replaceLibraryFile(
     // 5. Upload new file
     const fileId = crypto.randomUUID().replace(/-/g, "");
     newKey = `library/uploads/${tenantId}/${actor.userId}/${fileId}${ext ? `.${ext}` : ""}`;
-    const storage = await storagePut(newKey, fileBuffer, fileType);
-    const inferredItemType = inferLibraryItemType(fileType, ext);
+    const storage = await storagePut(newKey, fileBuffer, effectiveFileType);
+    const inferredItemType = inferLibraryItemType(effectiveFileType, ext);
 
     // Steps 6-7 in a transaction so item + link updates are atomic
     const updated = await db.transaction(async (tx) => {
@@ -2591,7 +2601,7 @@ export async function replaceLibraryFile(
           metadata: {
             ...buildLibraryUploadMetadata({ ...oldMetadata, ...(input.metadata || {}) }, {
               fileName,
-              fileType,
+              fileType: effectiveFileType,
               extension: ext,
               fileSizeBytes: fileBuffer.length,
               checksumSha256,
@@ -4286,7 +4296,7 @@ export async function restoreContentVersion(
     const currentStorageKey = currentLinks[0]?.linkId ?? null;
     const currentSnapshotContent = JSON.stringify({
       file_name: oldMetadata.file_name ?? existing.title,
-      file_type: oldMetadata.file_type ?? "application/octet-stream",
+      file_type: oldMetadata.file_type ?? effectiveFileType ?? "application/octet-stream",
       file_size_bytes: oldMetadata.file_size_bytes ?? 0,
       original_source_url: existing.sourceUrl ?? null,
     });
