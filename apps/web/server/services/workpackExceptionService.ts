@@ -3,7 +3,14 @@ import {
   type WorkpackException,
   workpackExceptionSchema,
 } from "../../shared/workpackContracts";
-import { createWorkpackId, getWorkpackDetail, getWorkpackException, saveTelemetryEvent, saveWorkpackException, updateWorkpack } from "./workpackPersistence";
+import {
+  createWorkpackId,
+  getWorkpackDetail,
+  getWorkpackException,
+  saveTelemetryEvent,
+  saveWorkpackException,
+  updateWorkpack,
+} from "./workpackPersistence";
 
 export interface NormalizeWorkpackExceptionInput {
   workpackId: string;
@@ -80,8 +87,8 @@ function deriveAllowedActions(
   return [...base, "retry"];
 }
 
-export function normalizeWorkpackException(input: NormalizeWorkpackExceptionInput): WorkpackException {
-  const detail = getWorkpackDetail(input.workpackId);
+export async function normalizeWorkpackException(input: NormalizeWorkpackExceptionInput): Promise<WorkpackException> {
+  const detail = await getWorkpackDetail(input.workpackId);
   if (!detail) {
     throw new Error(`Unknown workpack: ${input.workpackId}`);
   }
@@ -106,8 +113,8 @@ export function normalizeWorkpackException(input: NormalizeWorkpackExceptionInpu
     resolvedAt: null,
   });
 
-  saveWorkpackException(exceptionRecord);
-  saveTelemetryEvent({
+  await saveWorkpackException(exceptionRecord);
+  await saveTelemetryEvent({
     id: createWorkpackId("evt"),
     tenantId: detail.workpack.tenantId,
     workpackId: detail.workpack.id,
@@ -117,7 +124,7 @@ export function normalizeWorkpackException(input: NormalizeWorkpackExceptionInpu
     createdAt,
   });
 
-  updateWorkpack(detail.workpack.id, (workpack) => ({
+  await updateWorkpack(detail.workpack.id, (workpack) => ({
     ...workpack,
     lifecycleState: workpack.lifecycleState === "archived" ? "archived" : "needs_review",
     updatedAt: createdAt,
@@ -126,15 +133,15 @@ export function normalizeWorkpackException(input: NormalizeWorkpackExceptionInpu
   return exceptionRecord;
 }
 
-export function resolveWorkpackException(
+export async function resolveWorkpackException(
   input: string | {
     exceptionId: string;
     action?: WorkpackException["allowedActions"][number];
   },
-): WorkpackException {
+): Promise<WorkpackException> {
   const exceptionId = typeof input === "string" ? input : input.exceptionId;
   const action = typeof input === "string" ? undefined : input.action;
-  const record = getWorkpackException(exceptionId);
+  const record = await getWorkpackException(exceptionId);
   if (!record) {
     throw new Error(`Unknown workpack exception: ${exceptionId}`);
   }
@@ -146,19 +153,19 @@ export function resolveWorkpackException(
     resolvedAt,
     nextAction: action ? `${record.nextAction} (actioned via ${action})` : record.nextAction,
   };
-  saveWorkpackException(next);
+  await saveWorkpackException(next);
 
-  const detail = getWorkpackDetail(record.workpackId);
+  const detail = await getWorkpackDetail(record.workpackId);
   if (detail) {
     if (action === "downgrade_autonomy") {
-      updateWorkpack(detail.workpack.id, (workpack) => ({
+      await updateWorkpack(detail.workpack.id, (workpack) => ({
         ...workpack,
         autonomyMode: "draft",
         lifecycleState: "needs_review",
         updatedAt: resolvedAt,
       }));
     }
-    saveTelemetryEvent({
+    await saveTelemetryEvent({
       id: createWorkpackId("evt"),
       tenantId: detail.workpack.tenantId,
       workpackId: detail.workpack.id,
@@ -172,8 +179,8 @@ export function resolveWorkpackException(
   return next;
 }
 
-export function listWorkpackExceptionInbox(workpackId: string): WorkpackExceptionInboxEntry[] {
-  const detail = getWorkpackDetail(workpackId);
+export async function listWorkpackExceptionInbox(workpackId: string): Promise<WorkpackExceptionInboxEntry[]> {
+  const detail = await getWorkpackDetail(workpackId);
   if (!detail) {
     throw new Error(`Unknown workpack: ${workpackId}`);
   }
@@ -195,16 +202,16 @@ export function listWorkpackExceptionInbox(workpackId: string): WorkpackExceptio
       versionId: record.versionId,
       reasonCode: record.reasonCode,
       reasonCategory: record.reasonCategory,
-          riskClass: record.riskClass,
-          count: 1,
-          latestCreatedAt: record.createdAt,
-          nextAction: record.nextAction,
-          remediationPointer: record.remediationPointer,
-          title: record.title,
-          exceptionIds: [record.id],
-          allowedActions: record.allowedActions,
-        });
-      }
+      riskClass: record.riskClass,
+      count: 1,
+      latestCreatedAt: record.createdAt,
+      nextAction: record.nextAction,
+      remediationPointer: record.remediationPointer,
+      title: record.title,
+      exceptionIds: [record.id],
+      allowedActions: record.allowedActions,
+    });
+  }
 
   return Array.from(grouped.values()).sort((left, right) => right.latestCreatedAt.localeCompare(left.latestCreatedAt));
 }

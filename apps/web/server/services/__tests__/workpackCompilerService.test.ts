@@ -5,12 +5,12 @@ import { createDraftWorkpack } from "../workpackIntakeService";
 import { resetWorkpackStore, updateWorkpackVersion } from "../workpackPersistence";
 
 describe("compileWorkpackExecutionPlan", () => {
-  beforeEach(() => {
-    resetWorkpackStore();
+  beforeEach(async () => {
+    await resetWorkpackStore();
   });
 
-  it("chooses bounded runtime paths deterministically", () => {
-    const draft = createDraftWorkpack({
+  it("chooses bounded runtime paths deterministically", async () => {
+    const draft = await createDraftWorkpack({
       tenantId: "tenant-1",
       title: "Vendor quote comparison",
       goal: "Compare quotes and prepare procurement action",
@@ -24,14 +24,14 @@ describe("compileWorkpackExecutionPlan", () => {
       ],
     });
 
-    const plan = compileWorkpackExecutionPlan({ workpackId: draft.workpack.id, requestedBy: 9 });
+    const plan = await compileWorkpackExecutionPlan({ workpackId: draft.workpack.id, requestedBy: 9 });
 
     expect(plan.steps[1]?.preferredRuntimePath).toBe("browser");
     expect(plan.steps[2]?.preferredRuntimePath).toBe("hybrid");
   });
 
-  it("blocks autonomous safety when a write step cannot preserve a safe retry envelope", () => {
-    const draft = createDraftWorkpack({
+  it("blocks autonomous safety when a write step cannot preserve a safe retry envelope", async () => {
+    const draft = await createDraftWorkpack({
       tenantId: "tenant-1",
       title: "Critical finance commit",
       goal: "Post a sensitive closing action",
@@ -45,7 +45,7 @@ describe("compileWorkpackExecutionPlan", () => {
       ],
     });
 
-    updateWorkpackVersion(draft.version.id, (version) => ({
+    await updateWorkpackVersion(draft.version.id, (version) => ({
       ...version,
       playbook: {
         ...version.playbook,
@@ -59,7 +59,7 @@ describe("compileWorkpackExecutionPlan", () => {
       },
     }));
 
-    const plan = compileWorkpackExecutionPlan({ workpackId: draft.workpack.id });
+    const plan = await compileWorkpackExecutionPlan({ workpackId: draft.workpack.id });
 
     expect(isExecutionPlanAutonomySafe(plan)).toBe(false);
     expect(plan.steps.at(-1)?.idempotency.retryDisposition).toBe("blocked");

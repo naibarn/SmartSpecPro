@@ -2088,9 +2088,30 @@ export const financeSourceEnum = pgEnum("finance_source", [
 
 export const financeDocumentRoleEnum = pgEnum("finance_document_role", [
   "receipt",
+  "transfer_slip",
   "invoice",
   "statement",
   "supporting",
+]);
+
+export const financePaymentInstitutionKindEnum = pgEnum("finance_payment_institution_kind", [
+  "bank",
+  "issuer",
+  "other",
+]);
+
+export const financePaymentInstrumentKindEnum = pgEnum("finance_payment_instrument_kind", [
+  "bank_account",
+  "credit_card",
+  "cash",
+  "unknown",
+]);
+
+export const financePaymentDirectionEnum = pgEnum("finance_payment_direction", [
+  "outbound",
+  "inbound",
+  "both",
+  "unknown",
 ]);
 
 export const libraryItems = pgTable("library_items", {
@@ -2277,6 +2298,147 @@ export const libraryIndexJobs = pgTable("library_index_jobs", {
 export type LibraryIndexJob = typeof libraryIndexJobs.$inferSelect;
 export type InsertLibraryIndexJob = typeof libraryIndexJobs.$inferInsert;
 
+export const financeCounterparties = pgTable("finance_counterparties", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  projectId: varchar("project_id", { length: 100 }).notNull(),
+  ownerUserId: integer("owner_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  displayName: text("display_name").notNull(),
+  normalizedName: varchar("normalized_name", { length: 512 }).notNull(),
+  usageCount: integer("usage_count").notNull().default(0),
+  lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
+  allowedScopes: text("allowed_scopes").array().notNull().default(sql`'{}'`),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("finance_counterparties_tenant_normalized_unique").on(t.tenantId, t.projectId, t.ownerUserId, t.normalizedName),
+  index("finance_counterparties_tenant_project_owner_idx").on(t.tenantId, t.projectId, t.ownerUserId),
+  index("finance_counterparties_tenant_usage_idx").on(t.tenantId, t.ownerUserId, t.usageCount),
+  index("finance_counterparties_last_seen_idx").on(t.tenantId, t.lastSeenAt),
+  index("finance_counterparties_allowed_scopes_gin_idx").using("gin", t.allowedScopes),
+]);
+
+export type FinanceCounterparty = typeof financeCounterparties.$inferSelect;
+export type InsertFinanceCounterparty = typeof financeCounterparties.$inferInsert;
+
+export const financeCounterpartyAliases = pgTable("finance_counterparty_aliases", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  projectId: varchar("project_id", { length: 100 }).notNull(),
+  ownerUserId: integer("owner_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  counterpartyId: integer("counterparty_id").notNull().references(() => financeCounterparties.id, { onDelete: "cascade" }),
+  aliasName: text("alias_name").notNull(),
+  normalizedAlias: varchar("normalized_alias", { length: 512 }).notNull(),
+  allowedScopes: text("allowed_scopes").array().notNull().default(sql`'{}'`),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("finance_counterparty_aliases_tenant_normalized_unique").on(t.tenantId, t.projectId, t.ownerUserId, t.normalizedAlias),
+  index("finance_counterparty_aliases_counterparty_idx").on(t.counterpartyId),
+  index("finance_counterparty_aliases_tenant_project_owner_idx").on(t.tenantId, t.projectId, t.ownerUserId),
+  index("finance_counterparty_aliases_allowed_scopes_gin_idx").using("gin", t.allowedScopes),
+]);
+
+export type FinanceCounterpartyAlias = typeof financeCounterpartyAliases.$inferSelect;
+export type InsertFinanceCounterpartyAlias = typeof financeCounterpartyAliases.$inferInsert;
+
+export const financePaymentInstitutions = pgTable("finance_payment_institutions", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  projectId: varchar("project_id", { length: 100 }).notNull(),
+  ownerUserId: integer("owner_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  kind: financePaymentInstitutionKindEnum("kind").notNull().default("bank"),
+  displayName: text("display_name").notNull(),
+  normalizedName: varchar("normalized_name", { length: 512 }).notNull(),
+  usageCount: integer("usage_count").notNull().default(0),
+  lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
+  allowedScopes: text("allowed_scopes").array().notNull().default(sql`'{}'`),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("finance_payment_institutions_tenant_normalized_unique").on(t.tenantId, t.projectId, t.ownerUserId, t.kind, t.normalizedName),
+  index("finance_payment_institutions_tenant_project_owner_idx").on(t.tenantId, t.projectId, t.ownerUserId),
+  index("finance_payment_institutions_tenant_usage_idx").on(t.tenantId, t.ownerUserId, t.usageCount),
+  index("finance_payment_institutions_last_seen_idx").on(t.tenantId, t.lastSeenAt),
+  index("finance_payment_institutions_allowed_scopes_gin_idx").using("gin", t.allowedScopes),
+]);
+
+export type FinancePaymentInstitution = typeof financePaymentInstitutions.$inferSelect;
+export type InsertFinancePaymentInstitution = typeof financePaymentInstitutions.$inferInsert;
+
+export const financePaymentInstitutionAliases = pgTable("finance_payment_institution_aliases", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  projectId: varchar("project_id", { length: 100 }).notNull(),
+  ownerUserId: integer("owner_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  paymentInstitutionId: integer("payment_institution_id").notNull().references(() => financePaymentInstitutions.id, { onDelete: "cascade" }),
+  aliasName: text("alias_name").notNull(),
+  normalizedAlias: varchar("normalized_alias", { length: 512 }).notNull(),
+  allowedScopes: text("allowed_scopes").array().notNull().default(sql`'{}'`),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("finance_payment_institution_aliases_tenant_normalized_unique").on(t.tenantId, t.projectId, t.ownerUserId, t.normalizedAlias),
+  index("finance_payment_institution_aliases_payment_institution_idx").on(t.paymentInstitutionId),
+  index("finance_payment_institution_aliases_tenant_project_owner_idx").on(t.tenantId, t.projectId, t.ownerUserId),
+  index("finance_payment_institution_aliases_allowed_scopes_gin_idx").using("gin", t.allowedScopes),
+]);
+
+export type FinancePaymentInstitutionAlias = typeof financePaymentInstitutionAliases.$inferSelect;
+export type InsertFinancePaymentInstitutionAlias = typeof financePaymentInstitutionAliases.$inferInsert;
+
+export const financePaymentAccounts = pgTable("finance_payment_accounts", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  projectId: varchar("project_id", { length: 100 }).notNull(),
+  ownerUserId: integer("owner_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  paymentInstitutionId: integer("payment_institution_id").notNull().references(() => financePaymentInstitutions.id, { onDelete: "cascade" }),
+  kind: financePaymentInstrumentKindEnum("kind").notNull(),
+  nickname: text("nickname").notNull(),
+  normalizedNickname: varchar("normalized_nickname", { length: 512 }).notNull(),
+  last4: varchar("last4", { length: 4 }),
+  maskedIdentifier: text("masked_identifier"),
+  usageCount: integer("usage_count").notNull().default(0),
+  lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
+  isPrimary: boolean("is_primary").notNull().default(false),
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
+  allowedScopes: text("allowed_scopes").array().notNull().default(sql`'{}'`),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("finance_payment_accounts_tenant_unique").on(t.tenantId, t.projectId, t.ownerUserId, t.paymentInstitutionId, t.kind, t.normalizedNickname),
+  index("finance_payment_accounts_tenant_project_owner_idx").on(t.tenantId, t.projectId, t.ownerUserId),
+  index("finance_payment_accounts_payment_institution_idx").on(t.paymentInstitutionId),
+  index("finance_payment_accounts_last_seen_idx").on(t.tenantId, t.lastSeenAt),
+  index("finance_payment_accounts_usage_idx").on(t.tenantId, t.ownerUserId, t.usageCount),
+  index("finance_payment_accounts_primary_idx").on(t.tenantId, t.ownerUserId, t.isPrimary),
+  index("finance_payment_accounts_allowed_scopes_gin_idx").using("gin", t.allowedScopes),
+]);
+
+export type FinancePaymentAccount = typeof financePaymentAccounts.$inferSelect;
+export type InsertFinancePaymentAccount = typeof financePaymentAccounts.$inferInsert;
+
+export const financePaymentAccountAliases = pgTable("finance_payment_account_aliases", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  projectId: varchar("project_id", { length: 100 }).notNull(),
+  ownerUserId: integer("owner_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  paymentAccountId: integer("payment_account_id").notNull().references(() => financePaymentAccounts.id, { onDelete: "cascade" }),
+  aliasName: text("alias_name").notNull(),
+  normalizedAlias: varchar("normalized_alias", { length: 512 }).notNull(),
+  allowedScopes: text("allowed_scopes").array().notNull().default(sql`'{}'`),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("finance_payment_account_aliases_tenant_normalized_unique").on(t.tenantId, t.projectId, t.ownerUserId, t.normalizedAlias),
+  index("finance_payment_account_aliases_payment_account_idx").on(t.paymentAccountId),
+  index("finance_payment_account_aliases_tenant_project_owner_idx").on(t.tenantId, t.projectId, t.ownerUserId),
+  index("finance_payment_account_aliases_allowed_scopes_gin_idx").using("gin", t.allowedScopes),
+]);
+
+export type FinancePaymentAccountAlias = typeof financePaymentAccountAliases.$inferSelect;
+export type InsertFinancePaymentAccountAlias = typeof financePaymentAccountAliases.$inferInsert;
+
 export const financeRecurringRules = pgTable("finance_recurring_rules", {
   id: serial("id").primaryKey(),
   tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
@@ -2286,6 +2448,8 @@ export const financeRecurringRules = pgTable("finance_recurring_rules", {
   amountMinor: integer("amount_minor").notNull(),
   currency: varchar("currency", { length: 3 }).notNull().default("THB"),
   categoryCode: varchar("category_code", { length: 64 }).notNull(),
+  counterpartyId: integer("counterparty_id").references(() => financeCounterparties.id, { onDelete: "set null" }),
+  counterpartyName: text("counterparty_name"),
   merchantName: text("merchant_name"),
   note: text("note"),
   rrule: text("rrule").notNull(),
@@ -2309,6 +2473,7 @@ export const financeRecurringRules = pgTable("finance_recurring_rules", {
   index("finance_recurring_rules_tenant_project_owner_idx").on(t.tenantId, t.projectId, t.ownerUserId),
   index("finance_recurring_rules_tenant_status_next_run_idx").on(t.tenantId, t.status, t.nextRunAt),
   index("finance_recurring_rules_source_hash_idx").on(t.sourceHash),
+  index("finance_recurring_rules_counterparty_idx").on(t.counterpartyId),
   index("finance_recurring_rules_allowed_scopes_gin_idx").using("gin", t.allowedScopes),
   index("finance_recurring_rules_source_message_idx").on(t.sourceMessageId),
   index("finance_recurring_rules_source_library_item_idx").on(t.sourceLibraryItemId),
@@ -2367,8 +2532,15 @@ export const financeTransactions = pgTable("finance_transactions", {
   currency: varchar("currency", { length: 3 }).notNull().default("THB"),
   occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull(),
   categoryCode: varchar("category_code", { length: 64 }).notNull(),
+  counterpartyId: integer("counterparty_id").references(() => financeCounterparties.id, { onDelete: "set null" }),
+  counterpartyName: text("counterparty_name"),
   merchantName: text("merchant_name"),
   note: text("note"),
+  paymentSourceAccountId: integer("payment_source_account_id").references(() => financePaymentAccounts.id, { onDelete: "set null" }),
+  paymentDestinationAccountId: integer("payment_destination_account_id").references(() => financePaymentAccounts.id, { onDelete: "set null" }),
+  paymentMethodKind: financePaymentInstrumentKindEnum("payment_method_kind").notNull().default("unknown"),
+  paymentDirection: financePaymentDirectionEnum("payment_direction").notNull().default("unknown"),
+  paymentInstrumentConfidence: numeric("payment_instrument_confidence", { precision: 3, scale: 2 }),
   confidence: numeric("confidence", { precision: 3, scale: 2 }),
   idempotencyKey: varchar("idempotency_key", { length: 256 }).notNull(),
   sourceHash: varchar("source_hash", { length: 64 }),
@@ -2395,6 +2567,10 @@ export const financeTransactions = pgTable("finance_transactions", {
   index("finance_transactions_source_message_idx").on(t.sourceMessageId),
   index("finance_transactions_source_library_item_idx").on(t.sourceLibraryItemId),
   index("finance_transactions_recurring_rule_idx").on(t.recurringRuleId),
+  index("finance_transactions_counterparty_idx").on(t.counterpartyId),
+  index("finance_transactions_payment_source_account_idx").on(t.paymentSourceAccountId),
+  index("finance_transactions_payment_destination_account_idx").on(t.paymentDestinationAccountId),
+  index("finance_transactions_payment_method_kind_idx").on(t.paymentMethodKind),
   index("finance_transactions_allowed_scopes_gin_idx").using("gin", t.allowedScopes),
   index("finance_transactions_owner_voided_idx").on(t.tenantId, t.ownerUserId, t.voidedAt),
   check("finance_transactions_amount_minor_positive", sql`${t.amountMinor} > 0`),
@@ -3481,6 +3657,44 @@ export const systemSettings = pgTable("system_settings", {
 
 export type SystemSettings = typeof systemSettings.$inferSelect;
 export type InsertSystemSettings = typeof systemSettings.$inferInsert;
+
+export const workpackRecordTypeEnum = pgEnum("workpack_record_type", [
+  "case_source",
+  "playbook",
+  "workpack",
+  "workpack_version",
+  "workpack_run",
+  "simulation_run",
+  "workpack_exception",
+  "benchmark_pack",
+  "promotion_record",
+  "improvement_proposal",
+  "telemetry_event",
+  "metric_snapshot",
+  "incident_record",
+  "schedule_record",
+]);
+
+export const workpackRecords = pgTable("workpack_records", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  recordType: workpackRecordTypeEnum("recordType").notNull(),
+  recordId: varchar("recordId", { length: 128 }).notNull(),
+  workpackId: varchar("workpackId", { length: 128 }),
+  sortTimestamp: timestamp("sortTimestamp", { withTimezone: true }),
+  payloadJson: jsonb("payloadJson").$type<Record<string, unknown>>().notNull().default(sql`'{}'::jsonb`),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("workpack_records_tenant_type_record_unique").on(t.tenantId, t.recordType, t.recordId),
+  index("workpack_records_type_record_idx").on(t.recordType, t.recordId),
+  index("workpack_records_tenant_type_idx").on(t.tenantId, t.recordType),
+  index("workpack_records_tenant_workpack_idx").on(t.tenantId, t.workpackId),
+  index("workpack_records_tenant_type_sort_idx").on(t.tenantId, t.recordType, t.sortTimestamp),
+]);
+
+export type WorkpackRecord = typeof workpackRecords.$inferSelect;
+export type InsertWorkpackRecord = typeof workpackRecords.$inferInsert;
 
 // ============================================================
 // Invoice Configuration - Per-tenant or global invoice settings

@@ -32,12 +32,12 @@ import { resetWorkpackStore } from "../workpackPersistence";
 import { simulateWorkpack } from "../workpackSimulationService";
 
 describe("workpackRolloutGateService", () => {
-  beforeEach(() => {
-    resetWorkpackStore();
+  beforeEach(async () => {
+    await resetWorkpackStore();
   });
 
   it("requires simulation before rollout", async () => {
-    const draft = createDraftWorkpack({
+    const draft = await createDraftWorkpack({
       tenantId: "tenant-1",
       title: "Ops intake",
       goal: "Triage daily ops work",
@@ -50,7 +50,7 @@ describe("workpackRolloutGateService", () => {
         },
       ],
     });
-    compileWorkpackExecutionPlan({ workpackId: draft.workpack.id });
+    await compileWorkpackExecutionPlan({ workpackId: draft.workpack.id });
 
     const decision = await evaluateWorkpackRolloutGate({ workpackId: draft.workpack.id, targetMode: "supervised" });
 
@@ -59,7 +59,7 @@ describe("workpackRolloutGateService", () => {
   });
 
   it("keeps autonomous rollout staged when pilot flag is disabled", async () => {
-    const draft = createDraftWorkpack({
+    const draft = await createDraftWorkpack({
       tenantId: "tenant-1",
       title: "Support ops",
       goal: "Route tickets",
@@ -72,8 +72,8 @@ describe("workpackRolloutGateService", () => {
         },
       ],
     });
-    compileWorkpackExecutionPlan({ workpackId: draft.workpack.id });
-    validateConnectorMaps({
+    await compileWorkpackExecutionPlan({ workpackId: draft.workpack.id });
+    await validateConnectorMaps({
       workpackId: draft.workpack.id,
       emitExceptions: false,
       metadataByFamily: {
@@ -116,7 +116,7 @@ describe("workpackRolloutGateService", () => {
         },
       },
     });
-    simulateWorkpack({ workpackId: draft.workpack.id });
+    await simulateWorkpack({ workpackId: draft.workpack.id });
 
     const decision = await evaluateWorkpackRolloutGate({ workpackId: draft.workpack.id, targetMode: "autonomous" });
 

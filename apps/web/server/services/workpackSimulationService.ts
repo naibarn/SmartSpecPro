@@ -10,6 +10,8 @@ import { normalizeWorkpackException } from "./workpackExceptionService";
 import { buildArtifactReference, createReplayGradeLedger, finalizeLedgerRun } from "./workpackLedgerService";
 import { createWorkpackId, getWorkpackDetail, getWorkpackRun, saveSimulationRun, saveTelemetryEvent, updateWorkpack } from "./workpackPersistence";
 
+type WorkpackDetail = NonNullable<Awaited<ReturnType<typeof getWorkpackDetail>>>;
+
 export interface SimulateWorkpackResult {
   simulationRun: SimulationRun;
   ledgerRunId: string;
@@ -26,7 +28,7 @@ function summarizeFixturePayload(payload: Record<string, unknown>): string {
   return `Fixture seeded with ${keys.slice(0, 4).join(", ")}`;
 }
 
-function buildSyntheticPayload(detail: NonNullable<ReturnType<typeof getWorkpackDetail>>): Record<string, unknown> {
+function buildSyntheticPayload(detail: WorkpackDetail): Record<string, unknown> {
   const payload: Record<string, unknown> = {
     goal: detail.workpack.goal,
     domainPack: detail.workpack.domainPack,
@@ -40,7 +42,7 @@ function buildSyntheticPayload(detail: NonNullable<ReturnType<typeof getWorkpack
 
 function resolveSimulationPayload(input: {
   mode: SimulationRun["mode"];
-  detail: NonNullable<ReturnType<typeof getWorkpackDetail>>;
+  detail: WorkpackDetail;
   fixtureId?: string | null;
   payload?: Record<string, unknown>;
   replayRunId?: string | null;
@@ -73,20 +75,15 @@ function resolveSimulationPayload(input: {
   }
 
   if (input.mode === "trace_replay") {
-    const replayRun = input.replayRunId ? getWorkpackRun(input.replayRunId) : input.detail.runs[0] ?? null;
     return {
       mode: input.mode,
       fixtureId: null,
       payload: {
-        replayRunId: replayRun?.id ?? null,
-        notes: replayRun?.notes ?? "",
-        actualSteps: replayRun?.actualSteps.map((step) => ({
-          stepId: step.stepId,
-          status: step.status,
-          runtimePath: step.runtimePath,
-        })) ?? [],
+        replayRunId: input.replayRunId ?? null,
+        notes: "",
+        actualSteps: [],
       },
-      label: replayRun ? `Trace replay from ${replayRun.id}` : "Trace replay payload",
+      label: "Trace replay payload",
     };
   }
 
@@ -98,29 +95,34 @@ function resolveSimulationPayload(input: {
   };
 }
 
-export function simulateWorkpack(input: {
+export async function simulateWorkpack(input: {
   workpackId: string;
   requestedBy?: number | null;
   mode?: SimulationRun["mode"];
   fixtureId?: string | null;
   payload?: Record<string, unknown>;
   replayRunId?: string | null;
-}): SimulateWorkpackResult {
-  const detailBeforeCompile = getWorkpackDetail(input.workpackId);
+}): Promise<SimulateWorkpackResult> {
+  const detailBeforeCompile = await getWorkpackDetail(input.workpackId);
   if (!detailBeforeCompile) {
     throw new Error(`Unknown workpack: ${input.workpackId}`);
   }
   if (!detailBeforeCompile.version.executionPlan) {
-    compileWorkpackExecutionPlan({ workpackId: input.workpackId, requestedBy: input.requestedBy ?? null });
+    await compileWorkpackExecutionPlan({ workpackId: input.workpackId, requestedBy: input.requestedBy ?? null });
   }
 
-  const detail = getWorkpackDetail(input.workpackId);
+  const detail = await getWorkpackDetail(input.workpackId);
   if (!detail || !detail.version.executionPlan) {
     throw new Error(`Execution plan unavailable for workpack: ${input.workpackId}`);
   }
 
-  const connectorView = getConnectorStudioView(input.workpackId);
+  const connectorView = await getConnectorStudioView(input.workpackId);
   const simulationMode = input.mode ?? "fixture";
+  const replayRun = simulationMode === "trace_replay" && input.replayRunId
+    ? await getWorkpackRun(input.replayRunId)
+    : simulationMode === "trace_replay"
+      ? detail.runs[0] ?? null
+      : null;
   const simulationSeed = resolveSimulationPayload({
     mode: simulationMode,
     detail,
@@ -128,7 +130,20 @@ export function simulateWorkpack(input: {
     payload: input.payload,
     replayRunId: input.replayRunId ?? null,
   });
-  const ledgerRun = createReplayGradeLedger({
+  if (simulationMode === "trace_replay") {
+    simulationSeed.payload = {
+      replayRunId: replayRun?.id ?? null,
+      notes: replayRun?.notes ?? "",
+      actualSteps: replayRun?.actualSteps.map((step) => ({
+        stepId: step.stepId,
+        status: step.status,
+        runtimePath: step.runtimePath,
+      })) ?? [],
+    };
+    simulationSeed.label = replayRun ? `Trace replay from ${replayRun.id}` : "Trace replay payload";
+  }
+
+  const ledgerRun = await createReplayGradeLedger({
     workpackId: input.workpackId,
     autonomyMode: "supervised",
     notes: `${simulationSeed.label} simulation`,
@@ -154,7 +169,7 @@ export function simulateWorkpack(input: {
       && !simulationSeed.fixtureId
       && detail.version.executionPlan.fixtureRequirements.requiresFixtures
     ) {
-      const exceptionRecord = normalizeWorkpackException({
+      const exceptionRecord = await normalizeWorkpackException({
         workpackId: detail.workpack.id,
         versionId: detail.version.id,
         runId: ledgerRun.id,
@@ -184,7 +199,7 @@ export function simulateWorkpack(input: {
     }
 
     if (blockedConnector) {
-      const exceptionRecord = normalizeWorkpackException({
+      const exceptionRecord = await normalizeWorkpackException({
         workpackId: detail.workpack.id,
         versionId: detail.version.id,
         runId: ledgerRun.id,
@@ -253,7 +268,7 @@ export function simulateWorkpack(input: {
   const runStatus = blockedCount > 0 ? "blocked" : "succeeded";
   const createdAt = nowIso();
 
-  const finishedRun = finalizeLedgerRun({
+  const finishedRun = await finalizeLedgerRun({
     runId: ledgerRun.id,
     status: runStatus,
     actualSteps,
@@ -284,8 +299,8 @@ export function simulateWorkpack(input: {
     createdAt,
   });
 
-  saveSimulationRun(simulationRun);
-  saveTelemetryEvent({
+  await saveSimulationRun(simulationRun);
+  await saveTelemetryEvent({
     id: createWorkpackId("evt"),
     tenantId: detail.workpack.tenantId,
     workpackId: detail.workpack.id,
@@ -297,7 +312,7 @@ export function simulateWorkpack(input: {
     createdAt,
   });
 
-  updateWorkpack(detail.workpack.id, (workpack) => ({
+  await updateWorkpack(detail.workpack.id, (workpack) => ({
     ...workpack,
     lifecycleState: simulationStatus === "passed" ? "needs_review" : "needs_review",
     updatedAt: createdAt,

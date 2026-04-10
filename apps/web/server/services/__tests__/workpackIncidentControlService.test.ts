@@ -7,12 +7,12 @@ import { createReplayGradeLedger, finalizeLedgerRun } from "../workpackLedgerSer
 import { getWorkpack, getWorkpackRun, resetWorkpackStore, updateWorkpackRun } from "../workpackPersistence";
 
 describe("workpackIncidentControlService", () => {
-  beforeEach(() => {
-    resetWorkpackStore();
+  beforeEach(async () => {
+    await resetWorkpackStore();
   });
 
-  it("pauses active work and supports safe resume", () => {
-    const draft = createDraftWorkpack({
+  it("pauses active work and supports safe resume", async () => {
+    const draft = await createDraftWorkpack({
       tenantId: "tenant-1",
       title: "Ops queue",
       goal: "Route daily tasks",
@@ -25,11 +25,11 @@ describe("workpackIncidentControlService", () => {
         },
       ],
     });
-    compileWorkpackExecutionPlan({ workpackId: draft.workpack.id });
-    const run = createReplayGradeLedger({ workpackId: draft.workpack.id });
-    updateWorkpackRun(run.id, (current) => ({ ...current, status: "running" }));
+    await compileWorkpackExecutionPlan({ workpackId: draft.workpack.id });
+    const run = await createReplayGradeLedger({ workpackId: draft.workpack.id });
+    await updateWorkpackRun(run.id, (current) => ({ ...current, status: "running" }));
 
-    const paused = applyWorkpackIncidentAction({
+    const paused = await applyWorkpackIncidentAction({
       tenantId: "tenant-1",
       workpackId: draft.workpack.id,
       action: "pause",
@@ -37,10 +37,10 @@ describe("workpackIncidentControlService", () => {
     });
 
     expect(paused.status).toBe("active");
-    expect(getWorkpackRun(run.id)?.status).toBe("blocked");
-    expect(getWorkpack(draft.workpack.id)?.lifecycleState).toBe("paused");
+    expect((await getWorkpackRun(run.id))?.status).toBe("blocked");
+    expect((await getWorkpack(draft.workpack.id))?.lifecycleState).toBe("paused");
 
-    const resumed = applyWorkpackIncidentAction({
+    const resumed = await applyWorkpackIncidentAction({
       tenantId: "tenant-1",
       workpackId: draft.workpack.id,
       action: "resume",
@@ -48,12 +48,12 @@ describe("workpackIncidentControlService", () => {
     });
 
     expect(resumed.status).toBe("resolved");
-    expect(getWorkpack(draft.workpack.id)?.lifecycleState).toBe("clarification_needed");
-    expect(getWorkpack(draft.workpack.id)?.policyProfile.safeResumeRequired).toBe(true);
+    expect((await getWorkpack(draft.workpack.id))?.lifecycleState).toBe("clarification_needed");
+    expect((await getWorkpack(draft.workpack.id))?.policyProfile.safeResumeRequired).toBe(true);
   });
 
-  it("cancels queued work without touching completed runs", () => {
-    const draft = createDraftWorkpack({
+  it("cancels queued work without touching completed runs", async () => {
+    const draft = await createDraftWorkpack({
       tenantId: "tenant-1",
       title: "Store audit",
       goal: "Audit store inventory",
@@ -66,24 +66,24 @@ describe("workpackIncidentControlService", () => {
         },
       ],
     });
-    compileWorkpackExecutionPlan({ workpackId: draft.workpack.id });
-    const queuedRun = createReplayGradeLedger({ workpackId: draft.workpack.id });
-    const completedRun = createReplayGradeLedger({ workpackId: draft.workpack.id });
-    finalizeLedgerRun({
+    await compileWorkpackExecutionPlan({ workpackId: draft.workpack.id });
+    const queuedRun = await createReplayGradeLedger({ workpackId: draft.workpack.id });
+    const completedRun = await createReplayGradeLedger({ workpackId: draft.workpack.id });
+    await finalizeLedgerRun({
       runId: completedRun.id,
       status: "succeeded",
       actualSteps: [],
     });
-    updateWorkpackRun(queuedRun.id, (current) => ({ ...current, status: "queued" }));
+    await updateWorkpackRun(queuedRun.id, (current) => ({ ...current, status: "queued" }));
 
-    applyWorkpackIncidentAction({
+    await applyWorkpackIncidentAction({
       tenantId: "tenant-1",
       workpackId: draft.workpack.id,
       action: "cancel_queued",
       reason: "Freeze queue",
     });
 
-    expect(getWorkpackRun(queuedRun.id)?.status).toBe("cancelled");
-    expect(getWorkpackRun(completedRun.id)?.status).toBe("succeeded");
+    expect((await getWorkpackRun(queuedRun.id))?.status).toBe("cancelled");
+    expect((await getWorkpackRun(completedRun.id))?.status).toBe("succeeded");
   });
 });

@@ -8,12 +8,12 @@ import { simulateWorkpack } from "../workpackSimulationService";
 import { captureWorkpackMetricSnapshot, getWorkpackTelemetrySummary, recordWorkpackTelemetryEvent } from "../workpackTelemetryService";
 
 describe("workpackTelemetryService", () => {
-  beforeEach(() => {
-    resetWorkpackStore();
+  beforeEach(async () => {
+    await resetWorkpackStore();
   });
 
-  it("records workpack telemetry events", () => {
-    const event = recordWorkpackTelemetryEvent({
+  it("records workpack telemetry events", async () => {
+    const event = await recordWorkpackTelemetryEvent({
       tenantId: "tenant-1",
       workpackId: "wp_1",
       versionId: "wpv_1",
@@ -24,8 +24,8 @@ describe("workpackTelemetryService", () => {
     expect(event.id).toContain("evt_");
   });
 
-  it("captures metrics from completed workpack runs", () => {
-    const draft = createDraftWorkpack({
+  it("captures metrics from completed workpack runs", async () => {
+    const draft = await createDraftWorkpack({
       tenantId: "tenant-1",
       title: "Ticket triage",
       goal: "Route tickets",
@@ -38,8 +38,8 @@ describe("workpackTelemetryService", () => {
         },
       ],
     });
-    compileWorkpackExecutionPlan({ workpackId: draft.workpack.id });
-    validateConnectorMaps({
+    await compileWorkpackExecutionPlan({ workpackId: draft.workpack.id });
+    await validateConnectorMaps({
       workpackId: draft.workpack.id,
       emitExceptions: false,
       metadataByFamily: {
@@ -82,10 +82,10 @@ describe("workpackTelemetryService", () => {
         },
       },
     });
-    simulateWorkpack({ workpackId: draft.workpack.id });
+    await simulateWorkpack({ workpackId: draft.workpack.id });
 
-    const snapshot = captureWorkpackMetricSnapshot(draft.workpack.id);
-    const summary = getWorkpackTelemetrySummary("tenant-1");
+    const snapshot = await captureWorkpackMetricSnapshot(draft.workpack.id);
+    const summary = await getWorkpackTelemetrySummary("tenant-1");
 
     expect(snapshot.completionRate).toBeGreaterThan(0);
     expect(snapshot.successRate).toBeGreaterThan(0);

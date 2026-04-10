@@ -119,13 +119,13 @@ export const workpackRouter = router({
     });
   }),
 
-  list: protectedProcedure.query(({ ctx }) => {
+  list: protectedProcedure.query(async ({ ctx }) => {
     const tenantId = requireTenantId(ctx);
-    return Promise.all(listWorkpackDetailsByTenant(tenantId).map(async (detail) => ({
+    return Promise.all((await listWorkpackDetailsByTenant(tenantId)).map(async (detail) => ({
       workpack: detail.workpack,
       version: detail.version,
       readiness: await getWorkpackReadinessSummary(detail.workpack.id),
-      latestMetricSnapshot: detail.metricSnapshots[0] ?? captureWorkpackMetricSnapshot(detail.workpack.id),
+      latestMetricSnapshot: detail.metricSnapshots[0] ?? await captureWorkpackMetricSnapshot(detail.workpack.id),
     })));
   }),
 
@@ -133,7 +133,7 @@ export const workpackRouter = router({
     workpackId: z.string().min(1),
   })).query(async ({ ctx, input }) => {
     const tenantId = requireTenantId(ctx);
-    const detail = getWorkpackDetail(input.workpackId);
+    const detail = await getWorkpackDetail(input.workpackId);
     if (!detail || detail.workpack.tenantId !== tenantId) {
       throw new TRPCError({ code: "NOT_FOUND", message: "Workpack not found" });
     }
@@ -141,11 +141,11 @@ export const workpackRouter = router({
     return {
       ...detail,
       readiness: await getWorkpackReadinessSummary(detail.workpack.id),
-      connectorStudio: getConnectorStudioView(detail.workpack.id),
-      learningBundle: deriveWorkpackImprovementProposals(detail.workpack.id),
-      promotionEligibility: evaluateWorkpackPromotionEligibility(detail.workpack.id),
-      exceptionInbox: listWorkpackExceptionInbox(detail.workpack.id),
-      latestMetricSnapshot: detail.metricSnapshots[0] ?? captureWorkpackMetricSnapshot(detail.workpack.id),
+      connectorStudio: await getConnectorStudioView(detail.workpack.id),
+      learningBundle: await deriveWorkpackImprovementProposals(detail.workpack.id),
+      promotionEligibility: await evaluateWorkpackPromotionEligibility(detail.workpack.id),
+      exceptionInbox: await listWorkpackExceptionInbox(detail.workpack.id),
+      latestMetricSnapshot: detail.metricSnapshots[0] ?? await captureWorkpackMetricSnapshot(detail.workpack.id),
       executorSnapshots: await listWorkpackExecutorSnapshots({
         tenantId,
         workpackId: detail.workpack.id,
@@ -155,9 +155,9 @@ export const workpackRouter = router({
 
   compile: protectedProcedure.input(z.object({
     workpackId: z.string().min(1),
-  })).mutation(({ ctx, input }) => {
+  })).mutation(async ({ ctx, input }) => {
     const tenantId = requireTenantId(ctx);
-    const detail = getWorkpackDetail(input.workpackId);
+    const detail = await getWorkpackDetail(input.workpackId);
     if (!detail || detail.workpack.tenantId !== tenantId) {
       throw new TRPCError({ code: "NOT_FOUND", message: "Workpack not found" });
     }
@@ -171,9 +171,9 @@ export const workpackRouter = router({
     workpackId: z.string().min(1),
     questionId: z.string().min(1),
     answer: z.string().min(1),
-  })).mutation(({ ctx, input }) => {
+  })).mutation(async ({ ctx, input }) => {
     const tenantId = requireTenantId(ctx);
-    const detail = getWorkpackDetail(input.workpackId);
+    const detail = await getWorkpackDetail(input.workpackId);
     if (!detail || detail.workpack.tenantId !== tenantId) {
       throw new TRPCError({ code: "NOT_FOUND", message: "Workpack not found" });
     }
@@ -183,9 +183,9 @@ export const workpackRouter = router({
   dismissClarification: protectedProcedure.input(z.object({
     workpackId: z.string().min(1),
     questionId: z.string().min(1),
-  })).mutation(({ ctx, input }) => {
+  })).mutation(async ({ ctx, input }) => {
     const tenantId = requireTenantId(ctx);
-    const detail = getWorkpackDetail(input.workpackId);
+    const detail = await getWorkpackDetail(input.workpackId);
     if (!detail || detail.workpack.tenantId !== tenantId) {
       throw new TRPCError({ code: "NOT_FOUND", message: "Workpack not found" });
     }
@@ -198,9 +198,9 @@ export const workpackRouter = router({
     fixtureId: z.string().nullable().optional(),
     payload: z.record(z.unknown()).optional(),
     replayRunId: z.string().nullable().optional(),
-  })).mutation(({ ctx, input }) => {
+  })).mutation(async ({ ctx, input }) => {
     const tenantId = requireTenantId(ctx);
-    const detail = getWorkpackDetail(input.workpackId);
+    const detail = await getWorkpackDetail(input.workpackId);
     if (!detail || detail.workpack.tenantId !== tenantId) {
       throw new TRPCError({ code: "NOT_FOUND", message: "Workpack not found" });
     }
@@ -218,9 +218,9 @@ export const workpackRouter = router({
     workpackId: z.string().min(1),
     runId: z.string().optional(),
     simulationRunId: z.string().optional(),
-  })).query(({ ctx, input }) => {
+  })).query(async ({ ctx, input }) => {
     const tenantId = requireTenantId(ctx);
-    const detail = getWorkpackDetail(input.workpackId);
+    const detail = await getWorkpackDetail(input.workpackId);
     if (!detail || detail.workpack.tenantId !== tenantId) {
       throw new TRPCError({ code: "NOT_FOUND", message: "Workpack not found" });
     }
@@ -233,9 +233,9 @@ export const workpackRouter = router({
 
   connectors: protectedProcedure.input(z.object({
     workpackId: z.string().min(1),
-  })).query(({ ctx, input }) => {
+  })).query(async ({ ctx, input }) => {
     const tenantId = requireTenantId(ctx);
-    const detail = getWorkpackDetail(input.workpackId);
+    const detail = await getWorkpackDetail(input.workpackId);
     if (!detail || detail.workpack.tenantId !== tenantId) {
       throw new TRPCError({ code: "NOT_FOUND", message: "Workpack not found" });
     }
@@ -244,9 +244,9 @@ export const workpackRouter = router({
 
   validateConnectors: protectedProcedure.input(z.object({
     workpackId: z.string().min(1),
-  })).mutation(({ ctx, input }) => {
+  })).mutation(async ({ ctx, input }) => {
     const tenantId = requireTenantId(ctx);
-    const detail = getWorkpackDetail(input.workpackId);
+    const detail = await getWorkpackDetail(input.workpackId);
     if (!detail || detail.workpack.tenantId !== tenantId) {
       throw new TRPCError({ code: "NOT_FOUND", message: "Workpack not found" });
     }
@@ -256,9 +256,9 @@ export const workpackRouter = router({
   refreshConnectorIntrospections: protectedProcedure.input(z.object({
     workpackId: z.string().min(1),
     metadataByFamily: z.record(connectorIntrospectionMetadataSchema),
-  })).mutation(({ ctx, input }) => {
+  })).mutation(async ({ ctx, input }) => {
     const tenantId = requireTenantId(ctx);
-    const detail = getWorkpackDetail(input.workpackId);
+    const detail = await getWorkpackDetail(input.workpackId);
     if (!detail || detail.workpack.tenantId !== tenantId) {
       throw new TRPCError({ code: "NOT_FOUND", message: "Workpack not found" });
     }
@@ -287,9 +287,9 @@ export const workpackRouter = router({
       sideEffectClass: z.enum(["read_only", "bounded_write", "external_write", "irreversible", "financial", "privileged"]).optional(),
     })).optional(),
     samplePayload: z.record(z.unknown()).optional(),
-  })).mutation(({ ctx, input }) => {
+  })).mutation(async ({ ctx, input }) => {
     const tenantId = requireTenantId(ctx);
-    const detail = getWorkpackDetail(input.workpackId);
+    const detail = await getWorkpackDetail(input.workpackId);
     if (!detail || detail.workpack.tenantId !== tenantId) {
       throw new TRPCError({ code: "NOT_FOUND", message: "Workpack not found" });
     }
@@ -314,7 +314,7 @@ export const workpackRouter = router({
     scheduleId: z.string().nullable().optional(),
   })).mutation(async ({ ctx, input }) => {
     const tenantId = requireTenantId(ctx);
-    const detail = getWorkpackDetail(input.workpackId);
+    const detail = await getWorkpackDetail(input.workpackId);
     if (!detail || detail.workpack.tenantId !== tenantId) {
       throw new TRPCError({ code: "NOT_FOUND", message: "Workpack not found" });
     }
@@ -336,9 +336,9 @@ export const workpackRouter = router({
     intervalMinutes: z.number().int().positive().nullable().optional(),
     eventKey: z.string().nullable().optional(),
     targetAutonomyMode: z.enum(["draft", "supervised", "autonomous"]).optional(),
-  })).mutation(({ ctx, input }) => {
+  })).mutation(async ({ ctx, input }) => {
     const tenantId = requireTenantId(ctx);
-    const detail = getWorkpackDetail(input.workpackId);
+    const detail = await getWorkpackDetail(input.workpackId);
     if (!detail || detail.workpack.tenantId !== tenantId) {
       throw new TRPCError({ code: "NOT_FOUND", message: "Workpack not found" });
     }
@@ -360,7 +360,7 @@ export const workpackRouter = router({
     scheduleId: z.string().min(1),
   })).mutation(async ({ ctx, input }) => {
     const tenantId = requireTenantId(ctx);
-    const schedule = listSchedulesByTenant(tenantId).find((item) => item.id === input.scheduleId);
+    const schedule = (await listSchedulesByTenant(tenantId)).find((item) => item.id === input.scheduleId);
     if (!schedule) {
       throw new TRPCError({ code: "NOT_FOUND", message: "Schedule not found" });
     }
@@ -382,7 +382,7 @@ export const workpackRouter = router({
     .mutation(async ({ ctx, input }) => {
       const tenantId = requireTenantId(ctx);
       if (input?.workpackId) {
-        const detail = getWorkpackDetail(input.workpackId);
+        const detail = await getWorkpackDetail(input.workpackId);
         if (!detail || detail.workpack.tenantId !== tenantId) {
           throw new TRPCError({ code: "NOT_FOUND", message: "Workpack not found" });
         }
@@ -394,16 +394,16 @@ export const workpackRouter = router({
       return { reconciledRunIds };
     }),
 
-  listSchedules: protectedProcedure.query(({ ctx }) => {
+  listSchedules: protectedProcedure.query(async ({ ctx }) => {
     const tenantId = requireTenantId(ctx);
     return listSchedulesByTenant(tenantId);
   }),
 
   learning: protectedProcedure.input(z.object({
     workpackId: z.string().min(1),
-  })).query(({ ctx, input }) => {
+  })).query(async ({ ctx, input }) => {
     const tenantId = requireTenantId(ctx);
-    const detail = getWorkpackDetail(input.workpackId);
+    const detail = await getWorkpackDetail(input.workpackId);
     if (!detail || detail.workpack.tenantId !== tenantId) {
       throw new TRPCError({ code: "NOT_FOUND", message: "Workpack not found" });
     }
@@ -413,9 +413,9 @@ export const workpackRouter = router({
   promote: protectedProcedure.input(z.object({
     workpackId: z.string().min(1),
     publicationScope: z.enum(["tenant_local", "tenant_template", "cross_tenant"]).optional(),
-  })).mutation(({ ctx, input }) => {
+  })).mutation(async ({ ctx, input }) => {
     const tenantId = requireTenantId(ctx);
-    const detail = getWorkpackDetail(input.workpackId);
+    const detail = await getWorkpackDetail(input.workpackId);
     if (!detail || detail.workpack.tenantId !== tenantId) {
       throw new TRPCError({ code: "NOT_FOUND", message: "Workpack not found" });
     }
@@ -428,13 +428,16 @@ export const workpackRouter = router({
 
   rollbackPromotion: protectedProcedure.input(z.object({
     promotionRecordId: z.string().min(1),
-  })).mutation(({ input }) => rollbackWorkpackPromotion(input.promotionRecordId)),
+  })).mutation(({ ctx, input }) => rollbackWorkpackPromotion({
+    tenantId: requireTenantId(ctx),
+    promotionRecordId: input.promotionRecordId,
+  })),
 
   readiness: protectedProcedure.input(z.object({
     workpackId: z.string().min(1),
-  })).query(({ ctx, input }) => {
+  })).query(async ({ ctx, input }) => {
     const tenantId = requireTenantId(ctx);
-    const detail = getWorkpackDetail(input.workpackId);
+    const detail = await getWorkpackDetail(input.workpackId);
     if (!detail || detail.workpack.tenantId !== tenantId) {
       throw new TRPCError({ code: "NOT_FOUND", message: "Workpack not found" });
     }
@@ -448,10 +451,10 @@ export const workpackRouter = router({
 
   exceptionInbox: protectedProcedure.input(z.object({
     workpackId: z.string().optional(),
-  }).optional()).query(({ ctx, input }) => {
+  }).optional()).query(async ({ ctx, input }) => {
     const tenantId = requireTenantId(ctx);
     if (input?.workpackId) {
-      const detail = getWorkpackDetail(input.workpackId);
+      const detail = await getWorkpackDetail(input.workpackId);
       if (!detail || detail.workpack.tenantId !== tenantId) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Workpack not found" });
       }
@@ -478,9 +481,11 @@ export const workpackRouter = router({
     sliceDimension: metricSliceDimensionSchema.optional(),
   }).optional()).query(async ({ ctx, input }) => {
     const tenantId = requireTenantId(ctx);
-    const workpackDetails = listWorkpackDetailsByTenant(tenantId);
+    const workpackDetails = await listWorkpackDetailsByTenant(tenantId);
     const readiness = await listWorkpackReadinessSummaries(tenantId);
-    const snapshots = workpackDetails.map((detail) => detail.metricSnapshots[0] ?? captureWorkpackMetricSnapshot(detail.workpack.id));
+    const snapshots = await Promise.all(workpackDetails.map(async (detail) => (
+      detail.metricSnapshots[0] ?? await captureWorkpackMetricSnapshot(detail.workpack.id)
+    )));
 
     const totals = snapshots.reduce((acc, snapshot) => ({
       completionRate: acc.completionRate + snapshot.completionRate,
@@ -584,17 +589,18 @@ export const workpackRouter = router({
     };
   }),
 
-  discovery: protectedProcedure.query(({ ctx }) => {
+  discovery: protectedProcedure.query(async ({ ctx }) => {
     const tenantId = requireTenantId(ctx);
+    const details = await listWorkpackDetailsByTenant(tenantId);
     return {
-      starters: listWorkpackDetailsByTenant(tenantId).map((detail) => ({
+      starters: details.map((detail) => ({
         workpackId: detail.workpack.id,
         title: detail.workpack.title,
         domainPack: detail.workpack.domainPack,
         lifecycleState: detail.workpack.lifecycleState,
         benchmarkCount: detail.benchmarks.length,
       })),
-      benchmarks: listBenchmarksByTenant(tenantId),
+      benchmarks: await listBenchmarksByTenant(tenantId),
     };
   }),
 

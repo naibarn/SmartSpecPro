@@ -7,7 +7,13 @@ import {
   connectorMapSchema,
   connectorIntrospectionSchema,
 } from "../../shared/workpackContracts";
-import { createWorkpackId, getWorkpackDetail, listWorkpackDetailsByTenant, saveWorkpackVersion, updateWorkpackVersion } from "./workpackPersistence";
+import {
+  createWorkpackId,
+  getWorkpackDetail,
+  listWorkpackDetailsByTenant,
+  saveWorkpackVersion,
+  updateWorkpackVersion,
+} from "./workpackPersistence";
 import { compileWorkpackExecutionPlan } from "./workpackCompilerService";
 import { normalizeWorkpackException } from "./workpackExceptionService";
 
@@ -218,15 +224,15 @@ function buildDraftMap(input: {
   });
 }
 
-function ensureConnectorMaps(workpackId: string): ConnectorMap[] {
-  const detail = getWorkpackDetail(workpackId);
+async function ensureConnectorMaps(workpackId: string): Promise<ConnectorMap[]> {
+  const detail = await getWorkpackDetail(workpackId);
   if (!detail) {
     throw new Error(`Unknown workpack: ${workpackId}`);
   }
   if (!detail.version.executionPlan) {
-    compileWorkpackExecutionPlan({ workpackId });
+    await compileWorkpackExecutionPlan({ workpackId });
   }
-  const refreshed = getWorkpackDetail(workpackId);
+  const refreshed = await getWorkpackDetail(workpackId);
   if (!refreshed) {
     throw new Error(`Unknown workpack after compile: ${workpackId}`);
   }
@@ -250,7 +256,7 @@ function ensureConnectorMaps(workpackId: string): ConnectorMap[] {
     sideEffectClass: highestSideEffectClass(classes),
   }));
 
-  saveWorkpackVersion({
+  await saveWorkpackVersion({
     ...refreshed.version,
     connectorMaps,
   });
@@ -258,13 +264,13 @@ function ensureConnectorMaps(workpackId: string): ConnectorMap[] {
   return connectorMaps;
 }
 
-function selectLatestTenantIntrospections(workpackId: string): Record<string, ConnectorIntrospection> {
-  const detail = getWorkpackDetail(workpackId);
+async function selectLatestTenantIntrospections(workpackId: string): Promise<Record<string, ConnectorIntrospection>> {
+  const detail = await getWorkpackDetail(workpackId);
   if (!detail) {
     throw new Error(`Unknown workpack: ${workpackId}`);
   }
   const latestByFamily = new Map<string, ConnectorIntrospection>();
-  const allDetails = listWorkpackDetailsByTenant(detail.workpack.tenantId);
+  const allDetails = await listWorkpackDetailsByTenant(detail.workpack.tenantId);
   for (const candidate of allDetails) {
     for (const introspection of candidate.version.connectorIntrospections ?? []) {
       const existing = latestByFamily.get(introspection.connectorFamily);
@@ -295,11 +301,11 @@ function metadataToIntrospection(tenantId: string, connectorFamily: string, meta
   });
 }
 
-export function refreshConnectorIntrospections(input: {
+export async function refreshConnectorIntrospections(input: {
   workpackId: string;
   metadataByFamily: Record<string, Partial<ConnectorMetadata>>;
-}): ConnectorIntrospection[] {
-  const detail = getWorkpackDetail(input.workpackId);
+}): Promise<ConnectorIntrospection[]> {
+  const detail = await getWorkpackDetail(input.workpackId);
   if (!detail) {
     throw new Error(`Unknown workpack: ${input.workpackId}`);
   }
@@ -313,25 +319,25 @@ export function refreshConnectorIntrospections(input: {
   for (const introspection of refreshed) {
     mergedByFamily.set(introspection.connectorFamily, introspection);
   }
-  updateWorkpackVersion(detail.version.id, (version) => ({
+  await updateWorkpackVersion(detail.version.id, (version) => ({
     ...version,
     connectorIntrospections: Array.from(mergedByFamily.values()).sort((left, right) => right.collectedAt.localeCompare(left.collectedAt)),
   }));
   return refreshed;
 }
 
-export function updateConnectorMapFields(input: {
+export async function updateConnectorMapFields(input: {
   workpackId: string;
   connectorMapId: string;
   fieldMappings?: ConnectorMap["fieldMappings"];
   samplePayload?: Record<string, unknown>;
-}): ConnectorMap {
-  const detail = getWorkpackDetail(input.workpackId);
+}): Promise<ConnectorMap> {
+  const detail = await getWorkpackDetail(input.workpackId);
   if (!detail) {
     throw new Error(`Unknown workpack: ${input.workpackId}`);
   }
   let updatedMap: ConnectorMap | null = null;
-  updateWorkpackVersion(detail.version.id, (version) => ({
+  await updateWorkpackVersion(detail.version.id, (version) => ({
     ...version,
     connectorMaps: version.connectorMaps.map((connectorMap) => {
       if (connectorMap.id !== input.connectorMapId) {
@@ -415,8 +421,8 @@ function validateAgainstMetadata(
   };
 }
 
-function maybeEmitValidationExceptions(workpackId: string, connectorMaps: ConnectorMap[], runId?: string | null): void {
-  const detail = getWorkpackDetail(workpackId);
+async function maybeEmitValidationExceptions(workpackId: string, connectorMaps: ConnectorMap[], runId?: string | null): Promise<void> {
+  const detail = await getWorkpackDetail(workpackId);
   if (!detail) return;
   for (const connectorMap of connectorMaps) {
     if (connectorMap.validationStatus === "validated") continue;
@@ -450,7 +456,7 @@ function maybeEmitValidationExceptions(workpackId: string, connectorMaps: Connec
       summary = `Connector ${connectorMap.connectorFamily} metadata is stale`;
     }
 
-    normalizeWorkpackException({
+    await normalizeWorkpackException({
       workpackId,
       versionId: detail.version.id,
       runId,
@@ -465,26 +471,26 @@ function maybeEmitValidationExceptions(workpackId: string, connectorMaps: Connec
   }
 }
 
-export function validateConnectorMaps(input: {
+export async function validateConnectorMaps(input: {
   workpackId: string;
   metadataByFamily?: Record<string, Partial<ConnectorMetadata>>;
   runId?: string | null;
   emitExceptions?: boolean;
-}): ConnectorValidationResult {
-  const detail = getWorkpackDetail(input.workpackId);
+}): Promise<ConnectorValidationResult> {
+  const detail = await getWorkpackDetail(input.workpackId);
   if (!detail) {
     throw new Error(`Unknown workpack: ${input.workpackId}`);
   }
 
-  const connectorMaps = ensureConnectorMaps(input.workpackId);
+  const connectorMaps = await ensureConnectorMaps(input.workpackId);
   const overrideIntrospections = input.metadataByFamily
-    ? refreshConnectorIntrospections({
+    ? await refreshConnectorIntrospections({
         workpackId: input.workpackId,
         metadataByFamily: input.metadataByFamily,
       })
     : [];
   const liveTenantIntrospections = {
-    ...selectLatestTenantIntrospections(input.workpackId),
+    ...await selectLatestTenantIntrospections(input.workpackId),
     ...Object.fromEntries(overrideIntrospections.map((introspection) => [introspection.connectorFamily, introspection] as const)),
   };
   const validatedMaps = connectorMaps.map((connectorMap) => {
@@ -505,10 +511,10 @@ export function validateConnectorMaps(input: {
           sourceDeviceId: introspection.sourceDeviceId ?? null,
         }
       : undefined;
-      return validateAgainstMetadata(connectorMap, metadata);
+    return validateAgainstMetadata(connectorMap, metadata);
   });
 
-  updateWorkpackVersion(detail.version.id, (version) => ({
+  await updateWorkpackVersion(detail.version.id, (version) => ({
     ...version,
     connectorMaps: validatedMaps.map((connectorMap) => ({
       ...connectorMap,
@@ -517,7 +523,7 @@ export function validateConnectorMaps(input: {
   }));
 
   if (input.emitExceptions !== false) {
-    maybeEmitValidationExceptions(input.workpackId, validatedMaps, input.runId);
+    await maybeEmitValidationExceptions(input.workpackId, validatedMaps, input.runId);
   }
 
   return {
@@ -533,16 +539,16 @@ export function validateConnectorMaps(input: {
   };
 }
 
-export function getConnectorStudioView(workpackId: string): ConnectorValidationResult & {
+export async function getConnectorStudioView(workpackId: string): Promise<ConnectorValidationResult & {
   workpackTitle: string;
   versionId: string;
   introspections: ConnectorIntrospection[];
-} {
-  const detail = getWorkpackDetail(workpackId);
+}> {
+  const detail = await getWorkpackDetail(workpackId);
   if (!detail) {
     throw new Error(`Unknown workpack: ${workpackId}`);
   }
-  const validation = validateConnectorMaps({ workpackId, emitExceptions: false });
+  const validation = await validateConnectorMaps({ workpackId, emitExceptions: false });
   return {
     ...validation,
     workpackTitle: detail.workpack.title,

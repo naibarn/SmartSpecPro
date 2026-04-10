@@ -39,12 +39,12 @@ import {
 } from "../workpackLaunchService";
 
 describe("workpackLaunchService", () => {
-  beforeEach(() => {
-    resetWorkpackStore();
+  beforeEach(async () => {
+    await resetWorkpackStore();
   });
 
-  function seedWorkpack() {
-    const draft = createDraftWorkpack({
+  async function seedWorkpack() {
+    const draft = await createDraftWorkpack({
       tenantId: "tenant-1",
       title: "Autonomous Queue Triage",
       goal: "Review and route recurring operations tasks automatically with low human intervention",
@@ -57,8 +57,8 @@ describe("workpackLaunchService", () => {
         },
       ],
     });
-    compileWorkpackExecutionPlan({ workpackId: draft.workpack.id, requestedBy: 7 });
-    updateWorkpackVersion(draft.version.id, (version) => ({
+    await compileWorkpackExecutionPlan({ workpackId: draft.workpack.id, requestedBy: 7 });
+    await updateWorkpackVersion(draft.version.id, (version) => ({
       ...version,
       playbook: {
         ...version.playbook,
@@ -70,7 +70,7 @@ describe("workpackLaunchService", () => {
         clarificationQueue: [],
       },
     }));
-    updateWorkpack(draft.workpack.id, (workpack) => ({
+    await updateWorkpack(draft.workpack.id, (workpack) => ({
       ...workpack,
       lifecycleState: "draft",
       updatedAt: "2026-04-10T00:00:00.000Z",
@@ -79,11 +79,11 @@ describe("workpackLaunchService", () => {
   }
 
   it("dispatches queued workpack steps through worker runtime adapters", async () => {
-    const draft = seedWorkpack();
-    const detail = getWorkpackDetail(draft.workpack.id);
+    const draft = await seedWorkpack();
+    const detail = await getWorkpackDetail(draft.workpack.id);
     expect(detail).not.toBeNull();
 
-    updateWorkpackVersion(detail!.version.id, (version) => ({
+    await updateWorkpackVersion(detail!.version.id, (version) => ({
       ...version,
       executionPlan: {
         ...version.executionPlan!,
@@ -138,11 +138,11 @@ describe("workpackLaunchService", () => {
   });
 
   it("falls back to worker fabric routing when a desktop-local dispatch contract is unavailable", async () => {
-    const draft = seedWorkpack();
-    const detail = getWorkpackDetail(draft.workpack.id);
+    const draft = await seedWorkpack();
+    const detail = await getWorkpackDetail(draft.workpack.id);
     expect(detail).not.toBeNull();
 
-    updateWorkpackVersion(detail!.version.id, (version) => ({
+    await updateWorkpackVersion(detail!.version.id, (version) => ({
       ...version,
       executionPlan: {
         ...version.executionPlan!,
@@ -189,11 +189,11 @@ describe("workpackLaunchService", () => {
   });
 
   it("reconciles queued worker jobs into succeeded workpack runs", async () => {
-    const draft = seedWorkpack();
-    const detail = getWorkpackDetail(draft.workpack.id);
+    const draft = await seedWorkpack();
+    const detail = await getWorkpackDetail(draft.workpack.id);
     expect(detail).not.toBeNull();
 
-    updateWorkpackVersion(detail!.version.id, (version) => ({
+    await updateWorkpackVersion(detail!.version.id, (version) => ({
       ...version,
       executionPlan: {
         ...version.executionPlan!,
@@ -246,7 +246,7 @@ describe("workpackLaunchService", () => {
       }),
     });
 
-    const updatedDetail = getWorkpackDetail(draft.workpack.id);
+    const updatedDetail = await getWorkpackDetail(draft.workpack.id);
     expect(reconciledRunIds).toContain(launchResult.run.id);
     expect(updatedDetail?.runs[0]?.status).toBe("succeeded");
     expect(updatedDetail?.runs[0]?.actualSteps[0]?.status).toBe("succeeded");
@@ -254,11 +254,11 @@ describe("workpackLaunchService", () => {
   });
 
   it("returns lane-aware executor monitor snapshots for recent workpack runs", async () => {
-    const draft = seedWorkpack();
-    const detail = getWorkpackDetail(draft.workpack.id);
+    const draft = await seedWorkpack();
+    const detail = await getWorkpackDetail(draft.workpack.id);
     expect(detail).not.toBeNull();
 
-    updateWorkpackVersion(detail!.version.id, (version) => ({
+    await updateWorkpackVersion(detail!.version.id, (version) => ({
       ...version,
       executionPlan: {
         ...version.executionPlan!,

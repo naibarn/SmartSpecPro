@@ -960,6 +960,27 @@
       "when": 1776000002000,
       "tag": "0140_private_personal_finance_vector_index_name",
       "breakpoints": true
+    },
+    {
+      "idx": 137,
+      "version": "7",
+      "when": 1776000003000,
+      "tag": "0141_private_personal_finance_counterparties",
+      "breakpoints": true
+    },
+    {
+      "idx": 138,
+      "version": "7",
+      "when": 1776000004000,
+      "tag": "0142_private_personal_finance_payment_instruments",
+      "breakpoints": true
+    },
+    {
+      "idx": 139,
+      "version": "7",
+      "when": 1776000005000,
+      "tag": "0143_workpack_records",
+      "breakpoints": true
     }
   ]
 }

@@ -157,9 +157,9 @@ function isTerminalRunStatus(status: WorkpackRunStatus): boolean {
   return status !== "queued" && status !== "running";
 }
 
-function markScheduleError(scheduleId: string | null | undefined, code: string): void {
+async function markScheduleError(scheduleId: string | null | undefined, code: string): Promise<void> {
   if (!scheduleId) return;
-  updateWorkpackSchedule(scheduleId, (schedule) => ({
+  await updateWorkpackSchedule(scheduleId, (schedule) => ({
     ...schedule,
     status: "error",
     lastError: code,
@@ -473,13 +473,13 @@ async function attemptDispatchStep(input: {
   };
 }
 
-function updateWorkpackAfterLaunch(input: {
+async function updateWorkpackAfterLaunch(input: {
   detail: WorkpackDetailRecord;
   autonomyMode: AutonomyMode;
   runStatus: WorkpackRunStatus;
-}): void {
+}): Promise<void> {
   const blockedLike = input.runStatus === "blocked" || input.runStatus === "failed" || input.runStatus === "awaiting_approval";
-  updateWorkpack(input.detail.workpack.id, (workpack) => ({
+  await updateWorkpack(input.detail.workpack.id, (workpack) => ({
     ...workpack,
     lifecycleState: blockedLike
       ? "needs_review"
@@ -502,13 +502,13 @@ function updateWorkpackAfterLaunch(input: {
   }));
 }
 
-function updateScheduleAfterRun(input: {
+async function updateScheduleAfterRun(input: {
   scheduleId?: string | null;
   run: WorkpackRun;
   runStatus: WorkpackRunStatus;
-}): void {
+}): Promise<void> {
   if (!input.scheduleId) return;
-  updateWorkpackSchedule(input.scheduleId, (schedule) => ({
+  await updateWorkpackSchedule(input.scheduleId, (schedule) => ({
     ...schedule,
     lastRunAt: input.run.startedAt,
     nextRunAt: input.runStatus === "succeeded"
@@ -549,7 +549,7 @@ async function persistLaunchRun(input: {
     });
   }
 
-  const run = updateWorkpackRun(input.ledgerRunId, (current) => ({
+  const run = await updateWorkpackRun(input.ledgerRunId, (current) => ({
     ...current,
     status: input.runStatus,
     actualSteps: input.actualSteps,
@@ -1181,17 +1181,17 @@ export async function launchWorkpack(
   },
   deps: WorkpackLaunchDeps = {},
 ): Promise<LaunchWorkpackResult> {
-  const detailBeforeCompile = getWorkpackDetail(input.workpackId);
+  const detailBeforeCompile = await getWorkpackDetail(input.workpackId);
   if (!detailBeforeCompile) {
     throw new Error(`Unknown workpack: ${input.workpackId}`);
   }
   if (!detailBeforeCompile.version.executionPlan) {
-    compileWorkpackExecutionPlan({
+    await compileWorkpackExecutionPlan({
       workpackId: input.workpackId,
       requestedBy: input.requestedBy ?? null,
     });
   }
-  const detail = getWorkpackDetail(input.workpackId);
+  const detail = await getWorkpackDetail(input.workpackId);
   if (!detail || !detail.version.executionPlan) {
     throw new Error(`Execution plan unavailable for workpack: ${input.workpackId}`);
   }
@@ -1205,7 +1205,7 @@ export async function launchWorkpack(
     targetMode: autonomyMode === "autonomous" ? "autonomous" : "supervised",
   });
 
-  const ledgerRun = createReplayGradeLedger({
+  const ledgerRun = await createReplayGradeLedger({
     workpackId: detail.workpack.id,
     autonomyMode,
     trigger: input.trigger ?? (input.scheduleId ? "scheduled" : "manual"),
@@ -1215,7 +1215,7 @@ export async function launchWorkpack(
   });
 
   if (pendingClarifications.length > 0) {
-    const exception = normalizeWorkpackException({
+    const exception = await normalizeWorkpackException({
       workpackId: detail.workpack.id,
       versionId: detail.version.id,
       runId: ledgerRun.id,
@@ -1228,13 +1228,13 @@ export async function launchWorkpack(
       riskClass: "medium",
     });
     exceptionIds.push(exception.id);
-    const run = finalizeLedgerRun({
+    const run = await finalizeLedgerRun({
       runId: ledgerRun.id,
       status: "blocked",
       actualSteps: detail.version.executionPlan.steps.map((step) => buildBlockedStep(step, "Launch blocked until clarification queue is resolved.")),
       notes: "Launch blocked by open clarification queue",
     });
-    markScheduleError(input.scheduleId, "clarification_required");
+    await markScheduleError(input.scheduleId, "clarification_required");
     return {
       run,
       exceptionIds,
@@ -1243,7 +1243,7 @@ export async function launchWorkpack(
   }
 
   if (autonomyMode === "autonomous" && readiness.gateResult !== "ready") {
-    const exception = normalizeWorkpackException({
+    const exception = await normalizeWorkpackException({
       workpackId: detail.workpack.id,
       versionId: detail.version.id,
       runId: ledgerRun.id,
@@ -1256,13 +1256,13 @@ export async function launchWorkpack(
       riskClass: "high",
     });
     exceptionIds.push(exception.id);
-    const run = finalizeLedgerRun({
+    const run = await finalizeLedgerRun({
       runId: ledgerRun.id,
       status: "blocked",
       actualSteps: detail.version.executionPlan.steps.map((step) => buildBlockedStep(step, `Launch blocked: ${readiness.reasonCode}`)),
       notes: `Autonomous launch blocked: ${readiness.reasonCode}`,
     });
-    markScheduleError(input.scheduleId, readiness.reasonCode);
+    await markScheduleError(input.scheduleId, readiness.reasonCode);
     return {
       run,
       exceptionIds,
@@ -1270,13 +1270,13 @@ export async function launchWorkpack(
     };
   }
 
-  const connectorValidation = validateConnectorMaps({
+  const connectorValidation = await validateConnectorMaps({
     workpackId: detail.workpack.id,
     runId: ledgerRun.id,
     emitExceptions: true,
   });
   if (connectorValidation.blocked || connectorValidation.stale) {
-    const run = finalizeLedgerRun({
+    const run = await finalizeLedgerRun({
       runId: ledgerRun.id,
       status: "blocked",
       actualSteps: detail.version.executionPlan.steps.map((step) => buildBlockedStep(step, "Launch blocked by connector validation state.")),
@@ -1287,7 +1287,7 @@ export async function launchWorkpack(
       })),
       notes: "Launch blocked by connector validation",
     });
-    markScheduleError(input.scheduleId, connectorValidation.blocked ? "connector_blocked" : "connector_stale");
+    await markScheduleError(input.scheduleId, connectorValidation.blocked ? "connector_blocked" : "connector_stale");
     return {
       run,
       exceptionIds,
@@ -1312,7 +1312,7 @@ export async function launchWorkpack(
         reason: `Consequence boundary preserved for ${step.title}`,
         approved: false,
       });
-      const exception = normalizeWorkpackException({
+      const exception = await normalizeWorkpackException({
         workpackId: detail.workpack.id,
         versionId: detail.version.id,
         runId: ledgerRun.id,
@@ -1340,7 +1340,7 @@ export async function launchWorkpack(
     });
 
     if (!dispatchResult.ok) {
-      const exception = normalizeWorkpackException({
+      const exception = await normalizeWorkpackException({
         workpackId: detail.workpack.id,
         versionId: detail.version.id,
         runId: ledgerRun.id,
@@ -1362,7 +1362,7 @@ export async function launchWorkpack(
     artifacts.push(...dispatchResult.artifacts);
 
     if (dispatchResult.step.status === "failed") {
-      const exception = normalizeWorkpackException({
+      const exception = await normalizeWorkpackException({
         workpackId: detail.workpack.id,
         versionId: detail.version.id,
         runId: ledgerRun.id,
@@ -1402,18 +1402,18 @@ export async function launchWorkpack(
     notes,
   });
 
-  updateWorkpackAfterLaunch({
+  await updateWorkpackAfterLaunch({
     detail,
     autonomyMode,
     runStatus,
   });
-  updateScheduleAfterRun({
+  await updateScheduleAfterRun({
     scheduleId: input.scheduleId,
     run,
     runStatus,
   });
 
-  saveTelemetryEvent({
+  await saveTelemetryEvent({
     id: createWorkpackId("evt"),
     tenantId: detail.workpack.tenantId,
     workpackId: detail.workpack.id,
@@ -1423,7 +1423,7 @@ export async function launchWorkpack(
     createdAt: nowIso(),
   });
 
-  captureWorkpackMetricSnapshot(detail.workpack.id);
+  await captureWorkpackMetricSnapshot(detail.workpack.id);
   return {
     run,
     exceptionIds,
@@ -1476,15 +1476,15 @@ function summarizeReconciledStep(step: WorkpackRunStep, snapshot: WorkpackExecut
   return `${step.title} is ${summarizeWorkerStatus(snapshot.status)} in ${snapshot.runtimeType ?? "worker"} job ${snapshot.id}.`;
 }
 
-function updateWorkpackAfterReconcile(input: {
+async function updateWorkpackAfterReconcile(input: {
   run: WorkpackRun;
   runStatus: WorkpackRunStatus;
-}): void {
-  const detail = getWorkpackDetail(input.run.workpackId);
+}): Promise<void> {
+  const detail = await getWorkpackDetail(input.run.workpackId);
   if (!detail) return;
 
   if (input.runStatus === "succeeded") {
-    updateWorkpack(detail.workpack.id, (workpack) => ({
+    await updateWorkpack(detail.workpack.id, (workpack) => ({
       ...workpack,
       lifecycleState: input.run.autonomyMode === "autonomous" ? "autonomous" : "supervised",
       autonomyMode: input.run.autonomyMode,
@@ -1496,7 +1496,7 @@ function updateWorkpackAfterReconcile(input: {
       updatedAt: nowIso(),
     }));
   } else if (input.runStatus === "failed" || input.runStatus === "blocked") {
-    updateWorkpack(detail.workpack.id, (workpack) => ({
+    await updateWorkpack(detail.workpack.id, (workpack) => ({
       ...workpack,
       lifecycleState: "needs_review",
       autonomyMode: "draft",
@@ -1510,7 +1510,7 @@ function updateWorkpackAfterReconcile(input: {
   }
 
   if (input.run.scheduleId) {
-    updateWorkpackSchedule(input.run.scheduleId, (schedule) => ({
+    await updateWorkpackSchedule(input.run.scheduleId, (schedule) => ({
       ...schedule,
       lastRunAt: input.run.startedAt,
       nextRunAt: input.runStatus === "succeeded"
@@ -1531,7 +1531,7 @@ export async function reconcileDispatchedWorkpackRuns(
   deps: WorkpackLaunchDeps = {},
 ): Promise<string[]> {
   const loadWorkerJobsById = deps.loadWorkerJobsById ?? defaultLoadWorkerJobsById;
-  const candidateRuns = (input.tenantId ? listRunsByTenant(input.tenantId) : listAllRuns())
+  const candidateRuns = (input.tenantId ? await listRunsByTenant(input.tenantId) : await listAllRuns())
     .filter((run) => (!input.workpackId || run.workpackId === input.workpackId))
     .filter((run) => run.status === "queued" || run.status === "running");
 
@@ -1600,11 +1600,11 @@ export async function reconcileDispatchedWorkpackRuns(
           : run.notes,
     });
 
-    updateWorkpackAfterReconcile({
+    await updateWorkpackAfterReconcile({
       run: reconciledRun,
       runStatus: nextRunStatus,
     });
-    captureWorkpackMetricSnapshot(run.workpackId);
+    await captureWorkpackMetricSnapshot(run.workpackId);
     reconciledRunIds.push(run.id);
   }
 
@@ -1619,7 +1619,7 @@ export async function listWorkpackExecutorSnapshots(
   },
   deps: Pick<WorkpackLaunchDeps, "loadExecutorSnapshotsById"> = {},
 ): Promise<WorkpackExecutorMonitorSnapshot[]> {
-  const detail = getWorkpackDetail(input.workpackId);
+  const detail = await getWorkpackDetail(input.workpackId);
   if (!detail || detail.workpack.tenantId !== input.tenantId) {
     return [];
   }
@@ -1653,7 +1653,7 @@ export async function listWorkpackExecutorSnapshots(
     });
 }
 
-export function createWorkpackSchedule(input: {
+export async function createWorkpackSchedule(input: {
   tenantId: string;
   workpackId: string;
   versionId: string;
@@ -1664,7 +1664,7 @@ export function createWorkpackSchedule(input: {
   eventKey?: string | null;
   targetAutonomyMode?: AutonomyMode;
   createdBy?: number | null;
-}): WorkpackSchedule {
+}): Promise<WorkpackSchedule> {
   const createdAt = nowIso();
   const schedule = workpackScheduleSchema.parse({
     id: createWorkpackId("wps"),
@@ -1709,7 +1709,7 @@ export function createWorkpackSchedule(input: {
 }
 
 export async function triggerWorkpackSchedule(scheduleId: string): Promise<LaunchWorkpackResult> {
-  const schedule = getWorkpackSchedule(scheduleId);
+  const schedule = await getWorkpackSchedule(scheduleId);
   if (!schedule) {
     throw new Error(`Unknown workpack schedule: ${scheduleId}`);
   }
@@ -1725,8 +1725,8 @@ export async function triggerWorkpackSchedule(scheduleId: string): Promise<Launc
 export async function runDueWorkpackSchedules(at = new Date(), tenantId?: string): Promise<string[]> {
   const launched: string[] = [];
   const schedules = tenantId
-    ? listSchedulesByTenant(tenantId)
-    : (await import("./workpackPersistence")).listAllSchedules();
+    ? await listSchedulesByTenant(tenantId)
+    : await (await import("./workpackPersistence")).listAllSchedules();
   for (const schedule of schedules) {
     if (schedule.status !== "active" || !schedule.nextRunAt) continue;
     if (Date.parse(schedule.nextRunAt) > at.getTime()) continue;

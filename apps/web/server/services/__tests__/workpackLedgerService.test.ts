@@ -6,12 +6,12 @@ import { createDraftWorkpack } from "../workpackIntakeService";
 import { getWorkpackRun, resetWorkpackStore } from "../workpackPersistence";
 
 describe("workpackLedgerService", () => {
-  beforeEach(() => {
-    resetWorkpackStore();
+  beforeEach(async () => {
+    await resetWorkpackStore();
   });
 
-  it("persists replay-grade run history with artifacts and connector summaries", () => {
-    const draft = createDraftWorkpack({
+  it("persists replay-grade run history with artifacts and connector summaries", async () => {
+    const draft = await createDraftWorkpack({
       tenantId: "tenant-1",
       title: "Invoice review",
       goal: "Review invoice data",
@@ -24,10 +24,10 @@ describe("workpackLedgerService", () => {
         },
       ],
     });
-    compileWorkpackExecutionPlan({ workpackId: draft.workpack.id });
+    await compileWorkpackExecutionPlan({ workpackId: draft.workpack.id });
 
-    const ledgerRun = createReplayGradeLedger({ workpackId: draft.workpack.id });
-    appendLedgerArtifacts(ledgerRun.id, [
+    const ledgerRun = await createReplayGradeLedger({ workpackId: draft.workpack.id });
+    await appendLedgerArtifacts(ledgerRun.id, [
       {
         artifactId: "artifact_1",
         label: "Summary",
@@ -40,7 +40,7 @@ describe("workpackLedgerService", () => {
         summary: "Sanitized run summary",
       },
     ]);
-    finalizeLedgerRun({
+    await finalizeLedgerRun({
       runId: ledgerRun.id,
       status: "succeeded",
       actualSteps: [
@@ -63,7 +63,7 @@ describe("workpackLedgerService", () => {
       ],
     });
 
-    const persisted = getWorkpackRun(ledgerRun.id);
+    const persisted = await getWorkpackRun(ledgerRun.id);
     expect(persisted?.actualSteps).toHaveLength(1);
     expect(persisted?.artifactReferences[0]?.summary).toContain("Sanitized");
     expect(persisted?.connectorSummaries[0]?.status).toBe("validated");

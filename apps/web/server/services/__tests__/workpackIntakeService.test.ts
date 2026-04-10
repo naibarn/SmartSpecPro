@@ -4,12 +4,12 @@ import { createDraftWorkpack } from "../workpackIntakeService";
 import { getWorkpackDetail, resetWorkpackStore } from "../workpackPersistence";
 
 describe("createDraftWorkpack", () => {
-  beforeEach(() => {
-    resetWorkpackStore();
+  beforeEach(async () => {
+    await resetWorkpackStore();
   });
 
-  it("creates traceable playbook and workpack drafts from structured sources", () => {
-    const draft = createDraftWorkpack({
+  it("creates traceable playbook and workpack drafts from structured sources", async () => {
+    const draft = await createDraftWorkpack({
       tenantId: "tenant-1",
       title: "Daily Ticket Triage",
       goal: "Classify tickets and route them automatically",
@@ -24,11 +24,11 @@ describe("createDraftWorkpack", () => {
 
     expect(draft.workpack.domainPack).toBe("support_ops");
     expect(draft.playbook.steps.length).toBeGreaterThan(0);
-    expect(getWorkpackDetail(draft.workpack.id)?.caseSources).toHaveLength(1);
+    expect((await getWorkpackDetail(draft.workpack.id))?.caseSources).toHaveLength(1);
   });
 
-  it("marks low-confidence drafts as clarification-needed", () => {
-    const draft = createDraftWorkpack({
+  it("marks low-confidence drafts as clarification-needed", async () => {
+    const draft = await createDraftWorkpack({
       tenantId: "tenant-1",
       title: "Unclear Draft",
       goal: "Help",

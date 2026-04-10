@@ -20,7 +20,18 @@ import {
   inferWorkpackDomainPackFromText,
   type WorkpackDomainPack,
 } from "../../shared/workpackDomainPacks";
-import { createWorkpackId, getWorkpackDetail, saveCaseSources, savePlaybook, saveTelemetryEvent, saveWorkpack, saveWorkpackVersion, updateWorkpack, updateWorkpackVersion } from "./workpackPersistence";
+import {
+  createWorkpackId,
+  getWorkpackDetail,
+  saveCaseSources,
+  savePlaybook,
+  saveTelemetryEvent,
+  saveWorkpack,
+  saveWorkpackVersion,
+  updateWorkpack,
+  updateWorkpackVersion,
+  withWorkpackPersistenceTransaction,
+} from "./workpackPersistence";
 
 export interface DraftWorkpackSourceInput {
   type: CaseSourceType;
@@ -425,7 +436,7 @@ function buildDraftSteps(input: DraftWorkpackInput, domainPack: WorkpackDomainPa
   });
 }
 
-export function createDraftWorkpack(input: DraftWorkpackInput): DraftWorkpackOutput {
+export async function createDraftWorkpack(input: DraftWorkpackInput): Promise<DraftWorkpackOutput> {
   const createdAt = nowIso();
   const inferredDomainPack = input.domainPack ?? inferWorkpackDomainPackFromText(
     `${input.title}\n${input.goal}\n${input.sources.map((source) => source.sourceText ?? "").join("\n")}`,
@@ -493,20 +504,22 @@ export function createDraftWorkpack(input: DraftWorkpackInput): DraftWorkpackOut
     updatedAt: createdAt,
   });
 
-  saveCaseSources(caseSources);
-  savePlaybook(playbook);
-  saveWorkpack(workpack);
-  saveWorkpackVersion(version);
-  saveTelemetryEvent({
-    id: createWorkpackId("evt"),
-    tenantId: input.tenantId,
-    workpackId,
-    versionId: version.id,
-    eventName: requiresClarification(extractedFields, clarificationQueue) ? "clarification_requested" : "draft_created",
-    detail: requiresClarification(extractedFields, clarificationQueue)
-      ? `Draft created with ${clarificationQueue.length} targeted clarification prompts`
-      : "Draft created from structured case intake",
-    createdAt,
+  await withWorkpackPersistenceTransaction(async (session) => {
+    await saveCaseSources(caseSources, session);
+    await savePlaybook(playbook, session);
+    await saveWorkpack(workpack, session);
+    await saveWorkpackVersion(version, session);
+    await saveTelemetryEvent({
+      id: createWorkpackId("evt"),
+      tenantId: input.tenantId,
+      workpackId,
+      versionId: version.id,
+      eventName: requiresClarification(extractedFields, clarificationQueue) ? "clarification_requested" : "draft_created",
+      detail: requiresClarification(extractedFields, clarificationQueue)
+        ? `Draft created with ${clarificationQueue.length} targeted clarification prompts`
+        : "Draft created from structured case intake",
+      createdAt,
+    }, session);
   });
 
   return {
@@ -548,95 +561,105 @@ export function listDomainPackSuggestions() {
   ] as const;
 }
 
-export function answerClarificationQuestion(input: {
+export async function answerClarificationQuestion(input: {
   workpackId: string;
   questionId: string;
   answer: string;
-}): Playbook {
-  const detail = getWorkpackDetail(input.workpackId);
+}): Promise<Playbook> {
+  const detail = await getWorkpackDetail(input.workpackId);
   if (!detail) {
     throw new Error(`Unknown workpack: ${input.workpackId}`);
   }
   const answeredAt = nowIso();
   let nextPlaybook: Playbook | null = null;
-  updateWorkpackVersion(detail.version.id, (version) => {
-    const clarificationQueue = version.playbook.clarificationQueue.map((question) => (
-      question.id === input.questionId
-        ? {
-            ...question,
-            status: "answered" as const,
-            answer: input.answer,
-            updatedAt: answeredAt,
-          }
-        : question
-    ));
-    const extractedFields = version.playbook.extractedFields.map((field) => (
-      clarificationQueue.some((question) => question.id === input.questionId && question.fieldKey === field.key)
-        ? {
-            ...field,
-            valueSummary: input.answer,
-            confidence: Math.max(field.confidence, 0.88),
-            inferred: false,
-            requiresClarification: false,
-          }
-        : field
-    ));
-    nextPlaybook = {
-      ...version.playbook,
-      clarificationQueue,
-      extractedFields,
-    };
-    return {
-      ...version,
-      playbook: nextPlaybook,
-    };
+  await withWorkpackPersistenceTransaction(async (session) => {
+    await updateWorkpackVersion(detail.version.id, (version) => {
+      const clarificationQueue = version.playbook.clarificationQueue.map((question) => (
+        question.id === input.questionId
+          ? {
+              ...question,
+              status: "answered" as const,
+              answer: input.answer,
+              updatedAt: answeredAt,
+            }
+          : question
+      ));
+      const extractedFields = version.playbook.extractedFields.map((field) => (
+        clarificationQueue.some((question) => question.id === input.questionId && question.fieldKey === field.key)
+          ? {
+              ...field,
+              valueSummary: input.answer,
+              confidence: Math.max(field.confidence, 0.88),
+              inferred: false,
+              requiresClarification: false,
+            }
+          : field
+      ));
+      nextPlaybook = {
+        ...version.playbook,
+        clarificationQueue,
+        extractedFields,
+      };
+      return {
+        ...version,
+        playbook: nextPlaybook,
+      };
+    }, session);
+    if (!nextPlaybook) {
+      throw new Error(`Failed to answer clarification question: ${input.questionId}`);
+    }
+    await updateWorkpack(detail.workpack.id, (workpack) => ({
+      ...workpack,
+      lifecycleState: nextPlaybook!.clarificationQueue.some((question) => question.status === "pending")
+        ? "clarification_needed"
+        : "draft",
+      updatedAt: answeredAt,
+    }), session);
   });
   if (!nextPlaybook) {
     throw new Error(`Failed to answer clarification question: ${input.questionId}`);
   }
-  updateWorkpack(detail.workpack.id, (workpack) => ({
-    ...workpack,
-    lifecycleState: nextPlaybook!.clarificationQueue.some((question) => question.status === "pending")
-      ? "clarification_needed"
-      : "draft",
-    updatedAt: answeredAt,
-  }));
   return nextPlaybook;
 }
 
-export function dismissClarificationQuestion(input: {
+export async function dismissClarificationQuestion(input: {
   workpackId: string;
   questionId: string;
-}): Playbook {
-  const detail = getWorkpackDetail(input.workpackId);
+}): Promise<Playbook> {
+  const detail = await getWorkpackDetail(input.workpackId);
   if (!detail) {
     throw new Error(`Unknown workpack: ${input.workpackId}`);
   }
   const updatedAt = nowIso();
   let nextPlaybook: Playbook | null = null;
-  updateWorkpackVersion(detail.version.id, (version) => {
-    nextPlaybook = {
-      ...version.playbook,
-      clarificationQueue: version.playbook.clarificationQueue.map((question) => (
-        question.id === input.questionId
-          ? { ...question, status: "dismissed" as const, updatedAt }
-          : question
-      )),
-    };
-    return {
-      ...version,
-      playbook: nextPlaybook,
-    };
+  await withWorkpackPersistenceTransaction(async (session) => {
+    await updateWorkpackVersion(detail.version.id, (version) => {
+      nextPlaybook = {
+        ...version.playbook,
+        clarificationQueue: version.playbook.clarificationQueue.map((question) => (
+          question.id === input.questionId
+            ? { ...question, status: "dismissed" as const, updatedAt }
+            : question
+        )),
+      };
+      return {
+        ...version,
+        playbook: nextPlaybook,
+      };
+    }, session);
+    if (!nextPlaybook) {
+      throw new Error(`Failed to dismiss clarification question: ${input.questionId}`);
+    }
+    await updateWorkpack(detail.workpack.id, (workpack) => ({
+      ...workpack,
+      lifecycleState: nextPlaybook!.clarificationQueue.some((question) => question.status === "pending")
+        ? "clarification_needed"
+        : "draft",
+      updatedAt,
+    }), session);
   });
   if (!nextPlaybook) {
     throw new Error(`Failed to dismiss clarification question: ${input.questionId}`);
   }
-  updateWorkpack(detail.workpack.id, (workpack) => ({
-    ...workpack,
-    lifecycleState: nextPlaybook!.clarificationQueue.some((question) => question.status === "pending")
-      ? "clarification_needed"
-      : "draft",
-    updatedAt,
-  }));
   return nextPlaybook;
 }

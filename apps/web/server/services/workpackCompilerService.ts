@@ -5,7 +5,14 @@ import {
   workpackExecutionPlanSchema,
 } from "../../shared/workpackContracts";
 import { buildExecutionPlan, type TaskExecutionPlan } from "./taskExecutionPlanner";
-import { createWorkpackId, getWorkpackDetail, saveTelemetryEvent, updateWorkpack, updateWorkpackVersion } from "./workpackPersistence";
+import {
+  createWorkpackId,
+  getWorkpackDetail,
+  saveTelemetryEvent,
+  updateWorkpack,
+  updateWorkpackVersion,
+  withWorkpackPersistenceTransaction,
+} from "./workpackPersistence";
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -134,11 +141,11 @@ function buildWorkpackPlannerPlan(input: {
   });
 }
 
-export function compileWorkpackExecutionPlan(input: {
+export async function compileWorkpackExecutionPlan(input: {
   workpackId: string;
   requestedBy?: number | null;
-}): WorkpackExecutionPlan {
-  const detail = getWorkpackDetail(input.workpackId);
+}): Promise<WorkpackExecutionPlan> {
+  const detail = await getWorkpackDetail(input.workpackId);
   if (!detail) {
     throw new Error(`Unknown workpack: ${input.workpackId}`);
   }
@@ -169,8 +176,9 @@ export function compileWorkpackExecutionPlan(input: {
     steps,
   });
 
-  updateWorkpackVersion(detail.version.id, (version) => ({
-    ...version,
+  await withWorkpackPersistenceTransaction(async (session) => {
+    await updateWorkpackVersion(detail.version.id, (version) => ({
+      ...version,
       executionPlan: plan,
       compilerMetadata: {
         ...version.compilerMetadata,
@@ -178,21 +186,22 @@ export function compileWorkpackExecutionPlan(input: {
         compiledBy: input.requestedBy ?? null,
         plannerPlan,
       },
-    }));
-  updateWorkpack(detail.workpack.id, (workpack) => ({
-    ...workpack,
-    lifecycleState: workpack.lifecycleState === "clarification_needed" ? "clarification_needed" : "ready",
-    runtimePreferenceHints: Array.from(new Set(plan.steps.map((step) => step.preferredRuntimePath))),
-    updatedAt: generatedAt,
-  }));
-  saveTelemetryEvent({
-    id: createWorkpackId("evt"),
-    tenantId: detail.workpack.tenantId,
-    workpackId: detail.workpack.id,
-    versionId: detail.version.id,
-    eventName: "rollout_opened",
-    detail: "Execution plan compiled and ready for simulation",
-    createdAt: generatedAt,
+    }), session);
+    await updateWorkpack(detail.workpack.id, (workpack) => ({
+      ...workpack,
+      lifecycleState: workpack.lifecycleState === "clarification_needed" ? "clarification_needed" : "ready",
+      runtimePreferenceHints: Array.from(new Set(plan.steps.map((step) => step.preferredRuntimePath))),
+      updatedAt: generatedAt,
+    }), session);
+    await saveTelemetryEvent({
+      id: createWorkpackId("evt"),
+      tenantId: detail.workpack.tenantId,
+      workpackId: detail.workpack.id,
+      versionId: detail.version.id,
+      eventName: "rollout_opened",
+      detail: "Execution plan compiled and ready for simulation",
+      createdAt: generatedAt,
+    }, session);
   });
 
   return plan;

@@ -6,12 +6,12 @@ import { createDraftWorkpack } from "../workpackIntakeService";
 import { resetWorkpackStore } from "../workpackPersistence";
 
 describe("workpackConnectorService", () => {
-  beforeEach(() => {
-    resetWorkpackStore();
+  beforeEach(async () => {
+    await resetWorkpackStore();
   });
 
-  it("creates and validates typed connector maps", () => {
-    const draft = createDraftWorkpack({
+  it("creates and validates typed connector maps", async () => {
+    const draft = await createDraftWorkpack({
       tenantId: "tenant-1",
       title: "Support triage",
       goal: "Route support tickets",
@@ -24,9 +24,9 @@ describe("workpackConnectorService", () => {
         },
       ],
     });
-    compileWorkpackExecutionPlan({ workpackId: draft.workpack.id });
+    await compileWorkpackExecutionPlan({ workpackId: draft.workpack.id });
 
-    const result = validateConnectorMaps({
+    const result = await validateConnectorMaps({
       workpackId: draft.workpack.id,
       emitExceptions: false,
       metadataByFamily: {
@@ -75,8 +75,8 @@ describe("workpackConnectorService", () => {
     expect(result.connectorMaps[0]?.validationStatus).toBe("validated");
   });
 
-  it("fails closed when connector scopes are missing", () => {
-    const draft = createDraftWorkpack({
+  it("fails closed when connector scopes are missing", async () => {
+    const draft = await createDraftWorkpack({
       tenantId: "tenant-1",
       title: "Sales follow-up",
       goal: "Update CRM after inbound lead",
@@ -89,9 +89,9 @@ describe("workpackConnectorService", () => {
         },
       ],
     });
-    compileWorkpackExecutionPlan({ workpackId: draft.workpack.id });
+    await compileWorkpackExecutionPlan({ workpackId: draft.workpack.id });
 
-    const result = validateConnectorMaps({
+    const result = await validateConnectorMaps({
       workpackId: draft.workpack.id,
       metadataByFamily: {
         crm: {

@@ -5,12 +5,12 @@ import { createDraftWorkpack } from "../workpackIntakeService";
 import { resetWorkpackStore } from "../workpackPersistence";
 
 describe("workpackExceptionService", () => {
-  beforeEach(() => {
-    resetWorkpackStore();
+  beforeEach(async () => {
+    await resetWorkpackStore();
   });
 
-  it("normalizes raw failures into a unified workpack exception shape", () => {
-    const draft = createDraftWorkpack({
+  it("normalizes raw failures into a unified workpack exception shape", async () => {
+    const draft = await createDraftWorkpack({
       tenantId: "tenant-1",
       title: "Store keeper daily count",
       goal: "Count inventory discrepancies",
@@ -24,7 +24,7 @@ describe("workpackExceptionService", () => {
       ],
     });
 
-    const exceptionRecord = normalizeWorkpackException({
+    const exceptionRecord = await normalizeWorkpackException({
       workpackId: draft.workpack.id,
       reasonCategory: "schema_mismatch",
       reasonCode: "field_drift",
@@ -39,8 +39,8 @@ describe("workpackExceptionService", () => {
     expect(exceptionRecord.mismatchCategory).toBe("schema_mismatch");
   });
 
-  it("groups open exceptions into an inbox and supports resolution", () => {
-    const draft = createDraftWorkpack({
+  it("groups open exceptions into an inbox and supports resolution", async () => {
+    const draft = await createDraftWorkpack({
       tenantId: "tenant-1",
       title: "HR onboarding",
       goal: "Prepare onboarding packet",
@@ -54,7 +54,7 @@ describe("workpackExceptionService", () => {
       ],
     });
 
-    const first = normalizeWorkpackException({
+    const first = await normalizeWorkpackException({
       workpackId: draft.workpack.id,
       reasonCategory: "ambiguity",
       reasonCode: "needs_clarification",
@@ -63,7 +63,7 @@ describe("workpackExceptionService", () => {
       remediationPointer: "/workpacks/test",
       nextAction: "Request start date",
     });
-    normalizeWorkpackException({
+    await normalizeWorkpackException({
       workpackId: draft.workpack.id,
       reasonCategory: "ambiguity",
       reasonCode: "needs_clarification",
@@ -73,10 +73,10 @@ describe("workpackExceptionService", () => {
       nextAction: "Request manager name",
     });
 
-    const inbox = listWorkpackExceptionInbox(draft.workpack.id);
+    const inbox = await listWorkpackExceptionInbox(draft.workpack.id);
     expect(inbox[0]?.count).toBe(2);
 
-    const resolved = resolveWorkpackException(first.id);
+    const resolved = await resolveWorkpackException(first.id);
     expect(resolved.resolvedAt).not.toBeNull();
   });
 });

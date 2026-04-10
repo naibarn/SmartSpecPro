@@ -300,7 +300,7 @@ export async function getWorkpackMonitoringSummary(tenantId: string): Promise<{
   const { getWorkpackTelemetrySummary } = await import("./workpackTelemetryService");
   const { listWorkpackReadinessSummaries } = await import("./workpackReadinessService");
 
-  const telemetry = getWorkpackTelemetrySummary(tenantId);
+  const telemetry = await getWorkpackTelemetrySummary(tenantId);
   const readiness = await listWorkpackReadinessSummaries(tenantId);
 
   return {

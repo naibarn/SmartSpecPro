@@ -13,18 +13,59 @@ vi.mock("../tenantFeatureFlagService", async () => {
 });
 
 import { compileWorkpackExecutionPlan } from "../workpackCompilerService";
+import { validateConnectorMaps } from "../workpackConnectorService";
 import { createDraftWorkpack } from "../workpackIntakeService";
 import { getWorkpackReadinessSummary } from "../workpackReadinessService";
 import { resetWorkpackStore, updateWorkpackVersion } from "../workpackPersistence";
 import { simulateWorkpack } from "../workpackSimulationService";
 
+const supportConnectorMetadata = {
+  helpdesk: {
+    availableFields: ["record_id", "status", "summary", "ticket_id", "priority"],
+    fieldTypes: {
+      record_id: "string",
+      status: "string",
+      summary: "string",
+      ticket_id: "string",
+      priority: "string",
+    },
+    grantedScopes: ["helpdesk:read", "helpdesk:write"],
+    supportsIdempotency: true,
+    status: "healthy" as const,
+  },
+  knowledge_base: {
+    availableFields: ["record_id", "status", "summary", "article_id"],
+    fieldTypes: {
+      record_id: "string",
+      status: "string",
+      summary: "string",
+      article_id: "string",
+    },
+    grantedScopes: ["knowledge_base:read", "knowledge_base:write"],
+    supportsIdempotency: true,
+    status: "healthy" as const,
+  },
+  chat: {
+    availableFields: ["record_id", "status", "summary", "thread_id"],
+    fieldTypes: {
+      record_id: "string",
+      status: "string",
+      summary: "string",
+      thread_id: "string",
+    },
+    grantedScopes: ["chat:read", "chat:write"],
+    supportsIdempotency: true,
+    status: "healthy" as const,
+  },
+};
+
 describe("workpackReadinessService", () => {
-  beforeEach(() => {
-    resetWorkpackStore();
+  beforeEach(async () => {
+    await resetWorkpackStore();
   });
 
   it("derives stable readiness summaries from evidence", async () => {
-    const draft = createDraftWorkpack({
+    const draft = await createDraftWorkpack({
       tenantId: "tenant-1",
       title: "Support ops",
       goal: "Classify tickets",
@@ -37,8 +78,13 @@ describe("workpackReadinessService", () => {
         },
       ],
     });
-    compileWorkpackExecutionPlan({ workpackId: draft.workpack.id });
-    updateWorkpackVersion(draft.version.id, (version) => ({
+    await compileWorkpackExecutionPlan({ workpackId: draft.workpack.id });
+    await validateConnectorMaps({
+      workpackId: draft.workpack.id,
+      emitExceptions: false,
+      metadataByFamily: supportConnectorMetadata,
+    });
+    await updateWorkpackVersion(draft.version.id, (version) => ({
       ...version,
       fixtureCatalog: version.fixtureCatalog.map((fixture) => ({
         ...fixture,
@@ -49,7 +95,7 @@ describe("workpackReadinessService", () => {
         },
       })),
     }));
-    simulateWorkpack({ workpackId: draft.workpack.id });
+    await simulateWorkpack({ workpackId: draft.workpack.id });
 
     const summary = await getWorkpackReadinessSummary(draft.workpack.id);
 

@@ -7,7 +7,7 @@ import {
 import { deriveWorkpackImprovementProposals } from "./workpackLearningService";
 import {
   createWorkpackId,
-  getPromotionRecord,
+  getPromotionRecordForTenant,
   getWorkpackDetail,
   saveBenchmarkPack,
   savePromotionRecord,
@@ -15,6 +15,7 @@ import {
   updateBenchmarkPack,
   updatePromotionRecord,
   updateWorkpack,
+  withWorkpackPersistenceTransaction,
 } from "./workpackPersistence";
 
 export interface WorkpackPromotionEligibility {
@@ -31,13 +32,13 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
-export function evaluateWorkpackPromotionEligibility(workpackId: string): WorkpackPromotionEligibility {
-  const detail = getWorkpackDetail(workpackId);
+export async function evaluateWorkpackPromotionEligibility(workpackId: string): Promise<WorkpackPromotionEligibility> {
+  const detail = await getWorkpackDetail(workpackId);
   if (!detail) {
     throw new Error(`Unknown workpack: ${workpackId}`);
   }
 
-  const learningBundle = deriveWorkpackImprovementProposals(workpackId);
+  const learningBundle = await deriveWorkpackImprovementProposals(workpackId);
   const unresolvedExceptions = detail.exceptions.filter((record) => !record.resolvedAt);
   const passedSimulationCount = detail.simulations.filter((simulation) => simulation.status === "passed").length;
   const successfulRunCount = detail.runs.filter((run) => run.status === "succeeded").length;
@@ -111,53 +112,56 @@ export function evaluateWorkpackPromotionEligibility(workpackId: string): Workpa
   };
 }
 
-export function publishBenchmarkPack(input: {
+export async function publishBenchmarkPack(input: {
   workpackId: string;
   publicationScope?: "tenant_local" | "tenant_template" | "cross_tenant";
   publisherId?: number | null;
-}): {
+}): Promise<{
   benchmarkPack: ReturnType<typeof benchmarkPackSchema.parse> | null;
   promotionRecord: ReturnType<typeof workpackPromotionRecordSchema.parse>;
   eligibility: WorkpackPromotionEligibility;
-} {
-  const detail = getWorkpackDetail(input.workpackId);
+}> {
+  const detail = await getWorkpackDetail(input.workpackId);
   if (!detail) {
     throw new Error(`Unknown workpack: ${input.workpackId}`);
   }
 
-  const eligibility = evaluateWorkpackPromotionEligibility(input.workpackId);
+  const eligibility = await evaluateWorkpackPromotionEligibility(input.workpackId);
   const createdAt = nowIso();
   const previousActive = detail.promotionRecords.find((record) => record.state === "active") ?? null;
 
   if (!eligibility.eligible) {
-    const blockedRecord = savePromotionRecord(workpackPromotionRecordSchema.parse({
-      id: createWorkpackId("prom"),
-      workpackId: detail.workpack.id,
-      versionId: detail.version.id,
-      benchmarkPackId: null,
-      previousActiveBenchmarkPackId: previousActive?.benchmarkPackId ?? null,
-      state: "blocked",
-      reasonCode: eligibility.reasonCode,
-      evidenceCapturedAt: createdAt,
-      rollbackAvailable: Boolean(previousActive),
-    }));
-    saveTelemetryEvent({
-      id: createWorkpackId("evt"),
-      tenantId: detail.workpack.tenantId,
-      workpackId: detail.workpack.id,
-      versionId: detail.version.id,
-      eventName: "promotion_blocked",
-      detail: `Promotion blocked: ${eligibility.reasonCode}`,
-      createdAt,
+    const promotionRecord = await withWorkpackPersistenceTransaction(async (session) => {
+      const blockedRecord = await savePromotionRecord(workpackPromotionRecordSchema.parse({
+        id: createWorkpackId("prom"),
+        workpackId: detail.workpack.id,
+        versionId: detail.version.id,
+        benchmarkPackId: null,
+        previousActiveBenchmarkPackId: previousActive?.benchmarkPackId ?? null,
+        state: "blocked",
+        reasonCode: eligibility.reasonCode,
+        evidenceCapturedAt: createdAt,
+        rollbackAvailable: Boolean(previousActive),
+      }), session);
+      await saveTelemetryEvent({
+        id: createWorkpackId("evt"),
+        tenantId: detail.workpack.tenantId,
+        workpackId: detail.workpack.id,
+        versionId: detail.version.id,
+        eventName: "promotion_blocked",
+        detail: `Promotion blocked: ${eligibility.reasonCode}`,
+        createdAt,
+      }, session);
+      await updateWorkpack(detail.workpack.id, (workpack) => ({
+        ...workpack,
+        promotionState: "blocked",
+        updatedAt: createdAt,
+      }), session);
+      return blockedRecord;
     });
-    updateWorkpack(detail.workpack.id, (workpack) => ({
-      ...workpack,
-      promotionState: "blocked",
-      updatedAt: createdAt,
-    }));
     return {
       benchmarkPack: null,
-      promotionRecord: blockedRecord,
+      promotionRecord,
       eligibility,
     };
   }
@@ -187,29 +191,37 @@ export function publishBenchmarkPack(input: {
   });
 
   if (requestedScope !== "tenant_local" && !isBenchmarkShareableOutsideTenant(benchmarkPack)) {
-    const blockedRecord = savePromotionRecord(workpackPromotionRecordSchema.parse({
-      id: createWorkpackId("prom"),
-      workpackId: detail.workpack.id,
-      versionId: detail.version.id,
-      benchmarkPackId: null,
-      previousActiveBenchmarkPackId: previousActive?.benchmarkPackId ?? null,
-      state: "blocked",
-      reasonCode: "benchmark_not_shareable",
-      evidenceCapturedAt: createdAt,
-      rollbackAvailable: Boolean(previousActive),
-    }));
-    saveTelemetryEvent({
-      id: createWorkpackId("evt"),
-      tenantId: detail.workpack.tenantId,
-      workpackId: detail.workpack.id,
-      versionId: detail.version.id,
-      eventName: "promotion_blocked",
-      detail: "Promotion blocked because the benchmark cannot cross trust boundaries yet",
-      createdAt,
+    const promotionRecord = await withWorkpackPersistenceTransaction(async (session) => {
+      const blockedRecord = await savePromotionRecord(workpackPromotionRecordSchema.parse({
+        id: createWorkpackId("prom"),
+        workpackId: detail.workpack.id,
+        versionId: detail.version.id,
+        benchmarkPackId: null,
+        previousActiveBenchmarkPackId: previousActive?.benchmarkPackId ?? null,
+        state: "blocked",
+        reasonCode: "benchmark_not_shareable",
+        evidenceCapturedAt: createdAt,
+        rollbackAvailable: Boolean(previousActive),
+      }), session);
+      await saveTelemetryEvent({
+        id: createWorkpackId("evt"),
+        tenantId: detail.workpack.tenantId,
+        workpackId: detail.workpack.id,
+        versionId: detail.version.id,
+        eventName: "promotion_blocked",
+        detail: "Promotion blocked because the benchmark cannot cross trust boundaries yet",
+        createdAt,
+      }, session);
+      await updateWorkpack(detail.workpack.id, (workpack) => ({
+        ...workpack,
+        promotionState: "blocked",
+        updatedAt: createdAt,
+      }), session);
+      return blockedRecord;
     });
     return {
       benchmarkPack: null,
-      promotionRecord: blockedRecord,
+      promotionRecord,
       eligibility: {
         ...eligibility,
         eligible: false,
@@ -218,32 +230,35 @@ export function publishBenchmarkPack(input: {
     };
   }
 
-  saveBenchmarkPack(benchmarkPack);
-  const promotionRecord = savePromotionRecord(workpackPromotionRecordSchema.parse({
-    id: createWorkpackId("prom"),
-    workpackId: detail.workpack.id,
-    versionId: detail.version.id,
-    benchmarkPackId: benchmarkPack.id,
-    previousActiveBenchmarkPackId: previousActive?.benchmarkPackId ?? null,
-    state: "active",
-    reasonCode: "promotion_active",
-    evidenceCapturedAt: createdAt,
-    rollbackAvailable: true,
-  }));
-  saveTelemetryEvent({
-    id: createWorkpackId("evt"),
-    tenantId: detail.workpack.tenantId,
-    workpackId: detail.workpack.id,
-    versionId: detail.version.id,
-    eventName: "promotion_approved",
-    detail: `Benchmark published in ${requestedScope} scope`,
-    createdAt,
+  const promotionRecord = await withWorkpackPersistenceTransaction(async (session) => {
+    await saveBenchmarkPack(benchmarkPack, session);
+    const record = await savePromotionRecord(workpackPromotionRecordSchema.parse({
+      id: createWorkpackId("prom"),
+      workpackId: detail.workpack.id,
+      versionId: detail.version.id,
+      benchmarkPackId: benchmarkPack.id,
+      previousActiveBenchmarkPackId: previousActive?.benchmarkPackId ?? null,
+      state: "active",
+      reasonCode: "promotion_active",
+      evidenceCapturedAt: createdAt,
+      rollbackAvailable: true,
+    }), session);
+    await saveTelemetryEvent({
+      id: createWorkpackId("evt"),
+      tenantId: detail.workpack.tenantId,
+      workpackId: detail.workpack.id,
+      versionId: detail.version.id,
+      eventName: "promotion_approved",
+      detail: `Benchmark published in ${requestedScope} scope`,
+      createdAt,
+    }, session);
+    await updateWorkpack(detail.workpack.id, (workpack) => ({
+      ...workpack,
+      promotionState: "promoted",
+      updatedAt: createdAt,
+    }), session);
+    return record;
   });
-  updateWorkpack(detail.workpack.id, (workpack) => ({
-    ...workpack,
-    promotionState: "promoted",
-    updatedAt: createdAt,
-  }));
 
   return {
     benchmarkPack,
@@ -252,47 +267,52 @@ export function publishBenchmarkPack(input: {
   };
 }
 
-export function rollbackWorkpackPromotion(promotionRecordId: string): ReturnType<typeof workpackPromotionRecordSchema.parse> {
-  const record = getPromotionRecord(promotionRecordId);
-  if (!record) {
-    throw new Error(`Unknown promotion record: ${promotionRecordId}`);
-  }
-  const detail = getWorkpackDetail(record.workpackId);
-  if (!detail) {
-    throw new Error(`Unknown workpack for promotion record: ${promotionRecordId}`);
-  }
+export async function rollbackWorkpackPromotion(input: {
+  tenantId: string;
+  promotionRecordId: string;
+}): Promise<ReturnType<typeof workpackPromotionRecordSchema.parse>> {
+  return withWorkpackPersistenceTransaction(async (session) => {
+    const record = await getPromotionRecordForTenant(input.tenantId, input.promotionRecordId, session);
+    if (!record) {
+      throw new Error(`Unknown promotion record: ${input.promotionRecordId}`);
+    }
+    const detail = await getWorkpackDetail(record.workpackId, session);
+    if (!detail || detail.workpack.tenantId !== input.tenantId) {
+      throw new Error(`Unknown workpack for promotion record: ${input.promotionRecordId}`);
+    }
 
-  const updatedRecord = updatePromotionRecord(promotionRecordId, (current) => ({
-    ...current,
-    state: "rolled_back",
-    reasonCode: "rollback_requested",
-    rollbackAvailable: false,
-  }));
-  if (!updatedRecord) {
-    throw new Error(`Failed to update promotion record: ${promotionRecordId}`);
-  }
+    const updatedRecord = await updatePromotionRecord(record.id, (current) => ({
+      ...current,
+      state: "rolled_back",
+      reasonCode: "rollback_requested",
+      rollbackAvailable: false,
+    }), session);
+    if (!updatedRecord) {
+      throw new Error(`Failed to update promotion record: ${input.promotionRecordId}`);
+    }
 
-  if (record.benchmarkPackId) {
-    updateBenchmarkPack(record.benchmarkPackId, (benchmarkPack) => ({
-      ...benchmarkPack,
-      publicationStatus: "rolled_back",
-    }));
-  }
+    if (record.benchmarkPackId) {
+      await updateBenchmarkPack(record.benchmarkPackId, (benchmarkPack) => ({
+        ...benchmarkPack,
+        publicationStatus: "rolled_back",
+      }), session);
+    }
 
-  updateWorkpack(detail.workpack.id, (workpack) => ({
-    ...workpack,
-    promotionState: "reverted",
-    updatedAt: nowIso(),
-  }));
-  saveTelemetryEvent({
-    id: createWorkpackId("evt"),
-    tenantId: detail.workpack.tenantId,
-    workpackId: detail.workpack.id,
-    versionId: detail.version.id,
-    eventName: "promotion_reverted",
-    detail: `Promotion rolled back from ${getMostRestrictiveTrustTag((detail.benchmarks[0]?.trustTags ?? ["verified"]) as any)}`,
-    createdAt: nowIso(),
+    await updateWorkpack(detail.workpack.id, (workpack) => ({
+      ...workpack,
+      promotionState: "reverted",
+      updatedAt: nowIso(),
+    }), session);
+    await saveTelemetryEvent({
+      id: createWorkpackId("evt"),
+      tenantId: detail.workpack.tenantId,
+      workpackId: detail.workpack.id,
+      versionId: detail.version.id,
+      eventName: "promotion_reverted",
+      detail: `Promotion rolled back from ${getMostRestrictiveTrustTag((detail.benchmarks[0]?.trustTags ?? ["verified"]) as any)}`,
+      createdAt: nowIso(),
+    }, session);
+
+    return updatedRecord;
   });
-
-  return updatedRecord;
 }
